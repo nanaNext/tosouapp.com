@@ -1,0 +1,20 @@
+{
+  "name": "attendance-backend",
+  "version": "1.0.0",
+  "main": "attendance/backend/src/server.js",
+  "scripts": {
+    "start": "node attendance/backend/src/server.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.0",
+    "mysql2": "^3.18.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  }
+}

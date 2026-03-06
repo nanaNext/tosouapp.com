@@ -1,0 +1,119 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const { cors } = require('./core/middleware/cors');
+const cookieParser = require('cookie-parser');
+const security = require('./core/middleware/security');
+
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+app.use(cors());
+security(app);
+app.use((req, res, next) => {
+  req.id = (Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)).slice(0, 16);
+  res.setHeader('X-Request-ID', req.id);
+  next();
+});
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const end = process.hrtime.bigint();
+    const ms = Number(end - start) / 1e6;
+    if (ms > 500) {
+      try {
+        console.warn(JSON.stringify({ level: 'warn', type: 'slow_request', request_id: req.id, method: req.method, path: req.path, duration_ms: Math.round(ms) }));
+      } catch {}
+    }
+  });
+  next();
+});
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; frame-ancestors 'none'");
+  // HSTS nên cấu hình ở Nginx; tạm đặt nếu qua HTTPS
+  const isHttps = req.secure || (req.headers['x-forwarded-proto'] || '').includes('https');
+  if (isHttps) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// Swagger definition
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'iizuka.it.com Attendance API',
+    version: '1.0.0',
+    description: 'API documentation for the Attendance System',
+  },
+  servers: [
+    {
+      url: 'http://localhost:3000',
+      description: 'Development server',
+    },
+  ],
+};
+
+const options = {
+  swaggerDefinition,
+  apis: ['./src/routes/*.js', './src/modules/**/*.js'],
+};
+
+const swaggerSpec = swaggerJsdoc(options);
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
+
+const routes = require('./routes');
+routes(app);
+app.get('/ping', (req, res) => {
+  res.status(200).json({ ok: true });
+});
+// Log mounted routes at startup to verify availability
+try {
+  const stack = (app._router?.stack || []);
+  const list = [];
+  for (const layer of stack) {
+    if (layer.route) {
+      list.push({ path: layer.route.path, methods: Object.keys(layer.route.methods || {}) });
+    } else if (layer?.name === 'router' && layer?.handle?.stack) {
+      const base = layer?.regexp?.fast_star ? '' : (layer?.regexp?.source || '').replace('^\\', '').replace('\\/?(?=\\/|$)', '');
+      for (const l2 of layer.handle.stack) {
+        if (l2.route) {
+          list.push({ path: (base || '') + l2.route.path, methods: Object.keys(l2.route.methods || {}) });
+        }
+      }
+    }
+  }
+  console.log(JSON.stringify({ mounted_routes: list }, null, 2));
+} catch (e) {
+  console.warn('Route listing failed: ' + (e?.message || String(e)));
+}
+// Block public access to payslips; must use secure endpoints
+app.use('/uploads/payslips', (req, res) => {
+  res.status(403).json({ message: 'Use secureUrl endpoints to download payslips' });
+});
+// Serve other static uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.get('/api/metrics', (req, res) => {
+  try {
+    const m = require('./core/metrics').snapshot();
+    res.status(200).json(m);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+const notFound = require('./core/middleware/notFoundHandler');
+app.use(notFound);
+
+const errorHandler = require('./core/middleware/errorHandler');
+app.use(errorHandler);
+
+module.exports = app;
