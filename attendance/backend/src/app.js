@@ -110,6 +110,9 @@ app.use('/api/chatbot', chatbotRoutes);
 app.get('/ping', (req, res) => {
   res.status(200).json({ ok: true });
 });
+app.get('/api/chatbot-test', (req, res) => {
+  res.status(200).json({ ok: true });
+});
 // Log mounted routes at startup to verify availability
 try {
   const stack = (app._router?.stack || []);
