@@ -1,8 +1,10 @@
 const path = require('path');
 const crypto = require('crypto');
-if (process.env.NODE_ENV !== 'production') {
-  try { require('dotenv').config(); } catch {}
-}
+try {
+  if (process.env.NODE_ENV !== 'production' || String(process.env.ALLOW_DOTENV || '').toLowerCase() === 'true') {
+    require('dotenv').config();
+  }
+} catch {}
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
