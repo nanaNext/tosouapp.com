@@ -219,6 +219,13 @@ app.get('/ui/admin', (req, res) => { res.sendFile(path.join(__dirname, 'static',
 app.get('/ui/overtime', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'html', 'overtime.html')); });
 app.get('/ui/salary', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'html', 'salary.html')); });
 app.get('/ui/chatbot', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'html', 'chatbot.html')); });
+app.get('/ui/:page', (req, res) => {
+  const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
+  const file = path.join(__dirname, 'static', 'html', `${page}.html`);
+  res.sendFile(file, (err) => {
+    if (err) res.status(404).json({ message: 'Not Found', path: req.path });
+  });
+});
 app.get('/api/metrics', (req, res) => {
   try {
     const m = require('./core/metrics').snapshot();
