@@ -162,6 +162,14 @@ app.post('/api/chatbot/question', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+app.get('/api/chatbot/debug/faqs', async (req, res) => {
+  try {
+    const [rows] = await require('./core/database/mysql').query('SELECT id, category_id, question, popularity, status FROM chatbot_faq ORDER BY id ASC LIMIT 100');
+    res.status(200).json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 app.get('/ping', (req, res) => {
   res.status(200).json({ ok: true });
 });
