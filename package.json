@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "attendance/backend/src/server.js",
   "scripts": {
-    "start": "node attendance/backend/src/server.js"
+    "start": "node attendance/backend/src/server.js",
+    "test": "node -e \"console.log('No test runner configured');\"",
+    "test:unit": "node -e \"console.log('No unit tests configured');\"",
+    "test:integration": "node -e \"console.log('No integration tests configured');\""
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

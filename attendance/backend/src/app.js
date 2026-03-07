@@ -35,11 +35,19 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; frame-ancestors 'none'");
-  // HSTS nên cấu hình ở Nginx; tạm đặt nếu qua HTTPS
+  const csp = [
+    process.env.CSP_DEFAULT_SRC || "default-src 'self'",
+    process.env.CSP_IMG_SRC || "img-src 'self' data:",
+    process.env.CSP_STYLE_SRC || "style-src 'self' 'unsafe-inline'",
+    process.env.CSP_SCRIPT_SRC || "script-src 'self'",
+    process.env.CSP_OBJECT_SRC || "object-src 'none'",
+    process.env.CSP_FRAME_ANCESTORS || "frame-ancestors 'none'"
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
   const isHttps = req.secure || (req.headers['x-forwarded-proto'] || '').includes('https');
-  if (isHttps) {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  const enableHsts = String(process.env.ENABLE_HSTS || '').toLowerCase() === 'true';
+  if (isHttps || enableHsts) {
+    res.setHeader('Strict-Transport-Security', process.env.HSTS_VALUE || 'max-age=31536000; includeSubDomains');
   }
   next();
 });
