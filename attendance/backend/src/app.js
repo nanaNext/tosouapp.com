@@ -217,6 +217,7 @@ app.use('/ui', express.static(path.join(__dirname, 'static', 'html'), { setHeade
 app.use('/', express.static(path.join(__dirname, 'static', 'html'), { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } }));
 app.get('/ui/login', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'html', 'login.html')); });
 app.get('/login', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'html', 'login.html')); });
+app.get('/login.html', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'html', 'login.html')); });
 app.get('/ui-check', (req, res) => {
   const fs = require('fs');
   const file = path.join(__dirname, 'static', 'html', 'login.html');
