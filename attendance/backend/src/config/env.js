@@ -1,8 +1,4 @@
-try {
-  if (process.env.NODE_ENV !== 'production' || String(process.env.ALLOW_DOTENV || '').toLowerCase() === 'true') {
-    require('dotenv').config();
-  }
-} catch {}
+require('./loadEnv');
 
 module.exports = {
   port: process.env.PORT,
