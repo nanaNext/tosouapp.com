@@ -105,6 +105,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 const routes = require('./routes');
 routes(app);
+const chatbotRoutes = require('./modules/chatbot/chatbot.routes');
+app.use('/api/chatbot', chatbotRoutes);
 app.get('/ping', (req, res) => {
   res.status(200).json({ ok: true });
 });
