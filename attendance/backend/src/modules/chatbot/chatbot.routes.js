@@ -4,6 +4,10 @@ const repo = require('./chatbot.repository');
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { body, query } = require('express-validator');
 
+router.get('/ping', (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 router.get('/categories', async (req, res) => {
   try {
     await repo.init();
