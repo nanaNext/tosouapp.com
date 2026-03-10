@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ポータル</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/portal.css">
+  <script type="module" src="/static/js/pages/portal.debug.js"></script>
+  <script type="module" src="/static/js/pages/portal.page.js"></script>
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">飯塚塗研</span>
+      <span class="sub">WEBポータル</span>
+    </div>
+    <div class="search">
+      <input type="search" placeholder="Search..." aria-label="Search">
+    </div>
+    <div class="user">
+      <span id="userName"></span>
+    </div>
+  </header>
+  <main class="content">
+    <div id="status" style="margin-bottom:12px;color:#3a6ea5;font-weight:600;">Loading…</div>
+    <div id="error" style="display:none;color:#b00020;font-weight:600;"></div>
+    <section class="tiles">
+      <a class="tile" href="/ui/leave">
+        <div class="icon">⬆</div>
+        <div class="title">申請</div>
+      </a>
+      <a class="tile" href="/ui/attendance">
+        <div class="icon">⟳</div>
+        <div class="title">勤怠入力</div>
+      </a>
+      <a class="tile" href="/ui/adjust">
+        <div class="icon">🧾</div>
+        <div class="title">経費精算</div>
+      </a>
+      <a class="tile wide" href="/ui/chatbot">
+        <div class="title">エンジニアサポートセンター</div>
+        <div class="arrow">›</div>
+      </a>
+      <a class="tile wide" href="/ui/salary">
+        <div class="title">給与明細など</div>
+        <div class="arrow">›</div>
+      </a>
+    </section>
+  </main>
+</body>
+</html>

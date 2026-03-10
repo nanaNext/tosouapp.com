@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>管理ポータル</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/portal.css">
+  <script type="module" src="/static/js/pages/admin.page.js"></script>
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">飯塚塗研</span>
+      <span class="sub">管理ポータル</span>
+    </div>
+    <div class="search">
+      <input type="search" placeholder="Search..." aria-label="Search">
+    </div>
+    <div class="user">
+      <span id="userName"></span>
+    </div>
+  </header>
+  <main class="content">
+    <div id="status" style="margin-bottom:12px;color:#3a6ea5;font-weight:600;">Loading…</div>
+    <div id="error" style="display:none;color:#b00020;font-weight:600;"></div>
+    <nav class="tabs" style="display:flex;gap:8px;margin-bottom:12px;">
+      <a href="/ui/admin?tab=users" id="tab-users" class="btn">ユーザー管理</a>
+      <a href="/ui/admin?tab=departments" id="tab-departments" class="btn">部門管理</a>
+      <a href="/ui/admin?tab=settings" id="tab-settings" class="btn">システム設定</a>
+      <a href="/ui/admin?tab=audit" id="tab-audit" class="btn">監査ログ</a>
+      <a href="/ui/admin?tab=refresh" id="tab-refresh" class="btn">トークン管理</a>
+    </nav>
+    <section id="adminContent" class="card"></section>
+    <section class="tiles">
+      <a class="tile" href="/ui/attendance">
+        <div class="icon">⏱</div>
+        <div class="title">勤怠</div>
+      </a>
+      <a class="tile" href="/ui/salary">
+        <div class="icon">¥</div>
+        <div class="title">給与</div>
+      </a>
+      <a class="tile" href="/ui/adjust">
+        <div class="icon">🧾</div>
+        <div class="title">経費</div>
+      </a>
+      <a class="tile wide" href="/ui/chatbot">
+        <div class="title">サポートセンター</div>
+        <div class="arrow">›</div>
+      </a>
+      <a class="tile wide" href="/ui/portal">
+        <div class="title">従業員ポータルへ</div>
+        <div class="arrow">›</div>
+      </a>
+    </section>
+  </main>
+</body>
+</html>

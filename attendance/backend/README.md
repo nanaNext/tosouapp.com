@@ -1,21 +1,20 @@
-# iizuka.it.com Attendance System
+# iizukatoken.com Attendance System
 
 ## Giới thiệu
 Hệ thống chấm công dành cho công ty Nhật, hỗ trợ quản lý thời gian làm việc, tăng ca, phòng ban, lương, và phân quyền người dùng.
 
 ## Cấu trúc thư mục chính
 - `src/` - Mã nguồn backend
-  - `modules/` - Các module chức năng (auth, attendance, salary, ...)
-  - `controllers/` - Controller chung
-  - `core/` - Thành phần lõi (database, middleware, errors, logging)
-  - `config/` - Cấu hình hệ thống
-  - `routes/` - Định tuyến API
-  - `services/` - Dịch vụ dùng chung
+  - `modules/` - Các module chức năng (auth, attendance, salary, payslip, users, ...)
+  - `core/` - Thành phần lõi (database, middleware, errors, logging, metrics)
+  - `config/` - Cấu hình hệ thống và biến môi trường
+  - `routes/` - Định tuyến API (mount tất cả modules vào `/api/*`)
+  - `services/` - Dịch vụ dùng chung (ví dụ server)
   - `utils/` - Tiện ích
-  - `static/` - Tài nguyên tĩnh (assets, css, js, ...)
-  - `resource/` - Tài nguyên upload
-- `tests/` - Unit test & integration test
-- `docker/` - Dockerfile & docker-compose
+  - `static/` - Tài nguyên tĩnh (css/js/html trang nội bộ)
+  - `uploads/` - Tài nguyên upload (bị ignore khi commit)
+- `tests/` - Thư mục test (placeholder, chưa cấu hình runner)
+- `docker/` - Dockerfile & docker-compose (chỉ dùng cho local/dev)
 
 ## Hướng dẫn cài đặt
 1. Clone repository về máy:
@@ -27,9 +26,10 @@ Hệ thống chấm công dành cho công ty Nhật, hỗ trợ quản lý thờ
    cd attendance/backend
    npm install
    ```
-3. Tạo file `.env` dựa trên `config/env.js` hoặc hướng dẫn trong README này.
-4. Khởi động database (MySQL) và cấu hình kết nối trong `config/db.js`.
-5. Chạy ứng dụng:
+3. Tạo file `.env` dựa trên `config/env.js` (không commit file `.env`).
+   - Biến tối thiểu: `PORT`, `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `JWT_SECRET`
+4. Khởi động database (MySQL) và điền thông tin kết nối.
+5. Chạy ứng dụng (dev):
    ```sh
    npm start
    ```
@@ -41,15 +41,9 @@ Hệ thống chấm công dành cho công ty Nhật, hỗ trợ quản lý thờ
    docker-compose up --build
    ```
 
-## Hướng dẫn test
-- Chạy unit test:
-  ```sh
-  npm run test:unit
-  ```
-- Chạy integration test:
-  ```sh
-  npm run test:integration
-  ```
+## Test
+- Hiện chưa cấu hình test runner. Thư mục `tests/` là placeholder.
+- Khi cần, thêm Jest/Vitest/Mocha và scripts tương ứng trong `package.json`.
 
 ## Swagger API docs
 Truy cập http://localhost:3000/api-docs để xem tài liệu API tự động sinh.

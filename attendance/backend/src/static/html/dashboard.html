@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ダッシュボード</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/portal.css">
+  <script type="module" src="/static/js/pages/dashboard.page.js"></script>
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">飯塚塗研</span>
+      <span class="sub">ダッシュボード</span>
+    </div>
+    <div class="search">
+      <input type="search" placeholder="Search..." aria-label="Search">
+    </div>
+    <div class="user">
+      <span id="userName"></span>
+    </div>
+  </header>
+  <main class="content">
+    <div id="status" style="margin-bottom:12px;color:#3a6ea5;font-weight:600;">Loading…</div>
+    <div id="error" style="display:none;color:#b00020;font-weight:600;"></div>
+    <section class="tiles" id="tiles"></section>
+  </main>
+</body>
+</html>

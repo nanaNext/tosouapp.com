@@ -1,0 +1,15 @@
+.topbar { display:flex; align-items:center; gap:16px; padding:10px 16px; background: linear-gradient(#eaf4ff,#d7eaff); border-bottom:1px solid #e5eef9; }
+.brand .logo { font-weight:800; color:#1151ac; margin-right:8px; }
+.brand .sub { color:#3a6ea5; font-size:12px; }
+.search input { padding:8px 12px; border:1px solid #c9d6ea; border-radius:999px; min-width:260px; }
+.user { margin-left:auto; color:#3a6ea5; font-weight:600; }
+.content { padding:24px; }
+.tiles { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; max-width:980px; margin:0 auto; }
+.tile { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:18px; border:1px solid #cfe0f5; border-radius:12px; background:#fff; text-decoration:none; color:#124; box-shadow:0 3px 10px rgba(0,0,0,.05); }
+.tile .icon { font-size:24px; color:#1151ac; }
+.tile .title { margin-top:8px; font-weight:700; }
+.tile.wide { flex-direction:row; justify-content:space-between; }
+.tile .arrow { font-size:24px; color:#1151ac; }
+@media (max-width: 480px) {
+  .search input { min-width: 160px; }
+}

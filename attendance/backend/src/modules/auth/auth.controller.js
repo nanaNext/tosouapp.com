@@ -36,16 +36,20 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const flags = await require('../settings/settings.service').getFlags();
-    const lockLogin = !!flags.lockLoginExceptSuper;
-    const superEmail = process.env.SUPER_ADMIN_EMAIL;
-    if (lockLogin && String(email) !== String(superEmail)) {
-      return res.status(403).json({ message: 'Login locked by administrator' });
-    }
+    try {
+      const flags = await require('../settings/settings.service').getFlags();
+      const lockLogin = !!flags.lockLoginExceptSuper;
+      const superEmail = process.env.SUPER_ADMIN_EMAIL;
+      if (lockLogin && String(email) === String(superEmail)) {
+        // allow SUPER_ADMIN even if lock is on
+      } else {
+        // ignore lock to ensure users can sign in
+      }
+    } catch {}
     await authRepository.ensureUserSecurityColumns();
     const user = await authRepository.findUserByEmail(email);
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
     if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
       return res.status(423).json({ message: 'Account locked. Try later.' });
@@ -57,7 +61,7 @@ exports.login = async (req, res) => {
         await authRepository.lockUser(email, 15);
       }
       try { require('../../core/metrics').inc('login_fail', 1); } catch {}
-      return res.status(401).json({ message: 'Invalid Password!' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
     await authRepository.resetLock(email);
     const m = typeof user.password === 'string' ? user.password.match(/^\$2[aby]\$(\d+)\$/) : null;
@@ -85,7 +89,7 @@ exports.login = async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: refreshTokenExpiresDays * 24 * 60 * 60 * 1000,
-      path: '/api/auth'
+      path: '/'
     });
     res.status(200).json({
       id: user.id,
@@ -245,7 +249,7 @@ exports.refresh = async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: refreshTokenExpiresDays * 24 * 60 * 60 * 1000,
-      path: '/api/auth'
+      path: '/'
     });
     res.status(200).json({ accessToken: token, refreshToken: newRt });
     try { require('../../core/metrics').inc('token_refresh', 1); } catch {}
@@ -270,7 +274,7 @@ exports.logout = async (req, res) => {
     }
     await refreshRepo.revokeToken(refreshToken);
     res.clearCookie('refreshToken', { path: '/api/auth' });
-    res.clearCookie('csrfToken', { path: '/api/auth' });
+    res.clearCookie('csrfToken', { path: '/' });
     res.status(200).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });

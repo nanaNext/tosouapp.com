@@ -4,7 +4,10 @@ async function fetchJSON(url, options) {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, credentials: 'include', ...options });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
-    try { const j = await res.json(); msg = j.message || msg; } catch {}
+    try {
+      const j = await res.json();
+      msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
+    } catch {}
     throw new Error(msg);
   }
   return res.json();
