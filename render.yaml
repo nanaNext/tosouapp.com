@@ -9,7 +9,7 @@ services:
     startCommand: |
       npm start
     repoPath: .
-    healthCheckPath: /health
+    healthCheckPath: /ping
     autoDeploy: true
     envVars:
       - key: NODE_ENV
