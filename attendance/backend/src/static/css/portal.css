@@ -1008,6 +1008,24 @@ body.drawer-open .content {
   margin: 0;
 }
 
+.admin .card a {
+  color: #1151ac;
+  text-decoration: underline;
+}
+.admin .card a:visited {
+  color: #1151ac;
+}
+.admin .card a:hover,
+.admin .card a:focus,
+.admin .card a:focus-visible {
+  color: #2a6ea5;
+  text-decoration: underline;
+  outline: none;
+}
+.admin .card a:active {
+  color: #0d2c5b;
+}
+
 .tile {
   display: flex;
   flex-direction: column;
