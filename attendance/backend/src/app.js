@@ -11,6 +11,7 @@ const security = require('./core/middleware/security');
 const app = express();
 const BUILD_ID = process.env.BUILD_ID || 'navy-20260331-1';
 const STARTED_AT = Date.now();
+process.env.BUILD_ID = BUILD_ID;
 app.set('trust proxy', parseInt(process.env.TRUST_PROXY_HOPS || '1', 10));
 app.use(express.json());
 app.use(cookieParser());
@@ -162,7 +163,17 @@ app.use('/uploads/payslips', (req, res) => {
 });
 // Serve other static uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } }));
-app.use('/static', express.static(path.join(__dirname, 'static'), { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } }));
+app.use('/static', express.static(path.join(__dirname, 'static'), {
+  setHeaders: (res, p) => {
+    const ext = String(p || '').toLowerCase();
+    const isAsset = ext.endsWith('.js') || ext.endsWith('.css') || ext.endsWith('.png') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.gif') || ext.endsWith('.webp') || ext.endsWith('.svg') || ext.endsWith('.ico');
+    if (isAsset) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  }
+}));
 app.get('/static/css/base.css', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'css', 'base.css')); });
 app.get('/static/js/pages/login.page.js', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'js', 'pages', 'login.page.js')); });
 app.get('/static/js/api/auth.api.js', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'js', 'api', 'auth.api.js')); });

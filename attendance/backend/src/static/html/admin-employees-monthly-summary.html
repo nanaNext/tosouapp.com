@@ -3,13 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>調整申請一覧（管理者）</title>
+  <title>社員管理 / 月次集計</title>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
   <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260413-overlayfix4">
   <link rel="stylesheet" href="/static/css/admin.css?v=20260413-segment13">
-  <link rel="stylesheet" href="/static/css/adjust.page.css?v=20260413-2">
+  <link rel="stylesheet" href="/static/css/admin-attendance-monthly.css?v=navy-20260413-10">
+  <script src="/static/js/pages/attendance-monthly.core.js?v=navy-20260403-1" defer></script>
+  <script src="/static/js/pages/attendance-monthly.render.js?v=navy-20260413-3" defer></script>
+  <script src="/static/js/pages/attendance-monthly.sections-render.js?v=navy-20260403-1" defer></script>
   <script src="/static/js/pages/session-idle.js?v=navy-20260411-patch2" defer></script>
-  <script type="module" src="/static/js/admin/attendance/admin-attendance-adjust-requests.page.js?v=20260413-6"></script>
+  <script type="module" src="/static/js/pages/admin-employees-monthly-summary.page.js?v=navy-20260413-12"></script>
   <link rel="icon" href="data:,">
 </head>
 <body class="admin">
@@ -27,14 +30,14 @@
         </div>
       </div>
       <div class="menu">
-        <button class="menu-btn" type="button" aria-current="page">勤怠管理</button>
+        <button class="menu-btn" type="button">勤怠管理</button>
         <div class="submenu" role="menu">
           <a href="/admin/attendance" role="menuitem">勤怠記録</a>
           <a href="/admin/attendance/monthly" role="menuitem" target="_blank" rel="noopener noreferrer">月次勤怠入力(管理者)</a>
           <a href="/admin/work-reports" role="menuitem">作業報告</a>
           <a href="/admin/attendance/shifts" role="menuitem">シフト管理</a>
           <a href="/admin/attendance/holidays" role="menuitem">休日設定</a>
-          <a href="/admin-attendance-adjust-requests.html" role="menuitem" aria-current="page">調整申請一覧</a>
+          <a href="/admin-attendance-adjust-requests.html" role="menuitem">調整申請一覧</a>
         </div>
       </div>
       <div class="menu">
@@ -85,10 +88,10 @@
   <main class="content">
     <div id="status" class="status" style="display:none;"></div>
     <div id="error" class="error"></div>
-    <div class="adj-page-head">
-      <h2>調整申請一覧</h2>
+    <div style="max-width:1200px;margin:0 auto 12px;">
+      <h2 style="margin:0;color:#0f172a;font-size:24px;font-weight:700;">月次集計</h2>
     </div>
-    <div id="adjustRequestsHost"></div>
+    <section id="adminContent"></section>
   </main>
 </body>
 </html>

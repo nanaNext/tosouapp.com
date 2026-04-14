@@ -315,6 +315,33 @@ const renderWorkMinutes = () => {
   box.textContent = `${hh}:${pad2(mm)}`;
 };
 
+const getSimpleStatusMeta = () => {
+  const roleStr = String(window.userRole || '').toLowerCase();
+  const isAdminView = roleStr === 'admin' || roleStr === 'manager';
+  const monthApproved = String(window.state?.currentMonthStatus || '').trim() === 'approved';
+  const kubunEl = $('#kubun');
+  const isPlanned = !!kubunEl?.classList?.contains('is-planned');
+  const hasActualNow = !!(
+    String($('#startTime')?.value || '').trim() ||
+    String($('#endTime')?.value || '').trim()
+  );
+  if (isPlanned && !hasActualNow) return { text: '未申請', cls: 'warn' };
+  if (monthApproved) return { text: '承認済み', cls: 'ok' };
+  if (hasActualNow) return { text: isAdminView ? '承認待ち' : '未確認', cls: 'warn' };
+  return { text: '未申請', cls: 'warn' };
+};
+
+const renderSimpleStatus = () => {
+  const meta = getSimpleStatusMeta();
+  ['#topStatus', '#panelStatus'].forEach((selector) => {
+    const el = $(selector);
+    if (!el) return;
+    el.textContent = meta.text;
+    el.classList.remove('ok', 'warn', 'danger');
+    el.classList.add(meta.cls);
+  });
+};
+
 const syncWorkTypeButtons = () => {
   const el = $('#workType');
   if (!el) return;
@@ -323,6 +350,35 @@ const syncWorkTypeButtons = () => {
     const on = String(btn.dataset.worktype || '') === v;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
+};
+
+const applyWorkTypeGate = () => {
+  const st = window.state || {};
+  const kubun = String($('#kubun')?.value || '').trim();
+  const workType = String($('#workType')?.value || '').trim();
+  const nonWorking = !!st.restHoliday || ['欠勤', '有給休暇', '半休', '無給休暇'].includes(kubun);
+  const locked = !nonWorking && !workType;
+  const setDisabled = (selector, disabled) => {
+    const el = $(selector);
+    if (!el) return;
+    el.disabled = !!disabled;
+    if (disabled) el.setAttribute('aria-disabled', 'true');
+    else el.removeAttribute('aria-disabled');
+  };
+  [
+    '#startTime',
+    '#endTime',
+    '#btnStartStamp',
+    '#btnEndStamp',
+    '#workSite',
+    '#workContent',
+    '#breakMin',
+    '#nightBreakMin',
+    '#btnSave',
+    '#btnConfirm'
+  ].forEach((selector) => setDisabled(selector, locked));
+  document.querySelector('.simple-stamp-stack')?.classList.toggle('is-disabled', locked);
+  document.querySelector('.simple-work-report')?.classList.toggle('is-disabled', locked);
 };
 
 const applyHolidayRestMode = () => {
@@ -359,6 +415,7 @@ const applyHolidayRestMode = () => {
     }
     const wt = $('#workType');
     if (wt) wt.value = '';
+    try { if (window.state?.date) saveWorkType(window.state.date, ''); } catch {}
     const btnIn = $('#btnStartStamp');
     const btnOut = $('#btnEndStamp');
     if (btnIn) btnIn.disabled = true;
@@ -381,6 +438,7 @@ const applyHolidayRestMode = () => {
     }
     renderWorkMinutes();
   }
+  applyWorkTypeGate();
 };
 
 const wireWorkTypeButtons = () => {
@@ -437,20 +495,16 @@ const getCalendarOff = async (date) => {
   const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
   const isApiOff = Number(cal?.is_off || 0) === 1;
 
-  // 2. Kiểm tra thứ 7, chủ nhật (Cuối tuần mặc định là 休日)
+  // 2. Coi tất cả Thứ 7/Chủ nhật là nghỉ (theo yêu cầu công ty)
   const weekend = (() => {
     try {
       const [y, m, d] = date.split('-').map(x => parseInt(x, 10));
       if (!y || isNaN(m) || !d) return false;
-      // Dùng Date.UTC để tránh lệch múi giờ khi kiểm tra getUTCDay
       const dt = new Date(Date.UTC(y, m - 1, d));
       const dow = dt.getUTCDay();
-      return dow === 0 || dow === 6; // 0: CN, 6: T7
-    } catch {
-      return false;
-    }
+      return dow === 0 || dow === 6;
+    } catch { return false; }
   })();
-
   return isApiOff || weekend;
 };
 
@@ -489,12 +543,26 @@ const persistDaily = async (date) => {
   });
 };
 
+const loadMonthStatus = async (date) => {
+  try {
+    const y = String(date || '').slice(0, 4);
+    const m = String(date || '').slice(5, 7);
+    if (!/^\d{4}$/.test(y) || !/^\d{2}$/.test(m)) return 'draft';
+    const r = await fetchJSONAuth(`/api/attendance/month?year=${encodeURIComponent(y)}&month=${encodeURIComponent(parseInt(m, 10))}`);
+    const st = String(r?.monthStatus?.status || '').trim();
+    return st || 'draft';
+  } catch {
+    return 'draft';
+  }
+};
+
 const load = async (date) => {
   showErr('');
   showSpinner(true);
   try {
     $('#topDate').textContent = fmtJP(date);
     await renderNotices(date);
+    state.currentMonthStatus = await loadMonthStatus(date);
     const isOff = await getCalendarOff(date);
     const shift = await getShiftForDate(date).catch(() => null);
     const shiftStart = String(shift?.start_time || FIXED_START).trim();
@@ -537,6 +605,15 @@ const load = async (date) => {
     const segments = Array.isArray(day?.segments) ? day.segments : [];
     let seg = pickLatestSegment(segments);
     const openSeg = pickOpenSegment(segments);
+    if (date === todayJST() && seg?.checkIn && seg?.checkOut) {
+      try {
+        const outHmRaw = String(seg.checkOut).slice(11, 16);
+        const nowHm = nowHmJST();
+        if (/^\d{2}:\d{2}$/.test(outHmRaw) && outHmRaw > nowHm) {
+          seg = { ...seg, checkOut: null };
+        }
+      } catch {}
+    }
     if (!openSeg?.checkIn && !seg?.checkIn) {
       if (date === todayJST()) {
         try {
@@ -547,20 +624,11 @@ const load = async (date) => {
         } catch {}
       }
     }
-    const hasActual = !!(seg?.checkIn || seg?.checkOut);
-    const isPlanned = !kubunSaved && !hasActual;
-    const roleStr = String(window.userRole || '').toLowerCase();
-    const isAdminView = roleStr === 'admin' || roleStr === 'manager';
-    const status = (() => {
-      if (isPlanned) return '未申請';
-      if (hasActual) return isAdminView ? '承認待ち' : '未確認';
-      return '—';
-    })();
-    $('#topStatus').textContent = status;
-    $('#panelStatus').textContent = status;
+    renderSimpleStatus();
     try { $('#topDate').textContent = fmtJP(date); } catch {}
 
-    const stampSeg = openSeg || seg;
+    const effectiveOpenSeg = openSeg || ((seg?.checkIn && !seg?.checkOut) ? seg : null);
+    const stampSeg = effectiveOpenSeg || seg;
     const st = $('#startTime');
     const et = $('#endTime');
     if (st) {
@@ -578,7 +646,8 @@ const load = async (date) => {
         clearAutoTime(et);
       } else {
         if (stampSeg?.checkIn && !stampSeg?.checkOut) {
-          applyAutoTime(et, shiftEnd);
+          et.value = '';
+          clearAutoTime(et);
         } else {
           applyAutoTime(et, shiftEnd);
         }
@@ -591,10 +660,10 @@ const load = async (date) => {
       const inTime = seg?.checkIn ? String(seg.checkIn).slice(11, 16) : '';
       const outTime = seg?.checkOut ? String(seg.checkOut).slice(11, 16) : '';
       const canStamp = date === todayJST();
-      const hasOpen = !!openSeg?.checkIn && !openSeg?.checkOut;
+      const hasOpen = !!effectiveOpenSeg?.checkIn && !effectiveOpenSeg?.checkOut;
       if (btnIn) {
         btnIn.disabled = !canStamp || hasOpen;
-        const hmIn = hasOpen && openSeg?.checkIn ? String(openSeg.checkIn).slice(11, 16) : '';
+        const hmIn = hasOpen && effectiveOpenSeg?.checkIn ? String(effectiveOpenSeg.checkIn).slice(11, 16) : '';
         const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
         btnIn.textContent = hasOpen && hmIn
           ? (isMobile ? `開始済 (${hmIn})` : `開始打刻済 (${hmIn})`)
@@ -614,9 +683,9 @@ const load = async (date) => {
     const sel = $('#workType');
     const saved = loadSavedWorkType(date);
     if (sel) {
-      if (saved) sel.value = saved;
-      else if (daily?.workType) sel.value = String(daily.workType).trim();
-      else if (!String(sel.value || '').trim()) sel.value = 'onsite';
+      if (daily?.workType) sel.value = String(daily.workType).trim();
+      else if (saved) sel.value = saved;
+      else if (!String(sel.value || '').trim()) sel.value = '';
     }
     try {
       if (!kubunSaved && date === todayJST()) {
@@ -648,6 +717,7 @@ const load = async (date) => {
     renderWorkMinutes();
     syncWorkTypeButtons();
     applyHolidayRestMode();
+    applyWorkTypeGate();
   } catch (e) {
     showErr(e?.message || '読み込みに失敗しました');
   } finally {
@@ -848,6 +918,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const doStartStamp = async () => {
     showErr('');
+    if (!String($('#workType')?.value || '').trim()) {
+      showErr('先に勤務区分を選択してください');
+      return;
+    }
     if (state.date !== todayJST()) {
       showErr('本日のみ打刻できます');
       return;
@@ -883,6 +957,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   const doEndStamp = async () => {
     showErr('');
+    if (!String($('#workType')?.value || '').trim()) {
+      showErr('先に勤務区分を選択してください');
+      return;
+    }
     if (state.date !== todayJST()) {
       showErr('本日のみ打刻できます');
       return;
@@ -917,22 +995,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     await load(state.date);
   });
 
-  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); });
-  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); });
+  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); renderSimpleStatus(); });
+  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); renderSimpleStatus(); });
   $('#breakMin')?.addEventListener('change', renderWorkMinutes);
   wireWorkTypeButtons();
   $('#workType')?.addEventListener('change', () => { persistWorkType(); });
+  $('#workType')?.addEventListener('change', () => { applyWorkTypeGate(); renderSimpleStatus(); });
   $('#kubun')?.addEventListener('change', async () => {
+    $('#kubun')?.classList.toggle('is-planned', !String($('#kubun')?.value || '').trim());
     applyHolidayRestMode();
+    renderSimpleStatus();
     try { await persistDaily(state.date); } catch {}
   });
   setupSimpleCombo(document.getElementById('breakMin'));
   setupSimpleCombo(document.getElementById('nightBreakMin'));
   $('#workSite')?.addEventListener('input', () => {
     saveDraft(state.date, String($('#workSite')?.value || ''), String($('#workContent')?.value || ''));
+    renderSimpleStatus();
   });
   $('#workContent')?.addEventListener('input', () => {
     saveDraft(state.date, String($('#workSite')?.value || ''), String($('#workContent')?.value || ''));
+    renderSimpleStatus();
   });
   try {
     const company = $('#company');
@@ -955,11 +1038,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btnSave')?.addEventListener('click', async (e) => {
     e.preventDefault(); // Chặn hành vi submit mặc định của form (tránh trắng trang)
     showErr('');
+    if (!String($('#workType')?.value || '').trim() && !state.restHoliday) {
+      showErr('先に勤務区分を選択してください');
+      return;
+    }
     await persistSimpleEntry();
   });
   $('#btnConfirm')?.addEventListener('click', async (e) => {
     e.preventDefault(); // Chặn hành vi submit mặc định của form (tránh trắng trang)
     showErr('');
+    if (!String($('#workType')?.value || '').trim() && !state.restHoliday) {
+      showErr('先に勤務区分を選択してください');
+      return;
+    }
     const ok = window.confirm('保存しますか？');
     if (!ok) return;
     await persistSimpleEntry();

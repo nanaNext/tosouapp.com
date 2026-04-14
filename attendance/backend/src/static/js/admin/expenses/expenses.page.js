@@ -28,6 +28,7 @@ const fmtDT = (v) => {
 const render = async () => {
   const host = $('#adminContent');
   if (!host) return;
+  let pollTimer = 0;
   const globalStatus = document.getElementById('status');
   if (globalStatus) { globalStatus.textContent = ''; globalStatus.style.display = 'none'; }
   host.className = 'card';
@@ -440,7 +441,7 @@ const render = async () => {
   if (btn) btn.addEventListener('click', reload);
   await reload();
   try {
-    const t = setInterval(async () => {
+    pollTimer = window.setInterval(async () => {
       try {
         const month = $('#expMonth') ? $('#expMonth').value : todayMonth();
         const chats = await fetchJSONAuth(`/api/expenses/admin/messages?month=${encodeURIComponent(month)}`);
@@ -466,13 +467,30 @@ const render = async () => {
         }
       } catch {}
     }, 30000);
-    void t;
   } catch {}
+  return () => {
+    try { if (pollTimer) window.clearInterval(pollTimer); } catch {}
+    try { hideSpinner(); } catch {}
+    try {
+      const backdrop = document.getElementById('drawerBackdrop');
+      if (backdrop) {
+        backdrop.setAttribute('hidden', '');
+        backdrop.style.display = 'none';
+      }
+    } catch {}
+    try {
+      const modal = document.getElementById('adminEditModal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.remove();
+      }
+    } catch {}
+  };
 };
 
 export async function mount() {
   const profile = await requireAdmin();
   if (!profile) return;
   try { window.ADMIN_ID = profile.id; } catch {}
-  await render();
+  return await render();
 }

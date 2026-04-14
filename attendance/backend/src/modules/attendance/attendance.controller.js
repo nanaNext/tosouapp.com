@@ -385,6 +385,7 @@ exports.todayRoster = async (req, res) => {
     if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
     const db = require('../../core/database/mysql');
     const attendanceRepo = require('./attendance.repository');
+    const calendarRepo = require('../calendar/calendar.repository');
     const qDate = String(req.query?.date || '').slice(0, 10);
     const date = qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const [rows] = await db.query(`
@@ -474,6 +475,8 @@ exports.todayRoster = async (req, res) => {
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
     `, [date]);
     const planned = [];
+    let dayIsOff = false;
+    try { dayIsOff = await calendarRepo.isOff(date); } catch { dayIsOff = false; }
     for (const r of plannedBase || []) {
       let shift = null;
       try {
@@ -490,6 +493,7 @@ exports.todayRoster = async (req, res) => {
           shift = def2 ? { id: def2.id, name: def2.name, start_time: def2.start_time, end_time: def2.end_time } : null;
         }
       } catch {}
+      const status = Number(r.isLeave || 0) ? 'leave' : (dayIsOff ? 'off' : 'work');
       planned.push({
         userId: r.userId,
         employeeCode: r.employeeCode || null,
@@ -498,7 +502,7 @@ exports.todayRoster = async (req, res) => {
         departmentId: r.departmentId || null,
         departmentName: r.departmentName || null,
         planned: {
-          status: Number(r.isLeave || 0) ? 'leave' : 'work',
+          status,
           leaveType: r.leaveType || null,
           shift
         }
@@ -608,14 +612,18 @@ async function computeMonthMissing(userId, y, m) {
   for (let day = 1; day <= lastDay; day++) {
     const ds = `${y}-${pad(m)}-${pad(day)}`;
     const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
-    const isOff = off.has(ds) || dow === '日' || dow === '土';
+    const isOff = off.has(ds);
     const k0 = dailyKubun.get(ds) || '';
     const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
     const allowedOff = new Set(['休日', '休日出勤', '代替出勤']);
-    const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '休日') : (allowedNormal.has(k0) ? (k0 || '出勤') : '出勤'));
+    const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
     const segs = segByDate.get(ds) || [];
     const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
     const isWork = workKubunSet.has(kubun);
+    if (!isOff && !kubun) {
+      missing.push(ds);
+      continue;
+    }
     if (isWork && !hasComplete) {
       missing.push(ds);
     }
@@ -693,14 +701,18 @@ exports.getMonthStatusBulk = async (req, res) => {
         for (let day = 1; day <= lastDay; day++) {
           const ds = `${y}-${pad(m)}-${pad(day)}`;
           const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
-          const isOff = off.has(ds) || dow === '日' || dow === '土';
+          const isOff = off.has(ds);
           const k0 = dailyKubun.get(ds) || '';
           const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
           const allowedOff = new Set(['休日', '休日出勤', '代替出勤']);
-          const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '休日') : (allowedNormal.has(k0) ? (k0 || '出勤') : '出勤'));
+          const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
           const segs = segByDate.get(ds) || [];
           const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
           const isWork = workKubunSet.has(kubun);
+          if (!isOff && !kubun) {
+            missing++;
+            continue;
+          }
           if (isWork && !hasComplete) missing++;
         }
         return { ready: missing === 0, missingCount: missing };
@@ -1128,7 +1140,8 @@ exports.getMonthDetail = async (req, res) => {
       for (const [ds, list] of byDate.entries()) {
         const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
         if (hasSunday) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'saturday_last')) off.add(ds);
+        // Treat all Saturdays as off if calendar marks them (type 'saturday') or 'saturday_last'
+        if (list.some(x => x.is_off && (x.type === 'saturday' || x.type === 'saturday_last'))) off.add(ds);
         if (list.some(x => x.is_off && x.type === 'fixed')) off.add(ds);
         if (list.some(x => x.is_off && x.type === 'jp_auto')) off.add(ds);
         if (list.some(x => x.is_off && x.type === 'jp_substitute')) off.add(ds);
@@ -2114,17 +2127,21 @@ exports.exportMonthXlsx = async (req, res) => {
       const hasTime = !!inHm || !!outHm;
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       const dailyKubun = String(daily?.kubun || '').trim();
-      const kubun = (() => {
+      const plannedLabel = isOff ? '【予定休日】' : '【予定出勤】';
+      const kubunInfo = (() => {
         if (isOff) {
-          if (dailyKubun === '休日' || dailyKubun === '休日出勤' || dailyKubun === '代替出勤') return dailyKubun;
-          if (hasTime) return '休日出勤';
-          return '休日';
+          if (dailyKubun === '休日' || dailyKubun === '休日出勤' || dailyKubun === '代替出勤') {
+            return { display: dailyKubun, effective: dailyKubun };
+          }
+          if (hasTime) return { display: '休日出勤', effective: '休日出勤' };
+          return { display: plannedLabel, effective: '休日' };
         }
         const allowed = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
-        if (allowed.has(dailyKubun)) return dailyKubun || '出勤';
-        return '出勤';
+        if (allowed.has(dailyKubun) && dailyKubun) return { display: dailyKubun, effective: dailyKubun };
+        return { display: plannedLabel, effective: '出勤' };
       })();
-      const isWorkKubun = workKubunSet.has(kubun);
+      const kubun = kubunInfo.display;
+      const isWorkKubun = workKubunSet.has(kubunInfo.effective);
       let wt = isWorkKubun ? String(seg?.workType || daily?.workType || '').trim() : '';
       if (isWorkKubun && !wt) wt = 'onsite';
       const wtOn = wt === 'onsite' ? { v: '✓', s: 'checkOn' } : '';
@@ -2222,13 +2239,270 @@ exports.exportMonthXlsx = async (req, res) => {
 
     const safeFile = (s) => String(s || '').replace(/[\\\/:*?"<>|]/g, '_');
     const fileName = safeFile(`attendance_month_${from.slice(0, 7)}_${userId}.xlsx`);
-    const { buildXlsxBook } = require('../../utils/xlsx');
-    const buf = buildXlsxBook({ 
-      sheets: [
-        { name: '入力用勤怠表', columns, rows: sheetRows, headerStyleKey: 'headerGrey' },
-        { name: '予定', columns: planColumns, rows: planSheetRows, headerStyleKey: 'headerGrey' }
-      ] 
-    });
+    const { buildXlsxArchive } = require('../../utils/xlsx');
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+    const colRef = (n) => {
+      let x = Number(n || 1);
+      let out = '';
+      while (x > 0) {
+        const r = (x - 1) % 26;
+        out = String.fromCharCode(65 + r) + out;
+        x = Math.floor((x - 1) / 26);
+      }
+      return out || 'A';
+    };
+    const cell = (ref, value, style = 0) => {
+      const v = String(value == null ? '' : value);
+      if (!v) return `<c r="${ref}" s="${style}"/>`;
+      return `<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+    };
+    const numberCell = (ref, value, style = 0) => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return `<c r="${ref}" s="${style}"/>`;
+      return `<c r="${ref}" s="${style}"><v>${String(n)}</v></c>`;
+    };
+    const formulaCell = (ref, formula, value = '', style = 0) => {
+      const v = String(value == null ? '' : value);
+      return `<c r="${ref}" t="str" s="${style}"><f>${esc(formula)}</f><v>${esc(v)}</v></c>`;
+    };
+    const hmToMinutes = (s) => {
+      const t = String(s || '').trim();
+      const m = t.match(/^(\d+):(\d{2})$/);
+      if (!m) return 0;
+      return (parseInt(m[1], 10) * 60) + parseInt(m[2], 10);
+    };
+    const splitHmDisplay = (s, showColonOnly = true) => {
+      const t = String(s || '').trim();
+      const m = t.match(/^(\d+):(\d{2})$/);
+      if (m) return [m[1], ':', m[2]];
+      return ['', showColonOnly ? ':' : '', ''];
+    };
+    const rowXml = (r, cells, ht = null) => `<row r="${r}"${ht ? ` ht="${ht}" customHeight="1"` : ''}>${cells.join('')}</row>`;
+    const sheet1Rows = [];
+    const push1 = (r, list, ht = null) => { sheet1Rows.push(rowXml(r, list, ht)); };
+    push1(1, [cell('A1', '▼注意点', 1), cell('U1', '【凡例】', 1)], 22);
+    push1(2, [cell('A2', '● 本Excelは月次勤怠実績をシステムに一括登録するためのファイルです。以下の操作を行うとシステムに登録できなくなりますので、ご注意下さい。', 2), cell('U2', '', 4), cell('X2', '入力項目', 13)], 20);
+    push1(3, [cell('B3', '○ 行の追加、削除、位置変更', 2), cell('U3', '', 5), cell('X3', '参照項目', 13)], 18);
+    push1(4, [cell('B4', '○ 列の追加、削除、位置変更', 2), cell('U4', '', 6), cell('X4', 'エラー項目', 13)], 18);
+    push1(5, [cell('B5', '○ セルの書式や入力規則の変更', 2), cell('U5', '', 7), cell('X5', '警告項目', 13)], 18);
+    push1(6, [cell('B6', '※ 承認ステータスが承認済または承認依頼中の行は取り込まれません', 2)], 18);
+    push1(8, [cell('A8', '社員番号：', 1), cell('C8', employeeCode || '', 4), cell('F8', '氏名：', 1), cell('G8', employeeName || '', 4)], 22);
+    push1(9, [cell('A9', '日次実績', 1), cell('AB9', '承認者用', 8)], 22);
+    push1(10, [
+      cell('A10', '日付', 3),
+      cell('B10', '勤務区分', 3),
+      cell('C10', '企業名', 3),
+      cell('D10', '出社', 3),
+      cell('E10', '在宅', 3),
+      cell('F10', 'サテライト/出張', 3),
+      cell('G10', '開始時刻', 3),
+      cell('J10', '終了時刻', 3),
+      cell('M10', '休憩時間', 3),
+      cell('P10', '深夜休憩', 3),
+      cell('S10', '勤務時間', 3),
+      cell('T10', '超過時間', 3),
+      cell('U10', '遅刻/早退', 3),
+      cell('V10', '理由', 3),
+      cell('W10', '現場（任意）', 3),
+      cell('X10', '作業内容', 3),
+      cell('Y10', '備考', 3),
+      cell('Z10', '承認ステータス', 14),
+      cell('AA10', '承認者', 14),
+      cell('AB10', '承認', 15),
+      cell('AC10', '否認/承認解除理由', 15)
+    ], 22);
+    for (let i = 0; i < sheetRows.length; i++) {
+      const r = sheetRows[i];
+      const src = Array.isArray(r?.cells) ? r.cells : [];
+      const dayText = (() => {
+        const ds = String(src[2] || '');
+        const dow = String(src[3] || '');
+        const d = /^\d{4}-(\d{2})-(\d{2})$/.exec(ds);
+        return d ? `${parseInt(d[1], 10)}月${parseInt(d[2], 10)}日(${dow})` : ds;
+      })();
+      const hasVisibleTime = !!String(src[9] || '').trim() || !!String(src[10] || '').trim();
+      const startDisp = splitHmDisplay(src[9] || '', true);
+      const endDisp = splitHmDisplay(src[10] || '', true);
+      const breakDisp = splitHmDisplay(hasVisibleTime ? (src[11] || '0:00') : '', true);
+      const nightBreakDisp = splitHmDisplay(hasVisibleTime ? (src[12] || '0:00') : '', true);
+      const vals = [
+        dayText,
+        src[4] || '',
+        src[5] || '',
+        (src[6] && typeof src[6] === 'object' ? src[6].v : '') || '',
+        (src[7] && typeof src[7] === 'object' ? src[7].v : '') || '',
+        (src[8] && typeof src[8] === 'object' ? src[8].v : '') || '',
+        ...startDisp,
+        ...endDisp,
+        ...breakDisp,
+        ...nightBreakDisp,
+        src[13] || '0:00',
+        src[14] || '0:00',
+        src[15] || '',
+        src[16] || '',
+        src[5] || '',
+        src[17] || '',
+        src[18] || '',
+        src[19] || '',
+        src[20] || '',
+        '',
+        ''
+      ];
+      const rowNum = 11 + i;
+      const xmlCells = vals.map((v, ci) => {
+        const ref = `${colRef(ci + 1)}${rowNum}`;
+        const isApproval = ci >= 25 && ci <= 28;
+        const isTimeTriplet = (ci >= 6 && ci <= 17);
+        const isTextWide = ci === 1 || ci === 2 || ci === 21 || ci === 22 || ci === 23 || ci === 24;
+        const style = isApproval ? 12 : (isTimeTriplet || ci >= 3 && ci <= 20 ? 12 : (isTextWide ? 13 : 12));
+        if (ci === 18) {
+          const f = `ROUNDDOWN(AH${rowNum}/60,0)&":"&TEXT(MOD(AH${rowNum},60),"00")`;
+          return formulaCell(ref, f, String(v || '0:00'), style);
+        }
+        if (ci === 19) {
+          const f = `IFERROR(IF(RIGHT(VLOOKUP(A${rowNum},予定!$A:$B,2,FALSE),2)="休日",IF(AH${rowNum}>0,ROUNDDOWN((AH${rowNum})/60,0)&":"&TEXT(MOD((AH${rowNum}),60),"00"),""),IF(AH${rowNum}-480>0,ROUNDDOWN((AH${rowNum}-480)/60,0)&":"&TEXT(MOD((AH${rowNum}-480),60),"00"),"")),"")`;
+          return formulaCell(ref, f, String(v || '0:00'), style);
+        }
+        if (ci === 20) {
+          const f = `IFERROR(IF(AND(VLOOKUP(A${rowNum},予定!A:U,21,FALSE)>0,VLOOKUP(A${rowNum},予定!A:V,22,FALSE)<>"フレックス勤務",AH${rowNum}>0,VLOOKUP(A${rowNum},予定!A:U,21,FALSE)>AH${rowNum}),"遅刻早退",""),"")`;
+          return formulaCell(ref, f, String(v || ''), style);
+        }
+        return cell(ref, v, style);
+      });
+      xmlCells.push(numberCell(`AH${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
+      push1(rowNum, xmlCells, 18);
+    }
+    const sheet1VisibleCols = [12, 14, 16, 7, 7, 12, 5, 2, 5, 5, 2, 5, 5, 2, 5, 5, 2, 5, 10, 10, 10, 14, 16, 18, 16, 10, 12, 8, 16];
+    const sheet1Cols = [
+      ...sheet1VisibleCols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`),
+      ...Array.from({ length: 4 }, (_, idx) => `<col min="${30 + idx}" max="${30 + idx}" width="2" hidden="1" customWidth="1"/>`),
+      `<col min="34" max="34" width="2" hidden="1" customWidth="1"/>`
+    ].join('');
+    const sheet1Merges = [
+      'A1:L1', 'A2:L2', 'B3:L3', 'B4:L4', 'B5:L5', 'B6:L6',
+      'A8:B8', 'C8:E8', 'F8:G8', 'H8:J8',
+      'U1:W1', 'U2:W2', 'U3:W3', 'U4:W4', 'U5:W5',
+      'X2:Z2', 'X3:Z3', 'X4:Z4', 'X5:Z5',
+      'A9:AA9', 'AB9:AC9',
+      'G10:I10', 'J10:L10', 'M10:O10', 'P10:R10'
+    ].map(r => `<mergeCell ref="${r}"/>`).join('');
+    const lastSheet1Row = 10 + Math.max(1, sheetRows.length);
+    const sheet1Validations = [
+      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="D11:D${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`,
+      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="E11:E${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`,
+      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="F11:F${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`
+    ].join('');
+    const sheet1Xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="10" topLeftCell="A11" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <sheetFormatPr defaultRowHeight="18"/>
+  <cols>${sheet1Cols}</cols>
+  <sheetData>${sheet1Rows.join('')}</sheetData>
+  <mergeCells count="25">${sheet1Merges}</mergeCells>
+  <dataValidations count="3">${sheet1Validations}</dataValidations>
+</worksheet>`;
+    const sheet2Header = planColumns.map((c, i) => cell(`${colRef(i + 1)}1`, c.header, 3));
+    const sheet2Rows = [rowXml(1, sheet2Header, 22)];
+    for (let i = 0; i < planSheetRows.length; i++) {
+      const vals = Array.isArray(planSheetRows[i]?.cells) ? planSheetRows[i].cells.map(v => (v && typeof v === 'object' && Object.prototype.hasOwnProperty.call(v, 'v') ? v.v : (v && typeof v === 'object' && Object.prototype.hasOwnProperty.call(v, 'f') ? String(v.v || '') : v))) : [];
+      const rowNum = i + 2;
+      const planStartH = Number(vals[4] || 0);
+      const planStartM = Number(vals[5] || 0);
+      const planEndH = Number(vals[6] || 0);
+      const planEndM = Number(vals[7] || 0);
+      const breakH = Number(vals[8] || 0);
+      const breakM = Number(vals[9] || 0);
+      const nightBreakH = Number(vals[10] || 0);
+      const nightBreakM = Number(vals[11] || 0);
+      const plannedMinutes = Math.max(0, ((planEndH * 60 + planEndM) - (planStartH * 60 + planStartM)) - (breakH * 60 + breakM) - (nightBreakH * 60 + nightBreakM));
+      const planWorkStyle = String(vals[13] || '');
+      const rowCells = vals.map((v, ci) => cell(`${colRef(ci + 1)}${rowNum}`, v == null ? '' : v, ci === 0 ? 10 : 11));
+      rowCells.push(numberCell(`U${rowNum}`, plannedMinutes, 0));
+      rowCells.push(cell(`V${rowNum}`, planWorkStyle, 0));
+      sheet2Rows.push(rowXml(rowNum, rowCells, 18));
+    }
+    const sheet2VisibleCols = [12, 10, 14, 20, 8, 8, 8, 8, 8, 8, 10, 12, 12, 12];
+    const sheet2Cols = [
+      ...sheet2VisibleCols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`),
+      ...Array.from({ length: 6 }, (_, idx) => `<col min="${15 + idx}" max="${15 + idx}" width="2" hidden="1" customWidth="1"/>`),
+      `<col min="21" max="21" width="2" hidden="1" customWidth="1"/>`,
+      `<col min="22" max="22" width="2" hidden="1" customWidth="1"/>`
+    ].join('');
+    const sheet2Xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <sheetFormatPr defaultRowHeight="18"/>
+  <cols>${sheet2Cols}</cols>
+  <sheetData>${sheet2Rows.join('')}</sheetData>
+</worksheet>`;
+    const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="3">
+    <font><sz val="11"/><color rgb="FF000000"/><name val="Meiryo"/></font>
+    <font><b/><sz val="11"/><color rgb="FF000000"/><name val="Meiryo"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Meiryo"/></font>
+  </fonts>
+  <fills count="12">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFBFE5BF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFD9EAD3"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE7E6E6"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF4CCCC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF9CB9C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F3F3"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFB7B7B7"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF4B183"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+  </borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="16">
+    <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="10" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="11" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+  </cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="入力用勤怠表" sheetId="1" r:id="rId1"/><sheet name="予定" sheetId="2" r:id="rId2"/></sheets><calcPr calcId="171027" fullCalcOnLoad="1"/></workbook>`;
+    const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+    const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+    const buf = buildXlsxArchive([
+      { name: '[Content_Types].xml', data: contentTypes },
+      { name: '_rels/.rels', data: rootRels },
+      { name: 'xl/workbook.xml', data: workbookXml },
+      { name: 'xl/_rels/workbook.xml.rels', data: workbookRels },
+      { name: 'xl/styles.xml', data: stylesXml },
+      { name: 'xl/worksheets/sheet1.xml', data: sheet1Xml },
+      { name: 'xl/worksheets/sheet2.xml', data: sheet2Xml }
+    ]);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.status(200).send(buf);

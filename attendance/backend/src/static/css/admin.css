@@ -29,10 +29,7 @@
   background: #f8fbff;
 }
 
-.admin.has-sidebar .content {
-  margin-left: 220px;
-  max-width: none;
-}
+.admin .content { max-width: none; }
 
 /* Hide fixed sidebar when mobile drawer is open to free screen space */
 body.drawer-open.admin.has-sidebar .sidebar { display: none !important; }
@@ -392,28 +389,485 @@ body.drawer-open.admin.has-sidebar .content { margin-left: 0 !important; }
 
 .admin .dashboard-head h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 900;
+  font-size: 16px;
+  font-weight: 700;
   color: #0f172a;
+}
+
+.admin .kpi-grid,
+.admin .dash-grid {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Keep primary admin content centered across zoom and resize */
+.admin #adminContent,
+.admin #adjustRequestsHost {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin.employees-wide #adminContent {
+  max-width: 1200px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Admin header tweaks: compact search on right, top navigation in subbar */
+.admin .topbar-inner { display: grid; grid-template-columns: auto minmax(420px, 1fr) max-content max-content; align-items: center; column-gap: 32px; }
+
+/* Dark theme overrides */
+:root[data-theme='dark'] .admin.has-sidebar { background: #0b0f19; }
+:root[data-theme='dark'] .admin .kpi-card,
+:root[data-theme='dark'] .admin .dash-card,
+:root[data-theme='dark'] .admin .card {
+  background: #111827;
+  border: 1px solid #334155;
+  color: #e5e7eb;
+  box-shadow: none;
+}
+:root[data-theme='dark'] .admin .dash-card:hover { border-color: #475569; box-shadow: 0 0 0 rgba(0,0,0,0); }
+:root[data-theme='dark'] .admin .dash-card-title { color: #e5e7eb; }
+:root[data-theme='dark'] .admin .sidebar { background: #0b0f19; border-right: 1px solid #1f2937; }
+:root[data-theme='dark'] .admin .sidebar .sidebar-nav details { background: #0b0f19; border-color: #1f2937; }
+:root[data-theme='dark'] .admin .sidebar .sidebar-nav details[open] { background: #0b0f19; border-color: #1f2937; }
+:root[data-theme='dark'] .admin .sidebar .sidebar-brand { color: #e5e7eb; }
+:root[data-theme='dark'] .admin .kpi-grid .kpi-value,
+:root[data-theme='dark'] .admin .kpi-grid .kpi-title { color: #e5e7eb; }
+:root[data-theme='dark'] .admin .dash-card li { border-bottom: 1px dashed #334155; }
+:root[data-theme='dark'] .admin table { color: #e5e7eb; }
+:root[data-theme='dark'] .admin table th { color: #e5e7eb; }
+:root[data-theme='dark'] .admin .subbar .subnav a { color: #f3f4f6; }
+
+/* Dark theme: readable excel-style tables */
+:root[data-theme='dark'] .admin .card .excel-table {
+  background: #0f172a;
+  border-color: #334155 !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table thead th {
+  background: #141a2a !important;
+  color: #f7fafc !important;
+  border-bottom-color: #334155 !important;
+  border-right-color: #334155 !important;
+  text-shadow: none !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table tbody td {
+  background: #0e1626 !important;
+  color: #e5e7eb !important;
+  border-bottom-color: #1f2937 !important;
+  border-right-color: #1f2937 !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table tbody tr:hover td {
+  background: #101827 !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table input,
+:root[data-theme='dark'] .admin .card .excel-table select {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+  border-color: #334155 !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table input::placeholder {
+  color: #94a3b8;
+}
+:root[data-theme='dark'] .admin .card .excel-table .emp-action-group .emp-action {
+  background: #111827 !important;
+  color: #e5e7eb !important;
+  border-color: #334155 !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table .emp-action-group .emp-action:hover {
+  background: #1f2937 !important;
+  border-color: #475569 !important;
+}
+
+/* Dark theme: attendance dash table */
+:root[data-theme='dark'] .admin .attrec-dash-table th {
+  background: #141a2a !important;
+  color: #f7fafc !important;
+}
+:root[data-theme='dark'] .admin .attrec-dash-table td {
+  background: #0e1626 !important;
+  color: #e5e7eb !important;
+  border-color: #1f2937 !important;
+}
+:root[data-theme='dark'] .admin .attrec-row:hover td { background: #101827 !important; }
+
+/* Dark theme: force ALL text inside admin tables to be white and visible */
+:root[data-theme='dark'] .admin table,
+:root[data-theme='dark'] .admin table * {
+  color: #f3f4f6 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+:root[data-theme='dark'] .admin table thead th {
+  background: #141a2a !important;
+  border-bottom-color: #334155 !important;
+}
+:root[data-theme='dark'] .admin table tbody td {
+  background: #0e1626 !important;
+  border-color: #1f2937 !important;
+}
+:root[data-theme='dark'] .admin table tbody tr:hover td { background: #101827 !important; }
+
+/* Dark theme: form/filter labels and section headings are white */
+:root[data-theme='dark'] .admin .adm-label,
+:root[data-theme='dark'] .admin .dept-label,
+:root[data-theme='dark'] .admin .attrec-label,
+:root[data-theme='dark'] .admin .card .filters label,
+:root[data-theme='dark'] .admin.employees-wide .emp-filters label,
+:root[data-theme='dark'] .admin .excel-header,
+:root[data-theme='dark'] .admin .section-title,
+:root[data-theme='dark'] .admin h2.section-title,
+:root[data-theme='dark'] .admin h3.section-title {
+  color: #f3f4f6 !important;
+}
+:root[data-theme='dark'] .admin input::placeholder,
+:root[data-theme='dark'] .admin textarea::placeholder {
+  color: #cbd5e1 !important;
+}
+
+/* Uniform text color inside admin tables (light & dark) */
+.admin table,
+.admin table th,
+.admin table td {
+  color: #0f172a;
+}
+:root[data-theme='dark'] .admin table,
+:root[data-theme='dark'] .admin table th,
+:root[data-theme='dark'] .admin table td {
+  color: #f3f4f6;
+}
+/* Make all text inside pills/links in tables inherit the table color */
+.admin table .attrec-pill,
+.admin table .status-pill,
+.admin table .role-pill,
+.admin table .type-pill,
+.admin table .text-pill,
+.admin table a {
+  color: inherit !important;
+  text-decoration: none;
+}
+
+/* Force-anchor color in tables to follow cell color (handles UA/default styles) */
+.admin .card table a:link,
+.admin .card table a:visited,
+.admin .card table a:hover,
+.admin .card table a:active,
+.admin .dash-table a:link,
+.admin .dash-table a:visited,
+.admin .dash-table a:hover,
+.admin .dash-table a:active,
+.admin table a:link,
+.admin table a:visited,
+.admin table a:hover,
+.admin table a:active {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+.admin .topbar-inner > * { padding: 0 10px; }
+/* Override header th color in all admin tables */
+.admin .card .excel-table thead th,
+.admin table thead th {
+  color: #0f172a !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table thead th,
+:root[data-theme='dark'] .admin table thead th {
+  color: #f3f4f6 !important;
+}
+
+/* Buttons in table action column: make text inherit (remove blue/indigo) */
+.admin .card .excel-table .emp-action-group .emp-action,
+.admin .card .excel-table .emp-action-group .emp-action:hover,
+.admin .card .excel-table .emp-action-group .emp-action.danger,
+.admin .card .excel-table .emp-action-group .emp-action.danger:hover {
+  color: inherit !important;
+}
+.admin .topbar-inner > * { padding: 0 10px; }
+/* Remove bold weight in table buttons and headers */
+.admin .card .excel-table .emp-action-group .emp-action,
+.admin .card .excel-table .emp-action-group .emp-action:hover,
+.admin .card .excel-table .emp-action-group .emp-action.danger,
+.admin .card .excel-table .emp-action-group .emp-action.danger:hover {
+  font-weight: 400 !important;
+}
+.admin .card .excel-table thead th,
+.admin table thead th {
+  font-weight: 400 !important;
+}
+:root[data-theme='dark'] .admin .card .excel-table thead th,
+:root[data-theme='dark'] .admin table thead th {
+  font-weight: 400 !important;
+}
+.admin .topbar-inner > * { padding: 0 10px; }
+
+/* Normalize label colors (avoid brand blue in filters/forms) */
+.admin .adm-label,
+.admin .dept-label,
+.admin .attrec-label {
+  color: #111827 !important;
+  background: transparent !important;
+  font-weight: 400 !important;
+}
+
+/* Force black-ish for common filter labels and section titles in admin */
+.admin .card .filters label,
+.admin.employees-wide .emp-filters label,
+.admin .excel-header,
+.admin .section-title,
+.admin h2.section-title,
+.admin h3.section-title {
+  color: #111827 !important;
+}
+
+/* Force all links in admin cards to inherit text color (avoid blue) */
+.admin .card a,
+.admin .card a:link,
+.admin .card a:visited,
+.admin .card a:hover,
+.admin .card a:active {
+  color: inherit !important;
+  text-decoration: none;
+}
+
+/* Map other common label classes to black in admin (light theme) */
+.admin .form-label,
+.admin .filter-bar .fi-label,
+.admin .detail-card .label {
+  color: #111827 !important;
+}
+
+/* Uniform font-size for all text inside admin tables */
+.admin .card .excel-table thead th,
+.admin .card .excel-table tbody td,
+.admin .card .excel-table tbody td *,
+.admin table thead th,
+.admin table tbody td,
+.admin table tbody td * {
+  font-size: 14px !important;
+}
+.admin .card .excel-table .emp-action-group .emp-action {
+  font-size: 14px !important;
+}
+.admin .card .excel-table input,
+.admin .card .excel-table select {
+  font-size: 14px !important;
+}
+
+/* Final dark-mode override to keep table headers readable */
+:root[data-theme='dark'] .admin .card .excel-table thead th {
+  background: #141a2a !important;
+  color: #f7fafc !important;
+  border-bottom-color: #334155 !important;
+  border-right-color: #334155 !important;
+  text-shadow: none !important;
+}
+.admin .topbar-inner > * { padding: 0 10px; }
+.admin .topbar-inner > *:not(:first-child) { border-left: 1px solid rgba(255,255,255,.22); }
+.admin .topbar-inner .search {
+  margin-left: 0;
+  margin-right: 0 !important;
+  border-right: none !important;
+  border-left: none !important;
+  padding: 2px 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  z-index: auto !important;
+  width: auto !important;
+  justify-self: stretch;
+}
+.admin .topbar-inner .search:focus-within {
+  border-color: #2a6ea5;
+  box-shadow: 0 0 0 1px rgba(42,110,165,0.35) inset, 0 0 0 2px rgba(42,110,165,0.35);
+}
+.admin .topbar-inner .search .search-prefix {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 4px;
+  margin-right: 4px;
+  border-right: 1px solid #e5e7eb;
+  color: #374151;
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.admin .topbar-inner .search .search-prefix .ico { opacity: .8; }
+.admin .topbar-inner .search input {
+  flex: 1 1 auto;
+  max-width: none;
+  height: 34px;
+  line-height: 34px;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  padding: 0 56px 0 16px !important;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 1;
+}
+.admin .topbar-inner .search.active { position: static; left: auto; right: auto; transform: none; width: auto; }
+.admin .topbar-inner .search.active input { max-width: none; width: 100%; padding-right: 120px; }
+.admin .topbar-actions { display: flex; align-items: center; gap: 12px; }
+.admin .topbar-actions .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 2px solid #d1d5db !important;
+  background: #ffffff !important;
+  color: #0b2c66 !important;
+  border-radius: 0 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,.05) !important;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.admin .topbar-actions .icon-btn:hover {
+  background: #111827 !important;
+  color: #ffffff !important;
+  border-color: #111827 !important;
+  box-shadow: 0 2px 0 rgba(0,0,0,.12);
+}
+.admin .topbar-actions .icon-btn:active {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+.admin .topbar-actions .icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(17,24,39,.25);
+}
+
+/* Hint and meta inside search box for Admin */
+.admin .topbar-inner .search { position: relative; }
+.admin .topbar-inner .search .search-hint {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
+.admin .topbar-inner .search.active .search-hint { display: none; }
+.admin .topbar-inner .search.active .search-meta {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 3;
+  pointer-events: auto;
+}
+.admin .topbar-inner .search .search-close { pointer-events: auto; cursor: pointer; }
+
+/* Prevent separator line from overlapping the rounded corner of the first action button */
+.admin .topbar-inner .topbar-actions { position: relative; padding-left: 0; border-left: none !important; }
+.admin .topbar-inner .topbar-actions::before { display: none; }
+.admin .topbar-inner .topbar-actions > *:first-child { margin-left: 12px; }
+.admin .topbar-inner .topbar-actions .icon-btn { position: relative; z-index: 1; }
+
+/* Full-width layout for admin */
+.admin .topbar-inner {
+  max-width: none !important;
+  width: 100%;
+  padding-right: 16px;
+}
+.admin .subbar .subnav {
+  max-width: none !important;
+  width: 100%;
+  padding: 0 16px;
+}
+.admin .card,
+.admin #adminContent.card,
+.admin .card.wide {
+  max-width: none !important;
+  width: 100%;
+  margin: 0;
+}
+
+/* Center all tables in admin content */
+.admin table,
+.admin #adminContent table,
+.admin .card table,
+.admin .content table {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.admin.employees-wide #adminContent table {
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 .admin .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
 
-.admin .kpi-card { border: 1px solid #d9e2f2; background: #fff; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(16,24,40,.08); height: 120px; display: flex; flex-direction: column; justify-content: space-between; font-size: 16px; box-sizing: border-box; width: 100%; }
+.admin .kpi-card { border: 1px solid #d9e2f2; background: #fff; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(16,24,40,.08); height: 120px; display: flex; flex-direction: column; justify-content: space-between; font-size: 14px; box-sizing: border-box; width: 100%; }
 
 .admin .kpi-card.clickable {
   cursor: pointer;
 }
 
+/* Stronger hover for admin submenu items */
+.admin .subbar .subnav .menu .submenu a {
+  border-radius: 0 !important;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+  font-family: "Meiryo", "Noto Sans JP", "Yu Gothic", system-ui, -apple-system, "Segoe UI", sans-serif !important;
+  font-weight: 400 !important;
+  color: #111827 !important;
+  text-shadow: none !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+.admin .subbar .subnav .menu .submenu a:hover,
+.admin .subbar .subnav .menu .submenu a:focus,
+.admin .subbar .subnav .menu .submenu a:focus-visible {
+  background: #111827 !important; /* đen đậm giống hover của + New */
+  color: #ffffff !important;
+  border-color: #111827 !important;
+  outline: none;
+}
+.admin .subbar .subnav .menu .submenu a:active {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+/* Square corners for Admin topbar search and badges */
+.admin .topbar-inner .search { border-radius: 0 !important; }
+.admin .topbar-inner .search .search-hint,
+.admin .topbar-inner .search .search-esc,
+.admin .topbar-inner .search .search-close { border-radius: 0 !important; }
+
 .admin .kpi-card.clickable:hover { box-shadow: 0 2px 8px rgba(16,24,40,.12); }
 
 .admin .kpi-card.clickable:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(43,103,179,.18), 0 2px 8px rgba(16,24,40,.12); }
 
-.admin .kpi-title { font-size: 18px; color: #0b2c66; font-weight: 900; letter-spacing: .02em; }
+.admin .kpi-title { font-size: 14px; color: #0f172a; font-weight: 700; letter-spacing: .01em; }
 
-.admin .kpi-value { font-size: 44px; font-weight: 900; color: #0b2c66; margin-top: 4px; }
+.admin .kpi-value { font-size: 32px; font-weight: 700; color: #0f172a; margin-top: 2px; }
 
-.admin .kpi-sub { font-size: 12px; color: #334155; font-weight: 700; margin-top: 6px; }
+.admin .kpi-sub { font-size: 11px; color: #475569; font-weight: 500; margin-top: 4px; }
 
 .admin .kpi-delta {
   margin-top: 6px;
@@ -433,10 +887,10 @@ body.drawer-open.admin.has-sidebar .content { margin-left: 0 !important; }
 
 .admin .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 
-.admin .dash-card { border: 1px solid #d9e2f2; background: #fff; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(16,24,40,.08); font-size: 16px; min-height: 120px; box-sizing: border-box; width: 100%; }
+.admin .dash-card { border: 1px solid #d9e2f2; background: #fff; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(16,24,40,.08); font-size: 14px; min-height: 120px; box-sizing: border-box; width: 100%; }
 .admin .dash-card:hover { border-color: #c7d7f7; box-shadow: 0 2px 8px rgba(16,24,40,.12); }
 
-.admin .dash-card-title { font-weight: 900; color: #0b2c66; margin-bottom: 10px; font-size: 18px; }
+.admin .dash-card-title { font-weight: 700; color: #0f172a; margin-bottom: 8px; font-size: 16px; }
 
 .admin .dash-chart {
   height: 240px;

@@ -79,6 +79,15 @@ function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFla
 
 async function renderEmployees(profile) {
   try {
+    const currentPath = String(location.pathname || '');
+    if (currentPath === '/admin/employees/monthly-summary' || currentPath === '/admin/employees/monthly-summary/') {
+      try {
+        window.location.replace(currentPath + location.search + location.hash);
+      } catch {
+        window.location.href = currentPath + location.search + location.hash;
+      }
+      return;
+    }
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') showNavSpinner();
   } catch {}
@@ -106,9 +115,7 @@ async function renderEmployees(profile) {
     }
   } catch {}
 
-  try {
-    document.body.classList.add('employees-wide');
-  } catch {}
+  try { document.body.classList.remove('employees-wide'); } catch {}
   try {
     if (mode === 'delete') {
       document.body.classList.add('emp-delete-mode');
@@ -260,6 +267,11 @@ async function renderEmployees(profile) {
   }
 
   if (mode === 'summary' && summaryId) {
+    try {
+      const month = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
+      window.location.replace(`/admin/employees/monthly-summary?userId=${encodeURIComponent(summaryId)}&month=${encodeURIComponent(month)}`);
+      return;
+    } catch {}
     const u = await getEmployee(summaryId);
     if (seq !== employeesRenderSeq) return;
     content.innerHTML = ``;

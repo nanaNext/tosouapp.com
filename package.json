@@ -26,8 +26,8 @@
     "db:seed": "knex seed:run --knexfile attendance/backend/knexfile.js",
     "db:migrate:make": "knex migrate:make --knexfile attendance/backend/knexfile.js",
     "db:backup": "node attendance/backend/scripts/db-backup.js",
-    "frontend:dev": "vite --cwd attendance/frontend",
-    "frontend:build": "vite build --cwd attendance/frontend"
+    "frontend:dev": "vite --config attendance/frontend/vite.config.js",
+    "frontend:build": "vite build --config attendance/frontend/vite.config.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

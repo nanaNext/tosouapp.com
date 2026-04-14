@@ -25,7 +25,7 @@
     .dot-spinner div:nth-child(12){transform:rotate(330deg) translate(24px);animation-delay:-0.04s}
   </style>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
-  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260314">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260411-searchhint">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
   <script type="module" src="/static/js/pages/portal.debug.js"></script>
   <script type="module" src="/static/js/pages/portal.page.js"></script>
@@ -43,6 +43,11 @@
       </div>
       <div class="search">
         <input type="search" placeholder="Search..." aria-label="Search">
+        <span class="search-hint" aria-hidden="true">^ K</span>
+        <div class="search-meta" aria-hidden="true">
+          <button class="search-close" title="Close" type="button">×</button>
+          <span class="search-esc">ESC</span>
+        </div>
       </div>
       <div class="user">
         <div class="user-menu">

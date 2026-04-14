@@ -1721,25 +1721,25 @@ tr[data-dirty="1"] .se-status::after {
 }
 
 input.se-time[disabled][data-row-disabled="1"] {
-  color: #1e293b !important;
-  -webkit-text-fill-color: #1e293b !important;
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
   font-size: 13px !important;
-  font-weight: 800 !important;
-  background: #fff !important;
+  font-weight: 400 !important;
+  background: #f8fafc !important;
 }
 input.se-time[disabled][data-row-disabled="1"]::-webkit-datetime-edit {
-  color: #1e293b !important;
-  -webkit-text-fill-color: #1e293b !important;
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
   opacity: 1;
   font-size: 13px !important;
-  background: #fff !important;
+  background: #f8fafc !important;
 }
 input.se-time[disabled][data-row-disabled="1"]::-webkit-datetime-edit-fields-wrapper {
-  color: #1e293b !important;
-  -webkit-text-fill-color: #1e293b !important;
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
   opacity: 1;
   font-size: 13px !important;
-  background: #fff !important;
+  background: #f8fafc !important;
 }
 
 .se-time::-webkit-calendar-picker-indicator {

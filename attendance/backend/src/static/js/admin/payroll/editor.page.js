@@ -41,25 +41,25 @@ function mountStyle() {
   const st = document.createElement('style');
   st.id = 'payrollEditorStyle';
   st.textContent = `
-    .pe-wrap{width:100%;max-width:1320px;margin:0 auto;padding:8px 12px}
-    .pe-wrap,.pe-wrap *{box-sizing:border-box}
+    .pe-wrap{width:100%;max-width:1320px;margin:0 auto;padding:8px 12px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:15px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0e172a}
+    .pe-wrap,.pe-wrap *{box-sizing:border-box;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-weight:400}
     .pe-card{background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:10px;box-shadow:0 1px 2px rgba(15,23,42,.06);min-width:0}
-    .pe-title{font-size:14px;font-weight:900;color:#0f172a;margin:0 0 8px 0}
-    .pe-muted{color:#64748b;font-weight:700}
+    .pe-title{font-size:16px;line-height:1.4;font-weight:400;color:#0b1220;margin:0 0 8px 0}
+    .pe-muted{color:#475569;font-weight:400}
 
     .pe-nav{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px 0}
-    .pe-nav a{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;color:#0f172a;font-weight:900;text-decoration:none}
+    .pe-nav a{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;color:#0f172a;font-weight:400;text-decoration:none}
     .pe-nav a:hover{border-color:#94a3b8}
     .pe-nav a.active{background:#0f172a;border-color:#0f172a;color:#fff}
 
     .pe-money{position:relative}
-    .pe-money span{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-weight:900;color:#64748b;pointer-events:none}
+    .pe-money span{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-weight:400;color:#64748b;pointer-events:none}
 
     .pe-kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px}
     .pe-kpi > div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #e5e7eb}
     .pe-kpi > div:nth-child(-n+2){border-top:none}
-    .pe-kpi .k{font-size:14px;font-weight:900;color:#334155;line-height:1.2}
-    .pe-kpi .v{font-size:18px;font-weight:900;color:#0f172a;line-height:1.2;white-space:nowrap}
+    .pe-kpi .k{font-size:14px;font-weight:400;color:#1f2937;line-height:1.4}
+    .pe-kpi .v{font-size:15px;font-weight:400;color:#0b1220;line-height:1.35;white-space:nowrap}
 
     .pe-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
     @media (min-width: 980px){.pe-grid{grid-template-columns:1.05fr .95fr}}
@@ -68,9 +68,11 @@ function mountStyle() {
 
     .pe-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:8px;align-items:end}
     .pe-field{display:flex;flex-direction:column;gap:6px;min-width:0}
-    .pe-field>span{font-size:12px;font-weight:900;color:#334155;line-height:1.1}
-    .pe-field input,.pe-field select{height:38px;padding:9px 10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:13px;color:#0f172a}
-    .pe-field input::placeholder{color:#94a3b8;font-weight:700}
+    .pe-field>span{font-size:14px;font-weight:400;color:#1f2937;line-height:1.4}
+    .pe-field input,.pe-field select{height:42px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:15px;line-height:1.5;color:#0b1220;font-weight:400}
+    .pe-wrap input,.pe-wrap select,.pe-wrap textarea,.pe-wrap button{font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-weight:400}
+    .pe-field input[type="month"]{font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:15px;font-weight:400;letter-spacing:.2px}
+    .pe-field input::placeholder{color:#94a3b8;font-weight:400}
     .pe-money input{width:100%;padding-right:34px}
 
     .pe-lowergrid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
@@ -94,16 +96,16 @@ function mountStyle() {
     .pe-items{display:flex;flex-direction:column;gap:8px;margin:0;padding:8px 2px 0 2px}
     .pe-item{display:grid;grid-template-columns:minmax(0,1fr) 120px 18px;gap:4px;align-items:center}
     .pe-item-short{grid-template-columns:minmax(0,1fr) 120px 18px}
-    .pe-lbl{display:flex;align-items:center;height:38px;font-size:12px;font-weight:900;color:#334155;min-width:0}
-    .pe-item input{height:38px;padding:9px 10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:13px;color:#0f172a}
-    .pe-item span{justify-self:start;text-align:left;color:#64748b;font-weight:900}
+    .pe-lbl{display:flex;align-items:center;height:38px;font-size:14px;font-weight:400;color:#1f2937;min-width:0}
+    .pe-item input{height:42px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:15px;line-height:1.5;color:#0b1220;font-weight:400}
+    .pe-item span{justify-self:start;text-align:left;color:#4b5563;font-weight:400}
     .pe-item input:disabled{background:#f8fafc;color:#0f172a}
     .pe-item .pe-amt{text-align:right}
     .pe-item button{width:100%;padding:6px 0;border:1px solid #cbd5e1;border-radius:10px;background:#fff;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
     .pe-item button:hover{background:#f1f5f9;border-color:#94a3b8}
 
     .pe-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
-    .pe-actions button{height:40px;padding:0 14px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;cursor:pointer;font-weight:900;transition:background-color .15s,border-color .15s,color .15s}
+    .pe-actions button{height:38px;padding:0 14px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;cursor:pointer;font-weight:400;transition:background-color .15s,border-color .15s,color .15s}
     .pe-actions button:hover{background:#f1f5f9;border-color:#94a3b8}
     .pe-actions button.pe-primary{border-color:#1d4ed8;background:#2563eb;color:#fff}
     .pe-actions button.pe-primary:hover{background:#1d4ed8;border-color:#1e40af}
@@ -116,11 +118,11 @@ function mountStyle() {
     .pe-previewGrid{display:grid;grid-template-columns:1fr;gap:10px}
     @media (min-width: 980px){.pe-previewGrid{grid-template-columns:1fr 1fr}}
     .pe-table{width:100%;border-collapse:separate;border-spacing:0}
-    .pe-table td{padding:7px 8px;border-top:1px solid #f1f5f9;vertical-align:top}
+    .pe-table td{padding:8px 10px;border-top:1px solid #f1f5f9;vertical-align:top;font-size:15px;line-height:1.5;font-weight:400}
     .pe-table tr:first-child td{border-top:none}
-    .pe-table td:first-child{color:#334155;font-weight:900;width:62%}
-    .pe-table td:last-child{text-align:right;font-weight:900;color:#0f172a}
-    .pe-msg{margin-top:10px;font-weight:800}
+    .pe-table td:first-child{color:#1f2937;font-weight:400;width:62%}
+    .pe-table td:last-child{text-align:right;font-weight:400;color:#0b1220}
+    .pe-msg{margin-top:10px;font-weight:400}
   `;
   document.head.appendChild(st);
 }
@@ -149,21 +151,21 @@ export async function mount() {
   const summaryCard = document.createElement('div');
   summaryCard.className = 'pe-card';
   summaryCard.innerHTML = `
-    <div class="pe-title">🧾 総計（リアルタイム）</div>
+    <div class="pe-title">総計（リアルタイム）</div>
     <div class="pe-kpi">
       <div><div class="k">支払内訳合計（総支給額）</div><div class="v" id="kpiGross">-</div></div>
       <div><div class="k">控除合計（総控除額）</div><div class="v" id="kpiDeduct">-</div></div>
       <div><div class="k">差引支払額（手取り）</div><div class="v" id="kpiNet">-</div></div>
       <div><div class="k">支払方法合計（振込+現金+現物）</div><div class="v" id="kpiPaySum">-</div></div>
     </div>
-    <div id="kpiHint" style="margin-top:8px;color:#64748b;font-weight:700"></div>
+    <div id="kpiHint" style="margin-top:8px;color:#64748b;font-weight:400"></div>
   `;
   wrap.appendChild(summaryCard);
 
   const basicCard = document.createElement('div');
   basicCard.className = 'pe-card';
   basicCard.innerHTML = `
-    <div class="pe-title">🟦 基本情報</div>
+    <div class="pe-title">基本情報</div>
     <div class="pe-row">
       <label class="pe-field">
         <span>社員選択</span>
@@ -211,7 +213,7 @@ export async function mount() {
   dedCard.className = 'pe-card';
   dedCard.innerHTML = `
     <details open>
-      <summary class="pe-title">🟥 控除（固定・上書き）</summary>
+      <summary class="pe-title">控除（固定・上書き）</summary>
       <div class="pe-items">
         <div class="pe-item"><div class="pe-lbl">健康保険料</div><input class="pe-amt" id="ovDedHealth" type="number" step="1" placeholder="0"><span>円</span></div>
         <div class="pe-item"><div class="pe-lbl">介護保険料</div><input class="pe-amt" id="ovDedCare" type="number" step="1" placeholder="0"><span>円</span></div>
@@ -223,7 +225,7 @@ export async function mount() {
       </div>
     </details>
     <details open>
-      <summary class="pe-title">🟥 控除（追加）</summary>
+      <summary class="pe-title">控除（追加）</summary>
       <div id="payrollDeductions" class="pe-items"></div>
       <div style="padding:0 12px 12px 12px">
         <button type="button" id="btnAddDed">＋追加</button>
@@ -235,7 +237,7 @@ export async function mount() {
   earnCard.className = 'pe-card';
   earnCard.innerHTML = `
     <details open>
-      <summary class="pe-title">🟩 支給（固定・上書き）</summary>
+      <summary class="pe-title">支給（固定・上書き）</summary>
       <div class="pe-items">
         <div class="pe-item"><div class="pe-lbl">夜間出勤手当</div><input class="pe-amt" id="ovEarnNight" type="number" step="1" placeholder="0"><span>円</span></div>
         <div class="pe-item"><div class="pe-lbl">休日出勤手当</div><input class="pe-amt" id="ovEarnHoliday" type="number" step="1" placeholder="0"><span>円</span></div>
@@ -250,7 +252,7 @@ export async function mount() {
       </div>
     </details>
     <details open>
-      <summary class="pe-title">🟩 支給（追加）</summary>
+      <summary class="pe-title">支給（追加）</summary>
       <div id="payrollEarnings" class="pe-items"></div>
       <div style="padding:0 12px 12px 12px">
         <button type="button" id="btnAddEarn">＋追加</button>
@@ -271,7 +273,7 @@ export async function mount() {
   const otherCard = document.createElement('div');
   otherCard.className = 'pe-card';
   otherCard.innerHTML = `
-    <div class="pe-title">🟪 その他</div>
+    <div class="pe-title">その他</div>
     <div class="pe-items">
       <div class="pe-item pe-item-short"><div class="pe-lbl">差額計算</div><input class="pe-amt" id="payrollOtherDiff" type="number" step="1" placeholder="0"><span>円</span></div>
       <div class="pe-item pe-item-short"><div class="pe-lbl">追加診療費</div><input class="pe-amt" id="payrollOtherMedical" type="number" step="1" placeholder="0"><span>円</span></div>
@@ -283,7 +285,7 @@ export async function mount() {
   const payCard = document.createElement('div');
   payCard.className = 'pe-card';
   payCard.innerHTML = `
-    <div class="pe-title">🟫 支払方法（振込・現金・現物）</div>
+    <div class="pe-title">支払方法（振込・現金・現物）</div>
     <div class="pe-paygrid">
       <label class="pe-field pe-span2"><span>差引支払額（自動/手取り）</span><div class="pe-money"><input id="payrollNetPay" type="text" readonly><span>円</span></div></label>
       <label class="pe-field pe-span2"><span>支払方法合計（振込+現金+現物）</span><div class="pe-money"><input id="payrollPaySum" type="text" readonly><span>円</span></div></label>
@@ -305,7 +307,7 @@ export async function mount() {
   const actionCard = document.createElement('div');
   actionCard.className = 'pe-card';
   actionCard.innerHTML = `
-    <div class="pe-title">🟨 操作</div>
+    <div class="pe-title">操作</div>
     <div class="pe-actions">
       <button type="button" id="btnLoadPayroll">読み込み</button>
       <button type="button" id="btnSavePayroll" class="pe-primary" style="background:#059669;border-color:#047857;">保存</button>

@@ -51,9 +51,7 @@ const renderDashboard = async (profile) => {
 
   const head = document.createElement('div');
   head.className = 'dashboard-head';
-  const title = document.createElement('h3');
-  title.textContent = 'ホーム';
-  head.appendChild(title);
+  // omit title heading on dashboard
   wrap.appendChild(head);
 
   showSpinner();

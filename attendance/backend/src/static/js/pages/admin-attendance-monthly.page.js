@@ -208,6 +208,11 @@ async function boot(root, { standalone = false } = {}) {
     try { return String(localStorage.getItem('admin.monthly.lastUserId') || '').trim(); } catch { return ''; }
   })();
   const defaultUid = (() => {
+    try {
+      const u = new URL(window.location.href);
+      const qid = String(u.searchParams.get('userId') || '').trim();
+      if (/^\d+$/.test(qid) && users.some(row => String(row.id) === qid)) return qid;
+    } catch {}
     if (/^\d+$/.test(lastUid) && users.some(u => String(u.id) === lastUid)) return lastUid;
     const first = users[0];
     return first && first.id != null ? String(first.id).trim() : '';
