@@ -29,7 +29,7 @@ const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process
 module.exports = function(app) {
   console.log('Mounting API routes...');
   app.get('/', (req, res) => {
-    res.status(200).send('Attendance API đang chạy. Xem tài liệu tại /api-docs');
+    return res.redirect(302, '/ui/login');
   });
   app.get('/health', async (req, res) => {
     try {
