@@ -54,7 +54,10 @@ body {
   align-items: center;
   justify-content: center;
 }
-.simple-status { color: #ff4d4f; font-weight: 500; }
+.simple-status { color: #f59e0b; font-weight: 500; }
+.simple-status.ok { color: #22c55e; }
+.simple-status.warn { color: #f59e0b; }
+.simple-status.danger { color: #ef4444; }
 
 .simple-tabs {
   background: #1f3553;
@@ -503,6 +506,17 @@ body {
   padding-top: 4px;
   width: 100%;
   max-width: none;
+}
+.simple-stamp-stack.is-disabled,
+.simple-work-report.is-disabled {
+  opacity: .6;
+}
+.simple-stamp-stack.is-disabled .simple-stamp-time,
+.simple-stamp-stack.is-disabled .simple-stamp-btn,
+.simple-work-report.is-disabled .simple-input,
+.simple-work-report.is-disabled .simple-textarea,
+.simple-work-report.is-disabled .simple-select {
+  cursor: not-allowed;
 }
 .simple-wt-btn {
   border: 2px solid #cfd6e3;

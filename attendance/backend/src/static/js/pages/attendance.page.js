@@ -367,7 +367,7 @@ const renderAttendance = async () => {
         } catch {}
       });
     } catch {}
-    const hideKubunSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇']);
+    const hideKubunSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
     const toggleWorkTypeRow = () => {
       const kubun = String($('#kubun')?.value || defaultKubun);
       const tr = $('#workType')?.closest('tr');

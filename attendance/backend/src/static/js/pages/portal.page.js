@@ -7,6 +7,48 @@ function getCookie(name) {
   return m ? decodeURIComponent(m[2]) : null;
 }
 
+const wireExpandingSearch = () => {
+  try {
+    const box = document.querySelector('.topbar-inner .search');
+    if (!box) return;
+    if (box.dataset.bound === '1') return;
+    box.dataset.bound = '1';
+    const input = box.querySelector('input[type="search"]');
+    const closeBtn = box.querySelector('.search-close');
+    const hint = box.querySelector('.search-hint');
+    const open = () => {
+      box.classList.add('active');
+      try { input && input.focus(); input && input.select(); } catch {}
+    };
+    const close = () => {
+      box.classList.remove('active');
+      try { input && input.blur(); } catch {}
+    };
+    if (input) input.addEventListener('focus', open);
+    if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
+    if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { close(); return; }
+      const isCtrlK = (e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey);
+      const isPlainK = (e.key === 'k' || e.key === 'K') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey;
+      if (isCtrlK || isPlainK) {
+        const t = e.target;
+        const tag = (t && t.tagName) ? t.tagName.toLowerCase() : '';
+        const editable = (t && (t.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'));
+        if (editable && !isCtrlK) return;
+        e.preventDefault();
+        open();
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!box.classList.contains('active')) return;
+      const t = e && e.target;
+      if (t && t.closest && t.closest('.topbar-inner .search')) return;
+      close();
+    });
+  } catch {}
+};
+
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
@@ -427,4 +469,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
     /* backdrop không đóng, chỉ nút X mới đóng */
   }
+  try { wireExpandingSearch(); } catch {}
 });

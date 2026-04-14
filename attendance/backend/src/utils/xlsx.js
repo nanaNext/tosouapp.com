@@ -337,4 +337,8 @@ function buildXlsx({ sheetName, columns, rows }) {
   return buildXlsxBook({ sheets: [{ name: sheetName, columns, rows }] });
 }
 
-module.exports = { buildXlsx, buildXlsxBook };
+function buildXlsxArchive(files) {
+  return zipStore(Array.isArray(files) ? files : []);
+}
+
+module.exports = { buildXlsx, buildXlsxBook, buildXlsxArchive };

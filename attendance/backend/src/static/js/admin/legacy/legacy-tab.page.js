@@ -22,7 +22,14 @@ export async function bootLegacyTab({ tab, hash }) {
   } catch {}
 
   if (tab === 'payroll_editor') {
-    const mod = await import('../payroll/editor.page.js');
+    let v = '';
+    try {
+      const meta = document.querySelector('meta[name="asset-v"]');
+      v = meta ? (meta.getAttribute('content') || '') : '';
+      if (!v) v = window.__assetV ? String(window.__assetV) : '';
+    } catch {}
+    const spec = v ? `../payroll/editor.page.js?v=${encodeURIComponent(v)}` : '../payroll/editor.page.js';
+    const mod = await import(spec);
     await mod.mount();
     return;
   }

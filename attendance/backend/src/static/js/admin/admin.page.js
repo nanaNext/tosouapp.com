@@ -90,7 +90,10 @@ const syncUrlState = () => {
 const markActiveNav = () => {
   try {
     const p = normalizePath(window.location.pathname);
-    const links = Array.from(document.querySelectorAll('.sidebar .sidebar-nav a[href]'));
+    const links = [
+      ...Array.from(document.querySelectorAll('.sidebar .sidebar-nav a[href]')),
+      ...Array.from(document.querySelectorAll('.subbar .subnav a[href]')),
+    ];
     let best = null;
     let bestLen = -1;
     for (const a of links) {
@@ -106,7 +109,41 @@ const markActiveNav = () => {
         if (len > bestLen) { best = a; bestLen = len; }
       }
     }
-    for (const a of links) a.classList.toggle('active', a === best);
+    for (const a of links) {
+      a.classList.toggle('active', a === best);
+      try {
+        if (a === best) a.setAttribute('aria-current', 'page');
+        else a.removeAttribute('aria-current');
+      } catch {}
+    }
+
+    // Also highlight top-level menu buttons when any of their submenu links match current path
+    try {
+      const menus = Array.from(document.querySelectorAll('.subbar .menu'));
+      let bestMenu = null;
+      let bestMenuLen = -1;
+      for (const m of menus) {
+        const btn = m.querySelector('.menu-btn');
+        const as = Array.from(m.querySelectorAll('.submenu a[href]'));
+        for (const a of as) {
+          const href = normalizePath(a.getAttribute('href') || '');
+          if (!href || href === '/') continue;
+          if (p === href || p.startsWith(href + '/')) {
+            const len = href.length + (p === href ? 10000 : 0);
+            if (len > bestMenuLen) { bestMenu = btn; bestMenuLen = len; }
+          }
+        }
+      }
+      for (const m of menus) {
+        const btn = m.querySelector('.menu-btn');
+        if (!btn) continue;
+        btn.classList.toggle('active', btn === bestMenu);
+        try {
+          if (btn === bestMenu) btn.setAttribute('aria-current', 'page');
+          else btn.removeAttribute('aria-current');
+        } catch {}
+      }
+    } catch {}
 
     try {
       const nav = document.querySelector('.sidebar .sidebar-nav');
@@ -212,6 +249,89 @@ const wireUserMenu = () => {
         localStorage.removeItem('user');
       } catch {}
       try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+    });
+  } catch {}
+};
+
+const wireExpandingSearch = () => {
+  try {
+    const box = document.querySelector('.topbar-inner .search');
+    if (!box) return;
+    if (box.dataset.bound === '1') return;
+    box.dataset.bound = '1';
+    const input = box.querySelector('input[type="search"]');
+    const closeBtn = box.querySelector('.search-close');
+    const hint = box.querySelector('.search-hint');
+    const prefixTxt = box.querySelector('.search-prefix .txt');
+    const originalPlaceholder = input ? String(input.getAttribute('placeholder') || '') : '';
+    const open = () => {
+      try {
+        const inner = box.closest('.topbar-inner');
+        const brand = inner ? inner.querySelector('.brand, a.brand') : null;
+        const actions = inner ? inner.querySelector('.topbar-actions') : null;
+        const user = inner ? inner.querySelector('.user') : null;
+        if (inner && !inner.dataset.searchLocked) {
+          const bw = brand ? Math.round(brand.getBoundingClientRect().width) : 0;
+          const aw = actions ? Math.round(actions.getBoundingClientRect().width) : 0;
+          const uw = user ? Math.round(user.getBoundingClientRect().width) : 0;
+          inner.style.gridTemplateColumns = `${bw || 'auto'} 1fr ${aw || 'auto'} ${uw || 'auto'}`;
+          inner.dataset.searchLocked = '1';
+        }
+      } catch {}
+      box.classList.add('active');
+      try {
+        if (input) {
+          input.setAttribute('placeholder', 'Search your workspace for a project, resource, environment...');
+          input.focus(); input.select();
+        }
+        if (prefixTxt) prefixTxt.textContent = 'Search';
+      } catch {}
+    };
+    const close = () => {
+      box.classList.remove('active');
+      try {
+        const inner = box.closest('.topbar-inner');
+        if (inner && inner.dataset.searchLocked === '1') {
+          inner.style.gridTemplateColumns = '';
+          delete inner.dataset.searchLocked;
+        }
+      } catch {}
+      try {
+        if (input) {
+          if (originalPlaceholder) input.setAttribute('placeholder', originalPlaceholder);
+          input.blur();
+        }
+        if (prefixTxt) prefixTxt.textContent = 'Projects';
+      } catch {}
+    };
+    input.addEventListener('focus', open);
+    if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
+      closeBtn.addEventListener('mousedown', (e) => { e.preventDefault(); close(); }, true);
+    }
+    document.addEventListener('click', (e) => {
+      const t = e && e.target;
+      if (t && t.closest && t.closest('.search-close')) { e.preventDefault(); close(); return; }
+    }, true);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { close(); return; }
+      const isCtrlK = (e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey);
+      const isPlainK = (e.key === 'k' || e.key === 'K') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey;
+      if (isCtrlK || isPlainK) {
+        const t = e.target;
+        const tag = (t && t.tagName) ? t.tagName.toLowerCase() : '';
+        const editable = (t && (t.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'));
+        if (editable && !isCtrlK) return;
+        e.preventDefault();
+        open();
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!box.classList.contains('active')) return;
+      const t = e && e.target;
+      if (t && t.closest && t.closest('.topbar-inner .search')) return;
+      close();
     });
   } catch {}
 };
@@ -339,9 +459,92 @@ const loadModule = async (path) => {
   return p;
 };
 
+const resetTransientUiState = () => {
+  try {
+    const dd = document.querySelector('#userDropdown');
+    const btn = document.querySelector('.user-btn');
+    if (dd && !dd.hasAttribute('hidden')) dd.setAttribute('hidden', '');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  } catch {}
+  try {
+    const drawer = document.querySelector('#mobileDrawer');
+    const backdrop = document.querySelector('#drawerBackdrop');
+    const mobileBtn = document.querySelector('#mobileMenuBtn');
+    if (drawer) {
+      drawer.setAttribute('hidden', '');
+      drawer.style.display = 'none';
+      drawer.style.removeProperty('pointer-events');
+    }
+    if (backdrop) {
+      backdrop.setAttribute('hidden', '');
+      backdrop.style.display = 'none';
+      backdrop.style.removeProperty('pointer-events');
+    }
+    if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('drawer-open');
+  } catch {}
+  try {
+    const spinner = document.querySelector('#pageSpinner');
+    if (spinner) {
+      spinner.setAttribute('hidden', 'true');
+      spinner.style.display = 'none';
+    }
+    const content = document.querySelector('#adminContent');
+    if (content) content.style.visibility = '';
+    sessionStorage.removeItem('navSpinner');
+  } catch {}
+  try {
+    document.querySelectorAll('.modal-overlay').forEach((el) => {
+      try { el.remove(); } catch {}
+    });
+  } catch {}
+  try {
+    const adminEditModal = document.querySelector('#adminEditModal');
+    if (adminEditModal) {
+      adminEditModal.style.display = 'none';
+      try { adminEditModal.remove(); } catch {}
+    }
+  } catch {}
+  try {
+    document.querySelectorAll('.subbar .menu.open').forEach((el) => {
+      try { el.classList.remove('open'); } catch {}
+    });
+  } catch {}
+  try {
+    const search = document.querySelector('.topbar-inner .search');
+    const inner = search ? search.closest('.topbar-inner') : null;
+    if (search) search.classList.remove('active');
+    if (inner && inner.dataset.searchLocked === '1') {
+      inner.style.gridTemplateColumns = '';
+      delete inner.dataset.searchLocked;
+    }
+  } catch {}
+};
+
+let currentViewCleanup = null;
 let routeSeq = 0;
 const route = async () => {
   const seq = ++routeSeq;
+  try {
+    const cleanup = currentViewCleanup;
+    currentViewCleanup = null;
+    if (typeof cleanup === 'function') await cleanup();
+  } catch {}
+  resetTransientUiState();
+  const mountModule = async (mod) => {
+    if (!mod || typeof mod.mount !== 'function') {
+      currentViewCleanup = null;
+      return;
+    }
+    const cleanup = await mod.mount();
+    if (seq !== routeSeq) {
+      if (typeof cleanup === 'function') {
+        try { await cleanup(); } catch {}
+      }
+      return;
+    }
+    currentViewCleanup = typeof cleanup === 'function' ? cleanup : null;
+  };
   const renderErr = (err) => {
     try {
       const host = document.querySelector('#adminContent');
@@ -385,8 +588,10 @@ const route = async () => {
 
   try {
     const p = normalizePath(window.location.pathname);
+    try { document.body.classList.remove('employees-wide'); } catch {}
     try {
-      document.body.classList.toggle('employees-wide', p === '/admin/employees' || p.startsWith('/admin/employees/'));
+      const opens = document.querySelectorAll('.subbar .menu.open');
+      for (const el of opens) el.classList.remove('open');
     } catch {}
     markActiveNav();
     try {
@@ -407,13 +612,19 @@ const route = async () => {
     if (p2 === '/admin' || p2 === '/admin/dashboard') {
       const mod = await loadModule('./dashboard/dashboard.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
+      return;
+    }
+    if (p2 === '/admin/employees/monthly-summary' || p2 === '/admin/employees/monthly-summary/') {
+      const mod = await loadModule('../pages/admin-employees-monthly-summary.page.js?v=navy-20260413-9');
+      if (seq !== routeSeq) return;
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/employees' || p2.startsWith('/admin/employees/')) {
       const mod = await loadModule('./employees/employees.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/attendance/monthly') {
@@ -423,49 +634,49 @@ const route = async () => {
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
       const mod = await loadModule('./attendance/attendance.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/leave/requests' || p2 === '/admin/leave/balance' || p2 === '/admin/leave/grants') {
       const mod = await loadModule('./leave/leave.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/work-reports') {
       const mod = await loadModule('./work-reports/work-reports.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/payroll/salary' || p2 === '/admin/payroll/payslips') {
       const mod = await loadModule('./payroll/payroll.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/expenses') {
       const mod = await loadModule('./expenses/expenses.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/departments' || p2 === '/admin/organization/departments') {
       const mod = await loadModule('./organization/organization.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/system/settings' || p2 === '/admin/system/audit-logs') {
       const mod = await loadModule('./system/system.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     if (p2 === '/admin/notices') {
       const mod = await loadModule('./notices/notices.page.js');
       if (seq !== routeSeq) return;
-      if (mod && typeof mod.mount === 'function') await mod.mount();
+      await mountModule(mod);
       return;
     }
     syncUrlState();
@@ -539,11 +750,44 @@ const wireSpaNav = () => {
       const u = new URL(href, window.location.origin);
       if (!isAdminPath(u.pathname)) return;
       if (u.pathname === '/admin/attendance/monthly' || u.pathname === '/admin/attendance/monthly/') return;
+      if (u.pathname === '/admin/employees/monthly-summary' || u.pathname === '/admin/employees/monthly-summary/') return;
       e.preventDefault();
       navigate(u.pathname + u.search + u.hash);
     });
     window.addEventListener('popstate', () => { route(); });
     window.addEventListener('hashchange', () => { route(); });
+  } catch {}
+};
+
+const wireTopbarMenus = () => {
+  try {
+    if (document.body.dataset.topbarMenus === '1') return;
+    document.body.dataset.topbarMenus = '1';
+    const menus = Array.from(document.querySelectorAll('.subbar .menu'));
+    const openClass = 'open';
+    const closeAll = () => {
+      for (const m of menus) m.classList.remove(openClass);
+    };
+    const onDocClick = (e) => {
+      const t = e && e.target;
+      const inside = !!(t && t.closest && t.closest('.subbar .menu'));
+      if (!inside) closeAll();
+    };
+    for (const m of menus) {
+      const btn = m.querySelector('.menu-btn');
+      if (!btn) continue;
+      if (btn.dataset.bound === '1') continue;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const isOpen = m.classList.contains(openClass);
+        closeAll();
+        if (!isOpen) m.classList.add(openClass);
+      });
+    }
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
   } catch {}
 };
 
@@ -599,6 +843,8 @@ const boot = async () => {
   wireNavSelection();
   wireLegacyLinkRewrite();
   wireSpaNav();
+  wireExpandingSearch();
+  wireTopbarMenus();
   wireAdminShell({ logoutRedirect: '/ui/login' });
   const p = normalizePath(window.location.pathname);
   if (p === '/admin' || p === '/admin/dashboard') {

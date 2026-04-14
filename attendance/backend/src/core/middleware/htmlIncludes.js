@@ -144,10 +144,23 @@ function replaceSync(str, re, fn) {
 
 function makeHtmlSender({ htmlRoot }) {
   const root = String(htmlRoot || '');
+  const addVersion = (html) => {
+    const v = String(process.env.BUILD_ID || '').trim();
+    if (!v) return html;
+    return String(html || '').replace(/(href|src)=["'](\/static\/[^"'?#]+)([^"']*)["']/g, (m, attr, url, rest) => {
+      const r = String(rest || '');
+      if (r.startsWith('?')) {
+        if (r.includes('v=')) return `${attr}="${url}${r}"`;
+        return `${attr}="${url}${r}&v=${encodeURIComponent(v)}"`;
+      }
+      return `${attr}="${url}?v=${encodeURIComponent(v)}${r}"`;
+    });
+  };
   return async (req, res, fileName) => {
     const p = path.join(root, String(fileName || ''));
     try {
-      const rendered = await renderWithIncludes(p, { htmlRoot: root });
+      let rendered = await renderWithIncludes(p, { htmlRoot: root });
+      rendered = addVersion(rendered);
       res.setHeader('Cache-Control', 'no-store');
       res.type('html').status(200).send(rendered);
     } catch (e) {
@@ -163,10 +176,23 @@ function makeHtmlSender({ htmlRoot }) {
 
 function makeHtmlSenderSync({ htmlRoot }) {
   const root = String(htmlRoot || '');
+  const addVersion = (html) => {
+    const v = String(process.env.BUILD_ID || '').trim();
+    if (!v) return html;
+    return String(html || '').replace(/(href|src)=["'](\/static\/[^"'?#]+)([^"']*)["']/g, (m, attr, url, rest) => {
+      const r = String(rest || '');
+      if (r.startsWith('?')) {
+        if (r.includes('v=')) return `${attr}="${url}${r}"`;
+        return `${attr}="${url}${r}&v=${encodeURIComponent(v)}"`;
+      }
+      return `${attr}="${url}?v=${encodeURIComponent(v)}${r}"`;
+    });
+  };
   return (req, res, fileName) => {
     const p = path.join(root, String(fileName || ''));
     try {
-      const rendered = renderWithIncludesSync(p, { htmlRoot: root });
+      let rendered = renderWithIncludesSync(p, { htmlRoot: root });
+      rendered = addVersion(rendered);
       res.setHeader('Cache-Control', 'no-store');
       res.type('html').status(200).send(rendered);
     } catch (e) {

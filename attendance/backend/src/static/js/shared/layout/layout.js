@@ -88,20 +88,70 @@ export function initLayout() {
   const userBtn = document.querySelector('.user .user-btn');
   const dropdown = document.querySelector('#userDropdown');
   if (userBtn && dropdown) {
-    userBtn.addEventListener('click', () => {
-      const hidden = dropdown.hasAttribute('hidden');
-      if (hidden) {
-        dropdown.removeAttribute('hidden');
-        userBtn.setAttribute('aria-expanded', 'true');
-        const firstItem = dropdown.querySelector('.item, a, button');
-        if (firstItem && typeof firstItem.focus === 'function') {
-          try { firstItem.focus(); } catch { }
-        }
-      } else {
-        dropdown.setAttribute('hidden', '');
-        userBtn.setAttribute('aria-expanded', 'false');
+    const firstChar = (s) => {
+      try {
+        const t = String(s || '').trim();
+        if (!t) return '';
+        const arr = Array.from(t);
+        return arr.length ? arr[0] : '';
+      } catch { return ''; }
+    };
+    const setInitials = () => {
+      try {
+        const nameEl = document.querySelector('#userName');
+        const ddName = document.querySelector('#userDropdownName');
+        const ddInit = document.querySelector('#userInitial');
+        const btnInit = document.querySelector('#userBtnInitial');
+        let uname = '';
+        try {
+          const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || 'null');
+          uname = (u?.username || '').trim();
+        } catch {}
+        const full = uname || (nameEl?.textContent || '').trim() || (window.userName || '');
+        const ch = firstChar(full);
+        if (ddName) ddName.textContent = full || ddName.textContent || '';
+        if (ddInit) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
+        if (btnInit) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
+      } catch {}
+    };
+    setInitials();
+    try {
+      const nameEl = document.querySelector('#userName');
+      if (nameEl && typeof MutationObserver !== 'undefined') {
+        const mo = new MutationObserver(() => setInitials());
+        mo.observe(nameEl, { characterData: true, subtree: true, childList: true });
       }
-    });
+    } catch {}
+    (async () => {
+      try {
+        const ddInit = document.querySelector('#userInitial');
+        const btnInit = document.querySelector('#userBtnInitial');
+        const nameEl = document.querySelector('#userName');
+        const has = (ddInit && ddInit.textContent) || (btnInit && btnInit.textContent);
+        const hasName = (nameEl && nameEl.textContent && nameEl.textContent.trim().length > 0);
+        if (has && hasName) return;
+        const res = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' }).catch(() => null);
+        if (!res || !res.ok) return;
+        const p = await res.json().catch(() => null);
+        const uname = String(p?.username || '').trim();
+        const email = String(p?.email || '').trim();
+        const full = uname || email || '';
+        const ch = firstChar(full);
+        try { sessionStorage.setItem('user', JSON.stringify(p)); } catch {}
+        if (nameEl && full && !hasName) nameEl.textContent = full;
+        if (ddInit) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
+        if (btnInit) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
+      } catch {}
+    })();
+    // Final retry loop (up to ~1.5s) to ensure initials appear even with late DOM paints
+    try {
+      let tries = 0;
+      const timer = setInterval(() => {
+        tries++;
+        setInitials();
+        if (tries >= 6) clearInterval(timer);
+      }, 250);
+    } catch {}
     document.addEventListener('click', (e) => {
       if (!dropdown.contains(e.target) && !userBtn.contains(e.target)) {
         dropdown.setAttribute('hidden', '');
@@ -127,7 +177,71 @@ export function initLayout() {
         userBtn.setAttribute('aria-expanded', 'false');
       });
     });
+    const applyTheme = (val) => {
+      if (val === 'system' || val === '') {
+        try { document.documentElement.removeAttribute('data-theme'); } catch {}
+      } else {
+        document.documentElement.dataset.theme = val;
+      }
+      try { localStorage.setItem('theme', val); } catch {}
+      Array.from(document.querySelectorAll('#themeDropdown .theme-item')).forEach(el => {
+        const v = el.getAttribute('data-value') || '';
+        if (v === val) el.classList.add('sel');
+        else el.classList.remove('sel');
+      });
+    };
+    const initTheme = () => {
+      let v = 'system';
+      try { v = (localStorage.getItem('theme') || 'system'); } catch {}
+      applyTheme(v);
+    };
+    initTheme();
+    // Delegated handlers to survive dynamic page changes
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest ? e.target.closest('#btnTheme') : null;
+      if (t) {
+        const themeDrop = document.querySelector('#themeDropdown');
+        e.preventDefault();
+        e.stopPropagation();
+        if (themeDrop) themeDrop.removeAttribute('hidden');
+      }
+      const back = e.target.closest ? e.target.closest('#themeBack') : null;
+      if (back) {
+        const themeDrop = document.querySelector('#themeDropdown');
+        e.preventDefault();
+        if (themeDrop) themeDrop.setAttribute('hidden', '');
+      }
+      const item = e.target.closest ? e.target.closest('.theme-item') : null;
+      const themeDrop2 = document.querySelector('#themeDropdown');
+      if (item && themeDrop2 && themeDrop2.contains(item)) {
+        e.preventDefault();
+        const v = item.getAttribute('data-value') || 'system';
+        applyTheme(v);
+      }
+    });
   }
+
+  // Delegated user menu toggle to ensure it works after dynamic page changes
+  document.addEventListener('click', (e) => {
+    const ub = e.target && e.target.closest ? e.target.closest('.user .user-btn') : null;
+    if (!ub) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const dd = document.querySelector('#userDropdown');
+    if (!dd) return;
+    const hidden = dd.hasAttribute('hidden');
+    if (hidden) {
+      dd.removeAttribute('hidden');
+      try { ub.setAttribute('aria-expanded', 'true'); } catch {}
+      const firstItem = dd.querySelector('.item, a, button');
+      if (firstItem && typeof firstItem.focus === 'function') {
+        try { firstItem.focus(); } catch {}
+      }
+    } else {
+      dd.setAttribute('hidden', '');
+      try { ub.setAttribute('aria-expanded', 'false'); } catch {}
+    }
+  });
 
   // Mobile Drawer
   const mobileBtn = document.querySelector('#mobileMenuBtn');
@@ -179,6 +293,27 @@ export function initLayout() {
         e.preventDefault();
         setTimeout(() => { window.location.href = href; }, 600);
       }
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('.subbar .menu .menu-btn') : null;
+    if (btn) {
+      e.preventDefault();
+      const menu = btn.closest('.menu');
+      const open = menu.classList.contains('open');
+      document.querySelectorAll('.subbar .menu.open').forEach(m => { if (m !== menu) m.classList.remove('open'); });
+      if (open) menu.classList.remove('open'); else menu.classList.add('open');
+      return;
+    }
+    const inside = e.target && e.target.closest ? e.target.closest('.subbar .menu') : null;
+    if (!inside) {
+      document.querySelectorAll('.subbar .menu.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.subbar .menu.open').forEach(m => m.classList.remove('open'));
     }
   });
 

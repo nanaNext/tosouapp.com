@@ -6,72 +6,85 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>管理ポータル</title>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
-  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260408-1">
-  <link rel="stylesheet" href="/static/css/admin.css?v=20260403-ds1">
-  <meta name="asset-v" content="navy-20260408-1">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260413-overlayfix4">
+  <link rel="stylesheet" href="/static/css/admin.css?v=20260413-segment13">
+  <meta name="asset-v" content="navy-20260413-overlayfix4">
   
-  <script src="/static/js/pages/session-idle.js?v=navy-20260408-1" defer></script>
-  <script type="module" src="/static/js/admin/admin.page.js?v=navy-20260408-1"></script>
+  <script src="/static/js/pages/session-idle.js?v=navy-20260411-patch2" defer></script>
+  <script type="module" src="/static/js/admin/admin.page.js?v=navy-20260413-7"></script>
   <link rel="icon" href="data:,">
 </head>
 
-<body class="admin has-sidebar">
+<body class="admin">
   <!--#include file="_partials/admin-topbar.html" -->
   <!--#include file="_partials/admin-mobile-drawer.html" -->
   <div class="subbar">
-    <div class="subnav"></div>
+    <div class="subnav">
+      <a href="/admin/dashboard">ホーム</a>
+      <div class="menu">
+        <button class="menu-btn" type="button">社員管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/employees" role="menuitem">社員一覧</a>
+          <a href="/admin/employees/add" role="menuitem">社員追加</a>
+          <a href="/admin/employees/monthly-summary" role="menuitem">月次集計</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">勤怠管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/attendance" role="menuitem">勤怠記録</a>
+          <a href="/admin/attendance/monthly" role="menuitem" target="_blank" rel="noopener noreferrer">月次勤怠入力(管理者)</a>
+          <a href="/admin/work-reports" role="menuitem">作業報告</a>
+          <a href="/admin/attendance/shifts" role="menuitem">シフト管理</a>
+          <a href="/admin/attendance/holidays" role="menuitem">休日設定</a>
+          <a href="/admin-attendance-adjust-requests.html" role="menuitem">調整申請一覧</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">休暇管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/leave/requests" role="menuitem">申請一覧</a>
+          <a href="/admin/leave/balance" role="menuitem">残日数</a>
+          <a href="/admin/leave/grants" role="menuitem">付与管理</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">給与管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/payroll/salary" role="menuitem">給与</a>
+          <a href="/admin/payroll/payslips" role="menuitem">送信・履歴</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">交通費</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/expenses" role="menuitem">交通費計算管理</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">組織</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/departments" role="menuitem">部門管理</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">システム</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/notices" role="menuitem">お知らせ</a>
+          <a href="/admin/system/settings" role="menuitem">設定</a>
+          <a href="/admin/system/audit-logs" role="menuitem">監査ログ</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">チャットボット</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/chatbot/faq" role="menuitem">FAQ</a>
+          <a href="/admin/chatbot/categories" role="menuitem">カテゴリ</a>
+          <a href="/admin/chatbot/user-questions" role="menuitem">質問</a>
+        </div>
+      </div>
+    </div>
   </div>
-  <aside class="sidebar" aria-label="Admin navigation">
-    <a class="sidebar-brand" href="/admin/dashboard">飯塚塗研(株)</a>
-    <nav class="sidebar-nav">
-      <a href="/admin/dashboard" data-admin-link="dashboard">ホーム</a>
-      <details data-default-href="/admin/employees">
-        <summary><span class="summary-text">社員管理</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/employees" data-admin-link="employees-list">社員一覧</a>
-        <a href="/admin/employees/add" data-admin-link="employees-add">社員追加</a>
-      </details>
-      <details data-default-href="/admin/attendance">
-        <summary><span class="summary-text">勤怠管理</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/attendance" data-admin-link="attendance-records">勤怠記録</a>
-        <a href="/admin/attendance/monthly" data-admin-link="attendance-monthly" target="_blank" rel="noopener noreferrer">月次勤怠入力(管理者)</a>
-        <a href="/admin/work-reports" data-admin-link="work-reports">作業報告</a>
-        <a href="/admin/attendance/shifts" data-admin-link="attendance-shifts">シフト管理</a>
-        <a href="/admin/attendance/holidays" data-admin-link="attendance-holidays">休日設定</a>
-        <a href="/admin-attendance-adjust-requests.html" data-admin-link="attendance-adjust-requests">調整申請一覧</a>
-      </details>
-      <details data-default-href="/admin/leave/requests">
-        <summary><span class="summary-text">休暇管理</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/leave/requests" data-admin-link="leave-requests">申請一覧</a>
-        <a href="/admin/leave/balance" data-admin-link="leave-balance">残日数</a>
-        <a href="/admin/leave/grants" data-admin-link="leave-grants">付与管理</a>
-      </details>
-      <details data-default-href="/admin/payroll/salary">
-        <summary><span class="summary-text">給与管理</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/payroll/salary" data-admin-link="payroll-salary">給与</a>
-        <a href="/admin/payroll/payslips" data-admin-link="payroll-payslips">送信・履歴</a>
-      </details>
-      <details data-default-href="/admin/expenses">
-        <summary><span class="summary-text">交通費計算管理</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/expenses" data-admin-link="expenses-manage">交通費計算管理</a>
-      </details>
-      <details data-default-href="/admin/departments">
-        <summary><span class="summary-text">組織</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/departments" data-admin-link="org-departments">部門管理</a>
-      </details>
-      <details data-default-href="/admin/chatbot/faq">
-        <summary><span class="summary-text">チャットボット</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/chatbot/faq" data-admin-link="chatbot-faq">FAQ</a>
-        <a href="/admin/chatbot/categories" data-admin-link="chatbot-categories">カテゴリ</a>
-        <a href="/admin/chatbot/user-questions" data-admin-link="chatbot-questions">質問</a>
-      </details>
-      <details data-default-href="/admin/system/settings">
-        <summary><span class="summary-text">システム</span><span class="chev" aria-hidden="true"></span></summary>
-        <a href="/admin/notices" data-admin-link="system-notices">お知らせ</a>
-        <a href="/admin/system/settings" data-admin-link="system-settings">設定</a>
-        <a href="/admin/system/audit-logs" data-admin-link="system-audit">監査ログ</a>
-      </details>
-    </nav>
-  </aside>
   <main class="content">
     <div id="status" class="status">Loading…</div>
     <div id="error" class="error"></div>

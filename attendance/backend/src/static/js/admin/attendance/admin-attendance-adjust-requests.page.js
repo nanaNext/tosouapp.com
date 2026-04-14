@@ -11,6 +11,27 @@ let currentMonth = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).pa
 // Cache toàn bộ dữ liệu để lọc phía client không cần gọi API lại
 let allRows = [];
 
+function wireSubbarMenus() {
+  try {
+    const menus = Array.from(document.querySelectorAll('.subbar .menu'));
+    if (!menus.length) return;
+    const closeAll = () => menus.forEach((m) => m.classList.remove('open'));
+    menus.forEach((m) => {
+      const btn = m.querySelector('.menu-btn');
+      if (!btn || btn.dataset.bound === '1') return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const isOpen = m.classList.contains('open');
+        closeAll();
+        if (!isOpen) m.classList.add('open');
+      });
+    });
+    document.addEventListener('click', () => closeAll());
+  } catch {}
+}
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -191,6 +212,7 @@ async function renderList() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   wireAdminShell();
+  wireSubbarMenus();
   const isAdmin = await checkAdminAuth();
   if (isAdmin) await renderList();
 });

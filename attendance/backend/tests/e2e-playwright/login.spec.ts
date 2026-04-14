@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import http from 'http';
+import * as http from 'http';
 import app from '../../src/app';
 
 test.describe('E2E (Playwright): Login page', () => {

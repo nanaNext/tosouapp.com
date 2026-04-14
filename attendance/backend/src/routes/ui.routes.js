@@ -73,6 +73,8 @@ router.get('/ui/employees/', sendPage('admin.html'));
 
 router.get('/admin/attendance/monthly', sendPage('admin-attendance-monthly.html'));
 router.get('/admin/attendance/monthly/', sendPage('admin-attendance-monthly.html'));
+router.get('/admin/employees/monthly-summary', sendPage('admin-employees-monthly-summary.html'));
+router.get('/admin/employees/monthly-summary/', sendPage('admin-employees-monthly-summary.html'));
 router.get('/admin/attendance/adjust-requests', sendPage('admin-attendance-adjust-requests.html'));
 router.get('/admin/attendance/adjust-requests/', sendPage('admin-attendance-adjust-requests.html'));
 router.get(/^\/admin(?:\/.*)?$/, sendPage('admin.html'));

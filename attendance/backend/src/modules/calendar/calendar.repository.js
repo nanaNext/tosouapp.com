@@ -286,6 +286,7 @@ module.exports = {
     const jpBridge = jpAll.filter(r => r.type === 'jp_bridge').map(enrich);
     const fixedSet = new Set(fixed.filter(f => f.is_off).map(f => String(f.date)));
     const sundays = [];
+    const saturdays = [];
     const lastSaturdays = [];
     const all = new Set();
     const start = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
@@ -296,6 +297,9 @@ module.exports = {
       const dow = d.getUTCDay();
       if (dow === 0) {
         sundays.push(ds);
+        all.add(ds);
+      } else if (dow === 6) {
+        saturdays.push(ds);
         all.add(ds);
       }
       d.setUTCDate(d.getUTCDate() + 1);
@@ -332,6 +336,7 @@ module.exports = {
     for (const f of jpSubstitute) push({ date: String(f.date), name: f.name_ja || f.name, name_en: f.name_en || null, type: 'jp_substitute', is_off: f.is_off ? 1 : 0 });
     for (const f of jpBridge) push({ date: String(f.date), name: f.name_ja || f.name, name_en: f.name_en || null, type: 'jp_bridge', is_off: f.is_off ? 1 : 0 });
     for (const ds of sundays) push({ date: ds, name: 'Sunday', type: 'sunday', is_off: 1 });
+    for (const ds of saturdays) push({ date: ds, name: 'Saturday', type: 'saturday', is_off: 1 });
     for (const ds of lastSaturdays) push({ date: ds, name: 'Saturday(last)', type: 'saturday_last', is_off: 1 });
     detail.sort((a, b) => String(a.date).localeCompare(String(b.date)));
     return {
@@ -341,6 +346,7 @@ module.exports = {
       jp_substitute: jpSubstitute,
       jp_bridge: jpBridge,
       sundays,
+      saturdays,
       saturday_last: lastSaturdays,
       off_days: Array.from(all).sort(),
       detail

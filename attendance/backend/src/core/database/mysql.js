@@ -2,6 +2,8 @@ const mysql = require('mysql2/promise');
 require('../../config/loadEnv');
 // Khởi tạo pool kết nối MySQL dùng mysql2 (promise)
 
+const sslEnabled = String(process.env.DB_SSL || '').toLowerCase() === 'true';
+const sslStrict = String(process.env.DB_SSL_STRICT || '').toLowerCase() === 'true';
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -12,7 +14,8 @@ const pool = mysql.createPool({
   connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '10', 10),
   queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '0', 10),
   dateStrings: true,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  ssl: sslEnabled ? (sslStrict ? { rejectUnauthorized: true } : {}) : undefined
 });
 
 // Kiểm tra kết nối DB khi khởi động server (bỏ qua khi NODE_ENV=test để tránh log async trong môi trường test)

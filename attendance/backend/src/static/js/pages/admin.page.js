@@ -129,6 +129,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   $('#userName').textContent = profile.username || profile.email || '管理者';
+  try {
+    const uname = String(profile.username || '').trim();
+    const full = uname || String(profile.email || '').trim();
+    const ch = full ? full[0] : '';
+    const ddName = document.querySelector('#userDropdownName');
+    const ddInit = document.querySelector('#userInitial');
+    const btnInit = document.querySelector('#userBtnInitial');
+    if (ddName && full) ddName.textContent = full;
+    if (ddInit && ch) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
+    if (btnInit && ch) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
+  } catch {}
   const content = $('#adminContent');
   
   function getCurrentTab() {
@@ -174,8 +185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       tab = getCurrentTab();
       setSidebarActive(tab);
       try {
-        if (tab === 'employees') document.body.classList.add('employees-wide');
-        else document.body.classList.remove('employees-wide');
+        document.body.classList.remove('employees-wide');
       } catch { }
       const contentEl2 = document.querySelector('#adminContent');
       if (contentEl2) contentEl2.className = 'card';

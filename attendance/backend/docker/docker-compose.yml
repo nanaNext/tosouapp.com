@@ -19,6 +19,11 @@ services:
       - DB_PASSWORD=1234567
       - DB_NAME=attendance_db
       - COMPANY_NAME=飯塚塗研株式会社
+      - JWT_SECRET_CURRENT=${JWT_SECRET_CURRENT}
+      - JWT_SECRET_PREVIOUS=${JWT_SECRET_PREVIOUS}
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
+      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD}
+      - ENFORCE_CSRF=true
     depends_on:
       - db
     healthcheck:
@@ -47,6 +52,11 @@ services:
       - DB_PASSWORD=1234567
       - DB_NAME=attendance_staging
       - COMPANY_NAME=飯塚塗研株式会社
+      - JWT_SECRET_CURRENT=${JWT_SECRET_CURRENT}
+      - JWT_SECRET_PREVIOUS=${JWT_SECRET_PREVIOUS}
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
+      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD}
+      - ENFORCE_CSRF=true
     depends_on:
       - db
     healthcheck:

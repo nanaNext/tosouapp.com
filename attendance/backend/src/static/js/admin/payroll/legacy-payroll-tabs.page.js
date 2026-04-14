@@ -8,7 +8,7 @@ function ensurePayrollNavStyle() {
     st.id = 'payrollNavStyle';
     st.textContent = `
       .pe-nav{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px 0}
-      .pe-nav a{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;color:#0f172a;font-weight:900;text-decoration:none}
+      .pe-nav a{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;color:#0f172a;font-weight:500;text-decoration:none}
       .pe-nav a:hover{border-color:#94a3b8}
       .pe-nav a.active{background:#0f172a;border-color:#0f172a;color:#fff}
     `;

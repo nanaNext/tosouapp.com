@@ -381,9 +381,10 @@
       const plannedKubun = offDay ? '休日' : '出勤';
       const effective = v || plannedKubun;
       const isHoliday = effective === '休日' || effective === '代替休日';
+      const lockByNoKubun = !v;
       const ctrls = Array.from(row.querySelectorAll('input, select, textarea, button')).filter(el => !el.matches('select[data-field="classification"], button[data-action="history"]'));
       for (const el of ctrls) {
-        if (isHoliday) {
+        if (isHoliday || lockByNoKubun) {
           el.setAttribute('disabled', '');
           el.setAttribute('data-row-disabled', '1');
         } else {
@@ -391,7 +392,7 @@
           if (state.editableMonth && !el.hasAttribute('data-fixed-disabled')) el.removeAttribute('disabled');
         }
       }
-      if (!isHoliday) return;
+      if (!isHoliday && !lockByNoKubun) return;
       const ckOn = row.querySelector('input[data-field="ckOnsite"]');
       const ckRe = row.querySelector('input[data-field="ckRemote"]');
       const ckSa = row.querySelector('input[data-field="ckSatellite"]');
@@ -399,6 +400,7 @@
       if (ckRe) ckRe.checked = false;
       if (ckSa) ckSa.checked = false;
       try { row.dataset.workType = ''; } catch {}
+      if (lockByNoKubun) return;
       const loc = row.querySelector('input[data-field="location"]');
       const memo = row.querySelector('input[data-field="memo"]');
       const notes = row.querySelector('input[data-field="notes"]');

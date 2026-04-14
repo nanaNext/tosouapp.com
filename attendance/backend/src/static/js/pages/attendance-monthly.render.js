@@ -54,18 +54,24 @@
     const buildTr = (dateStr, isOff, shift, daily, seg, showDateDow) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
-      const offDay = isOff || dow === '日' || dow === '土';
+      const offDay = !!isOff || dow === '日' || dow === '土';
       
       const kubunInitRaw = String(daily?.kubun || '').trim();
       const kubunOptions = offDay
         ? ['休日', '休日出勤', '代替出勤']
         : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-      const kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
+      let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
       const plannedLabel = offDay ? '【予定休日】' : '【予定出勤】';
       const plannedKubun = offDay ? '休日' : '出勤';
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+      // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
+      if (offDay && !kubunInit) {
+        const hasActual = !!(seg?.checkIn || seg?.checkOut || seg?.id);
+        if (hasActual) kubunInit = '休日出勤';
+      }
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
+      const canEditWorkRow = !!state.editableMonth && isWorkDay && !!kubunInit;
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
       
       const inHm = fromDateTime(seg?.checkIn);
@@ -193,7 +199,7 @@
       const brVal = brMin === 45 ? '0:45' : brMin === 30 ? '0:30' : brMin === 0 ? '0:00' : '1:00';
       const nbVal = nbMin === 60 ? '1:00' : nbMin === 30 ? '0:30' : '0:00';
 
-      const dowColor = (offDay || dow === '日') ? '#b91c1c' : (dow === '土') ? '#1d4ed8' : '#334155';
+      const dowColor = (isOff || dow === '日') ? '#b91c1c' : (dow === '土') ? '#1d4ed8' : '#334155';
       const dateMmdd = dateStr.slice(5).replace('-', '/');
       const kubunOptionsHtml = `
       <option value="" ${disablePlanned ? 'disabled' : ''} ${kubunInit === '' ? 'selected' : ''}>${esc(plannedLabel)}</option>
@@ -209,23 +215,23 @@
           </select>
         </div>
       </td>
-      <td style="text-align:center;"><input class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} ${!isWorkDay || !state.editableMonth ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} ${!isWorkDay || !state.editableMonth ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} ${!isWorkDay || !state.editableMonth ? 'disabled' : ''}></td>
-      <td><input class="se-input" data-field="location" type="text" value="${esc(dLoc)}" ${!isWorkDay || !state.editableMonth ? 'disabled' : ''}></td>
-      <td><input class="se-input" data-field="memo" type="text" value="${esc(dMemo)}" ${!isWorkDay || !state.editableMonth ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input class="se-input" data-field="location" type="text" value="${esc(dLoc)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input class="se-input" data-field="memo" type="text" value="${esc(dMemo)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!isWorkDay || !state.editableMonth ? 'disabled' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}">
+          <input class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}">
         </div>
       </td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!isWorkDay || !state.editableMonth ? 'disabled' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}">
+          <input class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}">
         </div>
       </td>
       <td>
-        <select class="se-select" data-field="break" ${!isWorkDay || !state.editableMonth ? 'disabled' : ''}>
+        <select class="se-select" data-field="break" ${!canEditWorkRow ? 'disabled' : ''}>
           <option value="1:00" ${brVal === '1:00' ? 'selected' : ''}>1:00</option>
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>
@@ -233,7 +239,7 @@
         </select>
       </td>
       <td>
-        <select class="se-select" data-field="nightBreak" ${!isWorkDay || !state.editableMonth ? 'disabled' : ''}>
+        <select class="se-select" data-field="nightBreak" ${!canEditWorkRow ? 'disabled' : ''}>
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
@@ -241,7 +247,7 @@
       </td>
       <td data-field="worked" class="${workAutoCls}" style="font-weight:900;color:#0f172a;">${esc(workHm)}</td>
       <td data-field="excess" class="${otAutoCls}" style="text-align:center;color:#0f172a;font-weight:900;">${esc(otHm)}</td>
-      <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => { const inM = parseHm(finalIn); const stM = parseHm(shiftStart); const outM = parseHm(finalOut); const etM = parseHm(shiftEnd); const late = (inM!=null && stM!=null && inM>stM); const early = (() => { if (outM==null || stM==null || etM==null) return false; const overnight = etM < stM; const endAbs = overnight ? (etM + 24*60) : etM; const outAbs = overnight && outM < stM ? (outM + 24*60) : outM; return outAbs < endAbs; })(); return late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—'; })()}</td>
+      <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => { if (!isWorkDay) return '—'; const inM = parseHm(finalIn); const stM = parseHm(shiftStart); const outM = parseHm(finalOut); const etM = parseHm(shiftEnd); const late = (inM!=null && stM!=null && inM>stM); const early = (() => { if (outM==null || stM==null || etM==null) return false; const overnight = etM < stM; const endAbs = overnight ? (etM + 24*60) : etM; const outAbs = overnight && outM < stM ? (outM + 24*60) : outM; return outAbs < endAbs; })(); return late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—'; })()}</td>
       <td>
         <select class="se-select" data-field="reason" ${effectiveKubun === '欠勤' && state.editableMonth ? '' : 'disabled'} style="width:140px;${effectiveKubun === '欠勤' ? '' : 'visibility:hidden;'}">
           <option value=""></option>
@@ -252,7 +258,7 @@
         </select>
       </td>
       <td>
-        <input class="se-input" data-field="notes" type="text" value="${esc(dNotes)}" ${!isWorkDay || !state.editableMonth ? 'disabled' : ''} style="width:100%;">
+        <input class="se-input" data-field="notes" type="text" value="${esc(dNotes)}" ${!canEditWorkRow ? 'disabled' : ''} style="width:100%;">
       </td>
       <td>
         <div class="se-status-wrap">
@@ -409,9 +415,21 @@
       const effectiveKubun = cls || (offDay ? '休日' : '出勤');
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;
+      const canEditWorkInputs = !!state.editableMonth && isWorkDay && !!cls;
 
       if (clsSel) {
         clsSel.classList.toggle('is-planned', !cls);
+      }
+
+      [inEl, outEl, brSel, nbSel, ckOn, ckRe, ckSa, locEl, memoEl].forEach((el) => {
+        if (!el) return;
+        if (canEditWorkInputs) el.removeAttribute('disabled');
+        else el.setAttribute('disabled', '');
+      });
+      const notesEl = rowEl.querySelector('input[data-field="notes"]');
+      if (notesEl) {
+        if (canEditWorkInputs) notesEl.removeAttribute('disabled');
+        else notesEl.setAttribute('disabled', '');
       }
 
       if (statusWrap) {
@@ -479,7 +497,7 @@
       }
 
       // Logic xóa giờ cho ngày nghỉ (Holiday)
-      if (!isWorkDay) {
+      if (!isWorkDay && !!cls) {
         // Nếu là ngày nghỉ, chúng ta xóa trắng giờ nếu không phải đang có ID hoặc không phải là nhập tay mới
         // Tuy nhiên, nếu người dùng VỪA chọn sang "休日", chúng ta nên xóa luôn giờ cũ.
         if (inEl && inEl.value !== '') {
@@ -502,7 +520,7 @@
         if (ckOn && ckOn.checked) ckOn.checked = false;
         if (ckRe && ckRe.checked) ckRe.checked = false;
         if (ckSa && ckSa.checked) ckSa.checked = false;
-      } else {
+      } else if (isWorkDay) {
         // Áp dụng giờ mặc định cho ngày đi làm
         const dayShift = (() => {
           try {
@@ -532,6 +550,11 @@
             brSel.dataset.auto = '1';
           }
         }
+      } else {
+        if (ckOn) ckOn.checked = false;
+        if (ckRe) ckRe.checked = false;
+        if (ckSa) ckSa.checked = false;
+        rowEl.dataset.workType = '';
       }
 
       if (reasonSel) {
@@ -539,7 +562,7 @@
         if (!allowReason && reasonSel.value !== '') {
           reasonSel.value = '';
         }
-        if (allowReason) {
+        if (allowReason && !!cls) {
           reasonSel.removeAttribute('disabled');
           reasonSel.style.visibility = '';
         } else {
@@ -597,13 +620,14 @@
       })();
 
       const whMin = (() => {
+        if (!isWorkDay) return 0;
         let inEff = inVal;
         if (dayShiftInfo?.st && inVal && inVal < dayShiftInfo.st) inEff = dayShiftInfo.st;
         const raw = diffMinutesAllowOvernight(inEff, outVal);
         return (raw == null || raw <= 0) ? 0 : Math.max(0, raw - totalBmin);
       })();
-
       const otMin = (() => {
+        if (!isWorkDay) return 0;
         const outM = parseHm(outVal);
         const stM = dayShiftInfo?.stM;
         const etM = dayShiftInfo?.etM;
@@ -616,11 +640,11 @@
         return Math.max(0, whMin - (8 * 60));
       })();
 
-      const whStr = fmtWorkHours(inVal, outVal, totalBmin) || '';
+      const whStr = !isWorkDay ? '' : (fmtWorkHours(inVal, outVal, totalBmin) || '');
       const isAutoWork = isWorkDay && (inAuto || outAuto) && !!whStr;
 
       if (worked) {
-        const text = (inVal && outVal) ? whStr : (isAutoWork ? whStr : '');
+        const text = !isWorkDay ? '' : ((inVal && outVal) ? whStr : (isAutoWork ? whStr : ''));
         if (worked.textContent !== text) worked.textContent = text;
         const shouldWorkAuto = isAutoWork && isPlanned;
         if (worked.classList.contains('is-auto') !== shouldWorkAuto) {
@@ -628,7 +652,7 @@
         }
       }
       if (excess) {
-        const text = (inVal && outVal && whMin > 0 && otMin > 0) ? fmtHm(otMin) : '';
+        const text = !isWorkDay ? '' : ((inVal && outVal && whMin > 0 && otMin > 0) ? fmtHm(otMin) : '');
         if (excess.textContent !== text) excess.textContent = text;
         const shouldExcessAuto = isAutoWork && otMin > 0 && isPlanned;
         if (excess.classList.contains('is-auto') !== shouldExcessAuto) {

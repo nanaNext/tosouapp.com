@@ -8,8 +8,53 @@ export function wireAdminShell({ logoutRedirect = '/ui/login' } = {}) {
   wireMobileDrawer();
   wireLogout(logoutRedirect);
   wireTopbarSearch();
+  wireUserInitials();
 }
 
+function firstChar(s) {
+  try {
+    const t = String(s || '').trim();
+    if (!t) return '';
+    const arr = Array.from(t);
+    return arr.length ? arr[0] : '';
+  } catch { return ''; }
+}
+
+export function wireUserInitials() {
+  try {
+    const btn = document.getElementById('userBtnInitial');
+    const dd  = document.getElementById('userInitial');
+    const nameEl = document.getElementById('userName');
+    const apply = (full) => {
+      const ch = firstChar(full);
+      if (nameEl && full && !nameEl.textContent) nameEl.textContent = full;
+      if (btn) { btn.textContent = ''; btn.setAttribute('data-initial', ch); }
+      if (dd)  { dd.textContent  = ''; dd.setAttribute('data-initial', ch); }
+    };
+    let full = '';
+    try {
+      const uStr = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+      if (uStr) {
+        const u = JSON.parse(uStr);
+        full = (u && u.username) ? String(u.username).trim() : (u && u.email ? String(u.email).trim() : '');
+      }
+    } catch {}
+    if (!full && nameEl && nameEl.textContent) full = nameEl.textContent.trim();
+    if (full) {
+      apply(full);
+    } else {
+      fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
+        .then(r => r && r.ok ? r.json() : null)
+        .then(p => {
+          if (!p) return;
+          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch {}
+          const f = String(p.username || '').trim() || String(p.email || '').trim();
+          apply(f);
+        })
+        .catch(() => {});
+    }
+  } catch {}
+}
 export function wireTopbarHeightVar() {
   const sync = () => {
     try {
@@ -39,8 +84,47 @@ export function wireUserMenu() {
     document.addEventListener('click', (e) => {
       const t = e && e.target;
       if (t && t.closest && t.closest('.user-menu')) return;
+      if (!dd.hasAttribute('hidden')) dd.setAttribute('hidden', '');
       try { btn.setAttribute('aria-expanded', 'false'); } catch {}
     });
+    document.addEventListener('click', (e) => {
+      const a = e && e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a) return;
+      if (!dd.hasAttribute('hidden')) dd.setAttribute('hidden', '');
+      try { btn.setAttribute('aria-expanded', 'false'); } catch {}
+    }, true);
+
+    // Theme submenu wiring (idempotent)
+    const themeDrop = qs('#themeDropdown');
+    if (themeDrop && themeDrop.dataset.bound !== '1') {
+      themeDrop.dataset.bound = '1';
+      const applyTheme = (val) => {
+        if (val === 'system' || val === '') { try { document.documentElement.removeAttribute('data-theme'); } catch {} }
+        else { document.documentElement.dataset.theme = val; }
+        try { localStorage.setItem('theme', val); } catch {}
+        Array.from(themeDrop.querySelectorAll('.theme-item')).forEach(el => {
+          const v = el.getAttribute('data-value') || '';
+          if (v === val) el.classList.add('sel'); else el.classList.remove('sel');
+        });
+      };
+      try {
+        const cur = (localStorage.getItem('theme') || 'system');
+        applyTheme(cur);
+      } catch { applyTheme('system'); }
+      document.addEventListener('click', (e) => {
+        const openBtn = e && e.target && e.target.closest ? e.target.closest('#btnTheme') : null;
+        if (openBtn) { e.preventDefault(); e.stopPropagation(); themeDrop.removeAttribute('hidden'); return; }
+        const backBtn = e && e.target && e.target.closest ? e.target.closest('#themeBack') : null;
+        if (backBtn) { e.preventDefault(); themeDrop.setAttribute('hidden', ''); return; }
+        const item = e && e.target && e.target.closest ? e.target.closest('.theme-item') : null;
+        if (item && themeDrop.contains(item)) {
+          e.preventDefault();
+          const v = item.getAttribute('data-value') || 'system';
+          applyTheme(v);
+          return;
+        }
+      });
+    }
   } catch {}
 }
 

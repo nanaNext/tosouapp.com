@@ -43,12 +43,6 @@ async function mountAttendanceImpl({
           <button type="button" id="rosterLoad" class="attrec-btn">表示</button>
           <button type="button" id="rosterExportDayXlsx" class="attrec-btn">日次Excel</button>
           <button type="button" id="rosterExportWeekXlsx" class="attrec-btn">週次Excel</button>
-          <select id="rosterWorkTypeDefault" class="attrec-input" style="min-width:120px;">
-            <option value="onsite">出社</option>
-            <option value="remote">在宅</option>
-            <option value="satellite">現場/出張</option>
-          </select>
-          <button type="button" id="rosterBackfillWorkType" class="attrec-btn">勤務区分未設定を補完</button>
         </div>
         <div class="attrec-control">
           <div class="attrec-label">月次</div>
@@ -172,18 +166,6 @@ async function mountAttendanceImpl({
   const dateEl = rosterWrap.querySelector('#rosterDate');
   if (dateEl) dateEl.addEventListener('change', async () => {
     const d = dateEl.value || today;
-    await loadRoster(d);
-  });
-  const btnBackfill = rosterWrap.querySelector('#rosterBackfillWorkType');
-  if (btnBackfill) btnBackfill.addEventListener('click', async () => {
-    const d = (dateEl && dateEl.value) ? dateEl.value : today;
-    const wtEl = rosterWrap.querySelector('#rosterWorkTypeDefault');
-    const wt = (wtEl && wtEl.value) ? wtEl.value : 'onsite';
-    try {
-      await api.post('/api/admin/work-reports/backfill-worktype', { date: d, workType: wt });
-    } catch (e) {
-      alert(String((e && e.message) ? e.message : '更新に失敗しました'));
-    }
     await loadRoster(d);
   });
   const btnExpDay = rosterWrap.querySelector('#rosterExportDayXlsx');

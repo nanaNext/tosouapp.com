@@ -1,31 +1,47 @@
 /* Style cho trang điều chỉnh chấm công - dùng class riêng để không bị admin.css override */
 
+.adj-page-head {
+  max-width: 1200px;
+  margin: 0 auto 12px;
+}
+
+.adj-page-head h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 700;
+}
+
 /* ── Month navigator ── */
 .adj-month-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 12px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  flex-wrap: wrap;
 }
 .adj-month-btn {
   width: 32px;
   height: 32px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   background: #fff;
-  color: #0b2c66;
-  font-size: 20px;
+  color: #0f172a;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.adj-month-btn:hover { background: #f1f5f9; }
+.adj-month-btn:hover { background: #f8fafc; }
 .adj-month-label {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  color: #0b2c66;
+  color: #0f172a;
   min-width: 120px;
   text-align: center;
   display: flex;
@@ -44,12 +60,13 @@
 }
 .adj-month-today {
   margin-left: 4px;
-  padding: 4px 12px;
-  border: 1px solid #94a3b8;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   background: #f8fafc;
-  color: #475569;
+  color: #0f172a;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
 .adj-month-today:hover { background: #e2e8f0; }
@@ -57,9 +74,12 @@
 /* ── Table wrapper (dùng chung nhân viên + admin) ── */
 .adj-table-card {
   background: #fff;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
   overflow: hidden;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .adj-table {
@@ -68,32 +88,37 @@
 }
 
 .adj-table thead tr {
-  background: #0b2c66;
+  background: #f1f7ff;
 }
 
 .adj-table th {
-  padding: 10px 14px;
+  padding: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color: #0d2c5b;
   text-align: left;
   border: none;
+  border-bottom: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
   white-space: nowrap;
 }
+.adj-table th:last-child { border-right: none; }
 
 .adj-table tbody tr {
   background: #fff;
   transition: background .1s;
 }
-.adj-table tbody tr:hover { background: #f6f9ff; }
+.adj-table tbody tr:hover { background: #f7fbff; }
 
 .adj-table td {
-  padding: 10px 14px;
-  font-size: 14px;
-  color: #1e293b;
-  border-bottom: 1px solid #eef2f7;
+  padding: 8px;
+  font-size: 13px;
+  color: #0f172a;
+  border-bottom: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
   vertical-align: middle;
 }
+.adj-table td:last-child { border-right: none; }
 .adj-table tbody tr:last-child td { border-bottom: none; }
 
 /* Status badge trong bảng */
@@ -144,9 +169,8 @@
 .btn-approve,
 .btn-reject {
   display: inline-block;
-  padding: 4px 13px;
-  border: none;
-  border-radius: 5px;
+  padding: 4px 12px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -156,13 +180,13 @@
 .btn-approve,
 .btn-reject {
   background: #fff;
-  color: #0b2c66;
-  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border: 1px solid #d1d5db;
   margin-right: 6px;
 }
 .btn-approve:hover,
 .btn-reject:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
   border-color: #94a3b8;
 }
 
@@ -172,19 +196,19 @@
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #d1d5db;
   background: #fff;
-  color: #0b2c66;
+  color: #0f172a;
   border-radius: 6px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   line-height: 1.6;
 }
 .btn-delete:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
   border-color: #94a3b8;
-  color: #0b2c66;
+  color: #0f172a;
 }
 
 /* ── Nút 編集 ── */
@@ -250,13 +274,13 @@
 .dt-date {
   display: block;
   font-size: 13px;
-  color: #1e293b;
+  color: #0f172a;
   font-weight: 500;
   line-height: 1.4;
 }
 .dt-time {
   display: block;
   font-size: 12px;
-  color: #64748b;
+  color: #475569;
   line-height: 1.3;
 }
