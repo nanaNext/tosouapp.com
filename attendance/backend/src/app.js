@@ -183,6 +183,39 @@ app.get('/static/js/pages/dashboard.page.js', (req, res) => { res.sendFile(path.
 app.get('/static/css/portal.css', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'css', 'portal.css')); });
 app.get('/static/js/pages/portal.page.js', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'js', 'pages', 'portal.page.js')); });
 app.get('/static/js/pages/portal.debug.js', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'js', 'pages', 'portal.debug.js')); });
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8');
+  res.send(
+    [
+      'User-agent: *',
+      'Allow: /',
+      'Sitemap: https://tosouapp.com/sitemap.xml'
+    ].join('\n')
+  );
+});
+app.get('/sitemap.xml', (req, res) => {
+  const now = new Date().toISOString();
+  const urls = [
+    'https://tosouapp.com/',
+    'https://tosouapp.com/ui/login',
+    'https://tosouapp.com/ui/portal'
+  ];
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...urls.map((u) => [
+      '<url>',
+      `<loc>${u}</loc>`,
+      `<lastmod>${now}</lastmod>`,
+      '<changefreq>daily</changefreq>',
+      '<priority>0.8</priority>',
+      '</url>'
+    ].join('')),
+    '</urlset>'
+  ].join('');
+  res.type('application/xml; charset=utf-8');
+  res.send(xml);
+});
 app.get('/api/metrics', (req, res) => {
   try {
     const m = require('./core/metrics').snapshot();
