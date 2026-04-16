@@ -53,7 +53,7 @@
     st.id = 'navTransitionSpinnerStyle';
     st.textContent = `
       .nav-transition-spinner{
-        position:fixed;inset:0;background:#fff;display:grid;place-items:center;z-index:99999
+        position:fixed;inset:0;background:transparent;display:grid;place-items:center;z-index:99999;pointer-events:none
       }
       .nav-transition-spinner[hidden]{display:none}
       .nav-transition-ring{
@@ -89,7 +89,7 @@
     } catch {}
   };
 
-  const showNavLoading = (delayMs = 160) => {
+  const showNavLoading = (delayMs = 420) => {
     try {
       if (navLoadShowTimer) clearTimeout(navLoadShowTimer);
       navLoadShowTimer = setTimeout(() => {
@@ -126,13 +126,6 @@
     document.addEventListener('click', (e) => {
       const a = e.target?.closest?.('a[href]');
       if (!shouldShowForAnchor(a, e)) return;
-      showNavLoading();
-    }, true);
-    document.addEventListener('submit', (e) => {
-      const form = e.target?.closest?.('form');
-      if (!form) return;
-      const action = String(form.getAttribute('action') || '').trim();
-      if (/^(mailto:|tel:|javascript:)/i.test(action)) return;
       showNavLoading();
     }, true);
     window.addEventListener('pageshow', () => hideNavLoading());
