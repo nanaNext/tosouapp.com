@@ -297,8 +297,9 @@ const getUrlDate = () => {
 };
 
 const calcWorkMinutes = () => {
-  const s = parseHm(effectiveHm($('#startTime')));
-  const e = parseHm(effectiveHm($('#endTime')));
+  // Use the visible time values for live UI calculation.
+  const s = parseHm(String($('#startTime')?.value || '').trim());
+  const e = parseHm(String($('#endTime')?.value || '').trim());
   const b = parseInt($('#breakMin')?.value || '0', 10) || 0;
   if (!s || !e) return null;
   const raw = e.total - s.total - b;

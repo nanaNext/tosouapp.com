@@ -706,8 +706,9 @@ body {
   .simple-grid2 .simple-time { display: contents; }
   .simple-grid2 .simple-select { text-align: left; padding: 8px 24px 8px 8px; font-size: 15px; }
   /* Hàng thời gian + nút: chiều ngang gọn, chiều dọc rõ ràng và đồng đều */
-  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) minmax(120px, 1fr) minmax(120px, 1fr); gap: 10px; align-items: stretch; }
-  .simple-stamp-btn { font-size: 16px; padding: 10px 12px; height: 44px !important; width: 100%; min-width: 0; margin: 0; white-space: normal; line-height: normal; overflow: visible; text-overflow: clip; justify-content: flex-start; text-align: left; }
+  .simple-stamp-row { grid-template-columns: minmax(110px, 130px) minmax(100px, 1fr) minmax(120px, 1fr); gap: 8px; align-items: stretch; }
+  .simple-stamp-row > * { min-width: 0; }
+  .simple-stamp-btn { font-size: 15px; padding: 10px 10px; height: 44px !important; width: 100%; min-width: 0; margin: 0; white-space: nowrap; line-height: normal; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; text-align: left; }
   .simple-stamp-time { font-size: 16px; padding: 10px 12px; letter-spacing: 0; border: 2px solid #93c5fd; border-radius: 6px; height: 44px !important; min-height: 44px !important; line-height: normal !important; width: 100%; min-width: 0; margin: 0; box-sizing: border-box; text-align: left; }
   .simple-time-input { font-size: 16px; letter-spacing: 0; border: 2px solid #93c5fd; border-radius: 6px; width: 100%; min-width: 0; margin: 0; height: 44px !important; min-height: 44px !important; line-height: normal !important; box-sizing: border-box; text-align: left; }
   .simple-stamp-time::-webkit-datetime-edit,
