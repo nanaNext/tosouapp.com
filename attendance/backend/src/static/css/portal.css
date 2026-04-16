@@ -2426,4 +2426,14 @@ body.drawer-open .content {
   }
 }
 
+/* Employee mobile: hide duplicated subnav (already available in drawer menu) */
+@media (max-width: 480px) {
+  body:not(.admin) .subbar {
+    display: none !important;
+  }
+  body:not(.admin) .subbar + .content {
+    padding-top: calc(var(--topbar-height) + 10px) !important;
+  }
+}
+
 
