@@ -66,19 +66,25 @@ async function handleSubmit(e) {
   e.preventDefault();
   setError('');
   const statusEl = document.querySelector('#status');
-  showPageSpinner();
   const email = $('#email').value.trim();
   const password = $('#password').value;
   const form = $('#loginForm');
   if (form && !form.checkValidity()) {
     try { form.reportValidity(); } catch {}
     setError('メール/パスワードを正しく入力してください');
+    hidePageSpinner();
     return;
   }
-  if (!email || !password) { setError('メール/パスワードを入力してください'); return; }
+  if (!email || !password) {
+    setError('メール/パスワードを入力してください');
+    hidePageSpinner();
+    return;
+  }
   const btn = $('#loginBtn');
   if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
-  if (statusEl) { statusEl.textContent = ''; }
+  if (statusEl) { statusEl.textContent = 'ログイン中...'; }
+  showPageSpinner();
+  let navigated = false;
   try {
     const data = await login(email, password);
     saveAuth(data);
@@ -86,6 +92,7 @@ async function handleSubmit(e) {
       const grp = document.querySelector('.input-group');
       if (grp) grp.classList.add('success');
     } catch {}
+    navigated = true;
     roleRedirect(data.role);
   } catch (err) {
     const msg = String(err.message || '').toLowerCase();
@@ -104,10 +111,7 @@ async function handleSubmit(e) {
   finally {
     if (btn) { btn.disabled = false; btn.textContent = 'ログイン'; btn.removeAttribute('aria-busy'); }
     if (statusEl) { statusEl.textContent = ''; }
-    try {
-      const willNavigate = sessionStorage.getItem('navSpinner') === '1';
-      if (!willNavigate) hidePageSpinner();
-    } catch {}
+    if (!navigated) hidePageSpinner();
   }
 }
 
