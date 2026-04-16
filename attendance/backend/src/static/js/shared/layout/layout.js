@@ -318,7 +318,7 @@ export function initLayout() {
       if (to.pathname === location.pathname && to.search === location.search && to.hash && to.hash !== location.hash) return false;
       return true;
     };
-    const showWithAutoHide = (delayMs = 160) => {
+    const showWithAutoHide = (delayMs = 420) => {
       try {
         if (spinnerShowTimer) clearTimeout(spinnerShowTimer);
         spinnerShowTimer = setTimeout(() => showNavSpinner(), Math.max(0, Number(delayMs) || 0));
@@ -333,13 +333,6 @@ export function initLayout() {
     document.addEventListener('click', (e) => {
       const a = e.target?.closest?.('a[href]');
       if (!shouldShowForAnchor(a, e)) return;
-      showWithAutoHide();
-    }, true);
-    document.addEventListener('submit', (e) => {
-      const form = e.target?.closest?.('form');
-      if (!form) return;
-      const action = String(form.getAttribute('action') || '').trim();
-      if (/^(mailto:|tel:|javascript:)/i.test(action)) return;
       showWithAutoHide();
     }, true);
     window.addEventListener('pageshow', () => {
@@ -417,18 +410,18 @@ export const showNavSpinner = () => {
       el.innerHTML = '<div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
       el.style.position = 'fixed';
       el.style.inset = '0';
-      el.style.background = '#fff';
+      el.style.background = 'transparent';
       el.style.display = 'grid';
       el.style.placeItems = 'center';
+      el.style.pointerEvents = 'none';
       el.style.zIndex = '9999';
       document.body.appendChild(el);
     } else {
       el.removeAttribute('hidden');
-      el.style.background = '#fff';
+      el.style.background = 'transparent';
       el.style.display = 'grid';
+      el.style.pointerEvents = 'none';
     }
-    const c = document.querySelector('#adminContent');
-    if (c) c.style.visibility = 'hidden';
   } catch { }
 };
 
@@ -440,8 +433,6 @@ export const hideNavSpinner = () => {
       el.setAttribute('hidden', 'true');
       el.style.display = 'none';
     }
-    const c = document.querySelector('#adminContent');
-    if (c) c.style.visibility = '';
   } catch { }
 };
 
@@ -451,7 +442,7 @@ export function ensureSpinnerStyle() {
       const style = document.createElement('style');
       style.id = 'spinnerStyle';
       style.textContent = `
-        .page-spinner{background:#fff;display:grid;place-items:center}
+        .page-spinner{background:transparent;display:grid;place-items:center;pointer-events:none}
         .dot-spinner{position:relative;width:64px;height:64px}
         .dot-spinner div{position:absolute;top:50%;left:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#666;opacity:.2;animation:dotfade 1s linear infinite}
         @keyframes dotfade{0%{opacity:1}100%{opacity:.2}}
