@@ -612,14 +612,12 @@ button.secondary {
     }
 
     .circle {
-        position: fixed;
-        left: 50%;
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+        position: static;
         width: 220px;
         height: 220px;
-        margin: 0;
-        transform: translateX(-50%) scale(0.82);
-        transform-origin: bottom center;
+        margin: 10px auto 0;
+        transform: scale(0.82);
+        transform-origin: top center;
         z-index: 20;
         border-radius: 50%;
         display: flex;
