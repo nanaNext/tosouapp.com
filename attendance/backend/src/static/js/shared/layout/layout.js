@@ -296,6 +296,58 @@ export function initLayout() {
     }
   });
 
+  // Global page-transition spinner for internal navigation links/forms.
+  if (!window.__globalNavSpinnerBound) {
+    window.__globalNavSpinnerBound = true;
+    let spinnerHideTimer = null;
+    let spinnerShowTimer = null;
+    const shouldShowForAnchor = (a, e) => {
+      if (!a) return false;
+      if (a.dataset?.noNavSpinner === '1') return false;
+      if (a.hasAttribute('download')) return false;
+      const target = String(a.getAttribute('target') || '').toLowerCase();
+      if (target && target !== '_self') return false;
+      if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)) return false;
+      const href = String(a.getAttribute('href') || '').trim();
+      if (!href || href === '#' || href.startsWith('#')) return false;
+      if (/^(mailto:|tel:|javascript:)/i.test(href)) return false;
+      let to = null;
+      try { to = new URL(href, location.href); } catch { return false; }
+      if (to.origin !== location.origin) return false;
+      if (to.pathname === location.pathname && to.search === location.search && (to.hash || '') === (location.hash || '')) return false;
+      if (to.pathname === location.pathname && to.search === location.search && to.hash && to.hash !== location.hash) return false;
+      return true;
+    };
+    const showWithAutoHide = (delayMs = 160) => {
+      try {
+        if (spinnerShowTimer) clearTimeout(spinnerShowTimer);
+        spinnerShowTimer = setTimeout(() => showNavSpinner(), Math.max(0, Number(delayMs) || 0));
+      } catch {
+        showNavSpinner();
+      }
+      try {
+        if (spinnerHideTimer) clearTimeout(spinnerHideTimer);
+        spinnerHideTimer = setTimeout(() => hideNavSpinner(), 10000);
+      } catch {}
+    };
+    document.addEventListener('click', (e) => {
+      const a = e.target?.closest?.('a[href]');
+      if (!shouldShowForAnchor(a, e)) return;
+      showWithAutoHide();
+    }, true);
+    document.addEventListener('submit', (e) => {
+      const form = e.target?.closest?.('form');
+      if (!form) return;
+      const action = String(form.getAttribute('action') || '').trim();
+      if (/^(mailto:|tel:|javascript:)/i.test(action)) return;
+      showWithAutoHide();
+    }, true);
+    window.addEventListener('pageshow', () => {
+      try { if (spinnerShowTimer) clearTimeout(spinnerShowTimer); } catch {}
+      hideNavSpinner();
+    });
+  }
+
   document.addEventListener('click', (e) => {
     const btn = e.target && e.target.closest ? e.target.closest('.subbar .menu .menu-btn') : null;
     if (btn) {
