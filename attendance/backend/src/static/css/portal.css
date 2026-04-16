@@ -197,6 +197,8 @@
   transition: transform .2s ease;
 }
 
+/* Employee portal: keep subbar on desktop, hide only on mobile where drawer exists */
+
 .page-spinner {
   position: fixed;
   inset: 0;
