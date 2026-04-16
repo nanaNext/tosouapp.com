@@ -4,14 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>簡易登録画面</title>
+  <style>
+    #pageSpinner .boot-ring{
+      width:42px;height:42px;border-radius:999px;
+      border:4px solid #dbeafe;border-top-color:#2563eb;
+      animation:boot-spin .8s linear infinite;
+    }
+    @keyframes boot-spin { to { transform: rotate(360deg); } }
+  </style>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260317">
-  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260416-3">
+  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260416-4">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
   <script type="module" src="/static/js/pages/attendance-simple.page.js?v=navy-20260416-2"></script>
 </head>
 <body>
-  <div id="pageSpinner" class="simple-spinner" hidden>
+  <div id="pageSpinner" class="simple-spinner">
+    <div class="boot-ring" aria-hidden="true"></div>
     <div class="lds-spinner" aria-hidden="true">
       <div></div><div></div><div></div><div></div><div></div><div></div>
       <div></div><div></div><div></div><div></div><div></div><div></div>
