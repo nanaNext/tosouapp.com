@@ -2426,10 +2426,4 @@ body.drawer-open .content {
   }
 }
 
-/* Employee mobile: hide top search to keep header stable and uncluttered */
-@media (max-width: 480px) {
-  body:not(.admin) .topbar .search {
-    display: none !important;
-  }
-}
 
