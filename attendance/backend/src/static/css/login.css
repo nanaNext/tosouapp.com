@@ -794,20 +794,22 @@ button.secondary {
     }
 
     .input-with-icon {
-        flex: 0 0 auto !important;
-        width: var(--inputWidthMobile) !important;
-        max-width: var(--inputWidthMobile) !important;
+        flex: 1 1 auto !important;
+        width: auto !important;
+        max-width: none !important;
         min-width: 0 !important;
     }
 
     .form-label-ja {
-        width: 92px;
-        min-width: 92px;
+        width: 108px;
+        min-width: 108px;
         display: flex;
         align-items: center;
         gap: 3px;
         font-size: 12px;
         white-space: nowrap;
+        overflow: visible;
+        text-overflow: clip;
         margin-right: 6px;
     }
 
@@ -849,9 +851,10 @@ button.secondary {
         margin-right: auto;
     }
     .input-with-icon {
-        flex: 0 0 auto;
-        width: var(--inputWidthTablet);
-        max-width: var(--inputWidthTablet);
+        flex: 1 1 auto;
+        width: auto;
+        max-width: none;
+        min-width: 0;
     }
     .form-row,
     .actions {
@@ -920,9 +923,12 @@ button.secondary {
     }
 
     .form-label-ja {
-        width: 96px;
-        min-width: 96px;
-        display: inline-block;
+        width: 108px;
+        min-width: 108px;
+        display: inline-flex;
+        align-items: center;
+        overflow: visible;
+        text-overflow: clip;
     }
 }
 
