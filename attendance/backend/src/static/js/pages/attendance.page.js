@@ -310,31 +310,6 @@ const renderAttendance = async () => {
       ${kubunOptions.map(k => `<option value="${esc(k)}" ${kubunInit === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}
     `;
     host.innerHTML = `
-      <table class="kintai-table">
-        <tbody>
-          <tr><th>状態</th><td><strong>${esc(st)}</strong></td></tr>
-          <tr>
-            <th>勤務区分</th>
-            <td>
-              <select id="kubun" style="min-width:180px;">
-                ${kubunOptionsHtml}
-              </select>
-            </td>
-          </tr>
-          <tr>
-            <th>勤務形態</th>
-            <td>
-              <select id="workType" style="min-width:180px;">
-                <option value="onsite">出社</option>
-                <option value="remote">在宅</option>
-                <option value="satellite">現場/出張</option>
-              </select>
-            </td>
-          </tr>
-          <tr id="rowCheckIn"><th>出勤</th><td>${esc(fmtTime(last?.checkIn))}</td></tr>
-          <tr id="rowCheckOut"><th>退勤</th><td>${esc(fmtTime(last?.checkOut))}</td></tr>
-        </tbody>
-      </table>
       <div class="kintai-actions kintai-actions-split">
         <div class="kintai-actions-left">
           <a class="kintai-monthly-link" href="/ui/attendance/monthly">

@@ -302,7 +302,8 @@ const calcWorkMinutes = () => {
   const b = parseInt($('#breakMin')?.value || '0', 10) || 0;
   if (!s || !e) return null;
   const raw = e.total - s.total - b;
-  return raw >= 0 ? raw : null;
+  // If break time is larger than worked span, show 0:00 instead of blank.
+  return Math.max(0, raw);
 };
 
 const renderWorkMinutes = () => {
@@ -350,6 +351,23 @@ const syncWorkTypeButtons = () => {
     const on = String(btn.dataset.worktype || '') === v;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
+};
+
+const ensureDefaultWorkTypeForToday = (date) => {
+  try {
+    if (String(date || '') !== todayJST()) return;
+    const kubun = String($('#kubun')?.value || '').trim();
+    const nonWorking = ['欠勤', '有給休暇', '半休', '無給休暇', '休日'].includes(kubun);
+    if (nonWorking) return;
+    const el = $('#workType');
+    if (!el) return;
+    const cur = String(el.value || '').trim();
+    if (cur) return;
+    // Default to onsite so employees can check in/out immediately.
+    el.value = 'onsite';
+    saveWorkType(date, 'onsite');
+    syncWorkTypeButtons();
+  } catch {}
 };
 
 const applyWorkTypeGate = () => {
@@ -687,6 +705,7 @@ const load = async (date) => {
       else if (saved) sel.value = saved;
       else if (!String(sel.value || '').trim()) sel.value = '';
     }
+    ensureDefaultWorkTypeForToday(date);
     try {
       if (!kubunSaved && date === todayJST()) {
         await persistDaily(date);
@@ -774,15 +793,7 @@ const save = async (date) => {
   const s = effectiveHm(stEl);
   const e = effectiveHm(etEl);
 
-  // Validation: Chặn thời gian ngoài khoảng 06:00 - 23:59 (Ưu tiên 1)
-  const checkRange = (hm) => {
-    if (!hm) return true;
-    return hm >= '06:00' && hm <= '23:59';
-  };
-  if (!checkRange(s) || !checkRange(e)) {
-    showErr('打刻時間は 06:00 から 23:59 の間である必要があります。');
-    return false;
-  }
+  // Allow full-day time entry (00:00-23:59), including night-shift scenarios.
 
   const cin = state.restHoliday ? null : toMySQLDateTime(date, s);
   const cout0 = state.restHoliday ? null : toMySQLDateTime(date, e);

@@ -17,17 +17,7 @@ exports.checkIn = async (req, res) => {
     }
     const b = req.body || {};
     
-    // 1. Validation: Chặn thời gian ngoài khoảng 06:00 - 23:59 (Ưu tiên 1)
-    const checkTimeRange = (timeInput) => {
-      try {
-        const d = timeInput ? new Date(timeInput) : new Date(Date.now() + 9 * 3600 * 1000);
-        const hm = `${String(d.getUTCHours() + 9).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
-        return hm >= '06:00' && hm <= '23:59';
-      } catch { return true; }
-    };
-    if (!checkTimeRange(b?.time)) {
-      return res.status(400).json({ message: 'Invalid time: Check-in must be between 06:00 and 23:59' });
-    }
+    // Allow full-day check-in window (00:00-23:59) for night shifts and late overtime.
 
     const wt = String(b?.workType || b?.work_type || '').trim();
     const workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
@@ -581,22 +571,66 @@ async function assertMonthWritable(req, targetUserId, year, month) {
   }
 }
 
+const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
+
+async function isKoujiFullTimeUser(userId) {
+  try {
+    const u = await userRepo.getUserById(userId);
+    if (!u) return false;
+    const tRaw = String(u?.employment_type || '').trim();
+    const t = tRaw.toLowerCase();
+    const fullTime = t === 'full_time' || tRaw.includes('正社員');
+    if (!fullTime) return false;
+    const dept = u?.departmentId ? (await userRepo.getDepartmentById(u.departmentId)) : null;
+    const deptName = String(dept?.name || '').trim();
+    return deptName.includes('工事部');
+  } catch {
+    return false;
+  }
+}
+
+function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
+  const byDate = new Map();
+  for (const it of (Array.isArray(detail) ? detail : [])) {
+    const ds = String(it?.date || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+    if (!byDate.has(ds)) byDate.set(ds, []);
+    byDate.get(ds).push({
+      type: String(it?.type || ''),
+      is_off: Number(it?.is_off || 0) === 1
+    });
+  }
+  const off = new Set();
+  for (const [ds, list] of byDate.entries()) {
+    if (!useKoujiPolicy) {
+      if (list.some(x => x.is_off)) off.add(ds);
+      continue;
+    }
+    const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
+    const hasLastSaturday = list.some(x => x.is_off && x.type === 'saturday_last');
+    const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
+    if (hasSunday || hasLastSaturday || hasHoliday) off.add(ds);
+  }
+  return off;
+}
+
+async function getUserOffDaySet(year, userId) {
+  const calendarRepo = require('../calendar/calendar.repository');
+  const cal = await calendarRepo.computeYear(year).catch(() => null);
+  const useKoujiPolicy = await isKoujiFullTimeUser(userId);
+  const off = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
+  if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
+    for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
+  }
+  return off;
+}
+
 async function computeMonthMissing(userId, y, m) {
   const pad = (n) => String(n).padStart(2, '0');
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const from = `${y}-${pad(m)}-01`;
   const to = `${y}-${pad(m)}-${pad(lastDay)}`;
-  const calendarRepo = require('../calendar/calendar.repository');
-  const cal = await calendarRepo.computeYear(y).catch(() => null);
-  const off = new Set();
-  try {
-    const detail = Array.isArray(cal?.detail) ? cal.detail : [];
-    for (const it of detail) {
-      const ds = String(it?.date || '').slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-      if (Number(it?.is_off || 0) === 1) off.add(ds);
-    }
-  } catch {}
+  const off = await getUserOffDaySet(y, userId);
   const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
   const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
   const segRows = await repo.listByUserBetween(userId, from, to).catch(() => []);
@@ -673,20 +707,10 @@ exports.getMonthStatusBulk = async (req, res) => {
     const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
     const from = `${y}-${pad(m)}-01`;
     const to = `${y}-${pad(m)}-${pad(lastDay)}`;
-    const calendarRepo = require('../calendar/calendar.repository');
-    const cal = await calendarRepo.computeYear(y).catch(() => null);
-    const off = new Set();
-    try {
-      const detail = Array.isArray(cal?.detail) ? cal.detail : [];
-      for (const it of detail) {
-        const ds = String(it?.date || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-        if (Number(it?.is_off || 0) === 1) off.add(ds);
-      }
-    } catch {}
     const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
     const enrich = async (uid) => {
       try {
+        const off = await getUserOffDaySet(y, uid);
         const dailyRows = await repo.listDailyBetween(uid, from, to).catch(() => []);
         const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
         const segRows = await repo.listByUserBetween(uid, from, to).catch(() => []);
@@ -1092,62 +1116,7 @@ exports.getMonthDetail = async (req, res) => {
     const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
     const planRows = await repo.listPlanBetween(userId, from, to).catch(() => []);
     const workReportRows = await workReportRepo.listByUserMonth(userId, `${y}-${pad(m)}`).catch(() => []);
-    const calendarRepo = require('../calendar/calendar.repository');
-    const cal = await calendarRepo.computeYear(y).catch(() => null);
-    const off = new Set();
-    try {
-      const detail = Array.isArray(cal?.detail) ? cal.detail : [];
-      const byDate = new Map();
-      for (const it of detail) {
-        const ds = String(it?.date || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-        if (!byDate.has(ds)) byDate.set(ds, []);
-        byDate.get(ds).push({
-          type: String(it?.type || ''),
-          is_off: Number(it?.is_off || 0) === 1
-        });
-      }
-      const addDaysUTC = (dateStr, n) => {
-        const yy = parseInt(String(dateStr).slice(0, 4), 10);
-        const mm = parseInt(String(dateStr).slice(5, 7), 10) - 1;
-        const dd = parseInt(String(dateStr).slice(8, 10), 10);
-        const dt = new Date(Date.UTC(yy, mm, dd, 0, 0, 0));
-        dt.setUTCDate(dt.getUTCDate() + n);
-        const y2 = dt.getUTCFullYear();
-        const m2 = String(dt.getUTCMonth() + 1).padStart(2, '0');
-        const d2 = String(dt.getUTCDate()).padStart(2, '0');
-        return `${y2}-${m2}-${d2}`;
-      };
-      const isHolidayType = (t) => {
-        if (t === 'fixed') return true;
-        if (t === 'jp_auto') return true;
-        if (t === 'jp_substitute') return true;
-        if (t === 'jp_bridge') return true;
-        return false;
-      };
-      const isNonWeekendHoliday = (ds) => {
-        const list = byDate.get(ds) || [];
-        return list.some(x => x.is_off && isHolidayType(x.type));
-      };
-      const hasValidBridge = (ds) => {
-        const list = byDate.get(ds) || [];
-        const hasBridge = list.some(x => x.is_off && x.type === 'jp_bridge');
-        if (!hasBridge) return false;
-        const prev = addDaysUTC(ds, -1);
-        const next = addDaysUTC(ds, 1);
-        return isNonWeekendHoliday(prev) && isNonWeekendHoliday(next);
-      };
-      for (const [ds, list] of byDate.entries()) {
-        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-        if (hasSunday) off.add(ds);
-        // Treat all Saturdays as off if calendar marks them (type 'saturday') or 'saturday_last'
-        if (list.some(x => x.is_off && (x.type === 'saturday' || x.type === 'saturday_last'))) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'fixed')) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'jp_auto')) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'jp_substitute')) off.add(ds);
-        if (hasValidBridge(ds)) off.add(ds);
-      }
-    } catch {}
+    const off = await getUserOffDaySet(y, userId);
     const shiftDefs = await repo.listShiftDefinitions().catch(() => []);
     const shiftById = new Map((shiftDefs || []).map(s => [String(s.id), s]));
     const shiftByName = new Map((shiftDefs || []).map(s => [String(s.name), s]));
@@ -1882,61 +1851,7 @@ exports.exportMonthXlsx = async (req, res) => {
     const planRows = await repo.listPlanBetween(userId, from, to).catch(() => []);
     const shiftDefs = await repo.listShiftDefinitions().catch(() => []);
     const shiftById = new Map((shiftDefs || []).map(s => [String(s.id), s]));
-    const calendarRepo = require('../calendar/calendar.repository');
-    const cal = await calendarRepo.computeYear(y).catch(() => null);
-    const off = new Set();
-    try {
-      const detail = Array.isArray(cal?.detail) ? cal.detail : [];
-      const byDate = new Map();
-      for (const it of detail) {
-        const ds = String(it?.date || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-        if (!byDate.has(ds)) byDate.set(ds, []);
-        byDate.get(ds).push({
-          type: String(it?.type || ''),
-          is_off: Number(it?.is_off || 0) === 1
-        });
-      }
-      const addDaysUTC = (dateStr, n) => {
-        const yy = parseInt(String(dateStr).slice(0, 4), 10);
-        const mm = parseInt(String(dateStr).slice(5, 7), 10) - 1;
-        const dd = parseInt(String(dateStr).slice(8, 10), 10);
-        const dt = new Date(Date.UTC(yy, mm, dd, 0, 0, 0));
-        dt.setUTCDate(dt.getUTCDate() + n);
-        const y2 = dt.getUTCFullYear();
-        const m2 = String(dt.getUTCMonth() + 1).padStart(2, '0');
-        const d2 = String(dt.getUTCDate()).padStart(2, '0');
-        return `${y2}-${m2}-${d2}`;
-      };
-      const isHolidayType = (t) => {
-        if (t === 'fixed') return true;
-        if (t === 'jp_auto') return true;
-        if (t === 'jp_substitute') return true;
-        if (t === 'jp_bridge') return true;
-        return false;
-      };
-      const isNonWeekendHoliday = (ds) => {
-        const list = byDate.get(ds) || [];
-        return list.some(x => x.is_off && isHolidayType(x.type));
-      };
-      const hasValidBridge = (ds) => {
-        const list = byDate.get(ds) || [];
-        const hasBridge = list.some(x => x.is_off && x.type === 'jp_bridge');
-        if (!hasBridge) return false;
-        const prev = addDaysUTC(ds, -1);
-        const next = addDaysUTC(ds, 1);
-        return isNonWeekendHoliday(prev) && isNonWeekendHoliday(next);
-      };
-      for (const [ds, list] of byDate.entries()) {
-        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-        if (hasSunday) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'saturday_last')) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'fixed')) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'jp_auto')) off.add(ds);
-        if (list.some(x => x.is_off && x.type === 'jp_substitute')) off.add(ds);
-        if (hasValidBridge(ds)) off.add(ds);
-      }
-    } catch {}
+    const off = await getUserOffDaySet(y, userId);
 
     const dailyMap = new Map();
     for (const r of dailyRows || []) {

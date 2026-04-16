@@ -44,6 +44,99 @@
   });
 
   const isMobile = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
+  let navLoadHideTimer = null;
+  let navLoadShowTimer = null;
+
+  const ensureNavLoadingStyle = () => {
+    if (document.getElementById('navTransitionSpinnerStyle')) return;
+    const st = document.createElement('style');
+    st.id = 'navTransitionSpinnerStyle';
+    st.textContent = `
+      .nav-transition-spinner{
+        position:fixed;inset:0;background:#fff;display:grid;place-items:center;z-index:99999
+      }
+      .nav-transition-spinner[hidden]{display:none}
+      .nav-transition-ring{
+        width:44px;height:44px;border-radius:999px;border:4px solid #dbeafe;border-top-color:#2563eb;
+        animation:nav-spin .8s linear infinite
+      }
+      @keyframes nav-spin{to{transform:rotate(360deg)}}
+    `;
+    document.head.appendChild(st);
+  };
+
+  const ensureNavLoadingEl = () => {
+    let el = document.getElementById('navTransitionSpinner');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'navTransitionSpinner';
+    el.className = 'nav-transition-spinner';
+    el.setAttribute('hidden', '');
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = '<div class="nav-transition-ring"></div>';
+    document.body.appendChild(el);
+    return el;
+  };
+
+  const hideNavLoading = () => {
+    try {
+      const el = document.getElementById('navTransitionSpinner');
+      if (el) el.setAttribute('hidden', '');
+      if (navLoadShowTimer) clearTimeout(navLoadShowTimer);
+      navLoadShowTimer = null;
+      if (navLoadHideTimer) clearTimeout(navLoadHideTimer);
+      navLoadHideTimer = null;
+    } catch {}
+  };
+
+  const showNavLoading = (delayMs = 160) => {
+    try {
+      if (navLoadShowTimer) clearTimeout(navLoadShowTimer);
+      navLoadShowTimer = setTimeout(() => {
+        ensureNavLoadingStyle();
+        const el = ensureNavLoadingEl();
+        el.removeAttribute('hidden');
+        if (navLoadHideTimer) clearTimeout(navLoadHideTimer);
+        navLoadHideTimer = setTimeout(() => hideNavLoading(), 10000);
+      }, Math.max(0, Number(delayMs) || 0));
+    } catch {}
+  };
+
+  const shouldShowForAnchor = (a, e) => {
+    if (!a) return false;
+    if (a.dataset?.noNavSpinner === '1') return false;
+    if (a.hasAttribute('download')) return false;
+    const target = String(a.getAttribute('target') || '').toLowerCase();
+    if (target && target !== '_self') return false;
+    if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)) return false;
+    const hrefRaw = String(a.getAttribute('href') || '').trim();
+    if (!hrefRaw || hrefRaw === '#' || hrefRaw.startsWith('#')) return false;
+    if (/^(mailto:|tel:|javascript:)/i.test(hrefRaw)) return false;
+    let to = null;
+    try { to = new URL(hrefRaw, location.href); } catch { return false; }
+    if (to.origin !== location.origin) return false;
+    if (to.pathname === location.pathname && to.search === location.search && (to.hash || '') === (location.hash || '')) return false;
+    if (to.pathname === location.pathname && to.search === location.search && to.hash && to.hash !== location.hash) return false;
+    return true;
+  };
+
+  const bindGlobalNavLoading = () => {
+    if (document.documentElement.dataset.navTransitionBound === '1') return;
+    document.documentElement.dataset.navTransitionBound = '1';
+    document.addEventListener('click', (e) => {
+      const a = e.target?.closest?.('a[href]');
+      if (!shouldShowForAnchor(a, e)) return;
+      showNavLoading();
+    }, true);
+    document.addEventListener('submit', (e) => {
+      const form = e.target?.closest?.('form');
+      if (!form) return;
+      const action = String(form.getAttribute('action') || '').trim();
+      if (/^(mailto:|tel:|javascript:)/i.test(action)) return;
+      showNavLoading();
+    }, true);
+    window.addEventListener('pageshow', () => hideNavLoading());
+  };
 
   const ensureMobileMenu = () => {
     const brand = document.querySelector('.kintai-brand');
@@ -103,7 +196,6 @@
           <div class="drawer-group">
             <button class="drawer-group-btn" type="button" data-group="common">共通機能 <span class="drawer-chev" aria-hidden="true">›</span></button>
             <div class="drawer-group-list" data-group-panel="common" hidden>
-              <a href="/ui/portal">ホーム</a>
               <a href="/ui/admin?tab=settings">パスワード変更画面</a>
             </div>
           </div>
@@ -219,6 +311,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     try { document.body.classList.add('nav-js'); } catch {}
+    try { bindGlobalNavLoading(); } catch {}
     try { ensureMobileMenu(); } catch {}
     window.addEventListener('resize', () => { try { ensureMobileMenu(); } catch {} }, { passive: true });
     try {
