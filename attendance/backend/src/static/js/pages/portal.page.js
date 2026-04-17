@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="icon">📝</div>
             <div class="title">申請</div>
           </a>
-          <a class="tile" href="/ui/attendance/simple" target="_blank" rel="noopener noreferrer">
+          <a class="tile" href="/ui/attendance/simple">
             <div class="icon">🕒</div>
             <div class="title">勤怠入力</div>
           </a>
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function navigateWithSpinner(href) {
     try { sessionStorage.setItem('navSpinner', '1'); } catch {}
     if (pageSpinner) { pageSpinner.removeAttribute('hidden'); }
-    setTimeout(() => { window.location.href = href; }, 600);
+    window.location.href = href;
   }
   const tilesSection = document.querySelector('.tiles');
   if (tilesSection) {
@@ -431,6 +431,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mobileClose = document.querySelector('#mobileClose');
   const mobileBackdrop = document.querySelector('#drawerBackdrop');
   if (mobileBtn && mobileDrawer) {
+    const isMobileViewport = () => {
+      try { return (window.innerWidth || 0) <= 480; } catch { return false; }
+    };
     let drawerScrollY = 0;
     const lockViewport = () => {
       try {
@@ -467,6 +470,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('touchmove', swallowWhenDrawerOpen, { passive: false });
     document.addEventListener('wheel', swallowWhenDrawerOpen, { passive: false });
     const toggleDrawer = (open) => {
+      if (!isMobileViewport()) {
+        try {
+          mobileDrawer.setAttribute('hidden', '');
+          mobileBtn.setAttribute('aria-expanded', 'false');
+          document.body.classList.remove('drawer-open');
+          unlockViewport();
+          if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
+        } catch {}
+        return;
+      }
       const isHidden = mobileDrawer.hasAttribute('hidden');
       const shouldOpen = typeof open === 'boolean' ? open : isHidden;
       if (shouldOpen) {
@@ -487,8 +500,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (mobileBackdrop) { mobileBackdrop.setAttribute('hidden', ''); }
       }
     };
-    mobileBtn.addEventListener('click', () => toggleDrawer());
+    mobileBtn.addEventListener('click', () => {
+      if (!isMobileViewport()) return;
+      toggleDrawer();
+    });
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
+    window.addEventListener('resize', () => {
+      if (!isMobileViewport()) toggleDrawer(false);
+    }, { passive: true });
+    if (!isMobileViewport()) toggleDrawer(false);
     /* backdrop không đóng, chỉ nút X mới đóng */
   }
   try { wireExpandingSearch(); } catch {}
