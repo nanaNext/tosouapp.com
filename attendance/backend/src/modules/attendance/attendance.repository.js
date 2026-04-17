@@ -949,7 +949,8 @@ module.exports = {
     try {
       await conn.beginTransaction();
       await conn.query(`SELECT id FROM users WHERE id = ? FOR UPDATE`, [userId]);
-      const [openRows] = await conn.query(`SELECT id FROM attendance WHERE userId = ? AND checkOut IS NULL AND checkIn >= CURDATE() AND checkIn < DATE_ADD(CURDATE(), INTERVAL 1 DAY) LIMIT 1`, [userId]);
+      // Simple stamp screen policy: only one check-in per day.
+      const [openRows] = await conn.query(`SELECT id FROM attendance WHERE userId = ? AND checkIn >= CURDATE() AND checkIn < DATE_ADD(CURDATE(), INTERVAL 1 DAY) LIMIT 1`, [userId]);
       if (openRows && openRows.length) {
         await conn.rollback();
         return null;
