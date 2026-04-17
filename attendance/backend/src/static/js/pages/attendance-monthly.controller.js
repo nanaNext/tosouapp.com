@@ -289,11 +289,6 @@
       const x = Number(scrollLeft) || 0;
       for (const ht of headTables) {
         try { ht.style.transform = `translateX(${-x}px)`; } catch {}
-        // Keep the "日付" header cell pinned to the left while the cloned header table shifts.
-        try {
-          const stickyHead = ht.querySelector('th.sticky-col-1');
-          if (stickyHead) stickyHead.style.transform = `translateX(${x}px)`;
-        } catch {}
       }
     };
 
