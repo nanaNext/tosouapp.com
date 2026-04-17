@@ -638,6 +638,7 @@
   };
 
   const setMonth = async (ym, replace = false, opts = {}) => {
+    const reqSeq = (ctx.monthReqSeq = Number(ctx.monthReqSeq || 0) + 1);
     state.currentYM = String(ym || '').slice(0, 7);
     const url = new URL(window.location.href);
     url.searchParams.set('month', ym);
@@ -651,9 +652,12 @@
     const useSpinner = opts?.spinner !== false;
     if (useSpinner) showSpinner();
     try {
-      const { detail, timesheet } = await loadMonth(ym, ctx.actingUserId || null);
+      const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
+      const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
+      const detail = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`);
+      if (reqSeq !== ctx.monthReqSeq) return;
       state.currentMonthDetail = detail;
-      state.currentMonthTimesheet = timesheet;
+      state.currentMonthTimesheet = null;
       try {
         const st = String(detail?.monthStatus?.status || '').trim();
         state.currentMonthStatus = st || 'draft';
@@ -673,7 +677,7 @@
       } catch {}
       renderContract(ctx.contractHost, detail);
       renderWorkDetail(ctx.workDetailHost, detail, ctx.profile);
-      renderSummary(ctx.summaryHost, detail, timesheet);
+      renderSummary(ctx.summaryHost, detail, null);
       
       // Update editability BEFORE rendering table to ensure correct lock state
       state.editableMonth = canEditForMonth(ym, ctx.profile);
@@ -701,6 +705,15 @@
       if (typeof ctx.applyContractTab === 'function') ctx.applyContractTab();
       if (typeof ctx.applySummaryTab === 'function') ctx.applySummaryTab();
       if (typeof ctx.applyPlanTab === 'function') ctx.applyPlanTab();
+
+      // Load heavy monthly timesheet summary in background so table appears instantly.
+      fetchJSONAuth(`/api/attendance/month?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`)
+        .then((timesheet) => {
+          if (reqSeq !== ctx.monthReqSeq) return;
+          state.currentMonthTimesheet = timesheet || null;
+          try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch {}
+        })
+        .catch(() => {});
     } catch (e) {
       showErr(e?.message || '読み込みに失敗しました');
     } finally {
