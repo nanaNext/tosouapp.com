@@ -651,6 +651,10 @@ const load = async (date) => {
         } catch {}
       }
     }
+    const hasStartedOnce = segments.some(s => !!s?.checkIn);
+    const hasEndedOnce = segments.some(s => !!s?.checkIn && !!s?.checkOut);
+    state.hasStartedToday = hasStartedOnce || !!seg?.checkIn;
+    state.hasEndedToday = hasEndedOnce || !!(seg?.checkIn && seg?.checkOut);
     renderSimpleStatus();
     try { $('#topDate').textContent = fmtJP(date); } catch {}
 
@@ -688,18 +692,20 @@ const load = async (date) => {
       const outTime = seg?.checkOut ? String(seg.checkOut).slice(11, 16) : '';
       const canStamp = date === todayJST();
       const hasOpen = !!effectiveOpenSeg?.checkIn && !effectiveOpenSeg?.checkOut;
+      const hasStarted = state.hasStartedToday || !!inTime;
+      const hasEnded = state.hasEndedToday || !!outTime;
       if (btnIn) {
-        btnIn.disabled = !canStamp || hasOpen;
-        const hmIn = hasOpen && effectiveOpenSeg?.checkIn ? String(effectiveOpenSeg.checkIn).slice(11, 16) : '';
+        btnIn.disabled = !canStamp || hasOpen || hasStarted;
+        const hmIn = (hasOpen && effectiveOpenSeg?.checkIn ? String(effectiveOpenSeg.checkIn).slice(11, 16) : '') || inTime;
         const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
-        btnIn.textContent = hasOpen && hmIn
+        btnIn.textContent = hmIn
           ? (isMobile ? `開始済 (${hmIn})` : `開始打刻済 (${hmIn})`)
           : '開始打刻';
       }
       if (btnOut) {
-        btnOut.disabled = !canStamp || !hasOpen;
+        btnOut.disabled = !canStamp || !hasOpen || hasEnded;
         if (hasOpen) btnOut.textContent = '終了打刻';
-        else if (outTime) {
+        else if (hasEnded && outTime) {
           const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
           btnOut.textContent = isMobile ? `終了済 (${outTime})` : `終了打刻済 (${outTime})`;
         }
@@ -924,7 +930,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   try { window.userRole = role; } catch {}
 
-  const state = { date: getUrlDate(), isOff: false, restHoliday: false, shiftStart: FIXED_START, shiftEnd: FIXED_END };
+  const state = { date: getUrlDate(), isOff: false, restHoliday: false, shiftStart: FIXED_START, shiftEnd: FIXED_END, hasStartedToday: false, hasEndedToday: false };
   window.state = state; // Gán vào window để các hàm bên ngoài scope DOMContentLoaded (như applyHolidayRestMode) có thể truy cập
   let startStampInFlight = false;
   setUrlDate(state.date);
@@ -941,6 +947,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const doStartStamp = async () => {
     if (startStampInFlight) return;
     showErr('');
+    if (state.hasStartedToday) {
+      showErr('開始打刻は1日1回までです。修正は月次勤怠入力で行ってください。');
+      return;
+    }
     if (!String($('#workType')?.value || '').trim()) {
       showErr('先に勤務区分を選択してください');
       return;
@@ -982,6 +992,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   const doEndStamp = async () => {
     showErr('');
+    if (state.hasEndedToday) {
+      showErr('終了打刻は1日1回までです。修正は月次勤怠入力で行ってください。');
+      return;
+    }
     if (!String($('#workType')?.value || '').trim()) {
       showErr('先に勤務区分を選択してください');
       return;
