@@ -686,8 +686,8 @@ const load = async (date) => {
         clearAutoTime(et);
       } else {
         if (stampSeg?.checkIn && !stampSeg?.checkOut) {
-          et.value = '';
-          clearAutoTime(et);
+          // Started but not ended yet: keep planned end-time in faded style.
+          applyAutoTime(et, shiftEnd);
         } else {
           applyAutoTime(et, shiftEnd);
         }
