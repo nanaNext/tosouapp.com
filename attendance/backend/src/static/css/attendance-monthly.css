@@ -2225,17 +2225,14 @@ input.se-time[disabled][data-row-disabled="1"]::-webkit-datetime-edit-fields-wra
   }
 }
 
-/* Disable fixed 日付 column: keep normal scrolling behavior */
-#monthTable #monthTableReal thead th.sticky-col-1,
-#monthTable .se-sticky-month-head th.sticky-col-1,
+/* Disable fixed 日付 body column only (header still sticky with thead row) */
 #monthTable #monthTableReal tbody td.sticky-col-1 {
   position: static !important;
   left: auto !important;
   z-index: auto !important;
 }
 
-/* Hard override for legacy sticky-col-1 rules defined earlier */
-.se-month-table-wrap #monthTableReal th.sticky-col-1,
+/* Hard override for legacy sticky-col-1 rules on body cells */
 .se-month-table-wrap #monthTableReal td.sticky-col-1 {
   position: static !important;
   left: auto !important;
@@ -2251,4 +2248,25 @@ input.se-time[disabled][data-row-disabled="1"]::-webkit-datetime-edit-fields-wra
   min-width: 72px !important;
   max-width: 72px !important;
   text-align: center !important;
+}
+
+/* Final behavior: use only real table header; remove cloned sticky header */
+#monthTable .se-sticky-month-head {
+  display: none !important;
+}
+#monthTable #monthTableReal thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 80 !important;
+}
+#monthTable #monthTableReal thead th.sticky-col-1 {
+  left: auto !important; /* do not pin date column horizontally */
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 81 !important;
+}
+#monthTable #monthTableReal tbody td.sticky-col-1 {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
 }
