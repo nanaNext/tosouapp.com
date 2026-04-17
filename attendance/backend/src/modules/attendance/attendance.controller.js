@@ -655,7 +655,11 @@ async function computeMonthMissing(userId, y, m) {
     const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
     const isWork = workKubunSet.has(kubun);
     if (!isOff && !kubun) {
-      missing.push(ds);
+      // Treat complete attendance times as valid even when kubun is still empty.
+      // This avoids false "missing day" errors during approval when rows were saved by times first.
+      if (!hasComplete) {
+        missing.push(ds);
+      }
       continue;
     }
     if (isWork && !hasComplete) {
@@ -734,7 +738,8 @@ exports.getMonthStatusBulk = async (req, res) => {
           const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
           const isWork = workKubunSet.has(kubun);
           if (!isOff && !kubun) {
-            missing++;
+            // Keep status as "ready" when complete in/out exists, even if kubun is blank.
+            if (!hasComplete) missing++;
             continue;
           }
           if (isWork && !hasComplete) missing++;
