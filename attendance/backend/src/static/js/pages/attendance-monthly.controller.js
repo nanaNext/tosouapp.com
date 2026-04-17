@@ -285,6 +285,17 @@
     const inner = bar.querySelector('.se-hscroll-inner');
     if (!inner) return;
     const main = document.querySelector('.kintai-main');
+    const applyHeadTranslate = (headTables, scrollLeft) => {
+      const x = Number(scrollLeft) || 0;
+      for (const ht of headTables) {
+        try { ht.style.transform = `translateX(${-x}px)`; } catch {}
+        // Keep the "日付" header cell pinned to the left while the cloned header table shifts.
+        try {
+          const stickyHead = ht.querySelector('th.sticky-col-1');
+          if (stickyHead) stickyHead.style.transform = `translateX(${x}px)`;
+        } catch {}
+      }
+    };
 
     const refresh = (attempt = 0) => {
       const host = getHost();
@@ -301,9 +312,7 @@
       }
       try { inner.style.width = `${sw}px`; } catch {}
       try { if (host) bar.scrollLeft = host.scrollLeft; } catch {}
-      for (const ht of headTables) {
-        try { ht.style.transform = `translateX(${- (host?.scrollLeft || 0)}px)`; } catch {}
-      }
+      applyHeadTranslate(headTables, host?.scrollLeft || 0);
       try {
         const need = (sw > cw + 1);
         const inView = (() => {
@@ -337,9 +346,7 @@
         const rootEl = getRoot();
         const headTables = Array.from(rootEl?.querySelectorAll?.('.se-sticky-month-head table') || []);
         try { if (host) host.scrollLeft = bar.scrollLeft; } catch {}
-        for (const ht of headTables) {
-          try { ht.style.transform = `translateX(${- (host?.scrollLeft || 0)}px)`; } catch {}
-        }
+        applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
       // Gán sự kiện cuộn cho host (kintai-main hoặc se-month-scroll)
@@ -350,9 +357,7 @@
         const host = getHost();
         const headTables = Array.from(getRoot()?.querySelectorAll?.('.se-sticky-month-head table') || []);
         try { if (host) bar.scrollLeft = host.scrollLeft; } catch {}
-        for (const ht of headTables) {
-          try { ht.style.transform = `translateX(${- (host?.scrollLeft || 0)}px)`; } catch {}
-        }
+        applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
       window.addEventListener('resize', () => { refresh(); }, { passive: true });
