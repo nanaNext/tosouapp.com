@@ -225,7 +225,7 @@ const renderNotices = async (date) => {
   } catch {
     try {
       const box = $('#noticeBox');
-      if (box) box.innerHTML = `<div class="simple-notice-empty">お知らせはありません</div>`;
+      if (box) box.innerHTML = `<div class="simple-notice-empty">個人カレンダー登録画面 へご確認ください。</div>`;
     } catch {}
   }
 };
