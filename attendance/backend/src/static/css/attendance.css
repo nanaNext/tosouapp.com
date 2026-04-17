@@ -21,6 +21,43 @@ body {
   display: none;
 }
 
+.kintai-toast {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 220px;
+  max-width: min(92vw, 520px);
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(11, 44, 102, 0.9);
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  z-index: 3300;
+  pointer-events: none;
+}
+.kintai-toast .sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 0.95;
+}
+.kintai-toast.show {
+  animation: kintai-toast-fade 1.8s ease forwards;
+}
+@keyframes kintai-toast-fade {
+  0% { opacity: 0; transform: translate(-50%, -42%); }
+  18% { opacity: 1; transform: translate(-50%, -50%); }
+  72% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -58%); }
+}
+
 .kintai-top {
   background: #0b2c66;
   color: #fff;
