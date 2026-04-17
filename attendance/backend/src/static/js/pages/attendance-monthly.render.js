@@ -147,11 +147,16 @@
       const approverName = String(detail?.monthStatus?.approverName || '').trim();
       const isAdminView = String(profile?.role || '').toLowerCase() === 'admin' || String(profile?.role || '').toLowerCase() === 'manager';
       const hasAny = !!(finalIn || finalOut);
+      const leaveKubunSet = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
+      const isLeaveApplied = !!kubunInit && leaveKubunSet.has(effectiveKubun) && !hasActual;
       let text = '未承認';
       let cls = 'warn';
       if (isPlanned && !hasActual) {
         text = '未申請';
         cls = 'warn';
+      } else if (isLeaveApplied) {
+        text = '申請';
+        cls = 'ok';
       } else if (approved) {
         text = '承認済み';
         cls = 'ok';
