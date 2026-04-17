@@ -43,6 +43,10 @@ const makeKpi = (title, value, sub) => {
 const renderDashboard = async (profile) => {
   const content = $('#adminContent');
   if (!content) return;
+  try {
+    const status = $('#status');
+    if (status) { status.textContent = ''; status.style.display = 'none'; }
+  } catch {}
   content.className = 'card';
   content.innerHTML = '';
 
