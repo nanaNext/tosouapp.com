@@ -653,6 +653,11 @@ body.drawer-open .topbar,
 body.drawer-open .subbar,
 body.drawer-open .content {
   transform: translateX(var(--drawer-offset, 280px));
+  pointer-events: none !important;
+  user-select: none;
+}
+body.drawer-open {
+  overflow: hidden;
 }
 
 .user {
