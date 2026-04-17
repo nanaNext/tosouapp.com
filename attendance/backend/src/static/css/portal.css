@@ -658,6 +658,8 @@ body.drawer-open .content {
 }
 body.drawer-open {
   overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .user {

@@ -431,6 +431,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mobileClose = document.querySelector('#mobileClose');
   const mobileBackdrop = document.querySelector('#drawerBackdrop');
   if (mobileBtn && mobileDrawer) {
+    let drawerScrollY = 0;
+    const lockViewport = () => {
+      try {
+        drawerScrollY = window.scrollY || window.pageYOffset || 0;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${drawerScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+      } catch {}
+    };
+    const unlockViewport = () => {
+      try {
+        document.documentElement.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, Math.max(0, Number(drawerScrollY) || 0));
+      } catch {}
+    };
+    const swallowWhenDrawerOpen = (e) => {
+      try {
+        if (!document.body.classList.contains('drawer-open')) return;
+        const inDrawer = e.target && e.target.closest && e.target.closest('#mobileDrawer');
+        if (inDrawer) return;
+        e.preventDefault();
+      } catch {}
+    };
+    document.addEventListener('touchmove', swallowWhenDrawerOpen, { passive: false });
+    document.addEventListener('wheel', swallowWhenDrawerOpen, { passive: false });
     const toggleDrawer = (open) => {
       const isHidden = mobileDrawer.hasAttribute('hidden');
       const shouldOpen = typeof open === 'boolean' ? open : isHidden;
@@ -441,12 +476,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           const w = Math.round(mobileDrawer.getBoundingClientRect().width || 280);
           document.documentElement.style.setProperty('--drawer-offset', `${w}px`);
           document.body.classList.add('drawer-open');
+          lockViewport();
         } catch {}
         if (mobileBackdrop) { mobileBackdrop.removeAttribute('hidden'); }
       } else {
         mobileDrawer.setAttribute('hidden', '');
         mobileBtn.setAttribute('aria-expanded', 'false');
         document.body.classList.remove('drawer-open');
+        unlockViewport();
         if (mobileBackdrop) { mobileBackdrop.setAttribute('hidden', ''); }
       }
     };
