@@ -144,8 +144,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const role = String(profile.role || '').toLowerCase();
   $('#userName').textContent = profile.username || profile.email || 'ユーザー';
   if (role === 'admin' || role === 'manager') {
-    try { sessionStorage.setItem('navSpinner', '1'); } catch {}
-    try { if (pageSpinner) { pageSpinner.removeAttribute('hidden'); } } catch {}
     try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; }
     return;
   }
@@ -320,8 +318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch {}
   /* dùng biến pageSpinner đã khai báo ở đầu scope */
   function navigateWithSpinner(href) {
-    try { sessionStorage.setItem('navSpinner', '1'); } catch {}
-    if (pageSpinner) { pageSpinner.removeAttribute('hidden'); }
+    // Navigate immediately without transitional spinner flash.
     window.location.href = href;
   }
   const tilesSection = document.querySelector('.tiles');
