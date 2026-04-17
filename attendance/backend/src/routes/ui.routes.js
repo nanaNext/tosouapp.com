@@ -11,8 +11,14 @@ const sendHtml = makeHtmlSenderSync({ htmlRoot });
 
 const sendPage = (file) => (req, res) => sendHtml(req, res, file);
 const authorizePage = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(String(req.user.role || '').toLowerCase())) {
-    return res.status(403).send('Forbidden');
+  const role = String(req.user?.role || '').toLowerCase();
+  if (!req.user) {
+    return res.redirect(302, '/ui/login');
+  }
+  if (!roles.includes(role)) {
+    // Avoid blank "Forbidden" screen on UI routes; send user back to a valid page.
+    if (role === 'employee') return res.redirect(302, '/ui/portal');
+    return res.redirect(302, '/ui/login');
   }
   next();
 };
