@@ -117,7 +117,9 @@
       const effectiveKubun = kubunVal || plannedKubun;
       
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
-      const isWorkKubun = workKubunSet.has(kubunVal);
+      // IMPORTANT: classify by effective kubun (fallback to planned default),
+      // otherwise planned workdays with empty kubun can be skipped from updates.
+      const isWorkKubun = workKubunSet.has(effectiveKubun);
       const effTime = (el, acceptAuto) => {
         const v = String(el?.value || '');
         if (acceptAuto) return v;
