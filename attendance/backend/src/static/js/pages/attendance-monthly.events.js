@@ -579,7 +579,7 @@
     const ok = await controller.init();
     if (!ok) return;
     bind();
-    await controller.setMonth(controller.ctx.initialYM, true);
+    await controller.setMonth(controller.ctx.initialYM, true, { spinner: false });
     hideSpinner();
   };
 

@@ -637,7 +637,7 @@
     }, 900);
   };
 
-  const setMonth = async (ym, replace = false) => {
+  const setMonth = async (ym, replace = false, opts = {}) => {
     state.currentYM = String(ym || '').slice(0, 7);
     const url = new URL(window.location.href);
     url.searchParams.set('month', ym);
@@ -648,7 +648,8 @@
     if (ctx.picker1) ctx.picker1.value = ym;
     if (ctx.picker2) ctx.picker2.value = ym;
     showErr('');
-    showSpinner();
+    const useSpinner = opts?.spinner !== false;
+    if (useSpinner) showSpinner();
     try {
       const { detail, timesheet } = await loadMonth(ym, ctx.actingUserId || null);
       state.currentMonthDetail = detail;
@@ -703,7 +704,7 @@
     } catch (e) {
       showErr(e?.message || '読み込みに失敗しました');
     } finally {
-      hideSpinner();
+      if (useSpinner) hideSpinner();
     }
   };
 
