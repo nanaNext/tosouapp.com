@@ -810,8 +810,10 @@ const load = async (date, opts = {}) => {
           : '開始打刻';
       }
       if (btnOut) {
-        btnOut.disabled = !canStamp || !hasOpen || hasEnded;
-        if (hasOpen) btnOut.textContent = '終了打刻';
+        // Do not hard-disable checkout on transient stale segment state.
+        // If user has started and has not ended yet, allow tapping 終了打刻 and let API verify.
+        btnOut.disabled = !canStamp || !hasStarted || hasEnded;
+        if (hasOpen || (hasStarted && !hasEnded)) btnOut.textContent = '終了打刻';
         else if (hasEnded && outTime) {
           const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
           btnOut.textContent = isMobile ? `終了済 (${outTime})` : `終了打刻済 (${outTime})`;
