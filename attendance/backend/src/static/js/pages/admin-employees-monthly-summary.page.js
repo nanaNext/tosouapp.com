@@ -102,8 +102,11 @@ function num(v) {
 function fromDateTime(s) {
   const t = String(s || '').trim();
   if (!t) return '';
-  const m = t.match(/T(\d{2}:\d{2})/);
-  return m ? m[1] : '';
+  const m = t.match(/[T\s](\d{2}:\d{2})/);
+  if (m) return m[1];
+  // Support plain "HH:MM[:SS]" payloads as well.
+  const hm = t.match(/^(\d{2}:\d{2})(?::\d{2})?$/);
+  return hm ? hm[1] : '';
 }
 
 function parseHm(s) {
@@ -759,11 +762,9 @@ export async function mount() {
       fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}&userId=${encodeURIComponent(uid)}${bust}`),
       fetchJSONAuth(`/api/attendance/month?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}&userId=${encodeURIComponent(uid)}${bust}`).catch(() => null)
     ]);
-    await ensureMonthlyLibsReady();
-    const exactAll = (await exactSummaryFromEmbed(uid, ym, 'sumAll')) || exactSummaryFromMonthly(detail, timesheet, 'sumAll');
-    const exactIh = (await exactSummaryFromEmbed(uid, ym, 'sumIh')) || exactSummaryFromMonthly(detail, timesheet, 'sumIh');
-    setSummaryValues(root, 'sumAll', exactAll || computeSummary(detail, timesheet, 'sumAll'));
-    setSummaryValues(root, 'sumIh', exactIh || computeSummary(detail, timesheet, 'sumIh'));
+    // Fast path: compute directly from API payload to avoid long iframe-based extraction.
+    setSummaryValues(root, 'sumAll', computeSummary(detail, timesheet, 'sumAll'));
+    setSummaryValues(root, 'sumIh', computeSummary(detail, timesheet, 'sumIh'));
     setStatus('読込完了');
     try {
       const u = new URL(window.location.href);
