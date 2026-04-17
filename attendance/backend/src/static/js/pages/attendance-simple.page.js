@@ -223,7 +223,10 @@ const renderNotices = async (date) => {
       }
     } catch {}
   } catch {
-    try { $('#noticeBox').textContent = 'お知らせの取得に失敗しました'; } catch {}
+    try {
+      const box = $('#noticeBox');
+      if (box) box.innerHTML = `<div class="simple-notice-empty">お知らせはありません</div>`;
+    } catch {}
   }
 };
 
