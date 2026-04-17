@@ -155,8 +155,8 @@
         text = '未申請';
         cls = 'warn';
       } else if (isLeaveApplied) {
-        text = '申請';
-        cls = 'ok';
+        text = isAdminView ? '承認待ち' : '申請';
+        cls = isAdminView ? 'warn' : 'ok';
       } else if (approved) {
         text = '承認済み';
         cls = 'ok';
