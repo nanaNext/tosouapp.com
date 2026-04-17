@@ -138,6 +138,19 @@ module.exports = {
     const [rows] = await db.query(sql, [userId]);
     return rows;
   },
+  async listApprovedByUserOverlap(userId, fromDate, toDate) {
+    const sql = `
+      SELECT *
+      FROM leave_requests
+      WHERE userId = ?
+        AND status = 'approved'
+        AND endDate >= ?
+        AND startDate <= ?
+      ORDER BY startDate DESC
+    `;
+    const [rows] = await db.query(sql, [userId, fromDate, toDate]);
+    return rows;
+  },
   async listAllPending() {
     const sql = `
       SELECT * FROM leave_requests

@@ -1293,13 +1293,12 @@ exports.getMonthDetail = async (req, res) => {
       };
       try {
         const leaveRepo = require('../leave/leave.repository');
-        const all = await leaveRepo.listByUser(userId).catch(() => []);
+        const all = await leaveRepo.listApprovedByUserOverlap(userId, from, to).catch(() => []);
         let paidDays = 0;
         let substituteDays = 0;
         let unpaidDays = 0;
         let standbyDays = 0;
         for (const r of (all || [])) {
-          if (String(r?.status || '') !== 'approved') continue;
           const s = String(r?.startDate || '').slice(0, 10);
           const e = String(r?.endDate || '').slice(0, 10);
           if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) continue;
