@@ -652,25 +652,33 @@
     if (ctx.picker2) ctx.picker2.value = ym;
     showErr('');
     const cached = ctx.monthCache.get(cacheKey) || null;
-    const useSpinner = opts?.spinner !== false && !cached;
+    let persisted = null;
+    if (!cached) {
+      try {
+        const raw = sessionStorage.getItem(`monthly.cache.${cacheKey}`);
+        if (raw) persisted = JSON.parse(raw);
+      } catch {}
+    }
+    const instant = cached || persisted;
+    const useSpinner = opts?.spinner !== false && !instant;
     if (useSpinner) showSpinner();
     try {
       const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
       const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
-      if (cached?.detail) {
-        state.currentMonthDetail = cached.detail;
-        state.currentMonthTimesheet = cached.timesheet || null;
+      if (instant?.detail) {
+        state.currentMonthDetail = instant.detail;
+        state.currentMonthTimesheet = instant.timesheet || null;
         try {
-          const st = String(cached.detail?.monthStatus?.status || '').trim();
+          const st = String(instant.detail?.monthStatus?.status || '').trim();
           state.currentMonthStatus = st || 'draft';
         } catch {
           state.currentMonthStatus = 'draft';
         }
-        renderContract(ctx.contractHost, cached.detail);
-        renderWorkDetail(ctx.workDetailHost, cached.detail, ctx.profile);
-        renderSummary(ctx.summaryHost, cached.detail, cached.timesheet || null);
+        renderContract(ctx.contractHost, instant.detail);
+        renderWorkDetail(ctx.workDetailHost, instant.detail, ctx.profile);
+        renderSummary(ctx.summaryHost, instant.detail, instant.timesheet || null);
         state.editableMonth = canEditForMonth(ym, ctx.profile);
-        renderTable(ctx.tableHost, cached.detail, ctx.profile);
+        renderTable(ctx.tableHost, instant.detail, ctx.profile);
         applyPinMonthHead();
         applyEditability(ym);
         updateMonthWorkflowUI();
@@ -683,6 +691,9 @@
       const detail = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`);
       if (reqSeq !== ctx.monthReqSeq) return;
       ctx.monthCache.set(cacheKey, { detail, timesheet: null, at: Date.now() });
+      try {
+        sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify({ detail, timesheet: null, at: Date.now() }));
+      } catch {}
       state.currentMonthDetail = detail;
       state.currentMonthTimesheet = null;
       try {
@@ -738,7 +749,11 @@
         .then((timesheet) => {
           if (reqSeq !== ctx.monthReqSeq) return;
           state.currentMonthTimesheet = timesheet || null;
-          try { ctx.monthCache.set(cacheKey, { detail: state.currentMonthDetail, timesheet: state.currentMonthTimesheet, at: Date.now() }); } catch {}
+          try {
+            const nextCache = { detail: state.currentMonthDetail, timesheet: state.currentMonthTimesheet, at: Date.now() };
+            ctx.monthCache.set(cacheKey, nextCache);
+            sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify(nextCache));
+          } catch {}
           try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch {}
         })
         .catch(() => {});
@@ -1510,7 +1525,6 @@
     if (!ctx.actingUserId) return;
     if (!confirm('この月を承認して締め処理します。よろしいですか？')) return;
     showErr('');
-    showSpinner();
     try {
       const y = parseInt(ym.slice(0, 4), 10);
       const m = parseInt(ym.slice(5, 7), 10);
@@ -1518,11 +1532,22 @@
         await fetchJSONAuth('/api/attendance/month/submit', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
       } catch {}
       await fetchJSONAuth('/api/attendance/month/approve', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
-      await setMonth(ym, true);
+      // Reflect approval immediately on UI, then sync in background.
+      try {
+        if (state.currentMonthDetail) {
+          state.currentMonthDetail.monthStatus = state.currentMonthDetail.monthStatus || {};
+          state.currentMonthDetail.monthStatus.status = 'approved';
+          state.currentMonthDetail.monthStatus.approvedAt = state.currentMonthDetail.monthStatus.approvedAt || new Date().toISOString();
+          state.currentMonthDetail.monthStatus.approverName = state.currentMonthDetail.monthStatus.approverName || String(ctx.profile?.username || '').trim();
+        }
+        state.currentMonthStatus = 'approved';
+        updateMonthWorkflowUI();
+        renderTable(ctx.tableHost, state.currentMonthDetail, ctx.profile);
+        renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet || null);
+      } catch {}
+      void setMonth(ym, true, { spinner: false }).catch(() => {});
     } catch (err) {
       showErr(err?.message || '承認に失敗しました');
-    } finally {
-      hideSpinner();
     }
   };
 
