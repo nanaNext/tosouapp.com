@@ -1211,7 +1211,12 @@
         : tr.querySelector('input[data-field="ckSatellite"]')?.checked ? 'satellite'
         : String(tr.dataset.workType || '')).trim();
       const reason = String(tr.querySelector('select[data-field="reason"]')?.value || '').trim();
-      const notes = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
+      const location = String(tr.querySelector('input[data-field="location"]')?.value || '').trim();
+      const memo = String(tr.querySelector('input[data-field="memo"]')?.value || '').trim();
+      const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
+      const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
+      const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
+      const nightBreakMinutes = nb === '1:00' ? 60 : nb === '0:30' ? 30 : 0;
       
       const idRaw = String(tr.dataset.id || '').trim();
       let clientId = String(tr.dataset.clientId || '').trim();
@@ -1258,18 +1263,24 @@
       
       const sel = tr.querySelector('select[data-field="classification"]');
       const v = String(sel?.value || '').trim();
-      const payload = { 
+      const payload = {
         year: y, 
         month: m, 
         userId: ctx.actingUserId || undefined, 
         updates, 
         dailyUpdates: [
-          { 
-            date: dateStr, 
+          {
+            date: dateStr,
             kubun: v || null,
             kubunConfirmed: v ? 1 : 0,
-            reason: reason || null, 
-            notes: notes || null 
+            workType: (wt === 'onsite' || wt === 'remote' || wt === 'satellite') ? wt : null,
+            location: location || '',
+            reason: reason || '',
+            memo: memo || '',
+            breakMinutes,
+            nightBreakMinutes,
+            shiftStart: String(tr.dataset.shiftStart || '08:00').trim(),
+            checkInTime: rawIn || null
           }
         ] 
       };
