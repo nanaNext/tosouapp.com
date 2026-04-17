@@ -15,8 +15,29 @@
 
   try { globalThis.__monthlyBooted = Date.now(); } catch {}
 
-  const showSpinner = () => { try { $('#pageSpinner')?.removeAttribute('hidden'); } catch {} };
-  const hideSpinner = () => { try { $('#pageSpinner')?.setAttribute('hidden', ''); } catch {} };
+  let monthlySpinnerDelay = null;
+  const showSpinner = () => {
+    try {
+      const el = $('#pageSpinner');
+      if (!el) return;
+      if (monthlySpinnerDelay) clearTimeout(monthlySpinnerDelay);
+      monthlySpinnerDelay = setTimeout(() => {
+        try { el.removeAttribute('hidden'); } catch {}
+        monthlySpinnerDelay = null;
+      }, 180);
+    } catch {}
+  };
+  const hideSpinner = () => {
+    try {
+      const el = $('#pageSpinner');
+      if (!el) return;
+      if (monthlySpinnerDelay) {
+        clearTimeout(monthlySpinnerDelay);
+        monthlySpinnerDelay = null;
+      }
+      el.setAttribute('hidden', '');
+    } catch {}
+  };
 
   const MonthlyAuth = globalThis.MonthlyAuth || {};
   const fetchJSONAuth = MonthlyAuth.fetchJSONAuth;
