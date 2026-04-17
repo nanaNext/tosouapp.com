@@ -17,17 +17,25 @@ body {
   z-index: 3000;
 }
 .kintai-spinner::after {
-  content: "L o a d i n g";
+  content: "tosouapp";
   position: absolute;
   top: 56%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  left: -28%;
   color: #60a5fa;
   font-size: 44px;
-  letter-spacing: 8px;
-  font-weight: 500;
-  opacity: 0.92;
+  letter-spacing: 4px;
+  font-weight: 600;
+  opacity: 0.94;
   pointer-events: none;
+  white-space: nowrap;
+  animation: kintai-spinner-run 1.9s linear infinite;
+}
+
+@keyframes kintai-spinner-run {
+  0%   { left: -28%; opacity: .1; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { left: 100%; opacity: .1; }
 }
 
 .kintai-spinner[hidden] {
