@@ -3,11 +3,23 @@ import { fetchJSONAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+let spinnerDelayTimer = null;
 const showSpinner = (v) => {
   const el = $('#pageSpinner');
   if (!el) return;
-  if (v) el.removeAttribute('hidden');
-  else el.setAttribute('hidden', '');
+  if (spinnerDelayTimer) {
+    clearTimeout(spinnerDelayTimer);
+    spinnerDelayTimer = null;
+  }
+  if (v) {
+    // Avoid flashing a full-page spinner for fast operations.
+    spinnerDelayTimer = setTimeout(() => {
+      try { el.removeAttribute('hidden'); } catch {}
+      spinnerDelayTimer = null;
+    }, 180);
+  } else {
+    el.setAttribute('hidden', '');
+  }
 };
 
 const showErr = (msg) => {
@@ -727,10 +739,8 @@ const load = async (date) => {
       }
     } catch {}
 
-    try {
-      await noticesTask;
-      const r = await reportTask;
-      const rep = r?.report || null;
+    // Non-critical data: keep loading in background so UI becomes interactive sooner.
+    const applyReport = (rep) => {
       const siteEl = $('#workSite');
       const workEl = $('#workContent');
       if (rep && (rep.site || rep.work)) {
@@ -747,7 +757,9 @@ const load = async (date) => {
           if (workEl && !workEl.value) workEl.value = draft.work || '';
         }
       }
-    } catch {}
+    };
+    Promise.resolve(noticesTask).catch(() => null);
+    Promise.resolve(reportTask).then((r) => applyReport(r?.report || null)).catch(() => applyReport(null));
 
     renderWorkMinutes();
     syncWorkTypeButtons();
