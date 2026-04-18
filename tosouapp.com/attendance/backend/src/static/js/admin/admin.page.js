@@ -1,5 +1,5 @@
 import { logout } from '../api/auth.api.js';
-import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260418-menuhotfix9';
+import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260418-menuhotfix10';
 
 const normalizePath = (p) => {
   const s = String(p || '');
