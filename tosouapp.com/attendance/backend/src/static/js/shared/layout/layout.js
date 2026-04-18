@@ -153,10 +153,12 @@ export function initLayout() {
       }, 250);
     } catch {}
     document.addEventListener('click', (e) => {
-      if (!dropdown.contains(e.target) && !userBtn.contains(e.target)) {
-        dropdown.setAttribute('hidden', '');
-        userBtn.setAttribute('aria-expanded', 'false');
-      }
+      const insideAnyUser = e.target && e.target.closest ? e.target.closest('.user') : null;
+      if (insideAnyUser) return;
+      try {
+        document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
+        document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+      } catch {}
     });
     const btnLogout = document.querySelector('#btnLogout');
     if (btnLogout) {
@@ -173,8 +175,13 @@ export function initLayout() {
     const items = dropdown.querySelectorAll('.item, a, button');
     items.forEach(el => {
       el.addEventListener('click', () => {
-        dropdown.setAttribute('hidden', '');
-        userBtn.setAttribute('aria-expanded', 'false');
+        try {
+          const root = el.closest('.user');
+          const dd = root ? root.querySelector('.dropdown') : dropdown;
+          const b = root ? root.querySelector('.user-btn') : userBtn;
+          if (dd) dd.setAttribute('hidden', '');
+          if (b) b.setAttribute('aria-expanded', 'false');
+        } catch {}
       });
     });
     const applyTheme = (val) => {
@@ -227,8 +234,13 @@ export function initLayout() {
     if (!ub) return;
     e.preventDefault();
     e.stopPropagation();
-    const dd = document.querySelector('#userDropdown');
+    const root = ub.closest('.user');
+    const dd = root ? root.querySelector('.dropdown') : null;
     if (!dd) return;
+    try {
+      document.querySelectorAll('.user .dropdown').forEach((el) => { if (el !== dd) el.setAttribute('hidden', ''); });
+      document.querySelectorAll('.user .user-btn').forEach((el) => { if (el !== ub) el.setAttribute('aria-expanded', 'false'); });
+    } catch {}
     const hidden = dd.hasAttribute('hidden');
     if (hidden) {
       dd.removeAttribute('hidden');

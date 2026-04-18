@@ -101,6 +101,23 @@ body.drawer-open.admin.has-sidebar .content {
   align-items: center;
 }
 
+/* Stable user menu on desktop and mobile (avoid layout jump when opening) */
+.admin .topbar .user {
+  position: relative;
+}
+
+.admin .topbar .user .dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 220px;
+  z-index: 3000;
+}
+
+.admin .topbar .user .dropdown[hidden] {
+  display: none !important;
+}
+
 .admin.has-sidebar .topbar .brand .icon {
   display: inline-block;
 }
