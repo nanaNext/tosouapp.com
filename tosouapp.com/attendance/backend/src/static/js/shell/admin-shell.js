@@ -70,28 +70,29 @@ export function wireTopbarHeightVar() {
 
 export function wireUserMenu() {
   try {
-    const btn = qs('.user-btn');
-    const dd = qs('#userDropdown');
-    if (!btn || !dd) return;
-    if (btn.dataset.bound === '1') return;
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (dd.hasAttribute('hidden')) dd.removeAttribute('hidden');
-      else dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', dd.hasAttribute('hidden') ? 'false' : 'true'); } catch {}
-    });
+    if (document.body.dataset.userMenuDelegated === '1') return;
+    document.body.dataset.userMenuDelegated = '1';
     document.addEventListener('click', (e) => {
-      const t = e && e.target;
-      if (t && t.closest && t.closest('.user-menu')) return;
-      if (!dd.hasAttribute('hidden')) dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', 'false'); } catch {}
-    });
-    document.addEventListener('click', (e) => {
-      const a = e && e.target && e.target.closest ? e.target.closest('a[href]') : null;
-      if (!a) return;
-      if (!dd.hasAttribute('hidden')) dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', 'false'); } catch {}
+      const btn = e && e.target && e.target.closest ? e.target.closest('.user .user-btn') : null;
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const root = btn.closest('.user');
+        const dd = root ? root.querySelector('.dropdown') : null;
+        if (!dd) return;
+        try { document.querySelectorAll('.subbar .menu.open').forEach((m) => m.classList.remove('open')); } catch {}
+        const hidden = dd.hasAttribute('hidden');
+        if (hidden) dd.removeAttribute('hidden');
+        else dd.setAttribute('hidden', '');
+        try { btn.setAttribute('aria-expanded', hidden ? 'true' : 'false'); } catch {}
+        return;
+      }
+      const inside = e && e.target && e.target.closest ? e.target.closest('.user-menu') : null;
+      if (inside) return;
+      try {
+        document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
+        document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+      } catch {}
     }, true);
 
     // Theme submenu wiring (idempotent)
