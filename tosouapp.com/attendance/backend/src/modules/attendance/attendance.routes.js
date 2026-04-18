@@ -5,7 +5,51 @@ const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit')
 const controller = require('./attendance.controller');
 const attendanceRepo = require('./attendance.repository');
 const calendarRepo = require('../calendar/calendar.repository');
+const userRepo = require('../users/user.repository');
 const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process.env.ENABLE_DEBUG_ROUTES || '').toLowerCase() === 'true';
+
+const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
+
+async function isKoujiFullTimeUser(userId) {
+  try {
+    const u = await userRepo.getUserById(userId);
+    if (!u) return false;
+    const tRaw = String(u?.employment_type || '').trim();
+    const t = tRaw.toLowerCase();
+    const fullTime = t === 'full_time' || tRaw.includes('正社員');
+    if (!fullTime) return false;
+    const dept = u?.departmentId ? (await userRepo.getDepartmentById(u.departmentId)) : null;
+    const deptName = String(dept?.name || '').trim();
+    return deptName.includes('工事部');
+  } catch {
+    return false;
+  }
+}
+
+function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
+  const byDate = new Map();
+  for (const it of (Array.isArray(detail) ? detail : [])) {
+    const ds = String(it?.date || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+    if (!byDate.has(ds)) byDate.set(ds, []);
+    byDate.get(ds).push({
+      type: String(it?.type || ''),
+      is_off: Number(it?.is_off || 0) === 1
+    });
+  }
+  const off = new Set();
+  for (const [ds, list] of byDate.entries()) {
+    if (!useKoujiPolicy) {
+      if (list.some(x => x.is_off)) off.add(ds);
+      continue;
+    }
+    const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
+    const hasLastSaturday = list.some(x => x.is_off && x.type === 'saturday_last');
+    const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
+    if (hasSunday || hasLastSaturday || hasHoliday) off.add(ds);
+  }
+  return { byDate, off };
+}
 
 router.post('/checkin',
   rateLimitNamed('attendance_checkin', { windowMs: 60_000, max: 3 }),
@@ -82,6 +126,16 @@ router.get('/calendar', authenticate, authorize('employee','manager','admin'), a
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
     const r = await calendarRepo.computeYear(year);
+    const useKoujiPolicy = await isKoujiFullTimeUser(req.user?.id);
+    const detailBase = Array.isArray(r?.detail) ? r.detail : [];
+    const { off } = buildOffSetFromCalendarDetail(detailBase, useKoujiPolicy);
+    const detailPolicy = useKoujiPolicy
+      ? detailBase.map(it => {
+          const t = String(it?.type || '');
+          if (t === 'saturday') return { ...it, is_off: 0 };
+          return it;
+        })
+      : detailBase;
     const lang = (req.query.lang || req.headers['accept-language'] || '').toLowerCase();
     const isJa = lang.startsWith('ja');
     const bilingual = String(req.query.bilingual || '').toLowerCase() === 'true';
@@ -92,9 +146,10 @@ router.get('/calendar', authenticate, authorize('employee','manager','admin'), a
       return isJa ? (j || e || null) : (e || j || null);
     };
     const mapLabel = list => (Array.isArray(list) ? list.map(x => ({ ...x, label: labelOf(x.name_ja || x.name, x.name_en || null) })) : list);
-    const detail2 = Array.isArray(r.detail) ? r.detail.map(x => ({ ...x, label: labelOf(x.name, x.name_en || null) })) : r.detail;
+    const detail2 = Array.isArray(detailPolicy) ? detailPolicy.map(x => ({ ...x, label: labelOf(x.name, x.name_en || null) })) : detailPolicy;
     const r2 = {
       ...r,
+      off_days: Array.from(off).sort(),
       jp_auto: mapLabel(r.jp_auto),
       jp_substitute: mapLabel(r.jp_substitute),
       jp_bridge: mapLabel(r.jp_bridge),
@@ -109,8 +164,24 @@ router.get('/calendar/day/:date', authenticate, authorize('employee','manager','
   try {
     const date = String(req.params.date || '').slice(0, 10);
     if (!date) return res.status(400).json({ message: 'Missing date' });
-    const r = await calendarRepo.explainDate(date);
-    res.status(200).json(r);
+    const year = parseInt(String(date).slice(0, 4), 10);
+    const cal = await calendarRepo.computeYear(year);
+    const useKoujiPolicy = await isKoujiFullTimeUser(req.user?.id);
+    const detail = Array.isArray(cal?.detail) ? cal.detail : [];
+    const { off } = buildOffSetFromCalendarDetail(detail, useKoujiPolicy);
+    const matched = detail.filter(it => String(it?.date || '').slice(0, 10) === date);
+    const reasons = matched.map(it => {
+      const t = String(it?.type || '');
+      const specialOff = useKoujiPolicy
+        ? (t === 'sunday' || t === 'saturday_last' || HOLIDAY_TYPES.has(t))
+        : Number(it?.is_off || 0) === 1;
+      return {
+        type: t,
+        name: it?.name || null,
+        is_off: specialOff ? 1 : 0
+      };
+    });
+    res.status(200).json({ date, is_off: off.has(date) ? 1 : 0, reasons });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

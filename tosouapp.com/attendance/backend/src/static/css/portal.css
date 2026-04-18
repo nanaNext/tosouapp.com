@@ -197,6 +197,8 @@
   transition: transform .2s ease;
 }
 
+/* Employee portal: keep subbar on desktop, hide only on mobile where drawer exists */
+
 .page-spinner {
   position: fixed;
   inset: 0;
@@ -651,6 +653,34 @@ body.drawer-open .topbar,
 body.drawer-open .subbar,
 body.drawer-open .content {
   transform: translateX(var(--drawer-offset, 280px));
+  pointer-events: none !important;
+  user-select: none;
+}
+body.drawer-open {
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* Safety guard: desktop must never show mobile drawer, even if drawer-open is stuck */
+@media (min-width: 481px) {
+  .mobile-drawer,
+  .drawer-backdrop {
+    display: none !important;
+    pointer-events: none !important;
+  }
+  body.drawer-open .topbar,
+  body.drawer-open .subbar,
+  body.drawer-open .content {
+    transform: none !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
+  }
+  body.drawer-open {
+    overflow: auto !important;
+    touch-action: auto !important;
+    overscroll-behavior: auto !important;
+  }
 }
 
 .user {
@@ -662,15 +692,15 @@ body.drawer-open .content {
 }
 
 .user .user-icon {
-  height: 56px;
-  width: 56px;
+  height: 38px;
+  width: 38px;
   vertical-align: middle;
 }
 
 @media (min-width: 481px) {
   .admin .user .user-icon {
-    height: 64px;
-    width: 64px;
+    height: 44px;
+    width: 44px;
   }
 }
 
@@ -2206,13 +2236,28 @@ body.drawer-open .content {
     box-sizing: border-box;
   }
   .subbar {
-    display: none;
+    display: flex;
+    min-height: var(--subbar-height);
   }
   .subbar + .content {
-    padding-top: calc(var(--topbar-height) + 18px);
+    padding-top: calc(var(--topbar-height) + var(--subbar-height) + 10px);
   }
   .subbar .subnav {
-    display: none;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding: 0 10px;
+    height: var(--subbar-height);
+    align-items: center;
+  }
+  .subbar .subnav > a,
+  .subbar .subnav .menu .menu-btn {
+    white-space: nowrap;
+    font-size: 13px;
+    padding: 4px 8px;
+    margin: 0;
   }
   .mobile-btn {
     display: inline-block;
@@ -2410,4 +2455,15 @@ body.drawer-open .content {
     height: 22px !important;
   }
 }
+
+/* Employee mobile: hide duplicated subnav (already available in drawer menu) */
+@media (max-width: 480px) {
+  body:not(.admin) .subbar {
+    display: none !important;
+  }
+  body:not(.admin) .subbar + .content {
+    padding-top: calc(var(--topbar-height) + 10px) !important;
+  }
+}
+
 

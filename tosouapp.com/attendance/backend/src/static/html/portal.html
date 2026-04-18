@@ -25,15 +25,16 @@
     .dot-spinner div:nth-child(12){transform:rotate(330deg) translate(24px);animation-delay:-0.04s}
   </style>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
-  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260411-searchhint">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260416-mobilefix4">
+  <link rel="prefetch" href="/ui/attendance/simple">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
   <script type="module" src="/static/js/pages/portal.debug.js"></script>
-  <script type="module" src="/static/js/pages/portal.page.js"></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260417-3"></script>
   <link rel="icon" href="data:,">
 </head>
 
 <body>
-  <div id="pageSpinner" class="page-spinner"><div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
+  <div id="pageSpinner" class="page-spinner" hidden><div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
   <header class="topbar">
     <button id="mobileMenuBtn" class="mobile-btn" aria-label="menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
     <div class="topbar-inner">
@@ -52,7 +53,7 @@
       <div class="user">
         <div class="user-menu">
           <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/logoten.png" alt="user" class="user-icon">
+            <img src="/static/images/use.png" alt="user" class="user-icon">
             <span id="userName"></span>
             <span class="caret">▾</span>
           </button>
@@ -89,3 +90,4 @@
 </body>
 
 </html>
+

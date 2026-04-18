@@ -26,6 +26,7 @@
     "db:seed": "knex seed:run --knexfile attendance/backend/knexfile.js",
     "db:migrate:make": "knex migrate:make --knexfile attendance/backend/knexfile.js",
     "db:backup": "node attendance/backend/scripts/db-backup.js",
+    "preflight:prod": "node attendance/backend/scripts/preflight-prod.js",
     "frontend:dev": "vite --config attendance/frontend/vite.config.js",
     "frontend:build": "vite build --config attendance/frontend/vite.config.js"
   },

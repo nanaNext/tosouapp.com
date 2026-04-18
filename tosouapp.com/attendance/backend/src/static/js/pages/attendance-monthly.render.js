@@ -105,7 +105,9 @@
       const autoOut = isWorkDay && !outHm && shiftEndOk;
       
       // CSS Class: CHỈ hiển thị nhạt (is-auto) nếu là (Dự kiến VÀ Giờ tự động)
-      const inAutoCls = (autoIn && isPlanned && !isManualIn) ? 'is-auto' : '';
+      // Business rule: if started but not finished yet, start-time stays "planned-like" (faded)
+      const inPendingUnconfirmed = !!(isManualIn && !isManualOut);
+      const inAutoCls = ((autoIn && isPlanned && !isManualIn) || inPendingUnconfirmed) ? 'is-auto' : '';
       const outAutoCls = (autoOut && isPlanned && !isManualOut) ? 'is-auto' : '';
 
       const shiftBrRaw = Number(shift?.break_minutes ?? 60);
@@ -145,10 +147,15 @@
       const approverName = String(detail?.monthStatus?.approverName || '').trim();
       const isAdminView = String(profile?.role || '').toLowerCase() === 'admin' || String(profile?.role || '').toLowerCase() === 'manager';
       const hasAny = !!(finalIn || finalOut);
+      const leaveKubunSet = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
+      const isLeaveApplied = !!kubunInit && leaveKubunSet.has(effectiveKubun) && !hasActual;
       let text = '未承認';
       let cls = 'warn';
       if (isPlanned && !hasActual) {
         text = '未申請';
+        cls = 'warn';
+      } else if (isLeaveApplied) {
+        text = isAdminView ? '承認待ち' : '未確認';
         cls = 'warn';
       } else if (approved) {
         text = '承認済み';

@@ -4,14 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>簡易登録画面</title>
+  <style>
+    #pageSpinner .boot-ring{
+      width:42px;height:42px;border-radius:999px;
+      border:4px solid #dbeafe;border-top-color:#2563eb;
+      animation:boot-spin .8s linear infinite;
+    }
+    @keyframes boot-spin { to { transform: rotate(360deg); } }
+  </style>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260317">
-  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260413-2">
+  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260417-3">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
-  <script type="module" src="/static/js/pages/attendance-simple.page.js?v=navy-20260413-5"></script>
+  <script type="module" src="/static/js/pages/attendance-simple.page.js?v=navy-20260417-5"></script>
 </head>
 <body>
   <div id="pageSpinner" class="simple-spinner" hidden>
+    <div class="boot-ring" aria-hidden="true"></div>
     <div class="lds-spinner" aria-hidden="true">
       <div></div><div></div><div></div><div></div><div></div><div></div>
       <div></div><div></div><div></div><div></div><div></div><div></div>
@@ -30,7 +39,7 @@
   </header>
 
   <nav class="simple-tabs" aria-label="tabs">
-    <a class="simple-tab" href="/ui/attendance">勤怠入力</a>
+    <a class="simple-tab" href="/ui/attendance/simple">勤怠入力</a>
     <a class="simple-tab active" href="/ui/attendance/simple">簡易登録画面</a>
     <a class="simple-tab" href="/ui/portal">共通機能</a>
   </nav>

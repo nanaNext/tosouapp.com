@@ -13,9 +13,8 @@
     const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
     if (!y || !m) throw new Error('Invalid month');
     const uidQ = userId ? `&userId=${encodeURIComponent(userId)}` : '';
-    const bust = `&_=${Date.now()}`;
-    const detailP = fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}${bust}`);
-    const sumP = fetchJSONAuth(`/api/attendance/month?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}${bust}`).catch(() => null);
+    const detailP = fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`);
+    const sumP = fetchJSONAuth(`/api/attendance/month?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`).catch(() => null);
     const [detail, timesheet] = await Promise.all([detailP, sumP]);
     return { detail, timesheet };
   };
@@ -117,7 +116,9 @@
       const effectiveKubun = kubunVal || plannedKubun;
       
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
-      const isWorkKubun = workKubunSet.has(kubunVal);
+      // IMPORTANT: classify by effective kubun (fallback to planned default),
+      // otherwise planned workdays with empty kubun can be skipped from updates.
+      const isWorkKubun = workKubunSet.has(effectiveKubun);
       const effTime = (el, acceptAuto) => {
         const v = String(el?.value || '');
         if (acceptAuto) return v;

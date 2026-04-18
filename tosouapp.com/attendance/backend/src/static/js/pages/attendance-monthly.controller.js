@@ -285,6 +285,12 @@
     const inner = bar.querySelector('.se-hscroll-inner');
     if (!inner) return;
     const main = document.querySelector('.kintai-main');
+    const applyHeadTranslate = (headTables, scrollLeft) => {
+      const x = Number(scrollLeft) || 0;
+      for (const ht of headTables) {
+        try { ht.style.transform = `translateX(${-x}px)`; } catch {}
+      }
+    };
 
     const refresh = (attempt = 0) => {
       const host = getHost();
@@ -301,9 +307,7 @@
       }
       try { inner.style.width = `${sw}px`; } catch {}
       try { if (host) bar.scrollLeft = host.scrollLeft; } catch {}
-      for (const ht of headTables) {
-        try { ht.style.transform = `translateX(${- (host?.scrollLeft || 0)}px)`; } catch {}
-      }
+      applyHeadTranslate(headTables, host?.scrollLeft || 0);
       try {
         const need = (sw > cw + 1);
         const inView = (() => {
@@ -337,9 +341,7 @@
         const rootEl = getRoot();
         const headTables = Array.from(rootEl?.querySelectorAll?.('.se-sticky-month-head table') || []);
         try { if (host) host.scrollLeft = bar.scrollLeft; } catch {}
-        for (const ht of headTables) {
-          try { ht.style.transform = `translateX(${- (host?.scrollLeft || 0)}px)`; } catch {}
-        }
+        applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
       // Gán sự kiện cuộn cho host (kintai-main hoặc se-month-scroll)
@@ -350,9 +352,7 @@
         const host = getHost();
         const headTables = Array.from(getRoot()?.querySelectorAll?.('.se-sticky-month-head table') || []);
         try { if (host) bar.scrollLeft = host.scrollLeft; } catch {}
-        for (const ht of headTables) {
-          try { ht.style.transform = `translateX(${- (host?.scrollLeft || 0)}px)`; } catch {}
-        }
+        applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
       window.addEventListener('resize', () => { refresh(); }, { passive: true });
@@ -637,7 +637,10 @@
     }, 900);
   };
 
-  const setMonth = async (ym, replace = false) => {
+  const setMonth = async (ym, replace = false, opts = {}) => {
+    if (!(ctx.monthCache instanceof Map)) ctx.monthCache = new Map();
+    const reqSeq = (ctx.monthReqSeq = Number(ctx.monthReqSeq || 0) + 1);
+    const cacheKey = `${String(ctx.actingUserId || 'self')}:${String(ym || '')}`;
     state.currentYM = String(ym || '').slice(0, 7);
     const url = new URL(window.location.href);
     url.searchParams.set('month', ym);
@@ -648,11 +651,51 @@
     if (ctx.picker1) ctx.picker1.value = ym;
     if (ctx.picker2) ctx.picker2.value = ym;
     showErr('');
-    showSpinner();
+    const cached = ctx.monthCache.get(cacheKey) || null;
+    let persisted = null;
+    if (!cached) {
+      try {
+        const raw = sessionStorage.getItem(`monthly.cache.${cacheKey}`);
+        if (raw) persisted = JSON.parse(raw);
+      } catch {}
+    }
+    const instant = cached || persisted;
+    const useSpinner = opts?.spinner !== false && !instant;
+    if (useSpinner) showSpinner();
     try {
-      const { detail, timesheet } = await loadMonth(ym, ctx.actingUserId || null);
+      const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
+      const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
+      if (instant?.detail) {
+        state.currentMonthDetail = instant.detail;
+        state.currentMonthTimesheet = instant.timesheet || null;
+        try {
+          const st = String(instant.detail?.monthStatus?.status || '').trim();
+          state.currentMonthStatus = st || 'draft';
+        } catch {
+          state.currentMonthStatus = 'draft';
+        }
+        renderContract(ctx.contractHost, instant.detail);
+        renderWorkDetail(ctx.workDetailHost, instant.detail, ctx.profile);
+        renderSummary(ctx.summaryHost, instant.detail, instant.timesheet || null);
+        state.editableMonth = canEditForMonth(ym, ctx.profile);
+        renderTable(ctx.tableHost, instant.detail, ctx.profile);
+        applyPinMonthHead();
+        applyEditability(ym);
+        updateMonthWorkflowUI();
+        ensureCompactToggle();
+        syncFooterVars();
+        syncTheadRowHeights();
+        syncMonthHScroll();
+        syncMonthVScroll();
+      }
+      const detail = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`);
+      if (reqSeq !== ctx.monthReqSeq) return;
+      ctx.monthCache.set(cacheKey, { detail, timesheet: null, at: Date.now() });
+      try {
+        sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify({ detail, timesheet: null, at: Date.now() }));
+      } catch {}
       state.currentMonthDetail = detail;
-      state.currentMonthTimesheet = timesheet;
+      state.currentMonthTimesheet = null;
       try {
         const st = String(detail?.monthStatus?.status || '').trim();
         state.currentMonthStatus = st || 'draft';
@@ -672,7 +715,7 @@
       } catch {}
       renderContract(ctx.contractHost, detail);
       renderWorkDetail(ctx.workDetailHost, detail, ctx.profile);
-      renderSummary(ctx.summaryHost, detail, timesheet);
+      renderSummary(ctx.summaryHost, detail, null);
       
       // Update editability BEFORE rendering table to ensure correct lock state
       state.editableMonth = canEditForMonth(ym, ctx.profile);
@@ -700,10 +743,37 @@
       if (typeof ctx.applyContractTab === 'function') ctx.applyContractTab();
       if (typeof ctx.applySummaryTab === 'function') ctx.applySummaryTab();
       if (typeof ctx.applyPlanTab === 'function') ctx.applyPlanTab();
+
+      // Load heavy monthly timesheet summary in background so table appears instantly.
+      fetchJSONAuth(`/api/attendance/month?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`)
+        .then((timesheet) => {
+          if (reqSeq !== ctx.monthReqSeq) return;
+          state.currentMonthTimesheet = timesheet || null;
+          try {
+            const nextCache = { detail: state.currentMonthDetail, timesheet: state.currentMonthTimesheet, at: Date.now() };
+            ctx.monthCache.set(cacheKey, nextCache);
+            sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify(nextCache));
+          } catch {}
+          try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch {}
+        })
+        .catch(() => {});
+      // Prefetch adjacent months for instant prev/next navigation.
+      const prefetch = async (targetYm) => {
+        try {
+          const k = `${String(ctx.actingUserId || 'self')}:${String(targetYm || '')}`;
+          if (ctx.monthCache.has(k)) return;
+          const [py, pm] = String(targetYm).split('-').map(x => parseInt(x, 10));
+          if (!py || !pm) return;
+          const pDetail = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(py)}&month=${encodeURIComponent(pm)}${uidQ}`);
+          ctx.monthCache.set(k, { detail: pDetail, timesheet: null, at: Date.now() });
+        } catch {}
+      };
+      void prefetch(addMonths(ym, -1));
+      void prefetch(addMonths(ym, 1));
     } catch (e) {
       showErr(e?.message || '読み込みに失敗しました');
     } finally {
-      hideSpinner();
+      if (useSpinner) hideSpinner();
     }
   };
 
@@ -715,7 +785,6 @@
     const ym = ctx.picker?.value || ctx.initialYM;
     if (!/^\d{4}-\d{2}$/.test(ym)) return;
     showErr('');
-    showSpinner();
     try {
       try {
         const ae = document.activeElement;
@@ -817,6 +886,7 @@
       if (!window.confirm('保存しますか？')) {
         return;
       }
+      showSpinner('save');
       const payload = collectUpdates(ctx.tableHost, ym, ctx.actingUserId || null, { includeAll: true });
       try {
         const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
@@ -1068,16 +1138,16 @@
       // Update summary section locally
       renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet);
       
-      // Sync to salary module
+      // Sync salary in background so Save returns immediately.
       try {
         const [y, m] = ym.split('-');
-        await fetchJSONAuth('/api/attendance/month/sync-salary', {
+        fetchJSONAuth('/api/attendance/month/sync-salary', {
           method: 'POST',
           body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId || null })
+        }).catch((e) => {
+          try { console.error('Salary sync failed:', e); } catch {}
         });
-      } catch (e) {
-        console.error('Salary sync failed:', e);
-      }
+      } catch {}
     } catch (e) {
       const msg = String(e?.message || '');
       if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
@@ -1210,7 +1280,12 @@
         : tr.querySelector('input[data-field="ckSatellite"]')?.checked ? 'satellite'
         : String(tr.dataset.workType || '')).trim();
       const reason = String(tr.querySelector('select[data-field="reason"]')?.value || '').trim();
-      const notes = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
+      const location = String(tr.querySelector('input[data-field="location"]')?.value || '').trim();
+      const memo = String(tr.querySelector('input[data-field="memo"]')?.value || '').trim();
+      const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
+      const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
+      const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
+      const nightBreakMinutes = nb === '1:00' ? 60 : nb === '0:30' ? 30 : 0;
       
       const idRaw = String(tr.dataset.id || '').trim();
       let clientId = String(tr.dataset.clientId || '').trim();
@@ -1257,18 +1332,24 @@
       
       const sel = tr.querySelector('select[data-field="classification"]');
       const v = String(sel?.value || '').trim();
-      const payload = { 
+      const payload = {
         year: y, 
         month: m, 
         userId: ctx.actingUserId || undefined, 
         updates, 
         dailyUpdates: [
-          { 
-            date: dateStr, 
+          {
+            date: dateStr,
             kubun: v || null,
             kubunConfirmed: v ? 1 : 0,
-            reason: reason || null, 
-            notes: notes || null 
+            workType: (wt === 'onsite' || wt === 'remote' || wt === 'satellite') ? wt : null,
+            location: location || '',
+            reason: reason || '',
+            memo: memo || '',
+            breakMinutes,
+            nightBreakMinutes,
+            shiftStart: String(tr.dataset.shiftStart || '08:00').trim(),
+            checkInTime: rawIn || null
           }
         ] 
       };
@@ -1444,7 +1525,6 @@
     if (!ctx.actingUserId) return;
     if (!confirm('この月を承認して締め処理します。よろしいですか？')) return;
     showErr('');
-    showSpinner();
     try {
       const y = parseInt(ym.slice(0, 4), 10);
       const m = parseInt(ym.slice(5, 7), 10);
@@ -1452,11 +1532,22 @@
         await fetchJSONAuth('/api/attendance/month/submit', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
       } catch {}
       await fetchJSONAuth('/api/attendance/month/approve', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
-      await setMonth(ym, true);
+      // Reflect approval immediately on UI, then sync in background.
+      try {
+        if (state.currentMonthDetail) {
+          state.currentMonthDetail.monthStatus = state.currentMonthDetail.monthStatus || {};
+          state.currentMonthDetail.monthStatus.status = 'approved';
+          state.currentMonthDetail.monthStatus.approvedAt = state.currentMonthDetail.monthStatus.approvedAt || new Date().toISOString();
+          state.currentMonthDetail.monthStatus.approverName = state.currentMonthDetail.monthStatus.approverName || String(ctx.profile?.username || '').trim();
+        }
+        state.currentMonthStatus = 'approved';
+        updateMonthWorkflowUI();
+        renderTable(ctx.tableHost, state.currentMonthDetail, ctx.profile);
+        renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet || null);
+      } catch {}
+      void setMonth(ym, true, { spinner: false }).catch(() => {});
     } catch (err) {
       showErr(err?.message || '承認に失敗しました');
-    } finally {
-      hideSpinner();
     }
   };
 
@@ -1647,8 +1738,7 @@
       if (!y || !m) return;
       const uid = ctx.actingUserId || null;
       const uidQ = uid ? `&userId=${encodeURIComponent(String(uid))}` : '';
-      const bust = `&_=${Date.now()}`;
-      const next = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}${bust}`).catch(() => null);
+      const next = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}`).catch(() => null);
       if (!next) return;
       const key = buildKey(next);
       if (!key || key === lastKey) return;
@@ -1675,7 +1765,7 @@
           ctx.refreshTimer = null;
         }
       }
-    }, 5000);
+    }, 15000);
     try { lastKey = buildKey(state.currentMonthDetail); } catch {}
   };
 
@@ -1835,6 +1925,7 @@
 
   const setActingUserId = async (nextUserId) => {
     ctx.actingUserId = String(nextUserId || '').trim();
+    try { if (ctx.monthCache instanceof Map) ctx.monthCache.clear(); } catch {}
     try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch {}
     const ym = ctx.picker?.value || monthJST();
     if (!ctx.actingUserId) return;

@@ -232,8 +232,8 @@ body.embed .kintai-main {
 }
 
 .se-avatar {
-  width: 80px;
-  height: 80px;
+  width: 48px;
+  height: 48px;
   border-radius: 0;
   background: transparent;
   display: flex;
@@ -243,7 +243,7 @@ body.embed .kintai-main {
   border: none;
   box-shadow: none;
 }
-.se-avatar-img { width: 100%; height: 100%; object-fit: contain; border-radius: 0; }
+.se-avatar-img { width: 92%; height: 92%; object-fit: contain; border-radius: 0; }
 @media (max-width: 700px) { .se-avatar { display: none; } }
 
 .se-employee-meta {
@@ -1438,6 +1438,21 @@ body.mobile-compact #monthTable tbody td:nth-child(11) {
   min-width: 0;
 }
 
+/* Prevent Safari mobile from stretching single cell controls unexpectedly */
+#monthTable td input.se-input,
+#monthTable td input.se-time,
+#monthTable td select.se-select,
+#monthTable td textarea.se-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+#monthTable tbody td {
+  overflow: hidden;
+}
+
 /* column min-widths compact but allow full-width input */
 #monthTable thead th:nth-child(6),
 #monthTable tbody td:nth-child(6) { min-width: 92px; }
@@ -2184,4 +2199,79 @@ input.se-time[disabled][data-row-disabled="1"]::-webkit-datetime-edit-fields-wra
   .se-bottombar .se-file { height: 24px; line-height: 24px; font-size: 10px; }
   #monthTable { font-size: 11px; }
   #monthTable thead th, #monthTable tbody td { font-size: 11px !important; }
+}
+
+/* Prevent random stretched cells on narrow phones */
+@media (max-width: 430px) {
+  #monthTable.se-table table {
+    min-width: 1180px !important;
+    table-layout: fixed !important;
+  }
+  #monthTable .se-time-cell {
+    min-width: 86px !important;
+  }
+  #monthTable input.se-time[data-field="checkIn"],
+  #monthTable input.se-time[data-field="checkOut"] {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+  }
+  #monthTable td,
+  #monthTable th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Disable fixed 日付 body column only (header still sticky with thead row) */
+#monthTable #monthTableReal tbody td.sticky-col-1 {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
+}
+
+/* Hard override for legacy sticky-col-1 rules on body cells */
+.se-month-table-wrap #monthTableReal td.sticky-col-1 {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
+}
+
+/* UX request: disable monthly fullscreen loading spinner overlay */
+#pageSpinner.kintai-spinner {
+  display: none !important;
+}
+
+/* Ensure "日付" header cell is visible and sized correctly */
+#monthTable #monthTableReal thead th.sticky-col-1,
+#monthTable .se-sticky-month-head th.sticky-col-1 {
+  display: table-cell !important;
+  visibility: visible !important;
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  text-align: center !important;
+}
+
+/* Final behavior: use only real table header; remove cloned sticky header */
+#monthTable .se-sticky-month-head {
+  display: none !important;
+}
+#monthTable #monthTableReal thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 80 !important;
+}
+#monthTable #monthTableReal thead th.sticky-col-1 {
+  left: auto !important; /* do not pin date column horizontally */
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 81 !important;
+}
+#monthTable #monthTableReal tbody td.sticky-col-1 {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
 }
