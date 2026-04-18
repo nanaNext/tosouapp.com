@@ -37,6 +37,10 @@ router.get('/expenses-login', sendPage('expenses-login.html'));
 // Make expenses page accessible and let FE handle auth redirect to /expenses-login
 router.get('/ui/expenses', sendPage('expenses.html'));
 router.get('/ui/expenses/', sendPage('expenses.html'));
+// Serve simple attendance page immediately to improve first paint on mobile.
+// Authentication is still enforced by API calls and client-side auth guard.
+router.get('/ui/attendance/simple', sendPage('attendance-simple.html'));
+router.get('/ui/attendance/simple/', sendPage('attendance-simple.html'));
 
 router.get('/ui/logout', async (req, res) => {
   try {
@@ -74,8 +78,6 @@ router.get('/admin/embed/attendance/monthly/', sendPage('attendance-monthly.html
 router.get('/ui/attendance', sendPage('attendance.html'));
 router.get('/ui/attendance/monthly', sendPage('attendance-monthly.html'));
 router.get('/ui/attendance/monthly/', sendPage('attendance-monthly.html'));
-router.get('/ui/attendance/simple', sendPage('attendance-simple.html'));
-router.get('/ui/attendance/simple/', sendPage('attendance-simple.html'));
 
 router.get('/ui/admin', sendPage('admin.html'));
 router.get('/ui/employees', sendPage('admin.html'));
