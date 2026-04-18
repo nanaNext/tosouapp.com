@@ -71,12 +71,13 @@ const renderDashboard = async (profile) => {
   wrap.appendChild(head);
 
   showSpinner();
-  const [statsRes, usersRes, pendingLeaveRes, pendingProfileRes, workReportsRes] = await Promise.allSettled([
+  const [statsRes, usersRes, pendingLeaveRes, pendingProfileRes, workReportsRes, rosterRes] = await Promise.allSettled([
     fetchJSONAuth('/api/admin/home/stats'),
     fetchJSONAuth('/api/admin/users'),
     fetchJSONAuth('/api/leave/pending'),
     fetchJSONAuth('/api/manager/profile-change/pending'),
-    fetchJSONAuth('/api/admin/work-reports')
+    fetchJSONAuth('/api/admin/work-reports'),
+    fetchJSONAuth('/api/attendance/today-roster')
   ]);
   hideSpinner();
   if (!isAlive()) return;
@@ -86,6 +87,7 @@ const renderDashboard = async (profile) => {
   const pendingLeave = pendingLeaveRes.status === 'fulfilled' && Array.isArray(pendingLeaveRes.value) ? pendingLeaveRes.value : [];
   const pendingProfile = pendingProfileRes.status === 'fulfilled' && Array.isArray(pendingProfileRes.value) ? pendingProfileRes.value : [];
   const workReports = workReportsRes.status === 'fulfilled' && workReportsRes.value ? workReportsRes.value : null;
+  const roster = rosterRes.status === 'fulfilled' && rosterRes.value ? rosterRes.value : null;
 
   const kpi = document.createElement('div');
   kpi.className = 'kpi-grid';
@@ -159,8 +161,7 @@ const renderDashboard = async (profile) => {
   let plannedCount = 0;
   let plannedNames = [];
   try {
-    const rosterForWork = await fetchJSONAuth('/api/attendance/today-roster');
-    const plannedArr = Array.isArray(rosterForWork?.planned) ? rosterForWork.planned : [];
+    const plannedArr = Array.isArray(roster?.planned) ? roster.planned : [];
     const onlyWork = plannedArr.filter(it => it?.planned?.status === 'work' && String(it?.role || '').toLowerCase() === 'employee');
     plannedCount = onlyWork.length;
     plannedNames = onlyWork
@@ -216,7 +217,6 @@ const renderDashboard = async (profile) => {
   grid.className = 'dash-grid';
 
   try {
-    const roster = await fetchJSONAuth('/api/attendance/today-roster');
     const absentCard = document.createElement('div');
     absentCard.className = 'dash-card';
     const absentTitle = document.createElement('div');
@@ -275,7 +275,6 @@ const renderDashboard = async (profile) => {
   } catch {}
 
   try {
-    const roster = await fetchJSONAuth('/api/attendance/today-roster');
     const paidLeaveCard = document.createElement('div');
     paidLeaveCard.className = 'dash-card';
     const title = document.createElement('div');
