@@ -2,6 +2,15 @@ import { requireAdmin } from '../_shared/require-admin.js';
 import { fetchJSONAuth } from '../../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
+let dashboardRenderSeq = 0;
+const isDashboardPath = () => {
+  try {
+    const p = String(window.location.pathname || '');
+    return p === '/admin' || p === '/admin/dashboard';
+  } catch {
+    return false;
+  }
+};
 
 const showSpinner = () => {
   try {
@@ -41,6 +50,9 @@ const makeKpi = (title, value, sub) => {
 };
 
 const renderDashboard = async (profile) => {
+  const seq = ++dashboardRenderSeq;
+  const isAlive = () => seq === dashboardRenderSeq && isDashboardPath();
+  if (!isAlive()) return;
   const content = $('#adminContent');
   if (!content) return;
   try {
@@ -67,6 +79,7 @@ const renderDashboard = async (profile) => {
     fetchJSONAuth('/api/admin/work-reports')
   ]);
   hideSpinner();
+  if (!isAlive()) return;
 
   const stats = statsRes.status === 'fulfilled' && statsRes.value ? statsRes.value : { todayCheckin: 0, lateCount: 0, leaveCount: 0, pendingCount: 0 };
   const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
@@ -527,4 +540,7 @@ export async function mount() {
   const profile = await requireAdmin();
   if (!profile) return;
   await renderDashboard(profile);
+  return () => {
+    dashboardRenderSeq++;
+  };
 }
