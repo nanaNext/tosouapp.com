@@ -129,6 +129,14 @@ body.drawer-open.admin.has-sidebar .content {
   display: none !important;
 }
 
+/* Fallback: if JS toggle is blocked on a route, clicking the user button
+   still opens the menu via focus state. */
+.admin .topbar .user .user-menu:focus-within .dropdown,
+.admin .topbar .user .user-menu:focus-within .dropdown[hidden] {
+  display: block !important;
+  pointer-events: auto;
+}
+
 .admin.has-sidebar .topbar .brand .icon {
   display: inline-block;
 }
