@@ -58,7 +58,8 @@ function getCookie(name) { return null; }
 function roleRedirect(role) {
   try { sessionStorage.setItem('navSpinner', '1'); } catch {}
   showPageSpinner();
-  const next = '/ui/portal';
+  const r = String(role || '').toLowerCase();
+  const next = r === 'admin' ? '/admin/dashboard' : '/ui/portal';
   try { window.location.replace(next); } catch { window.location.href = next; }
 }
 
