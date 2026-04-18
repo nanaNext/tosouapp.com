@@ -296,6 +296,51 @@ export function initLayout() {
     }
   });
 
+  // Global page-transition spinner for internal navigation links/forms.
+  if (!window.__globalNavSpinnerBound) {
+    window.__globalNavSpinnerBound = true;
+    let spinnerHideTimer = null;
+    let spinnerShowTimer = null;
+    const shouldShowForAnchor = (a, e) => {
+      if (!a) return false;
+      if (a.dataset?.noNavSpinner === '1') return false;
+      if (a.hasAttribute('download')) return false;
+      const target = String(a.getAttribute('target') || '').toLowerCase();
+      if (target && target !== '_self') return false;
+      if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)) return false;
+      const href = String(a.getAttribute('href') || '').trim();
+      if (!href || href === '#' || href.startsWith('#')) return false;
+      if (/^(mailto:|tel:|javascript:)/i.test(href)) return false;
+      let to = null;
+      try { to = new URL(href, location.href); } catch { return false; }
+      if (to.origin !== location.origin) return false;
+      if (to.pathname === location.pathname && to.search === location.search && (to.hash || '') === (location.hash || '')) return false;
+      if (to.pathname === location.pathname && to.search === location.search && to.hash && to.hash !== location.hash) return false;
+      return true;
+    };
+    const showWithAutoHide = (delayMs = 420) => {
+      try {
+        if (spinnerShowTimer) clearTimeout(spinnerShowTimer);
+        spinnerShowTimer = setTimeout(() => showNavSpinner(), Math.max(0, Number(delayMs) || 0));
+      } catch {
+        showNavSpinner();
+      }
+      try {
+        if (spinnerHideTimer) clearTimeout(spinnerHideTimer);
+        spinnerHideTimer = setTimeout(() => hideNavSpinner(), 10000);
+      } catch {}
+    };
+    document.addEventListener('click', (e) => {
+      const a = e.target?.closest?.('a[href]');
+      if (!shouldShowForAnchor(a, e)) return;
+      showWithAutoHide();
+    }, true);
+    window.addEventListener('pageshow', () => {
+      try { if (spinnerShowTimer) clearTimeout(spinnerShowTimer); } catch {}
+      hideNavSpinner();
+    });
+  }
+
   document.addEventListener('click', (e) => {
     const btn = e.target && e.target.closest ? e.target.closest('.subbar .menu .menu-btn') : null;
     if (btn) {
@@ -365,18 +410,18 @@ export const showNavSpinner = () => {
       el.innerHTML = '<div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
       el.style.position = 'fixed';
       el.style.inset = '0';
-      el.style.background = '#fff';
+      el.style.background = 'transparent';
       el.style.display = 'grid';
       el.style.placeItems = 'center';
+      el.style.pointerEvents = 'none';
       el.style.zIndex = '9999';
       document.body.appendChild(el);
     } else {
       el.removeAttribute('hidden');
-      el.style.background = '#fff';
+      el.style.background = 'transparent';
       el.style.display = 'grid';
+      el.style.pointerEvents = 'none';
     }
-    const c = document.querySelector('#adminContent');
-    if (c) c.style.visibility = 'hidden';
   } catch { }
 };
 
@@ -388,8 +433,6 @@ export const hideNavSpinner = () => {
       el.setAttribute('hidden', 'true');
       el.style.display = 'none';
     }
-    const c = document.querySelector('#adminContent');
-    if (c) c.style.visibility = '';
   } catch { }
 };
 
@@ -399,7 +442,7 @@ export function ensureSpinnerStyle() {
       const style = document.createElement('style');
       style.id = 'spinnerStyle';
       style.textContent = `
-        .page-spinner{background:#fff;display:grid;place-items:center}
+        .page-spinner{background:transparent;display:grid;place-items:center;pointer-events:none}
         .dot-spinner{position:relative;width:64px;height:64px}
         .dot-spinner div{position:absolute;top:50%;left:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#666;opacity:.2;animation:dotfade 1s linear infinite}
         @keyframes dotfade{0%{opacity:1}100%{opacity:.2}}

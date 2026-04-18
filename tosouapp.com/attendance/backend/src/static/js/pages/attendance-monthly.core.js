@@ -15,8 +15,34 @@
 
   try { globalThis.__monthlyBooted = Date.now(); } catch {}
 
-  const showSpinner = () => { try { $('#pageSpinner')?.removeAttribute('hidden'); } catch {} };
-  const hideSpinner = () => { try { $('#pageSpinner')?.setAttribute('hidden', ''); } catch {} };
+  let monthlySpinnerDelay = null;
+  const showSpinner = (mode = '') => {
+    try {
+      const el = $('#pageSpinner');
+      if (!el) return;
+      try {
+        if (mode) el.setAttribute('data-mode', String(mode));
+        else el.removeAttribute('data-mode');
+      } catch {}
+      if (monthlySpinnerDelay) clearTimeout(monthlySpinnerDelay);
+      monthlySpinnerDelay = setTimeout(() => {
+        try { el.removeAttribute('hidden'); } catch {}
+        monthlySpinnerDelay = null;
+      }, 180);
+    } catch {}
+  };
+  const hideSpinner = () => {
+    try {
+      const el = $('#pageSpinner');
+      if (!el) return;
+      if (monthlySpinnerDelay) {
+        clearTimeout(monthlySpinnerDelay);
+        monthlySpinnerDelay = null;
+      }
+      try { el.removeAttribute('data-mode'); } catch {}
+      el.setAttribute('hidden', '');
+    } catch {}
+  };
 
   const MonthlyAuth = globalThis.MonthlyAuth || {};
   const fetchJSONAuth = MonthlyAuth.fetchJSONAuth;
@@ -45,6 +71,37 @@
     if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
     el.style.display = 'block';
     el.textContent = msg;
+  };
+  let toastTimer = null;
+  const showToast = (msg, kind = 'success') => {
+    try {
+      const el = $('#kintaiToast');
+      if (!el) return;
+      const sub = String(msg || '').trim();
+      if (kind === 'error') {
+        el.style.background = 'rgba(127, 29, 29, 0.9)';
+        el.innerHTML = `tosouapp<span class="sub">${esc(sub || 'エラーが発生しました')}</span>`;
+      } else {
+        el.style.background = 'rgba(11, 44, 102, 0.9)';
+        el.innerHTML = `tosouapp<span class="sub">${esc(sub || '保存しました')}</span>`;
+      }
+      if (toastTimer) {
+        clearTimeout(toastTimer);
+        toastTimer = null;
+      }
+      el.classList.remove('show');
+      el.removeAttribute('hidden');
+      // restart css animation
+      void el.offsetWidth;
+      el.classList.add('show');
+      toastTimer = setTimeout(() => {
+        try {
+          el.classList.remove('show');
+          el.setAttribute('hidden', '');
+        } catch {}
+        toastTimer = null;
+      }, 1850);
+    } catch {}
   };
 
   const setDirty = () => {
@@ -280,6 +337,7 @@
     cssEscape,
     makeClientId,
     showErr,
+    showToast,
     setDirty,
     clearDirty,
     getPinMonthHeadMode,

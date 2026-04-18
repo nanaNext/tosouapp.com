@@ -128,6 +128,7 @@ const routes = require('./routes');
 routes(app);
 const uiRoutes = require('./routes/ui.routes');
 app.use('/', uiRoutes);
+const { authenticate, authorize } = require('./core/middleware/authMiddleware');
 app.get('/api/version', (req, res) => {
   res.status(200).json({ buildId: BUILD_ID, startedAt: STARTED_AT, pid: process.pid });
 });
@@ -216,7 +217,7 @@ app.get('/sitemap.xml', (req, res) => {
   res.type('application/xml; charset=utf-8');
   res.send(xml);
 });
-app.get('/api/metrics', (req, res) => {
+app.get('/api/metrics', authenticate, authorize('admin'), (req, res) => {
   try {
     const m = require('./core/metrics').snapshot();
     res.status(200).json(m);

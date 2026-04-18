@@ -14,7 +14,8 @@ exports.listForMe = async (req, res) => {
     const rows = await repo.listForDate({ date: d, month: m, limit, userId: req.user?.id || null });
     res.status(200).json({ date: d, month: m, notices: rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    // Keep attendance screens stable even when notice storage is temporarily unavailable.
+    res.status(200).json({ date: null, month: null, notices: [] });
   }
 };
 

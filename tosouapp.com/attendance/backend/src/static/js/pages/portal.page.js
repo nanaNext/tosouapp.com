@@ -66,8 +66,6 @@ async function ensureAuthProfile() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const pageSpinner = document.querySelector('#pageSpinner');
-  const startTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  const minDelayMs = 900;
   try {
     const navEntry = (typeof performance !== 'undefined' && performance.getEntriesByType) ? performance.getEntriesByType('navigation')[0] : null;
     const navType = navEntry?.type || (performance && performance.navigation && performance.navigation.type === 2 ? 'back_forward' : '');
@@ -90,13 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     sessionStorage.removeItem('navSpinner');
   } catch {}
-  const waitMinDelay = async () => {
-    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    const elapsed = now - startTime;
-    if (elapsed < minDelayMs) {
-      await new Promise(r => setTimeout(r, minDelayMs - elapsed));
-    }
-  };
+  const waitMinDelay = async () => {};
   const setTopbarHeightVar = () => {
     try {
       if (document.body.classList.contains('drawer-open')) return;
@@ -120,10 +112,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (e) {
     const err = $('#error');
     if (err) { err.style.display = 'block'; err.textContent = '認証エラー: ' + (e?.message || 'unknown'); }
-    await waitMinDelay();
     if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
   }
-  if (!profile) { await waitMinDelay(); if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); } window.location.replace('/ui/login'); return; }
+  if (!profile) { if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); } window.location.replace('/ui/login'); return; }
   const goLogin = async () => {
     try { await logout(); } catch {}
     try {
@@ -144,12 +135,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const role = String(profile.role || '').toLowerCase();
   $('#userName').textContent = profile.username || profile.email || 'ユーザー';
   if (role === 'admin' || role === 'manager') {
-    try { sessionStorage.setItem('navSpinner', '1'); } catch {}
-    try { if (pageSpinner) { pageSpinner.removeAttribute('hidden'); } } catch {}
     try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; }
     return;
   }
-  await waitMinDelay();
   if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
   try {
     const p = String(window.location.pathname || '');
@@ -167,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tiles = document.querySelector('.tiles');
     if (tiles) {
       tiles.innerHTML = `
-        <a class="tile" href="/ui/attendance"><div class="icon">⏱</div><div class="title">出退勤打刻</div></a>
+        <a class="tile" href="/ui/attendance/simple"><div class="icon">⏱</div><div class="title">出退勤打刻</div></a>
         <a class="tile" href="/ui/profile"><div class="icon">👤</div><div class="title">プロフィール</div></a>
         <a class="tile" href="/ui/salary"><div class="icon">💴</div><div class="title">給与明細など</div></a>
         <a class="tile" href="/ui/calendar"><div class="icon">📅</div><div class="title">カレンダー</div></a>
@@ -236,7 +224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="icon">📝</div>
             <div class="title">申請</div>
           </a>
-          <a class="tile" href="/ui/attendance" target="_blank" rel="noopener noreferrer">
+          <a class="tile" href="/ui/attendance/simple">
             <div class="icon">🕒</div>
             <div class="title">勤怠入力</div>
           </a>
@@ -269,7 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       { key:'users', title:'ユーザー管理', icon:'👥', href:'/ui/admin?tab=users', desc:'User management', adminOnly:true, prio:12 },
       { key:'departments', title:'部門管理', icon:'🏢', href:'/admin/departments', desc:'Departments', adminOnly:true, prio:14 },
       { key:'admin', title:'社員管理', icon:'🛠', href:'/admin/employees', desc:'Admin portal', adminOnly:true, prio:16 },
-      { key:'attendance_in', title:'勤怠入力', icon:'', href:'/ui/attendance', desc:'Daily time input', prio:20, hideForAdmin:true },
+      { key:'attendance_in', title:'勤怠入力', icon:'', href:'/ui/attendance/simple', desc:'Daily time input', prio:20, hideForAdmin:true },
       { key:'paid_leave', title:'有給休暇', icon:'🏝', href:'/ui/requests', desc:'Paid leave', prio:25 },
       { key:'paid_leave_manage', title:'有給休暇管理', icon:'🏝', href:'/admin/leave/balance', desc:'Paid leave admin', adminOnly:true, prio:22 },
       { key:'leave', title:'申請', icon:'📝', href:'/ui/requests', desc:'Leave & requests', prio:30, hideForAdmin:true },
@@ -320,9 +308,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch {}
   /* dùng biến pageSpinner đã khai báo ở đầu scope */
   function navigateWithSpinner(href) {
-    try { sessionStorage.setItem('navSpinner', '1'); } catch {}
-    if (pageSpinner) { pageSpinner.removeAttribute('hidden'); }
-    setTimeout(() => { window.location.href = href; }, 600);
+    // Navigate immediately without transitional spinner flash.
+    window.location.href = href;
   }
   const tilesSection = document.querySelector('.tiles');
   if (tilesSection) {
@@ -431,7 +418,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mobileClose = document.querySelector('#mobileClose');
   const mobileBackdrop = document.querySelector('#drawerBackdrop');
   if (mobileBtn && mobileDrawer) {
+    const isMobileViewport = () => {
+      try { return (window.innerWidth || 0) <= 480; } catch { return false; }
+    };
+    let drawerScrollY = 0;
+    const lockViewport = () => {
+      try {
+        drawerScrollY = window.scrollY || window.pageYOffset || 0;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${drawerScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+      } catch {}
+    };
+    const unlockViewport = () => {
+      try {
+        document.documentElement.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, Math.max(0, Number(drawerScrollY) || 0));
+      } catch {}
+    };
+    const swallowWhenDrawerOpen = (e) => {
+      try {
+        if (!document.body.classList.contains('drawer-open')) return;
+        const inDrawer = e.target && e.target.closest && e.target.closest('#mobileDrawer');
+        if (inDrawer) return;
+        e.preventDefault();
+      } catch {}
+    };
+    document.addEventListener('touchmove', swallowWhenDrawerOpen, { passive: false });
+    document.addEventListener('wheel', swallowWhenDrawerOpen, { passive: false });
     const toggleDrawer = (open) => {
+      if (!isMobileViewport()) {
+        try {
+          mobileDrawer.setAttribute('hidden', '');
+          mobileBtn.setAttribute('aria-expanded', 'false');
+          document.body.classList.remove('drawer-open');
+          unlockViewport();
+          if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
+        } catch {}
+        return;
+      }
       const isHidden = mobileDrawer.hasAttribute('hidden');
       const shouldOpen = typeof open === 'boolean' ? open : isHidden;
       if (shouldOpen) {
@@ -441,17 +476,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           const w = Math.round(mobileDrawer.getBoundingClientRect().width || 280);
           document.documentElement.style.setProperty('--drawer-offset', `${w}px`);
           document.body.classList.add('drawer-open');
+          lockViewport();
         } catch {}
         if (mobileBackdrop) { mobileBackdrop.removeAttribute('hidden'); }
       } else {
         mobileDrawer.setAttribute('hidden', '');
         mobileBtn.setAttribute('aria-expanded', 'false');
         document.body.classList.remove('drawer-open');
+        unlockViewport();
         if (mobileBackdrop) { mobileBackdrop.setAttribute('hidden', ''); }
       }
     };
-    mobileBtn.addEventListener('click', () => toggleDrawer());
+    mobileBtn.addEventListener('click', () => {
+      if (!isMobileViewport()) return;
+      toggleDrawer();
+    });
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
+    window.addEventListener('resize', () => {
+      if (!isMobileViewport()) toggleDrawer(false);
+    }, { passive: true });
+    if (!isMobileViewport()) toggleDrawer(false);
     /* backdrop không đóng, chỉ nút X mới đóng */
   }
   try { wireExpandingSearch(); } catch {}

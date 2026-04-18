@@ -3,11 +3,24 @@ import { fetchJSONAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+let spinnerDelayTimer = null;
+let simpleUserId = '';
 const showSpinner = (v) => {
   const el = $('#pageSpinner');
   if (!el) return;
-  if (v) el.removeAttribute('hidden');
-  else el.setAttribute('hidden', '');
+  if (spinnerDelayTimer) {
+    clearTimeout(spinnerDelayTimer);
+    spinnerDelayTimer = null;
+  }
+  if (v) {
+    // Avoid flashing a full-page spinner for fast operations.
+    spinnerDelayTimer = setTimeout(() => {
+      try { el.removeAttribute('hidden'); } catch {}
+      spinnerDelayTimer = null;
+    }, 180);
+  } else {
+    el.setAttribute('hidden', '');
+  }
 };
 
 const showErr = (msg) => {
@@ -125,6 +138,102 @@ const clearDraft = (date) => {
   try { localStorage.removeItem(reportDraftKey(date)); } catch {}
 };
 
+const simpleFastCacheKey = (uid, date) => `attendanceSimple.fast.${uid}.${date}`;
+const saveFastSnapshot = (date) => {
+  try {
+    if (!simpleUserId || !isISODate(date)) return;
+    const st = window.state || {};
+    const snap = {
+      date,
+      uid: String(simpleUserId),
+      savedAt: Date.now(),
+      isOff: !!st.isOff,
+      currentMonthStatus: String(st.currentMonthStatus || ''),
+      shiftStart: String(st.shiftStart || FIXED_START),
+      shiftEnd: String(st.shiftEnd || FIXED_END),
+      hasStartedToday: !!st.hasStartedToday,
+      hasEndedToday: !!st.hasEndedToday,
+      kubun: String($('#kubun')?.value || ''),
+      kubunPlanned: !!$('#kubun')?.classList?.contains('is-planned'),
+      workType: String($('#workType')?.value || ''),
+      startTime: String($('#startTime')?.value || ''),
+      endTime: String($('#endTime')?.value || ''),
+      startAuto: String($('#startTime')?.dataset?.auto || '') === '1',
+      endAuto: String($('#endTime')?.dataset?.auto || '') === '1',
+      breakMin: String($('#breakMin')?.value || '1:00'),
+      nightBreakMin: String($('#nightBreakMin')?.value || '0:00'),
+      workSite: String($('#workSite')?.value || ''),
+      workContent: String($('#workContent')?.value || '')
+    };
+    sessionStorage.setItem(simpleFastCacheKey(simpleUserId, date), JSON.stringify(snap));
+  } catch {}
+};
+
+const restoreFastSnapshot = (date, stateRef) => {
+  try {
+    if (!simpleUserId || !isISODate(date)) return false;
+    const raw = sessionStorage.getItem(simpleFastCacheKey(simpleUserId, date)) || '';
+    if (!raw) return false;
+    const snap = JSON.parse(raw);
+    if (!snap || String(snap.uid || '') !== String(simpleUserId) || String(snap.date || '') !== date) return false;
+    const ageMs = Date.now() - Number(snap.savedAt || 0);
+    if (!Number.isFinite(ageMs) || ageMs > 24 * 60 * 60 * 1000) return false;
+
+    stateRef.isOff = !!snap.isOff;
+    stateRef.currentMonthStatus = String(snap.currentMonthStatus || '');
+    stateRef.shiftStart = String(snap.shiftStart || FIXED_START);
+    stateRef.shiftEnd = String(snap.shiftEnd || FIXED_END);
+    stateRef.hasStartedToday = !!snap.hasStartedToday;
+    stateRef.hasEndedToday = !!snap.hasEndedToday;
+    try { $('#topDate').textContent = fmtJP(date); } catch {}
+
+    const kubunOptions = stateRef.isOff
+      ? ['休日', '休日出勤', '代替出勤']
+      : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+    const kubunGroupLabel = stateRef.isOff ? '【予定休日】' : '【予定出勤】';
+    const selK = $('#kubun');
+    if (selK) {
+      selK.innerHTML = `<option value="" disabled>${kubunGroupLabel}</option>${kubunOptions.map(k => `<option value="${k}">${k}</option>`).join('')}`;
+      selK.value = kubunOptions.includes(String(snap.kubun || '')) ? String(snap.kubun || '') : (stateRef.isOff ? '休日' : '出勤');
+      selK.classList.toggle('is-planned', !!snap.kubunPlanned);
+      setupSimpleCombo(selK);
+    }
+
+    const st = $('#startTime');
+    const et = $('#endTime');
+    if (st) {
+      st.value = String(snap.startTime || '');
+      if (snap.startAuto) applyAutoTime(st, String(snap.startTime || stateRef.shiftStart || FIXED_START));
+      else clearAutoTime(st);
+    }
+    if (et) {
+      et.value = String(snap.endTime || '');
+      if (snap.endAuto) applyAutoTime(et, String(snap.endTime || stateRef.shiftEnd || FIXED_END));
+      else clearAutoTime(et);
+    }
+    if ($('#workType')) $('#workType').value = String(snap.workType || '');
+    if ($('#breakMin')) $('#breakMin').value = String(snap.breakMin || '1:00');
+    if ($('#nightBreakMin')) $('#nightBreakMin').value = String(snap.nightBreakMin || '0:00');
+    if ($('#workSite')) $('#workSite').value = String(snap.workSite || '');
+    if ($('#workContent')) $('#workContent').value = String(snap.workContent || '');
+
+    const shiftInfoBox = $('#shiftInfo');
+    if (shiftInfoBox) {
+      shiftInfoBox.innerHTML = `<span class="shift-tag">${stateRef.isOff ? '休日' : 'デフォルトシフト'}: ${stateRef.shiftStart} - ${stateRef.shiftEnd}</span>`;
+      shiftInfoBox.removeAttribute('hidden');
+    }
+
+    renderWorkMinutes();
+    syncWorkTypeButtons();
+    applyHolidayRestMode();
+    applyWorkTypeGate();
+    renderSimpleStatus();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const pad2 = (n) => String(n).padStart(2, '0');
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -143,14 +252,11 @@ const applyAutoTime = (el, val) => {
   if (!/^\d{2}:\d{2}$/.test(v)) return;
   el.value = v;
   try { el.dataset.auto = '1'; el.dataset.autoVal = v; } catch {}
-  // Xóa màu chữ nhạt để hiển thị đậm ngay từ đầu theo yêu cầu người dùng
-  try { el.style.color = ''; } catch {}
 };
 
 const clearAutoTime = (el) => {
   if (!el) return;
   try { delete el.dataset.auto; delete el.dataset.autoVal; } catch {}
-  try { el.style.color = ''; } catch {}
 };
 
 const effectiveHm = (el) => {
@@ -223,7 +329,10 @@ const renderNotices = async (date) => {
       }
     } catch {}
   } catch {
-    try { $('#noticeBox').textContent = 'お知らせの取得に失敗しました'; } catch {}
+    try {
+      const box = $('#noticeBox');
+      if (box) box.innerHTML = `<div class="simple-notice-empty">個人カレンダー登録画面 へご確認ください。</div>`;
+    } catch {}
   }
 };
 
@@ -297,12 +406,14 @@ const getUrlDate = () => {
 };
 
 const calcWorkMinutes = () => {
-  const s = parseHm(effectiveHm($('#startTime')));
-  const e = parseHm(effectiveHm($('#endTime')));
+  // Use the visible time values for live UI calculation.
+  const s = parseHm(String($('#startTime')?.value || '').trim());
+  const e = parseHm(String($('#endTime')?.value || '').trim());
   const b = parseInt($('#breakMin')?.value || '0', 10) || 0;
   if (!s || !e) return null;
   const raw = e.total - s.total - b;
-  return raw >= 0 ? raw : null;
+  // If break time is larger than worked span, show 0:00 instead of blank.
+  return Math.max(0, raw);
 };
 
 const renderWorkMinutes = () => {
@@ -350,6 +461,23 @@ const syncWorkTypeButtons = () => {
     const on = String(btn.dataset.worktype || '') === v;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
+};
+
+const ensureDefaultWorkTypeForToday = (date) => {
+  try {
+    if (String(date || '') !== todayJST()) return;
+    const kubun = String($('#kubun')?.value || '').trim();
+    const nonWorking = ['欠勤', '有給休暇', '半休', '無給休暇', '休日'].includes(kubun);
+    if (nonWorking) return;
+    const el = $('#workType');
+    if (!el) return;
+    const cur = String(el.value || '').trim();
+    if (cur) return;
+    // Default to onsite so employees can check in/out immediately.
+    el.value = 'onsite';
+    saveWorkType(date, 'onsite');
+    syncWorkTypeButtons();
+  } catch {}
 };
 
 const applyWorkTypeGate = () => {
@@ -556,15 +684,23 @@ const loadMonthStatus = async (date) => {
   }
 };
 
-const load = async (date) => {
+const load = async (date, opts = {}) => {
   showErr('');
-  showSpinner(true);
+  const useSpinner = opts?.spinner !== false;
+  if (useSpinner) showSpinner(true);
   try {
     $('#topDate').textContent = fmtJP(date);
-    await renderNotices(date);
-    state.currentMonthStatus = await loadMonthStatus(date);
-    const isOff = await getCalendarOff(date);
-    const shift = await getShiftForDate(date).catch(() => null);
+    // Parallelize initial fetches to reduce mobile cold-start latency.
+    const noticesTask = renderNotices(date).catch(() => null);
+    const monthStatusTask = loadMonthStatus(date).catch(() => 'draft');
+    const isOffTask = getCalendarOff(date).catch(() => false);
+    const shiftTask = getShiftForDate(date).catch(() => null);
+    const dailyTask = fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`).catch(() => null);
+    const dayTask = fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`).catch(() => ({ segments: [] }));
+    const reportTask = fetchJSONAuth(`/api/work-reports/my?date=${encodeURIComponent(date)}`).catch(() => null);
+
+    state.currentMonthStatus = await monthStatusTask;
+    const [isOff, shift, daily0, day] = await Promise.all([isOffTask, shiftTask, dailyTask, dayTask]);
     const shiftStart = String(shift?.start_time || FIXED_START).trim();
     const shiftEnd = String(shift?.end_time || FIXED_END).trim();
     state.shiftStart = shiftStart;
@@ -579,7 +715,6 @@ const load = async (date) => {
       shiftInfoBox.removeAttribute('hidden');
     }
 
-    const daily0 = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`).catch(() => null);
     const daily = daily0?.daily || null;
     const defaultKubun = isOff ? '休日' : '出勤';
     const kubunSaved = String(daily?.kubun || '').trim();
@@ -601,7 +736,6 @@ const load = async (date) => {
         setupSimpleCombo(selK);
       }
     } catch {}
-    const day = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`);
     const segments = Array.isArray(day?.segments) ? day.segments : [];
     let seg = pickLatestSegment(segments);
     const openSeg = pickOpenSegment(segments);
@@ -624,6 +758,10 @@ const load = async (date) => {
         } catch {}
       }
     }
+    const hasStartedOnce = segments.some(s => !!s?.checkIn);
+    const hasEndedOnce = segments.some(s => !!s?.checkIn && !!s?.checkOut);
+    state.hasStartedToday = hasStartedOnce || !!seg?.checkIn;
+    state.hasEndedToday = hasEndedOnce || !!(seg?.checkIn && seg?.checkOut);
     renderSimpleStatus();
     try { $('#topDate').textContent = fmtJP(date); } catch {}
 
@@ -646,8 +784,8 @@ const load = async (date) => {
         clearAutoTime(et);
       } else {
         if (stampSeg?.checkIn && !stampSeg?.checkOut) {
-          et.value = '';
-          clearAutoTime(et);
+          // Started but not ended yet: keep planned end-time in faded style.
+          applyAutoTime(et, shiftEnd);
         } else {
           applyAutoTime(et, shiftEnd);
         }
@@ -661,18 +799,22 @@ const load = async (date) => {
       const outTime = seg?.checkOut ? String(seg.checkOut).slice(11, 16) : '';
       const canStamp = date === todayJST();
       const hasOpen = !!effectiveOpenSeg?.checkIn && !effectiveOpenSeg?.checkOut;
+      const hasStarted = state.hasStartedToday || !!inTime;
+      const hasEnded = state.hasEndedToday || !!outTime;
       if (btnIn) {
-        btnIn.disabled = !canStamp || hasOpen;
-        const hmIn = hasOpen && effectiveOpenSeg?.checkIn ? String(effectiveOpenSeg.checkIn).slice(11, 16) : '';
+        btnIn.disabled = !canStamp || hasOpen || hasStarted;
+        const hmIn = (hasOpen && effectiveOpenSeg?.checkIn ? String(effectiveOpenSeg.checkIn).slice(11, 16) : '') || inTime;
         const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
-        btnIn.textContent = hasOpen && hmIn
+        btnIn.textContent = hmIn
           ? (isMobile ? `開始済 (${hmIn})` : `開始打刻済 (${hmIn})`)
           : '開始打刻';
       }
       if (btnOut) {
-        btnOut.disabled = !canStamp || !hasOpen;
-        if (hasOpen) btnOut.textContent = '終了打刻';
-        else if (outTime) {
+        // Do not hard-disable checkout on transient stale segment state.
+        // If user has started and has not ended yet, allow tapping 終了打刻 and let API verify.
+        btnOut.disabled = !canStamp || !hasStarted || hasEnded;
+        if (hasOpen || (hasStarted && !hasEnded)) btnOut.textContent = '終了打刻';
+        else if (hasEnded && outTime) {
           const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
           btnOut.textContent = isMobile ? `終了済 (${outTime})` : `終了打刻済 (${outTime})`;
         }
@@ -687,15 +829,15 @@ const load = async (date) => {
       else if (saved) sel.value = saved;
       else if (!String(sel.value || '').trim()) sel.value = '';
     }
+    ensureDefaultWorkTypeForToday(date);
     try {
       if (!kubunSaved && date === todayJST()) {
         await persistDaily(date);
       }
     } catch {}
 
-    try {
-      const r = await fetchJSONAuth(`/api/work-reports/my?date=${encodeURIComponent(date)}`);
-      const rep = r?.report || null;
+    // Non-critical data: keep loading in background so UI becomes interactive sooner.
+    const applyReport = (rep) => {
       const siteEl = $('#workSite');
       const workEl = $('#workContent');
       if (rep && (rep.site || rep.work)) {
@@ -712,16 +854,19 @@ const load = async (date) => {
           if (workEl && !workEl.value) workEl.value = draft.work || '';
         }
       }
-    } catch {}
+    };
+    Promise.resolve(noticesTask).catch(() => null);
+    Promise.resolve(reportTask).then((r) => applyReport(r?.report || null)).catch(() => applyReport(null));
 
     renderWorkMinutes();
     syncWorkTypeButtons();
     applyHolidayRestMode();
     applyWorkTypeGate();
+    saveFastSnapshot(date);
   } catch (e) {
     showErr(e?.message || '読み込みに失敗しました');
   } finally {
-    showSpinner(false);
+    if (useSpinner) showSpinner(false);
   }
 };
 
@@ -774,15 +919,7 @@ const save = async (date) => {
   const s = effectiveHm(stEl);
   const e = effectiveHm(etEl);
 
-  // Validation: Chặn thời gian ngoài khoảng 06:00 - 23:59 (Ưu tiên 1)
-  const checkRange = (hm) => {
-    if (!hm) return true;
-    return hm >= '06:00' && hm <= '23:59';
-  };
-  if (!checkRange(s) || !checkRange(e)) {
-    showErr('打刻時間は 06:00 から 23:59 の間である必要があります。');
-    return false;
-  }
+  // Allow full-day time entry (00:00-23:59), including night-shift scenarios.
 
   const cin = state.restHoliday ? null : toMySQLDateTime(date, s);
   const cout0 = state.restHoliday ? null : toMySQLDateTime(date, e);
@@ -875,12 +1012,12 @@ const save = async (date) => {
 
 document.addEventListener('DOMContentLoaded', async () => {
   showErr('');
-  showSpinner(true);
   const profile = await ensureAuthProfile();
   if (!profile) {
     window.location.replace('/ui/login');
     return;
   }
+  simpleUserId = String(profile?.id || '');
   try {
     const panels = [
       { key: 'attendanceSimple.notice.open', toggleId: 'toggleNotice', bodyId: 'noticeBox', def: true },
@@ -903,8 +1040,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   try { window.userRole = role; } catch {}
 
-  const state = { date: getUrlDate(), isOff: false, restHoliday: false, shiftStart: FIXED_START, shiftEnd: FIXED_END };
+  const state = { date: getUrlDate(), isOff: false, restHoliday: false, shiftStart: FIXED_START, shiftEnd: FIXED_END, hasStartedToday: false, hasEndedToday: false };
   window.state = state; // Gán vào window để các hàm bên ngoài scope DOMContentLoaded (như applyHolidayRestMode) có thể truy cập
+  let startStampInFlight = false;
   setUrlDate(state.date);
   const persistWorkType = async () => {
     try {
@@ -917,7 +1055,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const doStartStamp = async () => {
+    if (startStampInFlight) return;
     showErr('');
+    if (state.hasStartedToday) {
+      showErr('開始打刻は1日1回までです。修正は月次勤怠入力で行ってください。');
+      return;
+    }
     if (!String($('#workType')?.value || '').trim()) {
       showErr('先に勤務区分を選択してください');
       return;
@@ -927,6 +1070,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     try {
+      startStampInFlight = true;
       showSpinner(true);
       try { await persistDaily(state.date); } catch {}
       const r = await tryCheckIn();
@@ -953,10 +1097,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       showErr(e?.message || '開始打刻に失敗しました');
     } finally {
       showSpinner(false);
+      startStampInFlight = false;
     }
   };
   const doEndStamp = async () => {
     showErr('');
+    if (state.hasEndedToday) {
+      showErr('終了打刻は1日1回までです。修正は月次勤怠入力で行ってください。');
+      return;
+    }
     if (!String($('#workType')?.value || '').trim()) {
       showErr('先に勤務区分を選択してください');
       return;
@@ -1057,7 +1206,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('#btnAdd')?.addEventListener('click', () => { showErr('この画面では勤務区分追加は未対応です'); });
 
-  await load(state.date);
+  // Instant paint from recent snapshot, then sync with server in background.
+  try { restoreFastSnapshot(state.date, state); } catch {}
+  await load(state.date, { spinner: false });
   try { await persistWorkType(); } catch {}
   showSpinner(false);
 });
