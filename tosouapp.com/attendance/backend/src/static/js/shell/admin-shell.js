@@ -107,12 +107,60 @@ export function wireUserMenu() {
       } catch {}
     };
     const emergencyBtnId = 'emergencyUserBtn';
+    const emergencyPanelId = 'emergencyUserPanel';
+    const closeEmergencyPanel = () => {
+      try {
+        const p = document.getElementById(emergencyPanelId);
+        if (p) p.setAttribute('hidden', '');
+      } catch {}
+    };
+    const ensureEmergencyUserPanel = () => {
+      try {
+        let p = document.getElementById(emergencyPanelId);
+        if (p) return p;
+        p = document.createElement('div');
+        p.id = emergencyPanelId;
+        p.setAttribute('hidden', '');
+        p.style.position = 'fixed';
+        p.style.top = '46px';
+        p.style.right = '10px';
+        p.style.minWidth = '220px';
+        p.style.background = '#fff';
+        p.style.border = '1px solid #cfe0f5';
+        p.style.borderRadius = '10px';
+        p.style.boxShadow = '0 8px 24px rgba(0,0,0,.16)';
+        p.style.zIndex = '2147483647';
+        p.style.padding = '8px';
+        p.innerHTML = `
+          <a href="/admin/system/settings" style="display:block;padding:10px 12px;border-radius:8px;text-decoration:none;color:#0f172a;">Account settings</a>
+          <button type="button" id="emergencyLogoutBtn" style="display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:transparent;border-radius:8px;cursor:pointer;color:#0f172a;">Sign out</button>
+        `;
+        document.body.appendChild(p);
+        const outBtn = p.querySelector('#emergencyLogoutBtn');
+        if (outBtn) {
+          outBtn.addEventListener('click', async () => {
+            try { await logout(); } catch {}
+            try {
+              sessionStorage.removeItem('accessToken');
+              sessionStorage.removeItem('refreshToken');
+              sessionStorage.removeItem('user');
+            } catch {}
+            try {
+              localStorage.removeItem('refreshToken');
+              localStorage.removeItem('user');
+            } catch {}
+            try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+          });
+        }
+        return p;
+      } catch {}
+      return null;
+    };
     const ensureEmergencyUserButton = () => {
       try {
         if (document.getElementById(emergencyBtnId)) return;
         const srcBtn = document.querySelector('.user .user-btn');
-        const dd = document.querySelector('.user .dropdown');
-        if (!srcBtn || !dd) return;
+        if (!srcBtn) return;
         const emBtn = document.createElement('button');
         emBtn.id = emergencyBtnId;
         emBtn.type = 'button';
@@ -145,6 +193,7 @@ export function wireUserMenu() {
         syncInitial();
         setTimeout(syncInitial, 400);
         document.body.appendChild(emBtn);
+        ensureEmergencyUserPanel();
       } catch {}
     };
     ensureEmergencyUserButton();
@@ -154,6 +203,17 @@ export function wireUserMenu() {
       if (hit) {
         e.preventDefault();
         e.stopPropagation();
+        if (hit.id === emergencyBtnId) {
+          closeAllSubMenus();
+          closeAllUserMenus();
+          const p = ensureEmergencyUserPanel();
+          if (p) {
+            const hidden = p.hasAttribute('hidden');
+            if (hidden) p.removeAttribute('hidden');
+            else p.setAttribute('hidden', '');
+          }
+          return;
+        }
         const btn = (hit.id === emergencyBtnId)
           ? document.querySelector('.user .user-btn')
           : (hit.classList && hit.classList.contains('user-btn')
@@ -174,8 +234,9 @@ export function wireUserMenu() {
         }
         return;
       }
-      const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}`) : null;
+      const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}, #${emergencyPanelId}`) : null;
       if (inside) return;
+      closeEmergencyPanel();
       closeAllUserMenus();
     }, true);
     window.addEventListener('resize', () => {
@@ -197,6 +258,7 @@ export function wireUserMenu() {
         });
         document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
       } catch {}
+      closeEmergencyPanel();
     }, true);
 
     // Theme submenu wiring (idempotent)
