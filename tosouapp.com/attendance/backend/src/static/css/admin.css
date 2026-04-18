@@ -2,6 +2,15 @@
   display: flex;
 }
 
+/* Keep topbar/user controls above all section overlays/menus */
+.admin .topbar {
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
+}
+.admin .subbar {
+  z-index: 2147482000 !important;
+}
+
 .admin.has-sidebar .subbar+.content {
   padding-top: calc(var(--topbar-height) + var(--subbar-height));
 }
