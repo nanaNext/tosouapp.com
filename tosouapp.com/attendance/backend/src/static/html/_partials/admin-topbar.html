@@ -55,35 +55,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   }catch{}
 
-  // Fallback: ensure user dropdown works even if shared layout script loads late.
-  try{
-    var userBtn=document.querySelector('.user .user-btn');
-    var userRoot=userBtn?userBtn.closest('.user'):null;
-    var userDd=userRoot?userRoot.querySelector('.dropdown'):null;
-    if(userBtn && userDd && userBtn.dataset.fallbackBound!=='1'){
-      userBtn.dataset.fallbackBound='1';
-      userBtn.addEventListener('click', function(ev){
-        try{ ev.preventDefault(); ev.stopPropagation(); }catch{}
-        var hidden=userDd.hasAttribute('hidden');
-        if(hidden){
-          userDd.removeAttribute('hidden');
-          try{ userBtn.setAttribute('aria-expanded','true'); }catch{}
-        }else{
-          userDd.setAttribute('hidden','');
-          try{ userBtn.setAttribute('aria-expanded','false'); }catch{}
-        }
-      }, true);
-      document.addEventListener('click', function(ev){
-        try{
-          var t=ev.target;
-          if(!t) return;
-          if(userDd.contains(t) || userBtn.contains(t)) return;
-          userDd.setAttribute('hidden','');
-          userBtn.setAttribute('aria-expanded','false');
-        }catch{}
-      }, true);
-    }
-  }catch{}
+  // User dropdown toggle is handled centrally in shared layout.js.
 });
 </script>
 
