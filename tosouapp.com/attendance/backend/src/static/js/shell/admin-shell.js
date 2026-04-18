@@ -221,10 +221,22 @@ export function wireUserMenu() {
         };
         syncInitial();
         setTimeout(syncInitial, 400);
+        let lastToggleAt = 0;
+        const safeToggle = () => {
+          const now = Date.now();
+          if (now - lastToggleAt < 220) return;
+          lastToggleAt = now;
+          toggleEmergencyPanel();
+        };
+        emBtn.addEventListener('pointerdown', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          safeToggle();
+        }, true);
         emBtn.addEventListener('click', (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
-          toggleEmergencyPanel();
+          safeToggle();
         });
         emBtn.addEventListener('keydown', (ev) => {
           if (ev.key !== 'Enter' && ev.key !== ' ') return;
