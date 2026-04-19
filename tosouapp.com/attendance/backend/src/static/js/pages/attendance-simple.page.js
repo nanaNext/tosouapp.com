@@ -396,15 +396,16 @@ const pickOpenSegment = (segments) => {
 
 const isPlannedPlaceholderSegment = (seg, shiftStart, shiftEnd) => {
   try {
-    if (!seg?.checkIn || !seg?.checkOut) return false;
+    if (!seg?.checkIn) return false;
     const inHm = String(seg.checkIn).slice(11, 16);
-    const outHm = String(seg.checkOut).slice(11, 16);
+    const outHm = seg?.checkOut ? String(seg.checkOut).slice(11, 16) : '';
     const ss = String(shiftStart || '').trim();
     const se = String(shiftEnd || '').trim();
     const wt = String(seg?.work_type || seg?.workType || '').trim();
     const labels = String(seg?.labels || '').trim();
-    // Ignore auto/planned row: exactly shift range and no explicit workType/labels.
-    return !!(ss && se && inHm === ss && outHm === se && !wt && !labels);
+    const matchesPlan = !!(ss && inHm === ss && (!outHm || !se || outHm === se));
+    // Ignore auto/planned row: shift-like time and no explicit workType/labels.
+    return !!(matchesPlan && !wt && !labels);
   } catch {
     return false;
   }
@@ -785,6 +786,10 @@ const load = async (date, opts = {}) => {
       }
     } catch {}
     const segmentsRaw = Array.isArray(day?.segments) ? day.segments : [];
+    const plannedOpenSeg = segmentsRaw.find((s) =>
+      isPlannedPlaceholderSegment(s, shiftStart, shiftEnd) && s?.checkIn && !s?.checkOut
+    ) || null;
+    state.plannedOpenAttendanceId = plannedOpenSeg?.id || null;
     const segments = segmentsRaw.filter((s) => !isPlannedPlaceholderSegment(s, shiftStart, shiftEnd));
     let seg = pickLatestSegment(segments);
     const openSeg = pickOpenSegment(segments);
@@ -1099,10 +1104,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       startStampInFlight = true;
       showSpinner(true);
       try { await persistDaily(state.date); } catch {}
-      const r = await tryCheckIn();
+      let r = null;
+      const hmNow = nowHmJST();
+      if (state.plannedOpenAttendanceId) {
+        const cinNow = toMySQLDateTime(state.date, hmNow);
+        await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(state.date)}`, {
+          method: 'PUT',
+          body: JSON.stringify({ attendanceId: state.plannedOpenAttendanceId, checkIn: cinNow })
+        });
+        r = { ok: true, already: false, replacedPlannedOpen: true };
+      } else {
+        r = await tryCheckIn();
+      }
       if (!r?.already) {
         try {
-          const hm = nowHmJST();
+          const hm = hmNow;
           const st = $('#startTime');
           if (st && String(st.dataset?.touched || '') !== '1') st.value = hm;
           clearAutoTime(st);
