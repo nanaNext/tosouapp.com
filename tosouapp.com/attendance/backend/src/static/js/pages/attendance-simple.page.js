@@ -498,7 +498,8 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
     const btnOut = $('#btnEndStamp');
     const canStamp = String(date || '') === todayJST();
     const st = window.state || {};
-    const hasStarted = !!st.hasStartedToday || !!String(inHm || '').trim();
+    const hasGhostPlanned = !!st.plannedStampAttendanceId;
+    const hasStarted = (!hasGhostPlanned) && (!!st.hasStartedToday || !!String(inHm || '').trim());
     const hasEnded = !!st.hasEndedToday || !!String(outHm || '').trim();
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
 
@@ -830,7 +831,10 @@ const load = async (date, opts = {}) => {
         try {
           const st = await fetchJSONAuth(`/api/attendance/status?date=${encodeURIComponent(date)}`);
           if (st?.attendance?.checkIn) {
-            seg = { checkIn: st.attendance.checkIn, checkOut: st.attendance.checkOut || null };
+            const fromStatus = { checkIn: st.attendance.checkIn, checkOut: st.attendance.checkOut || null };
+            if (!isTodayShiftGhostSegment(fromStatus, shiftStart, shiftEnd, date)) {
+              seg = fromStatus;
+            }
           }
         } catch {}
       }
@@ -1111,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const doStartStamp = async () => {
     if (startStampInFlight) return;
     showErr('');
-    if (state.hasStartedToday) {
+    if (state.hasStartedToday && !state.plannedStampAttendanceId) {
       showErr('開始打刻は1日1回までです。修正は月次勤怠入力で行ってください。');
       return;
     }
