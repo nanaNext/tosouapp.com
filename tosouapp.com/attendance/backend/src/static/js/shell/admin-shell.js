@@ -298,7 +298,6 @@ export function wireUserMenu() {
     let lastGlobalToggleAt = 0;
     const bindDynamicUserControls = () => {
       try { ensureEmergencyUserButton(); } catch {}
-      try { bindRealUserButton(); } catch {}
     };
     bindDynamicUserControls();
     try {
@@ -320,8 +319,8 @@ export function wireUserMenu() {
         const now = Date.now();
         if (now - lastGlobalToggleAt < 180) return;
         lastGlobalToggleAt = now;
-        const ok = toggleRealUserMenu();
-        if (!ok) toggleEmergencyPanel();
+        closeAllUserMenus();
+        toggleEmergencyPanel();
         return;
       }
       const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}, #${emergencyPanelId}`) : null;
