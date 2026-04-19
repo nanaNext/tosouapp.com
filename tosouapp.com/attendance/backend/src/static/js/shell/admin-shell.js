@@ -292,9 +292,9 @@ export function wireUserMenu() {
         }, true);
       } catch {}
     };
+    let lastGlobalToggleAt = 0;
     const bindDynamicUserControls = () => {
       try { ensureEmergencyUserButton(); } catch {}
-      try { bindRealUserButton(); } catch {}
     };
     bindDynamicUserControls();
     try {
@@ -308,6 +308,17 @@ export function wireUserMenu() {
     } catch {}
     document.addEventListener('pointerdown', (e) => {
       const t = e && e.target;
+      const directBtn = t && t.closest ? t.closest('.user .user-btn, .user #userBtnInitial, .user .ud-avatar, .user .caret') : null;
+      if (directBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        try { e.stopImmediatePropagation(); } catch {}
+        const now = Date.now();
+        if (now - lastGlobalToggleAt < 180) return;
+        lastGlobalToggleAt = now;
+        toggleRealUserMenu();
+        return;
+      }
       const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}, #${emergencyPanelId}`) : null;
       if (inside) return;
       closeEmergencyPanel();
