@@ -191,8 +191,8 @@ export function wireUserMenu() {
           emBtn.style.position = 'fixed';
           emBtn.style.top = '8px';
           emBtn.style.right = '10px';
-          emBtn.style.width = '34px';
-          emBtn.style.height = '34px';
+          emBtn.style.width = '40px';
+          emBtn.style.height = '40px';
           emBtn.style.borderRadius = '999px';
           emBtn.style.border = '2px solid #0b2c66';
           emBtn.style.background = '#d1fae5';
@@ -321,6 +321,23 @@ export function wireUserMenu() {
     } catch {}
     document.addEventListener('pointerdown', (e) => {
       const t = e && e.target;
+      try {
+        const emBtn = document.getElementById(emergencyBtnId);
+        if (emBtn) {
+          const byTarget = t && t.closest ? t.closest(`#${emergencyBtnId}`) : null;
+          const r = emBtn.getBoundingClientRect();
+          const x = Number(e.clientX || 0);
+          const y = Number(e.clientY || 0);
+          const byRect = x >= (r.left - 4) && x <= (r.right + 4) && y >= (r.top - 4) && y <= (r.bottom + 4);
+          if (byTarget || byRect) {
+            e.preventDefault();
+            e.stopPropagation();
+            try { e.stopImmediatePropagation(); } catch {}
+            toggleEmergencyPanel();
+            return;
+          }
+        }
+      } catch {}
       const directBtn = t && t.closest ? t.closest('.user .user-btn, .user #userBtnInitial, .user .ud-avatar, .user .caret') : null;
       if (directBtn) {
         e.preventDefault();
