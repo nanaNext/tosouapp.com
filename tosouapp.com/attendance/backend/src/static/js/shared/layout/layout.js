@@ -88,6 +88,68 @@ export function initLayout() {
   const userBtn = document.querySelector('.user .user-btn');
   const dropdown = document.querySelector('#userDropdown');
   if (userBtn && dropdown) {
+    const closeAllUserMenus = () => {
+      try {
+        document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
+        document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+      } catch {}
+    };
+    const placeDropdown = (btn, dd) => {
+      try {
+        const r = btn.getBoundingClientRect();
+        const minW = 220;
+        const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        const left = Math.max(8, Math.min((r.right - minW), vw - minW - 8));
+        const top = Math.max(8, r.bottom + 6);
+        dd.style.position = 'fixed';
+        dd.style.left = `${left}px`;
+        dd.style.top = `${top}px`;
+        dd.style.right = 'auto';
+        dd.style.zIndex = '2147483000';
+        dd.style.minWidth = `${minW}px`;
+      } catch {}
+    };
+    const bindUserButtonsStable = () => {
+      try {
+        document.querySelectorAll('.user .user-btn').forEach((btn) => {
+          if (!btn || btn.dataset.boundStableToggle === '1') return;
+          btn.dataset.boundStableToggle = '1';
+          let lastAt = 0;
+          const toggle = () => {
+            const now = Date.now();
+            if (now - lastAt < 220) return;
+            lastAt = now;
+            const root = btn.closest('.user');
+            const dd = root ? root.querySelector('.dropdown') : null;
+            if (!dd) return;
+            const hidden = dd.hasAttribute('hidden');
+            closeAllUserMenus();
+            if (hidden) {
+              placeDropdown(btn, dd);
+              dd.removeAttribute('hidden');
+              try { btn.setAttribute('aria-expanded', 'true'); } catch {}
+            }
+          };
+          btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggle();
+          }, true);
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggle();
+          }, true);
+        });
+      } catch {}
+    };
+    bindUserButtonsStable();
+    try {
+      setTimeout(bindUserButtonsStable, 100);
+      setTimeout(bindUserButtonsStable, 500);
+      const mo = new MutationObserver(() => bindUserButtonsStable());
+      mo.observe(document.body, { childList: true, subtree: true });
+    } catch {}
     const firstChar = (s) => {
       try {
         const t = String(s || '').trim();
@@ -227,34 +289,6 @@ export function initLayout() {
       }
     });
   }
-
-  // Delegated user menu toggle to ensure it works after dynamic page changes
-  document.addEventListener('click', (e) => {
-    const ub = e.target && e.target.closest ? e.target.closest('.user .user-btn') : null;
-    if (!ub) return;
-    e.preventDefault();
-    e.stopPropagation();
-    try { document.querySelectorAll('.subbar .menu.open').forEach((m) => m.classList.remove('open')); } catch {}
-    const root = ub.closest('.user');
-    const dd = root ? root.querySelector('.dropdown') : null;
-    if (!dd) return;
-    try {
-      document.querySelectorAll('.user .dropdown').forEach((el) => { if (el !== dd) el.setAttribute('hidden', ''); });
-      document.querySelectorAll('.user .user-btn').forEach((el) => { if (el !== ub) el.setAttribute('aria-expanded', 'false'); });
-    } catch {}
-    const hidden = dd.hasAttribute('hidden');
-    if (hidden) {
-      dd.removeAttribute('hidden');
-      try { ub.setAttribute('aria-expanded', 'true'); } catch {}
-      const firstItem = dd.querySelector('.item, a, button');
-      if (firstItem && typeof firstItem.focus === 'function') {
-        try { firstItem.focus(); } catch {}
-      }
-    } else {
-      dd.setAttribute('hidden', '');
-      try { ub.setAttribute('aria-expanded', 'false'); } catch {}
-    }
-  });
 
   // Mobile Drawer
   const mobileBtn = document.querySelector('#mobileMenuBtn');
