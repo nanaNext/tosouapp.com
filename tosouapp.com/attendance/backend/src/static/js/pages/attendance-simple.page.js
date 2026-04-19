@@ -820,10 +820,20 @@ const load = async (date, opts = {}) => {
     const plannedOpenSeg = segmentsRaw.find((s) =>
       isPlannedPlaceholderSegment(s, shiftStart, shiftEnd) && s?.checkIn && !s?.checkOut
     ) || null;
+    const shiftLikeOpenSeg = segmentsRaw.find((s) => {
+      try {
+        if (!s?.id || !s?.checkIn || s?.checkOut) return false;
+        const inHm = String(s.checkIn).slice(11, 16);
+        return !!(shiftStart && inHm === shiftStart);
+      } catch {
+        return false;
+      }
+    }) || null;
     const ghostSeg = segmentsRaw.find((s) =>
       isTodayShiftGhostSegment(s, shiftStart, shiftEnd, date)
     ) || null;
     state.plannedOpenAttendanceId = plannedOpenSeg?.id || null;
+    state.shiftLikeOpenAttendanceId = shiftLikeOpenSeg?.id || null;
     state.plannedStampAttendanceId = ghostSeg?.id || null;
     const segments = segmentsRaw.filter((s) =>
       !isPlannedPlaceholderSegment(s, shiftStart, shiftEnd) &&
@@ -1129,7 +1139,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const doStartStamp = async () => {
     if (startStampInFlight) return;
     showErr('');
-    if (state.hasStartedToday && !state.plannedStampAttendanceId) {
+    const startFieldHm = String($('#startTime')?.value || '').trim();
+    const shiftStartHm = String(state.shiftStart || '').trim();
+    const allowShiftLikeOverride = state.date === todayJST()
+      && !!state.shiftLikeOpenAttendanceId
+      && !!shiftStartHm
+      && startFieldHm === shiftStartHm;
+    if (state.hasStartedToday && !state.plannedStampAttendanceId && !allowShiftLikeOverride) {
       showErr('開始打刻は1日1回までです。修正は月次勤怠入力で行ってください。');
       return;
     }
@@ -1147,11 +1163,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       try { await persistDaily(state.date); } catch {}
       let r = null;
       const hmNow = nowHmJST();
-      if (state.plannedStampAttendanceId) {
+      const overrideAttendanceId = state.plannedStampAttendanceId || (allowShiftLikeOverride ? state.shiftLikeOpenAttendanceId : null);
+      if (overrideAttendanceId) {
         const cinNow = toMySQLDateTime(state.date, hmNow);
         await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(state.date)}`, {
           method: 'PUT',
-          body: JSON.stringify({ attendanceId: state.plannedStampAttendanceId, checkIn: cinNow, checkOut: null })
+          body: JSON.stringify({ attendanceId: overrideAttendanceId, checkIn: cinNow, checkOut: null })
         });
         r = { ok: true, already: false, replacedPlannedOpen: true };
       } else {
