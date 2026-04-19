@@ -410,6 +410,22 @@ const isPlannedPlaceholderSegment = (seg, shiftStart, shiftEnd) => {
     return false;
   }
 };
+const isTodayShiftGhostSegment = (seg, shiftStart, shiftEnd, date) => {
+  try {
+    if (String(date || '') !== todayJST()) return false;
+    if (!seg?.checkIn) return false;
+    const inHm = String(seg.checkIn).slice(11, 16);
+    const outHm = seg?.checkOut ? String(seg.checkOut).slice(11, 16) : '';
+    const ss = String(shiftStart || '').trim();
+    const se = String(shiftEnd || '').trim();
+    if (!ss || inHm !== ss) return false;
+    // On today screen, a pure shift-shaped row is treated as ghost/planned
+    // so employee can stamp actual click-time.
+    return !outHm || !se || outHm === se;
+  } catch {
+    return false;
+  }
+};
 
 const setUrlDate = (date) => {
   try {
@@ -789,8 +805,15 @@ const load = async (date, opts = {}) => {
     const plannedOpenSeg = segmentsRaw.find((s) =>
       isPlannedPlaceholderSegment(s, shiftStart, shiftEnd) && s?.checkIn && !s?.checkOut
     ) || null;
+    const ghostSeg = segmentsRaw.find((s) =>
+      isTodayShiftGhostSegment(s, shiftStart, shiftEnd, date)
+    ) || null;
     state.plannedOpenAttendanceId = plannedOpenSeg?.id || null;
-    const segments = segmentsRaw.filter((s) => !isPlannedPlaceholderSegment(s, shiftStart, shiftEnd));
+    state.plannedStampAttendanceId = ghostSeg?.id || null;
+    const segments = segmentsRaw.filter((s) =>
+      !isPlannedPlaceholderSegment(s, shiftStart, shiftEnd) &&
+      !isTodayShiftGhostSegment(s, shiftStart, shiftEnd, date)
+    );
     let seg = pickLatestSegment(segments);
     const openSeg = pickOpenSegment(segments);
     if (date === todayJST() && seg?.checkIn && seg?.checkOut) {
@@ -1106,11 +1129,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       try { await persistDaily(state.date); } catch {}
       let r = null;
       const hmNow = nowHmJST();
-      if (state.plannedOpenAttendanceId) {
+      if (state.plannedStampAttendanceId) {
         const cinNow = toMySQLDateTime(state.date, hmNow);
         await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(state.date)}`, {
           method: 'PUT',
-          body: JSON.stringify({ attendanceId: state.plannedOpenAttendanceId, checkIn: cinNow })
+          body: JSON.stringify({ attendanceId: state.plannedStampAttendanceId, checkIn: cinNow, checkOut: null })
         });
         r = { ok: true, already: false, replacedPlannedOpen: true };
       } else {
