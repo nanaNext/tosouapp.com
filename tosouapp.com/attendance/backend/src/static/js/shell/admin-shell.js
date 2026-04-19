@@ -248,21 +248,15 @@ export function wireUserMenu() {
         ensureEmergencyUserPanel();
       } catch {}
     };
-    ensureEmergencyUserButton();
-    document.addEventListener('pointerdown', (e) => {
-      const t = e && e.target;
-      const hit = t && t.closest ? t.closest(`.user .user-btn, .user #userBtnInitial, .user .ud-avatar, .user .caret`) : null;
-      if (hit) {
-        e.preventDefault();
-        e.stopPropagation();
-        const btn = (hit.classList && hit.classList.contains('user-btn')
-          ? hit
-          : (hit.closest && hit.closest('.user') ? hit.closest('.user').querySelector('.user-btn') : null));
+    const toggleRealUserMenu = () => {
+      try {
+        const btn = document.querySelector('.user .user-btn');
         const root = btn && btn.closest ? btn.closest('.user') : null;
         const dd = root ? root.querySelector('.dropdown') : null;
         if (!btn || !dd) return;
-        closeAllSubMenus();
         const hidden = dd.hasAttribute('hidden');
+        closeAllSubMenus();
+        closeEmergencyPanel();
         closeAllUserMenus();
         if (hidden) {
           placeDropdown(btn, dd);
@@ -271,8 +265,37 @@ export function wireUserMenu() {
         } else {
           clearDropdownPlacement(dd);
         }
-        return;
-      }
+      } catch {}
+    };
+    const bindRealUserButton = () => {
+      try {
+        const btn = document.querySelector('.user .user-btn');
+        if (!btn) return;
+        if (btn.dataset.boundStableToggle === '1') return;
+        btn.dataset.boundStableToggle = '1';
+        let lastAt = 0;
+        const safeToggle = () => {
+          const now = Date.now();
+          if (now - lastAt < 220) return;
+          lastAt = now;
+          toggleRealUserMenu();
+        };
+        btn.addEventListener('pointerdown', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          safeToggle();
+        }, true);
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          safeToggle();
+        }, true);
+      } catch {}
+    };
+    ensureEmergencyUserButton();
+    bindRealUserButton();
+    document.addEventListener('pointerdown', (e) => {
+      const t = e && e.target;
       const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}, #${emergencyPanelId}`) : null;
       if (inside) return;
       closeEmergencyPanel();
