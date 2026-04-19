@@ -187,31 +187,39 @@ export function wireUserMenu() {
     };
     const ensureEmergencyUserButton = () => {
       try {
-        if (document.getElementById(emergencyBtnId)) return;
-        const emBtn = document.createElement('button');
-        emBtn.id = emergencyBtnId;
-        emBtn.type = 'button';
-        emBtn.setAttribute('aria-label', 'user menu');
-        emBtn.style.position = 'fixed';
-        emBtn.style.top = '8px';
-        emBtn.style.right = '10px';
-        emBtn.style.width = '34px';
-        emBtn.style.height = '34px';
-        emBtn.style.borderRadius = '999px';
-        emBtn.style.border = '2px solid #0b2c66';
-        emBtn.style.background = '#d1fae5';
-        emBtn.style.color = '#065f46';
-        emBtn.style.fontWeight = '800';
-        emBtn.style.fontSize = '12px';
-        emBtn.style.lineHeight = '1';
-        emBtn.style.display = 'inline-flex';
-        emBtn.style.alignItems = 'center';
-        emBtn.style.justifyContent = 'center';
-        emBtn.style.zIndex = '2147483647';
-        emBtn.style.cursor = 'pointer';
-        emBtn.style.pointerEvents = 'auto';
-        emBtn.style.touchAction = 'manipulation';
-        emBtn.style.userSelect = 'none';
+        const applyBtnStyle = (emBtn) => {
+          emBtn.style.position = 'fixed';
+          emBtn.style.top = '8px';
+          emBtn.style.right = '10px';
+          emBtn.style.width = '34px';
+          emBtn.style.height = '34px';
+          emBtn.style.borderRadius = '999px';
+          emBtn.style.border = '2px solid #0b2c66';
+          emBtn.style.background = '#d1fae5';
+          emBtn.style.color = '#065f46';
+          emBtn.style.fontWeight = '800';
+          emBtn.style.fontSize = '12px';
+          emBtn.style.lineHeight = '1';
+          emBtn.style.display = 'inline-flex';
+          emBtn.style.alignItems = 'center';
+          emBtn.style.justifyContent = 'center';
+          emBtn.style.zIndex = '2147483647';
+          emBtn.style.cursor = 'pointer';
+          emBtn.style.pointerEvents = 'auto';
+          emBtn.style.touchAction = 'manipulation';
+          emBtn.style.userSelect = 'none';
+          emBtn.style.visibility = 'visible';
+          emBtn.style.opacity = '1';
+        };
+        let emBtn = document.getElementById(emergencyBtnId);
+        if (!emBtn) {
+          emBtn = document.createElement('button');
+          emBtn.id = emergencyBtnId;
+          emBtn.type = 'button';
+          emBtn.setAttribute('aria-label', 'user menu');
+          document.body.appendChild(emBtn);
+        }
+        applyBtnStyle(emBtn);
         const syncInitial = () => {
           try {
             const initialEl = document.getElementById('userBtnInitial');
@@ -221,30 +229,33 @@ export function wireUserMenu() {
         };
         syncInitial();
         setTimeout(syncInitial, 400);
-        let lastToggleAt = 0;
-        const safeToggle = () => {
-          const now = Date.now();
-          if (now - lastToggleAt < 220) return;
-          lastToggleAt = now;
-          toggleEmergencyPanel();
-        };
-        emBtn.addEventListener('pointerdown', (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          safeToggle();
-        }, true);
-        emBtn.addEventListener('click', (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          safeToggle();
-        });
-        emBtn.addEventListener('keydown', (ev) => {
-          if (ev.key !== 'Enter' && ev.key !== ' ') return;
-          ev.preventDefault();
-          ev.stopPropagation();
-          toggleEmergencyPanel();
-        });
-        document.body.appendChild(emBtn);
+        if (emBtn.dataset.boundEmergencyToggle !== '1') {
+          emBtn.dataset.boundEmergencyToggle = '1';
+          let lastToggleAt = 0;
+          const safeToggle = () => {
+            const now = Date.now();
+            if (now - lastToggleAt < 220) return;
+            lastToggleAt = now;
+            toggleEmergencyPanel();
+          };
+          emBtn.addEventListener('pointerdown', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            try { ev.stopImmediatePropagation(); } catch {}
+            safeToggle();
+          }, true);
+          emBtn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            safeToggle();
+          });
+          emBtn.addEventListener('keydown', (ev) => {
+            if (ev.key !== 'Enter' && ev.key !== ' ') return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            toggleEmergencyPanel();
+          });
+        }
         ensureEmergencyUserPanel();
       } catch {}
     };
