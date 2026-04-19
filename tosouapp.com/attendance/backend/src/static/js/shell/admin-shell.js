@@ -253,7 +253,7 @@ export function wireUserMenu() {
         const btn = document.querySelector('.user .user-btn');
         const root = btn && btn.closest ? btn.closest('.user') : null;
         const dd = root ? root.querySelector('.dropdown') : null;
-        if (!btn || !dd) return;
+        if (!btn || !dd) return false;
         const hidden = dd.hasAttribute('hidden');
         closeAllSubMenus();
         closeEmergencyPanel();
@@ -262,10 +262,13 @@ export function wireUserMenu() {
           placeDropdown(btn, dd);
           dd.removeAttribute('hidden');
           try { btn.setAttribute('aria-expanded', 'true'); } catch {}
+          return true;
         } else {
           clearDropdownPlacement(dd);
+          return true;
         }
       } catch {}
+      return false;
     };
     const bindRealUserButton = () => {
       try {
@@ -295,6 +298,7 @@ export function wireUserMenu() {
     let lastGlobalToggleAt = 0;
     const bindDynamicUserControls = () => {
       try { ensureEmergencyUserButton(); } catch {}
+      try { bindRealUserButton(); } catch {}
     };
     bindDynamicUserControls();
     try {
@@ -316,7 +320,8 @@ export function wireUserMenu() {
         const now = Date.now();
         if (now - lastGlobalToggleAt < 180) return;
         lastGlobalToggleAt = now;
-        toggleRealUserMenu();
+        const ok = toggleRealUserMenu();
+        if (!ok) toggleEmergencyPanel();
         return;
       }
       const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}, #${emergencyPanelId}`) : null;
