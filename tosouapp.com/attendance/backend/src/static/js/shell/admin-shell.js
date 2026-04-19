@@ -247,7 +247,8 @@ export function wireUserMenu() {
           emBtn.addEventListener('click', (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
-            safeToggle();
+            // Pointerdown already toggles; keep click as a no-op to avoid
+            // delayed double-toggle on heavy pages.
           });
           emBtn.addEventListener('keydown', (ev) => {
             if (ev.key !== 'Enter' && ev.key !== ' ') return;
