@@ -596,6 +596,11 @@ const route = async () => {
 
   try {
     const p = normalizePath(window.location.pathname);
+    if (p === '/ui/admin') {
+      const mapped = mapLegacyAdminToNewPath(window.location.href) || '/admin/dashboard';
+      await navigate(mapped, true);
+      return;
+    }
     try { document.body.classList.remove('employees-wide'); } catch {}
     try {
       const opens = document.querySelectorAll('.subbar .menu.open');
