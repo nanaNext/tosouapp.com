@@ -1225,6 +1225,30 @@ body.drawer-open.admin.has-sidebar .content {
   font-weight: 800;
 }
 
+/* Keep dashboard text readable even when route/theme styles leak in */
+.admin .dashboard .kpi-title,
+.admin .dashboard .kpi-value,
+.admin .dashboard .kpi-sub,
+.admin .dashboard .dash-card,
+.admin .dashboard .dash-card-title,
+.admin .dashboard .dash-card li,
+.admin .dashboard .empty-state,
+.admin .dashboard .dash-card a {
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+:root:not([data-theme='dark']) .admin .dashboard .kpi-title,
+:root:not([data-theme='dark']) .admin .dashboard .kpi-value,
+:root:not([data-theme='dark']) .admin .dashboard .kpi-sub,
+:root:not([data-theme='dark']) .admin .dashboard .dash-card,
+:root:not([data-theme='dark']) .admin .dashboard .dash-card-title,
+:root:not([data-theme='dark']) .admin .dashboard .dash-card li,
+:root:not([data-theme='dark']) .admin .dashboard .empty-state,
+:root:not([data-theme='dark']) .admin .dashboard .dash-card a {
+  color: #0f172a !important;
+}
+
 .admin .dash-chart .bar {
   width: 24px;
   height: var(--h, 40%);
