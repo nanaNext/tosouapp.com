@@ -149,8 +149,24 @@ export function wireUserMenu() {
         p.style.display = 'none';
         p.style.visibility = 'hidden';
         p.style.opacity = '0';
+        const uname = (() => {
+          try {
+            return String(
+              document.querySelector('.user .name')?.textContent ||
+              document.querySelector('.user .username')?.textContent ||
+              ''
+            ).trim();
+          } catch {
+            return '';
+          }
+        })();
         p.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #eef2f7;margin-bottom:4px;">
+            <span style="display:inline-flex;width:24px;height:24px;border-radius:999px;background:#bbf7d0;color:#065f46;align-items:center;justify-content:center;font-weight:800;font-size:12px;">${uname ? uname.slice(0, 1).toUpperCase() : 'N'}</span>
+            <span style="font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${uname || 'Account'}</span>
+          </div>
           <a href="/admin/system/settings" style="display:block;padding:10px 12px;border-radius:8px;text-decoration:none;color:#0f172a;">Account settings</a>
+          <a href="/admin/system/settings#theme" style="display:block;padding:10px 12px;border-radius:8px;text-decoration:none;color:#0f172a;">Theme</a>
           <button type="button" id="emergencyLogoutBtn" style="display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:transparent;border-radius:8px;cursor:pointer;color:#0f172a;">Sign out</button>
         `;
         document.body.appendChild(p);
@@ -194,7 +210,7 @@ export function wireUserMenu() {
           emBtn.style.width = '40px';
           emBtn.style.height = '40px';
           emBtn.style.borderRadius = '999px';
-          emBtn.style.border = '2px solid #0b2c66';
+          emBtn.style.border = '1px solid #86efac';
           emBtn.style.background = '#d1fae5';
           emBtn.style.color = '#065f46';
           emBtn.style.fontWeight = '800';
@@ -210,6 +226,10 @@ export function wireUserMenu() {
           emBtn.style.userSelect = 'none';
           emBtn.style.visibility = 'visible';
           emBtn.style.opacity = '1';
+          emBtn.style.outline = 'none';
+          emBtn.style.boxShadow = '0 0 0 1px rgba(255,255,255,.85)';
+          emBtn.style.appearance = 'none';
+          emBtn.style.webkitTapHighlightColor = 'transparent';
         };
         let emBtn = document.getElementById(emergencyBtnId);
         if (!emBtn) {
@@ -242,12 +262,14 @@ export function wireUserMenu() {
           ev.preventDefault();
           ev.stopPropagation();
           try { ev.stopImmediatePropagation(); } catch {}
-          safeToggle();
+          // Global capture listener handles toggle to avoid double-open/close.
+          try { emBtn.blur(); } catch {}
         };
         emBtn.onclick = (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
           // Pointerdown already toggles; keep click as a no-op.
+          try { emBtn.blur(); } catch {}
         };
         emBtn.onkeydown = (ev) => {
           if (ev.key !== 'Enter' && ev.key !== ' ') return;
