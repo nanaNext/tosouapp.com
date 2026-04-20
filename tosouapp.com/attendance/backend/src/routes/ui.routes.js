@@ -8,6 +8,7 @@ const refreshRepo = require('../modules/auth/refresh.repository');
 const router = express.Router();
 const htmlRoot = path.join(__dirname, '..', 'static', 'html');
 const sendHtml = makeHtmlSenderSync({ htmlRoot });
+const roleOf = (v) => String(v || '').trim().toLowerCase();
 
 const sendPage = (file) => (req, res) => sendHtml(req, res, file);
 const setNoStore = (res) => {
@@ -16,7 +17,7 @@ const setNoStore = (res) => {
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     res.set('Surrogate-Control', 'no-store');
-  } catch {}
+  } catch { }
 };
 const sendPageNoCache = (file) => (req, res) => {
   setNoStore(res);
@@ -27,7 +28,7 @@ const sendAdminPageNoCache = (req, res, file = 'admin.html') => {
   return sendHtml(req, res, file);
 };
 const authorizePage = (...roles) => (req, res, next) => {
-  const role = String(req.user?.role || '').toLowerCase();
+  const role = roleOf(req.user?.role);
   if (!req.user) {
     return res.redirect(302, '/ui/login');
   }
@@ -63,12 +64,12 @@ router.get('/ui/logout', async (req, res) => {
     const cookieRt = req.cookies?.refreshToken;
     const refreshToken = cookieRt || null;
     if (refreshToken) {
-      try { await refreshRepo.revokeToken(refreshToken); } catch {}
+      try { await refreshRepo.revokeToken(refreshToken); } catch { }
     }
     res.clearCookie('refreshToken', { path: '/api/auth' });
     res.clearCookie('csrfToken', { path: '/' });
     res.clearCookie('session_token', { path: '/' });
-  } catch {}
+  } catch { }
   const next = String(req.query?.next || '').trim();
   if (next) return res.redirect(302, next);
   return res.redirect(302, '/ui/login');
@@ -87,13 +88,13 @@ router.use('/ui', authenticateFromCookie);
 router.get('/ui/dashboard', sendPage('dashboard.html'));
 router.get('/ui/portal', (req, res) => {
   setNoStore(res);
-  const role = String(req.user?.role || '').toLowerCase();
+  const role = roleOf(req.user?.role);
   if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
   return sendHtml(req, res, 'portal.html');
 });
 router.get('/ui/portal/', (req, res) => {
   setNoStore(res);
-  const role = String(req.user?.role || '').toLowerCase();
+  const role = roleOf(req.user?.role);
   if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
   return sendHtml(req, res, 'portal.html');
 });
