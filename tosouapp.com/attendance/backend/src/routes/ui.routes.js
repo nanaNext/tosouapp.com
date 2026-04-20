@@ -10,6 +10,15 @@ const htmlRoot = path.join(__dirname, '..', 'static', 'html');
 const sendHtml = makeHtmlSenderSync({ htmlRoot });
 
 const sendPage = (file) => (req, res) => sendHtml(req, res, file);
+const sendAdminPageNoCache = (req, res, file = 'admin.html') => {
+  try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+  } catch {}
+  return sendHtml(req, res, file);
+};
 const authorizePage = (...roles) => (req, res, next) => {
   const role = String(req.user?.role || '').toLowerCase();
   if (!req.user) {
@@ -96,8 +105,8 @@ router.get('/ui/admin', (req, res) => {
   if (tab === 'settings') return res.redirect(302, '/admin/system/settings');
   return res.redirect(302, '/admin/dashboard');
 });
-router.get('/ui/employees', sendPage('admin.html'));
-router.get('/ui/employees/', sendPage('admin.html'));
+router.get('/ui/employees', (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
+router.get('/ui/employees/', (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
 
 router.get('/admin/attendance/monthly', sendPage('admin-attendance-monthly.html'));
 router.get('/admin/attendance/monthly/', sendPage('admin-attendance-monthly.html'));
@@ -105,7 +114,7 @@ router.get('/admin/employees/monthly-summary', sendPage('admin-employees-monthly
 router.get('/admin/employees/monthly-summary/', sendPage('admin-employees-monthly-summary.html'));
 router.get('/admin/attendance/adjust-requests', sendPage('admin-attendance-adjust-requests.html'));
 router.get('/admin/attendance/adjust-requests/', sendPage('admin-attendance-adjust-requests.html'));
-router.get(/^\/admin(?:\/.*)?$/, sendPage('admin.html'));
+router.get(/^\/admin(?:\/.*)?$/, (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
 
 router.get('/ui/overtime', sendPage('overtime.html'));
 router.get('/ui/leave', (req, res) => {
