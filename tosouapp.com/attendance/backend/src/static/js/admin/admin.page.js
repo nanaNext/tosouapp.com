@@ -853,6 +853,7 @@ const wireNavSelection = () => {
 };
 
 const boot = async () => {
+  try { document.body.classList.add('booting'); } catch {}
   setTopbarHeightVar();
   try { window.addEventListener('resize', setTopbarHeightVar); } catch {}
   wireSidebarAccordion();
@@ -884,7 +885,11 @@ const boot = async () => {
       }
     } catch {}
   }
-  await route();
+  try {
+    await route();
+  } finally {
+    try { document.body.classList.remove('booting'); } catch {}
+  }
 };
 
 boot();
