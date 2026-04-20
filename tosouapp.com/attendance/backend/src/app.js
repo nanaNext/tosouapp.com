@@ -1,5 +1,6 @@
 const path = require('path');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
 require('./config/loadEnv');
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
@@ -9,7 +10,16 @@ const cookieParser = require('cookie-parser');
 const security = require('./core/middleware/security');
 
 const app = express();
-const BUILD_ID = process.env.BUILD_ID || 'navy-20260331-1';
+function resolveBuildId() {
+  const explicit = String(process.env.BUILD_ID || process.env.APP_BUILD_ID || process.env.GIT_COMMIT || '').trim();
+  if (explicit) return explicit;
+  try {
+    const sha = String(execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }) || '').trim();
+    if (sha) return `git-${sha}`;
+  } catch {}
+  return `runtime-${Date.now()}`;
+}
+const BUILD_ID = resolveBuildId();
 const STARTED_AT = Date.now();
 process.env.BUILD_ID = BUILD_ID;
 app.set('trust proxy', parseInt(process.env.TRUST_PROXY_HOPS || '1', 10));
