@@ -78,8 +78,16 @@ router.use('/admin', authenticateFromCookie, authorizePage('admin', 'manager'));
 router.use('/ui', authenticateFromCookie);
 
 router.get('/ui/dashboard', sendPage('dashboard.html'));
-router.get('/ui/portal', sendPage('portal.html'));
-router.get('/ui/portal/', sendPage('portal.html'));
+router.get('/ui/portal', (req, res) => {
+  const role = String(req.user?.role || '').toLowerCase();
+  if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
+  return sendHtml(req, res, 'portal.html');
+});
+router.get('/ui/portal/', (req, res) => {
+  const role = String(req.user?.role || '').toLowerCase();
+  if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
+  return sendHtml(req, res, 'portal.html');
+});
 
 router.get('/admin/embed/attendance/monthly', sendPage('attendance-monthly.html'));
 router.get('/admin/embed/attendance/monthly/', sendPage('attendance-monthly.html'));

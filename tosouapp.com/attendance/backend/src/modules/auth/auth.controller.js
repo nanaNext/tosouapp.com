@@ -108,7 +108,7 @@ exports.login = async (req, res) => {
       const upgraded = bcrypt.hashSync(password, bcryptRounds);
       await userRepo.setPassword(user.id, upgraded);
     }
-    const role = user.role || 'employee';
+    const role = String(user.role || 'employee').toLowerCase();
     const tokenVersion = user.token_version || 1;
     const token = jwt.sign({ id: user.id, role, v: tokenVersion }, jwtSecretCurrent, { expiresIn: accessTokenExpires });
     const rt = crypto.randomBytes(48).toString('base64url');
