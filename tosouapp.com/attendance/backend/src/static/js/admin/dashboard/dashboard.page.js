@@ -30,6 +30,10 @@ const fmtInt = (v) => {
   if (!isFinite(n)) return '0';
   return String(Math.trunc(n));
 };
+const withTimeout = (p, ms = 8000) => Promise.race([
+  p,
+  new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+]);
 
 const makeKpi = (title, value, sub) => {
   const c = document.createElement('div');
@@ -71,15 +75,19 @@ const renderDashboard = async (profile) => {
   wrap.appendChild(head);
 
   showSpinner();
-  const [statsRes, usersRes, pendingLeaveRes, pendingProfileRes, workReportsRes, rosterRes] = await Promise.allSettled([
-    fetchJSONAuth('/api/admin/home/stats'),
-    fetchJSONAuth('/api/admin/users'),
-    fetchJSONAuth('/api/leave/pending'),
-    fetchJSONAuth('/api/manager/profile-change/pending'),
-    fetchJSONAuth('/api/admin/work-reports'),
-    fetchJSONAuth('/api/attendance/today-roster')
-  ]);
-  hideSpinner();
+  let statsRes; let usersRes; let pendingLeaveRes; let pendingProfileRes; let workReportsRes; let rosterRes;
+  try {
+    [statsRes, usersRes, pendingLeaveRes, pendingProfileRes, workReportsRes, rosterRes] = await Promise.allSettled([
+      withTimeout(fetchJSONAuth('/api/admin/home/stats')),
+      withTimeout(fetchJSONAuth('/api/admin/users')),
+      withTimeout(fetchJSONAuth('/api/leave/pending')),
+      withTimeout(fetchJSONAuth('/api/manager/profile-change/pending')),
+      withTimeout(fetchJSONAuth('/api/admin/work-reports')),
+      withTimeout(fetchJSONAuth('/api/attendance/today-roster'))
+    ]);
+  } finally {
+    hideSpinner();
+  }
   if (!isAlive()) return;
 
   const stats = statsRes.status === 'fulfilled' && statsRes.value ? statsRes.value : { todayCheckin: 0, lateCount: 0, leaveCount: 0, pendingCount: 0 };
