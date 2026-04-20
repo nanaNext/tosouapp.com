@@ -896,7 +896,7 @@ const boot = async () => {
       try { document.getElementById('adminBootMask')?.remove(); } catch {}
     };
     try {
-      requestAnimationFrame(() => requestAnimationFrame(reveal));
+      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(reveal, 180)));
     } catch {
       reveal();
     }
