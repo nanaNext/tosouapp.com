@@ -360,6 +360,25 @@ export function wireUserMenu() {
       shellState.userMenuBoundDelegated = '1';
       document.addEventListener('pointerdown', (e) => {
         const t = e && e.target;
+        try {
+          const emBtn = document.getElementById(emergencyBtnId);
+          if (emBtn) {
+            const r = emBtn.getBoundingClientRect();
+            const x = Number(e.clientX || 0);
+            const y = Number(e.clientY || 0);
+            const byRect = x >= (r.left - 6) && x <= (r.right + 6) && y >= (r.top - 6) && y <= (r.bottom + 6);
+            const insidePanel = t && t.closest ? t.closest(`#${emergencyPanelId}`) : null;
+            if (byRect && !insidePanel) {
+              e.preventDefault();
+              e.stopPropagation();
+              try { e.stopImmediatePropagation(); } catch {}
+              closeAllSubMenus();
+              closeAllUserMenus();
+              openEmergencyPanel();
+              return;
+            }
+          }
+        } catch {}
         const directBtn = t && t.closest ? t.closest('.user .user-btn, .user #userBtnInitial, .user .ud-avatar, .user .caret') : null;
         if (directBtn) {
           e.preventDefault();
