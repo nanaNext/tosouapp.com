@@ -9,6 +9,12 @@
   <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260418-menufix7">
   <meta name="asset-v" content="navy-20260418-adminfix4">
   <style>
+    #adminBootMask {
+      position: fixed;
+      inset: 0;
+      background: #f8fbff;
+      z-index: 2147483647;
+    }
     html.admin-preboot body.admin {
       visibility: hidden !important;
     }
@@ -23,11 +29,12 @@
   </script>
   
   <script src="/static/js/pages/session-idle.js?v=navy-20260411-patch2" defer></script>
-  <script type="module" src="/static/js/admin/admin.page.js?v=navy-20260418-menufix11"></script>
+  <script type="module" src="/static/js/admin/admin.page.js?v=navy-20260418-menufix12"></script>
   <link rel="icon" href="data:,">
 </head>
 
-<body class="admin booting">
+<body class="admin booting" style="visibility:hidden;">
+  <div id="adminBootMask" aria-hidden="true"></div>
   <!--#include file="_partials/admin-topbar.html" -->
   <!--#include file="_partials/admin-mobile-drawer.html" -->
   <div class="subbar">
