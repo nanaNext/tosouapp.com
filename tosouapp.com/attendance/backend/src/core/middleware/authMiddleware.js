@@ -4,7 +4,14 @@ const userRepo = require('../../modules/users/user.repository');
 
 const lastActiveTouch = new Map();
 const touchMinMs = Math.max(5_000, Number.parseInt(process.env.LAST_ACTIVE_TOUCH_MIN_MS || '60000', 10) || 60_000);
-const normalizeRole = (v) => String(v || '').trim().toLowerCase();
+const normalizeRole = (v) => {
+  const r = String(v || '').trim().toLowerCase();
+  if (r === 'admin' || r === 'manager' || r === 'employee' || r === 'payroll') return r;
+  if (r === '管理者' || r === 'administrator' || r === 'quanly' || r === 'quản lý') return 'admin';
+  if (r === 'マネージャー' || r === 'supervisor' || r === 'lead') return 'manager';
+  if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
+  return r;
+};
 
 function nextUrl(req) {
   try {

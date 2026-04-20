@@ -8,7 +8,14 @@ const refreshRepo = require('../modules/auth/refresh.repository');
 const router = express.Router();
 const htmlRoot = path.join(__dirname, '..', 'static', 'html');
 const sendHtml = makeHtmlSenderSync({ htmlRoot });
-const roleOf = (v) => String(v || '').trim().toLowerCase();
+const roleOf = (v) => {
+  const r = String(v || '').trim().toLowerCase();
+  if (r === 'admin' || r === 'manager' || r === 'employee' || r === 'payroll') return r;
+  if (r === '管理者' || r === 'administrator' || r === 'quanly' || r === 'quản lý') return 'admin';
+  if (r === 'マネージャー' || r === 'supervisor' || r === 'lead') return 'manager';
+  if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
+  return r;
+};
 
 const sendPage = (file) => (req, res) => sendHtml(req, res, file);
 const setNoStore = (res) => {
