@@ -39,34 +39,16 @@
       };
       const reveal = () => { try { document.documentElement.classList.remove('portal-preboot'); } catch {} };
       try { document.documentElement.classList.add('portal-preboot'); } catch {}
-      const hardTimeout = setTimeout(reveal, 1800);
       const routeAdmin = () => { try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; } };
       try {
         const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
         const cachedRole = roleOf((raw ? JSON.parse(raw) : {})?.role || '');
         if (cachedRole === 'admin' || cachedRole === 'manager') {
-          clearTimeout(hardTimeout);
           routeAdmin();
           return;
         }
       } catch {}
-      try {
-        fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
-          .then(r => r.ok ? r.json() : null)
-          .then(me => {
-            const role = roleOf(me?.role || '');
-            clearTimeout(hardTimeout);
-            if (role === 'admin' || role === 'manager') routeAdmin();
-            else reveal();
-          })
-          .catch(() => {
-            clearTimeout(hardTimeout);
-            reveal();
-          });
-      } catch {
-        clearTimeout(hardTimeout);
-        reveal();
-      }
+      reveal();
     })();
   </script>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
