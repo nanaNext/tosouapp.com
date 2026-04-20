@@ -35,6 +35,15 @@ function normalizeDateLike(input) {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : s;
 }
 
+function normalizeRole(input) {
+  const r = String(input || '').trim().toLowerCase();
+  if (r === 'admin' || r === 'manager' || r === 'employee' || r === 'payroll') return r;
+  if (r === '管理者' || r === 'administrator' || r === 'quanly' || r === 'quản lý') return 'admin';
+  if (r === 'マネージャー' || r === 'supervisor' || r === 'lead') return 'manager';
+  if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
+  return r || 'employee';
+}
+
 function buildResetUrl(req, token) {
   const base = String(appBaseUrl || '').trim()
     || `${isHttpsRequest(req) ? 'https' : 'http'}://${req.get('host')}`;
@@ -108,7 +117,7 @@ exports.login = async (req, res) => {
       const upgraded = bcrypt.hashSync(password, bcryptRounds);
       await userRepo.setPassword(user.id, upgraded);
     }
-    const role = String(user.role || 'employee').toLowerCase();
+    const role = normalizeRole(user.role || 'employee');
     const tokenVersion = user.token_version || 1;
     const token = jwt.sign({ id: user.id, role, v: tokenVersion }, jwtSecretCurrent, { expiresIn: accessTokenExpires });
     const rt = crypto.randomBytes(48).toString('base64url');
