@@ -868,7 +868,7 @@ const boot = async () => {
     try { document.getElementById('adminBootMask')?.remove(); } catch {}
   };
   let forceRevealTimer = null;
-  try { forceRevealTimer = setTimeout(reveal, 2200); } catch {}
+  try { forceRevealTimer = setTimeout(reveal, 1200); } catch {}
   setTopbarHeightVar();
   try { window.addEventListener('resize', setTopbarHeightVar); } catch {}
   wireSidebarAccordion();
@@ -905,7 +905,7 @@ const boot = async () => {
   } finally {
     try { if (forceRevealTimer) clearTimeout(forceRevealTimer); } catch {}
     try {
-      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(reveal, 180)));
+      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(reveal, 40)));
     } catch {
       reveal();
     }
