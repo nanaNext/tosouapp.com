@@ -622,7 +622,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/employees' || p2.startsWith('/admin/employees/')) {
-      const mod = await loadModule('./employees/employees.page.js');
+      const mod = await loadModule('./employees/employees.page.js?v=navy-20260418-empfix1');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
