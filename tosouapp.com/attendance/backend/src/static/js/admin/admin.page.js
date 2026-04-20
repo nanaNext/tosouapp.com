@@ -889,8 +889,17 @@ const boot = async () => {
   try {
     await route();
   } finally {
-    try { document.body.classList.remove('booting'); } catch {}
-    try { document.documentElement.classList.remove('admin-preboot'); } catch {}
+    const reveal = () => {
+      try { document.body.classList.remove('booting'); } catch {}
+      try { document.documentElement.classList.remove('admin-preboot'); } catch {}
+      try { document.body.style.visibility = ''; } catch {}
+      try { document.getElementById('adminBootMask')?.remove(); } catch {}
+    };
+    try {
+      requestAnimationFrame(() => requestAnimationFrame(reveal));
+    } catch {
+      reveal();
+    }
   }
 };
 
