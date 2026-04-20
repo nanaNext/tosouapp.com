@@ -70,8 +70,14 @@ export function wireTopbarHeightVar() {
 
 export function wireUserMenu() {
   try {
-    if (document.body.dataset.userMenuDelegated === '1') return;
-    document.body.dataset.userMenuDelegated = '1';
+    const shellState = (() => {
+      try {
+        if (!window.__adminShellUserMenuState) window.__adminShellUserMenuState = {};
+        return window.__adminShellUserMenuState;
+      } catch {
+        return {};
+      }
+    })();
     const closeAllUserMenus = () => {
       try {
         document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
@@ -334,55 +340,61 @@ export function wireUserMenu() {
       try { ensureEmergencyUserButton(); } catch {}
     };
     bindDynamicUserControls();
-    try {
-      // Some admin pages render topbar/user menu after script init.
-      // Re-bind to avoid intermittent "button not clickable" states.
-      setTimeout(bindDynamicUserControls, 100);
-      setTimeout(bindDynamicUserControls, 500);
-      setTimeout(bindDynamicUserControls, 1500);
-      const mo = new MutationObserver(() => bindDynamicUserControls());
-      mo.observe(document.body, { childList: true, subtree: true });
-    } catch {}
-    document.addEventListener('pointerdown', (e) => {
-      const t = e && e.target;
-      const directBtn = t && t.closest ? t.closest('.user .user-btn, .user #userBtnInitial, .user .ud-avatar, .user .caret') : null;
-      if (directBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        try { e.stopImmediatePropagation(); } catch {}
-        const now = Date.now();
-        if (now - lastGlobalToggleAt < 180) return;
-        lastGlobalToggleAt = now;
+    if (!shellState.userMenuBoundDynamic) {
+      shellState.userMenuBoundDynamic = '1';
+      try {
+        // Some admin pages render topbar/user menu after script init.
+        // Re-bind to avoid intermittent "button not clickable" states.
+        setTimeout(bindDynamicUserControls, 100);
+        setTimeout(bindDynamicUserControls, 500);
+        setTimeout(bindDynamicUserControls, 1500);
+        const mo = new MutationObserver(() => bindDynamicUserControls());
+        mo.observe(document.body, { childList: true, subtree: true });
+      } catch {}
+    }
+    if (!shellState.userMenuBoundDelegated) {
+      shellState.userMenuBoundDelegated = '1';
+      document.addEventListener('pointerdown', (e) => {
+        const t = e && e.target;
+        const directBtn = t && t.closest ? t.closest('.user .user-btn, .user #userBtnInitial, .user .ud-avatar, .user .caret') : null;
+        if (directBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          try { e.stopImmediatePropagation(); } catch {}
+          const now = Date.now();
+          if (now - lastGlobalToggleAt < 180) return;
+          lastGlobalToggleAt = now;
+          closeAllUserMenus();
+          toggleEmergencyPanel();
+          return;
+        }
+        const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}, #${emergencyPanelId}`) : null;
+        if (inside) return;
+        closeEmergencyPanel();
         closeAllUserMenus();
-        toggleEmergencyPanel();
-        return;
-      }
-      const inside = t && t.closest ? t.closest(`.user-menu, #${emergencyBtnId}, #${emergencyPanelId}`) : null;
-      if (inside) return;
-      closeEmergencyPanel();
-      closeAllUserMenus();
-    }, true);
-    window.addEventListener('resize', () => {
-      try {
-        const btn = document.querySelector('.user .user-btn[aria-expanded="true"]');
-        if (!btn) return;
-        const root = btn.closest('.user');
-        const dd = root ? root.querySelector('.dropdown') : null;
-        if (!dd || dd.hasAttribute('hidden')) return;
-        placeDropdown(btn, dd);
-      } catch {}
-    });
-    window.addEventListener('scroll', () => {
-      try {
-        document.querySelectorAll('.user .dropdown').forEach((dd) => {
-          if (dd.hasAttribute('hidden')) return;
-          dd.setAttribute('hidden', '');
-          clearDropdownPlacement(dd);
-        });
-        document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      } catch {}
-      closeEmergencyPanel();
-    }, true);
+      }, true);
+      window.addEventListener('resize', () => {
+        try {
+          const btn = document.querySelector('.user .user-btn[aria-expanded="true"]');
+          if (!btn) return;
+          const root = btn.closest('.user');
+          const dd = root ? root.querySelector('.dropdown') : null;
+          if (!dd || dd.hasAttribute('hidden')) return;
+          placeDropdown(btn, dd);
+        } catch {}
+      });
+      window.addEventListener('scroll', () => {
+        try {
+          document.querySelectorAll('.user .dropdown').forEach((dd) => {
+            if (dd.hasAttribute('hidden')) return;
+            dd.setAttribute('hidden', '');
+            clearDropdownPlacement(dd);
+          });
+          document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+        } catch {}
+        closeEmergencyPanel();
+      }, true);
+    }
 
     // Theme submenu wiring (idempotent)
     const themeDrop = qs('#themeDropdown');
