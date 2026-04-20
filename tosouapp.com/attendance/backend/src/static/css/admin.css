@@ -1057,13 +1057,15 @@ body.drawer-open.admin.has-sidebar .content {
   border-radius: 10px;
   padding: 12px 14px;
   box-shadow: 0 1px 4px rgba(16, 24, 40, .08);
-  height: 120px;
+  min-height: 120px;
+  height: auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   font-size: 14px;
   box-sizing: border-box;
   width: 100%;
+  overflow: visible;
 }
 
 .admin .kpi-card.clickable {
@@ -1131,6 +1133,7 @@ body.drawer-open.admin.has-sidebar .content {
   font-weight: 700;
   color: #0f172a;
   margin-top: 2px;
+  line-height: 1.2;
 }
 
 .admin .kpi-sub {
@@ -1138,6 +1141,8 @@ body.drawer-open.admin.has-sidebar .content {
   color: #475569;
   font-weight: 500;
   margin-top: 4px;
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .admin .kpi-delta {
