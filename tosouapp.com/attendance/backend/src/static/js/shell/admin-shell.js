@@ -250,25 +250,27 @@ export function wireUserMenu() {
         syncInitial();
         setTimeout(syncInitial, 400);
         let lastToggleAt = Number(emBtn.dataset.lastToggleAt || '0');
-        const safeToggle = () => {
+        const safeOpen = () => {
           const now = Date.now();
           if (now - lastToggleAt < 220) return;
           lastToggleAt = now;
           emBtn.dataset.lastToggleAt = String(lastToggleAt);
-          toggleEmergencyPanel();
+          closeAllSubMenus();
+          closeAllUserMenus();
+          openEmergencyPanel();
         };
         // Re-assign handlers every time to survive DOM re-render/replacement.
         emBtn.onpointerdown = (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
           try { ev.stopImmediatePropagation(); } catch {}
-          safeToggle();
+          safeOpen();
           try { emBtn.blur(); } catch {}
         };
         emBtn.onclick = (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
-          // Toggle is handled in pointerdown only to avoid delayed double-toggle.
+          safeOpen();
           try { emBtn.blur(); } catch {}
         };
         emBtn.onkeydown = (ev) => {
