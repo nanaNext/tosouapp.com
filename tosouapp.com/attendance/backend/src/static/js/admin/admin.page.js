@@ -687,14 +687,17 @@ const route = async () => {
       await mountModule(mod);
       return;
     }
-    syncUrlState();
-    await loadModule('../pages/admin.page.js');
-    if (seq !== routeSeq) return;
-    try {
-      if (document.readyState !== 'loading') {
-        document.dispatchEvent(new Event('DOMContentLoaded'));
-      }
-    } catch {}
+    // Do not fallback to legacy admin bootstrap; it causes mixed old/new
+    // headers and visible flicker on first load.
+    if (normalizePath(p2) === '/admin') {
+      await navigate('/admin/dashboard', true);
+      return;
+    }
+    const host = document.querySelector('#adminContent');
+    if (host) {
+      host.className = 'card';
+      host.innerHTML = '<div style="padding:16px;color:#0f172a;">ページが見つかりません。</div>';
+    }
   } catch (err) {
     renderErr(err);
   }
