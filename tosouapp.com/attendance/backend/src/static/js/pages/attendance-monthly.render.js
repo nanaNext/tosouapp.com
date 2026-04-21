@@ -92,9 +92,8 @@
         const hasActual = !!(inHm || outHm);
         if (hasActual) kubunInit = '休日出勤';
       }
-      // Consider row "actual" only when real punch times exist.
-      // Some legacy rows may have id but empty times and should remain planned/faded.
-      const hasActual = !!(seg?.checkIn || seg?.checkOut);
+      // Consider row "actual" only when visible (non-placeholder) punch times exist.
+      const hasActual = !!(inHm || outHm);
       const isPlanned = !kubunInit && !hasActual;
       // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
       const isPlannedLikeWork = !hasActual && isWorkDay;
@@ -130,7 +129,7 @@
       const nbMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.nightBreakMinutes ?? 0) : 0) : 0;
       const totalBmin = brMin + nbMin;
 
-      const workHm = (finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
+      const workHm = (hasActual && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
       const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
       const workAutoCls = (isAutoWork && (isPlanned || isPlannedLikeWork)) ? 'is-auto' : '';
 
@@ -153,7 +152,7 @@
         }
         return Math.max(0, whMin - (8 * 60));
       })();
-      const otHm = (otMin > 0 && finalIn && finalOut) ? fmtHm(otMin) : '';
+      const otHm = (hasActual && otMin > 0 && finalIn && finalOut) ? fmtHm(otMin) : '';
       const otAutoCls = (otMin > 0 && isAutoWork && (isPlanned || isPlannedLikeWork)) ? 'is-auto' : '';
 
       const statusStr = String(state.currentMonthStatus || '');
