@@ -95,8 +95,10 @@
       }
       // Consider row "actual" only when visible (non-placeholder) punch times exist.
       const hasActual = !!(inHm || outHm);
-      // Ignore unconfirmed daily value on rows without actual punches.
-      const allowDailyAsActual = kubunConfirmed || hasActual;
+      // For working-day classifications, only real punches can make row "actual".
+      // This prevents auto/scheduled values from appearing as confirmed 出勤.
+      const isWorkKubunInit = workKubunSet.has(kubunInit || '');
+      const allowDailyAsActual = hasActual || (kubunConfirmed && !isWorkKubunInit);
       if (!allowDailyAsActual) kubunInit = '';
       const isPlanned = !kubunInit && !hasActual;
       // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
@@ -461,7 +463,19 @@
         const roleStr = String(root.State?.profile?.role || '').toLowerCase();
         const isAdminView = roleStr === 'admin' || roleStr === 'manager';
         const monthApproved = String(state.currentMonthStatus || '') === 'approved';
-        const hasActualNow = !!(idVal || (inEl && String(inEl.value).trim()) || (outEl && String(outEl.value).trim()));
+        const inValNow = String(inEl?.value || '').trim();
+        const outValNow = String(outEl?.value || '').trim();
+        const inAutoNow = String(inEl?.dataset?.auto || '') === '1';
+        const outAutoNow = String(outEl?.dataset?.auto || '') === '1';
+        const inAutoVal = String(inEl?.dataset?.autoVal || '').trim();
+        const outAutoVal = String(outEl?.dataset?.autoVal || '').trim();
+        const inIsPlannedAuto = !!(inValNow && inAutoNow && !inManual && inAutoVal && inValNow === inAutoVal);
+        const outIsPlannedAuto = !!(outValNow && outAutoNow && !outManual && outAutoVal && outValNow === outAutoVal);
+        const hasActualNow = !!(
+          idVal ||
+          (inValNow && !inIsPlannedAuto) ||
+          (outValNow && !outIsPlannedAuto)
+        );
         let stText = '未承認';
         let stCls = 'warn';
         if (isPlanned && !hasActualNow) {
@@ -488,7 +502,15 @@
       if (clsSel && isEmployee) {
         const plannedOpt = clsSel.querySelector('option[value=""]');
         if (plannedOpt) {
-          const hasActualNow = (inEl && inEl.value !== '') || (outEl && outEl.value !== '');
+          const inValNow = String(inEl?.value || '').trim();
+          const outValNow = String(outEl?.value || '').trim();
+          const inAutoNow = String(inEl?.dataset?.auto || '') === '1';
+          const outAutoNow = String(outEl?.dataset?.auto || '') === '1';
+          const inAutoVal = String(inEl?.dataset?.autoVal || '').trim();
+          const outAutoVal = String(outEl?.dataset?.autoVal || '').trim();
+          const inIsPlannedAuto = !!(inValNow && inAutoNow && !inManual && inAutoVal && inValNow === inAutoVal);
+          const outIsPlannedAuto = !!(outValNow && outAutoNow && !outManual && outAutoVal && outValNow === outAutoVal);
+          const hasActualNow = !!(idVal || (inValNow && !inIsPlannedAuto) || (outValNow && !outIsPlannedAuto));
           const shouldDisable = !!cls || hasActualNow;
           if (plannedOpt.disabled !== shouldDisable) {
             plannedOpt.disabled = shouldDisable;
