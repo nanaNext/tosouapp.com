@@ -66,7 +66,7 @@
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
       if (offDay && !kubunInit) {
-        const hasActual = !!(seg?.checkIn || seg?.checkOut || seg?.id);
+        const hasActual = !!(seg?.checkIn || seg?.checkOut);
         if (hasActual) kubunInit = '休日出勤';
       }
       const effectiveKubun = kubunInit || plannedKubun;
@@ -76,7 +76,9 @@
       
       const inHm = fromDateTime(seg?.checkIn);
       const outHm = fromDateTime(seg?.checkOut);
-      const hasActual = !!(seg?.id || seg?.checkIn || seg?.checkOut);
+      // Consider row "actual" only when real punch times exist.
+      // Some legacy rows may have id but empty times and should remain planned/faded.
+      const hasActual = !!(seg?.checkIn || seg?.checkOut);
       const isPlanned = !kubunInit && !hasActual;
       // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
       const isPlannedLikeWork = !hasActual && isWorkDay;
