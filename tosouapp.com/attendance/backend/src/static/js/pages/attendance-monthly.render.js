@@ -78,6 +78,8 @@
       const outHm = fromDateTime(seg?.checkOut);
       const hasActual = !!(seg?.id || seg?.checkIn || seg?.checkOut);
       const isPlanned = !kubunInit && !hasActual;
+      // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
+      const isPlannedLikeWork = !hasActual && isWorkDay;
 
       // Permission check: if employee role and has selection or actual data, disable planned options
       const role = String(profile?.role || '').toLowerCase();
@@ -106,8 +108,8 @@
       
       // CSS Class: only planned auto-filled values should be faded.
       // Once employee has real punch-in, keep it readable (not faded).
-      const inAutoCls = (autoIn && isPlanned && !isManualIn) ? 'is-auto' : '';
-      const outAutoCls = (autoOut && isPlanned && !isManualOut) ? 'is-auto' : '';
+      const inAutoCls = (autoIn && (isPlanned || isPlannedLikeWork) && !isManualIn) ? 'is-auto' : '';
+      const outAutoCls = (autoOut && (isPlanned || isPlannedLikeWork) && !isManualOut) ? 'is-auto' : '';
 
       const shiftBrRaw = Number(shift?.break_minutes ?? 60);
       const shiftBrMin = Number.isFinite(shiftBrRaw) && shiftBrRaw >= 0 ? shiftBrRaw : 60;
@@ -117,7 +119,7 @@
 
       const workHm = (finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
       const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
-      const workAutoCls = (isAutoWork && isPlanned) ? 'is-auto' : '';
+      const workAutoCls = (isAutoWork && (isPlanned || isPlannedLikeWork)) ? 'is-auto' : '';
 
       // OT Calculation
       const whMin = (() => {
@@ -139,7 +141,7 @@
         return Math.max(0, whMin - (8 * 60));
       })();
       const otHm = (otMin > 0 && finalIn && finalOut) ? fmtHm(otMin) : '';
-      const otAutoCls = (otMin > 0 && isAutoWork && isPlanned) ? 'is-auto' : '';
+      const otAutoCls = (otMin > 0 && isAutoWork && (isPlanned || isPlannedLikeWork)) ? 'is-auto' : '';
 
       const statusStr = String(state.currentMonthStatus || '');
       const approved = statusStr === 'approved';
