@@ -20,9 +20,9 @@ jobs:
       - name: Install
         run: npm ci || npm install
       - name: Run unit tests
-        run: npm run test:unit
+        run: npm run test:unit -- --runInBand
       - name: Run integration tests
-        run: npm run test:integration
+        run: npm run test:integration -- --runInBand
       - name: Security audit
         continue-on-error: true
         run: npm audit --audit-level=moderate --omit=dev
