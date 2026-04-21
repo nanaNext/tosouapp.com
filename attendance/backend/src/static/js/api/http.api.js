@@ -4,9 +4,7 @@ function getApiBase() {
   try {
     const h = String(window.location.hostname || '').toLowerCase();
     if (!h || h === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return '';
-    if (h.startsWith('app-stg.') || h.startsWith('stg.') || h.includes('-stg.')) return 'https://api-stg.iizukatoken.com';
-    if (h.startsWith('dev.') || h.includes('.dev.')) return 'https://api-dev.iizukatoken.com';
-    if (h.endsWith('.iizukatoken.com')) return 'https://api.iizukatoken.com';
+    if (h === 'tosouapp.com' || h.endsWith('.tosouapp.com')) return '';
   } catch {}
   return '';
 }

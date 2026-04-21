@@ -3,7 +3,7 @@
   if (/\/login(?:\.html)?$/.test(String(window.location.pathname || ''))) return;
 
   const host = String(location.hostname || '').toLowerCase();
-  const isProd = host.endsWith('.iizukatoken.com') && !host.startsWith('app-stg.') && !host.startsWith('dev.') && !host.includes('-stg.');
+  const isProd = host === 'tosouapp.com' || host.endsWith('.tosouapp.com');
   const IDLE_TIMEOUT_MS = isProd ? (25 * 60 * 1000) : (8 * 60 * 60 * 1000);
   const WARNING_MS = isProd ? (5 * 60 * 1000) : (10 * 60 * 1000);
   const GRACE_MS = 3 * 60 * 1000;

@@ -28,6 +28,28 @@ app.use(cookieParser());
 app.use(cors());
 security(app);
 app.use((req, res, next) => {
+  try {
+    const enforceCanonical = String(process.env.ENFORCE_CANONICAL_HOST || 'true').toLowerCase() === 'true';
+    const inProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+    if (!enforceCanonical || !inProd) return next();
+
+    const canonicalHost = String(process.env.CANONICAL_HOST || 'tosouapp.com').trim().toLowerCase();
+    if (!canonicalHost) return next();
+
+    const rawHost = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+    const host = rawHost.split(':')[0].toLowerCase();
+    if (!host || host === canonicalHost) return next();
+
+    // Keep health checks and APIs unaffected.
+    if (req.path === '/ping' || req.path === '/healthz' || String(req.path || '').startsWith('/api/')) return next();
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+
+    const target = `https://${canonicalHost}${req.originalUrl || req.url || '/'}`;
+    return res.redirect(308, target);
+  } catch {}
+  return next();
+});
+app.use((req, res, next) => {
   req.id = crypto.randomUUID();
   res.setHeader('X-Request-ID', req.id);
   res.setHeader('X-Build-Id', BUILD_ID);
