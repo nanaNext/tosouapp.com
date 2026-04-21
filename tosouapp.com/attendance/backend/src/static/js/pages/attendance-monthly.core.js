@@ -80,10 +80,13 @@
       const sub = String(msg || '').trim();
       if (kind === 'error') {
         el.style.background = 'rgba(127, 29, 29, 0.9)';
-        el.innerHTML = `tosouapp<span class="sub">${esc(sub || 'エラーが発生しました')}</span>`;
+        el.innerHTML = `<span class="sub">${esc(sub || 'エラーが発生しました')}</span>`;
       } else {
-        el.style.background = 'rgba(11, 44, 102, 0.9)';
-        el.innerHTML = `tosouapp<span class="sub">${esc(sub || '保存しました')}</span>`;
+        try {
+          el.classList.remove('show');
+          el.setAttribute('hidden', '');
+        } catch {}
+        return;
       }
       if (toastTimer) {
         clearTimeout(toastTimer);

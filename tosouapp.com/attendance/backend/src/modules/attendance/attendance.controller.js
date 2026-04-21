@@ -1848,7 +1848,18 @@ exports.exportMonthXlsx = async (req, res) => {
 
     const user = await userRepo.getUserById(userId).catch(() => null);
     const employeeCode = String(user?.employee_code || user?.employeeCode || '').trim();
-    const employeeName = String(user?.username || user?.email || '').trim();
+    const employeeName = String(
+      user?.full_name ||
+      user?.fullName ||
+      user?.display_name ||
+      user?.displayName ||
+      user?.name ||
+      user?.username ||
+      user?.email ||
+      employeeCode ||
+      (userId ? `社員${userId}` : '') ||
+      ''
+    ).trim();
 
     const rows = await repo.listByUserBetween(userId, from, to);
     const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
@@ -1984,7 +1995,7 @@ exports.exportMonthXlsx = async (req, res) => {
       { header: '日付', width: 12 },
       { header: '曜日', width: 6 },
       { header: '勤務区分', width: 10 },
-      { header: '企業名', width: 28 },
+      { header: '現場（任意）', width: 28 },
       { header: '出社', width: 6 },
       { header: '在宅', width: 6 },
       { header: '現場・出張', width: 14 },
@@ -2008,7 +2019,7 @@ exports.exportMonthXlsx = async (req, res) => {
       { header: '日付', width: 12 },
       { header: '勤務区分', width: 10 },
       { header: '変換勤務区分', width: 14 },
-      { header: '企業名', width: 20 },
+      { header: '現場（任意）', width: 20 },
       { header: '開始時刻', width: 10 },
       { header: '終了時刻', width: 10 },
       { header: '休憩時間', width: 10 },
@@ -2086,14 +2097,17 @@ exports.exportMonthXlsx = async (req, res) => {
         const se = shiftForDate(ds);
         const startBase = se?.startMin ?? (8 * 60);
         const endBase = se?.endMin ?? (17 * 60);
-        const late = a > (startBase + 30);
-        const early = b < (endBase + 30);
+        // Match monthly table rule exactly: late if in > shift start, early if out < shift end.
+        const late = a > startBase;
+        const early = b < endBase;
         if (late && early) return '遅刻/早退';
         if (late) return '遅刻';
         if (early) return '早退';
         return '';
       })();
-      const companyName = String(wd?.companyName || '').trim() || String(daily?.location || '').trim();
+      const workLocation = String(daily?.location || '').trim();
+      const workContent = String(daily?.memo || '').trim();
+      const notesText = String(daily?.notes || '').trim();
       const inhouseWork = String(wd?.workContent || '').trim();
       const approveStatus = monthStatus === 'approved' ? '承認済' : (() => {
         const labels = String(seg?.labels || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -2108,7 +2122,7 @@ exports.exportMonthXlsx = async (req, res) => {
           ds,
           dow,
           kubun,
-          companyName,
+          workLocation,
           wtOn,
           wtRe,
           wtSa,
@@ -2120,8 +2134,8 @@ exports.exportMonthXlsx = async (req, res) => {
           fmtHm(otMin),
           lateEarly,
           reasonLabel(daily?.reason || ''),
-          inhouseWork,
-          String(daily?.memo || ''),
+          workContent,
+          notesText,
           approveStatus,
           ''
         ]
@@ -2204,125 +2218,106 @@ exports.exportMonthXlsx = async (req, res) => {
     const rowXml = (r, cells, ht = null) => `<row r="${r}"${ht ? ` ht="${ht}" customHeight="1"` : ''}>${cells.join('')}</row>`;
     const sheet1Rows = [];
     const push1 = (r, list, ht = null) => { sheet1Rows.push(rowXml(r, list, ht)); };
-    push1(1, [cell('A1', '▼注意点', 1), cell('U1', '【凡例】', 1)], 22);
-    push1(2, [cell('A2', '● 本Excelは月次勤怠実績をシステムに一括登録するためのファイルです。以下の操作を行うとシステムに登録できなくなりますので、ご注意下さい。', 2), cell('U2', '', 4), cell('X2', '入力項目', 13)], 20);
-    push1(3, [cell('B3', '○ 行の追加、削除、位置変更', 2), cell('U3', '', 5), cell('X3', '参照項目', 13)], 18);
-    push1(4, [cell('B4', '○ 列の追加、削除、位置変更', 2), cell('U4', '', 6), cell('X4', 'エラー項目', 13)], 18);
-    push1(5, [cell('B5', '○ セルの書式や入力規則の変更', 2), cell('U5', '', 7), cell('X5', '警告項目', 13)], 18);
-    push1(6, [cell('B6', '※ 承認ステータスが承認済または承認依頼中の行は取り込まれません', 2)], 18);
-    push1(8, [cell('A8', '社員番号：', 1), cell('C8', employeeCode || '', 4), cell('F8', '氏名：', 1), cell('G8', employeeName || '', 4)], 22);
-    push1(9, [cell('A9', '日次実績', 1), cell('AB9', '承認者用', 8)], 22);
-    push1(10, [
-      cell('A10', '日付', 3),
-      cell('B10', '勤務区分', 3),
-      cell('C10', '企業名', 3),
-      cell('D10', '出社', 3),
-      cell('E10', '在宅', 3),
-      cell('F10', 'サテライト/出張', 3),
-      cell('G10', '開始時刻', 3),
-      cell('J10', '終了時刻', 3),
-      cell('M10', '休憩時間', 3),
-      cell('P10', '深夜休憩', 3),
-      cell('S10', '勤務時間', 3),
-      cell('T10', '超過時間', 3),
-      cell('U10', '遅刻/早退', 3),
-      cell('V10', '理由', 3),
-      cell('W10', '現場（任意）', 3),
-      cell('X10', '作業内容', 3),
-      cell('Y10', '備考', 3),
-      cell('Z10', '承認ステータス', 14),
-      cell('AA10', '承認者', 14),
-      cell('AB10', '承認', 15),
-      cell('AC10', '否認/承認解除理由', 15)
+    push1(1, [cell('A1', '月次勤怠インポートテンプレート', 1)], 22);
+    push1(2, [cell('A2', '編集可能セルのみ入力してください（行/列の追加・削除・移動は不可）。', 2)], 20);
+    push1(3, [cell('A3', '承認済み・承認依頼中の行は取り込み対象外です。', 2)], 18);
+    push1(4, [cell('A4', '社員番号：', 1), cell('C4', employeeCode || '', 4), cell('F4', '氏名：', 1), cell('H4', employeeName || '', 4)], 22);
+    push1(5, [cell('A5', '日次実績', 1)], 22);
+    push1(6, [
+      cell('A6', '日付', 3),
+      cell('B6', '勤務区分', 3),
+      cell('C6', '出社', 3),
+      cell('D6', '在宅', 3),
+      cell('E6', '現場・出張', 3),
+      cell('F6', '現場（任意）', 3),
+      cell('G6', '作業内容', 3),
+      cell('H6', '開始時刻', 3),
+      cell('I6', '終了時刻', 3),
+      cell('J6', '休憩時間', 3),
+      cell('K6', '深夜休憩', 3),
+      cell('L6', '勤務時間', 3),
+      cell('M6', '超過時間', 3),
+      cell('N6', '遅刻/早退', 3),
+      cell('O6', '理由', 3),
+      cell('P6', '社内業務', 3),
+      cell('Q6', '承認ステータス', 14),
+      cell('R6', '承認者', 14)
     ], 22);
     for (let i = 0; i < sheetRows.length; i++) {
       const r = sheetRows[i];
       const src = Array.isArray(r?.cells) ? r.cells : [];
+      const rowDow = String(src[3] || '').trim();
+      const isSunday = rowDow === '日';
       const dayText = (() => {
         const ds = String(src[2] || '');
         const dow = String(src[3] || '');
         const d = /^\d{4}-(\d{2})-(\d{2})$/.exec(ds);
         return d ? `${parseInt(d[1], 10)}月${parseInt(d[2], 10)}日(${dow})` : ds;
       })();
-      const hasVisibleTime = !!String(src[9] || '').trim() || !!String(src[10] || '').trim();
-      const startDisp = splitHmDisplay(src[9] || '', true);
-      const endDisp = splitHmDisplay(src[10] || '', true);
-      const breakDisp = splitHmDisplay(hasVisibleTime ? (src[11] || '0:00') : '', true);
-      const nightBreakDisp = splitHmDisplay(hasVisibleTime ? (src[12] || '0:00') : '', true);
       const vals = [
         dayText,
         src[4] || '',
-        src[5] || '',
         (src[6] && typeof src[6] === 'object' ? src[6].v : '') || '',
         (src[7] && typeof src[7] === 'object' ? src[7].v : '') || '',
         (src[8] && typeof src[8] === 'object' ? src[8].v : '') || '',
-        ...startDisp,
-        ...endDisp,
-        ...breakDisp,
-        ...nightBreakDisp,
+        src[5] || '',
+        src[17] || '',
+        src[9] || '',
+        src[10] || '',
+        src[11] || '0:00',
+        src[12] || '0:00',
         src[13] || '0:00',
         src[14] || '0:00',
         src[15] || '',
         src[16] || '',
-        src[5] || '',
-        src[17] || '',
         src[18] || '',
         src[19] || '',
-        src[20] || '',
-        '',
-        ''
+        src[20] || ''
       ];
-      const rowNum = 11 + i;
+      const rowNum = 7 + i;
       const xmlCells = vals.map((v, ci) => {
         const ref = `${colRef(ci + 1)}${rowNum}`;
-        const isApproval = ci >= 25 && ci <= 28;
-        const isTimeTriplet = (ci >= 6 && ci <= 17);
-        const isTextWide = ci === 1 || ci === 2 || ci === 21 || ci === 22 || ci === 23 || ci === 24;
-        const style = isApproval ? 12 : (isTimeTriplet || ci >= 3 && ci <= 20 ? 12 : (isTextWide ? 13 : 12));
-        if (ci === 18) {
-          const f = `ROUNDDOWN(AH${rowNum}/60,0)&":"&TEXT(MOD(AH${rowNum},60),"00")`;
-          return formulaCell(ref, f, String(v || '0:00'), style);
+        const isTimeCell = (ci >= 7 && ci <= 12);
+        const isTextWide = ci === 5 || ci === 6 || ci === 15 || ci === 16 || ci === 17;
+        const style = (isTimeCell || (ci >= 2 && ci <= 17)) ? 12 : (isTextWide ? 13 : 12);
+        const sundayStyle = isTextWide ? 17 : 16;
+        const styleWithDay = isSunday ? sundayStyle : (isTimeCell ? 12 : style);
+        if (ci === 11) {
+          const f = `ROUNDDOWN(S${rowNum}/60,0)&":"&TEXT(MOD(S${rowNum},60),"00")`;
+          return formulaCell(ref, f, String(v || '0:00'), styleWithDay);
         }
-        if (ci === 19) {
-          const f = `IFERROR(IF(RIGHT(VLOOKUP(A${rowNum},予定!$A:$B,2,FALSE),2)="休日",IF(AH${rowNum}>0,ROUNDDOWN((AH${rowNum})/60,0)&":"&TEXT(MOD((AH${rowNum}),60),"00"),""),IF(AH${rowNum}-480>0,ROUNDDOWN((AH${rowNum}-480)/60,0)&":"&TEXT(MOD((AH${rowNum}-480),60),"00"),"")),"")`;
-          return formulaCell(ref, f, String(v || '0:00'), style);
+        if (ci === 12) {
+          const f = `IF(S${rowNum}>480,ROUNDDOWN((S${rowNum}-480)/60,0)&":"&TEXT(MOD((S${rowNum}-480),60),"00"),"0:00")`;
+          return formulaCell(ref, f, String(v || '0:00'), styleWithDay);
         }
-        if (ci === 20) {
-          const f = `IFERROR(IF(AND(VLOOKUP(A${rowNum},予定!A:U,21,FALSE)>0,VLOOKUP(A${rowNum},予定!A:V,22,FALSE)<>"フレックス勤務",AH${rowNum}>0,VLOOKUP(A${rowNum},予定!A:U,21,FALSE)>AH${rowNum}),"遅刻早退",""),"")`;
-          return formulaCell(ref, f, String(v || ''), style);
-        }
-        return cell(ref, v, style);
+        return cell(ref, v, styleWithDay);
       });
-      xmlCells.push(numberCell(`AH${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
+      xmlCells.push(numberCell(`S${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
       push1(rowNum, xmlCells, 18);
     }
-    const sheet1VisibleCols = [12, 14, 16, 7, 7, 12, 5, 2, 5, 5, 2, 5, 5, 2, 5, 5, 2, 5, 10, 10, 10, 14, 16, 18, 16, 10, 12, 8, 16];
+    const sheet1VisibleCols = [12, 14, 5, 5, 12, 14, 16, 10, 10, 10, 10, 10, 10, 10, 12, 12, 14, 12];
     const sheet1Cols = [
       ...sheet1VisibleCols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`),
-      ...Array.from({ length: 4 }, (_, idx) => `<col min="${30 + idx}" max="${30 + idx}" width="2" hidden="1" customWidth="1"/>`),
-      `<col min="34" max="34" width="2" hidden="1" customWidth="1"/>`
+      `<col min="19" max="19" width="2" hidden="1" customWidth="1"/>`
     ].join('');
     const sheet1Merges = [
-      'A1:L1', 'A2:L2', 'B3:L3', 'B4:L4', 'B5:L5', 'B6:L6',
-      'A8:B8', 'C8:E8', 'F8:G8', 'H8:J8',
-      'U1:W1', 'U2:W2', 'U3:W3', 'U4:W4', 'U5:W5',
-      'X2:Z2', 'X3:Z3', 'X4:Z4', 'X5:Z5',
-      'A9:AA9', 'AB9:AC9',
-      'G10:I10', 'J10:L10', 'M10:O10', 'P10:R10'
+      'A1:L1', 'A2:L2', 'A3:L3',
+      'A4:B4', 'C4:E4', 'F4:G4', 'H4:J4',
+      'A5:R5'
     ].map(r => `<mergeCell ref="${r}"/>`).join('');
-    const lastSheet1Row = 10 + Math.max(1, sheetRows.length);
+    const lastSheet1Row = 6 + Math.max(1, sheetRows.length);
     const sheet1Validations = [
-      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="D11:D${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`,
-      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="E11:E${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`,
-      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="F11:F${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`
+      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="C7:C${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`,
+      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="D7:D${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`,
+      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="E7:E${lastSheet1Row}"><formula1>",✓"</formula1></dataValidation>`
     ].join('');
     const sheet1Xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="10" topLeftCell="A11" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="6" topLeftCell="A7" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
   <sheetFormatPr defaultRowHeight="18"/>
   <cols>${sheet1Cols}</cols>
   <sheetData>${sheet1Rows.join('')}</sheetData>
-  <mergeCells count="25">${sheet1Merges}</mergeCells>
+  <mergeCells count="${(sheet1Merges.match(/<mergeCell /g) || []).length}">${sheet1Merges}</mergeCells>
   <dataValidations count="3">${sheet1Validations}</dataValidations>
 </worksheet>`;
     const sheet2Header = planColumns.map((c, i) => cell(`${colRef(i + 1)}1`, c.header, 3));
@@ -2354,38 +2349,39 @@ exports.exportMonthXlsx = async (req, res) => {
     ].join('');
     const sheet2Xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
   <sheetFormatPr defaultRowHeight="18"/>
   <cols>${sheet2Cols}</cols>
   <sheetData>${sheet2Rows.join('')}</sheetData>
 </worksheet>`;
     const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="3">
+  <fonts count="4">
     <font><sz val="11"/><color rgb="FF000000"/><name val="Meiryo"/></font>
     <font><b/><sz val="11"/><color rgb="FF000000"/><name val="Meiryo"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Meiryo"/></font>
+    <font><sz val="11"/><color rgb="FFC62828"/><name val="Meiryo"/></font>
   </fonts>
   <fills count="12">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFBFE5BF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE8F5E9"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFD9EAD3"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFE7E6E6"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF4CCCC"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF9CB9C"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F3F3"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFB7B7B7"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF4B183"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF4FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFF4E5"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
-    <border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+    <border><left style="thin"><color rgb="FFD0D7DE"/></left><right style="thin"><color rgb="FFD0D7DE"/></right><top style="thin"><color rgb="FFD0D7DE"/></top><bottom style="thin"><color rgb="FFD0D7DE"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="16">
+  <cellXfs count="18">
     <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
@@ -2402,6 +2398,8 @@ exports.exportMonthXlsx = async (req, res) => {
     <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="1" fillId="10" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="1" fillId="11" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
