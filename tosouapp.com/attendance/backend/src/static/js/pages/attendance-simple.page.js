@@ -940,11 +940,7 @@ const load = async (date, opts = {}) => {
       else if (!String(sel.value || '').trim()) sel.value = '';
     }
     ensureDefaultWorkTypeForToday(date);
-    try {
-      if (!kubunSaved && date === todayJST()) {
-        await persistDaily(date);
-      }
-    } catch {}
+    // Do not auto-create/update daily rows on load.
 
     // Non-critical data: keep loading in background so UI becomes interactive sooner.
     const applyReport = (rep) => {
@@ -1162,12 +1158,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let startStampInFlight = false;
   setUrlDate(state.date);
   const persistWorkType = async () => {
+    // Keep work type as local draft only on simple screen.
+    // Do not auto-write daily data before actual stamp/save.
     try {
-      if (state.date !== todayJST()) return;
       const wt = String($('#workType')?.value || '').trim();
-      if (!wt) return;
-      await fetchJSONAuth('/api/attendance/worktype', { method: 'POST', body: JSON.stringify({ date: state.date, workType: wt }) });
-      await persistDaily(state.date);
+      saveWorkType(state.date, wt || '');
     } catch {}
   };
 
@@ -1195,7 +1190,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       startStampInFlight = true;
       showSpinner(true);
-      try { await persistDaily(state.date); } catch {}
       let r = null;
       const hmNow = nowHmJST();
       const overrideAttendanceId = state.plannedStampAttendanceId || (allowShiftLikeOverride ? state.shiftLikeOpenAttendanceId : null);
@@ -1251,7 +1245,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     try {
       showSpinner(true);
-      try { await persistDaily(state.date); } catch {}
       const r = await tryCheckOut();
       await load(state.date);
       if (r?.noOpen) showToast('まだ出勤していません', 'error');
@@ -1344,6 +1337,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Instant paint from recent snapshot, then sync with server in background.
   try { restoreFastSnapshot(state.date, state); } catch {}
   await load(state.date, { spinner: false });
-  try { await persistWorkType(); } catch {}
   showSpinner(false);
 });

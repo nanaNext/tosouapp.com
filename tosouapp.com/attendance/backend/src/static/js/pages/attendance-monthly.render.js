@@ -56,6 +56,7 @@
       const dow = dowJa(dateStr);
       const offDay = !!isOff || dow === '日' || dow === '土';
       
+      const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
       const kubunInitRaw = String(daily?.kubun || '').trim();
       const kubunOptions = offDay
         ? ['休日', '休日出勤', '代替出勤']
@@ -94,6 +95,9 @@
       }
       // Consider row "actual" only when visible (non-placeholder) punch times exist.
       const hasActual = !!(inHm || outHm);
+      // Ignore unconfirmed daily value on rows without actual punches.
+      const allowDailyAsActual = kubunConfirmed || hasActual;
+      if (!allowDailyAsActual) kubunInit = '';
       const isPlanned = !kubunInit && !hasActual;
       // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
       const isPlannedLikeWork = !hasActual && isWorkDay;
@@ -201,12 +205,13 @@
       tr.dataset.id = seg?.id ? String(seg.id) : '';
       tr.dataset.clientId = tr.dataset.id ? '' : makeClientId();
       tr.dataset.primary = primary ? '1' : '0';
-      tr.dataset.kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1 ? '1' : '';
+      tr.dataset.kubunConfirmed = kubunConfirmed ? '1' : '';
       tr.dataset.shiftStart = shiftStartOk ? shiftStart : '08:00';
 
       const wtVal = (() => {
         if (isHolidayKubun) return '';
-        const v = String(seg?.workType || (primary ? daily?.workType : '') || '').trim();
+        const dailyWt = allowDailyAsActual && primary ? daily?.workType : '';
+        const v = String(seg?.workType || dailyWt || '').trim();
         // Không tự động gán '出社' cho ngày 予定出勤; chỉ hiển thị khi có giá trị thực tế
         return (v === 'onsite' || v === 'remote' || v === 'satellite') ? v : '';
       })();
