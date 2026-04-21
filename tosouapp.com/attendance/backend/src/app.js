@@ -28,6 +28,42 @@ app.use(cookieParser());
 app.use(cors());
 security(app);
 app.use((req, res, next) => {
+  try {
+    const forceDisableCanonical = ['1', 'true', 'yes', 'on'].includes(String(process.env.DISABLE_CANONICAL_HOST || '').toLowerCase());
+    if (forceDisableCanonical) return next();
+    const enforceCanonical = String(process.env.ENFORCE_CANONICAL_HOST || 'true').toLowerCase() === 'true';
+    const inProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+    if (!enforceCanonical || !inProd) return next();
+
+    const canonicalHost = String(process.env.CANONICAL_HOST || 'tosouapp.com').trim().toLowerCase();
+    if (!canonicalHost) return next();
+
+    const directHostRaw = String(req.headers.host || '').split(',')[0].trim();
+    const forwardedHostRaw = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+    const directHost = directHostRaw.split(':')[0].toLowerCase();
+    const forwardedHost = forwardedHostRaw.split(':')[0].toLowerCase();
+    // On local development, some tools/extensions may inject x-forwarded-host.
+    // Prefer direct Host header when it points to localhost.
+    const host = (directHost === 'localhost' || directHost === '127.0.0.1' || directHost === '::1' || directHost.endsWith('.local'))
+      ? directHost
+      : (forwardedHost || directHost);
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
+    if (isLocalHost) return next();
+    if (!host || host === canonicalHost) return next();
+
+    // Keep health checks and APIs unaffected.
+    if (req.path === '/ping' || req.path === '/healthz' || String(req.path || '').startsWith('/api/')) return next();
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+
+    const target = `https://${canonicalHost}${req.originalUrl || req.url || '/'}`;
+    try {
+      console.warn(`[canonical] redirect host=${host} direct=${directHost} forwarded=${forwardedHost} enforce=${enforceCanonical} inProd=${inProd} -> ${target}`);
+    } catch {}
+    return res.redirect(308, target);
+  } catch {}
+  return next();
+});
+app.use((req, res, next) => {
   req.id = crypto.randomUUID();
   res.setHeader('X-Request-ID', req.id);
   res.setHeader('X-Build-Id', BUILD_ID);

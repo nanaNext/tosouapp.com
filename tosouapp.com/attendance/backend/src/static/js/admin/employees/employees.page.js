@@ -202,6 +202,7 @@ async function renderEmployees(profile) {
       <div class="detail-row"><div class="label">基本給</div><div class="value">${u.base_salary == null ? '' : u.base_salary}</div></div>
       <div class="detail-row"><div class="label">状態</div><div class="value"><span class="status-pill ${statusCls3}">${statusJa2(u.employment_status)}</span></div></div>
       <div class="detail-actions form-actions">
+        <a class="btn" id="btnDetailSummary" href="/admin/employees?summary=${u.id}">月次サマリ</a>
         <a class="btn" id="btnDetailEdit" href="/admin/employees?edit=${u.id}">編集</a>
         <a class="btn" id="btnDetailBack" href="/admin/employees#list">一覧へ</a>
       </div>
@@ -256,7 +257,10 @@ async function renderEmployees(profile) {
       for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
       const qsKeep = keep.toString();
       const backHref = `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`;
+      const summaryHref = `/admin/employees?summary=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
       const editHref = `/admin/employees?edit=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
+      const btnSummary = panel.querySelector('#btnDetailSummary');
+      if (btnSummary) btnSummary.setAttribute('href', summaryHref);
       const btnEdit = panel.querySelector('#btnDetailEdit');
       if (btnEdit) btnEdit.setAttribute('href', editHref);
       const btnBack = panel.querySelector('#btnDetailBack');
@@ -1712,11 +1716,12 @@ async function renderEmployees(profile) {
       const emailVal = normText(u.email);
       const deptVal = normText(deptName(u.departmentId));
       const detailBtn = `<a class="emp-action" href="/admin/employees?detail=${u.id}">👁 詳細</a>`;
+      const summaryBtn = `<a class="emp-action" href="/admin/employees?summary=${u.id}">📊 月次</a>`;
       const editBtn = `<a class="emp-action" href="/admin/employees?edit=${u.id}">✏️ 編集</a>`;
       const canManageThis = role2 === 'admin';
       const disableBtn = canManageThis ? `<button type="button" class="emp-action danger" data-delete="${u.id}">🚫 無効化</button>` : ``;
       const hardDeleteBtn = canManageThis ? `<button type="button" class="emp-action danger" data-hard-delete="${u.id}">🗑️ 削除</button>` : ``;
-      const ops = mode === 'delete' ? `${detailBtn}${disableBtn}${hardDeleteBtn}` : `${detailBtn}${editBtn}${disableBtn}${hardDeleteBtn}`;
+      const ops = mode === 'delete' ? `${detailBtn}${summaryBtn}${disableBtn}${hardDeleteBtn}` : `${detailBtn}${summaryBtn}${editBtn}${disableBtn}${hardDeleteBtn}`;
       tr.innerHTML = `
         ${mode==='delete' ? `<td class="sel-col"><input type="checkbox" class="empSel" value="${u.id}"></td>` : ''}
         <td class="col-code"><span class="text-pill neutral">${u.employee_code || fmtEmpNo(u.id)}</span></td>

@@ -654,8 +654,78 @@ function renderScaffold(root) {
           ${renderSummarySection('社内勤務', 'sumIh', inhouseFields)}
         </div>
       </section>
+      <section class="admin-ms-summary" style="margin-top:12px;">
+        <div class="admin-ms-summary-head">
+          <h2>シフト割当（管理者入力）</h2>
+        </div>
+        <div class="admin-ms-sections">
+          <div class="admin-ms-grid-shift">
+            <label class="admin-ms-field">
+              <span class="admin-ms-field-label">シフト</span>
+              <select id="saShift" class="admin-ms-select"><option value="">シフト</option></select>
+            </label>
+            <label class="admin-ms-field">
+              <span class="admin-ms-field-label">適用開始日</span>
+              <input id="saStart" type="date" class="admin-ms-input">
+            </label>
+            <label class="admin-ms-field">
+              <span class="admin-ms-field-label">適用終了日</span>
+              <input id="saEnd" type="date" class="admin-ms-input">
+            </label>
+          </div>
+          <div class="admin-ms-actions" style="margin-top:8px;">
+            <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnSaAdd">追加</button>
+            <button type="button" class="admin-ms-btn" id="btnSaReload">再読込</button>
+            <span id="saStatus" class="admin-ms-status"></span>
+          </div>
+          <div id="saTable" class="admin-ms-table-wrap" style="margin-top:8px;"></div>
+        </div>
+      </section>
+      <section class="admin-ms-summary" style="margin-top:12px;">
+        <div class="admin-ms-summary-head">
+          <h2>契約先一覧 / 契約内容・業務内容（管理者入力）</h2>
+        </div>
+        <div class="admin-ms-sections">
+          <div class="admin-ms-grid-two">
+            <label class="admin-ms-field"><span class="admin-ms-field-label">適用開始日</span><input id="wdStart" type="date" class="admin-ms-input"></label>
+            <label class="admin-ms-field"><span class="admin-ms-field-label">適用終了日</span><input id="wdEnd" type="date" class="admin-ms-input"></label>
+            <label class="admin-ms-field"><span class="admin-ms-field-label">企業名</span><input id="wdCompany" class="admin-ms-input"></label>
+            <label class="admin-ms-field"><span class="admin-ms-field-label">就業先住所</span><input id="wdAddr" class="admin-ms-input"></label>
+            <label class="admin-ms-field"><span class="admin-ms-field-label">業務内容</span><input id="wdWork" class="admin-ms-input"></label>
+            <label class="admin-ms-field"><span class="admin-ms-field-label">役職</span><input id="wdRole" class="admin-ms-input"></label>
+            <label class="admin-ms-field"><span class="admin-ms-field-label">責任の程度</span><input id="wdResp" class="admin-ms-input"></label>
+          </div>
+          <div class="admin-ms-actions" style="margin-top:8px;">
+            <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnWdAdd">追加</button>
+            <button type="button" class="admin-ms-btn" id="btnWdReload">再読込</button>
+            <span id="wdStatus" class="admin-ms-status"></span>
+          </div>
+          <div id="wdTable" class="admin-ms-table-wrap" style="margin-top:8px;"></div>
+        </div>
+      </section>
     </div>
   `;
+}
+
+function ensureEditorLayoutStyle() {
+  try {
+    if (document.querySelector('#adminMsExtraLayoutStyle')) return;
+    const st = document.createElement('style');
+    st.id = 'adminMsExtraLayoutStyle';
+    st.textContent = `
+      .admin-ms-grid-shift{display:grid;grid-template-columns:minmax(280px,2fr) repeat(2,minmax(180px,1fr));gap:10px;align-items:end;}
+      .admin-ms-grid-two{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:10px;}
+      .admin-ms-table-wrap{overflow:auto;}
+      #saTable .excel-table,#wdTable .excel-table{width:100%;min-width:980px;table-layout:fixed;border-collapse:collapse;}
+      #saTable .excel-table th,#saTable .excel-table td,#wdTable .excel-table th,#wdTable .excel-table td{border:1px solid #dbe4f0;padding:8px 10px;vertical-align:middle;}
+      #saTable .excel-table th,#wdTable .excel-table th{white-space:nowrap;background:#f8fbff;}
+      #wdTable .excel-table td:nth-child(3),#wdTable .excel-table td:nth-child(4){white-space:normal;word-break:break-word;}
+      #saTable .admin-ms-btn,#wdTable .admin-ms-btn{height:30px;padding:0 10px;min-width:auto;}
+      .admin-ms-op{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;}
+      @media (max-width: 980px){.admin-ms-grid-shift,.admin-ms-grid-two{grid-template-columns:1fr;}}
+    `;
+    document.head.appendChild(st);
+  } catch {}
 }
 
 function setSummaryValues(root, prefix, obj) {
@@ -729,12 +799,17 @@ export async function mount() {
       status.style.display = 'none';
     }
   } catch {}
+  ensureEditorLayoutStyle();
   renderScaffold(root);
 
   const empSelect = $('#msEmpSelect', root);
   const monthEl = $('#sumMonth', root);
   const statusEl = $('#sumStatus', root);
   const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg || ''; };
+  const wdStatusEl = $('#wdStatus', root);
+  const setWdStatus = (msg) => { if (wdStatusEl) wdStatusEl.textContent = msg || ''; };
+  const saStatusEl = $('#saStatus', root);
+  const setSaStatus = (msg) => { if (saStatusEl) saStatusEl.textContent = msg || ''; };
   if (monthEl && !monthEl.value) monthEl.value = currentMonthJST();
 
   const users = await fetchEmployees().catch(() => []);
@@ -758,6 +833,8 @@ export async function mount() {
     if (!/^\d{4}-\d{2}$/.test(ym) || !uid) return;
     const y = parseInt(ym.slice(0, 4), 10);
     const m = parseInt(ym.slice(5, 7), 10);
+    const saStart = $('#saStart', root);
+    if (saStart && !saStart.value) saStart.value = `${ym}-01`;
     setStatus('読込中...');
     const bust = `&_=${Date.now()}`;
     const [detail, timesheet] = await Promise.all([
@@ -767,6 +844,8 @@ export async function mount() {
     // Fast path: compute directly from API payload to avoid long iframe-based extraction.
     setSummaryValues(root, 'sumAll', computeSummary(detail, timesheet, 'sumAll'));
     setSummaryValues(root, 'sumIh', computeSummary(detail, timesheet, 'sumIh'));
+    await loadSa().catch(() => {});
+    await loadWd().catch(() => {});
     setStatus('読込完了');
     try {
       const u = new URL(window.location.href);
@@ -796,10 +875,258 @@ export async function mount() {
     setStatus('保存しました');
   };
 
+  const val = (id) => String(($(id, root)?.value ?? '')).trim();
+  const normDate = (s) => {
+    const t = String(s || '').trim();
+    if (!t) return '';
+    const m = t.match(/^(\d{4})[\/-](\d{2})[\/-](\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    return t;
+  };
+  const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '').slice(0, 10));
+  const clearWdForm = () => {
+    ['#wdStart', '#wdEnd', '#wdCompany', '#wdAddr', '#wdWork', '#wdRole', '#wdResp'].forEach((id) => {
+      const el = $(id, root);
+      if (el) el.value = '';
+    });
+    const btn = $('#btnWdAdd', root);
+    if (btn) {
+      btn.textContent = '追加';
+      delete btn.dataset.editing;
+    }
+  };
+  const renderWd = (items) => {
+    const host = $('#wdTable', root);
+    if (!host) return;
+    const rows = Array.isArray(items) ? items : [];
+    host.innerHTML = `
+      <table class="excel-table" style="margin:0;">
+        <thead><tr>
+          <th>企業名</th><th>適用終了日</th><th>就業先住所</th><th>業務内容</th><th>役職</th><th>責任の程度</th><th>操作</th>
+        </tr></thead>
+        <tbody>
+          ${rows.length ? rows.map((r) => `
+            <tr>
+              <td>${r.companyName || ''}</td>
+              <td>${r.endDate || '—'}</td>
+              <td>${r.workPlaceAddress || ''}</td>
+              <td>${r.workContent || ''}</td>
+              <td>${r.roleTitle || ''}</td>
+              <td>${r.responsibilityLevel || ''}</td>
+              <td><div class="admin-ms-op">
+                <button type="button" class="admin-ms-btn" data-wd-edit="${r.id}">編集</button>
+                <button type="button" class="admin-ms-btn" data-wd-del="${r.id}">削除</button>
+              </div></td>
+            </tr>
+          `).join('') : `<tr><td colspan="7" style="text-align:center;color:#64748b;font-weight:800;">業務内容が未設定です（管理者が登録してください）</td></tr>`}
+        </tbody>
+      </table>
+    `;
+    host.querySelectorAll('button[data-wd-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const uid = String(empSelect?.value || '').trim();
+        const id = btn.getAttribute('data-wd-del');
+        if (!uid || !id) return;
+        if (!confirm('削除します。よろしいですか？')) return;
+        setWdStatus('削除中...');
+        try {
+          await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(String(id))}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ userId: uid })
+          });
+          await loadWd();
+          setWdStatus('削除しました');
+        } catch (e) {
+          setWdStatus(String(e?.message || '削除失敗'));
+        }
+      });
+    });
+    host.querySelectorAll('button[data-wd-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-wd-edit');
+        const cur = rows.find((x) => String(x.id) === String(id));
+        if (!cur) return;
+        const put = (idSel, v) => { const el = $(idSel, root); if (el) el.value = v || ''; };
+        put('#wdStart', cur.startDate);
+        put('#wdEnd', cur.endDate);
+        put('#wdCompany', cur.companyName);
+        put('#wdAddr', cur.workPlaceAddress);
+        put('#wdWork', cur.workContent);
+        put('#wdRole', cur.roleTitle);
+        put('#wdResp', cur.responsibilityLevel);
+        const addBtn = $('#btnWdAdd', root);
+        if (addBtn) {
+          addBtn.textContent = '更新';
+          addBtn.dataset.editing = String(id);
+        }
+      });
+    });
+  };
+  const loadWd = async () => {
+    const uid = String(empSelect?.value || '').trim();
+    const ym = String(monthEl?.value || '').trim();
+    if (!uid) return;
+    let from = '1900-01-01';
+    let to = '2999-12-31';
+    if (/^\d{4}-\d{2}$/.test(ym)) {
+      const y = parseInt(ym.slice(0, 4), 10);
+      const m = parseInt(ym.slice(5, 7), 10);
+      const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      from = `${ym}-01`;
+      to = `${ym}-${String(last).padStart(2, '0')}`;
+    }
+    setWdStatus('読込中...');
+    try {
+      const r = await fetchJSONAuth(`/api/attendance/work-details?userId=${encodeURIComponent(uid)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      renderWd((r && Array.isArray(r.items)) ? r.items : []);
+      setWdStatus('');
+    } catch (e) {
+      renderWd([]);
+      setWdStatus(String(e?.message || '読込失敗'));
+    }
+  };
+
+  const fmtHm = (min) => {
+    const m = Math.max(0, Number(min || 0));
+    const h = Math.floor(m / 60);
+    const r = Math.floor(m % 60);
+    return `${h}:${String(r).padStart(2, '0')}`;
+  };
+  const loadShiftDefs = async () => {
+    const saShift = $('#saShift', root);
+    if (!saShift) return;
+    try {
+      const defs = await fetchJSONAuth('/api/attendance/shifts/definitions');
+      const rows = Array.isArray(defs) ? defs : [];
+      saShift.innerHTML = `<option value="">シフト</option>${rows.map((d) => `<option value="${d.id}">${d.name} ${d.start_time}-${d.end_time}</option>`).join('')}`;
+    } catch {
+      saShift.innerHTML = '<option value="">シフト</option>';
+    }
+  };
+  const renderSa = (items) => {
+    const host = $('#saTable', root);
+    if (!host) return;
+    const rows = Array.isArray(items) ? items : [];
+    host.innerHTML = `
+      <table class="excel-table" style="margin:0;">
+        <thead><tr>
+          <th>No</th><th>シフト</th><th>開始時刻</th><th>終了時刻</th><th>休憩時間</th><th>所定労働時間</th><th>適用開始日</th><th>適用終了日</th><th>操作</th>
+        </tr></thead>
+        <tbody>
+          ${rows.length ? rows.map((r, i) => {
+            const s = r?.shift || null;
+            const name = s ? (s.name || '') : '';
+            const st = s ? (s.start_time || '—') : '—';
+            const et = s ? (s.end_time || '—') : '—';
+            const br = s ? fmtHm(s.break_minutes || 0) : '—';
+            const std = s ? fmtHm(s.standard_minutes || 0) : '—';
+            const sd = r?.start_date || '—';
+            const ed = r?.end_date || '—';
+            return `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${name}</td>
+                <td>${st}</td>
+                <td>${et}</td>
+                <td>${br}</td>
+                <td>${std}</td>
+                <td>${sd}</td>
+                <td>${ed}</td>
+                <td><div class="admin-ms-op"><button type="button" class="admin-ms-btn" data-sa-del="${r.id}">削除</button></div></td>
+              </tr>
+            `;
+          }).join('') : `<tr><td colspan="9" style="text-align:center;color:#64748b;font-weight:800;">シフトが未設定です（管理者がシフトを割り当てしてください）</td></tr>`}
+        </tbody>
+      </table>
+    `;
+    host.querySelectorAll('button[data-sa-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const uid = String(empSelect?.value || '').trim();
+        const id = btn.getAttribute('data-sa-del');
+        if (!uid || !id) return;
+        if (!confirm('削除します。よろしいですか？')) return;
+        setSaStatus('削除中...');
+        try {
+          await fetchJSONAuth(`/api/attendance/shifts/assignments/${encodeURIComponent(String(id))}?userId=${encodeURIComponent(uid)}`, { method: 'DELETE' });
+          await loadSa();
+          setSaStatus('削除しました');
+        } catch (e) {
+          setSaStatus(String(e?.message || '削除失敗'));
+        }
+      });
+    });
+  };
+  const loadSa = async () => {
+    const uid = String(empSelect?.value || '').trim();
+    if (!uid) return;
+    setSaStatus('読込中...');
+    try {
+      const r = await fetchJSONAuth(`/api/attendance/shifts/assignments?userId=${encodeURIComponent(uid)}&from=1900-01-01&to=2999-12-31`);
+      renderSa((r && Array.isArray(r.items)) ? r.items : []);
+      setSaStatus('');
+    } catch (e) {
+      renderSa([]);
+      setSaStatus(String(e?.message || '読込失敗'));
+    }
+  };
+
+  $('#btnSaReload', root)?.addEventListener('click', () => { loadSa().catch(e => setSaStatus(String(e?.message || '読込失敗'))); });
+  $('#btnSaAdd', root)?.addEventListener('click', async () => {
+    const uid = String(empSelect?.value || '').trim();
+    const shiftId = String($('#saShift', root)?.value || '').trim();
+    const startDate = String($('#saStart', root)?.value || '').trim();
+    const endDate = String($('#saEnd', root)?.value || '').trim();
+    if (!uid || !shiftId || !startDate) { setSaStatus('シフト/適用開始日を入力してください'); return; }
+    setSaStatus('保存中...');
+    try {
+      await fetchJSONAuth('/api/attendance/shifts/assign', {
+        method: 'POST',
+        body: JSON.stringify({ userId: uid, shiftId, startDate, endDate: endDate || null })
+      });
+      await loadSa();
+      setSaStatus('保存しました');
+    } catch (e) {
+      setSaStatus(String(e?.message || '保存失敗'));
+    }
+  });
+  $('#btnWdReload', root)?.addEventListener('click', () => { loadWd().catch(e => setWdStatus(String(e?.message || '読込失敗'))); });
+  $('#btnWdAdd', root)?.addEventListener('click', async () => {
+    const uid = String(empSelect?.value || '').trim();
+    if (!uid) return;
+    const btn = $('#btnWdAdd', root);
+    const editing = String(btn?.dataset?.editing || '').trim();
+    const payload = {
+      userId: uid,
+      startDate: normDate(val('#wdStart')),
+      endDate: normDate(val('#wdEnd')) || null,
+      companyName: val('#wdCompany'),
+      workPlaceAddress: val('#wdAddr'),
+      workContent: val('#wdWork'),
+      roleTitle: val('#wdRole'),
+      responsibilityLevel: val('#wdResp')
+    };
+    if (!payload.startDate) { setWdStatus('適用開始日を入力してください'); return; }
+    if (!isISODate(payload.startDate) || (payload.endDate && !isISODate(payload.endDate))) { setWdStatus('日付はYYYY-MM-DD形式で入力してください'); return; }
+    setWdStatus('保存中...');
+    try {
+      if (editing) {
+        await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(editing)}`, { method: 'PUT', body: JSON.stringify(payload) });
+      } else {
+        await fetchJSONAuth('/api/attendance/work-details', { method: 'POST', body: JSON.stringify(payload) });
+      }
+      clearWdForm();
+      await loadWd();
+      setWdStatus('保存しました');
+    } catch (e) {
+      setWdStatus(String(e?.message || '保存失敗'));
+    }
+  });
+
   $('#btnSumLoad', root)?.addEventListener('click', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
   $('#btnSumSave', root)?.addEventListener('click', () => { save().catch(e => setStatus(String(e?.message || '保存失敗'))); });
   empSelect?.addEventListener('change', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
   monthEl?.addEventListener('change', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
+  await loadShiftDefs().catch(() => {});
   await load().catch(() => {});
 }
 

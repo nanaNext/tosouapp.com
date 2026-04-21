@@ -4,7 +4,7 @@
   "main": "attendance/backend/src/server.js",
   "scripts": {
     "start": "node attendance/backend/src/server.js",
-    "start:prod:local": "set NODE_ENV=production&& set APP_ENV=production&& set PORT=3000&& set DISABLE_SCHEDULERS=true&& node attendance/backend/src/server.js",
+    "start:prod:local": "set NODE_ENV=production&& set APP_ENV=production&& set PORT=3000&& set DISABLE_SCHEDULERS=true&& set DISABLE_CANONICAL_HOST=true&& set ENFORCE_CANONICAL_HOST=false&& node attendance/backend/src/server.js",
     "preflight:prod:local": "set NODE_ENV=production&& set APP_ENV=production&& node attendance/backend/scripts/preflight-prod.js",
     "start:staging": "set APP_ENV=staging&& set NODE_ENV=production&& set PORT=3001&& set DISABLE_SCHEDULERS=true&& node attendance/backend/src/server.js",
     "test": "jest",
