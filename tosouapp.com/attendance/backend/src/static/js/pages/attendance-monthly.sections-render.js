@@ -186,7 +186,8 @@
   const renderWorkDetail = async (host, detail, profile) => {
     if (!host) return;
     const role = String(profile?.role || '').toLowerCase();
-    const canManage = role === 'admin' || role === 'manager';
+    // Keep monthly table read-only: hide add/edit/delete actions for all roles.
+    const canManage = false;
     let rows = Array.isArray(detail?.workDetails) ? detail.workDetails : [];
     if (!rows.length) {
       try {
