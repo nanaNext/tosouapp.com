@@ -766,6 +766,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
   try {
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const { start, end } = monthRange(month);
+    const today = todayJST();
 
     const [users] = await db.query(`
       SELECT u.id AS userId,
@@ -838,9 +839,9 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       const workType = rep?.work_type || daily?.workType || a.attendanceWorkType || null;
       const status = a.lastCheckOut
         ? ((site || work) ? 'submitted' : 'missing')
-        : 'working';
+        : (date < today ? 'checkout_missing' : 'working');
       if (status === 'submitted') submitted++;
-      else if (status === 'missing') missing++;
+      else if (status === 'missing' || status === 'checkout_missing') missing++;
       workingUsers.add(userId);
       items.push({
         userId,
