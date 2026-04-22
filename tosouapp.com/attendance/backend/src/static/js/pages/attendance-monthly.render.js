@@ -97,8 +97,10 @@
       const hasActual = !!(inHm || outHm);
       // For working-day classifications, only real punches can make row "actual".
       // This prevents auto/scheduled values from appearing as confirmed 出勤.
-      const isWorkKubunInit = workKubunSet.has(kubunInit || '');
-      const allowDailyAsActual = hasActual || (kubunConfirmed && !isWorkKubunInit);
+      // Keep explicitly saved kubun visible even when there is no check-in/out yet.
+      // Previous logic hid work kubun (e.g. 出勤) unless actual attendance existed,
+      // which looked like "not saved" after reload.
+      const allowDailyAsActual = hasActual || kubunConfirmed;
       if (!allowDailyAsActual) kubunInit = '';
       const isPlanned = !kubunInit && !hasActual;
       // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
