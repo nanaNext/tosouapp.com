@@ -102,7 +102,18 @@ async function renderEmployees(profile) {
   const editId = params.get('edit');
   const summaryId = params.get('summary');
   const createFlag = params.get('create');
+  const consumeEmpFlash = () => {
+    try {
+      const msg = sessionStorage.getItem('empFlashMessage') || '';
+      if (!msg) return '';
+      sessionStorage.removeItem('empFlashMessage');
+      return msg;
+    } catch {
+      return '';
+    }
+  };
   const role2 = String((profile && profile.role) || '').toLowerCase();
+  const photoApiBase = role2 === 'manager' ? '/api/manager' : '/api/admin';
   const isSuper = false;
   const superEmail = '';
 
@@ -174,7 +185,7 @@ async function renderEmployees(profile) {
       const mgr3 = allUsers3.find(x => String(x.id) === String(u.manager_id));
       mgrName3 = mgr3 ? (mgr3.username || mgr3.email) : '';
     } catch {}
-    const avatarBlock3 = u.avatar_url ? `<img class="avatar-img" src="${u.avatar_url}" alt="avatar">` : `<div class="avatar">${ini3}</div>`;
+    const avatarBlock3 = `<div class="avatar">${ini3}</div>`;
     panel.innerHTML = `
       <div class="head">
         ${avatarBlock3}
@@ -201,6 +212,7 @@ async function renderEmployees(profile) {
       <div class="detail-row"><div class="label">契約終了</div><div class="value">${fmtDate2(u.contract_end)}</div></div>
       <div class="detail-row"><div class="label">基本給</div><div class="value">${u.base_salary == null ? '' : u.base_salary}</div></div>
       <div class="detail-row"><div class="label">状態</div><div class="value"><span class="status-pill ${statusCls3}">${statusJa2(u.employment_status)}</span></div></div>
+      <div class="detail-row"><div class="label">個人書類画像</div><div class="value"><div id="detailAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;"><span style="color:#64748b;">読み込み中...</span></div></div></div>
       <div class="detail-actions form-actions">
         <a class="btn" id="btnDetailSummary" href="/admin/employees?summary=${u.id}">月次サマリ</a>
         <a class="btn" id="btnDetailEdit" href="/admin/employees?edit=${u.id}">編集</a>
@@ -251,6 +263,30 @@ async function renderEmployees(profile) {
         rowShift.innerHTML = `<span style="display:inline-block;padding:4px 12px;border-radius:999px;background:#eef5ff;color:#0b2c66;font-weight:700;margin-right:8px;">${nm}</span><span style="font-weight:700;color:#334155;margin-right:8px;">${time}</span><span style="color:#64748b;">${rangeText}</span>`;
       }
     } catch {}
+    try {
+      const box = panel.querySelector('#detailAvatarGallery');
+      if (box) {
+        const rows = await fetchJSONAuth(`${photoApiBase}/employees/${encodeURIComponent(String(u.id))}/photos`);
+        const list = Array.isArray(rows) ? rows : [];
+        if (!list.length) {
+          box.innerHTML = `<span style="color:#64748b;">保存済み写真はありません（編集画面からアップロードできます）</span>`;
+        } else {
+          box.innerHTML = list.map((it) => {
+            const url = String(it?.url || '').trim();
+            const name = String(it?.originalName || '').trim();
+            return `
+              <a href="${url}" target="_blank" rel="noopener noreferrer" style="border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff;text-decoration:none;">
+                <img src="${url}" alt="${name || 'photo'}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
+                <div style="max-width:96px;font-size:11px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px;" title="${name}">${name || 'photo'}</div>
+              </a>
+            `;
+          }).join('');
+        }
+      }
+    } catch (err) {
+      const box = panel.querySelector('#detailAvatarGallery');
+      if (box) box.innerHTML = `<span style="color:#b91c1c;">写真の読み込みに失敗しました</span>`;
+    }
     try {
       const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page'];
       const keep = new URLSearchParams();
@@ -803,6 +839,19 @@ async function renderEmployees(profile) {
   }
 
   content.innerHTML = ``;
+  const flashMsg = consumeEmpFlash();
+  if (flashMsg) {
+    const note = document.createElement('div');
+    note.style.margin = '0 0 10px';
+    note.style.padding = '8px 10px';
+    note.style.border = '1px solid #86efac';
+    note.style.background = '#f0fdf4';
+    note.style.color = '#166534';
+    note.style.borderRadius = '8px';
+    note.style.fontWeight = '700';
+    note.textContent = flashMsg;
+    content.appendChild(note);
+  }
 
   let users = [];
   let depts = [];
@@ -924,7 +973,7 @@ async function renderEmployees(profile) {
           <tr><td>性別</td><td><select id="empGender" style="width:180px"><option value="">未設定</option><option value="male" ${u.gender==='male'?'selected':''}>男</option><option value="female" ${u.gender==='female'?'selected':''}>女</option><option value="other" ${u.gender==='other'?'selected':''}>その他</option></select></td></tr>
           <tr><td>電話番号</td><td><input id="empPhone" style="width:240px" value="${u.phone || ''}"></td></tr>
           <tr><td>住所</td><td><input id="empAddr" style="width:320px" value="${u.address || ''}"></td></tr>
-          <tr><td>プロフィール写真（アップロード）</td><td><input id="empAvatarFile" type="file" accept="image/*" multiple> <button type="button" id="btnAvatarUpload">アップロード</button> <span id="avatarUploadStatus" style="margin-left:8px;color:#334155;"></span></td></tr>
+          <tr><td>個人書類画像（アップロード）</td><td><input id="empAvatarFile" type="file" accept="image/*" multiple> <button type="button" id="btnAvatarUpload">アップロード</button> <span id="avatarUploadStatus" style="margin-left:8px;color:#334155;"></span><div id="empAvatarSelectedPreview" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:8px;"></div></td></tr>
           <tr><td>保存済み写真</td><td><div id="empAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;"></div></td></tr>
         </tbody>
       </table>
@@ -1125,40 +1174,99 @@ async function renderEmployees(profile) {
     } catch {}
     formEdit.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const b = {
-        username: document.querySelector('#empName').value.trim(),
-        email: document.querySelector('#empEmail').value.trim(),
-        role: document.querySelector('#empRole').value,
-        departmentId: document.querySelector('#empDept').value ? parseInt(document.querySelector('#empDept').value,10) : null,
-        level: (document.querySelector('#empLevel').value || '').trim() || null,
-        managerId: document.querySelector('#empManager').value ? parseInt(document.querySelector('#empManager').value,10) : null,
-        employmentType: document.querySelector('#empType').value,
-        hireDate: document.querySelector('#empHireDate').value.trim() || null,
-        probationDate: document.querySelector('#empProbDate').value.trim() || null,
-        officialDate: document.querySelector('#empOfficialDate').value.trim() || null,
-        contractEnd: document.querySelector('#empContractEnd').value.trim() || null,
-        baseSalary: (document.querySelector('#empBaseSalary').value || '').trim() || null,
-        birthDate: document.querySelector('#empBirth').value.trim() || null,
-        gender: document.querySelector('#empGender').value || null,
-        phone: (document.querySelector('#empPhone').value || '').trim() || null,
-        employmentStatus: document.querySelector('#empStatus').value,
-        address: (document.querySelector('#empAddr').value || '').trim() || null
-      };
-      await updateEmployee(u.id, b);
-      const newPw = document.querySelector('#empPw').value;
-      if (newPw && newPw.length >= 6) {
-        await fetchJSONAuth(`/api/admin/users/${u.id}/password`, { method: 'PATCH', body: JSON.stringify({ password: newPw }) });
+      const submitBtn = formEdit.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '保存中...';
       }
       try {
-        const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
-        const keep = new URLSearchParams();
-        for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
-        const qsKeep = keep.toString();
-        history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-      } catch {}
-      await renderEmployees(profile);
+        const b = {
+          username: document.querySelector('#empName').value.trim(),
+          email: document.querySelector('#empEmail').value.trim(),
+          role: document.querySelector('#empRole').value,
+          departmentId: document.querySelector('#empDept').value ? parseInt(document.querySelector('#empDept').value,10) : null,
+          level: (document.querySelector('#empLevel').value || '').trim() || null,
+          managerId: document.querySelector('#empManager').value ? parseInt(document.querySelector('#empManager').value,10) : null,
+          employmentType: document.querySelector('#empType').value,
+          hireDate: document.querySelector('#empHireDate').value.trim() || null,
+          probationDate: document.querySelector('#empProbDate').value.trim() || null,
+          officialDate: document.querySelector('#empOfficialDate').value.trim() || null,
+          contractEnd: document.querySelector('#empContractEnd').value.trim() || null,
+          baseSalary: (document.querySelector('#empBaseSalary').value || '').trim() || null,
+          birthDate: document.querySelector('#empBirth').value.trim() || null,
+          gender: document.querySelector('#empGender').value || null,
+          phone: (document.querySelector('#empPhone').value || '').trim() || null,
+          employmentStatus: document.querySelector('#empStatus').value,
+          address: (document.querySelector('#empAddr').value || '').trim() || null
+        };
+        await updateEmployee(u.id, b);
+        const newPw = document.querySelector('#empPw').value;
+        if (newPw && newPw.length >= 6) {
+          await fetchJSONAuth(`/api/admin/users/${u.id}/password`, { method: 'PATCH', body: JSON.stringify({ password: newPw }) });
+        }
+        let uploadedCount = 0;
+        const fileElOnSave = formEdit.querySelector('#empAvatarFile');
+        const statusElOnSave = formEdit.querySelector('#avatarUploadStatus');
+        const saveFiles = fileElOnSave && fileElOnSave.files ? Array.from(fileElOnSave.files) : [];
+        if (saveFiles.length) {
+          try {
+            if (statusElOnSave) statusElOnSave.textContent = '画像アップロード中...';
+            const fd = new FormData();
+            saveFiles.forEach((f) => fd.append('files', f));
+            const out = await fetchJSONAuth(`${photoApiBase}/employees/${encodeURIComponent(String(u.id))}/photos`, {
+              method: 'POST',
+              body: fd
+            });
+            uploadedCount = Number(out?.count || saveFiles.length || 0);
+            if (statusElOnSave) statusElOnSave.textContent = `アップロード完了 (${uploadedCount}件)`;
+            try { fileElOnSave.value = ''; } catch {}
+          } catch (uploadErr) {
+            if (statusElOnSave) statusElOnSave.textContent = String(uploadErr?.message || 'アップロード失敗');
+            throw new Error(`社員情報は保存済みですが、写真アップロードに失敗しました: ${String(uploadErr?.message || '')}`);
+          }
+        }
+        try {
+          const msg = uploadedCount > 0 ? `保存しました（写真${uploadedCount}件アップロード）` : '保存しました';
+          sessionStorage.setItem('empFlashMessage', msg);
+        } catch {}
+        try {
+          const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
+          const keep = new URLSearchParams();
+          for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
+          const qsKeep = keep.toString();
+          history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
+        } catch {}
+        await renderEmployees(profile);
+      } catch (err) {
+        window.alert(String(err?.message || '保存に失敗しました'));
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '更新';
+        }
+      }
     });
     const galleryEl = formEdit.querySelector('#empAvatarGallery');
+    const selectedPreviewEl = formEdit.querySelector('#empAvatarSelectedPreview');
+    const renderSelectedPreview = (files) => {
+      if (!selectedPreviewEl) return;
+      const list = Array.isArray(files) ? files : [];
+      if (!list.length) {
+        selectedPreviewEl.innerHTML = `<span style="color:#94a3b8;">選択中の画像はありません</span>`;
+        return;
+      }
+      selectedPreviewEl.innerHTML = list.map((f) => {
+        const name = String(f?.name || '').trim() || 'photo';
+        const url = URL.createObjectURL(f);
+        return `
+          <a href="${url}" target="_blank" rel="noopener noreferrer" style="border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff;text-decoration:none;">
+            <img src="${url}" alt="${name}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
+            <div style="max-width:96px;font-size:11px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px;" title="${name}">${name}</div>
+          </a>
+        `;
+      }).join('');
+    };
+    renderSelectedPreview([]);
     const renderAvatarGallery = (rows) => {
       if (!galleryEl) return;
       const list = Array.isArray(rows) ? rows : [];
@@ -1186,7 +1294,7 @@ async function renderEmployees(profile) {
           if (!pid) return;
           if (!window.confirm('この写真を削除しますか？')) return;
           try {
-            await fetchJSONAuth(`/api/admin/employees/${encodeURIComponent(String(u.id))}/photos/${encodeURIComponent(pid)}`, { method: 'DELETE' });
+            await fetchJSONAuth(`${photoApiBase}/employees/${encodeURIComponent(String(u.id))}/photos/${encodeURIComponent(pid)}`, { method: 'DELETE' });
             await loadAvatarGallery();
           } catch (err) {
             window.alert(String(err?.message || '削除に失敗しました'));
@@ -1196,13 +1304,20 @@ async function renderEmployees(profile) {
     };
     const loadAvatarGallery = async () => {
       try {
-        const rows = await fetchJSONAuth(`/api/admin/employees/${encodeURIComponent(String(u.id))}/photos`);
+        const rows = await fetchJSONAuth(`${photoApiBase}/employees/${encodeURIComponent(String(u.id))}/photos`);
         renderAvatarGallery(rows);
       } catch {
         renderAvatarGallery([]);
       }
     };
     await loadAvatarGallery();
+    const fileElForPreview = formEdit.querySelector('#empAvatarFile');
+    if (fileElForPreview) {
+      fileElForPreview.addEventListener('change', () => {
+        const files = fileElForPreview.files ? Array.from(fileElForPreview.files) : [];
+        renderSelectedPreview(files);
+      });
+    }
     const btnAvatar = formEdit.querySelector('#btnAvatarUpload');
     if (btnAvatar) {
       btnAvatar.addEventListener('click', async (e) => {
@@ -1214,18 +1329,18 @@ async function renderEmployees(profile) {
           if (!files.length) { if (statusEl) statusEl.textContent = 'ファイル未選択'; return; }
           const fd = new FormData();
           files.forEach((f) => fd.append('files', f));
-          const tok = sessionStorage.getItem('accessToken') || '';
-          const res = await fetch(`/api/admin/employees/${encodeURIComponent(u.id)}/photos`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd, credentials: 'include' });
-          if (!res.ok) {
-            let msg = `HTTP ${res.status}`; try { const j = await res.json(); msg = j.message || msg; } catch {}
-            if (statusEl) statusEl.textContent = msg;
-            return;
-          }
-          const out = await res.json();
+          const out = await fetchJSONAuth(`${photoApiBase}/employees/${encodeURIComponent(String(u.id))}/photos`, {
+            method: 'POST',
+            body: fd
+          });
           if (statusEl) statusEl.textContent = `アップロード完了 (${Number(out?.count || files.length)}件)`;
           try { fileEl.value = ''; } catch {}
+          renderSelectedPreview([]);
           await loadAvatarGallery();
-        } catch {}
+        } catch (err) {
+          const statusEl = formEdit.querySelector('#avatarUploadStatus');
+          if (statusEl) statusEl.textContent = String(err?.message || 'アップロード失敗');
+        }
       });
     }
     formEdit.querySelector('#editBack').addEventListener('click', async (e) => {
@@ -1383,8 +1498,8 @@ async function renderEmployees(profile) {
       <table class="excel-table" style="margin-bottom:12px;">
         <thead><tr><th colspan="2">その他</th></tr></thead>
         <tbody>
-          <tr><td style="width:180px;">プロフィール写真URL（任意）</td><td><input id="empAvatarUrl" style="width:320px" placeholder="https://..."></td></tr>
-          <tr><td>プロフィール写真（アップロード）</td><td><input id="empAvatarFile" type="file" accept="image/*" multiple></td></tr>
+          <tr><td style="width:180px;">個人書類画像URL（任意）</td><td><input id="empAvatarUrl" style="width:320px" placeholder="https://..."></td></tr>
+          <tr><td>個人書類画像（アップロード）</td><td><input id="empAvatarFile" type="file" accept="image/*" multiple></td></tr>
         </tbody>
       </table>
       <div class="form-actions" style="justify-content:flex-end;">
@@ -1433,8 +1548,10 @@ async function renderEmployees(profile) {
           if (fileEl && fileEl.files && fileEl.files.length && r && r.id) {
             const fd = new FormData();
             Array.from(fileEl.files).forEach((f) => fd.append('files', f));
-            const tok = sessionStorage.getItem('accessToken') || '';
-            await fetch(`/api/admin/employees/${encodeURIComponent(r.id)}/photos`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd, credentials: 'include' });
+            await fetchJSONAuth(`${photoApiBase}/employees/${encodeURIComponent(String(r.id))}/photos`, {
+              method: 'POST',
+              body: fd
+            });
           }
         } catch {}
         if (msgEl) { msgEl.style.color = '#0f172a'; msgEl.textContent = '保存しました（1名追加）'; }

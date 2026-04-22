@@ -12,10 +12,10 @@ const storage = multer.diskStorage({
   }
 });
 
-// Giới hạn loại file và dung lượng (ví dụ: chỉ cho phép ảnh < 2MB)
+// Giới hạn loại file và dung lượng (ảnh điện thoại thường lớn hơn 2MB)
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     const ok = file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf';
     if (ok) cb(null, true);
