@@ -1309,8 +1309,6 @@
         updates.push({ clientId, checkIn: inDt, checkOut: outDt, workType: wt || null });
       }
       
-      if (!updates.length) return;
-
       try {
         const u0 = updates[0];
         if (!u0?.id && u0?.checkIn) {
@@ -1332,6 +1330,12 @@
       
       const sel = tr.querySelector('select[data-field="classification"]');
       const v = String(sel?.value || '').trim();
+      const rowBaseOff = String(tr.dataset.baseOff || '') === '1';
+      const hasDailyInput = !!(v || wt || location || reason || memo);
+      const effectiveKubun = v || (hasDailyInput ? (rowBaseOff ? '休日出勤' : '出勤') : '');
+      const hasDailyMeaningful = !!(effectiveKubun || wt || location || reason || memo || breakMinutes !== 60 || nightBreakMinutes !== 0);
+      // Important: allow saving daily-only edits (kubun/work/location/memo) even when no time updates.
+      if (!updates.length && !hasDailyMeaningful) return;
       const payload = {
         year: y, 
         month: m, 
@@ -1340,8 +1344,8 @@
         dailyUpdates: [
           {
             date: dateStr,
-            kubun: v || null,
-            kubunConfirmed: v ? 1 : 0,
+            kubun: effectiveKubun || null,
+            kubunConfirmed: effectiveKubun ? 1 : 0,
             workType: (wt === 'onsite' || wt === 'remote' || wt === 'satellite') ? wt : null,
             location: location || '',
             reason: reason || '',
@@ -1409,6 +1413,11 @@
       }
 
       markRowSaved(tr);
+      try {
+        tr.dataset.kubunConfirmed = effectiveKubun ? '1' : '';
+        tr.dataset.kubunBase = effectiveKubun || '';
+        if (sel && effectiveKubun && String(sel.value || '').trim() !== effectiveKubun) sel.value = effectiveKubun;
+      } catch {}
       if (root.Render?.recomputeRow) root.Render.recomputeRow(tr);
       
     } catch (e) {
