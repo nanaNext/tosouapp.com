@@ -2,6 +2,16 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+function extFromMime(mime) {
+  const m = String(mime || '').toLowerCase();
+  if (m === 'image/jpeg' || m === 'image/jpg') return '.jpg';
+  if (m === 'image/png') return '.png';
+  if (m === 'image/webp') return '.webp';
+  if (m === 'image/gif') return '.gif';
+  if (m === 'application/pdf') return '.pdf';
+  return '';
+}
+
 // Cấu hình nơi lưu file và tên file
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -11,7 +21,9 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    const extRaw = path.extname(String(file.originalname || '')).toLowerCase();
+    const ext = extRaw || extFromMime(file.mimetype) || '';
+    cb(null, `${uniqueSuffix}${ext}`);
   }
 });
 

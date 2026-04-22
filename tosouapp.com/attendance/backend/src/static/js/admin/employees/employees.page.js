@@ -273,10 +273,11 @@ async function renderEmployees(profile) {
         } else {
           box.innerHTML = list.map((it) => {
             const url = String(it?.url || '').trim();
+            const safeUrl = encodeURI(url);
             const name = String(it?.originalName || '').trim();
             return `
-              <a href="${url}" target="_blank" rel="noopener noreferrer" style="border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff;text-decoration:none;">
-                <img src="${url}" alt="${name || 'photo'}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
+              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff;text-decoration:none;">
+                <img src="${safeUrl}" alt="${name || 'photo'}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
                 <div style="max-width:96px;font-size:11px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px;" title="${name}">${name || 'photo'}</div>
               </a>
             `;
@@ -1079,9 +1080,10 @@ async function renderEmployees(profile) {
       selectedPreviewEl.innerHTML = list.map((f) => {
         const name = String(f?.name || '').trim() || 'photo';
         const url = URL.createObjectURL(f);
+        const safeUrl = encodeURI(url);
         return `
-          <a href="${url}" target="_blank" rel="noopener noreferrer" style="border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff;text-decoration:none;">
-            <img src="${url}" alt="${name}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
+          <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff;text-decoration:none;">
+            <img src="${safeUrl}" alt="${name}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
             <div style="max-width:96px;font-size:11px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px;" title="${name}">${name}</div>
           </a>
         `;
@@ -1098,11 +1100,12 @@ async function renderEmployees(profile) {
       galleryEl.innerHTML = list.map((it) => {
         const id = String(it?.id || '');
         const url = String(it?.url || '').trim();
+        const safeUrl = encodeURI(url);
         const name = String(it?.originalName || '').trim();
         return `
           <div style="border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff;">
-            <a href="${url}" target="_blank" rel="noopener noreferrer">
-              <img src="${url}" alt="${name || 'photo'}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
+              <img src="${safeUrl}" alt="${name || 'photo'}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;display:block;">
             </a>
             <div style="max-width:96px;font-size:11px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px;" title="${name}">${name || 'photo'}</div>
             <button type="button" class="btn-avatar-del" data-photo-id="${id}" style="margin-top:4px;font-size:11px;">削除</button>
