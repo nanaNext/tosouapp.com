@@ -1536,6 +1536,47 @@ body.drawer-open.admin.has-sidebar .content {
   max-height: min(62vh, 560px);
 }
 
+/* Attendance report table: align visual language with employee list table */
+.admin .attrec-list-scroll-wrap {
+  width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 577px) {
+  .admin .attrec-list-scroll-wrap .attrec-dash-table {
+    min-width: 980px;
+  }
+
+  .admin .attrec-list-scroll-wrap .attrec-dash-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #eaf2ff;
+    color: #0d2c5b;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #dbe7f6;
+  }
+
+  .admin .attrec-list-scroll-wrap .attrec-dash-table tbody td {
+    font-size: 12px;
+    color: #0f172a;
+    line-height: 1.35;
+    padding: 7px 10px;
+    border-bottom: 1px solid #edf2f8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  .admin .attrec-list-scroll-wrap .attrec-dash-table tbody tr:hover td {
+    background: #f8fbff;
+  }
+}
+
 .admin .attrec-dash-table {
   border-collapse: collapse;
   border: 1px solid #e5e7eb;
@@ -3385,6 +3426,10 @@ body.drawer-open.admin.has-sidebar .content {
   .admin .attrec-table {
     border: none;
     max-height: none;
+    overflow: visible;
+  }
+
+  .admin .attrec-list-scroll-wrap {
     overflow: visible;
   }
 

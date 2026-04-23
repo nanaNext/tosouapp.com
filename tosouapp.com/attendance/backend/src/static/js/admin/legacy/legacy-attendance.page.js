@@ -109,7 +109,10 @@ async function mountAttendanceImpl({
         return;
       }
       const table = document.createElement('table');
-      table.className = 'dash-table attrec-dash-table';
+      table.id = 'attrecList';
+      table.className = 'excel-table dash-table attrec-dash-table attrec-emp-like-table';
+      table.style.tableLayout = 'fixed';
+      table.style.width = '100%';
       table.innerHTML = '<thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>';
       const tbody = document.createElement('tbody');
       const selectedDateIsOff = isWeekend(date);
@@ -166,7 +169,10 @@ async function mountAttendanceImpl({
       }
       table.appendChild(tbody);
       host.innerHTML = '';
-      host.appendChild(table);
+      const tableWrap = document.createElement('div');
+      tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
+      tableWrap.appendChild(table);
+      host.appendChild(tableWrap);
     } catch (err) {
       if (err && err.name === 'AbortError') return;
       if (!isCurrent) return;

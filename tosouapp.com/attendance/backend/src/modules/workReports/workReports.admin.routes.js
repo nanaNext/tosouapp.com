@@ -26,6 +26,13 @@ const monthRange = (month) => {
   const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   return { start, end };
 };
+const pickNonEmptyText = (...vals) => {
+  for (const v of vals) {
+    const s = String(v == null ? '' : v).trim();
+    if (s) return s;
+  }
+  return null;
+};
 
 const roleScopeSql = (req, alias = 'u') => {
   const role = String(req.user?.role || '').toLowerCase();
@@ -53,21 +60,26 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
         u.username AS username,
         u.departmentId AS departmentId,
         d.name AS departmentName,
+        CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM leave_requests lr
+            WHERE lr.userId = u.id
+              AND lr.status = 'approved'
+              AND ? BETWEEN lr.startDate AND lr.endDate
+          ) THEN 1 ELSE 0
+        END AS has_approved_leave,
         a.id AS attendanceId,
         a.checkIn AS checkIn,
         a.checkOut AS checkOut,
-        COALESCE(wr.work_type, a.work_type) AS work_type,
+        COALESCE(ad.work_type, wr.work_type, a.work_type) AS work_type,
         ad.kubun AS daily_kubun,
-        COALESCE(NULLIF(wr.site, ''), NULLIF(ad.location, '')) AS site,
-        COALESCE(NULLIF(wr.work, ''), NULLIF(ad.memo, '')) AS work,
+        COALESCE(NULLIF(TRIM(ad.location), ''), NULLIF(TRIM(wr.site), '')) AS site,
+        COALESCE(NULLIF(TRIM(ad.memo), ''), NULLIF(TRIM(wr.work), '')) AS work,
         wr.updated_at AS updated_at
       FROM users u
       LEFT JOIN departments d
         ON d.id = u.departmentId
-      LEFT JOIN leave_requests lr
-        ON lr.userId = u.id
-       AND lr.status = 'approved'
-       AND ? BETWEEN lr.startDate AND lr.endDate
       LEFT JOIN attendance_daily ad
         ON ad.userId = u.id
        AND ad.date = ?
@@ -87,7 +99,6 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
         ON wr.userId = u.id AND wr.date = ?
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
-        AND lr.id IS NULL
       ORDER BY
         CASE WHEN a.checkIn IS NULL THEN 1 ELSE 0 END ASC,
         COALESCE(u.employee_code, '') ASC,
@@ -102,14 +113,14 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
       const leaveKubun = new Set(['有給休暇', '無給休暇', '欠勤']);
       const workKubun = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       const dayIsOff = offKubun.has(kubun) || (!workKubun.has(kubun) && isOff);
-      const forceLeave = leaveKubun.has(kubun);
+      const forceLeave = leaveKubun.has(kubun) || Number(r.has_approved_leave || 0) === 1;
       const status = forceLeave
         ? 'leave'
         : (hasIn
             ? (hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working'))
             : (dayIsOff ? 'leave' : 'not_checked_in'));
       // Normalize display kubun for off-days even when daily record is empty.
-      const effectiveKubun = kubun || (dayIsOff ? '休日' : '');
+      const effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff ? '休日' : ''));
       const hasReport = !!(r.site || r.work);
       const wt = r.work_type || null;
       return {
@@ -135,9 +146,10 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
       };
     });
 
-    const submitted = items.filter(i => !!i.report).length;
-    const required = items.filter(i => i.status === 'checked_out').length;
-    const missing = items.filter(i => i.status === 'checked_out' && !i.report).length;
+    const requiredItems = items.filter(i => i.status === 'checked_out');
+    const required = requiredItems.length;
+    const submitted = requiredItems.filter(i => !!i.report).length;
+    const missing = requiredItems.filter(i => !i.report).length;
     res.status(200).json({ date, summary: { submitted, required, missing }, items });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -767,6 +779,33 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const { start, end } = monthRange(month);
     const today = todayJST();
+    const ymDateList = (() => {
+      const out = [];
+      const d0 = new Date(start + 'T00:00:00Z');
+      const d1 = new Date(end + 'T00:00:00Z');
+      for (let t = d0.getTime(); t <= d1.getTime(); t += 24 * 60 * 60 * 1000) {
+        out.push(new Date(t).toISOString().slice(0, 10));
+      }
+      return out;
+    })();
+    const offSet = new Set();
+    try {
+      const years = Array.from(new Set(ymDateList.map(d => parseInt(String(d).slice(0, 4), 10)).filter(Boolean)));
+      for (const y of years) {
+        const cal = await calendarRepo.computeYear(y).catch(() => null);
+        const arr = Array.isArray(cal?.off_days) ? cal.off_days : [];
+        for (const ds of arr) offSet.add(String(ds).slice(0, 10));
+      }
+    } catch {}
+    const isOffDate = (dateStr) => offSet.has(String(dateStr || '').slice(0, 10));
+    const leaveTypeToKubun = (type) => {
+      const v = String(type || '').toLowerCase();
+      if (v === 'paid') return '有給休暇';
+      if (v === 'unpaid') return '無給休暇';
+      if (v === 'absence') return '欠勤';
+      if (v === 'sick') return '欠勤';
+      return '休暇';
+    };
 
     const [users] = await db.query(`
       SELECT u.id AS userId,
@@ -874,6 +913,31 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       });
     }
 
+    const [leaveRows] = await db.query(`
+      SELECT userId, startDate, endDate, type
+      FROM leave_requests
+      WHERE status = 'approved'
+        AND endDate >= ? AND startDate <= ?
+    `, [start, end]);
+    const leaveByUserDate = new Map();
+    for (const r of (leaveRows || [])) {
+      const uid = Number(r.userId);
+      if (!uid) continue;
+      const st = String(r.startDate || '').slice(0, 10);
+      const ed = String(r.endDate || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(st) || !/^\d{4}-\d{2}-\d{2}$/.test(ed)) continue;
+      const from = st > start ? st : start;
+      const to = ed < end ? ed : end;
+      let cur = new Date(from + 'T00:00:00Z');
+      const endDt = new Date(to + 'T00:00:00Z');
+      while (cur.getTime() <= endDt.getTime()) {
+        const ds = cur.toISOString().slice(0, 10);
+        const key = `${uid}|${ds}`;
+        if (!leaveByUserDate.has(key)) leaveByUserDate.set(key, leaveTypeToKubun(r.type));
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+    }
+
     const reports = await repo.listByMonth(month);
     const reportMap = new Map();
     for (const r of (reports || [])) {
@@ -901,16 +965,22 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       keySet.add(key);
       const rep = reportMap.get(key) || null;
       const daily = dailyMap.get(key) || null;
-      const site = String(rep?.site || daily?.location || '').trim() || null;
-      const work = String(rep?.work || daily?.memo || '').trim() || null;
+      const site = pickNonEmptyText(daily?.location, rep?.site);
+      const work = pickNonEmptyText(daily?.memo, rep?.work);
       const fallbackOutHm = (!a.lastCheckOut && (site || work)) ? resolveShiftEndHm(userId, date) : '';
-      const workType = rep?.work_type || daily?.workType || a.attendanceWorkType || null;
+      const workType = daily?.workType || rep?.work_type || a.attendanceWorkType || null;
       const hasReportContent = !!(site || work);
       const status = a.lastCheckOut
         ? (hasReportContent ? 'submitted' : 'missing')
         : (date < today
             ? (hasReportContent ? 'checkout_missing_submitted' : 'checkout_missing')
             : 'working');
+      let kubun = String(daily?.kubun || '').trim();
+      if (!kubun) {
+        const leaveKubun = leaveByUserDate.get(key) || '';
+        if (leaveKubun) kubun = leaveKubun;
+        else kubun = isOffDate(date) ? '休日出勤' : '出勤';
+      }
       if (status === 'submitted' || status === 'checkout_missing_submitted') submitted++;
       else if (status === 'missing' || status === 'checkout_missing') missing++;
       workingUsers.add(userId);
@@ -926,7 +996,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
           checkIn: a.firstCheckIn || null,
           checkOut: a.lastCheckOut || (fallbackOutHm ? `${date} ${fallbackOutHm}:00` : null)
         },
-        kubun: daily?.kubun || null,
+        kubun: kubun || null,
         workType,
         site,
         work,
@@ -937,7 +1007,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
     // Add rows that exist only in monthly input (attendance_daily / work_reports) without punch data.
     const extraKeys = new Set([
       ...Array.from(dailyMap.keys()),
-      ...Array.from(reportMap.keys())
+      ...Array.from(reportMap.keys()),
+      ...Array.from(leaveByUserDate.keys())
     ]);
     for (const key of extraKeys) {
       if (keySet.has(key)) continue;
@@ -948,20 +1019,24 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       if (!user) continue;
       const daily = dailyMap.get(key) || null;
       const rep = reportMap.get(key) || null;
-      const kubun = String(daily?.kubun || '').trim();
-      const site = String(rep?.site || daily?.location || '').trim() || null;
-      const work = String(rep?.work || daily?.memo || '').trim() || null;
+      let kubun = String(daily?.kubun || '').trim();
+      if (!kubun) kubun = String(leaveByUserDate.get(key) || '').trim();
+      const site = pickNonEmptyText(daily?.location, rep?.site);
+      const work = pickNonEmptyText(daily?.memo, rep?.work);
       const hasContent = !!(site || work);
-      const workType = rep?.work_type || daily?.workType || null;
+      const workType = daily?.workType || rep?.work_type || null;
       const fallbackOutHm = hasContent ? resolveShiftEndHm(userId, String(date).slice(0, 10)) : '';
 
       let status = '';
-      if (holidayKubun.has(kubun)) status = 'off';
+      if (holidayKubun.has(kubun) || (!kubun && isOffDate(date))) status = 'off';
       else if (paidLeaveKubun.has(kubun)) status = 'paid_leave';
       else if (unpaidLeaveKubun.has(kubun)) status = 'unpaid_leave';
       else if (absenceKubun.has(kubun)) status = 'absence';
       else if (workKubun.has(kubun) || hasContent) status = 'monthly_input_only';
       else continue;
+      // Hide pure future off-day placeholders (no punch/report content) to match admin expectation.
+      if (status === 'off' && String(date).slice(0, 10) > today && !hasContent) continue;
+      if (!kubun && status === 'off') kubun = '休日';
 
       if (status === 'monthly_input_only') submitted++;
       workingUsers.add(userId);
