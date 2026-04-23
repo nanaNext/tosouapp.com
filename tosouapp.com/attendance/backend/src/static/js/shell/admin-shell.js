@@ -129,6 +129,26 @@ export function wireUserMenu() {
       try {
         const p = ensureEmergencyUserPanel();
         if (!p) return;
+        try {
+          const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+          if (isMobile) {
+            p.style.top = '44px';
+            p.style.right = '8px';
+            p.style.minWidth = '0';
+            p.style.width = 'min(86vw, 220px)';
+            p.style.maxHeight = '44vh';
+            p.style.overflowY = 'auto';
+            p.style.padding = '6px';
+          } else {
+            p.style.top = '46px';
+            p.style.right = '10px';
+            p.style.minWidth = '220px';
+            p.style.width = '';
+            p.style.maxHeight = '';
+            p.style.overflowY = '';
+            p.style.padding = '8px';
+          }
+        } catch {}
         p.removeAttribute('hidden');
         p.style.display = 'block';
         p.style.visibility = 'visible';
@@ -209,9 +229,56 @@ export function wireUserMenu() {
     };
     const ensureEmergencyUserButton = () => {
       try {
-        // Keep only the original topbar user button; remove emergency duplicate.
+        const path = (() => {
+          try { return String(window.location.pathname || '').replace(/\/+$/, '') || '/'; } catch { return ''; }
+        })();
+        const forceOnNotices = path === '/admin/notices';
+        const realBtn = document.querySelector('.user .user-btn');
+        const isRealVisible = (() => {
+          try {
+            if (!realBtn) return false;
+            const cs = window.getComputedStyle(realBtn);
+            if (!cs) return false;
+            if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+            if (Number(cs.opacity || '1') <= 0) return false;
+            const r = realBtn.getBoundingClientRect();
+            if (!(r.width > 8 && r.height > 8)) return false;
+            const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+            const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+            // Button is considered visible only when it is actually inside viewport.
+            return r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh;
+          } catch {
+            return false;
+          }
+        })();
+        const isMobile = (() => {
+          try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
+        })();
         const emBtn = document.getElementById(emergencyBtnId);
-        if (emBtn) emBtn.remove();
+        if (!emBtn) return;
+        if ((!forceOnNotices && isRealVisible) || !isMobile) {
+          emBtn.setAttribute('hidden', '');
+          emBtn.style.display = 'none';
+          return;
+        }
+        const i1 = (() => {
+          try { return String(document.getElementById('userBtnInitial')?.getAttribute('data-initial') || '').trim(); } catch { return ''; }
+        })();
+        const i2 = (() => {
+          try { return String(document.getElementById('userName')?.textContent || '').trim().slice(0, 1).toUpperCase(); } catch { return ''; }
+        })();
+        emBtn.textContent = i1 || i2 || 'U';
+        emBtn.removeAttribute('hidden');
+        emBtn.style.display = 'inline-flex';
+        if (emBtn.dataset.bound === '1') return;
+        emBtn.dataset.bound = '1';
+        const onTap = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!toggleRealUserMenu()) toggleEmergencyPanel();
+        };
+        emBtn.addEventListener('pointerdown', onTap, true);
+        emBtn.addEventListener('click', onTap, true);
       } catch {}
     };
     const toggleRealUserMenu = () => {
@@ -268,10 +335,6 @@ export function wireUserMenu() {
       try {
         bindRealUserButton();
       } catch {}
-      try {
-        const panel = document.getElementById(emergencyPanelId);
-        if (panel) panel.remove();
-      } catch {}
     };
     bindDynamicUserControls();
     if (!shellState.userMenuBoundDynamic) {
@@ -297,6 +360,7 @@ export function wireUserMenu() {
       }, true);
       window.addEventListener('resize', () => {
         try {
+          ensureEmergencyUserButton();
           const btn = document.querySelector('.user .user-btn[aria-expanded="true"]');
           if (!btn) return;
           const root = btn.closest('.user');
@@ -382,15 +446,34 @@ export function wireMobileDrawer() {
     if (!btn || !drawer || !backdrop) return;
     if (btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
+    // Recover from stale state after route/view swaps.
+    try { drawer.setAttribute('hidden', ''); } catch {}
+    try { drawer.style.display = 'none'; } catch {}
+    try { drawer.style.pointerEvents = 'none'; } catch {}
+    try { backdrop.setAttribute('hidden', ''); } catch {}
+    try { backdrop.style.display = 'none'; } catch {}
+    try { backdrop.style.pointerEvents = 'none'; } catch {}
+    try { document.body.classList.remove('drawer-open'); } catch {}
     const open = () => {
       try { drawer.removeAttribute('hidden'); } catch {}
       try { backdrop.removeAttribute('hidden'); } catch {}
+      // Recover from transient reset state that can force inline hide.
+      try { drawer.style.display = ''; } catch {}
+      try { drawer.style.removeProperty('display'); } catch {}
+      try { drawer.style.removeProperty('pointer-events'); } catch {}
+      try { backdrop.style.display = ''; } catch {}
+      try { backdrop.style.removeProperty('display'); } catch {}
+      try { backdrop.style.removeProperty('pointer-events'); } catch {}
       try { document.body.classList.add('drawer-open'); } catch {}
       try { btn.setAttribute('aria-expanded', 'true'); } catch {}
     };
     const close = () => {
       try { drawer.setAttribute('hidden', ''); } catch {}
+      try { drawer.style.display = 'none'; } catch {}
+      try { drawer.style.pointerEvents = 'none'; } catch {}
       try { backdrop.setAttribute('hidden', ''); } catch {}
+      try { backdrop.style.display = 'none'; } catch {}
+      try { backdrop.style.pointerEvents = 'none'; } catch {}
       try { document.body.classList.remove('drawer-open'); } catch {}
       try { btn.setAttribute('aria-expanded', 'false'); } catch {}
     };
@@ -399,20 +482,110 @@ export function wireMobileDrawer() {
       if (isOpen) close();
       else open();
     };
-    btn.addEventListener('click', (e) => { e.preventDefault(); toggle(); });
+    const tapWithinMenuBtn = (ev) => {
+      try {
+        const r = btn.getBoundingClientRect();
+        const x = Number(ev && (ev.clientX ?? (ev.touches && ev.touches[0] && ev.touches[0].clientX)));
+        const y = Number(ev && (ev.clientY ?? (ev.touches && ev.touches[0] && ev.touches[0].clientY)));
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      } catch {
+        return false;
+      }
+    };
+    let lastMenuToggleAt = 0;
+    const onMenuTap = (e) => {
+      const now = Date.now();
+      // Prevent double-toggle caused by pointerdown + click/touchstart firing together.
+      if (now - lastMenuToggleAt < 260) {
+        try { e.preventDefault(); } catch {}
+        try { e.stopPropagation(); } catch {}
+        return;
+      }
+      lastMenuToggleAt = now;
+      e.preventDefault();
+      e.stopPropagation();
+      toggle();
+    };
+    // Normal binding
+    btn.addEventListener('click', onMenuTap);
+    btn.addEventListener('pointerdown', onMenuTap, true);
+    btn.addEventListener('touchstart', onMenuTap, { capture: true, passive: false });
+    // Fallback: if another overlay sits above the button, still react by tap coordinates.
+    document.addEventListener('pointerdown', (e) => {
+      try {
+        const t = e && e.target;
+        if (t && t.closest && t.closest('#mobileMenuBtn')) return;
+        if (!tapWithinMenuBtn(e)) return;
+        onMenuTap(e);
+      } catch {}
+    }, true);
+    document.addEventListener('touchstart', (e) => {
+      try {
+        const t = e && e.target;
+        if (t && t.closest && t.closest('#mobileMenuBtn')) return;
+        if (!tapWithinMenuBtn(e)) return;
+        onMenuTap(e);
+      } catch {}
+    }, { capture: true, passive: false });
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
-    backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
+    // UX requirement: right dark area is non-interactive; close only via X button.
+    backdrop.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
     try {
       if (mount && !mount.dataset.filled) {
         const src = document.querySelector('.sidebar .sidebar-nav');
+        let filled = false;
         if (src) {
           const clone = src.cloneNode(true);
           clone.removeAttribute('style');
           clone.classList.add('drawer-nav');
           mount.appendChild(clone);
-          mount.dataset.filled = '1';
+          filled = true;
         }
+        // Fallback: build drawer nav from top horizontal subbar menus.
+        if (!filled) {
+          const subnav = document.querySelector('.subbar .subnav');
+          if (subnav) {
+            const nav = document.createElement('nav');
+            nav.className = 'drawer-nav';
+            const topItems = Array.from(subnav.children || []);
+            for (const node of topItems) {
+              if (!node || !node.matches) continue;
+              if (node.matches('a[href]')) {
+                const a = document.createElement('a');
+                a.href = node.getAttribute('href') || '#';
+                a.textContent = String(node.textContent || '').trim() || 'メニュー';
+                nav.appendChild(a);
+                continue;
+              }
+              if (node.matches('.menu')) {
+                const btn = node.querySelector('.menu-btn');
+                const links = Array.from(node.querySelectorAll('.submenu a[href]'));
+                if (!btn) continue;
+                const details = document.createElement('details');
+                const summary = document.createElement('summary');
+                summary.textContent = String(btn.textContent || '').trim() || 'メニュー';
+                const chev = document.createElement('span');
+                chev.className = 'chev';
+                summary.appendChild(chev);
+                details.appendChild(summary);
+                for (const l of links) {
+                  const child = document.createElement('a');
+                  child.href = l.getAttribute('href') || '#';
+                  child.textContent = String(l.textContent || '').trim() || '項目';
+                  details.appendChild(child);
+                }
+                nav.appendChild(details);
+              }
+            }
+            if (nav.children.length > 0) {
+              mount.appendChild(nav);
+              filled = true;
+            }
+          }
+        }
+        if (filled) mount.dataset.filled = '1';
       }
     } catch {}
   } catch {}

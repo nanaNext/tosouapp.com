@@ -63,6 +63,91 @@ const hideNavSpinner = () => {
 
 let employeesRenderSeq = 0;
 
+const getTopbarSearchParts = () => {
+  try {
+    const searchBox = document.querySelector('.topbar .search');
+    if (!searchBox) return null;
+    const input = searchBox.querySelector('input[type="search"]');
+    const hint = searchBox.querySelector('.search-hint');
+    const meta = searchBox.querySelector('.search-meta');
+    const closeBtn = searchBox.querySelector('.search-close');
+    return { searchBox, input, hint, meta, closeBtn };
+  } catch {
+    return null;
+  }
+};
+
+const bindTopbarSearchClear = () => {
+  try {
+    const parts = getTopbarSearchParts();
+    const closeBtn = parts && parts.closeBtn;
+    if (!closeBtn) return;
+    if (closeBtn.dataset.empClearBound === '1') return;
+    closeBtn.dataset.empClearBound = '1';
+    const clearAndBack = (e) => {
+      try { e.preventDefault(); } catch {}
+      try { e.stopPropagation(); } catch {}
+      try { window.location.assign('/admin/employees#list'); } catch { window.location.href = '/admin/employees#list'; }
+    };
+    closeBtn.addEventListener('pointerdown', clearAndBack, true);
+    closeBtn.addEventListener('click', clearAndBack, true);
+  } catch {}
+};
+
+const syncTopbarSearchKeyword = (keyword) => {
+  try {
+    bindTopbarSearchClear();
+    const parts = getTopbarSearchParts();
+    if (!parts) return;
+    const { searchBox, input, meta } = parts;
+    const q = String(keyword || '').trim();
+    if (input) input.value = q;
+    if (q) {
+      searchBox.classList.add('emp-query-active');
+      if (meta) meta.removeAttribute('aria-hidden');
+      return;
+    }
+    searchBox.classList.remove('emp-query-active');
+  } catch {}
+};
+
+const clearTopbarNoResultState = () => {
+  try {
+    const parts = getTopbarSearchParts();
+    const searchBox = parts && parts.searchBox;
+    if (!searchBox) return;
+    searchBox.classList.remove('emp-no-result');
+    const hint = parts.hint;
+    if (!hint) return;
+    const def = String(hint.dataset.defaultText || '').trim();
+    hint.textContent = def || 'Ctrl+K';
+    hint.removeAttribute('title');
+    hint.style.display = '';
+  } catch {}
+};
+
+const setTopbarNoResultState = (searchedText) => {
+  try {
+    const searchBox = document.querySelector('.topbar .search');
+    if (!searchBox) return;
+    const hint = searchBox.querySelector('.search-hint');
+    if (!hint) return;
+    if (!hint.dataset.defaultText) {
+      hint.dataset.defaultText = String(hint.textContent || 'Ctrl+K');
+    }
+    const q = String(searchedText || '').trim();
+    if (!q) {
+      clearTopbarNoResultState();
+      return;
+    }
+    const msg = `「${q}」に一致する社員が見つかりません`;
+    searchBox.classList.add('emp-no-result');
+    hint.textContent = msg;
+    hint.title = msg;
+    hint.style.display = 'inline-flex';
+  } catch {}
+};
+
 function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFlag) {
   if (editId) return 'edit';
   if (summaryId) return 'summary';
@@ -78,6 +163,7 @@ function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFla
 }
 
 async function renderEmployees(profile) {
+  clearTopbarNoResultState();
   try {
     const currentPath = String(location.pathname || '');
     if (currentPath === '/admin/employees/monthly-summary' || currentPath === '/admin/employees/monthly-summary/') {
@@ -1409,6 +1495,7 @@ async function renderEmployees(profile) {
   const filterWrap = document.createElement('div');
   filterWrap.style.margin = mode === 'delete' ? '0 0 8px' : '12px 0';
   filterWrap.className = mode === 'delete' ? 'emp-filters emp-del-wrap' : 'emp-filters filter-bar';
+  let listHeader = null;
   if (mode === 'delete') {
     filterWrap.innerHTML = `
       <table class="excel-table emp-del-filter" style="margin:0 0 10px; width:720px; min-width:680px;">
@@ -1572,6 +1659,69 @@ async function renderEmployees(profile) {
   const tbody = document.createElement('tbody');
   table.appendChild(tbody);
 
+  const tableScrollWrap = document.createElement('div');
+  tableScrollWrap.className = 'emp-list-scroll-wrap';
+  tableScrollWrap.appendChild(table);
+  const isMobileFlatMode = () => {
+    try {
+      if (!window.matchMedia) return false;
+      return window.matchMedia('(max-width: 576px)').matches;
+    } catch {
+      return false;
+    }
+  };
+  let lastMobileFlatMode = null;
+  const syncPinnedColumnsSticky = () => {
+    try {
+      const removeOverlay = () => {
+        try { tableScrollWrap.classList.remove('has-freeze-overlay'); } catch {}
+        try {
+          const el = tableScrollWrap.querySelector('.emp-freeze-overlay');
+          if (el) el.remove();
+        } catch {}
+      };
+      try {
+        tableScrollWrap.classList.remove('use-pin-overlay');
+        const legacyPanel = tableScrollWrap.querySelector('.emp-pin-panel');
+        if (legacyPanel) legacyPanel.remove();
+      } catch {}
+      removeOverlay();
+      const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+      const isNarrowMobile = isMobileFlatMode();
+      const canPin = mode !== 'delete' && isMobile && !isNarrowMobile;
+      if (!canPin) {
+        return;
+      }
+      const srcHead = table.querySelector('thead tr');
+      if (!srcHead) return;
+      const cells = Array.from(srcHead.children);
+      if (cells.length < 2) return;
+      const w1 = Math.max(72, Math.ceil(cells[0].getBoundingClientRect().width || 0));
+      const w2 = Math.max(88, Math.ceil(cells[1].getBoundingClientRect().width || 0));
+      tableScrollWrap.style.setProperty('--pin-col-1', `${w1}px`);
+      tableScrollWrap.style.setProperty('--pin-col-2', `${w2}px`);
+      const setWidth = (el, w) => {
+        if (!el) return;
+        el.style.width = `${w}px`;
+        el.style.minWidth = `${w}px`;
+        el.style.maxWidth = `${w}px`;
+      };
+      setWidth(cells[0], w1);
+      setWidth(cells[1], w2);
+      Array.from(tbody.querySelectorAll('tr')).forEach((r) => {
+        const tds = r.children;
+        setWidth(tds[0], w1);
+        setWidth(tds[1], w2);
+      });
+
+    } catch {}
+  };
+  if (!tableScrollWrap.dataset.pinBound) {
+    tableScrollWrap.dataset.pinBound = '1';
+    try { window.addEventListener('resize', () => { try { syncPinnedColumnsSticky(); } catch {} }); } catch {}
+    try { window.addEventListener('orientationchange', () => { try { syncPinnedColumnsSticky(); } catch {} }); } catch {}
+  }
+
   const pager = document.createElement('div');
   pager.style.margin = '8px 0';
   pager.style.display = 'flex';
@@ -1592,22 +1742,41 @@ async function renderEmployees(profile) {
     toolbar.style.display = '';
     const listBox = filterWrap.querySelector('#empListBox');
     if (listBox) {
-      listBox.appendChild(table);
+      listBox.appendChild(tableScrollWrap);
       listBox.appendChild(pager);
       filterWrap.appendChild(toolbar);
     } else {
-      filterWrap.appendChild(table);
+      filterWrap.appendChild(tableScrollWrap);
       filterWrap.appendChild(pager);
       filterWrap.appendChild(toolbar);
     }
   } else {
-    const hdr = document.createElement('div');
-    hdr.className = 'form-title';
-    hdr.textContent = '【社員一覧】';
-    content.appendChild(hdr);
-    content.appendChild(table);
+    listHeader = document.createElement('div');
+    listHeader.className = 'form-title';
+    listHeader.textContent = '【社員一覧】';
+    content.appendChild(listHeader);
+    content.appendChild(tableScrollWrap);
     content.appendChild(pager);
   }
+
+  const noResultCenter = document.createElement('div');
+  noResultCenter.id = 'empNoResultCenter';
+  noResultCenter.style.display = 'none';
+  noResultCenter.style.minHeight = '52vh';
+  noResultCenter.style.alignItems = 'center';
+  noResultCenter.style.justifyContent = 'center';
+  noResultCenter.style.textAlign = 'center';
+  noResultCenter.style.fontWeight = '800';
+  noResultCenter.style.fontSize = '20px';
+  noResultCenter.style.color = '#0b2c66';
+  noResultCenter.textContent = '該当データがありません';
+  content.appendChild(noResultCenter);
+  const hideFilterWrap = () => {
+    try { filterWrap.style.setProperty('display', 'none', 'important'); } catch {}
+  };
+  const showFilterWrap = () => {
+    try { filterWrap.style.removeProperty('display'); } catch {}
+  };
 
   const fmtEmpNo = (id) => 'EMP' + String(id).padStart(3, '0');
   const deptName = (id) => {
@@ -1674,16 +1843,25 @@ async function renderEmployees(profile) {
     } catch {}
     return raw;
   };
+  const normalizeSearchText = (v) => String(v || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const buildSearchSummaryJa = () => {
+    const parts = [];
+    if (state.code) parts.push(`社員番号:${state.code}`);
+    if (state.q) parts.push(`氏名:${state.q}`);
+    return parts.join(' / ');
+  };
   const applyFilterSort = () => {
     let arr = users.slice();
     if (state.code) {
       arr = arr.filter(u => {
-        const raw = String(u.employee_code || '').toLowerCase();
-        const gen = ('emp' + String(u.id).padStart(3,'0')).toLowerCase();
-        return raw.includes(state.code) || gen.includes(state.code);
+        const raw = normalizeSearchText(u.employee_code);
+        const gen = normalizeSearchText('emp' + String(u.id).padStart(3,'0'));
+        return raw === state.code || gen === state.code;
       });
     }
-    if (state.q) arr = arr.filter(u => String(u.username||'').toLowerCase().includes(state.q));
+    if (state.q) {
+      arr = arr.filter(u => normalizeSearchText(u.username) === state.q);
+    }
     const key = state.sortKey;
     const dir = state.sortDir === 'asc' ? 1 : -1;
     arr.sort((a,b) => {
@@ -1696,9 +1874,42 @@ async function renderEmployees(profile) {
   const renderRows = () => {
     const all = applyFilterSort();
     const total = all.length;
+    const hasSearch = !!(state.code || state.q);
+    syncTopbarSearchKeyword(state.q || state.code);
     const start = (state.page - 1) * state.pageSize;
     const pageItems = all.slice(start, start + state.pageSize);
+    const isNarrowMobile = isMobileFlatMode();
+    lastMobileFlatMode = isNarrowMobile;
     tbody.innerHTML = '';
+    if (!total) {
+      if (hasSearch) {
+        const noResultMsg = buildSearchSummaryJa()
+          ? `「${buildSearchSummaryJa()}」は見つかりません`
+          : '該当データがありません';
+        noResultCenter.textContent = noResultMsg;
+        try { noResultCenter.style.display = 'flex'; } catch {}
+        hideFilterWrap();
+        try { if (listHeader) listHeader.style.display = 'none'; } catch {}
+      } else {
+        try { noResultCenter.style.display = 'none'; } catch {}
+        showFilterWrap();
+        try { if (listHeader) listHeader.style.display = ''; } catch {}
+      }
+      clearTopbarNoResultState();
+      try { table.style.display = 'none'; } catch {}
+      try { tableScrollWrap.style.display = 'none'; } catch {}
+      try { pager.style.display = 'none'; } catch {}
+      const pageInfo0 = content.querySelector('#empPageInfo');
+      if (pageInfo0) pageInfo0.textContent = '';
+      return;
+    }
+    try { noResultCenter.style.display = 'none'; } catch {}
+    showFilterWrap();
+    try { if (listHeader) listHeader.style.display = ''; } catch {}
+    clearTopbarNoResultState();
+    try { table.style.display = ''; } catch {}
+    try { tableScrollWrap.style.display = ''; } catch {}
+    try { pager.style.display = ''; } catch {}
     for (const u of pageItems) {
       const tr = document.createElement('tr');
       const rowStatus = String(u.employment_status || '').toLowerCase();
@@ -1711,22 +1922,44 @@ async function renderEmployees(profile) {
       const canManageThis = role2 === 'admin';
       const disableBtn = canManageThis ? `<button type="button" class="emp-action danger" data-delete="${u.id}">🚫 無効化</button>` : ``;
       const hardDeleteBtn = canManageThis ? `<button type="button" class="emp-action danger" data-hard-delete="${u.id}">🗑️ 削除</button>` : ``;
-      const ops = mode === 'delete' ? `${detailBtn}${summaryBtn}${disableBtn}${hardDeleteBtn}` : `${detailBtn}${summaryBtn}${editBtn}${disableBtn}${hardDeleteBtn}`;
-      tr.innerHTML = `
-        ${mode==='delete' ? `<td class="sel-col"><input type="checkbox" class="empSel" value="${u.id}"></td>` : ''}
-        <td class="col-code"><span class="text-pill neutral">${u.employee_code || fmtEmpNo(u.id)}</span></td>
-        <td class="col-name"><span class="text-pill"><a href="/admin/employees?detail=${u.id}">${u.username||''}</a></span></td>
-        <td class="col-email"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}><span class="text-pill neutral">${dispOrUnreg(emailVal)}</span></td>
-        <td class="col-dept"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}><span class="text-pill neutral">${dispOrUnreg(deptVal)}</span></td>
-        <td>${rolePill(u.role)}</td>
-        <td>${typePill(u.employment_type)}</td>
-        <td>${statusPill(u.employment_status)}</td>
-        <td>${fmtDate(u.hire_date)}</td>
-        <td><div class="emp-action-group">${ops}</div></td>
+      const mainOps = mode === 'delete' ? `${detailBtn}${summaryBtn}` : `${detailBtn}${summaryBtn}${editBtn}`;
+      const dangerOps = `${disableBtn}${hardDeleteBtn}`;
+      const ops = `<div class="emp-action-main">${mainOps}</div>${dangerOps ? `<div class="emp-action-danger">${dangerOps}</div>` : ''}`;
+      if (isNarrowMobile && mode !== 'delete') {
+        tr.classList.add('mobile-flat');
+        tr.innerHTML = `
+          <td class="m-code-cell">
+            <div class="m-code-label">社員番号</div>
+            <div class="m-code-value">${u.employee_code || fmtEmpNo(u.id)}</div>
+          </td>
+          <td class="m-main-cell" colspan="8">
+            <div class="m-line"><span class="m-k">氏名:</span> <span class="m-v"><a class="emp-name-link" href="/admin/employees?detail=${u.id}">${u.username||''}</a></span></div>
+            <div class="m-line"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}><span class="m-k">メール:</span> <span class="m-v">${dispOrUnreg(emailVal)}</span></div>
+            <div class="m-line"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}><span class="m-k">部署:</span> <span class="m-v">${dispOrUnreg(deptVal)}</span></div>
+            <div class="m-line"><span class="m-k">役割:</span> <span class="m-v">${roleJa(u.role)}</span></div>
+            <div class="m-line"><span class="m-k">雇用形態:</span> <span class="m-v">${empTypeJa(u.employment_type)}</span></div>
+            <div class="m-line"><span class="m-k">状態:</span> <span class="m-v">${statusJa(u.employment_status)}</span></div>
+            <div class="m-line"><span class="m-k">入社日:</span> <span class="m-v">${fmtDate(u.hire_date)}</span></div>
+            <div class="m-actions">${mainOps}${dangerOps}</div>
+          </td>
+        `;
+      } else {
+        tr.innerHTML = `
+        ${mode==='delete' ? `<td class="sel-col" data-label="選択"><input type="checkbox" class="empSel" value="${u.id}"></td>` : ''}
+        <td class="col-code" data-label="社員番号"><div class="cell-value cell-strong">${u.employee_code || fmtEmpNo(u.id)}</div></td>
+        <td class="col-name" data-label="氏名"><div class="cell-value cell-strong"><a class="emp-name-link" href="/admin/employees?detail=${u.id}">${u.username||''}</a></div></td>
+        <td class="col-email" data-label="メール"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}><div class="cell-value"><span class="text-pill neutral">${dispOrUnreg(emailVal)}</span></div></td>
+        <td class="col-dept" data-label="部署"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}><div class="cell-value"><span class="text-pill neutral">${dispOrUnreg(deptVal)}</span></div></td>
+        <td data-label="役割"><div class="cell-value">${rolePill(u.role)}</div></td>
+        <td data-label="雇用形態"><div class="cell-value">${typePill(u.employment_type)}</div></td>
+        <td data-label="状態"><div class="cell-value">${statusPill(u.employment_status)}</div></td>
+        <td data-label="入社日"><div class="cell-value">${fmtDate(u.hire_date)}</div></td>
+        <td data-label="操作"><div class="cell-value"><div class="emp-action-group">${ops}</div></div></td>
       `;
+      }
       tbody.appendChild(tr);
     }
-    const from = Math.min(total, start + 1);
+    const from = total ? Math.min(total, start + 1) : 0;
     const to = Math.min(total, start + pageItems.length);
     const pageInfo = content.querySelector('#empPageInfo');
     if (pageInfo) {
@@ -1746,7 +1979,30 @@ async function renderEmployees(profile) {
         if (nextEl) nextEl.style.display = '';
       }
     }
+    if (!isNarrowMobile) {
+      syncPinnedColumnsSticky();
+      try { setTimeout(() => syncPinnedColumnsSticky(), 80); } catch {}
+      try { setTimeout(() => syncPinnedColumnsSticky(), 220); } catch {}
+    } else {
+      try {
+        tableScrollWrap.style.removeProperty('--pin-col-1');
+        tableScrollWrap.style.removeProperty('--pin-col-2');
+      } catch {}
+    }
   };
+  const handleViewportLayoutChange = () => {
+    try {
+      const now = isMobileFlatMode();
+      if (lastMobileFlatMode === null) return;
+      if (now === lastMobileFlatMode) return;
+      renderRows();
+    } catch {}
+  };
+  if (!tableScrollWrap.dataset.layoutBound) {
+    tableScrollWrap.dataset.layoutBound = '1';
+    try { window.addEventListener('resize', handleViewportLayoutChange, { passive: true }); } catch {}
+    try { window.addEventListener('orientationchange', handleViewportLayoutChange); } catch {}
+  }
   renderRows();
   if (mode === 'delete') {
     try {
@@ -1814,6 +2070,8 @@ async function renderEmployees(profile) {
     state.page = 1;
     const hasAny = !!(state.code || state.q);
     if (!hasAny && !(mode === 'delete' && state.showAll)) {
+      syncTopbarSearchKeyword('');
+      clearTopbarNoResultState();
       try { searchHint.style.display = 'block'; } catch {}
       try { const el = filterWrap.querySelector('#empSearchCode'); if (el && el.focus) el.focus(); } catch {}
       if (mode === 'delete') {

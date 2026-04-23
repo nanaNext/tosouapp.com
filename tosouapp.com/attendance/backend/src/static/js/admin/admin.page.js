@@ -1,5 +1,5 @@
 import { logout } from '../api/auth.api.js';
-import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260421-onecircle1';
+import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260423-hotfix6';
 
 const normalizePath = (p) => {
   const s = String(p || '');
@@ -349,12 +349,23 @@ const wireMobileDrawer = () => {
     const open = () => {
       try { drawer.removeAttribute('hidden'); } catch {}
       try { backdrop.removeAttribute('hidden'); } catch {}
+      // Recover from forced inline hide set by transient reset logic.
+      try { drawer.style.display = ''; } catch {}
+      try { drawer.style.removeProperty('display'); } catch {}
+      try { drawer.style.removeProperty('pointer-events'); } catch {}
+      try { backdrop.style.display = ''; } catch {}
+      try { backdrop.style.removeProperty('display'); } catch {}
+      try { backdrop.style.removeProperty('pointer-events'); } catch {}
       try { document.body.classList.add('drawer-open'); } catch {}
       try { btn.setAttribute('aria-expanded', 'true'); } catch {}
     };
     const close = () => {
       try { drawer.setAttribute('hidden', ''); } catch {}
+      try { drawer.style.display = 'none'; } catch {}
+      try { drawer.style.pointerEvents = 'none'; } catch {}
       try { backdrop.setAttribute('hidden', ''); } catch {}
+      try { backdrop.style.display = 'none'; } catch {}
+      try { backdrop.style.pointerEvents = 'none'; } catch {}
       try { document.body.classList.remove('drawer-open'); } catch {}
       try { btn.setAttribute('aria-expanded', 'false'); } catch {}
     };
@@ -484,11 +495,13 @@ const resetTransientUiState = () => {
     document.body.classList.remove('drawer-open');
   } catch {}
   try {
-    const spinner = document.querySelector('#pageSpinner');
-    if (spinner) {
-      spinner.setAttribute('hidden', 'true');
-      spinner.style.display = 'none';
-    }
+    document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
+      try { spinner.setAttribute('hidden', 'true'); } catch {}
+      try { spinner.style.display = 'none'; } catch {}
+      try { spinner.style.pointerEvents = 'none'; } catch {}
+      try { spinner.style.visibility = 'hidden'; } catch {}
+      try { spinner.style.opacity = '0'; } catch {}
+    });
     const content = document.querySelector('#adminContent');
     if (content) content.style.visibility = '';
     sessionStorage.removeItem('navSpinner');
@@ -523,12 +536,13 @@ const resetTransientUiState = () => {
 
 const hardHidePageSpinner = () => {
   try {
-    const spinner = document.querySelector('#pageSpinner');
-    if (spinner) {
-      spinner.setAttribute('hidden', 'true');
-      spinner.style.display = 'none';
-      spinner.style.pointerEvents = 'none';
-    }
+    document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
+      try { spinner.setAttribute('hidden', 'true'); } catch {}
+      try { spinner.style.display = 'none'; } catch {}
+      try { spinner.style.pointerEvents = 'none'; } catch {}
+      try { spinner.style.visibility = 'hidden'; } catch {}
+      try { spinner.style.opacity = '0'; } catch {}
+    });
   } catch {}
   try { sessionStorage.removeItem('navSpinner'); } catch {}
 };
@@ -651,7 +665,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/employees' || p2.startsWith('/admin/employees/')) {
-      const mod = await loadModule('./employees/employees.page.js?v=navy-20260418-empfix1');
+      const mod = await loadModule('./employees/employees.page.js?v=navy-20260423-empcenter3');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
@@ -703,7 +717,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/notices') {
-      const mod = await loadModule('./notices/notices.page.js');
+      const mod = await loadModule('./notices/notices.page.js?v=navy-20260423-noticemobile3');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
