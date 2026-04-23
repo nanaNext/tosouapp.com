@@ -68,6 +68,9 @@ export async function mount() {
     }
     let targets = [];
     try { targets = await loadTargets(); } catch {}
+    const isMobileView = (() => {
+      try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
+    })();
     const composerKey = 'adminNotices.composer.visible';
     const composerVisible = (() => {
       try {
@@ -105,6 +108,66 @@ export async function mount() {
       const c = parseInt(String((r && r.read_count) ? r.read_count : 0), 10) || 0;
       return c ? `既読 ${c}` : '未読';
     };
+    const tableColgroup = isMobileView
+      ? `
+            <colgroup>
+              <col style="width:78px;">
+              <col style="width:auto;">
+              <col style="width:74px;">
+            </colgroup>
+        `
+      : `
+            <colgroup>
+              <col style="width:120px;">
+              <col style="width:auto;">
+              <col style="width:180px;">
+              <col style="width:120px;">
+              <col style="width:150px;">
+              <col style="width:90px;">
+            </colgroup>
+        `;
+    const tableHead = isMobileView
+      ? `
+              <tr>
+                <th>対象</th>
+                <th>内容</th>
+                <th>既読</th>
+              </tr>
+        `
+      : `
+              <tr>
+                <th>対象</th>
+                <th>内容</th>
+                <th>宛先</th>
+                <th>既読</th>
+                <th>作成</th>
+                <th style="text-align:right;">操作</th>
+              </tr>
+        `;
+    const tableRows = rows.length
+      ? rows.map((r) => (
+        isMobileView
+          ? `
+                    <tr>
+                      <td class="notice-target">${esc(fmtTarget(r))}</td>
+                      <td class="notice-message">${esc((r && r.message) ? r.message : '')}</td>
+                      <td class="notice-created">${esc(fmtRead(r))}</td>
+                    </tr>
+                  `
+          : `
+                    <tr>
+                      <td class="notice-target">${esc(fmtTarget(r))}</td>
+                      <td class="notice-message">${esc((r && r.message) ? r.message : '')}</td>
+                      <td class="notice-created">${esc(fmtRecipient(r))}</td>
+                      <td class="notice-created">${esc(fmtRead(r))}</td>
+                      <td class="notice-created">${esc(fmtCreated(r))}</td>
+                      <td class="notice-actions">
+                        <button type="button" class="se-mini-btn" data-notice-del="${esc((r && r.id != null) ? r.id : '')}">削除</button>
+                      </td>
+                    </tr>
+                  `
+      )).join('')
+      : `<tr><td colspan="${isMobileView ? 3 : 6}" class="notice-empty">まだお知らせがありません</td></tr>`;
 
     host.innerHTML = `
       <style>
@@ -255,6 +318,97 @@ export async function mount() {
         .notice-switch input:checked + .notice-switch-track::before {
           transform: translateX(18px);
         }
+        @media (max-width: 768px) {
+          .notice-page {
+            margin-top: -2px;
+            overflow-x: hidden;
+          }
+          .notice-page > div:first-child {
+            gap: 8px !important;
+          }
+          .notice-page > div:first-child > h3 {
+            font-size: 22px;
+            line-height: 1.2;
+          }
+          .notice-page > div:first-child > div {
+            font-size: 11px !important;
+          }
+          .notice-card {
+            padding: 8px;
+            border-radius: 10px;
+          }
+          .notice-controls {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 64px 48px 78px;
+            align-items: center;
+            gap: 6px;
+            overflow: visible;
+            padding-bottom: 2px;
+          }
+          .notice-select,
+          .notice-input,
+          .notice-btn {
+            height: 30px;
+            border-radius: 8px;
+            font-size: 11px;
+            padding: 0 7px;
+          }
+          .notice-select#noticeRecipient {
+            min-width: 0 !important;
+            width: 100% !important;
+            grid-column: 1 / 2;
+          }
+          .notice-select#noticeScope {
+            min-width: 64px;
+            width: 64px;
+            grid-column: 2 / 3;
+          }
+          .notice-btn.primary {
+            min-width: 44px;
+            width: 44px;
+            padding: 0 6px;
+            grid-column: 3 / 4;
+          }
+          .notice-controls #btnNoticeComposerToggle {
+            min-width: 72px;
+            width: 72px;
+            grid-column: 4 / 5;
+          }
+          .notice-controls #noticeDate,
+          .notice-controls #noticeMonth {
+            grid-column: 1 / 3;
+            width: 100%;
+            min-width: 0 !important;
+          }
+          .notice-textarea {
+            min-height: 84px;
+            font-size: 12px;
+            margin-top: 6px;
+          }
+          .notice-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          .notice-table {
+            min-width: 460px;
+            width: 460px;
+            table-layout: auto;
+          }
+          .notice-table th,
+          .notice-table td {
+            white-space: nowrap;
+            word-break: normal;
+            padding: 6px 7px;
+            font-size: 11px;
+          }
+          .notice-message {
+            white-space: normal;
+            min-width: 0;
+          }
+          .notice-created {
+            min-width: 0;
+          }
+        }
       </style>
 
       <div class="notice-page">
@@ -304,41 +458,12 @@ export async function mount() {
         <div id="noticeTableSection" ${tableVisible ? '' : 'hidden'}>
         <div class="notice-table-wrap">
           <table class="notice-table">
-            <colgroup>
-              <col style="width:120px;">
-              <col style="width:auto;">
-              <col style="width:180px;">
-              <col style="width:120px;">
-              <col style="width:150px;">
-              <col style="width:90px;">
-            </colgroup>
+            ${tableColgroup}
             <thead>
-              <tr>
-                <th>対象</th>
-                <th>内容</th>
-                <th>宛先</th>
-                <th>既読</th>
-                <th>作成</th>
-                <th style="text-align:right;">操作</th>
-              </tr>
+              ${tableHead}
             </thead>
             <tbody>
-              ${
-                rows.length
-                  ? rows.map((r) => `
-                    <tr>
-                      <td class="notice-target">${esc(fmtTarget(r))}</td>
-                      <td class="notice-message">${esc((r && r.message) ? r.message : '')}</td>
-                      <td class="notice-created">${esc(fmtRecipient(r))}</td>
-                      <td class="notice-created">${esc(fmtRead(r))}</td>
-                      <td class="notice-created">${esc(fmtCreated(r))}</td>
-                      <td class="notice-actions">
-                        <button type="button" class="se-mini-btn" data-notice-del="${esc((r && r.id != null) ? r.id : '')}">削除</button>
-                      </td>
-                    </tr>
-                  `).join('')
-                  : `<tr><td colspan="6" class="notice-empty">まだお知らせがありません</td></tr>`
-              }
+              ${tableRows}
             </tbody>
           </table>
         </div>
