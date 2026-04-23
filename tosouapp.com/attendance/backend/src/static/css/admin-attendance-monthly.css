@@ -73,9 +73,10 @@ section.card {
   color: #0b2c66;
   outline: none;
 }
+
 .admin-monthly-month:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
 }
 
 /* Dropdown chọn nhân viên */
@@ -93,10 +94,12 @@ section.card {
   outline: none;
   cursor: pointer;
 }
+
 .admin-monthly-emp-select:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
 }
+
 .admin-monthly-emp-select:disabled {
   opacity: .6;
   cursor: default;
@@ -107,16 +110,18 @@ section.card {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  position: relative;     /* ← anchor cho iframe absolute */
+  position: relative;
+  /* ← anchor cho iframe absolute */
   margin-top: 12px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #fff;
-  box-shadow: 0 2px 12px rgba(15,23,42,.06);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, .06);
 }
 
 .admin-monthly-frame {
-  position: absolute;     /* ← fill 100% parent tường minh */
+  position: absolute;
+  /* ← fill 100% parent tường minh */
   inset: 0;
   width: 100%;
   height: 100%;
@@ -130,15 +135,39 @@ section.card {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(255,255,255,.85);
+  background: rgba(255, 255, 255, .85);
   z-index: 5;
 }
-.admin-monthly-frame-spinner[hidden] { display: none; }
+
+.admin-monthly-frame-spinner[hidden] {
+  display: none;
+}
 
 .admin-ms-shell {
   max-width: 1180px;
   margin: 0 auto;
   padding: 4px 0 16px;
+}
+
+.admin-ms-page-head {
+  max-width: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.admin-ms-page-title {
+  display: block;
+  width: 100%;
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: left !important;
+}
+
+.admin-ms-page-title::before,
+.admin-ms-page-title::after {
+  content: none !important;
 }
 
 .admin-ms-toolbar,
@@ -252,11 +281,58 @@ section.card {
   border-color: #1e4e8c;
   background: linear-gradient(180deg, #2b6cb0 0%, #245a96 100%);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,.10);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .10);
 }
 
 .admin-ms-btn-primary:hover {
   background: linear-gradient(180deg, #336fb3 0%, #2b62a9 100%);
+}
+
+/* Soft dark mode for monthly summary editor */
+:root[data-theme='dark'] .admin-ms-shell,
+:root[data-theme='dark'] .admin-ms-page-head,
+:root[data-theme='dark'] .admin-ms-page-title {
+  background: transparent !important;
+  color: #e8eaed !important;
+}
+
+:root[data-theme='dark'] .admin-ms-toolbar,
+:root[data-theme='dark'] .admin-ms-summary,
+:root[data-theme='dark'] .admin-ms-table-wrap,
+:root[data-theme='dark'] .admin-monthly-frame-wrap {
+  background: #202124 !important;
+  border-color: #3c4043 !important;
+}
+
+:root[data-theme='dark'] .admin-ms-summary-head,
+:root[data-theme='dark'] .admin-ms-section-head {
+  background: #2b2f34 !important;
+  border-color: #3c4043 !important;
+}
+
+:root[data-theme='dark'] .admin-ms-toolbar-label,
+:root[data-theme='dark'] .admin-ms-field-label,
+:root[data-theme='dark'] .admin-ms-summary-head h2,
+:root[data-theme='dark'] .admin-ms-section-head h3,
+:root[data-theme='dark'] .admin-ms-status {
+  color: #e8eaed !important;
+}
+
+:root[data-theme='dark'] .admin-ms-input,
+:root[data-theme='dark'] .admin-ms-select {
+  background: #303134 !important;
+  color: #e8eaed !important;
+  border-color: #3c4043 !important;
+}
+
+:root[data-theme='dark'] .admin-ms-btn {
+  background: #303134 !important;
+  color: #e8eaed !important;
+  border-color: #3c4043 !important;
+}
+
+:root[data-theme='dark'] .admin-ms-btn:hover {
+  background: #3a3f45 !important;
 }
 
 .admin-ms-status {
@@ -297,7 +373,7 @@ section.card {
   background: transparent;
 }
 
-.admin-ms-section + .admin-ms-section {
+.admin-ms-section+.admin-ms-section {
   border-top: 1px solid #dbe5f0;
   margin-top: 8px;
   padding-top: 10px;
@@ -355,13 +431,116 @@ section.card {
 }
 
 @media (max-width: 560px) {
-  .admin-ms-grid {
-    grid-template-columns: 1fr;
+  .admin-ms-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 8px 10px;
   }
 
-  .admin-ms-employee,
-  .admin-ms-toolbar-field,
+  .admin-ms-employee {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .admin-ms-toolbar-group {
+    display: contents;
+  }
+
+  .admin-ms-toolbar-group .admin-ms-toolbar-field {
+    grid-column: 2;
+    min-width: 0;
+  }
+
   .admin-ms-month {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .admin-ms-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .admin-ms-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .admin-ms-page-head {
+    margin-bottom: 8px;
+  }
+
+  .admin-ms-page-title {
+    font-size: 18px;
+  }
+
+  .admin-ms-toolbar,
+  .admin-ms-summary {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .admin-ms-toolbar {
+    padding: 8px 0;
+    margin-bottom: 8px;
+  }
+
+  .admin-ms-summary-head {
+    padding: 8px 0;
+    background: transparent;
+    border-radius: 0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .admin-ms-sections {
+    padding: 8px 0 10px;
+  }
+
+  .admin-ms-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 10px;
+  }
+
+  .admin-ms-grid-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px 10px !important;
+  }
+
+  .admin-ms-grid-shift {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-end;
+    gap: 8px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-ms-grid-shift .admin-ms-field {
+    flex: 0 0 150px;
+    min-width: 150px;
+  }
+
+  .admin-ms-field {
+    gap: 3px;
+  }
+
+  .admin-ms-field-label {
+    font-size: 12px;
+  }
+
+  .admin-ms-input,
+  .admin-ms-select {
+    height: 34px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .admin-ms-toolbar-field {
     min-width: 100%;
   }
 
@@ -372,4 +551,31 @@ section.card {
   .admin-ms-btn {
     flex: 1 1 0;
   }
+}
+
+/* Dark theme final tune for monthly summary */
+:root[data-theme='dark'] {
+  --admin-ms-dark-accent: #4ea1ff;
+}
+
+:root[data-theme='dark'] .admin-ms-summary-head h2,
+:root[data-theme='dark'] .admin-ms-section-head h3,
+:root[data-theme='dark'] .admin-ms-page-title,
+:root[data-theme='dark'] .admin-ms-toolbar-label {
+  color: var(--admin-ms-dark-accent) !important;
+}
+
+:root[data-theme='dark'] .admin-ms-field-label,
+:root[data-theme='dark'] .admin-ms-status,
+:root[data-theme='dark'] .admin-ms-shell,
+:root[data-theme='dark'] .admin-ms-shell p,
+:root[data-theme='dark'] .admin-ms-shell span {
+  color: #e8eaed !important;
+}
+
+:root[data-theme='dark'] .admin-ms-input,
+:root[data-theme='dark'] .admin-ms-select {
+  background: #303134 !important;
+  color: #e8eaed !important;
+  border-color: #3c4043 !important;
 }

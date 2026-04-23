@@ -136,6 +136,14 @@ async function mountAttendanceImpl({
         const cout = fmtTime(it.attendance ? it.attendance.checkOut : undefined);
         const site = (it.report && it.report.site) ? it.report.site : '';
         const work = (it.report && it.report.work) ? it.report.work : '';
+        const dashOr = (v) => {
+          const s = String(v || '').trim();
+          return s ? s : '—';
+        };
+        const cinView = dashOr(cin);
+        const coutView = dashOr(cout);
+        const siteView = dashOr(site);
+        const workView = dashOr(work);
         const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
         const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : (st === 'off' ? '休日' : '—'));
         const tr = document.createElement('tr');
@@ -149,10 +157,10 @@ async function mountAttendanceImpl({
           <td>${esc(dept)}</td>
           <td>${esc(wtLabel)}</td>
           <td><span class="${stClass}">${esc(stLabel)}</span></td>
-          <td>${esc(cin)}</td>
-          <td>${esc(cout)}</td>
-          <td class="attrec-site" title="${esc(site)}">${esc(site)}</td>
-          <td class="attrec-work" title="${esc(work)}">${esc(work)}</td>
+          <td>${esc(cinView)}</td>
+          <td>${esc(coutView)}</td>
+          <td class="attrec-site"${site ? ` title="${esc(site)}"` : ''}>${esc(siteView)}</td>
+          <td class="attrec-work"${work ? ` title="${esc(work)}"` : ''}>${esc(workView)}</td>
         `;
         tbody.appendChild(tr);
       }

@@ -33,23 +33,22 @@ const render = async () => {
   if (globalStatus) { globalStatus.textContent = ''; globalStatus.style.display = 'none'; }
   host.className = 'card';
   host.innerHTML = `
-    <div style="max-width:1100px;margin:0 auto;">
-      <h3 style="margin:0 0 12px;">交通費計算管理</h3>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-        <label for="expMonth" style="color:#475569;font-weight:650;">対象月</label>
-        <input id="expMonth" type="month" style="height:32px;padding:4px 8px;">
-        <label for="expUserFilter" style="color:#475569;font-weight:650;margin-left:12px;">社員</label>
-        <select id="expUserFilter" style="height:32px;padding:4px 8px;">
+    <div class="exp-admin-page">
+      <h3 class="exp-admin-title">交通費計算管理</h3>
+      <div class="exp-admin-filters">
+        <label for="expMonth" class="exp-admin-label">対象月</label>
+        <input id="expMonth" type="month" class="exp-admin-input">
+        <select id="expUserFilter" class="exp-admin-input exp-admin-select" aria-label="社員">
           <option value="">全員</option>
         </select>
-        <button id="expReload" class="btn" type="button" style="height:32px;">再読込</button>
+        <button id="expReload" class="btn exp-admin-reload" type="button">再読込</button>
       </div>
-      <div id="chatNotice" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;margin-bottom:12px;">
-        <div style="font-weight:800;color:#0b2c66;margin-bottom:6px;">チャット通知</div>
-        <div id="chatList" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div id="chatNotice" class="exp-admin-chat">
+        <div class="exp-admin-chat-title">チャット通知</div>
+        <div id="chatList" class="exp-admin-chat-list"></div>
       </div>
-      <div id="expStatus" style="color:#64748b;font-weight:600;margin-bottom:6px;"></div>
-      <div id="expTableHost"></div>
+      <div id="expStatus" class="exp-admin-status"></div>
+      <div id="expTableHost" class="exp-admin-table-host"></div>
     </div>
   `;
   const m = $('#expMonth');
@@ -155,8 +154,8 @@ const render = async () => {
             </tr>`;
         }).join('');
         const tbl = `
-          <div class="adj-table-card">
-            <table class="adj-table">
+          <div class="exp-admin-table-wrap">
+            <table class="exp-admin-table">
               ${thead}
               <tbody>${rowsHtml}</tbody>
             </table>
