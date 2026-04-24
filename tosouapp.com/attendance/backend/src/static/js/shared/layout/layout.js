@@ -34,6 +34,9 @@ export function scheduleTopbarMeasure() {
 }
 
 export function initLayout() {
+  const isAdminLayout = () => {
+    try { return document.body.classList.contains('admin'); } catch { return false; }
+  };
   if (isMobile()) {
     _measureDisabled = true;
     try {
@@ -373,8 +376,10 @@ export function initLayout() {
     if (href.startsWith('/ui/admin')) {
       e.preventDefault();
       const mapped = mapLegacyAdminHref(href);
-      try { sessionStorage.setItem('navSpinner', '1'); } catch {}
-      showNavSpinner();
+      if (isAdminLayout()) {
+        try { sessionStorage.setItem('navSpinner', '1'); } catch {}
+        showNavSpinner();
+      }
       try { window.location.href = mapped; } catch {}
       return;
     }
@@ -385,7 +390,7 @@ export function initLayout() {
       const targetTab = new URLSearchParams(target.search).get('tab') || (target.pathname.startsWith('/ui/employees') ? 'employees' : '');
       const samePath = target.pathname === now.pathname;
       const onlyHashChange = samePath && nowTab === targetTab && target.hash !== now.hash;
-      if (!onlyHashChange && nowTab !== targetTab) {
+      if (isAdminLayout() && !onlyHashChange && nowTab !== targetTab) {
         try { sessionStorage.setItem('navSpinner', '1'); } catch { }
         showNavSpinner();
       }
@@ -419,6 +424,7 @@ export function initLayout() {
       return true;
     };
     const showWithAutoHide = (delayMs = 420) => {
+      if (!isAdminLayout()) return;
       try {
         if (spinnerShowTimer) clearTimeout(spinnerShowTimer);
         spinnerShowTimer = setTimeout(() => showNavSpinner(), Math.max(0, Number(delayMs) || 0));

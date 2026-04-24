@@ -2,6 +2,17 @@ import { me, refresh, logout } from '../api/auth.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+function prefillUserName() {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+}
+
 function showSpinner() {
   try {
     const el = $('#pageSpinner');
@@ -210,7 +221,7 @@ function renderProfile(profile) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  showSpinner();
+  prefillUserName();
   wireUserMenu();
   wireDrawer();
 

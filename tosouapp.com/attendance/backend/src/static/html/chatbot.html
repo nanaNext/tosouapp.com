@@ -3,33 +3,153 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Chatbot</title>
-  <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/attendance.css">
+  <title>社内チャットボット</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260424-chatbot2">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260424-chatbot2">
+  <link rel="icon" href="data:,">
+  <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260424-chatbot2"></script>
+  <script type="module" src="/static/js/pages/chatbot.page.js?v=navy-20260424-chatbot2"></script>
+  <style>
+    .chatbot-page { max-width: 980px; margin: 0 auto; }
+    .chatbot-card {
+      background: #fff;
+      border: 1px solid #dbe5f3;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+      padding: 14px;
+    }
+    .chatbot-title {
+      margin: 0 0 12px;
+      color: #0b2c66;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .chatbot-toolbar { display: grid; gap: 10px; margin-bottom: 12px; }
+    .chatbot-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .chatbot-row label { font-weight: 700; color: #0f172a; }
+    .chatbot-input, .chatbot-select {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fbff;
+      color: #0f172a;
+      padding: 8px 10px;
+      min-height: 38px;
+      box-sizing: border-box;
+    }
+    .chatbot-input { min-width: 240px; }
+    .chatbot-btn {
+      border: 0;
+      border-radius: 8px;
+      background: #1d4ed8;
+      color: #fff;
+      font-weight: 700;
+      min-height: 38px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    #faq-list { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+    .faq-item {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: #0f172a;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #answer {
+      white-space: pre-wrap;
+      border: 1px solid #dbe5f3;
+      border-radius: 10px;
+      background: #f8fbff;
+      min-height: 56px;
+      padding: 10px;
+    }
+    @media (max-width: 480px) {
+      .chatbot-card { padding: 10px; border-radius: 10px; }
+      .chatbot-title { font-size: 18px; margin-bottom: 10px; }
+      .chatbot-input { min-width: 0; width: 100%; }
+      .chatbot-row .chatbot-btn { width: 100%; }
+    }
+  </style>
 </head>
 <body>
-  <main style="max-width:720px;margin:24px auto;">
-    <h1>社内チャットボット</h1>
-    <section>
-      <label>カテゴリ: </label>
-      <select id="cat"></select>
-    </section>
-    <section style="margin-top:16px;">
-      <input id="search" placeholder="キーワード検索">
-      <button id="searchBtn">検索</button>
-    </section>
-    <section style="margin-top:16px;">
-      <ul id="faq-list"></ul>
-    </section>
-    <section style="margin-top:16px;">
-      <div id="answer" style="white-space:pre-wrap;"></div>
-    </section>
-    <section style="margin-top:16px;">
-      <input id="ask" placeholder="質問を入力してください。">
-      <button id="askBtn">送信</button>
+  <header class="topbar">
+    <button id="mobileMenuBtn" class="mobile-btn" aria-label="menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
+    <div class="topbar-inner">
+      <div class="brand">
+        <img src="/static/images/logo1.png" alt="logo" class="icon">
+        <span class="logo">IIZUKA</span>
+      </div>
+      <div class="search">
+        <input type="search" placeholder="Search..." aria-label="Search">
+        <span class="search-hint" aria-hidden="true">^ K</span>
+        <div class="search-meta" aria-hidden="true">
+          <button class="search-close" title="Close" type="button">×</button>
+          <span class="search-esc">ESC</span>
+        </div>
+      </div>
+      <div class="user">
+        <div class="user-menu">
+          <button class="user-btn" aria-haspopup="true" aria-expanded="false">
+            <img src="/static/images/use.png" alt="user" class="user-icon">
+            <span id="userName"></span>
+            <span class="caret">▾</span>
+          </button>
+          <div class="dropdown" id="userDropdown" hidden>
+            <a href="/ui/portal" class="item">ホーム</a>
+            <a href="/ui/dashboard" class="item">現在の登録情報</a>
+            <a href="/ui/admin?tab=settings" class="item">各種設定</a>
+            <button class="item" id="btnLogout" type="button">ログアウト</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+  <div id="mobileDrawer" class="mobile-drawer" hidden>
+    <div class="drawer-header">
+      <button id="mobileClose" class="mobile-close" aria-label="close">✕</button>
+    </div>
+    <a href="/ui/portal" class="drawer-item">ホーム</a>
+    <a href="/ui/requests" class="drawer-item">申請</a>
+    <a href="/ui/contact" class="drawer-item">お問い合わせ先</a>
+  </div>
+  <div class="subbar">
+    <nav class="subnav">
+      <a href="/ui/portal">ホーム</a>
+      <a href="/ui/requests">申請</a>
+      <a href="/ui/contact">お問い合わせ先</a>
+    </nav>
+  </div>
+  <main class="content">
+    <section class="chatbot-page">
+      <div class="chatbot-card">
+        <h1 class="chatbot-title">社内チャットボット</h1>
+        <div class="chatbot-toolbar">
+          <div class="chatbot-row">
+            <label for="cat">カテゴリ:</label>
+            <select id="cat" class="chatbot-select"></select>
+          </div>
+          <div class="chatbot-row">
+            <input id="search" class="chatbot-input" placeholder="キーワード検索">
+            <button id="searchBtn" class="chatbot-btn" type="button">検索</button>
+          </div>
+        </div>
+        <section style="margin-top:12px;">
+          <ul id="faq-list"></ul>
+        </section>
+        <section style="margin-top:12px;">
+          <div id="answer"></div>
+        </section>
+        <section class="chatbot-row" style="margin-top:12px;">
+          <input id="ask" class="chatbot-input" placeholder="質問を入力してください。">
+          <button id="askBtn" class="chatbot-btn" type="button">送信</button>
+        </section>
+      </div>
     </section>
   </main>
-  <script type="module" src="/static/js/pages/chatbot.page.js"></script>
 </body>
 </html>
 

@@ -25,8 +25,11 @@
     .content {
       width: 100%;
       max-width: none;
-      padding: 72px 12px 12px 12px;
+      padding: 86px 12px 12px 12px;
       box-sizing: border-box;
+    }
+    .subbar + .content {
+      padding-top: calc(var(--topbar-height) + var(--subbar-height) + 0px) !important;
     }
 
     .card {
@@ -36,20 +39,20 @@
       background: var(--surface);
       border-radius: 16px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
-      padding: 16px 20px;
+      padding: 10px 20px 16px 20px;
     }
 
     .form-wrap {
       max-width: 980px;
       width: 100%;
-      margin-left: auto;
+      margin-left: 0;
       margin-right: auto;
     }
 
     .list-wrap {
       max-width: 980px;
       width: 100%;
-      margin-left: auto;
+      margin-left: 0;
       margin-right: auto;
     }
 
@@ -138,7 +141,11 @@
       display: flex;
       gap: 8px;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-end;
+      max-width: 980px;
+      width: 100%;
+      margin-left: 0;
+      margin-right: auto;
       margin-top: 10px;
     }
 
@@ -299,6 +306,30 @@
       align-items: end;
       margin-bottom: 10px;
     }
+    .history-mode-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    #historySection.notice-mode .history-mode-label {
+      border-color: #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    #historySection.notice-mode #exFilterStatus {
+      border-color: #fca5a5;
+      background: #fff1f2;
+      color: #9f1239;
+      font-weight: 800;
+    }
 
     .history-filters {
       display: flex;
@@ -342,92 +373,63 @@
       margin-top: 10px;
     }
 
-    .topbar .page-title {
-      color: #fff;
-      font-weight: 800;
-      font-family: Meiryo, "Meiryo UI", "Segoe UI", Arial, sans-serif;
-      font-size: 16px;
-      letter-spacing: .5px;
-    }
-
-    .topbar {
-      min-height: 40px;
-    }
-
-    .topbar-inner {
-      height: 56px;
-      padding: 0 16px;
+    .expenses-tabs {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .page-title {
-      font-size: 22px !important;
-      margin: 0;
-    }
-
-    .page-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .page-tabs {
-      display: flex;
       gap: 8px;
-      align-items: center;
-      flex-wrap: nowrap;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
     }
 
-    .page-tabs .tab {
+    .expenses-tabs .tab {
+      position: relative;
       height: 36px;
-      padding: 0 8px;
-      border-radius: 0;
+      padding: 0 12px;
+      border-radius: 10px;
       font-weight: 800;
       font-family: Meiryo, "Meiryo UI", "Segoe UI", Arial, sans-serif;
-      font-size: 15px;
-      border: none;
-      background: transparent;
-      color: rgba(255, 255, 255, .82);
-      box-shadow: none;
-      border-bottom: 2px solid transparent;
+      font-size: 14px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #0f172a;
     }
 
-    .page-tabs .tab.active {
-      background: transparent;
+    .expenses-tabs .tab.active {
+      background: linear-gradient(180deg, #2b6cb0 0%, #245a96 100%);
       color: #fff;
-      border-bottom-color: #fff;
+      border-color: #1e4e8c;
+    }
+    .tab-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 18px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .24);
+    }
+    .tab-badge[hidden] {
+      display: none !important;
     }
 
     @media (max-width: 768px) {
       .topbar-inner {
-        height: auto;
-        min-height: 56px;
-        padding: 8px 12px;
-        align-items: flex-start;
-      }
-
-      .page-left {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-        min-width: 0;
-      }
-
-      .page-title {
-        font-size: 18px !important;
-        line-height: 1.2;
-      }
-
-      .page-tabs .tab {
-        height: 32px;
-        font-size: 14px;
+        height: 56px;
+        padding: 0 12px;
       }
 
       .content {
-        padding: 78px 8px 10px 8px;
+        padding: 84px 8px 10px 8px;
+      }
+      .subbar + .content {
+        padding-top: calc(var(--topbar-height) + var(--subbar-height) + 0px) !important;
       }
 
       .card {
@@ -558,78 +560,33 @@
       }
 
       .topbar-inner {
-        height: auto;
-        padding: 4px 8px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 28px;
-        grid-template-areas:
-          "title user"
-          "tabs user";
-        column-gap: 6px;
-        row-gap: 2px;
+        height: 56px;
+        padding: 0 8px;
+        display: flex;
         align-items: center;
-      }
-
-      .page-left {
-        display: contents;
-      }
-
-      .page-title {
-        grid-area: title;
-        font-size: 15px !important;
-        line-height: 1.15;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .page-tabs {
-        grid-area: tabs;
         gap: 8px;
-        min-width: 0;
       }
 
-      .page-tabs .tab {
-        height: 24px;
+      .expenses-tabs {
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+
+      .expenses-tabs .tab {
+        height: 32px;
         font-size: 12px;
-        padding: 0 2px;
-      }
-
-      #mobileMenuBtn {
-        display: none !important;
-      }
-
-      .topbar .user {
-        grid-area: user;
-        justify-self: end;
-      }
-
-      .topbar .user #userName,
-      .topbar .user .caret {
-        display: none;
-      }
-
-      .topbar .user .user-btn {
-        width: 28px;
-        height: 28px;
-        border-radius: 7px;
-        border: 1px solid rgba(255, 255, 255, .28);
-        background: rgba(255, 255, 255, .1);
-        box-shadow: none;
-        padding: 0;
-      }
-
-      .topbar .user .user-icon {
-        width: 18px;
-        height: 18px;
+        padding: 0 10px;
       }
 
       .content {
-        padding: 70px 6px 8px 6px;
+        padding: 82px 6px 8px 6px;
         width: 100%;
         margin: 0 auto;
         display: flex;
         justify-content: center;
+      }
+      .subbar + .content {
+        padding-top: calc(var(--topbar-height) + var(--subbar-height) + 0px) !important;
       }
 
       .content>section.card {
@@ -1033,23 +990,31 @@
     </div>
   </div>
   <header class="topbar">
+    <button id="mobileMenuBtn" class="mobile-btn" aria-label="menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
     <div class="topbar-inner">
-      <div class="page-left">
-        <div class="page-title">交通費計算</div>
-        <div class="page-tabs" style="display:flex;gap:8px;align-items:center;">
-          <button class="tab active" id="topNavNew" type="button">新規作成</button>
-          <button class="tab" id="topNavApplied" type="button">申請</button>
-          <button class="tab" id="topNavNotice" type="button">お知らせ</button>
+      <div class="brand">
+        <img src="/static/images/logo1.png" alt="logo" class="icon">
+        <span class="logo">IIZUKA</span>
+      </div>
+      <div class="search">
+        <input type="search" placeholder="Search..." aria-label="Search">
+        <span class="search-hint" aria-hidden="true">^ K</span>
+        <div class="search-meta" aria-hidden="true">
+          <button class="search-close" title="Close" type="button">×</button>
+          <span class="search-esc">ESC</span>
         </div>
       </div>
       <div class="user">
         <div class="user-menu">
           <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/use.png" alt="" class="user-icon">
+            <img src="/static/images/use.png" alt="user" class="user-icon">
             <span id="userName"></span>
             <span class="caret">▾</span>
           </button>
           <div class="dropdown" id="userDropdown" hidden>
+            <a href="/ui/portal" class="item">ホーム</a>
+            <a href="/ui/requests" class="item">申請</a>
+            <a href="/ui/contact" class="item">お問い合わせ先</a>
             <button class="item" id="btnLogout" type="button">ログアウト</button>
           </div>
         </div>
@@ -1057,10 +1022,29 @@
     </div>
   </header>
   <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
-  <!-- removed global navigation for expenses-only flow -->
+  <div id="mobileDrawer" class="mobile-drawer" hidden>
+    <div class="drawer-header">
+      <button id="mobileClose" class="mobile-close" aria-label="close">✕</button>
+    </div>
+    <a href="/ui/portal" class="drawer-item">ホーム</a>
+    <a href="/ui/requests" class="drawer-item">申請</a>
+    <a href="/ui/contact" class="drawer-item">お問い合わせ先</a>
+  </div>
+  <div class="subbar">
+    <nav class="subnav">
+      <a href="/ui/portal">ホーム</a>
+      <a href="/ui/requests">申請</a>
+      <a href="/ui/contact">お問い合わせ先</a>
+    </nav>
+  </div>
   <main class="content">
     <section class="card">
       <div id="error" class="adjust-error"></div>
+      <div class="expenses-tabs">
+        <button class="tab active" id="topNavNew" type="button">新規作成</button>
+        <button class="tab" id="topNavApplied" type="button">申請</button>
+        <button class="tab" id="topNavNotice" type="button">お知らせ<span id="noticeBadge" class="tab-badge" hidden>0</span></button>
+      </div>
       <section id="homeSection" style="display:none;">
         <div class="form-wrap adjust-grid">
           <div class="adjust-label">日付</div>
@@ -1128,6 +1112,7 @@
       <div class="adjust-spacer"></div>
       <section id="historySection" style="margin:8px 0; display:none;">
         <div class="list-wrap">
+          <div id="historyModeLabel" class="history-mode-label">申請一覧</div>
           <div class="history-toolbar">
             <div class="history-filters">
               <label>対象月: <input id="exFilterMonth" type="month"></label>

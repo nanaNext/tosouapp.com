@@ -3,6 +3,17 @@ import { fetchJSONAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+};
+
 const showSpinner = () => {
   try { $('#pageSpinner')?.removeAttribute('hidden'); } catch {}
 };
@@ -436,6 +447,7 @@ const renderAttendance = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  prefillUserName();
   try {
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
     const params = (() => { try { return new URLSearchParams(String(window.location.search||'')); } catch { return new URLSearchParams(); } })();

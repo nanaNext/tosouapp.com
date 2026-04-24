@@ -2,6 +2,17 @@ import { me, refresh, logout } from '../api/auth.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+};
+
 function getCookie(name) {
   const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
   return m ? decodeURIComponent(m[2]) : null;
@@ -65,6 +76,36 @@ async function ensureAuthProfile() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  prefillUserName();
+  // Prevent full reload when user clicks the link of the page already opened.
+  // This removes topbar/user flicker on same-tab clicks such as "申請" on /ui/requests.
+  try {
+    if (!window.__preventSelfNavBound) {
+      window.__preventSelfNavBound = true;
+      document.addEventListener('click', (e) => {
+        const a = e.target?.closest?.('a[href]');
+        if (!a) return;
+        if (a.hasAttribute('download')) return;
+        const target = String(a.getAttribute('target') || '').toLowerCase();
+        if (target && target !== '_self') return;
+        const href = String(a.getAttribute('href') || '').trim();
+        if (!href || href === '#' || href.startsWith('javascript:')) return;
+        let to = null;
+        let cur = null;
+        try {
+          to = new URL(href, window.location.href);
+          cur = new URL(window.location.href);
+        } catch {
+          return;
+        }
+        if (!to || !cur) return;
+        if (to.origin !== cur.origin) return;
+        if (to.pathname === cur.pathname && to.search === cur.search && (to.hash || '') === (cur.hash || '')) {
+          e.preventDefault();
+        }
+      }, true);
+    }
+  } catch {}
   const pageSpinner = document.querySelector('#pageSpinner');
   try {
     const navEntry = (typeof performance !== 'undefined' && performance.getEntriesByType) ? performance.getEntriesByType('navigation')[0] : null;
@@ -89,19 +130,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     sessionStorage.removeItem('navSpinner');
   } catch {}
   const waitMinDelay = async () => {};
-  const setTopbarHeightVar = () => {
-    try {
-      if (document.body.classList.contains('drawer-open')) return;
-      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 480px)').matches) return;
-      const topbar = document.querySelector('.topbar');
-      if (topbar) {
-        const h = Math.round(topbar.getBoundingClientRect().height);
-        document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-      }
-    } catch {}
-  };
-  setTopbarHeightVar();
-  window.addEventListener('resize', setTopbarHeightVar);
+  // Keep header height stable to avoid first-paint layout jump between pages.
+  const setTopbarHeightVar = () => {};
   const status = $('#status');
   if (status) status.textContent = '認証を確認しています…';
   const tilesRoot = document.querySelector('.tiles');
@@ -138,6 +168,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; }
     return;
   }
+  const bindEmployeePjaxRequests = () => {
+    const REQ_PATH = '/ui/requests';
+    const main = document.querySelector('main.content');
+    if (!main) return;
+    const setNavCurrent = (pathName) => {
+      try {
+        document.querySelectorAll('.subbar .subnav a[href]').forEach((a) => {
+          const href = String(a.getAttribute('href') || '');
+          const u = new URL(href, window.location.origin);
+          if (u.pathname === pathName) a.setAttribute('aria-current', 'page');
+          else a.removeAttribute('aria-current');
+        });
+        document.querySelectorAll('#mobileDrawer a.drawer-item[href]').forEach((a) => {
+          const href = String(a.getAttribute('href') || '');
+          const u = new URL(href, window.location.origin);
+          if (u.pathname === pathName) a.setAttribute('aria-current', 'page');
+          else a.removeAttribute('aria-current');
+        });
+      } catch {}
+    };
+    const loadRequestsViaPjax = async (url) => {
+      try {
+        const res = await fetch(url.pathname + url.search, { credentials: 'include', cache: 'no-store' });
+        if (!res.ok) return false;
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const nextMain = doc.querySelector('main.content');
+        if (!nextMain) return false;
+        main.innerHTML = nextMain.innerHTML;
+        if (doc.title) document.title = doc.title;
+        history.pushState({ pjax: true }, '', url.pathname + url.search + url.hash);
+        setNavCurrent(url.pathname);
+        try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
+        try {
+          const mod = await import('/static/js/pages/requests.page.js');
+          if (mod && typeof mod.bootRequestsPage === 'function') {
+            await mod.bootRequestsPage();
+          }
+        } catch {}
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    if (!window.__employeePjaxReqBound) {
+      window.__employeePjaxReqBound = true;
+      document.addEventListener('click', async (e) => {
+        const a = e.target?.closest?.('a[href]');
+        if (!a) return;
+        if (a.hasAttribute('download')) return;
+        const target = String(a.getAttribute('target') || '').toLowerCase();
+        if (target && target !== '_self') return;
+        const href = String(a.getAttribute('href') || '').trim();
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+        let to = null;
+        try { to = new URL(href, window.location.href); } catch { return; }
+        if (!to || to.origin !== window.location.origin) return;
+        if (to.pathname !== REQ_PATH) return;
+        if (window.location.pathname === REQ_PATH && window.location.search === to.search) {
+          e.preventDefault();
+          return;
+        }
+        e.preventDefault();
+        const ok = await loadRequestsViaPjax(to);
+        if (!ok) window.location.href = to.pathname + to.search + to.hash;
+      }, true);
+      window.addEventListener('popstate', async () => {
+        try {
+          const p = String(window.location.pathname || '');
+          if (p === REQ_PATH) {
+            if (!document.querySelector('.req-page')) {
+              const ok = await loadRequestsViaPjax(new URL(window.location.href));
+              if (!ok) window.location.reload();
+            }
+            return;
+          }
+          if (document.querySelector('.req-page')) {
+            window.location.reload();
+          }
+        } catch {}
+      });
+    }
+  };
+  bindEmployeePjaxRequests();
   if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
   try {
     const p = String(window.location.pathname || '');

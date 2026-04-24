@@ -3,6 +3,17 @@ import { fetchJSONAuth, fetchResponseAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+};
+
 const showErr = (msg) => {
   const el = $('#error');
   if (!el) return;
@@ -544,6 +555,7 @@ const render = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  prefillUserName();
   try {
     const profile = await ensureAuthProfile();
     const role = String(profile?.role || '').toLowerCase();

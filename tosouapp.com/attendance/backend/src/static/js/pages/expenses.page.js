@@ -1,10 +1,47 @@
 import { logout } from '/static/js/api/auth.api.js?v=20260416-1';
 import { fetchJSONAuth } from '/static/js/api/http.api.js?v=20260416-1';
 const $ = (sel) => document.querySelector(sel);
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+};
 const showErr = (m) => { const el = $('#error'); if (!el) return; if (!m) { el.style.display='none'; el.textContent=''; return; } el.style.display='block'; el.textContent=String(m); };
 let sc = 0;
-const showSpinner = () => { try { const el = $('#pageSpinner'); sc++; if (el) { el.removeAttribute('hidden'); el.style.display='grid'; } } catch {} };
-const hideSpinner = () => { try { const el = $('#pageSpinner'); sc=Math.max(0, sc-1); if (sc!==0) return; if (el) { el.setAttribute('hidden',''); el.style.display='none'; } } catch {} };
+let spinnerTimer = null;
+const showSpinner = () => {
+  try {
+    const el = $('#pageSpinner');
+    sc++;
+    if (!el) return;
+    if (sc === 1) {
+      try { clearTimeout(spinnerTimer); } catch {}
+      spinnerTimer = setTimeout(() => {
+        try {
+          if (sc > 0) {
+            el.removeAttribute('hidden');
+            el.style.display = 'grid';
+          }
+        } catch {}
+      }, 180);
+    }
+  } catch {}
+};
+const hideSpinner = () => {
+  try {
+    const el = $('#pageSpinner');
+    sc = Math.max(0, sc - 1);
+    if (sc !== 0) return;
+    try { clearTimeout(spinnerTimer); } catch {}
+    spinnerTimer = null;
+    if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
+  } catch {}
+};
 const todayISO = () => new Date().toLocaleDateString('sv-SE');
 const fmtDT = (v) => {
   if (!v) return '';
@@ -21,6 +58,49 @@ const fmtDT = (v) => {
 };
 let formActive = false;
 let navBusy = false;
+let noticeUnreadCount = 0;
+let noticeLatestIncomingAtMs = 0;
+let noticeSeenAtMs = 0;
+let noticeSeenKey = '';
+const toMs = (v) => {
+  try {
+    const t = new Date(v).getTime();
+    return Number.isFinite(t) ? t : 0;
+  } catch { return 0; }
+};
+const setNoticeBadge = (n) => {
+  const badge = document.getElementById('noticeBadge');
+  if (!badge) return;
+  const c = Math.max(0, Number(n || 0));
+  if (!c) {
+    badge.setAttribute('hidden', '');
+    badge.textContent = '0';
+    return;
+  }
+  badge.textContent = c > 99 ? '99+' : String(c);
+  badge.removeAttribute('hidden');
+};
+const markNoticeSeen = () => {
+  noticeSeenAtMs = Math.max(noticeSeenAtMs || 0, noticeLatestIncomingAtMs || Date.now());
+  if (noticeSeenKey) {
+    try { localStorage.setItem(noticeSeenKey, String(noticeSeenAtMs)); } catch {}
+  }
+  noticeUnreadCount = 0;
+  setNoticeBadge(0);
+};
+const refreshNoticeMessages = async () => {
+  try {
+    const rows = await fetchJSONAuth('/api/expenses/my/messages');
+    const list = Array.isArray(rows) ? rows : [];
+    const myId = String(window.MY_ID || '');
+    const incoming = list.filter((m) => String(m?.sender_user_id || '') !== myId);
+    let latest = 0;
+    for (const m of incoming) latest = Math.max(latest, toMs(m?.created_at));
+    noticeLatestIncomingAtMs = latest;
+    noticeUnreadCount = incoming.filter((m) => toMs(m?.created_at) > (noticeSeenAtMs || 0)).length;
+    setNoticeBadge(noticeUnreadCount);
+  } catch {}
+};
 const renderSummary = async () => {
   try {
     const m = new Date().toISOString().slice(0,7);
@@ -429,6 +509,7 @@ const renderHistoryTitle = () => {
   // no-op: history controls are now on the toolbar row
 };
 document.addEventListener('DOMContentLoaded', async () => {
+  prefillUserName();
   try {
     const p = await fetchJSONAuth('/api/auth/me');
     const role = String(p.role||'').toLowerCase();
@@ -442,6 +523,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const name = p.username || p.email || 'ユーザー'; const el = $('#userName'); if (el) el.textContent = name;
     try { window.MY_ID = p.id; } catch {}
+    try {
+      noticeSeenKey = `expenses_notice_seen_at:${String(p.id || '')}`;
+      noticeSeenAtMs = Number(localStorage.getItem(noticeSeenKey) || '0') || 0;
+    } catch {}
     try {
       const params = new URLSearchParams(String(window.location.search||''));
       const m = params.get('month');
@@ -656,6 +741,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const navNotice = document.getElementById('topNavNotice');
   const homeSection = document.getElementById('homeSection');
   const historySection = document.getElementById('historySection');
+  const historyModeLabel = document.getElementById('historyModeLabel');
   const setNavActive = (name) => {
     navNew?.classList.toggle('active', name === 'new');
     navApplied?.classList.toggle('active', name === 'applied');
@@ -666,9 +752,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       formActive = true;
       if (homeSection) homeSection.style.display = '';
       if (historySection) historySection.style.display = 'none';
+      if (historySection) historySection.classList.remove('notice-mode');
+      if (historyModeLabel) historyModeLabel.textContent = '申請一覧';
     } else {
       if (homeSection) homeSection.style.display = 'none';
       if (historySection) historySection.style.display = '';
+      if (historySection) historySection.classList.toggle('notice-mode', name === 'notice');
+      if (historyModeLabel) historyModeLabel.textContent = (name === 'notice') ? 'お知らせ（差戻し）' : '申請一覧';
       renderHistoryTitle();
     }
     setNavActive(name);
@@ -702,6 +792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const s = document.getElementById('exFilterStatus');
     if (s) s.value = 'rejected';
     try {
+      markNoticeSeen();
       await showTab('notice');
       await renderList();
     } finally {
@@ -714,7 +805,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await renderNotices();
   } catch {}
   try {
-    const t = setInterval(async () => { try { await renderNotices(); } catch {} }, 30000);
+    await refreshNoticeMessages();
+  } catch {}
+  try {
+    const t = setInterval(async () => {
+      try { await renderNotices(); } catch {}
+      try { await refreshNoticeMessages(); } catch {}
+    }, 30000);
     void t;
   } catch {}
 });

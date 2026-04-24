@@ -3,6 +3,17 @@ import { fetchJSONAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+};
+
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
@@ -39,19 +50,11 @@ const showErr = (msg) => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  prefillUserName();
   const pageSpinner = $('#pageSpinner');
-  try { if (pageSpinner) pageSpinner.removeAttribute('hidden'); } catch {}
 
-  const setTopbarHeightVar = () => {
-    try {
-      const topbar = document.querySelector('.topbar');
-      if (!topbar) return;
-      const h = Math.round(topbar.getBoundingClientRect().height);
-      if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-    } catch {}
-  };
-  setTopbarHeightVar();
-  try { window.addEventListener('resize', setTopbarHeightVar); } catch {}
+  // Keep header height stable to avoid first-paint layout jump between pages.
+  const setTopbarHeightVar = () => {};
 
   const profile = await ensureAuthProfile();
   if (!profile) {
