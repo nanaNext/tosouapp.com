@@ -4,7 +4,7 @@ body {
 
 :root {
   --mobile-drawer-w: 280px;
-  --kintai-top-h: 48px;
+  --kintai-top-h: 56px;
 }
 
 .kintai-spinner {
@@ -181,7 +181,7 @@ body.nav-js {
 .kintai-logo {
   font-weight: 800;
   letter-spacing: .2px;
-  font-size: 34px;
+  font-size: 32px;
   line-height: var(--kintai-top-h);
   height: var(--kintai-top-h);
   padding-left: 12px;
