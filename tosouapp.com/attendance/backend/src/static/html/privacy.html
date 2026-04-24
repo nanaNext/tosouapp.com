@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>個人情報の取り扱いについて</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
+  <link rel="icon" href="data:,">
+  <style>
+    body { margin: 0; background: #f3f7fd; color: #0f172a; }
+    .page { max-width: 760px; margin: 24px auto; padding: 20px; background: #fff; border-radius: 12px; border: 1px solid #dbe5f3; box-shadow: 0 8px 26px rgba(15, 23, 42, .06); }
+    .title { margin: 0 0 10px; font-size: 26px; color: #0d2c5b; letter-spacing: .2px; }
+    .meta { margin-bottom: 14px; color: #64748b; font-size: 13px; }
+    .section { margin-bottom: 16px; }
+    .section h2 { margin: 0 0 6px; font-size: 20px; color: #0f172a; line-height: 1.35; }
+    .section p { margin: 0; color: #334155; line-height: 1.72; font-size: 16px; }
+    .policy-actions { margin-top: 18px; display: flex; gap: 10px; }
+    .policy-btn {
+      display: inline-flex;
+      flex: 1 1 0;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 0;
+      text-decoration: none;
+      background: #1d4ed8;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 1.2;
+      text-align: center;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .policy-btn-secondary { background: #64748b; }
+    @media (max-width: 560px) {
+      body { background: #ffffff; }
+      .page { margin: 0; min-height: 100vh; padding: 14px 12px 22px; border-radius: 0; border: 0; box-shadow: none; }
+      .title { font-size: 24px; margin-bottom: 8px; }
+      .meta { font-size: 12px; margin-bottom: 12px; }
+      .section { margin-bottom: 14px; }
+      .section h2 { font-size: 19px; margin-bottom: 6px; }
+      .section p { font-size: 16px; line-height: 1.62; }
+      .policy-actions {
+        position: static;
+        margin: 16px 0 0;
+        padding: 0;
+        display: flex;
+        gap: 8px;
+      }
+      .policy-btn {
+        min-height: 44px;
+        font-size: 12px;
+        line-height: 1.2;
+        text-align: center;
+        border-radius: 10px;
+        padding: 8px 8px;
+      }
+      .policy-btn-secondary {
+        font-size: 11px;
+        letter-spacing: 0;
+        line-height: 1.15;
+        padding: 6px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1 class="title">個人情報の取り扱いについて</h1>
+    <div class="meta">最終更新日: <span data-updated-at>2026-04-23</span></div>
+
+    <section class="section">
+      <h2>1. 取得する情報</h2>
+      <p>氏名、社員番号、メールアドレス、所属情報、勤怠情報、業務報告情報等、業務運用上必要な情報を取得します。</p>
+    </section>
+
+    <section class="section">
+      <h2>2. 利用目的</h2>
+      <p>勤怠管理、給与計算、労務管理、法令対応、社内連絡、システム運用・保守のために利用します。</p>
+    </section>
+
+    <section class="section">
+      <h2>3. 第三者提供</h2>
+      <p>法令に基づく場合を除き、本人同意なく第三者へ提供しません。</p>
+    </section>
+
+    <section class="section">
+      <h2>4. 安全管理</h2>
+      <p>アクセス制御、監査ログ、通信保護等の適切な安全管理措置を講じ、情報漏えい・改ざん・不正アクセスの防止に努めます。</p>
+    </section>
+
+    <section class="section">
+      <h2>5. お問い合わせ</h2>
+      <p>個人情報に関する開示・訂正・削除等のご相談は、社内の管理窓口までお問い合わせください。</p>
+    </section>
+
+    <div class="policy-actions">
+      <a id="policyBackToLogin" class="policy-btn" href="/ui/login" onclick="window.location.assign('/ui/login'); return false;">ログインへ戻る</a>
+    </div>
+  </main>
+  <script>
+    (function () {
+      try {
+        var el = document.querySelector('[data-updated-at]');
+        if (!el) return;
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        el.textContent = y + '-' + m + '-' + day;
+      } catch {}
+    })();
+    (function () {
+      try {
+        var loginUrl = '/ui/login';
+        var backLink = document.getElementById('policyBackToLogin');
+        if (!backLink) return;
+        var goLogin = function (e) {
+          try { e.preventDefault(); e.stopPropagation(); } catch {}
+          window.location.assign(loginUrl);
+        };
+        backLink.addEventListener('click', goLogin, true);
+        backLink.addEventListener('pointerdown', goLogin, true);
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

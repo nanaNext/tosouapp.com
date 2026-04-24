@@ -37,6 +37,7 @@ function setError(msg) {
   const el = $('#error'); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none';
 }
 
+
 function saveAuth({ accessToken, username, email, role }) {
   sessionStorage.setItem('accessToken', accessToken);
   sessionStorage.setItem('user', JSON.stringify({ username, email, role }));
@@ -202,4 +203,20 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('remember', remember.checked ? '1' : '0');
     });
   }
+
+  // Extra-safe policy navigation: avoid accidental form submit or blocked anchor taps.
+  const bindForceNav = (id, href) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const go = (e) => {
+      try { e.preventDefault(); e.stopPropagation(); } catch {}
+      try { window.location.assign(href); } catch { window.location.href = href; }
+    };
+    el.addEventListener('click', go, true);
+    el.addEventListener('pointerdown', go, true);
+  };
+  bindForceNav('termsLinkInline', '/static/html/terms.html');
+  bindForceNav('privacyLinkInline', '/static/html/privacy.html');
+  bindForceNav('termsLinkCircle', '/static/html/terms.html');
+  bindForceNav('privacyLinkCircle', '/static/html/privacy.html');
 });

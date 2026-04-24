@@ -675,7 +675,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
-      const mod = await loadModule('./attendance/attendance.page.js');
+      const mod = await loadModule('./attendance/attendance.page.js?v=navy-20260423-attrecsync1');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
