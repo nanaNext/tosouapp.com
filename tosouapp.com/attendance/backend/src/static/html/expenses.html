@@ -550,7 +550,7 @@
       body.drawer-open .topbar,
       body.drawer-open .content,
       body.drawer-open .subbar {
-        transform: none !important;
+        transform: translateX(var(--drawer-offset, 280px)) !important;
       }
 
       .topbar {
@@ -569,13 +569,14 @@
 
       .expenses-tabs {
         gap: 6px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
 
       .expenses-tabs .tab {
-        height: 32px;
-        font-size: 12px;
-        padding: 0 10px;
+        height: 30px;
+        font-size: 11px;
+        padding: 0 9px;
+        border-radius: 8px;
       }
 
       .content {
@@ -592,6 +593,8 @@
       .content>section.card {
         width: min(100%, 420px);
         margin: 0 auto;
+        padding: 8px;
+        border-radius: 10px;
       }
 
       #empSummary,
@@ -608,15 +611,67 @@
       .adjust-actions {
         flex-wrap: nowrap;
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
+        margin-top: 8px;
       }
 
       #homeSection .adjust-actions .btn {
         flex: 0 0 auto;
+        height: 34px;
         width: auto;
-        min-width: 132px;
-        padding-left: 18px;
-        padding-right: 18px;
+        min-width: 112px;
+        padding-left: 12px;
+        padding-right: 12px;
+        font-size: 12px;
+        border-radius: 8px;
+      }
+
+      #homeSection .adjust-grid {
+        gap: 4px 6px;
+      }
+
+      #homeSection .adjust-label {
+        font-size: 11px;
+        margin-top: 2px;
+        margin-bottom: 0;
+        padding-top: 0;
+        line-height: 1.2;
+      }
+
+      #homeSection .adjust-input,
+      #homeSection .adjust-grid input[type="text"],
+      #homeSection .adjust-grid input[type="number"],
+      #homeSection .adjust-grid input[type="date"],
+      #homeSection .adjust-grid textarea,
+      #homeSection .adjust-grid select {
+        height: 30px;
+        font-size: 12px;
+        border-radius: 8px;
+        padding: 4px 10px;
+      }
+
+      #homeSection .adjust-grid textarea {
+        min-height: 56px;
+      }
+
+      #homeSection .receipt-upload-row {
+        gap: 6px !important;
+      }
+
+      #homeSection .receipt-upload-row label {
+        font-size: 11px !important;
+        margin-bottom: 3px !important;
+      }
+
+      #homeSection .receipt-upload-row input[type="file"] {
+        min-height: 32px;
+        font-size: 10px;
+        padding: 3px 5px;
+      }
+
+      #homeSection .receipt-upload-row input[type="file"]::file-selector-button {
+        font-size: 10px;
+        padding: 3px 6px;
       }
 
       #homeSection #exStatus {

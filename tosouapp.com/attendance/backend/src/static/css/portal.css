@@ -663,11 +663,11 @@ body:not(.admin) .topbar-inner .user {
   .user .user-btn {
     width: 42px;
     height: 42px;
-    border-radius: 999px;
-    background: #d0e8ff;
-    border: 1px solid #a9c6e8;
-    box-shadow: 0 2px 6px rgba(0,0,0,.06);
-    padding: 2px;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -718,17 +718,26 @@ body:not(.admin) .topbar-inner .user {
   }
 }
 
-/* push layout when drawer open */
-body.drawer-open .subbar,
-body.drawer-open .content {
-  transform: translateX(var(--drawer-offset, 280px));
-  pointer-events: none !important;
-  user-select: none;
-}
-body.drawer-open {
-  overflow: hidden;
-  touch-action: none;
-  overscroll-behavior: none;
+/* Mobile drawer: push page right so menu button/topbar stays visible. */
+@media (max-width: 480px) {
+  body.drawer-open .topbar,
+  body.drawer-open .subbar,
+  body.drawer-open .content {
+    transform: translateX(var(--drawer-offset, 280px)) !important;
+    transition: transform .18s ease;
+  }
+  body.drawer-open .mobile-btn {
+    display: block !important;
+    position: fixed !important;
+    left: calc(var(--drawer-offset, 280px) + 12px) !important;
+    top: 8px !important;
+    z-index: 1405 !important;
+  }
+  body.drawer-open {
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
 }
 
 /* Safety guard: desktop must never show mobile drawer, even if drawer-open is stuck */
@@ -2499,10 +2508,11 @@ body.drawer-open {
     width: 30px !important;
     height: 30px !important;
     min-width: 30px;
-    border-radius: 999px !important;
-    border: 1px solid rgba(255, 255, 255, 0.35) !important;
-    background: rgba(255, 255, 255, 0.16) !important;
-    padding: 1px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
   }
   body:not(.admin) .user .user-icon {
     width: 24px !important;
@@ -2548,95 +2558,5 @@ body.drawer-open {
   }
 }
 
-/* Header anti-flicker hard lock for employee pages */
-body:not(.admin) .topbar .topbar-inner .search,
-body:not(.admin) .topbar .topbar-inner .search.active {
-  position: relative !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  z-index: auto !important;
-}
-body:not(.admin) .topbar .topbar-inner .search input,
-body:not(.admin) .topbar .topbar-inner .search.active input {
-  width: 100% !important;
-  max-width: none !important;
-  border: 1px solid #cfd6df !important;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03) inset !important;
-  background: #fff !important;
-  background-image: none !important; /* avoid icon image decode flash on navigation */
-  transition: none !important;
-}
-body:not(.admin) .topbar .topbar-inner .search .search-hint,
-body:not(.admin) .topbar .topbar-inner .search .search-meta {
-  display: none !important;
-}
-body:not(.admin) .topbar .user {
-  width: 152px; /* hard lock width so user area never shifts */
-  min-width: 152px;
-  max-width: 152px;
-  flex: 0 0 152px;
-  justify-self: end;
-}
-body:not(.admin) .topbar .user .user-btn {
-  width: 152px;
-  min-width: 152px;
-  max-width: 152px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  white-space: nowrap;
-  transition: none !important;
-}
-body:not(.admin) .topbar .user #userName {
-  display: inline-block;
-  width: 88px;
-  min-width: 88px;
-  max-width: 88px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-body:not(.admin) .topbar .user .user-icon {
-  width: 38px !important;
-  min-width: 38px !important;
-  max-width: 38px !important;
-  height: 38px !important;
-  flex: 0 0 38px;
-  display: inline-block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  object-fit: contain;
-}
-
-/* Keep employee user area fixed like search: stable grid slot, no positional nudging. */
-@media (min-width: 481px) {
-  body:not(.admin) .topbar .topbar-inner {
-    position: relative !important;
-  }
-  body:not(.admin) .topbar .user {
-    position: relative !important;
-    right: auto !important;
-    top: auto !important;
-    bottom: auto !important;
-    display: block !important;
-    transform: none !important;
-    margin: 0 !important;
-    z-index: 2;
-    transition: none !important;
-    animation: none !important;
-  }
-  body:not(.admin) .topbar .user .user-btn,
-  body:not(.admin) .topbar .user #userName,
-  body:not(.admin) .topbar .user .user-icon {
-    transition: none !important;
-    animation: none !important;
-  }
-}
 
 
