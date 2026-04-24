@@ -1,5 +1,5 @@
 import { me, logout, refresh } from '../api/auth.api.js';
-import { fetchJSONAuth, fetchResponseAuth } from '../api/http.api.js';
+import { fetchJSONAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -36,12 +36,6 @@ const hideSpinner = () => {
 };
 
 const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const monthJST = () => {
-  const d = new Date(Date.now() + 9 * 3600 * 1000);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
-};
 const formatDateTime = (isoString) => {
   if (!isoString) return '';
   const d = new Date(isoString);
@@ -52,6 +46,38 @@ const formatDateTime = (isoString) => {
   const h = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${y}/${m}/${day} ${h}:${min}`;
+};
+
+const getViewerId = () => {
+  try {
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    return String(u?.username || u?.email || 'anonymous');
+  } catch {
+    return 'anonymous';
+  }
+};
+
+const viewedKey = () => `salaryViewedMonths:${getViewerId()}`;
+
+const getViewedMonths = () => {
+  try {
+    const raw = localStorage.getItem(viewedKey()) || '[]';
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(v => String(v)) : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const markMonthViewed = (month) => {
+  const m = String(month || '');
+  if (!/^\d{4}-\d{2}$/.test(m)) return;
+  try {
+    const set = getViewedMonths();
+    set.add(m);
+    localStorage.setItem(viewedKey(), JSON.stringify(Array.from(set)));
+  } catch {}
 };
 
 const ensureAuthProfile = async () => {
@@ -117,16 +143,16 @@ const wireDrawer = () => {
 const render = async () => {
   const host = $('#salaryHost');
   if (!host) return;
-  const m0 = monthJST();
-
+  const params = new URLSearchParams(String(window.location.search || ''));
+  const monthFromQuery = String(params.get('month') || '').trim();
   // Add styles for the buttons and table
   const style = document.createElement('style');
   style.textContent = `
     .sal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
     .sal-title{font-size:18px;font-weight:900;color:#0f172a}
     .sal-subtle{font-size:12px;color:#64748b}
-    .sal-row{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
-    .sal-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05)}
+    .sal-row{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
+    .sal-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px}
     .sal-btn {
       padding: 8px 16px;
       border: 1px solid #cbd5e1;
@@ -194,247 +220,164 @@ const render = async () => {
     .sal-list a{color:#1d4ed8;text-decoration:underline;font-weight:700}
     .sal-list a:hover{color:#1e40af}
     .sal-sub{font-size:12px;color:#64748b;margin-top:2px}
-    .sal-list table{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+    .sal-list table{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
     .sal-list td{padding:10px 12px}
     .sal-list tr:hover td{background:#f8fafc}
     .sal-list a{display:inline-flex;align-items:center;gap:8px}
     .sal-list .dot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex:0 0 auto}
+    .sal-list .dot.is-hidden{display:none}
+    .sal-list tr.is-active td{background:#eef4ff}
+    .sal-back{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;color:#1d4ed8;text-decoration:none;font-weight:700}
+    .sal-back:hover{color:#1e40af}
+    .sal-detail-title{font-size:20px;font-weight:900;color:#0f172a}
+    .sal-tabs{display:flex;gap:18px;border-bottom:1px solid #e2e8f0;margin-bottom:12px}
+    .sal-tab{padding:8px 4px;color:#475569;cursor:pointer;font-weight:700;position:relative}
+    .sal-tab.active{color:#0f172a}
+    .sal-tab.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#3b82f6}
+    .sal-pane{display:none}
+    .sal-pane.active{display:block}
+    .sal-related-group{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+    .sal-related-head{padding:10px 12px;color:#475569;font-weight:800;border-bottom:1px solid #e2e8f0}
+    .sal-related-item{padding:12px}
+    .sal-related-item a{color:#1d4ed8;text-decoration:underline;font-weight:700}
+    .sal-related-item a:hover{color:#1e40af}
+    @media (max-width: 700px){
+      .sal-card{padding:10px !important;border-radius:10px}
+      .sal-header{margin-bottom:10px}
+      .sal-title{font-size:15px}
+      .sal-subtle{font-size:11px}
+      .sal-row{gap:10px}
+      .sal-list table{border-radius:8px}
+      .sal-table th,.sal-table td{padding:8px}
+      .sal-table th{font-size:11px}
+      .sal-table td{font-size:13px}
+      .sal-list th:nth-child(2), .sal-list td:nth-child(2){
+        width: 130px;
+        white-space: nowrap;
+      }
+      .sal-list a{
+        gap:6px;
+        align-items:flex-start;
+        line-height:1.25;
+      }
+      .sal-list .dot{margin-top:6px}
+      .sal-back{font-size:13px;margin-bottom:8px}
+      .sal-tabs{gap:12px}
+      .sal-tab{font-size:12px;padding:7px 2px}
+      .sal-detail-title{font-size:16px}
+      .sal-kv{grid-template-columns:110px 1fr}
+      .sal-kv .k,.sal-kv .v{padding:9px}
+      #salOpenPdf{padding:6px 10px;font-size:12px}
+    }
+    @media (max-width: 480px){
+      :root { --topbar-height: 52px; }
+      body.drawer-open .topbar,
+      body.drawer-open .subbar,
+      body.drawer-open .content{
+        transform: translateX(var(--drawer-offset, 280px)) !important;
+      }
+      body.drawer-open{
+        overflow: hidden;
+        touch-action: none;
+        overscroll-behavior: none;
+      }
+      body:not(.admin) .topbar{
+        padding: 6px 10px !important;
+        min-height: var(--topbar-height) !important;
+      }
+      body:not(.admin) .topbar-inner{
+        gap: 8px !important;
+        padding-right: 0 !important;
+      }
+      body:not(.admin) .mobile-btn{
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+      }
+      body:not(.admin) .topbar .search{
+        flex: 1 1 auto !important;
+        max-width: none !important;
+        margin: 0 4px !important;
+      }
+      body:not(.admin) .topbar .search input{
+        height: 30px !important;
+        line-height: 30px !important;
+        font-size: 13px !important;
+      }
+      body:not(.admin) .topbar .user{
+        min-width: 30px !important;
+        width: 30px !important;
+      }
+      body:not(.admin) .topbar .user .user-btn{
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+        padding: 0 !important;
+      }
+      body:not(.admin) .topbar .user .user-icon{
+        width: 24px !important;
+        height: 24px !important;
+      }
+      body:not(.admin) .topbar #userName,
+      body:not(.admin) .topbar .caret{
+        display: none !important;
+      }
+      body:not(.admin) .subbar{ display: none !important; }
+      body:not(.admin) .subbar + .content{
+        padding-top: calc(var(--topbar-height) + 8px) !important;
+      }
+      body:not(.admin) .content{
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+      }
+    }
   `;
   document.head.appendChild(style);
 
-  host.innerHTML = `
-    <div class="sal-card" style="padding:16px">
-      <div class="sal-header">
-        <div>
-          <div class="sal-title">給与明細など</div>
-          <div class="sal-subtle">公開済みの給与明細から選択し、詳細やPDFを表示できます</div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <div class="sal-subtle">対象年月</div>
-          <input id="salMonth" type="month" value="${m0}" style="padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px;">
-          <button id="salLoad" class="sal-btn sal-btn-primary" type="button">表示する</button>
-        </div>
-      </div>
-      <div class="sal-row">
-        <div class="sal-card">
-          <div style="font-weight:900;color:#0f172a;margin-bottom:10px;">配布物名</div>
-          <div id="salList" class="sal-list" style="max-height:500px;overflow:auto;"></div>
-        </div>
-        <div class="sal-card">
-          <div id="salMeta" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div class="sal-subtle"></div>
-          </div>
-          <div id="salBody"></div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const meta = $('#salMeta');
-  const body = $('#salBody');
-  const listEl = $('#salList');
-
-  const loadList = async () => {
-    if (!listEl) return [];
-    try {
-      const r = await fetchJSONAuth('/api/salary/my/published');
-      const items = Array.isArray(r?.items) ? r.items : [];
-      if (!items.length) {
-        listEl.innerHTML = `<div class="sal-sub">公開された給与明細がありません</div>`;
-        return [];
-      }
-      listEl.innerHTML = `
-        <table class="sal-table">
-          <thead>
-            <tr>
-              <th>配布物名</th>
-              <th style="width:180px">配信完了日</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(it => {
-              const month = String(it.month || '');
-              const y = month.slice(0, 4);
-              const m = month.slice(5, 7);
-              const title = `${y}年${m}月給与明細`;
-              const pub = it.publishedAt ? formatDateTime(it.publishedAt) : '';
-              return `
-                <tr>
-                  <td><a href="#" data-month="${esc(month)}"><span class="dot"></span><span>${esc(title)}</span></a></td>
-                  <td>${esc(pub)}</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      `;
-      listEl.querySelectorAll('a[data-month]').forEach(a => {
-        a.addEventListener('click', (e) => {
-          e.preventDefault();
-          const m = a.getAttribute('data-month') || '';
-          const input = $('#salMonth');
-          if (input) input.value = m;
-          renderPublishedDetail(m);
-        });
-      });
-      return items;
-    } catch (e) {
-      listEl.innerHTML = `<div class="sal-sub">一覧の取得に失敗しました</div>`;
-      return [];
-    }
-  };
-
-  const load = async () => {
+  const openPublishedFile = async (month) => {
     showErr('');
-    const month = String($('#salMonth')?.value || '').trim();
-    if (!/^\d{4}-\d{2}$/.test(month)) {
-      showErr('月を選択してください');
-      return;
-    }
-    return await renderPublishedDetail(month);
+    if (!/^\d{4}-\d{2}$/.test(month)) return;
     showSpinner();
     try {
-      const r = await fetchJSONAuth(`/api/salary/my?month=${encodeURIComponent(month)}`);
-      
-      if (r?.notPublished) {
-        if (body) body.innerHTML = `
-          <div class="sal-empty">
-            <div style="font-size:32px;margin-bottom:10px;">🔒</div>
-            <div style="font-size:16px;font-weight:bold;">${esc(r.message || 'まだ公開されていません')}</div>
-            <div style="font-size:14px;margin-top:5px;">管理者が公開するまでお待ちください。</div>
-          </div>`;
-        if (meta) meta.textContent = '';
-        return;
-      }
-      
-      const company = r?.companyName || '';
-      const issue = r?.issueDate || '';
-      const emp = Array.isArray(r?.employees) && r.employees.length ? r.employees[0] : null;
-      
-      if (meta) { meta.innerHTML = `<div><span class="sal-chip">${esc(company)}</span> <span class="sal-subtle" style="margin-left:8px;">発行日: ${esc(issue)}</span></div>`; }
-
-      if (!emp) {
-        if (body) body.innerHTML = `
-          <div class="sal-empty">
-            <div style="font-size:32px;margin-bottom:10px;">🗂️</div>
-            <div style="font-size:16px;font-weight:bold;">データがありません</div>
-            <div style="font-size:14px;margin-top:5px;">この月の給与明細はまだ作成されていません。</div>
-          </div>`;
-        return;
-      }
-
-      // Render a nice table instead of raw JSON
-      const netPay = new Intl.NumberFormat('ja-JP').format(emp?.合計?.差引支給額 || 0);
-      const grossPay = new Intl.NumberFormat('ja-JP').format(emp?.合計?.総支給額 || 0);
-      const dedPay = new Intl.NumberFormat('ja-JP').format(emp?.合計?.総控除額 || 0);
-      
       const y = month.slice(0, 4);
       const mStr = month.slice(5, 7);
-      const filename = `${y}年${mStr}月給与明細.pdf`;
-
-      if (body) {
-        body.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;">
-            <div style="font-size:20px;font-weight:bold;color:#0f172a;">${y}年${mStr}月 給与明細</div>
-            <button id="salDownload" class="sal-btn" type="button">
-              PDFダウンロード
-            </button>
-          </div>
-          
-          <table class="sal-table">
-            <thead>
-              <tr>
-                <th style="width:30%">項目</th>
-                <th>内容</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>社員名</strong></td>
-                <td style="font-weight:bold;">${esc(emp.氏名)} <span style="color:#64748b;font-weight:normal;font-size:12px;">(${esc(emp.従業員コード)})</span></td>
-              </tr>
-              <tr>
-                <td><strong>所属</strong></td>
-                <td>${esc(emp.所属 || '-')}</td>
-              </tr>
-              <tr>
-                <td><strong>ファイル名</strong></td>
-                <td style="color:#64748b;">${esc(filename)}</td>
-              </tr>
-              <tr style="background:#f0f9ff;">
-                <td style="color:#0369a1;"><strong>総支給額</strong></td>
-                <td style="color:#0369a1;font-weight:bold;">${grossPay} 円</td>
-              </tr>
-              <tr style="background:#fdf2f8;">
-                <td style="color:#be185d;"><strong>総控除額</strong></td>
-                <td style="color:#be185d;font-weight:bold;">${dedPay} 円</td>
-              </tr>
-              <tr style="background:#f0fdf4;">
-                <td style="color:#15803d;font-size:16px;"><strong>差引支払額（手取り）</strong></td>
-                <td style="color:#15803d;font-size:18px;font-weight:900;">${netPay} 円</td>
-              </tr>
-            </tbody>
-          </table>
-        `;
-
-        // Attach event listener to the newly created download button
-        document.getElementById('salDownload').addEventListener('click', async () => {
-          showErr('');
-          showSpinner();
-          try {
-            const res = await fetchJSONAuth(`/api/salary/me/${encodeURIComponent(y)}/${encodeURIComponent(mStr)}/download`);
-            if (res?.notPublished) {
-              showErr(res.message || 'まだ公開されていません');
-              return;
-            }
-            const secureUrl = res?.secureUrl;
-            if (!secureUrl) {
-              showErr('PDFが見つかりません');
-              return;
-            }
-            const r2 = await fetchResponseAuth(secureUrl);
-            const ct = String(r2.headers.get('content-type') || '').toLowerCase();
-            if (!ct.includes('application/pdf')) {
-              let t = '';
-              try { t = await r2.clone().text(); } catch {}
-              showErr(t || 'PDF取得に失敗しました');
-              return;
-            }
-            const blob = await r2.blob();
-            const url = URL.createObjectURL(blob);
-            try { window.open(url, '_blank', 'noopener'); } catch { window.location.href = url; }
-            setTimeout(() => { try { URL.revokeObjectURL(url); } catch {} }, 30000);
-          } catch (e) {
-            showErr(e?.message || 'PDF取得に失敗しました');
-          } finally {
-            hideSpinner();
-          }
-        });
+      const dl = await fetchJSONAuth(`/api/salary/me/${encodeURIComponent(y)}/${encodeURIComponent(mStr)}/download`);
+      const secureUrl = String(dl?.secureUrl || '').trim();
+      if (!secureUrl) {
+        showErr('PDFが見つかりません');
+        return;
       }
+      window.open(secureUrl, '_blank', 'noopener');
     } catch (e) {
-      if (body) body.innerHTML = '';
-      showErr(e?.message || '取得に失敗しました');
+      showErr(e?.message || 'PDF取得に失敗しました');
     } finally {
       hideSpinner();
     }
   };
 
-  const renderPublishedDetail = async (month) => {
+  const renderDetailPage = async (month) => {
+    markMonthViewed(month);
+    host.innerHTML = `
+      <div class="sal-card" style="padding:16px">
+        <a class="sal-back" href="/ui/salary">← 配布物名一覧に戻る</a>
+        <div id="salMeta" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="sal-subtle"></div>
+        </div>
+        <div id="salBody"></div>
+      </div>
+    `;
+    const meta = $('#salMeta');
+    const body = $('#salBody');
     showErr('');
     if (!/^\d{4}-\d{2}$/.test(month)) {
-      showErr('月を選択してください');
+      showErr('月の指定が正しくありません');
       return;
     }
     showSpinner();
     try {
       const r = await fetchJSONAuth(`/api/salary/my?month=${encodeURIComponent(month)}`);
       if (r?.notPublished) {
-        if (body) body.innerHTML = `
-          <div class="sal-empty">
-            <div style="font-size:32px;margin-bottom:10px;">🔒</div>
-            <div style="font-size:16px;font-weight:bold;">${esc(r.message || 'まだ公開されていません')}</div>
-            <div style="font-size:14px;margin-top:5px;">管理者が公開するまでお待ちください。</div>
-          </div>`;
+        if (body) body.innerHTML = `<div class="sal-empty">${esc(r.message || 'まだ公開されていません')}</div>`;
         if (meta) meta.textContent = '';
         return;
       }
@@ -442,47 +385,29 @@ const render = async () => {
       const mStr = month.slice(5, 7);
       const title = `${y}年${mStr}月給与明細`;
       const emp = Array.isArray(r?.employees) && r.employees.length ? r.employees[0] : null;
-      const owner = emp?.氏名 ? `${emp.氏名}${emp?.従業員コード ? `（${emp.従業員コード}）` : ''}` : '';
+      const owner = emp?.氏名 ? `${emp.氏名}${emp?.従業員コード ? `（${emp.従業員コード}）` : ''}` : 'あなた';
+      const pubRes = await fetchJSONAuth('/api/salary/my/published').catch(() => null);
+      const rel = Array.isArray(pubRes?.items) ? pubRes.items.find(it => String(it.month) === month) : null;
+      const fileName = rel?.fileName || `${title}.pdf`;
+      const publishedAt = rel?.publishedAt ? formatDateTime(rel.publishedAt) : '';
       if (meta) {
         const company = r?.companyName || '';
         const issue = r?.issueDate || '';
         meta.innerHTML = `<div><span class="sal-chip">${esc(company)}</span> <span class="sal-subtle" style="margin-left:8px;">発行日: ${esc(issue)}</span></div>`;
       }
-      const dl = await fetchJSONAuth(`/api/salary/me/${encodeURIComponent(y)}/${encodeURIComponent(mStr)}/download`);
-      const secureUrl = dl?.secureUrl || '';
-      const pubRes = await fetchJSONAuth('/api/salary/my/published').catch(() => null);
-      const rel = Array.isArray(pubRes?.items) ? pubRes.items.find(it => String(it.month) === month) : null;
-      const fileName = rel?.fileName || `${y}年${mStr}月給与明細.pdf`;
-      const publishedAt = rel?.publishedAt ? formatDateTime(rel.publishedAt) : '';
       if (body) {
         body.innerHTML = `
-          <style>
-            .sal-tabs{display:flex;gap:18px;border-bottom:1px solid #e2e8f0;margin-bottom:12px}
-            .sal-tab{padding:8px 4px;color:#475569;cursor:pointer;font-weight:700;position:relative}
-            .sal-tab.active{color:#0f172a}
-            .sal-tab.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#3b82f6}
-            .sal-pane{display:none}
-            .sal-pane.active{display:block}
-            .sal-related-group{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
-            .sal-related-head{padding:10px 12px;color:#475569;font-weight:800;border-bottom:1px solid #e2e8f0}
-            .sal-related-item{padding:12px}
-            .sal-related-item a{color:#1d4ed8;text-decoration:underline;font-weight:700}
-            .sal-related-item a:hover{color:#1e40af}
-          </style>
           <div class="sal-tabs">
             <div id="salTabDetails" class="sal-tab active">DETAILS</div>
             <div id="salTabRelated" class="sal-tab">RELATED</div>
           </div>
           <div id="salPaneDetails" class="sal-pane active">
             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;">
-              <div style="font-size:20px;font-weight:bold;color:#0f172a;">${esc(title)}</div>
-              <div style="display:flex;gap:8px;">
-                <button id="salPrintView" class="sal-btn" type="button">印刷用に表示</button>
-              </div>
+              <div class="sal-detail-title">${esc(title)}</div>
+              <button id="salOpenPdf" class="sal-btn" type="button">印刷用に表示</button>
             </div>
             <div class="sal-kv">
-              <div class="k">配布物名</div><div class="v">${esc(title)}</div>
-              <div class="k">所有者</div><div class="v">${esc(owner || 'あなた')}</div>
+              <div class="k">所有者</div><div class="v">${esc(owner)}</div>
             </div>
           </div>
           <div id="salPaneRelated" class="sal-pane">
@@ -511,26 +436,14 @@ const render = async () => {
         };
         document.getElementById('salTabDetails')?.addEventListener('click', () => activate('details'));
         document.getElementById('salTabRelated')?.addEventListener('click', () => activate('related'));
-        const openPdf = async () => {
-          try {
-            if (!secureUrl) { showErr('PDFが見つかりません'); return; }
-            const r2 = await fetchResponseAuth(secureUrl);
-            const ct = String(r2.headers.get('content-type') || '').toLowerCase();
-            if (!ct.includes('application/pdf')) {
-              let t = ''; try { t = await r2.clone().text(); } catch {}
-              showErr(t || 'PDF取得に失敗しました'); return;
-            }
-            const blob = await r2.blob();
-            const url = URL.createObjectURL(blob);
-            try { window.open(url, '_blank', 'noopener'); } catch { window.location.href = url; }
-            setTimeout(() => { try { URL.revokeObjectURL(url); } catch {} }, 30000);
-          } catch (e) {
-            showErr(e?.message || 'PDF取得に失敗しました');
-          }
-        };
-        document.getElementById('salPrintView')?.addEventListener('click', openPdf);
-        document.getElementById('salFileLink')?.addEventListener('click', (e) => { e.preventDefault(); openPdf(); });
       }
+      document.getElementById('salOpenPdf')?.addEventListener('click', async () => {
+        await openPublishedFile(month);
+      });
+      document.getElementById('salFileLink')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await openPublishedFile(month);
+      });
     } catch (e) {
       if (body) body.innerHTML = '';
       showErr(e?.message || '取得に失敗しました');
@@ -539,19 +452,77 @@ const render = async () => {
     }
   };
 
-  $('#salLoad')?.addEventListener('click', load);
-  $('#salMonth')?.addEventListener('change', load);
-
-  const publishedItems = await loadList();
-  try {
-    const current = String($('#salMonth')?.value || '').trim();
-    const hasCurrent = publishedItems.some(it => String(it.month) === current);
-    if (!hasCurrent && publishedItems.length) {
-      $('#salMonth').value = String(publishedItems[0].month || m0);
+  const renderListPage = async () => {
+    host.innerHTML = `
+      <div class="sal-card" style="padding:16px">
+        <div class="sal-header">
+          <div>
+            <div class="sal-title">給与明細など</div>
+            <div class="sal-subtle">公開済みの給与明細から選択し、詳細ページを表示できます</div>
+          </div>
+        </div>
+        <div class="sal-row">
+          <div>
+            <div id="salList" class="sal-list" style="max-height:520px;overflow:auto;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    const listEl = $('#salList');
+    if (!listEl) return;
+    if (!listEl) return [];
+    try {
+      const r = await fetchJSONAuth('/api/salary/my/published');
+      const items = Array.isArray(r?.items) ? r.items : [];
+      const viewed = getViewedMonths();
+      if (!items.length) {
+        listEl.innerHTML = `<div class="sal-sub">公開された給与明細がありません</div>`;
+        return;
+      }
+      listEl.innerHTML = `
+        <table class="sal-table">
+          <thead>
+            <tr>
+              <th>配布物名</th>
+              <th style="width:180px">配信完了日</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(it => {
+              const month = String(it.month || '');
+              const y = month.slice(0, 4);
+              const m = month.slice(5, 7);
+              const title = `${y}年${m}月給与明細`;
+              const pub = it.publishedAt ? formatDateTime(it.publishedAt) : '';
+              const viewedCls = viewed.has(month) ? ' is-hidden' : '';
+              return `
+                <tr data-month="${esc(month)}">
+                  <td><a href="#" data-month="${esc(month)}"><span class="dot${viewedCls}"></span><span>${esc(title)}</span></a></td>
+                  <td>${esc(pub)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      listEl.querySelectorAll('a[data-month]').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const m = a.getAttribute('data-month') || '';
+          if (!m) return;
+          markMonthViewed(m);
+          window.location.href = `/ui/salary?month=${encodeURIComponent(m)}`;
+        });
+      });
+    } catch (e) {
+      listEl.innerHTML = `<div class="sal-sub">一覧の取得に失敗しました</div>`;
     }
-  } catch {}
-
-  await load();
+  };
+  if (/^\d{4}-\d{2}$/.test(monthFromQuery)) {
+    await renderDetailPage(monthFromQuery);
+  } else {
+    await renderListPage();
+  }
 };
 
 document.addEventListener('DOMContentLoaded', async () => {

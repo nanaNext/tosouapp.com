@@ -131,7 +131,7 @@ const wireUserMenu = () => {
   const btn = $('.user-btn'); const dd = $('#userDropdown'); if (!btn || !dd || btn.dataset.bound==='1') return; btn.dataset.bound='1';
   btn.addEventListener('click',(e)=>{ e.preventDefault(); const open=!dd.hasAttribute('hidden'); if (open) dd.setAttribute('hidden',''); else dd.removeAttribute('hidden'); btn.setAttribute('aria-expanded', open?'false':'true'); });
   document.addEventListener('click',(e)=>{ if (e.target.closest('.user-menu')) return; dd.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false'); });
-  const logoutBtn = $('#btnLogout'); if (logoutBtn) logoutBtn.addEventListener('click', async ()=>{ try{ await logout(); }catch{} try{ sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); }catch{} try{ localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); }catch{} window.location.replace('/ui/logout?next=%2Fexpenses-login'); });
+  const logoutBtn = $('#btnLogout'); if (logoutBtn) logoutBtn.addEventListener('click', async ()=>{ try{ await logout(); }catch{} try{ sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); }catch{} try{ localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); }catch{} window.location.replace('/ui/login'); });
   
 };
 const wireDrawer = () => {
@@ -519,7 +519,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.replace('/admin/expenses');
         return;
       }
-      window.location.replace('/expenses-login'); return;
+      window.location.replace('/ui/login'); return;
     }
     const name = p.username || p.email || 'ユーザー'; const el = $('#userName'); if (el) el.textContent = name;
     try { window.MY_ID = p.id; } catch {}
@@ -537,7 +537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         formActive = true;
       }
     } catch {}
-  } catch { window.location.replace('/expenses-login'); return; }
+  } catch { window.location.replace('/ui/login'); return; }
   wireUserMenu(); wireDrawer();
   const back = document.getElementById('expBackBtn');
   if (back && !back.dataset.bound) {
