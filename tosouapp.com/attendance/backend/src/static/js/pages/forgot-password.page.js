@@ -10,6 +10,23 @@ function setText(id, text) {
 document.addEventListener('DOMContentLoaded', () => {
   const form = $('#forgotForm');
   if (!form) return;
+  const birthDateInput = $('#birthDate');
+  if (birthDateInput) {
+    const closeDatePicker = (e) => {
+      try { e?.preventDefault(); } catch {}
+      birthDateInput.blur();
+    };
+    // On some mobile browsers, tapping the date field again does not close the picker.
+    // If already focused, blur on second tap to close it.
+    birthDateInput.addEventListener('pointerdown', (e) => {
+      if (document.activeElement !== birthDateInput) return;
+      closeDatePicker(e);
+    });
+    birthDateInput.addEventListener('change', closeDatePicker);
+    birthDateInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDatePicker(e);
+    });
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

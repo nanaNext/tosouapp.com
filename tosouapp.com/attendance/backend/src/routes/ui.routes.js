@@ -54,6 +54,10 @@ router.get('/ui/forgot-password', sendPage('forgot-password.html'));
 router.get('/forgot-password', sendPage('forgot-password.html'));
 router.get('/ui/reset-password', sendPage('reset-password.html'));
 router.get('/reset-password', sendPage('reset-password.html'));
+router.get('/ui/terms', sendPage('terms.html'));
+router.get('/terms', sendPage('terms.html'));
+router.get('/ui/privacy', sendPage('privacy.html'));
+router.get('/privacy', sendPage('privacy.html'));
 // Public standalone login for Expenses
 router.get('/ui/expenses-login', sendPage('expenses-login.html'));
 router.get('/expenses-login', sendPage('expenses-login.html'));

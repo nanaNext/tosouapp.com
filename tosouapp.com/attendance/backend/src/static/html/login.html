@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>ログイン</title>
     <link rel="stylesheet" href="/static/css/base.css?v=navy-20260416-1">
-    <link rel="stylesheet" href="/static/css/login.css?v=navy-20260416-3">
-    <script type="module" src="/static/js/pages/login.page.js?v=navy-20260416-2"></script>
+    <link rel="stylesheet" href="/static/css/login.css?v=navy-20260424-policy4">
+    <script type="module" src="/static/js/pages/login.page.js?v=navy-20260424-policy4"></script>
     <link rel="icon" href="data:,">
 </head>
 
@@ -48,7 +48,11 @@
                         </div>
                     </div>
 
-                    <div class="terms-note"><span>利用規約と個人情報の取り扱いについて同意の上</span><br><span>ログインしてください。</span></div>
+                    <div class="terms-note">
+                        <a id="termsLinkInline" href="/static/html/terms.html" onclick="window.location.assign('/static/html/terms.html'); return false;">利用規約</a>と
+                        <a id="privacyLinkInline" href="/static/html/privacy.html" onclick="window.location.assign('/static/html/privacy.html'); return false;">個人情報の取り扱い</a>について同意の上<br>
+                        <span>ログインしてください。</span>
+                    </div>
                     <div class="form-row actions">
                         <button type="submit" id="loginBtn" class="btn">ログイン</button>
                     </div>
@@ -64,13 +68,14 @@
         </div>
         <div class="circle">
             <ul>
-                <li><a href="/forgot-password">パスワードをお忘れの方はこちら</a></li>
-                <li><a href="#">利用規約</a></li>
-                <li><a href="#">個人情報の取り扱いについて</a></li>
+                <li><a href="/forgot-password" onclick="window.location.assign('/forgot-password'); return false;">パスワードをお忘れの方はこちら</a></li>
+                <li><a id="termsLinkCircle" href="/static/html/terms.html" onclick="window.location.assign('/static/html/terms.html'); return false;">利用規約</a></li>
+                <li><a id="privacyLinkCircle" href="/static/html/privacy.html" onclick="window.location.assign('/static/html/privacy.html'); return false;">個人情報の取り扱いについて</a></li>
             </ul>
         </div>
     </div>
 </body>
 
 </html>
+
 

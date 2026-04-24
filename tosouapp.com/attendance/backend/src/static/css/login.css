@@ -407,6 +407,37 @@ button.secondary {
     margin-bottom: 6px;
 }
 
+.terms-note a {
+    color: #0d2c5b;
+    text-decoration: underline;
+    font-weight: 700;
+    display: inline-block;
+    padding: 0 2px;
+    border-radius: 6px;
+    transition: transform .16s ease, color .16s ease, text-shadow .16s ease, background-color .16s ease;
+}
+
+.terms-note a:visited {
+    color: #0d2c5b;
+}
+.terms-note a:hover,
+.terms-note a:focus-visible {
+    color: #0a4ea3;
+    background-color: rgba(13, 44, 91, 0.08);
+    text-shadow: none;
+    transform: translateY(-1px) scale(1.05);
+}
+
+.terms-note,
+.terms-note a,
+.circle,
+.circle a {
+    position: relative;
+    z-index: 40;
+    pointer-events: auto;
+}
+
+
 #status {
   display: grid;
   place-items: center;
@@ -530,7 +561,7 @@ button.secondary {
     letter-spacing: .1px;
     font-family: "Hiragino Kaku Gothic ProN", "Meiryo", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", "Roboto", "Arial", sans-serif;
     text-shadow: none;
-    transition: opacity .12s ease, color .12s ease;
+    transition: transform .16s ease, color .16s ease, text-shadow .16s ease, background-color .16s ease, box-shadow .16s ease;
     white-space: nowrap;
     word-break: keep-all;
     overflow-wrap: normal;
@@ -543,8 +574,19 @@ button.secondary {
 }
 
 .circle a:hover {
-    opacity: 1;
-    animation: linkBlink .22s ease-in-out 1;
+    color: #ffffff;
+    background: transparent;
+    text-shadow: none;
+    box-shadow: none;
+    transform: translateY(-1px) scale(1.06);
+    animation: linkBlink .24s ease-in-out 1;
+}
+.circle a:focus-visible {
+    color: #ffffff;
+    background: transparent;
+    text-shadow: none;
+    box-shadow: none;
+    transform: translateY(-1px) scale(1.06);
 }
 
 .card-content {
