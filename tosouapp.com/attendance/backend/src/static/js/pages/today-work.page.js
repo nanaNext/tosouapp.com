@@ -3,6 +3,17 @@ import { fetchJSONAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+};
+
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
@@ -179,19 +190,11 @@ const loadEmployeeSummary = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  prefillUserName();
   const pageSpinner = $('#pageSpinner');
-  try { if (pageSpinner) pageSpinner.removeAttribute('hidden'); } catch {}
 
-  const setTopbarHeightVar = () => {
-    try {
-      const topbar = document.querySelector('.topbar');
-      if (!topbar) return;
-      const h = Math.round(topbar.getBoundingClientRect().height);
-      if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-    } catch {}
-  };
-  setTopbarHeightVar();
-  try { window.addEventListener('resize', setTopbarHeightVar); } catch {}
+  // Keep header height stable to avoid first-paint layout jump between pages.
+  const setTopbarHeightVar = () => {};
 
   const profile = await ensureAuthProfile();
   if (!profile) {
@@ -224,21 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch {}
 
-  try {
-    if (document.body.dataset.navSpinBound !== '1') {
-      document.body.dataset.navSpinBound = '1';
-      document.addEventListener('click', (e) => {
-        const a = e.target?.closest?.('a[href]');
-        if (!a) return;
-        if (a.target === '_blank') return;
-        const href = a.getAttribute('href') || '';
-        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
-        if (href.startsWith('http')) return;
-        try { sessionStorage.setItem('navSpinner', '1'); } catch {}
-        try { if (pageSpinner) pageSpinner.removeAttribute('hidden'); } catch {}
-      });
-    }
-  } catch {}
+  // Do not force nav spinner on every link click. It causes visible flash.
 
   try {
     const userName = $('#userName');

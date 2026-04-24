@@ -4,6 +4,7 @@ body {
 
 :root {
   --mobile-drawer-w: 280px;
+  --kintai-top-h: 48px;
 }
 
 .kintai-spinner {
@@ -112,13 +113,47 @@ body {
 .kintai-top {
   background: #0b2c66;
   color: #fff;
-  height: 48px;
+  height: var(--kintai-top-h);
   display: flex;
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, .12);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 2500;
+}
+
+/* Header stability: prevent repaint/flicker on input focus and page interactions */
+html {
+  scrollbar-gutter: stable;
+}
+body.nav-js {
+  overflow-y: scroll;
+}
+.kintai-top,
+.kintai-top-inner,
+.kintai-nav,
+.kintai-nav *,
+.kintai-top-links,
+.kintai-top-links * {
+  transition: none !important;
+  animation: none !important;
+}
+.kintai-top {
+  transform: none !important;
+  will-change: auto !important;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.kintai-nav-btn,
+.kintai-nav-btn:hover,
+.kintai-nav-btn:focus,
+.kintai-nav-btn:active,
+.kintai-nav-btn[aria-expanded="true"] {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .mobile-btn {
@@ -147,8 +182,8 @@ body {
   font-weight: 800;
   letter-spacing: .2px;
   font-size: 34px;
-  line-height: 48px;
-  height: 48px;
+  line-height: var(--kintai-top-h);
+  height: var(--kintai-top-h);
   padding-left: 12px;
   white-space: nowrap;
 }
@@ -416,8 +451,8 @@ body.nav-js .kintai-nav-dd.open .kintai-dd {
 
 .kintai-main {
   background: #f5f6f8;
-  min-height: calc(100vh - 48px);
-  padding: 12px 12px 24px;
+  min-height: calc(100vh - var(--kintai-top-h));
+  padding: calc(12px + var(--kintai-top-h)) 12px 24px;
 }
 
 .mobile-menu-btn {
@@ -425,8 +460,11 @@ body.nav-js .kintai-nav-dd.open .kintai-dd {
 }
 
 @media (max-width: 900px) {
+  :root {
+    --kintai-top-h: 44px;
+  }
   .kintai-top {
-    height: 44px;
+    height: var(--kintai-top-h);
   }
 
   .kintai-top-inner {
@@ -450,8 +488,8 @@ body.nav-js .kintai-nav-dd.open .kintai-dd {
 
   .kintai-logo {
     font-size: 16px;
-    line-height: 44px;
-    height: 44px;
+    line-height: var(--kintai-top-h);
+    height: var(--kintai-top-h);
     padding-left: 8px;
   }
 

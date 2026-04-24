@@ -2,6 +2,20 @@ import { listMyRequests, createRequest, listMyRecentAppliedTypes } from '../api/
 
 const $ = (s) => document.querySelector(s);
 
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) {
+      el.textContent = name;
+      try { window.userName = name; } catch {}
+    }
+  } catch {}
+};
+
 const pinKey = 'se.req.pin';
 const shouldAutoFocus = () => false;
 
@@ -457,7 +471,16 @@ function bindUI() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  try { window.userName = $('#userName')?.textContent || ''; } catch {}
+  await bootRequestsPage();
+});
+
+export async function bootRequestsPage() {
+  const page = document.querySelector('.req-page');
+  if (!page) return;
+  if (page.dataset.booted === '1') return;
+  page.dataset.booted = '1';
+  prefillUserName();
+  try { window.userName = window.userName || $('#userName')?.textContent || ''; } catch {}
   bindUI();
   await load('', { force: true });
-});
+}

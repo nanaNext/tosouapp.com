@@ -11,7 +11,7 @@
   <link rel="icon" href="data:,">
 </head>
 <body>
-  <div id="pageSpinner" class="page-spinner">
+  <div id="pageSpinner" class="page-spinner" hidden>
     <div class="lds-spinner" aria-hidden="true">
       <div></div><div></div><div></div><div></div><div></div><div></div>
       <div></div><div></div><div></div><div></div><div></div><div></div>
@@ -69,42 +69,6 @@
     <div id="error" style="display:none;color:#b00020;font-weight:600;"></div>
     <section class="tiles" id="tiles"></section>
   </main>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      try {
-        var box = document.querySelector('.topbar-inner .search');
-        if (!box || box.dataset.bound === '1') return;
-        box.dataset.bound = '1';
-        var input = box.querySelector('input[type="search"]');
-        var closeBtn = box.querySelector('.search-close');
-        var hint = box.querySelector('.search-hint');
-        var open = function () { box.classList.add('active'); try { input && input.focus(); input && input.select(); } catch {} };
-        var close = function () { box.classList.remove('active'); try { input && input.blur(); } catch {} };
-        if (input) input.addEventListener('focus', open);
-        if (hint) hint.addEventListener('click', function (e) { e.preventDefault(); open(); });
-        if (closeBtn) closeBtn.addEventListener('click', function (e) { e.preventDefault(); close(); });
-        document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape') { close(); return; }
-          var isCtrlK = (e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey);
-          var isPlainK = (e.key === 'k' || e.key === 'K') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey;
-          if (isCtrlK || isPlainK) {
-            var t = e.target;
-            var tag = (t && t.tagName) ? t.tagName.toLowerCase() : '';
-            var editable = (t && (t.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'));
-            if (editable && !isCtrlK) return;
-            e.preventDefault();
-            open();
-          }
-        });
-        document.addEventListener('click', function (e) {
-          if (!box.classList.contains('active')) return;
-          var t = e && e.target;
-          if (t && t.closest && t.closest('.topbar-inner .search')) return;
-          close();
-        });
-      } catch {}
-    });
-  </script>
 </body>
 </html>
 

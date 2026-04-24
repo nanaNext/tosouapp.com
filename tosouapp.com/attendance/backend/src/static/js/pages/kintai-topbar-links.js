@@ -123,11 +123,7 @@
   const bindGlobalNavLoading = () => {
     if (document.documentElement.dataset.navTransitionBound === '1') return;
     document.documentElement.dataset.navTransitionBound = '1';
-    document.addEventListener('click', (e) => {
-      const a = e.target?.closest?.('a[href]');
-      if (!shouldShowForAnchor(a, e)) return;
-      showNavLoading();
-    }, true);
+    // Disable global nav loading overlay to avoid topbar/search flicker on page transitions.
     window.addEventListener('pageshow', () => hideNavLoading());
   };
 

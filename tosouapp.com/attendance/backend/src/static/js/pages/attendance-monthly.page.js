@@ -1,9 +1,22 @@
 (function () {
   const root = globalThis.AttendanceMonthly || {};
   const events = root.Events || null;
+  const $ = (s) => document.querySelector(s);
+
+  const prefillUserName = () => {
+    try {
+      const el = $('#userName');
+      if (!el) return;
+      const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+      const u = raw ? JSON.parse(raw) : null;
+      const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+      if (name) el.textContent = name;
+    } catch {}
+  };
 
   document.addEventListener('DOMContentLoaded', async () => {
     try {
+      prefillUserName();
       try {
         const top = document.querySelector('.kintai-top');
         const h = top ? Math.max(0, top.offsetHeight) : 48;

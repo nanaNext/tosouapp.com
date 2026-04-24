@@ -3,6 +3,17 @@ import { fetchJSONAuth } from '../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+const prefillUserName = () => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+    if (name) el.textContent = name;
+  } catch {}
+};
+
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const showErr = (msg) => {
@@ -14,11 +25,23 @@ const showErr = (msg) => {
 };
 
 let spinnerCount = 0;
+let spinnerTimer = null;
 const showSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     spinnerCount++;
-    if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
+    if (!el) return;
+    if (spinnerCount === 1) {
+      try { clearTimeout(spinnerTimer); } catch { }
+      spinnerTimer = setTimeout(() => {
+        try {
+          if (spinnerCount > 0) {
+            el.removeAttribute('hidden');
+            el.style.display = 'grid';
+          }
+        } catch { }
+      }, 180);
+    }
   } catch { }
 };
 const hideSpinner = () => {
@@ -26,6 +49,8 @@ const hideSpinner = () => {
     const el = document.querySelector('#pageSpinner');
     spinnerCount = Math.max(0, spinnerCount - 1);
     if (spinnerCount !== 0) return;
+    try { clearTimeout(spinnerTimer); } catch { }
+    spinnerTimer = null;
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
   } catch { }
 };
@@ -376,6 +401,7 @@ const renderList = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  prefillUserName();
   try {
     const profile = await fetchJSONAuth('/api/auth/me');
     const role = String(profile?.role || '').toLowerCase();
