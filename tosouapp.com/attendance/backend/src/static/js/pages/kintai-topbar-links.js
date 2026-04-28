@@ -134,6 +134,25 @@
   };
 
   const ensureMobileMenu = () => {
+    // Desktop does not use the mobile drawer; remove any previously injected nodes.
+    if (!isMobile()) {
+      try { document.body.classList.remove('mobile-drawer-open'); } catch {}
+      try {
+        const btn0 = document.getElementById('mobileMenuBtn');
+        if (btn0 && btn0.classList.contains('mobile-btn')) btn0.remove();
+      } catch {}
+      try {
+        const drawer0 = document.getElementById('mobileDrawer');
+        const isInjectedDrawer = !!(drawer0 && drawer0.classList.contains('mobile-drawer') && drawer0.querySelector('#mobileDrawerSearch'));
+        if (isInjectedDrawer) drawer0.remove();
+      } catch {}
+      try {
+        const backdrop0 = document.getElementById('mobileDrawerBackdrop');
+        if (backdrop0 && backdrop0.classList.contains('mobile-drawer-backdrop')) backdrop0.remove();
+      } catch {}
+      return;
+    }
+
     const brand = document.querySelector('.kintai-brand');
     if (!brand) return;
     if (document.getElementById('mobileMenuBtn')) return;
