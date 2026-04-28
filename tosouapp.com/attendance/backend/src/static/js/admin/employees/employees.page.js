@@ -1594,7 +1594,7 @@ async function renderEmployees(profile) {
     } catch {}
   }
 
-  const state = { showAll: false, searchVisible: false, code: '', q: '', sortKey: 'id', sortDir: 'desc', page: 1, pageSize: 10 };
+  const state = { showAll: false, searchVisible: false, code: '', q: '', sortKey: 'hire_date', sortDir: 'asc', page: 1, pageSize: 10 };
   try {
     state.showAll = ((params.get('showAll') || '') === '1' || (params.get('showAll') || '').toLowerCase() === 'true');
     state.searchVisible = ((params.get('search') || '') === '1' || (params.get('search') || '').toLowerCase() === 'true');
@@ -1611,8 +1611,8 @@ async function renderEmployees(profile) {
       if (mode === 'delete' && state.showAll) p.set('showAll', '1');
       if (mode === 'delete' && state.searchVisible) p.set('search', '1');
       if (state.q) p.set('q', state.q);
-      if (state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
-      if (state.sortDir && state.sortDir !== 'desc') p.set('sortDir', state.sortDir);
+      if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+      if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
       if (state.page && state.page > 1) p.set('page', String(state.page));
       const qs = p.toString();
       history.replaceState(null, '', `/admin/employees${qs ? '?' + qs : ''}${hashValue || ''}`);
@@ -1865,9 +1865,22 @@ async function renderEmployees(profile) {
     const key = state.sortKey;
     const dir = state.sortDir === 'asc' ? 1 : -1;
     arr.sort((a,b) => {
-      const va = key === 'department' ? deptName(a.departmentId) : (key === 'hire_date' ? (a.hire_date||'') : (a[key]||''));
-      const vb = key === 'department' ? deptName(b.departmentId) : (key === 'hire_date' ? (b.hire_date||'') : (b[key]||''));
-      return (String(va).localeCompare(String(vb))) * dir;
+      const codeOf = (u) => String((u && (u.employee_code || fmtEmpNo(u.id))) || '').toUpperCase();
+      if (key === 'hire_date') {
+        const da = String((a && a.hire_date) || '');
+        const db = String((b && b.hire_date) || '');
+        if (da !== db) {
+          if (!da) return 1;
+          if (!db) return -1;
+          return da.localeCompare(db) * dir;
+        }
+        const codeCmp = codeOf(a).localeCompare(codeOf(b));
+        if (codeCmp !== 0) return codeCmp;
+        return Number(a?.id || 0) - Number(b?.id || 0);
+      }
+      const va = key === 'department' ? deptName(a.departmentId) : (key === 'id' ? codeOf(a) : (a[key]||''));
+      const vb = key === 'department' ? deptName(b.departmentId) : (key === 'id' ? codeOf(b) : (b[key]||''));
+      return String(va).localeCompare(String(vb)) * dir;
     });
     return arr;
   };

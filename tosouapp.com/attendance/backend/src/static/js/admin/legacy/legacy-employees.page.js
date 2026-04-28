@@ -1050,7 +1050,7 @@ async function mountEmployeesImpl({
     });
   }
 
-  const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', role: '', status: '', hireFrom: '', hireTo: '', sortKey: 'id', sortDir: 'desc', page: 1, pageSize: 10 };
+  const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', role: '', status: '', hireFrom: '', hireTo: '', sortKey: 'hire_date', sortDir: 'asc', page: 1, pageSize: 10 };
   try {
     state.showAll = ((params.get('showAll') || '') === '1' || (params.get('showAll') || '').toLowerCase() === 'true');
     state.searchVisible = ((params.get('search') || '') === '1' || (params.get('search') || '').toLowerCase() === 'true');
@@ -1250,9 +1250,22 @@ async function mountEmployeesImpl({
     const key = state.sortKey;
     const dir = state.sortDir === 'asc' ? 1 : -1;
     arr.sort((a, b) => {
-      const va = key === 'department' ? deptName(a.departmentId) : (key === 'hire_date' ? (a.hire_date || '') : (a[key] || ''));
-      const vb = key === 'department' ? deptName(b.departmentId) : (key === 'hire_date' ? (b.hire_date || '') : (b[key] || ''));
-      return (String(va).localeCompare(String(vb))) * dir;
+      const codeOf = (u) => String((u && (u.employee_code || fmtEmpNo(u.id))) || '').toUpperCase();
+      if (key === 'hire_date') {
+        const da = String((a && a.hire_date) || '');
+        const db = String((b && b.hire_date) || '');
+        if (da !== db) {
+          if (!da) return 1;
+          if (!db) return -1;
+          return da.localeCompare(db) * dir;
+        }
+        const codeCmp = codeOf(a).localeCompare(codeOf(b));
+        if (codeCmp !== 0) return codeCmp;
+        return Number(a?.id || 0) - Number(b?.id || 0);
+      }
+      const va = key === 'department' ? deptName(a.departmentId) : (key === 'id' ? codeOf(a) : (a[key] || ''));
+      const vb = key === 'department' ? deptName(b.departmentId) : (key === 'id' ? codeOf(b) : (b[key] || ''));
+      return String(va).localeCompare(String(vb)) * dir;
     });
     return arr;
   };
@@ -1389,8 +1402,8 @@ async function mountEmployeesImpl({
           if (state.status) p.set('status', state.status);
           if (state.hireFrom) p.set('hireFrom', state.hireFrom);
           if (state.hireTo) p.set('hireTo', state.hireTo);
-          if (state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
-          if (state.sortDir && state.sortDir !== 'desc') p.set('sortDir', state.sortDir);
+          if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+          if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
           if (state.page && state.page > 1) p.set('page', String(state.page));
           const s = p.toString();
           history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#delete');
@@ -1410,8 +1423,8 @@ async function mountEmployeesImpl({
           if (state.status) p.set('status', state.status);
           if (state.hireFrom) p.set('hireFrom', state.hireFrom);
           if (state.hireTo) p.set('hireTo', state.hireTo);
-          if (state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
-          if (state.sortDir && state.sortDir !== 'desc') p.set('sortDir', state.sortDir);
+          if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+          if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
           if (state.page && state.page > 1) p.set('page', String(state.page));
           p.set('showAll', '1');
           const s = p.toString();
@@ -1473,8 +1486,8 @@ async function mountEmployeesImpl({
       if (state.status) p.set('status', state.status);
       if (state.hireFrom) p.set('hireFrom', state.hireFrom);
       if (state.hireTo) p.set('hireTo', state.hireTo);
-      if (state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
-      if (state.sortDir && state.sortDir !== 'desc') p.set('sortDir', state.sortDir);
+      if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+      if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
       if (state.page && state.page > 1) p.set('page', String(state.page));
       const s = p.toString();
       history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
@@ -1552,8 +1565,8 @@ async function mountEmployeesImpl({
         if (state.status) p.set('status', state.status);
         if (state.hireFrom) p.set('hireFrom', state.hireFrom);
         if (state.hireTo) p.set('hireTo', state.hireTo);
-        if (state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
-        if (state.sortDir && state.sortDir !== 'desc') p.set('sortDir', state.sortDir);
+        if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+        if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
         if (state.page && state.page > 1) p.set('page', String(state.page));
         const s = p.toString();
         history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
@@ -1575,8 +1588,8 @@ async function mountEmployeesImpl({
         if (state.status) p.set('status', state.status);
         if (state.hireFrom) p.set('hireFrom', state.hireFrom);
         if (state.hireTo) p.set('hireTo', state.hireTo);
-        if (state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
-        if (state.sortDir && state.sortDir !== 'desc') p.set('sortDir', state.sortDir);
+        if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+        if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
         if (state.page && state.page > 1) p.set('page', String(state.page));
         const s = p.toString();
         history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
@@ -1631,8 +1644,8 @@ async function mountEmployeesImpl({
         if (sv) p.set('status', sv);
         if (hf) p.set('hireFrom', hf);
         if (ht) p.set('hireTo', ht);
-        if (state && state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
-        if (state && state.sortDir && state.sortDir !== 'desc') p.set('sortDir', state.sortDir);
+        if (state && state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+        if (state && state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
         if (state && state.page && state.page > 1) p.set('page', String(state.page));
         const s = p.toString();
         const url = href + (s ? '&' + s : '');
