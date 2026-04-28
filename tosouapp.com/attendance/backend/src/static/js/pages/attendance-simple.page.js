@@ -720,11 +720,13 @@ const applyPanelOpen = (toggleId, bodyId, open) => {
 };
 
 const getCalendarOff = async (date) => {
-  // 1. Kiểm tra ngày lễ Nhật Bản từ API (đã bao gồm các ngày nghỉ đặc biệt được cấu hình trong DB)
+  // Ưu tiên trạng thái nghỉ từ API vì đã áp dụng policy theo phòng ban (ví dụ: 工事部).
   const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
-  const isApiOff = Number(cal?.is_off || 0) === 1;
+  if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
+    return Number(cal?.is_off || 0) === 1;
+  }
 
-  // 2. Coi tất cả Thứ 7/Chủ nhật là nghỉ (theo yêu cầu công ty)
+  // Fallback an toàn khi API calendar tạm thời lỗi.
   const weekend = (() => {
     try {
       const [y, m, d] = date.split('-').map(x => parseInt(x, 10));
@@ -734,7 +736,7 @@ const getCalendarOff = async (date) => {
       return dow === 0 || dow === 6;
     } catch { return false; }
   })();
-  return isApiOff || weekend;
+  return weekend;
 };
 
 const shiftCache = new Map();

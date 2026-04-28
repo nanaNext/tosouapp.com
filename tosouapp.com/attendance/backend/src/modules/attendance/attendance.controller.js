@@ -578,14 +578,10 @@ async function assertMonthWritable(req, targetUserId, year, month) {
 
 const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
 
-async function isKoujiFullTimeUser(userId) {
+async function isKoujiUser(userId) {
   try {
     const u = await userRepo.getUserById(userId);
     if (!u) return false;
-    const tRaw = String(u?.employment_type || '').trim();
-    const t = tRaw.toLowerCase();
-    const fullTime = t === 'full_time' || tRaw.includes('正社員');
-    if (!fullTime) return false;
     const dept = u?.departmentId ? (await userRepo.getDepartmentById(u.departmentId)) : null;
     const deptName = String(dept?.name || '').trim();
     return deptName.includes('工事部');
@@ -622,7 +618,7 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
 async function getUserOffDaySet(year, userId) {
   const calendarRepo = require('../calendar/calendar.repository');
   const cal = await calendarRepo.computeYear(year).catch(() => null);
-  const useKoujiPolicy = await isKoujiFullTimeUser(userId);
+  const useKoujiPolicy = await isKoujiUser(userId);
   const off = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
   if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
     for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));

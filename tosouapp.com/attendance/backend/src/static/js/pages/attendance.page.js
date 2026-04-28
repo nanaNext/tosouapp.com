@@ -404,20 +404,27 @@ const renderAttendance = async () => {
   try {
     const date = todayJST();
     const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
-    const weekend = (() => {
-      try {
-        const y = parseInt(date.slice(0, 4), 10);
-        const m = parseInt(date.slice(5, 7), 10) - 1;
-        const d = parseInt(date.slice(8, 10), 10);
-        if (!y || m < 0 || d <= 0) return false;
-        const dt = new Date(Date.UTC(y, m, d, 0, 0, 0));
-        const dow = dt.getUTCDay();
-        return dow === 0 || dow === 6;
-      } catch {
-        return false;
-      }
-    })();
-    const isOff = Number(cal?.is_off || 0) === 1 || weekend;
+    let isOff;
+    if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
+      // API already applies department-specific rules (e.g. 工事部 Saturdays).
+      isOff = Number(cal?.is_off || 0) === 1;
+    } else {
+      // Safe fallback when calendar API is temporarily unavailable.
+      const weekend = (() => {
+        try {
+          const y = parseInt(date.slice(0, 4), 10);
+          const m = parseInt(date.slice(5, 7), 10) - 1;
+          const d = parseInt(date.slice(8, 10), 10);
+          if (!y || m < 0 || d <= 0) return false;
+          const dt = new Date(Date.UTC(y, m, d, 0, 0, 0));
+          const dow = dt.getUTCDay();
+          return dow === 0 || dow === 6;
+        } catch {
+          return false;
+        }
+      })();
+      isOff = weekend;
+    }
     const daily0 = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`).catch(() => null);
     const daily = daily0?.daily || null;
     const defaultKubun = isOff ? '休日' : '出勤';
