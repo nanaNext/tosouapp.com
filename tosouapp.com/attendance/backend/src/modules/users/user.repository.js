@@ -2,7 +2,7 @@ const db = require('../../core/database/mysql');
 
 module.exports = {
   async listUsers() {
-    const [rows] = await db.query(`SELECT * FROM users ORDER BY id DESC`);
+    const [rows] = await db.query(`SELECT * FROM users ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC`);
     return rows;
   },
   async listUsersPaged({ q = '', role = null, departmentId = null, employmentStatus = null, limit = 100, offset = 0 } = {}) {
@@ -29,7 +29,7 @@ module.exports = {
     }
     const wsql = where.length ? ('WHERE ' + where.join(' AND ')) : '';
     const [rows] = await db.query(
-      `SELECT * FROM users ${wsql} ORDER BY employee_code ASC, username ASC LIMIT ? OFFSET ?`,
+      `SELECT * FROM users ${wsql} ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC LIMIT ? OFFSET ?`,
       [...params, lim, off]
     );
     const [cntRows] = await db.query(
