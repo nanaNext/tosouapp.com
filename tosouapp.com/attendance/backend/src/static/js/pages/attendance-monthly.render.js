@@ -54,7 +54,8 @@
     const buildTr = (dateStr, isOff, shift, daily, seg, showDateDow) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
-      const offDay = !!isOff || dow === '日' || dow === '土';
+      // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
+      const offDay = !!isOff;
       
       const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
       const kubunInitRaw = String(daily?.kubun || '').trim();

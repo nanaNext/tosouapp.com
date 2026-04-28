@@ -10,14 +10,10 @@ const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process
 
 const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
 
-async function isKoujiFullTimeUser(userId) {
+async function isKoujiUser(userId) {
   try {
     const u = await userRepo.getUserById(userId);
     if (!u) return false;
-    const tRaw = String(u?.employment_type || '').trim();
-    const t = tRaw.toLowerCase();
-    const fullTime = t === 'full_time' || tRaw.includes('正社員');
-    if (!fullTime) return false;
     const dept = u?.departmentId ? (await userRepo.getDepartmentById(u.departmentId)) : null;
     const deptName = String(dept?.name || '').trim();
     return deptName.includes('工事部');
@@ -126,7 +122,7 @@ router.get('/calendar', authenticate, authorize('employee','manager','admin'), a
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
     const r = await calendarRepo.computeYear(year);
-    const useKoujiPolicy = await isKoujiFullTimeUser(req.user?.id);
+    const useKoujiPolicy = await isKoujiUser(req.user?.id);
     const detailBase = Array.isArray(r?.detail) ? r.detail : [];
     const { off } = buildOffSetFromCalendarDetail(detailBase, useKoujiPolicy);
     const detailPolicy = useKoujiPolicy
@@ -166,7 +162,7 @@ router.get('/calendar/day/:date', authenticate, authorize('employee','manager','
     if (!date) return res.status(400).json({ message: 'Missing date' });
     const year = parseInt(String(date).slice(0, 4), 10);
     const cal = await calendarRepo.computeYear(year);
-    const useKoujiPolicy = await isKoujiFullTimeUser(req.user?.id);
+    const useKoujiPolicy = await isKoujiUser(req.user?.id);
     const detail = Array.isArray(cal?.detail) ? cal.detail : [];
     const { off } = buildOffSetFromCalendarDetail(detail, useKoujiPolicy);
     const matched = detail.filter(it => String(it?.date || '').slice(0, 10) === date);
