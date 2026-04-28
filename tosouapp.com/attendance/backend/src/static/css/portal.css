@@ -1615,6 +1615,29 @@ body:not(.admin) .topbar-inner .user {
 .admin .card .type-pill.part { color: #0f766e; }
 .admin .card .type-pill.contract { color: #6b21a8; }
 
+.admin .card .type-pill {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.admin .card .type-pill.full {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+.admin .card .type-pill.part {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+.admin .card .type-pill.contract {
+  color: #4338ca;
+  background: #e0e7ff;
+  border-color: #a5b4fc;
+}
+
 .admin .card .status-pill.active { color: #1b7c3f; }
 .admin .card .status-pill.retired { color: #6b7280; }
 .admin .card .status-pill.inactive { color: #8a6d00; }

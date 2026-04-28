@@ -161,6 +161,10 @@ function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFla
   if (hash === '#summary') return 'summary';
   return 'list';
 }
+const isEmployeesPath = (pathname) => {
+  const p = String(pathname || '');
+  return p === '/admin/employees' || p === '/admin/employees/' || p.startsWith('/admin/employees/');
+};
 
 async function renderEmployees(profile) {
   clearTopbarNoResultState();
@@ -174,6 +178,7 @@ async function renderEmployees(profile) {
       }
       return;
     }
+    if (!isEmployeesPath(currentPath)) return;
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') showNavSpinner();
   } catch {}
@@ -222,6 +227,7 @@ async function renderEmployees(profile) {
       document.documentElement.classList.remove('emp-delete-mode');
     }
   } catch {}
+  try { content.innerHTML = ''; } catch {}
 
   if (mode === 'detail' && detailId) {
     const u = await getEmployee(detailId);
@@ -375,7 +381,7 @@ async function renderEmployees(profile) {
       if (box) box.innerHTML = `<span style="color:#b91c1c;">写真の読み込みに失敗しました</span>`;
     }
     try {
-      const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page'];
+      const listKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page'];
       const keep = new URLSearchParams();
       for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
       const qsKeep = keep.toString();
@@ -1070,7 +1076,7 @@ async function renderEmployees(profile) {
       </div>
     `;
     try {
-      const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
+      const listKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
       const keep = new URLSearchParams();
       for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
       const qsKeep = keep.toString();
@@ -1138,7 +1144,7 @@ async function renderEmployees(profile) {
           sessionStorage.setItem('empFlashMessage', msg);
         } catch {}
         try {
-          const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
+          const listKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
           const keep = new URLSearchParams();
           for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
           const qsKeep = keep.toString();
@@ -1256,7 +1262,7 @@ async function renderEmployees(profile) {
     formEdit.querySelector('#editBack').addEventListener('click', async (e) => {
       e.preventDefault();
       try {
-        const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
+        const listKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
         const keep = new URLSearchParams();
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
@@ -1267,7 +1273,7 @@ async function renderEmployees(profile) {
     formEdit.querySelector('#btnCancelEdit').addEventListener('click', async (e) => {
       e.preventDefault();
       try {
-        const listKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
+        const listKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
         const keep = new URLSearchParams();
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
@@ -1538,8 +1544,33 @@ async function renderEmployees(profile) {
         <input id="empSearchCode" class="fi-code" placeholder="EMP番号/コード">
       </div>
       <div class="fi">
-        <div class="fi-label">名前</div>
-        <input id="empSearchName" class="fi-name" placeholder="名前">
+        <div class="fi-label">キーワード</div>
+        <input id="empSearchKeyword" class="fi-name" placeholder="氏名・メール">
+      </div>
+      <div class="fi">
+        <div class="fi-label">部署</div>
+        <select id="empFilterDept" class="fi-dept">
+          <option value="">すべて</option>
+          ${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fi">
+        <div class="fi-label">雇用形態</div>
+        <select id="empFilterType" class="fi-role">
+          <option value="">すべて</option>
+          <option value="full_time">正社員</option>
+          <option value="contract">契約社員</option>
+          <option value="part_time">パート・アルバイト</option>
+        </select>
+      </div>
+      <div class="fi">
+        <div class="fi-label">状態</div>
+        <select id="empFilterStatus" class="fi-status">
+          <option value="">すべて</option>
+          <option value="active">在職</option>
+          <option value="inactive">無効/休職</option>
+          <option value="retired">退職</option>
+        </select>
       </div>
       <div class="fi fi-action">
         <button type="button" id="btnEmpSearch" class="btn">検索</button>
@@ -1594,12 +1625,16 @@ async function renderEmployees(profile) {
     } catch {}
   }
 
-  const state = { showAll: false, searchVisible: false, code: '', q: '', sortKey: 'hire_date', sortDir: 'asc', page: 1, pageSize: 10 };
+  const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', employmentType: '', status: '', sortKey: 'hire_date', sortDir: 'asc', page: 1, pageSize: 10 };
+  let noResultBackTimer = null;
   try {
     state.showAll = ((params.get('showAll') || '') === '1' || (params.get('showAll') || '').toLowerCase() === 'true');
     state.searchVisible = ((params.get('search') || '') === '1' || (params.get('search') || '').toLowerCase() === 'true');
     state.code = (params.get('code') || '').trim().toLowerCase();
     state.q = (params.get('q') || '').trim().toLowerCase();
+    state.dept = (params.get('dept') || '').trim();
+    state.employmentType = (params.get('employmentType') || params.get('type') || '').trim().toLowerCase();
+    state.status = (params.get('status') || '').trim().toLowerCase();
     state.sortKey = params.get('sortKey') || state.sortKey;
     state.sortDir = params.get('sortDir') || state.sortDir;
     state.page = parseInt(params.get('page') || String(state.page), 10) || state.page;
@@ -1611,6 +1646,9 @@ async function renderEmployees(profile) {
       if (mode === 'delete' && state.showAll) p.set('showAll', '1');
       if (mode === 'delete' && state.searchVisible) p.set('search', '1');
       if (state.q) p.set('q', state.q);
+      if (state.dept) p.set('dept', state.dept);
+      if (state.employmentType) p.set('employmentType', state.employmentType);
+      if (state.status) p.set('status', state.status);
       if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
       if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
       if (state.page && state.page > 1) p.set('page', String(state.page));
@@ -1847,11 +1885,23 @@ async function renderEmployees(profile) {
   const buildSearchSummaryJa = () => {
     const parts = [];
     if (state.code) parts.push(`社員番号:${state.code}`);
-    if (state.q) parts.push(`氏名:${state.q}`);
+    if (state.q) parts.push(`KW:${state.q}`);
+    if (state.dept) parts.push(`部署:${deptName(state.dept) || state.dept}`);
+    if (state.employmentType) parts.push(`雇用形態:${empTypeJa(state.employmentType) || state.employmentType}`);
+    if (state.status) parts.push(`状態:${statusJa(state.status) || state.status}`);
     return parts.join(' / ');
   };
   const applyFilterSort = () => {
     let arr = users.slice();
+    if (state.dept) {
+      arr = arr.filter(u => String(u.departmentId || '') === String(state.dept));
+    }
+    if (state.employmentType) {
+      arr = arr.filter(u => String(u.employment_type || '').toLowerCase() === state.employmentType);
+    }
+    if (state.status) {
+      arr = arr.filter(u => String(u.employment_status || '').toLowerCase() === state.status);
+    }
     if (state.code) {
       arr = arr.filter(u => {
         const raw = normalizeSearchText(u.employee_code);
@@ -1860,7 +1910,11 @@ async function renderEmployees(profile) {
       });
     }
     if (state.q) {
-      arr = arr.filter(u => normalizeSearchText(u.username) === state.q);
+      arr = arr.filter((u) => {
+        const name = normalizeSearchText(u.username);
+        const email = normalizeSearchText(u.email);
+        return name.includes(state.q) || email.includes(state.q);
+      });
     }
     const key = state.sortKey;
     const dir = state.sortDir === 'asc' ? 1 : -1;
@@ -1887,7 +1941,7 @@ async function renderEmployees(profile) {
   const renderRows = () => {
     const all = applyFilterSort();
     const total = all.length;
-    const hasSearch = !!(state.code || state.q);
+    const hasSearch = !!(state.code || state.q || state.dept || state.employmentType || state.status);
     syncTopbarSearchKeyword(state.q || state.code);
     const start = (state.page - 1) * state.pageSize;
     const pageItems = all.slice(start, start + state.pageSize);
@@ -1950,7 +2004,7 @@ async function renderEmployees(profile) {
             <div class="m-line"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}><span class="m-k">メール:</span> <span class="m-v">${dispOrUnreg(emailVal)}</span></div>
             <div class="m-line"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}><span class="m-k">部署:</span> <span class="m-v">${dispOrUnreg(deptVal)}</span></div>
             <div class="m-line"><span class="m-k">役割:</span> <span class="m-v">${roleJa(u.role)}</span></div>
-            <div class="m-line"><span class="m-k">雇用形態:</span> <span class="m-v">${empTypeJa(u.employment_type)}</span></div>
+            <div class="m-line"><span class="m-k">雇用形態:</span> <span class="m-v">${typePill(u.employment_type)}</span></div>
             <div class="m-line"><span class="m-k">状態:</span> <span class="m-v">${statusJa(u.employment_status)}</span></div>
             <div class="m-line"><span class="m-k">入社日:</span> <span class="m-v">${fmtDate(u.hire_date)}</span></div>
             <div class="m-actions">${mainOps}${dangerOps}</div>
@@ -2068,20 +2122,30 @@ async function renderEmployees(profile) {
 
   try {
     const codeEl = filterWrap.querySelector('#empSearchCode'); if (codeEl) codeEl.value = (params.get('code') || '');
-    const nameEl = filterWrap.querySelector('#empSearchName'); if (nameEl) nameEl.value = (params.get('q') || '');
+    const keywordEl = filterWrap.querySelector('#empSearchKeyword') || filterWrap.querySelector('#empSearchName');
+    if (keywordEl) keywordEl.value = (params.get('q') || '');
+    const deptEl = filterWrap.querySelector('#empFilterDept'); if (deptEl) deptEl.value = state.dept;
+    const typeEl = filterWrap.querySelector('#empFilterType'); if (typeEl) typeEl.value = state.employmentType;
+    const statusEl = filterWrap.querySelector('#empFilterStatus'); if (statusEl) statusEl.value = state.status;
     if (searchHint) {
-      const hasAny0 = !!((params.get('code') || '').trim() || (params.get('q') || '').trim());
+      const hasAny0 = !!((params.get('code') || '').trim() || (params.get('q') || '').trim() || state.dept || state.employmentType || state.status);
       searchHint.style.display = hasAny0 ? 'none' : 'none';
     }
   } catch {}
 
   filterWrap.querySelector('#btnEmpSearch').addEventListener('click', () => {
     const codeEl2 = filterWrap.querySelector('#empSearchCode');
-    const nameEl2 = filterWrap.querySelector('#empSearchName');
+    const keywordEl2 = filterWrap.querySelector('#empSearchKeyword') || filterWrap.querySelector('#empSearchName');
+    const deptEl2 = filterWrap.querySelector('#empFilterDept');
+    const typeEl2 = filterWrap.querySelector('#empFilterType');
+    const statusEl2 = filterWrap.querySelector('#empFilterStatus');
     state.code = String((codeEl2 && codeEl2.value != null) ? codeEl2.value : '').trim().toLowerCase();
-    state.q = String((nameEl2 && nameEl2.value != null) ? nameEl2.value : '').trim().toLowerCase();
+    state.q = String((keywordEl2 && keywordEl2.value != null) ? keywordEl2.value : '').trim().toLowerCase();
+    state.dept = String((deptEl2 && deptEl2.value != null) ? deptEl2.value : '').trim();
+    state.employmentType = String((typeEl2 && typeEl2.value != null) ? typeEl2.value : '').trim().toLowerCase();
+    state.status = String((statusEl2 && statusEl2.value != null) ? statusEl2.value : '').trim().toLowerCase();
     state.page = 1;
-    const hasAny = !!(state.code || state.q);
+    const hasAny = !!(state.code || state.q || state.dept || state.employmentType || state.status);
     if (!hasAny && !(mode === 'delete' && state.showAll)) {
       syncTopbarSearchKeyword('');
       clearTopbarNoResultState();
@@ -2121,6 +2185,32 @@ async function renderEmployees(profile) {
         const tb = filterWrap.querySelector('.emp-del-toolbar');
         if (tb) tb.style.display = '';
       } catch {}
+    }
+    if (mode !== 'delete' && hasAny) {
+      const matchedCount = applyFilterSort().length;
+      if (!matchedCount) {
+        renderRows();
+        updateUrl('#list');
+        try {
+          if (noResultBackTimer) clearTimeout(noResultBackTimer);
+        } catch {}
+        noResultBackTimer = setTimeout(() => {
+          state.code = '';
+          state.q = '';
+          state.dept = '';
+          state.employmentType = '';
+          state.status = '';
+          state.page = 1;
+          try { if (codeEl2) codeEl2.value = ''; } catch {}
+          try { if (keywordEl2) keywordEl2.value = ''; } catch {}
+          try { if (deptEl2) deptEl2.value = ''; } catch {}
+          try { if (typeEl2) typeEl2.value = ''; } catch {}
+          try { if (statusEl2) statusEl2.value = ''; } catch {}
+          renderRows();
+          updateUrl('#list');
+        }, 1500);
+        return;
+      }
     }
     renderRows();
     updateUrl(mode === 'delete' ? '#delete' : '#list');
@@ -2220,7 +2310,7 @@ async function renderEmployees(profile) {
       if (href.startsWith('/admin/employees?detail=') || href.startsWith('/admin/employees?edit=')) {
         e.preventDefault();
         const url = new URL(href, window.location.origin);
-        const keepKeys = ['q','dept','role','status','hireFrom','hireTo','sortKey','sortDir','page','code'];
+        const keepKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page','code'];
         for (const k of keepKeys) {
           const v = params.get(k);
           if (v && !url.searchParams.get(k)) url.searchParams.set(k, v);
@@ -2262,7 +2352,6 @@ async function renderEmployees(profile) {
   hideNavSpinner();
 }
 
-let mounted = false;
 let cachedProfile = null;
 
 export async function mount() {
@@ -2284,9 +2373,20 @@ export async function mount() {
 
   await renderEmployees(profile);
 
-  if (!mounted) {
-    mounted = true;
-    window.addEventListener('hashchange', () => { renderEmployees(profile); });
-    window.addEventListener('popstate', () => { renderEmployees(profile); });
-  }
+  const onRouteUpdate = () => {
+    try {
+      if (!isEmployeesPath(location.pathname)) return;
+      renderEmployees(profile);
+    } catch {}
+  };
+  window.addEventListener('hashchange', onRouteUpdate);
+  window.addEventListener('popstate', onRouteUpdate);
+  return () => {
+    try { window.removeEventListener('hashchange', onRouteUpdate); } catch {}
+    try { window.removeEventListener('popstate', onRouteUpdate); } catch {}
+    try {
+      document.body.classList.remove('emp-delete-mode');
+      document.documentElement.classList.remove('emp-delete-mode');
+    } catch {}
+  };
 }
