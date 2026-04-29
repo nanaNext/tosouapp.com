@@ -1625,7 +1625,7 @@ async function renderEmployees(profile) {
     } catch {}
   }
 
-  const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', employmentType: '', status: '', sortKey: 'hire_date', sortDir: 'asc', page: 1, pageSize: 10 };
+  const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', employmentType: '', status: '', sortKey: 'id', sortDir: 'asc', page: 1, pageSize: 10 };
   let noResultBackTimer = null;
   try {
     state.showAll = ((params.get('showAll') || '') === '1' || (params.get('showAll') || '').toLowerCase() === 'true');
@@ -1649,7 +1649,7 @@ async function renderEmployees(profile) {
       if (state.dept) p.set('dept', state.dept);
       if (state.employmentType) p.set('employmentType', state.employmentType);
       if (state.status) p.set('status', state.status);
-      if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
+      if (state.sortKey && state.sortKey !== 'id') p.set('sortKey', state.sortKey);
       if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
       if (state.page && state.page > 1) p.set('page', String(state.page));
       const qs = p.toString();
