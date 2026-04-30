@@ -154,17 +154,16 @@ exports.userProfileForMonthly = async (req, res) => {
     }
     if (!shift) {
       const refDate = targetDate || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-      const [rowsAssign] = await db.query(`
-        SELECT sd.id, sd.name, sd.start_time, sd.end_time, sd.break_minutes
-        FROM user_shift_assignments usa
-        JOIN shift_definitions sd ON sd.id = usa.shiftId
-        WHERE usa.userId = ?
-          AND (usa.start_date IS NULL OR usa.start_date <= ?)
-          AND (usa.end_date IS NULL OR usa.end_date >= ?)
-        ORDER BY usa.start_date DESC, usa.id DESC
-        LIMIT 1
-      `, [userId, refDate, refDate]);
-      if (rowsAssign && rowsAssign[0]) shift = rowsAssign[0];
+      // Use repository helper to stay compatible with legacy schemas
+      // (some environments may have `date` instead of `start_date`).
+      const assign = await repo.getActiveAssignment(userId, refDate).catch(() => null);
+      if (assign?.shiftId) {
+        const def = await repo.getShiftById(assign.shiftId).catch(() => null);
+        if (def) shift = def;
+      } else if (Object.prototype.hasOwnProperty.call(assign || {}, 'shift') && assign?.shift) {
+        const [defs] = await db.query(`SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions WHERE name = ? LIMIT 1`, [assign.shift]);
+        if (defs && defs[0]) shift = defs[0];
+      }
     }
     res.status(200).json({
       userId,
