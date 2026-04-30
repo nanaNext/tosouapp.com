@@ -949,6 +949,45 @@ module.exports = {
     try {
       await conn.beginTransaction();
       await conn.query(`SELECT id FROM users WHERE id = ? FOR UPDATE`, [userId]);
+      const dateStr = String(time).slice(0, 10);
+      const setUSA = await getUSAColumnSet();
+      const startCol = getUSAStartCol(setUSA);
+      const hasEnd = setUSA.has('end_date');
+      const whereEnd = hasEnd ? 'AND (a.end_date IS NULL OR a.end_date >= ?)' : '';
+      const orderCol = startCol;
+      const hasShiftName = setUSA.has('shift');
+      const hasShiftId = setUSA.has('shiftId');
+      const sqlAssign = hasShiftName
+        ? `
+        SELECT COALESCE(a.shiftId, d.id) AS sid, d.start_time AS shift_start, d.end_time AS shift_end
+        FROM user_shift_assignments a
+        LEFT JOIN shift_definitions d ON d.name = a.shift
+        WHERE a.userId = ? AND a.${startCol} <= ? ${whereEnd}
+        ORDER BY a.${orderCol} DESC
+        LIMIT 1
+      `
+        : (hasShiftId
+          ? `
+        SELECT a.shiftId AS sid, d.start_time AS shift_start, d.end_time AS shift_end
+        FROM user_shift_assignments a
+        LEFT JOIN shift_definitions d ON d.id = a.shiftId
+        WHERE a.userId = ? AND a.${startCol} <= ? ${whereEnd}
+        ORDER BY a.${orderCol} DESC
+        LIMIT 1
+      `
+          : `
+        SELECT NULL AS sid, NULL AS shift_start, NULL AS shift_end
+        FROM user_shift_assignments a
+        WHERE a.userId = ? AND a.${startCol} <= ? ${whereEnd}
+        ORDER BY a.${orderCol} DESC
+        LIMIT 1
+      `);
+      const paramsAssign = hasEnd ? [userId, dateStr, dateStr] : [userId, dateStr];
+      const [assignRows] = await conn.query(sqlAssign, paramsAssign);
+      const assignedShiftId = assignRows && assignRows[0] ? assignRows[0].sid : null;
+      const assignedShiftStart = String(assignRows?.[0]?.shift_start || '08:00').trim() || '08:00';
+      const assignedShiftEnd = String(assignRows?.[0]?.shift_end || '17:00').trim() || '17:00';
+
       // Simple stamp screen policy: only one check-in per day.
       const [openRows] = await conn.query(
         `SELECT id, checkIn, checkOut, work_type, labels
@@ -961,15 +1000,17 @@ module.exports = {
       if (openRows && openRows.length) {
         const existing = openRows[0];
         const hasOut = !!existing?.checkOut;
-        const hasSignals = !!String(existing?.work_type || '').trim() || !!String(existing?.labels || '').trim();
+        const inHm = String(existing?.checkIn || '').slice(11, 16);
+        const outHm = String(existing?.checkOut || '').slice(11, 16);
         const outStr = String(existing?.checkOut || '').slice(0, 19);
         const nowStr = String(time || '').slice(0, 19);
+        const looksPlannedShape = !!(inHm && inHm === assignedShiftStart && (!outHm || outHm === assignedShiftEnd));
         const canPromotePlanned = !!(
-          hasOut &&
-          !hasSignals &&
-          outStr &&
-          nowStr &&
-          outStr > nowStr
+          looksPlannedShape &&
+          (
+            !hasOut ||
+            (outStr && nowStr && outStr > nowStr)
+          )
         );
         if (canPromotePlanned) {
           const nextLabels = String(labels || '').trim() || null;
@@ -985,32 +1026,6 @@ module.exports = {
         await conn.rollback();
         return null;
       }
-      const dateStr = String(time).slice(0, 10);
-      const setUSA = await getUSAColumnSet();
-      const startCol = getUSAStartCol(setUSA);
-      const hasEnd = setUSA.has('end_date');
-      const whereEnd = hasEnd ? 'AND (a.end_date IS NULL OR a.end_date >= ?)' : '';
-      const orderCol = startCol;
-      const hasShiftName = setUSA.has('shift');
-      const sqlAssign = hasShiftName
-        ? `
-        SELECT COALESCE(a.shiftId, d.id) AS sid
-        FROM user_shift_assignments a
-        LEFT JOIN shift_definitions d ON d.name = a.shift
-        WHERE a.userId = ? AND a.${startCol} <= ? ${whereEnd}
-        ORDER BY a.${orderCol} DESC
-        LIMIT 1
-      `
-        : `
-        SELECT a.shiftId AS sid
-        FROM user_shift_assignments a
-        WHERE a.userId = ? AND a.${startCol} <= ? ${whereEnd}
-        ORDER BY a.${orderCol} DESC
-        LIMIT 1
-      `;
-      const paramsAssign = hasEnd ? [userId, dateStr, dateStr] : [userId, dateStr];
-      const [assignRows] = await conn.query(sqlAssign, paramsAssign);
-      const assignedShiftId = assignRows && assignRows[0] ? assignRows[0].sid : null;
       const set = await getAttendanceColumnSet();
       const cols = ['userId', 'checkIn'];
       const vals = [userId, time];
