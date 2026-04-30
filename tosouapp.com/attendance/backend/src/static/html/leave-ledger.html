@@ -74,15 +74,6 @@
       box-shadow: 0 2px 6px rgba(15, 23, 42, .15);
     }
     #ledgerExplainTable.se-summary tr > :first-child { border-left: 1px solid #e5e7eb; }
-    body.nav-js .kintai-dd { display: none !important; }
-    body.nav-js .kintai-nav .kintai-nav-dd.open > .kintai-dd { display: block !important; }
-    body.nav-js .kintai-nav-dd:focus-within .kintai-dd { display: none !important; }
-    .kintai-nav-dd:hover .kintai-dd { display: none !important; }
-    /* Strong page-specific override to avoid stacking */
-    .ledger-page .kintai-nav-dd .kintai-dd { display: none !important; }
-    .ledger-page .kintai-nav-dd.open > .kintai-dd { display: block !important; }
-    .ledger-page .kintai-nav-dd:hover .kintai-dd { display: none !important; }
-    .ledger-page .kintai-nav-dd:focus-within .kintai-dd { display: none !important; }
     /* mobile responsive */
     @media (max-width: 900px) {
       .kintai-main { padding: 6px; }
@@ -105,9 +96,8 @@
       #ledgerExplainTable.se-summary tbody td { font-size: 12px; padding: 5px 6px; }
       #ledgerExplainTable.se-summary tbody td:first-child { width: 180px; }
       .metrics-table thead th { top: 44px; }
-      /* Topbar like monthly: compact logo, keep only logout */
+      /* Topbar like monthly: compact logo */
       .kintai-logo { font-size: 16px !important; line-height: 44px; height: 44px; }
-      .kintai-top-links .kintai-top-link:not(.logout-link) { display: none !important; }
       .kintai-top-links { gap: 8px; justify-content: flex-end; }
       /* Place selector inside screen on mobile: move below title and limit width */
       .se-section-head { flex-direction: column; align-items: flex-start; gap: 6px; }

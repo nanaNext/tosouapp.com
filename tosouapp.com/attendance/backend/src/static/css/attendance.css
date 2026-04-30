@@ -880,16 +880,18 @@ body.nav-js .kintai-nav-dd.open .kintai-dd {
 
   .kintai-top-links {
     gap: 8px;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .kintai-top-link {
-    font-size: 12px;
-    padding: 4px 6px;
+    font-size: 11px;
+    padding: 3px 5px;
+    white-space: nowrap;
   }
 
-  .kintai-top-links .kintai-top-link:not(.logout-link) {
-    display: none;
-  }
+  .kintai-top-links .kintai-top-link:not(.logout-link) { display: inline-flex; }
 
   .kintai-user-btn {
     width: 40px;
