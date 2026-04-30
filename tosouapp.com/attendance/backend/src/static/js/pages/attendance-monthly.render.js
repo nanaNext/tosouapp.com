@@ -488,7 +488,7 @@
         const roleStr = String(root.State?.profile?.role || '').toLowerCase();
         const isAdminView = roleStr === 'admin' || roleStr === 'manager';
         const monthApproved = String(state.currentMonthStatus || '') === 'approved';
-        const isRegularOffRowNow = !!isOff && !hasActualNow && (effectiveKubun === '休日' || effectiveKubun === '代替休日');
+        const isRegularOffRowNow = !!offDay && !hasActualNow && (effectiveKubun === '休日' || effectiveKubun === '代替休日');
         const leaveKubunSetNow = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
         const isLeaveAppliedNow = !!cls && leaveKubunSetNow.has(cls) && !hasActualNow && !isRegularOffRowNow;
         let stText = '未承認';
