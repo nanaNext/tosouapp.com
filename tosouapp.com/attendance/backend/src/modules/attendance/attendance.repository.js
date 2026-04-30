@@ -950,8 +950,38 @@ module.exports = {
       await conn.beginTransaction();
       await conn.query(`SELECT id FROM users WHERE id = ? FOR UPDATE`, [userId]);
       // Simple stamp screen policy: only one check-in per day.
-      const [openRows] = await conn.query(`SELECT id FROM attendance WHERE userId = ? AND checkIn >= CURDATE() AND checkIn < DATE_ADD(CURDATE(), INTERVAL 1 DAY) LIMIT 1`, [userId]);
+      const [openRows] = await conn.query(
+        `SELECT id, checkIn, checkOut, work_type, labels
+         FROM attendance
+         WHERE userId = ? AND checkIn >= CURDATE() AND checkIn < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+         ORDER BY checkIn DESC
+         LIMIT 1`,
+        [userId]
+      );
       if (openRows && openRows.length) {
+        const existing = openRows[0];
+        const hasOut = !!existing?.checkOut;
+        const hasSignals = !!String(existing?.work_type || '').trim() || !!String(existing?.labels || '').trim();
+        const outStr = String(existing?.checkOut || '').slice(0, 19);
+        const nowStr = String(time || '').slice(0, 19);
+        const canPromotePlanned = !!(
+          hasOut &&
+          !hasSignals &&
+          outStr &&
+          nowStr &&
+          outStr > nowStr
+        );
+        if (canPromotePlanned) {
+          const nextLabels = String(labels || '').trim() || null;
+          await conn.query(
+            `UPDATE attendance
+             SET checkIn = ?, checkOut = NULL, work_type = COALESCE(?, work_type), labels = COALESCE(?, labels)
+             WHERE id = ? AND userId = ?`,
+            [time, workType || null, nextLabels, existing.id, userId]
+          );
+          await conn.commit();
+          return existing.id;
+        }
         await conn.rollback();
         return null;
       }
