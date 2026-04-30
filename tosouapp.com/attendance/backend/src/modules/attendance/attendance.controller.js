@@ -136,7 +136,9 @@ exports.userProfileForMonthly = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     const dept = user?.departmentId ? (await userRepo.getDepartmentById(user.departmentId)) : null;
     const db = require('../../core/database/mysql');
-    await require('./attendance.repository').ensureWorkDetailsSchema();
+    try {
+      await require('./attendance.repository').ensureWorkDetailsSchemaPublic();
+    } catch {}
     const [workRows] = await db.query(`
       SELECT id, start_date, end_date, company_name, work_place_address, work_content, role_title, responsibility_level
       FROM user_work_details
