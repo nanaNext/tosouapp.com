@@ -522,7 +522,8 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
     const hasGhostPlanned = !!st.plannedStampAttendanceId;
     const hasStarted = (!hasGhostPlanned) && (!!st.hasStartedToday || !!String(inHm || '').trim());
     const hasEnded = !!st.hasEndedToday || !!String(outHm || '').trim();
-    const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
+    // Keep compact labels in sync with mobile CSS breakpoints to avoid button text overflow.
+    const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
 
     // For non-today dates, keep labels neutral to avoid confusing "started at 08:00"
     // from planned/legacy data while stamping is intentionally disabled.
@@ -1225,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const btnOut = $('#btnEndStamp');
           if (btnIn) {
             btnIn.disabled = true;
-            const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
+            const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
             btnIn.textContent = isMobile ? `開始済 (${hm})` : `開始打刻済 (${hm})`;
           }
           if (btnOut) { btnOut.disabled = false; }
