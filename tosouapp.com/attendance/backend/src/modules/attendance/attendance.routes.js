@@ -48,11 +48,15 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
 }
 
 router.post('/checkin',
-  rateLimitNamed('attendance_checkin', { windowMs: 60_000, max: 3 }),
-  authenticate, authorize('employee','manager','admin'), controller.checkIn);
+  authenticate,
+  authorize('employee','manager','admin'),
+  rateLimitNamed('attendance_checkin', { windowMs: 60_000, max: 3, keyBy: 'user_or_ip' }),
+  controller.checkIn);
 router.post('/checkout',
-  rateLimitNamed('attendance_checkout', { windowMs: 60_000, max: 3 }),
-  authenticate, authorize('employee','manager','admin'), controller.checkOut);
+  authenticate,
+  authorize('employee','manager','admin'),
+  rateLimitNamed('attendance_checkout', { windowMs: 60_000, max: 3, keyBy: 'user_or_ip' }),
+  controller.checkOut);
 router.post('/worktype', authenticate, authorize('employee','manager','admin'), controller.setWorkType);
 router.get('/timesheet', authenticate, authorize('employee','manager','admin'), controller.timesheet);
 router.post('/gps',
