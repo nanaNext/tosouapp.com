@@ -1024,6 +1024,47 @@ const tryCheckIn = async () => {
   }
 };
 
+const tryReplaceShiftLikeSegmentWithNow = async (date) => {
+  try {
+    const d = String(date || '').slice(0, 10);
+    if (!isISODate(d)) return false;
+    const day = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(d)}`).catch(() => null);
+    const segments = Array.isArray(day?.segments) ? day.segments : [];
+    if (!segments.length) return false;
+
+    const shiftStart = String(window.state?.shiftStart || FIXED_START).trim();
+    const shiftEnd = String(window.state?.shiftEnd || FIXED_END).trim();
+    const isShiftLike = (seg) => {
+      try {
+        const inHm = String(seg?.checkIn || '').slice(11, 16);
+        const outHm = seg?.checkOut ? String(seg.checkOut).slice(11, 16) : '';
+        if (!inHm || !shiftStart || inHm !== shiftStart) return false;
+        // Planned/fallback row shape: same start as shift and no end or shift end.
+        return !outHm || !shiftEnd || outHm === shiftEnd;
+      } catch {
+        return false;
+      }
+    };
+
+    let target = null;
+    for (const s of segments) {
+      if (!isShiftLike(s)) continue;
+      if (!target || String(s?.checkIn || '') > String(target?.checkIn || '')) target = s;
+    }
+    if (!target?.id) return false;
+
+    const cinNow = toMySQLDateTime(d, nowHmJST());
+    if (!cinNow) return false;
+    await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(d)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ attendanceId: target.id, checkIn: cinNow, checkOut: null })
+    });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const tryCheckOut = async () => {
   try {
     await fetchJSONAuth('/api/attendance/checkout', { method: 'POST', body: JSON.stringify({}) });
@@ -1214,6 +1255,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         r = { ok: true, already: false, replacedPlannedOpen: true };
       } else {
         r = await tryCheckIn();
+        if (r?.already) {
+          const replaced = await tryReplaceShiftLikeSegmentWithNow(state.date);
+          if (replaced) r = { ok: true, already: false, replacedShiftLike: true };
+        }
       }
       if (!r?.already) {
         try {
@@ -1234,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       await load(state.date);
       if (r?.already) showToast('既に出勤済みです', 'error');
+      else if (r?.replacedShiftLike) showToast('開始打刻を反映しました');
     } catch (e) {
       showErr(e?.message || '開始打刻に失敗しました');
     } finally {
