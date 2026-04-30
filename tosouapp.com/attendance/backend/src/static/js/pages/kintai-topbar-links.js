@@ -211,6 +211,8 @@
             <button class="drawer-group-btn" type="button" data-group="common">共通機能 <span class="drawer-chev" aria-hidden="true">›</span></button>
             <div class="drawer-group-list" data-group-panel="common" hidden>
               <a href="/ui/admin?tab=settings">パスワード変更画面</a>
+              <a href="/ui/manual">操作マニュアル</a>
+              <a href="/ui/faq">よくある質問</a>
             </div>
           </div>
         </div>

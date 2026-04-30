@@ -715,8 +715,21 @@ body {
   .simple-actuals-right { display: none; }
   .simple-row { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
   .simple-time { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
-  .simple-grid2 { grid-template-columns: repeat(4, minmax(96px, 1fr)); gap: 6px; }
+  .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
   .simple-grid2 .simple-time { display: contents; }
+  .simple-grid2 .simple-label {
+    font-size: 15px;
+    padding: 6px 8px;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+  .simple-grid2 .simple-select {
+    font-size: 15px;
+    padding: 8px 22px 8px 8px;
+    height: 44px !important;
+    min-height: 44px !important;
+    min-width: 0;
+  }
   .simple-grid2 .simple-select { text-align: left; padding: 8px 24px 8px 8px; font-size: 15px; }
   /* Hàng thời gian + nút: chiều ngang gọn, chiều dọc rõ ràng và đồng đều */
   .simple-stamp-row { grid-template-columns: minmax(90px, 104px) minmax(104px, 120px) 1fr; gap: 6px; align-items: stretch; }
@@ -859,8 +872,63 @@ body {
   }
 }
 
+/* Galaxy Fold folded-width tuning: apply only to very narrow Android-like widths */
+@media (min-width: 341px) and (max-width: 360px) {
+  .simple-top { height: 44px; padding: 0 8px; }
+  .simple-nav-btn { width: 32px; height: 32px; font-size: 20px; }
+  .simple-date { font-size: 19px; }
+  .simple-sub { font-size: 12px; gap: 4px; }
+  .simple-panel-head { padding: 7px 8px; gap: 8px; }
+  .simple-panel-title { font-size: 15px; }
+  .simple-head-right { font-size: 15px; }
+  .simple-panel-body { padding: 8px; }
+  .simple-actuals-left { padding: 8px; }
+  .simple-form { gap: 8px; }
+  .simple-row,
+  .simple-time { grid-template-columns: minmax(104px, 116px) minmax(0, 1fr); gap: 8px; }
+  .simple-label { font-size: 15px; padding: 8px 8px; }
+  .simple-select,
+  .simple-input,
+  .simple-number,
+  .simple-stamp-time { font-size: 15px; }
+  .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+  .simple-grid2 .simple-time { display: contents; }
+  .simple-grid2 .simple-label {
+    font-size: 14px;
+    padding: 6px 6px;
+    justify-content: flex-start;
+  }
+  .simple-grid2 .simple-select {
+    font-size: 14px;
+    padding: 8px 22px 8px 8px;
+    min-height: 40px !important;
+    height: 40px !important;
+  }
+  .simple-stamp-row {
+    grid-template-columns: minmax(84px, 96px) minmax(96px, 108px) minmax(108px, 1fr);
+    gap: 6px;
+  }
+  .simple-stamp-btn {
+    grid-column: auto;
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+    font-size: 12px;
+    padding: 8px 6px;
+  }
+  .simple-stamp-time {
+    max-width: none;
+    justify-self: stretch;
+  }
+  .simple-bottom { gap: 8px; padding: 8px; }
+  .simple-monthly-link,
+  .simple-bottom .simple-btn { height: 42px; font-size: 14px; padding: 8px 10px; }
+  .simple-monthly-link { gap: 6px; }
+  .simple-icon-pc { width: 26px; height: 18px; }
+}
+
 /* Fallback cho màn hình rất hẹp: xếp dọc để luôn hiển thị đủ chữ */
-@media (max-width: 380px) {
+@media (max-width: 330px) {
   .simple-row,
   .simple-time { grid-template-columns: 1fr; }
   .simple-row label,
