@@ -45,6 +45,8 @@
   };
 
   const capture = (ctx, ym) => {
+    const ms = String(state?.currentMonthStatus || '').trim().toLowerCase();
+    if (ms === 'approved' || ms === 'submitted') return false;
     const host = ctx?.tableHost;
     if (!host) return false;
     const key = ymKey(ctx, ym);
@@ -129,6 +131,11 @@
 
   const restore = (ctx, ym) => {
     const key = ymKey(ctx, ym);
+    const ms = String(state?.currentMonthStatus || '').trim().toLowerCase();
+    if (ms === 'approved' || ms === 'submitted') {
+      try { localStorage.removeItem(key); } catch {}
+      return { ok: false, restored: 0 };
+    }
     const raw = (() => { try { return localStorage.getItem(key); } catch { return null; } })();
     const data = safeJSONParse(raw);
     if (Number(data?.version || 0) !== 2) return { ok: false, restored: 0 };
