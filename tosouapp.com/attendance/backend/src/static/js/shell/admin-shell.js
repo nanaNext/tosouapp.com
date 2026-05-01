@@ -529,6 +529,24 @@ export function wireMobileDrawer() {
       } catch {}
     }, { capture: true, passive: false });
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
+    drawer.addEventListener('click', (e) => {
+      const link = e.target?.closest?.('a[href]');
+      if (!link) return;
+      const href = String(link.getAttribute('href') || '').trim();
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      const isMobile = (() => {
+        try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
+      })();
+      if (!isMobile) return;
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+      let to = null;
+      try { to = new URL(href, window.location.href); } catch { to = null; }
+      if (!to) return;
+      if (to.pathname === window.location.pathname && to.search === window.location.search && to.hash === window.location.hash) return;
+      window.location.href = to.pathname + to.search + to.hash;
+    });
     // UX requirement: right dark area is non-interactive; close only via X button.
     backdrop.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });

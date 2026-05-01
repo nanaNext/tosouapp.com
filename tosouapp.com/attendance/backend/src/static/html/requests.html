@@ -5,8 +5,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>申請</title>
-  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260415-perf1">
-  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260415-perf1">
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260501-flickerfix1">
+  <link rel="preload" href="/static/images/use.png" as="image">
   <style>
     .req-page {
       max-width: 1200px;
@@ -26,8 +27,9 @@
       width: 32px;
       height: 32px;
       border-radius: 8px;
-      background: #b85b82;
-      color: #fff;
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -48,7 +50,7 @@
 
     .req-title .main {
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 600;
       color: #111827;
       letter-spacing: .02em;
       display: inline-block;
@@ -62,17 +64,18 @@
     }
 
     .pin {
-      border: 1px solid #cfe0f5;
+      border: 1px solid #cbd5e1;
       background: #fff;
-      color: #0b2c66;
+      color: #111827;
       border-radius: 8px;
       padding: 6px 8px;
       cursor: pointer;
+      box-shadow: none;
     }
 
     .pin[aria-pressed="true"] {
-      background: #0b2c66;
-      color: #fff;
+      background: #f3f4f6;
+      color: #111827;
     }
 
     .req-toolbar {
@@ -85,6 +88,13 @@
     .req-table {
       width: 100%;
       border-collapse: collapse;
+    }
+
+    .req-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
     }
 
     .req-table th {
@@ -108,7 +118,7 @@
       border-radius: 10px;
       background: #fff;
       color: #64748b;
-      font-weight: 700;
+      font-weight: 500;
       text-align: center;
     }
 
@@ -119,18 +129,19 @@
     .req-search input {
       width: 100%;
       padding: 8px 12px;
-      border: 2px solid #cbd5e1;
+      border: 1px solid #cbd5e1;
       border-radius: 10px;
-      box-shadow: 0 1px 0 rgba(0, 0, 0, .05);
+      box-shadow: none;
     }
 
     .req-new {
       padding: 8px 12px;
-      border: 1px solid #0b2c66;
-      background: #0b2c66;
-      color: #fff;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #111827;
       border-radius: 8px;
       cursor: pointer;
+      font-weight: 500;
     }
 
     .req-tools {
@@ -151,11 +162,11 @@
       height: 36px;
       border: 2px solid #cbd5e1;
       background: #fff;
-      color: #0b2c66;
+      color: #111827;
       border-radius: 10px;
       cursor: pointer;
-      font-weight: 800;
-      box-shadow: 0 1px 0 rgba(0, 0, 0, .05);
+      font-weight: 500;
+      box-shadow: none;
     }
 
     .btn-tool:hover {
@@ -222,7 +233,7 @@
       padding: 10px 14px;
       cursor: pointer;
       color: #0b2c66;
-      font-weight: 800;
+      font-weight: 500;
       font-size: 14px;
     }
 
@@ -295,7 +306,7 @@
     }
 
     .req-list-btn {
-      border: 1px solid #d1d5db;
+      border: 1px solid #cbd5e1;
       background: #fff;
       color: #111827;
       border-radius: 8px;
@@ -317,6 +328,33 @@
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
+    }
+
+    .req-menu-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px 2px;
+    }
+
+    .req-menu-top .section {
+      padding: 0;
+      margin: 0;
+    }
+
+    .req-menu-close {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #0b2c66;
+      border-radius: 8px;
+      height: 26px;
+      min-width: 48px;
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1;
     }
 
     .req-list-menu {
@@ -494,7 +532,7 @@
       }
 
       .req-title .main {
-        font-size: 14px;
+        font-size: 12px;
       }
 
       .pin {
@@ -505,7 +543,7 @@
 
       .req-toolbar {
         gap: 6px;
-        padding: 2px 0 0;
+        padding: 1px 0 0;
         flex-wrap: wrap;
         align-items: flex-start;
       }
@@ -549,7 +587,8 @@
         max-height: calc(100vh - var(--topbar-height) - 90px);
         overflow-y: auto;
         overflow-x: hidden;
-        border-radius: 10px;
+        border-radius: 8px;
+        border-width: 1px;
       }
 
       #newListMenu .items {
@@ -558,29 +597,48 @@
       }
 
       #newListMenu .section {
-        font-size: 13px;
-        padding: 8px 10px 4px;
+        font-size: 11px;
+        padding: 6px 8px 3px;
+      }
+
+      .req-menu-top {
+        padding: 6px 8px 2px;
+      }
+
+      .req-menu-close {
+        height: 24px;
+        min-width: 44px;
+        padding: 0 6px;
+        font-size: 10px;
+        border-radius: 6px;
       }
 
       #newListMenu .head input {
-        height: 30px;
-        font-size: 12px;
-        padding: 4px 8px;
+        height: 26px;
+        font-size: 10px;
+        padding: 3px 6px;
       }
 
       #newListMenu .req-quick {
-        padding: 8px;
-        gap: 6px;
+        padding: 6px;
+        gap: 4px;
       }
 
       #newListMenu .req-quick select {
-        font-size: 13px;
-        height: 36px;
-        padding: 6px 8px;
+        font-size: 11px;
+        height: 28px;
+        padding: 3px 6px;
+      }
+
+      #newListMenu .req-quick .actions .req-new {
+        min-height: 26px;
+        height: 26px;
+        padding: 0 6px;
+        font-size: 10px;
       }
 
       #newListMenu .req-list-item {
-        padding: 6px 10px;
+        padding: 4px 8px;
       }
 
       #newListMenu.req-list-menu .head,
@@ -601,23 +659,52 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: normal;
-        line-height: 1.25;
-        font-size: 13px;
+        line-height: 1.15;
+        font-size: 11px;
       }
 
       .req-new {
-        padding: 8px 12px;
-        border-radius: 7px;
-        font-size: 13px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        font-size: 11px;
         font-weight: 800;
-        min-height: 36px;
+        min-height: 30px;
       }
 
       .btn-tool {
-        width: 30px;
-        height: 30px;
-        border-radius: 7px;
-        font-size: 12px;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        font-size: 10px;
+      }
+
+      .req-settings-menu {
+        min-width: 170px;
+        width: min(180px, calc(100vw - 16px));
+        max-width: calc(100vw - 16px);
+        border-width: 1px;
+        border-radius: 8px;
+        padding: 4px 0;
+        position: fixed;
+        top: calc(var(--topbar-height) + 72px);
+        right: 8px;
+        left: auto;
+        box-sizing: border-box;
+        margin-top: 0;
+        z-index: 3900;
+        max-height: calc(100vh - var(--topbar-height) - 88px);
+        overflow-y: auto;
+      }
+
+      .req-set-item {
+        font-size: 11px;
+        padding: 7px 10px;
+        line-height: 1.2;
+      }
+
+      .req-tools .tool-wrap {
+        position: relative;
+        width: auto;
       }
 
       .req-search input {
@@ -627,12 +714,17 @@
       }
 
       .req-table {
-        font-size: 11px;
+        font-size: 10px;
+        width: 100%;
+        min-width: 620px;
+        table-layout: auto;
       }
 
       .req-table th,
       .req-table td {
-        padding: 5px;
+        padding: 4px 5px;
+        line-height: 1.2;
+        white-space: nowrap;
       }
 
       .req-card {
@@ -654,7 +746,8 @@
         margin: 0;
         padding: 0 4px;
         box-sizing: border-box;
-        overflow-x: hidden;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
 
       #newListMenu.req-list-menu {
@@ -679,7 +772,7 @@
       }
 
       .req-title .main {
-        font-size: 12px;
+        font-size: 11px;
       }
 
       .pin {
@@ -693,9 +786,9 @@
       }
 
       .req-new {
-        padding: 5px 8px;
+        padding: 4px 6px;
         border-radius: 6px;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 800;
       }
 
@@ -715,15 +808,14 @@
       }
 
       .req-table {
-        font-size: 10px;
-        table-layout: auto;
+        font-size: 9px;
         width: 100%;
-        min-width: 620px;
+        min-width: 560px;
       }
 
       .req-table th,
       .req-table td {
-        padding: 4px;
+        padding: 3px 4px;
         white-space: nowrap;
       }
 
@@ -739,6 +831,20 @@
     }
 
     @media (max-width: 480px) {
+      .req-ico,
+      .pin {
+        display: none !important;
+      }
+
+      .req-head {
+        gap: 0;
+        margin: 2px 0 6px;
+      }
+
+      .req-title {
+        width: 100%;
+      }
+
       .req-title {
         gap: 4px;
       }
@@ -750,10 +856,30 @@
       #listMenu {
         display: none !important;
       }
+
+      /* Mobile: show all columns and allow horizontal scroll */
+      .req-table {
+        min-width: 980px !important;
+        width: 980px !important;
+        table-layout: auto !important;
+        font-size: 10px !important;
+      }
+
+      .req-table th,
+      .req-table td {
+        padding: 4px 5px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .req-page {
+        overflow-x: hidden !important;
+      }
     }
   </style>
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
-  <script type="module" src="/static/js/pages/portal.page.js"></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260501-shellnav1"></script>
   <script type="module" src="/static/js/pages/requests.page.js"></script>
 </head>
 
@@ -777,7 +903,7 @@
       <div class="user">
         <div class="user-menu">
           <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/use.png" alt="user" class="user-icon">
+            <img src="/static/images/use.png" alt="user" class="user-icon" width="38" height="38" decoding="sync" fetchpriority="high">
             <span id="userName"></span>
             <span class="caret">▾</span>
           </button>
@@ -829,21 +955,35 @@
         <div class="req-new-wrap">
           <button id="btnNew" class="req-new" aria-expanded="false" aria-controls="newListMenu">新規</button>
           <div id="newListMenu" class="req-list-menu" hidden>
-            <div class="section">新規作成</div>
+            <div class="req-menu-top">
+              <div class="section">新規作成</div>
+              <button id="btnNewListClose" class="req-menu-close" type="button">閉じる</button>
+            </div>
             <div class="req-quick">
               <select id="quickType">
-                <option value="01_月次コミュニケーションシート">月次コミュニケーションシート</option>
-                <option value="95_退職届">退職届</option>
-                <option value="休暇申請">休暇申請</option>
-                <option value="残業申請">残業申請</option>
+                <option value="01_私の月次コミュニケーションシート">01_私の月次コミュニケーションシート</option>
+                <option value="02_私の着任報告書">02_私の着任報告書</option>
+                <option value="03_私のファイル提出">03_私のファイル提出</option>
+                <option value="04_私の各種証明書発行依頼">04_私の各種証明書発行依頼</option>
+                <option value="05_私の給与振込口座変更">05_私の給与振込口座変更</option>
+                <option value="06_私のキャリア自己申告">06_私のキャリア自己申告</option>
+                <option value="07_私の住所・連絡先・通勤手当等の申請">07_私の住所・連絡先・通勤手当等の申請</option>
+                <option value="08_私の氏名変更">08_私の氏名変更</option>
+                <option value="09_私の資格取得・通信教育／eラーニング・企業内表彰・特許申請 報告">09_私の資格取得・通信教育／eラーニング・企業内表彰・特許申請 報告</option>
+                <option value="10_私の各種奨励金・補助金申請">10_私の各種奨励金・補助金申請</option>
+                <option value="11_私のスキルアップ">11_私のスキルアップ</option>
+                <option value="12_私の資格取得チャレンジキャンペーン申請">12_私の資格取得チャレンジキャンペーン申請</option>
+                <option value="13_私の目標設定シート">13_私の目標設定シート</option>
+                <option value="14_私のWill-Can-Mustシート">14_私のWill-Can-Mustシート</option>
+                <option value="15_私の着任報告書">15_私の着任報告書</option>
+                <option value="16_私の待機計画書">16_私の待機計画書</option>
+                <option value="17_私の待機報告書">17_私の待機報告書</option>
+                <option value="18_私の入社時申請">18_私の入社時申請</option>
               </select>
               <div class="actions">
                 <button id="quickCreateBtn" class="req-new" type="button">作成</button>
               </div>
             </div>
-            <div class="head"><input id="newListFilter" type="search" placeholder="リストを検索…"></div>
-            <div class="section">その他のすべてのリスト</div>
-            <div id="newListAll" class="items"></div>
           </div>
         </div>
         <div class="req-search"><input id="searchInput" type="search" placeholder="このリストを検索…"></div>
@@ -867,20 +1007,22 @@
           <button class="btn-tool" id="toolClock" title="履歴">⏱</button>
         </div>
       </div>
-      <table id="reqTable" class="req-table" aria-label="申請一覧">
-        <thead>
-          <tr>
-            <th style="width:140px;">申請番号</th>
-            <th style="width:120px;">ステータス</th>
-            <th style="width:220px;">レコードタイプ</th>
-            <th>申請詳細</th>
-            <th style="width:160px;">スタッフ名</th>
-            <th style="width:160px;">申請者所属オフィス</th>
-            <th style="width:44px;"></th>
-          </tr>
-        </thead>
-        <tbody id="reqBody"></tbody>
-      </table>
+      <div class="req-table-wrap">
+        <table id="reqTable" class="req-table" aria-label="申請一覧">
+          <thead>
+            <tr>
+              <th style="width:140px;">申請番号</th>
+              <th style="width:120px;">ステータス</th>
+              <th style="width:220px;">レコードタイプ</th>
+              <th>申請詳細</th>
+              <th style="width:160px;">スタッフ名</th>
+              <th style="width:160px;">申請者所属オフィス</th>
+              <th style="width:44px;"></th>
+            </tr>
+          </thead>
+          <tbody id="reqBody"></tbody>
+        </table>
+      </div>
       <div id="reqEmpty" class="req-empty" hidden>データがありません</div>
     </div>
   </main>
@@ -890,10 +1032,24 @@
       <div class="req-form-row">
         <label>レコードタイプ</label>
         <select id="recordType">
-          <option value="01_月次コミュニケーションシート">月次コミュニケーションシート</option>
-          <option value="95_退職届">退職届</option>
-          <option value="休暇申請">休暇申請</option>
-          <option value="残業申請">残業申請</option>
+          <option value="01_私の月次コミュニケーションシート">01_私の月次コミュニケーションシート</option>
+          <option value="02_私の着任報告書">02_私の着任報告書</option>
+          <option value="03_私のファイル提出">03_私のファイル提出</option>
+          <option value="04_私の各種証明書発行依頼">04_私の各種証明書発行依頼</option>
+          <option value="05_私の給与振込口座変更">05_私の給与振込口座変更</option>
+          <option value="06_私のキャリア自己申告">06_私のキャリア自己申告</option>
+          <option value="07_私の住所・連絡先・通勤手当等の申請">07_私の住所・連絡先・通勤手当等の申請</option>
+          <option value="08_私の氏名変更">08_私の氏名変更</option>
+          <option value="09_私の資格取得・通信教育／eラーニング・企業内表彰・特許申請 報告">09_私の資格取得・通信教育／eラーニング・企業内表彰・特許申請 報告</option>
+          <option value="10_私の各種奨励金・補助金申請">10_私の各種奨励金・補助金申請</option>
+          <option value="11_私のスキルアップ">11_私のスキルアップ</option>
+          <option value="12_私の資格取得チャレンジキャンペーン申請">12_私の資格取得チャレンジキャンペーン申請</option>
+          <option value="13_私の目標設定シート">13_私の目標設定シート</option>
+          <option value="14_私のWill-Can-Mustシート">14_私のWill-Can-Mustシート</option>
+          <option value="15_私の着任報告書">15_私の着任報告書</option>
+          <option value="16_私の待機計画書">16_私の待機計画書</option>
+          <option value="17_私の待機報告書">17_私の待機報告書</option>
+          <option value="18_私の入社時申請">18_私の入社時申請</option>
         </select>
       </div>
       <div class="req-form-row">

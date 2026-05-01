@@ -32,8 +32,22 @@ const render = async () => {
   const globalStatus = document.getElementById('status');
   if (globalStatus) { globalStatus.textContent = ''; globalStatus.style.display = 'none'; }
   host.className = 'card';
+  host.style.maxWidth = 'none';
+  host.style.width = '100%';
+  host.style.marginLeft = '0';
+  host.style.marginRight = '0';
   host.innerHTML = `
     <div class="exp-admin-page">
+      <style>
+        .admin .exp-admin-page { max-width: none !important; width: 100% !important; margin: 0 !important; }
+        .admin .exp-admin-table-host { width: 100% !important; }
+        .admin .exp-admin-table-wrap { width: 100% !important; }
+        .exp-admin-page .exp-admin-table.clean-view th,
+        .exp-admin-page .exp-admin-table.clean-view td { padding: 10px 12px; font-size: 13px; vertical-align: top; }
+        .exp-admin-page .exp-admin-table.clean-view tbody tr:hover { background: #f8fafc; }
+        .exp-admin-page .route-col { max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .exp-admin-page .status-sub { color: #64748b; font-size: 12px; margin-top: 4px; }
+      </style>
       <h3 class="exp-admin-title">交通費計算管理</h3>
       <div class="exp-admin-filters">
         <label for="expMonth" class="exp-admin-label">対象月</label>
@@ -42,7 +56,14 @@ const render = async () => {
           <option value="">全員</option>
         </select>
         <button id="expReload" class="btn exp-admin-reload" type="button">再読込</button>
+        <button id="expToggleHistory" class="btn" type="button" style="height:30px;padding:0 10px;">履歴</button>
+        <button id="expToggleDetails" class="btn" type="button">明細表示</button>
+        <button id="expMonthlyClose" class="btn" type="button">月次締め</button>
+        <button id="expMonthlyRecalc" class="btn" type="button">再計算</button>
       </div>
+      <div id="expMonthlyStatus" class="exp-admin-status"></div>
+      <div id="expMonthlySummaryHost" class="exp-admin-table-host"></div>
+      <div id="expMonthlyHistoryHost" class="exp-admin-table-host"></div>
       <div id="chatNotice" class="exp-admin-chat">
         <div class="exp-admin-chat-title">チャット通知</div>
         <div id="chatList" class="exp-admin-chat-list"></div>
@@ -53,69 +74,198 @@ const render = async () => {
   `;
   const m = $('#expMonth');
   if (m) m.value = todayMonth();
+  const viewState = { page: 1, pageSize: 10, showDetails: false, showHistory: false };
+  const renderMonthlySummary = (summary) => {
+    const host2 = $('#expMonthlySummaryHost');
+    if (!host2) return;
+    const totals = Array.isArray(summary?.totals) ? summary.totals : [];
+    const closures = Array.isArray(summary?.closures) ? summary.closures : [];
+    const closureMap = new Map(closures.map((c) => [String(c.user_id), c]));
+    if (!totals.length) {
+      host2.innerHTML = '<div class="empty-state"><div style="font-size:22px;">📊</div><div>承認済みデータがありません</div></div>';
+      return;
+    }
+    const rowsHtml = totals.map((r) => {
+      const key = String(r.user_id || '');
+      const c = closureMap.get(key) || null;
+      const total = Number(r.total_amount || 0).toLocaleString('ja-JP');
+      const count = Number(r.approved_count || 0);
+      const closedAt = c?.closed_at ? fmtDT(c.closed_at) : '';
+      const closedBy = c?.closed_by_name || '';
+      return `<tr>
+        <td>${r.user_name || ''}</td>
+        <td style="text-align:right;">${count}</td>
+        <td style="text-align:right;">${total}</td>
+        <td>${closedAt ? `${summary?.month || ''} 締め: ${closedAt}${closedBy ? `（${closedBy}）` : ''}` : '-'}</td>
+      </tr>`;
+    }).join('');
+    host2.innerHTML = `
+      <div class="exp-admin-table-wrap">
+        <table class="exp-admin-table">
+          <thead><tr><th>社員</th><th>承認件数</th><th>月次合計(円)</th><th>締め情報</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  };
+  const renderMonthlyHistory = (rows) => {
+    const host2 = $('#expMonthlyHistoryHost');
+    if (!host2) return;
+    if (!viewState.showHistory) {
+      host2.innerHTML = '';
+      return;
+    }
+    const historyRows = Array.isArray(rows) ? rows : [];
+    if (!historyRows.length) {
+      host2.innerHTML = `
+        <div style="margin-top:10px;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;background:#fff;">
+          <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">月次履歴（直近）</div>
+          <div style="color:#64748b;font-size:13px;">履歴データはありません</div>
+        </div>
+      `;
+      return;
+    }
+    const rowsHtml = historyRows.map((r) => {
+      const month = String(r.month || '');
+      const users = Number(r.closed_users || 0).toLocaleString('ja-JP');
+      const count = Number(r.approved_count || 0).toLocaleString('ja-JP');
+      const total = Number(r.total_amount || 0).toLocaleString('ja-JP');
+      const closed = r.last_closed_at ? fmtDT(r.last_closed_at) : '-';
+      return `<tr>
+        <td>${month}</td>
+        <td style="text-align:right;">${users}</td>
+        <td style="text-align:right;">${count}</td>
+        <td style="text-align:right;">${total}</td>
+        <td>${closed}</td>
+      </tr>`;
+    }).join('');
+    host2.innerHTML = `
+      <div style="margin-top:10px;">
+        <div style="font-weight:700;color:#0f172a;margin:0 0 6px 2px;">月次履歴（直近12ヶ月）</div>
+        <div class="exp-admin-table-wrap">
+          <table class="exp-admin-table">
+            <thead><tr><th>月</th><th>社員数</th><th>承認件数</th><th>月次合計(円)</th><th>最終締め</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  };
+  const renderChatNotice = (chats, tableHost) => {
+    const chatWrap = $('#chatNotice');
+    const chatList = $('#chatList');
+    if (!chatWrap || !chatList) return;
+    const items = Array.isArray(chats) ? chats : [];
+    if (!items.length) {
+      chatWrap.style.display = 'none';
+      chatList.innerHTML = '';
+      return;
+    }
+    chatWrap.style.display = '';
+    chatList.innerHTML = items.slice(0, 10).map((c) => {
+      const sender = c.sender_name || '';
+      const emp = c.employee_name || '';
+      const dt = fmtDT(c.created_at);
+      const route = [c.origin || '', c.via || '', c.destination || ''].filter(Boolean).join('→');
+      const purpose = c.purpose || '';
+      return `<div data-exp-id="${String(c.expense_id)}" style="display:flex;gap:8px;align-items:center;">
+        <span style="color:#334155;font-size:12px;">${dt}</span>
+        <span style="color:#1f2937;font-weight:700;">${sender}</span>
+        <span style="color:#64748b;">→</span>
+        <span style="color:#1f2937;">${emp}</span>
+        <span style="color:#334155;flex:1;">${route} ${purpose ? ('／目的: ' + purpose) : ''}</span>
+        <button class="btn" data-action="open-chat" style="height:28px;">表示</button>
+      </div>`;
+    }).join('');
+    chatList.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-action="open-chat"]');
+      if (!b) return;
+      const wrap = b.closest('div[data-exp-id]');
+      const expId = wrap ? wrap.getAttribute('data-exp-id') : '';
+      if (!expId) return;
+      const tbody = tableHost.querySelector('tbody');
+      const rowEl = tbody ? tbody.querySelector(`tr[data-id="${CSS.escape(String(expId))}"]`) : null;
+      if (!rowEl) return;
+      rowEl.querySelector('button[data-action="chat"]')?.click();
+    }, { once: true });
+  };
   const reload = async () => {
     const month = $('#expMonth') ? $('#expMonth').value : todayMonth();
+    const currentUserFilter = $('#expUserFilter') ? ($('#expUserFilter').value || '') : '';
     const status = $('#expStatus');
     const tableHost = $('#expTableHost');
     if (tableHost) tableHost.innerHTML = '';
     if (status) status.textContent = '読み込み中…';
     showSpinner();
     try {
-      const [rowsRes, usersRes, chatsRes] = await Promise.allSettled([
+      const [rowsRes, usersRes, chatsRes, monthlyRes, historyRes] = await Promise.allSettled([
         fetchJSONAuth(`/api/expenses/admin/list?month=${encodeURIComponent(month)}`),
         fetchJSONAuth('/api/admin/users'),
-        fetchJSONAuth(`/api/expenses/admin/messages?month=${encodeURIComponent(month)}`)
+        fetchJSONAuth(`/api/expenses/admin/messages?month=${encodeURIComponent(month)}`),
+        fetchJSONAuth(`/api/expenses/admin/monthly-summary?month=${encodeURIComponent(month)}${currentUserFilter ? `&userId=${encodeURIComponent(currentUserFilter)}` : ''}`),
+        fetchJSONAuth(`/api/expenses/admin/monthly-history?limit=12${currentUserFilter ? `&userId=${encodeURIComponent(currentUserFilter)}` : ''}`)
       ]);
       const rows = rowsRes.status === 'fulfilled' && Array.isArray(rowsRes.value) ? rowsRes.value : [];
       const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
       const chats = chatsRes.status === 'fulfilled' && Array.isArray(chatsRes.value) ? chatsRes.value : [];
+      const monthlyRaw = monthlyRes.status === 'fulfilled' ? monthlyRes.value : { totals: [], closures: [] };
+      const monthly = (() => {
+        const closures0 = Array.isArray(monthlyRaw?.closures) ? monthlyRaw.closures : [];
+        const isMonthMatch = (x) => String(x?.month || '').slice(0, 7) === month;
+        const closures = closures0.filter(isMonthMatch);
+        if (!currentUserFilter) return { totals: [], closures };
+        const byUser = (x) => String(x?.user_id ?? x?.userId ?? '') === String(currentUserFilter);
+        return { totals: [], closures: closures.filter(byUser) };
+      })();
+      const history = historyRes.status === 'fulfilled' && Array.isArray(historyRes.value) ? historyRes.value : [];
       const nameMap = new Map(users.map(u => [String(u.id), u.username || u.email || '']));
       const uf = $('#expUserFilter');
       if (uf && !uf.dataset.bound) {
         uf.dataset.bound = '1';
         uf.innerHTML = '<option value="">全員</option>' + users.map(u => `<option value="${String(u.id)}">${u.username || u.email || String(u.id)}</option>`).join('');
-        uf.addEventListener('change', reload);
+        uf.addEventListener('change', async () => {
+          viewState.page = 1;
+          await reload();
+        });
       }
       const selUser = uf ? (uf.value || '') : '';
       const filteredRows = selUser ? rows.filter(r => String(r.userId) === String(selUser)) : rows;
-      const chatList = $('#chatList');
-      if (chatList) {
-        chatList.innerHTML = chats.length
-          ? chats.slice(0, 10).map(c => {
-              const sender = c.sender_name || '';
-              const emp = c.employee_name || '';
-              const dt = fmtDT(c.created_at);
-              const route = [c.origin || '', c.via || '', c.destination || ''].filter(Boolean).join('→');
-              const purpose = c.purpose || '';
-              return `<div data-exp-id="${String(c.expense_id)}" style="display:flex;gap:8px;align-items:center;">
-                <span style="color:#334155;font-size:12px;">${dt}</span>
-                <span style="color:#1f2937;font-weight:700;">${sender}</span>
-                <span style="color:#64748b;">→</span>
-                <span style="color:#1f2937;">${emp}</span>
-                <span style="color:#334155;flex:1;">${route} ${purpose ? ('／目的: ' + purpose) : ''}</span>
-                <button class="btn" data-action="open-chat" style="height:28px;">表示</button>
-              </div>`;
-            }).join('')
-          : '<div style="color:#64748b;">通知なし</div>';
-        chatList.addEventListener('click', (e) => {
-          const b = e.target.closest('button[data-action="open-chat"]');
-          if (!b) return;
-          const wrap = b.closest('div[data-exp-id]');
-          const expId = wrap ? wrap.getAttribute('data-exp-id') : '';
-          if (!expId) return;
-          const tbody = tableHost.querySelector('tbody');
-          const rowEl = tbody ? tbody.querySelector(`tr[data-id="${CSS.escape(String(expId))}"]`) : null;
-          if (!rowEl) return;
-          const fakeBtn = document.createElement('button');
-          fakeBtn.setAttribute('data-action','chat');
-          rowEl.dispatchEvent(new CustomEvent('click', { bubbles: true, detail: { proxyButton: true }, composed: true }));
-        });
+      const approvedRows = filteredRows.filter((r) => String(r.status || '').toLowerCase() === 'approved');
+      const totalsMap = new Map();
+      approvedRows.forEach((r) => {
+        const uid = String(r.userId || '');
+        if (!uid) return;
+        const prev = totalsMap.get(uid) || { user_id: uid, user_name: nameMap.get(uid) || uid, month, approved_count: 0, total_amount: 0 };
+        prev.approved_count += 1;
+        prev.total_amount += Number(r.amount || 0);
+        totalsMap.set(uid, prev);
+      });
+      const computedTotals = Array.from(totalsMap.values()).sort((a, b) => String(a.user_name || '').localeCompare(String(b.user_name || '')));
+      renderMonthlySummary({ month, totals: computedTotals, closures: monthly.closures });
+      renderMonthlyHistory(history);
+      const toggleDetailsBtn = $('#expToggleDetails');
+      if (toggleDetailsBtn) {
+        toggleDetailsBtn.textContent = viewState.showDetails ? '明細非表示' : '明細表示';
       }
+      renderChatNotice(chats, tableHost);
       if (!filteredRows.length) {
         if (tableHost) tableHost.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>データはありません</div></div>';
       } else {
-        const thead = '<thead><tr><th>ユーザー</th><th>日付</th><th>種別</th><th>出発</th><th>到着</th><th>金額</th><th>状態</th><th>領収書</th><th>操作</th></tr></thead>';
-        const rowsHtml = filteredRows.map(r => {
+        if (!viewState.showDetails) {
+          if (tableHost) {
+            tableHost.innerHTML = `<div class="empty-state"><div style="font-size:24px;">📁</div><div>明細は非表示です。「明細表示」を押すと一覧を表示します。</div></div>`;
+          }
+          if (status) status.textContent = '';
+          hideSpinner();
+          return;
+        }
+        const totalRows = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / viewState.pageSize));
+        viewState.page = Math.min(Math.max(1, viewState.page), totalPages);
+        const startIdx = (viewState.page - 1) * viewState.pageSize;
+        const pageRows = filteredRows.slice(startIdx, startIdx + viewState.pageSize);
+        const thead = '<thead><tr><th>ユーザー</th><th>日付</th><th>経路</th><th>金額</th><th>状態</th><th>操作</th></tr></thead>';
+        const rowsHtml = pageRows.map(r => {
           const d = String(r.date || '').slice(0, 10);
           const a = Number(r.amount || 0).toLocaleString('ja-JP');
           const user = nameMap.get(String(r.userId)) || String(r.userId || '');
@@ -123,45 +273,82 @@ const render = async () => {
           const id = String(r.id || '');
           const applied = r.applied_at ? fmtDT(r.applied_at) : '';
           const approved = r.approved_at ? fmtDT(r.approved_at) : '';
-          const timeHtml =
-            st === 'applied' ? (applied ? `<div style="color:#6b7280;font-size:12px;">申請: ${applied}</div>` : '') :
-            st === 'approved' ? (approved ? `<div style="color:#6b7280;font-size:12px;">承認: ${approved}</div>` : '') :
-            st === 'rejected' ? (approved ? `<div style="color:#6b7280;font-size:12px;">却下: ${approved}</div>` : '') : '';
+          const timeText =
+            st === 'applied' ? (applied ? `申請: ${applied}` : '') :
+            st === 'approved' ? (approved ? `承認: ${approved}` : '') :
+            st === 'rejected' ? (approved ? `却下: ${approved}` : '') : '';
           const approver = r.approver_id ? (nameMap.get(String(r.approver_id)) || '') : '';
-          const whoHtml = approver ? `<div style="color:#6b7280;font-size:12px;">担当: ${approver}</div>` : '';
-          const empNote = r.employee_note ? `<div style="color:#334155;font-size:12px;">社員理由: ${String(r.employee_note)}</div>` : '';
+          const statusMeta = [timeText, approver ? `担当: ${approver}` : ''].filter(Boolean).join(' / ');
           const ru = r.receipt_url ? String(r.receipt_url) : (r.first_file_path ? String(r.first_file_path) : '');
           const ruAttr = ru ? ` data-url="${ru}"` : '';
           const count = Number(r.file_count || 0);
-          const ruInline = ru ? `<a href="${ru.startsWith('/')?ru:'/'+ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;">表示${count>1?`(${count}件)`:''}</a>` : (count>0 ? `<button class="btn" data-action="files" type="button" style="height:24px;">表示(${count}件)</button>` : '<span style="color:#64748b;font-size:12px;">なし</span>');
+          const routeText = [r.origin || '', r.via || '', r.destination || ''].filter(Boolean).join(' → ');
+          const receiptAction = (ru || count > 0)
+            ? `<button class="btn" data-action="files"${ruAttr} type="button" style="height:28px;">領収書${count > 1 ? `(${count})` : ''}</button>`
+            : `<button class="btn" data-action="files" type="button" style="height:28px;" disabled>領収書なし</button>`;
           return `
             <tr data-id="${id}">
               <td>${user}</td>
               <td>${d}</td>
-              <td>${r.type || ''}</td>
-              <td>${r.origin || ''}</td>
-              <td>${r.destination || ''}</td>
+              <td class="route-col">${routeText || '-'}</td>
               <td style="text-align:right;">${a}</td>
-              <td><span class="dash-pill">${st}</span>${timeHtml}${whoHtml}${empNote}</td>
-              <td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><img src="/static/images/paperclip.png" alt=""></button>${ruInline}</td>
+              <td><span class="dash-pill">${st}</span>${statusMeta ? `<div class="status-sub">${statusMeta}</div>` : ''}</td>
               <td>
-                <button class="btn" data-action="edit" style="height:28px;">編集</button>
-                <button class="btn" data-action="approve" style="height:28px;">承認</button>
-                <button class="btn" data-action="reject" style="height:28px;">却下</button>
-                <button class="btn" data-action="delete" style="height:28px;">削除</button>
-                <button class="btn" data-action="chat" style="height:28px;">チャット</button>
+                <details style="position:relative;">
+                  <summary class="btn" style="height:28px;list-style:none;cursor:pointer;">⋯</summary>
+                  <div style="position:absolute;right:0;top:32px;z-index:20;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 10px 20px rgba(0,0,0,.12);padding:6px;display:grid;gap:6px;min-width:116px;">
+                    <button class="btn" data-action="edit" style="height:28px;">編集</button>
+                    <button class="btn" data-action="approve" style="height:28px;">承認</button>
+                    <button class="btn" data-action="reject" style="height:28px;">却下</button>
+                    ${receiptAction}
+                    <button class="btn" data-action="delete" style="height:28px;">削除</button>
+                    <button class="btn" data-action="chat" style="height:28px;">チャット</button>
+                  </div>
+                </details>
               </td>
             </tr>`;
         }).join('');
+        const pager = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0 10px;">
+            <div style="color:#64748b;font-size:12px;">${startIdx + 1}-${Math.min(startIdx + viewState.pageSize, totalRows)} / ${totalRows} 件</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label style="font-size:12px;color:#334155;">表示件数
+                <select id="expPageSize" style="margin-left:4px;height:28px;">
+                  <option value="10" ${viewState.pageSize === 10 ? 'selected' : ''}>10</option>
+                  <option value="20" ${viewState.pageSize === 20 ? 'selected' : ''}>20</option>
+                  <option value="50" ${viewState.pageSize === 50 ? 'selected' : ''}>50</option>
+                </select>
+              </label>
+              <button class="btn exp-page-btn" data-page="${Math.max(1, viewState.page - 1)}" ${viewState.page <= 1 ? 'disabled' : ''} style="height:28px;">前</button>
+              <span style="font-size:12px;color:#334155;">${viewState.page} / ${totalPages}</span>
+              <button class="btn exp-page-btn" data-page="${Math.min(totalPages, viewState.page + 1)}" ${viewState.page >= totalPages ? 'disabled' : ''} style="height:28px;">次</button>
+            </div>
+          </div>
+        `;
         const tbl = `
+          ${pager}
           <div class="exp-admin-table-wrap">
-            <table class="exp-admin-table">
+            <table class="exp-admin-table clean-view">
               ${thead}
               <tbody>${rowsHtml}</tbody>
             </table>
           </div>
         `;
         tableHost.innerHTML = tbl;
+        tableHost.querySelectorAll('.exp-page-btn').forEach((b) => {
+          b.addEventListener('click', async () => {
+            const next = parseInt(String(b.getAttribute('data-page') || '1'), 10);
+            viewState.page = Number.isFinite(next) && next > 0 ? next : 1;
+            await reload();
+          });
+        });
+        const pageSizeSel = tableHost.querySelector('#expPageSize');
+        pageSizeSel?.addEventListener('change', async () => {
+          const n = parseInt(String(pageSizeSel.value || '10'), 10);
+          viewState.pageSize = [10, 20, 50].includes(n) ? n : 10;
+          viewState.page = 1;
+          await reload();
+        });
         const tbody = tableHost.querySelector('tbody');
         if (tbody && !tbody.dataset.bound) {
           tbody.dataset.bound = '1';
@@ -178,7 +365,9 @@ const render = async () => {
               }
             }
             const btn = e.target.closest('button[data-action]');
-            if (!btn) return;
+            if (!btn) {
+              return;
+            }
             const rowEl3 = btn.closest('tr[data-id]');
             const id = rowEl3 ? rowEl3.getAttribute('data-id') : '';
             if (!id) return;
@@ -351,7 +540,7 @@ const render = async () => {
                   : '<li>ファイルなし</li>';
                 const expand = document.createElement('tr');
                 expand.className = 'files-row';
-                expand.innerHTML = `<td colspan="9"><ul style="list-style:none;padding:0;margin:6px 0;display:flex;gap:8px;flex-wrap:wrap;">${filesHtml}</ul></td>`;
+                expand.innerHTML = `<td colspan="6"><ul style="list-style:none;padding:0;margin:6px 0;display:flex;gap:8px;flex-wrap:wrap;">${filesHtml}</ul></td>`;
                 rowEl3.after(expand);
               } else if (action === 'delete') {
                 const ok = window.confirm('削除しますか？');
@@ -369,7 +558,7 @@ const render = async () => {
               }
               const chat = document.createElement('tr');
               chat.className = 'chat-row';
-              chat.innerHTML = `<td colspan="9">
+              chat.innerHTML = `<td colspan="6">
                 <div class="chat-box" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;">
                   <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">やり取り</div>
                   <div class="chat-reason" style="margin-bottom:8px;color:#7f1d1d;font-weight:700;"></div>
@@ -438,32 +627,65 @@ const render = async () => {
   };
   const btn = $('#expReload');
   if (btn) btn.addEventListener('click', reload);
+  const monthInput = $('#expMonth');
+  monthInput?.addEventListener('change', async () => {
+    viewState.page = 1;
+    await reload();
+  });
+  const toggleDetailsBtn = $('#expToggleDetails');
+  toggleDetailsBtn?.addEventListener('click', async () => {
+    viewState.showDetails = !viewState.showDetails;
+    viewState.page = 1;
+    await reload();
+  });
+  const toggleHistoryBtn = $('#expToggleHistory');
+  toggleHistoryBtn?.addEventListener('click', async () => {
+    viewState.showHistory = !viewState.showHistory;
+    toggleHistoryBtn.textContent = viewState.showHistory ? '履歴閉じる' : '履歴';
+    await reload();
+  });
+  const closeBtn = $('#expMonthlyClose');
+  const recalcBtn = $('#expMonthlyRecalc');
+  const monthlyStatus = $('#expMonthlyStatus');
+  const runMonthlyClose = async (forceRecalc) => {
+    const month = $('#expMonth') ? $('#expMonth').value : todayMonth();
+    const selectedUser = $('#expUserFilter') ? ($('#expUserFilter').value || '') : '';
+    const actionLabel = forceRecalc ? '再計算' : '月次締め';
+    const scopeLabel = selectedUser ? '選択中の社員' : '全社員';
+    const ok = window.confirm(`${month} の交通費を${scopeLabel}対象で${actionLabel}しますか？`);
+    if (!ok) return;
+    if (monthlyStatus) {
+      monthlyStatus.style.display = 'block';
+      monthlyStatus.style.color = '#334155';
+      monthlyStatus.textContent = `${actionLabel} 実行中...`;
+    }
+    try {
+      const r = await fetchJSONAuth('/api/expenses/admin/monthly-close', {
+        method: 'POST',
+        body: JSON.stringify({ month, forceRecalc: !!forceRecalc, userId: selectedUser || null })
+      });
+      const n = Number(r?.result?.affectedUsers || 0);
+      if (monthlyStatus) {
+        monthlyStatus.style.color = '#166534';
+        monthlyStatus.textContent = `${actionLabel} 完了: ${n}名`;
+      }
+      await reload();
+    } catch (e) {
+      if (monthlyStatus) {
+        monthlyStatus.style.color = '#b00020';
+        monthlyStatus.textContent = `${actionLabel} 失敗: ${String(e?.message || 'unknown')}`;
+      }
+    }
+  };
+  closeBtn?.addEventListener('click', async () => { await runMonthlyClose(false); });
+  recalcBtn?.addEventListener('click', async () => { await runMonthlyClose(true); });
   await reload();
   try {
     pollTimer = window.setInterval(async () => {
       try {
         const month = $('#expMonth') ? $('#expMonth').value : todayMonth();
         const chats = await fetchJSONAuth(`/api/expenses/admin/messages?month=${encodeURIComponent(month)}`);
-        const chatList = $('#chatList');
-        if (chatList) {
-          chatList.innerHTML = Array.isArray(chats) && chats.length
-            ? chats.slice(0, 10).map(c => {
-                const sender = c.sender_name || '';
-                const emp = c.employee_name || '';
-                const dt = fmtDT(c.created_at);
-                const route = [c.origin || '', c.via || '', c.destination || ''].filter(Boolean).join('→');
-                const purpose = c.purpose || '';
-                return `<div data-exp-id="${String(c.expense_id)}" style="display:flex;gap:8px;align-items:center;">
-                  <span style="color:#334155;font-size:12px;">${dt}</span>
-                  <span style="color:#1f2937;font-weight:700;">${sender}</span>
-                  <span style="color:#64748b;">→</span>
-                  <span style="color:#1f2937;">${emp}</span>
-                  <span style="color:#334155;flex:1;">${route} ${purpose ? ('／目的: ' + purpose) : ''}</span>
-                  <button class="btn" data-action="open-chat" style="height:28px;">表示</button>
-                </div>`;
-              }).join('')
-            : '<div style="color:#64748b;">通知なし</div>';
-        }
+        renderChatNotice(chats, $('#expTableHost'));
       } catch {}
     }, 30000);
   } catch {}

@@ -97,6 +97,7 @@ function bindUI() {
   const newListMenu = $('#newListMenu');
   const newListAll = $('#newListAll');
   const newListFilter = $('#newListFilter');
+  const btnNewListClose = $('#btnNewListClose');
   const quickType = $('#quickType');
   const quickDetail = $('#quickDetail');
   const quickOffice = $('#quickOffice');
@@ -173,6 +174,13 @@ function bindUI() {
         closeNewList();
       }
     });
+    if (btnNewListClose) {
+      btnNewListClose.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeNewList();
+      });
+    }
   }
   if (btnCancel && modal) btnCancel.addEventListener('click', () => { modal.hidden = true; });
   if (btnCreate) {
@@ -218,24 +226,23 @@ function bindUI() {
   let appliedItems = [];
   const allRaw = [
     '01_私の月次コミュニケーションシート',
-    '02_私のファイル提出',
-    '03_私の各種証明書発行依頼',
-    '04_私の給与振込口座変更',
-    '05_私のキャリア自己申告',
-    '06_私の住所・連絡先・通勤手当等の申請',
-    '07_私の氏名変更',
-    '08_私の資格取得・通信教育／eラーニング・企業内表彰・特許申請 報告',
-    '09～10_私の各種奨励金・補助金申請',
+    '02_私の着任報告書',
+    '03_私のファイル提出',
+    '04_私の各種証明書発行依頼',
+    '05_私の給与振込口座変更',
+    '06_私のキャリア自己申告',
+    '07_私の住所・連絡先・通勤手当等の申請',
+    '08_私の氏名変更',
+    '09_私の資格取得・通信教育／eラーニング・企業内表彰・特許申請 報告',
+    '10_私の各種奨励金・補助金申請',
     '11_私のスキルアップ',
-    '11_私の資格取得チャレンジキャンペーン申請',
+    '12_私の資格取得チャレンジキャンペーン申請',
     '13_私の目標設定シート',
     '14_私のWill-Can-Mustシート',
     '15_私の着任報告書',
-    '16_私のキャリア自己申告',
-    '17_私の待機計画書',
-    '18_私の待機報告書',
-    '1私9の着任報告書',
-    '20_私の入社時申請'
+    '16_私の待機計画書',
+    '17_私の待機報告書',
+    '18_私の入社時申請'
   ];
   const normalizeLabel = (name) => {
     const p = String(name || '');
@@ -244,24 +251,18 @@ function bindUI() {
     return p.replace(/^\d+\s*[＿_－-]\s*/, '').trim();
   };
   const uniqueSortedItems = (arr) => {
-    const map = new Map();
-    for (const n of arr) {
-      const key = normalizeLabel(n).toLowerCase();
-      if (!map.has(key)) map.set(key, n);
-    }
-    const uniq = Array.from(map.values());
-    const parseNum = (n) => {
-      const m = String(n).match(/^(\d{1,2})/);
-      return m ? parseInt(m[1], 10) : 999;
-    };
-    uniq.sort((a, b) => parseNum(a) - parseNum(b));
-    return uniq.map((orig, i) => {
+    // Keep exact source order/items for request type lists (do not dedupe/renumber).
+    return (arr || []).map((orig) => {
       const label = normalizeLabel(orig);
-      const num = String(i + 1).padStart(2, '0');
-      return { name: orig, label, display: `${num}_${label}` };
+      return { name: orig, label, display: String(orig) };
     });
   };
   const allItems = uniqueSortedItems(allRaw);
+  if (quickType) {
+    quickType.innerHTML = allItems
+      .map((it) => `<option value="${it.name}">${it.display}</option>`)
+      .join('');
+  }
   const loadRecent = () => {
     try {
       const raw = localStorage.getItem(recentKey) || '[]';

@@ -52,10 +52,11 @@
     })();
   </script>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
-  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260416-mobilefix4">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260501-flickerfix1">
+  <link rel="preload" href="/static/images/use.png" as="image">
   <link rel="prefetch" href="/ui/attendance/simple">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
-  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260417-3"></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260501-shellnav1"></script>
   <link rel="icon" href="data:,">
 </head>
 
@@ -79,7 +80,7 @@
       <div class="user">
         <div class="user-menu">
           <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/use.png" alt="user" class="user-icon">
+            <img src="/static/images/use.png" alt="user" class="user-icon" width="38" height="38" decoding="sync" fetchpriority="high">
             <span id="userName"></span>
             <span class="caret">▾</span>
           </button>
@@ -98,13 +99,13 @@
     <div class="drawer-header">
       <button id="mobileClose" class="mobile-close" aria-label="close">✕</button>
     </div>
-    <a href="/ui/portal" class="drawer-item">ホーム</a>
+    <a href="/ui/portal" class="drawer-item" aria-current="page">ホーム</a>
     <a href="/ui/requests" class="drawer-item">申請</a>
     <a href="/ui/contact" class="drawer-item">お問い合わせ先</a>
   </div>
   <div class="subbar">
     <nav class="subnav">
-      <a href="/ui/portal">ホーム</a>
+      <a href="/ui/portal" aria-current="page">ホーム</a>
       <a href="/ui/requests">申請</a>
       <a href="/ui/contact">お問い合わせ先</a>
     </nav>

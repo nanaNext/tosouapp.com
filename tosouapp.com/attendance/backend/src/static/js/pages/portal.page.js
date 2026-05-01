@@ -1,6 +1,9 @@
 import { me, refresh, logout } from '../api/auth.api.js';
 
 const $ = (sel) => document.querySelector(sel);
+const markTopbarReady = () => {
+  try { document.documentElement.classList.add('topbar-ready'); } catch {}
+};
 
 const prefillUserName = () => {
   try {
@@ -12,6 +15,24 @@ const prefillUserName = () => {
     if (name) el.textContent = name;
   } catch {}
 };
+
+const setUserNameStable = (nextName, { force = false } = {}) => {
+  try {
+    const el = $('#userName');
+    if (!el) return;
+    const current = String(el.textContent || '').trim();
+    const next = String(nextName || '').trim();
+    if (!next) return;
+    if (!force && current) return;
+    if (current === next) return;
+    el.textContent = next;
+  } catch {}
+};
+
+// Run as early as possible (module executes before DOMContentLoaded on these pages)
+// to reduce visible flicker in the user area while auth/profile is still resolving.
+try { prefillUserName(); } catch {}
+markTopbarReady();
 
 function getCookie(name) {
   const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
@@ -93,6 +114,7 @@ async function ensureAuthProfile() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  markTopbarReady();
   prefillUserName();
   // Prevent full reload when user clicks the link of the page already opened.
   // This removes topbar/user flicker on same-tab clicks such as "申請" on /ui/requests.
@@ -162,6 +184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
   }
   if (!profile) { if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); } window.location.replace('/ui/login'); return; }
+  markTopbarReady();
   const goLogin = async () => {
     try { await logout(); } catch {}
     try {
@@ -180,13 +203,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (userStr) { localStorage.setItem('user', userStr); }
   } catch {}
   const role = String(profile.role || '').toLowerCase();
-  $('#userName').textContent = profile.username || profile.email || 'ユーザー';
+  setUserNameStable(profile.username || profile.email || 'ユーザー');
   if (role === 'admin' || role === 'manager') {
-    try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; }
-    return;
+    const p0 = String(window.location.pathname || '');
+    if (p0 === '/ui/portal' || p0 === '/ui/dashboard') {
+      try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; }
+      return;
+    }
   }
   const bindEmployeePjaxRequests = () => {
     const REQ_PATH = '/ui/requests';
+    const CONTACT_PATH = '/ui/contact';
+    const HOME_PATH = '/ui/portal';
+    // Keep requests on full-page load so it always applies requests.html styles.
+    const SOFT_PATHS = new Set([CONTACT_PATH, HOME_PATH]);
     const main = document.querySelector('main.content');
     if (!main) return;
     const setNavCurrent = (pathName) => {
@@ -205,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       } catch {}
     };
-    const loadRequestsViaPjax = async (url) => {
+    const loadViaPjax = async (url, push = true) => {
       try {
         const res = await fetch(url.pathname + url.search, { credentials: 'include', cache: 'no-store' });
         if (!res.ok) return false;
@@ -215,15 +245,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!nextMain) return false;
         main.innerHTML = nextMain.innerHTML;
         if (doc.title) document.title = doc.title;
-        history.pushState({ pjax: true }, '', url.pathname + url.search + url.hash);
+        if (push) history.pushState({ pjax: true }, '', url.pathname + url.search + url.hash);
         setNavCurrent(url.pathname);
         try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
-        try {
-          const mod = await import('/static/js/pages/requests.page.js');
-          if (mod && typeof mod.bootRequestsPage === 'function') {
-            await mod.bootRequestsPage();
-          }
-        } catch {}
+        if (url.pathname === REQ_PATH) {
+          try {
+            const mod = await import('/static/js/pages/requests.page.js');
+            if (mod && typeof mod.bootRequestsPage === 'function') {
+              await mod.bootRequestsPage();
+            }
+          } catch {}
+        }
+        if (url.pathname === HOME_PATH) {
+          try { renderHomeTiles(role); } catch {}
+          try {
+            const tiles = document.querySelector('.tiles');
+            if (tiles && tiles.dataset.navBound !== '1') {
+              tiles.dataset.navBound = '1';
+              tiles.addEventListener('click', (e) => {
+                const a = e.target?.closest?.('a.tile');
+                if (a && a.href && a.target !== '_blank') {
+                  e.preventDefault();
+                  window.location.href = a.href;
+                }
+              });
+            }
+          } catch {}
+        }
         return true;
       } catch {
         return false;
@@ -231,6 +279,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     if (!window.__employeePjaxReqBound) {
       window.__employeePjaxReqBound = true;
+      window.__employeeSoftNavigate = async (href, push = true) => {
+        try {
+          const to = new URL(String(href || ''), window.location.href);
+          if (to.origin !== window.location.origin) return false;
+          if (!SOFT_PATHS.has(to.pathname)) return false;
+          const ok = await loadViaPjax(to, !!push);
+          return !!ok;
+        } catch {
+          return false;
+        }
+      };
       document.addEventListener('click', async (e) => {
         const a = e.target?.closest?.('a[href]');
         if (!a) return;
@@ -242,21 +301,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         let to = null;
         try { to = new URL(href, window.location.href); } catch { return; }
         if (!to || to.origin !== window.location.origin) return;
-        if (to.pathname !== REQ_PATH) return;
-        if (window.location.pathname === REQ_PATH && window.location.search === to.search) {
+        if (!SOFT_PATHS.has(to.pathname)) return;
+        if (window.location.pathname === to.pathname && window.location.search === to.search) {
           e.preventDefault();
           return;
         }
         e.preventDefault();
-        const ok = await loadRequestsViaPjax(to);
+        const ok = await loadViaPjax(to, true);
         if (!ok) window.location.href = to.pathname + to.search + to.hash;
       }, true);
       window.addEventListener('popstate', async () => {
         try {
           const p = String(window.location.pathname || '');
-          if (p === REQ_PATH) {
-            if (!document.querySelector('.req-page')) {
-              const ok = await loadRequestsViaPjax(new URL(window.location.href));
+          if (SOFT_PATHS.has(p)) {
+            const hasExpectedMain =
+              (p === CONTACT_PATH && !!document.querySelector('.contact-wrap')) ||
+              (p === HOME_PATH && !!document.querySelector('.tiles'));
+            if (!hasExpectedMain) {
+              const ok = await loadViaPjax(new URL(window.location.href), false);
               if (!ok) window.location.reload();
             }
             return;
@@ -351,10 +413,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       tiles.classList.add('employee-portal');
       tiles.innerHTML = `
         <div class="emp-tiles-3">
-          <a class="tile" href="/ui/requests">
-            <div class="icon">📝</div>
-            <div class="title">申請</div>
-          </a>
           <a class="tile" href="/ui/attendance/simple">
             <div class="icon">🕒</div>
             <div class="title">勤怠入力</div>
@@ -439,7 +497,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch {}
   /* dùng biến pageSpinner đã khai báo ở đầu scope */
   function navigateWithSpinner(href) {
-    // Navigate immediately without transitional spinner flash.
+    const goSoft = window.__employeeSoftNavigate;
+    if (typeof goSoft === 'function') {
+      goSoft(href, true).then((ok) => {
+        if (!ok) window.location.href = href;
+      }).catch(() => { window.location.href = href; });
+      return;
+    }
     window.location.href = href;
   }
   const tilesSection = document.querySelector('.tiles');
@@ -476,6 +540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   if (status) status.textContent = '';
   if (tilesRoot) { tilesRoot.style.visibility = ''; }
+  markTopbarReady();
   const input = document.querySelector('.search input');
   if (input) {
     const tiles = Array.from(document.querySelectorAll('.tiles .tile'));
@@ -623,6 +688,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       toggleDrawer();
     });
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
+    mobileDrawer.addEventListener('click', (e) => {
+      const link = e.target?.closest?.('a[href]');
+      if (!link) return;
+      const href = String(link.getAttribute('href') || '').trim();
+      if (!href) return;
+      if (!isMobileViewport()) return;
+      e.preventDefault();
+      toggleDrawer(false);
+      let to = null;
+      try { to = new URL(href, window.location.href); } catch { to = null; }
+      if (!to) return;
+      if (to.pathname === window.location.pathname && to.search === window.location.search) return;
+      window.location.href = to.pathname + to.search + to.hash;
+    });
     window.addEventListener('resize', () => {
       if (!isMobileViewport()) toggleDrawer(false);
     }, { passive: true });

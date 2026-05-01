@@ -152,7 +152,7 @@ const renderList = async () => {
     const q = `/api/expenses/my?month=${encodeURIComponent(month)}&status=${encodeURIComponent(status)}`;
     const rows = await fetchJSONAuth(q);
     try { await renderSummary(); } catch {}
-    if (!Array.isArray(rows) || rows.length===0) { host.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>データはありません</div></div>'; return; }
+    if (!Array.isArray(rows) || rows.length===0) { host.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>当月の交通費提出履歴はありません</div></div>'; return; }
     const tr = rows.map(r => {
       const d = String(r.date || '').slice(0,10);
       const a = Number(r.amount || 0).toLocaleString('ja-JP');
@@ -753,12 +753,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (homeSection) homeSection.style.display = '';
       if (historySection) historySection.style.display = 'none';
       if (historySection) historySection.classList.remove('notice-mode');
-      if (historyModeLabel) historyModeLabel.textContent = '申請一覧';
+      if (historyModeLabel) historyModeLabel.textContent = '交通費提出履歴（月次）';
     } else {
       if (homeSection) homeSection.style.display = 'none';
       if (historySection) historySection.style.display = '';
       if (historySection) historySection.classList.toggle('notice-mode', name === 'notice');
-      if (historyModeLabel) historyModeLabel.textContent = (name === 'notice') ? 'お知らせ（差戻し）' : '申請一覧';
+      if (historyModeLabel) historyModeLabel.textContent = (name === 'notice') ? 'お知らせ（差戻し）' : '交通費提出履歴（月次）';
       renderHistoryTitle();
     }
     setNavActive(name);

@@ -211,6 +211,66 @@ router.get('/admin/list',
     }
   }
 );
+router.get('/admin/monthly-summary',
+  rateLimitNamed('expenses_admin_monthly_summary', { windowMs: 60_000, max: 30 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.query.month || '').slice(0, 7);
+      const userIdRaw = String(req.query.userId || '').trim();
+      const userId = userIdRaw || null;
+      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
+      const [totals, closures] = await Promise.all([
+        repo.getMonthlyApprovedTotals(month, userId),
+        repo.getMonthlyClosures(month, userId)
+      ]);
+      res.status(200).json({ month, totals: totals || [], closures: closures || [] });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.post('/admin/monthly-close',
+  rateLimitNamed('expenses_admin_monthly_close', { windowMs: 60_000, max: 10 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.body?.month || '').slice(0, 7);
+      const forceRecalc = !!req.body?.forceRecalc;
+      const userIdRaw = String(req.body?.userId || '').trim();
+      const userId = userIdRaw || null;
+      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
+      const result = await repo.closeMonthlyApprovedTotals({
+        month,
+        closedBy: req.user.id,
+        forceRecalc,
+        userId
+      });
+      const closures = await repo.getMonthlyClosures(month);
+      res.status(200).json({ ok: true, result, closures: closures || [] });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/admin/monthly-history',
+  rateLimitNamed('expenses_admin_monthly_history', { windowMs: 60_000, max: 30 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const limit = parseInt(String(req.query.limit || '12'), 10);
+      const userIdRaw = String(req.query.userId || '').trim();
+      const userId = userIdRaw || null;
+      const rows = await repo.listMonthlyClosureHistory({
+        userId,
+        limit: Number.isFinite(limit) ? limit : 12
+      });
+      res.status(200).json(rows || []);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 router.patch('/:id/status',
   rateLimitNamed('expenses_admin_status', { windowMs: 60_000, max: 30 }),
   authorize('manager','admin'),

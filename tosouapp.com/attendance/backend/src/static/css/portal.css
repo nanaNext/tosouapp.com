@@ -259,13 +259,25 @@ body:not(.admin) .topbar .user-btn,
 body:not(.admin) .topbar .user-btn:hover,
 body:not(.admin) .topbar .user-btn:focus,
 body:not(.admin) .topbar .user-btn:active,
-body:not(.admin) .subbar .subnav a,
-body:not(.admin) .subbar .subnav a:hover,
-body:not(.admin) .subbar .subnav a:focus,
-body:not(.admin) .subbar .subnav a:active {
+body:not(.admin) .subbar .subnav a:not([aria-current="page"]),
+body:not(.admin) .subbar .subnav a:not([aria-current="page"]):hover,
+body:not(.admin) .subbar .subnav a:not([aria-current="page"]):focus,
+body:not(.admin) .subbar .subnav a:not([aria-current="page"]):active {
   background: transparent !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+/* Employee subnav: make active item (e.g. 申請) visually clearer */
+body:not(.admin) .subbar .subnav > a[aria-current="page"] {
+  background: #eaf2ff !important;
+  border: 1px solid #c5d9ff !important;
+  color: #0b3a8f !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  box-shadow: 0 1px 2px rgba(0, 49, 135, 0.12);
 }
 .lds-spinner {
   color: #555;
@@ -556,7 +568,7 @@ body:not(.admin) .subbar .subnav a:active {
 /* Employee header keeps the search box centered (not admin-style expanding search) */
 body:not(.admin) .topbar-inner {
   display: grid;
-  grid-template-columns: auto minmax(300px, 560px) auto;
+  grid-template-columns: auto minmax(300px, 560px) 180px;
   align-items: center;
   gap: 16px;
 }
@@ -624,6 +636,20 @@ body:not(.admin) .topbar-inner .search .search-hint {
 }
 body:not(.admin) .topbar-inner .user {
   justify-self: end;
+  width: 180px;
+  min-width: 180px;
+  display: flex;
+  justify-content: flex-end;
+}
+body:not(.admin) .topbar-inner .user .user-btn {
+  max-width: 180px;
+}
+body:not(.admin) .topbar-inner .user #userName {
+  display: inline-block;
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 @media (max-width: 720px) {
   .topbar-inner .search.active {
@@ -635,8 +661,18 @@ body:not(.admin) .topbar-inner .user {
 }
 @media (max-width: 960px) {
   body:not(.admin) .topbar-inner {
-    grid-template-columns: auto minmax(220px, 1fr) auto;
+    grid-template-columns: auto minmax(220px, 1fr) 140px;
     gap: 10px;
+  }
+  body:not(.admin) .topbar-inner .user {
+    width: 140px;
+    min-width: 140px;
+  }
+  body:not(.admin) .topbar-inner .user .user-btn {
+    max-width: 140px;
+  }
+  body:not(.admin) .topbar-inner .user #userName {
+    max-width: 84px;
   }
 }
 @media (max-width: 480px) {
@@ -774,7 +810,6 @@ body:not(.admin) .topbar-inner .user {
   width: 38px;
   vertical-align: middle;
 }
-
 @media (min-width: 481px) {
   .admin .user .user-icon {
     height: 44px;
@@ -2427,53 +2462,47 @@ body:not(.admin) .topbar-inner .user {
     gap: 10px;
   }
   .tiles.employee-portal .emp-tiles-3 {
-    grid-template-columns: repeat(2, minmax(94px, 108px));
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
-    gap: 9px;
+    gap: 14px 24px;
   }
   .tiles.employee-portal .emp-tiles-3 .tile {
-    min-height: 86px;
-    padding: 9px 6px;
+    width: 128px;
+    min-height: 128px;
+    padding: 12px 8px;
     border-width: 2px;
-    border-radius: 10px;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0;
   }
-  .tiles.employee-portal .emp-tiles-3 .tile .icon {
-    font-size: 27px;
-  }
-  .tiles.employee-portal .emp-tiles-3 .tile .title {
-    margin-top: 9px;
-    font-size: 13px;
-    line-height: 1.2;
-  }
-  .tiles.employee-portal .emp-tiles-3 .tile::after {
-    right: 10px;
-    top: 8px;
-    font-size: 13px;
-  }
-  .tiles.employee-portal .emp-tiles-2 {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
+  .tiles.employee-portal .emp-tiles-3 .tile .icon { font-size: 33px; }
+  .tiles.employee-portal .emp-tiles-3 .tile .title { margin-top: 10px; font-size: 15px; line-height: 1.2; font-weight: 700; }
+  .tiles.employee-portal .emp-tiles-3 .tile::after { right: 9px; top: 7px; font-size: 24px; font-weight: 700; line-height: 1; }
+  .tiles.employee-portal .emp-tiles-2 { grid-template-columns: minmax(260px, 300px); justify-content: center; gap: 14px; }
   .tiles.employee-portal .tile.emp-wide {
-    height: 62px;
-    padding: 8px 10px;
-    gap: 8px;
-    border-radius: 10px;
+    height: 70px;
+    padding: 10px 14px;
+    gap: 10px;
+    border-radius: 12px;
+    border: 2px solid #2a6ea5 !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(17, 81, 172, 0.08) !important;
   }
   .tiles.employee-portal .tile.emp-wide .icon {
     font-size: 22px;
+    margin-right: 4px;
   }
-  .tiles.employee-portal .tile.emp-wide .title {
-    font-size: 13px;
-    line-height: 1.15;
-  }
+  .tiles.employee-portal .tile.emp-wide .title { font-size: 14px; line-height: 1.2; font-weight: 700; letter-spacing: 0.1px; }
   .tiles.employee-portal .tile.emp-wide .arrow {
-    font-size: 20px;
+    font-size: 22px;
+    font-weight: 800;
+    margin-left: 10px;
+    min-width: 20px;
+    text-align: right;
   }
 }
 
@@ -2545,6 +2574,12 @@ body:not(.admin) .topbar-inner .user {
 }
 
 @media (max-width: 430px) {
+  .tiles.employee-portal .emp-tiles-2 { grid-template-columns: minmax(240px, 280px); }
+  .tiles.employee-portal .tile.emp-wide {
+    height: 66px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
   :root {
     --topbar-height: 60px;
   }
@@ -2578,6 +2613,56 @@ body:not(.admin) .topbar-inner .user {
   }
   body:not(.admin) .subbar + .content {
     padding-top: calc(var(--topbar-height) + 10px) !important;
+  }
+}
+
+/* Final mobile header normalization: prevent user icon clipping on the right */
+@media (max-width: 480px) {
+  body:not(.admin) .topbar {
+    padding: 6px 8px !important;
+  }
+  body:not(.admin) .topbar-inner {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  body:not(.admin) .topbar-inner .brand {
+    display: none !important;
+  }
+  body:not(.admin) .topbar-inner .search {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 6px !important;
+  }
+  body:not(.admin) .topbar-inner .search input {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 30px !important;
+    line-height: 30px !important;
+  }
+  body:not(.admin) .topbar-inner .user {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    margin-right: 0 !important;
+  }
+  body:not(.admin) .topbar-inner .user .user-btn {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    padding: 0 !important;
+  }
+  body:not(.admin) .topbar-inner .user #userName {
+    display: none !important;
+  }
+  body:not(.admin) .topbar-inner .user .user-icon {
+    width: 24px !important;
+    height: 24px !important;
+    display: block !important;
   }
 }
 
