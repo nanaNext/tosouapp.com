@@ -42,7 +42,8 @@ async function getSmokeUserAndToken() {
        ORDER BY id ASC
        LIMIT 1`,
       [roleFilter]
-    );
+    );// cái này dùng để kiểm tra user có role = roleFilter hay không
+
     const u = rows && rows[0] ? rows[0] : null;
     if (!u) throw new Error(`No user found for role=${roleFilter}`);
     const secret = process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET;
@@ -57,6 +58,7 @@ async function getSmokeUserAndToken() {
     await db.end();
   }
 }
+//Cái này dùng để kiểm tra API có hoạt động hay không
 
 async function main() {
   console.log('BASE=', BASE);
@@ -82,6 +84,7 @@ async function main() {
     console.log('POST /api/attendance/checkout (pre-close)', closeBefore.status, closeBefore.ok ? 'OK' : 'FAIL');
     if (!closeBefore.ok) throw new Error(`pre-close failed: ${closeBefore.text}`);
   }
+// Cái này dùng để kiểm tra API có hoạt động hay không
 
   const ci = await jfetch('/api/attendance/checkin', {
     method: 'POST',

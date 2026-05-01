@@ -328,6 +328,22 @@ module.exports.ensureTable = async function() {
       INDEX idx_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS expense_monthly_closures (
+      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      userId BIGINT UNSIGNED NOT NULL,
+      month CHAR(7) NOT NULL,
+      total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+      approved_count INT NOT NULL DEFAULT 0,
+      closed_by BIGINT UNSIGNED NULL,
+      closed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_user_month (userId, month),
+      INDEX idx_month (month),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 };
 module.exports.getActiveMonth = async function(userId) {
   const [rows] = await db.query(`SELECT * FROM expense_months WHERE userId = ? AND is_active = 1 LIMIT 1`, [userId]);
@@ -420,4 +436,104 @@ module.exports.listRecentMessagesForUser = async function(userId, month) {
     args
   );
   return rows || [];
+};
+
+module.exports.getMonthlyApprovedTotals = async function(month, userId = null) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
+  const hasUser = uid !== null;
+  const [rows] = await db.query(
+    `SELECT
+       ec.userId AS user_id,
+       COALESCE(u.username, u.email) AS user_name,
+       DATE_FORMAT(ec.date, '%Y-%m') AS month,
+       COUNT(*) AS approved_count,
+       COALESCE(SUM(ec.amount), 0) AS total_amount,
+       MAX(ec.approved_at) AS last_approved_at
+     FROM expense_claims ec
+     JOIN users u ON u.id = ec.userId
+     WHERE ec.status = 'approved'
+       AND DATE_FORMAT(ec.date, '%Y-%m') = ?
+       AND (? IS NULL OR ec.userId = ?)
+     GROUP BY ec.userId, COALESCE(u.username, u.email), DATE_FORMAT(ec.date, '%Y-%m')
+     ORDER BY COALESCE(u.username, u.email) ASC`,
+    [String(month), hasUser ? uid : null, hasUser ? uid : null]
+  );
+  return rows || [];
+};
+
+module.exports.getMonthlyClosures = async function(month, userId = null) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
+  const hasUser = uid !== null;
+  const [rows] = await db.query(
+    `SELECT
+       c.userId AS user_id,
+       COALESCE(u.username, u.email) AS user_name,
+       c.month,
+       c.total_amount,
+       c.approved_count,
+       c.closed_at,
+       c.closed_by,
+       (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = c.closed_by) AS closed_by_name
+     FROM expense_monthly_closures c
+     JOIN users u ON u.id = c.userId
+     WHERE c.month = ?
+       AND (? IS NULL OR c.userId = ?)
+     ORDER BY COALESCE(u.username, u.email) ASC`,
+    [String(month), hasUser ? uid : null, hasUser ? uid : null]
+  );
+  return rows || [];
+};
+
+module.exports.listMonthlyClosureHistory = async function({ userId = null, limit = 12 } = {}) {
+  const n = Math.max(1, Math.min(36, parseInt(String(limit || '12'), 10) || 12));
+  const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
+  const hasUser = uid !== null;
+  const [rows] = await db.query(
+    `SELECT
+       c.month,
+       COUNT(*) AS closed_users,
+       COALESCE(SUM(c.approved_count), 0) AS approved_count,
+       COALESCE(SUM(c.total_amount), 0) AS total_amount,
+       MAX(c.closed_at) AS last_closed_at
+     FROM expense_monthly_closures c
+     WHERE (? IS NULL OR c.userId = ?)
+     GROUP BY c.month
+     ORDER BY c.month DESC
+     LIMIT ?`,
+    [hasUser ? uid : null, hasUser ? uid : null, n]
+  );
+  return rows || [];
+};
+
+module.exports.closeMonthlyApprovedTotals = async function({ month, closedBy, forceRecalc, userId = null }) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const rows = await module.exports.getMonthlyApprovedTotals(month, userId);
+  if (!rows.length) return { month: String(month), affectedUsers: 0 };
+  const doForce = !!forceRecalc;
+  for (const r of rows) {
+    const userId = Number(r.user_id);
+    const total = Number(r.total_amount || 0);
+    const count = Number(r.approved_count || 0);
+    if (doForce) {
+      await db.query(
+        `INSERT INTO expense_monthly_closures (userId, month, total_amount, approved_count, closed_by, closed_at)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON DUPLICATE KEY UPDATE
+           total_amount = VALUES(total_amount),
+           approved_count = VALUES(approved_count),
+           closed_by = VALUES(closed_by),
+           closed_at = CURRENT_TIMESTAMP`,
+        [userId, String(month), total, count, closedBy || null]
+      );
+    } else {
+      await db.query(
+        `INSERT IGNORE INTO expense_monthly_closures (userId, month, total_amount, approved_count, closed_by, closed_at)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        [userId, String(month), total, count, closedBy || null]
+      );
+    }
+  }
+  return { month: String(month), affectedUsers: rows.length };
 };
