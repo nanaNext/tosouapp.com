@@ -440,6 +440,7 @@
     tableHost.addEventListener('change', async (e) => {
       const row = e.target?.closest?.('[data-row="1"][data-date]');
       if (row) { 
+        if (!state.editableMonth) return;
         try { row.dataset.dirty = '1'; } catch {} 
         
         const kubunSel = e.target?.closest?.('select[data-field="classification"]');
@@ -479,6 +480,7 @@
     tableHost.addEventListener('input', (e) => {
       const row = e.target?.closest?.('[data-row="1"][data-date]');
       if (row) { 
+        if (!state.editableMonth) return;
         try { row.dataset.dirty = '1'; } catch {} 
         
         // Khi người dùng đang nhập, xóa ngay trạng thái tự động để đổi màu sắc (UX)
