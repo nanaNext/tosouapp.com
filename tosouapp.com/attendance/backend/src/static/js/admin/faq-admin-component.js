@@ -1,3 +1,5 @@
+import { fetchJSONAuth } from '../api/http.api.js';
+
 // FAQ Admin Management Component
 export class FaqAdminComponent {
   constructor(containerId) {
@@ -15,17 +17,7 @@ export class FaqAdminComponent {
   async loadQuestions() {
     try {
       console.log('📥 Loading admin questions...');
-      const response = await fetch('/api/faq/admin/questions', {
-        credentials: 'include'
-      });
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Failed to load questions: ${error.message}`);
-      }
-      
-      const result = await response.json();
+      const result = await fetchJSONAuth('/api/faq/admin/questions');
       this.allQuestions = result.data || [];
       console.log(`✅ Loaded ${this.allQuestions.length} questions`);
     } catch (e) {
@@ -184,24 +176,14 @@ export class FaqAdminComponent {
 
     try {
       console.log('🌐 Submitting answer...');
-      const response = await fetch(`/api/faq/admin/questions/${questionId}/answer`, {
+      const result = await fetchJSONAuth(`/api/faq/admin/questions/${questionId}/answer`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ answer: answerText })
       });
-
-      console.log('Response status:', response.status);
-      
-      if (response.ok) {
-        console.log('✅ Answer saved successfully');
-        alert('✓ 回答を保存しました');
-        await this.loadQuestions();
-        this.render();
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to save answer');
-      }
+      console.log('✅ Answer saved successfully', result);
+      alert('✓ 回答を保存しました');
+      await this.loadQuestions();
+      this.render();
     } catch (e) {
       console.error('❌ Error:', e);
       alert('エラー: ' + e.message);

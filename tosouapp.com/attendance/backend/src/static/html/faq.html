@@ -176,42 +176,60 @@
   <script>
     let allFaqItems = [];
     let allMyQuestions = [];
-    let currentFilter = 'all';    // Initialize
+    let currentFilter = 'all';
+
     document.addEventListener('DOMContentLoaded', async () => {
       console.log('🚀 Page loaded - initializing FAQ...');
-      loadFaqItems();
-      loadMyQuestions();
-      
-      // DEBUG: Log all data after 2 seconds
-      setTimeout(() => {
-        console.log('=== DEBUG INFO ===');
-        console.log('allFaqItems count:', allFaqItems.length);
-        console.log('allMyQuestions count:', allMyQuestions.length);
-        console.log('allMyQuestions data:', allMyQuestions);
-        
-        // Also fetch debug API
-        fetch('/api/faq/debug/all-questions')
-          .then(r => r.json())
-          .then(data => {
-            console.log('📊 Debug API - All questions in DB:', data);
-          })
-          .catch(e => console.error('Debug API error:', e));
-      }, 2000);
-      
-      // Form submission
+      await loadFaqItems();
+      await loadMyQuestions();
       document.getElementById('questionForm').addEventListener('submit', submitQuestion);
-    });// Load FAQ items
+    });
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+      return m ? decodeURIComponent(m[2]) : '';
+    }
+
+    function buildAuthHeaders(includeAuth = false) {
+      const headers = { 'Content-Type': 'application/json' };
+      const csrf = getCookie('csrfToken');
+      if (csrf) headers['X-CSRF-Token'] = csrf;
+      if (includeAuth) {
+        const token = sessionStorage.getItem('accessToken') || '';
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      }
+      return headers;
+    }
+
+    async function apiFetchJson(url, options = {}, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          ...options,
+          signal: controller.signal
+        });
+        let data = null;
+        try { data = await response.json(); } catch {}
+        if (!response.ok) {
+          const msg = data?.message || (data?.errors?.[0]?.msg) || `HTTP ${response.status}`;
+          throw new Error(msg);
+        }
+        return data;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    // Load FAQ items
     async function loadFaqItems() {
       try {
-        console.log('📥 Loading FAQ items from /api/faq...');
-        const response = await fetch('/api/faq');
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
+        const result = await apiFetchJson('/api/faq', {
+          method: 'GET',
+          headers: buildAuthHeaders(false)
+        });
         console.log('FAQ data received:', result);
         
         allFaqItems = result.data || [];
@@ -281,19 +299,15 @@
       });
       
       renderFaqItems();
-    }    // Load my questions
+    }
+
+    // Load my questions
     async function loadMyQuestions() {
       try {
-        console.log('📥 Loading my questions from /api/faq/questions/my...');
-        const response = await fetch('/api/faq/questions/my');
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-          console.warn(`⚠️ API returned ${response.status}`);
-          return;
-        }
-        
-        const result = await response.json();
+        const result = await apiFetchJson('/api/faq/questions/my', {
+          method: 'GET',
+          headers: buildAuthHeaders(true)
+        });
         console.log('My questions data:', result);
         
         allMyQuestions = result.data || [];
@@ -301,6 +315,9 @@
         renderMyQuestions();
       } catch (e) {
         console.error('❌ Error loading my questions:', e);
+        if (String(e.message || '').toLowerCase().includes('unauthorized') || String(e.message || '').includes('401')) {
+          document.getElementById('myQuestionsContainer').innerHTML = '<div style="text-align:center;color:#999;padding:20px;">ログイン後に質問履歴を表示できます</div>';
+        }
       }
     }
 
@@ -390,7 +407,9 @@
         to { transform: translateX(100%); opacity: 0; }
       }
     `;
-    document.head.appendChild(style);    // Submit question
+    document.head.appendChild(style);
+
+    // Submit question
     async function submitQuestion(e) {
       e.preventDefault();
       
@@ -426,42 +445,24 @@
       submitBtn.textContent = '送信中...';
 
       try {
-        console.log('🌐 Sending POST to /api/faq/questions...');
-        const response = await fetch('/api/faq/questions', {
+        const result = await apiFetchJson('/api/faq/questions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          headers: buildAuthHeaders(true),
           body: JSON.stringify({ question, detail, category })
-        });
-
-        console.log('📨 Response status:', response.status);
-        const result = await response.json();
-        console.log('📦 Response data:', result);
-
-        if (response.ok) {
-          console.log('✅ Question submitted successfully!');
-          showToast(result.message || '質問を送信しました', 'success');
-          document.getElementById('questionForm').reset();
-          await loadMyQuestions();
-        } else {
-          // Handle specific error messages
-          console.error('❌ API error:', result);
-          if (response.status === 401) {
-            console.log('🔐 Unauthorized - redirecting to login');
-            showToast('ログインが必要です', 'error');
-            window.location.href = '/ui/login';
-          } else if (response.status === 400) {
-            const errorMsg = result.errors?.[0]?.msg || result.message || '入力値が正しくありません';
-            console.warn('❌ Validation error:', errorMsg);
-            showToast(errorMsg, 'error');
-          } else {
-            console.error('❌ Server error:', result.message);
-            showToast(result.message || 'エラーが発生しました', 'error');
-          }
-        }
+        }, 15000);
+        console.log('✅ Question submitted successfully!', result);
+        showToast(result.message || '質問を送信しました', 'success');
+        document.getElementById('questionForm').reset();
+        await loadMyQuestions();
       } catch (e) {
         console.error('❌ Network error:', e);
-        showToast('通信エラーが発生しました: ' + e.message, 'error');
+        const msg = String(e.message || '');
+        if (msg.toLowerCase().includes('unauthorized') || msg.includes('401')) {
+          showToast('ログインが必要です', 'error');
+          window.location.href = '/ui/login';
+        } else {
+          showToast('通信エラーが発生しました: ' + msg, 'error');
+        }
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = originalBtnText;
