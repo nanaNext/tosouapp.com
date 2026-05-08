@@ -1047,6 +1047,9 @@ exports.putDay = async (req, res) => {
     const nextIn = (typeof checkIn === 'undefined') ? row.checkIn : (checkIn || null);
     const nextOut = (typeof checkOut === 'undefined') ? row.checkOut : (checkOut || null);
     
+    const inChanged = nextIn && (!row.checkIn || new Date(nextIn).getTime() !== new Date(row.checkIn).getTime());
+    const outChanged = nextOut && (!row.checkOut || new Date(nextOut).getTime() !== new Date(row.checkOut).getTime());
+
     // Bypass strict future check to allow setting end of day time before the end of day.
     const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     if (date > todayStr) {
@@ -1054,6 +1057,34 @@ exports.putDay = async (req, res) => {
     }
 
     await repo.updateTimes(attendanceId, nextIn, nextOut);
+
+    try {
+      const u = await userRepo.getUserById(userId);
+      const name = u ? (u.username || u.email || '従業員') : '従業員';
+      
+      if (inChanged) {
+        const timeStr = String(nextIn).slice(11, 16);
+        await noticesRepo.createAdminNotification({
+          kind: 'attendance_punch',
+          title: '打刻通知',
+          message: `${name}さんが出勤打刻をしました（${timeStr}）`,
+          linkUrl: '/admin/attendance',
+          createdBy: userId,
+          audience: 'admin_manager'
+        });
+      } else if (outChanged) {
+        const timeStr = String(nextOut).slice(11, 16);
+        await noticesRepo.createAdminNotification({
+          kind: 'attendance_punch',
+          title: '打刻通知',
+          message: `${name}さんが退勤打刻をしました（${timeStr}）`,
+          linkUrl: '/admin/attendance',
+          createdBy: userId,
+          audience: 'admin_manager'
+        });
+      }
+    } catch {}
+
   try {
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
@@ -1079,6 +1110,34 @@ exports.addSegment = async (req, res) => {
     if (checkOut) {
       await repo.setCheckOut(id, checkOut, null, null);
     }
+
+    try {
+      const u = await userRepo.getUserById(userId);
+      const name = u ? (u.username || u.email || '従業員') : '従業員';
+      
+      const inTimeStr = String(checkIn).slice(11, 16);
+      await noticesRepo.createAdminNotification({
+        kind: 'attendance_punch',
+        title: '打刻通知',
+        message: `${name}さんが出勤打刻をしました（${inTimeStr}）`,
+        linkUrl: '/admin/attendance',
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+
+      if (checkOut) {
+        const outTimeStr = String(checkOut).slice(11, 16);
+        await noticesRepo.createAdminNotification({
+          kind: 'attendance_punch',
+          title: '打刻通知',
+          message: `${name}さんが退勤打刻をしました（${outTimeStr}）`,
+          linkUrl: '/admin/attendance',
+          createdBy: userId,
+          audience: 'admin_manager'
+        });
+      }
+    } catch {}
+
   try {
     const y = parseInt(date.slice(0,4),10), m = parseInt(date.slice(5,7),10);
     const st = await getMonthStatusValue(userId, y, m);
