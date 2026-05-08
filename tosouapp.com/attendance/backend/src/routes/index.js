@@ -30,7 +30,7 @@ const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process
 module.exports = function(app) {
   console.log('Mounting API routes...');
   app.get('/', (req, res) => {
-    return res.redirect(302, '/ui/login');
+    return res.redirect(302, '/ui/portal');
   });
   app.get('/health', async (req, res) => {
     try {

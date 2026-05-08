@@ -1,5 +1,6 @@
 import { logout } from '/static/js/api/auth.api.js?v=20260416-1';
 import { fetchJSONAuth } from '/static/js/api/http.api.js?v=20260416-1';
+import '/static/js/pages/employee-notify.sticky.js';
 const $ = (sel) => document.querySelector(sel);
 const prefillUserName = () => {
   try {
@@ -58,15 +59,34 @@ const fmtDT = (v) => {
 };
 let formActive = false;
 let navBusy = false;
+let renderListBusy = false;
 let noticeUnreadCount = 0;
 let noticeLatestIncomingAtMs = 0;
 let noticeSeenAtMs = 0;
 let noticeSeenKey = '';
+let noticePollTimer = null;
+let expensesPageMounted = false;
 const toMs = (v) => {
   try {
     const t = new Date(v).getTime();
     return Number.isFinite(t) ? t : 0;
   } catch { return 0; }
+};
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms || 0))));
+const isTooManyReqErr = (e) => {
+  const msg = String(e?.message || '').toLowerCase();
+  return msg.includes('too many requests') || msg.includes('操作が多すぎます') || msg.includes('http 429') || msg.includes('429');
+};
+const fetchJSONAuthSafe = async (url, options, retry = 1) => {
+  try {
+    return await fetchJSONAuth(url, options);
+  } catch (e) {
+    if (retry > 0 && isTooManyReqErr(e)) {
+      await sleep(1200);
+      return fetchJSONAuthSafe(url, options, retry - 1);
+    }
+    throw e;
+  }
 };
 const setNoticeBadge = (n) => {
   const badge = document.getElementById('noticeBadge');
@@ -90,7 +110,7 @@ const markNoticeSeen = () => {
 };
 const refreshNoticeMessages = async () => {
   try {
-    const rows = await fetchJSONAuth('/api/expenses/my/messages');
+    const rows = await fetchJSONAuthSafe('/api/expenses/my/messages');
     const list = Array.isArray(rows) ? rows : [];
     const myId = String(window.MY_ID || '');
     const incoming = list.filter((m) => String(m?.sender_user_id || '') !== myId);
@@ -104,12 +124,12 @@ const refreshNoticeMessages = async () => {
 const renderSummary = async () => {
   try {
     const m = new Date().toISOString().slice(0,7);
-    const rows = await fetchJSONAuth(`/api/expenses/my?month=${encodeURIComponent(m)}`);
+    const rows = await fetchJSONAuthSafe(`/api/expenses/my?month=${encodeURIComponent(m)}`);
     const a = Array.isArray(rows) ? rows.filter(r => String(r.status) === 'applied').length : 0;
     const sA = document.getElementById('empSumApplied');
     if (sA) sA.textContent = String(a);
     try {
-      const latest = await fetchJSONAuth('/api/expenses/months/applied');
+      const latest = await fetchJSONAuthSafe('/api/expenses/months/applied');
       const label = latest && latest.month ? String(latest.month) : '';
       const cnt = latest && latest.count != null ? Number(latest.count || 0) : null;
       const elM = document.getElementById('empAppliedMonth');
@@ -121,7 +141,7 @@ const renderSummary = async () => {
 const renderNotices = async () => {
   try {
     const m = new Date().toISOString().slice(0,7);
-    const rows = await fetchJSONAuth(`/api/expenses/my?month=${encodeURIComponent(m)}&status=rejected`);
+    const rows = await fetchJSONAuthSafe(`/api/expenses/my?month=${encodeURIComponent(m)}&status=rejected`);
     const n = Array.isArray(rows) ? rows.length : 0;
     const c = document.getElementById('empNoticeCount');
     if (c) c.textContent = String(n);
@@ -145,6 +165,8 @@ const wireDrawer = () => {
   document.addEventListener('keydown',(e)=>{ if (e.key==='Escape') close(); });
 };
 const renderList = async () => {
+  if (renderListBusy) return;
+  renderListBusy = true;
   const host = $('#exListHost'); if (!host) return; host.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
   const boardHost = $('#exMonthlyBoardHost');
   const renderMonthlyBoard = (rows) => {
@@ -207,8 +229,8 @@ const renderList = async () => {
     const status = document.getElementById('exFilterStatus')?.value || '';
     const q = `/api/expenses/my?month=${encodeURIComponent(month)}&status=${encodeURIComponent(status)}`;
     const [rows, monthlyRows] = await Promise.all([
-      fetchJSONAuth(q),
-      fetchJSONAuth('/api/expenses/my')
+      fetchJSONAuthSafe(q),
+      fetchJSONAuthSafe('/api/expenses/my')
     ]);
     renderMonthlyBoard(monthlyRows);
     try { await renderSummary(); } catch {}
@@ -563,23 +585,36 @@ const renderList = async () => {
     }
   } catch (e) {
     host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${String(e?.message || 'unknown')}</div>`;
-  } finally {}
+  } finally { renderListBusy = false; }
 };
 const renderHistoryTitle = () => {
   // no-op: history controls are now on the toolbar row
 };
-document.addEventListener('DOMContentLoaded', async () => {
+export async function bootExpensesPage() {
+  const pageMarker = document.getElementById('historySection') || document.getElementById('homeSection') || document.getElementById('exDate');
+  if (!pageMarker) return;
+  if (pageMarker.dataset.booted === '1') return;
+  pageMarker.dataset.booted = '1';
+  expensesPageMounted = true;
+  // Register per-page cleanup so router can stop background polling when leaving this page.
+  try {
+    window.__employeePageCleanup = () => {
+      expensesPageMounted = false;
+      try { if (noticePollTimer) clearInterval(noticePollTimer); } catch {}
+      noticePollTimer = null;
+    };
+  } catch {}
   prefillUserName();
   try {
-    const p = await fetchJSONAuth('/api/auth/me');
+    const p = await fetchJSONAuthSafe('/api/auth/me', undefined, 1);
     const role = String(p.role||'').toLowerCase();
     if (!p || (role!=='employee' && role!=='manager')) {
       if (role==='admin') {
         showErr('このページへのアクセス権限がありません（管理者は管理画面をご利用ください）');
-        window.location.replace('/admin/expenses');
+        window.location.href = '/admin/expenses';
         return;
       }
-      window.location.replace('/ui/login'); return;
+      window.location.href = '/ui/login'; return;
     }
     const name = p.username || p.email || 'ユーザー'; const el = $('#userName'); if (el) el.textContent = name;
     try { window.MY_ID = p.id; } catch {}
@@ -597,14 +632,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         formActive = true;
       }
     } catch {}
-  } catch { window.location.replace('/ui/login'); return; }
+  } catch (e) {
+    const msg = String(e?.message || '');
+    if (/401|403|invalid token|expired token/i.test(msg)) {
+      window.location.href = '/ui/login';
+      return;
+    }
+    showErr('通信エラーが発生しました。少し待ってから再度お試しください。');
+    return;
+  }
   wireUserMenu(); wireDrawer();
   const back = document.getElementById('expBackBtn');
   if (back && !back.dataset.bound) {
     back.dataset.bound = '1';
     back.addEventListener('click', (e) => {
       e.preventDefault();
-      try { window.location.replace('/ui/portal'); } catch { window.location.href = '/ui/portal'; }
+      const goSoft = window.__employeeSoftNavigate;
+      if (typeof goSoft === 'function') {
+        goSoft('/ui/portal', true).then((ok) => {
+          if (!ok) window.location.href = '/ui/portal';
+        }).catch(() => { window.location.href = '/ui/portal'; });
+        return;
+      }
+      try { window.location.href = '/ui/portal'; } catch {}
     });
   }
   const d = $('#exDate'); if (d && !d.value) d.value = todayISO();
@@ -796,16 +846,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const u = `/api/expenses/export.csv?month=${encodeURIComponent(m)}&status=${encodeURIComponent(s)}`;
     window.location.href = u;
   });
-  const navNew = document.getElementById('topNavNew');
-  const navApplied = document.getElementById('topNavApplied');
-  const navNotice = document.getElementById('topNavNotice');
+  const navNewBtns = [document.getElementById('topNavNew'), document.getElementById('expNavNew')].filter(Boolean);
+  const navAppliedBtns = [document.getElementById('topNavApplied'), document.getElementById('expNavApplied')].filter(Boolean);
+  const navNoticeBtns = [document.getElementById('topNavNotice'), document.getElementById('expNavNotice')].filter(Boolean);
   const homeSection = document.getElementById('homeSection');
   const historySection = document.getElementById('historySection');
   const historyModeLabel = document.getElementById('historyModeLabel');
   const setNavActive = (name) => {
-    navNew?.classList.toggle('active', name === 'new');
-    navApplied?.classList.toggle('active', name === 'applied');
-    navNotice?.classList.toggle('active', name === 'notice');
+    navNewBtns.forEach((el) => el.classList.toggle('active', name === 'new'));
+    navAppliedBtns.forEach((el) => el.classList.toggle('active', name === 'applied'));
+    navNoticeBtns.forEach((el) => el.classList.toggle('active', name === 'notice'));
   };
   const showTab = async (name) => {
     if (name === 'new') {
@@ -823,11 +873,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     setNavActive(name);
   };
-  navNew?.addEventListener('click', async (e) => {
+  const bindTabClick = (els, handler) => {
+    els.forEach((el) => {
+      if (!el) return;
+      el.addEventListener('click', handler);
+    });
+  };
+  bindTabClick(navNewBtns, async (e) => {
     e.preventDefault();
     await showTab('new');
   });
-  navApplied?.addEventListener('click', async (e) => {
+  bindTabClick(navAppliedBtns, async (e) => {
     e.preventDefault();
     if (navBusy) return;
     navBusy = true;
@@ -845,7 +901,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       navBusy = false;
     }
   });
-  navNotice?.addEventListener('click', async (e) => {
+  bindTabClick(navNoticeBtns, async (e) => {
     e.preventDefault();
     if (navBusy) return;
     navBusy = true;
@@ -868,12 +924,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     await refreshNoticeMessages();
   } catch {}
   try {
-    const t = setInterval(async () => {
+    if (noticePollTimer) clearInterval(noticePollTimer);
+    noticePollTimer = setInterval(async () => {
+      if (!expensesPageMounted) return;
       try { await renderNotices(); } catch {}
       try { await refreshNoticeMessages(); } catch {}
     }, 30000);
-    void t;
   } catch {}
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await bootExpensesPage();
 });
 
 function setupAutocomplete(inputId) {

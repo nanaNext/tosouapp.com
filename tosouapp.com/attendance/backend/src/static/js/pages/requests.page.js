@@ -1,5 +1,6 @@
 import { listMyRequests, createRequest, listMyRecentAppliedTypes } from '../api/requests.api.js';
 import { applyPaidLeave } from '../api/leave.api.js';
+import '/static/js/pages/employee-notify.sticky.js';
 
 const $ = (s) => document.querySelector(s);
 

@@ -6,9 +6,14 @@ const isYM = (s) => /^\d{4}-\d{2}$/.test(String(s || ''));
 
 exports.listForMe = async (req, res) => {
   try {
+    const all = String(req.query.all || '') === '1';
     const date = String(req.query.date || '').slice(0, 10);
     const month = String(req.query.month || '').slice(0, 7);
     const limit = req.query.limit;
+    if (all) {
+      const rowsAll = await repo.listForUserFeed({ limit, userId: req.user?.id || null });
+      return res.status(200).json({ date: null, month: null, notices: rowsAll });
+    }
     const d = isISODate(date) ? date : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const m = isYM(month) ? month : String(d).slice(0, 7);
     const rows = await repo.listForDate({ date: d, month: m, limit, userId: req.user?.id || null });
@@ -35,6 +40,16 @@ exports.markRead = async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
     const r = await repo.markRead({ noticeIds: ids, userId: req.user?.id || null });
+    res.status(200).json(r);
+  } catch (err) {
+    res.status(Number(err?.status || 500)).json({ message: err.message });
+  }
+};
+
+exports.hideForMe = async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const r = await repo.hideForUser({ noticeIds: ids, userId: req.user?.id || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });

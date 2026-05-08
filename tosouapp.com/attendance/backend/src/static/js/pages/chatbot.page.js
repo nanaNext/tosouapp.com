@@ -1,6 +1,9 @@
 import { getChatbotCategories, getChatbotQuestions, getChatbotAnswer, searchChatbot, submitChatbotQuestion } from '../api/chatbot.api.js';
+import '/static/js/pages/employee-notify.sticky.js';
 
 const $ = (sel) => document.querySelector(sel);
+let chatbotBooted = false;
+let chatbotHandlersBound = false;
 
 async function init() {
   try {
@@ -75,47 +78,62 @@ async function loadQuestions(categoryId) {
   }
 }
 
-document.addEventListener('click', async (e) => {
-  const t = e.target;
-  if (t.matches('.faq-item')) {
-    const id = t.getAttribute('data-id');
-    const ans = await getChatbotAnswer(id);
-    $('#answer').textContent = ans.answer;
-  }
-  if (t.matches('#searchBtn')) {
-    const text = $('#search').value.trim();
-    if (!text) return;
-    const list = await searchChatbot(text);
-    const ul = $('#faq-list');
-    ul.innerHTML = list.map(it => `<li><button data-id="${it.id}" class="faq-item">${it.question}</button></li>`).join('');
-    $('#answer').textContent = '';
-  }  if (t.matches('#askBtn')) {
-    const question = $('#ask').value.trim();
-    const categoryId = parseInt($('#cat').value, 10);
-    if (!question) {
-      console.warn('⚠️ Question is empty');
-      return;
+function bindChatbotHandlers() {
+  if (chatbotHandlersBound) return;
+  chatbotHandlersBound = true;
+  document.addEventListener('click', async (e) => {
+    const t = e.target;
+    if (t.matches('.faq-item')) {
+      const id = t.getAttribute('data-id');
+      const ans = await getChatbotAnswer(id);
+      $('#answer').textContent = ans.answer;
     }
-    console.log('📤 Submitting question:', { question, categoryId });
-    try {
-      await submitChatbotQuestion(question, categoryId);
-      console.log('✅ Question submitted successfully');
-      $('#ask').value = '';
-      alert('質問が送信されました。\nお返事までしばらくお待ちください。');
-    } catch (e) {
-      console.error('❌ Submit error:', e);
-      alert('エラー: ' + e.message);
+    if (t.matches('#searchBtn')) {
+      const text = $('#search').value.trim();
+      if (!text) return;
+      const list = await searchChatbot(text);
+      const ul = $('#faq-list');
+      ul.innerHTML = list.map(it => `<li><button data-id="${it.id}" class="faq-item">${it.question}</button></li>`).join('');
+      $('#answer').textContent = '';
     }
-  }
-});
+    if (t.matches('#askBtn')) {
+      const question = $('#ask').value.trim();
+      const categoryId = parseInt($('#cat').value, 10);
+      if (!question) {
+        console.warn('⚠️ Question is empty');
+        return;
+      }
+      console.log('📤 Submitting question:', { question, categoryId });
+      try {
+        await submitChatbotQuestion(question, categoryId);
+        console.log('✅ Question submitted successfully');
+        $('#ask').value = '';
+        alert('質問が送信されました。\nお返事までしばらくお待ちください。');
+      } catch (e) {
+        console.error('❌ Submit error:', e);
+        alert('エラー: ' + e.message);
+      }
+    }
+  });
 
-document.addEventListener('change', async (e) => {
-  const t = e.target;
-  if (t.matches('#cat')) {
-    const categoryId = parseInt(t.value, 10);
-    await loadQuestions(categoryId);
-    $('#answer').textContent = '';
-  }
-});
+  document.addEventListener('change', async (e) => {
+    const t = e.target;
+    if (t.matches('#cat')) {
+      const categoryId = parseInt(t.value, 10);
+      await loadQuestions(categoryId);
+      $('#answer').textContent = '';
+    }
+  });
+}
 
-init();
+export async function bootChatbotPage() {
+  if (!document.getElementById('cat')) return;
+  bindChatbotHandlers();
+  if (chatbotBooted) return;
+  chatbotBooted = true;
+  await init();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await bootChatbotPage();
+});

@@ -170,6 +170,10 @@ module.exports = {
     const [rows] = await db.query(sql, [userId]);
     return rows;
   },
+  async getById(id) {
+    const [rows] = await db.query(`SELECT * FROM leave_requests WHERE id = ? LIMIT 1`, [id]);
+    return rows && rows[0] ? rows[0] : null;
+  },
   async listApprovedByUserOverlap(userId, fromDate, toDate) {
     const sql = `
       SELECT *

@@ -4,6 +4,7 @@ const { authenticate, authorize } = require('../../core/middleware/authMiddlewar
 const { rateLimitNamed } = require('../../core/middleware/rateLimit');
 const repo = require('./expenses.repository');
 const auditRepo = require('../audit/audit.repository');
+const noticesRepo = require('../notices/notices.repository');
 const expenseTypesRepo = require('./expenseTypes.repository');
 router.use(authenticate);
 router.get('/types',
@@ -342,6 +343,19 @@ router.patch('/:id/status',
       const note = String(req.body?.note || '').trim() || null;
       const ok = await repo.updateStatus(id, st, note, req.user.id);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
+      try {
+        const row = await repo.getById(id);
+        if (row && row.userId && st !== 'pending') {
+          const statusLabel = st === 'approved' ? '承認' : (st === 'rejected' ? '差戻し' : st);
+          await noticesRepo.createNotice({
+            targetUserId: row.userId,
+            targetDate: row.date ? String(row.date).slice(0, 10) : null,
+            targetMonth: row.date ? String(row.date).slice(0, 7) : null,
+            message: `交通費申請（¥${Number(row.amount || 0).toLocaleString()}）が${statusLabel}されました。`,
+            createdBy: req.user?.id || null
+          });
+        }
+      } catch {}
       res.status(200).json({ ok: true });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -357,6 +371,25 @@ router.post('/:id/apply',
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
       const ok = await repo.updateStatus(id, 'applied', null, null);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
+      try {
+        const row = await repo.getById(id);
+        const userName = String(req.user?.username || req.user?.email || `user#${req.user?.id || ''}`);
+        await noticesRepo.createAdminNotification({
+          kind: 'expense_apply',
+          title: '交通費申請',
+          message: `${userName} さんが交通費を申請しました`,
+          linkUrl: '/admin/expenses',
+          payload: {
+            source: 'expense',
+            expenseId: id,
+            userId: req.user?.id || null,
+            date: row?.date ? String(row.date).slice(0, 10) : null,
+            amount: Number(row?.amount || 0)
+          },
+          createdBy: req.user?.id || null,
+          audience: 'admin_manager'
+        });
+      } catch {}
       res.status(200).json({ ok: true });
     } catch (err) {
       res.status(500).json({ message: err.message });

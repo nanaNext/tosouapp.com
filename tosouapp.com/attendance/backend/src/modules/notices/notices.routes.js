@@ -5,6 +5,7 @@ const ctrl = require('./notices.controller');
 
 router.get('/', authenticate, authorize('employee','manager','admin'), ctrl.listForMe);
 router.post('/read', authenticate, authorize('employee','manager','admin'), ctrl.markRead);
+router.post('/hide', authenticate, authorize('employee','manager','admin'), ctrl.hideForMe);
 
 router.get('/admin', authenticate, authorize('manager','admin'), ctrl.listAdmin);
 router.post('/admin', authenticate, authorize('manager','admin'), ctrl.create);

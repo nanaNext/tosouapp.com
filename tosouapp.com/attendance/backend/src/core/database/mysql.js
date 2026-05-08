@@ -24,24 +24,6 @@ if (String(process.env.NODE_ENV || '').toLowerCase() !== 'test') {
     try {
       const connection = await pool.getConnection();
       await connection.ping();
-      try {
-        const dbName = process.env.DB_NAME;
-        if (dbName) {
-          try { await connection.query(`ALTER DATABASE \`${dbName}\` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci`); } catch {}
-          const [rows] = await connection.query(`
-            SELECT TABLE_NAME AS t, TABLE_COLLATION AS c
-            FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'
-          `, [dbName]);
-          for (const r of rows || []) {
-            const coll = String(r.c || '');
-            if (!coll.startsWith('utf8mb4')) {
-              const t = String(r.t);
-              try { await connection.query(`ALTER TABLE \`${dbName}\`.\`${t}\` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`); } catch {}
-            }
-          }
-        }
-      } catch {}
       console.log('✅ Kết nối MySQL thành công!');
       connection.release();
     } catch (err) {

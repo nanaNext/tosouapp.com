@@ -1,5 +1,6 @@
 import { me, logout, refresh } from '../api/auth.api.js';
 import { fetchJSONAuth } from '../api/http.api.js';
+import '/static/js/pages/employee-notify.sticky.js';
 
 const $ = (sel) => document.querySelector(sel);
 

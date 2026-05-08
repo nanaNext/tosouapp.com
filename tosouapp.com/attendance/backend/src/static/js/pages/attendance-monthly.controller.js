@@ -270,6 +270,62 @@
     }
   };
 
+  const readFastMonthCache = (cacheKey) => {
+    try {
+      const k = String(cacheKey || '').trim();
+      if (!k) return null;
+      const raw = localStorage.getItem(`monthly.cache.fast.${k}`) || '';
+      if (!raw) return null;
+      const obj = JSON.parse(raw); 
+      if (!obj || typeof obj !== 'object' || !obj.detail) return null;
+      return obj;
+    } catch {
+      return null;
+    }
+  };
+  const writeFastMonthCache = (cacheKey, payload) => {
+    try {
+      const k = String(cacheKey || '').trim();
+      if (!k || !payload || !payload.detail) return;
+      localStorage.setItem(`monthly.cache.fast.${k}`, JSON.stringify({
+        detail: payload.detail,
+        timesheet: payload.timesheet || null,
+        at: Date.now()
+      }));
+      // Keep one generic fallback for employee self screen across sessions.
+      if (k.startsWith('self:')) {
+        localStorage.setItem('monthly.cache.fast.self.latest', JSON.stringify({
+          key: k,
+          ym: String(k.split(':')[1] || ''),
+          detail: payload.detail,
+          timesheet: payload.timesheet || null,
+          at: Date.now()
+        }));
+      }
+    } catch {}
+  };
+
+  const renderInstantRightSkeleton = (ym) => {
+    try {
+      const host = ctx.tableHost;
+      if (!host) return;
+      const monthLabel = String(ym || '').trim() || monthJST();
+      host.innerHTML = `
+        <div class="se-month-table-wrap" aria-busy="true">
+          <div style="min-width:2300px;border:1px solid #dbe4f0;border-radius:10px;overflow:hidden;background:#fff;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#0b2c66;color:#fff;font-weight:800;">
+              <span>${monthLabel} 読込中</span>
+              <span style="opacity:.9;font-weight:700;">月次データを取得しています...</span>
+            </div>
+            <div style="padding:12px;color:#475569;font-weight:700;">
+              データを読み込んでいます...
+            </div>
+          </div>
+        </div>
+      `;
+    } catch {}
+  };
+
   const syncMonthHScroll = () => {
     const getRoot = () => document.querySelector('#monthTable');
     const getHost = () => {
@@ -658,8 +714,29 @@
         const raw = sessionStorage.getItem(`monthly.cache.${cacheKey}`);
         if (raw) persisted = JSON.parse(raw);
       } catch {}
+      if (!persisted) {
+        persisted = readFastMonthCache(cacheKey);
+      }
+      if (!persisted && !String(ctx.actingUserId || '')) {
+        try {
+          const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
+          const latest = latestRaw ? JSON.parse(latestRaw) : null;
+          if (latest && latest.detail && String(latest.ym || '') === String(ym || '')) persisted = latest;
+        } catch {}
+      }
     }
-    const instant = cached || persisted;
+    let latestFast = null;
+    if (!cached && !persisted && !String(ctx.actingUserId || '')) {
+      try {
+        const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
+        const latest = latestRaw ? JSON.parse(latestRaw) : null;
+        if (latest && latest.detail) latestFast = latest;
+      } catch {}
+    }
+    const instant = cached || persisted || latestFast;
+    if (!instant?.detail) {
+      try { renderInstantRightSkeleton(ym); } catch {}
+    }
     const useSpinner = opts?.spinner !== false && !instant;
     if (useSpinner) showSpinner();
     try {
@@ -694,6 +771,7 @@
       try {
         sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify({ detail, timesheet: null, at: Date.now() }));
       } catch {}
+      writeFastMonthCache(cacheKey, { detail, timesheet: null });
       state.currentMonthDetail = detail;
       state.currentMonthTimesheet = null;
       try {
@@ -753,6 +831,7 @@
             const nextCache = { detail: state.currentMonthDetail, timesheet: state.currentMonthTimesheet, at: Date.now() };
             ctx.monthCache.set(cacheKey, nextCache);
             sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify(nextCache));
+            writeFastMonthCache(cacheKey, nextCache);
           } catch {}
           try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch {}
         })
@@ -1459,7 +1538,6 @@
     const [y, m] = ym.split('-').map(x => parseInt(x, 10));
     if (!y || !m) return;
     showErr('');
-    showSpinner();
     const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
     const bust = `&_=${Date.now()}`;
     const url = `/api/attendance/month/export.xlsx?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}${bust}`;
@@ -1479,7 +1557,6 @@
     if (!/^\d{4}-\d{2}$/.test(ym)) return;
     if (!confirm('この月を提出します。よろしいですか？')) return;
     showErr('');
-    showSpinner();
     try {
       const y = parseInt(ym.slice(0, 4), 10);
       const m = parseInt(ym.slice(5, 7), 10);
@@ -1530,7 +1607,6 @@
     if (!ctx.actingUserId) return;
     if (!confirm('締め状態を解除して編集可能に戻します。よろしいですか？')) return;
     showErr('');
-    showSpinner();
     try {
       const y = parseInt(ym.slice(0, 4), 10);
       const m = parseInt(ym.slice(5, 7), 10);
@@ -1749,11 +1825,17 @@
     state.currentYM = state.currentYM || monthJST();
 
     showErr('');
-    showSpinner();
-    const profile = await ensureAuthProfile();
+    hideSpinner();
+    let cachedProfile = null;
+    try {
+      const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+      cachedProfile = raw ? JSON.parse(raw) : null;
+    } catch {}
+    const profileTask = ensureAuthProfile().catch(() => null);
+    let profile = cachedProfile || null;
     if (!profile) {
-      try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
-      return false;
+      // Do not block first paint when cache is empty; run real auth in background.
+      profile = { id: '', role: 'employee', username: '', email: '' };
     }
     ctx.profile = profile;
     state.profile = profile;
@@ -1824,7 +1906,8 @@
     initSummaryTabs();
     initSummaryEditor();
     wireAutoRefreshSide();
-    await initUserPicker();
+    // Do not block first month rendering on employee-list fetch.
+    void initUserPicker();
 
     ctx.initialYM = (() => {
       try {
@@ -1837,6 +1920,16 @@
     if (ctx.picker1) ctx.picker1.value = ctx.initialYM;
     if (ctx.picker2) ctx.picker2.value = ctx.initialYM;
     buildTargetDateSelect(ctx.initialYM);
+
+    Promise.resolve(profileTask).then((fresh) => {
+      if (!fresh) {
+        try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+        return;
+      }
+      ctx.profile = fresh;
+      state.profile = fresh;
+      ctx.role = String(fresh.role || '').toLowerCase();
+    }).catch(() => {});
 
     return true;
   };

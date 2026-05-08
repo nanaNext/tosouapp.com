@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>給与明細など</title>
+  <title>給与明細ビュー</title>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
   <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260314">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
-  <script type="module" src="/static/js/pages/salary.page.js?v=navy-20260427-1"></script>
+  <script type="module" src="/static/js/pages/salary.page.js"></script>
 </head>
 <body>
   <div id="pageSpinner" class="page-spinner" hidden>
@@ -17,67 +17,13 @@
       <div></div><div></div><div></div><div></div><div></div><div></div>
     </div>
   </div>
-  <header class="topbar">
-    <button id="mobileMenuBtn" class="mobile-btn" aria-label="menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
-    <div class="topbar-inner">
-      <div class="brand">
-        <img src="/static/images/logo1.png" alt="logo" class="icon">
-        <span class="logo">IIZUKA</span>
-      </div>
-      <div class="search">
-        <input type="search" placeholder="Search..." aria-label="Search">
-        <span class="search-hint" aria-hidden="true">^ K</span>
-        <div class="search-meta" aria-hidden="true">
-          <button class="search-close" title="Close" type="button">×</button>
-          <span class="search-esc">ESC</span>
-        </div>
-      </div>
-      <div class="user">
-        <div class="user-menu">
-          <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/use.png" alt="user" class="user-icon">
-            <span id="userName"></span>
-            <span class="caret">▾</span>
-          </button>
-          <div class="dropdown" id="userDropdown" hidden>
-            <a href="/ui/portal" class="item">ホーム</a>
-            <a href="/ui/dashboard" class="item">現在の登録情報</a>
-            <button class="item" id="btnLogout" type="button">ログアウト</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
-  <div id="mobileDrawer" class="mobile-drawer" hidden>
-    <div class="drawer-header">
-      <button id="mobileClose" class="mobile-close" aria-label="close">✕</button>
-    </div>
-    <a href="/ui/portal" class="drawer-item">ホーム</a>
-    <button type="button" class="drawer-item drawer-group-btn" data-drawer-group="att" aria-expanded="false">
-      勤怠入力 <span class="drawer-group-caret" aria-hidden="true">▾</span>
-    </button>
-    <div class="drawer-group-list" data-drawer-panel="att" hidden>
-      <a href="/ui/attendance" class="drawer-item drawer-sub-item">個人カレンダー登録画面</a>
-      <a href="/ui/attendance/monthly" class="drawer-item drawer-sub-item">月次勤怠入力へ</a>
-      <a href="/ui/attendance/simple" class="drawer-item drawer-sub-item">簡易登録画面</a>
-    </div>
-    <a href="/ui/requests" class="drawer-item">申請</a>
-    <a href="/ui/contact" class="drawer-item">お問い合わせ先</a>
-  </div>
-  <div class="subbar">
-    <nav class="subnav">
-      <a href="/ui/portal">ホーム</a>
-      <a href="/ui/requests">申請</a>
-      <a href="/ui/contact">お問い合わせ先</a>
-    </nav>
-  </div>
+  <!--#include file="_partials/employee-header.html" -->
   <main class="content">
     <div id="error" style="display:none;color:#b00020;font-weight:600;"></div>
-    <section style="max-width:1280px;margin:0 auto;padding:0 8px;">
+    <section class="card" style="max-width:980px;margin:0 auto;">
+      <h3 style="margin:0 0 12px;">給与明細ビュー</h3>
       <div id="salaryHost"></div>
     </section>
   </main>
 </body>
 </html>
-
