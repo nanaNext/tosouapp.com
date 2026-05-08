@@ -9,7 +9,7 @@
   <link rel="preload" href="/static/images/use.png" as="image">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260403-1" defer></script>
-  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260501-shellnav1"></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260508-pjaxexp7"></script>
   <style>
     .contact-wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
     .contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -24,85 +24,36 @@
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <button id="mobileMenuBtn" class="mobile-btn" aria-label="menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
-    <div class="topbar-inner">
-      <div class="brand">
-        <img src="/static/images/logo1.png" alt="logo" class="icon">
-        <span class="logo">IIZUKA</span>
-      </div>
-      <div class="search">
-        <input type="search" placeholder="Search..." aria-label="Search">
-        <span class="search-hint" aria-hidden="true">^ K</span>
-        <div class="search-meta" aria-hidden="true">
-          <button class="search-close" title="Close" type="button">×</button>
-          <span class="search-esc">ESC</span>
-        </div>
-      </div>
-      <div class="user">
-        <div class="user-menu">
-          <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/use.png" alt="user" class="user-icon" width="38" height="38" decoding="sync" fetchpriority="high">
-            <span id="userName"></span>
-            <span class="caret">▾</span>
-          </button>
-          <div class="dropdown" id="userDropdown" hidden>
-            <a href="/ui/portal" class="item">ホーム</a>
-            <a href="/ui/dashboard" class="item">現在の登録情報</a>
-            <a href="/ui/admin?tab=settings" class="item">各種設定</a>
-            <button class="item" id="btnLogout" type="button">ログアウト</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
-  <div id="mobileDrawer" class="mobile-drawer" hidden>
-    <div class="drawer-header">
-      <button id="mobileClose" class="mobile-close" aria-label="close">✕</button>
-    </div>
-    <a href="/ui/portal" class="drawer-item">ホーム</a>
-    <a href="/ui/requests" class="drawer-item">申請</a>
-    <a href="/ui/contact" class="drawer-item">お問い合わせ先</a>
-  </div>
-  <div class="subbar">
-    <nav class="subnav">
-      <a href="/ui/portal">ホーム</a>
-      <a href="/ui/requests">申請</a>
-      <a href="/ui/contact" aria-current="page">お問い合わせ先</a>
-    </nav>
-  </div>
-
+  <!--#include file="_partials/employee-header.html" -->
   <main class="content">
     <section class="contact-wrap">
       <div class="kintai-card" style="margin-bottom:14px;">
         <div class="kintai-card-title">お問い合わせ先</div>
         <div style="padding:16px;color:#334155;font-size:14px;">
-          システムに関するご質問・不具合報告は、下記窓口へご連絡ください。
+          業務システムに関する質問や不具合報告は、下記の窓口へご連絡ください。
         </div>
       </div>
-
       <div class="contact-grid">
         <article class="contact-item">
           <h3>システム管理窓口</h3>
           <p>担当: 情報システム部</p>
-          <p>メール: <a href="mailto:kouji@it2009.com">kouji@it2009.com</a></p>
+          <p>Email: <a href="mailto:kouji@it2009.com">kouji@it2009.com</a></p>
           <p>TEL: 042-794-6731</p>
-          <p>受付時間: 9:00 - 18:00 [ 土・日・祝日除く ]</p>
+          <p>受付時間: 9:00 - 18:00（土日祝を除く）</p>
         </article>
         <article class="contact-item">
-          <h3>勤怠運用窓口</h3>
-          <p>担当: 総務・労務</p>
-          <p>メール: <a href="mailto:fly@it2009.com">fly@it2009.com</a></p>
+          <h3>総務窓口</h3>
+          <p>担当: 総務部</p>
+          <p>Email: <a href="mailto:fly@it2009.com">fly@it2009.com</a></p>
           <p>TEL: 042-794-6731</p>
-          <p>受付時間: 9:00 - 18:00 [ 土・日・祝日除く ]</p>
+          <p>受付時間: 9:00 - 18:00（土日祝を除く）</p>
         </article>
       </div>
-
       <div class="contact-note">
-        連絡時に「発生日時」「操作内容」「画面キャプチャ（可能であれば）」を添付いただくと、対応がスムーズになります。
+        ご連絡時は、発生日時・操作内容・画面キャプチャを添付いただくと、より迅速に対応できます。
       </div>
     </section>
   </main>
 </body>
 </html>
+

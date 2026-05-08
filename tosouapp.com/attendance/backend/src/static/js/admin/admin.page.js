@@ -63,6 +63,7 @@ const toLegacyState = (path) => {
   if (p === '/admin/departments' || p === '/admin/organization/departments') return { tab: 'departments', hash: '' };
   if (p === '/admin/chatbot/categories') return { redirect: '/ui/chatbot' };
   if (p === '/admin/chatbot/user-questions') return { redirect: '/ui/chatbot' };
+  if (p === '/admin/faq') return { redirect: '/admin/chatbot/faq' };
   if (p === '/admin/system/settings') return { tab: 'settings', hash: '' };
   if (p === '/admin/system/audit-logs') return { tab: 'audit', hash: '' };
 
@@ -724,7 +725,7 @@ const route = async () => {
       await mountModule(mod);
       return;
     }
-    if (p2 === '/admin/chatbot/faq') {
+    if (p2 === '/admin/faq' || p2.indexOf('/admin/chatbot/faq') === 0) {
       const mod = await loadModule('./chatbot/faq.page.js');
       if (seq !== routeSeq) return;
       await mountModule(mod);

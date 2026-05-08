@@ -15,6 +15,7 @@ const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit')
 const salaryService = require('../salary/salary.service');
 const salaryInputRepo = require('../salary/salaryInput.repository');
 const payslipRepo = require('../payslip/payslip.repository');
+const noticesRepo = require('../notices/notices.repository');
 const db = require('../../core/database/mysql');
 const upload = require('../../core/middleware/upload');
 const path = require('path');
@@ -850,6 +851,38 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
     res.status(200).json({ total, counts, items });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+// Persistent admin notification feed (DB-backed)
+router.get('/notifications/feed', authorize('admin','manager'), async (req, res) => {
+  try {
+    const limit = req.query?.limit;
+    const data = await noticesRepo.listAdminFeed({
+      userId: req.user?.id || null,
+      role: req.user?.role || '',
+      limit
+    });
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+router.post('/notifications/read', authorize('admin','manager'), async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const r = await noticesRepo.markRead({ noticeIds: ids, userId: req.user?.id || null });
+    res.status(200).json(r);
+  } catch (err) {
+    res.status(Number(err?.status || 500)).json({ message: err.message });
+  }
+});
+router.post('/notifications/hide', authorize('admin','manager'), async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const r = await noticesRepo.hideForUser({ noticeIds: ids, userId: req.user?.id || null });
+    res.status(200).json(r);
+  } catch (err) {
+    res.status(Number(err?.status || 500)).json({ message: err.message });
   }
 });
 // Attendance admin: view timesheet and edit records

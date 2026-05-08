@@ -78,18 +78,12 @@ function redirectToLoginOnce() {
         return '';
       }
     })();
-    const cur = String(window.location && window.location.pathname || '');
-    const isExpensesFlow = cur.includes('/ui/expenses') || cur.includes('/expenses-login');
-    const url = isExpensesFlow
-      ? ('/expenses-login' + (next ? ('?next=' + encodeURIComponent(next)) : ''))
-      : ('/ui/login' + (next ? ('?next=' + encodeURIComponent(next)) : ''));
-    try { window.location.replace(url); return; } catch {}
+    const url = '/ui/login' + (next ? ('?next=' + encodeURIComponent(next)) : '');
     try { window.location.href = url; return; } catch {}
   } catch {}
   try {
     const a = document.createElement('a');
-    const cur = String(window.location && window.location.pathname || '');
-    a.href = (cur.includes('/ui/expenses') || cur.includes('/expenses-login')) ? '/expenses-login' : '/ui/login';
+    a.href = '/ui/login';
     a.textContent = 'ログイン画面へ';
     a.style.cssText = 'position:fixed;top:12px;right:12px;z-index:99999;background:#fff1f2;color:#7f1d1d;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-weight:900;';
     document.body.appendChild(a);

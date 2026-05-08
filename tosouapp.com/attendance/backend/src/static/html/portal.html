@@ -27,89 +27,18 @@
   <style>
     html.portal-preboot body { visibility: hidden !important; }
   </style>
-  <script>
-    (function () {
-      const roleOf = (v) => {
-        const r = String(v || '').trim().toLowerCase();
-        if (r === 'admin' || r === 'manager' || r === 'employee') return r;
-        if (r === '管理者' || r === 'administrator' || r === 'quanly' || r === 'quản lý') return 'admin';
-        if (r === 'マネージャー' || r === 'supervisor' || r === 'lead') return 'manager';
-        if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
-        return r;
-      };
-      const reveal = () => { try { document.documentElement.classList.remove('portal-preboot'); } catch {} };
-      try { document.documentElement.classList.add('portal-preboot'); } catch {}
-      const routeAdmin = () => { try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; } };
-      try {
-        const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-        const cachedRole = roleOf((raw ? JSON.parse(raw) : {})?.role || '');
-        if (cachedRole === 'admin' || cachedRole === 'manager') {
-          routeAdmin();
-          return;
-        }
-      } catch {}
-      reveal();
-    })();
-  </script>
+  <script src="/static/js/pages/portal-preboot.js"></script>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
-  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260501-flickerfix1">
-  <link rel="preload" href="/static/images/use.png" as="image">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260416-mobilefix4">
   <link rel="prefetch" href="/ui/attendance/simple">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
-  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260501-shellnav1"></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260417-3"></script>
   <link rel="icon" href="data:,">
 </head>
 
 <body>
   <div id="pageSpinner" class="page-spinner" hidden><div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
-  <header class="topbar">
-    <button id="mobileMenuBtn" class="mobile-btn" aria-label="menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
-    <div class="topbar-inner">
-      <div class="brand">
-        <img src="/static/images/logo1.png" alt="logo" class="icon">
-        <span class="logo">IIZUKA</span>
-      </div>
-      <div class="search">
-        <input type="search" placeholder="Search..." aria-label="Search">
-        <span class="search-hint" aria-hidden="true">^ K</span>
-        <div class="search-meta" aria-hidden="true">
-          <button class="search-close" title="Close" type="button">×</button>
-          <span class="search-esc">ESC</span>
-        </div>
-      </div>
-      <div class="user">
-        <div class="user-menu">
-          <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/use.png" alt="user" class="user-icon" width="38" height="38" decoding="sync" fetchpriority="high">
-            <span id="userName"></span>
-            <span class="caret">▾</span>
-          </button>
-          <div class="dropdown" id="userDropdown" hidden>
-            <a href="/ui/portal" class="item">ホーム</a>
-            <a href="/ui/dashboard" class="item">現在の登録情報</a>
-            <a href="/ui/admin?tab=settings" class="item">各種設定</a>
-            <button class="item" id="btnLogout" type="button">ログアウト</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
-  <div id="mobileDrawer" class="mobile-drawer" hidden>
-    <div class="drawer-header">
-      <button id="mobileClose" class="mobile-close" aria-label="close">✕</button>
-    </div>
-    <a href="/ui/portal" class="drawer-item" aria-current="page">ホーム</a>
-    <a href="/ui/requests" class="drawer-item">申請</a>
-    <a href="/ui/contact" class="drawer-item">お問い合わせ先</a>
-  </div>
-  <div class="subbar">
-    <nav class="subnav">
-      <a href="/ui/portal" aria-current="page">ホーム</a>
-      <a href="/ui/requests">申請</a>
-      <a href="/ui/contact">お問い合わせ先</a>
-    </nav>
-  </div>
+  <!--#include file="_partials/employee-header.html" -->
   <main class="content">
     <div id="error" style="display:none;color:#b00020;font-weight:600;"></div>
     <section class="tiles" id="tiles"></section>
@@ -117,4 +46,3 @@
 </body>
 
 </html>
-

@@ -122,20 +122,22 @@ export class FaqAdminComponent {
             </div>
           </div>
         ` : `
-          <div class="answer-form" id="form-${q.id}" style="display:none;background:white;padding:12px;border-radius:4px;">
-            <textarea id="answerText-${q.id}" placeholder="ここに回答を入力してください（2000文字以下）" maxlength="2000" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:13px;min-height:120px;resize:vertical;box-sizing:border-box;"></textarea>
+          <div class="answer-form" id="form-${q.id}" style="display:none;background:white;padding:12px;border:1px solid #dbeafe;border-radius:4px;">
+            <div style="font-weight:700;color:#0f172a;margin-bottom:8px;">回答入力</div>
+            <textarea id="answerText-${q.id}" data-answer-input="${q.id}" placeholder="ここに回答を入力してください（2000文字以下）" maxlength="2000" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:13px;min-height:120px;resize:vertical;box-sizing:border-box;"></textarea>
+            <div style="margin-top:6px;font-size:11px;color:#64748b;text-align:right;" id="answerCount-${q.id}">0 / 2000</div>
             <div style="display:flex;gap:10px;margin-top:10px;">
-              <button onclick="window.faqAdmin.submitAnswer(${q.id})" style="flex:1;padding:10px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">
+              <button type="button" data-action="submit-answer" data-question-id="${q.id}" style="flex:1;padding:10px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">
                 回答を保存
               </button>
-              <button onclick="window.faqAdmin.cancelAnswer(${q.id})" style="flex:0 0 120px;padding:10px;background:#ccc;color:#333;border:none;border-radius:4px;cursor:pointer;">
+              <button type="button" data-action="cancel-answer" data-question-id="${q.id}" style="flex:0 0 120px;padding:10px;background:#ccc;color:#333;border:none;border-radius:4px;cursor:pointer;">
                 キャンセル
               </button>
             </div>
           </div>
 
           <div style="display:flex;gap:10px;margin-top:10px;">
-            <button onclick="window.faqAdmin.showAnswerForm(${q.id})" style="padding:10px 20px;background:#1e40af;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:bold;font-size:13px;">
+            <button type="button" data-action="show-answer" data-question-id="${q.id}" style="padding:10px 20px;background:#1e40af;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:bold;font-size:13px;">
               回答する
             </button>
           </div>
@@ -151,11 +153,38 @@ export class FaqAdminComponent {
         this.render();
       });
     });
+    if (this.container) {
+      this.container.querySelectorAll('[data-action]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const action = e.currentTarget.dataset.action;
+          const questionId = Number(e.currentTarget.dataset.questionId || 0);
+          if (!questionId) return;
+          if (action === 'show-answer') this.showAnswerForm(questionId);
+          if (action === 'cancel-answer') this.cancelAnswer(questionId);
+          if (action === 'submit-answer') this.submitAnswer(questionId);
+        });
+      });
+      this.container.querySelectorAll('[data-answer-input]').forEach((ta) => {
+        ta.addEventListener('input', (e) => {
+          const qid = Number(e.currentTarget.dataset.answerInput || 0);
+          const countEl = document.getElementById(`answerCount-${qid}`);
+          if (countEl) countEl.textContent = `${String(e.currentTarget.value.length)} / 2000`;
+        });
+      });
+    }
   }
 
   showAnswerForm(questionId) {
     const form = document.getElementById(`form-${questionId}`);
-    if (form) form.style.display = 'block';
+    if (form) {
+      form.style.display = 'block';
+      const ta = document.getElementById(`answerText-${questionId}`);
+      if (ta) {
+        ta.focus();
+        const countEl = document.getElementById(`answerCount-${questionId}`);
+        if (countEl) countEl.textContent = `${String(ta.value.length)} / 2000`;
+      }
+    }
   }
 
   cancelAnswer(questionId) {

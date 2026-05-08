@@ -9,6 +9,7 @@ const salaryInputRepo = require('../salary/salaryInput.repository');
 const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
 const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 const leaveRepo = require('../leave/leave.repository');
+const noticesRepo = require('../notices/notices.repository');
 // Controller xử lý request/response cho module chấm công
 
 async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attendance') {
@@ -85,6 +86,21 @@ exports.checkIn = async (req, res) => {
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
     } catch {}
+    try {
+      const u = await userRepo.getUserById(userId);
+      const name = u ? (u.username || u.email || '従業員') : '従業員';
+      const timeStr = String(result?.checkIn || '').slice(11, 16);
+      await noticesRepo.createAdminNotification({
+        kind: 'attendance_punch',
+        title: '打刻通知',
+        message: `${name}さんが出勤打刻をしました（${timeStr}）`,
+        linkUrl: '/admin/attendance',
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch (e) {
+      console.error('Failed to notify admin on checkin:', e);
+    }
     res.status(201).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -131,6 +147,21 @@ exports.checkOut = async (req, res) => {
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
     } catch {}
+    try {
+      const u = await userRepo.getUserById(userId);
+      const name = u ? (u.username || u.email || '従業員') : '従業員';
+      const timeStr = String(result?.checkOut || '').slice(11, 16);
+      await noticesRepo.createAdminNotification({
+        kind: 'attendance_punch',
+        title: '打刻通知',
+        message: `${name}さんが退勤打刻をしました（${timeStr}）`,
+        linkUrl: '/admin/attendance',
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch (e) {
+      console.error('Failed to notify admin on checkout:', e);
+    }
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -1,6 +1,7 @@
 const repo = require('./leave.repository');
 const userRepo = require('../users/user.repository');
 const auditRepo = require('../audit/audit.repository');
+const noticesRepo = require('../notices/notices.repository');
 const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 const env = require('../../config/env');
 
@@ -160,6 +161,18 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Missing userId/startDate/endDate/type' });
     }
     const id = await repo.create({ userId, startDate, endDate, type, reason });
+    try {
+      const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
+      await noticesRepo.createAdminNotification({
+        kind: 'leave_request',
+        title: '有休/休暇申請',
+        message: `${userName} さんが休暇申請しました（${startDate} ~ ${endDate}）`,
+        linkUrl: '/admin/leave/requests',
+        payload: { source: 'leave', requestId: id, userId, startDate, endDate, type: type || 'paid' },
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch {}
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -177,6 +190,18 @@ exports.createPaid = async (req, res) => {
       return res.status(200).json({ id: existed.id, duplicated: true, status: existed.status });
     }
     const id = await repo.create({ userId, startDate, endDate, type: 'paid', reason });
+    try {
+      const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
+      await noticesRepo.createAdminNotification({
+        kind: 'leave_request',
+        title: '有給申請',
+        message: `${userName} さんが有給申請しました（${startDate} ~ ${endDate}）`,
+        linkUrl: '/admin/leave/requests',
+        payload: { source: 'leave', requestId: id, userId, startDate, endDate, type: 'paid' },
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch {}
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -251,6 +276,19 @@ exports.updateStatus = async (req, res) => {
       return res.status(400).json({ message: 'Missing id/status' });
     }
     await repo.updateStatus(id, status);
+    try {
+      const row = await repo.getById(id);
+      if (row && row.userId && status !== 'pending') {
+        const statusLabel = status === 'approved' ? '承認' : (status === 'rejected' ? '差戻し' : status);
+        await noticesRepo.createNotice({
+          targetUserId: row.userId,
+          targetDate: row.startDate ? String(row.startDate).slice(0, 10) : null,
+          targetMonth: row.startDate ? String(row.startDate).slice(0, 7) : null,
+          message: `休暇申請（${String(row.startDate || '').slice(0, 10)} ~ ${String(row.endDate || '').slice(0, 10)}）が${statusLabel}されました。`,
+          createdBy: req.user?.id || null
+        });
+      }
+    } catch {}
     res.status(200).json({ id, status });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -427,6 +465,18 @@ exports.createRequest = async (req, res) => {
     }
     const t = type || 'paid';
     const id = await repo.create({ userId, startDate, endDate, type: t, reason });
+    try {
+      const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
+      await noticesRepo.createAdminNotification({
+        kind: 'leave_request',
+        title: '休暇申請',
+        message: `${userName} さんが休暇申請しました（${startDate} ~ ${endDate}）`,
+        linkUrl: '/admin/leave/requests',
+        payload: { source: 'leave', requestId: id, userId, startDate, endDate, type: t },
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch {}
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -439,6 +489,19 @@ exports.approve = async (req, res) => {
     const s = status || 'approved';
     if (!['approved','rejected','pending'].includes(s)) return res.status(400).json({ message: 'Invalid status' });
     await repo.updateStatus(id, s);
+    try {
+      const row = await repo.getById(id);
+      if (row && row.userId && s !== 'pending') {
+        const statusLabel = s === 'approved' ? '承認' : (s === 'rejected' ? '差戻し' : s);
+        await noticesRepo.createNotice({
+          targetUserId: row.userId,
+          targetDate: row.startDate ? String(row.startDate).slice(0, 10) : null,
+          targetMonth: row.startDate ? String(row.startDate).slice(0, 7) : null,
+          message: `休暇申請（${String(row.startDate || '').slice(0, 10)} ~ ${String(row.endDate || '').slice(0, 10)}）が${statusLabel}されました。`,
+          createdBy: req.user?.id || null
+        });
+      }
+    } catch {}
     res.status(200).json({ id, status: s });
   } catch (err) {
     res.status(500).json({ message: err.message });

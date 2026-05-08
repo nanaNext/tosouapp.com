@@ -209,37 +209,11 @@ try {
 app.use('/uploads/payslips', (req, res) => {
   res.status(403).json({ message: 'Use secureUrl endpoints to download payslips' });
 });
-// Backward-compatible resolver for legacy upload filenames (mojibake/encoded names on old records).
-app.get('/uploads/:name', (req, res, next) => {
-  try {
-    const uploadsDir = path.join(__dirname, 'uploads');
-    const raw = String(req.params?.name || '');
-    const safeBase = path.basename(raw);
-    if (!safeBase) return next();
-    const candidates = [safeBase];
-    try {
-      const d1 = decodeURIComponent(safeBase);
-      if (d1 && !candidates.includes(d1)) candidates.push(d1);
-      try {
-        const d2 = decodeURIComponent(d1);
-        if (d2 && !candidates.includes(d2)) candidates.push(d2);
-      } catch {}
-    } catch {}
-    for (const name of candidates) {
-      const p = path.join(uploadsDir, name);
-      if (fs.existsSync(p)) return res.sendFile(p);
-    }
-    // Fallback by stable upload prefix: "<timestamp>-<random>-"
-    const m = safeBase.match(/^(\d+-\d+-)/);
-    if (m) {
-      const prefix = m[1];
-      const files = fs.readdirSync(uploadsDir);
-      const hit = files.find((f) => String(f).startsWith(prefix));
-      if (hit) return res.sendFile(path.join(uploadsDir, hit));
-    }
-  } catch {}
-  return next();
-});
+
+// We remove the insecure backward-compatible resolver for /uploads/:name
+// because it bypasses the payslips block if someone knows the filename.
+// If legacy uploads need to be served, they should be done via authenticated endpoints.
+
 // Serve other static uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } }));
 app.use('/static', express.static(path.join(__dirname, 'static'), {

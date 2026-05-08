@@ -65,8 +65,13 @@ function roleRedirect(role, nextPath) {
   const fallback = (r === 'admin' || r === 'manager')
     ? `/admin/dashboard?boot=${Date.now()}`
     : '/ui/portal';
-  const next = safeSuggested || fallback;
-  try { window.location.replace(next); } catch { window.location.href = next; }
+  
+  if (safeSuggested && safeSuggested !== fallback) {
+    try { window.history.pushState(null, '', fallback); } catch {}
+    try { window.location.href = safeSuggested; return; } catch {}
+  }
+  
+  try { window.location.href = fallback; } catch {}
 }
 
 async function handleSubmit(e) {

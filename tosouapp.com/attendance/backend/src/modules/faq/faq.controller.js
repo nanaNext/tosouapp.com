@@ -1,5 +1,6 @@
 const repo = require('./faq.repository');
 const { body, validationResult } = require('express-validator');
+const noticesRepo = require('../notices/notices.repository');
 
 // Validation middleware
 exports.validateCreateQuestion = [
@@ -72,6 +73,24 @@ exports.createQuestion = async (req, res) => {
     const { question, detail, category } = req.body;
     console.log('💾 Saving question:', { userId, question, detail, category });
     const result = await repo.createQuestion({ userId, question, detail, category });
+    try {
+      const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
+      await noticesRepo.createAdminNotification({
+        kind: 'faq_question',
+        title: 'FAQ新規質問',
+        message: `${userName} さんが質問を送信しました: ${question}`,
+        linkUrl: '/admin/chatbot/faq',
+        payload: {
+          source: 'faq',
+          questionId: result?.id || null,
+          userId,
+          question,
+          category: category || null
+        },
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch {}
 
     console.log('✅ Question saved with id:', result.id);
     res.status(201).json({ 

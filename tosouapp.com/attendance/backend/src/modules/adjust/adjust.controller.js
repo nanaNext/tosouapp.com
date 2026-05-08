@@ -1,5 +1,6 @@
 const repo = require('./adjust.repository');
 const attendanceRepo = require('../attendance/attendance.repository');
+const noticesRepo = require('../notices/notices.repository');
 // Controller yêu cầu sửa giờ
 exports.create = async (req, res) => {
   try {
@@ -16,6 +17,25 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Missing fields' });
     }
     const id = await repo.create({ userId, attendanceId, requestedCheckIn, requestedCheckOut, reason });
+    try {
+      const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
+      await noticesRepo.createAdminNotification({
+        kind: 'time_adjust',
+        title: '時間修正申請',
+        message: `${userName} さんが時間修正を申請しました`,
+        linkUrl: '/admin-attendance-adjust-requests.html',
+        payload: {
+          source: 'adjust',
+          requestId: id,
+          userId,
+          attendanceId: attendanceId || null,
+          requestedCheckIn: requestedCheckIn || null,
+          requestedCheckOut: requestedCheckOut || null
+        },
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch {}
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -53,6 +73,19 @@ exports.updateStatus = async (req, res) => {
         await attendanceRepo.updateTimes(reqRow.attendanceId, reqRow.requestedCheckIn, reqRow.requestedCheckOut);
       }
     }
+    try {
+      const reqRow2 = await repo.getById(id);
+      if (reqRow2 && reqRow2.userId && status !== 'pending') {
+        const statusLabel = status === 'approved' ? '承認' : (status === 'rejected' ? '差戻し' : status);
+        await noticesRepo.createNotice({
+          targetUserId: reqRow2.userId,
+          targetDate: reqRow2.requestedCheckIn ? String(reqRow2.requestedCheckIn).slice(0, 10) : null,
+          targetMonth: reqRow2.requestedCheckIn ? String(reqRow2.requestedCheckIn).slice(0, 7) : null,
+          message: `時間修正申請が${statusLabel}されました。`,
+          createdBy: req.user?.id || null
+        });
+      }
+    } catch {}
     res.status(200).json({ id, status });
   } catch (err) {
     res.status(500).json({ message: err.message });

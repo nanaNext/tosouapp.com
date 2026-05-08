@@ -58,13 +58,13 @@ router.get('/ui/terms', sendPage('terms.html'));
 router.get('/terms', sendPage('terms.html'));
 router.get('/ui/privacy', sendPage('privacy.html'));
 router.get('/privacy', sendPage('privacy.html'));
-// Public standalone login for Expenses
-router.get('/ui/expenses-login', sendPage('expenses-login.html'));
-router.get('/expenses-login', sendPage('expenses-login.html'));
+// Remove standalone login route for expenses to enforce unified login
+// router.get('/ui/expenses-login', sendPage('expenses-login.html'));
+// router.get('/expenses-login', sendPage('expenses-login.html'));
 
 // Make expenses page accessible and let FE handle auth redirect to /expenses-login
-router.get('/ui/expenses', sendPage('expenses.html'));
-router.get('/ui/expenses/', sendPage('expenses.html'));
+router.get('/ui/expenses', authenticateFromCookie, sendPage('expenses.html'));
+router.get('/ui/expenses/', authenticateFromCookie, sendPage('expenses.html'));
 // Serve simple attendance page immediately to improve first paint on mobile.
 // Authentication is still enforced by API calls and client-side auth guard.
 router.get('/ui/attendance/simple', sendPage('attendance-simple.html'));
@@ -143,6 +143,7 @@ router.get('/admin/employees/monthly-summary', (req, res) => sendAdminPageNoCach
 router.get('/admin/employees/monthly-summary/', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
 router.get('/admin/attendance/adjust-requests', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
 router.get('/admin/attendance/adjust-requests/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
+router.get('/admin/faq', authenticateFromCookie, authorizePage('admin', 'manager'), (req, res) => res.redirect(302, '/admin/chatbot/faq'));
 router.get(/^\/admin(?:\/.*)?$/, (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
 
 router.get('/ui/overtime', sendPage('overtime.html'));
@@ -155,10 +156,9 @@ router.get('/ui/salary', sendPage('salary.html'));
 router.get('/ui/chatbot', sendPage('chatbot.html'));
 router.get('/ui/change-password', sendPage('change-password.html'));
 router.get('/ui/manual', sendPage('manual.html'));
-router.get('/ui/faq', sendPage('faq.html'));
+router.get('/ui/faq', sendPageNoCache('faq.html'));
 router.get('/ui/contact', sendPage('contact.html'));
 router.get('/contact', sendPage('contact.html'));
-router.get('/admin/faq', authenticateFromCookie, authorizePage('admin', 'manager'), (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
 router.get('/faq-test', authenticateFromCookie, authorizePage('admin', 'manager'), sendPage('faq-test.html'));
 // React SPA entry (built by Vite to /static/react-app)
 router.get('/ui/app', (req, res) => {
