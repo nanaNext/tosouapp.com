@@ -402,7 +402,7 @@ module.exports = {
           ON r.notice_id = n.id AND r.user_id = ?
         LEFT JOIN notice_hides h
           ON h.notice_id = n.id AND h.user_id = ?
-        WHERE (n.target_user_id IS NULL OR n.target_user_id = ?)
+        WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
           AND (
             (n.target_date IS NULL AND n.target_month IS NULL)
@@ -431,7 +431,7 @@ module.exports = {
           ON r.notice_id = n.id AND r.user_id = ?
         LEFT JOIN notice_hides h
           ON h.notice_id = n.id AND h.user_id = ?
-        WHERE (n.target_user_id IS NULL OR n.target_user_id = ?)
+        WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
