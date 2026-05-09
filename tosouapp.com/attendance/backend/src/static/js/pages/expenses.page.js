@@ -44,6 +44,21 @@ const hideSpinner = () => {
   } catch {}
 };
 const todayISO = () => new Date().toLocaleDateString('sv-SE');
+const currentYM = () => new Date().toISOString().slice(0, 7);
+const recentMonths = (count = 6, baseYM = currentYM()) => {
+  const out = [];
+  const y = Number(String(baseYM).slice(0, 4));
+  const m = Number(String(baseYM).slice(5, 7));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return out;
+  const d = new Date(y, m - 1, 1);
+  for (let i = 0; i < count; i++) {
+    const yy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    out.push(`${yy}-${mm}`);
+    d.setMonth(d.getMonth() - 1);
+  }
+  return out;
+};
 const fmtDT = (v) => {
   if (!v) return '';
   try {
@@ -57,15 +72,101 @@ const fmtDT = (v) => {
     return `${y}-${m}-${day} ${hh}:${mm}`;
   } catch { return String(v).replace('T',' ').slice(0,16); }
 };
+const parseAmount = (v) => {
+  const s = String(v == null ? '' : v).replace(/[^\d.-]/g, '').trim();
+  if (!s) return 0;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+};
+const formatAmount = (v) => {
+  const n = parseAmount(v);
+  return n ? n.toLocaleString('ja-JP') : '';
+};
+const bindAmountFormatter = (input) => {
+  if (!input || input.dataset.amountFmt === '1') return;
+  input.dataset.amountFmt = '1';
+  input.addEventListener('focus', () => {
+    const n = parseAmount(input.value);
+    input.value = n ? String(n) : '';
+  });
+  input.addEventListener('blur', () => {
+    input.value = formatAmount(input.value);
+  });
+};
+const renderFilePreview = (input, hostId) => {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  const f = input?.files?.[0];
+  if (!f) {
+    host.innerHTML = '';
+    return;
+  }
+  if ((f.type || '').startsWith('image/')) {
+    const url = URL.createObjectURL(f);
+    host.innerHTML = `<img src="${url}" alt="" class="upload-thumb"><div style="margin-top:4px;">${String(f.name || '')}</div>`;
+    return;
+  }
+  host.innerHTML = `<div class="upload-file-chip">📄 <span>${String(f.name || '')}</span></div>`;
+};
+const renderMultiFilePreview = (input, hostId) => {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  const files = Array.from(input?.files || []);
+  if (!files.length) {
+    host.innerHTML = '';
+    return;
+  }
+  host.innerHTML = files.slice(0, 4).map((f) => {
+    if ((f.type || '').startsWith('image/')) {
+      const url = URL.createObjectURL(f);
+      return `<img src="${url}" alt="" class="upload-thumb" style="margin-right:6px;">`;
+    }
+    return `<span class="upload-file-chip" style="margin-right:6px;">📄 <span>${String(f.name || '')}</span></span>`;
+  }).join('') + (files.length > 4 ? `<div style="margin-top:4px;">+${files.length - 4} files</div>` : '');
+};
+const clearFieldErrors = () => {
+  try {
+    document.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
+    document.querySelectorAll('.field-msg').forEach((el) => el.remove());
+  } catch {}
+};
+const setFieldError = (fieldId, message) => {
+  try {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.classList.add('field-error');
+    const old = document.getElementById(`${fieldId}Err`);
+    if (old) old.remove();
+    const msg = document.createElement('div');
+    msg.className = 'field-msg';
+    msg.id = `${fieldId}Err`;
+    msg.textContent = String(message || '');
+    const host = el.closest('div') || el.parentElement;
+    host?.appendChild(msg);
+  } catch {}
+};
 let formActive = false;
 let navBusy = false;
 let renderListBusy = false;
+let listRateLimitedUntilMs = 0;
+let listRetryTimer = null;
 let noticeUnreadCount = 0;
 let noticeLatestIncomingAtMs = 0;
 let noticeSeenAtMs = 0;
 let noticeSeenKey = '';
 let noticePollTimer = null;
 let expensesPageMounted = false;
+let createTargetMonth = currentYM();
+let activeHistoryTab = 'new';
+let selectedHistoryMonth = '';
+const isSubmittedStatus = (v) => {
+  const s = String(v || '').toLowerCase();
+  return s === 'applied' || s === 'approved' || s === 'rejected';
+};
+const isNoticeFeedbackStatus = (v) => {
+  const s = String(v || '').toLowerCase();
+  return s === 'approved' || s === 'rejected';
+};
 const toMs = (v) => {
   try {
     const t = new Date(v).getTime();
@@ -164,77 +265,184 @@ const wireDrawer = () => {
   backdrop.addEventListener('click',(e)=>{ e.preventDefault(); close(); });
   document.addEventListener('keydown',(e)=>{ if (e.key==='Escape') close(); });
 };
+const openQuickEditExpense = async (recId) => {
+  const id = String(recId || '');
+  if (!id) return false;
+  let rec = null;
+  try {
+    rec = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`);
+  } catch (e) {
+    showErr(e?.message || 'データ取得に失敗しました');
+    return false;
+  }
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1200;';
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;left:50%;top:84px;transform:translateX(-50%);width:min(860px,95vw);max-height:82vh;overflow:auto;background:#fff;border:1px solid #dbe3ef;border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,.18);padding:14px;z-index:1210;';
+  modal.innerHTML = `
+    <div style="font-weight:800;color:#0b2c66;margin-bottom:8px;">申請内容を編集</div>
+    <div class="adjust-grid" style="grid-template-columns:110px minmax(0,1fr) 110px minmax(0,1fr);gap:8px;">
+      <div class="adjust-label">日付</div><div><input id="qeDate" type="date" class="adjust-input"></div>
+      <div class="adjust-label">種別</div><div><select id="qeType" class="adjust-input"><option value="train">電車</option><option value="bus">バス</option><option value="taxi">タクシー</option><option value="car">自家用車</option><option value="parking">駐車場代</option><option value="highway">高速料金</option></select></div>
+      <div class="adjust-label">出発地</div><div><input id="qeOrigin" class="adjust-input"></div>
+      <div class="adjust-label">経由</div><div><input id="qeVia" class="adjust-input"></div>
+      <div class="adjust-label">到着地</div><div><input id="qeDestination" class="adjust-input"></div>
+      <div class="adjust-label">片道/往復</div><div><select id="qeTripType" class="adjust-input"><option value="one_way">片道</option><option value="round_trip">往復</option><option value="multi">複数</option></select></div>
+      <div class="adjust-label">回数</div><div><input id="qeTripCount" type="number" min="1" step="1" class="adjust-input"></div>
+      <div class="adjust-label">距離(km)</div><div><input id="qeKm" type="number" step="0.1" min="0" class="adjust-input"></div>
+      <div class="adjust-label">単価(円/km)</div><div><input id="qeUnitPrice" type="number" step="1" min="0" class="adjust-input"></div>
+      <div class="adjust-label">用途</div><div><input id="qePurpose" class="adjust-input"></div>
+      <div class="adjust-label">金額</div><div><input id="qeAmount" type="number" step="1" min="0" class="adjust-input"></div>
+      <div class="adjust-label">定期</div><div><label style="display:flex;align-items:center;gap:8px;"><input id="qeTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
+      <div class="adjust-label full-row">メモ</div><div class="full-row"><input id="qeMemo" class="adjust-input"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button id="qeCancel" class="btn" type="button" style="height:34px;">キャンセル</button>
+      <button id="qeSave" class="btn btn-primary" type="button" style="height:34px;">保存</button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  document.body.appendChild(modal);
+  const setVal = (id2, v) => { const el = document.getElementById(id2); if (el) el.value = v == null ? '' : String(v); };
+  setVal('qeDate', rec?.date ? String(rec.date).slice(0,10) : todayISO());
+  setVal('qeType', rec?.type || rec?.category || 'train');
+  setVal('qeOrigin', rec?.origin || '');
+  setVal('qeVia', rec?.via || '');
+  setVal('qeDestination', rec?.destination || '');
+  setVal('qeTripType', rec?.trip_type || 'one_way');
+  setVal('qeTripCount', rec?.trip_count != null ? rec.trip_count : 1);
+  setVal('qeKm', rec?.distance_km != null ? rec.distance_km : '');
+  setVal('qeUnitPrice', rec?.unit_price_per_km != null ? rec.unit_price_per_km : '');
+  setVal('qePurpose', rec?.purpose || '');
+  setVal('qeAmount', rec?.amount != null ? rec.amount : '');
+  setVal('qeMemo', rec?.memo || '');
+  try { const c = document.getElementById('qeTeiki'); if (c) c.checked = !!rec?.teiki_flag; } catch {}
+  const close = () => { try { modal.remove(); } catch {} try { backdrop.remove(); } catch {} };
+  return await new Promise((resolve) => {
+    const cancelBtn = document.getElementById('qeCancel');
+    const saveBtn = document.getElementById('qeSave');
+    const onCancel = () => { close(); resolve(false); };
+    const onSave = async () => {
+      saveBtn.disabled = true;
+      const payload = {
+        date: document.getElementById('qeDate')?.value || '',
+        type: document.getElementById('qeType')?.value || 'train',
+        origin: document.getElementById('qeOrigin')?.value || '',
+        via: document.getElementById('qeVia')?.value || '',
+        destination: document.getElementById('qeDestination')?.value || '',
+        trip_type: document.getElementById('qeTripType')?.value || 'one_way',
+        trip_count: Number(document.getElementById('qeTripCount')?.value || 1) || 1,
+        distance_km: (() => { const n = Number(document.getElementById('qeKm')?.value || ''); return Number.isFinite(n) ? n : null; })(),
+        unit_price_per_km: (() => { const n = Number(document.getElementById('qeUnitPrice')?.value || ''); return Number.isFinite(n) ? n : null; })(),
+        purpose: document.getElementById('qePurpose')?.value || '',
+        amount: Number(document.getElementById('qeAmount')?.value || 0) || 0,
+        teiki_flag: !!document.getElementById('qeTeiki')?.checked,
+        memo: document.getElementById('qeMemo')?.value || ''
+      };
+      try {
+        await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method:'PATCH', body: JSON.stringify(payload) });
+        close();
+        resolve(true);
+      } catch (e) {
+        showErr(e?.message || '保存に失敗しました');
+        saveBtn.disabled = false;
+      }
+    };
+    cancelBtn?.addEventListener('click', onCancel);
+    backdrop.addEventListener('click', onCancel);
+    saveBtn?.addEventListener('click', onSave);
+  });
+};
 const renderList = async () => {
   if (renderListBusy) return;
+  const host = $('#exListHost');
+  if (!host) return;
+  const now = Date.now();
+  if (now < listRateLimitedUntilMs) {
+    const waitSec = Math.max(1, Math.ceil((listRateLimitedUntilMs - now) / 1000));
+    host.innerHTML = `<div style="color:#b45309;font-weight:700;">アクセスが集中しています。${waitSec}秒後に再試行してください。</div>`;
+    return;
+  }
   renderListBusy = true;
-  const host = $('#exListHost'); if (!host) return; host.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
+  host.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
   const boardHost = $('#exMonthlyBoardHost');
   const renderMonthlyBoard = (rows) => {
     if (!boardHost) return;
-    const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) {
+    if (activeHistoryTab === 'notice') {
       boardHost.innerHTML = '';
       return;
     }
+    const list = Array.isArray(rows) ? rows : [];
     const g = new Map();
     for (const r of list) {
+      const st = String(r.status || '').toLowerCase();
+      if (activeHistoryTab === 'applied' && !isSubmittedStatus(st)) continue;
       const ym = String(r.date || '').slice(0, 7);
       if (!/^\d{4}-\d{2}$/.test(ym)) continue;
-      const prev = g.get(ym) || { ym, amount: 0, statuses: new Set(), count: 0 };
-      prev.amount += Number(r.amount || 0);
+      const prev = g.get(ym) || { ym, count: 0 };
       prev.count += 1;
-      prev.statuses.add(String(r.status || '').toLowerCase());
       g.set(ym, prev);
     }
-    const rows2 = Array.from(g.values()).sort((a,b) => String(b.ym).localeCompare(String(a.ym)));
-    const statusText = (set) => {
-      if (set.has('applied')) return '上長確認中';
-      if (set.has('approved') && set.size === 1) return '承認';
-      if (set.has('rejected') && set.size === 1) return '差戻し';
-      if (set.has('draft') || set.has('pending')) return '未申請（下書き）';
-      if (set.has('approved')) return '承認';
-      return '申請中';
-    };
-    boardHost.innerHTML = `
-      <div class="adj-table-card" style="margin-bottom:10px;">
-        <table class="adj-table">
-          <thead><tr><th>対象月</th><th>タイトル</th><th>合計金額</th><th>処理状況</th><th>操作</th></tr></thead>
-          <tbody>${rows2.map((x) => {
-            const mm = String(x.ym).slice(5,7);
-            return `<tr>
-              <td>${String(x.ym).slice(0,4)}年${mm}月</td>
-              <td>【${mm}月】交通費申請</td>
-              <td style="text-align:right;">${Number(x.amount||0).toLocaleString('ja-JP')}</td>
-              <td>${statusText(x.statuses)}</td>
-              <td><button class="btn" type="button" data-action="open-month" data-month="${x.ym}" style="height:28px;">表示</button></td>
-            </tr>`;
-          }).join('')}</tbody>
-        </table>
-      </div>`;
-    const tbody = boardHost.querySelector('tbody');
-    if (tbody && !tbody.dataset.boundOpenMonth) {
-      tbody.dataset.boundOpenMonth = '1';
-      tbody.addEventListener('click', async (e) => {
+    const months = Array.from(g.values()).sort((a,b) => String(b.ym).localeCompare(String(a.ym)));
+    if (!months.length) {
+      boardHost.innerHTML = '<div class="history-month-empty">履歴の対象月がまだありません。</div>';
+      return;
+    }
+    boardHost.innerHTML = `<div class="history-months-wrap">${months.map((x) => {
+      const active = selectedHistoryMonth && selectedHistoryMonth === x.ym ? ' active' : '';
+      const text = `${x.ym.slice(0,4)}年${x.ym.slice(5,7)}月 (${x.count})`;
+      return `<button class="history-month-chip${active}" type="button" data-action="open-month" data-month="${x.ym}">${text}</button>`;
+    }).join('')}</div>`;
+    if (boardHost.dataset.boundOpenMonth !== '1') {
+      boardHost.dataset.boundOpenMonth = '1';
+      boardHost.addEventListener('click', async (e) => {
         const b = e.target.closest('button[data-action="open-month"]');
         if (!b) return;
-        const m = b.getAttribute('data-month') || '';
+        const m = String(b.getAttribute('data-month') || '');
+        if (!/^\d{4}-\d{2}$/.test(m)) return;
+        // Toggle: click active month again => close list; click another month => switch
+        selectedHistoryMonth = (selectedHistoryMonth === m) ? '' : m;
         const mf = document.getElementById('exFilterMonth');
-        if (mf && /^\d{4}-\d{2}$/.test(m)) mf.value = m;
+        if (mf) mf.value = selectedHistoryMonth;
         await renderList();
       });
     }
   };
   try {
-    const month = document.getElementById('exFilterMonth')?.value || new Date().toISOString().slice(0,7);
-    const status = document.getElementById('exFilterStatus')?.value || '';
-    const q = `/api/expenses/my?month=${encodeURIComponent(month)}&status=${encodeURIComponent(status)}`;
-    const [rows, monthlyRows] = await Promise.all([
-      fetchJSONAuthSafe(q),
-      fetchJSONAuthSafe('/api/expenses/my')
-    ]);
-    renderMonthlyBoard(monthlyRows);
+    const statusRaw = document.getElementById('exFilterStatus')?.value || '';
+    const status = activeHistoryTab === 'applied' ? '' : statusRaw;
+    const sf = document.getElementById('exFilterStatus');
+    if (activeHistoryTab === 'applied' && sf) sf.value = '';
+    if (activeHistoryTab === 'applied') {
+      const monthlyRows = await fetchJSONAuthSafe('/api/expenses/my');
+      renderMonthlyBoard(monthlyRows);
+    } else {
+      renderMonthlyBoard([]);
+    }
+    if (activeHistoryTab === 'applied' && !selectedHistoryMonth) {
+      host.innerHTML = '<div class="empty-state"><div style="font-size:24px;">📅</div><div>上の対象月を選択すると履歴が表示されます</div></div>';
+      return;
+    }
+    const month = selectedHistoryMonth || document.getElementById('exFilterMonth')?.value || new Date().toISOString().slice(0,7);
+    const mf = document.getElementById('exFilterMonth');
+    if (mf && month && activeHistoryTab !== 'notice') mf.value = month;
+    let rows = [];
+    if (activeHistoryTab === 'notice') {
+      const allRows = await fetchJSONAuthSafe('/api/expenses/my');
+      rows = (Array.isArray(allRows) ? allRows : []).filter((r) => isNoticeFeedbackStatus(r?.status));
+    } else {
+      const q = `/api/expenses/my?month=${encodeURIComponent(month)}&status=${encodeURIComponent(status)}`;
+      const rawRows = await fetchJSONAuthSafe(q);
+      rows = activeHistoryTab === 'applied'
+        ? (Array.isArray(rawRows) ? rawRows.filter((r) => isSubmittedStatus(r?.status)) : [])
+        : (Array.isArray(rawRows) ? rawRows : []);
+    }
     try { await renderSummary(); } catch {}
-    if (!Array.isArray(rows) || rows.length===0) { host.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>当月の交通費提出履歴はありません</div></div>'; return; }
+    if (!Array.isArray(rows) || rows.length===0) {
+      const emptyText = activeHistoryTab === 'notice' ? '通知・確認事項はありません' : '当月の交通費提出履歴はありません';
+      host.innerHTML = `<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>${emptyText}</div></div>`;
+      return;
+    }
     const tr = rows.map(r => {
       const d = String(r.date || '').slice(0,10);
       const a = Number(r.amount || 0).toLocaleString('ja-JP');
@@ -250,12 +458,15 @@ const renderList = async () => {
         st === 'rejected' ? (approved ? `<div style="color:#6b7280;font-size:12px;">却下: ${approved}</div>` : '') : '';
       const whoHtml = (st==='approved' || st==='rejected') && approver ? `<div style="color:#6b7280;font-size:12px;">担当: ${approver}</div>` : '';
       const noteHtml = st === 'rejected' && r.manager_note ? `<div style="color:#ef4444;font-size:12px;">理由: ${r.manager_note}</div>` : '';
-      const replyBtn = st === 'rejected' ? `<button class="btn" data-action="reply" style="height:28px;margin-right:6px;">取り戻し理由</button>` : '';
+      const isNoticeOnly = activeHistoryTab === 'notice';
+      const replyBtn = (!isNoticeOnly && st === 'rejected') ? `<button class="btn" data-action="reply" style="height:28px;margin-right:6px;">取り戻し理由</button>` : '';
+      const editBtn = !isNoticeOnly ? `<button class="btn" data-action="edit" style="height:28px;margin-right:6px;">編集</button>` : '';
+      const delBtn = !isNoticeOnly ? `<button class="icon-btn" data-action="delete" aria-label="削除"><img src="/static/images/xoa.png" alt=""></button>` : '';
       const ru = r.receipt_url ? String(r.receipt_url) : (r.first_file_path ? String(r.first_file_path) : '');
       const ruAttr = ru ? ` data-url="${ru}"` : '';
       const count = Number(r.file_count || 0);
       const ruInline = ru ? `<a href="${ru.startsWith('/')?ru:'/'+ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;">表示${count>1?`(${count}件)`:''}</a>` : (count>0 ? `<button class="btn" data-action="files" type="button" style="height:24px;">表示(${count}件)</button>` : '<span style="color:#64748b;font-size:12px;">なし</span>');
-      return `<tr data-id="${String(r.id||'')}"><td>${d}</td><td>${route}</td><td style="text-align:right;">${a}</td><td><span class="status-pill status-${stClass}">${st}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><img src="/static/images/paperclip.png" alt=""></button>${ruInline}</td><td>${replyBtn}<button class="icon-btn" data-action="delete" aria-label="削除"><img src="/static/images/xoa.png" alt=""></button></td></tr>`;
+      return `<tr data-id="${String(r.id||'')}"><td>${d}</td><td>${route}</td><td style="text-align:right;">${a}</td><td><span class="status-pill status-${stClass}">${st}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><img src="/static/images/paperclip.png" alt=""></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
     }).join('');
     host.innerHTML = `
       <div class="adj-table-card">
@@ -288,7 +499,10 @@ const renderList = async () => {
         const action = btn.getAttribute('data-action');
         btn.disabled = true;
         try {
-          if (action === 'delete') {
+          if (action === 'edit') {
+            const changed = await openQuickEditExpense(id);
+            if (changed) await renderList();
+          } else if (action === 'delete') {
             const ok = window.confirm('削除しますか？');
             if (!ok) { btn.disabled = false; return; }
             try {
@@ -584,7 +798,15 @@ const renderList = async () => {
       });
     }
   } catch (e) {
-    host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${String(e?.message || 'unknown')}</div>`;
+    const msg = String(e?.message || 'unknown');
+    if (isTooManyReqErr(e)) {
+      listRateLimitedUntilMs = Date.now() + 65000;
+      host.innerHTML = '<div style="color:#b00020;font-weight:700;">取得失敗: Too many requests（操作が多すぎます）。1分ほど待ってから自動再試行します。</div>';
+      try { if (listRetryTimer) clearTimeout(listRetryTimer); } catch {}
+      listRetryTimer = setTimeout(() => { renderList().catch(() => {}); }, 65000);
+    } else {
+      host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${msg}</div>`;
+    }
   } finally { renderListBusy = false; }
 };
 const renderHistoryTitle = () => {
@@ -626,6 +848,7 @@ export async function bootExpensesPage() {
       const params = new URLSearchParams(String(window.location.search||''));
       const m = params.get('month');
       if (m && /^\d{4}-\d{2}$/.test(String(m))) {
+        createTargetMonth = String(m);
         const d = document.getElementById('exDate'); if (d) d.value = String(m) + '-01';
         const mf = document.getElementById('exFilterMonth'); if (mf) mf.value = String(m);
         try { await fetchJSONAuth('/api/expenses/months/start', { method:'POST', body: JSON.stringify({ month: String(m) }) }); } catch {}
@@ -685,7 +908,7 @@ export async function bootExpensesPage() {
   };
   const recomputeAmountPreview = () => {
     const type = typeSel?.value || '';
-    let base = Number(amtEl?.value || '0') || 0;
+    let base = parseAmount(amtEl?.value || '0');
     const t = tripSel?.value || 'one_way';
     const cnt = Math.max(1, Number(tripCountEl?.value || '1') || 1);
     if (type === 'car') {
@@ -695,7 +918,7 @@ export async function bootExpensesPage() {
     }
     if (t === 'round_trip') base = base * 2;
     else if (t === 'multi') base = base * cnt;
-    if (amtEl) amtEl.value = String(base);
+    if (amtEl) amtEl.value = base ? base.toLocaleString('ja-JP') : '';
   };
   typeSel?.addEventListener('change', () => { toggleCarFields(); recomputeAmountPreview(); });
   kmEl?.addEventListener('input', recomputeAmountPreview);
@@ -704,11 +927,47 @@ export async function bootExpensesPage() {
   tripCountEl?.addEventListener('input', recomputeAmountPreview);
   toggleCarFields();
   toggleTripCount();
+  bindAmountFormatter(amtEl);
+  try { if (amtEl && amtEl.value) amtEl.value = formatAmount(amtEl.value); } catch {}
+  const frontInput = document.getElementById('exReceiptFront');
+  const backInput = document.getElementById('exReceiptBack');
+  const imagesInput = document.getElementById('exImages');
+  frontInput?.addEventListener('change', () => renderFilePreview(frontInput, 'exReceiptFrontPreview'));
+  backInput?.addEventListener('change', () => renderFilePreview(backInput, 'exReceiptBackPreview'));
+  imagesInput?.addEventListener('change', () => renderMultiFilePreview(imagesInput, 'exImagesPreview'));
+  const validateExpenseForm = () => {
+    clearFieldErrors();
+    showErr('');
+    let ok = true;
+    const date = String($('#exDate')?.value || '');
+    const origin = String($('#exOrigin')?.value || '').trim();
+    const destination = String($('#exDestination')?.value || '').trim();
+    const purpose = String($('#exPurpose')?.value || '').trim();
+    const type = $('#exType')?.value || 'train';
+    const teiki = !!$('#exTeiki')?.checked;
+    const rawAmount = String($('#exAmount')?.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setFieldError('exDate', '日付を正しく入力してください。'); ok = false; }
+    if (!origin) { setFieldError('exOrigin', '出発地は必須です。'); ok = false; }
+    if (!destination) { setFieldError('exDestination', '到着地は必須です。'); ok = false; }
+    if (!purpose) { setFieldError('exPurpose', '用途は必須です。'); ok = false; }
+    if (!rawAmount && !(type === 'train' && teiki)) { setFieldError('exAmount', '金額は必須です。'); ok = false; }
+    if (!frontInput?.files?.length) { setFieldError('exReceiptFront', '表（Front）を添付してください。'); ok = false; }
+    if (!backInput?.files?.length) { setFieldError('exReceiptBack', '裏（Back）を添付してください。'); ok = false; }
+    if (!ok) showErr('入力内容をご確認ください。');
+    return ok;
+  };
   const submit = $('#exSubmit'); const status = $('#exStatus');
   const applyBtn = $('#exApply');
   submit?.addEventListener('click', async () => {
     if (!submit || submit.disabled) return;
-    showErr(''); submit.disabled = true; if (status) status.textContent = '保存中…';
+    if (!validateExpenseForm()) return;
+    showErr('');
+    const submitText = submit.textContent;
+    const applyText = applyBtn?.textContent || '';
+    submit.disabled = true;
+    if (applyBtn) applyBtn.disabled = true;
+    submit.textContent = '保存中…';
+    if (status) status.textContent = '保存中…';
     const clientToken = 'ct_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     const date = $('#exDate')?.value || '';
     const type = $('#exType')?.value || 'train';
@@ -722,10 +981,9 @@ export async function bootExpensesPage() {
     const km = $('#exKm')?.value || '';
     const unitPricePerKm = $('#exUnitPrice')?.value || '';
     const memo = $('#exMemo')?.value || '';
-    let amount = $('#exAmount')?.value || '';
-    if (type === 'train' && teiki) amount = '0';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) { if (status) status.textContent=''; showErr('日付が正しくありません'); submit.disabled=false; return; }
-    if (!String(amount).trim()) { if (status) status.textContent=''; showErr('金額を入力してください'); submit.disabled=false; return; }
+    const rawAmount = String($('#exAmount')?.value || '').trim();
+    let amount = parseAmount(rawAmount);
+    if (type === 'train' && teiki) amount = 0;
     showSpinner();
     try {
       const create = await fetchJSONAuth('/api/expenses', { method:'POST', body: JSON.stringify({
@@ -761,13 +1019,26 @@ export async function bootExpensesPage() {
     } catch (e) {
       if (status) status.textContent = '';
       showErr(e?.message || '保存に失敗しました');
-    } finally { hideSpinner(); submit.disabled = false; }
+    } finally {
+      hideSpinner();
+      submit.disabled = false;
+      if (applyBtn) applyBtn.disabled = false;
+      submit.textContent = submitText;
+      if (applyBtn) applyBtn.textContent = applyText;
+    }
   });
   applyBtn?.addEventListener('click', async () => {
     if (!applyBtn || applyBtn.disabled) return;
     const okApply = window.confirm('保存して申請しますか？');
     if (!okApply) return;
-    showErr(''); applyBtn.disabled = true; if (status) status.textContent = '保存中…';
+    if (!validateExpenseForm()) return;
+    showErr('');
+    const submitText = submit?.textContent || '';
+    const applyText = applyBtn.textContent;
+    applyBtn.disabled = true;
+    if (submit) submit.disabled = true;
+    applyBtn.textContent = '送信中…';
+    if (status) status.textContent = '保存中…';
     const clientToken = 'ct_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     const date = $('#exDate')?.value || '';
     const type = $('#exType')?.value || 'train';
@@ -781,9 +1052,8 @@ export async function bootExpensesPage() {
     const km = $('#exKm')?.value || '';
     const unitPricePerKm = $('#exUnitPrice')?.value || '';
     const memo = $('#exMemo')?.value || '';
-    let amount = $('#exAmount')?.value || '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) { if (status) status.textContent=''; showErr('日付が正しくありません'); applyBtn.disabled=false; return; }
-    if (!String(amount).trim()) { if (status) status.textContent=''; showErr('金額を入力してください'); applyBtn.disabled=false; return; }
+    const rawAmount = String($('#exAmount')?.value || '').trim();
+    let amount = parseAmount(rawAmount);
     showSpinner();
     try {
       const create = await fetchJSONAuth('/api/expenses', { method:'POST', body: JSON.stringify({
@@ -810,7 +1080,13 @@ export async function bootExpensesPage() {
     } catch (e) {
       if (status) status.textContent = '';
       showErr(e?.message || '申請に失敗しました');
-    } finally { hideSpinner(); applyBtn.disabled = false; }
+    } finally {
+      hideSpinner();
+      applyBtn.disabled = false;
+      if (submit) submit.disabled = false;
+      applyBtn.textContent = applyText;
+      if (submit) submit.textContent = submitText;
+    }
   });
   // do not auto-render history list; wait for user to press "検索"
 
@@ -828,18 +1104,42 @@ export async function bootExpensesPage() {
   const btnClear = document.getElementById('exClear');
   const btnCsv = document.getElementById('exCsv');
   const btnShowHistory = document.getElementById('exShowHistory');
+  const newMonthSection = document.getElementById('newMonthSection');
+  const createMonthGrid = document.getElementById('exCreateMonthGrid');
+  const createMonthInput = document.getElementById('exCreateMonthInput');
+  const createMonthStartBtn = document.getElementById('exCreateMonthStart');
   if (monthFilter && !monthFilter.value) {
     monthFilter.value = new Date().toISOString().slice(0,7);
   }
-  btnSearch?.addEventListener('click', async () => { await renderList(); });
-  btnShowHistory?.addEventListener('click', async () => { await renderList(); });
-  btnClear?.addEventListener('click', async () => {
-    if (monthFilter) monthFilter.value = '';
-    if (statusFilter) statusFilter.value = '';
+  if (createMonthInput && !createMonthInput.value) {
+    createMonthInput.value = createTargetMonth;
+  }
+  btnSearch?.addEventListener('click', async () => {
+    const ym = String(monthFilter?.value || '');
+    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
     await renderList();
   });
-  monthFilter?.addEventListener('change', () => { renderHistoryTitle(); });
-  monthFilter?.addEventListener('input', () => { renderHistoryTitle(); });
+  btnShowHistory?.addEventListener('click', async () => {
+    const ym = String(monthFilter?.value || '');
+    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
+    await renderList();
+  });
+  btnClear?.addEventListener('click', async () => {
+    if (monthFilter) monthFilter.value = '';
+    if (statusFilter) statusFilter.value = (activeHistoryTab === 'applied') ? 'applied' : '';
+    selectedHistoryMonth = '';
+    await renderList();
+  });
+  monthFilter?.addEventListener('change', () => {
+    const ym = String(monthFilter.value || '');
+    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
+    renderHistoryTitle();
+  });
+  monthFilter?.addEventListener('input', () => {
+    const ym = String(monthFilter.value || '');
+    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
+    renderHistoryTitle();
+  });
   btnCsv?.addEventListener('click', async () => {
     const m = monthFilter?.value || '';
     const s = statusFilter?.value || '';
@@ -858,21 +1158,73 @@ export async function bootExpensesPage() {
     navNoticeBtns.forEach((el) => el.classList.toggle('active', name === 'notice'));
   };
   const showTab = async (name) => {
+    activeHistoryTab = name;
     if (name === 'new') {
-      formActive = true;
-      if (homeSection) homeSection.style.display = '';
+      if (newMonthSection) newMonthSection.style.display = formActive ? 'none' : '';
+      if (homeSection) homeSection.style.display = formActive ? '' : 'none';
       if (historySection) historySection.style.display = 'none';
       if (historySection) historySection.classList.remove('notice-mode');
       if (historyModeLabel) historyModeLabel.textContent = '交通費提出履歴（月次）';
     } else {
+      if (newMonthSection) newMonthSection.style.display = 'none';
       if (homeSection) homeSection.style.display = 'none';
       if (historySection) historySection.style.display = '';
+      if (historySection) historySection.classList.toggle('applied-month-mode', name === 'applied');
       if (historySection) historySection.classList.toggle('notice-mode', name === 'notice');
       if (historyModeLabel) historyModeLabel.textContent = (name === 'notice') ? 'お知らせ（差戻し）' : '交通費提出履歴（月次）';
       renderHistoryTitle();
     }
     setNavActive(name);
   };
+  const renderCreateMonthGrid = () => {
+    if (!createMonthGrid) return;
+    const months = recentMonths(6, createTargetMonth || currentYM());
+    createMonthGrid.innerHTML = months.map((ym) => {
+      const active = ym === createTargetMonth ? ' active' : '';
+      return `<button class="month-chip${active}" type="button" data-month="${ym}">${ym.slice(0,4)}年${ym.slice(5,7)}月</button>`;
+    }).join('');
+  };
+  const startNewForMonth = async (ym) => {
+    if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) {
+      showErr('対象年月を選択してください。');
+      return;
+    }
+    createTargetMonth = String(ym);
+    if (createMonthInput) createMonthInput.value = createTargetMonth;
+    try {
+      await fetchJSONAuth('/api/expenses/months/start', { method:'POST', body: JSON.stringify({ month: createTargetMonth }) });
+    } catch {}
+    const d = document.getElementById('exDate');
+    if (d) d.value = `${createTargetMonth}-01`;
+    if (monthFilter) monthFilter.value = createTargetMonth;
+    formActive = true;
+    showErr('');
+    await showTab('new');
+  };
+  if (createMonthGrid && !createMonthGrid.dataset.bound) {
+    createMonthGrid.dataset.bound = '1';
+    createMonthGrid.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-month]');
+      if (!btn) return;
+      const ym = String(btn.getAttribute('data-month') || '');
+      createTargetMonth = ym;
+      if (createMonthInput) createMonthInput.value = ym;
+      renderCreateMonthGrid();
+      await startNewForMonth(ym);
+    });
+  }
+  createMonthInput?.addEventListener('change', () => {
+    const ym = String(createMonthInput.value || '');
+    if (/^\d{4}-\d{2}$/.test(ym)) {
+      createTargetMonth = ym;
+      renderCreateMonthGrid();
+    }
+  });
+  createMonthStartBtn?.addEventListener('click', async () => {
+    const ym = String(createMonthInput?.value || createTargetMonth || '');
+    await startNewForMonth(ym);
+  });
+  renderCreateMonthGrid();
   const bindTabClick = (els, handler) => {
     els.forEach((el) => {
       if (!el) return;
@@ -881,6 +1233,10 @@ export async function bootExpensesPage() {
   };
   bindTabClick(navNewBtns, async (e) => {
     e.preventDefault();
+    formActive = false;
+    createTargetMonth = String(createMonthInput?.value || createTargetMonth || currentYM());
+    if (createMonthInput) createMonthInput.value = createTargetMonth;
+    renderCreateMonthGrid();
     await showTab('new');
   });
   bindTabClick(navAppliedBtns, async (e) => {
@@ -890,10 +1246,8 @@ export async function bootExpensesPage() {
     const m = document.getElementById('exFilterMonth');
     const s = document.getElementById('exFilterStatus');
     if (s) s.value = 'applied';
-    try {
-      const latest = await fetchJSONAuth('/api/expenses/months/applied');
-      if (m && latest && latest.month) m.value = String(latest.month);
-    } catch {}
+    selectedHistoryMonth = '';
+    if (m) m.value = '';
     try {
       await showTab('applied');
       await renderList();
@@ -906,7 +1260,10 @@ export async function bootExpensesPage() {
     if (navBusy) return;
     navBusy = true;
     const s = document.getElementById('exFilterStatus');
-    if (s) s.value = 'rejected';
+    if (s) s.value = '';
+    selectedHistoryMonth = '';
+    const m = document.getElementById('exFilterMonth');
+    if (m) m.value = '';
     try {
       markNoticeSeen();
       await showTab('notice');

@@ -2,6 +2,15 @@ const db = require('../../core/database/mysql');
 
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const isYM = (s) => /^\d{4}-\d{2}$/.test(String(s || ''));
+const isSelfSubmitNotice = (row, uid) => {
+  const me = parseInt(String(uid || 0), 10) || 0;
+  const createdBy = parseInt(String(row?.created_by || row?.createdBy || 0), 10) || 0;
+  if (!me || !createdBy || createdBy !== me) return false;
+  const kind = String(row?.kind || '').toLowerCase();
+  if (kind === 'expense_apply' || kind === 'leave_request' || kind === 'time_adjust' || kind === 'employee_action' || kind === 'attendance_punch') return true;
+  const msg = String(row?.message || '');
+  return /申請/.test(msg) && /(交通費|有休|休暇|時間修正|修正)/.test(msg);
+};
 
 async function ensureNoticeReadsSchema() {
   await db.query(`
@@ -166,7 +175,8 @@ module.exports = {
           CASE WHEN nr.read_at IS NULL THEN 0 ELSE 1 END AS isRead
         FROM notices n
         LEFT JOIN notice_reads nr ON nr.notice_id = n.id AND nr.user_id = ?
-        WHERE ${audienceSql}
+        WHERE n.target_user_id IS NULL
+          AND ${audienceSql}
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
         `,
@@ -200,6 +210,7 @@ module.exports = {
           CASE WHEN nr.read_at IS NULL THEN 0 ELSE 1 END AS isRead
         FROM notices n
         LEFT JOIN notice_reads nr ON nr.notice_id = n.id AND nr.user_id = ?
+        WHERE n.target_user_id IS NULL
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
         `,
@@ -230,6 +241,7 @@ module.exports = {
           CASE WHEN nr.read_at IS NULL THEN 0 ELSE 1 END AS isRead
         FROM notices n
         LEFT JOIN notice_reads nr ON nr.notice_id = n.id AND nr.user_id = ?
+        WHERE n.target_user_id IS NULL
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
         `,
@@ -404,6 +416,7 @@ module.exports = {
           ON h.notice_id = n.id AND h.user_id = ?
         WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
+          AND (n.kind IS NULL OR n.kind != 'attendance_punch')
           AND (
             (n.target_date IS NULL AND n.target_month IS NULL)
             OR (n.target_date IS NOT NULL AND n.target_date = ?)
@@ -414,7 +427,7 @@ module.exports = {
       `,
       [uid, uid, uid, d, m, lim]
     );
-    return rows || [];
+    return (rows || []).filter((r) => !isSelfSubmitNotice(r, uid));
   },
   async listForUserFeed({ limit, userId }) {
     await ensureNoticesSchema();
@@ -439,7 +452,7 @@ module.exports = {
       [uid, uid, uid, lim]
     );
     const baseRows = rows || [];
-    if (baseRows.length) return baseRows;
+    if (baseRows.length) return baseRows.filter((r) => !isSelfSubmitNotice(r, uid));
 
     // Fallback feed for employee side when notices table is still empty:
     // synthesize from own request history so bell is never empty in real usage.
@@ -448,6 +461,7 @@ module.exports = {
       SELECT id AS sourceId, status, startDate, endDate, created_at AS createdAt
       FROM leave_requests
       WHERE userId = ?
+        AND LOWER(COALESCE(status, '')) IN ('approved','rejected')
       ORDER BY created_at DESC
       LIMIT 20
       `,
@@ -458,6 +472,7 @@ module.exports = {
       SELECT id AS sourceId, status, requestedCheckIn, requestedCheckOut, created_at AS createdAt
       FROM time_adjust_requests
       WHERE userId = ?
+        AND LOWER(COALESCE(status, '')) IN ('approved','rejected')
       ORDER BY created_at DESC
       LIMIT 20
       `,
@@ -468,6 +483,7 @@ module.exports = {
       SELECT id AS sourceId, status, amount, date, COALESCE(applied_at, updated_at, created_at) AS createdAt
       FROM expense_claims
       WHERE userId = ?
+        AND LOWER(COALESCE(status, '')) IN ('approved','rejected')
       ORDER BY COALESCE(applied_at, updated_at, created_at) DESC
       LIMIT 20
       `,

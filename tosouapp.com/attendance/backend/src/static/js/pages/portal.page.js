@@ -18,6 +18,29 @@ const previewMsg = (v, max = 80) => {
   if (!s) return '（内容なし）';
   return s.length > max ? `${s.slice(0, max)}...` : s;
 };
+const resolveEmployeeUid = () => {
+  try {
+    const fromWin = parseInt(String(window.__EMP_UID || 0), 10) || 0;
+    if (fromWin) return fromWin;
+  } catch { }
+  try {
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    const id = parseInt(String(u?.id || 0), 10) || 0;
+    if (id) return id;
+  } catch { }
+  return 0;
+};
+const shouldHideEmployeeAppliedNotice = (it) => {
+  const msg = String(it?.message || '');
+  const isApplyLike = /(交通費|有休|休暇|時間修正|修正).*(申請)|申請/.test(msg);
+  const isAppliedState = /\((applied|pending)\)/i.test(msg) || /(申請中|未申請)/.test(msg);
+  const me = resolveEmployeeUid();
+  const createdBy = parseInt(String(it?.created_by || it?.createdBy || 0), 10) || 0;
+  if (me && createdBy && me === createdBy && isApplyLike) return true;
+  if (isApplyLike && isAppliedState) return true;
+  return false;
+};
 const notifyState = {
   mounted: false,
   open: false,
@@ -39,8 +62,8 @@ const ensureEmpNotifyStyle = () => {
     st.id = 'empNotifyStyle';
     st.textContent = `
       .emp-notify-wrap { position: relative; display: inline-flex; align-items: center; margin-left: 8px; }
-      .emp-notify-btn { border: 1px solid #d1d5db; background: #fff; color: #334155; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; line-height: 1; }
-      .emp-notify-btn:hover { background: #f8fafc; }
+      .emp-notify-btn { border: 0; background: transparent; color: #334155; cursor: pointer; font-size: 18px; line-height: 1; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+      .emp-notify-btn:hover { opacity: .85; }
       .emp-notify-badge { position: absolute; top: -5px; right: -4px; min-width: 16px; height: 16px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 10px; line-height: 16px; text-align: center; padding: 0 4px; box-sizing: border-box; font-weight: 700; }
       .emp-notify-badge[hidden] { display: none; }
       .emp-notify-panel { position: absolute; top: 36px; right: 0; width: min(380px, calc(100vw - 24px)); max-height: 60vh; overflow: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 24px rgba(15, 23, 42, .18); z-index: 3600; }
@@ -103,15 +126,33 @@ const mountEmployeeNoticeBell = () => {
         btn?.setAttribute('aria-expanded', 'false');
       }
     });
+    const closePanel = () => {
+      notifyState.open = false;
+      panel?.setAttribute('hidden', '');
+      btn?.setAttribute('aria-expanded', 'false');
+    };
+    const shouldKeepOpen = (target) => {
+      try {
+        if (!(target instanceof Node)) return false;
+        return wrap.contains(target);
+      } catch {
+        return false;
+      }
+    };
+    // Capture phase prevents conflicts with other handlers using stopPropagation.
     document.addEventListener('click', (e) => {
       const t = e.target;
-      if (!(t instanceof Node)) return;
-      if (!wrap.contains(t)) {
-        notifyState.open = false;
-        panel?.setAttribute('hidden', '');
-        btn?.setAttribute('aria-expanded', 'false');
-      }
-    });
+      if (shouldKeepOpen(t)) return;
+      closePanel();
+    }, true);
+    document.addEventListener('pointerdown', (e) => {
+      const t = e.target;
+      if (shouldKeepOpen(t)) return;
+      closePanel();
+    }, true);
+    window.addEventListener('popstate', closePanel);
+    window.addEventListener('hashchange', closePanel);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) closePanel(); });
     notifyState.mounted = true;
     return true;
   } catch {
@@ -124,10 +165,18 @@ const renderEmployeeNoticeBell = () => {
     const list = document.getElementById('empNotifyList');
     const headCount = document.getElementById('empNotifyHeadCount');
     if (!badge || !list) return;
+    const setHeadCount = (unread, total) => {
+      if (!headCount) return;
+      const u = Number(unread || 0);
+      const t = Number(total || 0);
+      headCount.innerHTML = `未読<span class="emp-notify-head-badge">${escHtml(String(u))}</span> / 全${escHtml(String(t))}件`;
+    };
     const hidden = notifyState.hiddenIds instanceof Set ? notifyState.hiddenIds : new Set();
     const items = (Array.isArray(notifyState.items) ? notifyState.items : []).filter((it) => {
       const nid = parseInt(String(it?.id || 0), 10) || 0;
-      return !hidden.has(nid);
+      if (hidden.has(nid)) return false;
+      if (shouldHideEmployeeAppliedNotice(it)) return false;
+      return true;
     });
     const splitMsg = (msg) => {
       const s = String(msg || '').trim();
@@ -196,7 +245,7 @@ const renderEmployeeNoticeBell = () => {
     notifyState.groups = groupsAll;
     const unread = unreadGroups.reduce((s, g) => s + Number(g.unread || 0), 0);
     const total = groupsAll.reduce((s, g) => s + Number(g.count || 0), 0);
-    if (headCount) headCount.innerHTML = `未読<span class="emp-notify-head-badge">${escHtml(String(unread))}</span> / 全${escHtml(String(total))}件`;
+    setHeadCount(unread, total);
     if (unread > 0) {
       badge.textContent = unread > 99 ? '99+' : String(unread);
       badge.removeAttribute('hidden');
@@ -204,7 +253,7 @@ const renderEmployeeNoticeBell = () => {
       badge.setAttribute('hidden', '');
     }
     if (!groupsAll.length) {
-      if (headCount) headCount.innerHTML = `未読<span class="emp-notify-head-badge">0</span> / 全0件`;
+      setHeadCount(0, 0);
       list.innerHTML = `<div class="emp-notify-empty">新しいお知らせはありません。</div>`;
       return;
     }
@@ -307,7 +356,7 @@ const refreshEmployeeNoticeBell = async () => {
     const date = todayJST();
     const month = date.slice(0, 7);
     const res = await fetchJSONAuth(`/api/notices?all=1&date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&limit=30`).catch(() => null);
-    notifyState.items = Array.isArray(res?.notices) ? res.notices : [];
+    notifyState.items = (Array.isArray(res?.notices) ? res.notices : []).filter((it) => !shouldHideEmployeeAppliedNotice(it));
     renderEmployeeNoticeBell();
   } catch { }
 };
@@ -500,24 +549,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   if (!profile) { if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); } window.location.replace('/ui/login'); return; }
   markTopbarReady();
-  const goLogin = async () => {
-    try { await logout(); } catch { }
-    try {
-      sessionStorage.removeItem('accessToken');
-      sessionStorage.removeItem('refreshToken');
-      sessionStorage.removeItem('user');
-    } catch { }
-    try {
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-    } catch { }
-    try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
-  };
   try {
     const userStr = sessionStorage.getItem('user') || '';
     if (userStr) { localStorage.setItem('user', userStr); }
   } catch { }
   const role = String(profile.role || '').toLowerCase();
+  try { window.__EMP_UID = parseInt(String(profile.id || 0), 10) || 0; } catch { }
   setUserNameStable(profile.username || profile.email || 'ユーザー');
   if (role === 'admin' || role === 'manager') {
     const p0 = String(window.location.pathname || '');
@@ -729,16 +766,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   bindEmployeePjaxRequests();
   if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
-  try {
-    const p = String(window.location.pathname || '');
-    if ((p === '/ui/portal' || p === '/ui/dashboard') && document.body.dataset.backLoginBound !== '1') {
-      document.body.dataset.backLoginBound = '1';
-      try { history.pushState({ back_to_login_guard: true }, '', window.location.href); } catch { }
-      window.addEventListener('popstate', async () => {
-        await goLogin();
-      });
-    }
-  } catch { }
+  // Keep natural browser history:
+  // sub page -> home -> login
+  // (do not force back button to jump directly to login)
   try {
   } catch { }
   if (role === 'employee' || role === 'manager') {
