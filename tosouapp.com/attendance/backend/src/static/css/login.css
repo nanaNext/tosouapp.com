@@ -173,25 +173,40 @@ button {
     margin-right: 0;
     margin-left: 0;
     min-width: 88px;
-    display: inline-flex;
+    display: inline-grid;
+    grid-template-columns: 20px auto;
     align-items: center;
-    gap: 2px;
+    justify-items: center start;
+    column-gap: 4px;
     letter-spacing: -0.2px;
     font-weight: 500;
 }
 
 .label-icon-img {
-    width: 28px;
-    height: 28px;
-    display: inline-block;
+    width: 18px;
+    height: 18px;
+    display: block;
     vertical-align: middle;
-    margin-right: 2px;
+    margin-right: 0;
+    object-fit: contain;
+    justify-self: center;
 }
 .label-icon-img-user {
-    width: 28px;
-    height: 28px;
-    transform: scale(1.18);
+    width: 18px;
+    height: 18px;
+    transform: translateY(0);
     transform-origin: center;
+    object-fit: contain;
+    margin-right: 0;
+    position: static;
+    top: 0;
+}
+.label-icon-img-pass {
+    width: 18px;
+    height: 18px;
+    transform: translateY(0) scale(1.15);
+    transform-origin: center;
+    margin-right: 0;
 }
 .short-input {
     width: 100%;
@@ -846,9 +861,11 @@ button.secondary {
     .form-label-ja {
         width: auto;
         min-width: 0;
-        display: flex;
+        display: inline-grid;
+        grid-template-columns: 20px auto;
         align-items: center;
-        gap: 3px;
+        justify-items: center start;
+        column-gap: 4px;
         font-size: 12px;
         white-space: nowrap;
         overflow: visible;
@@ -859,9 +876,10 @@ button.secondary {
     }
 
     .label-icon-img,
-    .label-icon-img-user {
-        width: 22px;
-        height: 22px;
+    .label-icon-img-user,
+    .label-icon-img-pass {
+        width: 18px;
+        height: 18px;
     }
 
     .form-row input {
@@ -976,8 +994,11 @@ button.secondary {
     .form-label-ja {
         width: auto;
         min-width: 0;
-        display: inline-flex;
+        display: inline-grid;
+        grid-template-columns: 20px auto;
         align-items: center;
+        justify-items: center start;
+        column-gap: 4px;
         overflow: visible;
         text-overflow: clip;
         -webkit-text-size-adjust: 100%;

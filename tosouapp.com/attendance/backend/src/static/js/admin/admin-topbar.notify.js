@@ -79,6 +79,16 @@ document.addEventListener('DOMContentLoaded', function () {
       var summaryEl = panel.querySelector('#adminNotifySummary');
       var listEl = panel.querySelector('#adminNotifyList');
       var pollTimer = null;
+      var setHeadCount = function (unread, total) {
+        if (!countText) return;
+        var u = Number(unread || 0);
+        var t = Number(total || 0);
+        if (u > 0) {
+          countText.innerHTML = '未読 <span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;">' + esc(u) + '</span> / 全' + esc(t) + '件';
+          return;
+        }
+        countText.textContent = '未読 0 / 全' + String(t) + '件';
+      };
       var positionPanel = function () {
         try {
           var rect = notifyBtn.getBoundingClientRect();
@@ -114,12 +124,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (k.indexOf('attendance') >= 0 || t.indexOf('勤怠') >= 0 || k === 'employee_action') return '勤怠/操作';
         return 'その他';
       };
+      var shouldHideAdminBellItem = function (it) {
+        var rawMsg = String(it && it.message || '').trim();
+        var rawTitle = String(it && it.title || '').trim();
+        var rawKind = String(it && it.kind || '').toLowerCase();
+        // Employee-targeted result notices must not appear in admin bell.
+        return ((/交通費申請/.test(rawMsg) || /交通費/.test(rawTitle) || rawKind.indexOf('expense') >= 0)
+          && /(承認されました|差戻しされました|却下されました)/.test(rawMsg));
+      };
       var groupItems = function (items) {
         var map = new Map();
         (Array.isArray(items) ? items : []).forEach(function (it) {
+          if (shouldHideAdminBellItem(it)) return;
+          var rawMsg = String(it && it.message || '').trim();
           var link = String(it && it.linkUrl || '').trim() || '/admin/dashboard';
           var title = String(it && it.title || '').trim() || '通知';
-          var msg = String(it && it.message || '').trim();
+          var msg = rawMsg;
           var category = getCategory(it);
           var key = [category, title, link].join('|');
           if (category === '打刻通知') {
@@ -184,8 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var rowCls = 'admin-notify-row' + ((Number(it && it.unread || 0) > 0) ? ' is-unread' : '');
         var idsCsv = Array.isArray(it && it.ids) ? it.ids.join(',') : '';
         var unreadCount = Number(it && it.unread || 0);
-        // Only show per-item unread badge when there are 2+ unread in that group.
-        var countHtml = unreadCount > 1 ? ('<span class="admin-notify-count">' + esc(unreadCount) + '</span>') : '';
+        // Always show unread badge inside panel (including "1") for quick visibility.
+        var countHtml = unreadCount > 0 ? ('<span class="admin-notify-count">' + esc(unreadCount) + '</span>') : '';
         return '<div class="' + rowCls + '" data-notice-row="' + esc(idsCsv) + '">' +
           '<a class="admin-notify-item" href="' + esc(link) + '" data-notice-ids="' + esc(idsCsv) + '">' +
             '<div class="admin-notify-meta">' + esc(it && it.category || '') + ' ・ ' + esc(fmtTime(it && it.createdAt)) + '</div>' +
@@ -262,10 +282,15 @@ document.addEventListener('DOMContentLoaded', function () {
             notifyBadge.textContent = '0';
           }
         }
-        if (countText) countText.textContent = String(unreadTotal) + '件 / 全' + String(totalAll) + '件';
+        setHeadCount(unreadTotal, totalAll);
         var items = Array.isArray(data && data.items) ? data.items : [];
         var hiddenSet = new Set(readHiddenIds());
-        items = items.filter(function (it) { return !hiddenSet.has(parseInt(String(it && it.id || '0'), 10) || 0); });
+        items = items.filter(function (it) {
+          var idv = parseInt(String(it && it.id || '0'), 10) || 0;
+          if (hiddenSet.has(idv)) return false;
+          if (shouldHideAdminBellItem(it)) return false;
+          return true;
+        });
         unreadTotal = items.reduce(function (s, it) { return s + ((it && it.isRead === false) ? 1 : 0); }, 0);
         totalAll = items.length;
         if (notifyBadge) {
@@ -277,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
             notifyBadge.textContent = '0';
           }
         }
-        if (countText) countText.textContent = String(unreadTotal) + '件 / 全' + String(totalAll) + '件';
+        setHeadCount(unreadTotal, totalAll);
         var groups = groupItems(items);
         renderSummary(groups);
         if (!listEl) return;
@@ -303,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
             notifyBadge.textContent = '0';
           }
         }
-        if (countText) countText.textContent = String(total) + '件 / 全' + String(total) + '件';
+        setHeadCount(total, total);
         if (!items.length) {
           if (summaryEl) summaryEl.innerHTML = '<span class="admin-notify-chip">通知なし</span>';
           listEl.innerHTML = '<div class="admin-notify-empty">新しい通知はありません</div>';
@@ -337,6 +362,14 @@ document.addEventListener('DOMContentLoaded', function () {
       var closePanel = function () {
         panel.setAttribute('hidden', '');
         notifyBtn.setAttribute('aria-expanded', 'false');
+      };
+      var shouldKeepOpen = function (target) {
+        try {
+          if (!target || !target.closest) return false;
+          return !!(target.closest('#adminNotifyPanel') || target.closest('#btnAdminNotify'));
+        } catch {
+          return false;
+        }
       };
       notifyBtn.addEventListener('click', function (e) {
         e.preventDefault();
@@ -383,13 +416,22 @@ document.addEventListener('DOMContentLoaded', function () {
         closePanel();
         // Let native anchor navigation happen for maximum reliability.
       });
+      // Use capture phase so panel closes even if other handlers stop propagation.
       document.addEventListener('click', function (e) {
         var t = e && e.target;
-        if (t && t.closest && (t.closest('#adminNotifyPanel') || t.closest('#btnAdminNotify'))) return;
+        if (shouldKeepOpen(t)) return;
         closePanel();
-      });
+      }, true);
+      document.addEventListener('pointerdown', function (e) {
+        var t = e && e.target;
+        if (shouldKeepOpen(t)) return;
+        closePanel();
+      }, true);
+      // Close when route/page context changes.
+      window.addEventListener('popstate', closePanel);
+      window.addEventListener('hashchange', closePanel);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePanel(); });
-      document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); else closePanel(); });
       window.addEventListener('resize', positionPanel);
       window.addEventListener('scroll', positionPanel, { passive: true });
       load();

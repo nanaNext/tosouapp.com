@@ -12,6 +12,29 @@ const previewMsg = (v, max = 80) => {
   if (!s) return '（内容なし）';
   return s.length > max ? `${s.slice(0, max)}...` : s;
 };
+const resolveEmployeeUid = () => {
+  try {
+    const fromWin = parseInt(String(window.__EMP_UID || 0), 10) || 0;
+    if (fromWin) return fromWin;
+  } catch {}
+  try {
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+    const u = raw ? JSON.parse(raw) : null;
+    return parseInt(String(u?.id || 0), 10) || 0;
+  } catch {
+    return 0;
+  }
+};
+const shouldHideEmployeeAppliedNotice = (it) => {
+  const msg = String(it?.message || '');
+  const isApplyLike = /(交通費|有休|休暇|時間修正|修正).*(申請)|申請/.test(msg);
+  const isAppliedState = /\((applied|pending)\)/i.test(msg) || /(申請中|未申請)/.test(msg);
+  const me = resolveEmployeeUid();
+  const createdBy = parseInt(String(it?.created_by || it?.createdBy || 0), 10) || 0;
+  if (me && createdBy && me === createdBy && isApplyLike) return true;
+  if (isApplyLike && isAppliedState) return true;
+  return false;
+};
 const state = {
   mounted: false,
   open: false,
@@ -41,7 +64,7 @@ function writeHiddenIds(setLike) {
   try {
     const arr = Array.from(setLike || []).map((x) => parseInt(String(x || 0), 10) || 0).filter((x) => !!x).slice(0, 1000);
     localStorage.setItem(HIDE_KEY, JSON.stringify(arr));
-  } catch {}
+  } catch { }
 }
 function readCache() {
   try {
@@ -57,7 +80,7 @@ function readCache() {
 function writeCache(items) {
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), items: Array.isArray(items) ? items.slice(0, 60) : [] }));
-  } catch {}
+  } catch { }
 }
 
 function ensureStyle() {
@@ -66,8 +89,8 @@ function ensureStyle() {
   st.id = 'empNotifyStickyStyle';
   st.textContent = `
     .emp-notify-wrap { position: relative; display: inline-flex; align-items: center; margin-left: 8px; }
-    .emp-notify-btn { border: 1px solid #d1d5db; background: #fff; color: #334155; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; line-height: 1; }
-    .emp-notify-btn:hover { background: #f8fafc; }
+    .emp-notify-btn { border: 0; background: transparent; color: #334155; cursor: pointer; font-size: 18px; line-height: 1; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .emp-notify-btn:hover { opacity: .85; }
     .emp-notify-badge { position: absolute; top: -5px; right: -4px; min-width: 16px; height: 16px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 10px; line-height: 16px; text-align: center; padding: 0 4px; box-sizing: border-box; font-weight: 700; }
     .emp-notify-badge[hidden] { display: none; }
     .emp-notify-panel { position: absolute; top: 36px; right: 0; width: min(380px, calc(100vw - 24px)); max-height: 60vh; overflow: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 24px rgba(15, 23, 42, .18); z-index: 3600; }
@@ -138,9 +161,15 @@ function render() {
   const list = document.getElementById('empNotifyStickyList');
   const headCount = document.getElementById('empNotifyStickyHeadCount');
   if (!badge || !list || !headCount) return;
+  const setHeadCount = (unread, total) => {
+    const u = Number(unread || 0);
+    const t = Number(total || 0);
+    headCount.innerHTML = `未読<span class="emp-notify-head-badge">${escHtml(String(u))}</span> / 全${escHtml(String(t))}件`;
+  };
 
   const map = new Map();
   for (const it of (Array.isArray(state.items) ? state.items : [])) {
+    if (shouldHideEmployeeAppliedNotice(it)) continue;
     const msg = String(it?.message || '').trim();
     const parts = splitMsg(msg);
     const keyBase = `${parts.title}|${normalizeDetailForGroup(parts.detail)}`.trim();
@@ -163,7 +192,7 @@ function render() {
   const readGroups = groupsAll.filter((g) => Number(g.unread || 0) <= 0);
   const unread = unreadGroups.reduce((s, g) => s + Number(g.unread || 0), 0);
   const total = groupsAll.reduce((s, g) => s + Number(g.count || 0), 0);
-  headCount.innerHTML = `未読<span class="emp-notify-head-badge">${escHtml(String(unread))}</span> / 全${escHtml(String(total))}件`;
+  setHeadCount(unread, total);
 
   if (unread > 0) {
     badge.textContent = unread > 99 ? '99+' : String(unread);
@@ -198,8 +227,8 @@ function render() {
       e.stopPropagation();
       const ids = String(el.getAttribute('data-notice-ids') || '').split(',').map((x) => parseInt(String(x || 0), 10) || 0).filter((x) => !!x);
       if (!ids.length) return;
-  const items = Array.isArray(state.items) ? state.items : [];
-      const unreadInGroup = pool
+      const items = Array.isArray(state.items) ? state.items : [];
+      const unreadInGroup = items
         .filter((it) => {
           const nid = parseInt(String(it?.id || 0), 10) || 0;
           return !!nid && ids.includes(nid) && !it?.read_at;
@@ -218,7 +247,7 @@ function render() {
         return it?.read_at ? it : { ...it, read_at: nowIso };
       });
       render();
-      try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch {}
+      try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch { }
       if (link) window.location.href = link;
     });
     onDelete?.addEventListener('click', (e) => {
@@ -230,7 +259,7 @@ function render() {
 
 async function refresh() {
   const res = await fetchJSONAuth('/api/notices?all=1&limit=100').catch(() => null);
-  state.items = Array.isArray(res?.notices) ? res.notices : [];
+  state.items = (Array.isArray(res?.notices) ? res.notices : []).filter((it) => !shouldHideEmployeeAppliedNotice(it));
   writeCache(state.items);
   render();
 }
@@ -267,15 +296,35 @@ function mount() {
       btn?.setAttribute('aria-expanded', 'false');
     }
   });
+  const closePanel = () => {
+    state.open = false;
+    panel?.setAttribute('hidden', '');
+    btn?.setAttribute('aria-expanded', 'false');
+  };
+  const shouldKeepOpen = (target) => {
+    try {
+      if (!(target instanceof Node)) return false;
+      if (wrap.contains(target)) return true;
+      // Keep open only when clicking inside the notify UI itself.
+      return false;
+    } catch {
+      return false;
+    }
+  };
+  // Capture phase prevents conflicts with other handlers using stopPropagation.
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if (!(t instanceof Node)) return;
-    if (!wrap.contains(t)) {
-      state.open = false;
-      panel?.setAttribute('hidden', '');
-      btn?.setAttribute('aria-expanded', 'false');
-    }
-  });
+    if (shouldKeepOpen(t)) return;
+    closePanel();
+  }, true);
+  document.addEventListener('pointerdown', (e) => {
+    const t = e.target;
+    if (shouldKeepOpen(t)) return;
+    closePanel();
+  }, true);
+  window.addEventListener('popstate', closePanel);
+  window.addEventListener('hashchange', closePanel);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) closePanel(); });
   state.mounted = true;
 }
 
@@ -287,10 +336,10 @@ function tryBoot() {
       state.items = readCache();
       render();
     }
-    refresh().catch(() => {});
+    refresh().catch(() => { });
     if (state.timer) clearInterval(state.timer);
-    state.timer = setInterval(() => { refresh().catch(() => {}); }, 60000);
-    if (state.observer) { try { state.observer.disconnect(); } catch {} state.observer = null; }
+    state.timer = setInterval(() => { refresh().catch(() => { }); }, 60000);
+    if (state.observer) { try { state.observer.disconnect(); } catch { } state.observer = null; }
     return true;
   } catch {
     return false;
@@ -338,7 +387,7 @@ function setNavCurrent(pathName) {
       if (u.pathname === pathName) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
-  } catch {}
+  } catch { }
 }
 function syncPageHeadStyle(doc) {
   try {
@@ -352,7 +401,7 @@ function syncPageHeadStyle(doc) {
       document.head.appendChild(st);
     }
     st.textContent = styles.join('\n\n');
-  } catch {}
+  } catch { }
 }
 async function softNavigateLocal(url, push = true) {
   try {
@@ -374,12 +423,12 @@ async function softNavigateLocal(url, push = true) {
       try {
         const mod = await import('/static/js/pages/requests.page.js');
         if (mod && typeof mod.bootRequestsPage === 'function') await mod.bootRequestsPage();
-      } catch {}
+      } catch { }
     } else if (url.pathname === EXP_PATH) {
       try {
         const mod = await import('/static/js/pages/expenses.page.js');
         if (mod && typeof mod.bootExpensesPage === 'function') await mod.bootExpensesPage();
-      } catch {}
+      } catch { }
     }
     return true;
   } catch {
@@ -443,24 +492,24 @@ function bindSoftRequestNavigation() {
         softNavInFlight = false;
       }
       if (!ok) window.location.reload();
-    } catch {}
+    } catch { }
   });
 }
 
 // Reduce header/subbar flicker feeling on employee pages.
-try { document.documentElement.classList.add('topbar-ready'); } catch {}
-try { bindSelfNavigationGuard(); } catch {}
+try { document.documentElement.classList.add('topbar-ready'); } catch { }
+try { bindSelfNavigationGuard(); } catch { }
 // Keep a single navigation router (portal.page.js) to avoid race/flicker.
 try {
   const sp = document.getElementById('pageSpinner');
   if (sp) sp.setAttribute('hidden', '');
-} catch {}
+} catch { }
 
 if (!tryBoot()) {
   // Mount as soon as subnav is inserted, without waiting full page lifecycle.
   try {
     state.observer = new MutationObserver(() => { if (tryBoot()) return; });
     state.observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
-  } catch {}
+  } catch { }
   document.addEventListener('DOMContentLoaded', () => { tryBoot(); }, { once: true });
 }
