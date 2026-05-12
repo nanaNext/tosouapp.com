@@ -120,7 +120,8 @@
 
   const bindUserPicker = () => {
     const up = controller.ctx.userPicker;
-    if (!up) return;
+    if (!up || up._bound) return;
+    up._bound = true;
     up.input?.addEventListener('input', () => { try { up.rebuild(); } catch {} });
     up.select?.addEventListener('change', async () => {
       const next = String(up.select.value || '').trim();
@@ -662,9 +663,10 @@
     bind();
     await controller.setMonth(controller.ctx.initialYM, true, { spinner: false });
     hideSpinner();
+    bindUserPicker();
   };
 
-  const Events = { boot, bind };
+  const Events = { boot, bind, bindUserPicker };
   root.Events = Events;
   globalThis.AttendanceMonthly = root;
 })();
