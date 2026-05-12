@@ -1,5 +1,5 @@
 import { logout } from '../api/auth.api.js';
-import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260421-onecircle1';
+import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260423-hotfix6';
 
 const normalizePath = (p) => {
   const s = String(p || '');
@@ -61,11 +61,9 @@ const toLegacyState = (path) => {
   if (p === '/admin/payroll/payslips') return { tab: 'salary_send', hash: '' };
 
   if (p === '/admin/departments' || p === '/admin/organization/departments') return { tab: 'departments', hash: '' };
-
-  if (p === '/admin/chatbot/faq') return { redirect: '/ui/chatbot' };
   if (p === '/admin/chatbot/categories') return { redirect: '/ui/chatbot' };
   if (p === '/admin/chatbot/user-questions') return { redirect: '/ui/chatbot' };
-
+  if (p === '/admin/faq') return { redirect: '/admin/chatbot/faq' };
   if (p === '/admin/system/settings') return { tab: 'settings', hash: '' };
   if (p === '/admin/system/audit-logs') return { tab: 'audit', hash: '' };
 
@@ -349,12 +347,23 @@ const wireMobileDrawer = () => {
     const open = () => {
       try { drawer.removeAttribute('hidden'); } catch {}
       try { backdrop.removeAttribute('hidden'); } catch {}
+      // Recover from forced inline hide set by transient reset logic.
+      try { drawer.style.display = ''; } catch {}
+      try { drawer.style.removeProperty('display'); } catch {}
+      try { drawer.style.removeProperty('pointer-events'); } catch {}
+      try { backdrop.style.display = ''; } catch {}
+      try { backdrop.style.removeProperty('display'); } catch {}
+      try { backdrop.style.removeProperty('pointer-events'); } catch {}
       try { document.body.classList.add('drawer-open'); } catch {}
       try { btn.setAttribute('aria-expanded', 'true'); } catch {}
     };
     const close = () => {
       try { drawer.setAttribute('hidden', ''); } catch {}
+      try { drawer.style.display = 'none'; } catch {}
+      try { drawer.style.pointerEvents = 'none'; } catch {}
       try { backdrop.setAttribute('hidden', ''); } catch {}
+      try { backdrop.style.display = 'none'; } catch {}
+      try { backdrop.style.pointerEvents = 'none'; } catch {}
       try { document.body.classList.remove('drawer-open'); } catch {}
       try { btn.setAttribute('aria-expanded', 'false'); } catch {}
     };
@@ -484,11 +493,13 @@ const resetTransientUiState = () => {
     document.body.classList.remove('drawer-open');
   } catch {}
   try {
-    const spinner = document.querySelector('#pageSpinner');
-    if (spinner) {
-      spinner.setAttribute('hidden', 'true');
-      spinner.style.display = 'none';
-    }
+    document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
+      try { spinner.setAttribute('hidden', 'true'); } catch {}
+      try { spinner.style.display = 'none'; } catch {}
+      try { spinner.style.pointerEvents = 'none'; } catch {}
+      try { spinner.style.visibility = 'hidden'; } catch {}
+      try { spinner.style.opacity = '0'; } catch {}
+    });
     const content = document.querySelector('#adminContent');
     if (content) content.style.visibility = '';
     sessionStorage.removeItem('navSpinner');
@@ -523,12 +534,13 @@ const resetTransientUiState = () => {
 
 const hardHidePageSpinner = () => {
   try {
-    const spinner = document.querySelector('#pageSpinner');
-    if (spinner) {
-      spinner.setAttribute('hidden', 'true');
-      spinner.style.display = 'none';
-      spinner.style.pointerEvents = 'none';
-    }
+    document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
+      try { spinner.setAttribute('hidden', 'true'); } catch {}
+      try { spinner.style.display = 'none'; } catch {}
+      try { spinner.style.pointerEvents = 'none'; } catch {}
+      try { spinner.style.visibility = 'hidden'; } catch {}
+      try { spinner.style.opacity = '0'; } catch {}
+    });
   } catch {}
   try { sessionStorage.removeItem('navSpinner'); } catch {}
 };
@@ -651,7 +663,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/employees' || p2.startsWith('/admin/employees/')) {
-      const mod = await loadModule('./employees/employees.page.js?v=navy-20260418-empfix1');
+      const mod = await loadModule('./employees/employees.page.js?v=navy-20260423-empcenter3');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
@@ -661,7 +673,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
-      const mod = await loadModule('./attendance/attendance.page.js');
+      const mod = await loadModule('./attendance/attendance.page.js?v=navy-20260423-attrecsync1');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
@@ -684,6 +696,12 @@ const route = async () => {
       await mountModule(mod);
       return;
     }
+    if (p2 === '/admin/expenses/monthly-detail') {
+      const mod = await loadModule('./expenses/monthly-detail.page.js');
+      if (seq !== routeSeq) return;
+      await mountModule(mod);
+      return;
+    }
     if (p2 === '/admin/expenses') {
       const mod = await loadModule('./expenses/expenses.page.js');
       if (seq !== routeSeq) return;
@@ -701,9 +719,14 @@ const route = async () => {
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
+    }    if (p2 === '/admin/notices') {
+      const mod = await loadModule('./notices/notices.page.js?v=navy-20260423-noticemobile5');
+      if (seq !== routeSeq) return;
+      await mountModule(mod);
+      return;
     }
-    if (p2 === '/admin/notices') {
-      const mod = await loadModule('./notices/notices.page.js');
+    if (p2 === '/admin/faq' || p2.indexOf('/admin/chatbot/faq') === 0) {
+      const mod = await loadModule('./chatbot/faq.page.js');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
@@ -881,13 +904,59 @@ const wireNavSelection = () => {
 const boot = async () => {
   try { document.documentElement.classList.add('admin-preboot'); } catch {}
   try { document.body.classList.add('booting'); } catch {}
+  const isStandaloneExpenses = (() => {
+    try {
+      const p = normalizePath(window.location.pathname);
+      if (p !== '/admin/expenses') return false;
+      const sp = new URLSearchParams(window.location.search || '');
+      const v = String(sp.get('standalone') || '').toLowerCase();
+      return v === '1' || v === 'true' || v === 'yes';
+    } catch {
+      return false;
+    }
+  })();
+  const applyStandaloneExpenses = () => {
+    if (!isStandaloneExpenses) return;
+    try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch {}
+    try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch {}
+    try { document.body.classList.remove('has-sidebar'); } catch {}
+    try { document.body.classList.add('expenses-standalone'); } catch {}
+    try {
+      try { document.documentElement.style.setProperty('height', '100%', 'important'); } catch {}
+      try { document.documentElement.style.setProperty('overflow', 'hidden', 'important'); } catch {}
+    } catch {}
+    try {
+      try { document.body.style.setProperty('height', '100%', 'important'); } catch {}
+      try { document.body.style.setProperty('overflow', 'hidden', 'important'); } catch {}
+    } catch {}
+    try {
+      const main = document.querySelector('main.content');
+      if (main) {
+        try { main.style.setProperty('margin', '0', 'important'); } catch {}
+        try { main.style.setProperty('padding', '0', 'important'); } catch {}
+        try { main.style.setProperty('margin-top', '0', 'important'); } catch {}
+        try { main.style.setProperty('padding-top', '0', 'important'); } catch {}
+      }
+    } catch {}
+    try {
+      try { document.documentElement.style.setProperty('margin', '0', 'important'); } catch {}
+      try { document.documentElement.style.setProperty('padding', '0', 'important'); } catch {}
+    } catch {}
+    try {
+      try { document.body.style.setProperty('margin', '0', 'important'); } catch {}
+      try { document.body.style.setProperty('padding', '0', 'important'); } catch {}
+    } catch {}
+  };
   let revealed = false;
   const reveal = () => {
     if (revealed) return;
     revealed = true;
     try { document.body.classList.remove('booting'); } catch {}
     try { document.documentElement.classList.remove('admin-preboot'); } catch {}
-    try { document.getElementById('adminChrome')?.removeAttribute('hidden'); } catch {}
+    try {
+      if (isStandaloneExpenses) applyStandaloneExpenses();
+      else document.getElementById('adminChrome')?.removeAttribute('hidden');
+    } catch {}
     try { document.body.style.visibility = ''; } catch {}
     try { document.getElementById('adminBootMask')?.remove(); } catch {}
   };
@@ -904,6 +973,7 @@ const boot = async () => {
   wireAdminShell({ logoutRedirect: '/ui/login' });
   try { window.addEventListener('pageshow', hardHidePageSpinner); } catch {}
   try {
+    applyStandaloneExpenses();
     await route();
   } finally {
     hardHidePageSpinner();
