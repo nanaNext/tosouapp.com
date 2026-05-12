@@ -1681,7 +1681,8 @@
       const roleOf = (u) => String(u.role || '').toLowerCase();
       const statusOf = (u) => String(u.employment_status || u.employmentStatus || 'active').toLowerCase();
       const users = usersAll
-        .filter(u => String(u?.id || '') && String(u.id) !== meId && roleOf(u) !== 'admin' && roleOf(u) !== 'manager')
+        .filter(u => String(u?.id || '') && String(u.id) !== meId)
+        .filter(u => roleOf(u) !== 'admin' && roleOf(u) !== 'manager' && roleOf(u) !== 'administrator' && roleOf(u) !== 'supervisor')
         .filter(u => statusOf(u) !== 'inactive' && statusOf(u) !== 'retired')
         .sort((a, b) => {
           const ac = codeOf(a);
@@ -1991,14 +1992,13 @@
     try { if (ctx.monthCache instanceof Map) ctx.monthCache.clear(); } catch {}
     try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch {}
     const ym = ctx.picker?.value || monthJST();
-    if (!ctx.actingUserId) return;
+    
     // Pass userId to setMonth so it updates URL once
     const url = new URL(window.location.href);
     if (ctx.actingUserId) url.searchParams.set('userId', ctx.actingUserId);
     else url.searchParams.delete('userId');
-    try {
-      history.replaceState(null, '', url.pathname + url.search + url.hash);
-    } catch {}
+    try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch {}
+    
     await setMonth(ym, true);
   };
 
