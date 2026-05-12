@@ -534,6 +534,10 @@ export function wireMobileDrawer() {
       if (!link) return;
       const href = String(link.getAttribute('href') || '').trim();
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      if (String(link.getAttribute('target') || '').toLowerCase() === '_blank') {
+        close();
+        return;
+      }
       const isMobile = (() => {
         try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
       })();

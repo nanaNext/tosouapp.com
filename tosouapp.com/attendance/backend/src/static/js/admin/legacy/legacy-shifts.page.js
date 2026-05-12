@@ -29,6 +29,7 @@ export async function mountShifts({ content }) {
     </tr></thead>
     <tbody></tbody>
   `;
+  // cái này có chức năng render list
   let defs = [];
   const normalizeName = (v) => String(v || '').trim();
   const findDefByName = (name) => {

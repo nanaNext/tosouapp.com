@@ -180,10 +180,10 @@ const render = async () => {
   const style = document.createElement('style');
   style.textContent = `
     .sal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .sal-title{font-size:18px;font-weight:900;color:#0f172a}
-    .sal-subtle{font-size:12px;color:#64748b}
+    .sal-title{font-size:16px;font-weight:600;color:#0f172a}
+    .sal-subtle{font-size:13px;color:#64748b}
     .sal-row{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
-    .sal-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px}
+    .sal-card{width:100%;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:0}
     .sal-btn {
       padding: 8px 16px;
       border: 1px solid #cbd5e1;
@@ -207,10 +207,10 @@ const render = async () => {
       background: #2563eb;
       border-color: #1d4ed8;
     }
-    .sal-chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:12px;border:1px solid #e0e7ff}
+    .sal-chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:12px;font-weight:500;border:1px solid #e0e7ff}
     .sal-kv{display:grid;grid-template-columns:160px 1fr;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
-    .sal-kv .k{background:#f8fafc;font-weight:700;color:#475569;padding:12px;border-right:1px solid #e2e8f0}
-    .sal-kv .v{padding:12px}
+    .sal-kv .k{background:#f8fafc;font-weight:500;font-size:14px;color:#475569;padding:10px 12px;border-right:1px solid #e2e8f0}
+    .sal-kv .v{padding:10px 12px;font-size:14px;font-weight:400;color:#334155}
     
     .sal-table {
       width: 100%;
@@ -224,15 +224,18 @@ const render = async () => {
     .sal-table th {
       background: #f8fafc;
       color: #475569;
-      font-weight: 600;
+      font-weight: 500;
+      font-size: 14px;
       text-align: left;
-      padding: 12px;
+      padding: 10px 12px;
       border-bottom: 2px solid #e2e8f0;
     }
     .sal-table td {
-      padding: 12px;
+      padding: 10px 12px;
       border-bottom: 1px solid #e2e8f0;
       color: #334155;
+      font-size: 14px;
+      font-weight: 400;
     }
     .sal-table tr:last-child td {
       border-bottom: none;
@@ -248,7 +251,7 @@ const render = async () => {
       border-radius: 8px;
       border: 1px dashed #cbd5e1;
     }
-    .sal-list a{color:#1d4ed8;text-decoration:underline;font-weight:700}
+    .sal-list a{color:#1d4ed8;text-decoration:none;font-weight:500}
     .sal-list a:hover{color:#1e40af}
     .mobile-drawer .drawer-group-btn{
       width: 100%;
@@ -286,29 +289,29 @@ const render = async () => {
     .sal-list .dot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex:0 0 auto}
     .sal-list .dot.is-hidden{display:none}
     .sal-list tr.is-active td{background:#eef4ff}
-    .sal-back{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;color:#1d4ed8;text-decoration:none;font-weight:700}
+    .sal-back{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;color:#1d4ed8;text-decoration:none;font-weight:500;font-size:14px}
     .sal-back:hover{color:#1e40af}
-    .sal-detail-title{font-size:20px;font-weight:900;color:#0f172a}
+    .sal-detail-title{font-size:16px;font-weight:600;color:#0f172a}
     .sal-tabs{display:flex;gap:18px;border-bottom:1px solid #e2e8f0;margin-bottom:12px}
-    .sal-tab{padding:8px 4px;color:#475569;cursor:pointer;font-weight:700;position:relative}
+    .sal-tab{padding:8px 4px;color:#475569;cursor:pointer;font-size:14px;font-weight:500;position:relative}
     .sal-tab.active{color:#0f172a}
     .sal-tab.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#3b82f6}
     .sal-pane{display:none}
     .sal-pane.active{display:block}
     .sal-related-group{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
-    .sal-related-head{padding:10px 12px;color:#475569;font-weight:800;border-bottom:1px solid #e2e8f0}
+    .sal-related-head{padding:10px 12px;color:#475569;font-size:14px;font-weight:500;border-bottom:1px solid #e2e8f0}
     .sal-related-item{padding:12px}
-    .sal-related-item a{color:#1d4ed8;text-decoration:underline;font-weight:700}
+    .sal-related-item a{color:#1d4ed8;text-decoration:none;font-weight:500}
     .sal-related-item a:hover{color:#1e40af}
     @media (max-width: 700px){
       .sal-card{padding:10px !important;border-radius:10px}
       .sal-header{margin-bottom:10px}
-      .sal-title{font-size:15px}
+      .sal-title{font-size:14px}
       .sal-subtle{font-size:11px}
       .sal-row{gap:10px}
       .sal-list table{border-radius:8px}
       .sal-table th,.sal-table td{padding:8px}
-      .sal-table th{font-size:11px}
+      .sal-table th{font-size:12px}
       .sal-table td{font-size:13px}
       .sal-list th:nth-child(2), .sal-list td:nth-child(2){
         width: 130px;
@@ -323,7 +326,7 @@ const render = async () => {
       .sal-back{font-size:13px;margin-bottom:8px}
       .sal-tabs{gap:12px}
       .sal-tab{font-size:12px;padding:7px 2px}
-      .sal-detail-title{font-size:16px}
+      .sal-detail-title{font-size:14px}
       .sal-kv{grid-template-columns:110px 1fr}
       .sal-kv .k,.sal-kv .v{padding:9px}
       #salOpenPdf{padding:6px 10px;font-size:12px}
@@ -493,8 +496,20 @@ const render = async () => {
             p2.classList.add('active'); p1.classList.remove('active');
           }
         };
-        document.getElementById('salTabDetails')?.addEventListener('click', () => activate('details'));
-        document.getElementById('salTabRelated')?.addEventListener('click', () => activate('related'));
+      document.getElementById('salTabDetails')?.addEventListener('click', () => activate('details'));
+      document.getElementById('salTabRelated')?.addEventListener('click', () => activate('related'));
+      document.querySelector('.sal-back')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        try {
+          const ref = String(document.referrer || '');
+          const fromSalary = ref.includes('/ui/salary');
+          if (fromSalary && window.history.length > 1) {
+            window.history.back();
+            return;
+          }
+        } catch {}
+        window.location.replace('/ui/salary');
+      });
       }
       document.getElementById('salOpenPdf')?.addEventListener('click', async () => {
         await openPublishedFile(month);

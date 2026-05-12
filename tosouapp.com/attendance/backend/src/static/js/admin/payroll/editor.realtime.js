@@ -13,6 +13,7 @@ function stableStringify(v) {
   };
   return JSON.stringify(norm(v));
 }
+// nó đang tạo realtime controller để quản lý debounce, request, cache, chống duplicate, realtime update
 
 export function createRealtimeController({ getKey, buildPayload, computeEmp, setKpi, updatePreview, clearPdfStateIfKeyChanged }) {
   let _deb = null;
@@ -30,6 +31,7 @@ export function createRealtimeController({ getKey, buildPayload, computeEmp, set
       _lastPayloadKey = null;
       _lastRealtimeAt = 0;
     }
+    // “Realtime tính toán lương + chống spam request + chống race condition”
     clearPdfStateIfKeyChanged();
     if (_deb) clearTimeout(_deb);
     _deb = setTimeout(async () => {

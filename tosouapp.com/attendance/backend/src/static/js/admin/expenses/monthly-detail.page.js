@@ -2,7 +2,8 @@ import { requireAdmin } from '../_shared/require-admin.js';
 import { fetchJSONAuth } from '../../api/http.api.js';
 
 const $ = (sel) => document.querySelector(sel);
-const todayMonth = () => new Date().toISOString().slice(0, 7);
+const todayISO = () => new Date().toLocaleDateString('sv-SE');
+const todayMonth = () => todayISO().slice(0, 7);
 
 const fmtStatus = (v) => {
   const s = String(v || '').toLowerCase();
@@ -11,13 +12,14 @@ const fmtStatus = (v) => {
   if (s === 'rejected') return '差戻し';
   return s || '-';
 };
-
+// Lấy dữ liệu từ URL rồi hiển thị dữ liệu lên màn hình
 const render = async () => {
   const host = $('#adminContent');
   if (!host) return;
   const params = new URLSearchParams(window.location.search || '');
   const month = params.get('month') || todayMonth();
   const userId = params.get('userId') || '';
+// Cái này dùng để hiển thị chi tiết - 交通費
 
   host.className = '';
   host.style.maxWidth = 'none';
@@ -32,6 +34,7 @@ const render = async () => {
         .exp-month-detail .title { margin:0; font-size:20px; font-weight:700; }
         .exp-month-detail .meta { color:#475569; font-size:13px; }
         .exp-month-detail .btn { height:32px; padding:0 12px; border:1px solid #cbd5e1; background:#fff; border-radius:0; cursor:pointer; }
+        .exp-month-detail .btn.primary { background:#0b5ed7; border-color:#0b5ed7; color:#fff; }
         .exp-month-detail .table-wrap { border:1px solid #dbe3ee; border-radius:0; background:#fff; overflow:hidden; }
         .exp-month-detail table { width:100%; border-collapse:collapse; border-spacing:0; }
         .exp-month-detail th, .exp-month-detail td { border:1px solid #e5eaf2; padding:10px 12px; font-size:13px; }
@@ -39,7 +42,10 @@ const render = async () => {
       </style>
       <div class="head">
         <h3 class="title">交通費申請詳細</h3>
-        <button id="backToExpenseList" class="btn" type="button">一覧へ戻る</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="approveThisMonth" class="btn primary" type="button">月次承認</button>
+          <button id="backToExpenseList" class="btn" type="button">一覧へ戻る</button>
+        </div>
       </div>
       <div id="detailMeta" class="meta"></div>
       <div id="detailTableHost"></div>
@@ -49,8 +55,25 @@ const render = async () => {
   const meta = $('#detailMeta');
   const tableHost = $('#detailTableHost');
   const backBtn = $('#backToExpenseList');
+  const approveBtn = $('#approveThisMonth');
   backBtn?.addEventListener('click', () => {
     try { window.location.assign('/admin/expenses'); } catch { window.location.href = '/admin/expenses'; }
+  });
+  approveBtn?.addEventListener('click', async () => {
+    const uid = String(userId || '').trim();
+    const ym = String(month || '').slice(0, 7);
+    if (!uid || !/^\d{4}-\d{2}$/.test(ym)) return;
+    const ok = window.confirm(`${ym} を月次承認しますか？`);
+    if (!ok) return;
+    try {
+      approveBtn.disabled = true;
+      await fetchJSONAuth('/api/expenses/admin/months/approve', { method: 'POST', body: JSON.stringify({ userId: uid, month: ym }) });
+      try { window.location.assign('/admin/expenses'); } catch { window.location.href = '/admin/expenses'; }
+    } catch (e) {
+      if (meta) meta.textContent = `月次承認に失敗しました: ${String(e?.message || 'unknown')}`;
+    } finally {
+      approveBtn.disabled = false;
+    }
   });
 
   try {

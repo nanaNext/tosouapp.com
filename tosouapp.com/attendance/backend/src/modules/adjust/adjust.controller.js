@@ -82,7 +82,9 @@ exports.updateStatus = async (req, res) => {
           targetDate: reqRow2.requestedCheckIn ? String(reqRow2.requestedCheckIn).slice(0, 10) : null,
           targetMonth: reqRow2.requestedCheckIn ? String(reqRow2.requestedCheckIn).slice(0, 7) : null,
           message: `時間修正申請が${statusLabel}されました。`,
-          createdBy: req.user?.id || null
+          createdBy: req.user?.id || null,
+          kind: 'approval',
+          title: '時間修正申請'
         });
       }
     } catch {}

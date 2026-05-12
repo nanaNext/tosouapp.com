@@ -76,6 +76,26 @@ module.exports = {
     const [rows] = await db.query(`SELECT * FROM expense_claims WHERE id = ?`, [id]);
     return rows[0] || null;
   },
+  async getAdminDetailById(id) {
+    const [rows] = await db.query(
+      `
+      SELECT
+        ec.*,
+        u.username AS user_name,
+        u.email AS user_email,
+        u.employee_code,
+        u.departmentId,
+        u.employment_type,
+        (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name
+      FROM expense_claims ec
+      JOIN users u ON u.id = ec.userId
+      WHERE ec.id = ?
+      LIMIT 1
+      `,
+      [id]
+    );
+    return rows && rows[0] ? rows[0] : null;
+  },
   async listAll(month) {
     if (month && /^\d{4}-\d{2}$/.test(String(month))) {
       const [rows] = await db.query(
@@ -316,6 +336,22 @@ module.exports.ensureTable = async function() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
   await db.query(`
+    CREATE TABLE IF NOT EXISTS expense_month_profiles (
+      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      userId BIGINT UNSIGNED NOT NULL,
+      month CHAR(7) NOT NULL,
+      employee_name VARCHAR(120) NOT NULL,
+      employee_code VARCHAR(64) NOT NULL,
+      birth_date DATE NOT NULL,
+      start_date DATE NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_user_month_profile (userId, month),
+      INDEX idx_user_month_profile (userId, month),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  await db.query(`
     CREATE TABLE IF NOT EXISTS expense_messages (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
       expense_id BIGINT UNSIGNED NOT NULL,
@@ -349,6 +385,122 @@ module.exports.getActiveMonth = async function(userId) {
   const [rows] = await db.query(`SELECT * FROM expense_months WHERE userId = ? AND is_active = 1 LIMIT 1`, [userId]);
   return rows && rows[0] ? rows[0] : null;
 };
+module.exports.listMonths = async function(userId) {
+  const [rows] = await db.query(
+    `SELECT id, userId, month, status, is_active, applied_at, approved_at, created_at, updated_at
+     FROM expense_months
+     WHERE userId = ?
+     ORDER BY month DESC`,
+    [userId]
+  );
+  return rows || [];
+};
+
+module.exports.listAppliedMonthsForAdmin = async function({ month = null, userId = null, limit = 200 } = {}) {
+  const m = String(month || '').slice(0, 7);
+  const hasMonth = /^\d{4}-\d{2}$/.test(m);
+  const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
+  const hasUser = uid !== null;
+  const lim = Math.max(1, Math.min(500, parseInt(String(limit || '200'), 10) || 200));
+  const [rows] = await db.query(
+    `
+    SELECT
+      em.userId AS user_id,
+      em.month,
+      em.status,
+      em.applied_at,
+      em.approved_at,
+      COALESCE(p.employee_name, u.username, u.email, CONCAT('user#', u.id)) AS employee_name,
+      COALESCE(p.employee_code, u.employee_code) AS employee_code,
+      p.birth_date,
+      p.start_date,
+      COUNT(ec.id) AS item_count,
+      COALESCE(SUM(ec.amount), 0) AS total_amount
+    FROM expense_months em
+    JOIN users u ON u.id = em.userId
+    LEFT JOIN expense_month_profiles p ON p.userId = em.userId AND p.month = em.month
+    LEFT JOIN expense_claims ec
+      ON ec.userId = em.userId
+     AND DATE_FORMAT(ec.date, '%Y-%m') = em.month
+     AND ec.status IN ('applied','approved')
+    WHERE em.status = 'applied'
+      AND (? = 0 OR em.month = ?)
+      AND (? IS NULL OR em.userId = ?)
+    GROUP BY
+      em.userId, em.month, em.status, em.applied_at, em.approved_at,
+      COALESCE(p.employee_name, u.username, u.email, CONCAT('user#', u.id)),
+      COALESCE(p.employee_code, u.employee_code),
+      p.birth_date, p.start_date
+    ORDER BY em.applied_at DESC, em.month DESC, em.userId ASC
+    LIMIT ?
+    `,
+    [hasMonth ? 1 : 0, hasMonth ? m : '', hasUser ? uid : null, hasUser ? uid : null, lim]
+  );
+  return rows || [];
+};
+
+module.exports.approveMonthByAdmin = async function({ userId, month, approverId }) {
+  const uid = parseInt(String(userId || 0), 10);
+  const ym = String(month || '').slice(0, 7);
+  if (!uid || !(uid > 0)) throw new Error('Invalid userId');
+  if (!/^\d{4}-\d{2}$/.test(ym)) throw new Error('Invalid month');
+  const mid = parseInt(String(approverId || 0), 10) || null;
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [upd] = await conn.query(
+      `
+      UPDATE expense_claims
+      SET
+        status = 'approved',
+        approved_by = ?,
+        approver_id = ?,
+        approved_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE userId = ?
+        AND DATE_FORMAT(date, '%Y-%m') = ?
+        AND status = 'applied'
+      `,
+      [mid, mid, uid, ym]
+    );
+    await conn.query(
+      `
+      INSERT INTO expense_months (userId, month, status, is_active, approved_at, updated_at)
+      VALUES (?, ?, 'approved', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON DUPLICATE KEY UPDATE
+        status = 'approved',
+        approved_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      `,
+      [uid, ym]
+    );
+    const [[sumRow]] = await conn.query(
+      `
+      SELECT
+        COUNT(*) AS approved_count,
+        COALESCE(SUM(amount), 0) AS total_amount
+      FROM expense_claims
+      WHERE userId = ?
+        AND DATE_FORMAT(date, '%Y-%m') = ?
+        AND status = 'approved'
+      `,
+      [uid, ym]
+    );
+    await conn.commit();
+    return {
+      userId: uid,
+      month: ym,
+      updatedClaims: Number(upd?.affectedRows || 0),
+      approvedCount: Number(sumRow?.approved_count || 0),
+      totalAmount: Number(sumRow?.total_amount || 0)
+    };
+  } catch (e) {
+    try { await conn.rollback(); } catch {}
+    throw e;
+  } finally {
+    try { conn.release(); } catch {}
+  }
+};
 module.exports.startMonth = async function(userId, month) {
   if (!/^\d{4}-\d{2}$/.test(String(month))) throw new Error('Invalid month');
   await db.query(`UPDATE expense_months SET is_active = 0 WHERE userId = ?`, [userId]);
@@ -359,6 +511,113 @@ module.exports.startMonth = async function(userId, month) {
   `, [userId, String(month)]);
   const [rows] = await db.query(`SELECT * FROM expense_months WHERE userId = ? AND month = ? LIMIT 1`, [userId, String(month)]);
   return rows && rows[0] ? rows[0] : null;
+};
+module.exports.applyMonth = async function(userId, month) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const ym = String(month);
+  const [upd] = await db.query(
+    `UPDATE expense_claims
+     SET status = 'applied',
+         applied_at = CASE WHEN applied_at IS NULL THEN CURRENT_TIMESTAMP ELSE applied_at END,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE userId = ?
+       AND DATE_FORMAT(date,'%Y-%m') = ?
+       AND status IN ('draft','pending','rejected')`,
+    [userId, ym]
+  );
+  const [sumRows] = await db.query(
+    `SELECT
+       COUNT(*) AS cnt,
+       COALESCE(SUM(amount), 0) AS total_amount
+     FROM expense_claims
+     WHERE userId = ?
+       AND DATE_FORMAT(date,'%Y-%m') = ?
+       AND status IN ('applied','approved')`,
+    [userId, ym]
+  );
+  const cnt = Number(sumRows?.[0]?.cnt || 0);
+  const totalAmount = Number(sumRows?.[0]?.total_amount || 0);
+  await db.query(
+    `INSERT INTO expense_months (userId, month, status, is_active, applied_at)
+     VALUES (?, ?, 'applied', 1, CURRENT_TIMESTAMP)
+     ON DUPLICATE KEY UPDATE
+       status = 'applied',
+       applied_at = CURRENT_TIMESTAMP,
+       updated_at = CURRENT_TIMESTAMP`,
+    [userId, ym]
+  );
+  return {
+    month: ym,
+    updatedCount: Number(upd?.affectedRows || 0),
+    expenseCount: cnt,
+    totalAmount
+  };
+};
+module.exports.deleteMonth = async function(userId, month) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const ym = String(month);
+  const [lockedRows] = await db.query(
+    `SELECT COUNT(*) AS cnt
+     FROM expense_claims
+     WHERE userId = ?
+       AND DATE_FORMAT(date,'%Y-%m') = ?
+       AND status IN ('applied','approved')`,
+    [userId, ym]
+  );
+  const lockedCnt = Number(lockedRows?.[0]?.cnt || 0);
+  if (lockedCnt > 0) throw new Error('Submitted month cannot be deleted');
+  const [closureRows] = await db.query(
+    `SELECT COUNT(*) AS cnt
+     FROM expense_monthly_closures
+     WHERE userId = ? AND month = ?`,
+    [userId, ym]
+  );
+  const closedCnt = Number(closureRows?.[0]?.cnt || 0);
+  if (closedCnt > 0) throw new Error('Closed month cannot be deleted');
+  const [delClaims] = await db.query(
+    `DELETE FROM expense_claims
+     WHERE userId = ?
+       AND DATE_FORMAT(date,'%Y-%m') = ?`,
+    [userId, ym]
+  );
+  await db.query(`DELETE FROM expense_month_profiles WHERE userId = ? AND month = ?`, [userId, ym]);
+  await db.query(`DELETE FROM expense_months WHERE userId = ? AND month = ?`, [userId, ym]);
+  return { month: ym, deletedCount: Number(delClaims?.affectedRows || 0) };
+};
+module.exports.getMonthProfile = async function(userId, month) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const [rows] = await db.query(
+    `SELECT id, userId, month, employee_name, employee_code, birth_date, start_date, created_at, updated_at
+     FROM expense_month_profiles
+     WHERE userId = ? AND month = ?
+     LIMIT 1`,
+    [userId, String(month)]
+  );
+  return rows && rows[0] ? rows[0] : null;
+};
+module.exports.upsertMonthProfile = async function({ userId, month, employeeName, employeeCode, birthDate, startDate }) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birthDate || ''))) throw new Error('Invalid birth date');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(startDate || ''))) throw new Error('Invalid start date');
+  await db.query(
+    `INSERT INTO expense_month_profiles (userId, month, employee_name, employee_code, birth_date, start_date)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       employee_name = VALUES(employee_name),
+       employee_code = VALUES(employee_code),
+       birth_date = VALUES(birth_date),
+       start_date = VALUES(start_date),
+       updated_at = CURRENT_TIMESTAMP`,
+    [
+      userId,
+      String(month),
+      String(employeeName || '').trim(),
+      String(employeeCode || '').trim(),
+      String(birthDate),
+      String(startDate)
+    ]
+  );
+  return module.exports.getMonthProfile(userId, month);
 };
 module.exports.getLatestAppliedMonthStats = async function(userId) {
   const [rows] = await db.query(`
@@ -613,6 +872,131 @@ module.exports.listAllPaged = async function(filters = {}) {
     total: Number(countRow?.total || 0),
     page,
     limit
+  };
+};
+
+function isYM(s) {
+  return /^\d{4}-\d{2}$/.test(String(s || ''));
+}
+
+function addMonthsYM(ym, delta) {
+  const s = String(ym || '');
+  if (!isYM(s)) return '';
+  let y = parseInt(s.slice(0, 4), 10);
+  let m = parseInt(s.slice(5, 7), 10);
+  const d = parseInt(String(delta || '0'), 10) || 0;
+  m += d;
+  while (m <= 0) { y -= 1; m += 12; }
+  while (m > 12) { y += 1; m -= 12; }
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`;
+}
+
+function listYMBack(ym, n) {
+  const base = isYM(ym) ? String(ym) : null;
+  const num = Math.max(1, Math.min(24, parseInt(String(n || '6'), 10) || 6));
+  const end = base || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
+  const months = [];
+  for (let i = num - 1; i >= 0; i -= 1) {
+    months.push(addMonthsYM(end, -i));
+  }
+  return months;
+}
+
+module.exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
+  const ym = isYM(month) ? String(month) : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
+  const ymList = listYMBack(ym, months);
+  const startYM = ymList[0];
+  const endYM = ymList[ymList.length - 1];
+
+  const [[kpiRow]] = await db.query(
+    `
+    SELECT
+      COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved') THEN ec.amount ELSE 0 END), 0) AS total_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'applied' THEN ec.amount ELSE 0 END), 0) AS applied_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'rejected' THEN ec.amount ELSE 0 END), 0) AS rejected_amount,
+      COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,
+      COALESCE(SUM(ec.status = 'approved'), 0) AS approved_count,
+      COALESCE(SUM(ec.status = 'rejected'), 0) AS rejected_count,
+      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved') THEN ec.userId END) AS applicant_users
+    FROM expense_claims ec
+    WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?
+    `,
+    [ym]
+  );
+
+  const [trendRows] = await db.query(
+    `
+    SELECT
+      DATE_FORMAT(ec.date, '%Y-%m') AS month,
+      COALESCE(SUM(CASE WHEN ec.status = 'applied' THEN ec.amount ELSE 0 END), 0) AS applied_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
+      COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved') THEN ec.amount ELSE 0 END), 0) AS total_amount,
+      COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,
+      COALESCE(SUM(ec.status = 'approved'), 0) AS approved_count,
+      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved') THEN ec.userId END) AS applicant_users
+    FROM expense_claims ec
+    WHERE DATE_FORMAT(ec.date, '%Y-%m') BETWEEN ? AND ?
+    GROUP BY DATE_FORMAT(ec.date, '%Y-%m')
+    ORDER BY DATE_FORMAT(ec.date, '%Y-%m') ASC
+    `,
+    [startYM, endYM]
+  );
+
+  const trendMap = new Map((trendRows || []).map((r) => [String(r.month || ''), r]));
+  const trend = ymList.map((m) => {
+    const r = trendMap.get(m) || {};
+    return {
+      month: m,
+      totalAmount: Number(r.total_amount || 0),
+      appliedAmount: Number(r.applied_amount || 0),
+      approvedAmount: Number(r.approved_amount || 0),
+      appliedCount: Number(r.applied_count || 0),
+      approvedCount: Number(r.approved_count || 0),
+      applicantUsers: Number(r.applicant_users || 0)
+    };
+  });
+
+  const [deptRows] = await db.query(
+    `
+    SELECT
+      u.departmentId AS department_id,
+      COUNT(*) AS item_count,
+      COUNT(DISTINCT ec.userId) AS user_count,
+      COALESCE(SUM(ec.amount), 0) AS total_amount
+    FROM expense_claims ec
+    JOIN users u ON u.id = ec.userId
+    WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?
+      AND ec.status IN ('applied','approved')
+    GROUP BY u.departmentId
+    ORDER BY total_amount DESC
+    LIMIT 30
+    `,
+    [ym]
+  );
+
+  const monthStats = {
+    month: ym,
+    totalAmount: Number(kpiRow?.total_amount || 0),
+    appliedAmount: Number(kpiRow?.applied_amount || 0),
+    approvedAmount: Number(kpiRow?.approved_amount || 0),
+    rejectedAmount: Number(kpiRow?.rejected_amount || 0),
+    appliedCount: Number(kpiRow?.applied_count || 0),
+    approvedCount: Number(kpiRow?.approved_count || 0),
+    rejectedCount: Number(kpiRow?.rejected_count || 0),
+    applicantUsers: Number(kpiRow?.applicant_users || 0)
+  };
+  const avg = monthStats.applicantUsers > 0 ? Math.round(monthStats.totalAmount / monthStats.applicantUsers) : 0;
+  return {
+    month: monthStats,
+    avgPerUser: avg,
+    trend,
+    departmentShares: (deptRows || []).map((r) => ({
+      departmentId: r.department_id == null ? null : String(r.department_id),
+      totalAmount: Number(r.total_amount || 0),
+      userCount: Number(r.user_count || 0),
+      itemCount: Number(r.item_count || 0)
+    }))
   };
 };
 

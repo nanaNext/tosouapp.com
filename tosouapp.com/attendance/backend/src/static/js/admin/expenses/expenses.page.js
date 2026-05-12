@@ -10,7 +10,8 @@ const hideSpinner = () => {
   try { const el = document.querySelector('#pageSpinner'); if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; } } catch {}
 };
 
-const todayMonth = () => new Date().toISOString().slice(0, 7);
+const todayISO = () => new Date().toLocaleDateString('sv-SE');
+const todayMonth = () => todayISO().slice(0, 7);
 const fmtDT = (v) => {
   if (!v) return '';
   try {
@@ -23,6 +24,49 @@ const fmtDT = (v) => {
     const mm = String(d.getMinutes()).padStart(2,'0');
     return `${y}-${m}-${day} ${hh}:${mm}`;
   } catch { return String(v).replace('T',' ').slice(0,16); }
+};
+
+const fmtJPY = (n) => `¥${Number(n || 0).toLocaleString('ja-JP')}`;
+const fmtMonthLabel = (ym) => {
+  const s = String(ym || '');
+  if (!/^\d{4}-\d{2}$/.test(s)) return '';
+  return s.replace('-', '/');
+};
+const statusLabel = (st) => {
+  const v = String(st || '').toLowerCase();
+  if (v === 'applied') return '承認待ち';
+  if (v === 'approved') return '承認済';
+  if (v === 'rejected') return '差戻し';
+  if (v === 'draft') return '下書き';
+  if (v === 'pending') return '未申請';
+  return String(st || '');
+};
+const statusPillClass = (st) => {
+  const v = String(st || '').toLowerCase();
+  if (v === 'approved') return 'st-approved';
+  if (v === 'applied') return 'st-applied';
+  if (v === 'rejected') return 'st-rejected';
+  return 'st-other';
+};
+
+const isYM = (s) => /^\d{4}-\d{2}$/.test(String(s || ''));
+const addMonthsYM = (ym, delta) => {
+  const s = String(ym || '');
+  if (!isYM(s)) return '';
+  let y = parseInt(s.slice(0, 4), 10);
+  let m = parseInt(s.slice(5, 7), 10);
+  const d = parseInt(String(delta || '0'), 10) || 0;
+  m += d;
+  while (m <= 0) { y -= 1; m += 12; }
+  while (m > 12) { y += 1; m -= 12; }
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`;
+};
+const listYMBack = (ym, n) => {
+  const base = isYM(ym) ? String(ym) : todayMonth();
+  const num = Math.max(1, Math.min(24, parseInt(String(n || '6'), 10) || 6));
+  const out = [];
+  for (let i = num - 1; i >= 0; i -= 1) out.push(addMonthsYM(base, -i));
+  return out;
 };
 
 const render = async () => {
@@ -43,18 +87,23 @@ const render = async () => {
   host.innerHTML = `
     <div class="exp-admin-page">
       <style>
+        .exp-admin-page [hidden] { display: none !important; }
+        body.expenses-standalone { background: #f5f7fb; margin: 0 !important; padding: 0 !important; height: 100vh; overflow: hidden !important; }
+        body.expenses-standalone main.content { padding: 0 !important; background: transparent; height: 100vh; overflow: hidden !important; }
+        body.expenses-standalone #adminContent { padding: 0 !important; height: 100vh; overflow: hidden !important; }
+        body.expenses-standalone .exp-admin-page { height: 100vh; overflow: hidden; }
         .admin .exp-admin-page { max-width: none !important; width: 100% !important; margin: 0 !important; }
         .admin .exp-admin-table-host { width: 100% !important; }
         .admin .exp-admin-table-wrap { width: 100% !important; }
         .exp-admin-page { display: grid; gap: 12px; background: transparent; padding: 0; border-radius: 0; color:#0f172a; }
         .exp-admin-page .exp-admin-title { margin: 0; font-size: 20px; letter-spacing: 0; font-weight: 700; }
         .exp-admin-page .exp-admin-header-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom: 0; }
-        .exp-admin-page .exp-admin-toolbar-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-top: -2px; padding: 10px 12px; border: 1px solid #dbe6f5; border-radius: 12px; background: #ffffff; }
+        .exp-admin-page .exp-admin-toolbar-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-top: -2px; padding: 10px 12px; border: 1px solid #dbe6f5; border-radius: 0; background: #ffffff; }
         .exp-admin-page .exp-admin-filters { margin-bottom: 2px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; flex:1 1 auto; }
         .exp-admin-page .exp-admin-label { font-size: 14px; font-weight: 700; color:#334155; }
         .exp-admin-page .exp-admin-input,
-        .exp-admin-page .exp-admin-select { min-height: 34px; font-size: 13px; border:1px solid #cbd5e1; border-radius:8px; padding: 0 10px; }
-        .exp-admin-page .btn { min-height: 34px; font-size: 13px; font-weight: 700; border-radius: 8px; }
+        .exp-admin-page .exp-admin-select { min-height: 34px; font-size: 13px; border:1px solid #cbd5e1; border-radius:0; padding: 0 10px; }
+        .exp-admin-page .btn { min-height: 34px; font-size: 13px; font-weight: 700; border-radius: 0; }
         .exp-admin-page .exp-inline-kpi { flex:0 0 auto; margin-left:auto; }
         .exp-admin-page .exp-admin-section {
           background: #ffffff;
@@ -128,6 +177,9 @@ const render = async () => {
         .exp-admin-page .exp-admin-table.clean-view tbody tr:hover { background: #f8fafc; }
         .exp-admin-page .exp-admin-table.clean-view thead th { position: sticky; top: 0; z-index: 1; }
         .exp-admin-page .route-col { max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .exp-admin-page .month-apply-actions { display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
+        .exp-admin-page .pill { display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:999px; font-size:12px; font-weight:800; border:1px solid #cbd5e1; background:#fff; color:#334155; }
+        .exp-admin-page .pill.applied { border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
         .exp-admin-page .status-sub { color: #64748b; font-size: 12px; margin-top: 4px; }
         .exp-admin-page .status-main { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
         .exp-admin-page .status-main .s-ico { font-size: 12px; }
@@ -373,7 +425,446 @@ const render = async () => {
           .exp-admin-page .exp-op-grid { grid-template-columns: 1fr; }
           .exp-admin-page .exp-op-panel { min-height: 0; }
         }
+        .exp-admin-page .exp-admin-header-row,
+        .exp-admin-page .exp-admin-guide,
+        .exp-admin-page .exp-admin-toolbar-row,
+        .exp-admin-page #expMonthlyStatus,
+        .exp-admin-page #expMonthApplySection,
+        .exp-admin-page #expMonthlyHistorySection,
+        .exp-admin-page .exp-op-workspace,
+        .exp-admin-page #chatNotice {
+          display: none !important;
+        }
+        .exp-admin-page .exp-dash-root {
+          display: grid;
+          grid-template-columns: 180px minmax(0, 1fr);
+          gap: 0;
+          align-items: stretch;
+          height: 100vh;
+          overflow: hidden;
+          background: #f1f5f9;
+        }
+        .exp-admin-page .exp-dash-root.mode-dashboard .exp-dash-list-only { display: none !important; }
+        .exp-admin-page .exp-dash-root.mode-list .exp-dash-dashboard-only { display: none !important; }
+        .exp-admin-page .exp-dash-root.with-drawer {
+          grid-template-columns: 180px minmax(0, 1fr) 420px;
+        }
+        .exp-admin-page .exp-dash-root.collapsed {
+          grid-template-columns: 84px minmax(0, 1fr);
+        }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-brand .name { display: none; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav { justify-content: center; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav { padding: 8px 0; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav .left { justify-content: center; width: 100%; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav .left span:last-child { display: none; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-badge { display: none !important; }
+        .exp-admin-page .exp-dash-root.collapsed #expDashCsv { justify-content: center; }
+        .exp-admin-page .exp-dash-side {
+          background: #0f172a;
+          color: #fff;
+          border-radius: 0;
+          padding: 0 0 16px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          height: 100vh;
+          overflow: hidden;
+        }
+        .exp-admin-page .exp-dash-side-nav-wrapper {
+          flex: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+          overscroll-behavior: contain;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255,255,255,.28) transparent;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .exp-admin-page .exp-dash-side-nav-wrapper::-webkit-scrollbar { width: 8px; }
+        .exp-admin-page .exp-dash-side-nav-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .exp-admin-page .exp-dash-side-nav-wrapper::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,.22);
+          border-radius: 999px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .exp-admin-page .exp-dash-side-nav-wrapper::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.34); }
+        .exp-admin-page .exp-dash-brand {
+          font-weight: 900;
+          letter-spacing: .02em;
+          padding: 0 12px;
+          height: 60px;
+          display:flex;
+          gap:8px;
+          align-items:center;
+          border-bottom: 1px solid rgba(255,255,255,.1);
+          background: #0f172a;
+          flex: 0 0 auto;
+        }
+        .exp-admin-page .exp-dash-brand .mark { width: 24px; height: 24px; border-radius: 0; background: rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; font-weight:900; font-size: 12px; }
+        .exp-admin-page .exp-dash-brand .name { line-height: 1.1; letter-spacing: 0; }
+        .exp-admin-page .exp-dash-brand .name > div:first-child { font-size: 14px; }
+        .exp-admin-page .exp-dash-brand .sub { display: none; }
+        .exp-admin-page .exp-dash-nav {
+          width: 100%;
+          text-align: left;
+          border: 0;
+          background: transparent;
+          color: #b0c4de;
+          border-radius: 0;
+          padding: 8px 10px 8px 20px;
+          font-weight: 700;
+          font-size: 13px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          cursor: pointer;
+          position: relative;
+        }
+        .exp-admin-page .exp-dash-nav::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: transparent;
+        }
+        .exp-admin-page .exp-dash-nav:hover { background: rgba(255,255,255,.04); color: #fff; }
+        .exp-admin-page .exp-dash-nav.is-active { background: rgba(255,255,255,.06); color: #fff; font-weight: 800; }
+        .exp-admin-page .exp-dash-nav.is-active::before { background: #4ade80; }
+        .exp-admin-page .exp-dash-nav .left { display:flex; align-items:center; gap:12px; min-width: 0; }
+        .exp-admin-page .exp-dash-nav .left span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .02em; }
+        .exp-admin-page .exp-dash-nav .ico {
+          width: auto;
+          height: auto;
+          border-radius: 0;
+          background: transparent;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size: 15px;
+          flex: 0 0 auto;
+          box-shadow: none;
+        }
+        .exp-admin-page .exp-dash-badge {
+          min-width: 18px;
+          height: 18px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 6px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 800;
+          background: #ef4444;
+          color: #fff;
+        }
+        .exp-admin-page .exp-dash-sep { height: 1px; background: rgba(255,255,255,.16); margin: 8px 4px; }
+        .exp-admin-page .exp-dash-link {
+          color: #fff;
+          text-decoration: none;
+          border: 1px solid rgba(255,255,255,.18);
+          background: rgba(255,255,255,.06);
+          border-radius: 0;
+          padding: 10px 10px;
+          font-weight: 800;
+          font-size: 13px;
+        }
+        .exp-admin-page .exp-dash-main { 
+          display: flex; 
+          flex-direction: column;
+          height: 100vh;
+          overflow-x: hidden;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+          min-width: 0; 
+        }
+        .exp-admin-page .exp-dash-content { display: grid; gap: 8px; padding: 10px 12px; min-width: 0; }
+        .exp-admin-page .exp-dash-appbar {
+          background: #fff;
+          border: 0;
+          border-bottom: 1px solid #e5eaf2;
+          border-radius: 0;
+          padding: 0 16px;
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          position: sticky;
+          top: 0;
+          z-index: 30;
+          flex: 0 0 auto;
+        }
+        .exp-admin-page .exp-dash-appbar-left { display:flex; align-items:center; gap:10px; min-width: 0; }
+        .exp-admin-page .exp-dash-appbar-vsep { width: 1px; height: 24px; background: #e2e8f0; margin: 0 8px; }
+        .exp-admin-page .exp-dash-burger {
+          width: 32px;
+          height: 32px;
+          border-radius: 0;
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          color: #0f172a;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .exp-admin-page .exp-dash-appbar-title { font-weight: 800; font-size: 15px; color:#0f172a; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+        .exp-admin-page .exp-dash-appbar-right { display:flex; align-items:center; gap:10px; }
+        .exp-admin-page .exp-dash-iconbtn {
+          position: relative;
+          width: 32px;
+          height: 32px;
+          border-radius: 0;
+          border: 1px solid #e5eaf2;
+          background: #f8fafc;
+          color: #0f172a;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .exp-admin-page .exp-dash-iconbtn .badge {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 6px;
+          border-radius: 999px;
+          background: #ef4444;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 900;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #fff;
+        }
+        .exp-admin-page .exp-dash-userchip {
+          display:flex;
+          align-items:center;
+          gap: 8px;
+          padding: 4px 8px;
+          border-radius: 0;
+          border: 1px solid #e5eaf2;
+          background: #fff;
+          max-width: 220px;
+        }
+        .exp-admin-page .exp-dash-avatar { width: 22px; height: 22px; border-radius: 999px; background:#e2e8f0; }
+        .exp-admin-page .exp-dash-username { font-size: 12px; font-weight: 900; color:#0f172a; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+        .exp-admin-page .exp-dash-top { background: #fff; border: 1px solid #dbe6f5; border-radius: 0; padding: 8px 10px; }
+        .exp-admin-page .exp-dash-filters { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:flex-start; }
+        .exp-admin-page .exp-dash-field { display:flex; gap:8px; align-items:center; font-size: 12px; font-weight: 900; color:#334155; }
+        .exp-admin-page .exp-dash-field input,
+        .exp-admin-page .exp-dash-field select,
+        .exp-admin-page .exp-dash-search {
+          height: 34px;
+          border: 1px solid #cbd5e1;
+          border-radius: 0;
+          padding: 0 10px;
+          font-size: 13px;
+          background: #fff;
+          color: #0f172a;
+        }
+        .exp-admin-page .exp-dash-search { min-width: 260px; flex: 1 1 260px; }
+        .exp-admin-page .btn.exp-dash-btn-primary { background:#0b5ed7; border:1px solid #0b5ed7; color:#fff; min-height:34px; font-weight:900; }
+        .exp-admin-page .btn.exp-dash-btn-ghost { background:#fff; border:1px solid #cbd5e1; color:#0f172a; min-height:34px; font-weight:900; }
+        .exp-admin-page .btn.exp-dash-btn-success { background:#10b981; border:1px solid #10b981; color:#fff; min-height:34px; font-weight:900; }
+        .exp-admin-page .btn.exp-dash-btn-warn { background:#f97316; border:1px solid #f97316; color:#fff; min-height:34px; font-weight:900; }
+        .exp-admin-page .exp-dash-muted { font-size: 12px; color:#64748b; }
+        .exp-admin-page .exp-dash-kpi { display:grid; grid-template-columns: repeat(5, minmax(132px, 1fr)); gap: 6px; }
+        .exp-admin-page .exp-dash-kpi-card {
+          background:#fff;
+          border: 1px solid #dbe6f5;
+          border-radius: 0;
+          padding: 8px;
+          display: grid;
+          gap: 3px;
+          box-shadow: 0 4px 10px rgba(15,23,42,.05);
+        }
+        .exp-admin-page .exp-dash-kpi-card .head { display:flex; align-items:center; gap:10px; }
+        .exp-admin-page .exp-dash-kpi-card .icon { width: 30px; height: 30px; border-radius: 0; display:flex; align-items:center; justify-content:center; font-weight:900; color:#0f172a; background:#f1f5f9; font-size: 12px; }
+        .exp-admin-page .exp-dash-kpi-card.c1 .icon { background:#e0f2fe; color:#075985; }
+        .exp-admin-page .exp-dash-kpi-card.c2 .icon { background:#fff7ed; color:#9a3412; }
+        .exp-admin-page .exp-dash-kpi-card.c3 .icon { background:#fef2f2; color:#991b1b; }
+        .exp-admin-page .exp-dash-kpi-card.c4 .icon { background:#ecfdf5; color:#166534; }
+        .exp-admin-page .exp-dash-kpi-card.c5 .icon { background:#eef2ff; color:#3730a3; }
+        .exp-admin-page .exp-dash-kpi-card .t { font-size: 11px; font-weight: 900; color:#64748b; }
+        .exp-admin-page .exp-dash-kpi-card .v { font-size: 17px; font-weight: 900; color:#0f172a; }
+        .exp-admin-page .exp-dash-kpi-card .s { font-size: 11px; color:#64748b; min-height: 12px; }
+        .exp-admin-page .exp-dash-charts { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .exp-admin-page .exp-dash-card {
+          background:#fff;
+          border: 1px solid #dbe6f5;
+          border-radius: 0;
+          padding: 10px;
+          box-shadow: 0 4px 10px rgba(15,23,42,.05);
+        }
+        .exp-admin-page .exp-dash-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; }
+        .exp-admin-page .exp-dash-card-title { font-size: 13px; font-weight: 900; color:#0f172a; }
+        .exp-admin-page .exp-dash-empty { padding: 16px; color:#64748b; font-size: 13px; text-align:center; }
+        .exp-admin-page .exp-dash-bars { height: 160px; display:flex; align-items:flex-end; gap: 10px; padding: 8px 4px 4px; }
+        .exp-admin-page .exp-dash-bar { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap: 6px; }
+        .exp-admin-page .exp-dash-bar .b { width: 100%; border-radius: 10px 10px 4px 4px; min-height: 6px; }
+        .exp-admin-page .exp-dash-bar .l { font-size: 11px; color:#64748b; }
+        .exp-admin-page .exp-dash-deptwrap { display:grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items:center; }
+        .exp-admin-page .exp-dash-donut { width: 150px; height: 150px; border-radius: 999px; position: relative; }
+        .exp-admin-page .exp-dash-donut .hole { position:absolute; inset: 32px; background:#fff; border-radius: 999px; border: 1px solid #e5eaf2; }
+        .exp-admin-page .exp-dash-legend { display:grid; gap: 6px; }
+        .exp-admin-page .exp-dash-legend-row { display:grid; grid-template-columns: 12px minmax(0,1fr) 60px 110px; gap: 8px; align-items:center; font-size: 12px; color:#334155; }
+        .exp-admin-page .exp-dash-legend-row .dot { width: 10px; height: 10px; border-radius: 999px; }
+        .exp-admin-page .exp-dash-legend-row .pct { text-align:right; color:#64748b; }
+        .exp-admin-page .exp-dash-legend-row .amt { text-align:right; font-weight: 900; color:#0f172a; }
+        .exp-admin-page .exp-dash-tablewrap { border: 1px solid #e5eaf2; border-radius: 0; overflow:hidden; }
+        .exp-admin-page .exp-dash-table { width: 100%; border-collapse: collapse; border-spacing: 0; }
+        .exp-admin-page .exp-dash-table th { background:#f8fafc; color:#334155; font-size: 12px; font-weight: 900; text-align:left; border-bottom:1px solid #e5eaf2; padding: 8px 10px; }
+        .exp-admin-page .exp-dash-table td { border-bottom:1px solid #eef2f7; padding: 8px 10px; font-size: 12px; color:#0f172a; vertical-align:top; }
+        .exp-admin-page .exp-dash-table td.money { text-align:right; white-space:nowrap; font-weight:900; }
+        .exp-admin-page .exp-dash-table td.center { text-align:center; white-space:nowrap; }
+        .exp-admin-page .exp-dash-table td.id a { color:#2563eb; text-decoration:none; font-weight:900; }
+        .exp-admin-page .exp-dash-table tr:hover td { background:#f8fafc; }
+        .exp-admin-page .exp-dash-pager { display:flex; align-items:center; justify-content:center; gap: 10px; margin-top: 10px; }
+        .exp-admin-page .pill.st-approved { border-color:#bbf7d0; background:#f0fdf4; color:#166534; }
+        .exp-admin-page .pill.st-applied { border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
+        .exp-admin-page .pill.st-rejected { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
+        .exp-admin-page .pill.st-other { border-color:#e2e8f0; background:#f8fafc; color:#334155; }
+        .exp-admin-page .exp-dash-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, .45); z-index: 1600; }
+        .exp-admin-page .exp-dash-drawer {
+          position: sticky;
+          top: 0;
+          height: 100vh;
+          width: 100%;
+          background: #fff;
+          border: 0;
+          border-left: 1px solid #e5eaf2;
+          border-radius: 0;
+          box-shadow: 0 6px 18px rgba(15,23,42,.06);
+          z-index: 10;
+          display: grid;
+          grid-template-rows: auto minmax(0, 1fr) auto;
+          overflow: hidden;
+        }
+        .exp-admin-page .exp-dash-drawer-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 12px; border-bottom:1px solid #e5eaf2; }
+        .exp-admin-page .exp-dash-drawer-title { font-weight: 900; color:#0f172a; }
+        .exp-admin-page .exp-dash-drawer-body { padding: 12px; overflow:auto; }
+        .exp-admin-page .exp-dash-detail { display:grid; gap: 10px; }
+        .exp-admin-page .exp-dash-detail .row { display:grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; align-items: start; }
+        .exp-admin-page .exp-dash-detail .k { font-size: 12px; color:#64748b; font-weight: 900; }
+        .exp-admin-page .exp-dash-detail .v { font-size: 13px; color:#0f172a; }
+        .exp-admin-page .exp-dash-detail .v.files { display:grid; gap: 6px; }
+        .exp-admin-page .exp-dash-file { color:#2563eb; text-decoration:none; font-weight:800; }
+        .exp-admin-page .exp-dash-drawer-foot { border-top: 1px solid #e5eaf2; padding: 12px; display:grid; gap: 10px; }
+        .exp-admin-page .exp-dash-note { width:100%; min-height: 84px; border:1px solid #cbd5e1; border-radius: 0; padding: 10px; font-size: 13px; }
+        .exp-admin-page .exp-dash-drawer-actions { display:flex; gap: 10px; justify-content:flex-end; }
+        @media (max-width: 760px) {
+          .exp-admin-page .exp-dash-root { grid-template-columns: 1fr; }
+          .exp-admin-page .exp-dash-kpi { grid-template-columns: 1fr 1fr; }
+          .exp-admin-page .exp-dash-charts { grid-template-columns: 1fr; }
+          .exp-admin-page .exp-dash-deptwrap { grid-template-columns: 1fr; justify-items:center; }
+          .exp-admin-page .exp-dash-legend { width: 100%; }
+          .exp-admin-page .exp-dash-content { padding: 12px; }
+          .exp-admin-page .exp-dash-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: 420px;
+            max-width: 92vw;
+            border-radius: 0;
+            border: 0;
+            border-left: 1px solid #e5eaf2;
+            box-shadow: none;
+            z-index: 1601;
+          }
+        }
       </style>
+      <section id="expDashRoot" class="exp-dash-root">
+        <aside class="exp-dash-side">
+          <div class="exp-dash-brand">
+            <div class="mark">¥</div>
+            <div class="name">
+              <div>交通費管理システム</div>
+            </div>
+          </div>
+          <div class="exp-dash-side-nav-wrapper">
+            <button type="button" class="exp-dash-nav is-active" data-nav="dashboard"><span class="left"><span class="ico">🏠</span><span>ダッシュボード</span></span></button>
+            <button type="button" class="exp-dash-nav" data-status=""><span class="left"><span class="ico">🧾</span><span>申請一覧</span></span></button>
+            <button type="button" class="exp-dash-nav" data-status="applied"><span class="left"><span class="ico">✅</span><span>承認管理</span></span><span id="expBadgeApplied" class="exp-dash-badge" hidden>0</span></button>
+            <button type="button" class="exp-dash-nav" data-status="approved"><span class="left"><span class="ico">✔</span><span>承認済み</span></span><span id="expBadgeApproved" class="exp-dash-badge" hidden>0</span></button>
+            <button type="button" class="exp-dash-nav" data-status="rejected"><span class="left"><span class="ico">↩</span><span>差戻し一覧</span></span><span id="expBadgeRejected" class="exp-dash-badge" hidden>0</span></button>
+            <div class="exp-dash-sep" hidden></div>
+            <button id="expDashCsv" type="button" class="exp-dash-nav">CSV出力</button>
+          </div>
+        </aside>
+        <main class="exp-dash-main">
+          <header class="exp-dash-appbar">
+            <div class="exp-dash-appbar-left">
+              <button id="expDashBurger" class="exp-dash-burger" type="button">☰</button>
+              <div class="exp-dash-appbar-vsep"></div>
+              <div id="expDashTitle" class="exp-dash-appbar-title">ダッシュボード</div>
+            </div>
+            <div class="exp-dash-appbar-right">
+              <button id="expDashBell" class="exp-dash-iconbtn" type="button" aria-label="通知">🔔<span id="expDashBellBadge" class="badge" hidden>0</span></button>
+              <div class="exp-dash-userchip" title="">
+                <div class="exp-dash-avatar"></div>
+                <div id="expDashUserName" class="exp-dash-username"></div>
+              </div>
+            </div>
+          </header>
+          <div class="exp-dash-content">
+          <div class="exp-dash-top">
+            <div class="exp-dash-filters">
+              <label class="exp-dash-field">対象月
+                <input id="expDashMonth" type="month">
+              </label>
+              <label class="exp-dash-field">部署
+                <select id="expDashDept">
+                  <option value="">全部署</option>
+                </select>
+              </label>
+              <input id="expDashSearch" class="exp-dash-search" placeholder="社員名 / メール / 社員コード">
+              <button id="expDashReload" type="button" class="btn exp-dash-btn-primary">更新</button>
+            </div>
+          </div>
+          <div id="expDashKpi" class="exp-dash-kpi exp-dash-dashboard-only"></div>
+          <div class="exp-dash-charts exp-dash-dashboard-only">
+            <div class="exp-dash-card">
+              <div class="exp-dash-card-title">月別交通費推移（直近6ヶ月）</div>
+              <div id="expDashTrend" class="exp-dash-trend"></div>
+            </div>
+            <div class="exp-dash-card">
+              <div class="exp-dash-card-title">部署別の交通費割合（今月）</div>
+              <div id="expDashDeptShare" class="exp-dash-deptshare"></div>
+            </div>
+          </div>
+          <div class="exp-dash-card exp-dash-list-only">
+            <div class="exp-dash-card-head">
+              <div class="exp-dash-card-title">最近の申請一覧</div>
+              <div id="expDashListMeta" class="exp-dash-muted"></div>
+            </div>
+            <div id="expDashList"></div>
+          </div>
+          <div id="expDashStatus" class="exp-dash-muted"></div>
+          </div>
+        </main>
+        <aside id="expDashDrawer" class="exp-dash-drawer" hidden>
+          <div class="exp-dash-drawer-head">
+            <div class="exp-dash-drawer-title">申請詳細</div>
+            <button id="expDashDrawerClose" class="btn exp-dash-btn-ghost" type="button">×</button>
+          </div>
+          <div id="expDashDrawerBody" class="exp-dash-drawer-body"></div>
+          <div class="exp-dash-drawer-foot">
+            <textarea id="expDashNote" class="exp-dash-note" placeholder="承認/差戻しコメント（差戻し時は必須）"></textarea>
+            <div class="exp-dash-drawer-actions">
+              <button id="expDashApprove" class="btn exp-dash-btn-success" type="button">承認する</button>
+              <button id="expDashReject" class="btn exp-dash-btn-warn" type="button">差戻す</button>
+            </div>
+          </div>
+        </aside>
+      </section>
+      <div id="expDashBackdrop" class="exp-dash-backdrop" hidden></div>
       <div class="exp-admin-header-row">
         <h3 class="exp-admin-title">交通費計算管理</h3>
       </div>
@@ -418,6 +909,13 @@ const render = async () => {
         </div>
       </div>
       <div id="expMonthlyStatus" class="exp-admin-status"></div>
+      <section id="expMonthApplySection" class="exp-admin-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+          <h4 class="exp-admin-section-title" style="margin:0;">月次申請（従業員→管理）</h4>
+          <div class="exp-mini-help">対象月に申請がある社員が表示されます（承認は月単位）</div>
+        </div>
+        <div id="expMonthApplyHost" class="exp-admin-table-host"></div>
+      </section>
       <section id="expMonthlyHistorySection" class="exp-admin-section">
         <h4 class="exp-admin-section-title">月次履歴</h4>
         <div id="expMonthlyHistoryHost" class="exp-admin-table-host"></div>
@@ -457,7 +955,596 @@ const render = async () => {
   let initialUserApplied = false;
   const m = $('#expMonth');
   if (m) m.value = initialMonth || todayMonth();
-  const viewState = { page: 1, pageSize: 20, showDetails: true, showHistory: false, selectedUserId: '', selectedRowIds: new Set() };
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const state = {
+    month: (initialMonth && /^\d{4}-\d{2}$/.test(initialMonth)) ? initialMonth : todayMonth(),
+    departmentId: '',
+    q: '',
+    status: '',
+    page: 1,
+    limit: 10,
+    departments: [],
+    deptMap: new Map(),
+    selectedId: '',
+    view: 'dashboard'
+  };
+  const colors = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#64748b', '#f97316', '#22c55e', '#e11d48'];
+
+  const applyViewMode = () => {
+    try {
+      const root = document.getElementById('expDashRoot');
+      if (!root) return;
+      const v = (state.view === 'list') ? 'list' : 'dashboard';
+      root.classList.toggle('mode-dashboard', v === 'dashboard');
+      root.classList.toggle('mode-list', v === 'list');
+    } catch {}
+  };
+
+  const setStatusText = (t, isErr) => {
+    const el = document.getElementById('expDashStatus');
+    if (!el) return;
+    el.textContent = String(t || '');
+    el.style.color = isErr ? '#b00020' : '';
+  };
+
+  const setBadge = (id, n) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const v = Math.max(0, Number(n || 0));
+    el.textContent = String(v);
+    if (v > 0) el.removeAttribute('hidden');
+    else el.setAttribute('hidden', '');
+  };
+
+  const setTitle = (text) => {
+    const el = document.getElementById('expDashTitle');
+    if (el) el.textContent = String(text || '');
+  };
+
+  const fetchDashboard = async () => {
+    const ym = String(state.month || '').slice(0, 7);
+    return await fetchJSONAuth(`/api/expenses/admin/dashboard?month=${encodeURIComponent(ym)}&months=6`);
+  };
+
+  const computeDashboardFallback = async () => {
+    const months = listYMBack(String(state.month || '').slice(0, 7), 6);
+    const fetchRowsForMonth = async (ym) => {
+      const q = new URLSearchParams();
+      q.set('month', String(ym || '').slice(0, 7));
+      q.set('page', '1');
+      q.set('limit', '1000');
+      q.set('sortBy', 'date');
+      q.set('sortDir', 'desc');
+      const r = await fetchJSONAuth(`/api/expenses/admin/list?${q.toString()}`);
+      return Array.isArray(r?.rows) ? r.rows : [];
+    };
+    const monthStatsFromRows = (ym, rows) => {
+      let appliedAmount = 0;
+      let approvedAmount = 0;
+      let rejectedAmount = 0;
+      let appliedCount = 0;
+      let approvedCount = 0;
+      let rejectedCount = 0;
+      const userSet = new Set();
+      const deptMap = new Map();
+      for (const r of (Array.isArray(rows) ? rows : [])) {
+        const st = String(r?.status || '').toLowerCase();
+        const amt = Math.max(0, Number(r?.amount || 0));
+        const uid = r?.userId != null ? String(r.userId) : '';
+        if (st === 'applied') { appliedCount += 1; appliedAmount += amt; }
+        else if (st === 'approved') { approvedCount += 1; approvedAmount += amt; }
+        else if (st === 'rejected') { rejectedCount += 1; rejectedAmount += amt; }
+        if ((st === 'applied' || st === 'approved') && uid) userSet.add(uid);
+        if (st === 'applied' || st === 'approved') {
+          const did = r?.departmentId == null ? '' : String(r.departmentId);
+          const prev = deptMap.get(did) || { departmentId: did || null, totalAmount: 0, itemCount: 0, userSet: new Set() };
+          prev.totalAmount += amt;
+          prev.itemCount += 1;
+          if (uid) prev.userSet.add(uid);
+          deptMap.set(did, prev);
+        }
+      }
+      const totalAmount = appliedAmount + approvedAmount;
+      const applicantUsers = userSet.size;
+      const departmentShares = Array.from(deptMap.values())
+        .map((x) => ({ departmentId: x.departmentId, totalAmount: x.totalAmount, itemCount: x.itemCount, userCount: x.userSet.size }))
+        .sort((a, b) => (b.totalAmount - a.totalAmount));
+      return {
+        month: ym,
+        totalAmount,
+        appliedAmount,
+        approvedAmount,
+        rejectedAmount,
+        appliedCount,
+        approvedCount,
+        rejectedCount,
+        applicantUsers,
+        departmentShares
+      };
+    };
+    const settled = await Promise.allSettled(months.map((m) => fetchRowsForMonth(m)));
+    const statsArr = settled.map((r, idx) => monthStatsFromRows(months[idx], r.status === 'fulfilled' ? r.value : []));
+    const current = statsArr[statsArr.length - 1] || monthStatsFromRows(String(state.month || ''), []);
+    const avgPerUser = current.applicantUsers > 0 ? Math.round(current.totalAmount / current.applicantUsers) : 0;
+    return {
+      month: current,
+      avgPerUser,
+      trend: statsArr.map((s) => ({
+        month: s.month,
+        totalAmount: s.totalAmount,
+        appliedAmount: s.appliedAmount,
+        approvedAmount: s.approvedAmount,
+        appliedCount: s.appliedCount,
+        approvedCount: s.approvedCount,
+        applicantUsers: s.applicantUsers
+      })),
+      departmentShares: current.departmentShares || []
+    };
+  };
+
+  const fetchList = async () => {
+    const q = new URLSearchParams();
+    q.set('month', String(state.month || '').slice(0, 7));
+    q.set('page', String(state.page || 1));
+    q.set('limit', String(state.limit || 10));
+    q.set('sortBy', 'date');
+    q.set('sortDir', 'desc');
+    if (state.status) q.set('status', state.status);
+    if (state.departmentId) q.set('departmentId', state.departmentId);
+    if (state.q) q.set('name', state.q);
+    return await fetchJSONAuth(`/api/expenses/admin/list?${q.toString()}`);
+  };
+
+  const renderKpi = (dash) => {
+    const hostKpi = document.getElementById('expDashKpi');
+    if (!hostKpi) return;
+    const m = dash?.month || {};
+    const trend = Array.isArray(dash?.trend) ? dash.trend : [];
+    const prev = trend.length >= 2 ? trend[trend.length - 2] : null;
+    const delta = prev ? (Number(m.totalAmount || 0) - Number(prev.totalAmount || 0)) : null;
+    const deltaText = delta == null ? '' : `${delta >= 0 ? '+' : '-'}${fmtJPY(Math.abs(delta))}`;
+    const avg = Number(dash?.avgPerUser || 0);
+    const cards = [
+      { title: '今月の交通費総額（申請中+承認済）', value: fmtJPY(m.totalAmount || 0), sub: deltaText ? `前月比 ${deltaText}` : ' ' , cls:'c1', ico: '¥' },
+      { title: '承認待ち件数', value: `${Number(m.appliedCount || 0).toLocaleString('ja-JP')}件`, sub: fmtJPY(m.appliedAmount || 0), cls:'c2', ico: '⏳' },
+      { title: '差戻し件数', value: `${Number(m.rejectedCount || 0).toLocaleString('ja-JP')}件`, sub: fmtJPY(m.rejectedAmount || 0), cls:'c3', ico: '↩' },
+      { title: '今月申請人数', value: `${Number(m.applicantUsers || 0).toLocaleString('ja-JP')}人`, sub: ' ', cls:'c4', ico: '👥' },
+      { title: '平均交通費（1人あたり）', value: fmtJPY(avg), sub: ' ', cls:'c5', ico: '∅' }
+    ];
+    hostKpi.innerHTML = cards.map((c) => `
+      <div class="exp-dash-kpi-card ${c.cls}">
+        <div class="head">
+          <div class="icon">${esc(c.ico)}</div>
+          <div class="t">${esc(c.title)}</div>
+        </div>
+        <div class="v">${esc(c.value)}</div>
+        <div class="s">${esc(c.sub)}</div>
+      </div>
+    `).join('');
+  };
+
+  const renderTrend = (dash) => {
+    const host = document.getElementById('expDashTrend');
+    if (!host) return;
+    const rows = Array.isArray(dash?.trend) ? dash.trend : [];
+    if (!rows.length) {
+      host.innerHTML = `<div class="exp-dash-empty">データはありません</div>`;
+      return;
+    }
+    const vals = rows.map((r) => Math.max(0, Number(r?.totalAmount || 0)));
+    const max = Math.max(1, ...vals);
+    host.innerHTML = `
+      <div class="exp-dash-bars">
+        ${rows.map((r, idx) => {
+          const v = Math.max(0, Number(r?.totalAmount || 0));
+          const h = Math.max(6, Math.round((v / max) * 100));
+          const label = fmtMonthLabel(r?.month || '') || String(r?.month || '');
+          return `<div class="exp-dash-bar">
+            <div class="b" style="height:${h}%; background:${colors[idx % colors.length]};"></div>
+            <div class="l">${esc(label.slice(2))}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  };
+
+  const renderDeptShare = (dash) => {
+    const host = document.getElementById('expDashDeptShare');
+    if (!host) return;
+    const rows = Array.isArray(dash?.departmentShares) ? dash.departmentShares : [];
+    if (!rows.length) {
+      host.innerHTML = `<div class="exp-dash-empty">データはありません</div>`;
+      return;
+    }
+    const total = rows.reduce((s, r) => s + Math.max(0, Number(r?.totalAmount || 0)), 0);
+    if (total <= 0) {
+      host.innerHTML = `<div class="exp-dash-empty">データはありません</div>`;
+      return;
+    }
+    let acc = 0;
+    const stops = rows.map((r, idx) => {
+      const v = Math.max(0, Number(r?.totalAmount || 0));
+      const from = (acc / total) * 360;
+      acc += v;
+      const to = (acc / total) * 360;
+      const color = colors[idx % colors.length];
+      return `${color} ${from}deg ${to}deg`;
+    }).join(', ');
+    const donutStyle = `background: conic-gradient(${stops});`;
+    const legend = rows.map((r, idx) => {
+      const v = Math.max(0, Number(r?.totalAmount || 0));
+      const p = total > 0 ? Math.round((v / total) * 1000) / 10 : 0;
+      const deptId = r?.departmentId == null ? '' : String(r.departmentId);
+      const dept = deptId ? (state.deptMap.get(deptId) || `#${deptId}`) : '未設定';
+      return `<div class="exp-dash-legend-row">
+        <span class="dot" style="background:${colors[idx % colors.length]};"></span>
+        <span class="name">${esc(dept)}</span>
+        <span class="pct">${esc(String(p))}%</span>
+        <span class="amt">${esc(fmtJPY(v))}</span>
+      </div>`;
+    }).join('');
+    host.innerHTML = `
+      <div class="exp-dash-deptwrap">
+        <div class="exp-dash-donut" style="${donutStyle}"><div class="hole"></div></div>
+        <div class="exp-dash-legend">${legend}</div>
+      </div>
+    `;
+  };
+
+  const isDesktop = () => {
+    try { return !!(window.matchMedia && window.matchMedia('(min-width: 1101px)').matches); } catch { return false; }
+  };
+
+  const openDrawer = async (id) => {
+    const drawer = document.getElementById('expDashDrawer');
+    const backdrop = document.getElementById('expDashBackdrop');
+    const body = document.getElementById('expDashDrawerBody');
+    if (!drawer || !body) return;
+    try {
+      const root = document.getElementById('expDashRoot');
+      if (root && isDesktop()) root.classList.add('with-drawer');
+    } catch {}
+    state.selectedId = String(id || '');
+    drawer.removeAttribute('hidden');
+    const desktop = isDesktop();
+    try {
+      if (desktop) {
+        backdrop?.setAttribute('hidden', '');
+        document.body.style.overflow = '';
+      } else {
+        backdrop?.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+    } catch {}
+    body.innerHTML = `<div class="exp-dash-muted">読み込み中…</div>`;
+    try {
+      const [rec, files] = await Promise.all([
+        fetchJSONAuth(`/api/expenses/admin/detail/${encodeURIComponent(state.selectedId)}`),
+        fetchJSONAuth(`/api/expenses/${encodeURIComponent(state.selectedId)}/files`).catch(() => [])
+      ]);
+      const route = [rec?.origin || '', rec?.via || '', rec?.destination || ''].filter(Boolean).join('→') || '-';
+      const deptId = rec?.departmentId ? String(rec.departmentId) : '';
+      const deptName = deptId ? (state.deptMap.get(deptId) || `#${deptId}`) : '';
+      const fileRows = Array.isArray(files) ? files : [];
+      const filesHtml = fileRows.length ? fileRows.map((f) => {
+        const urlRaw = String(f?.path || '');
+        const url = urlRaw.startsWith('/') ? urlRaw : ('/' + urlRaw);
+        const name = f?.name || url.split('/').pop();
+        return `<a class="exp-dash-file" href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>`;
+      }).join('') : `<div class="exp-dash-muted">添付ファイルなし</div>`;
+      const st = String(rec?.status || '');
+      const stLabel = statusLabel(st);
+      const stCls = statusPillClass(st);
+      body.innerHTML = `
+        <div class="exp-dash-detail">
+          <div class="row"><div class="k">申請ID</div><div class="v">${esc(String(rec?.id || ''))}</div></div>
+          <div class="row"><div class="k">申請者</div><div class="v">${esc(rec?.user_name || rec?.user_email || '')}</div></div>
+          <div class="row"><div class="k">部署</div><div class="v">${esc(deptName)}</div></div>
+          <div class="row"><div class="k">対象月</div><div class="v">${esc(fmtMonthLabel(String(rec?.date || '').slice(0,7)) || '')}</div></div>
+          <div class="row"><div class="k">申請日</div><div class="v">${esc(String(rec?.date || '').slice(0,10))}</div></div>
+          <div class="row"><div class="k">経路</div><div class="v">${esc(route)}</div></div>
+          <div class="row"><div class="k">金額</div><div class="v">${esc(fmtJPY(rec?.amount || 0))}</div></div>
+          <div class="row"><div class="k">状態</div><div class="v"><span class="pill ${stCls}">${esc(stLabel)}</span></div></div>
+          <div class="row"><div class="k">添付</div><div class="v files">${filesHtml}</div></div>
+        </div>
+      `;
+      const note = document.getElementById('expDashNote');
+      if (note) note.value = String(rec?.manager_note || '');
+      const approveBtn = document.getElementById('expDashApprove');
+      const rejectBtn = document.getElementById('expDashReject');
+      const canAct = String(st).toLowerCase() === 'applied';
+      if (approveBtn) approveBtn.disabled = !canAct;
+      if (rejectBtn) rejectBtn.disabled = !canAct;
+    } catch (e) {
+      body.innerHTML = `<div class="exp-dash-muted" style="color:#b00020;">${esc(String(e?.message || '読み込みに失敗しました'))}</div>`;
+    }
+  };
+
+  const closeDrawer = () => {
+    const drawer = document.getElementById('expDashDrawer');
+    const backdrop = document.getElementById('expDashBackdrop');
+    if (drawer) drawer.setAttribute('hidden', '');
+    if (backdrop) backdrop.setAttribute('hidden', '');
+    state.selectedId = '';
+    try {
+      const root = document.getElementById('expDashRoot');
+      root?.classList.remove('with-drawer');
+    } catch {}
+    try { document.body.style.overflow = ''; } catch {}
+  };
+
+  const renderList = (result) => {
+    const host = document.getElementById('expDashList');
+    const meta = document.getElementById('expDashListMeta');
+    if (!host) return;
+    const rows = Array.isArray(result?.rows) ? result.rows : [];
+    const total = Number(result?.total || 0);
+    const page = Number(result?.page || state.page || 1);
+    const limit = Number(result?.limit || state.limit || 10);
+    const start = total ? ((page - 1) * limit + 1) : 0;
+    const end = Math.min(total, page * limit);
+    if (meta) meta.textContent = `${start}-${end} / ${total}`;
+    const deptName = (deptId) => {
+      const id = deptId == null ? '' : String(deptId);
+      if (!id) return '未設定';
+      return state.deptMap.get(id) || `#${id}`;
+    };
+    const bodyRows = rows.map((r) => {
+      const id = String(r?.id || '');
+      const name = r?.user_name || r?.user_email || '';
+      const dept = deptName(r?.departmentId);
+      const ym = String(r?.date || '').slice(0, 7);
+      const monthText = fmtMonthLabel(ym) || ym;
+      const amt = fmtJPY(r?.amount || 0);
+      const st = String(r?.status || '');
+      const stLabel = statusLabel(st);
+      const stCls = statusPillClass(st);
+      const appliedAt = r?.applied_at ? fmtDT(r.applied_at) : '';
+      return `<tr data-id="${esc(id)}" class="exp-dash-row">
+        <td class="id"><a href="#" data-action="open" data-id="${esc(id)}">${esc(id)}</a></td>
+        <td>${esc(name)}</td>
+        <td>${esc(dept)}</td>
+        <td class="center">${esc(monthText)}</td>
+        <td class="money">${esc(amt)}</td>
+        <td class="center"><span class="pill ${stCls}">${esc(stLabel)}</span></td>
+        <td class="center">${esc(appliedAt || '')}</td>
+      </tr>`;
+    }).join('');
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    host.innerHTML = `
+      <div class="exp-dash-tablewrap">
+        <table class="exp-dash-table">
+          <thead><tr>
+            <th>申請ID</th><th>申請者</th><th>部署</th><th class="center">対象月</th><th class="money">金額</th><th class="center">ステータス</th><th class="center">申請日時</th>
+          </tr></thead>
+          <tbody>${bodyRows || `<tr><td colspan="7" class="center" style="padding:16px;color:#64748b;">データはありません</td></tr>`}</tbody>
+        </table>
+      </div>
+      <div class="exp-dash-pager">
+        <button type="button" class="btn exp-dash-btn-ghost" data-action="prev" ${page <= 1 ? 'disabled' : ''}>前</button>
+        <div class="exp-dash-muted">${page} / ${totalPages}</div>
+        <button type="button" class="btn exp-dash-btn-ghost" data-action="next" ${page >= totalPages ? 'disabled' : ''}>次</button>
+      </div>
+    `;
+  };
+
+  const reloadAll = async () => {
+    setStatusText('読み込み中…', false);
+    showSpinner();
+    try {
+      const [dashRes, listRes] = await Promise.allSettled([fetchDashboard(), fetchList()]);
+      const dash = dashRes.status === 'fulfilled'
+        ? dashRes.value
+        : await computeDashboardFallback().catch(() => ({ month: { month: state.month, totalAmount: 0, appliedCount: 0, rejectedCount: 0 }, trend: [], departmentShares: [] }));
+      const list = listRes.status === 'fulfilled' ? listRes.value : { rows: [], total: 0, page: state.page, limit: state.limit };
+      renderKpi(dash);
+      renderTrend(dash);
+      renderDeptShare(dash);
+      setBadge('expBadgeApplied', dash?.month?.appliedCount || 0);
+      setBadge('expBadgeApproved', dash?.month?.approvedCount || 0);
+      setBadge('expBadgeRejected', dash?.month?.rejectedCount || 0);
+      setBadge('expDashBellBadge', dash?.month?.appliedCount || 0);
+      renderList(list);
+      if (listRes.status === 'rejected') {
+        const msg = String(listRes.reason?.message || 'データ取得に失敗しました');
+        setStatusText(msg, true);
+      } else if (dashRes.status === 'rejected') {
+        setStatusText('集計を簡易計算で表示中（サーバー更新後に自動で正常化します）', false);
+      } else {
+        setStatusText('', false);
+      }
+    } catch (e) {
+      setStatusText(String(e?.message || '取得失敗'), true);
+    } finally {
+      hideSpinner();
+    }
+  };
+
+  const reloadListOnly = async () => {
+    setStatusText('読み込み中…', false);
+    showSpinner();
+    try {
+      const list = await fetchList();
+      renderList(list);
+      setStatusText('', false);
+    } catch (e) {
+      setStatusText(String(e?.message || '取得失敗'), true);
+    } finally {
+      hideSpinner();
+    }
+  };
+
+  const wire = async () => {
+    try {
+      const p = window.ADMIN_PROFILE || {};
+      const name = p.username || p.email || '';
+      const el = document.getElementById('expDashUserName');
+      if (el) el.textContent = String(name || '').trim();
+      const chip = el?.closest?.('.exp-dash-userchip');
+      if (chip) chip.setAttribute('title', String(name || '').trim());
+    } catch {}
+    try {
+      const depts = await fetchJSONAuth('/api/admin/departments').catch(() => fetchJSONAuth('/api/departments').catch(() => []));
+      state.departments = Array.isArray(depts) ? depts : [];
+      state.deptMap = new Map(state.departments.map((d) => [String(d.id), d.name || d.code || `#${String(d.id)}`]));
+      const sel = document.getElementById('expDashDept');
+      if (sel) {
+        sel.innerHTML = `<option value="">全部署</option>` + state.departments.map((d) => `<option value="${esc(String(d.id))}">${esc(d.name || d.code || `#${String(d.id)}`)}</option>`).join('');
+      }
+    } catch {}
+    const monthInput = document.getElementById('expDashMonth');
+    if (monthInput) monthInput.value = state.month;
+    document.getElementById('expDashReload')?.addEventListener('click', async () => {
+      state.page = 1;
+      state.q = String(document.getElementById('expDashSearch')?.value || '').trim();
+      state.departmentId = String(document.getElementById('expDashDept')?.value || '').trim();
+      state.month = String(document.getElementById('expDashMonth')?.value || state.month).slice(0, 7);
+      await reloadAll();
+    });
+    document.getElementById('expDashMonth')?.addEventListener('change', async () => {
+      state.page = 1;
+      state.month = String(document.getElementById('expDashMonth')?.value || state.month).slice(0, 7);
+      await reloadAll();
+    });
+    document.getElementById('expDashDept')?.addEventListener('change', async () => {
+      state.page = 1;
+      state.departmentId = String(document.getElementById('expDashDept')?.value || '').trim();
+      await reloadListOnly();
+    });
+    document.getElementById('expDashSearch')?.addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      state.page = 1;
+      state.q = String(document.getElementById('expDashSearch')?.value || '').trim();
+      await reloadListOnly();
+    });
+    document.querySelectorAll('.exp-dash-side .exp-dash-nav[data-status]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach((x) => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        state.page = 1;
+        state.status = String(b.getAttribute('data-status') || '');
+        state.view = 'list';
+        applyViewMode();
+        if (state.status === 'applied') setTitle('承認管理');
+        else if (state.status === 'approved') setTitle('承認済み');
+        else if (state.status === 'rejected') setTitle('差戻し一覧');
+        else setTitle('申請一覧');
+        await reloadListOnly();
+      });
+    });
+    document.querySelectorAll('.exp-dash-side .exp-dash-nav[data-nav]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach((x) => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        state.page = 1;
+        state.status = '';
+        state.view = 'dashboard';
+        applyViewMode();
+        setTitle('ダッシュボード');
+        await reloadAll();
+      });
+    });
+    const syncBurger = () => {
+      try {
+        const root = document.getElementById('expDashRoot');
+        const btn = document.getElementById('expDashBurger');
+        if (!root || !btn) return;
+        const collapsed = root.classList.contains('collapsed');
+        btn.textContent = collapsed ? '☰' : '✕';
+        try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch {}
+      } catch {}
+    };
+    document.getElementById('expDashBurger')?.addEventListener('click', () => {
+      try {
+        const root = document.getElementById('expDashRoot');
+        if (!root) return;
+        root.classList.toggle('collapsed');
+        syncBurger();
+      } catch {}
+    });
+    syncBurger();
+    document.getElementById('expDashBell')?.addEventListener('click', async () => {
+      document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach((x) => x.classList.remove('is-active'));
+      const btn = document.querySelector('.exp-dash-side .exp-dash-nav[data-status="applied"]');
+      btn?.classList.add('is-active');
+      state.page = 1;
+      state.status = 'applied';
+      state.view = 'list';
+      applyViewMode();
+      setTitle('承認管理');
+      await reloadListOnly();
+    });
+    document.getElementById('expDashCsv')?.addEventListener('click', () => {
+      const q = new URLSearchParams();
+      q.set('month', String(state.month || '').slice(0, 7));
+      if (state.status) q.set('status', state.status);
+      if (state.departmentId) q.set('departmentId', state.departmentId);
+      if (state.q) q.set('name', state.q);
+      const url = `/api/expenses/admin/export.csv?${q.toString()}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+    document.getElementById('expDashList')?.addEventListener('click', async (e) => {
+      const t = e.target;
+      const pagerBtn = t?.closest ? t.closest('button[data-action]') : null;
+      if (pagerBtn) {
+        const act = String(pagerBtn.getAttribute('data-action') || '');
+        if (act === 'prev') state.page = Math.max(1, state.page - 1);
+        if (act === 'next') state.page = state.page + 1;
+        await reloadListOnly();
+        return;
+      }
+      const a = t?.closest ? t.closest('a[data-action="open"][data-id]') : null;
+      const tr = t?.closest ? t.closest('tr[data-id]') : null;
+      const id = a ? a.getAttribute('data-id') : (tr ? tr.getAttribute('data-id') : '');
+      if (!id) return;
+      e.preventDefault();
+      await openDrawer(id);
+    });
+    document.getElementById('expDashBackdrop')?.addEventListener('click', closeDrawer);
+    document.getElementById('expDashDrawerClose')?.addEventListener('click', closeDrawer);
+    document.getElementById('expDashApprove')?.addEventListener('click', async () => {
+      if (!state.selectedId) return;
+      const note = String(document.getElementById('expDashNote')?.value || '').trim();
+      try {
+        await fetchJSONAuth(`/api/expenses/${encodeURIComponent(state.selectedId)}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'approved', note }) });
+        await reloadAll();
+        await openDrawer(state.selectedId);
+      } catch (e) {
+        setStatusText(String(e?.message || '承認に失敗しました'), true);
+      }
+    });
+    document.getElementById('expDashReject')?.addEventListener('click', async () => {
+      if (!state.selectedId) return;
+      const note = String(document.getElementById('expDashNote')?.value || '').trim();
+      if (!note) {
+        setStatusText('差戻しコメントを入力してください', true);
+        return;
+      }
+      try {
+        await fetchJSONAuth(`/api/expenses/${encodeURIComponent(state.selectedId)}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'rejected', note }) });
+        await reloadAll();
+        await openDrawer(state.selectedId);
+      } catch (e) {
+        setStatusText(String(e?.message || '差戻しに失敗しました'), true);
+      }
+    });
+  };
+
+  await wire();
+  applyViewMode();
+  await reloadAll();
+  return () => {
+    try { if (pollTimer) window.clearInterval(pollTimer); } catch {}
+    try { hideSpinner(); } catch {}
+    try { closeDrawer(); } catch {}
+  };
   const includeByMode = (status, mode) => {
     const st = String(status || '').toLowerCase();
     if (mode === 'approved') return st === 'approved';
@@ -497,6 +1584,79 @@ const render = async () => {
         ${card('差戻し', stats.rejected, 'exp-kpi-rejected', '↩')}
       </div>
     `;
+  };
+
+  const renderMonthApplyQueue = (rows, month) => {
+    const host2 = document.getElementById('expMonthApplyHost');
+    if (!host2) return;
+    const arr = Array.isArray(rows) ? rows : [];
+    if (!arr.length) {
+      host2.innerHTML = '<div class="empty-state"><div style="font-size:24px;">📭</div><div>月次申請はありません</div></div>';
+      return;
+    }
+    const body = arr.map((r) => {
+      const uid = String(r.user_id || '');
+      const ym = String(r.month || '');
+      const name = String(r.employee_name || r.user_name || uid || '-');
+      const code = String(r.employee_code || '-');
+      const dob = r.birth_date ? String(r.birth_date).slice(0, 10) : '-';
+      const appliedAt = r.applied_at ? fmtDT(r.applied_at) : '-';
+      const cnt = Number(r.item_count || 0);
+      const amt = Number(r.total_amount || 0).toLocaleString('ja-JP');
+      const detailUrl = `/admin/expenses/monthly-detail?month=${encodeURIComponent(ym)}&userId=${encodeURIComponent(uid)}`;
+      return `<tr data-user-id="${uid}" data-month="${ym}">
+        <td>${name}</td>
+        <td>${code}</td>
+        <td>${dob}</td>
+        <td><span class="pill applied">${ym}</span></td>
+        <td>${appliedAt}</td>
+        <td style="text-align:right;">${cnt}</td>
+        <td style="text-align:right;">¥${amt}</td>
+        <td>
+          <div class="month-apply-actions">
+            <a class="btn exp-admin-btn-secondary" href="${detailUrl}" style="min-height:30px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">確認</a>
+            <button class="btn exp-admin-btn-primary" data-action="approve-month" type="button" style="min-height:30px;">月次承認</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    host2.innerHTML = `
+      <div class="exp-admin-table-wrap">
+        <table class="exp-admin-table clean-view">
+          <thead><tr>
+            <th>社員</th><th>社員コード</th><th>生年月日</th><th>対象月</th><th>送信日時</th><th style="text-align:right;">件数</th><th style="text-align:right;">合計</th><th>操作</th>
+          </tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    `;
+    if (host2.dataset.bound !== '1') {
+      host2.dataset.bound = '1';
+      host2.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action="approve-month"]');
+        if (!btn) return;
+        const tr = btn.closest('tr[data-user-id][data-month]');
+        if (!tr) return;
+        const uid = String(tr.getAttribute('data-user-id') || '');
+        const ym = String(tr.getAttribute('data-month') || '');
+        if (!uid || !ym) return;
+        const ok = window.confirm(`${ym} を月次承認しますか？`);
+        if (!ok) return;
+        btn.disabled = true;
+        try {
+          await fetchJSONAuth('/api/expenses/admin/months/approve', {
+            method: 'POST',
+            body: JSON.stringify({ userId: uid, month: ym })
+          });
+          await reload();
+        } catch (err) {
+          const st = document.getElementById('expMonthlyStatus');
+          if (st) st.textContent = String(err?.message || '月次承認に失敗しました');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
   };
   const renderMonthlySummary = (summary, mode, allRows) => {
     const host2 = $('#expMonthlySummaryHost');
@@ -811,14 +1971,15 @@ const render = async () => {
       qBoard.delete('month');
       qBoard.set('page', '1');
       qBoard.set('limit', '1000');
-      const [rowsRes, usersRes, chatsRes, monthlyRes, historyRes, deptRes, boardRes] = await Promise.allSettled([
+      const [rowsRes, usersRes, chatsRes, monthlyRes, historyRes, deptRes, boardRes, monthApplyRes] = await Promise.allSettled([
         fetchJSONAuth(`/api/expenses/admin/list?${q.toString()}`),
         fetchJSONAuth('/api/admin/users'),
         fetchJSONAuth(`/api/expenses/admin/messages?month=${encodeURIComponent(month)}`),
         fetchJSONAuth(`/api/expenses/admin/monthly-summary?month=${encodeURIComponent(month)}${currentUserFilter ? `&userId=${encodeURIComponent(currentUserFilter)}` : ''}`),
         fetchJSONAuth(`/api/expenses/admin/monthly-history?limit=12${currentUserFilter ? `&userId=${encodeURIComponent(currentUserFilter)}` : ''}`),
         fetchJSONAuth('/api/admin/departments'),
-        fetchJSONAuth(`/api/expenses/admin/list?${qBoard.toString()}`)
+        fetchJSONAuth(`/api/expenses/admin/list?${qBoard.toString()}`),
+        Promise.resolve([])
       ]);
       const rowsPayload = rowsRes.status === 'fulfilled' ? rowsRes.value : { rows: [], total: 0, page: 1, limit: viewState.pageSize };
       const rows = Array.isArray(rowsPayload) ? rowsPayload : (Array.isArray(rowsPayload?.rows) ? rowsPayload.rows : []);
@@ -841,6 +2002,7 @@ const render = async () => {
         return { totals: [], closures: closures.filter(byUser) };
       })();
       const history = historyRes.status === 'fulfilled' && Array.isArray(historyRes.value) ? historyRes.value : [];
+      const monthApplyRows = monthApplyRes.status === 'fulfilled' && Array.isArray(monthApplyRes.value) ? monthApplyRes.value : [];
       const nameMap = new Map(users.map(u => [String(u.id), u.username || u.email || '']));
       const uf = $('#expUserFilter');
       if (uf && !uf.dataset.bound) {
@@ -879,6 +2041,7 @@ const render = async () => {
       const filteredRows = Array.isArray(rows) ? rows : [];
       const aggregateMode = $('#expAggregateMode') ? ($('#expAggregateMode').value || 'approved') : 'approved';
       renderMonthlyKpi(filteredRows);
+      renderMonthApplyQueue(monthApplyRows, month);
       renderEmployeeMonthlyBoard(boardRows, users);
       renderEmployeeMonths(boardRows);
       const aggregateRows = filteredRows.filter((r) => includeByMode(r.status, aggregateMode));
@@ -1469,5 +2632,6 @@ export async function mount() {
   const profile = await requireAdmin();
   if (!profile) return;
   try { window.ADMIN_ID = profile.id; } catch {}
+  try { window.ADMIN_PROFILE = profile; } catch {}
   return await render();
 }

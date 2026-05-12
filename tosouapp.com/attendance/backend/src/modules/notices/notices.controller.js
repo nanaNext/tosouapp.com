@@ -85,7 +85,10 @@ exports.create = async (req, res) => {
       targetDate: isISODate(targetDate) ? targetDate : null,
       targetMonth: isYM(targetMonth) ? targetMonth : null,
       message,
-      createdBy: req.user?.id || null
+      createdBy: req.user?.id || null,
+      kind: 'system_announcement',
+      title: 'お知らせ',
+      audience: 'all'
     });
     res.status(201).json({ notice: r });
   } catch (err) {

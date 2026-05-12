@@ -19,6 +19,7 @@ export async function bootLegacyTab({ tab, hash }) {
     await mod.mount();
     return;
   }
+// cái này dùng để render legacy tab
 
   let p = '../../pages/admin.page.js?v=navy-20260421-authfix1';
   try {

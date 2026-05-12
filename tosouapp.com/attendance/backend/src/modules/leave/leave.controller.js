@@ -285,7 +285,9 @@ exports.updateStatus = async (req, res) => {
           targetDate: row.startDate ? String(row.startDate).slice(0, 10) : null,
           targetMonth: row.startDate ? String(row.startDate).slice(0, 7) : null,
           message: `休暇申請（${String(row.startDate || '').slice(0, 10)} ~ ${String(row.endDate || '').slice(0, 10)}）が${statusLabel}されました。`,
-          createdBy: req.user?.id || null
+          createdBy: req.user?.id || null,
+          kind: 'approval',
+          title: '休暇申請'
         });
       }
     } catch {}
@@ -498,7 +500,9 @@ exports.approve = async (req, res) => {
           targetDate: row.startDate ? String(row.startDate).slice(0, 10) : null,
           targetMonth: row.startDate ? String(row.startDate).slice(0, 7) : null,
           message: `休暇申請（${String(row.startDate || '').slice(0, 10)} ~ ${String(row.endDate || '').slice(0, 10)}）が${statusLabel}されました。`,
-          createdBy: req.user?.id || null
+          createdBy: req.user?.id || null,
+          kind: 'approval',
+          title: '休暇申請'
         });
       }
     } catch {}
