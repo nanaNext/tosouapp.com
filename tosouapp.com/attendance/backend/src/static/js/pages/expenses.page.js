@@ -12,7 +12,18 @@ const prefillUserName = () => {
     if (name) el.textContent = name;
   } catch {}
 };
-const showErr = (m) => { const el = $('#error'); if (!el) return; if (!m) { el.style.display='none'; el.textContent=''; return; } el.style.display='block'; el.textContent=String(m); };
+let _errTimer = null;
+const showErr = (m) => {
+  const el = $('#error');
+  if (!el) return;
+  if (_errTimer) { clearTimeout(_errTimer); _errTimer = null; }
+  if (!m) { el.style.display='none'; el.textContent=''; return; }
+  el.style.display='block';
+  el.textContent=String(m);
+  _errTimer = setTimeout(() => {
+    try { el.style.display='none'; el.textContent=''; } catch {}
+  }, 10_000);
+};
 let sc = 0;
 let spinnerTimer = null;
 const showSpinner = () => {
@@ -44,7 +55,7 @@ const hideSpinner = () => {
   } catch {}
 };
 const todayISO = () => new Date().toLocaleDateString('sv-SE');
-const currentYM = () => new Date().toISOString().slice(0, 7);
+const currentYM = () => todayISO().slice(0, 7);
 const recentMonths = (count = 6, baseYM = currentYM()) => {
   const out = [];
   const y = Number(String(baseYM).slice(0, 4));
@@ -71,6 +82,18 @@ const fmtDT = (v) => {
     const mm = String(d.getMinutes()).padStart(2,'0');
     return `${y}-${m}-${day} ${hh}:${mm}`;
   } catch { return String(v).replace('T',' ').slice(0,16); }
+};
+const fmtDateOnly = (v) => {
+  const s = String(v || '');
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : s;
+};
+const normalizeVia = (v) => {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  // Ignore obvious test noise like "pppp", "aaaaa".
+  if (/^[a-z]+$/i.test(s) && /(.)\1{2,}/i.test(s)) return '';
+  return s;
 };
 const parseAmount = (v) => {
   const s = String(v == null ? '' : v).replace(/[^\d.-]/g, '').trim();
@@ -148,6 +171,7 @@ const setFieldError = (fieldId, message) => {
 let formActive = false;
 let navBusy = false;
 let renderListBusy = false;
+let renderListPending = false;
 let listRateLimitedUntilMs = 0;
 let listRetryTimer = null;
 let noticeUnreadCount = 0;
@@ -157,11 +181,23 @@ let noticeSeenKey = '';
 let noticePollTimer = null;
 let expensesPageMounted = false;
 let createTargetMonth = currentYM();
+let meProfile = null;
 let activeHistoryTab = 'new';
 let selectedHistoryMonth = '';
+let monthDeletePick = '';
+let continueCreateForMonth = null;
+let showMonthProgressInNewMode = false;
+let monthMetaByYm = new Map();
+const EXPENSES_ACTIVE_TAB_KEY = 'expenses.activeTab';
+const fmtYmJa = (ym) => {
+  const s = String(ym || '');
+  if (!/^\d{4}-\d{2}$/.test(s)) return '';
+  return `${s.slice(0, 4)}年${s.slice(5, 7)}月`;
+};
+const firstDayOfYm = (ym) => (/^\d{4}-\d{2}$/.test(String(ym || '')) ? `${String(ym)}-01` : '-');
 const isSubmittedStatus = (v) => {
   const s = String(v || '').toLowerCase();
-  return s === 'applied' || s === 'approved' || s === 'rejected';
+  return s === 'applied' || s === 'approved';
 };
 const isNoticeFeedbackStatus = (v) => {
   const s = String(v || '').toLowerCase();
@@ -178,6 +214,10 @@ const isTooManyReqErr = (e) => {
   const msg = String(e?.message || '').toLowerCase();
   return msg.includes('too many requests') || msg.includes('操作が多すぎます') || msg.includes('http 429') || msg.includes('429');
 };
+const isNotFoundErr = (e) => {
+  const msg = String(e?.message || '').toLowerCase();
+  return msg.includes('not found') || msg.includes('http 404') || msg.includes('404');
+};
 const fetchJSONAuthSafe = async (url, options, retry = 1) => {
   try {
     return await fetchJSONAuth(url, options);
@@ -188,6 +228,23 @@ const fetchJSONAuthSafe = async (url, options, retry = 1) => {
     }
     throw e;
   }
+};
+const _getCache = new Map();
+const fetchJSONAuthSafeCached = async (url, ttlMs = 8000) => {
+  const u = String(url || '');
+  const now = Date.now();
+  const hit = _getCache.get(u);
+  if (hit && hit.value !== undefined && hit.exp > now) return hit.value;
+  if (hit && hit.promise) return hit.promise;
+  const p = fetchJSONAuthSafe(u).then((v) => {
+    _getCache.set(u, { value: v, exp: Date.now() + Math.max(0, Number(ttlMs || 0)) });
+    return v;
+  }).catch((e) => {
+    _getCache.delete(u);
+    throw e;
+  });
+  _getCache.set(u, { promise: p, exp: now + 500 });
+  return p;
 };
 const setNoticeBadge = (n) => {
   const badge = document.getElementById('noticeBadge');
@@ -211,7 +268,7 @@ const markNoticeSeen = () => {
 };
 const refreshNoticeMessages = async () => {
   try {
-    const rows = await fetchJSONAuthSafe('/api/expenses/my/messages');
+    const rows = await fetchJSONAuthSafeCached('/api/expenses/my/messages', 8000);
     const list = Array.isArray(rows) ? rows : [];
     const myId = String(window.MY_ID || '');
     const incoming = list.filter((m) => String(m?.sender_user_id || '') !== myId);
@@ -224,8 +281,8 @@ const refreshNoticeMessages = async () => {
 };
 const renderSummary = async () => {
   try {
-    const m = new Date().toISOString().slice(0,7);
-    const rows = await fetchJSONAuthSafe(`/api/expenses/my?month=${encodeURIComponent(m)}`);
+    const m = currentYM();
+    const rows = await fetchJSONAuthSafeCached(`/api/expenses/my?month=${encodeURIComponent(m)}`, 8000);
     const a = Array.isArray(rows) ? rows.filter(r => String(r.status) === 'applied').length : 0;
     const sA = document.getElementById('empSumApplied');
     if (sA) sA.textContent = String(a);
@@ -241,8 +298,10 @@ const renderSummary = async () => {
 };
 const renderNotices = async () => {
   try {
-    const m = new Date().toISOString().slice(0,7);
-    const rows = await fetchJSONAuthSafe(`/api/expenses/my?month=${encodeURIComponent(m)}&status=rejected`);
+    // Avoid unnecessary /api/expenses/my calls while user is not on notice tab.
+    if (activeHistoryTab !== 'notice') return;
+    const m = currentYM();
+    const rows = await fetchJSONAuthSafeCached(`/api/expenses/my?month=${encodeURIComponent(m)}&status=rejected`, 8000);
     const n = Array.isArray(rows) ? rows.length : 0;
     const c = document.getElementById('empNoticeCount');
     if (c) c.textContent = String(n);
@@ -354,7 +413,7 @@ const openQuickEditExpense = async (recId) => {
   });
 };
 const renderList = async () => {
-  if (renderListBusy) return;
+  if (renderListBusy) { renderListPending = true; return; }
   const host = $('#exListHost');
   if (!host) return;
   const now = Date.now();
@@ -366,14 +425,17 @@ const renderList = async () => {
   renderListBusy = true;
   host.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
   const boardHost = $('#exMonthlyBoardHost');
-  const renderMonthlyBoard = (rows) => {
+  const renderMonthlyBoard = (monthRows, rows) => {
     if (!boardHost) return;
-    if (activeHistoryTab === 'notice') {
-      boardHost.innerHTML = '';
-      return;
-    }
     const list = Array.isArray(rows) ? rows : [];
+    const monthList = Array.isArray(monthRows) ? monthRows : [];
     const g = new Map();
+    for (const m of monthList) {
+      const ym = String(m?.month || '');
+      if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+      const prev = g.get(ym) || { ym, count: 0 };
+      g.set(ym, prev);
+    }
     for (const r of list) {
       const st = String(r.status || '').toLowerCase();
       if (activeHistoryTab === 'applied' && !isSubmittedStatus(st)) continue;
@@ -388,18 +450,149 @@ const renderList = async () => {
       boardHost.innerHTML = '<div class="history-month-empty">履歴の対象月がまだありません。</div>';
       return;
     }
-    boardHost.innerHTML = `<div class="history-months-wrap">${months.map((x) => {
-      const active = selectedHistoryMonth && selectedHistoryMonth === x.ym ? ' active' : '';
-      const text = `${x.ym.slice(0,4)}年${x.ym.slice(5,7)}月 (${x.count})`;
-      return `<button class="history-month-chip${active}" type="button" data-action="open-month" data-month="${x.ym}">${text}</button>`;
+    const preferredMonth = (() => {
+      const cur = String(selectedHistoryMonth || '');
+      if (cur && months.some((x) => x.ym === cur)) return cur;
+      return String(months[0]?.ym || '');
+    })();
+    const modeLabel = activeHistoryTab === 'applied' ? '申請' : (activeHistoryTab === 'new' ? '新規作成' : 'お知らせ');
+    const backAllBtn = (activeHistoryTab === 'applied' && showMonthProgressInNewMode)
+      ? `<button class="action-icon-btn" type="button" data-action="open-all-months" data-tooltip="全ての月に戻る" aria-label="全ての月に戻る" title="全ての月に戻る">
+           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+             <path d="M9 14L4 9l5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+             <path d="M20 20v-7a4 4 0 0 0-4-4H4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+           </svg>
+         </button>`
+      : '';
+    const monthApplyBtn = (activeHistoryTab !== 'notice' && preferredMonth)
+      ? `<button class="action-icon-btn" type="button" data-action="apply-month" data-month="${preferredMonth}" data-tooltip="送信" aria-label="送信" title="送信">
+           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+             <path d="M22 2L11 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+             <path d="M22 2L15 22l-4-9-9-4 20-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+           </svg>
+         </button>`
+      : '';
+    const monthDeleteBtn = (activeHistoryTab !== 'notice')
+      ? `<button class="action-icon-btn" type="button" data-action="delete-month" ${monthDeletePick ? '' : 'disabled'} data-tooltip="削除" aria-label="削除" title="削除">
+           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+             <path d="M4 7h16M9 7V5h6v2m-7 0l1 14h8l1-14M10 11v7M14 11v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+           </svg>
+         </button>`
+      : '';
+    const closeListBtn = selectedHistoryMonth
+      ? `<button class="action-icon-btn" type="button" data-action="clear-month" data-tooltip="一覧を閉じる" aria-label="一覧を閉じる" title="一覧を閉じる">
+           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+             <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+           </svg>
+         </button>`
+      : '';
+    boardHost.innerHTML = `<div class="history-topbar"><div class="history-mode-chip">現在: ${modeLabel}</div><div class="history-top-actions">${backAllBtn}${monthApplyBtn}${monthDeleteBtn}${closeListBtn}</div></div><div class="history-months-wrap">${months.map((x) => {
+      const ym = String(x.ym || '');
+      const active = selectedHistoryMonth && selectedHistoryMonth === ym ? ' active' : '';
+      const checked = (monthDeletePick && monthDeletePick === ym) ? ' checked' : '';
+      const text = `${ym.slice(0,4)}年${ym.slice(5,7)}月 (${x.count})`;
+      return `<label class="history-month-pick"><input type="checkbox" data-action="pick-delete-month" value="${ym}"${checked}><button class="history-month-chip${active}" type="button" data-action="open-month" data-month="${ym}">${text}</button></label>`;
     }).join('')}</div>`;
     if (boardHost.dataset.boundOpenMonth !== '1') {
       boardHost.dataset.boundOpenMonth = '1';
+      boardHost.addEventListener('change', (e) => {
+        const cb = e.target.closest('input[type="checkbox"][data-action="pick-delete-month"]');
+        if (!cb) return;
+        const v = String(cb.value || '');
+        if (!/^\d{4}-\d{2}$/.test(v)) return;
+        const checked = !!cb.checked;
+        if (checked) {
+          boardHost.querySelectorAll('input[type="checkbox"][data-action="pick-delete-month"]').forEach((x) => {
+            if (x !== cb) x.checked = false;
+          });
+          monthDeletePick = v;
+        } else {
+          if (monthDeletePick === v) monthDeletePick = '';
+        }
+        const delBtn = boardHost.querySelector('button[data-action="delete-month"]');
+        if (delBtn) delBtn.disabled = !monthDeletePick;
+      });
       boardHost.addEventListener('click', async (e) => {
+        const bAll = e.target.closest('button[data-action="open-all-months"]');
+        if (bAll) {
+          showMonthProgressInNewMode = false;
+          formActive = false;
+          selectedHistoryMonth = '';
+          const mf0 = document.getElementById('exFilterMonth');
+          if (mf0) mf0.value = '';
+          const mainHost = document.querySelector('.expense-main');
+          mainHost?.classList.remove('new-progress-split');
+          const home = document.getElementById('homeSection');
+          if (home) home.style.display = 'none';
+          const hs = document.getElementById('historySection');
+          if (hs) hs.style.display = '';
+          await renderList();
+          return;
+        }
+        const bClear = e.target.closest('button[data-action="clear-month"]');
+        if (bClear) {
+          selectedHistoryMonth = '';
+          const mf0 = document.getElementById('exFilterMonth');
+          if (mf0) mf0.value = '';
+          await renderList();
+          return;
+        }
+        const bDeleteMonth = e.target.closest('button[data-action="delete-month"]');
+        if (bDeleteMonth) {
+          const targetMonth = String(monthDeletePick || '');
+          if (!/^\d{4}-\d{2}$/.test(targetMonth)) return;
+          const okDel = window.confirm('削除しますか？');
+          if (!okDel) return;
+          bDeleteMonth.disabled = true;
+          try {
+            await fetchJSONAuth('/api/expenses/months/delete', { method: 'POST', body: JSON.stringify({ month: targetMonth }) });
+            try { _getCache.clear(); } catch {}
+            selectedHistoryMonth = '';
+            monthDeletePick = '';
+            const mf0 = document.getElementById('exFilterMonth');
+            if (mf0) mf0.value = '';
+            await renderList();
+          } catch (errDelMonth) {
+            const msg = String(errDelMonth?.message || '');
+            if (/404|not found/i.test(msg)) {
+              showErr('サーバー再起動が必要です');
+            } else {
+              showErr(msg || '月の削除に失敗しました');
+            }
+          } finally {
+            bDeleteMonth.disabled = false;
+          }
+          return;
+        }
+        const bApplyMonth = e.target.closest('button[data-action="apply-month"]');
+        if (bApplyMonth) {
+          const targetMonth = String(bApplyMonth.getAttribute('data-month') || selectedHistoryMonth || '');
+          if (!/^\d{4}-\d{2}$/.test(targetMonth)) return;
+          const okApplyMonth = window.confirm(`${targetMonth} の月次申請を manager に送信しますか？`);
+          if (!okApplyMonth) return;
+          bApplyMonth.disabled = true;
+          try {
+            await fetchJSONAuth('/api/expenses/months/apply', { method: 'POST', body: JSON.stringify({ month: targetMonth }) });
+            try { _getCache.clear(); } catch {}
+            await renderList();
+          } catch (errApplyMonth) {
+            showErr(errApplyMonth?.message || '月次申請の送信に失敗しました');
+          } finally {
+            bApplyMonth.disabled = false;
+          }
+          return;
+        }
         const b = e.target.closest('button[data-action="open-month"]');
         if (!b) return;
         const m = String(b.getAttribute('data-month') || '');
         if (!/^\d{4}-\d{2}$/.test(m)) return;
+        if (activeHistoryTab === 'applied' && typeof continueCreateForMonth === 'function') {
+          selectedHistoryMonth = m;
+          const mf2 = document.getElementById('exFilterMonth');
+          if (mf2) mf2.value = selectedHistoryMonth;
+          await continueCreateForMonth(m, { stayOnApplied: true });
+          return;
+        }
         // Toggle: click active month again => close list; click another month => switch
         selectedHistoryMonth = (selectedHistoryMonth === m) ? '' : m;
         const mf = document.getElementById('exFilterMonth');
@@ -413,42 +606,197 @@ const renderList = async () => {
     const status = activeHistoryTab === 'applied' ? '' : statusRaw;
     const sf = document.getElementById('exFilterStatus');
     if (activeHistoryTab === 'applied' && sf) sf.value = '';
-    if (activeHistoryTab === 'applied') {
-      const monthlyRows = await fetchJSONAuthSafe('/api/expenses/my');
-      renderMonthlyBoard(monthlyRows);
+    if (activeHistoryTab === 'applied' || activeHistoryTab === 'notice') {
+      let months = [];
+      let monthlyRows = [];
+      try {
+        const r = await fetchJSONAuthSafe('/api/expenses/months/my');
+        months = Array.isArray(r) ? r : [];
+      } catch (e) {
+        // Backward compatibility: if backend route is not deployed yet, keep old flow.
+        if (!isNotFoundErr(e)) throw e;
+      }
+      try {
+        const active = await fetchJSONAuthSafe('/api/expenses/months/active');
+        const ym = String(active?.month || '');
+        if (/^\d{4}-\d{2}$/.test(ym) && !months.some((m) => String(m?.month || '') === ym)) {
+          months.push({ month: ym, is_active: 1, status: String(active?.status || 'draft') });
+        }
+      } catch {}
+      monthMetaByYm = new Map();
+      for (const m of (Array.isArray(months) ? months : [])) {
+        const ym = String(m?.month || '');
+        if (/^\d{4}-\d{2}$/.test(ym)) monthMetaByYm.set(ym, m);
+      }
+      monthlyRows = await fetchJSONAuthSafeCached('/api/expenses/my', 8000);
+      renderMonthlyBoard(months, monthlyRows);
     } else {
-      renderMonthlyBoard([]);
+      monthMetaByYm = new Map();
+      renderMonthlyBoard([], []);
     }
     if (activeHistoryTab === 'applied' && !selectedHistoryMonth) {
       host.innerHTML = '<div class="empty-state"><div style="font-size:24px;">📅</div><div>上の対象月を選択すると履歴が表示されます</div></div>';
       return;
     }
-    const month = selectedHistoryMonth || document.getElementById('exFilterMonth')?.value || new Date().toISOString().slice(0,7);
+    const month = selectedHistoryMonth || document.getElementById('exFilterMonth')?.value || currentYM();
+    const monthJa = fmtYmJa(month);
+    if (historyModeLabel && activeHistoryTab === 'applied') {
+      historyModeLabel.textContent = monthJa ? `交通費提出履歴（${monthJa}）` : '交通費提出履歴（月次）';
+    }
+    if (historyModeLabel && showMonthProgressInNewMode && (activeHistoryTab === 'new' || activeHistoryTab === 'applied')) {
+      historyModeLabel.textContent = monthJa ? `申請済み日付（${monthJa}）` : '申請済み日付（当月）';
+    }
     const mf = document.getElementById('exFilterMonth');
     if (mf && month && activeHistoryTab !== 'notice') mf.value = month;
+    let monthProfile = null;
+    if ((activeHistoryTab === 'applied' || showMonthProgressInNewMode) && /^\d{4}-\d{2}$/.test(String(month || ''))) {
+      try {
+        monthProfile = await fetchJSONAuthSafe(`/api/expenses/months/profile?month=${encodeURIComponent(String(month))}`);
+      } catch (e) {
+        if (!isNotFoundErr(e)) throw e;
+      }
+    }
+    const monthMeta = monthMetaByYm.get(String(month || '')) || null;
+    const creatorName = String(
+      monthProfile?.employee_name ||
+      meProfile?.full_name ||
+      meProfile?.name ||
+      meProfile?.username ||
+      meProfile?.email ||
+      '-'
+    );
+    const employeeCode = String(
+      monthProfile?.employee_code ||
+      meProfile?.employee_code ||
+      meProfile?.emp_code ||
+      meProfile?.code ||
+      '-'
+    );
+    const birthDate = fmtDateOnly(
+      monthProfile?.birth_date ||
+      meProfile?.birth_date ||
+      meProfile?.birthday ||
+      meProfile?.date_of_birth ||
+      meProfile?.dob ||
+      '-'
+    );
+    const createdDate = fmtDateOnly(
+      monthProfile?.start_date ||
+      monthMeta?.created_at ||
+      firstDayOfYm(month)
+    );
+    const shouldShowProfile = (activeHistoryTab === 'applied' || showMonthProgressInNewMode);
+    const profileTableInner = shouldShowProfile
+      ? `<div style="display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12px;line-height:1.2;">
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">作成者:</span><strong style="color:#0f172a;">${creatorName}</strong></span>
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">社員コード:</span><strong style="color:#0f172a;">${employeeCode}</strong></span>
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">生年月日:</span><strong style="color:#0f172a;">${birthDate}</strong></span>
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">作成日:</span><strong style="color:#0f172a;">${createdDate}</strong></span>
+         </div>`
+      : '';
+    const profileBlock = shouldShowProfile
+      ? `<div class="history-profile-bar"><div class="history-profile-title" style="margin-bottom:2px;">情報</div>${profileTableInner}</div>`
+      : '';
+    try {
+      const profileHost = document.getElementById('exMonthlyProfileHost');
+      if (profileHost) profileHost.innerHTML = profileBlock || '';
+    } catch {}
     let rows = [];
     if (activeHistoryTab === 'notice') {
-      const allRows = await fetchJSONAuthSafe('/api/expenses/my');
+      const allRows = await fetchJSONAuthSafeCached('/api/expenses/my', 8000);
       rows = (Array.isArray(allRows) ? allRows : []).filter((r) => isNoticeFeedbackStatus(r?.status));
+      if (/^\d{4}-\d{2}$/.test(String(selectedHistoryMonth || ''))) {
+        rows = rows.filter((r) => String(r?.date || '').slice(0, 7) === String(selectedHistoryMonth));
+      }
     } else {
       const q = `/api/expenses/my?month=${encodeURIComponent(month)}&status=${encodeURIComponent(status)}`;
-      const rawRows = await fetchJSONAuthSafe(q);
+      const rawRows = await fetchJSONAuthSafeCached(q, 8000);
       rows = activeHistoryTab === 'applied'
         ? (Array.isArray(rawRows) ? rawRows.filter((r) => isSubmittedStatus(r?.status)) : [])
         : (Array.isArray(rawRows) ? rawRows : []);
+      if (activeHistoryTab === 'new' && showMonthProgressInNewMode) {
+        rows = rows.filter((r) => isSubmittedStatus(r?.status));
+      }
     }
     try { await renderSummary(); } catch {}
     if (!Array.isArray(rows) || rows.length===0) {
-      const emptyText = activeHistoryTab === 'notice' ? '通知・確認事項はありません' : '当月の交通費提出履歴はありません';
+      const emptyText = activeHistoryTab === 'notice'
+        ? '通知・確認事項はありません'
+        : (monthJa ? `${monthJa}の交通費提出履歴はありません` : '当月の交通費提出履歴はありません');
       host.innerHTML = `<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>${emptyText}</div></div>`;
       return;
     }
+    const isCompactSplit = showMonthProgressInNewMode && (activeHistoryTab === 'new' || activeHistoryTab === 'applied');
+    const colSpan = isCompactSplit ? 6 : 7;
+    const detailHeadRow = isCompactSplit
+      ? '<tr><th>日</th><th>経路</th><th>金額</th><th>ステータス</th><th>領収書</th><th>操作</th></tr>'
+      : '<tr><th>日付</th><th>経路</th><th>金額</th><th>ステータス</th><th>メモ</th><th>領収書</th><th>操作</th></tr>';
+    if (!Array.isArray(rows) || rows.length===0) {
+      const emptyText = activeHistoryTab === 'notice'
+        ? '通知・確認事項はありません'
+        : (monthJa ? `${monthJa}の交通費提出履歴はありません` : '当月の交通費提出履歴はありません');
+      host.innerHTML = `
+        <div class="adj-table-card">
+          <table class="adj-table">
+            <tbody>
+              ${detailHeadRow}
+              <tr><td colspan="${colSpan}" style="text-align:center;color:#334155;padding:18px 10px;">${emptyText}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+      return;
+    }
+    const totalAmount = rows.reduce((sum, r) => sum + Number(r?.amount || 0), 0);
+    let noticeSummary = '';
+    if (activeHistoryTab === 'notice') {
+      const monthly = new Map();
+      for (const r of rows) {
+        const ym = String(r?.date || '').slice(0, 7);
+        if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+        const prev = monthly.get(ym) || { ym, count: 0, amount: 0 };
+        prev.count += 1;
+        prev.amount += Number(r?.amount || 0);
+        monthly.set(ym, prev);
+      }
+      const role = String(meProfile?.role || '').toLowerCase();
+      const canCloseMonth = (role === 'manager' || role === 'admin');
+      const uid = String(meProfile?.id || window.MY_ID || '').trim();
+      const chips = Array.from(monthly.values())
+        .sort((a, b) => String(b.ym).localeCompare(String(a.ym)))
+        .map((m) => {
+          const closeBtn = canCloseMonth
+            ? `<button class="btn" type="button" data-action="close-month" data-month="${m.ym}" data-user-id="${uid}" style="height:24px;padding:0 8px;font-size:11px;">月次確認</button>`
+            : '';
+          return `<div class="notice-month-summary-item"><strong>${m.ym}</strong><span>${m.count}件</span><span>¥${Number(m.amount || 0).toLocaleString('ja-JP')}</span>${closeBtn}</div>`;
+        }).join('');
+      noticeSummary = chips ? `<div class="notice-month-summary">${chips}</div>` : '';
+    }
     const tr = rows.map(r => {
-      const d = String(r.date || '').slice(0,10);
+      const dFull = String(r.date || '').slice(0,10);
+      const d = (() => {
+        if (!isCompactSplit) return dFull;
+        const m = dFull.match(/^\d{4}-\d{2}-(\d{2})$/);
+        return m ? m[1] : dFull;
+      })();
       const a = Number(r.amount || 0).toLocaleString('ja-JP');
-      const route = [r.origin || '', r.via || '', r.destination || ''].filter(Boolean).join('→');
+      const origin = String(r.origin || '').trim();
+      const destination = String(r.destination || '').trim();
+      const via = normalizeVia(r.via);
+      const shortStation = (v) => String(v || '').trim().replace(/駅$/u, '');
+      const routeDisplay = [shortStation(origin), shortStation(destination)].filter(Boolean).join('→') || '-';
+      const routeMain = [origin, destination].filter(Boolean).join('→') || '-';
+      const routeFull = via ? `${routeMain}（経由: ${via}）` : routeMain;
       const st = String(r.status || 'pending');
       const stClass = (st==='applied'||st==='approved'||st==='rejected'||st==='draft') ? st : 'draft';
+      const stLabelMap = {
+        draft: '未申請',
+        pending: '未申請',
+        applied: '申請中',
+        approved: '承認済み',
+        rejected: '差戻し'
+      };
+      const stLabel = stLabelMap[st] || st;
       const applied = fmtDT(r.applied_at || r.updated_at || r.created_at);
       const approved = fmtDT(r.approved_at);
       const approver = r.approver_name ? String(r.approver_name) : '';
@@ -466,16 +814,52 @@ const renderList = async () => {
       const ruAttr = ru ? ` data-url="${ru}"` : '';
       const count = Number(r.file_count || 0);
       const ruInline = ru ? `<a href="${ru.startsWith('/')?ru:'/'+ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;">表示${count>1?`(${count}件)`:''}</a>` : (count>0 ? `<button class="btn" data-action="files" type="button" style="height:24px;">表示(${count}件)</button>` : '<span style="color:#64748b;font-size:12px;">なし</span>');
-      return `<tr data-id="${String(r.id||'')}"><td>${d}</td><td>${route}</td><td style="text-align:right;">${a}</td><td><span class="status-pill status-${stClass}">${st}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><img src="/static/images/paperclip.png" alt=""></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
+      if (isCompactSplit) {
+        const routeCell = routeDisplay;
+        const statusCell = `<span class="status-pill status-${stClass}">${stLabel}</span>`;
+        const receiptCell = ru
+          ? (count > 1
+              ? `<button class="btn" data-action="files" data-url="${ru}" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>`
+              : `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:11px;color:#1e40af;text-decoration:none;">表示</a>`)
+          : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>` : '<span style="color:#64748b;font-size:11px;">-</span>');
+        return `<tr data-id="${String(r.id||'')}"><td>${d}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${a}</td><td>${statusCell}</td><td>${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
+      }
+      return `<tr data-id="${String(r.id||'')}"><td>${d}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}</span></td><td>${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
     }).join('');
+    const totalRow = `<tr class="total-row"><td colspan="${colSpan}" style="font-weight:800;text-align:left;">合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}</td></tr>`;
     host.innerHTML = `
+      ${noticeSummary}
       <div class="adj-table-card">
         <table class="adj-table">
-          <thead><tr><th>日付</th><th>経路</th><th>金額</th><th>ステータス</th><th>メモ</th><th>領収書</th><th>操作</th></tr></thead>
-          <tbody>${tr}</tbody>
+          <tbody>${detailHeadRow}${tr}${totalRow}</tbody>
         </table>
       </div>
     `;
+    if (activeHistoryTab === 'notice') {
+      host.querySelectorAll('button[data-action="close-month"]').forEach((btn) => {
+        if (btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', async () => {
+          const m = String(btn.getAttribute('data-month') || '');
+          const uid = String(btn.getAttribute('data-user-id') || '').trim();
+          if (!/^\d{4}-\d{2}$/.test(m)) return;
+          const ok = window.confirm(`${m} の月次を manager として確認しますか？`);
+          if (!ok) return;
+          btn.disabled = true;
+          try {
+            await fetchJSONAuth('/api/expenses/admin/monthly-close', {
+              method: 'POST',
+              body: JSON.stringify({ month: m, userId: uid || null })
+            });
+            await renderList();
+          } catch (eClose) {
+            showErr(eClose?.message || '月次確認に失敗しました');
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    }
     const tbody = host.querySelector('tbody');
     if (tbody && !tbody.dataset.bindDel) {
       tbody.dataset.bindDel = '1';
@@ -515,7 +899,7 @@ const renderList = async () => {
             let rows = [];
             try { rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (errGet) {
               const warn = document.createElement('tr'); warn.className = 'files-row';
-              warn.innerHTML = `<td colspan="7"><div style="color:#b00020;">領収書の読み込みに失敗しました：${String(errGet?.message || 'unknown')}</div></td>`;
+              warn.innerHTML = `<td colspan="${colSpan}"><div style="color:#b00020;">領収書の読み込みに失敗しました：${String(errGet?.message || 'unknown')}</div></td>`;
               tr2.after(warn);
               btn.disabled = false; return;
             }
@@ -535,21 +919,27 @@ const renderList = async () => {
               if (url) { try { window.open(url.startsWith('/')?url:'/'+url, '_blank'); } catch { window.location.href = (url.startsWith('/')?url:'/'+url); } }
             }
             const filesHtml = Array.isArray(rows) && rows.length
-              ? rows.map(f => {
+              ? rows.map((f, idx) => {
                   const isImg = String(f.mime || '').startsWith('image/');
                   const url = String(f.path || f.url || f.file_path || '').startsWith('/') ? String(f.path || f.url || f.file_path) : '/' + String(f.path || f.url || f.file_path || '');
-                  const thumb = isImg ? `<img src="${url}" alt="${f.name || ''}" style="width:80px;height:auto;border:1px solid #e5e7eb;border-radius:8px;" />` : `<span style="font-weight:700;color:#1e40af;">PDF</span>`;
-                  const name = f.name || f.original_name || url.split('/').pop();
+                  const thumb = isImg
+                    ? `<img src="${url}" alt="${f.name || ''}" style="width:40px;height:28px;object-fit:cover;border:1px solid #e5e7eb;border-radius:6px;" />`
+                    : `<span style="font-weight:700;color:#1e40af;font-size:11px;">PDF</span>`;
+                  const ext = (String(url).match(/\.([a-zA-Z0-9]+)(?:\?|$)/) || [,'file'])[1];
+                  const name = `ファイル ${idx + 1}.${ext}`;
                   const deco = isImg ? 'none' : 'underline';
-                  return `<li data-file-id="${String(f.id)}" style="display:flex;align-items:center;gap:8px;">
-                    <a href="${url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;text-decoration:${deco};">${thumb}<span>${name}</span></a>
-                    <button class="icon-btn" data-action="file-delete" aria-label="ファイル削除"><img src="/static/images/xoa.png" alt=""></button>
+                  return `<li data-file-id="${String(f.id)}" style="display:flex;align-items:center;gap:6px;min-width:0;">
+                    <a href="${url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;text-decoration:${deco};min-width:0;max-width:260px;">
+                      ${thumb}
+                      <span style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</span>
+                    </a>
+                    <button class="icon-btn" data-action="file-delete" aria-label="ファイル削除" style="width:24px;height:24px;"><img src="/static/images/xoa.png" alt="" style="width:14px;height:14px;"></button>
                   </li>`;
                 }).join('')
-              : '<li>ファイルなし</li>';
+              : '<li style="font-size:11px;color:#64748b;">ファイルなし</li>';
             const expand = document.createElement('tr');
             expand.className = 'files-row';
-            expand.innerHTML = `<td colspan="7"><ul style="list-style:none;padding:0;margin:6px 0;display:flex;gap:8px;flex-wrap:wrap;">${filesHtml}</ul></td>`;
+            expand.innerHTML = `<td colspan="${colSpan}"><ul style="list-style:none;padding:0;margin:4px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${filesHtml}</ul></td>`;
             tr2.after(expand);
             const ul = expand.querySelector('ul');
             ul?.addEventListener('click', async (ev) => {
@@ -570,9 +960,10 @@ const renderList = async () => {
                 let newRows = [];
                 try { newRows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch {}
                 const newHtml = Array.isArray(newRows) && newRows.length
-                  ? newRows.map(f => {
+                  ? newRows.map((f, idx) => {
                       const url = String(f.path || f.url || f.file_path || '').startsWith('/') ? String(f.path || f.url || f.file_path) : '/' + String(f.path || f.url || f.file_path || '');
-                      const name = f.name || f.original_name || url.split('/').pop();
+                      const ext = (String(url).match(/\.([a-zA-Z0-9]+)(?:\?|$)/) || [,'file'])[1];
+                      const name = `ファイル ${idx + 1}.${ext}`;
                       const isPdf = /\.pdf($|\?)/i.test(url) || /\.pdf$/i.test(String(name||''));
                       const deco = isPdf ? 'underline' : 'none';
                       return `<li data-file-id="${String(f.id)}"><a href="${url}" target="_blank" rel="noopener" style="text-decoration:${deco};">${name}</a> <button class="icon-btn" data-action="file-delete" aria-label="ファイル削除"><img src="/static/images/xoa.png" alt=""></button></li>`;
@@ -591,7 +982,7 @@ const renderList = async () => {
             }
             const chat = document.createElement('tr');
             chat.className = 'chat-row';
-            chat.innerHTML = `<td colspan="7">
+            chat.innerHTML = `<td colspan="${colSpan}">
               <div class="chat-box" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;">
                 <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">やり取り</div>
                 <div class="chat-reason" style="margin-bottom:8px;color:#7f1d1d;font-weight:700;"></div>
@@ -771,7 +1162,7 @@ const renderList = async () => {
             btnEdit?.addEventListener('click', async () => { try { await openEdit(id); } catch {} });
             btnNew?.addEventListener('click', async () => {
               try {
-                const m = new Date().toISOString().slice(0,7);
+                const m = currentYM();
                 try { await fetchJSONAuth('/api/expenses/months/start', { method:'POST', body: JSON.stringify({ month: m }) }); } catch {}
                 const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
                 setVal('exDate', m + '-01');
@@ -788,7 +1179,7 @@ const renderList = async () => {
                 setVal('exAmount', '');
                 setVal('exMemo', '');
                 formActive = true;
-                await showTab('home');
+                await showTab('new');
               } catch {}
             });
           }
@@ -801,14 +1192,20 @@ const renderList = async () => {
     const msg = String(e?.message || 'unknown');
     if (isTooManyReqErr(e)) {
       listRateLimitedUntilMs = Date.now() + 65000;
-      host.innerHTML = '<div style="color:#b00020;font-weight:700;">取得失敗: Too many requests（操作が多すぎます）。1分ほど待ってから自動再試行します。</div>';
+      host.innerHTML = '<div style="color:#b45309;font-weight:700;">アクセスが集中しています（Too many requests）。1分ほど待ってから自動再試行します。</div>';
       try { if (listRetryTimer) clearTimeout(listRetryTimer); } catch {}
       listRetryTimer = setTimeout(() => { renderList().catch(() => {}); }, 65000);
     } else {
       host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${msg}</div>`;
     }
-  } finally { renderListBusy = false; }
-};
+  } finally {
+    renderListBusy = false;
+    if (renderListPending) {
+      renderListPending = false;
+      setTimeout(() => { renderList().catch(() => {}); }, 0);
+    }
+  }
+};// Cái này dùng để render list - 
 const renderHistoryTitle = () => {
   // no-op: history controls are now on the toolbar row
 };
@@ -829,6 +1226,7 @@ export async function bootExpensesPage() {
   prefillUserName();
   try {
     const p = await fetchJSONAuthSafe('/api/auth/me', undefined, 1);
+    meProfile = p || null;
     const role = String(p.role||'').toLowerCase();
     if (!p || (role!=='employee' && role!=='manager')) {
       if (role==='admin') {
@@ -853,6 +1251,23 @@ export async function bootExpensesPage() {
         const mf = document.getElementById('exFilterMonth'); if (mf) mf.value = String(m);
         try { await fetchJSONAuth('/api/expenses/months/start', { method:'POST', body: JSON.stringify({ month: String(m) }) }); } catch {}
         formActive = true;
+      } else {
+        try {
+          const active = await fetchJSONAuthSafe('/api/expenses/months/active', undefined, 1);
+          const ym = String(active?.month || '').slice(0, 7);
+          if (/^\d{4}-\d{2}$/.test(ym)) {
+            createTargetMonth = ym;
+            const mf = document.getElementById('exFilterMonth'); if (mf) mf.value = ym;
+            const d = document.getElementById('exDate');
+            if (d && (!d.value || String(d.value).slice(0, 7) !== ym)) {
+              const t = todayISO();
+              d.value = (String(t).slice(0, 7) === ym) ? t : `${ym}-01`;
+            }
+            formActive = true;
+          }
+        } catch (e) {
+          if (!isNotFoundErr(e)) throw e;
+        }
       }
     } catch {}
   } catch (e) {
@@ -951,8 +1366,6 @@ export async function bootExpensesPage() {
     if (!destination) { setFieldError('exDestination', '到着地は必須です。'); ok = false; }
     if (!purpose) { setFieldError('exPurpose', '用途は必須です。'); ok = false; }
     if (!rawAmount && !(type === 'train' && teiki)) { setFieldError('exAmount', '金額は必須です。'); ok = false; }
-    if (!frontInput?.files?.length) { setFieldError('exReceiptFront', '表（Front）を添付してください。'); ok = false; }
-    if (!backInput?.files?.length) { setFieldError('exReceiptBack', '裏（Back）を添付してください。'); ok = false; }
     if (!ok) showErr('入力内容をご確認ください。');
     return ok;
   };
@@ -1108,8 +1521,74 @@ export async function bootExpensesPage() {
   const createMonthGrid = document.getElementById('exCreateMonthGrid');
   const createMonthInput = document.getElementById('exCreateMonthInput');
   const createMonthStartBtn = document.getElementById('exCreateMonthStart');
+  const profileNameEl = document.getElementById('exCreateProfileName');
+  const profileCodeEl = document.getElementById('exCreateProfileCode');
+  const profileDobEl = document.getElementById('exCreateProfileDob');
+  const profileStartEl = document.getElementById('exCreateProfileStart');
+  const profileStatusEl = document.getElementById('exCreateProfileStatus');
+  const setProfileStatus = (text, isError = false) => {
+    if (!profileStatusEl) return;
+    profileStatusEl.textContent = String(text || '');
+    profileStatusEl.style.color = isError ? '#b91c1c' : '#334155';
+  };
+  const profileDefaults = (ym) => ({
+    employeeName: String(
+      meProfile?.full_name ||
+      meProfile?.name ||
+      meProfile?.username ||
+      meProfile?.email ||
+      document.getElementById('userName')?.textContent ||
+      ''
+    ).trim(),
+    employeeCode: String(
+      meProfile?.employee_code ||
+      meProfile?.emp_code ||
+      meProfile?.code ||
+      ''
+    ).trim(),
+    birthDate: fmtDateOnly(
+      meProfile?.birth_date ||
+      meProfile?.birthday ||
+      meProfile?.date_of_birth ||
+      meProfile?.dob ||
+      ''
+    ),
+    startDate: firstDayOfYm(ym)
+  });
+  const fillCreateProfile = (row, ym) => {
+    const d = profileDefaults(ym);
+    if (profileNameEl) profileNameEl.value = String(row?.employee_name || d.employeeName || '');
+    if (profileCodeEl) profileCodeEl.value = String(row?.employee_code || d.employeeCode || '');
+    if (profileDobEl) profileDobEl.value = String(row?.birth_date || d.birthDate || '').slice(0, 10);
+    if (profileStartEl) profileStartEl.value = String(row?.start_date || d.startDate || '').slice(0, 10);
+  };
+  const loadMonthProfile = async (ym) => {
+    if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) return;
+    // Profile inputs were removed from the New flow; keep default data preparation only.
+    fillCreateProfile(null, ym);
+  };
+  const validateCreateProfile = (ym) => {
+    const employeeName = String(profileNameEl?.value || '').trim();
+    const employeeCode = String(profileCodeEl?.value || '').trim();
+    const birthDate = String(profileDobEl?.value || '').trim();
+    const startDate = String(profileStartEl?.value || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) return { ok: false, message: '対象年月を選択してください。' };
+    if (!employeeName) return { ok: false, message: '社員情報を取得できませんでした（社員名）。' };
+    if (!employeeCode) return { ok: false, message: '社員情報を取得できませんでした（社員コード）。' };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return { ok: false, message: '社員情報を取得できませんでした（生年月日）。' };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { ok: false, message: '作成開始日を入力してください。' };
+    return { ok: true, payload: { month: String(ym), employeeName, employeeCode, birthDate, startDate } };
+  };
+  const saveMonthProfile = async (ym) => {
+    const vr = validateCreateProfile(ym);
+    if (!vr.ok) throw new Error(vr.message || '入力内容をご確認ください。');
+    setProfileStatus('入力情報を保存中…');
+    const row = await fetchJSONAuth('/api/expenses/months/profile', { method: 'POST', body: JSON.stringify(vr.payload) });
+    setProfileStatus('入力情報を保存しました。');
+    return row;
+  };
   if (monthFilter && !monthFilter.value) {
-    monthFilter.value = new Date().toISOString().slice(0,7);
+    monthFilter.value = currentYM();
   }
   if (createMonthInput && !createMonthInput.value) {
     createMonthInput.value = createTargetMonth;
@@ -1158,33 +1637,44 @@ export async function bootExpensesPage() {
     navNoticeBtns.forEach((el) => el.classList.toggle('active', name === 'notice'));
   };
   const showTab = async (name) => {
-    activeHistoryTab = name;
-    if (name === 'new') {
+    const tab = (name === 'new' || name === 'applied' || name === 'notice') ? name : 'new';
+    const mainHost = document.querySelector('.expense-main');
+    activeHistoryTab = tab;
+    try { sessionStorage.setItem(EXPENSES_ACTIVE_TAB_KEY, activeHistoryTab); } catch {}
+    if (tab === 'new') {
       if (newMonthSection) newMonthSection.style.display = formActive ? 'none' : '';
       if (homeSection) homeSection.style.display = formActive ? '' : 'none';
-      if (historySection) historySection.style.display = 'none';
+      if (historySection) historySection.style.display = showMonthProgressInNewMode ? '' : 'none';
       if (historySection) historySection.classList.remove('notice-mode');
-      if (historyModeLabel) historyModeLabel.textContent = '交通費提出履歴（月次）';
+      if (historyModeLabel) historyModeLabel.textContent = showMonthProgressInNewMode ? '申請済み日付（当月）' : '交通費提出履歴（月次）';
+      if (mainHost) mainHost.classList.toggle('new-progress-split', !!showMonthProgressInNewMode);
     } else {
       if (newMonthSection) newMonthSection.style.display = 'none';
-      if (homeSection) homeSection.style.display = 'none';
+      if (homeSection) homeSection.style.display = (tab === 'applied' && showMonthProgressInNewMode) ? '' : 'none';
       if (historySection) historySection.style.display = '';
-      if (historySection) historySection.classList.toggle('applied-month-mode', name === 'applied');
-      if (historySection) historySection.classList.toggle('notice-mode', name === 'notice');
-      if (historyModeLabel) historyModeLabel.textContent = (name === 'notice') ? 'お知らせ（差戻し）' : '交通費提出履歴（月次）';
+      if (historySection) historySection.classList.toggle('applied-month-mode', tab === 'applied');
+      if (historySection) historySection.classList.toggle('notice-mode', tab === 'notice');
+      if (historyModeLabel) historyModeLabel.textContent = (tab === 'notice')
+        ? 'お知らせ（差戻し）'
+        : ((tab === 'applied' && showMonthProgressInNewMode) ? '申請済み日付（当月）' : '交通費提出履歴（月次）');
+      if (mainHost) mainHost.classList.toggle('new-progress-split', tab === 'applied' && showMonthProgressInNewMode);
       renderHistoryTitle();
     }
-    setNavActive(name);
+    setNavActive(tab);
   };
   const renderCreateMonthGrid = () => {
     if (!createMonthGrid) return;
-    const months = recentMonths(6, createTargetMonth || currentYM());
+    const months = [String(createTargetMonth || currentYM())];
     createMonthGrid.innerHTML = months.map((ym) => {
       const active = ym === createTargetMonth ? ' active' : '';
       return `<button class="month-chip${active}" type="button" data-month="${ym}">${ym.slice(0,4)}年${ym.slice(5,7)}月</button>`;
     }).join('');
   };
-  const startNewForMonth = async (ym) => {
+  const startNewForMonth = async (ym, opts = {}) => {
+    const showProgress = !!opts.showProgress || !!opts.switchToAppliedAfterCreate;
+    const stayOnApplied = !!opts.stayOnApplied;
+    const switchToAppliedAfterCreate = !!opts.switchToAppliedAfterCreate;
+    const openAppliedListAfterCreate = !!opts.openAppliedListAfterCreate;
     if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) {
       showErr('対象年月を選択してください。');
       return;
@@ -1193,14 +1683,37 @@ export async function bootExpensesPage() {
     if (createMonthInput) createMonthInput.value = createTargetMonth;
     try {
       await fetchJSONAuth('/api/expenses/months/start', { method:'POST', body: JSON.stringify({ month: createTargetMonth }) });
-    } catch {}
+    } catch (e) {
+      const msg = String(e?.message || '月の開始に失敗しました');
+      showErr(msg);
+      setProfileStatus(msg, true);
+      return;
+    }
     const d = document.getElementById('exDate');
     if (d) d.value = `${createTargetMonth}-01`;
     if (monthFilter) monthFilter.value = createTargetMonth;
+    if (statusFilter) statusFilter.value = '';
+    selectedHistoryMonth = createTargetMonth;
+    showMonthProgressInNewMode = showProgress;
     formActive = true;
     showErr('');
-    await showTab('new');
+    if (openAppliedListAfterCreate) {
+      showMonthProgressInNewMode = false;
+      formActive = false;
+      selectedHistoryMonth = '';
+      if (monthFilter) monthFilter.value = '';
+      await showTab('applied');
+      await renderList();
+      return;
+    }
+    await showTab((stayOnApplied || switchToAppliedAfterCreate) ? 'applied' : 'new');
+    if (showProgress) {
+      await renderList();
+    } else if (switchToAppliedAfterCreate) {
+      await renderList();
+    }
   };
+  continueCreateForMonth = async (ym, opts = {}) => startNewForMonth(ym, { showProgress: true, stayOnApplied: !!opts.stayOnApplied, skipProfile: true });
   if (createMonthGrid && !createMonthGrid.dataset.bound) {
     createMonthGrid.dataset.bound = '1';
     createMonthGrid.addEventListener('click', async (e) => {
@@ -1210,7 +1723,6 @@ export async function bootExpensesPage() {
       createTargetMonth = ym;
       if (createMonthInput) createMonthInput.value = ym;
       renderCreateMonthGrid();
-      await startNewForMonth(ym);
     });
   }
   createMonthInput?.addEventListener('change', () => {
@@ -1222,7 +1734,7 @@ export async function bootExpensesPage() {
   });
   createMonthStartBtn?.addEventListener('click', async () => {
     const ym = String(createMonthInput?.value || createTargetMonth || '');
-    await startNewForMonth(ym);
+    await startNewForMonth(ym, { openAppliedListAfterCreate: true });
   });
   renderCreateMonthGrid();
   const bindTabClick = (els, handler) => {
@@ -1233,7 +1745,9 @@ export async function bootExpensesPage() {
   };
   bindTabClick(navNewBtns, async (e) => {
     e.preventDefault();
+    if (activeHistoryTab === 'new') return;
     formActive = false;
+    showMonthProgressInNewMode = false;
     createTargetMonth = String(createMonthInput?.value || createTargetMonth || currentYM());
     if (createMonthInput) createMonthInput.value = createTargetMonth;
     renderCreateMonthGrid();
@@ -1241,11 +1755,14 @@ export async function bootExpensesPage() {
   });
   bindTabClick(navAppliedBtns, async (e) => {
     e.preventDefault();
+    if (activeHistoryTab === 'applied') return;
     if (navBusy) return;
     navBusy = true;
     const m = document.getElementById('exFilterMonth');
     const s = document.getElementById('exFilterStatus');
     if (s) s.value = 'applied';
+    showMonthProgressInNewMode = false;
+    formActive = false;
     selectedHistoryMonth = '';
     if (m) m.value = '';
     try {
@@ -1257,6 +1774,7 @@ export async function bootExpensesPage() {
   });
   bindTabClick(navNoticeBtns, async (e) => {
     e.preventDefault();
+    if (activeHistoryTab === 'notice') return;
     if (navBusy) return;
     navBusy = true;
     const s = document.getElementById('exFilterStatus');
@@ -1272,7 +1790,20 @@ export async function bootExpensesPage() {
       navBusy = false;
     }
   });
-  await showTab('new');
+  const initialTab = (() => {
+    try {
+      const qs = new URLSearchParams(String(window.location.search || ''));
+      const qTab = String(qs.get('tab') || '').toLowerCase();
+      if (qTab === 'new' || qTab === 'applied' || qTab === 'notice') return qTab;
+      const saved = String(sessionStorage.getItem(EXPENSES_ACTIVE_TAB_KEY) || '').toLowerCase();
+      if (saved === 'new' || saved === 'applied' || saved === 'notice') return saved;
+    } catch {}
+    return 'new';
+  })();
+  await showTab(initialTab);
+  if (initialTab !== 'new') {
+    await renderList();
+  }
   try { await renderSummary(); } catch {}
   try {
     await renderNotices();
@@ -1284,7 +1815,7 @@ export async function bootExpensesPage() {
     if (noticePollTimer) clearInterval(noticePollTimer);
     noticePollTimer = setInterval(async () => {
       if (!expensesPageMounted) return;
-      try { await renderNotices(); } catch {}
+      // Keep polling lightweight to avoid 429 bursts from /api/expenses/my.
       try { await refreshNoticeMessages(); } catch {}
     }, 30000);
   } catch {}

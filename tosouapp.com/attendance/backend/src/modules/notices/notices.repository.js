@@ -101,20 +101,65 @@ function buildSyntheticNoticeId(kind, sourceId) {
   return base + sid;
 }
 
+const SYSTEM_KINDS = new Set([
+  'system',
+  'system_announcement',
+  'announcement',
+  'broadcast',
+  'maintenance',
+  'policy_update'
+]);
+
+const WORKFLOW_KINDS = new Set([
+  'approval',
+  'attendance',
+  'expense',
+  'chat',
+  'leave_request',
+  'time_adjust',
+  'expense_apply',
+  'faq_question',
+  'workflow'
+]);
+
+const AUDIT_KINDS = new Set([
+  'audit',
+  'activity',
+  'attendance_punch',
+  'employee_action'
+]);
+
+function inferCategoryFromRow(row) {
+  const kind = String(row?.kind || '').toLowerCase();
+  if (SYSTEM_KINDS.has(kind)) return 'system';
+  if (WORKFLOW_KINDS.has(kind)) return 'workflow';
+  if (AUDIT_KINDS.has(kind)) return 'audit';
+  const targetUserId = parseInt(String(row?.target_user_id || row?.targetUserId || 0), 10) || 0;
+  if (targetUserId) return 'workflow';
+  const audience = String(row?.audience || '').toLowerCase();
+  if (audience === 'admin' || audience === 'manager' || audience === 'admin_manager') return 'workflow';
+  const msg = String(row?.message || '');
+  if (/(申請|承認|差戻|却下|打刻|check[- ]?in|check[- ]?out)/i.test(msg)) return 'workflow';
+  return 'system';
+}
+
 module.exports = {
   ensureNoticesSchema,
   ensureNoticeReadsSchema,
   ensureNoticeHidesSchema,
-  async createNotice({ targetUserId, targetDate, targetMonth, message, createdBy }) {
+  async createNotice({ targetUserId, targetDate, targetMonth, message, createdBy, kind = null, title = null, audience = 'all' }) {
     await ensureNoticesSchema();
     const tu = Number.isFinite(parseInt(String(targetUserId || ''), 10)) ? parseInt(String(targetUserId), 10) : null;
     const date = isISODate(targetDate) ? String(targetDate) : null;
     const month = isYM(targetMonth) ? String(targetMonth) : null;
     const msg = String(message || '').trim();
     if (!msg) throw Object.assign(new Error('Missing message'), { status: 400 });
+    const k = String(kind || '').trim().slice(0, 64) || null;
+    const t = String(title || '').trim().slice(0, 255) || null;
+    const aud = ['all', 'admin', 'manager', 'admin_manager'].includes(String(audience)) ? String(audience) : 'all';
     const [res] = await db.query(
-      `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by) VALUES (?, ?, ?, ?, ?)`,
-      [tu, date, month, msg, createdBy || null]
+      `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by, kind, title, audience) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tu, date, month, msg, createdBy || null, k, t, aud]
     );
     const id = Number(res?.insertId || 0);
     const [rows] = await db.query(`SELECT * FROM notices WHERE id = ? LIMIT 1`, [id]);
@@ -195,9 +240,10 @@ module.exports = {
           createdBy: it.createdBy || null,
           audience: it.audience || 'all',
           isRead: Number(it.isRead || 0) === 1,
-          payload
+          payload,
+          category: inferCategoryFromRow(it)
         };
-      }) : [];
+      }).filter((it) => it.category === 'workflow') : [];
     } catch {
       // Backward-compatible fallback for minimal notices schema.
       const [rows2] = await db.query(
@@ -226,8 +272,9 @@ module.exports = {
         createdBy: it.createdBy || null,
         audience: 'all',
         isRead: Number(it.isRead || 0) === 1,
-        payload: null
-      })) : [];
+        payload: null,
+        category: inferCategoryFromRow(it)
+      })).filter((it) => it.category === 'workflow') : [];
     }
     if (!items.length) {
       // Compatibility path: return legacy notice history even when audience metadata is missing/broken.
@@ -257,8 +304,9 @@ module.exports = {
         createdBy: it.createdBy || null,
         audience: 'all',
         isRead: Number(it.isRead || 0) === 1,
-        payload: null
-      })) : [];
+        payload: null,
+        category: inferCategoryFromRow(it)
+      })).filter((it) => it.category === 'workflow') : [];
     }
     if (!items.length) {
       // Last fallback: synthesize feed from real request tables so admin can still see history when notices table is empty.
@@ -372,7 +420,11 @@ module.exports = {
           isRead: false,
           payload: null
         })));
-      items = mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, lim);
+      items = mapped
+        .map((it) => ({ ...it, category: inferCategoryFromRow(it) }))
+        .filter((it) => it.category === 'workflow')
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .slice(0, lim);
       const syntheticIds = items.map((it) => Number(it.id || 0)).filter((n) => n > 0);
       if (syntheticIds.length && uid) {
         const placeholders = syntheticIds.map(() => '?').join(',');
@@ -417,6 +469,7 @@ module.exports = {
         WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
           AND (n.kind IS NULL OR n.kind != 'attendance_punch')
+          AND (n.kind IS NULL OR n.kind NOT IN ('system','system_announcement','announcement','broadcast','maintenance','policy_update'))
           AND (
             (n.target_date IS NULL AND n.target_month IS NULL)
             OR (n.target_date IS NOT NULL AND n.target_date = ?)
@@ -427,7 +480,9 @@ module.exports = {
       `,
       [uid, uid, uid, d, m, lim]
     );
-    return (rows || []).filter((r) => !isSelfSubmitNotice(r, uid));
+    return (rows || [])
+      .filter((r) => inferCategoryFromRow(r) === 'workflow')
+      .filter((r) => !isSelfSubmitNotice(r, uid));
   },
   async listForUserFeed({ limit, userId }) {
     await ensureNoticesSchema();
@@ -446,13 +501,18 @@ module.exports = {
           ON h.notice_id = n.id AND h.user_id = ?
         WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
+          AND (n.kind IS NULL OR n.kind NOT IN ('system','system_announcement','announcement','broadcast','maintenance','policy_update'))
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
       `,
       [uid, uid, uid, lim]
     );
     const baseRows = rows || [];
-    if (baseRows.length) return baseRows.filter((r) => !isSelfSubmitNotice(r, uid));
+    if (baseRows.length) {
+      return baseRows
+        .filter((r) => inferCategoryFromRow(r) === 'workflow')
+        .filter((r) => !isSelfSubmitNotice(r, uid));
+    }
 
     // Fallback feed for employee side when notices table is still empty:
     // synthesize from own request history so bell is never empty in real usage.
@@ -562,7 +622,9 @@ module.exports = {
         SELECT n.id, n.target_user_id, n.target_date, n.target_month, n.message, n.created_by, n.created_at,
                u.username AS target_username, u.employee_code AS target_employee_code, u.email AS target_email,
                rr.read_at AS target_read_at,
-               COALESCE(rc.read_count, 0) AS read_count
+               COALESCE(rc.read_count, 0) AS read_count,
+               n.kind,
+               n.audience
         FROM notices n
         LEFT JOIN users u ON u.id = n.target_user_id
         LEFT JOIN notice_reads rr ON rr.notice_id = n.id AND rr.user_id = n.target_user_id
@@ -577,7 +639,7 @@ module.exports = {
       `,
       [...args, lim]
     );
-    return rows || [];
+    return (rows || []).filter((r) => inferCategoryFromRow(r) === 'system');
   },
   async markRead({ noticeIds, userId }) {
     await ensureNoticesSchema();

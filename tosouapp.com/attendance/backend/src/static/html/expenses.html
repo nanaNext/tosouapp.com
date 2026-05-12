@@ -22,6 +22,15 @@
       --error: #ef4444;
     }
 
+    html {
+      background: #f7f9fb;
+      overflow-y: scroll;
+    }
+
+    body:not(.admin) {
+      overflow: visible !important;
+    }
+
     .content {
       width: 100%;
       max-width: none;
@@ -29,11 +38,19 @@
       box-sizing: border-box;
       background: #f7f9fb;
       height: auto;
+      min-height: 0;
       overflow: visible;
+      min-height: calc(100vh - var(--topbar-height) - var(--subbar-height));
     }
-    .subbar + .content {
+
+    body {
+      background: #f7f9fb;
+    }
+
+    .subbar+.content {
       padding-top: calc(var(--topbar-height) + var(--subbar-height) + 4px);
     }
+
     body:not(.admin) .topbar-inner .search {
       max-width: 520px;
       flex: 0 1 520px;
@@ -80,6 +97,7 @@
       gap: 8px 8px;
       align-items: center;
     }
+
     .adjust-grid .full-row {
       grid-column: 1 / -1;
     }
@@ -98,15 +116,18 @@
       text-align: left;
       white-space: nowrap;
     }
+
     .adjust-label-right {
       padding-left: 24px;
       padding-right: 4px;
     }
+
     .req {
       color: #dc2626;
       font-weight: 700;
       margin-left: 3px;
     }
+
     .section-head {
       font-size: 14px;
       font-weight: 700;
@@ -118,28 +139,32 @@
       padding: 2px 0 2px 8px;
       margin-bottom: 4px;
     }
+
     .month-picker-card {
       max-width: 920px;
       width: 100%;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 14px;
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
-      margin-bottom: 14px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      box-shadow: none;
+      margin-bottom: 10px;
     }
+
     .month-picker-title {
       font-size: 14px;
       font-weight: 700;
       color: #334155;
       margin-bottom: 8px;
     }
+
     .month-chip-grid {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 10px;
     }
+
     .month-chip {
       height: 34px;
       border: 1px solid #d7dee9;
@@ -150,17 +175,20 @@
       font-size: 12px;
       cursor: pointer;
     }
+
     .month-chip.active {
       background: #2563eb;
       color: #fff;
       border-color: #2563eb;
     }
+
     .month-picker-actions {
       display: flex;
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
     }
+
     .month-picker-actions input[type="month"] {
       height: 34px;
       border: 1px solid #d7dee9;
@@ -169,7 +197,50 @@
       font-size: 13px;
     }
 
-    .adjust-grid > div {
+    .create-profile-box {
+
+      margin-top: 10px;
+      border: 1px solid #dbe2ea;
+      background: #fff;
+      padding: 10px;
+      border-radius: 0;
+    }
+
+    .create-profile-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .create-profile-item {
+      min-width: 0;
+    }
+
+    .create-profile-label {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+
+    .create-profile-item input {
+      width: 100%;
+      height: 34px;
+      border: 1px solid #d7dee9;
+      border-radius: 0;
+      padding: 0 8px;
+      font-size: 13px;
+      color: #0f172a;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .create-profile-status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    .adjust-grid>div {
       min-width: 0;
     }
 
@@ -199,11 +270,13 @@
       border-color: #93c5fd;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
     }
+
     .field-error {
       border-color: #d32f2f !important;
       box-shadow: 0 0 0 3px rgba(211, 47, 47, .10) !important;
       background: #fff9f9 !important;
     }
+
     .field-msg {
       margin-top: 4px;
       font-size: 11px;
@@ -213,6 +286,7 @@
       gap: 4px;
       line-height: 1.35;
     }
+
     .field-msg::before {
       content: "⚠";
       font-size: 11px;
@@ -231,13 +305,13 @@
 
     .adjust-grid input[type="file"] {
       width: 100%;
-      min-height: 34px;
+      min-height: 32px;
       border: 1px solid #cfdced;
       border-radius: 8px;
       background: #fff;
-      padding: 3px 7px;
+      padding: 2px 6px;
       box-sizing: border-box;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
       color: #475569;
       overflow: hidden;
@@ -248,9 +322,9 @@
       border-radius: 8px;
       background: #eff6ff;
       color: #0b2c66;
-      padding: 4px 9px;
-      margin-right: 8px;
-      font-size: 12px;
+      padding: 2px 7px;
+      margin-right: 6px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -265,6 +339,7 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       align-items: start;
     }
+
     .upload-card {
       flex: 1;
       min-width: 0;
@@ -274,7 +349,7 @@
       padding: 0;
     }
 
-    .receipt-upload-row > div {
+    .receipt-upload-row>div {
       background: transparent;
       border: none;
       border-radius: 0;
@@ -288,29 +363,34 @@
       border-radius: 0;
       padding: 0;
     }
+
     .upload-section-title {
       font-size: 13px;
       font-weight: 700;
       color: #334155;
       margin-bottom: 6px;
     }
+
     .upload-section-help {
       font-size: 11px;
       color: #64748b;
       margin-bottom: 8px;
     }
+
     .upload-box {
       border: 1px solid #d8e3f3;
       border-radius: 10px;
       background: #ffffff;
       padding: 10px;
     }
+
     .upload-box input[type="file"] {
       border: none;
       background: transparent;
       padding: 0;
       min-height: 0;
     }
+
     .upload-box-head {
       display: flex;
       align-items: center;
@@ -320,6 +400,7 @@
       font-weight: 700;
       font-size: 12px;
     }
+
     .upload-icon {
       width: 18px;
       height: 18px;
@@ -332,12 +413,14 @@
       font-size: 12px;
       line-height: 1;
     }
+
     .upload-preview {
       margin-top: 8px;
       min-height: 24px;
       font-size: 12px;
       color: #475569;
     }
+
     .upload-thumb {
       width: 84px;
       height: 84px;
@@ -347,6 +430,7 @@
       background: #fff;
       display: inline-block;
     }
+
     .upload-file-chip {
       display: inline-flex;
       align-items: center;
@@ -357,6 +441,7 @@
       padding: 4px 10px;
       max-width: 100%;
     }
+
     .upload-file-chip span {
       overflow: hidden;
       text-overflow: ellipsis;
@@ -364,6 +449,7 @@
       max-width: 360px;
       display: inline-block;
     }
+
     .upload-sections {
       border-top: 1px solid #e5e7eb;
       margin-top: 8px;
@@ -373,6 +459,7 @@
       border: none;
       padding: 12px 0 0;
     }
+
     .checkbox-row {
       display: inline-flex;
       align-items: center;
@@ -392,13 +479,39 @@
 
     .adjust-actions {
       display: flex;
-      gap: 8px;
+      gap: 2px;
       align-items: center;
       margin-top: 0;
       padding-left: 2px;
       justify-content: flex-end;
       border-top: 1px solid #e5e7eb;
-      padding-top: 14px;
+      padding-top: 8px;
+    }
+
+    .form-head-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      margin-bottom: 8px;
+    }
+
+    .form-head-left {
+      min-width: 0;
+    }
+
+    .form-head-row .section-head {
+      margin-bottom: 4px;
+    }
+
+    .form-head-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+      flex: 0 0 auto;
     }
 
     .adjust-actions .btn {
@@ -415,6 +528,58 @@
     #historySection .btn {
       border-radius: 10px !important;
     }
+    #historySection .history-mode-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      line-height: 1;
+      margin: 0;
+      height: 28px;
+      padding: 0;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      border: none !important;
+      background: transparent !important;
+      color: #475569 !important;
+      border-radius: 0 !important;
+    }
+    #historySection .history-mode-chip { cursor: default; }
+
+    #historySection .action-icon-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      color: #111827;
+    }
+    #historySection .action-icon-btn:hover:not([disabled]) {
+      color: #7c3aed;
+    }
+    #historySection .action-icon-btn[data-action="delete-month"] {
+      color: #111827;
+    }
+    #historySection .action-icon-btn[data-action="delete-month"]:hover:not([disabled]) {
+      color: #111827;
+    }
+    #historySection .action-icon-btn[disabled] {
+      opacity: 1;
+      cursor: not-allowed;
+    }
+
+    #homeSection .form-head-actions .action-icon-btn {
+      width: 52px;
+      height: 52px;
+      padding: 0;
+      margin: 0;
+      color: #111827;
+    }
+    #homeSection .form-head-actions .action-icon-btn:hover:not([disabled]) {
+      color: #7c3aed;
+    }
+    #homeSection .form-head-actions .action-icon-btn svg {
+      width: 26px;
+      height: 26px;
+    }
 
     .btn-primary {
       background: linear-gradient(180deg, var(--primary), var(--primary-hover));
@@ -427,12 +592,78 @@
       filter: brightness(1.05);
     }
 
+    .expense-main :where(button, .btn, .icon-btn, .tab, .month-chip, .history-month-chip, a[href], [data-action], [role="button"]):not([disabled]) {
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .06s ease;
+      cursor: pointer;
+    }
+    .expense-main :where(button, .btn, .icon-btn, .tab, .month-chip, .history-month-chip, a[href], [data-action], [role="button"]):not(.action-icon-btn):not([disabled]):hover {
+      border-color: #7c3aed !important;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.20);
+    }
+    .expense-main :where(button, .btn, .icon-btn, .tab, .month-chip, .history-month-chip, a[href], [data-action], [role="button"]):not(.action-icon-btn):not([disabled]):active {
+      transform: translateY(1px);
+    }
+
+    .action-icon-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .action-icon-btn:hover:not([disabled]) {
+      box-shadow: none !important;
+      border-color: transparent !important;
+    }
+    .action-icon-btn:active {
+      transform: none !important;
+    }
+    .action-icon-btn svg {
+      display: block;
+    }
+    .action-icon-btn[data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 8px;
+      background: rgba(17, 24, 39, 0.92);
+      color: #fff;
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 50;
+      pointer-events: none;
+    }
+    .action-icon-btn[data-tooltip]:hover::before {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 2px;
+      border: 6px solid transparent;
+      border-top-color: rgba(17, 24, 39, 0.92);
+      z-index: 51;
+      pointer-events: none;
+    }
+
+    /*  cái này là button secondary dùng để hiển thị trạng thái của phiếu chi phí */
     .btn-secondary {
       background: #f3f4f6;
       color: #334155;
       border: 1px solid #d1d5db;
       box-shadow: none;
     }
+
     #exStatus {
       margin-right: auto;
       min-width: 160px;
@@ -468,34 +699,81 @@
     .adj-table tbody tr:hover {
       background: #f9fbff;
     }
+    .adj-table tbody tr.total-row {
+      background: #f8fafc;
+    }
+    .adj-table tbody tr.total-row td {
+      border-top: 2px solid #cbd5e1;
+    }
+
     #historySection .adj-table td {
       vertical-align: middle;
     }
+    #historySection .adj-table th,
+    #historySection .adj-table td {
+      padding: 7px 8px;
+      font-size: 12px;
+      line-height: 1.3;
+    }
+    #historySection .status-pill {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+    #historySection .history-route-chip {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+    #historySection .history-month-pick {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #historySection .history-month-pick input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: #7c3aed;
+    }
+    #historySection .history-month-pick button.history-month-chip {
+      margin: 0;
+    }
+
+    #historySection .adj-table th:nth-child(2),
+    #historySection .adj-table td:nth-child(2) {
+      width: 200px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .row-actions {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       white-space: nowrap;
     }
+
     #historySection .adj-table td:last-child .btn {
-      height: 30px;
+      height: 24px;
       border-radius: 999px !important;
       border: 1px solid #c9dafc;
       background: #eef4ff;
       color: #1e40af;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
-      padding: 0 12px;
+      padding: 0 8px;
       box-shadow: none;
       min-width: 0;
     }
+
     #historySection .adj-table td:last-child .btn:hover {
       background: #e0ecff;
       border-color: #b8cefb;
     }
+
     #historySection .adj-table td:last-child .icon-btn {
-      width: 30px;
-      height: 30px;
+      width: 24px;
+      height: 24px;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
       background: #fff;
@@ -503,16 +781,19 @@
       align-items: center;
       justify-content: center;
     }
+
     #historySection .adj-table td:last-child .icon-btn:hover {
       background: #fff5f5;
       border-color: #fecaca;
     }
+
     #historySection .adj-table td:last-child .icon-btn img {
-      width: 16px;
-      height: 16px;
+      width: 13px;
+      height: 13px;
       margin: 0;
     }
-/* Đây là CSS dùng để tạo một “pill badge” — kiểu nhãn bo tròn thường dùng cho:
+
+    /* Đây là CSS dùng để tạo một “pill badge” — kiểu nhãn bo tròn thường dùng cho:
 trạng thái
 tag
 badge
@@ -523,6 +804,22 @@ status*/
       border-radius: 999px;
       font-weight: 700;
       font-size: 12px;
+    }
+
+    .history-route-chip {
+      display: inline-block;
+      max-width: 100%;
+      padding: 2px 8px;
+      border: 1px solid #dbe2ea;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #0f172a;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
     }
 
     .status-draft {
@@ -614,6 +911,58 @@ status*/
       align-items: end;
       margin-bottom: 10px;
     }
+    .history-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .history-top-actions {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #historySection .history-head {
+      padding: 6px 0 8px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #dbe2ea;
+    }
+
+    #historySection #historyModeLabel {
+      margin: 0 0 6px !important;
+      font-size: 18px;
+      line-height: 1.15;
+      font-weight: 900 !important;
+      letter-spacing: .2px;
+      color: #0b2c66 !important;
+    }
+
+    #historySection #exMonthlyBoardHost {
+      margin: 0 0 6px;
+    }
+
+    #historySection #exMonthlyProfileHost {
+      margin: 0;
+    }
+
+    .history-profile-bar {
+      margin: 0;
+      border: none;
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    .history-profile-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
 
     .history-filters {
       display: flex;
@@ -651,16 +1000,18 @@ status*/
       margin-left: auto;
       flex-wrap: nowrap;
     }
+
     .history-months-wrap {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 8px;
     }
+
     .history-month-chip {
       height: 32px;
       border: 1px solid #d7dee9;
-      border-radius: 999px;
+      border-radius: 0;
       background: #fff;
       color: #334155;
       font-size: 12px;
@@ -668,34 +1019,87 @@ status*/
       padding: 0 12px;
       cursor: pointer;
     }
+
     .history-month-chip.active {
-      background: #2563eb;
-      border-color: #2563eb;
+      background: #1d4ed8;
+      border-color: #1d4ed8;
       color: #fff;
+      box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.20);
     }
+
     .history-month-empty {
       color: #64748b;
       font-size: 12px;
       margin-bottom: 8px;
     }
 
+    .history-continue-wrap {
+      margin-bottom: 8px;
+    }
+
+    .history-continue-btn {
+      height: 28px;
+      border-radius: 0 !important;
+      padding: 0 10px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+    }
+
+    .history-mode-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid #111827;
+      background: #fff;
+      color: #111827;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 0;
+      margin-bottom: 0;
+    }
+
+    .expense-main.new-progress-split #historySection #historyModeLabel {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
     #historySection #exListHost {
       width: 100%;
       margin-top: 10px;
     }
+
     #historySection.applied-month-mode .history-toolbar {
       display: none;
     }
+
     #historySection.applied-month-mode #exListHost {
       margin-top: 4px;
     }
+
     #historySection.notice-mode .history-toolbar,
-    #historySection.notice-mode .history-months-wrap,
     #historySection.notice-mode .history-month-empty {
       display: none !important;
     }
+
     #historySection.notice-mode #exListHost {
       margin-top: 2px;
+    }
+    .notice-month-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+    .notice-month-summary-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #dbe2ea;
+      background: #fff;
+      padding: 4px 8px;
+      font-size: 12px;
     }
 
     .expense-inline-tabs {
@@ -720,7 +1124,7 @@ status*/
       min-width: 0;
       padding: 0 16px;
       border: 1px solid #d7dee9;
-      border-radius: 10px;
+      border-radius: 0;
       background: #fff;
       color: #334155;
       font-weight: 600;
@@ -734,9 +1138,10 @@ status*/
       box-shadow: none;
       transition: background .15s ease, color .15s ease, border-color .15s ease;
     }
+
     .expense-layout {
-      --side-tabs-w: 126px;
-      --split-gap: 18px;
+      --side-tabs-w: 102px;
+      --split-gap: 10px;
       display: grid;
       grid-template-columns: var(--side-tabs-w) minmax(0, 1fr);
       gap: 0;
@@ -746,6 +1151,7 @@ status*/
       position: relative;
       background: #f7f9fb;
     }
+
     .expense-side-tabs {
       position: sticky;
       top: calc(var(--topbar-height) + var(--subbar-height) + 8px);
@@ -753,12 +1159,14 @@ status*/
       height: auto;
       overflow: visible;
       padding-right: 10px;
-      border-right: 1px solid #e5e7eb;
+      border-right: 0;
     }
+
     .expense-side-tabs .expense-inline-tabs {
       flex-direction: column;
       padding-right: 2px;
     }
+
     .expense-main {
       min-width: 0;
       height: auto;
@@ -768,6 +1176,290 @@ status*/
       padding-right: 6px;
       scrollbar-gutter: auto;
       background: #f7f9fb;
+    }
+    .expense-main > section {
+      margin-top: 8px;
+    }
+
+    .expense-main.new-progress-split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 14px;
+      align-items: start;
+      overflow: visible;
+      isolation: isolate;
+    }
+
+    .expense-main.new-progress-split #homeSection {
+      grid-column: 1;
+      margin: 0;
+      min-width: 0;
+      overflow: visible;
+      padding-right: 12px;
+      border-right: 0;
+    }
+
+    .expense-main.new-progress-split #historySection {
+      grid-column: 2;
+      margin: 0;
+      min-width: 0;
+      max-width: none;
+      overflow: visible;
+      margin-top: 0;
+      padding-left: 12px;
+    }
+
+    .expense-main.new-progress-split .form-wrap {
+      max-width: none;
+      width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .expense-main.new-progress-split .form-wrap.adjust-grid {
+      margin-bottom: 0;
+      padding: 10px 10px 8px;
+      border-radius: 0;
+    }
+
+    .expense-main.new-progress-split #homeSection .adjust-grid {
+      grid-template-columns: 72px minmax(0, 1fr) 72px minmax(0, 1fr);
+      gap: 4px;
+    }
+
+    .expense-main.new-progress-split #homeSection .adjust-label {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: normal;
+      line-height: 1.25;
+    }
+
+    .expense-main.new-progress-split #homeSection .adjust-grid input[type="text"],
+    .expense-main.new-progress-split #homeSection .adjust-grid input[type="number"],
+    .expense-main.new-progress-split #homeSection .adjust-grid input[type="date"],
+    .expense-main.new-progress-split #homeSection .adjust-grid textarea,
+    .expense-main.new-progress-split #homeSection .adjust-grid select {
+      max-width: 100%;
+      font-size: 12px;
+      height: 32px;
+      border-radius: 0;
+    }
+
+    .expense-main.new-progress-split #homeSection .receipt-upload-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px !important;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-box {
+      padding: 6px 8px;
+      border-radius: 0;
+      border: 1px solid #d7e3f4;
+    }
+
+    .expense-main.new-progress-split #homeSection input[type="file"] {
+      border-radius: 0;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-box-head {
+      margin-bottom: 2px;
+      font-size: 12px;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-preview {
+      margin-top: 4px;
+      min-height: 0;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-section-help {
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .expense-main.new-progress-split #historySection .list-wrap {
+      max-width: 100%;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table-card {
+      width: 100%;
+      overflow-x: hidden;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #dbe2ea;
+      border-radius: 0;
+      background: #fff;
+      box-shadow: none;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table {
+      min-width: 0;
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection #historyModeLabel {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f8fbff;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table tbody tr:nth-child(even) {
+      background: #fbfdff;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table tbody tr:hover {
+      background: #f1f6ff;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th,
+    .expense-main.new-progress-split #historySection .adj-table td {
+      padding: 6px 6px;
+      font-size: 11px;
+      line-height: 1.4;
+      border: 1px solid #dbe2ea;
+      vertical-align: middle;
+      border-radius: 0;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th:nth-child(1),
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(1) {
+      width: 44px;
+      min-width: 44px;
+      max-width: 44px;
+      white-space: nowrap;
+      text-align: center;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th:nth-child(2),
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(2) {
+      width: 32%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th:nth-child(3),
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(3) {
+      width: 14%;
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th:nth-child(4),
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(4) {
+      width: 20%;
+      white-space: nowrap;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th:nth-child(5),
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(5) {
+      width: 10%;
+      white-space: nowrap;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th:nth-child(6),
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(6) {
+      width: 10%;
+      white-space: nowrap;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(6) .btn {
+      height: 24px;
+      min-width: 34px;
+      padding: 0 6px;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(6) .icon-btn {
+      width: 22px;
+      height: 22px;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table .row-actions {
+      gap: 2px;
+      justify-content: center;
+    }
+
+    .expense-main.new-progress-split #historySection .status-pill {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection .history-route-chip {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection .history-toolbar,
+    .expense-main.new-progress-split #historySection .history-months-wrap,
+    .expense-main.new-progress-split #historySection .history-month-empty {
+      display: none !important;
+    }
+
+    .expense-main.new-progress-split #historySection #historyModeLabel {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .expense-main.new-progress-split #historySection #exListHost {
+      margin-top: 0;
+    }
+
+    @media (max-width: 1360px) {
+      .expense-main.new-progress-split {
+        display: block;
+      }
+
+      .expense-main.new-progress-split #homeSection,
+      .expense-main.new-progress-split #historySection {
+        margin: 0;
+      }
+
+      .expense-main.new-progress-split #homeSection {
+        border-right: 0;
+        padding-right: 0;
+      }
+
+      .expense-main.new-progress-split #historySection {
+        margin-top: 10px;
+        min-width: 0;
+        max-width: 100%;
+        padding-left: 0;
+      }
+
+      .expense-main.new-progress-split .form-wrap {
+        max-width: 100%;
+      }
+
+      .expense-main.new-progress-split #homeSection .adjust-grid {
+        grid-template-columns: 80px minmax(0, 1fr) 80px minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .expense-main.new-progress-split #homeSection .receipt-upload-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px !important;
+      }
+
+      .expense-main.new-progress-split #historySection .adj-table-card {
+        overflow-x: auto;
+      }
+
+      .expense-main.new-progress-split #historySection .adj-table {
+        min-width: 0;
+        width: 100%;
+      }
     }
 
     .expense-inline-tabs .tab.active {
@@ -785,12 +1477,15 @@ status*/
       .adjust-grid {
         grid-template-columns: 80px minmax(0, 1fr);
       }
+
       .adjust-label-right {
         padding-left: 0;
       }
+
       .adjust-grid .full-row {
         grid-column: 1 / -1;
       }
+
       .grid-span-all {
         grid-column: 2 / -1;
       }
@@ -826,10 +1521,12 @@ status*/
         height: auto;
         overflow: visible;
       }
+
       .expense-layout {
         display: block;
         height: auto;
       }
+
       .expense-side-tabs {
         position: static;
         margin-bottom: 10px;
@@ -838,16 +1535,22 @@ status*/
         height: auto;
         overflow: visible;
       }
+
       .expense-side-tabs .expense-inline-tabs {
         flex-direction: row;
         width: fit-content;
         padding-right: 0;
       }
+
       .expense-main {
         height: auto;
         overflow: visible;
         padding-left: 0;
         padding-right: 0;
+      }
+
+      .expense-main.new-progress-split {
+        display: block;
       }
 
       .card {
@@ -872,6 +1575,7 @@ status*/
         grid-template-columns: 1fr;
         gap: 8px;
       }
+
       .month-chip-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
@@ -908,7 +1612,9 @@ status*/
         gap: 8px !important;
       }
 
-      .expense-inline-tabs { top: calc(var(--topbar-height) + var(--subbar-height) + 2px); }
+      .expense-inline-tabs {
+        top: calc(var(--topbar-height) + var(--subbar-height) + 2px);
+      }
 
       .receipt-upload-row>div {
         flex: initial;
@@ -964,12 +1670,14 @@ status*/
       #historySection .history-actions {
         margin-left: 0;
       }
+
       #historySection .history-months-wrap {
         gap: 6px;
       }
     }
 
     @media (max-width: 480px) {
+
       html,
       body {
         width: 100%;
@@ -1017,7 +1725,7 @@ status*/
       .adjust-actions {
         flex-wrap: nowrap;
         justify-content: flex-end;
-        gap: 10px;
+        gap: 2px;
       }
 
       #homeSection .adjust-actions .btn {
@@ -1029,7 +1737,7 @@ status*/
       }
 
       #exApply {
-        margin-left: auto !important;
+        margin-left: 0 !important;
         margin-right: 0 !important;
       }
 
@@ -1235,7 +1943,7 @@ status*/
       }
 
       /* Keep month input + start button on one row in mobile summary */
-      #empSummary .adj-table tbody tr:first-child td:last-child > div.new-month-row {
+      #empSummary .adj-table tbody tr:first-child td:last-child>div.new-month-row {
         flex-direction: row !important;
         align-items: center !important;
         width: var(--summary-control-width);
@@ -1344,10 +2052,12 @@ status*/
         padding: 0 8px;
         width: 100%;
       }
+
       #historySection .history-month-chip {
         height: 30px;
         font-size: 11px;
         padding: 0 10px;
+        border-radius: 0;
       }
 
       #historySection .adj-table-card {
@@ -1421,122 +2131,143 @@ status*/
           </div>
         </aside>
         <div class="expense-main">
-      <section id="newMonthSection" style="display:none;">
-        <div class="month-picker-card">
-          <div class="month-picker-title">申請対象の年月を選択してください</div>
-          <div id="exCreateMonthGrid" class="month-chip-grid"></div>
-          <div class="month-picker-actions">
-            <label for="exCreateMonthInput">対象年月:</label>
-            <input id="exCreateMonthInput" type="month">
-            <button id="exCreateMonthStart" class="btn btn-primary" type="button">この月で作成</button>
-          </div>
-        </div>
-      </section>
-      <section id="homeSection" style="display:none;">
-        <div class="form-wrap adjust-grid">
-          <div class="section-head full-row">申請情報</div>
-          <div class="adjust-label">日付<span class="req">*</span></div>
-          <div><input id="exDate" type="date"></div>
-          <div class="adjust-label adjust-label-right">種別<span class="req">*</span></div>
-          <div>
-            <select id="exType" class="adjust-input">
-              <option value="train">電車</option>
-              <option value="bus">バス</option>
-              <option value="taxi">タクシー</option>
-              <option value="car">自家用車</option>
-              <option value="parking">駐車場代</option>
-              <option value="highway">高速料金</option>
-            </select>
-          </div>
-          <div class="adjust-label">出発地<span class="req">*</span></div>
-          <div><input id="exOrigin" type="text" class="adjust-input" placeholder="例）新宿駅"></div>
-          <div class="adjust-label adjust-label-right">経由</div>
-          <div><input id="exVia" type="text" class="adjust-input" placeholder="例）渋谷（任意）"></div>
-          <div class="adjust-label">到着地<span class="req">*</span></div>
-          <div><input id="exDestination" type="text" class="adjust-input" placeholder="例）東京駅"></div>
-          <div class="adjust-label adjust-label-right">片道/往復<span class="req">*</span></div>
-          <div>
-            <select id="exTripType" class="adjust-input">
-              <option value="one_way" selected>片道</option>
-              <option value="round_trip">往復</option>
-              <option value="multi">複数</option>
-            </select>
-          </div>
-          <div class="adjust-label">回数</div>
-          <div><input id="exTripCount" type="number" min="1" step="1" class="adjust-input" value="1"></div>
-          <div class="adjust-label">距離(km)</div>
-          <div><input id="exKm" type="number" step="0.1" min="0" class="adjust-input"></div>
-          <div class="adjust-label">単価(円/km)</div>
-          <div><input id="exUnitPrice" type="number" step="1" min="0" class="adjust-input"></div>
-          <div class="adjust-label">用途<span class="req">*</span></div>
-          <div><input id="exPurpose" type="text" class="adjust-input" placeholder="例）客先訪問（A社）"></div>
-          <div class="adjust-label adjust-label-right">金額<span class="req">*</span></div>
-          <div><input id="exAmount" type="text" inputmode="numeric" class="adjust-input" placeholder="例）1,240"></div>
-          <div class="adjust-label">定期</div>
-          <div><label class="checkbox-row"><input id="exTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
-          <div class="upload-sections full-row">
-            <div class="upload-section-title">添付ファイル<span class="req">*</span></div>
-            <div class="upload-section-help">ICカード / 定期券の写真またはPDFを添付してください</div>
-            <div class="receipt-upload-row">
-              <div class="upload-card">
-              <div class="upload-box">
-                <div class="upload-box-head"><span class="upload-icon">↑</span><span>表（Front）<span class="req">*</span></span></div>
-                <input id="exReceiptFront" type="file" accept="application/pdf,image/*">
-                <div id="exReceiptFrontPreview" class="upload-preview"></div>
+          <section id="newMonthSection" style="display:none;">
+            <div class="month-picker-card">
+              <div class="month-picker-title">申請対象の年月を選択してください</div>
+              <div id="exCreateMonthGrid" class="month-chip-grid"></div>
+              <div class="month-picker-actions">
+                <label for="exCreateMonthInput">対象年月:</label>
+                <input id="exCreateMonthInput" type="month">
+                <button id="exCreateMonthStart" class="btn btn-primary" type="button">入力して開始</button>
               </div>
             </div>
-              <div class="upload-card">
-              <div class="upload-box">
-                <div class="upload-box-head"><span class="upload-icon">↑</span><span>裏（Back）<span class="req">*</span></span></div>
-                <input id="exReceiptBack" type="file" accept="application/pdf,image/*">
-                <div id="exReceiptBackPreview" class="upload-preview"></div>
+          </section>
+          <section id="homeSection" style="display:none;">
+            <div class="form-wrap adjust-grid">
+              <div class="form-head-row full-row">
+                <div class="form-head-left">
+                  <div class="section-head">申請情報</div>
+                  <div id="exStatus" class="adjust-status"></div>
+                </div>
+                <div class="form-head-actions">
+                  <button id="exSubmit" class="action-icon-btn" type="button" data-tooltip="一時保存" aria-label="一時保存" title="一時保存">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M5 3h12l2 2v16H5V3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                      <path d="M8 3v6h8V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                      <path d="M8 21v-8h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button id="exApply" class="action-icon-btn" type="button" data-tooltip="申請" aria-label="申請" title="申請">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M9 3h10v18H7V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                      <path d="M9 3v4h8V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                      <path d="M9 14l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
-              <div class="upload-card">
-              <div class="upload-box">
-                <div class="upload-box-head"><span class="upload-icon">↑</span><span>領収書・参考画像（任意）</span></div>
-                <input id="exImages" type="file" accept="image/*" multiple>
-                <div id="exImagesPreview" class="upload-preview"></div>
-              </div>
-            </div>
-            </div>
-          </div>
-          <div class="adjust-label full-row">メモ</div>
-          <div class="full-row"><textarea id="exMemo" class="adjust-input full" rows="3" placeholder="任意：補足情報があれば入力してください"></textarea></div>
-        </div>
-        <div class="adjust-actions">
-          <div id="exStatus" class="adjust-status"></div>
-          <button id="exSubmit" class="btn btn-secondary" type="button">一時保存</button>
-          <button id="exApply" class="btn btn-primary" type="button">申請</button>
-        </div>
-      </section>
-      <section id="historySection" style="margin:8px 0; display:none;">
-        <div class="list-wrap">
-          <div id="historyModeLabel" style="font-weight:800;color:#0b2c66;margin-bottom:8px;">交通費提出履歴（月次）</div>
-          <div id="exMonthlyBoardHost"></div>
-          <div class="history-toolbar">
-            <div class="history-filters">
-              <label>対象年月: <input id="exFilterMonth" type="month"></label>
-              <label>ステータス:
-                <select id="exFilterStatus">
-                  <option value="">すべて</option>
-                  <option value="draft">未申請</option>
-                  <option value="applied">申請中</option>
-                  <option value="approved">承認済み</option>
-                  <option value="rejected">差戻し</option>
+              <div class="adjust-label">日付<span class="req">*</span></div>
+              <div><input id="exDate" type="date"></div>
+              <div class="adjust-label adjust-label-right">種別<span class="req">*</span></div>
+              <div>
+                <select id="exType" class="adjust-input">
+                  <option value="train">電車</option>
+                  <option value="bus">バス</option>
+                  <option value="taxi">タクシー</option>
+                  <option value="car">自家用車</option>
+                  <option value="parking">駐車場代</option>
+                  <option value="highway">高速料金</option>
                 </select>
-              </label>
+              </div>
+              <div class="adjust-label">出発地<span class="req">*</span></div>
+              <div><input id="exOrigin" type="text" class="adjust-input" placeholder="例）新宿駅"></div>
+              <div class="adjust-label adjust-label-right">経由</div>
+              <div><input id="exVia" type="text" class="adjust-input" placeholder="例）渋谷（任意）"></div>
+              <div class="adjust-label">到着地<span class="req">*</span></div>
+              <div><input id="exDestination" type="text" class="adjust-input" placeholder="例）東京駅"></div>
+              <div class="adjust-label adjust-label-right">片道/往復<span class="req">*</span></div>
+              <div>
+                <select id="exTripType" class="adjust-input">
+                  <option value="one_way" selected>片道</option>
+                  <option value="round_trip">往復</option>
+                  <option value="multi">複数</option>
+                </select>
+              </div>
+              <div class="adjust-label">回数</div>
+              <div><input id="exTripCount" type="number" min="1" step="1" class="adjust-input" value="1"></div>
+              <div class="adjust-label">距離(km)</div>
+              <div><input id="exKm" type="number" step="0.1" min="0" class="adjust-input"></div>
+              <div class="adjust-label">単価(円/km)</div>
+              <div><input id="exUnitPrice" type="number" step="1" min="0" class="adjust-input"></div>
+              <div class="adjust-label">用途<span class="req">*</span></div>
+              <div><input id="exPurpose" type="text" class="adjust-input" placeholder="例）客先訪問（A社）"></div>
+              <div class="adjust-label adjust-label-right">金額<span class="req">*</span></div>
+              <div><input id="exAmount" type="text" inputmode="numeric" class="adjust-input" placeholder="例）1,240">
+              </div>
+              <div class="adjust-label">定期</div>
+              <div><label class="checkbox-row"><input id="exTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
+              <div class="upload-sections full-row">
+                <div class="upload-section-title">添付ファイル（任意）</div>
+                <div class="upload-section-help">必要な場合のみ、ICカード / 定期券の写真またはPDFを添付してください</div>
+                <div class="receipt-upload-row">
+                  <div class="upload-card">
+                    <div class="upload-box">
+                      <div class="upload-box-head"><span class="upload-icon">↑</span><span>表（Front）</span></div>
+                      <input id="exReceiptFront" type="file" accept="application/pdf,image/*">
+                      <div id="exReceiptFrontPreview" class="upload-preview"></div>
+                    </div>
+                  </div>
+                  <div class="upload-card">
+                    <div class="upload-box">
+                      <div class="upload-box-head"><span class="upload-icon">↑</span><span>裏（Back）</span></div>
+                      <input id="exReceiptBack" type="file" accept="application/pdf,image/*">
+                      <div id="exReceiptBackPreview" class="upload-preview"></div>
+                    </div>
+                  </div>
+                  <div class="upload-card">
+                    <div class="upload-box">
+                      <div class="upload-box-head"><span class="upload-icon">↑</span><span>領収書・参考画像（任意）</span></div>
+                      <input id="exImages" type="file" accept="image/*" multiple>
+                      <div id="exImagesPreview" class="upload-preview"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="adjust-label full-row">メモ</div>
+              <div class="full-row"><textarea id="exMemo" class="adjust-input full" rows="3"
+                  placeholder="任意：補足情報があれば入力してください"></textarea></div>
             </div>
-            <div class="history-actions">
-              <button id="exSearch" class="btn" type="button">検索</button>
-              <button id="exClear" class="btn" type="button">クリア</button>
-              <button id="exCsv" class="btn" type="button">CSV出力</button>
-              <button id="exShowHistory" class="btn" type="button">表示</button>
+          </section>
+      <section id="historySection" style="display:none;">
+            <div class="list-wrap">
+              <div class="history-head">
+                <div id="historyModeLabel" style="font-weight:800;color:#0b2c66;margin-bottom:8px;">交通費提出履歴（月次）</div>
+                <div id="exMonthlyBoardHost"></div>
+                <div id="exMonthlyProfileHost"></div>
+              </div>
+              <div class="history-toolbar">
+                <div class="history-filters">
+                  <label>対象年月: <input id="exFilterMonth" type="month"></label>
+                  <label>ステータス:
+                    <select id="exFilterStatus">
+                      <option value="">すべて</option>
+                      <option value="draft">未申請</option>
+                      <option value="applied">申請中</option>
+                      <option value="approved">承認済み</option>
+                      <option value="rejected">差戻し</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="history-actions">
+                  <button id="exSearch" class="btn" type="button">検索</button>
+                  <button id="exClear" class="btn" type="button">クリア</button>
+                  <button id="exCsv" class="btn" type="button">CSV出力</button>
+                  <button id="exShowHistory" class="btn" type="button">表示</button>
+                </div>
+              </div>
+              <div id="exListHost"></div>
             </div>
-          </div>
-          <div id="exListHost"></div>
-        </div>
-      </section>
+          </section>
         </div>
       </div>
     </section>

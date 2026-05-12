@@ -19,27 +19,6 @@ router.get('/types',
     }
   }
 );
-router.delete('/:id',
-  rateLimitNamed('expenses_delete_mine', { windowMs: 60_000, max: 20 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const id = parseInt(String(req.params.id || '0'), 10);
-      if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const r = await repo.getById(id);
-      if (!r) return res.status(404).json({ message: 'Not Found' });
-      const role = String(req.user.role || '').toLowerCase();
-      if (String(r.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
-        return res.status(403).json({ message: 'Forbidden' });
-      }
-      const ok = await repo.deleteMine(id);
-      if (!ok) return res.status(404).json({ message: 'Not Found' });
-      res.status(200).json({ ok: true });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
 router.post('/',
   rateLimitNamed('expenses_create', { windowMs: 60_000, max: 10 }),
   authorize('employee','manager','admin'),
@@ -71,7 +50,7 @@ router.post('/',
       if (tripType === 'round_trip') amt = amt * 2;
       else if (tripType === 'multi') amt = amt * (tripCount > 0 ? tripCount : 1);
       if (!(amt >= 0)) return res.status(400).json({ message: 'Invalid amount' });
-      const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass });
+      const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass, clientToken: b.clientToken });
       try { await auditRepo.writeLog({ userId: req.user.id, action: 'expense_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, date, amount: amt, origin, destination }) }); } catch {}
       res.status(201).json({ id });
     } catch (err) {
@@ -120,70 +99,6 @@ router.get('/export.csv',
     }
   }
 );
-router.get('/:id',
-  rateLimitNamed('expenses_get_one', { windowMs: 60_000, max: 30 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const id = parseInt(String(req.params.id || '0'), 10);
-      if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const row = await repo.getById(id);
-      if (!row) return res.status(404).json({ message: 'Not Found' });
-      const role = String(req.user.role || '').toLowerCase();
-      if (String(row.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
-        return res.status(403).json({ message: 'Forbidden' });
-      }
-      res.status(200).json(row);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.post('/:id/files',
-  rateLimitNamed('expenses_receipts_multi', { windowMs: 60_000, max: 12 }),
-  authorize('employee','manager','admin'),
-  require('../../core/middleware/upload').array('files', 8),
-  async (req, res) => {
-    try {
-      const id = parseInt(String(req.params.id || '0'), 10);
-      if (!id) return res.status(400).json({ message: 'Invalid id' });
-      const files = (req.files || []).map(f => ({ path: `/uploads/${f.filename}`, originalName: f.originalname, mimeType: f.mimetype, size: f.size }));
-      const rows = await repo.addFiles(id, files);
-      res.status(201).json({ files: rows });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.get('/:id/files',
-  rateLimitNamed('expenses_receipts_list', { windowMs: 60_000, max: 60 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const id = parseInt(String(req.params.id || '0'), 10);
-      if (!id) return res.status(400).json({ message: 'Invalid id' });
-      const rows = await repo.listFiles(id);
-      res.status(200).json(rows || []);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.delete('/files/:fileId',
-  rateLimitNamed('expenses_receipt_delete', { windowMs: 60_000, max: 12 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const fileId = parseInt(String(req.params.fileId || '0'), 10);
-      if (!fileId) return res.status(400).json({ message: 'Invalid id' });
-      const r = await repo.deleteFile(fileId, req.user.id);
-      if (!r.ok) return res.status(404).json({ message: 'Not Found' });
-      res.status(200).json({ ok: true });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
 router.post('/receipt',
   rateLimitNamed('expenses_receipt_upload', { windowMs: 60_000, max: 6 }),
   authorize('employee','manager','admin'),
@@ -221,6 +136,35 @@ router.get('/admin/list',
         sortDir: req.query.sortDir
       });
       res.status(200).json(result);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/admin/dashboard',
+  rateLimitNamed('expenses_admin_dashboard', { windowMs: 60_000, max: 30 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.query.month || '').slice(0, 7);
+      const months = req.query.months;
+      const result = await repo.getAdminDashboard({ month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, months });
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/admin/detail/:id',
+  rateLimitNamed('expenses_admin_detail', { windowMs: 60_000, max: 60 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id || '0'), 10);
+      if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
+      const row = await repo.getAdminDetailById(id);
+      if (!row) return res.status(404).json({ message: 'Not found' });
+      res.status(200).json(row);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -332,6 +276,155 @@ router.get('/admin/monthly-history',
     }
   }
 );
+router.get('/months/active',
+  rateLimitNamed('expenses_active_month', { windowMs: 60_000, max: 30 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const r = await repo.getActiveMonth(req.user.id);
+      res.status(200).json(r || null);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.post('/months/start',
+  rateLimitNamed('expenses_start_month', { windowMs: 60_000, max: 10 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.body?.month || '').slice(0,7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
+      const r = await repo.startMonth(req.user.id, month);
+      res.status(201).json(r || null);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/months/applied',
+  rateLimitNamed('expenses_latest_applied_month', { windowMs: 60_000, max: 30 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const r = await repo.getLatestAppliedMonthStats(req.user.id);
+      res.status(200).json(r || null);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/my/messages',
+  rateLimitNamed('expenses_user_messages', { windowMs: 60_000, max: 60 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.query.month || '').slice(0, 7);
+      const rows = await repo.listRecentMessagesForUser(req.user.id, (month && /^\d{4}-\d{2}$/.test(month)) ? month : null);
+      res.status(200).json(rows || []);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/admin/messages',
+  rateLimitNamed('expenses_admin_messages', { windowMs: 60_000, max: 60 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.query.month || '').slice(0, 7);
+      const rows = await repo.listRecentMessagesForAdmin((month && /^\d{4}-\d{2}$/.test(month)) ? month : null);
+      res.status(200).json(rows || []);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.delete('/:id',
+  rateLimitNamed('expenses_delete_mine', { windowMs: 60_000, max: 20 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id || '0'), 10);
+      if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
+      const r = await repo.getById(id);
+      if (!r) return res.status(404).json({ message: 'Not Found' });
+      const role = String(req.user.role || '').toLowerCase();
+      if (String(r.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const ok = await repo.deleteMine(id);
+      if (!ok) return res.status(404).json({ message: 'Not Found' });
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/:id',
+  rateLimitNamed('expenses_get_one', { windowMs: 60_000, max: 30 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id || '0'), 10);
+      if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
+      const row = await repo.getById(id);
+      if (!row) return res.status(404).json({ message: 'Not Found' });
+      const role = String(req.user.role || '').toLowerCase();
+      if (String(row.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      res.status(200).json(row);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.post('/:id/files',
+  rateLimitNamed('expenses_receipts_multi', { windowMs: 60_000, max: 12 }),
+  authorize('employee','manager','admin'),
+  require('../../core/middleware/upload').array('files', 8),
+  async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id || '0'), 10);
+      if (!id) return res.status(400).json({ message: 'Invalid id' });
+      const files = (req.files || []).map(f => ({ path: `/uploads/${f.filename}`, originalName: f.originalname, mimeType: f.mimetype, size: f.size }));
+      const rows = await repo.addFiles(id, files);
+      res.status(201).json({ files: rows });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/:id/files',
+  rateLimitNamed('expenses_receipts_list', { windowMs: 60_000, max: 60 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id || '0'), 10);
+      if (!id) return res.status(400).json({ message: 'Invalid id' });
+      const rows = await repo.listFiles(id);
+      res.status(200).json(rows || []);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.delete('/files/:fileId',
+  rateLimitNamed('expenses_receipt_delete', { windowMs: 60_000, max: 12 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const fileId = parseInt(String(req.params.fileId || '0'), 10);
+      if (!fileId) return res.status(400).json({ message: 'Invalid id' });
+      const r = await repo.deleteFile(fileId, req.user.id);
+      if (!r.ok) return res.status(404).json({ message: 'Not Found' });
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 router.patch('/:id/status',
   rateLimitNamed('expenses_admin_status', { windowMs: 60_000, max: 30 }),
   authorize('manager','admin'),
@@ -426,70 +519,6 @@ router.patch('/:id',
         : await repo.updateMine(id, req.user.id, req.body || {});
       if (!ok) return res.status(403).json({ message: 'Forbidden' });
       res.status(200).json({ ok: true });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.get('/months/active',
-  rateLimitNamed('expenses_active_month', { windowMs: 60_000, max: 30 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const r = await repo.getActiveMonth(req.user.id);
-      res.status(200).json(r || null);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.post('/months/start',
-  rateLimitNamed('expenses_start_month', { windowMs: 60_000, max: 10 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const month = String(req.body?.month || '').slice(0,7);
-      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
-      const r = await repo.startMonth(req.user.id, month);
-      res.status(201).json(r || null);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.get('/months/applied',
-  rateLimitNamed('expenses_latest_applied_month', { windowMs: 60_000, max: 30 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const r = await repo.getLatestAppliedMonthStats(req.user.id);
-      res.status(200).json(r || null);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.get('/my/messages',
-  rateLimitNamed('expenses_user_messages', { windowMs: 60_000, max: 60 }),
-  authorize('employee','manager','admin'),
-  async (req, res) => {
-    try {
-      const month = String(req.query.month || '').slice(0, 7);
-      const rows = await repo.listRecentMessagesForUser(req.user.id, (month && /^\d{4}-\d{2}$/.test(month)) ? month : null);
-      res.status(200).json(rows || []);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.get('/admin/messages',
-  rateLimitNamed('expenses_admin_messages', { windowMs: 60_000, max: 60 }),
-  authorize('manager','admin'),
-  async (req, res) => {
-    try {
-      const month = String(req.query.month || '').slice(0, 7);
-      const rows = await repo.listRecentMessagesForAdmin((month && /^\d{4}-\d{2}$/.test(month)) ? month : null);
-      res.status(200).json(rows || []);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }

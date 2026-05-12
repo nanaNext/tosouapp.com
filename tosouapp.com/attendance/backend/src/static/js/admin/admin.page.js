@@ -904,13 +904,59 @@ const wireNavSelection = () => {
 const boot = async () => {
   try { document.documentElement.classList.add('admin-preboot'); } catch {}
   try { document.body.classList.add('booting'); } catch {}
+  const isStandaloneExpenses = (() => {
+    try {
+      const p = normalizePath(window.location.pathname);
+      if (p !== '/admin/expenses') return false;
+      const sp = new URLSearchParams(window.location.search || '');
+      const v = String(sp.get('standalone') || '').toLowerCase();
+      return v === '1' || v === 'true' || v === 'yes';
+    } catch {
+      return false;
+    }
+  })();
+  const applyStandaloneExpenses = () => {
+    if (!isStandaloneExpenses) return;
+    try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch {}
+    try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch {}
+    try { document.body.classList.remove('has-sidebar'); } catch {}
+    try { document.body.classList.add('expenses-standalone'); } catch {}
+    try {
+      try { document.documentElement.style.setProperty('height', '100%', 'important'); } catch {}
+      try { document.documentElement.style.setProperty('overflow', 'hidden', 'important'); } catch {}
+    } catch {}
+    try {
+      try { document.body.style.setProperty('height', '100%', 'important'); } catch {}
+      try { document.body.style.setProperty('overflow', 'hidden', 'important'); } catch {}
+    } catch {}
+    try {
+      const main = document.querySelector('main.content');
+      if (main) {
+        try { main.style.setProperty('margin', '0', 'important'); } catch {}
+        try { main.style.setProperty('padding', '0', 'important'); } catch {}
+        try { main.style.setProperty('margin-top', '0', 'important'); } catch {}
+        try { main.style.setProperty('padding-top', '0', 'important'); } catch {}
+      }
+    } catch {}
+    try {
+      try { document.documentElement.style.setProperty('margin', '0', 'important'); } catch {}
+      try { document.documentElement.style.setProperty('padding', '0', 'important'); } catch {}
+    } catch {}
+    try {
+      try { document.body.style.setProperty('margin', '0', 'important'); } catch {}
+      try { document.body.style.setProperty('padding', '0', 'important'); } catch {}
+    } catch {}
+  };
   let revealed = false;
   const reveal = () => {
     if (revealed) return;
     revealed = true;
     try { document.body.classList.remove('booting'); } catch {}
     try { document.documentElement.classList.remove('admin-preboot'); } catch {}
-    try { document.getElementById('adminChrome')?.removeAttribute('hidden'); } catch {}
+    try {
+      if (isStandaloneExpenses) applyStandaloneExpenses();
+      else document.getElementById('adminChrome')?.removeAttribute('hidden');
+    } catch {}
     try { document.body.style.visibility = ''; } catch {}
     try { document.getElementById('adminBootMask')?.remove(); } catch {}
   };
@@ -927,6 +973,7 @@ const boot = async () => {
   wireAdminShell({ logoutRedirect: '/ui/login' });
   try { window.addEventListener('pageshow', hardHidePageSpinner); } catch {}
   try {
+    applyStandaloneExpenses();
     await route();
   } finally {
     hardHidePageSpinner();
