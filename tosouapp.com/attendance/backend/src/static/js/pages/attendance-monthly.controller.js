@@ -1908,7 +1908,9 @@
     initSummaryEditor();
     wireAutoRefreshSide();
     // Do not block first month rendering on employee-list fetch.
-    void initUserPicker();
+    initUserPicker().then(() => {
+      try { root.Events?.bindUserPicker?.(); } catch {}
+    }).catch(() => {});
 
     ctx.initialYM = (() => {
       try {
