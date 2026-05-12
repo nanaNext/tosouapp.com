@@ -92,6 +92,8 @@ const ensureEmpNotifyStyle = () => {
 };
 const mountEmployeeNoticeBell = () => {
   try {
+    // Disabled by request to remove the bell icon
+    return true;
     if (notifyState.mounted) return true;
     // If a sticky/shared bell is already mounted on this page, skip local mount.
     if (document.getElementById('empNotifyBtn') || document.getElementById('empNotifyStickyBtn')) {
