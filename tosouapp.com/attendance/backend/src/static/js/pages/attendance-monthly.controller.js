@@ -740,6 +740,17 @@
     const useSpinner = opts?.spinner !== false && !instant;
     if (useSpinner) showSpinner();
     try {
+      if (ctx.role !== 'employee' && !ctx.actingUserId) {
+        // Hide admin's own data until an employee is selected
+        state.currentMonthDetail = null;
+        state.currentMonthTimesheet = null;
+        try { renderContract(ctx.contractHost, null); } catch {}
+        try { renderWorkDetail(ctx.workDetailHost, null, ctx.profile); } catch {}
+        try { renderSummary(ctx.summaryHost, null, null); } catch {}
+        try { renderTable(ctx.tableHost, null, ctx.profile); } catch {}
+        return;
+      }
+
       const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
       const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
       if (instant?.detail) {
@@ -1671,19 +1682,22 @@
         return fetchJSONAuth('/api/manager/users');
       };
 
-      const allUsers = await fetchUsers().catch(() => []);
-      const usersAll = Array.isArray(allUsers) ? allUsers : (allUsers?.rows || []);
+      const allUsers = await fetchUsers().catch((e) => { console.error('fetchUsers error', e); return []; });
+      const usersAll = Array.isArray(allUsers) ? allUsers : (allUsers?.rows || allUsers?.data || []);
       const meId = String(ctx.profile?.id || '');
 
       const normalize = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
       const codeOf = (u) => String(u.employee_code || u.employeeCode || (u.id ? ('EMP' + String(u.id).padStart(3, '0')) : '')).trim();
       const nameOf = (u) => String(u.username || u.email || '').trim();
-      const roleOf = (u) => String(u.role || '').toLowerCase();
-      const statusOf = (u) => String(u.employment_status || u.employmentStatus || 'active').toLowerCase();
+      
+      const isEmployee = (u) => {
+        const r = String(u.role || '').toLowerCase();
+        return r === 'employee' || r === 'staff' || r === 'user' || r === '';
+      };
+      
       const users = usersAll
         .filter(u => String(u?.id || '') && String(u.id) !== meId)
-        .filter(u => roleOf(u) !== 'admin' && roleOf(u) !== 'manager' && roleOf(u) !== 'administrator' && roleOf(u) !== 'supervisor')
-        .filter(u => statusOf(u) !== 'inactive' && statusOf(u) !== 'retired')
+        .filter(isEmployee)
         .sort((a, b) => {
           const ac = codeOf(a);
           const bc = codeOf(b);
@@ -1719,8 +1733,12 @@
       rebuild();
       if (!ctx.actingUserId && users.length) {
         ctx.actingUserId = String(users[0].id || '').trim();
-        try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch {}
+        try { state.currentViewingUserId = ctx.actingUserId; } catch {}
         try { sel.value = ctx.actingUserId; } catch {}
+        // Force the URL to reflect the default user
+        const url = new URL(window.location.href);
+        url.searchParams.set('userId', ctx.actingUserId);
+        try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch {}
       }
 
       ctx.userPicker = { input, select: sel, rebuild };
@@ -1867,11 +1885,9 @@
       const v = String(u.searchParams.get('userId') || '').trim();
       if (/^\d+$/.test(v) && ctx.role !== 'employee') ctx.actingUserId = v;
     } catch {}
-    try {
-      const meId = String(profile.id || '');
-      if (ctx.actingUserId && meId && ctx.actingUserId === meId) ctx.actingUserId = '';
-    } catch {}
-    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : String(profile.id || ''); } catch {}
+    
+    // For admin/manager, if no specific userId is set yet, wait for initUserPicker to set the first employee
+    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : (ctx.role === 'employee' ? String(profile.id || '') : ''); } catch {}
 
     ctx.picker1 = $('#monthPicker');
     ctx.picker2 = $('#monthPicker2');
@@ -1907,11 +1923,6 @@
     initSummaryTabs();
     initSummaryEditor();
     wireAutoRefreshSide();
-    // Do not block first month rendering on employee-list fetch.
-    initUserPicker().then(() => {
-      try { root.Events?.bindUserPicker?.(); } catch {}
-    }).catch(() => {});
-
     ctx.initialYM = (() => {
       try {
         const u = new URL(window.location.href);
@@ -1923,6 +1934,15 @@
     if (ctx.picker1) ctx.picker1.value = ctx.initialYM;
     if (ctx.picker2) ctx.picker2.value = ctx.initialYM;
     buildTargetDateSelect(ctx.initialYM);
+
+    // Do not block first month rendering on employee-list fetch.
+    initUserPicker().then(() => {
+      try { root.Events?.bindUserPicker?.(); } catch {}
+      if (ctx.role !== 'employee') {
+        // Force refresh for admin to show the auto-selected first employee
+        setMonth(ctx.initialYM, true, { spinner: false }).catch(()=>{});
+      }
+    }).catch(() => {});
 
     Promise.resolve(profileTask).then((fresh) => {
       if (!fresh) {
