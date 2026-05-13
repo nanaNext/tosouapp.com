@@ -744,6 +744,12 @@
         // Hide admin's own data until an employee is selected
         state.currentMonthDetail = null;
         state.currentMonthTimesheet = null;
+        try {
+          if ($('#empCode')) $('#empCode').textContent = '—';
+          if ($('#staffName')) $('#staffName').textContent = '—';
+          if ($('#officeCode')) $('#officeCode').textContent = '—';
+          if ($('#empDept')) $('#empDept').textContent = '—';
+        } catch {}
         try { renderContract(ctx.contractHost, null); } catch {}
         try { renderWorkDetail(ctx.workDetailHost, null, ctx.profile); } catch {}
         try { renderSummary(ctx.summaryHost, null, null); } catch {}
