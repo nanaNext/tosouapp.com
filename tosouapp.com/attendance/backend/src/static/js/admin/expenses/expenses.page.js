@@ -759,6 +759,7 @@ const render = async () => {
         .exp-admin-page .pill.st-rejected { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
         .exp-admin-page .pill.st-other { border-color:#e2e8f0; background:#f8fafc; color:#334155; }
         .exp-admin-page .exp-dash-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, .45); z-index: 1600; }
+        .exp-admin-page .exp-dash-backdrop[hidden] { display: none !important; }
         .exp-admin-page .exp-dash-root.with-drawer .exp-dash-drawer { display: flex; }
         .exp-admin-page .exp-dash-drawer {
           position: relative;
@@ -866,6 +867,10 @@ const render = async () => {
             border-left: 1px solid #e2e8f0;
             box-shadow: none;
             z-index: 1601;
+            display: flex;
+          }
+          .exp-admin-page .exp-dash-drawer[hidden] {
+            display: none !important;
           }
           .exp-admin-page .exp-dash-appbar { padding: 0 10px; }
           .exp-admin-page .exp-dash-appbar-title { font-size: 14px; }
