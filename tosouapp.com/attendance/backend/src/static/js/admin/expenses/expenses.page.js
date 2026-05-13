@@ -817,7 +817,11 @@ const render = async () => {
         @keyframes exp-spin { to { transform: rotate(360deg); } }
         .exp-admin-page .spin { animation: exp-spin 1s linear infinite; }
         @media (max-width: 760px) {
-          .exp-admin-page .exp-dash-root { display: block; }
+          .exp-admin-page .exp-dash-root { 
+            display: block; 
+            overflow-x: hidden; 
+            position: relative; 
+          }
           .exp-admin-page .exp-dash-side {
             position: fixed;
             top: 0;
@@ -832,6 +836,10 @@ const render = async () => {
           }
           .exp-admin-page .exp-dash-main {
             width: 100%;
+            transition: transform 0.3s ease;
+          }
+          .exp-admin-page .exp-dash-root.mobile-open .exp-dash-main {
+            transform: translateX(260px);
           }
           .exp-admin-page .exp-dash-tablewrap {
             overflow-x: auto;
@@ -2074,8 +2082,9 @@ const render = async () => {
         if (!root || !btn) return;
         
         if (window.innerWidth <= 760) {
-          btn.textContent = '☰';
-          try { btn.setAttribute('aria-label', 'メニュー'); } catch {}
+          const isOpen = root.classList.contains('mobile-open');
+          btn.textContent = isOpen ? '✕' : '☰';
+          try { btn.setAttribute('aria-label', isOpen ? '閉じる' : 'メニュー'); } catch {}
         } else {
           const collapsed = root.classList.contains('collapsed');
           btn.textContent = collapsed ? '☰' : '✕';
