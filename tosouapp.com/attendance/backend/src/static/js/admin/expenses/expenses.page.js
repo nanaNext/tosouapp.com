@@ -178,7 +178,7 @@ const render = async () => {
         .exp-admin-page .exp-admin-table.clean-view thead th { position: sticky; top: 0; z-index: 1; }
         .exp-admin-page .route-col { max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .exp-admin-page .month-apply-actions { display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
-        .exp-admin-page .pill { display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:999px; font-size:12px; font-weight:800; border:1px solid #cbd5e1; background:#fff; color:#334155; }
+        .exp-admin-page .pill { display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:4px; font-size:12px; font-weight:800; border:1px solid #cbd5e1; background:#fff; color:#334155; }
         .exp-admin-page .pill.applied { border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
         .exp-admin-page .status-sub { color: #64748b; font-size: 12px; margin-top: 4px; }
         .exp-admin-page .status-main { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
@@ -446,19 +446,18 @@ const render = async () => {
         }
         .exp-admin-page .exp-dash-root.mode-dashboard .exp-dash-list-only { display: none !important; }
         .exp-admin-page .exp-dash-root.mode-list .exp-dash-dashboard-only { display: none !important; }
-        .exp-admin-page .exp-dash-root.with-drawer {
-          grid-template-columns: 180px minmax(0, 1fr) 420px;
-        }
         .exp-admin-page .exp-dash-root.collapsed {
           grid-template-columns: 84px minmax(0, 1fr);
         }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-brand { justify-content: center; padding: 0; }
         .exp-admin-page .exp-dash-root.collapsed .exp-dash-brand .name { display: none; }
-        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav { justify-content: center; }
-        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav { padding: 8px 0; }
-        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav .left { justify-content: center; width: 100%; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-brand .mark { display: flex !important; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav { justify-content: center; padding: 12px 0; }
+        .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav .left { justify-content: center; width: 100%; margin: 0; }
         .exp-admin-page .exp-dash-root.collapsed .exp-dash-nav .left span:last-child { display: none; }
         .exp-admin-page .exp-dash-root.collapsed .exp-dash-badge { display: none !important; }
-        .exp-admin-page .exp-dash-root.collapsed #expDashCsv { justify-content: center; }
+        .exp-admin-page .exp-dash-root.collapsed #expDashCsv { justify-content: center; padding: 12px 0 !important; }
+        .exp-admin-page .exp-dash-root.collapsed #expDashCsv .left { padding: 0; }
         .exp-admin-page .exp-dash-side {
           background: #0f172a;
           color: #fff;
@@ -502,7 +501,7 @@ const render = async () => {
           background: #0f172a;
           flex: 0 0 auto;
         }
-        .exp-admin-page .exp-dash-brand .mark { width: 24px; height: 24px; border-radius: 0; background: rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; font-weight:900; font-size: 12px; }
+        .exp-admin-page .exp-dash-brand .mark { width: 24px; height: 24px; border-radius: 0; background: rgba(255,255,255,.12); align-items:center; justify-content:center; font-weight:900; font-size: 12px; display: none; }
         .exp-admin-page .exp-dash-brand .name { line-height: 1.1; letter-spacing: 0; }
         .exp-admin-page .exp-dash-brand .name > div:first-child { font-size: 14px; }
         .exp-admin-page .exp-dash-brand .sub { display: none; }
@@ -577,13 +576,16 @@ const render = async () => {
           display: flex; 
           flex-direction: column;
           height: 100vh;
-          overflow-x: hidden;
-          overflow-y: auto;
-          -webkit-overflow-scrolling: touch;
-          overscroll-behavior: contain;
+          overflow: hidden;
           min-width: 0; 
         }
-        .exp-admin-page .exp-dash-content { display: grid; gap: 8px; padding: 10px 12px; min-width: 0; }
+        .exp-admin-page .exp-dash-body {
+          display: flex;
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+        }
+        .exp-admin-page .exp-dash-content { flex: 1; display: grid; gap: 8px; padding: 10px 12px; min-width: 0; overflow-y: auto; align-content: start; }
         .exp-admin-page .exp-dash-appbar {
           background: #fff;
           border: 0;
@@ -642,6 +644,32 @@ const render = async () => {
           justify-content: center;
           border: 2px solid #fff;
         }
+        .exp-admin-page .exp-dash-bell-popup {
+            position: absolute; top: 44px; right: 0; width: 320px; background: #fff;
+            border: 1px solid #dbe3f0; border-radius: 10px; box-shadow: 0 12px 36px rgba(15,23,42,.18);
+            z-index: 2000; overflow: hidden;
+            max-width: 90vw;
+          }
+        .exp-admin-page .exp-dash-bell-popup-head {
+          padding: 10px 12px; font-weight: 700; font-size: 13px; color: #0f172a;
+          border-bottom: 1px solid #eef2f7; background: #fff;
+        }
+        .exp-admin-page .exp-dash-bell-popup-body {
+          max-height: 360px; overflow-y: auto; padding: 6px; display: grid; gap: 4px; background: #f8fafc;
+        }
+        .exp-admin-page .exp-dash-bell-empty {
+          padding: 16px; text-align: center; font-size: 12px; color: #64748b; background: #fff; border-radius: 8px; border: 1px dashed #e2e8f0;
+        }
+        .exp-admin-page .exp-dash-bell-item {
+          display: flex; gap: 12px; padding: 10px; border-radius: 8px; cursor: pointer;
+          background: #fff; border: 1px solid transparent; transition: all 0.2s;
+          text-decoration: none; color: inherit; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .exp-admin-page .exp-dash-bell-item:hover { background: #f8fbff; border-color: #e5edf8; }
+        .exp-admin-page .exp-dash-bell-item .ico { font-size: 20px; }
+        .exp-admin-page .exp-dash-bell-item .desc { flex: 1; font-size: 12px; color: #334155; line-height: 1.4; }
+        .exp-admin-page .exp-dash-bell-item .desc strong { color: #0f172a; font-weight: normal; }
+
         .exp-admin-page .exp-dash-userchip {
           display:flex;
           align-items:center;
@@ -719,10 +747,10 @@ const render = async () => {
         .exp-admin-page .exp-dash-legend-row .amt { text-align:right; font-weight: 900; color:#0f172a; }
         .exp-admin-page .exp-dash-tablewrap { border: 1px solid #e5eaf2; border-radius: 0; overflow:hidden; }
         .exp-admin-page .exp-dash-table { width: 100%; border-collapse: collapse; border-spacing: 0; }
-        .exp-admin-page .exp-dash-table th { background:#f8fafc; color:#334155; font-size: 12px; font-weight: 900; text-align:left; border-bottom:1px solid #e5eaf2; padding: 8px 10px; }
-        .exp-admin-page .exp-dash-table td { border-bottom:1px solid #eef2f7; padding: 8px 10px; font-size: 12px; color:#0f172a; vertical-align:top; }
-        .exp-admin-page .exp-dash-table td.money { text-align:right; white-space:nowrap; font-weight:900; }
-        .exp-admin-page .exp-dash-table td.center { text-align:center; white-space:nowrap; }
+        .exp-admin-page .exp-dash-table th { background:#f8fafc; color:#334155; font-size: 11px; font-weight: 700; text-align:left; border-bottom:1px solid #e5eaf2; padding: 8px 10px; }
+        .exp-admin-page .exp-dash-table td { border-bottom:1px solid #eef2f7; padding: 8px 10px; font-size: 12px; color:#0f172a; vertical-align:middle; text-align:left; }
+        .exp-admin-page .exp-dash-table td.money { text-align:left; white-space:nowrap; font-weight:normal; }
+        .exp-admin-page .exp-dash-table td.center { text-align:left; white-space:nowrap; }
         .exp-admin-page .exp-dash-table td.id a { color:#2563eb; text-decoration:none; font-weight:900; }
         .exp-admin-page .exp-dash-table tr:hover td { background:#f8fafc; }
         .exp-admin-page .exp-dash-pager { display:flex; align-items:center; justify-content:center; gap: 10px; margin-top: 10px; }
@@ -731,35 +759,88 @@ const render = async () => {
         .exp-admin-page .pill.st-rejected { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
         .exp-admin-page .pill.st-other { border-color:#e2e8f0; background:#f8fafc; color:#334155; }
         .exp-admin-page .exp-dash-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, .45); z-index: 1600; }
+        .exp-admin-page .exp-dash-root.with-drawer .exp-dash-drawer { display: flex; }
         .exp-admin-page .exp-dash-drawer {
-          position: sticky;
-          top: 0;
-          height: 100vh;
-          width: 100%;
-          background: #fff;
+          position: relative;
+          height: 100%;
+          width: 300px;
+          background: #f8fafc;
           border: 0;
-          border-left: 1px solid #e5eaf2;
+          border-left: 1px solid #e2e8f0;
           border-radius: 0;
-          box-shadow: 0 6px 18px rgba(15,23,42,.06);
+          box-shadow: -4px 0 16px rgba(15,23,42,.04);
           z-index: 10;
-          display: grid;
-          grid-template-rows: auto minmax(0, 1fr) auto;
+          display: none;
+          flex-direction: column;
           overflow: hidden;
+          flex-shrink: 0;
         }
-        .exp-admin-page .exp-dash-drawer-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 12px; border-bottom:1px solid #e5eaf2; }
-        .exp-admin-page .exp-dash-drawer-title { font-weight: 900; color:#0f172a; }
-        .exp-admin-page .exp-dash-drawer-body { padding: 12px; overflow:auto; }
-        .exp-admin-page .exp-dash-detail { display:grid; gap: 10px; }
-        .exp-admin-page .exp-dash-detail .row { display:grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; align-items: start; }
-        .exp-admin-page .exp-dash-detail .k { font-size: 12px; color:#64748b; font-weight: 900; }
-        .exp-admin-page .exp-dash-detail .v { font-size: 13px; color:#0f172a; }
-        .exp-admin-page .exp-dash-detail .v.files { display:grid; gap: 6px; }
-        .exp-admin-page .exp-dash-file { color:#2563eb; text-decoration:none; font-weight:800; }
-        .exp-admin-page .exp-dash-drawer-foot { border-top: 1px solid #e5eaf2; padding: 12px; display:grid; gap: 10px; }
-        .exp-admin-page .exp-dash-note { width:100%; min-height: 84px; border:1px solid #cbd5e1; border-radius: 0; padding: 10px; font-size: 13px; }
-        .exp-admin-page .exp-dash-drawer-actions { display:flex; gap: 10px; justify-content:flex-end; }
+        .exp-admin-page .exp-dash-drawer-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding: 0 12px; height: 44px; border-bottom:1px solid #e2e8f0; background: #ffffff; flex: 0 0 auto; }
+        .exp-admin-page .exp-dash-drawer-title { font-weight: 800; font-size: 13px; color:#0f172a; }
+        .exp-admin-page .exp-dash-drawer-body { padding: 12px; overflow:auto; display:flex; flex-direction:column; gap: 12px; background: #f8fafc; flex: 1; }
+        .exp-admin-page .exp-dash-detail { display:grid; gap: 12px; padding: 12px 4px; }
+        .exp-admin-page .exp-dash-detail .row { display:grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; align-items: start; }
+        .exp-admin-page .exp-dash-detail .k { font-size: 11px; color:#64748b; font-weight: 800; padding-top: 1px; }
+        .exp-admin-page .exp-dash-detail .v { font-size: 12px; color:#0f172a; line-height: 1.4; }
+        .exp-admin-page .exp-dash-detail .v.files { display:grid; gap: 4px; }
+        .exp-admin-page .exp-dash-file-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; background: #ffffff; text-decoration: none; }
+        .exp-admin-page .exp-dash-file-card-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .exp-admin-page .exp-dash-file-ico { font-size: 16px; color: #3b82f6; }
+        .exp-admin-page .exp-dash-file-info { display: grid; gap: 2px; }
+        .exp-admin-page .exp-dash-file-name { font-size: 11px; color: #2563eb; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .exp-admin-page .exp-dash-file-size { font-size: 10px; color: #64748b; }
+        .exp-admin-page .exp-dash-file-dl { color: #64748b; font-size: 14px; }
+        .exp-admin-page .exp-dash-history { border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 4px; }
+        .exp-admin-page .exp-dash-history-title { font-size: 11px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+        .exp-admin-page .exp-dash-drawer-foot { border-top: 1px solid #e2e8f0; padding: 12px; display:grid; gap: 8px; background: #ffffff; }
+        .exp-admin-page .exp-dash-drawer-foot-title { font-size: 11px; font-weight: 800; color: #0f172a; }
+        .exp-admin-page .exp-dash-note { width:100%; min-height: 60px; border:1px solid #cbd5e1; border-radius: 6px; padding: 8px; font-size: 12px; background: #ffffff; }
+        .exp-admin-page .exp-dash-drawer-actions { display:flex; gap: 8px; }
+        .exp-admin-page .exp-dash-drawer-actions .btn { flex: 1; min-height: 32px; font-size: 12px; font-weight: 800; border-radius: 4px; }
+        .exp-admin-page .exp-dash-btn-approve { background: #22c55e; border: 1px solid #22c55e; color: #ffffff; }
+        .exp-admin-page .exp-dash-btn-reject { background: #f97316; border: 1px solid #f97316; color: #ffffff; }
+        .exp-admin-page .exp-dash-btn-deny { background: #ef4444; border: 1px solid #ef4444; color: #ffffff; }
+        .exp-admin-page .exp-dash-drawer-close {
+          width: 24px;
+          height: 24px;
+          border: none;
+          background: transparent;
+          color: #64748b;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          border-radius: 4px;
+        }
+        .exp-admin-page .exp-dash-drawer-close:hover { background: #f1f5f9; color: #0f172a; }
+        @keyframes exp-spin { to { transform: rotate(360deg); } }
+        .exp-admin-page .spin { animation: exp-spin 1s linear infinite; }
         @media (max-width: 760px) {
-          .exp-admin-page .exp-dash-root { grid-template-columns: 1fr; }
+          .exp-admin-page .exp-dash-root { display: block; }
+          .exp-admin-page .exp-dash-side {
+            position: fixed;
+            top: 0;
+            left: -260px;
+            width: 260px;
+            height: 100vh;
+            z-index: 2000;
+            transition: transform 0.3s ease;
+          }
+          .exp-admin-page .exp-dash-root.mobile-open .exp-dash-side {
+            transform: translateX(260px);
+          }
+          .exp-admin-page .exp-dash-main {
+            width: 100%;
+          }
+          .exp-admin-page .exp-dash-tablewrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+          }
+          .exp-admin-page .exp-dash-table {
+            min-width: 800px;
+          }
           .exp-admin-page .exp-dash-kpi { grid-template-columns: 1fr 1fr; }
           .exp-admin-page .exp-dash-charts { grid-template-columns: 1fr; }
           .exp-admin-page .exp-dash-deptwrap { grid-template-columns: 1fr; justify-items:center; }
@@ -770,32 +851,98 @@ const render = async () => {
             top: 0;
             right: 0;
             height: 100vh;
-            width: 420px;
+            width: 300px;
             max-width: 92vw;
             border-radius: 0;
             border: 0;
-            border-left: 1px solid #e5eaf2;
+            border-left: 1px solid #e2e8f0;
             box-shadow: none;
             z-index: 1601;
           }
+          .exp-admin-page .exp-dash-appbar { padding: 0 10px; }
+          .exp-admin-page .exp-dash-appbar-title { font-size: 14px; }
+          .exp-admin-page .exp-dash-userchip .exp-dash-user-info,
+          .exp-admin-page .exp-dash-userchip .exp-dash-user-arrow { display: none !important; }
+          .exp-admin-page .exp-dash-userchip { padding: 4px; }
+          .exp-admin-page .exp-dash-bell-popup { right: -60px; max-width: calc(100vw - 20px); }
         }
       </style>
       <section id="expDashRoot" class="exp-dash-root">
         <aside class="exp-dash-side">
           <div class="exp-dash-brand">
-            <div class="mark">¥</div>
+            <div class="mark">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="16" rx="2" ry="2"></rect><path d="M4 11h16"></path><path d="M12 3v8"></path><path d="M8 19l-2 3"></path><path d="M18 22l-2-3"></path><path d="M8 15h.01"></path><path d="M16 15h.01"></path></svg>
+            </div>
             <div class="name">
               <div>交通費管理システム</div>
             </div>
           </div>
           <div class="exp-dash-side-nav-wrapper">
-            <button type="button" class="exp-dash-nav is-active" data-nav="dashboard"><span class="left"><span class="ico">🏠</span><span>ダッシュボード</span></span></button>
-            <button type="button" class="exp-dash-nav" data-status=""><span class="left"><span class="ico">🧾</span><span>申請一覧</span></span></button>
-            <button type="button" class="exp-dash-nav" data-status="applied"><span class="left"><span class="ico">✅</span><span>承認管理</span></span><span id="expBadgeApplied" class="exp-dash-badge" hidden>0</span></button>
-            <button type="button" class="exp-dash-nav" data-status="approved"><span class="left"><span class="ico">✔</span><span>承認済み</span></span><span id="expBadgeApproved" class="exp-dash-badge" hidden>0</span></button>
-            <button type="button" class="exp-dash-nav" data-status="rejected"><span class="left"><span class="ico">↩</span><span>差戻し一覧</span></span><span id="expBadgeRejected" class="exp-dash-badge" hidden>0</span></button>
+            <button type="button" class="exp-dash-nav is-active" data-nav="dashboard">
+              <span class="left">
+                <span class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                </span>
+                <span>ダッシュボード</span>
+              </span>
+            </button>
+            <button type="button" class="exp-dash-nav" data-status="">
+              <span class="left">
+                <span class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </span>
+                <span>申請一覧</span>
+              </span>
+            </button>
+            <button type="button" class="exp-dash-nav" data-status="applied">
+              <span class="left">
+                <span class="ico" style="color: #4ade80;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                </span>
+                <span>承認管理</span>
+              </span>
+              <span id="expBadgeApplied" class="exp-dash-badge" hidden>0</span>
+            </button>
+            <button type="button" class="exp-dash-nav" data-status="monthly_approval">
+              <span class="left">
+                <span class="ico" style="color: #38bdf8;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                </span>
+                <span>月次承認</span>
+              </span>
+            </button>
+            <button type="button" class="exp-dash-nav" data-status="approved">
+              <span class="left">
+                <span class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+                <span>承認済み</span>
+              </span>
+              <span id="expBadgeApproved" class="exp-dash-badge" hidden>0</span>
+            </button>
+            <button type="button" class="exp-dash-nav" data-status="rejected">
+              <span class="left">
+                <span class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                </span>
+                <span>差戻し一覧</span>
+              </span>
+              <span id="expBadgeRejected" class="exp-dash-badge" hidden>0</span>
+            </button>
             <div class="exp-dash-sep" hidden></div>
-            <button id="expDashCsv" type="button" class="exp-dash-nav">CSV出力</button>
+            <button id="expDashArchive" type="button" class="exp-dash-nav" data-status="archived">
+              <span class="left">
+                <span class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><polyline points="1 3 23 3 23 8 1 8 1 3"></polyline><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                </span>
+                <span>月次締め履歴</span>
+              </span>
+            </button>
+            <button id="expDashCsv" type="button" class="exp-dash-nav" style="display: flex; justify-content: flex-start; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
+              <span class="left" style="padding-left: 30px;">
+                <span>CSV出力</span>
+              </span>
+            </button>
           </div>
         </aside>
         <main class="exp-dash-main">
@@ -806,26 +953,49 @@ const render = async () => {
               <div id="expDashTitle" class="exp-dash-appbar-title">ダッシュボード</div>
             </div>
             <div class="exp-dash-appbar-right">
-              <button id="expDashBell" class="exp-dash-iconbtn" type="button" aria-label="通知">🔔<span id="expDashBellBadge" class="badge" hidden>0</span></button>
-              <div class="exp-dash-userchip" title="">
-                <div class="exp-dash-avatar"></div>
-                <div id="expDashUserName" class="exp-dash-username"></div>
+              <div style="position: relative;">
+                <button id="expDashBell" class="exp-dash-iconbtn" type="button" aria-label="通知" style="background: transparent; border: none; font-size: 20px; display: flex; align-items: center; justify-content: center;">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  <span id="expDashBellBadge" class="badge" hidden>0</span>
+                </button>
+                <div id="expDashBellPopup" class="exp-dash-bell-popup" hidden>
+                  <div class="exp-dash-bell-popup-head">お知らせ</div>
+                  <div id="expDashBellPopupBody" class="exp-dash-bell-popup-body">
+                    <div class="exp-dash-bell-empty">新しい通知はありません</div>
+                  </div>
+                </div>
+              </div>
+              <button id="expDashHelp" class="exp-dash-iconbtn" type="button" aria-label="ヘルプ" onclick="alert('操作ガイドは後日設定されます。');" style="background: transparent; border: none; color: #0f172a; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </button>
+              <div class="exp-dash-userchip" title="" id="expDashUserMenuToggle" style="cursor: pointer; border: none; background: transparent;">
+                <div class="exp-dash-avatar" style="background-image: url('/static/images/use.png'); background-size: cover; background-position: center; width: 32px; height: 32px;"></div>
+                <div class="exp-dash-user-info" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.2;">
+                  <div id="expDashUserName" class="exp-dash-username" style="font-size: 13px;"></div>
+                  <div style="font-size: 11px; color: #64748b; font-weight: normal;">管理者</div>
+                </div>
+                <div class="exp-dash-user-arrow" style="color: #64748b; margin-left: 4px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+              </div>
+              
+              <!-- Menu Dropdown -->
+              <div id="expDashUserMenu" hidden style="position: absolute; top: 56px; right: 16px; background: #fff; border: 1px solid #e5eaf2; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); z-index: 1000; min-width: 160px; overflow: hidden;">
+                <button id="expDashLogout" type="button" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: transparent; border: none; font-size: 13px; color: #ef4444; cursor: pointer; text-align: left;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                  <span>ログアウト</span>
+                </button>
               </div>
             </div>
           </header>
-          <div class="exp-dash-content">
-          <div class="exp-dash-top">
+          <div class="exp-dash-body">
+            <div class="exp-dash-content">
+            <div class="exp-dash-top">
             <div class="exp-dash-filters">
               <label class="exp-dash-field">対象月
                 <input id="expDashMonth" type="month">
               </label>
-              <label class="exp-dash-field">部署
-                <select id="expDashDept">
-                  <option value="">全部署</option>
-                </select>
-              </label>
-              <input id="expDashSearch" class="exp-dash-search" placeholder="社員名 / メール / 社員コード">
-              <button id="expDashReload" type="button" class="btn exp-dash-btn-primary">更新</button>
+              <div id="expDashTopTotal" class="exp-dash-field" style="margin-left: auto; font-size: 13px; font-weight: normal; color: #64748b;" hidden></div>
             </div>
           </div>
           <div id="expDashKpi" class="exp-dash-kpi exp-dash-dashboard-only"></div>
@@ -846,23 +1016,27 @@ const render = async () => {
             </div>
             <div id="expDashList"></div>
           </div>
-          <div id="expDashStatus" class="exp-dash-muted"></div>
+            <div id="expDashStatus" class="exp-dash-muted"></div>
+            </div>
+            <aside id="expDashDrawer" class="exp-dash-drawer" hidden>
+              <div class="exp-dash-drawer-head">
+                <div class="exp-dash-drawer-title">申請詳細</div>
+                <button id="expDashDrawerClose" class="exp-dash-drawer-close" type="button" aria-label="閉じる">✕</button>
+              </div>
+              <div id="expDashDrawerBody" class="exp-dash-drawer-body"></div>
+              <div class="exp-dash-drawer-foot">
+                <div class="exp-dash-drawer-foot-title">承認アクション</div>
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">コメント</div>
+                <textarea id="expDashNote" class="exp-dash-note" placeholder="コメントを入力してください"></textarea>
+                <div class="exp-dash-drawer-actions" style="margin-top: 4px;">
+                  <button id="expDashApprove" class="btn exp-dash-btn-approve" type="button">承認する</button>
+                  <button id="expDashReject" class="btn exp-dash-btn-reject" type="button">差し戻す</button>
+                  <button id="expDashDeny" class="btn exp-dash-btn-deny" type="button">却下する</button>
+                </div>
+              </div>
+            </aside>
           </div>
         </main>
-        <aside id="expDashDrawer" class="exp-dash-drawer" hidden>
-          <div class="exp-dash-drawer-head">
-            <div class="exp-dash-drawer-title">申請詳細</div>
-            <button id="expDashDrawerClose" class="btn exp-dash-btn-ghost" type="button">×</button>
-          </div>
-          <div id="expDashDrawerBody" class="exp-dash-drawer-body"></div>
-          <div class="exp-dash-drawer-foot">
-            <textarea id="expDashNote" class="exp-dash-note" placeholder="承認/差戻しコメント（差戻し時は必須）"></textarea>
-            <div class="exp-dash-drawer-actions">
-              <button id="expDashApprove" class="btn exp-dash-btn-success" type="button">承認する</button>
-              <button id="expDashReject" class="btn exp-dash-btn-warn" type="button">差戻す</button>
-            </div>
-          </div>
-        </aside>
       </section>
       <div id="expDashBackdrop" class="exp-dash-backdrop" hidden></div>
       <div class="exp-admin-header-row">
@@ -977,6 +1151,18 @@ const render = async () => {
       const v = (state.view === 'list') ? 'list' : 'dashboard';
       root.classList.toggle('mode-dashboard', v === 'dashboard');
       root.classList.toggle('mode-list', v === 'list');
+      
+      const st = String(state.status || '');
+      const isMonthly = (st === 'monthly_approval' || st === 'applied_approved');
+      
+      const ms = document.getElementById('expMonthApplySection');
+      if (ms) ms.style.display = 'none';
+      
+      const hist = document.getElementById('expMonthlyHistorySection');
+      if (hist) hist.style.display = 'none';
+      
+      const tableHost = document.getElementById('expDashList');
+      if (tableHost) tableHost.style.display = 'block';
     } catch {}
   };
 
@@ -1083,13 +1269,16 @@ const render = async () => {
   };
 
   const fetchList = async () => {
+      const isMonthly = state.status === 'monthly_approval' || state.status === 'archived';
+      const statusParam = isMonthly ? (state.status === 'archived' ? 'approved' : 'applied') : state.status;
+    const limitParam = isMonthly ? 2000 : (state.limit || 10);
     const q = new URLSearchParams();
     q.set('month', String(state.month || '').slice(0, 7));
     q.set('page', String(state.page || 1));
-    q.set('limit', String(state.limit || 10));
+    q.set('limit', String(limitParam));
     q.set('sortBy', 'date');
     q.set('sortDir', 'desc');
-    if (state.status) q.set('status', state.status);
+    if (statusParam) q.set('status', statusParam);
     if (state.departmentId) q.set('departmentId', state.departmentId);
     if (state.q) q.set('name', state.q);
     return await fetchJSONAuth(`/api/expenses/admin/list?${q.toString()}`);
@@ -1222,7 +1411,7 @@ const render = async () => {
         fetchJSONAuth(`/api/expenses/admin/detail/${encodeURIComponent(state.selectedId)}`),
         fetchJSONAuth(`/api/expenses/${encodeURIComponent(state.selectedId)}/files`).catch(() => [])
       ]);
-      const route = [rec?.origin || '', rec?.via || '', rec?.destination || ''].filter(Boolean).join('→') || '-';
+      const route = [rec?.origin || '', rec?.destination || ''].filter(Boolean).join(' → ') || '-';
       const deptId = rec?.departmentId ? String(rec.departmentId) : '';
       const deptName = deptId ? (state.deptMap.get(deptId) || `#${deptId}`) : '';
       const fileRows = Array.isArray(files) ? files : [];
@@ -1230,31 +1419,57 @@ const render = async () => {
         const urlRaw = String(f?.path || '');
         const url = urlRaw.startsWith('/') ? urlRaw : ('/' + urlRaw);
         const name = f?.name || url.split('/').pop();
-        return `<a class="exp-dash-file" href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>`;
-      }).join('') : `<div class="exp-dash-muted">添付ファイルなし</div>`;
+        return `
+          <a class="exp-dash-file-card" href="${esc(url)}" target="_blank" rel="noopener">
+            <div class="exp-dash-file-card-left">
+              <span class="exp-dash-file-ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              </span>
+              <div class="exp-dash-file-info">
+                <span class="exp-dash-file-name">${esc(name)}</span>
+              </div>
+            </div>
+            <span class="exp-dash-file-dl">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </span>
+          </a>
+        `;
+      }).join('') : `<div class="exp-dash-muted" style="font-size:12px;">添付ファイルなし</div>`;
       const st = String(rec?.status || '');
       const stLabel = statusLabel(st);
       const stCls = statusPillClass(st);
       body.innerHTML = `
         <div class="exp-dash-detail">
-          <div class="row"><div class="k">申請ID</div><div class="v">${esc(String(rec?.id || ''))}</div></div>
+          <div class="row"><div class="k">申請ID</div><div class="v">${esc(String(rec?.id || ''))} <span class="pill ${stCls}" style="margin-left:4px;">${esc(stLabel)}</span></div></div>
           <div class="row"><div class="k">申請者</div><div class="v">${esc(rec?.user_name || rec?.user_email || '')}</div></div>
           <div class="row"><div class="k">部署</div><div class="v">${esc(deptName)}</div></div>
           <div class="row"><div class="k">対象月</div><div class="v">${esc(fmtMonthLabel(String(rec?.date || '').slice(0,7)) || '')}</div></div>
           <div class="row"><div class="k">申請日</div><div class="v">${esc(String(rec?.date || '').slice(0,10))}</div></div>
-          <div class="row"><div class="k">経路</div><div class="v">${esc(route)}</div></div>
+          <div class="row"><div class="k">通勤区間</div><div class="v">${esc(route)}</div></div>
+          <div class="row"><div class="k">利用交通機関</div><div class="v">${esc(rec?.transport_type || '電車')}</div></div>
           <div class="row"><div class="k">金額</div><div class="v">${esc(fmtJPY(rec?.amount || 0))}</div></div>
-          <div class="row"><div class="k">状態</div><div class="v"><span class="pill ${stCls}">${esc(stLabel)}</span></div></div>
-          <div class="row"><div class="k">添付</div><div class="v files">${filesHtml}</div></div>
+          <div class="row"><div class="k">備考</div><div class="v">${esc(rec?.note || 'ー')}</div></div>
+        </div>
+
+        <div class="exp-dash-history">
+          <div class="exp-dash-history-title">添付ファイル</div>
+          <div class="v files">${filesHtml}</div>
+        </div>
+
+        <div class="exp-dash-history">
+          <div class="exp-dash-history-title">承認履歴</div>
+          <div class="v" style="font-size:12px; color:#64748b;">${esc(rec?.manager_note || 'ー')}</div>
         </div>
       `;
-      const note = document.getElementById('expDashNote');
-      if (note) note.value = String(rec?.manager_note || '');
-      const approveBtn = document.getElementById('expDashApprove');
-      const rejectBtn = document.getElementById('expDashReject');
       const canAct = String(st).toLowerCase() === 'applied';
-      if (approveBtn) approveBtn.disabled = !canAct;
-      if (rejectBtn) rejectBtn.disabled = !canAct;
+      const foot = document.querySelector('.exp-dash-drawer-foot');
+      if (foot) {
+        foot.style.display = canAct ? 'grid' : 'none';
+      }
+      const note = document.getElementById('expDashNote');
+      if (note) {
+        note.value = '';
+      }
     } catch (e) {
       body.innerHTML = `<div class="exp-dash-muted" style="color:#b00020;">${esc(String(e?.message || '読み込みに失敗しました'))}</div>`;
     }
@@ -1276,7 +1491,179 @@ const render = async () => {
   const renderList = (result) => {
     const host = document.getElementById('expDashList');
     const meta = document.getElementById('expDashListMeta');
+    const topTotal = document.getElementById('expDashTopTotal');
     if (!host) return;
+
+    if (state.status === 'monthly_approval' || state.status === 'archived') {
+      const rows = Array.isArray(result?.rows) ? result.rows : [];
+      const userMap = new Map();
+      rows.forEach(r => {
+        const uid = String(r.userId || '');
+        if (!uid) return;
+        const prev = userMap.get(uid) || { userId: uid, userName: r.user_name || r.user_email || '社員', dept: r.departmentId, count: 0, amount: 0, month: String(r.date || '').slice(0, 7) };
+        prev.count += 1;
+        prev.amount += Number(r.amount || 0);
+        userMap.set(uid, prev);
+      });
+      const deptName = (deptId) => {
+        const id = deptId == null ? '' : String(deptId);
+        if (!id) return '未設定';
+        return state.deptMap.get(id) || `#${id}`;
+      };
+      const userRows = Array.from(userMap.values());
+      const grandTotal = userRows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      const totalCount = userRows.reduce((sum, r) => sum + Number(r.count || 0), 0);
+      
+      const isArchived = state.status === 'archived';
+      
+      const bodyRows = userRows.map((r) => {
+        const d = deptName(r.dept);
+        const isStandalone = new URLSearchParams(window.location.search).get('standalone');
+        let detailUrl = `/admin/expenses/monthly-detail?userId=${encodeURIComponent(r.userId)}&month=${encodeURIComponent(r.month)}`;
+        if (isStandalone) {
+          detailUrl += `&standalone=${encodeURIComponent(isStandalone)}&tab=${isArchived ? 'archived' : 'monthly_approval'}`;
+        }
+        
+        let actionHtml = '';
+        if (isArchived) {
+          actionHtml = `<a class="btn exp-dash-btn-ghost" href="${detailUrl}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;text-decoration:none;">明細を確認</a>`;
+        } else {
+          actionHtml = `
+            <a class="btn exp-dash-btn-ghost" href="${detailUrl}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;text-decoration:none;">明細を確認</a>
+          `;
+        }
+
+        return `<tr class="exp-dash-row">
+          ${state.status === 'monthly_approval' ? `<td class="center" style="width:40px;"><input type="checkbox" class="exp-dash-bulk-cb-monthly" data-uid="${esc(r.userId)}" data-month="${esc(r.month)}" style="cursor:pointer;" /></td>` : ''}
+          <td>${esc(r.userName)}</td>
+          <td>${esc(d)}</td>
+          <td class="center">${esc(fmtMonthLabel(r.month))}</td>
+          <td class="money">¥${Number(r.amount).toLocaleString('ja-JP')}</td>
+          <td class="center">${esc(r.count)}件</td>
+          <td class="center">
+            <div style="display:flex;gap:8px;align-items:center;">
+              ${actionHtml}
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+      
+      if (meta) meta.textContent = `${userRows.length} 名の${isArchived ? 'データ' : '申請'}`;
+      if (topTotal) {
+        topTotal.innerHTML = `対象社員: ${userRows.length}名 <span style="margin-left:16px; color:#0f172a; font-weight:800;">合計金額: ¥${grandTotal.toLocaleString('ja-JP')}</span>`;
+        if (isArchived) {
+          topTotal.innerHTML += ` <span style="margin-left:16px; color:#10b981; font-weight:800; border: 1px solid #10b981; padding: 2px 8px; border-radius: 4px; font-size: 11px;">月次締め完了</span>`;
+        }
+        topTotal.removeAttribute('hidden');
+      }
+      
+      const checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+      const xIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+      
+      host.innerHTML = `
+        ${state.status === 'monthly_approval' ? `
+        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; justify-content: space-between; flex-wrap: wrap;">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 13px; color: #64748b;">選択した社員を:</span>
+            <button type="button" class="btn" id="expDashBulkApproveMonthly" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">
+              ${checkIcon} 一括承認 (Approve)
+            </button>
+            <button type="button" class="btn" id="expDashBulkCancelMonthly" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">
+              ${xIcon} 一括取消
+            </button>
+          </div>
+          <button type="button" class="btn" id="expDashMonthClose" style="display:flex; align-items:center; background:#0b2c66; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold; margin-top: 4px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            当月を締め処理 (Close Month)
+          </button>
+        </div>
+        ` : ''}
+        <div class="exp-dash-tablewrap">
+          <table class="exp-dash-table">
+            <thead><tr>
+              ${state.status === 'monthly_approval' ? `<th class="center" style="width:40px;"><input type="checkbox" id="expDashBulkCheckAllMonthly" style="cursor:pointer;" /></th>` : ''}
+              <th>社員名</th><th>部署</th><th class="center">対象月</th><th class="money">合計金額</th><th class="center">${isArchived ? '件数' : '申請件数'}</th><th class="center">操作</th>
+            </tr></thead>
+            <tbody>${bodyRows || `<tr><td colspan="${state.status === 'monthly_approval' ? 7 : 6}" class="center" style="padding: 24px; color: #64748b;">データがありません</td></tr>`}</tbody>
+            ${userRows.length > 0 ? `
+            <tfoot>
+              <tr style="background-color: #f8fafc; border-top: 2px solid #cbd5e1;">
+                <td colspan="${state.status === 'monthly_approval' ? 4 : 3}" style="text-align: right; font-weight: 800; color: #0f172a; padding: 12px 16px;">総合計 (Grand Total)</td>
+                <td class="money" style="font-weight: 800; color: #0f172a; font-size: 14px;">¥${grandTotal.toLocaleString('ja-JP')}</td>
+                <td class="center" style="font-weight: 800; color: #0f172a;">${totalCount}件</td>
+                <td></td>
+              </tr>
+            </tfoot>
+            ` : ''}
+          </table>
+        </div>
+      `;
+      
+      // Monthly bulk actions event binding
+      if (state.status === 'monthly_approval') {
+        const checkAllMonthly = document.getElementById('expDashBulkCheckAllMonthly');
+        const cbListMonthly = document.querySelectorAll('.exp-dash-bulk-cb-monthly');
+        
+        // Row click toggle
+        document.querySelectorAll('.exp-dash-row').forEach(row => {
+          row.addEventListener('click', (e) => {
+            if (e.target.closest('a') || e.target.closest('button')) return;
+            e.stopPropagation();
+            const cb = row.querySelector('.exp-dash-bulk-cb-monthly');
+            if (cb && e.target !== cb) {
+              cb.checked = !cb.checked;
+              cb.dispatchEvent(new Event('change'));
+            }
+          });
+        });
+
+        if (checkAllMonthly) {
+          checkAllMonthly.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            cbListMonthly.forEach(cb => cb.checked = isChecked);
+          });
+        }
+        
+        const btnCancelMonthly = document.getElementById('expDashBulkCancelMonthly');
+        if (btnCancelMonthly) {
+          btnCancelMonthly.addEventListener('click', () => {
+            cbListMonthly.forEach(cb => cb.checked = false);
+            if (checkAllMonthly) checkAllMonthly.checked = false;
+          });
+        }
+        
+        const btnApproveMonthly = document.getElementById('expDashBulkApproveMonthly');
+        if (btnApproveMonthly) {
+          btnApproveMonthly.addEventListener('click', async () => {
+            const items = [];
+            document.querySelectorAll('.exp-dash-bulk-cb-monthly:checked').forEach(cb => {
+              items.push({ uid: cb.getAttribute('data-uid'), month: cb.getAttribute('data-month') });
+            });
+            if (items.length === 0) return alert('承認する社員を選択してください。');
+            if (!confirm(`選択した ${items.length} 名の当月分を一括承認しますか？`)) return;
+            
+            btnApproveMonthly.disabled = true;
+            btnApproveMonthly.innerHTML = '処理中...';
+            try {
+              for (const it of items) {
+                await fetchJSONAuth('/api/expenses/admin/months/approve', {
+                  method: 'POST',
+                  body: JSON.stringify({ userId: it.uid, month: it.month })
+                });
+              }
+              await reloadListOnly();
+            } catch (err) {
+              alert('一部の承認に失敗しました。');
+              btnApproveMonthly.disabled = false;
+              btnApproveMonthly.innerHTML = `${checkIcon} 一括承認 (Approve)`;
+            }
+          });
+        }
+      }
+      
+      return;
+    }
+
     const rows = Array.isArray(result?.rows) ? result.rows : [];
     const total = Number(result?.total || 0);
     const page = Number(result?.page || state.page || 1);
@@ -1284,6 +1671,10 @@ const render = async () => {
     const start = total ? ((page - 1) * limit + 1) : 0;
     const end = Math.min(total, page * limit);
     if (meta) meta.textContent = `${start}-${end} / ${total}`;
+    if (topTotal) {
+      topTotal.textContent = `合計: ${total}件`;
+      topTotal.removeAttribute('hidden');
+    }
     const deptName = (deptId) => {
       const id = deptId == null ? '' : String(deptId);
       if (!id) return '未設定';
@@ -1300,24 +1691,60 @@ const render = async () => {
       const stLabel = statusLabel(st);
       const stCls = statusPillClass(st);
       const appliedAt = r?.applied_at ? fmtDT(r.applied_at) : '';
+      const deleteIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+      const deleteBtnHtml = `<button type="button" class="btn exp-dash-btn-danger" data-action="delete-expense" data-id="${esc(id)}" style="width:28px;height:28px;padding:0;border:none;background:transparent;color:#ef4444;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;" title="削除">${deleteIcon}</button>`;
       return `<tr data-id="${esc(id)}" class="exp-dash-row">
-        <td class="id"><a href="#" data-action="open" data-id="${esc(id)}">${esc(id)}</a></td>
+        <td class="center" style="width:40px;"><input type="checkbox" class="exp-dash-bulk-cb" data-id="${esc(id)}" style="cursor:pointer;" /></td>
+        <td class="id"><a href="#" data-action="open-drawer" data-id="${esc(id)}">${esc(id)}</a></td>
         <td>${esc(name)}</td>
         <td>${esc(dept)}</td>
         <td class="center">${esc(monthText)}</td>
         <td class="money">${esc(amt)}</td>
         <td class="center"><span class="pill ${stCls}">${esc(stLabel)}</span></td>
         <td class="center">${esc(appliedAt || '')}</td>
+        <td class="center">
+          <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
+            <button type="button" class="btn exp-dash-btn-ghost" data-action="open-drawer" data-id="${esc(id)}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;">明細</button>
+            ${deleteBtnHtml}
+          </div>
+        </td>
       </tr>`;
     }).join('');
     const totalPages = Math.max(1, Math.ceil(total / limit));
+    
+    let bulkToolbar = '';
+    const deleteIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+    const approveIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+    const cancelIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    
+    if (state.status === 'applied') {
+      bulkToolbar = `
+        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
+          <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
+          <button type="button" class="btn" id="expDashBulkApprove" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${approveIcon}一括承認</button>
+          <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${cancelIcon}一括取消</button>
+          <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIcon}一括削除</button>
+        </div>
+      `;
+    } else {
+      bulkToolbar = `
+        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
+          <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
+          <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${cancelIcon}一括取消</button>
+          <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIcon}一括削除</button>
+        </div>
+      `;
+    }
+
     host.innerHTML = `
+      ${bulkToolbar}
       <div class="exp-dash-tablewrap">
         <table class="exp-dash-table">
           <thead><tr>
-            <th>申請ID</th><th>申請者</th><th>部署</th><th class="center">対象月</th><th class="money">金額</th><th class="center">ステータス</th><th class="center">申請日時</th>
+            <th class="center" style="width:40px;"><input type="checkbox" id="expDashBulkCheckAll" style="cursor:pointer;" /></th>
+            <th>申請ID</th><th>申請者</th><th>部署</th><th class="center">対象月</th><th class="money">金額</th><th class="center">ステータス</th><th class="center">申請日時</th><th class="center">操作</th>
           </tr></thead>
-          <tbody>${bodyRows || `<tr><td colspan="7" class="center" style="padding:16px;color:#64748b;">データはありません</td></tr>`}</tbody>
+          <tbody>${bodyRows || `<tr><td colspan="9" class="center" style="padding:16px;color:#64748b;">データはありません</td></tr>`}</tbody>
         </table>
       </div>
       <div class="exp-dash-pager">
@@ -1326,13 +1753,120 @@ const render = async () => {
         <button type="button" class="btn exp-dash-btn-ghost" data-action="next" ${page >= totalPages ? 'disabled' : ''}>次</button>
       </div>
     `;
+
+    // Bulk action event listeners
+    const checkAll = document.getElementById('expDashBulkCheckAll');
+    const cbList = document.querySelectorAll('.exp-dash-bulk-cb');
+    
+    // Make entire row click toggle checkbox (but NOT open drawer)
+    document.querySelectorAll('.exp-dash-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        // Prevent toggle if clicking on links or action buttons
+        if (e.target.closest('a') || e.target.closest('button')) return;
+        
+        // Prevent event from bubbling up to the table body click handler which opens the drawer
+        e.stopPropagation();
+        
+        const cb = row.querySelector('.exp-dash-bulk-cb');
+        if (cb && e.target !== cb) {
+          cb.checked = !cb.checked;
+          // Trigger change event for 'checkAll' logic if needed
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    document.querySelectorAll('button[data-action="open-drawer"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        if (id) await openDrawer(id);
+      });
+    });
+
+    if (checkAll) {
+      checkAll.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        cbList.forEach(cb => cb.checked = isChecked);
+      });
+    }
+
+    const getSelectedIds = () => {
+      const ids = [];
+      document.querySelectorAll('.exp-dash-bulk-cb:checked').forEach(cb => {
+        ids.push(cb.getAttribute('data-id'));
+      });
+      return ids;
+    };
+
+    const btnBulkDelete = document.getElementById('expDashBulkDelete');
+    if (btnBulkDelete) {
+      btnBulkDelete.addEventListener('click', async () => {
+        const ids = getSelectedIds();
+        if (ids.length === 0) return alert('削除する項目を選択してください。');
+        if (!confirm(`選択した ${ids.length} 件を本当に削除しますか？この操作は元に戻せません。`)) return;
+        
+        btnBulkDelete.disabled = true;
+        btnBulkDelete.innerHTML = '処理中...';
+        try {
+          for (const id of ids) {
+            await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          }
+          await reloadListOnly();
+        } catch (e) {
+          alert('一部の削除に失敗しました。');
+          btnBulkDelete.disabled = false;
+          btnBulkDelete.innerHTML = `${deleteIcon}一括削除`;
+        }
+      });
+    }
+
+    const btnBulkCancel = document.getElementById('expDashBulkCancel');
+    if (btnBulkCancel) {
+      btnBulkCancel.addEventListener('click', () => {
+        const cbList = document.querySelectorAll('.exp-dash-bulk-cb');
+        const checkAll = document.getElementById('expDashBulkCheckAll');
+        cbList.forEach(cb => cb.checked = false);
+        if (checkAll) checkAll.checked = false;
+      });
+    }
+
+    const btnBulkApprove = document.getElementById('expDashBulkApprove');
+    if (btnBulkApprove) {
+      btnBulkApprove.addEventListener('click', async () => {
+        const ids = getSelectedIds();
+        if (ids.length === 0) return alert('承認する項目を選択してください。');
+        if (!confirm(`選択した ${ids.length} 件を一括承認しますか？`)) return;
+        
+        btnBulkApprove.disabled = true;
+        btnBulkApprove.innerHTML = '処理中...';
+        try {
+          for (const id of ids) {
+            await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/status`, { 
+              method: 'PATCH', 
+              body: JSON.stringify({ status: 'approved', note: '一括承認' }) 
+            });
+          }
+          await reloadListOnly();
+        } catch (e) {
+          alert('一部の承認に失敗しました。');
+          btnBulkApprove.disabled = false;
+          btnBulkApprove.innerHTML = `${approveIcon}一括承認`;
+        }
+      });
+    }
   };
 
   const reloadAll = async () => {
     setStatusText('読み込み中…', false);
     showSpinner();
     try {
-      const [dashRes, listRes] = await Promise.allSettled([fetchDashboard(), fetchList()]);
+      const ym = String(state.month || '').slice(0, 7);
+      const [dashRes, listRes, bellRes] = await Promise.allSettled([
+        fetchDashboard(), 
+        fetchList(),
+        fetchJSONAuth(`/api/expenses/admin/list?status=applied&limit=5&sortBy=date&sortDir=desc`)
+      ]);
       const dash = dashRes.status === 'fulfilled'
         ? dashRes.value
         : await computeDashboardFallback().catch(() => ({ month: { month: state.month, totalAmount: 0, appliedCount: 0, rejectedCount: 0 }, trend: [], departmentShares: [] }));
@@ -1345,6 +1879,29 @@ const render = async () => {
       setBadge('expBadgeRejected', dash?.month?.rejectedCount || 0);
       setBadge('expDashBellBadge', dash?.month?.appliedCount || 0);
       renderList(list);
+
+      // Update Bell Popup
+      const bellBody = document.getElementById('expDashBellPopupBody');
+      if (bellBody) {
+        const bellRows = bellRes.status === 'fulfilled' && Array.isArray(bellRes.value?.rows) ? bellRes.value.rows : [];
+        if (bellRows.length > 0) {
+          bellBody.innerHTML = bellRows.map(r => {
+            const name = r?.user_name || r?.user_email || '社員';
+            const amt = fmtJPY(r?.amount || 0);
+            const dt = r?.applied_at ? fmtDT(r.applied_at).slice(5,16) : '';
+            return `<a href="#" class="exp-dash-bell-item" data-action="open-bell" data-id="${esc(r.id)}">
+              <div class="ico">⏳</div>
+              <div class="desc">
+                <strong>${esc(name)}</strong>さんから交通費申請（${esc(amt)}）があります。<br>
+                <span style="color:#94a3b8;font-size:11px;">${esc(dt)}</span>
+              </div>
+            </a>`;
+          }).join('');
+        } else {
+          bellBody.innerHTML = `<div class="exp-dash-bell-empty">新しい通知はありません</div>`;
+        }
+      }
+
       if (listRes.status === 'rejected') {
         const msg = String(listRes.reason?.message || 'データ取得に失敗しました');
         setStatusText(msg, true);
@@ -1367,6 +1924,9 @@ const render = async () => {
       const list = await fetchList();
       renderList(list);
       setStatusText('', false);
+      
+      // Ensure visibility is correct after fetching
+      applyViewMode();
     } catch (e) {
       setStatusText(String(e?.message || '取得失敗'), true);
     } finally {
@@ -1420,6 +1980,14 @@ const render = async () => {
     });
     document.querySelectorAll('.exp-dash-side .exp-dash-nav[data-status]').forEach((b) => {
       b.addEventListener('click', async () => {
+        closeDrawer();
+        const root = document.getElementById('expDashRoot');
+        if (root && window.innerWidth <= 760) {
+          root.classList.remove('mobile-open');
+          document.getElementById('expDashBackdrop')?.setAttribute('hidden', '');
+          document.body.style.overflow = '';
+          syncBurger();
+        }
         document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach((x) => x.classList.remove('is-active'));
         b.classList.add('is-active');
         state.page = 1;
@@ -1427,14 +1995,31 @@ const render = async () => {
         state.view = 'list';
         applyViewMode();
         if (state.status === 'applied') setTitle('承認管理');
+        else if (state.status === 'monthly_approval') setTitle('月次承認');
+        else if (state.status === 'archived') setTitle('月次締め履歴');
         else if (state.status === 'approved') setTitle('承認済み');
         else if (state.status === 'rejected') setTitle('差戻し一覧');
         else setTitle('申請一覧');
+        
+        try {
+          const url = new URL(window.location);
+          url.searchParams.set('tab', state.status || 'list');
+          window.history.replaceState({}, '', url);
+        } catch {}
+
         await reloadListOnly();
       });
     });
     document.querySelectorAll('.exp-dash-side .exp-dash-nav[data-nav]').forEach((b) => {
       b.addEventListener('click', async () => {
+        closeDrawer();
+        const root = document.getElementById('expDashRoot');
+        if (root && window.innerWidth <= 760) {
+          root.classList.remove('mobile-open');
+          document.getElementById('expDashBackdrop')?.setAttribute('hidden', '');
+          document.body.style.overflow = '';
+          syncBurger();
+        }
         document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach((x) => x.classList.remove('is-active'));
         b.classList.add('is-active');
         state.page = 1;
@@ -1442,9 +2027,46 @@ const render = async () => {
         state.view = 'dashboard';
         applyViewMode();
         setTitle('ダッシュボード');
+        
+        try {
+          const url = new URL(window.location);
+          url.searchParams.delete('tab');
+          window.history.replaceState({}, '', url);
+        } catch {}
+
         await reloadAll();
       });
     });
+    
+    // Bind Month Close event dynamically after rendering
+    document.addEventListener('click', async (e) => {
+      const btnMonthClose = e.target.closest('#expDashMonthClose');
+      if (btnMonthClose) {
+        const ym = String(state.month || '').slice(0, 7);
+        if (!window.confirm(`【${ym}】のすべての承認済み申請を「月次締め」として確定しますか？\n\n※この操作は元に戻せません。\n※確定後は従業員がデータを編集・追加できなくなります。`)) return;
+        
+        btnMonthClose.disabled = true;
+        btnMonthClose.innerHTML = '処理中...';
+        try {
+          // Send request to month close API endpoint
+          await fetchJSONAuth(`/api/expenses/admin/monthly-close`, {
+            method: 'POST',
+            body: JSON.stringify({ month: ym })
+          });
+          alert(`${ym} の月次締めが完了しました。`);
+          
+          // Switch to archive tab to show result
+          const btnArchive = document.querySelector('.exp-dash-side .exp-dash-nav[data-status="archived"]');
+          if (btnArchive) btnArchive.click();
+          else await reloadAll();
+        } catch (err) {
+          alert(`月次締めに失敗しました: ${err.message || 'unknown'}`);
+          btnMonthClose.disabled = false;
+          btnMonthClose.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> 当月を締め処理 (Close Month)`;
+        }
+      }
+    });
+
     const syncBurger = () => {
       try {
         const root = document.getElementById('expDashRoot');
@@ -1455,30 +2077,86 @@ const render = async () => {
         try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch {}
       } catch {}
     };
+    document.getElementById('expDashLogout')?.addEventListener('click', async () => {
+      try {
+        if (!confirm('ログアウトしますか？')) return;
+        const mod = await import('../../api/auth.api.js').catch(() => null);
+        if (mod && mod.logout) await mod.logout();
+        window.location.href = '/ui/login';
+      } catch (err) {
+        window.location.href = '/ui/login';
+      }
+    });
+
+    document.getElementById('expDashHelp')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('操作ガイドは後日設定されます。');
+    });
+
+    document.getElementById('expDashUserMenuToggle')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = document.getElementById('expDashUserMenu');
+      if (menu) menu.toggleAttribute('hidden');
+    });
+
     document.getElementById('expDashBurger')?.addEventListener('click', () => {
       try {
         const root = document.getElementById('expDashRoot');
         if (!root) return;
-        root.classList.toggle('collapsed');
+        if (window.innerWidth <= 760) {
+          const isOpen = root.classList.toggle('mobile-open');
+          const backdrop = document.getElementById('expDashBackdrop');
+          if (backdrop) {
+            if (isOpen) {
+              backdrop.removeAttribute('hidden');
+              document.body.style.overflow = 'hidden';
+            } else {
+              backdrop.setAttribute('hidden', '');
+              document.body.style.overflow = '';
+            }
+          }
+        } else {
+          root.classList.toggle('collapsed');
+        }
         syncBurger();
       } catch {}
     });
     syncBurger();
-    document.getElementById('expDashBell')?.addEventListener('click', async () => {
-      document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach((x) => x.classList.remove('is-active'));
-      const btn = document.querySelector('.exp-dash-side .exp-dash-nav[data-status="applied"]');
-      btn?.classList.add('is-active');
-      state.page = 1;
-      state.status = 'applied';
-      state.view = 'list';
-      applyViewMode();
-      setTitle('承認管理');
-      await reloadListOnly();
+    document.getElementById('expDashBell')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const popup = document.getElementById('expDashBellPopup');
+      if (popup) popup.toggleAttribute('hidden');
     });
+
+    document.getElementById('expDashBellPopupBody')?.addEventListener('click', async (e) => {
+      const a = e.target.closest('a[data-action="open-bell"][data-id]');
+      if (!a) return;
+      e.preventDefault();
+      const id = a.getAttribute('data-id');
+      const popup = document.getElementById('expDashBellPopup');
+      if (popup) popup.setAttribute('hidden', '');
+      
+      await openDrawer(id);
+    });
+
+    document.addEventListener('click', (e) => {
+      const popup = document.getElementById('expDashBellPopup');
+      if (popup && !popup.hasAttribute('hidden') && !e.target.closest('#expDashBell') && !e.target.closest('#expDashBellPopup')) {
+        popup.setAttribute('hidden', '');
+      }
+      
+      const menu = document.getElementById('expDashUserMenu');
+      if (menu && !menu.hasAttribute('hidden') && !e.target.closest('#expDashUserMenuToggle') && !e.target.closest('#expDashUserMenu')) {
+        menu.setAttribute('hidden', '');
+      }
+    });
+
     document.getElementById('expDashCsv')?.addEventListener('click', () => {
       const q = new URLSearchParams();
       q.set('month', String(state.month || '').slice(0, 7));
-      if (state.status) q.set('status', state.status);
+      const isMonthly = state.status === 'monthly_approval' || state.status === 'archived';
+      const statusParam = isMonthly ? (state.status === 'archived' ? 'approved' : 'applied') : state.status;
+      if (statusParam) q.set('status', statusParam);
       if (state.departmentId) q.set('departmentId', state.departmentId);
       if (state.q) q.set('name', state.q);
       const url = `/api/expenses/admin/export.csv?${q.toString()}`;
@@ -1492,6 +2170,64 @@ const render = async () => {
     });
     document.getElementById('expDashList')?.addEventListener('click', async (e) => {
       const t = e.target;
+      
+      const btnDelete = t?.closest ? t.closest('button[data-action="delete-expense"]') : null;
+      if (btnDelete) {
+        e.preventDefault();
+        const id = btnDelete.getAttribute('data-id');
+        if (!id) return;
+        if (!window.confirm(`本当に申請ID: ${id} を削除しますか？この操作は元に戻せません。`)) return;
+        try {
+          btnDelete.disabled = true;
+          const originalHtml = btnDelete.innerHTML;
+          btnDelete.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>`;
+          await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          alert('削除が完了しました。');
+          await reloadListOnly();
+        } catch (err) {
+          alert(`削除に失敗しました: ${err.message || 'unknown'}`);
+          btnDelete.disabled = false;
+          btnDelete.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+        }
+        return;
+      }
+      
+      const btnDetail = t?.closest ? t.closest('button[data-action="open-monthly-detail"]') : null;
+      if (btnDetail) {
+        e.preventDefault();
+        const uid = btnDetail.getAttribute('data-uid');
+        const month = btnDetail.getAttribute('data-month');
+        if (uid && month) {
+          const isStandalone = new URLSearchParams(window.location.search).get('standalone');
+          let url = `/admin/expenses/monthly-detail?userId=${encodeURIComponent(uid)}&month=${encodeURIComponent(month)}`;
+          if (isStandalone) url += `&standalone=${encodeURIComponent(isStandalone)}`;
+          window.location.href = url;
+        }
+        return;
+      }
+      
+      const btnApprove = t?.closest ? t.closest('button[data-action="approve-monthly"]') : null;
+      if (btnApprove) {
+        e.preventDefault();
+        const uid = btnApprove.getAttribute('data-uid');
+        const month = btnApprove.getAttribute('data-month');
+        if (!uid || !month) return;
+        if (!window.confirm(`${month} の申請を一括承認しますか？`)) return;
+        btnApprove.disabled = true;
+        try {
+          await fetchJSONAuth('/api/expenses/admin/months/approve', {
+            method: 'POST',
+            body: JSON.stringify({ userId: uid, month: month })
+          });
+          await reloadAll();
+        } catch (err) {
+          window.alert(String(err?.message || '一括承認に失敗しました'));
+        } finally {
+          btnApprove.disabled = false;
+        }
+        return;
+      }
+
       const pagerBtn = t?.closest ? t.closest('button[data-action]') : null;
       if (pagerBtn) {
         const act = String(pagerBtn.getAttribute('data-action') || '');
@@ -1507,7 +2243,14 @@ const render = async () => {
       e.preventDefault();
       await openDrawer(id);
     });
-    document.getElementById('expDashBackdrop')?.addEventListener('click', closeDrawer);
+    document.getElementById('expDashBackdrop')?.addEventListener('click', () => {
+      closeDrawer();
+      const root = document.getElementById('expDashRoot');
+      if (root) {
+        root.classList.remove('mobile-open');
+        syncBurger();
+      }
+    });
     document.getElementById('expDashDrawerClose')?.addEventListener('click', closeDrawer);
     document.getElementById('expDashApprove')?.addEventListener('click', async () => {
       if (!state.selectedId) return;
@@ -1538,6 +2281,33 @@ const render = async () => {
   };
 
   await wire();
+  
+  // Check if we need to load a specific tab from URL params
+  const tabParam = new URLSearchParams(window.location.search).get('tab');
+  if (tabParam) {
+    const btn = document.querySelector(`.exp-dash-nav[data-status="${tabParam}"]`);
+    if (btn) {
+      document.querySelectorAll('.exp-dash-nav').forEach((b) => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const st = String(btn.getAttribute('data-status') || '');
+      const nav = String(btn.getAttribute('data-nav') || '');
+      if (nav === 'dashboard') {
+        state.view = 'dashboard';
+        state.status = '';
+      } else {
+        state.view = 'list';
+        state.status = st;
+      }
+      
+      const setTitle = (t) => { const el = document.getElementById('expDashTitle'); if (el) el.textContent = t; };
+      if (state.status === 'applied') setTitle('承認管理');
+      else if (state.status === 'monthly_approval' || state.status === 'applied_approved') setTitle('月次承認');
+      else if (state.status === 'approved') setTitle('承認済み');
+      else if (state.status === 'rejected') setTitle('差戻し一覧');
+      else setTitle('申請一覧');
+    }
+  }
+
   applyViewMode();
   await reloadAll();
   return () => {
@@ -1603,15 +2373,19 @@ const render = async () => {
       const appliedAt = r.applied_at ? fmtDT(r.applied_at) : '-';
       const cnt = Number(r.item_count || 0);
       const amt = Number(r.total_amount || 0).toLocaleString('ja-JP');
-      const detailUrl = `/admin/expenses/monthly-detail?month=${encodeURIComponent(ym)}&userId=${encodeURIComponent(uid)}`;
+      const isStandalone = new URLSearchParams(window.location.search).get('standalone');
+      let detailUrl = `/admin/expenses/monthly-detail?month=${encodeURIComponent(ym)}&userId=${encodeURIComponent(uid)}`;
+      if (isStandalone) {
+        detailUrl += `&standalone=${encodeURIComponent(isStandalone)}`;
+      }
       return `<tr data-user-id="${uid}" data-month="${ym}">
         <td>${name}</td>
         <td>${code}</td>
         <td>${dob}</td>
         <td><span class="pill applied">${ym}</span></td>
         <td>${appliedAt}</td>
-        <td style="text-align:right;">${cnt}</td>
-        <td style="text-align:right;">¥${amt}</td>
+        <td style="text-align:left;">${cnt}</td>
+        <td style="text-align:left;">¥${amt}</td>
         <td>
           <div class="month-apply-actions">
             <a class="btn exp-admin-btn-secondary" href="${detailUrl}" style="min-height:30px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">確認</a>
@@ -1624,7 +2398,7 @@ const render = async () => {
       <div class="exp-admin-table-wrap">
         <table class="exp-admin-table clean-view">
           <thead><tr>
-            <th>社員</th><th>社員コード</th><th>生年月日</th><th>対象月</th><th>送信日時</th><th style="text-align:right;">件数</th><th style="text-align:right;">合計</th><th>操作</th>
+            <th>社員</th><th>社員コード</th><th>生年月日</th><th>対象月</th><th>送信日時</th><th style="text-align:left;">件数</th><th style="text-align:left;">合計</th><th>操作</th>
           </tr></thead>
           <tbody>${body}</tbody>
         </table>
@@ -1686,9 +2460,9 @@ const render = async () => {
       const closedAt = c?.closed_at ? fmtDT(c.closed_at) : '';
       return `<tr>
         <td>${r.user_name || ''}</td>
-        <td style="text-align:right;">${count}</td>
-        <td style="text-align:right;">${total}</td>
-        <td style="text-align:right;">${Number(pendingCount || 0).toLocaleString('ja-JP')}</td>
+        <td style="text-align:left;">${count}</td>
+        <td style="text-align:left;">${total}</td>
+        <td style="text-align:left;">${Number(pendingCount || 0).toLocaleString('ja-JP')}</td>
         <td>${closedAt ? '<span class="status-main approved"><span class="s-ico">✔</span><span>締め済み</span></span>' : '<span class="status-sub">未締め</span>'}</td>
       </tr>`;
     }).join('');
@@ -1730,9 +2504,9 @@ const render = async () => {
       const closed = r.last_closed_at ? fmtDT(r.last_closed_at) : '-';
       return `<tr>
         <td>${month}</td>
-        <td style="text-align:right;">${users}</td>
-        <td style="text-align:right;">${count}</td>
-        <td style="text-align:right;">${total}</td>
+        <td style="text-align:left;">${users}</td>
+        <td style="text-align:left;">${count}</td>
+        <td style="text-align:left;">${total}</td>
         <td>${closed}</td>
       </tr>`;
     }).join('');
@@ -1945,12 +2719,19 @@ const render = async () => {
     const sortKey = $('#expSortKey') ? ($('#expSortKey').value || 'date_desc') : 'date_desc';
     const [sortBy, sortDirRaw] = String(sortKey).split('_');
     const sortDir = String(sortDirRaw || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+    
+    // Add current view status if present
+    const st = String(state.status || '');
+    const isMonthly = (st === 'monthly_approval' || st === 'applied_approved');
+    const listStatus = isMonthly ? 'applied' : st;
+    
     const q = new URLSearchParams();
     q.set('month', month);
     q.set('page', String(viewState.page || 1));
     q.set('limit', String(viewState.pageSize || 20));
     q.set('sortBy', String(sortBy || 'date'));
     q.set('sortDir', sortDir);
+    if (listStatus) q.set('status', listStatus);
     if (currentUserFilter) q.set('userId', currentUserFilter);
     if (deptFilter) q.set('departmentId', deptFilter);
     if (empTypeFilter) q.set('employmentType', empTypeFilter);
@@ -2003,6 +2784,18 @@ const render = async () => {
       })();
       const history = historyRes.status === 'fulfilled' && Array.isArray(historyRes.value) ? historyRes.value : [];
       const monthApplyRows = monthApplyRes.status === 'fulfilled' && Array.isArray(monthApplyRes.value) ? monthApplyRes.value : [];
+      
+      const st = String(state.status || '');
+      const isMonthlyMode = (st === 'monthly_approval' || st === 'applied_approved');
+      
+      if (isMonthlyMode) {
+        const ms = document.getElementById('expMonthApplySection');
+        if (ms) ms.style.display = 'block';
+        const hist = document.getElementById('expMonthlyHistorySection');
+        if (hist) hist.style.display = 'block';
+        const tableHost = document.getElementById('expDashList');
+        if (tableHost) tableHost.style.display = 'none';
+      }
       const nameMap = new Map(users.map(u => [String(u.id), u.username || u.email || '']));
       const uf = $('#expUserFilter');
       if (uf && !uf.dataset.bound) {
@@ -2101,7 +2894,7 @@ const render = async () => {
           const ru = r.receipt_url ? String(r.receipt_url) : (r.first_file_path ? String(r.first_file_path) : '');
           const ruAttr = ru ? ` data-url="${ru}"` : '';
           const count = Number(r.file_count || 0);
-          const routeText = [r.origin || '', r.via || '', r.destination || ''].filter(Boolean).join(' → ');
+          const routeText = [r.origin || '', r.destination || ''].filter(Boolean).join(' → ');
           const receiptAction = (ru || count > 0)
             ? `<button class="btn" data-action="files"${ruAttr} type="button" style="height:28px;">領収書${count > 1 ? `(${count})` : ''}</button>`
             : `<button class="btn" data-action="files" type="button" style="height:28px;" disabled>領収書なし</button>`;
@@ -2112,7 +2905,7 @@ const render = async () => {
                 <div class="exp-claim-route">${routeText || '-'}</div>
                 <div class="exp-claim-meta">${d} / ${user}</div>
               </div>
-              <div style="text-align:right;">
+              <div style="text-align:left;">
                 <div style="font-size:22px;font-weight:800;">¥${a}</div>
                 <div class="status-main ${stLower}"><span class="s-ico">${stLower === 'approved' ? '✔' : stLower === 'applied' ? '⏳' : stLower === 'rejected' ? '↩' : '•'}</span><span>${stLabel}</span></div>
               </div>
@@ -2556,6 +3349,9 @@ const render = async () => {
     viewState.page = 1;
     await reload();
   });
+
+
+
   const toggleHistoryBtn = $('#expToggleHistory');
   toggleHistoryBtn?.addEventListener('click', async () => {
     viewState.showHistory = !viewState.showHistory;

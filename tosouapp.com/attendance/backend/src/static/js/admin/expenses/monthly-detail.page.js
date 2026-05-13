@@ -7,9 +7,13 @@ const todayMonth = () => todayISO().slice(0, 7);
 
 const fmtStatus = (v) => {
   const s = String(v || '').toLowerCase();
+  if (s === 'applied') return '承認待ち';
   if (s === 'approved') return '承認済み';
-  if (s === 'applied') return '申請中';
   if (s === 'rejected') return '差戻し';
+  if (s === 'draft') return '下書き';
+  if (s === 'pending') return '未申請';
+  if (s === 'denied') return '却下';
+  if (s === 'paid') return '支払済み';
   return s || '-';
 };
 // Lấy dữ liệu từ URL rồi hiển thị dữ liệu lên màn hình
@@ -56,9 +60,20 @@ const render = async () => {
   const tableHost = $('#detailTableHost');
   const backBtn = $('#backToExpenseList');
   const approveBtn = $('#approveThisMonth');
-  backBtn?.addEventListener('click', () => {
-    try { window.location.assign('/admin/expenses'); } catch { window.location.href = '/admin/expenses'; }
-  });
+
+  const goBack = () => {
+    const params = new URLSearchParams(window.location.search);
+    const isStandalone = params.get('standalone');
+    const tabParam = params.get('tab');
+    let url = '/admin/expenses';
+    if (isStandalone) {
+      url += `?standalone=${encodeURIComponent(isStandalone)}&tab=${encodeURIComponent(tabParam || 'monthly_approval')}`;
+    }
+    try { window.location.assign(url); } catch { window.location.href = url; }
+  };
+
+  backBtn?.addEventListener('click', goBack);
+
   approveBtn?.addEventListener('click', async () => {
     const uid = String(userId || '').trim();
     const ym = String(month || '').slice(0, 7);
@@ -68,7 +83,7 @@ const render = async () => {
     try {
       approveBtn.disabled = true;
       await fetchJSONAuth('/api/expenses/admin/months/approve', { method: 'POST', body: JSON.stringify({ userId: uid, month: ym }) });
-      try { window.location.assign('/admin/expenses'); } catch { window.location.href = '/admin/expenses'; }
+      goBack();
     } catch (e) {
       if (meta) meta.textContent = `月次承認に失敗しました: ${String(e?.message || 'unknown')}`;
     } finally {
@@ -92,7 +107,7 @@ const render = async () => {
     }
     const body = rows.map((r) => {
       const d = String(r.date || '').slice(0, 10);
-      const route = [r.origin || '', r.via || '', r.destination || ''].filter(Boolean).join(' → ') || '-';
+      const route = [r.origin || '', r.destination || ''].filter(Boolean).join(' → ') || '-';
       const amount = Number(r.amount || 0).toLocaleString('ja-JP');
       const status = fmtStatus(r.status);
       return `<tr>

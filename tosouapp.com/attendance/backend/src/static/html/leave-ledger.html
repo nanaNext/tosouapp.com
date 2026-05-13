@@ -16,6 +16,25 @@
     .mobile-drawer { display: none !important; }
     .mobile-drawer-backdrop { display: none !important; }
     .se-employee-bar { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
+    .se-ledger-status {
+      margin: 10px 0;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      color: #0f172a;
+      font-weight: 800;
+    }
+    .se-ledger-error {
+      margin: 10px 0;
+      padding: 10px 12px;
+      background: #fff1f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      color: #7f1d1d;
+      font-weight: 900;
+      white-space: pre-wrap;
+    }
     .se-toggle {
       width: 22px; height: 22px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;
@@ -202,7 +221,13 @@
               </div>
             </div>
           </div>
-          <!-- tables removed per request -->
+          <div id="leaveLedgerApp">
+            <div id="leaveLedgerStatus" class="se-ledger-status" role="status" aria-live="polite">読み込み中…</div>
+            <div id="leaveLedgerError" class="se-ledger-error" role="alert" hidden></div>
+            <noscript>
+              <div class="se-ledger-error" role="alert">JavaScript を有効にしてください。</div>
+            </noscript>
+          </div>
         </div>
       </div>
     </div>

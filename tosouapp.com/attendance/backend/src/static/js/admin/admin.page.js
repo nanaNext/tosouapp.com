@@ -917,6 +917,7 @@ const boot = async () => {
   })();
   const applyStandaloneExpenses = () => {
     if (!isStandaloneExpenses) return;
+    try { document.title = '交通費管理'; } catch {}
     try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch {}
     try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch {}
     try { document.body.classList.remove('has-sidebar'); } catch {}
