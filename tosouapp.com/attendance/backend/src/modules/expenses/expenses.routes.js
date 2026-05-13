@@ -86,14 +86,17 @@ router.get('/export.csv',
       res.setHeader('Content-Disposition', `attachment; filename="expenses_${month || 'all'}.csv"`);
       const header = ['date','route','type','amount','status','memo'];
       const csv = [header.join(',')].concat((rows || []).map(r => {
-        const route = [r.origin || '', r.via || '', r.destination || ''].filter(Boolean).join('→');
+        const route = [r.origin || '', r.destination || ''].filter(Boolean).join(' → ');
         const t = String(r.category || '');
         const a = Number(r.amount || 0);
         const st = String(r.status || '');
         const memo = (r.memo || '').replace(/"/g,'""');
-        return [r.date ? String(r.date).slice(0,10) : '', `"${route}"`, t, a, st, `"${memo}"`].join(',');
+        // Prevent CSV Injection (starts with =, +, -, @)
+        const safeRoute = /^[=\+\-\@]/.test(route) ? "'" + route : route;
+        const safeMemo = /^[=\+\-\@]/.test(memo) ? "'" + memo : memo;
+        return [r.date ? String(r.date).slice(0,10) : '', `"${safeRoute}"`, t, a, st, `"${safeMemo}"`].join(',');
       })).join('\n');
-      res.status(200).send(csv);
+      res.status(200).send('\uFEFF' + csv);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -193,18 +196,40 @@ router.get('/admin/export.csv',
       });
       const rows = Array.isArray(result?.rows) ? result.rows : [];
       const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const csvHead = ['date','user','employee_code','department_id','employment_type','route','amount','status','approver'].join(',');
+      
+      const statusMap = {
+        'applied': '承認待ち',
+        'approved': '承認済',
+        'rejected': '差戻し',
+        'draft': '下書き',
+        'pending': '未申請'
+      };
+      
+      const empMap = {
+        'full_time': '正社員',
+        'part_time': 'アルバイト',
+        'contract': '契約社員',
+        'outsourced': '業務委託'
+      };
+
+      const csvHead = ['日付','申請者','社員番号','部署','雇用形態','区間/経路','金額(円)','ステータス','承認者'].join(',');
       const csvBody = rows.map((r) => {
-        const route = [r.origin || '', r.via || '', r.destination || ''].filter(Boolean).join('→');
+        const route = [r.origin || '', r.destination || ''].filter(Boolean).join(' → ');
+        // Prevent CSV Injection
+        const safeRoute = /^[=\+\-\@]/.test(route) ? "'" + route : route;
+        const st = statusMap[String(r.status || '').toLowerCase()] || r.status || '';
+        const emp = empMap[String(r.employment_type || '').toLowerCase()] || r.employment_type || '';
+        const dept = r.department_name || r.departmentId || '未設定';
+        
         return [
           esc(String(r.date || '').slice(0,10)),
           esc(r.user_name || r.user_email || ''),
           esc(r.employee_code || ''),
-          esc(r.departmentId || ''),
-          esc(r.employment_type || ''),
-          esc(route),
+          esc(dept),
+          esc(emp),
+          esc(safeRoute),
           esc(Number(r.amount || 0)),
-          esc(r.status || ''),
+          esc(st),
           esc(r.approver_name || '')
         ].join(',');
       }).join('\n');
@@ -258,6 +283,29 @@ router.post('/admin/monthly-close',
     }
   }
 );
+router.post('/admin/months/approve',
+  rateLimitNamed('expenses_admin_months_approve', { windowMs: 60_000, max: 20 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const { userId, month } = req.body || {};
+      if (!userId || !month) return res.status(400).json({ message: 'Missing userId or month' });
+      const result = await repo.approveMonthByAdmin({ userId, month, approverId: req.user.id });
+      try {
+        await noticesRepo.createNotice({
+          targetUserId: userId,
+          targetMonth: month,
+          message: `${month}の交通費申請が月次承認されました。`,
+          createdBy: req.user.id
+        });
+      } catch {}
+      res.status(200).json({ ok: true, result });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
 router.get('/admin/monthly-history',
   rateLimitNamed('expenses_admin_monthly_history', { windowMs: 60_000, max: 30 }),
   authorize('manager','admin'),

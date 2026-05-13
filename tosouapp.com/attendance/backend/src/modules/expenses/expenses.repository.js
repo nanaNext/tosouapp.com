@@ -812,6 +812,8 @@ function buildAdminListWhere(filters = {}) {
   if (status) {
     where.push(`ec.status = ?`);
     args.push(status);
+  } else {
+    where.push(`ec.status NOT IN ('draft', 'pending')`);
   }
   const minAmount = Number(filters.minAmount);
   if (Number.isFinite(minAmount)) {
@@ -849,6 +851,7 @@ module.exports.listAllPaged = async function(filters = {}) {
 
   const baseSelect = `
       SELECT ec.*, u.username AS user_name, u.email AS user_email, u.employee_code, u.departmentId, u.employment_type,
+        (SELECT name FROM departments d WHERE d.id = u.departmentId) AS department_name,
         (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
         (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
         (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
