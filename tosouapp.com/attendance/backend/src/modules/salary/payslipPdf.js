@@ -330,16 +330,18 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
   const totals = emp['合計'] || {};
 
   const attSlots = Array(21).fill(null); // 3 hàng * 7 cột = 21 slots
+  const timeHrs = (v) => Number((v || 0) / 60).toFixed(2);
+  
   attSlots[0] = { label: '出勤日数', value: countZero(kintai['出勤日数']) };
   attSlots[1] = { label: '有給休暇', value: countZero(kintai['有給休暇']) };
   attSlots[4] = { label: '欠勤日数', value: countZero(kintai['欠勤日数']) };
-  attSlots[7] = { label: '就業時間', value: countZero(kintai['就業時間']) };
-  attSlots[8] = { label: '法外時間外', value: countZero(kintai['法外時間外'] ?? 0) };
+  attSlots[7] = { label: '就業時間', value: timeHrs(kintai['就業時間']) };
+  attSlots[8] = { label: '法外時間外', value: timeHrs(kintai['法外時間外'] ?? 0) };
   attSlots[9] = { label: '所定休出勤', value: countZero(kintai['所定休出勤'] ?? kintai['休日出勤日数'] ?? 0) };
-  attSlots[10] = { label: '週40超時間', value: countZero(kintai['週40超時間'] ?? 0) };
-  attSlots[11] = { label: '月60超時間', value: countZero(kintai['月60超時間'] ?? 0) };
+  attSlots[10] = { label: '週40超時間', value: timeHrs(kintai['週40超時間'] ?? 0) };
+  attSlots[11] = { label: '月60超時間', value: timeHrs(kintai['月60超時間'] ?? 0) };
   attSlots[12] = { label: '法定休出勤', value: countZero(kintai['法定休出勤'] ?? 0) };
-  attSlots[13] = { label: '深夜勤時間', value: countZero(kintai['深夜勤時間'] ?? 0) };
+  attSlots[13] = { label: '深夜勤時間', value: timeHrs(kintai['深夜勤時間'] ?? 0) };
   attSlots[14] = { label: '前月有休残', value: countZero(kintai['前月有休残'] ?? 0) };
 
   cy = drawTableGrid(cy, '勤怠', 3, attSlots);
