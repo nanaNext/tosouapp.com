@@ -59,9 +59,20 @@
       
       const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
       const kubunInitRaw = String(daily?.kubun || '').trim();
-      const kubunOptions = offDay
-        ? ['休日', '休日出勤', '代替出勤']
-        : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+      const role = String(profile?.role || '').toLowerCase();
+      const isEmployee = role === 'employee';
+
+      // Always include 休日 in the options if admin/manager
+      let kubunOptions = [];
+      if (offDay) {
+        kubunOptions = ['休日', '休日出勤', '代替出勤'];
+      } else {
+        kubunOptions = ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+        if (!isEmployee) {
+          kubunOptions.unshift('休日');
+        }
+      }
+
       let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
       const plannedLabel = offDay ? '【予定休日】' : '【予定出勤】';
       const plannedKubun = offDay ? '休日' : '出勤';
@@ -110,8 +121,6 @@
       const isPlannedLikeWork = !hasActual && isWorkDay;
 
       // Permission check: if employee role and has selection or actual data, disable planned options
-      const role = String(profile?.role || '').toLowerCase();
-      const isEmployee = role === 'employee';
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // Hint logic
@@ -490,7 +499,7 @@
       }
 
       if (statusWrap) {
-        const roleStr = String(root.State?.profile?.role || '').toLowerCase();
+        const roleStr = String(profile?.role || '').toLowerCase();
         const isAdminView = roleStr === 'admin' || roleStr === 'manager';
         const isRegularOffRowNow = !!offDay && !hasActualNow && (effectiveKubun === '休日' || effectiveKubun === '代替休日');
         const leaveKubunSetNow = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
@@ -520,9 +529,14 @@
       }
 
       // Update Planned option visibility/disability (Admin/Manager can always select Planned)
-      const role = String(root.State?.profile?.role || '').toLowerCase();
-      const isEmployee = role === 'employee';
-      if (clsSel && isEmployee) {
+      // Get role dynamically to avoid referencing non-existent globals
+      let currentRole = '';
+      try { currentRole = String(profile?.role || '').toLowerCase(); } catch {}
+      if (!currentRole) {
+         try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch {}
+      }
+      const isEmployeeRole = currentRole === 'employee';
+      if (clsSel && isEmployeeRole) {
         const plannedOpt = clsSel.querySelector('option[value=""]');
         if (plannedOpt) {
           const shouldDisable = !!cls || hasActualNow;
@@ -530,11 +544,31 @@
             plannedOpt.disabled = shouldDisable;
           }
         }
-      } else if (clsSel && !isEmployee) {
+      } else if (clsSel && !isEmployeeRole) {
         // Admin/Manager can always select Planned
         const plannedOpt = clsSel.querySelector('option[value=""]');
         if (plannedOpt && plannedOpt.disabled) {
           plannedOpt.disabled = false;
+        }
+      }
+      
+      // Update options dynamically if needed based on role
+      if (clsSel) {
+        let hasHolidayOpt = false;
+        Array.from(clsSel.options).forEach(opt => {
+          if (opt.value === '休日') hasHolidayOpt = true;
+        });
+        
+        if (!isEmployeeRole && !offDay && !hasHolidayOpt) {
+           const newOpt = document.createElement('option');
+           newOpt.value = '休日';
+           newOpt.textContent = '休日';
+           // Insert after the planned label (which is index 0)
+           if (clsSel.options.length > 1) {
+             clsSel.insertBefore(newOpt, clsSel.options[1]);
+           } else {
+             clsSel.appendChild(newOpt);
+           }
         }
       }
 

@@ -164,6 +164,8 @@ async function fetchAuthResponse(url, options) {
     }
     if (res.status === 401) {
       redirectToLoginOnce();
+    } else if (res.status === 403) {
+      // Don't redirect on 403 (Forbidden), just throw the error so the UI can handle it (e.g. role restriction)
     }
     throw new Error(msg);
   }
