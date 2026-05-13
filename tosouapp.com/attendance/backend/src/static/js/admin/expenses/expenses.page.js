@@ -2072,9 +2072,15 @@ const render = async () => {
         const root = document.getElementById('expDashRoot');
         const btn = document.getElementById('expDashBurger');
         if (!root || !btn) return;
-        const collapsed = root.classList.contains('collapsed');
-        btn.textContent = collapsed ? '☰' : '✕';
-        try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch {}
+        
+        if (window.innerWidth <= 760) {
+          btn.textContent = '☰';
+          try { btn.setAttribute('aria-label', 'メニュー'); } catch {}
+        } else {
+          const collapsed = root.classList.contains('collapsed');
+          btn.textContent = collapsed ? '☰' : '✕';
+          try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch {}
+        }
       } catch {}
     };
     document.getElementById('expDashLogout')?.addEventListener('click', async () => {
