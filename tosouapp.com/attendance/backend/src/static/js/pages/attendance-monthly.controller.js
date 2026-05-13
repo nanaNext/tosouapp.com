@@ -1684,7 +1684,14 @@
       head.appendChild(wrap);
 
       const fetchUsers = async () => {
-        if (ctx.role === 'admin') return fetchJSONAuth('/api/admin/users');
+        let role = '';
+        try { role = String(profile?.role || '').toLowerCase(); } catch {}
+        if (!role) {
+          try { role = String(state?.profile?.role || '').toLowerCase(); } catch {}
+        }
+        if (role === 'admin' || role === 'manager') {
+          return fetchJSONAuth('/api/admin/users').catch(() => fetchJSONAuth('/api/manager/users'));
+        }
         return fetchJSONAuth('/api/manager/users');
       };
 
