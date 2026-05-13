@@ -270,6 +270,62 @@
     }
   };
 
+  const readFastMonthCache = (cacheKey) => {
+    try {
+      const k = String(cacheKey || '').trim();
+      if (!k) return null;
+      const raw = localStorage.getItem(`monthly.cache.fast.${k}`) || '';
+      if (!raw) return null;
+      const obj = JSON.parse(raw); 
+      if (!obj || typeof obj !== 'object' || !obj.detail) return null;
+      return obj;
+    } catch {
+      return null;
+    }
+  };
+  const writeFastMonthCache = (cacheKey, payload) => {
+    try {
+      const k = String(cacheKey || '').trim();
+      if (!k || !payload || !payload.detail) return;
+      localStorage.setItem(`monthly.cache.fast.${k}`, JSON.stringify({
+        detail: payload.detail,
+        timesheet: payload.timesheet || null,
+        at: Date.now()
+      }));
+      // Keep one generic fallback for employee self screen across sessions.
+      if (k.startsWith('self:')) {
+        localStorage.setItem('monthly.cache.fast.self.latest', JSON.stringify({
+          key: k,
+          ym: String(k.split(':')[1] || ''),
+          detail: payload.detail,
+          timesheet: payload.timesheet || null,
+          at: Date.now()
+        }));
+      }
+    } catch {}
+  };
+
+  const renderInstantRightSkeleton = (ym) => {
+    try {
+      const host = ctx.tableHost;
+      if (!host) return;
+      const monthLabel = String(ym || '').trim() || monthJST();
+      host.innerHTML = `
+        <div class="se-month-table-wrap" aria-busy="true">
+          <div style="min-width:2300px;border:1px solid #dbe4f0;border-radius:10px;overflow:hidden;background:#fff;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#0b2c66;color:#fff;font-weight:800;">
+              <span>${monthLabel} 読込中</span>
+              <span style="opacity:.9;font-weight:700;">月次データを取得しています...</span>
+            </div>
+            <div style="padding:12px;color:#475569;font-weight:700;">
+              データを読み込んでいます...
+            </div>
+          </div>
+        </div>
+      `;
+    } catch {}
+  };
+
   const syncMonthHScroll = () => {
     const getRoot = () => document.querySelector('#monthTable');
     const getHost = () => {
@@ -658,11 +714,49 @@
         const raw = sessionStorage.getItem(`monthly.cache.${cacheKey}`);
         if (raw) persisted = JSON.parse(raw);
       } catch {}
+      if (!persisted) {
+        persisted = readFastMonthCache(cacheKey);
+      }
+      if (!persisted && !String(ctx.actingUserId || '')) {
+        try {
+          const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
+          const latest = latestRaw ? JSON.parse(latestRaw) : null;
+          if (latest && latest.detail && String(latest.ym || '') === String(ym || '')) persisted = latest;
+        } catch {}
+      }
     }
-    const instant = cached || persisted;
+    let latestFast = null;
+    if (!cached && !persisted && !String(ctx.actingUserId || '')) {
+      try {
+        const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
+        const latest = latestRaw ? JSON.parse(latestRaw) : null;
+        if (latest && latest.detail) latestFast = latest;
+      } catch {}
+    }
+    const instant = cached || persisted || latestFast;
+    if (!instant?.detail) {
+      try { renderInstantRightSkeleton(ym); } catch {}
+    }
     const useSpinner = opts?.spinner !== false && !instant;
     if (useSpinner) showSpinner();
     try {
+      if (ctx.role !== 'employee' && !ctx.actingUserId) {
+        // Hide admin's own data until an employee is selected
+        state.currentMonthDetail = null;
+        state.currentMonthTimesheet = null;
+        try {
+          if ($('#empCode')) $('#empCode').textContent = '—';
+          if ($('#staffName')) $('#staffName').textContent = '—';
+          if ($('#officeCode')) $('#officeCode').textContent = '—';
+          if ($('#empDept')) $('#empDept').textContent = '—';
+        } catch {}
+        try { renderContract(ctx.contractHost, null); } catch {}
+        try { renderWorkDetail(ctx.workDetailHost, null, ctx.profile); } catch {}
+        try { renderSummary(ctx.summaryHost, null, null); } catch {}
+        try { renderTable(ctx.tableHost, null, ctx.profile); } catch {}
+        return;
+      }
+
       const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
       const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
       if (instant?.detail) {
@@ -694,6 +788,7 @@
       try {
         sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify({ detail, timesheet: null, at: Date.now() }));
       } catch {}
+      writeFastMonthCache(cacheKey, { detail, timesheet: null });
       state.currentMonthDetail = detail;
       state.currentMonthTimesheet = null;
       try {
@@ -753,6 +848,7 @@
             const nextCache = { detail: state.currentMonthDetail, timesheet: state.currentMonthTimesheet, at: Date.now() };
             ctx.monthCache.set(cacheKey, nextCache);
             sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify(nextCache));
+            writeFastMonthCache(cacheKey, nextCache);
           } catch {}
           try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch {}
         })
@@ -819,44 +915,8 @@
           if (v) tr.dataset.kubunConfirmed = '1';
         }
       } catch {}
-      try {
-        const todayStr = (() => {
-          try { return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch { return null; }
-        })();
-        const workNeedTimes = new Set(['出勤', '休日出勤', '代替出勤']);
-        const rows = Array.from(ctx.tableHost?.querySelectorAll?.('[data-row="1"][data-date]') || []);
-        for (const tr of rows) {
-          const dateStr = String(tr.dataset.date || '').slice(0, 10);
-          if (todayStr && dateStr > todayStr) continue;
-          const idRaw = String(tr.dataset.id || '').trim();
-          if (idRaw) continue;
-          const sel = tr.querySelector('select[data-field="classification"]');
-          const v = String(sel?.value || '').trim();
-          if (!workNeedTimes.has(v)) continue;
-          const inEl = tr.querySelector('input.se-time[data-field="checkIn"]');
-          const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
-          const inV = String(inEl?.value || '').trim();
-          const outV = String(outEl?.value || '').trim();
-          const inAuto = String(inEl?.dataset?.auto || '') === '1';
-          const outAuto = String(outEl?.dataset?.auto || '') === '1';
-          const inAutoVal = String(inEl?.dataset?.autoVal || '').trim();
-          const outAutoVal = String(outEl?.dataset?.autoVal || '').trim();
-          const hasAutoHint = (inAuto && inAutoVal && inV === inAutoVal) || (outAuto && outAutoVal && outV === outAutoVal);
-          if (!hasAutoHint) continue;
-          if (inEl) {
-            inEl.dataset.auto = '';
-            inEl.dataset.autoVal = '';
-            try { inEl.classList.remove('is-auto'); } catch {}
-          }
-          if (outEl) {
-            outEl.dataset.auto = '';
-            outEl.dataset.autoVal = '';
-            try { outEl.classList.remove('is-auto'); } catch {}
-          }
-          try { tr.dataset.dirty = '1'; } catch {}
-          try { tr.dataset.kubunConfirmed = v ? '1' : ''; } catch {}
-        }
-      } catch {}
+      // Keep auto planned times as virtual hints.
+      // They must not be converted to "actual" just because user presses save.
       try {
         const rows = Array.from(ctx.tableHost?.querySelectorAll?.('[data-row="1"][data-date]') || []);
         for (const tr of rows) {
@@ -1309,8 +1369,6 @@
         updates.push({ clientId, checkIn: inDt, checkOut: outDt, workType: wt || null });
       }
       
-      if (!updates.length) return;
-
       try {
         const u0 = updates[0];
         if (!u0?.id && u0?.checkIn) {
@@ -1332,6 +1390,12 @@
       
       const sel = tr.querySelector('select[data-field="classification"]');
       const v = String(sel?.value || '').trim();
+      const rowBaseOff = String(tr.dataset.baseOff || '') === '1';
+      const hasDailyInput = !!(v || wt || location || reason || memo);
+      const effectiveKubun = v || (hasDailyInput ? (rowBaseOff ? '休日出勤' : '出勤') : '');
+      const hasDailyMeaningful = !!(effectiveKubun || wt || location || reason || memo || breakMinutes !== 60 || nightBreakMinutes !== 0);
+      // Important: allow saving daily-only edits (kubun/work/location/memo) even when no time updates.
+      if (!updates.length && !hasDailyMeaningful) return;
       const payload = {
         year: y, 
         month: m, 
@@ -1340,8 +1404,8 @@
         dailyUpdates: [
           {
             date: dateStr,
-            kubun: v || null,
-            kubunConfirmed: v ? 1 : 0,
+            kubun: effectiveKubun || null,
+            kubunConfirmed: effectiveKubun ? 1 : 0,
             workType: (wt === 'onsite' || wt === 'remote' || wt === 'satellite') ? wt : null,
             location: location || '',
             reason: reason || '',
@@ -1409,6 +1473,11 @@
       }
 
       markRowSaved(tr);
+      try {
+        tr.dataset.kubunConfirmed = effectiveKubun ? '1' : '';
+        tr.dataset.kubunBase = effectiveKubun || '';
+        if (sel && effectiveKubun && String(sel.value || '').trim() !== effectiveKubun) sel.value = effectiveKubun;
+      } catch {}
       if (root.Render?.recomputeRow) root.Render.recomputeRow(tr);
       
     } catch (e) {
@@ -1486,7 +1555,6 @@
     const [y, m] = ym.split('-').map(x => parseInt(x, 10));
     if (!y || !m) return;
     showErr('');
-    showSpinner();
     const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
     const bust = `&_=${Date.now()}`;
     const url = `/api/attendance/month/export.xlsx?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}${uidQ}${bust}`;
@@ -1506,7 +1574,6 @@
     if (!/^\d{4}-\d{2}$/.test(ym)) return;
     if (!confirm('この月を提出します。よろしいですか？')) return;
     showErr('');
-    showSpinner();
     try {
       const y = parseInt(ym.slice(0, 4), 10);
       const m = parseInt(ym.slice(5, 7), 10);
@@ -1557,7 +1624,6 @@
     if (!ctx.actingUserId) return;
     if (!confirm('締め状態を解除して編集可能に戻します。よろしいですか？')) return;
     showErr('');
-    showSpinner();
     try {
       const y = parseInt(ym.slice(0, 4), 10);
       const m = parseInt(ym.slice(5, 7), 10);
@@ -1618,22 +1684,33 @@
       head.appendChild(wrap);
 
       const fetchUsers = async () => {
-        if (ctx.role === 'admin') return fetchJSONAuth('/api/admin/users');
+        let role = '';
+        try { role = String(profile?.role || '').toLowerCase(); } catch {}
+        if (!role) {
+          try { role = String(state?.profile?.role || '').toLowerCase(); } catch {}
+        }
+        if (role === 'admin' || role === 'manager') {
+          return fetchJSONAuth('/api/admin/users').catch(() => fetchJSONAuth('/api/manager/users'));
+        }
         return fetchJSONAuth('/api/manager/users');
       };
 
-      const allUsers = await fetchUsers().catch(() => []);
-      const usersAll = Array.isArray(allUsers) ? allUsers : (allUsers?.rows || []);
+      const allUsers = await fetchUsers().catch((e) => { console.error('fetchUsers error', e); return []; });
+      const usersAll = Array.isArray(allUsers) ? allUsers : (allUsers?.rows || allUsers?.data || []);
       const meId = String(ctx.profile?.id || '');
 
       const normalize = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
       const codeOf = (u) => String(u.employee_code || u.employeeCode || (u.id ? ('EMP' + String(u.id).padStart(3, '0')) : '')).trim();
       const nameOf = (u) => String(u.username || u.email || '').trim();
-      const roleOf = (u) => String(u.role || '').toLowerCase();
-      const statusOf = (u) => String(u.employment_status || u.employmentStatus || 'active').toLowerCase();
+      
+      const isEmployee = (u) => {
+        const r = String(u.role || '').toLowerCase();
+        return r === 'employee' || r === 'staff' || r === 'user' || r === '';
+      };
+      
       const users = usersAll
-        .filter(u => String(u?.id || '') && String(u.id) !== meId && roleOf(u) !== 'admin' && roleOf(u) !== 'manager')
-        .filter(u => statusOf(u) !== 'inactive' && statusOf(u) !== 'retired')
+        .filter(u => String(u?.id || '') && String(u.id) !== meId)
+        .filter(isEmployee)
         .sort((a, b) => {
           const ac = codeOf(a);
           const bc = codeOf(b);
@@ -1669,8 +1746,12 @@
       rebuild();
       if (!ctx.actingUserId && users.length) {
         ctx.actingUserId = String(users[0].id || '').trim();
-        try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch {}
+        try { state.currentViewingUserId = ctx.actingUserId; } catch {}
         try { sel.value = ctx.actingUserId; } catch {}
+        // Force the URL to reflect the default user
+        const url = new URL(window.location.href);
+        url.searchParams.set('userId', ctx.actingUserId);
+        try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch {}
       }
 
       ctx.userPicker = { input, select: sel, rebuild };
@@ -1776,23 +1857,27 @@
     state.currentYM = state.currentYM || monthJST();
 
     showErr('');
-    showSpinner();
-    const profile = await ensureAuthProfile();
+    hideSpinner();
+    let cachedProfile = null;
+    try {
+      const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+      cachedProfile = raw ? JSON.parse(raw) : null;
+    } catch {}
+    const profileTask = ensureAuthProfile().catch(() => null);
+    let profile = cachedProfile || null;
     if (!profile) {
-      try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
-      return false;
+      // Do not block first paint when cache is empty; run real auth in background.
+      profile = { id: '', role: 'employee', username: '', email: '' };
     }
     ctx.profile = profile;
     state.profile = profile;
     ctx.role = String(profile.role || '').toLowerCase();
+    // Attendance monthly page should always keep topbar/navigation visible.
+    // Admin embed view uses a dedicated page, so do not auto-hide by URL param here.
     try {
-      const u = new URL(window.location.href);
-      const embed = String(u.searchParams.get('embed') || '').toLowerCase();
-      if (embed === '1' || embed === 'true') {
-        const top = document.querySelector('.kintai-top');
-        if (top) top.style.display = 'none';
-        try { document.body.classList.add('embed'); } catch {}
-      }
+      const top = document.querySelector('.kintai-top');
+      if (top) top.style.display = '';
+      try { document.body.classList.remove('embed'); } catch {}
     } catch {}
     try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch {}
     try {
@@ -1813,11 +1898,9 @@
       const v = String(u.searchParams.get('userId') || '').trim();
       if (/^\d+$/.test(v) && ctx.role !== 'employee') ctx.actingUserId = v;
     } catch {}
-    try {
-      const meId = String(profile.id || '');
-      if (ctx.actingUserId && meId && ctx.actingUserId === meId) ctx.actingUserId = '';
-    } catch {}
-    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : String(profile.id || ''); } catch {}
+    
+    // For admin/manager, if no specific userId is set yet, wait for initUserPicker to set the first employee
+    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : (ctx.role === 'employee' ? String(profile.id || '') : ''); } catch {}
 
     ctx.picker1 = $('#monthPicker');
     ctx.picker2 = $('#monthPicker2');
@@ -1853,8 +1936,6 @@
     initSummaryTabs();
     initSummaryEditor();
     wireAutoRefreshSide();
-    await initUserPicker();
-
     ctx.initialYM = (() => {
       try {
         const u = new URL(window.location.href);
@@ -1866,6 +1947,25 @@
     if (ctx.picker1) ctx.picker1.value = ctx.initialYM;
     if (ctx.picker2) ctx.picker2.value = ctx.initialYM;
     buildTargetDateSelect(ctx.initialYM);
+
+    // Do not block first month rendering on employee-list fetch.
+    initUserPicker().then(() => {
+      try { root.Events?.bindUserPicker?.(); } catch {}
+      if (ctx.role !== 'employee') {
+        // Force refresh for admin to show the auto-selected first employee
+        setMonth(ctx.initialYM, true, { spinner: false }).catch(()=>{});
+      }
+    }).catch(() => {});
+
+    Promise.resolve(profileTask).then((fresh) => {
+      if (!fresh) {
+        try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+        return;
+      }
+      ctx.profile = fresh;
+      state.profile = fresh;
+      ctx.role = String(fresh.role || '').toLowerCase();
+    }).catch(() => {});
 
     return true;
   };
@@ -1927,14 +2027,13 @@
     try { if (ctx.monthCache instanceof Map) ctx.monthCache.clear(); } catch {}
     try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch {}
     const ym = ctx.picker?.value || monthJST();
-    if (!ctx.actingUserId) return;
+    
     // Pass userId to setMonth so it updates URL once
     const url = new URL(window.location.href);
     if (ctx.actingUserId) url.searchParams.set('userId', ctx.actingUserId);
     else url.searchParams.delete('userId');
-    try {
-      history.replaceState(null, '', url.pathname + url.search + url.hash);
-    } catch {}
+    try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch {}
+    
     await setMonth(ym, true);
   };
 

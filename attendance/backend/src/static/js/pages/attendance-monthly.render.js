@@ -54,40 +54,74 @@
     const buildTr = (dateStr, isOff, shift, daily, seg, showDateDow) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
-      const offDay = !!isOff || dow === '日' || dow === '土';
+      // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
+      const offDay = !!isOff;
       
+      const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
       const kubunInitRaw = String(daily?.kubun || '').trim();
-      const kubunOptions = offDay
-        ? ['休日', '休日出勤', '代替出勤']
-        : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+      const role = String(profile?.role || '').toLowerCase();
+      const isEmployee = role === 'employee';
+
+      // Always include 休日 in the options if admin/manager
+      let kubunOptions = [];
+      if (offDay) {
+        kubunOptions = ['休日', '休日出勤', '代替出勤'];
+      } else {
+        kubunOptions = ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+        if (!isEmployee) {
+          kubunOptions.unshift('休日');
+        }
+      }
+
       let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
       const plannedLabel = offDay ? '【予定休日】' : '【予定出勤】';
       const plannedKubun = offDay ? '休日' : '出勤';
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
-      // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
-      if (offDay && !kubunInit) {
-        const hasActual = !!(seg?.checkIn || seg?.checkOut || seg?.id);
-        if (hasActual) kubunInit = '休日出勤';
-      }
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const canEditWorkRow = !!state.editableMonth && isWorkDay && !!kubunInit;
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
       
-      const inHm = fromDateTime(seg?.checkIn);
-      const outHm = fromDateTime(seg?.checkOut);
-      const hasActual = !!(seg?.id || seg?.checkIn || seg?.checkOut);
-      const isPlanned = !kubunInit && !hasActual;
-
-      // Permission check: if employee role and has selection or actual data, disable planned options
-      const role = String(profile?.role || '').toLowerCase();
-      const isEmployee = role === 'employee';
-      const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
-
       const shiftStart = String(shift?.start_time || '08:00').trim();
       const shiftEnd = String(shift?.end_time || '17:00').trim();
       const shiftStartOk = /^\d{1,2}:\d{2}$/.test(shiftStart);
       const shiftEndOk = /^\d{1,2}:\d{2}$/.test(shiftEnd);
+      const inHmRaw = fromDateTime(seg?.checkIn);
+      const outHmRaw = fromDateTime(seg?.checkOut);
+      const segWt = String(seg?.workType || '').trim();
+      const segLabels = String(seg?.labels || '').trim();
+      // Ignore shift-shaped placeholder rows (planned auto rows), keep only real punches.
+      const isShiftPlaceholder = !!(
+        inHmRaw && outHmRaw &&
+        shiftStartOk && shiftEndOk &&
+        !segWt && !segLabels &&
+        inHmRaw === shiftStart &&
+        outHmRaw === shiftEnd
+      );
+      const inHm = isShiftPlaceholder ? '' : inHmRaw;
+      const outHm = isShiftPlaceholder ? '' : outHmRaw;
+      // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
+      if (offDay && !kubunInit) {
+        const hasActual = !!(inHm || outHm);
+        if (hasActual) kubunInit = '休日出勤';
+      }
+      // Consider row "actual" only when visible (non-placeholder) punch times exist.
+      const hasActualIn = !!inHm;
+      const hasActualOut = !!outHm;
+      const hasActual = hasActualIn || hasActualOut;
+      // For working-day classifications, only real punches can make row "actual".
+      // This prevents auto/scheduled values from appearing as confirmed 出勤.
+      // Keep explicitly saved kubun visible even when there is no check-in/out yet.
+      // Previous logic hid work kubun (e.g. 出勤) unless actual attendance existed,
+      // which looked like "not saved" after reload.
+      const allowDailyAsActual = hasActual || kubunConfirmed;
+      if (!allowDailyAsActual) kubunInit = '';
+      const isPlanned = !kubunInit && !hasActual;
+      // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
+      const isPlannedLikeWork = !hasActual && isWorkDay;
+
+      // Permission check: if employee role and has selection or actual data, disable planned options
+      const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // Hint logic
       const inInit = inHm || (isWorkDay ? shiftStart : '');
@@ -104,10 +138,11 @@
       const autoIn = isWorkDay && !inHm && shiftStartOk;
       const autoOut = isWorkDay && !outHm && shiftEndOk;
       
-      // CSS Class: only planned auto-filled values should be faded.
-      // Once employee has real punch-in, keep it readable (not faded).
-      const inAutoCls = (autoIn && isPlanned && !isManualIn) ? 'is-auto' : '';
-      const outAutoCls = (autoOut && isPlanned && !isManualOut) ? 'is-auto' : '';
+      // Field-level visual logic:
+      // - check-in stays faded until it has real value.
+      // - check-out stays faded until it has real value (even if check-in is real).
+      const inAutoCls = (autoIn && !isManualIn && !hasActualIn) ? 'is-auto' : '';
+      const outAutoCls = (autoOut && !isManualOut && !hasActualOut) ? 'is-auto' : '';
 
       const shiftBrRaw = Number(shift?.break_minutes ?? 60);
       const shiftBrMin = Number.isFinite(shiftBrRaw) && shiftBrRaw >= 0 ? shiftBrRaw : 60;
@@ -115,9 +150,11 @@
       const nbMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.nightBreakMinutes ?? 0) : 0) : 0;
       const totalBmin = brMin + nbMin;
 
-      const workHm = (finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
+      // Show planned work hours (faded) even before actual punches exist.
+      const workHm = (isWorkDay && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
       const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
-      const workAutoCls = (isAutoWork && isPlanned) ? 'is-auto' : '';
+      const hasCompletedActual = hasActualIn && hasActualOut;
+      const workAutoCls = (isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
       // OT Calculation
       const whMin = (() => {
@@ -138,8 +175,8 @@
         }
         return Math.max(0, whMin - (8 * 60));
       })();
-      const otHm = (otMin > 0 && finalIn && finalOut) ? fmtHm(otMin) : '';
-      const otAutoCls = (otMin > 0 && isAutoWork && isPlanned) ? 'is-auto' : '';
+      const otHm = (hasActual && otMin > 0 && finalIn && finalOut) ? fmtHm(otMin) : '';
+      const otAutoCls = (otMin > 0 && isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
       const statusStr = String(state.currentMonthStatus || '');
       const approved = statusStr === 'approved';
@@ -147,18 +184,22 @@
       const isAdminView = String(profile?.role || '').toLowerCase() === 'admin' || String(profile?.role || '').toLowerCase() === 'manager';
       const hasAny = !!(finalIn || finalOut);
       const leaveKubunSet = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
-      const isLeaveApplied = !!kubunInit && leaveKubunSet.has(effectiveKubun) && !hasActual;
+      const isRegularOffRow = !!isOff && !hasActual && (effectiveKubun === '休日' || effectiveKubun === '代替休日');
+      const isLeaveApplied = !!kubunInit && leaveKubunSet.has(effectiveKubun) && !hasActual && !isRegularOffRow;
       let text = '未承認';
       let cls = 'warn';
-      if (isPlanned && !hasActual) {
+      if (approved) {
+        text = '承認済み';
+        cls = 'ok';
+      } else if (isPlanned && !hasActual) {
         text = '未申請';
         cls = 'warn';
       } else if (isLeaveApplied) {
         text = isAdminView ? '承認待ち' : '未確認';
         cls = 'warn';
-      } else if (approved) {
-        text = '承認済み';
-        cls = 'ok';
+      } else if (isRegularOffRow) {
+        text = '—';
+        cls = 'warn';
       } else if (hasActual) {
         text = isAdminView ? '承認待ち' : '未確認';
         cls = 'warn';
@@ -178,7 +219,7 @@
       else if (dow === '土') tr.classList.add('sat');
       if (dow === '土' && (inHm || outHm)) tr.classList.add('worked');
       if (isPlanned) tr.classList.add('planned');
-      if (seg?.id) tr.classList.add('has-entry');
+      if (hasActual) tr.classList.add('has-entry');
       if (!isWorkDay) tr.classList.add('leave');
 
       tr.dataset.row = '1';
@@ -187,12 +228,13 @@
       tr.dataset.id = seg?.id ? String(seg.id) : '';
       tr.dataset.clientId = tr.dataset.id ? '' : makeClientId();
       tr.dataset.primary = primary ? '1' : '0';
-      tr.dataset.kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1 ? '1' : '';
+      tr.dataset.kubunConfirmed = kubunConfirmed ? '1' : '';
       tr.dataset.shiftStart = shiftStartOk ? shiftStart : '08:00';
 
       const wtVal = (() => {
         if (isHolidayKubun) return '';
-        const v = String(seg?.workType || (primary ? daily?.workType : '') || '').trim();
+        const dailyWt = allowDailyAsActual && primary ? daily?.workType : '';
+        const v = String(seg?.workType || dailyWt || '').trim();
         // Không tự động gán '出社' cho ngày 予定出勤; chỉ hiển thị khi có giá trị thực tế
         return (v === 'onsite' || v === 'remote' || v === 'satellite') ? v : '';
       })();
@@ -409,6 +451,11 @@
       const excess = rowEl.querySelector('[data-field="excess"]');
       const lateEarly = rowEl.querySelector('[data-field="lateEarly"]');
       const statusWrap = rowEl.querySelector('.se-status-wrap');
+      const monthApproved = String(state.currentMonthStatus || '') === 'approved';
+      if (monthApproved) {
+        // Approved month must never appear as "unsaved" on row badges.
+        try { rowEl.dataset.dirty = ''; } catch {}
+      }
 
       const idVal = String(rowEl.dataset.id || '').trim();
       const confirmed = String(rowEl.dataset.kubunConfirmed || '') === '1';
@@ -422,6 +469,19 @@
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;
       const canEditWorkInputs = !!state.editableMonth && isWorkDay && !!cls;
+      const inValNow = String(inEl?.value || '').trim();
+      const outValNow = String(outEl?.value || '').trim();
+      const inAutoNow = String(inEl?.dataset?.auto || '') === '1';
+      const outAutoNow = String(outEl?.dataset?.auto || '') === '1';
+      const inAutoVal = String(inEl?.dataset?.autoVal || '').trim();
+      const outAutoVal = String(outEl?.dataset?.autoVal || '').trim();
+      const inIsPlannedAuto = !!(inValNow && inAutoNow && !inManual && inAutoVal && inValNow === inAutoVal);
+      const outIsPlannedAuto = !!(outValNow && outAutoNow && !outManual && outAutoVal && outValNow === outAutoVal);
+      const hasActualInNow = !!(inValNow && !inIsPlannedAuto);
+      const hasActualOutNow = !!(outValNow && !outIsPlannedAuto);
+      const hasActualNow = !!idVal || hasActualInNow || hasActualOutNow;
+      const isPlannedLikeWork = isWorkDay && !hasActualNow;
+      const visualPlanned = isPlanned || isPlannedLikeWork;
 
       if (clsSel) {
         clsSel.classList.toggle('is-planned', !cls);
@@ -439,17 +499,22 @@
       }
 
       if (statusWrap) {
-        const roleStr = String(root.State?.profile?.role || '').toLowerCase();
+        const roleStr = String(profile?.role || '').toLowerCase();
         const isAdminView = roleStr === 'admin' || roleStr === 'manager';
-        const monthApproved = String(state.currentMonthStatus || '') === 'approved';
-        const hasActualNow = !!(idVal || (inEl && String(inEl.value).trim()) || (outEl && String(outEl.value).trim()));
+        const isRegularOffRowNow = !!offDay && !hasActualNow && (effectiveKubun === '休日' || effectiveKubun === '代替休日');
+        const leaveKubunSetNow = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
+        const isLeaveAppliedNow = !!cls && leaveKubunSetNow.has(cls) && !hasActualNow && !isRegularOffRowNow;
         let stText = '未承認';
         let stCls = 'warn';
-        if (isPlanned && !hasActualNow) {
-          stText = '未申請';
-        } else if (monthApproved) {
+        if (monthApproved) {
           stText = '承認済み';
           stCls = 'ok';
+        } else if (isPlanned && !hasActualNow) {
+          stText = '未申請';
+        } else if (isLeaveAppliedNow) {
+          stText = isAdminView ? '承認待ち' : '未確認';
+        } else if (isRegularOffRowNow) {
+          stText = '—';
         } else if (hasActualNow) {
           stText = isAdminView ? '承認待ち' : '未確認';
         } else {
@@ -464,22 +529,46 @@
       }
 
       // Update Planned option visibility/disability (Admin/Manager can always select Planned)
-      const role = String(root.State?.profile?.role || '').toLowerCase();
-      const isEmployee = role === 'employee';
-      if (clsSel && isEmployee) {
+      // Get role dynamically to avoid referencing non-existent globals
+      let currentRole = '';
+      try { currentRole = String(profile?.role || '').toLowerCase(); } catch {}
+      if (!currentRole) {
+         try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch {}
+      }
+      const isEmployeeRole = currentRole === 'employee';
+      if (clsSel && isEmployeeRole) {
         const plannedOpt = clsSel.querySelector('option[value=""]');
         if (plannedOpt) {
-          const hasActualNow = (inEl && inEl.value !== '') || (outEl && outEl.value !== '');
           const shouldDisable = !!cls || hasActualNow;
           if (plannedOpt.disabled !== shouldDisable) {
             plannedOpt.disabled = shouldDisable;
           }
         }
-      } else if (clsSel && !isEmployee) {
+      } else if (clsSel && !isEmployeeRole) {
         // Admin/Manager can always select Planned
         const plannedOpt = clsSel.querySelector('option[value=""]');
         if (plannedOpt && plannedOpt.disabled) {
           plannedOpt.disabled = false;
+        }
+      }
+      
+      // Update options dynamically if needed based on role
+      if (clsSel) {
+        let hasHolidayOpt = false;
+        Array.from(clsSel.options).forEach(opt => {
+          if (opt.value === '休日') hasHolidayOpt = true;
+        });
+        
+        if (!isEmployeeRole && !offDay && !hasHolidayOpt) {
+           const newOpt = document.createElement('option');
+           newOpt.value = '休日';
+           newOpt.textContent = '休日';
+           // Insert after the planned label (which is index 0)
+           if (clsSel.options.length > 1) {
+             clsSel.insertBefore(newOpt, clsSel.options[1]);
+           } else {
+             clsSel.appendChild(newOpt);
+           }
         }
       }
 
@@ -588,7 +677,7 @@
       // - Nhạt (is-auto) CHỈ KHI: (là giờ tự động) VÀ (trạng thái dự kiến - isPlanned) VÀ (CHƯA bị người dùng sửa - !inManual)
       if (inEl) {
         const hasVal = String(inEl.value || '').trim() !== '';
-        const shouldBeAuto = inAuto && isPlanned && !inManual;
+        const shouldBeAuto = inAuto && !inManual && !hasActualInNow;
         // Nếu có giá trị nhưng không phải là autoVal ban đầu, nó phải ĐẬM
         const forceBold = hasVal && inAuto && String(inEl.value) !== String(inEl.dataset.autoVal);
         const finalAuto = shouldBeAuto && !forceBold;
@@ -598,7 +687,7 @@
       }
       if (outEl) {
         const hasVal = String(outEl.value || '').trim() !== '';
-        const shouldBeAuto = outAuto && isPlanned && !outManual;
+        const shouldBeAuto = outAuto && !outManual && !hasActualOutNow;
         const forceBold = hasVal && outAuto && String(outEl.value) !== String(outEl.dataset.autoVal);
         const finalAuto = shouldBeAuto && !forceBold;
         if (outEl.classList.contains('is-auto') !== finalAuto) {
@@ -652,7 +741,8 @@
       if (worked) {
         const text = !isWorkDay ? '' : ((inVal && outVal) ? whStr : (isAutoWork ? whStr : ''));
         if (worked.textContent !== text) worked.textContent = text;
-        const shouldWorkAuto = isAutoWork && isPlanned;
+        const hasCompletedActualNow = hasActualInNow && hasActualOutNow;
+        const shouldWorkAuto = isAutoWork && !hasCompletedActualNow;
         if (worked.classList.contains('is-auto') !== shouldWorkAuto) {
           worked.classList.toggle('is-auto', shouldWorkAuto);
         }
@@ -660,7 +750,8 @@
       if (excess) {
         const text = !isWorkDay ? '' : ((inVal && outVal && whMin > 0 && otMin > 0) ? fmtHm(otMin) : '');
         if (excess.textContent !== text) excess.textContent = text;
-        const shouldExcessAuto = isAutoWork && otMin > 0 && isPlanned;
+        const hasCompletedActualNow = hasActualInNow && hasActualOutNow;
+        const shouldExcessAuto = isAutoWork && otMin > 0 && !hasCompletedActualNow;
         if (excess.classList.contains('is-auto') !== shouldExcessAuto) {
           excess.classList.toggle('is-auto', shouldExcessAuto);
         }
