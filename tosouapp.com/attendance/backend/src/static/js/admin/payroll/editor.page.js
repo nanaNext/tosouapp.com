@@ -55,57 +55,57 @@ function mountStyle() {
     .pe-money{position:relative}
     .pe-money span{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-weight:400;color:#64748b;pointer-events:none}
 
-    .pe-kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px}
-    .pe-kpi > div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #e5e7eb}
+    .pe-kpi{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}
+    .pe-kpi > div{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid #e5e7eb}
     .pe-kpi > div:nth-child(-n+2){border-top:none}
-    .pe-kpi .k{font-size:14px;font-weight:400;color:#1f2937;line-height:1.4}
-    .pe-kpi .v{font-size:15px;font-weight:400;color:#0b1220;line-height:1.35;white-space:nowrap}
+    .pe-kpi .k{font-size:12px;font-weight:400;color:#1f2937;line-height:1.4}
+    .pe-kpi .v{font-size:13px;font-weight:400;color:#0b1220;line-height:1.35;white-space:nowrap}
 
-    .pe-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+    .pe-grid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
     @media (min-width: 980px){.pe-grid{grid-template-columns:1.05fr .95fr}}
     @media (min-width: 1200px){.pe-grid{grid-template-columns:1fr 1fr 1fr}}
     .pe-grid > *{min-width:0}
 
-    .pe-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:8px;align-items:end}
-    .pe-field{display:flex;flex-direction:column;gap:6px;min-width:0}
-    .pe-field>span{font-size:14px;font-weight:400;color:#1f2937;line-height:1.4}
-    .pe-field input,.pe-field select{height:42px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:15px;line-height:1.5;color:#0b1220;font-weight:400}
+    .pe-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:6px;align-items:end}
+    .pe-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .pe-field>span{font-size:12px;font-weight:400;color:#1f2937;line-height:1.4}
+    .pe-field input,.pe-field select{height:32px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:13px;line-height:1.5;color:#0b1220;font-weight:400}
     .pe-wrap input,.pe-wrap select,.pe-wrap textarea,.pe-wrap button{font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-weight:400}
-    .pe-field input[type="month"]{font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:15px;font-weight:400;letter-spacing:.2px}
+    .pe-field input[type="month"]{font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;font-weight:400;letter-spacing:.2px}
     .pe-field input::placeholder{color:#94a3b8;font-weight:400}
-    .pe-money input{width:100%;padding-right:34px}
+    .pe-money input{width:100%;padding-right:24px}
 
-    .pe-lowergrid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+    .pe-lowergrid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
     @media (min-width: 980px){.pe-lowergrid{grid-template-columns:1fr 1fr}}
 
-    .pe-paygrid{display:grid;grid-template-columns:1fr;gap:10px}
+    .pe-paygrid{display:grid;grid-template-columns:1fr;gap:6px}
     @media (min-width: 980px){.pe-paygrid{grid-template-columns:repeat(4, minmax(0, 1fr))}}
     @media (min-width: 980px){.pe-span2{grid-column:span 2 / span 2}}
 
     details{border:none;border-radius:0;padding:0;background:transparent;overflow:visible}
-    details + details{margin-top:10px}
-    summary.pe-title{cursor:pointer;user-select:none;margin:0;display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px}
+    details + details{margin-top:6px}
+    summary.pe-title{cursor:pointer;user-select:none;margin:0;display:flex;align-items:center;gap:6px;padding:6px 8px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;font-size:13px}
     summary{list-style:none}
     summary::-webkit-details-marker{display:none}
     summary::marker{content:''}
-    summary.pe-title::before{content:'';width:0;height:0;border-left:6px solid #64748b;border-top:4px solid transparent;border-bottom:4px solid transparent;opacity:.8}
+    summary.pe-title::before{content:'';width:0;height:0;border-left:5px solid #64748b;border-top:3px solid transparent;border-bottom:3px solid transparent;opacity:.8}
     details[open] > summary.pe-title::before{transform:rotate(90deg)}
     details > summary{position:relative;z-index:1}
     details > *{min-width:0}
 
-    .pe-items{display:flex;flex-direction:column;gap:8px;margin:0;padding:8px 2px 0 2px}
-    .pe-item{display:grid;grid-template-columns:minmax(0,1fr) 120px 18px;gap:4px;align-items:center}
-    .pe-item-short{grid-template-columns:minmax(0,1fr) 120px 18px}
-    .pe-lbl{display:flex;align-items:center;height:38px;font-size:14px;font-weight:400;color:#1f2937;min-width:0}
-    .pe-item input{height:42px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:15px;line-height:1.5;color:#0b1220;font-weight:400}
-    .pe-item span{justify-self:start;text-align:left;color:#4b5563;font-weight:400}
+    .pe-items{display:flex;flex-direction:column;gap:4px;margin:0;padding:4px 2px 0 2px}
+    .pe-item{display:grid;grid-template-columns:minmax(0,1fr) 90px 18px;gap:4px;align-items:center}
+    .pe-item-short{grid-template-columns:minmax(0,1fr) 90px 18px}
+    .pe-lbl{display:flex;align-items:center;height:32px;font-size:12px;font-weight:400;color:#1f2937;min-width:0}
+    .pe-item input{height:32px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:13px;line-height:1.5;color:#0b1220;font-weight:400}
+    .pe-item span{justify-self:start;text-align:left;color:#4b5563;font-weight:400;font-size:12px}
     .pe-item input:disabled{background:#f8fafc;color:#0f172a}
     .pe-item .pe-amt{text-align:right}
     .pe-item button{width:100%;padding:6px 0;border:1px solid #cbd5e1;border-radius:10px;background:#fff;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
     .pe-item button:hover{background:#f1f5f9;border-color:#94a3b8}
 
-    .pe-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
-    .pe-actions button{height:38px;padding:0 14px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;cursor:pointer;font-weight:400;transition:background-color .15s,border-color .15s,color .15s}
+    .pe-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px}
+    .pe-actions button{height:32px;padding:0 12px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;font-weight:400;font-size:13px;transition:background-color .15s,border-color .15s,color .15s}
     .pe-actions button:hover{background:#f1f5f9;border-color:#94a3b8}
     .pe-actions button.pe-primary{border-color:#1d4ed8;background:#2563eb;color:#fff}
     .pe-actions button.pe-primary:hover{background:#1d4ed8;border-color:#1e40af}
@@ -364,6 +364,8 @@ export async function mount() {
   const users = await listUsers().catch(() => []);
   const sel = basicCard.querySelector('#payrollUserId');
   for (const u of users) {
+    const role = String(u.role || '').toLowerCase();
+    if (role === 'admin' || role === 'manager') continue;
     const opt = document.createElement('option');
     opt.value = String(u.id);
     opt.textContent = `${u.id} ${u.username || u.email}`;
