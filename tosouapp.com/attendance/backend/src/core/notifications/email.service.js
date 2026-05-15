@@ -17,6 +17,10 @@ if (String(mailProvider || '').toLowerCase() === 'smtp') {
     auth: {
       user: smtpUser,
       pass: smtpPass
+    },
+    tls: {
+      // Do not fail on invalid/self-signed certs
+      rejectUnauthorized: false
     }
   });
 }
