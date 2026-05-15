@@ -23,6 +23,19 @@ function setAttachmentFilename(res, filename) {
   res.setHeader('Content-Disposition', `attachment; filename="payslip.pdf"; filename*=UTF-8''${rfc5987Encode(name)}`);
 }
 
+function shouldRestrictManagerPayrollScope() {
+  return String(process.env.MANAGER_STRICT_DEPT_PAYROLL || '').toLowerCase() === 'true';
+}
+
+async function ensureManagerPayrollScope(req, targetUserId) {
+  if (req.user.role !== 'manager') return true;
+  if (!shouldRestrictManagerPayrollScope()) return true;
+  const me = await userRepo.getUserById(req.user.id);
+  const target = await userRepo.getUserById(targetUserId);
+  if (!me?.departmentId || !target?.departmentId) return false;
+  return String(me.departmentId) === String(target.departmentId);
+}
+
 router.post('/admin/upload',
   rateLimitNamed('payslip_admin_upload', { windowMs: 60_000, max: 5 }),
   authenticate,
@@ -42,12 +55,8 @@ router.post('/admin/upload',
     if (!userId || !month || !req.file) {
       return res.status(400).json({ message: 'Missing userId/month/file' });
     }
-    if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const target = await userRepo.getUserById(userId);
-      if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: cross-department upload' });
-      }
+    if (!(await ensureManagerPayrollScope(req, userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department upload' });
     }
     let filename = req.file.filename;
     let iv = null, tag = null, hash = null, keyVersion = null;
@@ -110,12 +119,8 @@ router.get('/admin/list', authenticate, authorize('admin','manager'), async (req
     if (!userId) {
       return res.status(400).json({ message: 'Missing userId' });
     }
-    if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const target = await userRepo.getUserById(userId);
-      if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: cross-department access' });
-      }
+    if (!(await ensureManagerPayrollScope(req, userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department access' });
     }
     let rows = month
       ? await repo.listByUserMonth(parseInt(userId, 10), month || null)
@@ -252,12 +257,8 @@ router.delete('/admin/:id',
     if (!req.body?.reason) {
       return res.status(400).json({ message: 'Missing reason' });
     }
-    if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const target = await userRepo.getUserById(row.userId);
-      if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: cross-department delete' });
-      }
+    if (!(await ensureManagerPayrollScope(req, row.userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department delete' });
     }
     const deleted = await repo.deleteById(id);
     try {
@@ -302,12 +303,8 @@ router.post('/admin/replace/:id',
     if (!target) {
       return res.status(404).json({ message: 'Not found' });
     }
-    if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const targetUser = await userRepo.getUserById(target.userId);
-      if (!me?.departmentId || String(me.departmentId) !== String(targetUser?.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: cross-department replace' });
-      }
+    if (!(await ensureManagerPayrollScope(req, target.userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department replace' });
     }
     const oldPath = path.join(__dirname, '../../', 'uploads', 'payslips', target.filename);
     let filename = req.file.filename;
@@ -364,12 +361,8 @@ router.post('/admin/replace-by-month',
     if (!target) {
       return res.status(404).json({ message: 'Not found for user/month' });
     }
-    if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const targetUser = await userRepo.getUserById(target.userId);
-      if (!me?.departmentId || String(me.departmentId) !== String(targetUser?.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: cross-department replace' });
-      }
+    if (!(await ensureManagerPayrollScope(req, target.userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department replace' });
     }
     const oldPath2 = path.join(__dirname, '../../', 'uploads', 'payslips', target.filename);
     let filename = req.file.filename;
@@ -481,12 +474,8 @@ router.get('/admin/file/:id',
     if (!row) {
       return res.status(404).json({ message: 'Not found' });
     }
-    if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const targetUser = await userRepo.getUserById(row.userId);
-      if (!me?.departmentId || String(me.departmentId) !== String(targetUser?.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: cross-department access' });
-      }
+    if (!(await ensureManagerPayrollScope(req, row.userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department access' });
     }
     const filePath = path.join(__dirname, '../../', 'uploads', 'payslips', row.filename);
     if (!fs.existsSync(filePath)) {

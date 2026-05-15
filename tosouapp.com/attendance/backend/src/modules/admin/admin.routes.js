@@ -983,7 +983,9 @@ router.get('/salary', async (req, res) => {
 async function ensureSameDepartmentIfManager(req, targetUserId) {
   const role = String(req.user?.role || '').toLowerCase();
   if (role !== 'manager') return true;
-  if (String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() !== 'true') return true;
+  // Payroll/PDF flows are intentionally company-wide for managers unless
+  // an explicit payroll-specific scope lock is enabled.
+  if (String(process.env.MANAGER_STRICT_DEPT_PAYROLL || '').toLowerCase() !== 'true') return true;
   const me = await userRepo.getUserById(req.user.id);
   const target = await userRepo.getUserById(targetUserId);
   if (!me?.departmentId || !target?.departmentId) return false;
@@ -1630,7 +1632,7 @@ router.get('/salary/files', async (req, res) => {
     const userId = req.query?.userId ? parseInt(String(req.query.userId), 10) : null;
     const month = req.query?.month ? String(req.query.month).slice(0, 7) : null;
     const limit = Math.max(1, Math.min(1000, parseInt(String(req.query?.limit || '500'), 10) || 500));
-    if (role === 'manager' && userId) {
+    if (role === 'manager' && userId && String(process.env.MANAGER_STRICT_DEPT_PAYROLL || '').toLowerCase() === 'true') {
       const me = await userRepo.getUserById(req.user.id);
       const target = await userRepo.getUserById(userId);
       if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
