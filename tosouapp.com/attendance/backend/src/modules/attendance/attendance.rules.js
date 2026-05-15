@@ -95,23 +95,33 @@ const CoreRules = {
   }
 };
 
-async function computeRecord(rec) {
+async function computeRecord(rec, ctx = null) {
   const settingsRepo = require('../settings/settings.repository');
   const userRepo = require('../users/user.repository');
   const attendanceRepo = require('./attendance.repository');
   const calendarRepo = require('../calendar/calendar.repository');
   // Tính phút công chuẩn và phút tăng ca cho một bản ghi attendance
-  const cfg = await settingsRepo.getSettings().catch(() => null);
+  const cfg = ctx?.cfg !== undefined ? ctx.cfg : await settingsRepo.getSettings().catch(() => null);
   const baseBreak = cfg?.breakMinutes || 60;
+  
+  const getJSTDateStr = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string') return val.split(' ')[0].split('T')[0];
+    const jst = new Date(val.getTime() + 9 * 3600 * 1000);
+    return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth()+1).padStart(2,'0')}-${String(jst.getUTCDate()).padStart(2,'0')}`;
+  };
+  const dateStr = getJSTDateStr(rec.checkIn);
+  
   const inDate = parseMySQLJSTToDate(rec.checkIn);
-  const y = inDate.getUTCFullYear();
-  const m = inDate.getUTCMonth();
-  const d = inDate.getUTCDate();
+  const [yStr, mStr, dStr] = dateStr.split('-');
+  const y = parseInt(yStr, 10);
+  const m = parseInt(mStr, 10) - 1;
+  const d = parseInt(dStr, 10);
   const jst = (hh, mm) => new Date(Date.UTC(y, m, d, hh - 9, mm, 0));
   let shift;
   let template = false;
   if (rec.shiftId) {
-    const def = await attendanceRepo.getShiftById(rec.shiftId);
+    const def = ctx?.shiftCache ? ctx.shiftCache[rec.shiftId] : await attendanceRepo.getShiftById(rec.shiftId);
     if (def) {
       const [sH, sM] = String(def.start_time).split(':').map(n => parseInt(n, 10));
       const [eH, eM] = String(def.end_time).split(':').map(n => parseInt(n, 10));
@@ -119,8 +129,10 @@ async function computeRecord(rec) {
       try {
         const wt = String(rec.work_type || rec.workType || '').trim();
         const labels = String(rec.labels || '').trim();
-        const inHm = String(rec.checkIn || '').slice(11, 16);
-        const outHm = String(rec.checkOut || '').slice(11, 16);
+        const fmtHm = d => d ? String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0') : '';
+        const inHm = fmtHm(inDate);
+        const outDateObj = parseMySQLJSTToDate(rec.checkOut);
+        const outHm = fmtHm(outDateObj);
         if (!wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
           template = true;
         }
@@ -128,12 +140,12 @@ async function computeRecord(rec) {
     }
   }
   if (!shift) {
-    const u = await userRepo.getUserById(rec.userId).catch(() => null);
+    const u = ctx?.userCache ? ctx.userCache[rec.userId] : await userRepo.getUserById(rec.userId).catch(() => null);
     const empType = String(u?.employment_type || 'full_time').toLowerCase();
     if (empType === 'full_time') {
       let deptNameRaw = '';
       if (u?.departmentId) {
-        const dept = await userRepo.getDepartmentById(u.departmentId).catch(() => null);
+        const dept = ctx?.deptCache ? ctx.deptCache[u.departmentId] : await userRepo.getDepartmentById(u.departmentId).catch(() => null);
         deptNameRaw = String(dept?.name || '').trim().toLowerCase();
       }
       const isConstruction = ['工事', 'kouji', 'koji', 'construction', 'engineering'].some(k => deptNameRaw.includes(k));
@@ -173,8 +185,7 @@ async function computeRecord(rec) {
   const inJ = parseMySQLJSTToDate(rec.checkIn);
   const outJ = parseMySQLJSTToDate(rec.checkOut);
   const worked = minutesBetween(inJ, outJ);
-  const dateStr = rec.checkIn.split(' ')[0];
-  const isOff = await calendarRepo.isOff(dateStr).catch(() => false);
+  const isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
   const scheduled = isOff ? 0 : Math.max(0, minutesBetween(shift.start, shift.end) - breakMin);
   const regular = Math.min(worked, scheduled);
   const overtime = Math.max(0, worked - scheduled);
@@ -185,7 +196,7 @@ async function computeRecord(rec) {
   return {
     id: rec.id,
     userId: rec.userId,
-    date: rec.checkIn.split(' ')[0],
+    date: dateStr,
     checkIn: rec.checkIn,
     checkOut: rec.checkOut,
     shift: shift.name,
@@ -201,9 +212,56 @@ async function computeRecord(rec) {
 async function computeRange(rows) {
   // Tổng hợp theo ngày và tổng cộng trong khoảng từ danh sách bản ghi đã chốt
   const items = [];
+  if (!rows || rows.length === 0) return { days: [], total: { regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0 } };
+
+  const settingsRepo = require('../settings/settings.repository');
+  const userRepo = require('../users/user.repository');
+  const attendanceRepo = require('./attendance.repository');
+  const calendarRepo = require('../calendar/calendar.repository');
+
+  const cfg = await settingsRepo.getSettings().catch(() => null);
+  const userCache = {};
+  const deptCache = {};
+  const shiftCache = {};
+  const offDayCache = {};
+
+  const years = new Set();
+  for (const r of rows) {
+    if (r.checkIn) {
+      const dStr = typeof r.checkIn === 'string' ? r.checkIn : (r.checkIn instanceof Date ? r.checkIn.toISOString() : String(r.checkIn));
+      years.add(parseInt(dStr.slice(0, 4), 10));
+    }
+  }
+  
+  for (const y of years) {
+    if (!y || isNaN(y)) continue;
+    const cal = await calendarRepo.computeYear(y).catch(() => null);
+    if (cal && cal.off_days) {
+      for (const d of cal.off_days) {
+        offDayCache[d] = true;
+      }
+    }
+  }
+
+  const userIds = Array.from(new Set(rows.map(r => r.userId)));
+  await Promise.all(userIds.map(async uid => {
+    const u = await userRepo.getUserById(uid).catch(() => null);
+    userCache[uid] = u;
+    if (u?.departmentId && !deptCache[u.departmentId]) {
+      deptCache[u.departmentId] = await userRepo.getDepartmentById(u.departmentId).catch(() => null);
+    }
+  }));
+
+  const shiftIds = Array.from(new Set(rows.map(r => r.shiftId).filter(Boolean)));
+  await Promise.all(shiftIds.map(async sid => {
+    shiftCache[sid] = await attendanceRepo.getShiftById(sid).catch(() => null);
+  }));
+
+  const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache };
+
   for (const r of rows) {
     if (!r.checkOut) continue;
-    const x = await computeRecord(r);
+    const x = await computeRecord(r, ctx);
     if (x?.template) continue;
     items.push(x);
   }

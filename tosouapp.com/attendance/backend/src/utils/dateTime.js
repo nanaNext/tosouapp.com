@@ -42,7 +42,11 @@ function formatInputToMySQLJST(input) {
 }
 
 function parseMySQLUTCToDate(str) {
-  const [date, time] = str.split(' ');
+  if (!str) return new Date();
+  if (str instanceof Date) return str;
+  const s = String(str).replace('T', ' ').split('.')[0];
+  if (!s.includes(' ')) return new Date(str);
+  const [date, time] = s.split(' ');
   const [y, m, d] = date.split('-').map(Number);
   const [H, M, S] = time.split(':').map(Number);
   const utcMs = Date.UTC(y, m - 1, d, H, M, S);
@@ -50,7 +54,11 @@ function parseMySQLUTCToDate(str) {
 }
 
 function parseMySQLJSTToDate(str) {
-  const [date, time] = str.split(' ');
+  if (!str) return new Date();
+  if (str instanceof Date) return new Date(str.getTime() - 9 * 3600 * 1000);
+  const s = String(str).replace('T', ' ').split('.')[0];
+  if (!s.includes(' ')) return new Date(str);
+  const [date, time] = s.split(' ');
   const [y, m, d] = date.split('-').map(Number);
   const [H, M, S] = time.split(':').map(Number);
   const utcMs = Date.UTC(y, m - 1, d, H - 9, M, S);
