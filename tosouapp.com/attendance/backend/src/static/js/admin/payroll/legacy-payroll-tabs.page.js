@@ -23,6 +23,10 @@ function tabHref(tab) {
   return `${base}?tab=${encodeURIComponent(String(tab || ''))}`;
 }
 
+function formatEmployeeCode(u) {
+  return String((u && (u.employee_code || u.employeeCode || ('EMP' + String(u.id).padStart(3, '0')))) || '').trim();
+}
+
 function mountNav(activeTab) {
   const nav = document.createElement('div');
   nav.className = 'pe-nav';
@@ -89,7 +93,8 @@ export async function mountSalaryCalc({ content, listUsers }) {
     if (role === 'admin' || role === 'manager') continue;
     const opt = document.createElement('option');
     opt.value = String(u.id);
-    opt.textContent = `${u.id} ${u.username || u.email}`;
+    const code = formatEmployeeCode(u);
+    opt.textContent = `${code} ${u.username || u.email}`.trim();
     sel.appendChild(opt);
   }
   const form = document.createElement('form');
