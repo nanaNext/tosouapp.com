@@ -309,10 +309,10 @@ export async function mount() {
     </div>
     <div class="pe-sub-title">時間外・割増手当</div>
     <div class="pe-items">
-      <div class="pe-item"><div class="pe-lbl">残業手当</div><div class="pe-money-item"><input class="pe-amt" id="ovEarnOT" type="number" step="1" placeholder="0"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">時間外手当</div><div class="pe-money-item"><input class="pe-amt" id="ovEarnOT" type="number" step="1" placeholder="0"><span>円</span></div></div>
       <div class="pe-item"><div class="pe-lbl">固定残業手当</div><div class="pe-money-item"><input class="pe-amt" id="ovEarnFixedOT" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item"><div class="pe-lbl">夜間出勤手当</div><div class="pe-money-item"><input class="pe-amt" id="ovEarnNight" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item"><div class="pe-lbl">休日出勤手当</div><div class="pe-money-item"><input class="pe-amt" id="ovEarnHoliday" type="number" step="1" placeholder="0"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">深夜勤手当</div><div class="pe-money-item"><input class="pe-amt" id="ovEarnNight" type="number" step="1" placeholder="0"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">所休出手当</div><div class="pe-money-item"><input class="pe-amt" id="ovEarnHoliday" type="number" step="1" placeholder="0"><span>円</span></div></div>
     </div>
     <div class="pe-sub-title">その他手当・控除</div>
     <div class="pe-items">
