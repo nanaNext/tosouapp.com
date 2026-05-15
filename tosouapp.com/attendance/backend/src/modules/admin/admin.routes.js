@@ -938,74 +938,8 @@ router.get('/payslip', authorize('admin'), async (req, res) => {
       return res.status(400).json({ message: 'Missing userIds/month' });
     }
     const ids = String(userIds).split(',').map(s => s.trim()).filter(Boolean);
-    const y = parseInt(String(month).split('-')[0], 10);
-    const m = parseInt(String(month).split('-')[1], 10);
-    const pad = n => String(n).padStart(2, '0');
-    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    const from = `${y}-${pad(m)}-01`;
-    const to = `${y}-${pad(m)}-${pad(lastDay)}`;
-    const today = new Date();
-    const issueDate = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-${pad(today.getUTCDate())}`;
-    const employees = [];
-    for (const id of ids) {
-      const user = await userRepo.getUserById(id);
-      const ts = await attendanceService.timesheet(id, from, to);
-      const workDays = Array.isArray(ts.days) ? ts.days.length : 0;
-      const 勤怠 = {
-        出勤日数: workDays,
-        有給休暇: 0,
-        就業時間: ts.total.regularMinutes || 0,
-        法外時間外: ts.total.overtimeMinutes || 0,
-        所定休出勤: 0,
-        週40超時間: 0,
-        月60超時間: 0,
-        法定休出勤: 0,
-        深夜勤時間: ts.total.nightMinutes || 0,
-        前月有休残: 0
-      };
-      const 支給 = {
-        基礎給: 0,
-        就業手当: 0,
-        時間外手当: 0,
-        所休出手当: 0,
-        週40超手当: 0,
-        月60超手当: 0,
-        法休出手当: 0,
-        深夜勤手当: 0
-      };
-      const 控除 = {
-        健康保険: 0,
-        介護保険: 0,
-        厚生年金: 0,
-        雇用保険: 0,
-        社保合計額: 0,
-        課税対象額: 0,
-        所得税: 0,
-        立替家賃: 0
-      };
-      const 合計 = {
-        総支給額: 0,
-        総控除額: 0,
-        差引支給額: 0
-      };
-      employees.push({
-        userId: user?.id || parseInt(id, 10),
-        従業員コード: user?.id || parseInt(id, 10),
-        氏名: user?.username || '',
-        対象年月: month,
-        勤怠,
-        支給,
-        控除,
-        合計,
-        振込銀行: null
-      });
-    }
-    res.status(200).json({
-      companyName,
-      issueDate,
-      month,
-      employees
-    });
+    const result = await salaryService.computePayslips(ids, month);
+    res.status(200).json({ month, employees: result.employees });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1194,6 +1128,7 @@ router.get('/salary/preview', async (req, res) => {
     }
     const input = await salaryInputRepo.getByUserMonth(userId, month);
     const options = normalizeJsonPayload(input?.payload);
+    console.log('PDF GENERATE OPTIONS KINTAI:', JSON.stringify(options?.kintai));
     const emp = await salaryService.computePayslipForUser(userId, month, options || null);
     res.status(200).json(emp);
   } catch (err) {

@@ -1,5 +1,5 @@
 const db = require('../../core/database/mysql');
-
+//Lấy cấu hình lương theo năm (salary_config), chạy query với tham số year
 async function getConfigByYear(year) {
   try {
     const sql = `SELECT * FROM salary_config WHERE year = ? LIMIT 1`;

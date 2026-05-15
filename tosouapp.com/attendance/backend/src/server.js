@@ -33,6 +33,15 @@ function initAutoGrantScheduler() {
   }
 }
 
+function initShiftReminders() {
+  try {
+    const shiftReminder = require('./services/shiftReminder.service');
+    shiftReminder.init();
+  } catch (e) {
+    console.error('[ShiftReminder] init error', e && e.message);
+  }
+}
+
 async function start() {
   try {
     await require('./core/bootstrap').init();
@@ -40,7 +49,10 @@ async function start() {
       const shownHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
       console.log(`Server is running at http://${shownHost}:${PORT} (bind ${HOST})`);
     });
-    if (!disableSchedulers) initAutoGrantScheduler();
+    if (!disableSchedulers) {
+      initAutoGrantScheduler();
+      initShiftReminders();
+    }
   } catch (e) {
     try { console.error('bootstrap_error', e && e.message ? e.message : e); } catch {}
     process.exit(1);

@@ -5,23 +5,35 @@ export function createPayloadController({ doc, basicCard, dedCard, otherCard, pa
     const host = doc.querySelector(hostId);
     if (!host) return;
     const wrap = doc.createElement('div');
-    wrap.className = 'pe-item';
+    wrap.className = 'pe-item pe-item-short';
     const label = doc.createElement('input');
     label.className = 'pe-lbl';
     label.placeholder = '項目名';
     label.value = (init && init.label) ? init.label : '';
+    
+    const moneyWrap = doc.createElement('div');
+    moneyWrap.className = 'pe-money-item';
+    
     const amount = doc.createElement('input');
     amount.type = 'number';
     amount.step = '1';
     amount.className = 'pe-amt';
     amount.placeholder = '金額';
     amount.value = (init && init.amount != null) ? String(init.amount) : '';
+    
+    const yenSpan = doc.createElement('span');
+    yenSpan.textContent = '円';
+    
+    moneyWrap.appendChild(amount);
+    moneyWrap.appendChild(yenSpan);
+    
     const del = doc.createElement('button');
     del.type = 'button';
-    del.textContent = '×';
+    del.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    del.title = '削除';
     del.addEventListener('click', () => { wrap.remove(); }, { signal });
     wrap.appendChild(label);
-    wrap.appendChild(amount);
+    wrap.appendChild(moneyWrap);
     wrap.appendChild(del);
     host.appendChild(wrap);
   };
@@ -58,6 +70,17 @@ export function createPayloadController({ doc, basicCard, dedCard, otherCard, pa
     basicCard.querySelector('#payrollKHalf').value = Object.prototype.hasOwnProperty.call(k, '半日出勤日数') ? String(k['半日出勤日数']) : '';
     basicCard.querySelector('#payrollKAbsent').value = Object.prototype.hasOwnProperty.call(k, '欠勤日数') ? String(k['欠勤日数']) : '';
     basicCard.querySelector('#payrollKUnpaid').value = Object.prototype.hasOwnProperty.call(k, '無給休暇') ? String(k['無給休暇']) : '';
+    
+    const setIf = (id, key) => {
+      const el = basicCard.querySelector(id);
+      if (el) el.value = Object.prototype.hasOwnProperty.call(k, key) ? String(k[key]) : '';
+    };
+    setIf('#payrollKPaid', '有給休暇');
+    setIf('#payrollKWorkHours', '就業時間');
+    setIf('#payrollKLegalHours', '法外時間外');
+    setIf('#payrollKOverHours', '週40超時間');
+    setIf('#payrollKOver60Hours', '月60超時間');
+    setIf('#payrollKNightHours', '深夜勤時間');
 
     const otherItems = Array.isArray(p.otherItems) ? p.otherItems : [];
     const getOther = (label) => {
@@ -181,16 +204,42 @@ export function createPayloadController({ doc, basicCard, dedCard, otherCard, pa
     const kkEl = basicCard.querySelector('#payrollKHalf');
     const kaEl = basicCard.querySelector('#payrollKAbsent');
     const kuEl = basicCard.querySelector('#payrollKUnpaid');
+    const kpEl = basicCard.querySelector('#payrollKPaid');
+    const kwhEl = basicCard.querySelector('#payrollKWorkHours');
+    const klhEl = basicCard.querySelector('#payrollKLegalHours');
+    const kohEl = basicCard.querySelector('#payrollKOverHours');
+    const k60El = basicCard.querySelector('#payrollKOver60Hours');
+    const knhEl = basicCard.querySelector('#payrollKNightHours');
+
     const kwN = parseNum(kwEl && kwEl.value != null ? kwEl.value : undefined, '出勤日数', { allowEmpty: true });
     const khN = parseNum(khEl && khEl.value != null ? khEl.value : undefined, '休日出勤日数', { allowEmpty: true });
     const kkN = parseNum(kkEl && kkEl.value != null ? kkEl.value : undefined, '半日出勤日数', { allowEmpty: true });
     const kaN = parseNum(kaEl && kaEl.value != null ? kaEl.value : undefined, '欠勤日数', { allowEmpty: true });
     const kuN = parseNum(kuEl && kuEl.value != null ? kuEl.value : undefined, '無給休暇', { allowEmpty: true });
-    if (kwN != null) kintai['出勤日数'] = yen(kwN);
-    if (khN != null) kintai['休日出勤日数'] = yen(khN);
-    if (kkN != null) kintai['半日出勤日数'] = yen(kkN);
-    if (kaN != null) kintai['欠勤日数'] = yen(kaN);
-    if (kuN != null) kintai['無給休暇'] = yen(kuN);
+    const kpN = parseNum(kpEl && kpEl.value != null ? kpEl.value : undefined, '有給休暇', { allowEmpty: true });
+
+    if (kwN != null) kintai['出勤日数'] = kwN;
+    if (khN != null) kintai['休日出勤日数'] = khN;
+    if (kkN != null) kintai['半日出勤日数'] = kkN;
+    if (kaN != null) kintai['欠勤日数'] = kaN;
+    if (kuN != null) kintai['無給休暇'] = kuN;
+    if (kpN != null) kintai['有給休暇'] = kpN;
+
+    const kwhStr = String(kwhEl && kwhEl.value != null ? kwhEl.value : '').trim();
+    if (kwhStr) kintai['就業時間'] = kwhStr; else kintai['就業時間'] = '';
+
+    const klhStr = String(klhEl && klhEl.value != null ? klhEl.value : '').trim();
+    if (klhStr) kintai['法外時間外'] = klhStr; else kintai['法外時間外'] = '';
+
+    const kohStr = String(kohEl && kohEl.value != null ? kohEl.value : '').trim();
+    if (kohStr) kintai['週40超時間'] = kohStr; else kintai['週40超時間'] = '';
+
+    const k60Str = String(k60El && k60El.value != null ? k60El.value : '').trim();
+    if (k60Str) kintai['月60超時間'] = k60Str; else kintai['月60超時間'] = '';
+
+    const knhStr = String(knhEl && knhEl.value != null ? knhEl.value : '').trim();
+    if (knhStr) kintai['深夜勤時間'] = knhStr; else kintai['深夜勤時間'] = '';
+
     if (Object.keys(kintai).length) payload.kintai = kintai;
 
     return payload;

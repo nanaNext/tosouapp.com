@@ -1,5 +1,6 @@
 import { delegate } from '../_shared/dom.js';
 import { api, downloadWithAuth } from '../../shared/api/client.js';
+// cái này dùng để ensure payroll nav style được tạo ra trước khi mount payroll tabs
 
 function ensurePayrollNavStyle() {
   try {
@@ -84,6 +85,8 @@ export async function mountSalaryCalc({ content, listUsers }) {
   sel.multiple = true;
   sel.style.minWidth = '280px';
   for (const u of users) {
+    const role = String(u.role || '').toLowerCase();
+    if (role === 'admin' || role === 'manager') continue;
     const opt = document.createElement('option');
     opt.value = String(u.id);
     opt.textContent = `${u.id} ${u.username || u.email}`;

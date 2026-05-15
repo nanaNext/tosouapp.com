@@ -330,7 +330,27 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
   const totals = emp['合計'] || {};
 
   const attSlots = Array(21).fill(null); // 3 hàng * 7 cột = 21 slots
-  const timeHrs = (v) => Number((v || 0) / 60).toFixed(2);
+  
+  const parseHmToMin = (hm) => {
+    if (!hm && hm !== 0) return 0;
+    if (typeof hm === 'number') return hm;
+    const pts = String(hm).split(':');
+    if (pts.length === 2) return parseInt(pts[0], 10) * 60 + parseInt(pts[1], 10);
+    return Number(hm) || 0;
+  };
+
+  console.log('PDF Generation - kintai:', JSON.stringify(kintai));
+
+  const timeHrs = (v) => {
+    if (!v && v !== 0) return '';
+    if (v === '0.00' || v === '0:00' || v === '00:00' || v === '0' || v === 0) return '';
+    const min = parseHmToMin(v);
+    if (min === 0) {
+      return String(v); // If it failed to parse, return the original string
+    }
+    const val = Number(min / 60).toFixed(2);
+    return val === '0.00' ? '' : val;
+  };
   
   attSlots[0] = { label: '出勤日数', value: countZero(kintai['出勤日数']) };
   attSlots[1] = { label: '有給休暇', value: countZero(kintai['有給休暇']) };
@@ -424,6 +444,7 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
   cy += 40;
 
   const others = emp['その他'] || {};
+  const pay = emp['支払'] || {};
   const otherKeys = Object.keys(others).filter(k => Number(others[k]) !== 0);
   const parts = emp?._bankAccountParts && typeof emp._bankAccountParts === 'object' ? emp._bankAccountParts : null;
   const bankName = txt(parts?.bankName || '');
@@ -436,14 +457,25 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
 
   drawRect(mx, cy, boxW, boxH, cyanBg, LW);
 
+  const payInfo = [];
+  if (Number(pay['振込支給額'] || 0)) payInfo.push(`振込:${money(pay['振込支給額'])}`);
+  if (Number(pay['現金支給額'] || 0)) payInfo.push(`現金:${money(pay['現金支給額'])}`);
+  if (Number(pay['現物支給額'] || 0)) payInfo.push(`現物:${money(pay['現物支給額'])}`);
+
   writeText('振込銀行', mx + 6, cy + 6, { size: 9 });
   writeText(bankName || acct, mx + 52, cy + 6, { size: 9, width: midX - (mx + 52) - 6 });
   writeText('支店', midX + 6, cy + 6, { size: 9 });
   writeText(branchName, midX + 36, cy + 6, { size: 9, width: mx + boxW - (midX + 36) - 6 });
 
+  let line2Text = '';
+  if (payInfo.length > 0) line2Text += `[支払方法] ${payInfo.join('   ')}     `;
   if (otherKeys.length > 0) {
     const otherTexts = otherKeys.map(k => `${k}:${money(others[k])}`);
-    writeText(otherTexts.join('   '), mx + 6, cy + 26, { size: 9, width: boxW - 12 });
+    line2Text += `[その他] ${otherTexts.join('   ')}`;
+  }
+  
+  if (line2Text) {
+    writeText(line2Text, mx + 6, cy + 26, { size: 9, width: boxW - 12 });
   }
 
     doc.end();
