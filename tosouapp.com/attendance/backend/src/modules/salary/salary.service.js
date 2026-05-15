@@ -173,7 +173,7 @@ async function computePayslipForUser(userId, month, options = null) {
   const rStep = conf?.rounding_minutes ?? env.salaryRoundingMinutes;
   const rMode = conf?.rounding_mode ?? env.salaryRoundingMode;
   const regularMin = roundToStep(ts.total.regularMinutes || 0, rStep, rMode);
-  const nightMin = roundToStep(ts.total.nightMinutes || 0, rStep, rMode);
+  let nightMin = roundToStep(ts.total.nightMinutes || 0, rStep, rMode);
   const holidayMin = 0;
   function isoWeekStartStr(s) {
     const d = new Date(s + 'T00:00:00Z');
