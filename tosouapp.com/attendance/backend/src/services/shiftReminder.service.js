@@ -1,7 +1,20 @@
-const cron = require('node-cron');
 const db = require('../core/database/mysql');
 const emailService = require('../core/notifications/email.service');
-const { nowJSTMySQL } = require('../../utils/dateTime');
+
+let cronInstance = null;
+let cronLoadError = null;
+
+function getCron() {
+  if (cronInstance) return cronInstance;
+  if (cronLoadError) return null;
+  try {
+    cronInstance = require('node-cron');
+    return cronInstance;
+  } catch (err) {
+    cronLoadError = err;
+    return null;
+  }
+}
 
 // Store sent reminders in memory to avoid duplicate emails.
 // In production, consider Redis or a database table to persist this across restarts.
@@ -28,16 +41,6 @@ function parseHmToMin(hm) {
  * @param {number} targetMin - Shift start or end time in minutes since midnight.
  * @param {number} offset - 30, 15, or 5 minutes.
  * @returns {boolean} True if the current time matches the exact reminder minute.
- */
-function isWithinReminderWindow(currentMin, targetMin, offset) {
-  if (targetMin == null || currentMin == null) return false;
-  // We check exact match for the minute to avoid sending multiple times within the same window.
-  // cron runs every minute.
-  return targetMin - currentMin === offset;
-}
-
-/**
- * Main cron job logic
  */
 async function processReminders() {
   try {
@@ -408,6 +411,13 @@ ${appUrl}
 }
 
 function init() {
+  const cron = getCron();
+  if (!cron || typeof cron.schedule !== 'function') {
+    const detail = cronLoadError && cronLoadError.message ? `: ${cronLoadError.message}` : '';
+    console.warn(`[ShiftReminder] Scheduler disabled because node-cron is unavailable${detail}`);
+    return false;
+  }
+
   // Run every minute at the 0th second
   cron.schedule('* * * * *', () => {
     processReminders();
@@ -424,6 +434,7 @@ function init() {
   }, { timezone: 'Asia/Tokyo' });
 
   console.log('[ShiftReminder] Cron job initialized (runs every minute). Daily at 23:00 JST, Monthly on 25th 12:00 JST.');
+  return true;
 }
 
 module.exports = {

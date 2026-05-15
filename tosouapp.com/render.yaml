@@ -5,7 +5,7 @@ services:
     plan: starter
     region: singapore
     buildCommand: |
-      npm ci --omit=dev
+      npm install --omit=dev
     startCommand: |
       npm start
     repoPath: .
