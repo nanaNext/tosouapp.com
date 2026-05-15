@@ -31,9 +31,17 @@ module.exports = {
   salaryTaxRate: parseFloat(process.env.SALARY_TAX_RATE || '0'),
   salaryRentDeduction: parseInt(process.env.SALARY_RENT_DEDUCTION || '0', 10)
   ,
-  mailProvider: process.env.MAIL_PROVIDER || '',
+  // Mail / Resend / SMTP
+  mailProvider: process.env.MAIL_PROVIDER || '', // 'resend' or 'smtp'
   mailApiKey: process.env.MAIL_API_KEY || '',
   mailFrom: process.env.MAIL_FROM || '',
+  
+  // SMTP specific
+  smtpHost: process.env.SMTP_HOST || 'mail.privateemail.com',
+  smtpPort: parseInt(process.env.SMTP_PORT || '465', 10),
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+
   companySupportEmail: process.env.COMPANY_SUPPORT_EMAIL || '',
   disablePayslipUpload: String(process.env.DISABLE_PAYSLIP_UPLOAD || '').toLowerCase() === 'true',
   disablePayslipDownload: String(process.env.DISABLE_PAYSLIP_DOWNLOAD || '').toLowerCase() === 'true',

@@ -219,12 +219,28 @@ async function computePayslipForUser(userId, month, options = null) {
   const empAllowance = Object.prototype.hasOwnProperty.call(opts, 'transportAllowance')
     ? yen(opts.transportAllowance)
     : (userComp?.allowance_transport ?? env.salaryEmploymentAllowance ?? 0);
+  let holidayWorkMin = 0; // 所定休出勤 (Holiday Work)
+  let legalHolidayWorkMin = 0; // 法定休出勤 (Legal Holiday Work)
+
+  if (ts && ts.days && Array.isArray(ts.days)) {
+    for (const d of ts.days) {
+      const k = String(d?.daily?.kubun || '').trim();
+      const wt = Number(d?.daily?.working_minutes || 0);
+      if (k === '休日出勤') holidayWorkMin += wt;
+      if (k === '法定休日出勤') legalHolidayWorkMin += wt;
+    }
+  }
+
   const minutesPerMonth = conf?.working_minutes_per_month ?? env.salaryWorkingMinutesPerMonth ?? (160 * 60);
-  const minuteRate = minutesPerMonth > 0 ? baseMonthly / minutesPerMonth : 0;
+  const baseRate = Number(conf?.base_hourly_rate ?? env.salaryBaseHourlyRate) || 0;
+  const minuteRate = baseRate > 0 ? baseRate / 60 : (minutesPerMonth > 0 ? baseMonthly / minutesPerMonth : 0);
 
   const otAllowance = yen(overtimeMin * minuteRate * ((conf?.overtime_rate ?? env.salaryOvertimeRate) - 1));
   const nightAllowance = yen(nightMin * minuteRate * ((conf?.late_night_rate ?? env.salaryLateNightRate) - 1));
-  const holidayAllowance = yen(holidayMin * minuteRate * ((conf?.holiday_rate ?? env.salaryHolidayRate) - 1));
+  const holidayAllowance = yen(holidayWorkMin * minuteRate * ((conf?.holiday_rate ?? env.salaryHolidayRate) - 1));
+  const legalHolidayAllowance = yen(legalHolidayWorkMin * minuteRate * ((conf?.holiday_rate ?? env.salaryHolidayRate) - 1));
+  const weekly40Allowance = yen(weeklyOver40Min * minuteRate * ((conf?.overtime_rate ?? env.salaryOvertimeRate) - 1));
+  const monthly60Allowance = yen(monthlyOver60Min * minuteRate * ((conf?.overtime_rate ?? env.salaryOvertimeRate) - 1));
 
   const kOverride = opts.kintai && typeof opts.kintai === 'object' ? opts.kintai : {};
   const kAbsentDays = Object.prototype.hasOwnProperty.call(kOverride, '欠勤日数') ? yen(kOverride['欠勤日数']) : absentDaysFromDaily;
@@ -249,15 +265,16 @@ async function computePayslipForUser(userId, month, options = null) {
   // Ensure scheduledWorkDays is never dangerously low to prevent massive deductions per day
   const rawScheduledDays = kScheduledDaysOverride > 0 ? kScheduledDaysOverride : computedScheduledWorkDays;
   const scheduledWorkDays = rawScheduledDays > 0 ? rawScheduledDays : defaultScheduledWorkDays;
+  const formatHm = (min) => Math.floor(min / 60) + ':' + String(min % 60).padStart(2, '0');
 
   const 支給 = {
     基礎給: yen(baseMonthly),
     就業手当: yen(empAllowance),
     時間外手当: yen(otAllowance),
     所休出手当: yen(holidayAllowance),
-    週40超手当: 0,
-    月60超手当: 0,
-    法休出手当: 0,
+    週40超手当: yen(weekly40Allowance),
+    月60超手当: yen(monthly60Allowance),
+    法休出手当: yen(legalHolidayAllowance),
     深夜勤手当: yen(nightAllowance)
   };
   const overrideEarnings = Array.isArray(opts.overrideEarnings)
@@ -397,7 +414,9 @@ async function computePayslipForUser(userId, month, options = null) {
     差引支給額: yen(支給合計 - 控除合計)
   };
 
+  // Apply frontend kintai override correctly mapped for preview UI output.
   const 勤怠 = {
+    所定日数: scheduledWorkDays,
     出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '出勤日数') ? yen(kOverride['出勤日数']) : workDays,
     休日出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '休日出勤日数') ? yen(kOverride['休日出勤日数']) : 0,
     半日出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '半日出勤日数') ? yen(kOverride['半日出勤日数']) : 0,
@@ -406,17 +425,18 @@ async function computePayslipForUser(userId, month, options = null) {
     有給休暇: kPaidLeaveDays,
     有給休暇付与: Object.prototype.hasOwnProperty.call(kOverride, '有給休暇付与') ? yen(kOverride['有給休暇付与']) : paidLeaveEntitlement,
     所定労働日数: scheduledWorkDays,
-    就業時間: regularMin,
-    法外時間外: overtimeMin,
-    所定休出勤: 0,
-    週40超時間: roundToStep(weeklyOver40Min, rStep, rMode),
-    月60超時間: roundToStep(monthlyOver60Min, rStep, rMode),
-    法定休出勤: 0,
-    深夜勤時間: nightMin,
+    就業時間: Object.prototype.hasOwnProperty.call(kOverride, '就業時間') && kOverride['就業時間'] !== '' ? String(kOverride['就業時間']) : formatHm(regularMin),
+    時間外時間: Object.prototype.hasOwnProperty.call(kOverride, '時間外時間') && kOverride['時間外時間'] !== '' ? String(kOverride['時間外時間']) : formatHm(overtimeMin),
+    法外時間外: Object.prototype.hasOwnProperty.call(kOverride, '法外時間外') && kOverride['法外時間外'] !== '' ? String(kOverride['法外時間外']) : formatHm(overtimeMin),
+    所定休出勤: Object.prototype.hasOwnProperty.call(kOverride, '所定休出勤') && kOverride['所定休出勤'] !== '' ? kOverride['所定休出勤'] : 0,
+    週40超時間: Object.prototype.hasOwnProperty.call(kOverride, '週40超時間') && kOverride['週40超時間'] !== '' ? String(kOverride['週40超時間']) : formatHm(roundToStep(weeklyOver40Min, rStep, rMode)),
+    月60超時間: Object.prototype.hasOwnProperty.call(kOverride, '月60超時間') && kOverride['月60超時間'] !== '' ? String(kOverride['月60超時間']) : formatHm(roundToStep(monthlyOver60Min, rStep, rMode)),
+    法定休出勤: Object.prototype.hasOwnProperty.call(kOverride, '法定休出勤') && kOverride['法定休出勤'] !== '' ? kOverride['法定休出勤'] : 0,
+    深夜勤時間: Object.prototype.hasOwnProperty.call(kOverride, '深夜勤時間') && kOverride['深夜勤時間'] !== '' ? String(kOverride['深夜勤時間']) : formatHm(nightMin),
     前月有休残: 0
   };
 
-  const payment = opts.payment && typeof opts.payment === 'object' ? opts.payment : {};
+  const payment = (opts.payment && typeof opts.payment === 'object') ? opts.payment : {};
   const cashPay = Object.prototype.hasOwnProperty.call(payment, '現金支給額') ? yen(payment['現金支給額']) : 0;
   const inKindPay = Object.prototype.hasOwnProperty.call(payment, '現物支給額') ? yen(payment['現物支給額']) : 0;
   const bankExplicit = Object.prototype.hasOwnProperty.call(payment, '振込支給額') ? yen(payment['振込支給額']) : null;
@@ -459,10 +479,16 @@ async function computePayslipForUser(userId, month, options = null) {
 
 async function computePayslips(userIds, month) {
   const employees = [];
-  for (const id of userIds) {
-    const e = await computePayslipForUser(id, month);
-    employees.push(e);
+  const chunkSize = 10;
+  
+  for (let i = 0; i < userIds.length; i += chunkSize) {
+    const chunk = userIds.slice(i, i + chunkSize);
+    const chunkResults = await Promise.all(
+      chunk.map(id => computePayslipForUser(id, month))
+    );
+    employees.push(...chunkResults);
   }
+  
   return { employees };
 }
 

@@ -3002,6 +3002,15 @@ body.drawer-open.admin.has-sidebar .content {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
 }
 
+.admin input[type="number"]::-webkit-outer-spin-button,
+.admin input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.admin input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 /* ════════════════════════════════════════════════════════════
    LEGACY ALIASES — map old class tokens → new adm-* look
    Giữ backward compat, không cần sửa JS cũ

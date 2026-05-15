@@ -1,28 +1,65 @@
-const { mailProvider, mailApiKey, mailFrom, companyName, companySupportEmail } = require('../../config/env');
+const nodemailer = require('nodemailer');
+const { mailProvider, mailApiKey, mailFrom, smtpHost, smtpPort, smtpUser, smtpPass, companyName, companySupportEmail } = require('../../config/env');
 
 function canSendMail() {
-  return String(mailProvider || '').toLowerCase() === 'resend' && !!mailApiKey && !!mailFrom;
+  const provider = String(mailProvider || '').toLowerCase();
+  if (provider === 'resend') return !!mailApiKey && !!mailFrom;
+  if (provider === 'smtp') return !!smtpHost && !!smtpUser && !!smtpPass && !!mailFrom;
+  return false;
 }
 
-async function sendViaResend({ to, subject, html, text }) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${mailApiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      from: mailFrom,
-      to: [to],
-      subject,
-      html,
-      text
-    })
+let smtpTransporter = null;
+if (String(mailProvider || '').toLowerCase() === 'smtp') {
+  smtpTransporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465, // true for 465, false for other ports
+    auth: {
+      user: smtpUser,
+      pass: smtpPass
+    }
   });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`mail_send_failed_${res.status}${body ? `: ${body}` : ''}`);
+}
+
+async function sendViaResend({ to, subject, html, text, from }) {
+  const provider = String(mailProvider || '').toLowerCase();
+  const sender = from || mailFrom;
+  
+  if (provider === 'smtp') {
+    if (!smtpTransporter) throw new Error('SMTP transporter not initialized');
+    await smtpTransporter.sendMail({
+      from: sender,
+      to,
+      subject,
+      text,
+      html
+    });
+    return;
   }
+  
+  if (provider === 'resend') {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${mailApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: sender,
+        to: [to],
+        subject,
+        html,
+        text
+      })
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`mail_send_failed_${res.status}${body ? `: ${body}` : ''}`);
+    }
+    return;
+  }
+  
+  throw new Error('No valid mail provider configured');
 }
 
 function renderResetPasswordTemplate({ resetUrl, expiresMinutes }) {
@@ -68,5 +105,6 @@ async function sendPasswordResetEmail({ to, resetUrl, expiresMinutes }) {
 
 module.exports = {
   canSendMail,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendViaResend
 };
