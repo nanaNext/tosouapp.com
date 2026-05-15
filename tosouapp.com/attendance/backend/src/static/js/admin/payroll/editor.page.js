@@ -36,6 +36,17 @@ const hmFromMin = (min) => {
   return `${h}:${String(mm).padStart(2, '0')}`;
 };
 
+const formatEmployeeCode = (u) => {
+  return String((u && (u.employee_code || u.employeeCode || ('EMP' + String(u.id).padStart(3, '0')))) || '').trim();
+};
+
+const isAbortLike = (err) => {
+  if (!err) return false;
+  if (err.name === 'AbortError') return true;
+  const msg = String(err.message || err || '').toLowerCase();
+  return msg.includes('aborterror') || msg.includes('signal is aborted') || msg.includes('aborted without reason');
+};
+
 function mountStyle() {
   if (document.getElementById('payrollEditorStyle')) return;
   const st = document.createElement('style');
@@ -451,6 +462,14 @@ export async function mount() {
       }, 5000);
     }
   };
+  const showError = (e, fallback = 'error') => {
+    if (isAbortLike(e)) {
+      msg('');
+      return false;
+    }
+    msg((e && e.message) ? e.message : fallback);
+    return true;
+  };
 
   const users = await listUsers().catch(() => []);
   const sel = basicCard.querySelector('#payrollUserId');
@@ -459,7 +478,8 @@ export async function mount() {
     if (role === 'admin' || role === 'manager') continue;
     const opt = document.createElement('option');
     opt.value = String(u.id);
-    opt.textContent = `${u.id} ${u.username || u.email}`;
+    const code = formatEmployeeCode(u);
+    opt.textContent = `${code} ${u.username || u.email}`.trim();
     sel.appendChild(opt);
   }
 
@@ -1100,28 +1120,34 @@ export async function mount() {
   if (btnAddDed) btnAddDed.addEventListener('click', () => addRow('#payrollDeductions'), { signal });
 
   const btnLoad = actionTopBar.querySelector('#btnLoadPayroll');
-  if (btnLoad) btnLoad.addEventListener('click', () => loadInput().catch(e => msg((e && e.message) ? e.message : 'error')), { signal });
+  if (btnLoad) btnLoad.addEventListener('click', () => loadInput().catch(e => showError(e)), { signal });
   const btnSave = actionTopBar.querySelector('#btnSavePayroll');
-  if (btnSave) btnSave.addEventListener('click', () => saveInput().catch(e => msg((e && e.message) ? e.message : 'error')), { signal });
+  if (btnSave) btnSave.addEventListener('click', () => saveInput().catch(e => showError(e)), { signal });
   if (btnPreview) btnPreview.addEventListener('click', async () => {
     const isOpen = previewModalOverlay.style.display !== 'none';
     if (isOpen) {
       setPreviewOpen(false);
       return;
     }
-    await preview().catch(e => msg((e && e.message) ? e.message : 'error'));
-    setPreviewOpen(true);
+    let ok = false;
+    try {
+      await preview();
+      ok = true;
+    } catch (e) {
+      showError(e);
+    }
+    if (ok) setPreviewOpen(true);
   }, { signal });
   const btnCreate = actionTopBar.querySelector('#btnCreatePdf');
   if (btnCreate) btnCreate.addEventListener('click', () => {
     let w = null;
     try { w = window.open('about:blank', '_blank'); } catch { }
     if (!w) msg('ポップアップがブロックされました。許可してください。');
-    createPdf(w).catch(e => msg((e && e.message) ? e.message : 'error'));
+    createPdf(w).catch(e => showError(e));
   }, { signal });
   const btnDl = actionTopBar.querySelector('#btnDownloadPdf');
   if (btnDl) btnDl.addEventListener('click', () => {
-    downloadPdf().catch(e => msg((e && e.message) ? e.message : 'error'));
+    downloadPdf().catch(e => showError(e));
   }, { signal });
   const btnPublish = actionTopBar.querySelector('#btnPublishPayroll');
   if (btnPublish) btnPublish.addEventListener('click', async () => {
@@ -1134,7 +1160,7 @@ export async function mount() {
       msg(`社員に送信しました（${formatDateTime(new Date().toISOString())}）`, true);
       await refreshDeliveries();
     } catch (e) {
-      msg((e && e.message) ? e.message : '送信に失敗しました');
+      showError(e, '送信に失敗しました');
     }
   }, { signal });
 
@@ -1300,7 +1326,8 @@ export async function mount() {
       
       scheduleRealtime();
       
-    } catch (e) { 
+    } catch (e) {
+      if (isAbortLike(e)) return;
       console.error('autoFill error:', e);
       msg('勤怠データの自動取得に失敗しました: ' + (e.message || ''), false);
     }
