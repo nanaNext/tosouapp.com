@@ -209,7 +209,7 @@ async function computePayslipForUser(userId, month, options = null) {
   }
   let legalOverTotal = dailyOverTotal + weeklyAdditional;
   let monthlyOver60Min = empType === 'full_time' ? Math.max(0, legalOverTotal - (60 * 60)) : 0;
-  const overtimeMin = roundToStep(legalOverTotal, rStep, rMode);
+  let overtimeMin = roundToStep(legalOverTotal, rStep, rMode);
 
   const userComp = await salaryRepo.getUserCompensation(userId);
   const opts = options && typeof options === 'object' ? options : {};
@@ -231,6 +231,38 @@ async function computePayslipForUser(userId, month, options = null) {
     }
   }
 
+  const kOverride = opts.kintai && typeof opts.kintai === 'object' ? opts.kintai : {};
+  
+  // Parse overridden hours to minutes for allowance calculation
+  const parseHmToMin = (str) => {
+    if (!str || typeof str !== 'string') return null;
+    const parts = str.split(':');
+    if (parts.length !== 2) return null;
+    return (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10);
+  };
+
+  if (Object.prototype.hasOwnProperty.call(kOverride, '法外時間外') && kOverride['法外時間外'] !== '') {
+    const overrideMin = parseHmToMin(kOverride['法外時間外']);
+    if (overrideMin != null) overtimeMin = overrideMin;
+  } else if (Object.prototype.hasOwnProperty.call(kOverride, '時間外時間') && kOverride['時間外時間'] !== '') {
+    const overrideMin = parseHmToMin(kOverride['時間外時間']);
+    if (overrideMin != null) overtimeMin = overrideMin;
+  }
+  if (Object.prototype.hasOwnProperty.call(kOverride, '深夜勤時間') && kOverride['深夜勤時間'] !== '') {
+    const overrideMin = parseHmToMin(kOverride['深夜勤時間']);
+    if (overrideMin != null) nightMin = overrideMin;
+  }
+  if (Object.prototype.hasOwnProperty.call(kOverride, '週40超時間') && kOverride['週40超時間'] !== '') {
+    const overrideMin = parseHmToMin(kOverride['週40超時間']);
+    if (overrideMin != null) weeklyOver40Min = overrideMin;
+  }
+  if (Object.prototype.hasOwnProperty.call(kOverride, '月60超時間') && kOverride['月60超時間'] !== '') {
+    const overrideMin = parseHmToMin(kOverride['月60超時間']);
+    if (overrideMin != null) monthlyOver60Min = overrideMin;
+  }
+  // Holiday overrides are in days or hours? The UI uses inputs for days, but for hours?
+  // UI has: 所定休出勤 (not in UI), 法定休出勤 (not in UI)
+
   const minutesPerMonth = conf?.working_minutes_per_month ?? env.salaryWorkingMinutesPerMonth ?? (160 * 60);
   const baseRate = Number(conf?.base_hourly_rate ?? env.salaryBaseHourlyRate) || 0;
   const minuteRate = baseRate > 0 ? baseRate / 60 : (minutesPerMonth > 0 ? baseMonthly / minutesPerMonth : 0);
@@ -242,7 +274,6 @@ async function computePayslipForUser(userId, month, options = null) {
   const weekly40Allowance = yen(weeklyOver40Min * minuteRate * ((conf?.overtime_rate ?? env.salaryOvertimeRate) - 1));
   const monthly60Allowance = yen(monthlyOver60Min * minuteRate * ((conf?.overtime_rate ?? env.salaryOvertimeRate) - 1));
 
-  const kOverride = opts.kintai && typeof opts.kintai === 'object' ? opts.kintai : {};
   const kAbsentDays = Object.prototype.hasOwnProperty.call(kOverride, '欠勤日数') ? yen(kOverride['欠勤日数']) : absentDaysFromDaily;
   const kUnpaidLeaveDays = Object.prototype.hasOwnProperty.call(kOverride, '無給休暇') ? yen(kOverride['無給休暇']) : unpaidLeaveDays;
   const kPaidLeaveDays = Object.prototype.hasOwnProperty.call(kOverride, '有給休暇') ? yen(kOverride['有給休暇']) : paidLeaveDays;
