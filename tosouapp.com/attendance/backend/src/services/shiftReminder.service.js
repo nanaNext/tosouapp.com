@@ -125,7 +125,7 @@ async function processReminders() {
       };
 
       // Check Shift Start Reminders (Before shift and exact/late)
-      const startOffsets = [30, 15, 5, 0, -15];
+      const startOffsets = [30, 15, 0];
       for (const offset of startOffsets) {
         if (startMin - currentMin === offset) {
           const cacheKey = `${userId}_${todayStr}_start_${offset}m`;
