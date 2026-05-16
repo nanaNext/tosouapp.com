@@ -97,7 +97,7 @@ module.exports = function(app) {
   app.get('/api/test-mail', async (req, res) => {
     try {
       const emailService = require('../core/notifications/email.service');
-      const { mailFrom } = require('../config/env');
+      const { mailFrom, mailProvider, smtpHost, smtpUser } = require('../config/env');
       await emailService.sendViaResend({
         from: mailFrom,
         to: req.query.email || 'nana123thanhcong@gmail.com',
@@ -105,7 +105,17 @@ module.exports = function(app) {
         text: 'This is a test email sent from /api/test-mail',
         html: '<p>This is a test email sent from /api/test-mail</p>'
       });
-      res.json({ ok: true, message: 'Mail sent successfully' });
+      res.json({ 
+        ok: true, 
+        message: 'Mail sent successfully',
+        debug: {
+          mailProvider,
+          mailFrom,
+          smtpHost,
+          smtpUser: smtpUser ? '***' + smtpUser.slice(3) : null,
+          canSend: emailService.canSendMail()
+        }
+      });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
