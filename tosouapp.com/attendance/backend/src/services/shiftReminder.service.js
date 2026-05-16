@@ -239,7 +239,7 @@ async function checkMonthlyMissingAttendance() {
 
 async function sendMissingEmail(user, type, dateStr) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = '"飯塚塗研株式会社" <' + (process.env.MAIL_FROM || 'iizuka_token@tosouapp.com') + '>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
   
   let subject, text, html;
 
@@ -256,7 +256,8 @@ ${user.username} さん
 ${appUrl}
 
 このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-問い合わせにかんしてはシステム公式までお問い合わせください。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
     `.trim();
 
     html = `
@@ -271,7 +272,7 @@ ${appUrl}
       <br/>
       <hr/>
       <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      問い合わせにかんしてはシステム公式までお問い合わせください。</p>
+      お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
     `;
   } else if (type === 'monthly') {
     subject = `[飯塚塗研株式会社] 今月の勤怠未入力に関する重要なお知らせ`;
@@ -286,7 +287,8 @@ ${user.username} さん
 ${appUrl}
 
 このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-問い合わせにかんしてはシステム公式までお問い合わせください。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
     `.trim();
 
     html = `
@@ -301,7 +303,8 @@ ${appUrl}
       <br/>
       <hr/>
       <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      問い合わせにかんしてはシステム公式までお問い合わせください。</p>
+      お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd</p>
     `;
   }
 
@@ -324,7 +327,7 @@ ${appUrl}
 async function sendReminderEmail(user, shiftName, timeHm, offsetMin, type) {
   const isStart = type === 'start';
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/'; // URL app chấm công
-  const senderFrom = '"飯塚塗研株式会社" <' + (process.env.MAIL_FROM || 'iizuka_token@tosouapp.com') + '>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
   
   let subject, text, html;
 
@@ -349,7 +352,8 @@ ${timeText}。遅延などで勤務開始が遅れる場合は、システムの
 ${appUrl}
 
 このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-問い合わせにかんしてはシステム公式までお問い合わせください。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
     `.trim();
 
     html = `
@@ -362,7 +366,8 @@ ${appUrl}
       <br/>
       <hr/>
       <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      問い合わせにかんしてはシステム公式までお問い合わせください。</p>
+      お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd</p>
     `;
   } else {
     const timeText = offsetMin === 0 ? 'になりました' : `から ${offsetMin} 分経過しました`;
@@ -376,7 +381,8 @@ ${user.username} さん
 ${appUrl}
 
 このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-問い合わせにかんしてはシステム公式までお問い合わせください。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
     `.trim();
 
     html = `
@@ -389,7 +395,8 @@ ${appUrl}
       <br/>
       <hr/>
       <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      問い合わせにかんしてはシステム公式までお問い合わせください。</p>
+      お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd</p>
     `;
   }
 
