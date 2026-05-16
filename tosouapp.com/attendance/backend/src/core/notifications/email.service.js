@@ -69,31 +69,32 @@ async function sendViaResend({ to, subject, html, text, from }) {
 function renderResetPasswordTemplate({ resetUrl, expiresMinutes }) {
   const safeUrl = String(resetUrl || '').trim();
   const safeCompany = String(companyName || 'Company').trim();
-  const safeSupport = String(companySupportEmail || '').trim();
-  const supportLine = safeSupport ? `\nSupport: ${safeSupport}` : '';
   const text = [
-    `${safeCompany} password reset request`,
+    `[${safeCompany}] パスワード再設定`,
     '',
-    'We received a request to reset your password.',
-    `Reset link (valid for ${expiresMinutes} minutes):`,
+    'パスワード再設定のリクエストを受け付けました。',
+    `以下のリンクからパスワードを再設定してください（有効期限: ${expiresMinutes}分）：`,
     safeUrl,
     '',
-    'If you did not request this, you can ignore this email.',
-    supportLine
+    'もしこのリクエストに心当たりがない場合は、このメールを無視してください。',
+    'お問い合わせに関してはシステム公式LINEまでお願いいたします。',
+    '公式LINE： https://lin.ee/zBKnhkd'
   ].join('\n');
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
-      <h2 style="margin: 0 0 12px;">${safeCompany} Password Reset</h2>
-      <p>We received a request to reset your password.</p>
+      <h2 style="margin: 0 0 12px;">[${safeCompany}] パスワード再設定</h2>
+      <p>パスワード再設定のリクエストを受け付けました。</p>
       <p>
-        <a href="${safeUrl}" style="display:inline-block;padding:10px 16px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;">
-          Reset Password
+        <a href="${safeUrl}" style="display:inline-block;padding:10px 20px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;">
+          パスワードを再設定する
         </a>
       </p>
-      <p style="word-break: break-all;">If the button does not work, open this link:<br>${safeUrl}</p>
-      <p>This link expires in ${expiresMinutes} minutes.</p>
-      <p>If you did not request this, you can ignore this email.</p>
-      ${safeSupport ? `<p>Support: ${safeSupport}</p>` : ''}
+      <p style="word-break: break-all;">ボタンが機能しない場合は、以下のリンクを開いてください：<br>${safeUrl}</p>
+      <p>このリンクは <strong>${expiresMinutes}分</strong> で無効になります。</p>
+      <p>もしこのリクエストに心当たりがない場合は、このメールを無視してください。</p>
+      <hr/>
+      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
+      お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
     </div>
   `;
   return { text, html };
