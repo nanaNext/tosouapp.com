@@ -92,6 +92,25 @@ module.exports = function(app) {
   app.use('/api/stations', stationsRoutes);  app.use('/api/webauthn', webauthnRoutes);
   app.use('/api/requests', requestsRoutes);
   app.use('/api/faq', faqRoutes);
+
+  // TEMP TEST ROUTE FOR EMAIL
+  app.get('/api/test-mail', async (req, res) => {
+    try {
+      const emailService = require('../core/notifications/email.service');
+      const { mailFrom } = require('../config/env');
+      await emailService.sendViaResend({
+        from: mailFrom,
+        to: req.query.email || 'nana123thanhcong@gmail.com',
+        subject: 'TEST EMAIL SYSTEM',
+        text: 'This is a test email sent from /api/test-mail',
+        html: '<p>This is a test email sent from /api/test-mail</p>'
+      });
+      res.json({ ok: true, message: 'Mail sent successfully' });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   if (allowDebugRoutes) {
     app.get('/api/debug/version', authenticate, authorize('employee','manager','admin','payroll'), (req, res) => {
       res.status(200).json({ buildId: BUILD_ID, startedAt: STARTED_AT, pid: process.pid });
