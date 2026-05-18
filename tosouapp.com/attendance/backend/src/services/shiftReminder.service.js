@@ -327,6 +327,7 @@ async function checkMonthlyMissingAttendance() {
     const y = nowJST.getUTCFullYear();
     const m = nowJST.getUTCMonth();
     const monthStr = nowJST.toISOString().slice(0, 7);
+    const todayStr = nowJST.toISOString().slice(0, 10);
     
     const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     const monthStartStr = `${y}-${String(m+1).padStart(2, '0')}-01`;
@@ -678,5 +679,8 @@ function init() {
 }
 
 module.exports = {
-  init
+  init,
+  processReminders,
+  checkDailyMissingAttendance,
+  checkMonthlyMissingAttendance
 };
