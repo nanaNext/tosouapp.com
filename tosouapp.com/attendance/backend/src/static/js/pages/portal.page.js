@@ -1,7 +1,15 @@
+// import API và helper, me() lấy thông tin user hiện tại, refresh() -> refresh token, logout() -> đăng xuất, fetchJSONAuth() -> fetch API có kèm token
+// Mục đích đây là các nền tảng để đồng bộ thông tin trạng thái user và gọi APi thông báo
+
 import { me, refresh, logout } from '../api/auth.api.js';
 import { fetchJSONAuth } from '../api/http.api.js';
+// Các helper DOM và format
+// shortcut cho document.querySelecttor
 
 const $ = (sel) => document.querySelector(sel);
+// Thêm class topbar - ready vào html dể css có thể áp dụng
+// Dùng để đánh dấu khi topbar đã sẵn sàng để sử dụng
+
 const markTopbarReady = () => {
   try { document.documentElement.classList.add('topbar-ready'); } catch { }
 };

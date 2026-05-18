@@ -12,9 +12,18 @@ function getApiBase() {
 async function fetchWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS) {
   const ms = Number(timeoutMs || 0) > 0 ? Number(timeoutMs) : REQUEST_TIMEOUT_MS;
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), ms);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    ac.abort();
+  }, ms);
   try {
     return await fetch(url, { ...(options || {}), signal: ac.signal });
+  } catch (e) {
+    if (timedOut || (e && e.name === 'AbortError')) {
+      throw new Error(`Request timeout after ${ms}ms`);
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }

@@ -92,6 +92,14 @@
           </div>
         </div>
 
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('payroll')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">💴</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">給与管理（管理者）</div>
+            <div style="font-size:12px;color:#666;">給与入力・PDF作成・公開手順</div>
+          </div>
+        </div>
+
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('troubleshoot')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">🛠️</div>
@@ -239,7 +247,104 @@
         </div>
       </div>
 
-      <!-- 4. トラブル対処 -->
+      <!-- 4. 給与管理（管理者） -->
+      <div class="kintai-card" id="section-payroll" style="margin-bottom:30px;">
+        <div class="kintai-card-title" id="payroll">💴 給与管理（管理者向け）</div>
+        <div style="padding:20px;">
+          <div style="background:#e7f3ff;padding:15px;border-radius:6px;margin-bottom:15px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">利用画面</div>
+            <div style="color:#334155;font-size:14px;line-height:1.7;">
+              管理ポータルの <strong>給与管理</strong> から操作します。対象社員・対象年月を選び、
+              <strong>保存 → プレビュー → PDF作成 → PDFダウンロード → 社員へ送信（公開）</strong>
+              の順で進めるのが基本です。
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">基本操作の流れ</div>
+            <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+              <li><strong>社員選択</strong> と <strong>対象年月</strong> を指定します。</li>
+              <li><strong>基本給（月給）</strong> を入力します。</li>
+              <li>必要に応じて <strong>自動計算（保険・税）</strong> を選択します。</li>
+              <li>勤怠情報、支給、控除、その他、支払方法を確認し、必要な箇所だけ手入力で調整します。</li>
+              <li><strong>保存</strong> を押して月次給与データを保存します。</li>
+              <li><strong>プレビュー</strong> で内容確認後、問題なければ <strong>PDF作成</strong> を実行します。</li>
+              <li>作成後に <strong>PDFダウンロード</strong> で帳票確認し、問題なければ <strong>社員へ送信（公開）</strong> を押します。</li>
+            </ol>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">画面ごとの意味</div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;">
+              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+                <li><strong>総計（リアルタイム）</strong> - 総支給額、総控除額、手取り、支払方法合計をその場で確認します。</li>
+                <li><strong>勤怠情報</strong> - 出勤日数、欠勤日数、就業時間、法外時間外、週40超時間、月60超時間、深夜勤務時間を確認・補正します。</li>
+                <li><strong>支給</strong> - 基本給、交通手当、時間外手当、深夜勤手当、欠勤控除、追加支給などを確認します。</li>
+                <li><strong>控除</strong> - 社会保険、税金、家賃控除、追加控除を確認します。</li>
+                <li><strong>支払方法</strong> - 振込、現金、現物の内訳を設定します。合計は手取り額と一致させてください。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">給与計算の考え方</div>
+            <div style="background:#f8f9fa;padding:15px;border-radius:6px;margin-bottom:12px;">
+              <div style="font-weight:bold;color:#334155;margin-bottom:8px;">1. 勤怠の集計</div>
+              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+                <li>出勤日数は日次勤怠と打刻実績から自動集計されます。</li>
+                <li>有給休暇・欠勤・無給休暇は、日次区分と申請データの両方を参照して反映します。</li>
+                <li>就業時間、時間外、深夜、週40超、月60超は勤怠実績から自動計算されます。</li>
+                <li>画面で手入力した値がある場合は、手入力値を優先します。</li>
+              </ul>
+            </div>
+            <div style="background:#f8f9fa;padding:15px;border-radius:6px;margin-bottom:12px;">
+              <div style="font-weight:bold;color:#334155;margin-bottom:8px;">2. 支給額の計算</div>
+              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+                <li><strong>基礎給</strong> は基本給（月給）です。</li>
+                <li><strong>就業手当</strong> は交通手当欄の値または社員設定値を使います。</li>
+                <li><strong>時間外手当 / 深夜勤手当 / 所休出手当 / 週40超手当 / 月60超手当 / 法休出手当</strong> は、勤怠時間と会社設定の割増率から自動計算されます。</li>
+                <li><strong>欠勤控除</strong> は、欠勤日数 + 無給休暇があり、手入力の欠勤控除がない場合に自動計算されます。</li>
+                <li>追加支給、差額計算、年末調整還付などは必要に応じて加算されます。</li>
+              </ul>
+            </div>
+            <div style="background:#f8f9fa;padding:15px;border-radius:6px;">
+              <div style="font-weight:bold;color:#334155;margin-bottom:8px;">3. 控除額と手取り</div>
+              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+                <li><strong>自動計算（保険・税）= する</strong> にした場合、健康保険、介護保険、厚生年金、雇用保険、所得税が自動計算されます。</li>
+                <li>住民税、家賃控除、追加控除、年末調整徴収、追加診療費などは必要に応じて調整します。</li>
+                <li><strong>総支給額 - 総控除額 = 差引支払額（手取り）</strong> です。</li>
+                <li><strong>振込 + 現金 + 現物 = 支払方法合計</strong> となり、手取り額と一致している必要があります。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">運用上の注意</div>
+            <div style="background:#fff3cd;padding:15px;border-radius:6px;border-left:4px solid #ffc107;">
+              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+                <li>まず勤怠が正しいか確認してから給与入力を行ってください。</li>
+                <li>基本給や保険税の設定を変えた後は、必ず <strong>プレビュー</strong> で再確認してください。</li>
+                <li>PDF作成後は、そのPDFを開いて文字化け・金額・社員名・年月を確認してください。</li>
+                <li><strong>社員へ送信（公開）</strong> を押すと、社員側マイページから閲覧可能になります。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="background:#d4edda;padding:15px;border-radius:6px;border-left:4px solid #28a745;">
+            <div style="font-weight:bold;color:#155724;margin-bottom:10px;">チェックリスト</div>
+            <ul style="margin:0;padding-left:20px;color:#155724;line-height:1.8;">
+              <li>対象社員・対象年月が正しい</li>
+              <li>総支給額、総控除額、手取りが想定どおり</li>
+              <li>振込・現金・現物の合計が手取りと一致</li>
+              <li>プレビュー確認済み</li>
+              <li>PDF作成・PDFダウンロード確認済み</li>
+              <li>問題なければ社員へ送信（公開）</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. トラブル対処 -->
       <div class="kintai-card" id="section-troubleshoot" style="margin-bottom:30px;">
         <div class="kintai-card-title" id="troubleshoot">🛠️ トラブル対処</div>
         <div style="padding:20px;">
@@ -290,7 +395,7 @@
         </div>
       </div>
 
-      <!-- 5. スマートフォン利用 -->
+      <!-- 6. スマートフォン利用 -->
       <div class="kintai-card" id="section-smartphone" style="margin-bottom:30px;">
         <div class="kintai-card-title" id="smartphone">📱 スマートフォン利用</div>
         <div style="padding:20px;">
@@ -314,7 +419,7 @@
         </div>
       </div>
 
-      <!-- 6. 利用ルール -->
+      <!-- 7. 利用ルール -->
       <div class="kintai-card" id="section-rules" style="margin-bottom:30px;">
         <div class="kintai-card-title" id="rules">⚙️ 利用ルール</div>
         <div style="padding:20px;">
@@ -347,7 +452,7 @@
             ご不明な点がございましたら、直属管理者またはシステム担当へお気軽にお問い合わせください。
           </div>
           <div style="font-size:12px;color:#999;">
-            最終更新: 2026年4月
+            最終更新: 2026年5月
           </div>
         </div>
       </div>
