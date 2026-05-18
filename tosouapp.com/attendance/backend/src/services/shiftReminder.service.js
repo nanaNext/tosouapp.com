@@ -182,7 +182,7 @@ async function processReminders() {
       };
 
       // Check Shift Start Reminders (Before shift and exact/late)
-      const startOffsets = [15]; // Chỉ nhắc 1 lần trước 15 phút
+      const startOffsets = [30, 15, 0]; // Nhắc trước 30p, 15p và đúng giờ
       for (const offset of startOffsets) {
         if (startMin - currentMin === offset) {
           const cacheKey = `${userId}_${todayStr}_start_${offset}m`;
@@ -197,7 +197,7 @@ async function processReminders() {
       }
 
       // Check Shift End Reminders (After shift)
-      const endOffsets = [0]; // Chỉ nhắc 1 lần đúng giờ về
+      const endOffsets = [0, 15, 30]; // Nhắc đúng giờ về, sau 15p và sau 30p
       for (const offset of endOffsets) {
         if (currentMin - endMin === offset) {
           const cacheKey = `${userId}_${todayStr}_end_${offset}m`;
