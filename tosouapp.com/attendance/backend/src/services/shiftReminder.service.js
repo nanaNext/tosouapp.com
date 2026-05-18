@@ -20,6 +20,7 @@ function getCron() {
 // In production, consider Redis or a database table to persist this across restarts.
 // Key format: `${userId}_${dateStr}_${shiftType}_${reminderType}`
 // e.g. "15_2026-05-14_start_30m"
+
 const sentReminders = new Set();
 
 /**
@@ -59,14 +60,16 @@ async function processReminders() {
     const todayJstStartUTC = new Date(Date.UTC(y, m, d, 0, 0, 0) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
     const todayJstEndUTC = new Date(Date.UTC(y, m, d, 23, 59, 59) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
 
-    // 1. Fetch all active users with their emails
-    const [users] = await db.query(`SELECT id, email, username FROM users WHERE employment_status = 'active'`);
+    // 1. Fetch all active users (employees and managers) with their emails and department info
+    const [users] = await db.query(`
+      SELECT u.id, u.email, u.username, d.name as departmentName 
+      FROM users u 
+      LEFT JOIN departments d ON u.departmentId = d.id 
+      WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
+    `);
     if (!users || users.length === 0) return;
 
-    const userMap = new Map(users.map(u => [u.id, u]));
-
-    // 2. Fetch today's shift assignments (user_shift_assignments + shift_definitions)
-    // We only fetch for today.
+    // 2. Fetch today's shift assignments
     const [assignments] = await db.query(`
       SELECT 
         a.userId, 
@@ -77,6 +80,11 @@ async function processReminders() {
       JOIN shift_definitions s ON a.shiftId = s.id
       WHERE a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
     `, [todayStr, todayStr]);
+
+    const assignMap = new Map();
+    for (const a of assignments) {
+      assignMap.set(a.userId, a);
+    }
 
     // Check plan overrides
     const [plans] = await db.query(`
@@ -89,24 +97,73 @@ async function processReminders() {
 
     const planMap = new Map(plans.map(p => [p.userId, p.shiftId]));
 
-    // 3. For each assignment, check if we need to send a reminder
-    for (const assign of assignments) {
-      const userId = assign.userId;
-      const user = userMap.get(userId);
-      if (!user || !user.email) continue;
+    const [allShifts] = await db.query(`SELECT id, name, start_time, end_time FROM shift_definitions`);
+    const shiftMap = new Map(allShifts.map(s => [s.id, s]));
 
-      let shiftStartHm = assign.start_time;
-      let shiftEndHm = assign.end_time;
-      let shiftName = assign.name;
+    // Check holidays and Sundays
+    let isRedDay = false;
+    let calendarExplanation = null;
+    try {
+      const calendarRepo = require('../modules/calendar/calendar.repository');
+      calendarExplanation = await calendarRepo.explainDate(todayStr);
+      isRedDay = !!calendarExplanation?.is_off;
+    } catch (e) {
+      console.error('[ShiftReminder] Error checking calendar:', e);
+    }
+    const isSunday = new Date(todayStr).getUTCDay() === 0;
+
+    // Check explicit daily kubun
+    const [dailies] = await db.query(`SELECT userId, kubun FROM attendance_daily WHERE date = ?`, [todayStr]);
+    const dailyMap = new Map(dailies.map(d => [d.userId, String(d.kubun || '').trim()]));
+
+    // 3. For each active user, check if we need to send a reminder
+    for (const user of users) {
+      const userId = user.id;
+      if (!user.email) continue;
+
+      const isKoujiUser = String(user.departmentName || '').includes('工事部');
+      
+      // Determine if today is considered an off day for this specific user
+      let isUserOffDay = false;
+      
+      if (!isKoujiUser) {
+        // Normal user: off on Sundays and Red Days
+        isUserOffDay = isSunday || isRedDay;
+      } else {
+        // Kouji User: specific policy logic
+        const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
+        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_last');
+        const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
+        
+        isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
+      }
+      
+      const userKubun = dailyMap.get(userId) || '';
+      const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
+      const isExplicitWork = ['出勤', '休日出勤', '代替出勤', '半休'].includes(userKubun);
+      
+      if (isExplicitOff) continue;
+      if (isUserOffDay && !isExplicitWork) continue;
+
+      let shiftStartHm = '08:00';
+      let shiftEndHm = '17:00';
+      let shiftName = '基本シフト (08:00-17:00)';
+
+      const assign = assignMap.get(userId);
+      if (assign) {
+        shiftStartHm = assign.start_time;
+        shiftEndHm = assign.end_time;
+        shiftName = assign.name;
+      }
 
       // If user has a specific plan for today, fetch that shift definition instead
       const planShiftId = planMap.get(userId);
       if (planShiftId) {
-        const [planShiftDefs] = await db.query(`SELECT name, start_time, end_time FROM shift_definitions WHERE id = ?`, [planShiftId]);
-        if (planShiftDefs && planShiftDefs.length > 0) {
-           shiftStartHm = planShiftDefs[0].start_time;
-           shiftEndHm = planShiftDefs[0].end_time;
-           shiftName = planShiftDefs[0].name;
+        const pShift = shiftMap.get(planShiftId);
+        if (pShift) {
+           shiftStartHm = pShift.start_time;
+           shiftEndHm = pShift.end_time;
+           shiftName = pShift.name;
         }
       }
 
@@ -156,6 +213,8 @@ async function processReminders() {
     }
 
     // Clean up memory cache for previous days to prevent memory leak
+    // Ở đây là để tránh memory leak do sentReminders có nhiều key ko cần thiết để gửi email 
+    
     const yesterdayStr = new Date(Date.now() + 9 * 3600 * 1000 - 86400000).toISOString().slice(0, 10);
     for (const key of sentReminders) {
       if (key.includes(yesterdayStr) && !key.startsWith('monthly_missing_')) {
@@ -167,7 +226,7 @@ async function processReminders() {
     console.error('[ShiftReminder] Error processing reminders:', err);
   }
 }
-
+// Cái này checkin daily missing attendance
 async function checkDailyMissingAttendance() {
   try {
     const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
@@ -178,21 +237,81 @@ async function checkDailyMissingAttendance() {
     const todayJstStartUTC = new Date(Date.UTC(y, m, d, 0, 0, 0) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
     const todayJstEndUTC = new Date(Date.UTC(y, m, d, 23, 59, 59) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
 
-    const [assignments] = await db.query(`
-      SELECT DISTINCT a.userId, u.email, u.username
-      FROM user_shift_assignments a
-      JOIN users u ON a.userId = u.id
-      WHERE u.employment_status = 'active'
-        AND a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
-    `, [todayStr, todayStr]);
+    // 1. Fetch all active users
+    const [users] = await db.query(`
+      SELECT u.id, u.email, u.username, d.name as departmentName 
+      FROM users u 
+      LEFT JOIN departments d ON u.departmentId = d.id 
+      WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
+    `);
+    if (!users || users.length === 0) return;
 
-    for (const assign of assignments) {
-      const cacheKey = `daily_missing_${assign.userId}_${todayStr}`;
+    // 2. Check assignments
+    const [assignments] = await db.query(`
+      SELECT a.userId, s.name, s.start_time, s.end_time
+      FROM user_shift_assignments a
+      JOIN shift_definitions s ON a.shiftId = s.id
+      WHERE a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
+    `, [todayStr, todayStr]);
+    const assignMap = new Map();
+    for (const a of assignments) {
+      assignMap.set(a.userId, a);
+    }
+
+    // Check holidays and Sundays
+    let isRedDay = false;
+    let calendarExplanation = null;
+    try {
+      const calendarRepo = require('../modules/calendar/calendar.repository');
+      calendarExplanation = await calendarRepo.explainDate(todayStr);
+      isRedDay = !!calendarExplanation?.is_off;
+    } catch (e) {
+      console.error('[ShiftReminder] Error checking calendar:', e);
+    }
+    const isSunday = new Date(todayStr).getUTCDay() === 0;
+
+    // Check explicit daily kubun
+    const [dailies] = await db.query(`SELECT userId, kubun FROM attendance_daily WHERE date = ?`, [todayStr]);
+    const dailyMap = new Map(dailies.map(d => [d.userId, String(d.kubun || '').trim()]));
+
+    for (const user of users) {
+      if (!user.email) continue;
+      const userId = user.id;
+
+      const isKoujiUser = String(user.departmentName || '').includes('工事部');
+      
+      let isUserOffDay = false;
+      if (!isKoujiUser) {
+        isUserOffDay = isSunday || isRedDay;
+      } else {
+        const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
+        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_last');
+        const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
+        isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
+      }
+
+      const userKubun = dailyMap.get(userId) || '';
+      const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
+      const isExplicitWork = ['出勤', '休日出勤', '代替出勤', '半休'].includes(userKubun);
+      
+      if (isExplicitOff) continue;
+      if (isUserOffDay && !isExplicitWork) continue;
+
+      const cacheKey = `daily_missing_${userId}_${todayStr}`;
       if (sentReminders.has(cacheKey)) continue;
 
-      const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkIn >= ? AND checkIn <= ? LIMIT 1`, [assign.userId, todayJstStartUTC, todayJstEndUTC]);
+      const [att] = await db.query(`SELECT id, checkIn, checkOut FROM attendance WHERE userId = ? AND (checkIn >= ? AND checkIn <= ? OR checkOut >= ? AND checkOut <= ?) LIMIT 1`, [userId, todayJstStartUTC, todayJstEndUTC, todayJstStartUTC, todayJstEndUTC]);
+      
       if (att.length === 0) {
-        await sendMissingEmail(assign, 'daily', todayStr);
+        // Chưa check-in
+        await sendMissingEmail(user, 'daily_in', todayStr);
+        sentReminders.add(cacheKey);
+      } else if (!att[0].checkOut) {
+        // Đã check-in nhưng chưa check-out
+        await sendMissingEmail(user, 'daily_out', todayStr);
+        sentReminders.add(cacheKey);
+      } else {
+        // Đã check-in và check-out đầy đủ, đánh dấu để không nhắc nữa
         sentReminders.add(cacheKey);
       }
     }
@@ -214,21 +333,105 @@ async function checkMonthlyMissingAttendance() {
     const monthStartStr = `${y}-${String(m+1).padStart(2, '0')}-01`;
     const monthEndStr = `${y}-${String(m+1).padStart(2, '0')}-31`;
 
-    const [assignments] = await db.query(`
-      SELECT DISTINCT a.userId, u.email, u.username
-      FROM user_shift_assignments a
-      JOIN users u ON a.userId = u.id
-      WHERE u.employment_status = 'active'
-        AND a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
-    `, [monthEndStr, monthStartStr]);
+    // 1. Fetch all active users
+    const [users] = await db.query(`
+      SELECT u.id, u.email, u.username, d.name as departmentName 
+      FROM users u 
+      LEFT JOIN departments d ON u.departmentId = d.id 
+      WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
+    `);
+    if (!users || users.length === 0) return;
 
-    for (const assign of assignments) {
-      const cacheKey = `monthly_missing_${assign.userId}_${monthStr}`;
+    // 2. Check assignments
+    const [assignments] = await db.query(`
+      SELECT a.userId, s.name, s.start_time, s.end_time
+      FROM user_shift_assignments a
+      JOIN shift_definitions s ON a.shiftId = s.id
+      WHERE a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
+    `, [monthEndStr, monthStartStr]);
+    const assignMap = new Map();
+    for (const a of assignments) {
+      assignMap.set(a.userId, a);
+    }
+
+    // Lấy thông tin calendar để check ngày nghỉ của cả tháng
+    const calendarRepo = require('../modules/calendar/calendar.repository');
+    const cal = await calendarRepo.computeYear(y).catch(() => null);
+    
+    // Tách riêng các loại ngày nghỉ để phân tích logic cho 工事部
+    const allDetail = cal?.detail || [];
+    const redDays = new Set(allDetail.filter(it => it.is_off).map(it => String(it.date).slice(0, 10)));
+    const offDays = new Set((cal?.off_days || []).map(d => String(d).slice(0, 10)));
+    
+    // Lấy trước dữ liệu giải thích từng ngày để tái sử dụng
+    const explanations = new Map();
+    const daysInMonth = [];
+    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    for (let day = 1; day <= lastDay; day++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      daysInMonth.push(ds);
+      explanations.set(ds, allDetail.filter(it => String(it.date).slice(0, 10) === ds));
+    }
+
+    // Lấy dữ liệu attendance_daily của toàn bộ tháng
+    const [dailies] = await db.query(`SELECT userId, date, kubun FROM attendance_daily WHERE date >= ? AND date <= ?`, [monthStartStr, monthEndStr]);
+    const dailyMap = new Map(); // key: userId_date
+    for (const d of dailies) {
+      dailyMap.set(`${d.userId}_${String(d.date).slice(0, 10)}`, String(d.kubun || '').trim());
+    }
+
+    // Lấy dữ liệu attendance của toàn bộ tháng
+    const [attRows] = await db.query(`SELECT userId, DATE(checkIn) as inDate, DATE(checkOut) as outDate FROM attendance WHERE checkIn >= ? AND checkIn <= ?`, [monthStartUTC, monthEndUTC]);
+    const attMap = new Map(); // key: userId_date
+    for (const r of attRows) {
+      if (r.inDate) attMap.set(`${r.userId}_${String(r.inDate).slice(0, 10)}`, true);
+    }
+
+    for (const user of users) {
+      if (!user.email) continue;
+      const userId = user.id;
+      const isKoujiUser = String(user.departmentName || '').includes('工事部');
+
+      const cacheKey = `monthly_missing_${userId}_${monthStr}`;
       if (sentReminders.has(cacheKey)) continue;
 
-      const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkIn >= ? AND checkIn <= ? LIMIT 1`, [assign.userId, monthStartUTC, monthEndUTC]);
-      if (att.length === 0) {
-        await sendMissingEmail(assign, 'monthly', monthStr);
+      let isMissingAnyDay = false;
+
+      // Kiểm tra từng ngày trong tháng cho user này
+      for (const ds of daysInMonth) {
+        // Bỏ qua ngày trong tương lai
+        if (ds > todayStr) continue;
+
+        const isSunday = new Date(ds).getUTCDay() === 0;
+        let isUserOffDay = false;
+
+        if (!isKoujiUser) {
+          isUserOffDay = isSunday || redDays.has(ds) || offDays.has(ds);
+        } else {
+          const detail = explanations.get(ds) || [];
+          const hasSundayReason = detail.some(x => x.is_off && x.type === 'sunday');
+          const hasLastSaturdayReason = detail.some(x => x.is_off && x.type === 'saturday_last');
+          const hasHolidayReason = detail.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
+          isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
+        }
+
+        const userKubun = dailyMap.get(`${userId}_${ds}`) || '';
+        const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
+        const isExplicitWork = ['出勤', '休日出勤', '代替出勤', '半休'].includes(userKubun);
+
+        if (isExplicitOff) continue;
+        if (isUserOffDay && !isExplicitWork) continue;
+
+        // Nếu ngày này là ngày phải làm việc, kiểm tra xem đã chấm công chưa
+        if (!attMap.has(`${userId}_${ds}`)) {
+          isMissingAnyDay = true;
+          break; // Chỉ cần thiếu 1 ngày là đủ điều kiện để gửi thông báo tháng
+        }
+      }
+
+      // Nếu có ít nhất 1 ngày làm việc bị thiếu chấm công, thì gửi thông báo
+      if (isMissingAnyDay) {
+        await sendMissingEmail(user, 'monthly', monthStr);
         sentReminders.add(cacheKey);
       }
     }
@@ -243,8 +446,8 @@ async function sendMissingEmail(user, type, dateStr) {
   
   let subject, text, html;
 
-  if (type === 'daily') {
-    subject = `[飯塚塗研株式会社] 勤怠未入力のお知らせ`;
+  if (type === 'daily_in') {
+    subject = `[飯塚塗研株式会社] 勤怠未入力のお知らせ（出勤）`;
     text = `
 ${user.username} さん
 
@@ -274,12 +477,41 @@ ${appUrl}
       <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
       お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
     `;
+  } else if (type === 'daily_out') {
+    subject = `[飯塚塗研株式会社] 勤怠未入力のお知らせ（退勤）`;
+    text = `
+${user.username} さん
+
+本日（${dateStr}）の退勤打刻が確認できませんでした。
+退勤の打刻を忘れた場合は、システムの報告申請から至急報告してください。
+
+▼ 打刻・申請はこちらから（アプリURL）
+${appUrl}
+
+このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
+    `.trim();
+
+    html = `
+      <p>${user.username} さん</p>
+      <br/>
+      <p>本日（<strong>${dateStr}</strong>）の退勤打刻が確認できませんでした。</p>
+      <p>退勤の打刻を忘れた場合は、システムの報告申請から至急報告してください。</p>
+      <br/>
+      <p>▼ 打刻・申請はこちらから（アプリURL）<br/>
+      <a href="${appUrl}">${appUrl}</a></p>
+      <br/>
+      <hr/>
+      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
+      お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+    `;
   } else if (type === 'monthly') {
     subject = `[飯塚塗研株式会社] 今月の勤怠未入力に関する重要なお知らせ`;
     text = `
 ${user.username} さん
 
-今月（${dateStr}）の出勤打刻が1日も確認できませんでした。
+今月（${dateStr}）の勤怠データに未入力の勤務日が含まれていることが確認されました。
 勤怠データが未入力のままですと、給与計算等に影響が出る可能性があります。
 至急、システムより打刻の状況や申請漏れがないか確認してください。
 
@@ -294,7 +526,7 @@ ${appUrl}
     html = `
       <p>${user.username} さん</p>
       <br/>
-      <p>今月（<strong>${dateStr}</strong>）の出勤打刻が1日も確認できませんでした。</p>
+      <p>今月（<strong>${dateStr}</strong>）の勤怠データに未入力の勤務日が含まれていることが確認されました。</p>
       <p>勤怠データが未入力のままですと、給与計算等に影響が出る可能性があります。<br/>
       至急、システムより打刻の状況や申請漏れがないか確認してください。</p>
       <br/>
