@@ -76,9 +76,7 @@ function renderResetPasswordTemplate({ resetUrl, expiresMinutes }) {
     `以下のリンクからパスワードを再設定してください（有効期限: ${expiresMinutes}分）：`,
     safeUrl,
     '',
-    'もしこのリクエストに心当たりがない場合は、このメールを無視してください。',
-    'お問い合わせに関してはシステム公式LINEまでお願いいたします。',
-    '公式LINE： https://lin.ee/zBKnhkd'
+    'もしこのリクエストに心当たりがない場合は、このメールを無視してください。'
   ].join('\n');
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
@@ -92,9 +90,6 @@ function renderResetPasswordTemplate({ resetUrl, expiresMinutes }) {
       <p style="word-break: break-all;">ボタンが機能しない場合は、以下のリンクを開いてください：<br>${safeUrl}</p>
       <p>このリンクは <strong>${expiresMinutes}分</strong> で無効になります。</p>
       <p>もしこのリクエストに心当たりがない場合は、このメールを無視してください。</p>
-      <hr/>
-      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
     </div>
   `;
   return { text, html };
