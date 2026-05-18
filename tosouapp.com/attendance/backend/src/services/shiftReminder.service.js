@@ -55,10 +55,10 @@ async function processReminders() {
     const currentMin = nowJST.getUTCHours() * 60 + nowJST.getUTCMinutes(); // Hours and minutes in JST
 
     const y = nowJST.getUTCFullYear();
-    const m = nowJST.getUTCMonth();
-    const d = nowJST.getUTCDate();
-    const todayJstStartUTC = new Date(Date.UTC(y, m, d, 0, 0, 0) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-    const todayJstEndUTC = new Date(Date.UTC(y, m, d, 23, 59, 59) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    const m = String(nowJST.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(nowJST.getUTCDate()).padStart(2, '0');
+    const todayJstStart = `${y}-${m}-${d} 00:00:00`;
+    const todayJstEnd = `${y}-${m}-${d} 23:59:59`;
 
     // 1. Fetch all active users (employees and managers) with their emails and department info
     const [users] = await db.query(`
@@ -172,12 +172,12 @@ async function processReminders() {
 
       // Helper function to check attendance
       const hasClockedIn = async () => {
-        const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkIn >= ? AND checkIn <= ? LIMIT 1`, [userId, todayJstStartUTC, todayJstEndUTC]);
+        const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkIn >= ? AND checkIn <= ? LIMIT 1`, [userId, todayJstStart, todayJstEnd]);
         return att.length > 0;
       };
 
       const hasClockedOut = async () => {
-        const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkOut >= ? AND checkOut <= ? LIMIT 1`, [userId, todayJstStartUTC, todayJstEndUTC]);
+        const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkOut >= ? AND checkOut <= ? LIMIT 1`, [userId, todayJstStart, todayJstEnd]);
         return att.length > 0;
       };
 
@@ -232,10 +232,10 @@ async function checkDailyMissingAttendance() {
     const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
     const todayStr = nowJST.toISOString().slice(0, 10);
     const y = nowJST.getUTCFullYear();
-    const m = nowJST.getUTCMonth();
-    const d = nowJST.getUTCDate();
-    const todayJstStartUTC = new Date(Date.UTC(y, m, d, 0, 0, 0) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-    const todayJstEndUTC = new Date(Date.UTC(y, m, d, 23, 59, 59) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    const m = String(nowJST.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(nowJST.getUTCDate()).padStart(2, '0');
+    const todayJstStart = `${y}-${m}-${d} 00:00:00`;
+    const todayJstEnd = `${y}-${m}-${d} 23:59:59`;
 
     // 1. Fetch all active users
     const [users] = await db.query(`
@@ -300,7 +300,7 @@ async function checkDailyMissingAttendance() {
       const cacheKey = `daily_missing_${userId}_${todayStr}`;
       if (sentReminders.has(cacheKey)) continue;
 
-      const [att] = await db.query(`SELECT id, checkIn, checkOut FROM attendance WHERE userId = ? AND (checkIn >= ? AND checkIn <= ? OR checkOut >= ? AND checkOut <= ?) LIMIT 1`, [userId, todayJstStartUTC, todayJstEndUTC, todayJstStartUTC, todayJstEndUTC]);
+      const [att] = await db.query(`SELECT id, checkIn, checkOut FROM attendance WHERE userId = ? AND (checkIn >= ? AND checkIn <= ? OR checkOut >= ? AND checkOut <= ?) LIMIT 1`, [userId, todayJstStart, todayJstEnd, todayJstStart, todayJstEnd]);
       
       if (att.length === 0) {
         // Chưa check-in
@@ -319,6 +319,7 @@ async function checkDailyMissingAttendance() {
     console.error('[ShiftReminder] Error daily missing:', err);
   }
 }
+// Mục đích sử dụng của cái này là check monthly missing attendance
 
 async function checkMonthlyMissingAttendance() {
   try {
@@ -327,11 +328,12 @@ async function checkMonthlyMissingAttendance() {
     const m = nowJST.getUTCMonth();
     const monthStr = nowJST.toISOString().slice(0, 7);
     
-    const monthStartUTC = new Date(Date.UTC(y, m, 1, 0, 0, 0) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-    const monthEndUTC = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59) - 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-
+    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     const monthStartStr = `${y}-${String(m+1).padStart(2, '0')}-01`;
-    const monthEndStr = `${y}-${String(m+1).padStart(2, '0')}-31`;
+    const monthEndStr = `${y}-${String(m+1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const monthStartJST = `${monthStartStr} 00:00:00`;
+    const monthEndJST = `${monthEndStr} 23:59:59`;
 
     // 1. Fetch all active users
     const [users] = await db.query(`
@@ -366,7 +368,6 @@ async function checkMonthlyMissingAttendance() {
     // Lấy trước dữ liệu giải thích từng ngày để tái sử dụng
     const explanations = new Map();
     const daysInMonth = [];
-    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     for (let day = 1; day <= lastDay; day++) {
       const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       daysInMonth.push(ds);
@@ -381,7 +382,7 @@ async function checkMonthlyMissingAttendance() {
     }
 
     // Lấy dữ liệu attendance của toàn bộ tháng
-    const [attRows] = await db.query(`SELECT userId, DATE(checkIn) as inDate, DATE(checkOut) as outDate FROM attendance WHERE checkIn >= ? AND checkIn <= ?`, [monthStartUTC, monthEndUTC]);
+    const [attRows] = await db.query(`SELECT userId, DATE(checkIn) as inDate, DATE(checkOut) as outDate FROM attendance WHERE checkIn >= ? AND checkIn <= ?`, [monthStartJST, monthEndJST]);
     const attMap = new Map(); // key: userId_date
     for (const r of attRows) {
       if (r.inDate) attMap.set(`${r.userId}_${String(r.inDate).slice(0, 10)}`, true);
