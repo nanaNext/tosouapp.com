@@ -707,6 +707,8 @@ export async function mountLeaveGrant({
 
   const sel = form.querySelector('#grantUser');
   for (const u of users) {
+    const role = String(u?.role || '').toLowerCase();
+    if (role === 'admin' || role === 'manager') continue;
     const opt = document.createElement('option');
     opt.value = String(u.id);
     opt.textContent = `${u.id} ${u.username || u.email}`;
