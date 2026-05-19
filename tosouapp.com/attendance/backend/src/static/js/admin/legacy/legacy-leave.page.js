@@ -820,7 +820,7 @@ export async function mountLeaveBalance({
     const [sortBy, sortDir] = String(sortEl?.value || 'remainingDays:desc').split(':');
     const pageSize = Number(sizeEl?.value || 20) || 20;
     const list = (Array.isArray(data) ? data : []).filter((r) => {
-      const txt = `${r.userId} ${r.name || ''}`.toLowerCase();
+      const txt = `${r.employeeCode || r.userId} ${r.name || ''}`.toLowerCase();
       return !q || txt.includes(q);
     }).sort((a, b) => {
       const av = a?.[sortBy];
@@ -863,7 +863,7 @@ export async function mountLeaveBalance({
       card.innerHTML = `
         <div style="font-weight:700; font-size:16px; color:#111827; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <span>${r.name || `User ${r.userId}`}</span>
-          <span style="font-size:12px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 8px; border-radius:12px;">ID: ${r.userId}</span>
+          <span style="font-size:12px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 8px; border-radius:12px;">社員番号: ${r.employeeCode || r.userId}</span>
         </div>
         
         <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
