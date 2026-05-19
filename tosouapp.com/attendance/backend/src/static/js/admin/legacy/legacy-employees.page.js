@@ -1003,12 +1003,15 @@ async function mountEmployeesImpl({
               .type-pill.contract { color:#6b21a8; }
               .emp-form-section { margin-bottom: 16px; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
               .emp-form-header { background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 15px; }
-              .emp-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; padding: 16px; }
+              .emp-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 16px; }
               .emp-form-group { display: flex; flex-direction: column; gap: 6px; }
               .emp-form-group label { font-size: 13px; font-weight: 600; color: #475569; }
               .emp-form-group input, .emp-form-group select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #0f172a; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
               .emp-form-group input:focus, .emp-form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+              @media (max-width: 1024px) { .emp-form-grid { grid-template-columns: repeat(3, 1fr); } }
+              @media (max-width: 768px) { .emp-form-grid { grid-template-columns: repeat(2, 1fr); } }
               @media (max-width: 640px) {
+                .emp-form-grid { grid-template-columns: 1fr; }
                 .admin.employees-wide .card table#list:not(.emp-del-list) thead,
                 .admin:not(.employees-wide) .card table#list:not(.emp-del-list) thead,
                 .admin.employees-wide .card table#list:not(.emp-del-list) thead th,
