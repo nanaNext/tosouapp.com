@@ -541,6 +541,7 @@ exports.summary = async (req, res) => {
         .sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate))[0] || null;
       out.push({
         userId: u.id,
+        employeeCode: u.employee_code || String(u.id),
         name: u.username || u.email || '',
         departmentId: u.departmentId || null,
         totalGranted,
