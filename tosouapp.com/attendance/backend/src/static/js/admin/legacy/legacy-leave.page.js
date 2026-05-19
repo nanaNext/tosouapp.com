@@ -6,76 +6,237 @@ function ensureLeaveUiStyles() {
   const s = document.createElement('style');
   s.id = 'leave-unified-style';
   s.textContent = `
-    .leave-page { color:#1e293b; background:transparent; border-radius:0; padding:10px 0; }
-    .leave-page h3 {
-      margin:0 0 16px; font-size:20px; font-weight:800; letter-spacing:0; color:#0f172a;
-      padding-left:0; border-left:0;
+    .leave-page { 
+      font-family: Inter, "Noto Sans JP", sans-serif;
+      color: #111827; 
+      background: transparent !important; 
+      border: none !important; 
+      box-shadow: none !important; 
+      padding: 0 !important; 
+      margin-top: -16px !important;
+      max-width: 1440px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .leave-page-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: 12px;
+    }
+    .leave-page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+    .leave-tabs {
+      display: flex;
+      gap: 24px;
+      border-bottom: 1px solid #E5E7EB;
+    }
+    .leave-tab {
+      padding: 8px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #6B7280;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      margin-bottom: -1px;
+    }
+    .leave-tab:hover {
+      color: #374151;
+    }
+    .leave-tab.active {
+      color: #2563EB;
+      border-bottom-color: #2563EB;
+    }
+    .leave-tab-content {
+      display: none;
+    }
+    .leave-tab-content.active {
+      display: block;
+    }
+      
+    .leave-page #tab-balances .leave-toolbar {
+      display: none !important;
+    }
+    .leave-page #tab-balances .leave-pager {
+      display: none !important;
+    }
+      margin: 0 0 16px; 
+      font-size: 20px; 
+      font-weight: 700; 
+      letter-spacing: -0.01em; 
+      color: #111827;
+      padding-left: 0; 
+      border-left: 0;
     }
     .leave-section {
-      background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px 20px;
-      box-shadow:0 1px 3px rgba(0,0,0,0.05); min-width:0; margin-bottom:16px;
+      background: transparent; 
+      border: none; 
+      padding: 0;
+      box-shadow: none; 
+      min-width: 0; 
+      margin-bottom: 12px;
+      margin-top: 0;
+      display: flex;
+      flex-direction: column;
     }
     .leave-section h3, .leave-section h4 {
-      margin:0 0 16px; font-size:16px; font-weight:800; color:#1e293b;
-      padding-bottom:10px; border-bottom:1px solid #f1f5f9;
+      margin: 0 0 8px; 
+      font-size: 14px; 
+      font-weight: 600; 
+      color: #111827;
+      padding-bottom: 8px; 
+      border-bottom: 1px solid #E5E7EB;
     }
-    .leave-toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 16px; }
-    .leave-label { font-size:13px; color:#475569; font-weight:600; margin-bottom:4px; display:block; }
+    .leave-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+    .leave-label { font-size: 11px; color: #4B5563; font-weight: 500; margin-bottom: 4px; display: block; }
     .leave-select, .leave-input {
-      min-height:36px; border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; background:#fff;
-      line-height:1.4; font-size:14px; font-family:inherit; box-sizing:border-box; color:#0f172a; transition: border-color 0.2s;
+      min-height: 28px !important; 
+      height: 28px !important;
+      border: 1px solid #D1D5DB !important; 
+      border-radius: 2px !important; 
+      padding: 2px 8px !important; 
+      background: #FFFFFF !important;
+      line-height: 1.5 !important; 
+      font-size: 13px !important; 
+      font-family: inherit !important; 
+      box-sizing: border-box !important; 
+      color: #111827 !important; 
+      transition: border-color 0.2s ease;
     }
-    .leave-select:focus, .leave-input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+    .leave-select:focus, .leave-input:focus { border-color: #2563EB !important; outline: none !important; }
     .leave-btn {
-      min-height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:0 16px; cursor:pointer; font-size:14px; font-weight:600; transition: all 0.2s;
+      min-height: 28px !important; 
+      height: 28px !important;
+      border: 1px solid transparent !important; 
+      border-radius: 2px !important; 
+      background: #FFFFFF; 
+      padding: 0 12px !important; 
+      cursor: pointer; 
+      font-size: 12px !important; 
+      font-weight: 500; 
+      transition: background 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    .leave-btn:hover { background:#f8fafc; }
-    .leave-btn-primary { background:#2563eb; border-color:#2563eb; color:#fff; }
-    .leave-btn-primary:hover { background:#1d4ed8; border-color:#1d4ed8; }
-    .leave-btn-danger { background:#fef2f2; border-color:#fecdd3; color:#e11d48; }
-    .leave-btn-danger:hover { background:#ffe4e6; }
-    .leave-btn-subtle { background:#f8fafc; color:#475569; border-color:#e2e8f0; }
-    .leave-btn-subtle:hover { background:#f1f5f9; }
+    .leave-btn:hover { background: #F9FAFB; border-color: #E5E7EB; }
+    .leave-btn-primary { background: #2563EB; border-color: #2563EB; color: #FFFFFF; }
+    .leave-btn-primary:hover { background: #1D4ED8; border-color: #1D4ED8; color: #FFFFFF; }
+    .leave-btn-danger { background: #FEF2F2; color: #DC2626; }
+    .leave-btn-danger:hover { background: #FEE2E2; }
+    .leave-btn-subtle { background: #F9FAFB; color: #4B5563; border-color: #E5E7EB; }
+    .leave-btn-subtle:hover { background: #F3F4F6; }
     .leave-table-wrap {
-      border:1px solid #e2e8f0; border-radius:8px; overflow:auto; background:#fff;
-      box-shadow:none; max-width:100%;
+      overflow: auto; 
+      background: #FFFFFF;
+      box-shadow: none; 
+      max-width: 100%;
+      border-radius: 2px !important;
+      flex-grow: 1;
     }
-    .leave-table-wrap.sticky { max-height:400px; }
-    .leave-page .leave-table { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; }
+    .leave-table-wrap.sticky { max-height: 450px; }
+    .leave-page .leave-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .leave-page .leave-table th, .leave-page .leave-table td { border-left: none; border-right: none; }
     .leave-page .leave-table thead th {
-      background:#f8fafc !important;
-      color:#334155 !important;
-      -webkit-text-fill-color:#334155 !important;
-      text-align:left; font-weight:800; padding:12px 16px; border-bottom:1px solid #e2e8f0; white-space:nowrap;
+      background: #FFFFFF !important;
+      color: #6B7280 !important;
+      -webkit-text-fill-color: #6B7280 !important;
+      text-align: left; 
+      font-weight: 600; 
+      font-size: 12px;
+      padding: 6px 8px; 
+      border-bottom: 1px solid #E5E7EB; 
+      border-left: none;
+      border-right: none;
+      white-space: nowrap;
     }
     .leave-page .leave-table thead th * {
-      color:#334155 !important;
-      -webkit-text-fill-color:#334155 !important;
+      color: #6B7280 !important;
+      -webkit-text-fill-color: #6B7280 !important;
     }
-    .leave-table-wrap.sticky .leave-table thead th { position:sticky; top:0; z-index:1; }
-    .leave-page .leave-table tbody td { padding:12px 16px; border-bottom:1px solid #f1f5f9; vertical-align:middle; color:#1e293b; }
-    .leave-page .leave-table tbody tr:nth-child(even) td { background:#fafafa; }
-    .leave-page .leave-table tbody tr:hover td { background:#f1f5f9; }
-    .leave-page .leave-table .num { text-align:right; font-variant-numeric:tabular-nums; }
-    .leave-badge { display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600; border:1px solid; }
-    .leave-badge.pending { color:#b45309; background:#fffbeb; border-color:#fcd34d; }
-    .leave-badge.approved { color:#15803d; background:#f0fdf4; border-color:#86efac; }
-    .leave-badge.rejected { color:#64748b; background:#f8fafc; border-color:#e2e8f0; }
-    .leave-grid-main { display:grid; grid-template-columns: minmax(0,1fr); gap:16px; align-items:start; }
-    .leave-grid-full { margin-top:0; }
+    .leave-table-wrap.sticky .leave-table thead th { position: sticky; top: 0; z-index: 1; }
+    .leave-page .leave-table tbody td { 
+      padding: 6px 8px; 
+      border-bottom: 1px solid #F3F4F6; 
+      vertical-align: middle; 
+      color: #111827;
+      border-left: none;
+      border-right: none;
+    }
+    .leave-page .leave-table tbody td:last-child {
+      position: sticky;
+      right: 0;
+      background: #FFFFFF;
+      z-index: 1;
+      border-left: 1px solid #F3F4F6;
+    }
+    .leave-page .leave-table thead th:last-child {
+      position: sticky;
+      right: 0;
+      background: #FFFFFF !important;
+      z-index: 2;
+      border-left: 1px solid #F3F4F6;
+    }
+    .leave-page .leave-table tbody tr:hover td:last-child {
+      background: #F9FAFB;
+    }
+    .leave-page .leave-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .leave-badge { 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center;
+      border-radius: 2px !important; 
+      padding: 2px 8px !important; 
+      font-size: 11px !important; 
+      font-weight: 600; 
+      border: none; 
+    }
+    .leave-badge.pending { color: #92400E; background: #FEF3C7; }
+    .leave-badge.approved { color: #166534; background: #DCFCE7; }
+    .leave-badge.rejected { color: #4B5563; background: #F3F4F6; }
+    .leave-grid-main { display: grid; grid-template-columns: minmax(0,1fr); gap: 24px; align-items: start; }
+    .leave-grid-full { margin-top: 0; }
     .leave-form-grid {
-      display:grid; grid-template-columns:1fr; gap:12px; margin-top:16px;
+      display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 16px;
     }
-    .leave-form-grid > div { display:flex; flex-direction:column; gap:4px; }
+    .leave-form-grid > div { display: flex; flex-direction: column; gap: 6px; }
     .leave-form-card {
-      margin-top:0; border-top:none; border-radius:0; padding:0; background:transparent;
+      margin-top: 0; border-top: none; border-radius: 0; padding: 0; background: transparent;
     }
-    .leave-form-card h4 { margin:0 0 12px; font-size:15px; color:#1e293b; }
-    .leave-mini-note { color:#64748b; font-size:13px; margin-top:8px; }
-    .leave-pager { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
-    .leave-muted { color:#64748b; font-size:13px; }
+    .leave-form-card h4 { margin: 0 0 8px; font-size: 16px; color: #111827; font-weight: 700; }
+    .leave-form-card p.sub-desc { margin: 0 0 24px; font-size: 14px; color: #6B7280; }
+    .leave-mini-note { color: #6B7280; font-size: 13px; margin-top: 12px; }
+    .leave-pager { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 16px; }
+    .leave-muted { color: #6B7280; font-size: 13px; }
+    
+    .leave-balance-card {
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 16px;
+      background: #FFFFFF;
+      transition: box-shadow 0.2s ease;
+    }
+    .leave-balance-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .leave-balance-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
     @media (min-width: 1024px) {
-      .leave-grid-main { grid-template-columns: minmax(0,7fr) minmax(0,3fr); }
+      .leave-grid-main { grid-template-columns: minmax(0,1fr) 280px; align-items: stretch; gap: 24px; }
     }
   `;
   document.head.appendChild(s);
@@ -87,7 +248,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
   c.dataset.approvalsRenderSeq = String(seq);
   const stale = () => String(c.dataset.approvalsRenderSeq || '') !== String(seq);
   ensureLeaveUiStyles();
-  c.innerHTML = '<h3>📥 承認フロー</h3>';
+  c.innerHTML = '<h3>承認フロー</h3>';
 
   const selectedStatus = String(
     Object.prototype.hasOwnProperty.call(opts || {}, 'status')
@@ -136,7 +297,8 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
   tableWrap.className = 'leave-table-wrap';
   const table = document.createElement('table');
   table.className = 'leave-table leave-table-approvals';
-  table.innerHTML = '<thead><tr><th>ID</th><th>User</th><th>期間</th><th>種類</th><th>状態</th><th>残数</th><th>操作</th></tr></thead>';
+  const hasActions = selectedStatus === 'pending';
+  table.innerHTML = `<thead><tr><th>ID</th><th>User</th><th>期間</th><th>種類</th><th>状態</th><th>残数</th>${hasActions ? '<th>操作</th>' : ''}</tr></thead>`;
   const tbody = document.createElement('tbody');
   const pager = document.createElement('div');
   pager.className = 'leave-pager';
@@ -162,17 +324,26 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
       const tr = document.createElement('tr');
       const status = String(r.status || '').toLowerCase();
       const statusClass = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending';
+      
+      let statusJa = '承認待ち';
+      if (status === 'approved') statusJa = '承認済み';
+      if (status === 'rejected') statusJa = '却下';
+      
+      let typeJa = r.type;
+      if (typeJa === 'paid') typeJa = '有給';
+      else if (typeJa === 'unpaid') typeJa = '欠勤';
+      
       tr.innerHTML = `
-        <td class="num">${r.id}</td>
+        <td>${r.id}</td>
         <td>${userLabel}</td>
         <td>${r.startDate}〜${r.endDate}</td>
-        <td>${r.type}</td>
-        <td><span class="leave-badge ${statusClass}">${r.status}</span></td>
+        <td>${typeJa}</td>
+        <td><span class="leave-badge ${statusClass}">${statusJa}</span></td>
         <td><button type="button" class="leave-btn leave-btn-subtle" data-action="balance" data-user="${r.userId}">照会</button></td>
-        <td>
-          ${canReview ? `<button type="button" class="leave-btn leave-btn-primary" data-action="approve" data-app="${r.id}">承認</button>
-          <button type="button" class="leave-btn leave-btn-danger" data-action="reject" data-app="${r.id}">却下</button>` : '-'}
-        </td>`;
+        ${hasActions ? `<td>
+          <button type="button" class="leave-btn leave-btn-primary" data-action="approve" data-app="${r.id}">承認</button>
+          <button type="button" class="leave-btn leave-btn-danger" data-action="reject" data-app="${r.id}">却下</button>
+        </td>` : ''}`;
       tbody.appendChild(tr);
     }
     if (!pageRows.length) {
@@ -358,7 +529,7 @@ export async function mountLeaveGrant({
 }) {
   const c = host || content;
   ensureLeaveUiStyles();
-  c.innerHTML = '<h3>➕ 有給付与</h3>';
+  c.innerHTML = '<h3>有給付与</h3>';
 
   if (!(opts && opts.unified)) {
     const nav = document.createElement('div');
@@ -514,23 +685,23 @@ export async function mountLeaveGrant({
   form.className = 'leave-form-grid';
   form.innerHTML = `
     <div>
-      <label class="leave-label">User</label>
+      <label class="leave-label">ユーザー</label>
       <select id="grantUser" class="leave-select"></select>
     </div>
     <div>
-      <label class="leave-label">Days</label>
+      <label class="leave-label">日数</label>
       <input id="grantDays" class="leave-input" type="number" min="1" value="10">
     </div>
     <div>
-      <label class="leave-label">Grant date</label>
+      <label class="leave-label">付与日</label>
       <input id="grantDate" class="leave-input" type="date" value="${fmt(today)}">
     </div>
     <div>
-      <label class="leave-label">Expire date</label>
+      <label class="leave-label">有効期限</label>
       <input id="expireDate" class="leave-input" type="date" value="${fmt(exp)}">
     </div>
     <div style="margin-top:8px;">
-      <button type="submit" class="leave-btn leave-btn-primary" style="width:100%;">付与</button>
+      <button type="submit" class="leave-btn leave-btn-primary" style="min-width:120px; align-self: flex-start;">付与</button>
     </div>
   `;
 
@@ -575,7 +746,9 @@ export async function mountLeaveGrant({
 
   const formCard = document.createElement('div');
   formCard.className = 'leave-form-card';
-  formCard.innerHTML = '<h4 style="margin-top:16px;">手動付与</h4>';
+  formCard.innerHTML = `
+    <h4 style="margin-top:16px;">Manual PTO Grant</h4>
+  `;
   formCard.appendChild(form);
   formCard.appendChild(result);
   c.appendChild(formCard);
@@ -590,7 +763,7 @@ export async function mountLeaveBalance({
 }) {
   const c = host || content;
   ensureLeaveUiStyles();
-  c.innerHTML = '<h3>📊 有給残日数一覧</h3>';
+  c.innerHTML = '<h3 style="display:flex; align-items:center; gap:8px;"><span style="font-size:20px;">📊</span> 有給残日数一覧</h3>';
 
   const toolbar = document.createElement('div');
   toolbar.className = 'leave-toolbar';
@@ -630,13 +803,9 @@ export async function mountLeaveBalance({
     note.textContent = '残日数データの取得に失敗しました。空データで表示します。';
     c.appendChild(note);
   }
-  const tableWrap = document.createElement('div');
-  tableWrap.className = 'leave-table-wrap sticky';
-  const table = document.createElement('table');
-  table.className = 'leave-table';
-  table.innerHTML =
-    '<thead><tr><th>User</th><th>部門</th><th>付与合計</th><th>使用</th><th>残</th><th>有効期限(近日)</th><th>義務残</th></tr></thead>';
-  const tbody = document.createElement('tbody');
+  const gridWrap = document.createElement('div');
+  gridWrap.className = 'leave-balance-grid';
+  
   const pager = document.createElement('div');
   pager.className = 'leave-pager';
   const today = new Date();
@@ -647,7 +816,7 @@ export async function mountLeaveBalance({
   const render = () => {
     const q = String(searchEl?.value || '').trim().toLowerCase();
     const [sortBy, sortDir] = String(sortEl?.value || 'remainingDays:desc').split(':');
-    const pageSize = 10;
+    const pageSize = Number(sizeEl?.value || 20) || 20;
     const list = (Array.isArray(data) ? data : []).filter((r) => {
       const txt = `${r.userId} ${r.name || ''}`.toLowerCase();
       return !q || txt.includes(q);
@@ -667,27 +836,66 @@ export async function mountLeaveBalance({
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     if (page > totalPages) page = totalPages;
     const rows = list.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
-    tbody.innerHTML = '';
+    
+    gridWrap.innerHTML = '';
+    
     for (const r of rows) {
-      const tr = document.createElement('tr');
+      const card = document.createElement('div');
+      card.className = 'leave-balance-card';
+      
+      let isExpiringSoon = false;
       if (r.nearestExpiry && new Date(r.nearestExpiry) - today < 1000 * 60 * 60 * 24 * 30) {
-        tr.style.background = '#fff4e5';
+        isExpiringSoon = true;
+        card.style.borderColor = '#FCD34D';
+        card.style.background = '#FFFBEB';
       }
-      tr.innerHTML = `
-        <td>${r.userId} ${r.name || ''}</td>
-        <td class="num">${r.departmentId == null ? '' : r.departmentId}</td>
-        <td class="num">${r.totalGranted}</td>
-        <td class="num">${r.usedDays}</td>
-        <td class="num">${r.remainingDays}</td>
-        <td>${r.nearestExpiry || ''} (${r.nearestExpiryRemaining || 0})</td>
-        <td class="num">${r.obligationRemaining || 0}</td>`;
-      tbody.appendChild(tr);
+      
+      const totalG = Number(r.totalGranted || 0);
+      const usedD = Number(r.usedDays || 0);
+      const remainD = Number(r.remainingDays || 0);
+      
+      // Progress bar calculations
+      const pTotal = totalG > 0 ? totalG : 1;
+      const pctUsed = Math.min(100, Math.max(0, (usedD / pTotal) * 100));
+      
+      card.innerHTML = `
+        <div style="font-weight:700; font-size:16px; color:#111827; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+          <span>${r.name || `User ${r.userId}`}</span>
+          <span style="font-size:12px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 8px; border-radius:12px;">ID: ${r.userId}</span>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="color:#4B5563; font-size:14px; font-weight:500;">PTO Remaining</span>
+          <span style="color:#2563EB; font-size:16px; font-weight:700;">${remainD} <span style="font-size:12px;font-weight:500;">days</span></span>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="color:#6B7280; font-size:13px;">Used</span>
+          <span style="color:#4B5563; font-size:13px; font-weight:600;">${usedD} / ${totalG}</span>
+        </div>
+        
+        <div style="height:6px; background:#E5E7EB; border-radius:3px; overflow:hidden; margin-bottom:16px;">
+          <div style="height:100%; width:${pctUsed}%; background:#2563EB; border-radius:3px;"></div>
+        </div>
+        
+        <div style="font-size:13px; color:#4B5563; display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:#6B7280;">Nearest Expiry</span>
+            <span style="${isExpiringSoon ? 'color:#B45309;font-weight:600;' : ''}">${r.nearestExpiry || 'N/A'}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:#6B7280;">Obligation</span>
+            <span>${r.obligationRemaining || 0} days</span>
+          </div>
+        </div>
+      `;
+      gridWrap.appendChild(card);
     }
+    
     if (!rows.length) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="7" style="text-align:center;color:#64748b;padding:20px 8px;">データがありません</td>';
-      tbody.appendChild(tr);
+      gridWrap.innerHTML = '<div style="text-align:center; color:#6B7280; padding:40px; grid-column:1/-1;">データがありません (No data)</div>';
     }
+    
     pager.innerHTML = `
       <button type="button" class="leave-btn" data-pg="prev">前へ</button>
       <span class="leave-muted">${total} 件 / ${page} / ${totalPages} ページ</span>
@@ -703,9 +911,7 @@ export async function mountLeaveBalance({
     });
   };
 
-  table.appendChild(tbody);
-  tableWrap.appendChild(table);
-  c.appendChild(tableWrap);
+  c.appendChild(gridWrap);
   c.appendChild(pager);
   render();
   if (searchEl) searchEl.addEventListener('input', () => { page = 1; render(); });
@@ -782,27 +988,92 @@ export async function mountLeaveUnified({
 }) {
   ensureLeaveUiStyles();
   content.classList.add('leave-page');
-  content.innerHTML = '<h3 style="font-size:24px; color:#1e293b; margin-bottom: 20px;">休暇管理</h3>';
-  const mainGrid = document.createElement('div');
-  mainGrid.className = 'leave-grid-main';
-  content.appendChild(mainGrid);
+  
+  content.innerHTML = `
+      <div class="leave-page-header">
+        <div class="leave-tabs">
+          <button class="leave-tab active" data-target="tab-approvals">休暇申請承認</button>
+          <button class="leave-tab" data-target="tab-grant">有給付与</button>
+          <button class="leave-tab" data-target="tab-balances">有給残日数一覧</button>
+        </div>
+      </div>
+    `;
 
-  const secB = document.createElement('section');
-  secB.className = 'leave-section leave-grid-full';
+  // Tab containers
+  const tabApprovals = document.createElement('div');
+  tabApprovals.className = 'leave-tab-content active';
+  tabApprovals.id = 'tab-approvals';
+
+  const tabGrant = document.createElement('div');
+  tabGrant.className = 'leave-tab-content';
+  tabGrant.id = 'tab-grant';
+  
+  const tabBalances = document.createElement('div');
+  tabBalances.className = 'leave-tab-content';
+  tabBalances.id = 'tab-balances';
+
+  content.appendChild(tabApprovals);
+  content.appendChild(tabGrant);
+  content.appendChild(tabBalances);
 
   const secA = document.createElement('section');
   secA.className = 'leave-section';
-  mainGrid.appendChild(secA);
-  const refreshBalance = async () => {
-    await mountLeaveBalanceFn(secB, { unified: true, onDataChanged: refreshBalance });
-  };
-  await mountApprovalsFn(secA, { status: 'pending', hideProfileSection: true, onDataChanged: refreshBalance });
+  tabApprovals.appendChild(secA);
 
   const secG = document.createElement('section');
   secG.className = 'leave-section';
-  mainGrid.appendChild(secG);
+  secG.style.maxWidth = '400px';
+  secG.style.margin = '20px 0 0 0';
+  tabGrant.appendChild(secG);
+  
+  const secB = document.createElement('div');
+  secB.style.boxShadow = 'none';
+  secB.style.border = 'none';
+  secB.style.padding = '0';
+  secB.style.background = 'transparent';
+  tabBalances.appendChild(secB);
+  
+  const refreshBalance = async () => {
+    // Show all items by setting limit to a very high number (e.g. 1000)
+    await mountLeaveBalanceFn(secB, { unified: true, limit: 1000, onDataChanged: refreshBalance });
+    const h3 = secB.querySelector('h3');
+    if (h3) h3.remove();
+  };
+  
+  await mountApprovalsFn(secA, { status: 'pending', hideProfileSection: true, onDataChanged: refreshBalance });
+  const aTitle = secA.querySelector('h3');
+  if (aTitle) aTitle.remove();
+
   await mountLeaveGrantFn(secG, { unified: true, onDataChanged: refreshBalance });
 
-  content.appendChild(secB);
-  await mountLeaveBalanceFn(secB, { unified: true, onDataChanged: refreshBalance });
+  // Clean up grant section
+  if (secG) {
+    // Remove the batch grant buttons toolbar
+    const batchToolbar = secG.querySelector('.leave-toolbar');
+    if (batchToolbar) batchToolbar.remove();
+    
+    // Remove the "Manual PTO Grant" heading
+    const manualHeading = secG.querySelector('h4');
+    if (manualHeading) manualHeading.remove();
+
+    // Remove the extra description text under the title
+    const gTitle = secG.querySelector('h3');
+    if (gTitle) {
+      gTitle.innerHTML = '有給付与';
+    }
+  }
+  
+  await refreshBalance();
+
+  // Tab Switching Logic
+  content.querySelectorAll('.leave-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      content.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
+      content.querySelectorAll('.leave-tab-content').forEach(c => c.classList.remove('active'));
+      
+      const targetId = e.currentTarget.getAttribute('data-target');
+      e.currentTarget.classList.add('active');
+      content.querySelector(`#${targetId}`).classList.add('active');
+    });
+  });
 }

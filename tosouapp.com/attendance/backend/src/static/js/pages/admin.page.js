@@ -181,19 +181,19 @@ async function bootLegacyAdminPage() {
     const loadLeaveModule = async () => await import(withAssetV('../admin/legacy/legacy-leave.page.js'));
     const renderApprovals = async (host, opts) => {
       const mod = await loadLeaveModule();
-      return mod.mountApprovals({ host, content, opts, mountApprovalsFn: renderApprovals });
+      return mod.mountApprovals({ host, content: document.querySelector('#adminContent'), opts, mountApprovalsFn: renderApprovals });
     };
     const renderLeaveGrant = async (host, opts) => {
       const mod = await loadLeaveModule();
-      return mod.mountLeaveGrant({ host, content, opts, listUsers, mountApprovalsFn: renderApprovals, mountLeaveBalanceFn: renderLeaveBalance });
+      return mod.mountLeaveGrant({ host, content: document.querySelector('#adminContent'), opts, listUsers, mountApprovalsFn: renderApprovals, mountLeaveBalanceFn: renderLeaveBalance });
     };
     const renderLeaveBalance = async (host, opts) => {
       const mod = await loadLeaveModule();
-      return mod.mountLeaveBalance({ host, content, opts, mountLeaveGrantFn: renderLeaveGrant, mountApprovalsFn: renderApprovals });
+      return mod.mountLeaveBalance({ host, content: document.querySelector('#adminContent'), opts, mountLeaveGrantFn: renderLeaveGrant, mountApprovalsFn: renderApprovals });
     };
     const renderLeaveHub = async () => {
       const mod = await loadLeaveModule();
-      return mod.mountLeaveHub({ content, mountLeaveGrantFn: renderLeaveGrant, mountApprovalsFn: renderApprovals, mountLeaveBalanceFn: renderLeaveBalance });
+      return mod.mountLeaveHub({ content: document.querySelector('#adminContent'), mountLeaveGrantFn: renderLeaveGrant, mountApprovalsFn: renderApprovals, mountLeaveBalanceFn: renderLeaveBalance });
     };
 
     async function renderByTab() {
@@ -238,7 +238,7 @@ async function bootLegacyAdminPage() {
           dbcheck: wrapLegacy(async (ctx) => {
             showNavSpinner();
             const mod = await import(withAssetV('../admin/legacy/legacy-dbcheck.page.js'));
-            return mod.mountDbCheck({ content, hideNavSpinner, ctx });
+            return mod.mountDbCheck({ content: document.querySelector('#adminContent'), hideNavSpinner, ctx });
           }),
           departments: wrapLegacy(async (ctx) => {
             const mod = await import(withAssetV('../admin/legacy/legacy-departments.page.js'));
@@ -319,7 +319,7 @@ async function bootLegacyAdminPage() {
 
         currentPage = nextPage;
         await currentPage.mount({
-          content,
+          content: document.querySelector('#adminContent'),
           profile,
           listEmployees,
           listUsers,

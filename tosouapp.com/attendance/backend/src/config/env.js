@@ -35,7 +35,7 @@ module.exports = {
   mailProvider: process.env.MAIL_PROVIDER || '', // 'resend' or 'smtp'
   mailApiKey: process.env.MAIL_API_KEY || '',
   mailFrom: process.env.MAIL_FROM || '',
-  
+
   // SMTP specific
   smtpHost: process.env.SMTP_HOST || 'mail.privateemail.com',
   smtpPort: parseInt(process.env.SMTP_PORT || '465', 10),
