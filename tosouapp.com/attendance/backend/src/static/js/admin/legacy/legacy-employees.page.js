@@ -1008,14 +1008,15 @@ async function mountEmployeesImpl({
               .emp-form-layout { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 20px !important; align-items: start !important; margin-bottom: 20px !important; }
               @media (max-width: 1024px) { .emp-form-layout { grid-template-columns: repeat(2, 1fr) !important; } }
               @media (max-width: 768px) { .emp-form-layout { grid-template-columns: 1fr !important; } }
-              .emp-form-section { background: #fff; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+              .emp-form-section { background: #fff; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 0; }
               .emp-form-header { background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 14px; }
               .emp-form-grid { display: flex; flex-direction: column; gap: 0; padding: 0; }
-              .emp-form-group { display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #f1f5f9; }
+              .emp-form-group { display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db; }
               .emp-form-group:last-child { border-bottom: none; }
-              .emp-form-group label { width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #fff; display: flex; align-items: center; border-right: 1px solid #f1f5f9; flex-shrink: 0; box-sizing: border-box; }
-              .emp-form-group input, .emp-form-group select { flex: 1; padding: 8px 12px; border: 1px solid transparent; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; }
-              .emp-form-group input:focus, .emp-form-group select:focus { border-color: #cbd5e1; background: #f8fafc; }
+              .emp-form-group label { width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box; }
+              .emp-form-group input, .emp-form-group select { flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; }
+              .emp-form-group input:focus, .emp-form-group select:focus { background: #f1f5f9; box-shadow: inset 0 0 0 1px #3b82f6; }
+              .emp-form-group > div { flex: 1; display: flex; align-items: center; border: none !important; background: #fff !important; }
               @media (max-width: 640px) {
                 .emp-form-grid { grid-template-columns: 1fr; }
                 .admin.employees-wide .card table#list:not(.emp-del-list) thead,
