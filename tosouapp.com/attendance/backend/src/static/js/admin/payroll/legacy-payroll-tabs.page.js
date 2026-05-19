@@ -8,10 +8,10 @@ function ensurePayrollNavStyle() {
     const st = document.createElement('style');
     st.id = 'payrollNavStyle';
     st.textContent = `
-      .pe-nav{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px 0}
-      .pe-nav a{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;color:#0f172a;font-weight:500;text-decoration:none}
-      .pe-nav a:hover{border-color:#94a3b8}
-      .pe-nav a.active{background:#0f172a;border-color:#0f172a;color:#fff}
+      .pe-nav{display:flex;gap:24px;margin:-16px 0 12px 0;border-bottom:1px solid #e5e7eb;padding:0 16px}
+      .pe-nav a{display:inline-flex;align-items:center;padding:8px 0;border-bottom:2px solid transparent;background:none;color:#6b7280;font-weight:600;font-size:14px;text-decoration:none;transition:all 0.2s;margin-bottom:-1px}
+      .pe-nav a:hover{color:#374151}
+      .pe-nav a.active{color:#2563eb;border-bottom-color:#2563eb}
     `;
     document.head.appendChild(st);
   } catch {}
@@ -165,49 +165,79 @@ export async function mountSalaryCalc({ content, listUsers }) {
 
 export async function mountPayslipSend({ content, listUsers }) {
   if (!content) return;
-  content.innerHTML = '<h3>給与明細</h3>';
-  // nav hidden intentionally per requirements
+  
+  ensurePayrollNavStyle();
+  content.innerHTML = '';
+  // Removed top nav per user request: content.appendChild(mountNav('salary_send'));
 
   (function mountLocalStyle(){
     if (document.getElementById('payslipHistoryStyle')) return;
     const st = document.createElement('style');
     st.id = 'payslipHistoryStyle';
     st.textContent = `
-      .ps-table{width:100%;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;border-collapse:separate;border-spacing:0;table-layout:fixed}
-      .ps-table th,.ps-table td{padding:10px 12px;border-top:1px solid #f1f5f9;text-align:left;vertical-align:middle}
-      .ps-table thead th{background:#f8fafc;color:#334155;font-weight:900}
-      .ps-table tr:nth-child(even) td{background:#fbfdff}
-      .ps-col-user{width:30%}
-      .ps-col-month{width:14%}
-      .ps-col-file{width:28%}
-      .ps-col-sender{width:14%}
-      .ps-col-time{width:14%}
+      .ps-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
+      .ps-table th,.ps-table td{padding:12px 16px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:middle;color:#111827}
+      .ps-table thead th{background:#ffffff;color:#6b7280;font-weight:600;font-size:12px;border-bottom:2px solid #e5e7eb}
+      .ps-table tbody tr:hover td{background:#f9fafb}
+      .ps-table tbody tr:last-child td{border-bottom:none}
+      .ps-col-user{width:25%}
+      .ps-col-month{width:12%}
+      .ps-col-file{width:30%}
+      .ps-col-sender{width:15%}
+      .ps-col-time{width:18%}
       .ps-col-count{width:20%}
-      .btn-neutral{display:inline-block;padding:4px 10px;border:1px solid #cbd5e1;background:#fff;color:#0b2c66;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer}
-      .btn-neutral:hover{background:#f1f5f9;border-color:#94a3b8}
+      .btn-neutral{display:inline-flex;align-items:center;justify-content:center;padding:4px 12px;border:1px solid #d1d5db;background:#ffffff;color:#374151;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;min-height:28px}
+      .btn-neutral:hover{background:#f3f4f6;border-color:#9ca3af}
+      .btn-danger{color:#dc2626;background:#fef2f2;border-color:#fecaca}
+      .btn-danger:hover{background:#fee2e2;border-color:#fca5a5}
+      .ps-card{background:transparent;border:none;border-radius:0;box-shadow:none;padding:0;margin-bottom:12px}
+      .ps-header{display:none}
+      .ps-filter{display:flex;gap:12px;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #f3f4f6}
+      .ps-input{height:32px;padding:4px 12px;border:1px solid #d1d5db;border-radius:4px;font-size:14px;color:#111827}
+      .ps-input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 1px rgba(37,99,235,0.2)}
+      details > summary { list-style: none; display: flex; align-items: center; gap: 8px; }
+      details > summary::-webkit-details-marker { display: none; }
+      details > summary::before { content: '▸'; display: inline-block; transition: transform 0.2s; font-size: 12px; color: #6b7280; }
+      details[open] > summary::before { transform: rotate(90deg); }
+      .ps-tabs { display: flex; gap: 24px; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; }
+      .ps-tab { padding: 8px 0; font-size: 14px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; background: transparent; border-top: none; border-left: none; border-right: none; margin-bottom: -1px; }
+      .ps-tab:hover { color: #374151; }
+      .ps-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
     `;
     document.head.appendChild(st);
   })();
 
   const info = document.createElement('div');
-  info.style.margin = '6px 0 10px 0';
-  info.style.color = '#64748b';
-  info.style.fontWeight = '800';
+  info.className = 'ps-card';
+  info.style.display = 'flex';
+  info.style.justifyContent = 'flex-end';
   info.innerHTML = `
-    全社員の配信履歴・PDF作成履歴を表示します
-    <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <label style="font-weight:900;color:#334155">対象月</label>
-      <input id="psMonth" type="month" style="height:36px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:10px;">
-      <button id="psClear" type="button" style="height:36px;padding:0 12px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;font-weight:900;cursor:pointer;">クリア</button>
+    <div class="ps-filter" style="margin-top: 0px; margin-bottom: 0px; padding-bottom: 0px; border-bottom: none;">
+      <label style="font-size:14px;font-weight:500;color:#374151">対象年間</label>
+      <input id="psMonth" type="month" class="ps-input">
+      <button id="psClear" type="button" class="btn-neutral" title="クリア" style="padding: 4px 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
     </div>
   `;
   content.appendChild(info);
 
+  // --- Sub-Tabs for Send/History page ---
+  const subNav = document.createElement('div');
+  subNav.className = 'ps-tabs';
+  subNav.innerHTML = `
+    <button type="button" class="ps-tab active" data-subtab="summary">月別サマリー</button>
+    <button type="button" class="ps-tab" data-subtab="deliveries">配信履歴</button>
+    <button type="button" class="ps-tab" data-subtab="files">PDF作成履歴</button>
+  `;
+  content.appendChild(subNav);
+
   const monthsCard = document.createElement('div');
-  monthsCard.style.margin = '10px 0';
+  monthsCard.className = 'ps-card';
+  monthsCard.style.padding = '0';
+  monthsCard.style.display = 'block'; // active by default
   monthsCard.innerHTML = `
-    <div style="font-weight:900;color:#0f172a;margin:8px 0;">月別サマリー</div>
-    <div id="monthsHost">
+    <div id="monthsHost" style="overflow-x:auto">
       <table class="ps-table">
         <thead>
           <tr>
@@ -222,24 +252,42 @@ export async function mountPayslipSend({ content, listUsers }) {
   `;
   content.appendChild(monthsCard);
 
-  const historyWrap = document.createElement('div');
-  historyWrap.style.marginTop = '16px';
-  historyWrap.innerHTML = `
-    <details open>
-      <summary style="cursor:pointer;font-weight:900;">配信履歴</summary>
-      <div id="delivBox"></div>
-    </details>
-    <details open style="margin-top:12px;">
-      <summary style="cursor:pointer;font-weight:900;">PDF作成履歴</summary>
-      <div id="fileBox"></div>
-    </details>
+  const delivCard = document.createElement('div');
+  delivCard.className = 'ps-card';
+  delivCard.style.padding = '0';
+  delivCard.style.display = 'none';
+  delivCard.innerHTML = `
+    <div id="delivBox" style="overflow-x:auto"></div>
   `;
-  content.appendChild(historyWrap);
+  content.appendChild(delivCard);
+
+  const filesCard = document.createElement('div');
+  filesCard.className = 'ps-card';
+  filesCard.style.padding = '0';
+  filesCard.style.display = 'none';
+  filesCard.innerHTML = `
+    <div id="fileBox" style="overflow-x:auto"></div>
+  `;
+  content.appendChild(filesCard);
+
+  // Tab switching logic
+  subNav.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      subNav.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.subtab;
+      monthsCard.style.display = tab === 'summary' ? 'block' : 'none';
+      delivCard.style.display = tab === 'deliveries' ? 'block' : 'none';
+      filesCard.style.display = tab === 'files' ? 'block' : 'none';
+    });
+  });
 
   let selectedMonth = '';
   async function loadHistory() {
-    const delivBox = historyWrap.querySelector('#delivBox');
-    const fileBox = historyWrap.querySelector('#fileBox');
+    const delivBox = delivCard.querySelector('#delivBox');
+    const fileBox = filesCard.querySelector('#fileBox');
     if (delivBox) delivBox.textContent = '読み込み中...';
     if (fileBox) fileBox.textContent = '読み込み中...';
     try {
@@ -260,10 +308,10 @@ export async function mountPayslipSend({ content, listUsers }) {
             <td>${it.fileId ? `<a href="#" data-dl-file-id="${it.fileId}" data-file-name="${(it.fileName || '').replace(/"/g,'')}">${it.fileName || ''}</a>` : (it.fileName || '')}</td>
             <td>${it.senderName || it.sentBy || ''}</td>
             <td>${it.sentAt || ''}</td>
-            <td style="white-space:nowrap;">
-              <button class="btn-neutral" data-act="unpublish" data-user="${it.userId}" data-month="${it.month}">取消公開</button>
-              <button class="btn-neutral" data-act="del-delivery" data-id="${it.id}">削除</button>
-            </td>`;
+            <td style="white-space:nowrap;display:flex;gap:8px;">
+            <button class="btn-neutral" data-act="unpublish" data-user="${it.userId}" data-month="${it.month}">取消公開</button>
+            <button class="btn-neutral btn-danger" data-act="del-delivery" data-id="${it.id}">削除</button>
+          </td>`;
           tb.appendChild(tr);
         });
         t.appendChild(tb);
@@ -272,6 +320,7 @@ export async function mountPayslipSend({ content, listUsers }) {
         delivBox.querySelectorAll('a[data-dl-file-id]').forEach(a => {
           a.addEventListener('click', async (e) => {
             e.preventDefault();
+            e.stopPropagation();
             const id = e.currentTarget.dataset.dlFileId;
             const name = e.currentTarget.dataset.fileName || 'payslip.pdf';
             try { await downloadWithAuth(`/api/payslips/admin/file/${encodeURIComponent(id)}`, name); }
@@ -318,11 +367,11 @@ export async function mountPayslipSend({ content, listUsers }) {
           tr.innerHTML = `
             <td>${it.userId} ${it.userName || ''}</td>
             <td>${it.month}</td>
-            <td>${it.id ? `<a href="#" data-dl-file-id="${it.id}" data-file-name="${(it.fileName || '').replace(/"/g,'')}">${it.fileName || ''}</a>` : (it.fileName || '')}</td>
-            <td>${it.uploaderName || it.uploadedBy || ''}</td>
+            <td>${it.fileId ? `<a href="#" data-dl-file-id="${it.fileId}" data-file-name="${(it.fileName || '').replace(/"/g,'')}">${it.fileName || ''}</a>` : (it.fileName || '')}</td>
+            <td>${it.creatorName || it.createdBy || ''}</td>
             <td>${it.createdAt || ''}</td>
-            <td style="white-space:nowrap;">
-              <button class="btn-neutral" data-act="del-file" data-id="${it.id}">削除</button>
+            <td style="white-space:nowrap;display:flex;gap:8px;">
+              <button class="btn-neutral btn-danger" data-act="del-file" data-id="${it.id}">削除</button>
             </td>`;
           tb.appendChild(tr);
         });
@@ -332,6 +381,7 @@ export async function mountPayslipSend({ content, listUsers }) {
         fileBox.querySelectorAll('a[data-dl-file-id]').forEach(a => {
           a.addEventListener('click', async (e) => {
             e.preventDefault();
+            e.stopPropagation();
             const id = e.currentTarget.dataset.dlFileId;
             const name = e.currentTarget.dataset.fileName || 'payslip.pdf';
             try { await downloadWithAuth(`/api/payslips/admin/file/${encodeURIComponent(id)}`, name); }
