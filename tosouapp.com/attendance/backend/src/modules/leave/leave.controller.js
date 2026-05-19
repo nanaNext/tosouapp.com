@@ -529,6 +529,7 @@ exports.summary = async (req, res) => {
     await tryReconcileAttendance();
     const list = await userRepo.listUsers();
     const out = [];
+    // Cái này mục đích của nó là 
     for (const u of list) {
       const role = String(u?.role || '').toLowerCase();
       if (role === 'admin' || role === 'manager') continue;
@@ -541,7 +542,7 @@ exports.summary = async (req, res) => {
         .sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate))[0] || null;
       out.push({
         userId: u.id,
-        employeeCode: u.employee_code || String(u.id),
+        employeeCode: u.employee_code || ('EMP' + String(u.id).padStart(3, '0')),
         name: u.username || u.email || '',
         departmentId: u.departmentId || null,
         totalGranted,

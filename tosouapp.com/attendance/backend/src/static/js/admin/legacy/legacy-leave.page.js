@@ -298,7 +298,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
   const table = document.createElement('table');
   table.className = 'leave-table leave-table-approvals';
   const hasActions = selectedStatus === 'pending';
-  table.innerHTML = `<thead><tr><th>ID</th><th>User</th><th>期間</th><th>種類</th><th>状態</th><th>残数</th>${hasActions ? '<th>操作</th>' : ''}</tr></thead>`;
+  table.innerHTML = `<thead><tr><th>ID</th><th>社員番号・氏名</th><th>期間</th><th>種類</th><th>状態</th><th>残数</th>${hasActions ? '<th>操作</th>' : ''}</tr></thead>`;
   const tbody = document.createElement('tbody');
   const pager = document.createElement('div');
   pager.className = 'leave-pager';
@@ -320,7 +320,8 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
     tbody.innerHTML = '';
     for (const r of pageRows) {
       const canReview = String(r?.status || '') === 'pending';
-      const userLabel = `${r.userId}${r?.employee_code ? ` (${r.employee_code})` : ''} ${r?.username || ''}`.trim();
+      const empCode = r.employee_code || ('EMP' + String(r.userId).padStart(3, '0'));
+      const userLabel = `${empCode} ${r?.username || ''}`.trim();
       const tr = document.createElement('tr');
       const status = String(r.status || '').toLowerCase();
       const statusClass = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending';
@@ -711,7 +712,8 @@ export async function mountLeaveGrant({
     if (role === 'admin' || role === 'manager') continue;
     const opt = document.createElement('option');
     opt.value = String(u.id);
-    opt.textContent = `${u.id} ${u.username || u.email}`;
+    const empCode = u.employee_code || ('EMP' + String(u.id).padStart(3, '0'));
+    opt.textContent = `${empCode} ${u.username || u.email}`;
     sel.appendChild(opt);
   }
 
