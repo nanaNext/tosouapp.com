@@ -301,7 +301,7 @@ async function mountEmployeesImpl({
         <div class="emp-form-section">
           <div class="emp-form-header">基本情報</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>社員番号</label><div style="padding:8px 12px; background:#f1f5f9; border-radius:6px; border:1px solid #cbd5e1; color:#64748b; font-size:14px;">${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}</div></div>
+            <div class="emp-form-group"><label>社員番号</label><div style="flex:1; padding:8px 12px; background:#fff; color:#0f172a; font-size:14px; border:1px solid transparent; box-sizing:border-box;">${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}</div></div>
             <div class="emp-form-group"><label>氏名</label><input id="empName" value="${u.username || ''}"></div>
             <div class="emp-form-group"><label>メール</label><input id="empEmail" value="${u.email || ''}"></div>
             <div class="emp-form-group"><label>パスワード</label><input id="empPw" type="password" placeholder="空欄なら変更なし"></div>
@@ -348,7 +348,7 @@ async function mountEmployeesImpl({
         <div class="emp-form-section">
           <div class="emp-form-header">その他</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><div style="display:flex; gap:8px; align-items:center;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1;"> <button type="button" class="btn" id="btnAvatarUpload">アップロード</button> <span id="avatarUploadStatus" style="color:#334155; font-size:13px;"></span></div></div>
+            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><div style="flex:1; display:flex; gap:8px; align-items:center; padding:8px 12px;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1; border:1px solid #cbd5e1; border-radius:4px;"> <button type="button" class="btn" id="btnAvatarUpload">アップロード</button> <span id="avatarUploadStatus" style="color:#334155; font-size:13px;"></span></div></div>
           </div>
         </div>
       </div>
@@ -595,7 +595,7 @@ async function mountEmployeesImpl({
           <div class="emp-form-header">その他</div>
           <div class="emp-form-grid">
             <div class="emp-form-group"><label>プロフィール写真URL（任意）</label><input id="empAvatarUrl" placeholder="https://..."></div>
-            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><input id="empAvatarFile" type="file" accept="image/*"></div>
+            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><div style="flex:1; display:flex; gap:8px; align-items:center; padding:8px 12px;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1; border:1px solid #cbd5e1; border-radius:4px;"></div></div>
           </div>
         </div>
       </div>
@@ -1008,13 +1008,14 @@ async function mountEmployeesImpl({
               .emp-form-layout { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 20px !important; align-items: start !important; margin-bottom: 20px !important; }
               @media (max-width: 1024px) { .emp-form-layout { grid-template-columns: repeat(2, 1fr) !important; } }
               @media (max-width: 768px) { .emp-form-layout { grid-template-columns: 1fr !important; } }
-              .emp-form-section { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-              .emp-form-header { background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 15px; }
-              .emp-form-grid { display: flex; flex-direction: column; gap: 16px; padding: 16px; }
-              .emp-form-group { display: flex; flex-direction: column; gap: 6px; align-items: stretch; justify-content: flex-start; }
-              .emp-form-group label { font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 0; width: auto; text-align: left; }
-              .emp-form-group input, .emp-form-group select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #0f172a; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
-              .emp-form-group input:focus, .emp-form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+              .emp-form-section { background: #fff; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+              .emp-form-header { background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 14px; }
+              .emp-form-grid { display: flex; flex-direction: column; gap: 0; padding: 0; }
+              .emp-form-group { display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #f1f5f9; }
+              .emp-form-group:last-child { border-bottom: none; }
+              .emp-form-group label { width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #fff; display: flex; align-items: center; border-right: 1px solid #f1f5f9; flex-shrink: 0; box-sizing: border-box; }
+              .emp-form-group input, .emp-form-group select { flex: 1; padding: 8px 12px; border: 1px solid transparent; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; }
+              .emp-form-group input:focus, .emp-form-group select:focus { border-color: #cbd5e1; background: #f8fafc; }
               @media (max-width: 640px) {
                 .emp-form-grid { grid-template-columns: 1fr; }
                 .admin.employees-wide .card table#list:not(.emp-del-list) thead,
