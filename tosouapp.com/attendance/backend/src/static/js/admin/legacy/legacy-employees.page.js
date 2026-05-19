@@ -1005,14 +1005,14 @@ async function mountEmployeesImpl({
               .type-pill.full { color:#1b7c3f; }
               .type-pill.part { color:#0f766e; }
               .type-pill.contract { color:#6b21a8; }
-              .emp-form-layout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; margin-bottom: 20px; }
-              @media (max-width: 1024px) { .emp-form-layout { grid-template-columns: repeat(2, 1fr); } }
-              @media (max-width: 768px) { .emp-form-layout { grid-template-columns: 1fr; } }
+              .emp-form-layout { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 20px !important; align-items: start !important; margin-bottom: 20px !important; }
+              @media (max-width: 1024px) { .emp-form-layout { grid-template-columns: repeat(2, 1fr) !important; } }
+              @media (max-width: 768px) { .emp-form-layout { grid-template-columns: 1fr !important; } }
               .emp-form-section { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
               .emp-form-header { background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 15px; }
               .emp-form-grid { display: flex; flex-direction: column; gap: 16px; padding: 16px; }
-              .emp-form-group { display: flex; flex-direction: column; gap: 6px; }
-              .emp-form-group label { font-size: 13px; font-weight: 600; color: #475569; }
+              .emp-form-group { display: flex; flex-direction: column; gap: 6px; align-items: stretch; justify-content: flex-start; }
+              .emp-form-group label { font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 0; width: auto; text-align: left; }
               .emp-form-group input, .emp-form-group select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #0f172a; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
               .emp-form-group input:focus, .emp-form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
               @media (max-width: 640px) {
