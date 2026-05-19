@@ -469,7 +469,6 @@ module.exports = {
         WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
           AND (n.kind IS NULL OR n.kind != 'attendance_punch')
-          AND (n.kind IS NULL OR n.kind NOT IN ('system','system_announcement','announcement','broadcast','maintenance','policy_update'))
           AND (
             (n.target_date IS NULL AND n.target_month IS NULL)
             OR (n.target_date IS NOT NULL AND n.target_date = ?)
@@ -481,7 +480,6 @@ module.exports = {
       [uid, uid, uid, d, m, lim]
     );
     return (rows || [])
-      .filter((r) => inferCategoryFromRow(r) === 'workflow')
       .filter((r) => !isSelfSubmitNotice(r, uid));
   },
   async listForUserFeed({ limit, userId }) {
@@ -501,7 +499,7 @@ module.exports = {
           ON h.notice_id = n.id AND h.user_id = ?
         WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
-          AND (n.kind IS NULL OR n.kind NOT IN ('system','system_announcement','announcement','broadcast','maintenance','policy_update'))
+          AND (n.kind IS NULL OR n.kind != 'attendance_punch')
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
       `,
@@ -510,7 +508,6 @@ module.exports = {
     const baseRows = rows || [];
     if (baseRows.length) {
       return baseRows
-        .filter((r) => inferCategoryFromRow(r) === 'workflow')
         .filter((r) => !isSelfSubmitNotice(r, uid));
     }
 
