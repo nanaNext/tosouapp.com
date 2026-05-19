@@ -297,7 +297,7 @@ async function mountEmployeesImpl({
     formEdit.innerHTML = `
       <div style="margin-bottom:8px;"><a id="editBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
       <h4>社員編集（${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}）</h4>
-      <div class="emp-form-layout">
+      <div class="emp-form-layout" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; margin-bottom: 20px;">
         <div class="emp-form-section">
           <div class="emp-form-header">基本情報</div>
           <div class="emp-form-grid">
@@ -536,7 +536,7 @@ async function mountEmployeesImpl({
     const managerOptions = (role2 !== 'manager' ? managers.filter(m => String(m.role) === 'manager') : []).map(m => `<option value="${m.id}">${m.username || m.email}</option>`).join('');
     form.innerHTML = `
       <div class="form-title" style="margin-bottom:16px;">【新規社員】</div>
-      <div class="emp-form-layout">
+      <div class="emp-form-layout" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; margin-bottom: 20px;">
         <div class="emp-form-section">
           <div class="emp-form-header">基本情報</div>
           <div class="emp-form-grid">
