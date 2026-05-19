@@ -307,7 +307,7 @@ async function mountEmployeesImpl({
           <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD" value="${u.birth_date || ''}"></div>
           <div class="emp-form-group"><label>性別</label><select id="empGender"><option value="">未設定</option><option value="male" ${u.gender === 'male' ? 'selected' : ''}>男</option><option value="female" ${u.gender === 'female' ? 'selected' : ''}>女</option><option value="other" ${u.gender === 'other' ? 'selected' : ''}>その他</option></select></div>
           <div class="emp-form-group"><label>電話番号</label><input id="empPhone" value="${u.phone || ''}"></div>
-          <div class="emp-form-group" style="grid-column: span 2;"><label>住所</label><input id="empAddr" value="${u.address || ''}"></div>
+          <div class="emp-form-group" style="grid-column: span 1;"><label>住所</label><input id="empAddr" value="${u.address || ''}"></div>
         </div>
       </div>
       <div class="emp-form-section">
@@ -551,7 +551,7 @@ async function mountEmployeesImpl({
             </select>
           </div>
           <div class="emp-form-group"><label>電話番号</label><input id="empPhone"></div>
-          <div class="emp-form-group" style="grid-column: span 2;"><label>住所</label><input id="empAddr"></div>
+          <div class="emp-form-group" style="grid-column: span 1;"><label>住所</label><input id="empAddr"></div>
         </div>
       </div>
       <div class="emp-form-section">
