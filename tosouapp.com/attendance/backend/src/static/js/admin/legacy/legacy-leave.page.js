@@ -6,71 +6,76 @@ function ensureLeaveUiStyles() {
   const s = document.createElement('style');
   s.id = 'leave-unified-style';
   s.textContent = `
-    .leave-page { color:#0f172a; background:#f8fafc; border-radius:0; padding:10px; }
+    .leave-page { color:#1e293b; background:transparent; border-radius:0; padding:10px 0; }
     .leave-page h3 {
-      margin:0 0 10px; font-size:18px; font-weight:700; letter-spacing:0; color:#0b2f6b;
+      margin:0 0 16px; font-size:20px; font-weight:800; letter-spacing:0; color:#0f172a;
       padding-left:0; border-left:0;
     }
     .leave-section {
-      background:#fff; border:1px solid #dbe4f0; border-radius:6px; padding:10px;
-      box-shadow:none; min-width:0;
+      background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px 20px;
+      box-shadow:0 1px 3px rgba(0,0,0,0.05); min-width:0; margin-bottom:16px;
     }
     .leave-section h3, .leave-section h4 {
-      margin:0 0 10px; font-size:14px; font-weight:700; color:#0b2f6b;
-      padding-bottom:6px; border-bottom:1px solid #eef2f7;
+      margin:0 0 16px; font-size:16px; font-weight:800; color:#1e293b;
+      padding-bottom:10px; border-bottom:1px solid #f1f5f9;
     }
-    .leave-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 10px; }
-    .leave-label { font-size:12px; color:#475569; }
+    .leave-toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 16px; }
+    .leave-label { font-size:13px; color:#475569; font-weight:600; margin-bottom:4px; display:block; }
     .leave-select, .leave-input {
-      min-height:32px; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; background:#fff;
-      line-height:1.4; font-size:14px; font-family:inherit; box-sizing:border-box;
+      min-height:36px; border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; background:#fff;
+      line-height:1.4; font-size:14px; font-family:inherit; box-sizing:border-box; color:#0f172a; transition: border-color 0.2s;
     }
+    .leave-select:focus, .leave-input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
     .leave-btn {
-      min-height:30px; border:1px solid #b9c5d8; border-radius:4px; background:#fff; padding:0 10px; cursor:pointer; font-size:12px;
+      min-height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:0 16px; cursor:pointer; font-size:14px; font-weight:600; transition: all 0.2s;
     }
-    .leave-btn-primary { background:#0b2f6b; border-color:#0b2f6b; color:#fff; font-weight:600; }
-    .leave-btn-danger { background:#fff1f2; border-color:#fecdd3; color:#9f1239; }
-    .leave-btn-subtle { background:#f8fafc; }
+    .leave-btn:hover { background:#f8fafc; }
+    .leave-btn-primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+    .leave-btn-primary:hover { background:#1d4ed8; border-color:#1d4ed8; }
+    .leave-btn-danger { background:#fef2f2; border-color:#fecdd3; color:#e11d48; }
+    .leave-btn-danger:hover { background:#ffe4e6; }
+    .leave-btn-subtle { background:#f8fafc; color:#475569; border-color:#e2e8f0; }
+    .leave-btn-subtle:hover { background:#f1f5f9; }
     .leave-table-wrap {
-      border:1px solid #e6edf7; border-radius:4px; overflow:auto; background:#fff;
+      border:1px solid #e2e8f0; border-radius:8px; overflow:auto; background:#fff;
       box-shadow:none; max-width:100%;
     }
-    .leave-table-wrap.sticky { max-height:260px; }
+    .leave-table-wrap.sticky { max-height:400px; }
     .leave-page .leave-table { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; }
     .leave-page .leave-table thead th {
-      background:#0b2f6b !important;
-      color:#ffffff !important;
-      -webkit-text-fill-color:#ffffff !important;
-      text-align:left; font-weight:700; padding:8px 8px; border-bottom:1px solid #08234f; white-space:nowrap;
+      background:#f8fafc !important;
+      color:#334155 !important;
+      -webkit-text-fill-color:#334155 !important;
+      text-align:left; font-weight:800; padding:12px 16px; border-bottom:1px solid #e2e8f0; white-space:nowrap;
     }
     .leave-page .leave-table thead th * {
-      color:#ffffff !important;
-      -webkit-text-fill-color:#ffffff !important;
+      color:#334155 !important;
+      -webkit-text-fill-color:#334155 !important;
     }
     .leave-table-wrap.sticky .leave-table thead th { position:sticky; top:0; z-index:1; }
-    .leave-page .leave-table tbody td { padding:7px 8px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
-    .leave-page .leave-table tbody tr:nth-child(even) td { background:#fff; }
-    .leave-page .leave-table tbody tr:hover td { background:#f8fafc; }
+    .leave-page .leave-table tbody td { padding:12px 16px; border-bottom:1px solid #f1f5f9; vertical-align:middle; color:#1e293b; }
+    .leave-page .leave-table tbody tr:nth-child(even) td { background:#fafafa; }
+    .leave-page .leave-table tbody tr:hover td { background:#f1f5f9; }
     .leave-page .leave-table .num { text-align:right; font-variant-numeric:tabular-nums; }
-    .leave-badge { display:inline-flex; align-items:center; border-radius:999px; padding:2px 8px; font-size:11px; border:1px solid; }
-    .leave-badge.pending { color:#92400e; background:#fff7ed; border-color:#fed7aa; }
-    .leave-badge.approved { color:#166534; background:#f0fdf4; border-color:#86efac; }
-    .leave-badge.rejected { color:#475569; background:#f8fafc; border-color:#cbd5e1; }
-    .leave-grid-main { display:grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr); gap:8px; margin-top:4px; align-items:start; }
-    .leave-grid-main > .leave-section { min-width:0; }
-    .leave-grid-full { margin-top:8px; }
+    .leave-badge { display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600; border:1px solid; }
+    .leave-badge.pending { color:#b45309; background:#fffbeb; border-color:#fcd34d; }
+    .leave-badge.approved { color:#15803d; background:#f0fdf4; border-color:#86efac; }
+    .leave-badge.rejected { color:#64748b; background:#f8fafc; border-color:#e2e8f0; }
+    .leave-grid-main { display:grid; grid-template-columns: minmax(0,1fr); gap:16px; align-items:start; }
+    .leave-grid-full { margin-top:0; }
     .leave-form-grid {
-      display:grid; grid-template-columns:80px 1fr; gap:8px 10px; align-items:center; margin-top:8px;
+      display:grid; grid-template-columns:1fr; gap:12px; margin-top:16px;
     }
+    .leave-form-grid > div { display:flex; flex-direction:column; gap:4px; }
     .leave-form-card {
-      margin-top:10px; border-top:1px solid #eef2f7; border-radius:0; padding:10px 0 0; background:transparent;
+      margin-top:0; border-top:none; border-radius:0; padding:0; background:transparent;
     }
-    .leave-form-card h4 { margin:0 0 8px; font-size:13px; color:#0b2f6b; }
-    .leave-mini-note { color:#64748b; font-size:12px; margin-top:8px; }
-    .leave-pager { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
-    .leave-muted { color:#64748b; font-size:12px; }
-    @media (max-width: 1180px) {
-      .leave-grid-main { grid-template-columns: 1fr; }
+    .leave-form-card h4 { margin:0 0 12px; font-size:15px; color:#1e293b; }
+    .leave-mini-note { color:#64748b; font-size:13px; margin-top:8px; }
+    .leave-pager { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .leave-muted { color:#64748b; font-size:13px; }
+    @media (min-width: 1024px) {
+      .leave-grid-main { grid-template-columns: minmax(0,7fr) minmax(0,3fr); }
     }
   `;
   document.head.appendChild(s);
@@ -82,7 +87,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
   c.dataset.approvalsRenderSeq = String(seq);
   const stale = () => String(c.dataset.approvalsRenderSeq || '') !== String(seq);
   ensureLeaveUiStyles();
-  c.innerHTML = '<h3>承認フロー</h3>';
+  c.innerHTML = '<h3>📥 承認フロー</h3>';
 
   const selectedStatus = String(
     Object.prototype.hasOwnProperty.call(opts || {}, 'status')
@@ -353,7 +358,7 @@ export async function mountLeaveGrant({
 }) {
   const c = host || content;
   ensureLeaveUiStyles();
-  c.innerHTML = '<h3>有給付与</h3>';
+  c.innerHTML = '<h3>➕ 有給付与</h3>';
 
   if (!(opts && opts.unified)) {
     const nav = document.createElement('div');
@@ -508,16 +513,25 @@ export async function mountLeaveGrant({
 
   form.className = 'leave-form-grid';
   form.innerHTML = `
-    <label class="leave-label">User</label>
-    <select id="grantUser" class="leave-select"></select>
-    <label class="leave-label">Days</label>
-    <input id="grantDays" class="leave-input" type="number" min="1" value="10">
-    <label class="leave-label">Grant date</label>
-    <input id="grantDate" class="leave-input" type="date" value="${fmt(today)}">
-    <label class="leave-label">Expire date</label>
-    <input id="expireDate" class="leave-input" type="date" value="${fmt(exp)}">
-    <span></span>
-    <button type="submit" class="leave-btn leave-btn-primary" style="width:120px;">付与</button>
+    <div>
+      <label class="leave-label">User</label>
+      <select id="grantUser" class="leave-select"></select>
+    </div>
+    <div>
+      <label class="leave-label">Days</label>
+      <input id="grantDays" class="leave-input" type="number" min="1" value="10">
+    </div>
+    <div>
+      <label class="leave-label">Grant date</label>
+      <input id="grantDate" class="leave-input" type="date" value="${fmt(today)}">
+    </div>
+    <div>
+      <label class="leave-label">Expire date</label>
+      <input id="expireDate" class="leave-input" type="date" value="${fmt(exp)}">
+    </div>
+    <div style="margin-top:8px;">
+      <button type="submit" class="leave-btn leave-btn-primary" style="width:100%;">付与</button>
+    </div>
   `;
 
   const sel = form.querySelector('#grantUser');
@@ -561,7 +575,7 @@ export async function mountLeaveGrant({
 
   const formCard = document.createElement('div');
   formCard.className = 'leave-form-card';
-  formCard.innerHTML = '<h4>手動付与</h4>';
+  formCard.innerHTML = '<h4 style="margin-top:16px;">手動付与</h4>';
   formCard.appendChild(form);
   formCard.appendChild(result);
   c.appendChild(formCard);
@@ -576,7 +590,7 @@ export async function mountLeaveBalance({
 }) {
   const c = host || content;
   ensureLeaveUiStyles();
-  c.innerHTML = '<h3>有給残日数一覧</h3>';
+  c.innerHTML = '<h3>📊 有給残日数一覧</h3>';
 
   const toolbar = document.createElement('div');
   toolbar.className = 'leave-toolbar';
@@ -768,10 +782,13 @@ export async function mountLeaveUnified({
 }) {
   ensureLeaveUiStyles();
   content.classList.add('leave-page');
-  content.innerHTML = '<h3>休暇管理</h3>';
+  content.innerHTML = '<h3 style="font-size:24px; color:#1e293b; margin-bottom: 20px;">休暇管理</h3>';
   const mainGrid = document.createElement('div');
   mainGrid.className = 'leave-grid-main';
   content.appendChild(mainGrid);
+
+  const secB = document.createElement('section');
+  secB.className = 'leave-section leave-grid-full';
 
   const secA = document.createElement('section');
   secA.className = 'leave-section';
@@ -786,8 +803,6 @@ export async function mountLeaveUnified({
   mainGrid.appendChild(secG);
   await mountLeaveGrantFn(secG, { unified: true, onDataChanged: refreshBalance });
 
-  const secB = document.createElement('section');
-  secB.className = 'leave-section leave-grid-full';
   content.appendChild(secB);
   await mountLeaveBalanceFn(secB, { unified: true, onDataChanged: refreshBalance });
 }
