@@ -1357,126 +1357,67 @@ async function renderEmployees(profile) {
     const managerOptions = (role2 !== 'manager' ? managers.filter(m => String(m.role) === 'manager') : []).map(m => `<option value="${m.id}">${m.username || m.email}</option>`).join('');
     form.innerHTML = `
       <div class="form-title">【新規社員】</div>
-      <div class="emp-form-layout" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; margin-bottom: 20px;">
-        <div class="emp-form-section" style="background: #fff; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 0;">
-          <div class="emp-form-header" style="background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 14px;">基本情報</div>
-          <div class="emp-form-grid" style="display: flex; flex-direction: column; gap: 0; padding: 0;">
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">社員番号</label>
-              <input id="empCode" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">氏名</label>
-              <input id="empName" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">メール</label>
-              <input id="empEmail" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">パスワード</label>
-              <input id="empPass" type="password" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">生年月日</label>
-              <input id="empBirth" placeholder="YYYY-MM-DD" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">性別</label>
-              <select id="empGender" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-                <option value="">未選択</option>
-                <option value="male">男性</option>
-                <option value="female">女性</option>
-                <option value="other">その他</option>
-              </select>
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">電話番号</label>
-              <input id="empPhone" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">住所</label>
-              <input id="empAddr" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-          </div>
-        </div>
-        <div class="emp-form-section" style="background: #fff; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 0;">
-          <div class="emp-form-header" style="background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 14px;">職務情報</div>
-          <div class="emp-form-grid" style="display: flex; flex-direction: column; gap: 0; padding: 0;">
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">部署</label>
-              <select id="empDept" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;"><option value="">部署</option>${depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select>
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">役割</label>
-              <select id="empRole" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-                <option value="employee">従業員</option>
-                <option value="manager">マネージャー</option>
-                <option value="admin">管理者</option>
-              </select>
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">直属マネージャー</label>
-              <select id="empManager" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;"><option value="">未設定</option>${managerOptions}</select>
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">レベル</label>
-              <input id="empLevel" placeholder="例: L1/L2/Senior" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">雇用形態</label>
-              <select id="empType" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-                <option value="full_time">正社員</option>
-                <option value="part_time">パート・アルバイト</option>
-                <option value="contract">契約社員</option>
-              </select>
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">入社日</label>
-              <input id="empJoinDate" placeholder="YYYY-MM-DD" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">試用開始</label>
-              <input id="empProbDate" placeholder="YYYY-MM-DD" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">正社員化</label>
-              <input id="empOfficialDate" placeholder="YYYY-MM-DD" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">契約終了日（任意）</label>
-              <input id="empContractEnd" placeholder="YYYY-MM-DD" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">基本給</label>
-              <input id="empBaseSalary" type="number" step="0.01" placeholder="円" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">状態</label>
-              <select id="empStatus" style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-                <option value="active">在職</option>
-                <option value="inactive">休職/無効</option>
-                <option value="retired">退職</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="emp-form-section" style="background: #fff; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 0;">
-          <div class="emp-form-header" style="background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 14px;">その他</div>
-          <div class="emp-form-grid" style="display: flex; flex-direction: column; gap: 0; padding: 0;">
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start; border-bottom: 1px solid #d1d5db;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">個人書類画像URL</label>
-              <input id="empAvatarUrl" placeholder="https://..." style="flex: 1; padding: 8px 12px; border: none; font-size: 14px; color: #0f172a; outline: none; box-sizing: border-box; background: #fff; border-radius: 0; margin: 0; width: 100%;">
-            </div>
-            <div class="emp-form-group" style="display: flex; flex-direction: row; gap: 0; align-items: stretch; justify-content: flex-start;">
-              <label style="width: 140px; font-size: 13px; font-weight: 600; color: #475569; margin: 0; padding: 10px 12px; background: #f8fafc; display: flex; align-items: center; border-right: 1px solid #d1d5db; flex-shrink: 0; box-sizing: border-box;">個人書類画像</label>
-              <div style="flex: 1; display: flex; align-items: center; padding: 8px 12px; background: #fff;">
-                <input id="empAvatarFile" type="file" accept="image/*" multiple style="border: none; background: transparent; width: 100%;">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <table class="excel-table" style="margin-bottom:12px;">
+        <thead><tr><th colspan="2">基本情報</th></tr></thead>
+        <tbody>
+          <tr><td style="width:180px;">社員番号</td><td><input id="empCode" style="width:240px"></td></tr>
+          <tr><td>氏名</td><td><input id="empName" style="width:240px"></td></tr>
+          <tr><td>メール</td><td><input id="empEmail" style="width:240px"></td></tr>
+          <tr><td>パスワード</td><td><input id="empPass" type="password" style="width:240px"></td></tr>
+          <tr><td>生年月日</td><td><input id="empBirth" placeholder="YYYY-MM-DD" style="width:180px"></td></tr>
+          <tr><td>性別</td><td>
+            <select id="empGender" style="width:180px">
+              <option value="">未選択</option>
+              <option value="male">男性</option>
+              <option value="female">女性</option>
+              <option value="other">その他</option>
+            </select>
+          </td></tr>
+          <tr><td>電話番号</td><td><input id="empPhone" style="width:240px"></td></tr>
+          <tr><td>住所</td><td><input id="empAddr" style="width:320px"></td></tr>
+        </tbody>
+      </table>
+      <table class="excel-table" style="margin-bottom:12px;">
+        <thead><tr><th colspan="2">職務情報</th></tr></thead>
+        <tbody>
+          <tr><td style="width:180px;">部署</td><td><select id="empDept" style="width:240px"><option value="">部署</option>${depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></td></tr>
+          <tr><td>役割</td><td>
+            <select id="empRole" style="width:240px">
+              <option value="employee">従業員</option>
+              <option value="manager">マネージャー</option>
+              <option value="admin">管理者</option>
+            </select>
+          </td></tr>
+          <tr><td>直属マネージャー</td><td><select id="empManager" style="width:240px"><option value="">未設定</option>${managerOptions}</select></td></tr>
+          <tr><td>レベル</td><td><input id="empLevel" style="width:180px" placeholder="例: L1/L2/Senior"></td></tr>
+          <tr><td>雇用形態</td><td>
+            <select id="empType" style="width:240px">
+              <option value="full_time">正社員</option>
+              <option value="part_time">パート・アルバイト</option>
+              <option value="contract">契約社員</option>
+            </select>
+          </td></tr>
+          <tr><td>入社日</td><td><input id="empJoinDate" placeholder="YYYY-MM-DD" style="width:180px"></td></tr>
+          <tr><td>試用開始</td><td><input id="empProbDate" placeholder="YYYY-MM-DD" style="width:180px"></td></tr>
+          <tr><td>正社員化</td><td><input id="empOfficialDate" placeholder="YYYY-MM-DD" style="width:180px"></td></tr>
+          <tr><td>契約終了日（任意）</td><td><input id="empContractEnd" placeholder="YYYY-MM-DD" style="width:180px"></td></tr>
+          <tr><td>基本給</td><td><input id="empBaseSalary" type="number" step="0.01" style="width:180px" placeholder="円"></td></tr>
+          <tr><td>状態</td><td>
+            <select id="empStatus" style="width:240px">
+              <option value="active">在職</option>
+              <option value="inactive">休職/無効</option>
+              <option value="retired">退職</option>
+            </select>
+          </td></tr>
+        </tbody>
+      </table>
+      <table class="excel-table" style="margin-bottom:12px;">
+        <thead><tr><th colspan="2">その他</th></tr></thead>
+        <tbody>
+          <tr><td style="width:180px;">個人書類画像URL（任意）</td><td><input id="empAvatarUrl" style="width:320px" placeholder="https://..."></td></tr>
+          <tr><td>個人書類画像（アップロード）</td><td><input id="empAvatarFile" type="file" accept="image/*" multiple></td></tr>
+        </tbody>
+      </table>
       <div class="form-actions" style="justify-content:flex-end;">
         <button type="submit" class="btn-primary">作成</button>
       </div>
