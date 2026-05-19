@@ -530,6 +530,8 @@ exports.summary = async (req, res) => {
     const list = await userRepo.listUsers();
     const out = [];
     for (const u of list) {
+      const role = String(u?.role || '').toLowerCase();
+      if (role === 'admin' || role === 'manager') continue;
       const b = await computeUserBalance(u.id);
       const grants = b.grants || [];
       const today = new Date();

@@ -229,6 +229,7 @@ module.exports = {
         )
       )
     `);
+    conditions.push(`u.role NOT IN ('admin', 'manager')`);
     params.push(lim);
     const sql = `
       SELECT
@@ -257,7 +258,7 @@ module.exports = {
       return rows;
     } catch {
       // Hard fallback: never break admin screen on filter "all".
-      const where = hasStatus ? 'WHERE lr.status = ?' : '';
+      const where = hasStatus ? "WHERE lr.status = ? AND u.role NOT IN ('admin', 'manager')" : "WHERE u.role NOT IN ('admin', 'manager')";
       const fallbackParams = hasStatus ? [String(status).toLowerCase(), lim] : [lim];
       const fallbackSql = `
         SELECT
@@ -277,7 +278,7 @@ module.exports = {
   async listAllRequestsSimple({ status = null, limit = 1000 } = {}) {
     const lim = Math.max(1, Math.min(5000, Number(limit || 1000)));
     const hasStatus = ['pending', 'approved', 'rejected'].includes(String(status || '').toLowerCase());
-    const where = hasStatus ? 'WHERE lr.status = ?' : '';
+    const where = hasStatus ? "WHERE lr.status = ? AND u.role NOT IN ('admin', 'manager')" : "WHERE u.role NOT IN ('admin', 'manager')";
     const params = hasStatus ? [String(status).toLowerCase(), lim] : [lim];
     const sql = `
       SELECT
