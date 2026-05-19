@@ -297,57 +297,59 @@ async function mountEmployeesImpl({
     formEdit.innerHTML = `
       <div style="margin-bottom:8px;"><a id="editBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
       <h4>社員編集（${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}）</h4>
-      <div class="emp-form-section">
-        <div class="emp-form-header">基本情報</div>
-        <div class="emp-form-grid">
-          <div class="emp-form-group"><label>社員番号</label><div style="padding:8px 12px; background:#f1f5f9; border-radius:6px; border:1px solid #cbd5e1; color:#64748b; font-size:14px;">${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}</div></div>
-          <div class="emp-form-group"><label>氏名</label><input id="empName" value="${u.username || ''}"></div>
-          <div class="emp-form-group"><label>メール</label><input id="empEmail" value="${u.email || ''}"></div>
-          <div class="emp-form-group"><label>パスワード</label><input id="empPw" type="password" placeholder="空欄なら変更なし"></div>
-          <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD" value="${u.birth_date || ''}"></div>
-          <div class="emp-form-group"><label>性別</label><select id="empGender"><option value="">未設定</option><option value="male" ${u.gender === 'male' ? 'selected' : ''}>男</option><option value="female" ${u.gender === 'female' ? 'selected' : ''}>女</option><option value="other" ${u.gender === 'other' ? 'selected' : ''}>その他</option></select></div>
-          <div class="emp-form-group"><label>電話番号</label><input id="empPhone" value="${u.phone || ''}"></div>
-          <div class="emp-form-group" style="grid-column: span 1;"><label>住所</label><input id="empAddr" value="${u.address || ''}"></div>
+      <div class="emp-form-layout">
+        <div class="emp-form-section">
+          <div class="emp-form-header">基本情報</div>
+          <div class="emp-form-grid">
+            <div class="emp-form-group"><label>社員番号</label><div style="padding:8px 12px; background:#f1f5f9; border-radius:6px; border:1px solid #cbd5e1; color:#64748b; font-size:14px;">${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}</div></div>
+            <div class="emp-form-group"><label>氏名</label><input id="empName" value="${u.username || ''}"></div>
+            <div class="emp-form-group"><label>メール</label><input id="empEmail" value="${u.email || ''}"></div>
+            <div class="emp-form-group"><label>パスワード</label><input id="empPw" type="password" placeholder="空欄なら変更なし"></div>
+            <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD" value="${u.birth_date || ''}"></div>
+            <div class="emp-form-group"><label>性別</label><select id="empGender"><option value="">未設定</option><option value="male" ${u.gender === 'male' ? 'selected' : ''}>男</option><option value="female" ${u.gender === 'female' ? 'selected' : ''}>女</option><option value="other" ${u.gender === 'other' ? 'selected' : ''}>その他</option></select></div>
+            <div class="emp-form-group"><label>電話番号</label><input id="empPhone" value="${u.phone || ''}"></div>
+            <div class="emp-form-group"><label>住所</label><input id="empAddr" value="${u.address || ''}"></div>
+          </div>
         </div>
-      </div>
-      <div class="emp-form-section">
-        <div class="emp-form-header">職務情報</div>
-        <div class="emp-form-grid">
-          <div class="emp-form-group"><label>部署</label><select id="empDept"><option value="">部署</option>${depts.map(d => `<option value="${d.id}" ${String(u.departmentId || '') === String(d.id) ? 'selected' : ''}>${d.name}</option>`).join('')}</select></div>
-          <div class="emp-form-group"><label>役割</label>
-            <select id="empRole">
-              <option value="employee" ${u.role === 'employee' ? 'selected' : ''}>従業員</option>
-              <option value="manager" ${u.role === 'manager' ? 'selected' : ''}>マネージャー</option>
-              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>管理者</option>
-            </select>
+        <div class="emp-form-section">
+          <div class="emp-form-header">職務情報</div>
+          <div class="emp-form-grid">
+            <div class="emp-form-group"><label>部署</label><select id="empDept"><option value="">部署</option>${depts.map(d => `<option value="${d.id}" ${String(u.departmentId || '') === String(d.id) ? 'selected' : ''}>${d.name}</option>`).join('')}</select></div>
+            <div class="emp-form-group"><label>役割</label>
+              <select id="empRole">
+                <option value="employee" ${u.role === 'employee' ? 'selected' : ''}>従業員</option>
+                <option value="manager" ${u.role === 'manager' ? 'selected' : ''}>マネージャー</option>
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>管理者</option>
+              </select>
+            </div>
+            <div class="emp-form-group"><label>雇用形態</label>
+              <select id="empType">
+                <option value="full_time" ${u.employment_type === 'full_time' ? 'selected' : ''}>正社員</option>
+                <option value="part_time" ${u.employment_type === 'part_time' ? 'selected' : ''}>パート・アルバイト</option>
+                <option value="contract" ${u.employment_type === 'contract' ? 'selected' : ''}>契約社員</option>
+              </select>
+            </div>
+            <div class="emp-form-group"><label>状態</label>
+              <select id="empStatus">
+                <option value="active" ${String(u.employment_status || '') === 'active' ? 'selected' : ''}>在職</option>
+                <option value="inactive" ${String(u.employment_status || '') === 'inactive' ? 'selected' : ''}>無効/休職</option>
+                <option value="retired" ${String(u.employment_status || '') === 'retired' ? 'selected' : ''}>退職</option>
+              </select>
+            </div>
+            <div class="emp-form-group"><label>直属マネージャー</label><select id="empManager"><option value="">未設定</option>${users.filter(x => x.role === 'manager').map(m => `<option value="${m.id}" ${String(u.manager_id || '') === String(m.id) ? 'selected' : ''}>${m.username || m.email}</option>`).join('')}</select></div>
+            <div class="emp-form-group"><label>レベル</label><input id="empLevel" value="${u.level || ''}" placeholder="例: L1/L2/Senior"></div>
+            <div class="emp-form-group"><label>入社日</label><input id="empHireDate" placeholder="YYYY-MM-DD" value="${u.hire_date || u.join_date || ''}"></div>
+            <div class="emp-form-group"><label>試用開始</label><input id="empProbDate" placeholder="YYYY-MM-DD" value="${u.probation_date || ''}"></div>
+            <div class="emp-form-group"><label>正社員化</label><input id="empOfficialDate" placeholder="YYYY-MM-DD" value="${u.official_date || ''}"></div>
+            <div class="emp-form-group"><label>契約終了</label><input id="empContractEnd" placeholder="YYYY-MM-DD" value="${u.contract_end || ''}"></div>
+            <div class="emp-form-group"><label>基本給 (円)</label><input id="empBaseSalary" type="number" step="0.01" value="${u.base_salary == null ? '' : u.base_salary}" placeholder="円"></div>
           </div>
-          <div class="emp-form-group"><label>雇用形態</label>
-            <select id="empType">
-              <option value="full_time" ${u.employment_type === 'full_time' ? 'selected' : ''}>正社員</option>
-              <option value="part_time" ${u.employment_type === 'part_time' ? 'selected' : ''}>パート・アルバイト</option>
-              <option value="contract" ${u.employment_type === 'contract' ? 'selected' : ''}>契約社員</option>
-            </select>
-          </div>
-          <div class="emp-form-group"><label>状態</label>
-            <select id="empStatus">
-              <option value="active" ${String(u.employment_status || '') === 'active' ? 'selected' : ''}>在職</option>
-              <option value="inactive" ${String(u.employment_status || '') === 'inactive' ? 'selected' : ''}>無効/休職</option>
-              <option value="retired" ${String(u.employment_status || '') === 'retired' ? 'selected' : ''}>退職</option>
-            </select>
-          </div>
-          <div class="emp-form-group"><label>直属マネージャー</label><select id="empManager"><option value="">未設定</option>${users.filter(x => x.role === 'manager').map(m => `<option value="${m.id}" ${String(u.manager_id || '') === String(m.id) ? 'selected' : ''}>${m.username || m.email}</option>`).join('')}</select></div>
-          <div class="emp-form-group"><label>レベル</label><input id="empLevel" value="${u.level || ''}" placeholder="例: L1/L2/Senior"></div>
-          <div class="emp-form-group"><label>入社日</label><input id="empHireDate" placeholder="YYYY-MM-DD" value="${u.hire_date || u.join_date || ''}"></div>
-          <div class="emp-form-group"><label>試用開始</label><input id="empProbDate" placeholder="YYYY-MM-DD" value="${u.probation_date || ''}"></div>
-          <div class="emp-form-group"><label>正社員化</label><input id="empOfficialDate" placeholder="YYYY-MM-DD" value="${u.official_date || ''}"></div>
-          <div class="emp-form-group"><label>契約終了</label><input id="empContractEnd" placeholder="YYYY-MM-DD" value="${u.contract_end || ''}"></div>
-          <div class="emp-form-group"><label>基本給 (円)</label><input id="empBaseSalary" type="number" step="0.01" value="${u.base_salary == null ? '' : u.base_salary}" placeholder="円"></div>
         </div>
-      </div>
-      <div class="emp-form-section">
-        <div class="emp-form-header">その他</div>
-        <div class="emp-form-grid">
-          <div class="emp-form-group" style="grid-column: 1 / -1;"><label>プロフィール写真（アップロード）</label><div style="display:flex; gap:8px; align-items:center;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1;"> <button type="button" class="btn" id="btnAvatarUpload">アップロード</button> <span id="avatarUploadStatus" style="color:#334155; font-size:13px;"></span></div></div>
+        <div class="emp-form-section">
+          <div class="emp-form-header">その他</div>
+          <div class="emp-form-grid">
+            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><div style="display:flex; gap:8px; align-items:center;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1;"> <button type="button" class="btn" id="btnAvatarUpload">アップロード</button> <span id="avatarUploadStatus" style="color:#334155; font-size:13px;"></span></div></div>
+          </div>
         </div>
       </div>
       <div class="form-actions" style="justify-content:flex-end;">
@@ -534,65 +536,67 @@ async function mountEmployeesImpl({
     const managerOptions = (role2 !== 'manager' ? managers.filter(m => String(m.role) === 'manager') : []).map(m => `<option value="${m.id}">${m.username || m.email}</option>`).join('');
     form.innerHTML = `
       <div class="form-title" style="margin-bottom:16px;">【新規社員】</div>
-      <div class="emp-form-section">
-        <div class="emp-form-header">基本情報</div>
-        <div class="emp-form-grid">
-          <div class="emp-form-group"><label>社員番号</label><input id="empCode"></div>
-          <div class="emp-form-group"><label>氏名</label><input id="empName"></div>
-          <div class="emp-form-group"><label>メール</label><input id="empEmail"></div>
-          <div class="emp-form-group"><label>パスワード</label><input id="empPass" type="password"></div>
-          <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD"></div>
-          <div class="emp-form-group"><label>性別</label>
-            <select id="empGender">
-              <option value="">未選択</option>
-              <option value="male">男性</option>
-              <option value="female">女性</option>
-              <option value="other">その他</option>
-            </select>
-          </div>
-          <div class="emp-form-group"><label>電話番号</label><input id="empPhone"></div>
-          <div class="emp-form-group" style="grid-column: span 1;"><label>住所</label><input id="empAddr"></div>
-        </div>
-      </div>
-      <div class="emp-form-section">
-        <div class="emp-form-header">職務情報</div>
-        <div class="emp-form-grid">
-          <div class="emp-form-group"><label>部署</label><select id="empDept"><option value="">部署</option>${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select></div>
-          <div class="emp-form-group"><label>役割</label>
-            <select id="empRole">
-              <option value="employee">従業員</option>
-              <option value="manager">マネージャー</option>
-              <option value="admin">管理者</option>
-            </select>
-          </div>
-          <div class="emp-form-group"><label>直属マネージャー</label><select id="empManager"><option value="">未設定</option>${managerOptions}</select></div>
-          <div class="emp-form-group"><label>レベル</label><input id="empLevel" placeholder="例: L1/L2/Senior"></div>
-          <div class="emp-form-group"><label>雇用形態</label>
-            <select id="empType">
-              <option value="full_time">正社員</option>
-              <option value="part_time">パート・アルバイト</option>
-              <option value="contract">契約社員</option>
-            </select>
-          </div>
-          <div class="emp-form-group"><label>入社日</label><input id="empJoinDate" placeholder="YYYY-MM-DD"></div>
-          <div class="emp-form-group"><label>試用開始</label><input id="empProbDate" placeholder="YYYY-MM-DD"></div>
-          <div class="emp-form-group"><label>正社員化</label><input id="empOfficialDate" placeholder="YYYY-MM-DD"></div>
-          <div class="emp-form-group"><label>契約終了日（任意）</label><input id="empContractEnd" placeholder="YYYY-MM-DD"></div>
-          <div class="emp-form-group"><label>基本給 (円)</label><input id="empBaseSalary" type="number" step="0.01" placeholder="円"></div>
-          <div class="emp-form-group"><label>状態</label>
-            <select id="empStatus">
-              <option value="active">在職</option>
-              <option value="inactive">休職/無効</option>
-              <option value="retired">退職</option>
-            </select>
+      <div class="emp-form-layout">
+        <div class="emp-form-section">
+          <div class="emp-form-header">基本情報</div>
+          <div class="emp-form-grid">
+            <div class="emp-form-group"><label>社員番号</label><input id="empCode"></div>
+            <div class="emp-form-group"><label>氏名</label><input id="empName"></div>
+            <div class="emp-form-group"><label>メール</label><input id="empEmail"></div>
+            <div class="emp-form-group"><label>パスワード</label><input id="empPass" type="password"></div>
+            <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>性別</label>
+              <select id="empGender">
+                <option value="">未選択</option>
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+                <option value="other">その他</option>
+              </select>
+            </div>
+            <div class="emp-form-group"><label>電話番号</label><input id="empPhone"></div>
+            <div class="emp-form-group"><label>住所</label><input id="empAddr"></div>
           </div>
         </div>
-      </div>
-      <div class="emp-form-section">
-        <div class="emp-form-header">その他</div>
-        <div class="emp-form-grid">
-          <div class="emp-form-group" style="grid-column: 1 / -1;"><label>プロフィール写真URL（任意）</label><input id="empAvatarUrl" placeholder="https://..."></div>
-          <div class="emp-form-group" style="grid-column: 1 / -1;"><label>プロフィール写真（アップロード）</label><input id="empAvatarFile" type="file" accept="image/*"></div>
+        <div class="emp-form-section">
+          <div class="emp-form-header">職務情報</div>
+          <div class="emp-form-grid">
+            <div class="emp-form-group"><label>部署</label><select id="empDept"><option value="">部署</option>${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select></div>
+            <div class="emp-form-group"><label>役割</label>
+              <select id="empRole">
+                <option value="employee">従業員</option>
+                <option value="manager">マネージャー</option>
+                <option value="admin">管理者</option>
+              </select>
+            </div>
+            <div class="emp-form-group"><label>直属マネージャー</label><select id="empManager"><option value="">未設定</option>${managerOptions}</select></div>
+            <div class="emp-form-group"><label>レベル</label><input id="empLevel" placeholder="例: L1/L2/Senior"></div>
+            <div class="emp-form-group"><label>雇用形態</label>
+              <select id="empType">
+                <option value="full_time">正社員</option>
+                <option value="part_time">パート・アルバイト</option>
+                <option value="contract">契約社員</option>
+              </select>
+            </div>
+            <div class="emp-form-group"><label>入社日</label><input id="empJoinDate" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>試用開始</label><input id="empProbDate" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>正社員化</label><input id="empOfficialDate" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>契約終了日（任意）</label><input id="empContractEnd" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>基本給 (円)</label><input id="empBaseSalary" type="number" step="0.01" placeholder="円"></div>
+            <div class="emp-form-group"><label>状態</label>
+              <select id="empStatus">
+                <option value="active">在職</option>
+                <option value="inactive">休職/無効</option>
+                <option value="retired">退職</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="emp-form-section">
+          <div class="emp-form-header">その他</div>
+          <div class="emp-form-grid">
+            <div class="emp-form-group"><label>プロフィール写真URL（任意）</label><input id="empAvatarUrl" placeholder="https://..."></div>
+            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><input id="empAvatarFile" type="file" accept="image/*"></div>
+          </div>
         </div>
       </div>
       <div class="form-actions" style="justify-content:flex-end;">
@@ -1001,15 +1005,16 @@ async function mountEmployeesImpl({
               .type-pill.full { color:#1b7c3f; }
               .type-pill.part { color:#0f766e; }
               .type-pill.contract { color:#6b21a8; }
-              .emp-form-section { margin-bottom: 16px; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+              .emp-form-layout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; margin-bottom: 20px; }
+              @media (max-width: 1024px) { .emp-form-layout { grid-template-columns: repeat(2, 1fr); } }
+              @media (max-width: 768px) { .emp-form-layout { grid-template-columns: 1fr; } }
+              .emp-form-section { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
               .emp-form-header { background: #f8fafc; padding: 10px 16px; font-weight: 600; border-bottom: 1px solid #d1d5db; color: #1e293b; font-size: 15px; }
-              .emp-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 16px; }
+              .emp-form-grid { display: flex; flex-direction: column; gap: 16px; padding: 16px; }
               .emp-form-group { display: flex; flex-direction: column; gap: 6px; }
               .emp-form-group label { font-size: 13px; font-weight: 600; color: #475569; }
               .emp-form-group input, .emp-form-group select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #0f172a; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
               .emp-form-group input:focus, .emp-form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
-              @media (max-width: 1024px) { .emp-form-grid { grid-template-columns: repeat(3, 1fr); } }
-              @media (max-width: 768px) { .emp-form-grid { grid-template-columns: repeat(2, 1fr); } }
               @media (max-width: 640px) {
                 .emp-form-grid { grid-template-columns: 1fr; }
                 .admin.employees-wide .card table#list:not(.emp-del-list) thead,
