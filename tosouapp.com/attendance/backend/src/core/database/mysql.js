@@ -31,6 +31,17 @@ if (String(process.env.NODE_ENV || '').toLowerCase() !== 'test') {
       console.error('Kiểm tra biến môi trường DB_HOST/DB_USER/DB_PASS/DB_NAME');
     }
   })();
+  
+  // Keep-alive mechanism to prevent ETIMEDOUT on idle connections
+  setInterval(async () => {
+    try {
+      const connection = await pool.getConnection();
+      await connection.ping();
+      connection.release();
+    } catch (err) {
+      console.error('[MySQL Keep-alive] Ping failed:', err.message);
+    }
+  }, 60000); // Ping every 1 minute
 }
 
 const origPoolQuery = pool.query.bind(pool);
