@@ -574,26 +574,37 @@ async function exactSummaryFromEmbed(uid, ym, mode) {
   }
 }
 
-function renderSummaryField(prefix, field) {
-  const typeAttr = field.type ? ` type="${field.type}"` : '';
-  const stepAttr = field.step != null ? ` step="${field.step}"` : '';
-  const placeholderAttr = field.placeholder ? ` placeholder="${field.placeholder}"` : '';
-  return `
-    <label class="admin-ms-field">
-      <span class="admin-ms-field-label">${field.label}</span>
-      <input id="${prefix}${field.id}" class="admin-ms-input"${typeAttr}${stepAttr}${placeholderAttr}>
-    </label>
-  `;
-}
-
 function renderSummarySection(title, prefix, fields) {
+  let rowsHtml = '';
+  for (let i = 0; i < fields.length; i += 4) {
+    const chunk = fields.slice(i, i + 4);
+    rowsHtml += '<tr>';
+    for (const field of chunk) {
+      const typeAttr = field.type ? ` type="${field.type}"` : '';
+      const stepAttr = field.step != null ? ` step="${field.step}"` : '';
+      const placeholderAttr = field.placeholder ? ` placeholder="${field.placeholder}"` : '';
+      rowsHtml += `<td style="width:100px; font-weight:500; font-size:12px; color:#475569; background:#f8fbff; padding: 4px 8px;">${field.label}</td>`;
+      rowsHtml += `<td style="border: 1px solid #dbe4f0; padding: 2px 4px; width: 100px;"><input id="${prefix}${field.id}" class="admin-ms-input"${typeAttr}${stepAttr}${placeholderAttr} style="width:100%; border:none; outline:none; background:transparent; box-shadow:none; padding:2px 4px; font-size: 13px;"></td>`;
+    }
+    if (chunk.length < 4) {
+      const emptyCells = 4 - chunk.length;
+      for (let j = 0; j < emptyCells; j++) {
+        rowsHtml += `<td style="background:#f8fbff;"></td><td style="border: 1px solid #dbe4f0;"></td>`;
+      }
+    }
+    rowsHtml += '</tr>';
+  }
   return `
     <section class="admin-ms-section">
-      <div class="admin-ms-section-head">
-        <h3>${title}</h3>
+      <div class="admin-ms-section-head" style="margin-bottom: 8px;">
+        <h3 style="margin:0; color:#0d2c5b; font-size:16px;">${title}</h3>
       </div>
-      <div class="admin-ms-grid">
-        ${fields.map((field) => renderSummaryField(prefix, field)).join('')}
+      <div style="overflow-x:auto;">
+        <table class="excel-table" style="width: max-content; margin-bottom: 0; table-layout: auto;">
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
       </div>
     </section>
   `;
@@ -721,6 +732,11 @@ function ensureEditorLayoutStyle() {
     const st = document.createElement('style');
     st.id = 'adminMsExtraLayoutStyle';
     st.textContent = `
+      #adminContent { max-width: none !important; margin-left: 24px !important; margin-right: auto !important; }
+      .admin-ms-page-head { margin-left: 24px !important; text-align: left !important; }
+      .admin-ms-page-title { text-align: left !important; }
+      .admin-ms-shell table { margin-left: 0 !important; }
+
       .admin-ms-grid-shift{display:grid;grid-template-columns:minmax(280px,2fr) repeat(2,minmax(180px,1fr));gap:10px;align-items:end;}
       .admin-ms-grid-two{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:10px;}
       .admin-ms-table-wrap{overflow:auto;}
