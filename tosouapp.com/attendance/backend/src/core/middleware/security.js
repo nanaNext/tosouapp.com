@@ -1,15 +1,23 @@
 module.exports = (app) => {
   const crypto = require('crypto');
+  // Lấy biến môi trường allowes_origins, tách thành mảng dựa trên dấu phẩy, trim khoảng trắng, loại bỏ chuỗi rỗng
+  // Kết quả là bạn có danh sách domain được phép gửi request đến API
   const allowedOrigins = String(process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
+    // Kiểm tra user-agent có phải browser hay ko, nếu ua rỗng ko phải browser, nếu chứa postman , curl, insomnia ko phải browser, nếu chứa mozilla, chrome, safari, edge là browser
+    // Mục đích chặn request từ script/tool ko phải trình duyệt
+
   const isBrowserUA = (ua) => {
     const s = String(ua || '').toLowerCase();
     if (!s) return false;
     if (/(postman|insomnia|curl|httpie)/i.test(s)) return false;
     return /(mozilla|applewebkit|chrome|safari|android|iphone|ipad|edg|edge)/i.test(s);
   };
+  // Kiểm tra Origin có hợp lệ không, nếu request ko có origin, cho phép thường là mobile app hoặc curl, nếu origin nằm trong danh sách cho phép thì ok , nếu origin có cùng host với server thì ok nếu parse URL lỗi thì từ chối
+  // Mục đích chống fake origin header
+
   const isAllowedOrigin = (req, origin) => {
     if (!origin) return true;
     if (allowedOrigins.includes(origin)) return true;
@@ -19,6 +27,8 @@ module.exports = (app) => {
       return host && u.host.toLowerCase() === host;
     } catch { return false; }
   };
+  // Tắt header"X-Powered-By"
+  // Ý nghĩa ko để lộ server dùng Express để tăng bảo mật
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     if (req.method === 'GET') {

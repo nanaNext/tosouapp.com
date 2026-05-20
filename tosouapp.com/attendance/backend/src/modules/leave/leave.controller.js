@@ -381,6 +381,7 @@ exports.grant = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 exports.eligibleList = async (req, res) => {
   try {
     const todayStr = fmt(new Date());
@@ -420,6 +421,7 @@ exports.eligibleList = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 exports.grantEligibleNow = async (req, res) => {
   try {
     const mode = getLeaveGrantMode();
@@ -458,6 +460,7 @@ exports.grantEligibleNow = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// Cái hàm này dùng để tạo một yêu cầu nghỉ
 exports.createRequest = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -484,6 +487,8 @@ exports.createRequest = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// Cái hàm này dùng để duyệt hoặc chối một yêu cầu nghỉ
+
 exports.approve = async (req, res) => {
   try {
     const { id, status } = req.body || {};
@@ -524,12 +529,13 @@ exports.balance = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// Mục đích của hàm này là tính toán tổng số ngày nghỉ đã được cấp cho mỗi người dùng và thông tin khác 
+
 exports.summary = async (req, res) => {
   try {
     await tryReconcileAttendance();
     const list = await userRepo.listUsers();
     const out = [];
-    // Cái này mục đích của nó là 
     for (const u of list) {
       const role = String(u?.role || '').toLowerCase();
       if (role === 'admin' || role === 'manager') continue;
@@ -558,6 +564,8 @@ exports.summary = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// Cái hàm này dùng để cấp nagfy nghỉ cho tất cả người dùng
+
 exports.autoGrantNow = async (req, res) => {
   try {
     const mode = getLeaveGrantMode();

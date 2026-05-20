@@ -1,3 +1,6 @@
+// Auto Database Backup Cron
+const { initBackupCronJob } = require('./cron/dbBackupCron');
+
 const app = require('./app');
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -52,6 +55,11 @@ async function start() {
     if (!disableSchedulers) {
       initAutoGrantScheduler();
       initShiftReminders();
+    }
+
+    // Initialize backup cron job
+    if (process.env.NODE_ENV === 'production') {
+        initBackupCronJob();
     }
   } catch (e) {
     try { console.error('bootstrap_error', e && e.message ? e.message : e); } catch {}
