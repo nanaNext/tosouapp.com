@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const mysqldump = require('mysqldump');
 const path = require('path');
 const fs = require('fs');
-const mailService = require('../services/mail.service');
+const mailService = require('../core/notifications/email.service');
 
 async function runAutoBackup() {
     console.log('[Cron Job] Bắt đầu tự động backup Database...');
