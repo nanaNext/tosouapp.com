@@ -58,7 +58,7 @@ async function test() {
       isUserOffDay = isSunday || isRedDay;
     } else {
       const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
-      const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_last');
+      const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_4th');
       const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
       isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
     }
