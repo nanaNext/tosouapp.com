@@ -200,11 +200,12 @@ module.exports = {
       d.setUTCDate(d.getUTCDate() + 1);
     }
     for (let m = 0; m < 12; m++) {
-      const last = new Date(Date.UTC(year, m + 1, 0, 0, 0, 0));
-      const tmp = new Date(last);
+      const first = new Date(Date.UTC(year, m, 1, 0, 0, 0));
+      const tmp = new Date(first);
       while (tmp.getUTCDay() !== 6) {
-        tmp.setUTCDate(tmp.getUTCDate() - 1);
+        tmp.setUTCDate(tmp.getUTCDate() + 1);
       }
+      tmp.setUTCDate(tmp.getUTCDate() + 21); // 4th Saturday
       const ds = ymd(tmp);
       lastSaturdays.push(ds);
       all.add(ds);
@@ -305,11 +306,12 @@ module.exports = {
       d.setUTCDate(d.getUTCDate() + 1);
     }
     for (let m = 0; m < 12; m++) {
-      const last = new Date(Date.UTC(year, m + 1, 0, 0, 0, 0));
-      const tmp = new Date(last);
+      const first = new Date(Date.UTC(year, m, 1, 0, 0, 0));
+      const tmp = new Date(first);
       while (tmp.getUTCDay() !== 6) {
-        tmp.setUTCDate(tmp.getUTCDate() - 1);
+        tmp.setUTCDate(tmp.getUTCDate() + 1);
       }
+      tmp.setUTCDate(tmp.getUTCDate() + 21); // 4th Saturday
       const ds = ymd(tmp);
       lastSaturdays.push(ds);
       all.add(ds);
@@ -337,7 +339,7 @@ module.exports = {
     for (const f of jpBridge) push({ date: String(f.date), name: f.name_ja || f.name, name_en: f.name_en || null, type: 'jp_bridge', is_off: f.is_off ? 1 : 0 });
     for (const ds of sundays) push({ date: ds, name: 'Sunday', type: 'sunday', is_off: 1 });
     for (const ds of saturdays) push({ date: ds, name: 'Saturday', type: 'saturday', is_off: 1 });
-    for (const ds of lastSaturdays) push({ date: ds, name: 'Saturday(last)', type: 'saturday_last', is_off: 1 });
+    for (const ds of lastSaturdays) push({ date: ds, name: 'Saturday(4th)', type: 'saturday_4th', is_off: 1 });
     detail.sort((a, b) => String(a.date).localeCompare(String(b.date)));
     return {
       year,
@@ -347,7 +349,7 @@ module.exports = {
       jp_bridge: jpBridge,
       sundays,
       saturdays,
-      saturday_last: lastSaturdays,
+      saturday_4th: lastSaturdays,
       off_days: Array.from(all).sort(),
       detail
     };

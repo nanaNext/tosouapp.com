@@ -159,6 +159,30 @@ exports.checkOut = async (req, res) => {
         createdBy: userId,
         audience: 'admin_manager'
       });
+
+      // Calculate total hours
+      if (u && u.email && result?.checkIn && result?.checkOut) {
+        const inDate = new Date(result.checkIn);
+        const outDate = new Date(result.checkOut);
+        
+        const dtStr = String(result.checkOut).slice(0, 10);
+        // Fetch break_minutes from daily
+        let breakMin = 60;
+        try {
+          const db = require('../../core/database/mysql');
+          const [dailies] = await db.query(`SELECT break_minutes, night_break_minutes FROM attendance_daily WHERE userId = ? AND date = ? LIMIT 1`, [userId, dtStr]);
+          if (dailies.length > 0) {
+            breakMin = Number(dailies[0].break_minutes || 0) + Number(dailies[0].night_break_minutes || 0);
+          }
+        } catch(e) {}
+        
+        const diffMs = outDate - inDate;
+        let totalMinutes = Math.floor(diffMs / 60000) - breakMin;
+        if (totalMinutes < 0) totalMinutes = 0;
+        const totalHoursStr = `${Math.floor(totalMinutes / 60)}時間${String(totalMinutes % 60).padStart(2, '0')}分`;
+        
+        require('../../services/shiftReminder.service').sendDailySummaryEmail(u, dtStr, result.checkIn, result.checkOut, totalHoursStr).catch(e => console.error(e));
+      }
     } catch (e) {
       console.error('Failed to notify admin on checkout:', e);
     }
@@ -671,9 +695,9 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
       continue;
     }
     const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-    const hasLastSaturday = list.some(x => x.is_off && x.type === 'saturday_last');
+    const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
     const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
-    if (hasSunday || hasLastSaturday || hasHoliday) off.add(ds);
+    if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
   }
   return off;
 }
@@ -694,6 +718,11 @@ async function computeMonthMissing(userId, y, m) {
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const from = `${y}-${pad(m)}-01`;
   const to = `${y}-${pad(m)}-${pad(lastDay)}`;
+  
+  const userRepo = require('../users/user.repository');
+  const user = await userRepo.getUserById(userId).catch(() => null);
+  const isPartTime = user?.employment_type === 'part_time';
+
   const off = await getUserOffDaySet(y, userId);
   const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
   const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
@@ -718,6 +747,16 @@ async function computeMonthMissing(userId, y, m) {
     const segs = segByDate.get(ds) || [];
     const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
     const isWork = workKubunSet.has(kubun);
+    
+    // Đối với part-time, chỉ báo lỗi nếu họ đã tự chọn là đi làm (isWork) nhưng lại quên check-in/out
+    // Không báo lỗi ngày trống (vì họ có thể nghỉ ngày đó)
+    if (isPartTime) {
+      if (isWork && !hasComplete) {
+        missing.push(ds);
+      }
+      continue;
+    }
+
     if (!isOff && !kubun) {
       // Treat complete attendance times as valid even when kubun is still empty.
       // This avoids false "missing day" errors during approval when rows were saved by times first.
@@ -1482,6 +1521,7 @@ exports.getMonthDetail = async (req, res) => {
       departmentName: u.departmentName || null,
       office_code: u.office_code || null,
       officeCode: u.office_code || null,
+      employment_type: u.employment_type || null,
       paidLeaveEntitlement: paidLeaveEntitlement,
       paidLeaveGrantedDays: Number(leaveSummary?.grantedDays || 0),
       paidLeaveGrantedTotalDays: Number(leaveSummary?.grantedDaysTotal || 0)

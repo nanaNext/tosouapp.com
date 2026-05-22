@@ -196,14 +196,24 @@ const restoreFastSnapshot = (date, stateRef) => {
     stateRef.hasEndedToday = !!snap.hasEndedToday;
     try { $('#topDate').textContent = fmtJP(date); } catch {}
 
+    const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
+
     const kubunOptions = stateRef.isOff
       ? ['休日', '休日出勤', '代替出勤']
-      : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-    const kubunGroupLabel = stateRef.isOff ? '【予定休日】' : '【予定出勤】';
+      : (isPartTime ? ['休日', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
+    
+    let kubunGroupLabel = stateRef.isOff ? '【予定休日】' : '【予定出勤】';
+    let defaultKubun = stateRef.isOff ? '休日' : '出勤';
+    
+    if (isPartTime && !stateRef.isOff) {
+      kubunGroupLabel = '【予定なし】';
+      defaultKubun = '';
+    }
+
     const selK = $('#kubun');
     if (selK) {
       selK.innerHTML = `<option value="" disabled>${kubunGroupLabel}</option>${kubunOptions.map(k => `<option value="${k}">${k}</option>`).join('')}`;
-      selK.value = kubunOptions.includes(String(snap.kubun || '')) ? String(snap.kubun || '') : (stateRef.isOff ? '休日' : '出勤');
+      selK.value = kubunOptions.includes(String(snap.kubun || '')) ? String(snap.kubun || '') : defaultKubun;
       selK.classList.toggle('is-planned', !!snap.kubunPlanned);
       setupSimpleCombo(selK);
     }
@@ -840,15 +850,28 @@ const load = async (date, opts = {}) => {
     // Cập nhật state trước khi gọi applyHolidayRestMode
     state.isOff = !!isOff;
     
+    const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
+
     const kubunOptions = isOff
       ? ['休日', '休日出勤', '代替出勤']
-      : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-    const kubunGroupLabel = isOff ? '【予定休日】' : '【予定出勤】';
+      : (isPartTime ? ['休日', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
+    
+    let kubunGroupLabel = isOff ? '【予定休日】' : '【予定出勤】';
+    let localDefaultKubun = isOff ? '休日' : '出勤';
+
+    if (isPartTime && !isOff) {
+      kubunGroupLabel = '【予定なし】';
+      localDefaultKubun = '';
+    }
+
+    // fallback cho defaultKubun nếu kubunInit rỗng
+    const fallbackKubun = kubunInit || defaultKubun || localDefaultKubun;
+
     try {
       const selK = $('#kubun');
       if (selK) {
         selK.innerHTML = `<option value="" disabled>${kubunGroupLabel}</option>${kubunOptions.map(k => `<option value="${k}">${k}</option>`).join('')}`;
-        selK.value = kubunOptions.includes(kubunInit) ? kubunInit : defaultKubun;
+        selK.value = kubunOptions.includes(fallbackKubun) ? fallbackKubun : localDefaultKubun;
         selK.classList.toggle('is-planned', !kubunSaved);
         setupSimpleCombo(selK);
       }

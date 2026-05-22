@@ -62,7 +62,7 @@ async function processReminders() {
 
     // 1. Fetch all active users (employees and managers) with their emails and department info
     const [users] = await db.query(`
-      SELECT u.id, u.email, u.username, d.name as departmentName 
+      SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
       LEFT JOIN departments d ON u.departmentId = d.id 
       WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
@@ -120,6 +120,9 @@ async function processReminders() {
     for (const user of users) {
       const userId = user.id;
       if (!user.email) continue;
+      
+      // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
+      if (user.employment_type === 'part_time') continue;
 
       const isKoujiUser = String(user.departmentName || '').includes('工事部');
       
@@ -132,7 +135,7 @@ async function processReminders() {
       } else {
         // Kouji User: specific policy logic
         const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
-        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_last');
+        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_4th');
         const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
         
         isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
@@ -239,7 +242,7 @@ async function checkDailyMissingAttendance() {
 
     // 1. Fetch all active users
     const [users] = await db.query(`
-      SELECT u.id, u.email, u.username, d.name as departmentName 
+      SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
       LEFT JOIN departments d ON u.departmentId = d.id 
       WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
@@ -277,6 +280,9 @@ async function checkDailyMissingAttendance() {
     for (const user of users) {
       if (!user.email) continue;
       const userId = user.id;
+      
+      // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
+      if (user.employment_type === 'part_time') continue;
 
       const isKoujiUser = String(user.departmentName || '').includes('工事部');
       
@@ -285,7 +291,7 @@ async function checkDailyMissingAttendance() {
         isUserOffDay = isSunday || isRedDay;
       } else {
         const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
-        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_last');
+        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_4th');
         const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
         isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
       }
@@ -338,7 +344,7 @@ async function checkMonthlyMissingAttendance() {
 
     // 1. Fetch all active users
     const [users] = await db.query(`
-      SELECT u.id, u.email, u.username, d.name as departmentName 
+      SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
       LEFT JOIN departments d ON u.departmentId = d.id 
       WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
@@ -392,6 +398,10 @@ async function checkMonthlyMissingAttendance() {
     for (const user of users) {
       if (!user.email) continue;
       const userId = user.id;
+      
+      // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
+      if (user.employment_type === 'part_time') continue;
+      
       const isKoujiUser = String(user.departmentName || '').includes('工事部');
 
       const cacheKey = `monthly_missing_${userId}_${monthStr}`;
@@ -412,7 +422,7 @@ async function checkMonthlyMissingAttendance() {
         } else {
           const detail = explanations.get(ds) || [];
           const hasSundayReason = detail.some(x => x.is_off && x.type === 'sunday');
-          const hasLastSaturdayReason = detail.some(x => x.is_off && x.type === 'saturday_last');
+          const hasLastSaturdayReason = detail.some(x => x.is_off && x.type === 'saturday_4th');
           const hasHolidayReason = detail.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
           isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
         }
@@ -434,6 +444,16 @@ async function checkMonthlyMissingAttendance() {
       // Nếu có ít nhất 1 ngày làm việc bị thiếu chấm công, thì gửi thông báo
       if (isMissingAnyDay) {
         await sendMissingEmail(user, 'monthly', monthStr);
+        sentReminders.add(cacheKey);
+      } else {
+        // Đếm tổng số ngày đã đi làm trong tháng
+        let totalWorkedDays = 0;
+        for (const ds of daysInMonth) {
+          if (attMap.has(`${userId}_${ds}`)) {
+            totalWorkedDays++;
+          }
+        }
+        await sendMonthlyCompleteEmail(user, monthStr, totalWorkedDays);
         sentReminders.add(cacheKey);
       }
     }
@@ -555,6 +575,122 @@ ${appUrl}
     }
   } catch (err) {
     console.error(`[ShiftReminder] Failed to send ${type} missing email to ${user.email}:`, err);
+  }
+}
+
+async function sendMonthlyCompleteEmail(user, monthStr, totalWorkedDays) {
+  const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+  
+  const subject = `[飯塚塗研株式会社] 今月の勤怠データ確認完了のお知らせ`;
+  const text = `
+${user.username} さん
+
+今月（${monthStr}）の勤怠データはすべて正常に入力されていることが確認されました。
+今月の合計出勤日数は ${totalWorkedDays} 日です。
+
+詳細や有給等の状況について確認・修正が必要な場合は、システムの月次勤怠表をご確認いただくか、管理者までご連絡ください。
+
+▼ 月次勤怠表はこちらから（アプリURL）
+${appUrl}
+
+このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
+  `.trim();
+
+  const html = `
+    <p>${user.username} さん</p>
+    <br/>
+    <p>今月（<strong>${monthStr}</strong>）の勤怠データはすべて正常に入力されていることが確認されました。</p>
+    <p>今月の合計出勤日数は <strong>${totalWorkedDays} 日</strong>です。</p>
+    <p>詳細や有給等の状況について確認・修正が必要な場合は、システムの月次勤怠表をご確認いただくか、管理者までご連絡ください。</p>
+    <br/>
+    <p>▼ 月次勤怠表はこちらから（アプリURL）<br/>
+    <a href="${appUrl}">${appUrl}</a></p>
+    <br/>
+    <hr/>
+    <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
+    お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+  `;
+
+  try {
+    console.log(`[ShiftReminder] Sending monthly complete alert to ${user.email}`);
+    if (typeof emailService.sendViaResend === 'function') {
+       await emailService.sendViaResend({
+         from: senderFrom,
+         to: user.email,
+         subject,
+         html,
+         text
+       });
+    }
+  } catch (err) {
+    console.error(`[ShiftReminder] Failed to send monthly complete email to ${user.email}:`, err);
+  }
+}
+
+async function sendDailySummaryEmail(user, dateStr, checkIn, checkOut, totalHours) {
+  const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+  
+  const inStr = String(checkIn || '').slice(11, 16);
+  const outStr = String(checkOut || '').slice(11, 16);
+  
+  const subject = `[飯塚塗研株式会社] 本日の勤務お疲れ様でした`;
+  const text = `
+${user.username} さん
+
+本日の勤務お疲れ様でした。以下の通り退勤の打刻を受け付けました。
+
+・日付: ${dateStr}
+・出勤時間: ${inStr}
+・退勤時間: ${outStr}
+・総勤務時間: ${totalHours}
+
+打刻時間に誤りがある場合は、システムの勤怠表から修正申請を行ってください。
+
+▼ 勤怠表はこちらから（アプリURL）
+${appUrl}
+
+このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
+  `.trim();
+
+  const html = `
+    <p>${user.username} さん</p>
+    <br/>
+    <p>本日の勤務お疲れ様でした。以下の通り退勤の打刻を受け付けました。</p>
+    <ul>
+      <li><strong>日付:</strong> ${dateStr}</li>
+      <li><strong>出勤時間:</strong> ${inStr}</li>
+      <li><strong>退勤時間:</strong> ${outStr}</li>
+      <li><strong>総勤務時間:</strong> ${totalHours}</li>
+    </ul>
+    <p>打刻時間に誤りがある場合は、システムの勤怠表から修正申請を行ってください。</p>
+    <br/>
+    <p>▼ 勤怠表はこちらから（アプリURL）<br/>
+    <a href="${appUrl}">${appUrl}</a></p>
+    <br/>
+    <hr/>
+    <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
+    お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+  `;
+
+  try {
+    console.log(`[ShiftReminder] Sending daily summary alert to ${user.email}`);
+    if (typeof emailService.sendViaResend === 'function') {
+       await emailService.sendViaResend({
+         from: senderFrom,
+         to: user.email,
+         subject,
+         html,
+         text
+       });
+    }
+  } catch (err) {
+    console.error(`[ShiftReminder] Failed to send daily summary email to ${user.email}:`, err);
   }
 }
 
@@ -682,5 +818,6 @@ module.exports = {
   init,
   processReminders,
   checkDailyMissingAttendance,
-  checkMonthlyMissingAttendance
+  checkMonthlyMissingAttendance,
+  sendDailySummaryEmail
 };

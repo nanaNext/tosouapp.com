@@ -54,28 +54,37 @@
     const buildTr = (dateStr, isOff, shift, daily, seg, showDateDow) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
-      // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
-      const offDay = !!isOff;
-      
-      const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
-      const kubunInitRaw = String(daily?.kubun || '').trim();
-      const role = String(profile?.role || '').toLowerCase();
-      const isEmployee = role === 'employee';
+        // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
+        const offDay = !!isOff;
+        
+        const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
+        const kubunInitRaw = String(daily?.kubun || '').trim();
+        const role = String(profile?.role || '').toLowerCase();
+        const isEmployee = role === 'employee';
+        const isPartTime = String(profile?.employment_type || '').toLowerCase() === 'part_time';
 
       // Always include 休日 in the options if admin/manager
+    
       let kubunOptions = [];
       if (offDay) {
         kubunOptions = ['休日', '休日出勤', '代替出勤'];
       } else {
         kubunOptions = ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-        if (!isEmployee) {
+        if (!isEmployee || isPartTime) {
           kubunOptions.unshift('休日');
         }
       }
 
       let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
-      const plannedLabel = offDay ? '【予定休日】' : '【予定出勤】';
-      const plannedKubun = offDay ? '休日' : '出勤';
+      let plannedLabel = offDay ? '【予定休日】' : '【予定出勤】';
+      let plannedKubun = offDay ? '休日' : '出勤';
+      
+      // Đối với part-time, mặc định là không có lịch làm việc cố định
+      if (isPartTime && !offDay) {
+        plannedLabel = '【予定なし】';
+        plannedKubun = '';
+      }
+
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
@@ -576,7 +585,7 @@
       const rowClasses = ['sun', 'holiday', 'sat', 'worked', 'planned', 'leave'];
       rowClasses.forEach(c => {
         const shouldHave = (c === 'sun' && dow === '日') ||
-                          (c === 'holiday' && ! (dow === '日') && baseOff) ||
+                          (c === 'holiday' && ! (dow === '日') && offDay) ||
                           (c === 'sat' && dow === '土') ||
                           (c === 'planned' && isPlanned) ||
                           (c === 'leave' && !isWorkDay);
