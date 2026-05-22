@@ -8,7 +8,7 @@
     addDaysISO,
     parseHm
   } = core;
-
+// Cái dùng để tạo tháng mới và tải dữ liệu tháng đó lên bảng chấm công
   const loadMonth = async (ym, userId) => {
     const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
     if (!y || !m) throw new Error('Invalid month');

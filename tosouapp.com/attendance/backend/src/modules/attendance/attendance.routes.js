@@ -40,9 +40,9 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
       continue;
     }
     const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-    const hasLastSaturday = list.some(x => x.is_off && x.type === 'saturday_last');
+    const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
     const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
-    if (hasSunday || hasLastSaturday || hasHoliday) off.add(ds);
+    if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
   }
   return { byDate, off };
 }
@@ -173,7 +173,7 @@ router.get('/calendar/day/:date', authenticate, authorize('employee','manager','
     const reasons = matched.map(it => {
       const t = String(it?.type || '');
       const specialOff = useKoujiPolicy
-        ? (t === 'sunday' || t === 'saturday_last' || HOLIDAY_TYPES.has(t))
+        ? (t === 'sunday' || t === 'saturday_4th' || HOLIDAY_TYPES.has(t))
         : Number(it?.is_off || 0) === 1;
       return {
         type: t,
@@ -205,7 +205,7 @@ router.get('/calendar/working-days', authenticate, authorize('employee','manager
       }
     }
     if (includeLastSaturday) {
-      for (const ds of (r.saturday_last || [])) {
+      for (const ds of (r.saturday_4th || [])) {
         off.delete(String(ds));
       }
     }
@@ -260,7 +260,7 @@ if (allowDebugRoutes) {
           jp_substitute: Array.isArray(r.jp_substitute) ? r.jp_substitute.length : 0,
           jp_bridge: Array.isArray(r.jp_bridge) ? r.jp_bridge.length : 0,
           sundays: Array.isArray(r.sundays) ? r.sundays.length : 0,
-          saturday_last: Array.isArray(r.saturday_last) ? r.saturday_last.length : 0,
+          saturday_4th: Array.isArray(r.saturday_4th) ? r.saturday_4th.length : 0,
           off_days: Array.isArray(r.off_days) ? r.off_days.length : 0,
           detail: Array.isArray(r.detail) ? r.detail.length : 0
         }
