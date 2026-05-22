@@ -1,8 +1,16 @@
 const cron = require('node-cron');
-const mysqldump = require('mysqldump');
 const path = require('path');
 const fs = require('fs');
 const mailService = require('../core/notifications/email.service');
+
+// Only require mysqldump if it's actually installed, otherwise create a mock
+let mysqldump;
+try {
+  mysqldump = require('mysqldump');
+} catch (e) {
+  console.warn('[DB Backup] mysqldump module not found, backup feature will be disabled.');
+  mysqldump = async () => { throw new Error('mysqldump module is not installed'); };
+}
 
 async function runAutoBackup() {
     console.log('[Cron Job] Bắt đầu tự động backup Database...');
