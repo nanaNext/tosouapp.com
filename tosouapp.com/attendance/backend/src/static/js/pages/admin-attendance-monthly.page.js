@@ -227,7 +227,7 @@ async function boot(root, { standalone = false } = {}) {
     try {
       const u = new URL(window.location.href);
       u.searchParams.set('month', month);
-      history.replaceState(null, '', u.pathname + u.search + u.hash);
+      history.pushState(null, '', u.pathname + u.search + u.hash);
     } catch {}
     const uid = empSelect ? String(empSelect.value || '').trim() : defaultUid;
     if (/^\d+$/.test(uid)) openMonthlyInFrame(root, uid, month);

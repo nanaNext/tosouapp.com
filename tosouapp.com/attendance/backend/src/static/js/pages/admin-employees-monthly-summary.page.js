@@ -1181,7 +1181,13 @@ export async function mount() {
   $('#btnSumLoad', root)?.addEventListener('click', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
   $('#btnSumSave', root)?.addEventListener('click', () => { save().catch(e => setStatus(String(e?.message || '保存失敗'))); });
   empSelect?.addEventListener('change', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
-  monthEl?.addEventListener('change', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
+  monthEl?.addEventListener('change', () => { 
+    // Automatically update URL parameter so refresh/bookmarking works
+    const url = new URL(window.location.href);
+    url.searchParams.set('month', monthEl.value);
+    window.history.pushState({}, '', url);
+    load().catch(e => setStatus(String(e?.message || '読込失敗'))); 
+  });
   await loadShiftDefs().catch(() => {});
   await load().catch((e) => setStatus(String(e?.message || '読込失敗')));
 }
