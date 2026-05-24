@@ -134,7 +134,7 @@
       const sel = e.target?.closest?.('#targetDateSelect');
       if (!sel) return;
       const v = String(sel.value || '');
-      if (/^\\d{6}$/.test(v)) {
+      if (/^\d{6}$/.test(v)) {
         const ym = `${v.slice(0, 4)}-${v.slice(4, 6)}`;
         await controller.setMonth(ym);
       }
