@@ -153,6 +153,7 @@ function allocateUsage(grants, requests) {
   return out;
 }
 
+// API: Nhân viên tạo yêu cầu nghỉ phép (có lương/không lương)
 exports.create = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -228,6 +229,7 @@ exports.reconcileAttendance = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Lấy danh sách lịch sử nghỉ phép của chính nhân viên đó
 exports.listMine = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -247,6 +249,7 @@ exports.listUser = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Quản lý/Admin lấy danh sách yêu cầu nghỉ phép đang chờ duyệt
 exports.listPending = async (req, res) => {
   try {
     const rows = await repo.listAllPending();
@@ -268,6 +271,7 @@ exports.listAdminRequests = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Quản lý/Admin duyệt hoặc từ chối đơn xin nghỉ phép
 exports.updateStatus = async (req, res) => {
   try {
     const id = req.params.id;
@@ -332,6 +336,7 @@ async function computeUserBalance(userId) {
     obligation: { required, taken, remaining: Math.max(0, required - taken) }
   };
 }
+// API: Kiểm tra số ngày phép còn lại của nhân viên
 exports.myBalance = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -352,6 +357,7 @@ exports.userBalance = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Cấp phát thêm ngày nghỉ phép cho nhân viên (Admin)
 exports.grant = async (req, res) => {
   try {
     const { userId, days, grantDate, expiryDate } = req.body || {};
