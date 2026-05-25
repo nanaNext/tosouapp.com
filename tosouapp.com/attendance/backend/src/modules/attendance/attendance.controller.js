@@ -2,6 +2,7 @@ const service = require('./attendance.service');
 const auditRepo = require('../audit/audit.repository');
 const rules = require('./attendance.rules');
 const repo = require('./attendance.repository');
+// Các thư viện tiện ích (Ngày giờ, ngày nghỉ phép, v.v.)
 const { formatInputToMySQLJST } = require('../../utils/dateTime');
 const userRepo = require('../users/user.repository');
 const workReportRepo = require('../workReports/workReports.repository');
@@ -10,7 +11,10 @@ const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
 const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 const leaveRepo = require('../leave/leave.repository');
 const noticesRepo = require('../notices/notices.repository');
-// Controller xử lý request/response cho module chấm công
+
+// ------------------------------------------------------------------------
+// CONTROLLER: Xử lý các yêu cầu liên quan đến Chấm Công (Giao tiếp với Frontend)
+// ------------------------------------------------------------------------
 
 async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attendance') {
   try {
@@ -41,6 +45,7 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
   } catch {}
 }
 
+// API: Nhân viên ấn nút Check-in (Đi làm)
 exports.checkIn = async (req, res) => {
   try {
     const userId = req.user?.id || req.body.userId;
@@ -107,6 +112,7 @@ exports.checkIn = async (req, res) => {
   }
 };
 
+// API: Nhân viên ấn nút Check-out (Tan làm)
 exports.checkOut = async (req, res) => {
   try {
     const userId = req.user?.id || req.body.userId;
@@ -192,6 +198,7 @@ exports.checkOut = async (req, res) => {
   }
 };
 
+// API: Đổi loại hình công việc (onsite, remote, satellite)
 exports.setWorkType = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -972,6 +979,7 @@ exports.approveReadyMonth = async (req, res) => {
   }
 };
 
+// API: Duyệt (Approve) bảng chấm công của cả tháng
 exports.approveMonth = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
@@ -1257,6 +1265,7 @@ exports.getMonth = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Lấy bảng chấm công của một tháng cụ thể
 exports.getMonthDetail = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
@@ -2021,6 +2030,7 @@ exports.exportCsv = async (req, res) => {
   }
 };
 
+// API: Xuất dữ liệu chấm công ra file Excel
 exports.exportMonthXlsx = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
