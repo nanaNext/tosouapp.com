@@ -107,6 +107,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mobileClose = $('#mobileClose');
     const mobileBackdrop = $('#drawerBackdrop');
     if (mobileBtn && mobileDrawer) {
+      if (mobileBtn.dataset.bound === '1') return;
+      mobileBtn.dataset.bound = '1';
       const toggleDrawer = (open) => {
         const isHidden = mobileDrawer.hasAttribute('hidden');
         const shouldOpen = typeof open === 'boolean' ? open : isHidden;

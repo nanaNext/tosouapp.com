@@ -1215,6 +1215,7 @@ export async function bootExpensesPage() {
   if (pageMarker.dataset.booted === '1') return;
   pageMarker.dataset.booted = '1';
   expensesPageMounted = true;
+  wireUserMenu(); wireDrawer();
   // Register per-page cleanup so router can stop background polling when leaving this page.
   try {
     window.__employeePageCleanup = () => {
@@ -1279,7 +1280,6 @@ export async function bootExpensesPage() {
     showErr('通信エラーが発生しました。少し待ってから再度お試しください。');
     return;
   }
-  wireUserMenu(); wireDrawer();
   const back = document.getElementById('expBackBtn');
   if (back && !back.dataset.bound) {
     back.dataset.bound = '1';

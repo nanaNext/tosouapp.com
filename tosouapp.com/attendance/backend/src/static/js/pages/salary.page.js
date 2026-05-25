@@ -130,6 +130,9 @@ const wireDrawer = () => {
   const drawer = $('#mobileDrawer');
   const backdrop = $('#drawerBackdrop');
   const closeBtn = $('#mobileClose');
+  if (!btn || !drawer || !backdrop) return;
+  if (btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
   const close = () => {
     try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch {}
     try {
@@ -600,6 +603,8 @@ const render = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  wireUserMenu();
+  wireDrawer();
   prefillUserName();
   try {
     const profile = await ensureAuthProfile();
@@ -615,7 +620,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.replace('/ui/login');
     return;
   }
-  wireUserMenu();
-  wireDrawer();
   await render();
 });

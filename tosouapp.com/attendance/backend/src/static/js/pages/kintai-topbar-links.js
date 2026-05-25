@@ -159,7 +159,7 @@
     const nameText = String(
       (document.querySelector('#staffName')?.textContent || '') ||
       (globalThis.AttendanceMonthly && globalThis.AttendanceMonthly.Controller && globalThis.AttendanceMonthly.Controller.ctx && (globalThis.AttendanceMonthly.Controller.ctx.profile?.username || globalThis.AttendanceMonthly.Controller.ctx.profile?.email)) ||
-      '—'
+      '-'
     ).trim();
     const btn = document.createElement('button');
     btn.id = 'mobileMenuBtn';
@@ -169,6 +169,7 @@
     btn.setAttribute('aria-label', 'menu');
     btn.setAttribute('aria-controls', 'mobileDrawer');
     btn.textContent = '☰';
+    btn.dataset.bound = '1';
       const logo = brand.querySelector('.kintai-logo');
       if (logo) brand.insertBefore(btn, logo);
       else brand.insertBefore(btn, brand.firstChild);

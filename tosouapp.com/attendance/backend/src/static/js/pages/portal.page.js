@@ -1066,6 +1066,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mobileClose = document.querySelector('#mobileClose');
   const mobileBackdrop = document.querySelector('#drawerBackdrop');
   if (mobileBtn && mobileDrawer) {
+    if (mobileBtn.dataset.bound === '1') return;
+    mobileBtn.dataset.bound = '1';
     const isMobileViewport = () => {
       try { return (window.innerWidth || 0) <= 480; } catch { return false; }
     };
