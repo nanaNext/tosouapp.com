@@ -1,4 +1,6 @@
 
+// File tiện ích (Utility): Các quy tắc tính toán số ngày phép năm (Paid Leave) theo luật lao động
+
 function calculatePaidLeaveEntitlement(joinDateStr) {
   if (!joinDateStr) return 0;
   const normalized = String(joinDateStr).replace(/\//g, '-').slice(0, 10);

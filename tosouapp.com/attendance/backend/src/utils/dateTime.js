@@ -1,3 +1,5 @@
+// File tiện ích (Utility): Xử lý quy đổi ngày giờ giữa giờ Nhật Bản (JST) và giờ quốc tế (UTC)
+
 function pad(n) {
   return n < 10 ? '0' + n : '' + n;
 }
