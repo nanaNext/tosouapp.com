@@ -1,3 +1,4 @@
+// File chạy ngầm (Cron Job): Tự động sao lưu dữ liệu (Backup) từ MySQL và gửi qua Email định kỳ
 const cron = require('node-cron');
 const path = require('path');
 const fs = require('fs');
