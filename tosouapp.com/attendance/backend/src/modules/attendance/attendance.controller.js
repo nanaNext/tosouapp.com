@@ -216,6 +216,7 @@ exports.setWorkType = async (req, res) => {
 
 const { timesheetMaxDays } = require('../../config/env');
 const { nowJSTMySQL } = require('../../utils/dateTime');
+// API: Lấy thông tin cá nhân của người dùng để hiển thị trong tháng
 exports.userProfileForMonthly = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
@@ -277,6 +278,7 @@ exports.userProfileForMonthly = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Lấy bảng chấm công (Timesheet) trong khoảng thời gian nhất định
 exports.timesheet = async (req, res) => {
   try {
     const requesterId = req.user?.id;
@@ -303,6 +305,7 @@ exports.timesheet = async (req, res) => {
   }
 };
 
+// API: Lấy lịch sử vị trí (GPS Log) của người dùng
 exports.gpsLog = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -326,6 +329,7 @@ exports.gpsLog = async (req, res) => {
   }
 };
 
+// API: Đồng bộ dữ liệu chấm công khi thiết bị bị mất mạng (Offline sync)
 exports.syncOffline = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -371,6 +375,7 @@ exports.syncOffline = async (req, res) => {
   }
 };
 
+// API: Lấy trạng thái chấm công của ngày hôm nay (Đã check-in chưa, v.v.)
 exports.statusToday = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -393,6 +398,7 @@ exports.statusToday = async (req, res) => {
   }
 };
 
+// API: Lấy thống kê/tóm tắt dữ liệu chấm công của ngày hôm nay
 exports.todaySummary = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -463,6 +469,7 @@ exports.todaySummary = async (req, res) => {
   }
 };
 
+// API: Lấy danh sách điểm danh (roster) của tất cả nhân viên trong ngày
 exports.todayRoster = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
@@ -779,6 +786,7 @@ async function computeMonthMissing(userId, y, m) {
   return missing;
 }
 
+// API: Lấy trạng thái nộp bảng chấm công của một tháng (Đã nộp, Chờ duyệt, v.v.)
 exports.getMonthStatus = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
@@ -884,6 +892,7 @@ exports.getMonthStatusBulk = async (req, res) => {
   }
 };
 
+// API: Gửi/Nộp (Submit) bảng chấm công của tháng lên cho quản lý
 exports.submitMonth = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
@@ -1006,6 +1015,7 @@ exports.approveMonth = async (req, res) => {
   }
 };
 
+// API: Mở khóa (Unlock) bảng chấm công của tháng để nhân viên có thể sửa lại
 exports.unlockMonth = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
@@ -1045,6 +1055,7 @@ exports.getDaily = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Chỉnh sửa thủ công dữ liệu chấm công của một ngày
 exports.putDaily = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
@@ -1627,6 +1638,7 @@ exports.getMonthSummary = async (req, res) => {
   }
 };
 
+// API: Tính toán/Cập nhật dữ liệu tổng hợp của tháng
 exports.putMonthSummary = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
@@ -1928,6 +1940,7 @@ exports.putMonthBulk = async (req, res) => {
   }
 };
 
+// API: Đồng bộ dữ liệu chấm công sang hệ thống tính lương
 exports.syncSalary = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
