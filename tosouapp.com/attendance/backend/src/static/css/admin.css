@@ -2558,7 +2558,8 @@ body.drawer-open.admin.has-sidebar .content {
   body.drawer-open.admin .subbar,
   body.drawer-open.admin.has-sidebar #adminChrome+.content,
   body.drawer-open.admin.has-sidebar .content {
-    transform: none !important;
+    transform: translateX(var(--drawer-offset, 280px)) !important;
+    transition: transform .2s ease;
   }
 
   .admin .content {
