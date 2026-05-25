@@ -205,6 +205,8 @@ module.exports = {
       while (tmp.getUTCDay() !== 6) {
         tmp.setUTCDate(tmp.getUTCDate() + 1);
       }
+      // Tính toán ngày Thứ 7 của tuần thứ 4 trong tháng
+      // tmp hiện tại là Thứ 7 tuần 1, cộng thêm 21 ngày (3 tuần) sẽ ra Thứ 7 tuần 4
       tmp.setUTCDate(tmp.getUTCDate() + 21); // 4th Saturday
       const ds = ymd(tmp);
       lastSaturdays.push(ds);
