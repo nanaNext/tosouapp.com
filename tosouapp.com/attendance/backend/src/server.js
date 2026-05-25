@@ -1,10 +1,15 @@
-// Auto Database Backup Cron
+// File khởi chạy máy chủ (Server Entry Point)
+// Chứa cấu hình Port và các tính năng chạy ngầm (Cron Jobs)
+
+// Auto Database Backup Cron - Tự động sao lưu dữ liệu MySQL
 const { initBackupCronJob } = require('./cron/dbBackupCron');
 
 const app = require('./app');
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const disableSchedulers = String(process.env.DISABLE_SCHEDULERS || '').toLowerCase() === 'true';
+
+// Hàm tự động cấp phép ngày nghỉ (Leave Grants) cho nhân viên
 function initAutoGrantScheduler() {
   try {
     const userRepo = require('./modules/users/user.repository');
@@ -52,12 +57,13 @@ async function start() {
       const shownHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
       console.log(`Server is running at http://${shownHost}:${PORT} (bind ${HOST})`);
     });
+    // Khởi tạo các tác vụ chạy ngầm nếu không bị vô hiệu hóa
     if (!disableSchedulers) {
-      initAutoGrantScheduler();
-      initShiftReminders();
+      initAutoGrantScheduler(); // Cấp ngày nghỉ tự động
+      initShiftReminders();     // Gửi email nhắc nhở/báo cáo chấm công
     }
 
-    // Initialize backup cron job
+    // Initialize backup cron job - Tự động sao lưu Database (chỉ chạy trên Production)
     if (process.env.NODE_ENV === 'production') {
         initBackupCronJob();
     }
