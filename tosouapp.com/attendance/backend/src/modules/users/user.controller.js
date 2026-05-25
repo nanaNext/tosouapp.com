@@ -2,6 +2,7 @@ const repo = require('./user.repository');
 const bcrypt = require('bcrypt');
 const { bcryptRounds } = require('../../config/env');
 // Controller quản trị người dùng
+// API: Lấy danh sách tất cả nhân viên
 exports.list = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -33,6 +34,7 @@ exports.list = async (req, res) => {
 };
 const authRepo = require('../auth/auth.repository');
 const refreshRepo = require('../auth/refresh.repository');
+// API: Tạo mới một tài khoản nhân viên
 exports.create = async (req, res) => {
   try {
     const { employeeCode, username, email, password, role, departmentId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId } = req.body || {};
@@ -56,6 +58,7 @@ exports.create = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Cập nhật thông tin nhân viên (dành cho Admin)
 exports.update = async (req, res) => {
   try {
     const id = req.params.id;
@@ -107,6 +110,7 @@ exports.update = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Vô hiệu hóa (xóa mềm) tài khoản nhân viên
 exports.remove = async (req, res) => {
   try {
     const id = req.params.id;
@@ -117,6 +121,7 @@ exports.remove = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Thay đổi phân quyền của nhân viên (Ví dụ: Từ nhân viên lên Quản lý)
 exports.setRole = async (req, res) => {
   try {
     const id = req.params.id;
@@ -129,6 +134,7 @@ exports.setRole = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Thay đổi phòng ban của nhân viên
 exports.setDepartment = async (req, res) => {
   try {
     const id = req.params.id;
@@ -140,6 +146,7 @@ exports.setDepartment = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: Cài đặt lại mật khẩu cho nhân viên (dành cho Admin)
 exports.setPassword = async (req, res) => {
   try {
     const id = req.params.id;
@@ -155,6 +162,7 @@ exports.setPassword = async (req, res) => {
   }
 };
 
+// API: Lấy thông tin tài khoản của chính mình (My Profile)
 exports.meSelf = async (req, res) => {
   try {
     const id = req.user?.id;
@@ -167,6 +175,7 @@ exports.meSelf = async (req, res) => {
   }
 };
 
+// API: Nhân viên tự cập nhật thông tin cá nhân của mình
 exports.updateMe = async (req, res) => {
   try {
     const id = req.user?.id;
