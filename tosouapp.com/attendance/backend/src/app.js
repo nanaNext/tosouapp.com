@@ -1,16 +1,19 @@
+// File này cấu hình toàn bộ ứng dụng Express (Middleware, Routes, Security, File tĩnh)
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
-require('./config/loadEnv');
+require('./config/loadEnv'); // Tải các biến môi trường từ file .env
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
-const { cors } = require('./core/middleware/cors');
+const { cors } = require('./core/middleware/cors'); // Cấu hình CORS (Cho phép domain nào được truy cập)
 const cookieParser = require('cookie-parser');
-const security = require('./core/middleware/security');
+const security = require('./core/middleware/security'); // Cấu hình bảo mật
 
 const app = express();
+
+// Hàm lấy ID của bản build hiện tại (dùng để quản lý version cache)
 function resolveBuildId() {
   const explicit = String(process.env.BUILD_ID || process.env.APP_BUILD_ID || process.env.GIT_COMMIT || '').trim();
   if (explicit) return explicit;
