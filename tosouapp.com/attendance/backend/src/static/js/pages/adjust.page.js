@@ -104,6 +104,7 @@ const wireDrawer = () => {
   if (!btn || !drawer || !backdrop) return;
   if (btn.dataset.bound === '1') return;
   btn.dataset.bound = '1';
+
   const close = () => {
     try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch { }
     try { document.body.classList.remove('drawer-open'); } catch { }
@@ -402,6 +403,8 @@ const renderList = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  wireUserMenu();
+  wireDrawer();
   prefillUserName();
   try {
     const profile = await fetchJSONAuth('/api/auth/me');
@@ -418,8 +421,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.replace('/ui/login');
     return;
   }
-  wireUserMenu();
-  wireDrawer();
   await renderForm();
   await renderList();
 });

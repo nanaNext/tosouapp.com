@@ -102,6 +102,8 @@ function wireDrawer() {
   const close = $('#mobileClose');
   const backdrop = $('#drawerBackdrop');
   if (!btn || !drawer) return;
+  if (btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
   const open = () => {
     drawer.removeAttribute('hidden');
     btn.setAttribute('aria-expanded', 'true');
