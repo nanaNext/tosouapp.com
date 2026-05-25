@@ -339,7 +339,7 @@ const render = async () => {
       body.drawer-open .topbar,
       body.drawer-open .subbar,
       body.drawer-open .content{
-        transform: translateX(var(--drawer-offset, 280px)) !important;
+        transform: none !important;
       }
       body.drawer-open{
         overflow: hidden;
