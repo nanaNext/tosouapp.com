@@ -523,4 +523,5 @@ async function computePayslips(userIds, month) {
   return { employees };
 }
 
+// Dịch vụ tính toán Lương & Phiếu lương (Payslip)
 module.exports = { computePayslips, computePayslipForUser };
