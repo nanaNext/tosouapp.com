@@ -1,3 +1,5 @@
+// File tiện ích (Utility): Xử lý ngày bắt đầu vào làm việc của nhân viên
+
 function normalizeDateInput(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
