@@ -124,22 +124,22 @@ async function processReminders() {
       // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
       if (user.employment_type === 'part_time') continue;
 
-      const isKoujiUser = String(user.departmentName || '').includes('工事部');
-      
-      // Determine if today is considered an off day for this specific user
-      let isUserOffDay = false;
-      
-      if (!isKoujiUser) {
-        // Normal user: off on Sundays and Red Days
-        isUserOffDay = isSunday || isRedDay;
-      } else {
-        // Kouji User: specific policy logic
-        const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
-        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_4th');
-        const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
-        
-        isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
-      }
+      // Kiểm tra xem có phải là nhân viên bộ phận Công trình (Koujibu) hay không
+        const isKoujiUser = String(user.departmentName || '').includes('工事部');
+
+        // Determine if today is considered an off day for this specific user
+        let isUserOffDay = false;
+
+        if (!isKoujiUser) {
+          // Normal user: off on Sundays and Red Days (Nhân viên thường: Nghỉ Chủ nhật và các ngày lễ)
+          isUserOffDay = isSunday || isRedDay;
+        } else {
+          // Kouji User: specific policy logic (Nhân viên Công trình: Nghỉ Chủ nhật, Thứ 7 tuần 4, và các ngày lễ)
+          const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
+          const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_4th');
+          const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
+          isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
+        }
       
       const userKubun = dailyMap.get(userId) || '';
       const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
@@ -402,6 +402,7 @@ async function checkMonthlyMissingAttendance() {
       // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
       if (user.employment_type === 'part_time') continue;
       
+      // Kiểm tra xem có phải là nhân viên bộ phận Công trình (Koujibu) hay không
       const isKoujiUser = String(user.departmentName || '').includes('工事部');
 
       const cacheKey = `monthly_missing_${userId}_${monthStr}`;
@@ -418,8 +419,10 @@ async function checkMonthlyMissingAttendance() {
         let isUserOffDay = false;
 
         if (!isKoujiUser) {
+          // Nhân viên thường: Nghỉ chủ nhật, ngày lễ (redDays) hoặc ngày nghỉ công ty (offDays)
           isUserOffDay = isSunday || redDays.has(ds) || offDays.has(ds);
         } else {
+          // Nhân viên bộ phận Công trình (Koujibu): Có quy tắc ngày nghỉ riêng (Nghỉ thứ 7 tuần 4)
           const detail = explanations.get(ds) || [];
           const hasSundayReason = detail.some(x => x.is_off && x.type === 'sunday');
           const hasLastSaturdayReason = detail.some(x => x.is_off && x.type === 'saturday_4th');

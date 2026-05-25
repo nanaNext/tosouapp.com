@@ -756,22 +756,15 @@ body:not(.admin) .topbar-inner .user #userName {
 
 /* Mobile drawer: push page right so menu button/topbar stays visible. */
 @media (max-width: 480px) {
-  body.drawer-open .topbar,
-  body.drawer-open .subbar,
-  body.drawer-open .content {
-    transform: translateX(var(--drawer-offset, 280px)) !important;
-    transition: transform .18s ease;
-  }
-  body.drawer-open .mobile-btn {
-    display: block !important;
-    position: fixed !important;
-    left: calc(var(--drawer-offset, 280px) + 12px) !important;
-    top: 8px !important;
-    z-index: 1405 !important;
-  }
-  body.drawer-open {
-    overflow: hidden;
-    touch-action: none;
+    body.drawer-open .topbar,
+    body.drawer-open .subbar,
+    body.drawer-open .content {
+      transform: translateX(var(--drawer-offset, 280px)) !important;
+      transition: transform .18s ease;
+    }
+    body.drawer-open {
+      overflow: hidden;
+      touch-action: none;
     overscroll-behavior: none;
   }
 }
