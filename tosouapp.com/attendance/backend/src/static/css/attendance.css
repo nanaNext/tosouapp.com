@@ -645,24 +645,28 @@ body.nav-js .kintai-nav-dd.open .kintai-dd {
   body.mobile-drawer-open .kintai-brand,
   body.mobile-drawer-open .kintai-user,
   body.mobile-drawer-open .kintai-top-links {
-    transform: none !important;
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
   }
 
   body.mobile-drawer-open .kintai-main,
   body.mobile-drawer-open .layout-main,
   body.mobile-drawer-open .layout-contents {
-    transform: none !important;
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
   }
 
   body.mobile-drawer-open .layout-container,
   body.mobile-drawer-open .se-month-table-wrap,
   body.mobile-drawer-open .se-month-scroll {
-    transform: none !important;
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
   }
 
   /* Đảm bảo đẩy toàn bộ trang sang phải trên mọi màn hình kintai */
   body.mobile-drawer-open> :not(#mobileDrawer):not(#mobileDrawerBackdrop) {
-    transform: none !important;
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
   }
 
   .mobile-drawer-header {
