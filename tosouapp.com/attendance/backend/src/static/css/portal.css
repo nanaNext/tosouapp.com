@@ -759,15 +759,10 @@ body:not(.admin) .topbar-inner .user #userName {
   body.drawer-open .topbar,
   body.drawer-open .subbar,
   body.drawer-open .content {
-    transform: translateX(var(--drawer-offset, 280px)) !important;
-    transition: transform .18s ease;
+    transform: none !important;
   }
   body.drawer-open .mobile-btn {
-    display: block !important;
-    position: fixed !important;
-    left: calc(var(--drawer-offset, 280px) + 12px) !important;
-    top: 8px !important;
-    z-index: 1405 !important;
+    display: none !important;
   }
   body.drawer-open {
     overflow: hidden;
