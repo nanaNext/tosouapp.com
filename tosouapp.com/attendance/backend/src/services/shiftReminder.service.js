@@ -805,12 +805,17 @@ function init() {
     checkDailyMissingAttendance();
   }, { timezone: 'Asia/Tokyo' });
 
-  // Monthly missing check: run at 12:00 JST on the 25th of every month
-  cron.schedule('0 12 25 * *', () => {
-    checkMonthlyMissingAttendance();
+  // Monthly missing check: run at 23:30 JST on the last day of every month
+  cron.schedule('30 23 28-31 * *', () => {
+    const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
+    const tomorrowJST = new Date(nowJST.getTime() + 24 * 3600 * 1000);
+    // If tomorrow is the 1st, then today is the last day of the month
+    if (tomorrowJST.getUTCDate() === 1) {
+      checkMonthlyMissingAttendance();
+    }
   }, { timezone: 'Asia/Tokyo' });
 
-  console.log('[ShiftReminder] Cron job initialized (runs every minute). Daily at 23:00 JST, Monthly on 25th 12:00 JST.');
+  console.log('[ShiftReminder] Cron job initialized (runs every minute). Daily at 23:00 JST, Monthly on last day 23:30 JST.');
   return true;
 }
 
