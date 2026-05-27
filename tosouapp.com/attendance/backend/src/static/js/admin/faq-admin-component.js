@@ -31,7 +31,7 @@ export class FaqAdminComponent {
     const answered = this.allQuestions.filter(q => q.status === '回答済み');
 
     const html = `
-      <div style="max-width:1200px;margin:0 auto;">
+      <div style="max-width:1200px;margin:0;">
         <!-- Stats -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;">
           <div style="background:#f0f9ff;padding:20px;border-left:4px solid #1e40af;border-radius:4px;">
