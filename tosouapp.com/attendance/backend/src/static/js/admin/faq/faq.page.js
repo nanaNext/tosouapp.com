@@ -14,7 +14,6 @@ export async function mount() {
   host.className = 'card';
   host.innerHTML = `
     <div style="padding: 20px;">
-      <h1 style="margin: 0 0 20px 0; font-size: 24px; font-weight: bold;">FAQ管理</h1>
       <div id="faqAdminContainer"></div>
     </div>
   `;
