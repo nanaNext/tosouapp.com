@@ -28,6 +28,7 @@ Hệ thống chấm công dành cho công ty Nhật, hỗ trợ quản lý thờ
    ```
 3. Tạo file `.env` dựa trên `config/env.js` (không commit file `.env`).
    - Biến tối thiểu: `PORT`, `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `JWT_SECRET`
+   - Biến tối ưu hiệu năng (tùy chọn): `DB_CONN_LIMIT` (Mặc định: 200, giúp hệ thống chịu tải tốt hơn khi có hàng ngàn user).
    - Có thể tách môi trường bằng các file: `.env.staging`, `.env.production` và dùng `APP_ENV` để chọn.
    - Xem hướng dẫn: `docs/environments.md`
 4. Khởi động database (MySQL) và điền thông tin kết nối.
