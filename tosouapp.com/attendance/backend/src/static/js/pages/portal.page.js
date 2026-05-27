@@ -201,7 +201,7 @@ const renderEmployeeNoticeBell = () => {
       if (s.includes('有休') || s.includes('休暇')) return '/ui/requests';
       if (s.includes('交通費')) return '/ui/expenses';
       if (s.includes('時間修正') || s.includes('調整')) return '/ui/adjust';
-      if (s.includes('FAQ') || s.includes('質問')) return '/ui/chatbot';
+      if (s.includes('FAQ') || s.includes('質問')) return '/ui/faq';
       return '/ui/portal';
     };
     const normalizeLink = (v) => {
@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const EXP_PATH = '/ui/expenses';
     const CONTACT_PATH = '/ui/contact';
     const HOME_PATH = '/ui/portal';
-    const CHATBOT_PATH = '/ui/chatbot';
+    const CHATBOT_PATH = '/ui/faq';
     const SOFT_PATHS = new Set([CONTACT_PATH, HOME_PATH, REQ_PATH, EXP_PATH, CHATBOT_PATH]);
     let pjaxNavInFlight = false;
     const main = document.querySelector('main.content');
@@ -864,7 +864,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </a>
         </div>
         <div class="emp-tiles-2">
-          <a class="tile emp-wide" href="/ui/chatbot">
+          <a class="tile emp-wide" href="/ui/faq">
             <div class="icon">💬</div>
             <div class="title">エンジニア<br>サポートセンター</div>
             <div class="arrow">›</div>
@@ -902,7 +902,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       { key: 'tokens', title: 'トークン管理', icon: '🔑', href: '/ui/admin?tab=refresh', desc: 'Token control', adminOnly: true, prio: 64 },
       { key: 'api', title: 'API一覧', icon: '🔗', href: '/ui/admin?tab=routes', desc: 'API list', adminOnly: true, prio: 66 },
       { key: 'contacts', title: 'お問い合わせ先', icon: '☎', href: '/ui/contact', desc: 'Contacts', prio: 80 },
-      { key: 'help', title: 'サポート', icon: '💬', href: '/ui/chatbot', desc: 'Help center', prio: 82 },
+      { key: 'help', title: 'サポート', icon: '💬', href: '/ui/faq', desc: 'Help center', prio: 82 },
       { key: 'profile', title: 'プロフィール', icon: '👤', href: '/ui/dashboard', desc: 'Profile overview', prio: 90 }
     ];
     const items = cfg
@@ -964,6 +964,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
+  
   const drawerEl = document.querySelector('#mobileDrawer');
   if (drawerEl) {
     drawerEl.addEventListener('click', async (e) => {
