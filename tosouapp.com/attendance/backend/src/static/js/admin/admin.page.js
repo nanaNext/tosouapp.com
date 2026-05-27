@@ -726,9 +726,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/faq' || p2.indexOf('/admin/chatbot/faq') === 0) {
-      const mod = await loadModule('./chatbot/faq.page.js');
-      if (seq !== routeSeq) return;
-      await mountModule(mod);
+      window.location.href = '/ui/admin-faq';
       return;
     }
     // Do not fallback to legacy admin bootstrap; it causes mixed old/new
