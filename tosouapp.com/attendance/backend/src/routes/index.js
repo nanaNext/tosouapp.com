@@ -1,6 +1,8 @@
+// File đăng ký (mount) tất cả các đường dẫn API của hệ thống
 const express = require('express');
 const router = express.Router();
 
+// Nhập (import) các file chứa đường dẫn API của từng tính năng
 const authRoutes = require('../modules/auth/auth.routes');
 const attendanceRoutes = require('../modules/attendance/attendance.routes');
 const leaveRoutes = require('../modules/leave/leave.routes');
@@ -14,7 +16,6 @@ const db = require('../core/database/mysql');
 const payslipRoutes = require('../modules/payslip/payslip.routes');
 const { authenticate, authorize } = require('../core/middleware/authMiddleware');
 const employeeRoutes = require('../modules/employee/employee.routes');
-const chatbotRoutes = require('../modules/chatbot/chatbot.routes');
 const workReportsRoutes = require('../modules/workReports/workReports.routes');
 const workReportsAdminRoutes = require('../modules/workReports/workReports.admin.routes');
 const noticesRoutes = require('../modules/notices/notices.routes');
@@ -29,9 +30,13 @@ const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process
 
 module.exports = function(app) {
   console.log('Mounting API routes...');
+  
+  // Điều hướng người dùng vào trang chủ khi truy cập trang gốc
   app.get('/', (req, res) => {
     return res.redirect(302, '/ui/portal');
   });
+
+  // API kiểm tra tình trạng kết nối Database
   app.get('/health', async (req, res) => {
     try {
       const conn = await db.getConnection();
@@ -66,32 +71,35 @@ module.exports = function(app) {
     }
   });
   console.log('Registering routers: auth, attendance, leave, adjust, manager, admin, me, users, salary, payslips');
-  app.use('/api/auth', authRoutes);
-  app.use('/api/attendance', attendanceRoutes);
+  // ------------------------------------------------------------------------
+  // ĐĂNG KÝ CÁC ĐƯỜNG DẪN API CHO TỪNG MODULE
+  // ------------------------------------------------------------------------
+  app.use('/api/auth', authRoutes); // Đăng nhập, đăng xuất
+  app.use('/api/attendance', attendanceRoutes); // Chấm công
   try {
     const attendanceController = require('../modules/attendance/attendance.controller');
     app.get('/api/attendance/month/export.xlsx', authenticate, authorize('employee','manager','admin','payroll'), attendanceController.exportMonthXlsx);
   } catch {}
-  app.use('/api/leave', leaveRoutes);
+  app.use('/api/leave', leaveRoutes); // Nghỉ phép
   console.log('🔧 About to mount /api/adjust routes');
-  app.use('/api/adjust', adjustRoutes);
+  app.use('/api/adjust', adjustRoutes); // Điều chỉnh chấm công
   console.log('✅ /api/adjust routes mounted successfully');
-  app.use('/api/manager', managerRoutes);
-  app.use('/api/admin', adminRoutes);
-  app.use('/api/me', meRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/salary', salaryRoutes);
-  app.use('/api/payslips', payslipRoutes);
-  app.use('/api/employee', employeeRoutes);
-  app.use('/api/chatbot', chatbotRoutes);
-  app.use('/api/work-reports', workReportsRoutes);
-  app.use('/api/admin/work-reports', workReportsAdminRoutes);
-  app.use('/api/notices', noticesRoutes);
-  app.use('/api/expenses', expensesRoutes);
+  app.use('/api/manager', managerRoutes); // Dành cho quản lý
+  app.use('/api/admin', adminRoutes); // Dành cho Admin
+  app.use('/api/me', meRoutes); // Thông tin cá nhân
+  app.use('/api/users', userRoutes); // Quản lý nhân viên
+  app.use('/api/salary', salaryRoutes); // Lương
+  app.use('/api/payslips', payslipRoutes); // Phiếu lương
+  app.use('/api/employee', employeeRoutes); // Dành cho nhân viên
+  app.use('/api/work-reports', workReportsRoutes); // Báo cáo công việc
+  app.use('/api/admin/work-reports', workReportsAdminRoutes); // Quản lý báo cáo công việc
+  app.use('/api/notices', noticesRoutes); // Thông báo
+  app.use('/api/expenses', expensesRoutes); // Chi phí
   const stationsRoutes = require('../modules/stations/stations.routes');
-  app.use('/api/stations', stationsRoutes);  app.use('/api/webauthn', webauthnRoutes);
-  app.use('/api/requests', requestsRoutes);
-  app.use('/api/faq', faqRoutes);
+  app.use('/api/stations', stationsRoutes); // Trạm tàu/xe
+  app.use('/api/webauthn', webauthnRoutes); // Đăng nhập sinh trắc học
+  app.use('/api/requests', requestsRoutes); // Quản lý các loại yêu cầu
+  app.use('/api/faq', faqRoutes); // Hỏi đáp (FAQ)
 
   // TEMP TEST ROUTE FOR EMAIL
   app.get('/api/test-mail', async (req, res) => {

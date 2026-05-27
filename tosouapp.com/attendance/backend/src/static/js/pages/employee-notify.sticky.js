@@ -137,7 +137,7 @@ function inferLinkFromMessage(msg) {
   if (s.includes('有休') || s.includes('休暇')) return '/ui/requests';
   if (s.includes('交通費')) return '/ui/expenses';
   if (s.includes('時間修正') || s.includes('調整')) return '/ui/adjust';
-  if (s.includes('FAQ') || s.includes('質問')) return '/ui/chatbot';
+  if (s.includes('FAQ') || s.includes('質問')) return '/ui/faq';
   return '/ui/attendance';
 }
 function normalizeLink(v) {

@@ -153,7 +153,7 @@ router.get('/ui/leave', (req, res) => {
 router.get('/ui/leave-ledger', sendPage('leave-ledger.html'));
 router.get('/ui/requests', sendPage('requests.html'));
 router.get('/ui/salary', sendPage('salary.html'));
-router.get('/ui/chatbot', sendPage('chatbot.html'));
+router.get('/ui/chatbot', (req, res) => res.redirect('/ui/faq')); // Redirect old chatbot links to FAQ
 router.get('/ui/change-password', sendPage('change-password.html'));
 router.get('/ui/manual', sendPage('manual.html'));
 router.get('/ui/faq', sendPageNoCache('faq.html'));
