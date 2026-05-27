@@ -1317,7 +1317,7 @@ const render = async () => {
       <div class="exp-dash-kpi-card ${c.cls}">
         <div class="head">
           <div class="icon">${esc(c.ico)}</div>
-          <div class="t">${esc(c.title)}</div>
+          <div class="t" style="font-size:14px; font-weight:normal;">${esc(c.title)}</div>
         </div>
         <div class="v">${esc(c.value)}</div>
         <div class="s">${esc(c.sub)}</div>
