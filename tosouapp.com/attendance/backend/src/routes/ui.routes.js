@@ -143,6 +143,7 @@ router.get('/admin/employees/monthly-summary', (req, res) => sendAdminPageNoCach
 router.get('/admin/employees/monthly-summary/', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
 router.get('/admin/attendance/adjust-requests', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
 router.get('/admin/attendance/adjust-requests/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
+router.get('/ui/admin-faq', authenticateFromCookie, authorizePage('admin', 'manager'), (req, res) => res.redirect(302, '/admin/chatbot/faq'));
 router.get('/admin/faq', authenticateFromCookie, authorizePage('admin', 'manager'), (req, res) => res.redirect(302, '/admin/chatbot/faq'));
 router.get(/^\/admin(?:\/.*)?$/, (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
 
