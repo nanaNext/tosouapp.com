@@ -228,6 +228,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   wireDrawer();
 
   try {
+    const box = document.querySelector('.topbar-inner .search');
+    if (box && box.dataset.bound !== '1') {
+      box.dataset.bound = '1';
+      const input = box.querySelector('input[type="search"]');
+      const closeBtn = box.querySelector('.search-close');
+      const hint = box.querySelector('.search-hint');
+      const open = () => { box.classList.add('active'); try { input?.focus(); input?.select(); } catch {} };
+      const close = () => { box.classList.remove('active'); try { input?.blur(); } catch {} };
+      if (input) input.addEventListener('focus', open);
+      if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
+      if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') return close();
+        const isCtrlK = (e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey);
+        const isPlainK = (e.key === 'k' || e.key === 'K') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey;
+        if (isCtrlK || isPlainK) {
+          const t = e.target;
+          const tag = t?.tagName?.toLowerCase() || '';
+          const editable = t?.isContentEditable || ['input', 'textarea', 'select'].includes(tag);
+          if (editable && !isCtrlK) return;
+          e.preventDefault();
+          open();
+        }
+      });
+      document.addEventListener('click', (e) => {
+        if (!box.classList.contains('active')) return;
+        if (e.target?.closest?.('.topbar-inner .search')) return;
+        close();
+      });
+    }
+  } catch {}
+
+  try {
     const profile = await ensureAuthProfile();
     if (!profile) {
       hideSpinner();
