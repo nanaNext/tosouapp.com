@@ -2,15 +2,15 @@ import { logout } from '../../api/auth.api.js';
 
 let _topbarH = 64;
 let _raf = null;
-let _measureDisabled = false;
 
 export const isMobile = () => (typeof window !== 'undefined') && window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
 
 export function setTopbarHeightVar() {
   try {
-    if (_measureDisabled || document.body.classList.contains('drawer-open') || isMobile()) return;
+    if (document.body.classList.contains('drawer-open') || isMobile()) return;
     const topbar = document.querySelector('.topbar');
     if (!topbar) return;
+    document.documentElement.style.removeProperty('--topbar-height');
     const rect = topbar.getBoundingClientRect();
     let h = Math.round(rect && rect.height ? rect.height : 64);
     if (!(h > 40 && h < 200)) {
@@ -25,7 +25,11 @@ export function setTopbarHeightVar() {
 }
 
 export function scheduleTopbarMeasure() {
-  if (_measureDisabled || document.body.classList.contains('drawer-open') || isMobile()) return;
+  if (document.body.classList.contains('drawer-open')) return;
+  if (isMobile()) {
+    document.documentElement.style.removeProperty('--topbar-height');
+    return;
+  }
   if (_raf) return;
   _raf = requestAnimationFrame(() => {
     _raf = null;
@@ -37,15 +41,7 @@ export function initLayout() {
   const isAdminLayout = () => {
     try { return document.body.classList.contains('admin'); } catch { return false; }
   };
-  if (isMobile()) {
-    _measureDisabled = true;
-    try {
-      const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-height')) || 56;
-      document.documentElement.style.setProperty('--topbar-height', `${Math.min(120, Math.max(48, cur))}px`);
-    } catch { }
-  } else {
-    scheduleTopbarMeasure();
-  }
+  scheduleTopbarMeasure();
   window.addEventListener('resize', scheduleTopbarMeasure);
   try {
     const tb = document.querySelector('.topbar');
@@ -82,6 +78,7 @@ export function initLayout() {
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
         try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch { }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch {}
         window.location.replace('/ui/login');
       });
     }
@@ -293,11 +290,12 @@ export function initLayout() {
     });
   }
 
-  // Mobile Drawer
-  const mobileBtn = document.querySelector('#mobileMenuBtn');
+  // Wire Mobile Drawer
+  const mobileMenuBtn = document.querySelector('#mobileMenuBtn');
   const mobileDrawer = document.querySelector('#mobileDrawer');
   const mobileClose = document.querySelector('#mobileClose');
   const mobileBackdrop = document.querySelector('#drawerBackdrop');
+  const mobileSettingsLink = document.querySelector('#mobileSettingsLink');
   const normalizeDrawerState = () => {
     try {
       const desktop = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(min-width: 481px)').matches;
@@ -306,39 +304,40 @@ export function initLayout() {
         document.body.classList.remove('drawer-open');
         if (mobileDrawer) mobileDrawer.setAttribute('hidden', '');
         if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
-        if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'false');
+        if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'false');
       }
     } catch {}
   };
   normalizeDrawerState();
-  if (mobileBtn && mobileDrawer) {
+  if (mobileMenuBtn && mobileDrawer) {
     const toggleDrawer = (open) => {
       const isHidden = mobileDrawer.hasAttribute('hidden');
       const shouldOpen = typeof open === 'boolean' ? open : isHidden;
       if (shouldOpen) {
         mobileDrawer.removeAttribute('hidden');
-        mobileBtn.setAttribute('aria-expanded', 'true');
+        mobileMenuBtn.setAttribute('aria-expanded', 'true');
         try {
           const w = Math.round(mobileDrawer.getBoundingClientRect().width || 280);
           document.documentElement.style.setProperty('--drawer-offset', `${w}px`);
           document.body.classList.add('drawer-open');
         } catch { }
         if (mobileBackdrop) { mobileBackdrop.removeAttribute('hidden'); }
+        // Admin URL dynamic fix removed, using change-password for all users
       } else {
         mobileDrawer.setAttribute('hidden', '');
-        mobileBtn.setAttribute('aria-expanded', 'false');
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
         document.body.classList.remove('drawer-open');
         if (mobileBackdrop) { mobileBackdrop.setAttribute('hidden', ''); }
       }
     };
-    mobileBtn.addEventListener('click', () => toggleDrawer());
+    mobileMenuBtn.addEventListener('click', () => toggleDrawer());
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
   }
   if (mobileBackdrop) mobileBackdrop.addEventListener('click', () => {
     try {
       if (mobileDrawer) mobileDrawer.setAttribute('hidden', '');
       mobileBackdrop.setAttribute('hidden', '');
-      if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'false');
+      if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'false');
       document.body.classList.remove('drawer-open');
     } catch {}
   });
@@ -447,15 +446,7 @@ export function initLayout() {
     });
   }
 
-  // Re-check mobile sizing
-  if (isMobile()) {
-    _measureDisabled = true;
-    try { window.removeEventListener('resize', scheduleTopbarMeasure); } catch { }
-    document.documentElement.style.setProperty('--topbar-height', `${Math.min(60, Math.max(48, _topbarH))}px`);
-  } else {
-    _measureDisabled = false;
-    try { window.addEventListener('resize', scheduleTopbarMeasure); } catch { }
-  }
+  // Re-check mobile sizing removed to allow dynamic switching
 }
 
 export function setSidebarActive(t) {

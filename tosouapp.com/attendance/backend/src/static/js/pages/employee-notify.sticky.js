@@ -428,7 +428,7 @@ async function softNavigateLocal(url, push = true) {
       } catch { }
     } else if (url.pathname === EXP_PATH) {
       try {
-        const mod = await import('/static/js/pages/expenses.page.js');
+        const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
         if (mod && typeof mod.bootExpensesPage === 'function') await mod.bootExpensesPage();
       } catch { }
     }

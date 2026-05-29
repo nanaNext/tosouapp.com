@@ -174,7 +174,7 @@ async function ensureModuleTables() {
   const adjustRepo = require('../modules/adjust/adjust.repository');
   const expensesRepo = require('../modules/expenses/expenses.repository');
   const stationsRepo = require('../modules/stations/stations.repository');
-  const expenseTypesRepo = require('../modules/expenses/expenseTypes.repository');  const chatbotRepo = require('../modules/chatbot/chatbot.repository');
+  const expenseTypesRepo = require('../modules/expenses/expenseTypes.repository');
   const salaryRepo = require('../modules/salary/salary.repository');
   const requestsRepo = require('../modules/requests/requests.repository');
   const webauthnRepo = require('../modules/webauthn/webauthn.repository');
@@ -200,9 +200,6 @@ async function ensureModuleTables() {
   await requestsRepo.ensureTable();  await faqRepo.ensureTable();
   try {
     await faqRepo.seedIfEmpty();
-    await chatbotRepo.init();
-    await chatbotRepo.ensureSeedCategories();
-    await chatbotRepo.ensureSeedFaqs();
   } catch {}
   try {
     await salaryRepo.listHistory({ page: 1, pageSize: 1 });

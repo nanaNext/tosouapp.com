@@ -162,7 +162,7 @@ router.get('/ui/contact', sendPage('contact.html'));
 router.get('/contact', sendPage('contact.html'));
 router.get('/faq-test', authenticateFromCookie, authorizePage('admin', 'manager'), sendPage('faq-test.html'));
 // React SPA entry (built by Vite to /static/react-app)
-router.get('/ui/app', (req, res) => {
+router.get(/^\/ui\/app(?:\/.*)?$/, (req, res) => {
   const p = path.join(__dirname, '..', 'static', 'react-app', 'index.html');
   return res.sendFile(p);
 });

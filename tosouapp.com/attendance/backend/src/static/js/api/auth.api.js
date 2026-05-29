@@ -103,6 +103,18 @@ export async function logout() {
     credentials: 'include',
     body: JSON.stringify({})
   }, 15000);
+// Mục đích của hàm này là để đăng xuất người dùng
+// Hàm này là sẽ xóa tất cả các token và thông tin người dùng từ sessionStorage và localStorage
+// Sau đó nó sẽ lưu lại một sự kiện đăng xuất vào localStorage
+  try {
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    localStorage.setItem('auth-logout-event', Date.now());
+  } catch {}
+
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

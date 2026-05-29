@@ -218,20 +218,20 @@ body:not(.admin) .page-spinner {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-body:not(.admin) .topbar,
-body:not(.admin) .topbar-inner,
-body:not(.admin) .subbar,
-body:not(.admin) .subbar .subnav,
-body:not(.admin) .topbar-inner .search,
-body:not(.admin) .topbar-inner .search input,
-body:not(.admin) .topbar-inner .search.active,
-body:not(.admin) .topbar-inner .search.active input,
-body:not(.admin) .content {
+body:not(.admin):not(.drawer-open) .topbar,
+body:not(.admin):not(.drawer-open) .topbar-inner,
+body:not(.admin):not(.drawer-open) .subbar,
+body:not(.admin):not(.drawer-open) .subbar .subnav,
+body:not(.admin):not(.drawer-open) .topbar-inner .search,
+body:not(.admin):not(.drawer-open) .topbar-inner .search input,
+body:not(.admin):not(.drawer-open) .topbar-inner .search.active,
+body:not(.admin):not(.drawer-open) .topbar-inner .search.active input,
+body:not(.admin):not(.drawer-open) .content {
   transition: none !important;
   animation: none !important;
 }
-body:not(.admin) .topbar *,
-body:not(.admin) .subbar * {
+body:not(.admin):not(.drawer-open) .topbar *,
+body:not(.admin):not(.drawer-open) .subbar * {
   transition: none !important;
   animation: none !important;
 }
@@ -241,7 +241,7 @@ html {
 body:not(.admin) {
   overflow-y: scroll;
 }
-body:not(.admin) .topbar {
+body:not(.admin):not(.drawer-open) .topbar {
   will-change: auto !important;
   transform: none !important;
 }
@@ -2605,7 +2605,7 @@ body:not(.admin) .topbar-inner .user #userName {
     display: none !important;
   }
   body:not(.admin) .subbar + .content {
-    padding-top: calc(var(--topbar-height) + 10px) !important;
+    padding-top: calc(var(--topbar-height) + 2px) !important;
   }
 }
 

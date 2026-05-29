@@ -350,6 +350,89 @@ router.post('/months/start',
     }
   }
 );
+
+router.post('/months/delete',
+  rateLimitNamed('expenses_delete_month', { windowMs: 60_000, max: 10 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.body?.month || '').slice(0,7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
+      // Call the repository function
+      const ok = await repo.deleteMonth(req.user.id, month);
+      if (!ok) return res.status(404).json({ message: 'Month not found or cannot be deleted' });
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.get('/months/my',
+  rateLimitNamed('expenses_my_months', { windowMs: 60_000, max: 30 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const rows = await repo.listMonths(req.user.id);
+      res.status(200).json(rows || []);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.get('/months/profile',
+  rateLimitNamed('expenses_month_profile_get', { windowMs: 60_000, max: 30 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.query.month || '').slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
+      const row = await repo.getMonthProfile(req.user.id, month);
+      if (!row) return res.status(404).json({ message: 'Not found' });
+      res.status(200).json(row);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.post('/months/profile',
+  rateLimitNamed('expenses_month_profile_post', { windowMs: 60_000, max: 10 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const b = req.body || {};
+      const row = await repo.upsertMonthProfile({
+        userId: req.user.id,
+        month: b.month,
+        employeeName: b.employeeName,
+        employeeCode: b.employeeCode,
+        birthDate: b.birthDate,
+        startDate: b.startDate
+      });
+      res.status(200).json(row);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.post('/months/apply',
+  rateLimitNamed('expenses_apply_month', { windowMs: 60_000, max: 10 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.body?.month || '').slice(0,7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
+      const ok = await repo.applyMonth(req.user.id, month);
+      if (!ok) return res.status(404).json({ message: 'Month not found or cannot be applied' });
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 router.get('/months/applied',
   rateLimitNamed('expenses_latest_applied_month', { windowMs: 60_000, max: 30 }),
   authorize('employee','manager','admin'),
