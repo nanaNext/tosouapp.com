@@ -2959,7 +2959,7 @@ const render = async () => {
               </div>
               <div class="exp-claim-actions" style="margin-top: 12px;">
                 <label class="exp-claim-meta"><input class="exp-claim-check group-check" type="checkbox" data-group-id="${groupId}" ${isGroupChecked ? 'checked' : ''}>全件選択</label>
-                <button class="btn exp-admin-btn-secondary" data-action="toggle-group" data-target="${groupId}" type="button" style="height:30px;">明細を見る (${group.count})</button>
+                <button class="btn exp-admin-btn-secondary" data-action="toggle-group" data-target="${groupId}" type="button" style="height:30px;">詳細 (${group.count})</button>
                 ${stLower === 'applied' ? `<button class="btn exp-admin-btn-primary" data-action="approve-group" data-group-id="${groupId}" type="button" style="height:30px;">一括承認</button>` : ''}
                 ${stLower === 'approved' ? `<button class="btn exp-admin-btn-primary" data-action="pay-group" data-group-id="${groupId}" type="button" style="height:30px;background-color:#8b5cf6;border-color:#8b5cf6;color:white;">一括支給済みにする</button>` : ''}
               </div>
@@ -3113,7 +3113,7 @@ const render = async () => {
                   isHidden = true;
                 }
               });
-              toggleBtn.textContent = isHidden ? toggleBtn.textContent.replace('閉じる', '明細を見る') : toggleBtn.textContent.replace('明細を見る', '閉じる');
+              toggleBtn.textContent = isHidden ? toggleBtn.textContent.replace('閉じる', '詳細') : toggleBtn.textContent.replace('詳細', '閉じる');
               return;
             }
 
