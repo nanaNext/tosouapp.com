@@ -2897,62 +2897,124 @@ const render = async () => {
         const detailRows = selectedUid
           ? filteredRows.filter((r) => String(r.userId || '') === selectedUid)
           : filteredRows;
-        const totalRows2 = detailRows.length;
-        const totalPages = Math.max(1, Math.ceil(totalRows2 / viewState.pageSize));
+
+        // --- GOM NHÓM THEO NHÂN VIÊN VÀ THÁNG ---
+        const groupedMap = new Map(); // key: userId_month, value: { userId, userName, month, totalAmount, count, items: [] }
+        detailRows.forEach(r => {
+          const uid = String(r.userId || '');
+          const monthStr = String(r.date || '').slice(0, 7);
+          const st = String(r.status || 'pending').toLowerCase();
+          const key = `${uid}_${monthStr}_${st}`; // Gom nhóm theo cả trạng thái để phân biệt nếu cần
+          
+          if (!groupedMap.has(key)) {
+            groupedMap.set(key, {
+              userId: uid,
+              userName: nameMap.get(uid) || uid,
+              month: monthStr,
+              status: st,
+              totalAmount: 0,
+              count: 0,
+              items: []
+            });
+          }
+          const group = groupedMap.get(key);
+          group.totalAmount += Number(r.amount || 0);
+          group.count += 1;
+          group.items.push(r);
+        });
+
+        const groupedArray = Array.from(groupedMap.values()).sort((a, b) => {
+           // Sắp xếp theo tên nhân viên, rồi đến tháng (mới nhất trước)
+           const nameCmp = String(a.userName).localeCompare(String(b.userName));
+           if (nameCmp !== 0) return nameCmp;
+           return String(b.month).localeCompare(String(a.month));
+        });
+
+        const totalGroups = groupedArray.length;
+        const totalPages = Math.max(1, Math.ceil(totalGroups / viewState.pageSize));
         viewState.page = Math.min(Math.max(1, viewState.page), totalPages);
         const startIdx = (viewState.page - 1) * viewState.pageSize;
-        const pageRows = detailRows.slice(startIdx, startIdx + viewState.pageSize);
-        const rowsHtml = pageRows.map((r) => {
-          const d = String(r.date || '').slice(0, 10);
-          const a = Number(r.amount || 0).toLocaleString('ja-JP');
-          const user = nameMap.get(String(r.userId)) || String(r.userId || '');
-          const st = String(r.status || 'pending');
-          const stLower = st.toLowerCase();
-          const stLabel = stLower === 'approved' ? '承認済み' : stLower === 'applied' ? '申請中' : stLower === 'rejected' ? '差戻し' : st;
-          const id = String(r.id || '');
-          const applied = r.applied_at ? fmtDT(r.applied_at) : '';
-          const approved = r.approved_at ? fmtDT(r.approved_at) : '';
-          const timeText =
-            st === 'applied' ? (applied ? `申請: ${applied}` : '') :
-            st === 'approved' ? (approved ? `承認: ${approved}` : '') :
-            st === 'rejected' ? (approved ? `却下: ${approved}` : '') : '';
-          const approver = r.approver_id ? (nameMap.get(String(r.approver_id)) || '') : '';
-          const statusMeta = [timeText, approver ? `担当: ${approver}` : ''].filter(Boolean).join(' / ');
-          const ru = r.receipt_url ? String(r.receipt_url) : (r.first_file_path ? String(r.first_file_path) : '');
-          const ruAttr = ru ? ` data-url="${ru}"` : '';
-          const count = Number(r.file_count || 0);
-          const routeText = [r.origin || '', r.destination || ''].filter(Boolean).join(' → ');
-          const receiptAction = (ru || count > 0)
-            ? `<button class="btn" data-action="files"${ruAttr} type="button" style="height:28px;">領収書${count > 1 ? `(${count})` : ''}</button>`
-            : `<button class="btn" data-action="files" type="button" style="height:28px;" disabled>領収書なし</button>`;
-          const checked = viewState.selectedRowIds.has(String(id)) ? 'checked' : '';
-          return `<article class="exp-claim-card" data-id="${id}">
-            <div class="exp-claim-head">
-              <div>
-                <div class="exp-claim-route">${routeText || '-'}</div>
-                <div class="exp-claim-meta">${d} / ${user}</div>
+        const pageGroups = groupedArray.slice(startIdx, startIdx + viewState.pageSize);
+
+        const rowsHtml = pageGroups.map((group, gIdx) => {
+          const stLower = group.status;
+          const stLabel = stLower === 'approved' ? '承認済み' : stLower === 'paid' ? '支給済み' : stLower === 'applied' ? '申請中' : stLower === 'rejected' ? '差戻し' : stLower;
+          
+          // Tạo một ID giả cho group để dùng cho thao tác Expand/Collapse
+          const groupId = `grp_${group.userId}_${group.month}_${stLower}_${gIdx}`;
+          const isGroupChecked = group.items.every(item => viewState.selectedRowIds.has(String(item.id)));
+
+          // HTML cho dòng Group (Header)
+          const groupHtml = `
+            <article class="exp-claim-card" style="background-color: #f8fafc; border-left: 4px solid #3b82f6;">
+              <div class="exp-claim-head">
+                <div>
+                  <div class="exp-claim-route" style="font-size: 14px;">${esc(group.userName)} <span style="color:#64748b; font-weight:normal; margin-left:8px;">${esc(group.month.replace('-', '年'))}月</span></div>
+                  <div class="exp-claim-meta">合計 ${group.count} 件</div>
+                </div>
+                <div style="text-align:left;">
+                  <div style="font-size:20px;font-weight:800;">¥${Number(group.totalAmount).toLocaleString('ja-JP')}</div>
+                  <div class="status-main ${stLower}"><span class="s-ico">${stLower === 'approved' ? '✔' : stLower === 'applied' ? '⏳' : stLower === 'rejected' ? '↩' : '•'}</span><span>${stLabel}</span></div>
+                </div>
               </div>
-              <div style="text-align:left;">
-                <div style="font-size:22px;font-weight:800;">¥${a}</div>
-                <div class="status-main ${stLower}"><span class="s-ico">${stLower === 'approved' ? '✔' : stLower === 'applied' ? '⏳' : stLower === 'rejected' ? '↩' : '•'}</span><span>${stLabel}</span></div>
+              <div class="exp-claim-actions" style="margin-top: 12px;">
+                <label class="exp-claim-meta"><input class="exp-claim-check group-check" type="checkbox" data-group-id="${groupId}" ${isGroupChecked ? 'checked' : ''}>全件選択</label>
+                <button class="btn exp-admin-btn-secondary" data-action="toggle-group" data-target="${groupId}" type="button" style="height:30px;">明細を見る (${group.count})</button>
+                ${stLower === 'applied' ? `<button class="btn exp-admin-btn-primary" data-action="approve-group" data-group-id="${groupId}" type="button" style="height:30px;">一括承認</button>` : ''}
+                ${stLower === 'approved' ? `<button class="btn exp-admin-btn-primary" data-action="pay-group" data-group-id="${groupId}" type="button" style="height:30px;background-color:#8b5cf6;border-color:#8b5cf6;color:white;">一括支給済みにする</button>` : ''}
               </div>
-            </div>
-            ${statusMeta ? `<div class="exp-claim-meta">${statusMeta}</div>` : ''}
-            <div class="exp-claim-actions">
-              <label class="exp-claim-meta"><input class="exp-claim-check" type="checkbox" data-role="pick-row" data-id="${id}" ${checked}>選択</label>
-              <button class="btn exp-admin-btn-primary" data-action="approve" type="button" style="height:30px;">承認</button>
-              <button class="btn exp-admin-btn-secondary" data-action="reject" type="button" style="height:30px;">差戻し</button>
-              ${stLower === 'approved' ? `<button class="btn exp-admin-btn-primary" data-action="pay" type="button" style="height:30px;background-color:#8b5cf6;border-color:#8b5cf6;color:white;">支給済みにする</button>` : ''}
-              <button class="btn exp-admin-btn-secondary" data-action="edit" type="button" style="height:30px;">編集</button>
-              ${receiptAction}
-              <button class="btn exp-admin-btn-secondary" data-action="chat" type="button" style="height:30px;">チャット</button>
-              <button class="btn exp-admin-btn-danger" data-action="delete" type="button" style="height:30px;">削除</button>
-            </div>
-          </article>`;
+            </article>
+          `;
+
+          // HTML cho các dòng Detail bên trong group (ẩn mặc định)
+          const itemsHtml = group.items.map(r => {
+            const d = String(r.date || '').slice(0, 10);
+            const a = Number(r.amount || 0).toLocaleString('ja-JP');
+            const id = String(r.id || '');
+            const applied = r.applied_at ? fmtDT(r.applied_at) : '';
+            const approved = r.approved_at ? fmtDT(r.approved_at) : '';
+            const timeText =
+              stLower === 'applied' ? (applied ? `申請: ${applied}` : '') :
+              stLower === 'approved' ? (approved ? `承認: ${approved}` : '') :
+              stLower === 'rejected' ? (approved ? `却下: ${approved}` : '') : '';
+            const approver = r.approver_id ? (nameMap.get(String(r.approver_id)) || '') : '';
+            const statusMeta = [timeText, approver ? `担当: ${approver}` : ''].filter(Boolean).join(' / ');
+            const ru = r.receipt_url ? String(r.receipt_url) : (r.first_file_path ? String(r.first_file_path) : '');
+            const ruAttr = ru ? ` data-url="${ru}"` : '';
+            const count = Number(r.file_count || 0);
+            const routeText = [r.origin || '', r.destination || ''].filter(Boolean).join(' → ');
+            const receiptAction = (ru || count > 0)
+              ? `<button class="btn" data-action="files"${ruAttr} type="button" style="height:28px;">領収書${count > 1 ? `(${count})` : ''}</button>`
+              : `<button class="btn" data-action="files" type="button" style="height:28px;" disabled>領収書なし</button>`;
+            const checked = viewState.selectedRowIds.has(String(id)) ? 'checked' : '';
+            
+            return `<article class="exp-claim-card" data-id="${id}" data-group-parent="${groupId}" style="margin-left: 20px; border-left: 2px solid #cbd5e1; border-top: none; box-shadow: none; border-radius: 0; padding-top: 8px; padding-bottom: 8px; display: none;">
+              <div class="exp-claim-head" style="margin-bottom: 4px;">
+                <div>
+                  <div class="exp-claim-route" style="font-size: 13px;">${routeText || '-'}</div>
+                  <div class="exp-claim-meta">${d}</div>
+                </div>
+                <div style="text-align:left;">
+                  <div style="font-size:16px;font-weight:800;">¥${a}</div>
+                </div>
+              </div>
+              ${statusMeta ? `<div class="exp-claim-meta">${statusMeta}</div>` : ''}
+              <div class="exp-claim-actions" style="margin-top: 8px;">
+                <label class="exp-claim-meta"><input class="exp-claim-check child-check" type="checkbox" data-role="pick-row" data-id="${id}" data-parent-group="${groupId}" ${checked}>選択</label>
+                <button class="btn exp-admin-btn-secondary" data-action="edit" type="button" style="height:26px; font-size:11px;">編集</button>
+                ${receiptAction}
+                <button class="btn exp-admin-btn-secondary" data-action="chat" type="button" style="height:26px; font-size:11px;">チャット</button>
+                <button class="btn exp-admin-btn-danger" data-action="delete" type="button" style="height:26px; font-size:11px;">削除</button>
+              </div>
+            </article>`;
+          }).join('');
+
+          return groupHtml + itemsHtml;
         }).join('');
+
         const pager = `
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0 10px;">
-            <div style="color:#64748b;font-size:12px;">${totalRows2 ? (startIdx + 1) : 0}-${Math.min(startIdx + viewState.pageSize, totalRows2)} / ${totalRows2} 件</div>
+            <div style="color:#64748b;font-size:12px;">${totalGroups ? (startIdx + 1) : 0}-${Math.min(startIdx + viewState.pageSize, totalGroups)} / ${totalGroups} グループ</div>
             <div style="display:flex;align-items:center;gap:8px;">
               <label style="font-size:12px;color:#334155;">表示件数
                 <select id="expPageSize" style="margin-left:4px;height:28px;">
@@ -3010,15 +3072,84 @@ const render = async () => {
           tableHost.dataset.bound = '1';
           tableHost.addEventListener('change', (e) => {
             const pick = e.target.closest('input[data-role="pick-row"][data-id]');
-            if (!pick) return;
-            const rid = String(pick.getAttribute('data-id') || '');
-            if (!rid) return;
-            if (pick.checked) viewState.selectedRowIds.add(rid);
-            else viewState.selectedRowIds.delete(rid);
-            const bs = document.getElementById('expBulkState');
-            if (bs) bs.textContent = `${viewState.selectedRowIds.size}件選択中`;
+            if (pick) {
+              const rid = String(pick.getAttribute('data-id') || '');
+              if (!rid) return;
+              if (pick.checked) viewState.selectedRowIds.add(rid);
+              else viewState.selectedRowIds.delete(rid);
+              const bs = document.getElementById('expBulkState');
+              if (bs) bs.textContent = `${viewState.selectedRowIds.size}件選択中`;
+              return;
+            }
+            
+            // Xử lý Checkbox của Group
+            const groupCheck = e.target.closest('input.group-check');
+            if (groupCheck) {
+              const groupId = groupCheck.getAttribute('data-group-id');
+              const isChecked = groupCheck.checked;
+              const childChecks = tableHost.querySelectorAll(`input.child-check[data-parent-group="${groupId}"]`);
+              childChecks.forEach(chk => {
+                chk.checked = isChecked;
+                const rid = chk.getAttribute('data-id');
+                if (isChecked) viewState.selectedRowIds.add(rid);
+                else viewState.selectedRowIds.delete(rid);
+              });
+              const bs = document.getElementById('expBulkState');
+              if (bs) bs.textContent = `${viewState.selectedRowIds.size}件選択中`;
+            }
           });
           tableHost.addEventListener('click', async (e) => {
+            const toggleBtn = e.target.closest('button[data-action="toggle-group"]');
+            if (toggleBtn) {
+              const targetId = toggleBtn.getAttribute('data-target');
+              const children = tableHost.querySelectorAll(`article[data-group-parent="${targetId}"]`);
+              let isHidden = true;
+              children.forEach(c => {
+                if (c.style.display === 'none') {
+                  c.style.display = 'block';
+                  isHidden = false;
+                } else {
+                  c.style.display = 'none';
+                  isHidden = true;
+                }
+              });
+              toggleBtn.textContent = isHidden ? toggleBtn.textContent.replace('閉じる', '明細を見る') : toggleBtn.textContent.replace('明細を見る', '閉じる');
+              return;
+            }
+
+            const approveGroupBtn = e.target.closest('button[data-action="approve-group"]');
+            if (approveGroupBtn) {
+               const targetId = approveGroupBtn.getAttribute('data-group-id');
+               const childChecks = tableHost.querySelectorAll(`input.child-check[data-parent-group="${targetId}"]`);
+               const ids = Array.from(childChecks).map(c => c.getAttribute('data-id')).filter(Boolean);
+               if (!ids.length) return;
+               const ok = window.confirm(`このグループの ${ids.length} 件を一括承認しますか？`);
+               if (!ok) return;
+               approveGroupBtn.disabled = true;
+               for (const rid of ids) {
+                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch {}
+               }
+               viewState.selectedRowIds.clear();
+               await reload();
+               return;
+            }
+
+            const payGroupBtn = e.target.closest('button[data-action="pay-group"]');
+            if (payGroupBtn) {
+               const targetId = payGroupBtn.getAttribute('data-group-id');
+               const childChecks = tableHost.querySelectorAll(`input.child-check[data-parent-group="${targetId}"]`);
+               const ids = Array.from(childChecks).map(c => c.getAttribute('data-id')).filter(Boolean);
+               if (!ids.length) return;
+               const ok = window.confirm(`このグループの ${ids.length} 件を一括支給済みにしますか？`);
+               if (!ok) return;
+               payGroupBtn.disabled = true;
+               for (const rid of ids) {
+                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'paid', note: '' }) }); } catch {}
+               }
+               viewState.selectedRowIds.clear();
+               await reload();
+               return;
+            }
             const link = e.target.closest('a.receipt-link');
             const rowEl2 = e.target.closest('[data-id]');
             if (link && rowEl2) {
