@@ -1,24 +1,36 @@
 import { fetchJSONAuth } from '../api/http.api.js';
+// Nạp hàm fetchJSONAuth. Đây thường là hàm bổ trợ (helper) để gửi yêu cầu HTTP (như lấy dữ liệu từ server) có kèm theo xác thực (token/cookie).
 import { listEmployees } from '../api/employees.api.js';
+// Nạp hàm listEmployees. Hàm này chứa logic để lấy danh sách nhân viên từ phía backend.
 import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260418-menuhotfix27';
+// Nạp hàm wireAdminShell. Hàm này dùng để thiết lập hoặc "kết nối" khung giao diện quản trị (Admin Shell/Layout).
 
 const $ = (sel, root = document) => root.querySelector(sel);
-
+// Nó tạo ra một "phím tắt" để bạn tìm kiếm các thành phần (element) trên trang web nhanh hơn.
 function wireTopbarMenus() {
   try {
     if (document.body.dataset.monthlySummaryMenus === '1') return;
     document.body.dataset.monthlySummaryMenus = '1';
+    // Nó kiểm tra xem trên thẻ <body> đã có thuộc tính data-monthly-summary-menus="1" chưa. Nếu có rồi (nghĩa là hàm đã chạy trước đó), nó sẽ dừng lại ngay lập tức (return). Nếu chưa, nó sẽ gán giá trị đó vào để "đánh dấu"
     const menus = Array.from(document.querySelectorAll('.subbar .menu'));
+    // Tìm tất cả các phần tử có class là .menu nằm bên trong .subbar và chuyển chúng thành một mảng (Array).
     const openClass = 'open';
+    // 
     const closeAll = () => {
+      // closeAll: Đây là một hàm tiện ích. Khi gọi nó, vòng lặp for...of sẽ chạy qua tất cả menu và xóa bỏ class open, giúp đóng mọi menu đang mở trên màn hình.
       for (const m of menus) m.classList.remove(openClass);
     };
     for (const m of menus) {
       const btn = m.querySelector('.menu-btn');
+      // Kiểm tra nút (btn): Tìm nút bấm có class .menu-btn bên trong từng menu. Nếu không thấy hoặc nút này đã được gán sự kiện rồi (dataset.bound === '1'), nó sẽ bỏ qua.
       if (!btn || btn.dataset.bound === '1') continue;
       btn.dataset.bound = '1';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
+        // Xử lý click khi bạn click vào nút e.preventDefault() & e.stopPropagation(): ngăn chặn các hành động
+        // mặc định và không cho sự kiện " truyền" lên các phần tử cha.
+        // logic đóng/ mở: Nó kiểm tra xem menu hiện tại có đang mở ko ( isOpen). Sau đó 
+        // nó gọi closeAll() để đóng sạch các menu khác , và cuối cùng nếu menu vừa bấm lúc nãy ko đóng, nó sẽ thêm class open để mở ra.
         e.stopPropagation();
         const isOpen = m.classList.contains(openClass);
         closeAll();
@@ -30,20 +42,48 @@ function wireTopbarMenus() {
       if (t && t.closest && t.closest('.subbar .menu')) return;
       closeAll();
     });
+    // Đoạn này lắng nghe mọi cú click trên toàn bộ trang web.
+    // t.closest('.subbar .menu'): Nó kiểm tra xem điểm bạn vừa click có nằm bên trong một cái menu nào không.
+    // Nếu bạn click ra ngoài vùng menu, hàm closeAll() sẽ được gọi để thu gọn mọi menu đang mở.
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeAll();
     });
-  } catch {}
-}
+    // Một tính năng thân thiện với người dùng:
+    //  Nếu bạn đang mở menu mà muốn đóng nhanh, chỉ cần nhấn phím Escape (Esc).
 
+  } catch { }
+}
+// Mục đích: Ngăn chặn trang web bị "treo" 
+// hoặc hiện lỗi đỏ trong console nếu trình duyệt của người dùng quá cũ hoặc không hỗ trợ một số hàm như closest hay dataset. 
+// Nếu có lỗi, nó sẽ im lặng bỏ qua.
 function codeOf(u) {
   return String(u.employee_code || u.employeeCode || (u.id ? ('EMP' + String(u.id).padStart(3, '0')) : '')).trim();
 }
-
+// Hàm codeOf(u) này dùng để chuẩn hóa việc lấy mã nhân viên từ một đối tượng người dùng (u). Nó hoạt động theo nguyên tắc " ưu tiên"
+// ưu tiên 1: u.employee_code kiểm tra xem có thuộc tính viết theo kiểu snake_case thường dùng trong db ko
+// Ưu tiên 2: u.employeeCode nếu ko cso cái trên nó tìm theo kiểu namelcase thường dùng JS
+// Ưu tiên 3 tạo mã từ ID: nếu cả 2 thuộc tính đều trống, nó sẽ kiểm tra xem có u.id ko
+//  Nếu có id, nó sẽ tạo một chuỗi theo định dạng: EMP + id được bù thêm các số 0 ở đầu để đủ 3 chữ số
+// Ví dụ: Nếu id = 5, kết quả sẽ là EMP005. Nếu id = 123, kết quả là EMP123
+// Mặc định: Nếu tất cả đều không có, nó trả về một chuỗi rỗng ''
 function nameOf(u) {
   return String(u.username || u.name || u.full_name || u.fullName || u.email || (u.id ? `社員${u.id}` : '')).trim();
 }
+// Hàm nameOf(u) này có logic tương tự như hàm codeOf bạn vừa xem, 
+// nhưng mục tiêu của nó là xác định tên hiển thị của người dùng dựa trên một danh sách ưu tiên giảm dần
+// 1. Luồng ưu tiên hiển thị (Priority Logic) u.username: Tên đăng nhập (thường là duy nhất).
 
+//u.name: Tên ngắn gọn.
+
+//u.full_name: Họ và tên (định dạng database snake_case).
+
+//u.fullName: Họ và tên (định dạng JavaScript camelCase).
+
+//u.email: Nếu không có tên, dùng địa chỉ email để định danh.
+// Tạo tên mặc định (u.id): Nếu tất cả các trường trên đều trống,
+//  nó sẽ lấy ID và gắn thêm chữ 社員 (Shain - Nhân viên) phía trước.Ví dụ: id: 123 $\rightarrow$ "社員123".
+// Mặc định cuối cùng: Nếu ngay cả ID cũng không có, trả về chuỗi rỗng ''
 function roleOf(u) {
   return String(u.role || '').toLowerCase();
 }
@@ -351,7 +391,7 @@ function computeSummary(detail, timesheet, mode) {
       remoteDays2 = frontendRemote;
       satelliteDays2 = frontendSatellite;
     }
-  } catch {}
+  } catch { }
 
   if (stored && typeof stored === 'object') {
     if (plannedDays === 0) plannedDays = Number(stored.plannedDays == null ? plannedDays : stored.plannedDays) || 0;
@@ -569,7 +609,7 @@ async function exactSummaryFromEmbed(uid, ym, mode) {
     }
     return null;
   } catch {
-    try { document.querySelectorAll('iframe').forEach((f) => { if ((f.src || '').includes('/admin/embed/attendance/monthly')) f.remove(); }); } catch {}
+    try { document.querySelectorAll('iframe').forEach((f) => { if ((f.src || '').includes('/admin/embed/attendance/monthly')) f.remove(); }); } catch { }
     return null;
   }
 }
@@ -749,7 +789,7 @@ function ensureEditorLayoutStyle() {
       @media (max-width: 980px){.admin-ms-grid-shift,.admin-ms-grid-two{grid-template-columns:1fr;}}
     `;
     document.head.appendChild(st);
-  } catch {}
+  } catch { }
 }
 
 function setSummaryValues(root, prefix, obj) {
@@ -813,16 +853,16 @@ function getSummaryValues(root, prefix) {
 export async function mount() {
   const root = document.querySelector('#adminContent');
   if (!root) return;
-  try { wireAdminShell({ logoutRedirect: '/ui/login' }); } catch {}
-  try { wireTopbarMenus(); } catch {}
-  try { delete root.dataset.monthlySummaryMounted; } catch {}
+  try { wireAdminShell({ logoutRedirect: '/ui/login' }); } catch { }
+  try { wireTopbarMenus(); } catch { }
+  try { delete root.dataset.monthlySummaryMounted; } catch { }
   try {
     const status = document.querySelector('#status');
     if (status) {
       status.textContent = '';
       status.style.display = 'none';
     }
-  } catch {}
+  } catch { }
   ensureEditorLayoutStyle();
   renderScaffold(root);
 
@@ -896,8 +936,8 @@ export async function mount() {
       warnMsg = String(e?.message || '読込失敗');
     }
 
-    await loadSa().catch(() => {});
-    await loadWd().catch(() => {});
+    await loadSa().catch(() => { });
+    await loadWd().catch(() => { });
     if (hasAnyData) {
       setStatus(usedStored && warnMsg ? '読込完了（保存データ表示）' : '読込完了');
     } else {
@@ -908,7 +948,7 @@ export async function mount() {
       u.searchParams.set('userId', uid);
       u.searchParams.set('month', ym);
       history.replaceState(null, '', u.pathname + u.search + u.hash);
-    } catch {}
+    } catch { }
   };
 
   const save = async () => {
@@ -1070,15 +1110,15 @@ export async function mount() {
         </tr></thead>
         <tbody>
           ${rows.length ? rows.map((r, i) => {
-            const s = r?.shift || null;
-            const name = s ? (s.name || '') : '';
-            const st = s ? (s.start_time || '—') : '—';
-            const et = s ? (s.end_time || '—') : '—';
-            const br = s ? fmtHm(s.break_minutes || 0) : '—';
-            const std = s ? fmtHm(s.standard_minutes || 0) : '—';
-            const sd = r?.start_date || '—';
-            const ed = r?.end_date || '—';
-            return `
+      const s = r?.shift || null;
+      const name = s ? (s.name || '') : '';
+      const st = s ? (s.start_time || '—') : '—';
+      const et = s ? (s.end_time || '—') : '—';
+      const br = s ? fmtHm(s.break_minutes || 0) : '—';
+      const std = s ? fmtHm(s.standard_minutes || 0) : '—';
+      const sd = r?.start_date || '—';
+      const ed = r?.end_date || '—';
+      return `
               <tr>
                 <td>${i + 1}</td>
                 <td>${name}</td>
@@ -1091,7 +1131,7 @@ export async function mount() {
                 <td><div class="admin-ms-op"><button type="button" class="admin-ms-btn" data-sa-del="${r.id}">削除</button></div></td>
               </tr>
             `;
-          }).join('') : `<tr><td colspan="9" style="text-align:center;color:#64748b;font-weight:800;">シフトが未設定です（管理者がシフトを割り当てしてください）</td></tr>`}
+    }).join('') : `<tr><td colspan="9" style="text-align:center;color:#64748b;font-weight:800;">シフトが未設定です（管理者がシフトを割り当てしてください）</td></tr>`}
         </tbody>
       </table>
     `;
@@ -1181,14 +1221,14 @@ export async function mount() {
   $('#btnSumLoad', root)?.addEventListener('click', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
   $('#btnSumSave', root)?.addEventListener('click', () => { save().catch(e => setStatus(String(e?.message || '保存失敗'))); });
   empSelect?.addEventListener('change', () => { load().catch(e => setStatus(String(e?.message || '読込失敗'))); });
-  monthEl?.addEventListener('change', () => { 
+  monthEl?.addEventListener('change', () => {
     // Automatically update URL parameter so refresh/bookmarking works
     const url = new URL(window.location.href);
     url.searchParams.set('month', monthEl.value);
     window.history.pushState({}, '', url);
-    load().catch(e => setStatus(String(e?.message || '読込失敗'))); 
+    load().catch(e => setStatus(String(e?.message || '読込失敗')));
   });
-  await loadShiftDefs().catch(() => {});
+  await loadShiftDefs().catch(() => { });
   await load().catch((e) => setStatus(String(e?.message || '読込失敗')));
 }
 

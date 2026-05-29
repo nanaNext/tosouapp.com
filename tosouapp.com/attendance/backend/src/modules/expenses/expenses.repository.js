@@ -57,9 +57,13 @@ module.exports = {
     if (month && /^\d{4}-\d{2}$/.test(String(month))) { where.push(`DATE_FORMAT(date,'%Y-%m') = ?`); args.push(String(month)); }
     if (status) {
       const st = String(status).toLowerCase();
-      const map = { '未申請':'draft', '申請中':'applied', '承認済み':'approved', '差戻し':'rejected', 'pending':'draft' };
+      const map = { '未申請':'draft', '申請中':'applied', '承認済み':'approved', '差戻し':'rejected', '支給済み':'paid' };
       const st2 = map[status] || st;
-      where.push(`status = ?`); args.push(st2);
+      if (st2 === 'draft' || st2 === 'pending') {
+        where.push(`status IN ('draft', 'pending')`);
+      } else {
+        where.push(`status = ?`); args.push(st2);
+      }
     }
     if (type) {
       where.push(`category = ?`); args.push(String(type).toLowerCase());
@@ -119,16 +123,16 @@ module.exports = {
   },
   async updateStatus(id, status, note, managerId) {
     const st = String(status || '').toLowerCase();
-    if (!['draft','pending','applied','approved','rejected'].includes(st)) throw new Error('Invalid status');
+    if (!['draft','pending','applied','approved','rejected','paid'].includes(st)) throw new Error('Invalid status');
     const sql = `
       UPDATE expense_claims
       SET
         status = ?,
         manager_note = ?,
-        approved_by = CASE WHEN ? IN ('approved','rejected') THEN ? ELSE approved_by END,
-        approver_id = CASE WHEN ? IN ('approved','rejected') THEN ? ELSE approver_id END,
+        approved_by = CASE WHEN ? IN ('approved','rejected','paid') THEN ? ELSE approved_by END,
+        approver_id = CASE WHEN ? IN ('approved','rejected','paid') THEN ? ELSE approver_id END,
         applied_at = CASE WHEN ? = 'applied' THEN CURRENT_TIMESTAMP ELSE applied_at END,
-        approved_at = CASE WHEN ? IN ('approved','rejected') THEN CURRENT_TIMESTAMP ELSE approved_at END,
+        approved_at = CASE WHEN ? IN ('approved','rejected','paid') THEN CURRENT_TIMESTAMP ELSE approved_at END,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `;
@@ -914,14 +918,16 @@ module.exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
   const [[kpiRow]] = await db.query(
     `
     SELECT
-      COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved') THEN ec.amount ELSE 0 END), 0) AS total_amount,
+      COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved','paid') THEN ec.amount ELSE 0 END), 0) AS total_amount,
       COALESCE(SUM(CASE WHEN ec.status = 'applied' THEN ec.amount ELSE 0 END), 0) AS applied_amount,
       COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'paid' THEN ec.amount ELSE 0 END), 0) AS paid_amount,
       COALESCE(SUM(CASE WHEN ec.status = 'rejected' THEN ec.amount ELSE 0 END), 0) AS rejected_amount,
       COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,
       COALESCE(SUM(ec.status = 'approved'), 0) AS approved_count,
+      COALESCE(SUM(ec.status = 'paid'), 0) AS paid_count,
       COALESCE(SUM(ec.status = 'rejected'), 0) AS rejected_count,
-      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved') THEN ec.userId END) AS applicant_users
+      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved','paid') THEN ec.userId END) AS applicant_users
     FROM expense_claims ec
     WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?
     `,
@@ -933,6 +939,10 @@ module.exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
     SELECT
       DATE_FORMAT(ec.date, '%Y-%m') AS month,
       COALESCE(SUM(CASE WHEN ec.status = 'applied' THEN ec.amount ELSE 0 END), 0) AS applied_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'paid' THEN ec.amount ELSE 0 END), 0) AS paid_amount,
+      COALESCE(SUM(CASE WHEN ec.status = 'rejected' THEN ec.amount ELSE 0 END), 0) AS rejected_amount
+    FROM expense_claims ec
       COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
       COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved') THEN ec.amount ELSE 0 END), 0) AS total_amount,
       COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,

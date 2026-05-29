@@ -757,6 +757,7 @@ const render = async () => {
         .exp-admin-page .pill.st-approved { border-color:#bbf7d0; background:#f0fdf4; color:#166534; }
         .exp-admin-page .pill.st-applied { border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
         .exp-admin-page .pill.st-rejected { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
+        .exp-admin-page .pill.st-paid { border-color:#d8b4fe; background:#faf5ff; color:#9333ea; }
         .exp-admin-page .pill.st-other { border-color:#e2e8f0; background:#f8fafc; color:#334155; }
         .exp-admin-page .exp-dash-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, .45); z-index: 1600; }
         .exp-admin-page .exp-dash-backdrop[hidden] { display: none !important; }
@@ -896,7 +897,7 @@ const render = async () => {
                 <span class="ico">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 </span>
-                <span>ダッシュボード</span>
+                <span>Home</span>
               </span>
             </button>
             <button type="button" class="exp-dash-nav" data-status="">
@@ -951,6 +952,15 @@ const render = async () => {
                 <span>月次締め履歴</span>
               </span>
             </button>
+            <button type="button" class="exp-dash-nav" data-status="paid">
+              <span class="left">
+                <span class="ico" style="color: #9333ea;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </span>
+                <span>支給済み</span>
+              </span>
+              <span id="expBadgePaid" class="exp-dash-badge" hidden>0</span>
+            </button>
             <button id="expDashCsv" type="button" class="exp-dash-nav" style="display: flex; justify-content: flex-start; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
               <span class="left" style="padding-left: 30px;">
                 <span>CSV出力</span>
@@ -963,7 +973,7 @@ const render = async () => {
             <div class="exp-dash-appbar-left">
               <button id="expDashBurger" class="exp-dash-burger" type="button">☰</button>
               <div class="exp-dash-appbar-vsep"></div>
-              <div id="expDashTitle" class="exp-dash-appbar-title">ダッシュボード</div>
+              <div id="expDashTitle" class="exp-dash-appbar-title">Home</div>
             </div>
             <div class="exp-dash-appbar-right">
               <div style="position: relative;">
@@ -2039,7 +2049,7 @@ const render = async () => {
         state.status = '';
         state.view = 'dashboard';
         applyViewMode();
-        setTitle('ダッシュボード');
+        setTitle('Home');
         
         try {
           const url = new URL(window.location);
@@ -2935,6 +2945,7 @@ const render = async () => {
               <label class="exp-claim-meta"><input class="exp-claim-check" type="checkbox" data-role="pick-row" data-id="${id}" ${checked}>選択</label>
               <button class="btn exp-admin-btn-primary" data-action="approve" type="button" style="height:30px;">承認</button>
               <button class="btn exp-admin-btn-secondary" data-action="reject" type="button" style="height:30px;">差戻し</button>
+              ${stLower === 'approved' ? `<button class="btn exp-admin-btn-primary" data-action="pay" type="button" style="height:30px;background-color:#8b5cf6;border-color:#8b5cf6;color:white;">支給済みにする</button>` : ''}
               <button class="btn exp-admin-btn-secondary" data-action="edit" type="button" style="height:30px;">編集</button>
               ${receiptAction}
               <button class="btn exp-admin-btn-secondary" data-action="chat" type="button" style="height:30px;">チャット</button>
@@ -3030,10 +3041,10 @@ const render = async () => {
             const id = rowEl3 ? rowEl3.getAttribute('data-id') : '';
             if (!id) return;
             const action = btn.getAttribute('data-action');
-            const status = action === 'approve' ? 'approved' : 'rejected';
+            const status = action === 'approve' ? 'approved' : (action === 'pay' ? 'paid' : 'rejected');
             btn.disabled = true;
             try {
-              if (action === 'approve' || action === 'reject') {
+              if (action === 'approve' || action === 'reject' || action === 'pay') {
                 let note = '';
                 if (action === 'reject') {
                   note = window.prompt('却下理由を入力してください（必須）', '') || '';

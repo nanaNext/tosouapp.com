@@ -60,6 +60,7 @@ export function wireTopbarHeightVar() {
     try {
       if (document.body.classList.contains('drawer-open')) return;
       const topbar = document.querySelector('.topbar');
+      document.documentElement.style.removeProperty('--topbar-height');
       const h = topbar ? Math.round(topbar.getBoundingClientRect().height || 0) : 0;
       if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
     } catch {}

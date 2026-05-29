@@ -1,5 +1,25 @@
 import { refresh } from '/static/js/api/auth.api.js';
 const REQUEST_TIMEOUT_MS = 15000;
+
+try {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'auth-logout-event') {
+        try {
+          sessionStorage.removeItem('accessToken');
+          sessionStorage.removeItem('refreshToken');
+          sessionStorage.removeItem('user');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+        } catch {}
+        if (window.location.pathname !== '/ui/login') {
+          window.location.replace('/ui/login');
+        }
+      }
+    });
+  }
+} catch {}
+
 function getApiBase() {
   try {
     const h = String(window.location.hostname || '').toLowerCase();

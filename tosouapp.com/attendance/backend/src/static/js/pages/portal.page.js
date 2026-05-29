@@ -585,11 +585,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!main) return;
     const applyContentSpacing = (pathName) => {
       try {
+        const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
         // Route-level hardening: prevent style bleed when navigating from expenses page.
-        const pad = (pathName === EXP_PATH)
-          ? 'calc(var(--topbar-height) + var(--subbar-height) + 0px)'
-          : 'calc(var(--topbar-height) + var(--subbar-height) + 24px)';
-        main.style.setProperty('padding-top', pad, 'important');
+        let pad;
+        if (isMobile) {
+          pad = 'calc(var(--topbar-height) + 2px)';
+          main.style.setProperty('margin-top', '0px', 'important');
+        } else {
+          pad = 'calc(var(--topbar-height) + var(--subbar-height) + 24px)';
+          main.style.removeProperty('margin-top');
+        }
+
+        // Không áp dụng inline padding cho trang expenses vì nó đã được xử lý riêng bằng CSS
+        if (pathName === EXP_PATH) {
+          main.style.removeProperty('padding-top');
+        } else {
+          main.style.setProperty('padding-top', pad, 'important');
+        }
       } catch { }
     };
     const syncInlinePageStyle = (doc, pathName) => {
@@ -663,7 +675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (url.pathname === EXP_PATH) {
           try {
-            const mod = await import('/static/js/pages/expenses.page.js');
+            const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
             if (mod && typeof mod.bootExpensesPage === 'function') {
               await mod.bootExpensesPage();
             }
@@ -854,9 +866,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="icon">🕒</div>
             <div class="title">勤怠入力</div>
           </a>
-          <a class="tile" href="/ui/expenses">
+          <a class="tile" href="/ui/expenses" target="_blank" rel="opener">
             <div class="icon">💳</div>
-            <div class="title">経費精算</div>
+            <div class="title">交通費申請</div>
           </a>
           <a class="tile" href="/ui/adjust">
             <div class="icon">⏲</div>
@@ -890,7 +902,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       { key: 'overtime', title: '残業申請', icon: '⏲', href: '/ui/adjust?type=overtime', desc: 'Overtime / time correction request', prio: 32, hideForAdmin: true },
       { key: 'overtime_manage', title: '残業管理', icon: '⏲', href: '/admin/leave/requests', desc: 'Overtime management', adminOnly: true, prio: 18 },
       { key: 'requests_manage', title: '申請管理', icon: '🗂', href: '/admin/leave/requests', desc: 'Requests management', adminOnly: true, prio: 19 },
-      { key: 'expenses', title: '経費精算', icon: '💳', href: '/ui/expenses', desc: 'Expense claims', prio: 34 },
+      { key: 'expenses', title: '交通費申請', icon: '💳', href: '/ui/expenses', target: '_blank', rel: 'opener', desc: 'Expense claims', prio: 34 },
       { key: 'salary', title: (r) => (r === 'admin' || r === 'manager') ? '給与管理' : '給与明細', icon: '💴', href: (r) => (r === 'admin' || r === 'manager') ? '/admin/payroll/salary' : '/ui/salary', desc: (r) => (r === 'admin' || r === 'manager') ? 'Salary management' : 'Payslips', prio: 36 },
       { key: 'salary_calc', title: '給与計算', icon: '🧮', href: '/ui/admin?tab=salary_calc', desc: 'Payroll calculation', adminOnly: true, prio: 37 },
       { key: 'salary_send', title: '給与明細送信', icon: '📧', href: '/admin/payroll/payslips', desc: 'Send payslips', adminOnly: true, prio: 38 },
@@ -912,8 +924,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const link = typeof c.href === 'function' ? c.href(role) : c.href;
       const title = typeof c.title === 'function' ? c.title(role) : c.title;
       const desc = typeof c.desc === 'function' ? c.desc(role) : (c.desc || '');
+      const targetAttr = c.target ? ` target="${c.target}"` : '';
       return `
-      <a class="tile" href="${link}">
+      <a class="tile" href="${link}"${targetAttr}>
         ${c.icon ? `<div class="icon">${c.icon}</div>` : ''}
         <div class="title">${title}</div>
         <div class="desc">${desc}</div>
@@ -964,7 +977,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
-  
+
   const drawerEl = document.querySelector('#mobileDrawer');
   if (drawerEl) {
     drawerEl.addEventListener('click', async (e) => {
@@ -975,6 +988,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
         try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch { }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch { }
         window.location.replace('/ui/login');
       }
     });
@@ -1058,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
         try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch { }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch { }
         window.location.replace('/ui/login');
       });
     }
