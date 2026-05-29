@@ -892,6 +892,7 @@ const render = async () => {
             </div>
           </div>
           <div class="exp-dash-side-nav-wrapper">
+            <div style="font-size: 11px; color: #64748b; font-weight: 800; padding: 12px 20px 4px;">ダッシュボード</div>
             <button type="button" class="exp-dash-nav is-active" data-nav="dashboard">
               <span class="left">
                 <span class="ico">
@@ -905,53 +906,31 @@ const render = async () => {
                 <span class="ico">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                 </span>
-                <span>申請一覧</span>
+                <span>全件一覧</span>
               </span>
             </button>
+
+            <div style="font-size: 11px; color: #64748b; font-weight: 800; padding: 16px 20px 4px;">要対応（ToDo）</div>
             <button type="button" class="exp-dash-nav" data-status="applied">
               <span class="left">
                 <span class="ico" style="color: #4ade80;">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                 </span>
-                <span>承認管理</span>
+                <span>未承認（申請中）</span>
               </span>
               <span id="expBadgeApplied" class="exp-dash-badge" hidden>0</span>
             </button>
-            <button type="button" class="exp-dash-nav" data-status="monthly_approval">
-              <span class="left">
-                <span class="ico" style="color: #38bdf8;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                </span>
-                <span>月次承認</span>
-              </span>
-            </button>
             <button type="button" class="exp-dash-nav" data-status="approved">
               <span class="left">
-                <span class="ico">
+                <span class="ico" style="color: #38bdf8;">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </span>
-                <span>承認済み</span>
+                <span>未支給（承認済）</span>
               </span>
               <span id="expBadgeApproved" class="exp-dash-badge" hidden>0</span>
             </button>
-            <button type="button" class="exp-dash-nav" data-status="rejected">
-              <span class="left">
-                <span class="ico">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
-                </span>
-                <span>差戻し一覧</span>
-              </span>
-              <span id="expBadgeRejected" class="exp-dash-badge" hidden>0</span>
-            </button>
-            <div class="exp-dash-sep" hidden></div>
-            <button id="expDashArchive" type="button" class="exp-dash-nav" data-status="archived">
-              <span class="left">
-                <span class="ico">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><polyline points="1 3 23 3 23 8 1 8 1 3"></polyline><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                </span>
-                <span>月次締め履歴</span>
-              </span>
-            </button>
+
+            <div style="font-size: 11px; color: #64748b; font-weight: 800; padding: 16px 20px 4px;">処理完了・履歴</div>
             <button type="button" class="exp-dash-nav" data-status="paid">
               <span class="left">
                 <span class="ico" style="color: #9333ea;">
@@ -961,6 +940,24 @@ const render = async () => {
               </span>
               <span id="expBadgePaid" class="exp-dash-badge" hidden>0</span>
             </button>
+            <button type="button" class="exp-dash-nav" data-status="rejected">
+              <span class="left">
+                <span class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                </span>
+                <span>差戻し</span>
+              </span>
+              <span id="expBadgeRejected" class="exp-dash-badge" hidden>0</span>
+            </button>
+            <button id="expDashArchive" type="button" class="exp-dash-nav" data-status="archived">
+              <span class="left">
+                <span class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><polyline points="1 3 23 3 23 8 1 8 1 3"></polyline><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                </span>
+                <span>月次締め履歴</span>
+              </span>
+            </button>
+
             <button id="expDashCsv" type="button" class="exp-dash-nav" style="display: flex; justify-content: flex-start; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
               <span class="left" style="padding-left: 30px;">
                 <span>CSV出力</span>
