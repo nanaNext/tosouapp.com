@@ -556,6 +556,56 @@ router.delete('/files/:fileId',
     }
   }
 );
+router.post('/admin/bulk-status',
+  rateLimitNamed('expenses_admin_bulk_status', { windowMs: 60_000, max: 20 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+      const st = String(req.body?.status || '').toLowerCase();
+      const note = String(req.body?.note || '').trim() || null;
+      if (ids.length === 0 || !st) return res.status(400).json({ message: 'Invalid payload' });
+      
+      const userMonthMap = new Map(); // key: userId_month, value: { userId, month, totalAmount, count }
+
+      for (const rawId of ids) {
+        const id = parseInt(String(rawId), 10);
+        if (id > 0) {
+          const row = await repo.getById(id);
+          const ok = await repo.updateStatus(id, st, note, req.user.id);
+          if (ok && row && row.userId && st !== 'pending') {
+            const ym = row.date ? String(row.date).slice(0, 7) : null;
+            if (ym) {
+              const k = `${row.userId}_${ym}`;
+              if (!userMonthMap.has(k)) {
+                userMonthMap.set(k, { userId: row.userId, month: ym, totalAmount: 0, count: 0 });
+              }
+              const m = userMonthMap.get(k);
+              m.totalAmount += Number(row.amount || 0);
+              m.count += 1;
+            }
+          }
+        }
+      }
+
+      // Send ONE notification per user per month
+      for (const m of userMonthMap.values()) {
+        const statusLabel = st === 'approved' ? '承認' : (st === 'rejected' ? '差戻し' : (st === 'paid' ? '支給' : st));
+        await noticesRepo.createNotice({
+          targetUserId: m.userId,
+          targetMonth: m.month,
+          message: `${m.month}月度の交通費申請（計${m.count}件, ¥${m.totalAmount.toLocaleString()}）が${statusLabel}されました。`,
+          createdBy: req.user?.id || null
+        });
+      }
+
+      res.status(200).json({ ok: true, processed: ids.length });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
 router.patch('/:id/status',
   rateLimitNamed('expenses_admin_status', { windowMs: 60_000, max: 30 }),
   authorize('manager','admin'),
