@@ -16,7 +16,9 @@ export async function getLoginOptions(email) {
 }
 
 export async function verifyLogin(email, response) {
-  return await postJSON('/api/webauthn/login/verify', { email, response });
+  const data = await postJSON('/api/webauthn/login/verify', { email, response });
+  try { localStorage.setItem('auth-login-event', Date.now()); } catch {}
+  return data;
 }
 
 export async function getRegisterOptions(email) {

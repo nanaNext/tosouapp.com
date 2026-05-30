@@ -97,9 +97,10 @@ async function computePaidLeaveDays(userId, fromDate, toDate) {
     return 0;
   }
 }
-
+// Hàm này là dùng để tính số ngày không có lương trong khoảng thời gian từ 
+// fromDate đến toDate  
 async function computeUnpaidLeaveDays(userId, fromDate, toDate) {
-  try {
+  try {   
     const list = await leaveRepo.listByUser(userId);
     let unpaidDays = 0;
     for (const r of (list || [])) {
@@ -113,7 +114,7 @@ async function computeUnpaidLeaveDays(userId, fromDate, toDate) {
     return 0;
   }
 }
-
+// Hàm này là dùng để tính lương cho người dùng trong tháng month
 async function computePayslipForUser(userId, month, options = null) {
   const pad = n => String(n).padStart(2, '0');
   const y = parseInt(String(month).split('-')[0], 10);

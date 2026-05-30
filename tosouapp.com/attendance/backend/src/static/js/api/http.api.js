@@ -15,6 +15,16 @@ try {
         if (window.location.pathname !== '/ui/login') {
           window.location.replace('/ui/login');
         }
+      } else if (e.key === 'auth-login-event') {
+        // Clear cached tokens so the new token will be fetched
+        try {
+          sessionStorage.removeItem('accessToken');
+          sessionStorage.removeItem('user');
+        } catch {}
+        // Reload to apply the new login state correctly
+        if (window.location.pathname !== '/ui/login') {
+          window.location.reload();
+        }
       }
     });
   }

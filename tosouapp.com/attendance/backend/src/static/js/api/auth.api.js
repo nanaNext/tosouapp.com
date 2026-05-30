@@ -46,6 +46,7 @@ export async function login(email, password) {
     throw new Error(msg);
   }
   const data = await res.json();
+  try { localStorage.setItem('auth-login-event', Date.now()); } catch {}
   return data;
 }
 

@@ -2656,6 +2656,55 @@
     @media (max-width: 640px) {
       #exSummaryCards {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px;
+      }
+      
+      .summary-card {
+        padding: 12px;
+        gap: 8px;
+      }
+      
+      .summary-icon {
+        width: 28px;
+        height: 28px;
+      }
+      
+      .summary-icon svg {
+        width: 16px;
+        height: 16px;
+      }
+      
+      .summary-count {
+        font-size: 20px;
+      }
+      
+      .summary-card[data-type="rejected"] {
+        grid-column: 1 / -1;
+      }
+
+      /* Make Monthly List table responsive on mobile */
+      #exMonthlyBoardHost > div {
+        border-radius: 8px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      #exMonthlyBoardHost table {
+        min-width: 450px !important;
+      }
+      
+      #exMonthlyBoardHost table th,
+      #exMonthlyBoardHost table td {
+        white-space: nowrap;
+        padding: 12px 10px !important;
+      }
+      
+      /* Make Monthly Detail table responsive on mobile */
+      #historySection .adj-table-card {
+        overflow-x: auto !important;
+      }
+      
+      #historySection .adj-table {
+        min-width: 600px !important;
       }
     }
   </style>
