@@ -756,10 +756,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.location.pathname === to.pathname && window.location.search === to.search) {
           e.preventDefault();
           e.stopImmediatePropagation();
+          // Force close drawer if clicking current page from drawer
+          if (link.closest('#mobileDrawer')) {
+            const btn = document.getElementById('mobileMenuBtn');
+            const drawer = document.getElementById('mobileDrawer');
+            const backdrop = document.getElementById('drawerBackdrop');
+            if (drawer) drawer.setAttribute('hidden', '');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+            if (backdrop) backdrop.setAttribute('hidden', '');
+            document.body.classList.remove('drawer-open');
+            document.documentElement.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            document.body.style.width = '';
+            document.body.style.overflow = '';
+          }
           return;
         }
         e.preventDefault();
         e.stopImmediatePropagation();
+        if (link.closest('#mobileDrawer')) {
+          const btn = document.getElementById('mobileMenuBtn');
+          const drawer = document.getElementById('mobileDrawer');
+          const backdrop = document.getElementById('drawerBackdrop');
+          if (drawer) drawer.setAttribute('hidden', '');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+          if (backdrop) backdrop.setAttribute('hidden', '');
+          document.body.classList.remove('drawer-open');
+          document.documentElement.style.overflow = '';
+          document.body.style.position = '';
+          document.body.style.top = '';
+          document.body.style.left = '';
+          document.body.style.right = '';
+          document.body.style.width = '';
+          document.body.style.overflow = '';
+        }
         const ok = await softNavigateSafe(to, true);
         if (!ok) window.location.href = to.pathname + to.search + to.hash;
       }, true);
