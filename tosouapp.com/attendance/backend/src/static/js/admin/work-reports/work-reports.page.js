@@ -230,11 +230,11 @@ export async function mount() {
         white-space: nowrap;
       }
       .wr-table td {
-        padding: 4px 6px;
+        padding: 8px 6px;
         font-size: 13px;
         color: #334155;
         border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
+        vertical-align: top;
       }
       .wr-table tbody tr:hover td {
         background: #f8fafc;
@@ -361,9 +361,7 @@ export async function mount() {
           <td style="font-family:monospace; font-size:14px;">${checkOut}</td>
           <td>${wType}</td>
           <td>${site}</td>
-          <td style="color:#475569; max-width:300px;">
-            <div title="${rawWork ? esc(rawWork) : ''}" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:help;">${work}</div>
-          </td>
+          <td style="white-space:pre-wrap; word-break:break-word; color:#475569; min-width:200px;">${work}</td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
