@@ -1395,7 +1395,7 @@ const renderList = async () => {
         const m = dFull.match(/^\d{4}-\d{2}-(\d{2})$/);
         return m ? m[1] : dFull;
       })();
-      const a = Number(r.amount || 0).toLocaleString('ja-JP');
+      const a = '¥' + Number(r.amount || 0).toLocaleString('ja-JP');
       const origin = String(r.origin || '').trim();
       const destination = String(r.destination || '').trim();
       const via = normalizeVia(r.via);
