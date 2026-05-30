@@ -26,10 +26,10 @@ const render = async () => {
 // Cái này dùng để hiển thị chi tiết - 交通費
 
   host.className = '';
-  host.style.maxWidth = 'none';
+  host.style.maxWidth = '1000px';
   host.style.width = '100%';
-  host.style.margin = '0';
-  host.style.padding = '0';
+  host.style.margin = '20px auto';
+  host.style.padding = '0 16px';
   host.innerHTML = `
     <div class="exp-month-detail">
       <style>
@@ -47,7 +47,6 @@ const render = async () => {
       <div class="head">
         <h3 class="title">交通費申請詳細</h3>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button id="approveThisMonth" class="btn primary" type="button">月次承認</button>
           <button id="backToExpenseList" class="btn" type="button">一覧へ戻る</button>
         </div>
       </div>
@@ -66,10 +65,17 @@ const render = async () => {
     const isStandalone = params.get('standalone');
     const tabParam = params.get('tab');
     let url = '/admin/expenses';
-    if (isStandalone) {
-      url += `?standalone=${encodeURIComponent(isStandalone)}&tab=${encodeURIComponent(tabParam || 'monthly_approval')}`;
+
+    // Always append parameters if they exist, even when not standalone
+    const urlParams = [];
+    if (isStandalone) urlParams.push(`standalone=${encodeURIComponent(isStandalone)}`);
+    if (tabParam) urlParams.push(`tab=${encodeURIComponent(tabParam)}`);
+    else urlParams.push(`tab=monthly_approval`); // fallback tab
+
+    if (urlParams.length > 0) {
+      url += '?' + urlParams.join('&');
     }
-    try { window.location.assign(url); } catch { window.location.href = url; }
+    window.location.href = url;
   };
 
   backBtn?.addEventListener('click', goBack);
@@ -105,24 +111,54 @@ const render = async () => {
       if (tableHost) tableHost.innerHTML = '<div class="table-wrap"><table><tbody><tr><td>データがありません</td></tr></tbody></table></div>';
       return;
     }
+    let totalAmount = 0;
     const body = rows.map((r) => {
       const d = String(r.date || '').slice(0, 10);
       const route = [r.origin || '', r.destination || ''].filter(Boolean).join(' → ') || '-';
-      const amount = Number(r.amount || 0).toLocaleString('ja-JP');
+      const transport = String(r.transport_type || '電車');
+      const tripType = String(r.trip_type || 'one_way') === 'round_trip' ? '往復' : '片道';
+      const usage = String(r.purpose || '');
+      const note = String(r.note || '');
+      const createdAt = r.created_at ? String(r.created_at).replace('T', ' ').slice(0, 16) : '-';
+      const amountVal = Number(r.amount || 0);
+      totalAmount += amountVal;
+      const amount = amountVal.toLocaleString('ja-JP');
       const status = fmtStatus(r.status);
       return `<tr>
         <td>${d}</td>
+        <td>${usage}</td>
         <td>${route}</td>
-        <td style="text-align:right;">${amount}</td>
+        <td>${transport}</td>
+        <td>${tripType}</td>
+        <td>${note}</td>
+        <td style="text-align:right;">¥${amount}</td>
         <td>${status}</td>
+        <td>${createdAt}</td>
       </tr>`;
     }).join('');
     if (tableHost) {
       tableHost.innerHTML = `
         <div class="table-wrap">
           <table>
-            <thead><tr><th>日付</th><th>経路</th><th>金額</th><th>状態</th></tr></thead>
-            <tbody>${body}</tbody>
+            <thead><tr>
+              <th>日付</th>
+              <th>用途</th>
+              <th>経路</th>
+              <th>交通機関</th>
+              <th>種別</th>
+              <th>備考</th>
+              <th style="text-align:right;">金額</th>
+              <th>状態</th>
+              <th>申請日時</th>
+            </tr></thead>
+            <tbody>
+              ${body}
+              <tr style="background:#f8fafc; font-weight:bold; border-top: 2px solid #e2e8f0;">
+                <td colspan="6" style="text-align:right;">合計</td>
+                <td style="text-align:right; color:#0f172a;">¥${totalAmount.toLocaleString('ja-JP')}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tbody>
           </table>
         </div>
       `;

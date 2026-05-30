@@ -344,7 +344,10 @@ const wireMobileDrawer = () => {
     if (btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
 
+    let closeTimer;
+
     const open = () => {
+      if (closeTimer) clearTimeout(closeTimer);
       try { drawer.removeAttribute('hidden'); } catch {}
       try { backdrop.removeAttribute('hidden'); } catch {}
       // Recover from forced inline hide set by transient reset logic.
@@ -358,17 +361,19 @@ const wireMobileDrawer = () => {
       try { btn.setAttribute('aria-expanded', 'true'); } catch {}
     };
     const close = () => {
-      try { drawer.setAttribute('hidden', ''); } catch {}
-      try { drawer.style.display = 'none'; } catch {}
-      try { drawer.style.pointerEvents = 'none'; } catch {}
-      try { backdrop.setAttribute('hidden', ''); } catch {}
-      try { backdrop.style.display = 'none'; } catch {}
-      try { backdrop.style.pointerEvents = 'none'; } catch {}
       try { document.body.classList.remove('drawer-open'); } catch {}
       try { btn.setAttribute('aria-expanded', 'false'); } catch {}
+      closeTimer = setTimeout(() => {
+        try { drawer.setAttribute('hidden', ''); } catch {}
+        try { drawer.style.display = 'none'; } catch {}
+        try { drawer.style.pointerEvents = 'none'; } catch {}
+        try { backdrop.setAttribute('hidden', ''); } catch {}
+        try { backdrop.style.display = 'none'; } catch {}
+        try { backdrop.style.pointerEvents = 'none'; } catch {}
+      }, 200); // Wait for the 0.18s CSS transform transition to finish
     };
     const toggle = () => {
-      const isOpen = !drawer.hasAttribute('hidden');
+      const isOpen = document.body.classList.contains('drawer-open');
       if (isOpen) close();
       else open();
     };

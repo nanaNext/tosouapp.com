@@ -344,12 +344,17 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 }
 .drawer-backdrop[hidden] { display: none !important; pointer-events: none !important; }
 .drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.2);
-  z-index: 1250;
-  pointer-events: auto;
-}
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.2);
+    z-index: 1250;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+  body.drawer-open .drawer-backdrop {
+    opacity: 1;
+  }
 .mobile-drawer .drawer-header {
   display: flex;
   justify-content: flex-end;
@@ -379,25 +384,26 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
   font-size: 24px;
   letter-spacing: 0;
   font-family: inherit;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  height: 40px;
-  line-height: 40px;
-  transform: none;
+  line-height: 1;
+  transform: translateY(-2px);
 }
 
 .admin .brand .logo {
   font-size: 32px;
   font-weight: 800;
-  height: 44px;
-  line-height: 44px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  transform: translateY(-2px);
 }
 
 .brand {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
 }
 
 .brand .icon {
@@ -412,6 +418,7 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  object-fit: contain;
 }
 
 .admin .brand .icon {
@@ -1356,6 +1363,7 @@ body:not(.admin) .topbar-inner .user #userName {
 }
 .admin .content {
   margin-left: 0;
+  padding-bottom: 80px;
 }
 @media (max-width: 960px) {
   .sidebar { display: none; }
@@ -1386,11 +1394,24 @@ body:not(.admin) .topbar-inner .user #userName {
   min-width: 640px;
 }
 @media (max-width: 640px) {
-  .admin.employees-wide #adminContent table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
+  .admin.employees-wide .content {
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-bottom: 80px;
   }
+  .admin.employees-wide #adminContent table {
+    display: table;
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-x: visible;
+    white-space: normal;
+  }
+  .admin.employees-wide #adminContent table td,
+  .admin.employees-wide #adminContent table th {
+    white-space: normal !important;
+    word-break: break-word;
+  }
+}
   .admin.employees-wide #adminContent table th,
   .admin.employees-wide #adminContent table td {
     text-align: left;
@@ -2514,12 +2535,13 @@ body:not(.admin) .topbar-inner .user #userName {
     align-items: center;
   }
   body:not(.admin) .mobile-btn {
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px;
-    line-height: 30px !important;
-    margin-left: 12px;
-    margin-right: 8px;
+    display: block;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px;
+    line-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border-radius: 8px !important;
     border: 1px solid rgba(255, 255, 255, 0.35) !important;
     background: rgba(255, 255, 255, 0.16) !important;
@@ -2612,15 +2634,28 @@ body:not(.admin) .topbar-inner .user #userName {
 /* Final mobile header normalization: prevent user icon clipping on the right */
 @media (max-width: 480px) {
   body:not(.admin) .topbar {
-    padding: 6px 8px !important;
+    padding: 6px 12px !important;
   }
   body:not(.admin) .topbar-inner {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 8px !important;
+    gap: 12px !important;
     width: 100% !important;
     min-width: 0 !important;
+  }
+  body:not(.admin) .mobile-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    line-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+    font-size: 15px !important;
   }
   body:not(.admin) .topbar-inner .brand {
     display: none !important;
@@ -2629,24 +2664,26 @@ body:not(.admin) .topbar-inner .user #userName {
     flex: 1 1 auto !important;
     min-width: 0 !important;
     max-width: none !important;
-    margin: 0 6px !important;
+    margin: 0 !important;
   }
   body:not(.admin) .topbar-inner .search input {
     width: 100% !important;
     min-width: 0 !important;
-    height: 30px !important;
-    line-height: 30px !important;
+    height: 32px !important;
+    line-height: 32px !important;
   }
   body:not(.admin) .topbar-inner .user {
-    width: auto !important;
-    min-width: 0 !important;
+    width: 32px !important;
+    min-width: 32px !important;
     flex: 0 0 auto !important;
     margin-right: 0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
   }
   body:not(.admin) .topbar-inner .user .user-btn {
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
     padding: 0 !important;
   }
   body:not(.admin) .topbar-inner .user #userName {

@@ -1015,9 +1015,9 @@ async function renderEmployees(profile) {
       <div style="margin-bottom:8px;"><a id="editBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
       <h4>社員編集（${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))}）</h4>
       
-      <div style="display: flex; gap: 24px; align-items: flex-start; margin-bottom: 24px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin-bottom: 24px;">
         <!-- Cột 1: 基本情報 -->
-        <div style="flex: 1;">
+        <div style="flex: 1 1 300px;">
           <table class="excel-table" style="width: 100%;">
             <thead><tr><th colspan="2">基本情報</th></tr></thead>
             <tbody>
@@ -1034,7 +1034,7 @@ async function renderEmployees(profile) {
         </div>
 
         <!-- Cột 2: 職務情報 -->
-        <div style="flex: 1;">
+        <div style="flex: 1 1 300px;">
           <table class="excel-table" style="width: 100%;">
             <thead><tr><th colspan="2">職務情報</th></tr></thead>
             <tbody>
@@ -1098,9 +1098,13 @@ async function renderEmployees(profile) {
         </div>
       </div>
 
-      <div class="form-actions" style="justify-content:flex-end;">
-        <button type="submit" class="btn-primary">更新</button>
-        <a class="btn" id="btnCancelEdit" href="#list">キャンセル</a>
+      <div class="form-actions" style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; z-index: 9999; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
+        <div id="empEditMsg" style="color: #f87171; font-weight: 600; font-size: 14px; flex: 1; text-align: left; display: none;"></div>
+        <a id="btnCancelEdit" href="#list" style="background: transparent; color: #64748b; border: none; font-weight: bold; min-width: 80px; height: 40px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;">キャンセル</a>
+        <button type="submit" style="background: transparent; color: #2b6cb0; border: none; min-width: 100px; height: 40px; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; cursor: pointer;">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          <span>更新</span>
+        </button>
       </div>
 `;
     try {
@@ -1387,9 +1391,9 @@ async function renderEmployees(profile) {
       <div style="margin-bottom:8px;"><a id="addBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
       <div class="form-title">【新規社員】</div>
       
-      <div style="display: flex; gap: 24px; align-items: flex-start; margin-bottom: 24px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin-bottom: 24px;">
         <!-- Cột 1: 基本情報 -->
-        <div style="flex: 1;">
+        <div style="flex: 1 1 300px;">
           <table class="excel-table" style="width: 100%;">
             <thead><tr><th colspan="2">基本情報</th></tr></thead>
             <tbody>
@@ -1413,7 +1417,7 @@ async function renderEmployees(profile) {
         </div>
 
         <!-- Cột 2: 職務情報 -->
-        <div style="flex: 1;">
+        <div style="flex: 1 1 300px;">
           <table class="excel-table" style="width: 100%;">
             <thead><tr><th colspan="2">職務情報</th></tr></thead>
             <tbody>
@@ -1462,10 +1466,13 @@ async function renderEmployees(profile) {
         </div>
       </div>
 
-      <div class="form-actions" style="justify-content:flex-end;">
-        <button type="submit" class="btn-primary">作成</button>
+      <div class="form-actions" style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; z-index: 9999; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
+        <div id="empCreateMsg" style="color: #f87171; font-weight: 600; font-size: 14px; flex: 1; text-align: left; display: none;"></div>
+        <button type="submit" style="background: transparent; color: #2b6cb0; border: none; min-width: 100px; height: 40px; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; cursor: pointer;">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span>作成</span>
+        </button>
       </div>
-      <div id="empCreateMsg" style="margin-top:10px;color:#0f172a;font-weight:600;"></div>
 `;
     form.querySelector('#addBack').addEventListener('click', async (e) => {
       e.preventDefault();
@@ -1506,13 +1513,16 @@ async function renderEmployees(profile) {
         avatarUrl: (document.querySelector('#empAvatarUrl').value || '').trim() || null
       };
       if (!b.username || !b.email || !b.password) {
-        if (msgEl) { msgEl.style.color = '#b00020'; msgEl.textContent = '氏名・メール・パスワードは必須です。'; }
-        return;
-      }
-      const ok = window.confirm('保存しますか？');
+          if (msgEl) { msgEl.style.display = 'block'; msgEl.style.color = '#f87171'; msgEl.textContent = '氏名・メール・パスワードは必須です。'; }
+          return;
+        }
+      if (msgEl) msgEl.style.display = 'none';
+      const ok = window.confirm('作成しますか？');
       if (!ok) return;
-      if (msgEl) { msgEl.style.color = '#0f172a'; msgEl.textContent = '保存中…'; }
-      if (btn) btn.disabled = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> <span>作成中...</span>`;
+      }
       try {
         const r = await createEmployee(b);
         try {
@@ -1526,26 +1536,36 @@ async function renderEmployees(profile) {
             });
           }
         } catch {}
-        if (msgEl) { msgEl.style.color = '#0f172a'; msgEl.textContent = '保存しました（1名追加）'; }
-        try { sessionStorage.setItem('navSpinner', '1'); } catch {}
-        setTimeout(() => { window.location.href = '/admin/employees#list'; }, 350);
-      } catch (err) {
-        const m = String((err && err.message) ? err.message : '');
-        const low = m.toLowerCase();
-        if (msgEl) {
-          msgEl.style.color = '#b00020';
-          if (m.includes('社員番号') || low.includes('uniq_employee_code') || low.includes('duplicate entry')) {
-            msgEl.textContent = '社員番号が既に存在します。別の番号を入力してください。';
-            try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch {}
-          } else if (m.includes('Email') || low.includes('email')) {
-            msgEl.textContent = m;
-            try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch {}
-          } else {
-            msgEl.textContent = '保存失敗: ' + (m || 'error');
-          }
+        if (btn) {
+          btn.style.background = 'transparent';
+          btn.style.borderColor = 'transparent';
+          btn.style.color = '#10b981';
+          btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> <span>作成成功</span>`;
         }
-      } finally {
-        if (btn) btn.disabled = false;
+        try { sessionStorage.setItem('navSpinner', '1'); } catch {}
+        setTimeout(() => { window.location.href = '/admin/employees#list'; }, 1000);
+        return;
+      } catch (err) {
+          const m = String((err && err.message) ? err.message : '');
+          const low = m.toLowerCase();
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#f87171';
+            if (m.includes('社員番号') || low.includes('uniq_employee_code') || low.includes('duplicate entry')) {
+              msgEl.textContent = '社員番号が既に存在します。別の番号を入力してください。';
+              try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch {}
+            } else if (m.includes('Email') || low.includes('email')) {
+              msgEl.textContent = m;
+              try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch {}
+            } else {
+              msgEl.textContent = '作成失敗: ' + (m || 'error');
+            }
+          }
+        } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> <span>作成</span>`;
+        }
       }
     });
     if (seq !== employeesRenderSeq) return;
