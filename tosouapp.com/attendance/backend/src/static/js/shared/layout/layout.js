@@ -332,6 +332,10 @@ export function initLayout() {
     };
     mobileMenuBtn.addEventListener('click', () => toggleDrawer());
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
+    const drawerLinks = mobileDrawer.querySelectorAll('a, .drawer-item');
+    drawerLinks.forEach(link => {
+      link.addEventListener('click', () => toggleDrawer(false));
+    });
   }
   if (mobileBackdrop) mobileBackdrop.addEventListener('click', () => {
     try {

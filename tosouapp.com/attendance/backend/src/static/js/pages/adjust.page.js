@@ -117,6 +117,7 @@ const wireDrawer = () => {
   closeBtn?.addEventListener('click', (e) => { e.preventDefault(); close(); });
   backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  try { drawer.querySelectorAll('.drawer-item, a').forEach(el => el.addEventListener('click', close)); } catch {}
 };
 
 const pickLatestSegment = (segments) => {

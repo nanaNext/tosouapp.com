@@ -150,6 +150,7 @@ const wireDrawer = () => {
   if (closeBtn) closeBtn.addEventListener('click', close);
   if (backdrop) backdrop.addEventListener('click', close);
   try {
+    drawer?.querySelectorAll?.('.drawer-item, a').forEach(el => el.addEventListener('click', close));
     drawer?.querySelectorAll?.('.drawer-group-btn[data-drawer-group]').forEach((groupBtn) => {
       groupBtn.addEventListener('click', () => {
         const key = String(groupBtn.getAttribute('data-drawer-group') || '');
@@ -171,6 +172,7 @@ const wireDrawer = () => {
     drawer?.querySelectorAll?.('a.drawer-item[href]').forEach((a) => {
       a.addEventListener('click', () => close());
     });
+    drawer?.querySelectorAll?.('.drawer-item, a').forEach(el => el.addEventListener('click', close));
   } catch {}
 };
 
