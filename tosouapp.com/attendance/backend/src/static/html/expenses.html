@@ -785,10 +785,15 @@
 
     .adj-table-card {
       margin-top: 14px;
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
     }
 
     .adj-table {
       width: 100%;
+      min-width: 800px;
       border-collapse: collapse;
       border-spacing: 0;
     }
@@ -1551,7 +1556,7 @@
 
     .expense-main.new-progress-split #historySection .adj-table-card {
       width: 100%;
-      overflow-x: hidden;
+      overflow-x: auto;
       overflow-y: hidden;
       -webkit-overflow-scrolling: touch;
       border: 1px solid #dbe3ee;
@@ -1561,9 +1566,9 @@
     }
 
     .expense-main.new-progress-split #historySection .adj-table {
-      min-width: 0;
+      min-width: 600px;
       width: 100%;
-      table-layout: fixed;
+      table-layout: auto;
       border-collapse: collapse;
       font-size: 11px;
     }
