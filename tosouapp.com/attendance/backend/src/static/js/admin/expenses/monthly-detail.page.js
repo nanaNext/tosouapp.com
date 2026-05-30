@@ -106,8 +106,8 @@ const render = async () => {
     const rows = Array.isArray(rowsRes) ? rowsRes : (Array.isArray(rowsRes?.rows) ? rowsRes.rows : []);
     const nameMap = new Map(users.map((u) => [String(u.id), (u.username || u.email || String(u.id))]));
     const selectedName = nameMap.get(String(userId)) || String(userId || '全員');
-    if (meta) meta.textContent = `対象: ${selectedName} / ${month}`;
     if (!rows.length) {
+      if (meta) meta.textContent = `対象: ${selectedName} / ${month} | 合計: ¥0`;
       if (tableHost) tableHost.innerHTML = '<div class="table-wrap"><table><tbody><tr><td>データがありません</td></tr></tbody></table></div>';
       return;
     }
@@ -136,6 +136,11 @@ const render = async () => {
         <td>${createdAt}</td>
       </tr>`;
     }).join('');
+    
+    if (meta) {
+      meta.innerHTML = `対象: ${selectedName} / ${month} <span style="margin-left:16px; font-weight:bold; font-size:16px; color:#b91c1c;">合計: ¥${totalAmount.toLocaleString('ja-JP')}</span>`;
+    }
+
     if (tableHost) {
       tableHost.innerHTML = `
         <div class="table-wrap">
