@@ -89,6 +89,7 @@ const render = async () => {
       <style>
         .exp-admin-page [hidden] { display: none !important; }
         body.expenses-standalone { background: #f5f7fb; margin: 0 !important; padding: 0 !important; height: 100vh; overflow: hidden !important; }
+        body.expenses-standalone #adminChrome { display: none !important; }
         body.expenses-standalone main.content { padding: 0 !important; background: transparent; height: 100vh; overflow: hidden !important; }
         body.expenses-standalone #adminContent { padding: 0 !important; height: 100vh; overflow: hidden !important; }
         body.expenses-standalone .exp-admin-page { height: 100vh; overflow: hidden; }
@@ -1291,7 +1292,7 @@ const render = async () => {
   const fetchList = async () => {
       const isMonthly = state.status === 'monthly_approval' || state.status === 'archived';
       const statusParam = isMonthly ? (state.status === 'archived' ? 'approved' : 'applied') : state.status;
-    const limitParam = isMonthly ? 2000 : (state.limit || 10);
+    const limitParam = 2000; // Force load all to allow frontend grouping
     const q = new URLSearchParams();
     q.set('month', String(state.month || '').slice(0, 7));
     q.set('page', String(state.page || 1));
@@ -1514,113 +1515,242 @@ const render = async () => {
     const topTotal = document.getElementById('expDashTopTotal');
     if (!host) return;
 
-    if (state.status === 'monthly_approval' || state.status === 'archived') {
-      const rows = Array.isArray(result?.rows) ? result.rows : [];
-      const userMap = new Map();
-      rows.forEach(r => {
-        const uid = String(r.userId || '');
-        if (!uid) return;
-        const prev = userMap.get(uid) || { userId: uid, userName: r.user_name || r.user_email || '社員', dept: r.departmentId, count: 0, amount: 0, month: String(r.date || '').slice(0, 7) };
-        prev.count += 1;
-        prev.amount += Number(r.amount || 0);
-        userMap.set(uid, prev);
-      });
-      const deptName = (deptId) => {
-        const id = deptId == null ? '' : String(deptId);
-        if (!id) return '未設定';
-        return state.deptMap.get(id) || `#${id}`;
-      };
-      const userRows = Array.from(userMap.values());
-      const grandTotal = userRows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-      const totalCount = userRows.reduce((sum, r) => sum + Number(r.count || 0), 0);
-      
-      const isArchived = state.status === 'archived';
-      
-      const bodyRows = userRows.map((r) => {
+    const rows = Array.isArray(result?.rows) ? result.rows : [];
+    const userMap = new Map();
+    rows.forEach(r => {
+      const uid = String(r.userId || '');
+      if (!uid) return;
+      const monthStr = String(r.date || '').slice(0, 7);
+      const st = String(r.status || 'pending').toLowerCase();
+      // Group by user and month ONLY to avoid duplicate groups for the same employee
+      const key = `${uid}_${monthStr}`;
+      const prev = userMap.get(key) || { userId: uid, userName: r.user_name || r.user_email || '社員', userCode: r.employee_code, dept: r.departmentId, count: 0, amount: 0, month: monthStr, items: [] };
+      prev.count += 1;
+      prev.amount += Number(r.amount || 0);
+      prev.items.push(r);
+      userMap.set(key, prev);
+    });
+
+    const deptName = (deptId) => {
+      const id = deptId == null ? '' : String(deptId);
+      if (!id) return '未設定';
+      return state.deptMap.get(id) || `#${id}`;
+    };
+    const userRows = Array.from(userMap.values());
+    const grandTotal = userRows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const totalCount = userRows.reduce((sum, r) => sum + Number(r.count || 0), 0);
+    
+    const isArchived = state.status === 'archived';
+    
+    const bodyRows = userRows.map((r) => {
         const d = deptName(r.dept);
         const isStandalone = new URLSearchParams(window.location.search).get('standalone');
         let detailUrl = `/admin/expenses/monthly-detail?userId=${encodeURIComponent(r.userId)}&month=${encodeURIComponent(r.month)}`;
         if (isStandalone) {
-          detailUrl += `&standalone=${encodeURIComponent(isStandalone)}&tab=${isArchived ? 'archived' : 'monthly_approval'}`;
-        }
-        
-        let actionHtml = '';
-        if (isArchived) {
-          actionHtml = `<a class="btn exp-dash-btn-ghost" href="${detailUrl}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;text-decoration:none;">明細を確認</a>`;
-        } else {
-          actionHtml = `
-            <a class="btn exp-dash-btn-ghost" href="${detailUrl}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;text-decoration:none;">明細を確認</a>
-          `;
+          detailUrl += `&standalone=${encodeURIComponent(isStandalone)}&tab=${encodeURIComponent(state.status)}`;
         }
 
-        return `<tr class="exp-dash-row">
-          ${state.status === 'monthly_approval' ? `<td class="center" style="width:40px;"><input type="checkbox" class="exp-dash-bulk-cb-monthly" data-uid="${esc(r.userId)}" data-month="${esc(r.month)}" style="cursor:pointer;" /></td>` : ''}
-          <td>${esc(r.userName)}</td>
-          <td>${esc(d)}</td>
-          <td class="center">${esc(fmtMonthLabel(r.month))}</td>
-          <td class="money">¥${Number(r.amount).toLocaleString('ja-JP')}</td>
-          <td class="center">${esc(r.count)}件</td>
-          <td class="center">
-            <div style="display:flex;gap:8px;align-items:center;">
-              ${actionHtml}
-            </div>
-          </td>
-        </tr>`;
-      }).join('');
-      
-      if (meta) meta.textContent = `${userRows.length} 名の${isArchived ? 'データ' : '申請'}`;
-      if (topTotal) {
-        topTotal.innerHTML = `対象社員: ${userRows.length}名 <span style="margin-left:16px; color:#0f172a; font-weight:800;">合計金額: ¥${grandTotal.toLocaleString('ja-JP')}</span>`;
-        if (isArchived) {
-          topTotal.innerHTML += ` <span style="margin-left:16px; color:#10b981; font-weight:800; border: 1px solid #10b981; padding: 2px 8px; border-radius: 4px; font-size: 11px;">月次締め完了</span>`;
+        const isMonthly = state.status === 'monthly_approval' || state.status === 'archived';
+      const showAccordion = state.status === 'applied'; // Only "未承認" (Pending) shows accordion
+
+        let actionHtml = '';
+        if (!showAccordion) {
+          actionHtml = `<a href="${detailUrl}" class="btn exp-dash-btn-ghost" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;text-decoration:none;color:#0f172a;">明細</a>`;
+        } else {
+          actionHtml = `<button type="button" class="btn exp-dash-btn-ghost" data-action="toggle-dash-group" data-target="grp_${r.userId}_${r.month}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;color:#0f172a;">明細</button>`;
         }
-        topTotal.removeAttribute('hidden');
-      }
-      
-      const checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
-      const xIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-      
-      host.innerHTML = `
-        ${state.status === 'monthly_approval' ? `
-        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; justify-content: space-between; flex-wrap: wrap;">
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <span style="font-size: 13px; color: #64748b;">選択した社員を:</span>
-            <button type="button" class="btn" id="expDashBulkApproveMonthly" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">
-              ${checkIcon} 一括承認 (Approve)
-            </button>
-            <button type="button" class="btn" id="expDashBulkCancelMonthly" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">
-              ${xIcon} 一括取消
-            </button>
+
+      let expandedRow = '';
+      if (showAccordion) {
+        const detailsHtml = `
+          <div style="background:#fff; border-radius: 6px; border: 1px solid #e2e8f0; overflow: hidden; margin-top: 8px;">
+            <table style="width:100%; border-collapse: collapse; font-size:13px;">
+              <thead style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                <tr>
+                  <th style="padding:10px 12px; text-align:left; width: 40px;"></th>
+                  <th style="padding:10px 12px; text-align:left; color:#475569; font-weight:600;">日付</th>
+                  <th style="padding:10px 12px; text-align:left; color:#475569; font-weight:600;">用途</th>
+                  <th style="padding:10px 12px; text-align:left; color:#475569; font-weight:600;">経路</th>
+                  <th style="padding:10px 12px; text-align:left; color:#475569; font-weight:600;">交通機関</th>
+                  <th style="padding:10px 12px; text-align:left; color:#475569; font-weight:600;">種別</th>
+                  <th style="padding:10px 12px; text-align:left; color:#475569; font-weight:600;">備考</th>
+                  <th style="padding:10px 12px; text-align:right; color:#475569; font-weight:600;">金額</th>
+                  <th style="padding:10px 12px; text-align:center; color:#475569; font-weight:600;">状態</th>
+                  <th style="padding:10px 12px; text-align:center; color:#475569; font-weight:600;">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+        ` + r.items.map(item => {
+          const id = String(item.id || '');
+          const ym = String(item.date || '').slice(0, 10);
+          const amt = fmtJPY(item.amount || 0);
+          const st = String(item.status || '');
+          const stLabel = statusLabel(st);
+          const stCls = statusPillClass(st);
+          const usage = String(item.purpose || '');
+          const transport = String(item.transport_type || '電車');
+          const tripType = String(item.trip_type || 'one_way') === 'round_trip' ? '往復' : '片道';
+          const note = String(item.note || '');
+          const route = [item.origin, item.destination].filter(Boolean).join(' → ') || '-';
+          
+          const deleteIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+          const deleteBtn = `<button type="button" class="btn" data-action="delete-expense" data-id="${esc(id)}" style="background:transparent;border:none;color:#ef4444;padding:4px;cursor:pointer;" title="削除">${deleteIcon}</button>`;
+          
+          const checkbox = (st === 'applied' || st === 'pending') ? `<input type="checkbox" class="exp-dash-bulk-cb child-cb-${r.userId}-${r.month}" data-id="${esc(id)}" style="cursor:pointer;" />` : '';
+          
+          return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding:10px 12px; text-align:center;">${checkbox}</td>
+              <td style="padding:10px 12px;">${ym}</td>
+              <td style="padding:10px 12px;">${esc(usage)}</td>
+              <td style="padding:10px 12px; font-weight:600;">${esc(route)}</td>
+              <td style="padding:10px 12px;">${esc(transport)}</td>
+              <td style="padding:10px 12px;">${esc(tripType)}</td>
+              <td style="padding:10px 12px; color:#64748b; font-size:12px; max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${esc(note)}">${esc(note)}</td>
+              <td style="padding:10px 12px; text-align:right; font-weight:700;">${amt}</td>
+              <td style="padding:10px 12px; text-align:center;"><span class="pill ${stCls}" style="font-size:11px;">${stLabel}</span></td>
+              <td style="padding:10px 12px; text-align:center; display:flex; align-items:center; justify-content:center; gap:8px;">
+                  <a href="#" data-action="open-drawer" data-id="${id}" style="font-size:12px; color:#3b82f6; text-decoration:none; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff;">詳細</a>
+                  ${deleteBtn}
+                </td>
+            </tr>
+          `;
+        }).join('') + `
+              </tbody>
+            </table>
           </div>
-          <button type="button" class="btn" id="expDashMonthClose" style="display:flex; align-items:center; background:#0b2c66; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold; margin-top: 4px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            当月を締め処理 (Close Month)
+        `;
+
+        expandedRow = `
+          <tr id="grp_${r.userId}_${r.month}" style="display:none; background:#f8fafc;">
+            <td colspan="7" style="padding:0;">
+              <div style="padding: 12px 24px; border-left: 4px solid #3b82f6;">
+                ${detailsHtml}
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      return `<tr class="exp-dash-row">
+        <td class="center" style="width:40px;">
+          <input type="checkbox" class="${state.status === 'monthly_approval' ? 'exp-dash-bulk-cb-monthly' : 'exp-dash-bulk-group'}" data-uid="${esc(r.userId)}" data-month="${esc(r.month)}" style="cursor:pointer;" />
+        </td>
+        <td>
+          <div style="font-weight: 800; color: #0f172a;">${esc(r.userName)}</div>
+          ${r.userCode ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${esc(r.userCode)}</div>` : ''}
+        </td>
+        <td>${esc(d)}</td>
+        <td class="center">${esc(fmtMonthLabel(r.month))}</td>
+        <td class="money">¥${Number(r.amount).toLocaleString('ja-JP')}</td>
+        <td class="center">${esc(r.count)}件</td>
+        <td style="padding-left:12px;">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:flex-start;">
+            ${actionHtml}
+          </div>
+        </td>
+      </tr>` + expandedRow;
+    }).join('');
+    
+    if (meta) meta.textContent = `${userRows.length} 名の${isArchived ? 'データ' : '申請'}`;
+    if (topTotal) {
+      topTotal.innerHTML = `対象社員: ${userRows.length}名 <span style="margin-left:16px; color:#0f172a; font-weight:800;">合計金額: ¥${grandTotal.toLocaleString('ja-JP')}</span>`;
+      if (isArchived) {
+        topTotal.innerHTML += ` <span style="margin-left:16px; color:#10b981; font-weight:800; border: 1px solid #10b981; padding: 2px 8px; border-radius: 4px; font-size: 11px;">月次締め完了</span>`;
+      }
+      topTotal.removeAttribute('hidden');
+    }
+    
+    const checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+    const xIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    const deleteIconBtn = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+    
+    let bulkToolbar = '';
+    if (state.status === 'monthly_approval') {
+      bulkToolbar = `
+      <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; justify-content: space-between; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <span style="font-size: 13px; color: #64748b;">選択した社員を:</span>
+          <button type="button" class="btn" id="expDashBulkApproveMonthly" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">
+            ${checkIcon} 一括承認 (Approve)
+          </button>
+          <button type="button" class="btn" id="expDashBulkCancelMonthly" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">
+            ${xIcon} 一括取消
           </button>
         </div>
-        ` : ''}
-        <div class="exp-dash-tablewrap">
-          <table class="exp-dash-table">
-            <thead><tr>
-              ${state.status === 'monthly_approval' ? `<th class="center" style="width:40px;"><input type="checkbox" id="expDashBulkCheckAllMonthly" style="cursor:pointer;" /></th>` : ''}
-              <th>社員名</th><th>部署</th><th class="center">対象月</th><th class="money">合計金額</th><th class="center">${isArchived ? '件数' : '申請件数'}</th><th class="center">操作</th>
-            </tr></thead>
-            <tbody>${bodyRows || `<tr><td colspan="${state.status === 'monthly_approval' ? 7 : 6}" class="center" style="padding: 24px; color: #64748b;">データがありません</td></tr>`}</tbody>
-            ${userRows.length > 0 ? `
-            <tfoot>
-              <tr style="background-color: #f8fafc; border-top: 2px solid #cbd5e1;">
-                <td colspan="${state.status === 'monthly_approval' ? 4 : 3}" style="text-align: right; font-weight: 800; color: #0f172a; padding: 12px 16px;">総合計 (Grand Total)</td>
-                <td class="money" style="font-weight: 800; color: #0f172a; font-size: 14px;">¥${grandTotal.toLocaleString('ja-JP')}</td>
-                <td class="center" style="font-weight: 800; color: #0f172a;">${totalCount}件</td>
-                <td></td>
-              </tr>
-            </tfoot>
-            ` : ''}
-          </table>
-        </div>
+        <button type="button" class="btn" id="expDashMonthClose" style="display:flex; align-items:center; background:#0b2c66; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold; margin-top: 4px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          当月を締め処理 (Close Month)
+        </button>
+      </div>
       `;
-      
-      // Monthly bulk actions event binding
-      if (state.status === 'monthly_approval') {
+    } else if (state.status === 'applied') {
+      bulkToolbar = `
+      <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
+        <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
+        <button type="button" class="btn" id="expDashBulkApprove" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${checkIcon}一括承認</button>
+        <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${xIcon}一括取消</button>
+        <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIconBtn}一括削除</button>
+      </div>
+      `;
+    } else if (!isArchived) {
+      bulkToolbar = `
+      <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
+        <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
+        <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${xIcon}一括取消</button>
+        <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIconBtn}一括削除</button>
+      </div>
+      `;
+    }
+
+    host.innerHTML = `
+      ${bulkToolbar}
+      <div class="exp-dash-tablewrap">
+        <table class="exp-dash-table">
+          <thead><tr>
+            <th class="center" style="width:40px;"><input type="checkbox" id="${state.status === 'monthly_approval' ? 'expDashBulkCheckAllMonthly' : 'expDashBulkCheckAll'}" style="cursor:pointer;" /></th>
+            <th>社員名</th><th>部署</th><th class="center">対象月</th><th class="money">合計金額</th><th class="center">${isArchived ? '件数' : '申請件数'}</th><th>操作</th>
+          </tr></thead>
+          <tbody>${bodyRows || `<tr><td colspan="7" class="center" style="padding: 24px; color: #64748b;">データがありません</td></tr>`}</tbody>
+          ${userRows.length > 0 ? `
+          <tfoot>
+            <tr style="background-color: #f8fafc; border-top: 2px solid #cbd5e1;">
+              <td colspan="4" style="text-align: right; font-weight: 800; color: #0f172a; padding: 12px 16px;">総合計 (Grand Total)</td>
+              <td class="money" style="font-weight: 800; color: #0f172a; font-size: 14px;">¥${grandTotal.toLocaleString('ja-JP')}</td>
+              <td class="center" style="font-weight: 800; color: #0f172a;">${totalCount}件</td>
+              <td></td>
+            </tr>
+          </tfoot>
+          ` : ''}
+        </table>
+      </div>
+    `;
+    
+    // Group checkbox logic for non-monthly modes
+    if (state.status !== 'monthly_approval' && state.status !== 'archived') {
+      const groupCbs = document.querySelectorAll('.exp-dash-bulk-group');
+      groupCbs.forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const uid = cb.getAttribute('data-uid');
+          const month = cb.getAttribute('data-month');
+          const childCbs = document.querySelectorAll(`.child-cb-${uid}-${month}`);
+          childCbs.forEach(child => child.checked = e.target.checked);
+        });
+      });
+    }
+
+    // Bind drawer open events
+    document.querySelectorAll('a[data-action="open-drawer"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        if (id) await openDrawer(id);
+      });
+    });
+
+    // Monthly bulk actions event binding
+    if (state.status === 'monthly_approval') {
         const checkAllMonthly = document.getElementById('expDashBulkCheckAllMonthly');
         const cbListMonthly = document.querySelectorAll('.exp-dash-bulk-cb-monthly');
         
@@ -1680,121 +1810,25 @@ const render = async () => {
           });
         }
       }
-      
-      return;
-    }
-
-    const rows = Array.isArray(result?.rows) ? result.rows : [];
-    const total = Number(result?.total || 0);
-    const page = Number(result?.page || state.page || 1);
-    const limit = Number(result?.limit || state.limit || 10);
-    const start = total ? ((page - 1) * limit + 1) : 0;
-    const end = Math.min(total, page * limit);
-    if (meta) meta.textContent = `${start}-${end} / ${total}`;
-    if (topTotal) {
-      topTotal.textContent = `合計: ${total}件`;
-      topTotal.removeAttribute('hidden');
-    }
-    const deptName = (deptId) => {
-      const id = deptId == null ? '' : String(deptId);
-      if (!id) return '未設定';
-      return state.deptMap.get(id) || `#${id}`;
-    };
-    const bodyRows = rows.map((r) => {
-      const id = String(r?.id || '');
-      const name = r?.user_name || r?.user_email || '';
-      const dept = deptName(r?.departmentId);
-      const ym = String(r?.date || '').slice(0, 7);
-      const monthText = fmtMonthLabel(ym) || ym;
-      const amt = fmtJPY(r?.amount || 0);
-      const st = String(r?.status || '');
-      const stLabel = statusLabel(st);
-      const stCls = statusPillClass(st);
-      const appliedAt = r?.applied_at ? fmtDT(r.applied_at) : '';
-      const deleteIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
-      const deleteBtnHtml = `<button type="button" class="btn exp-dash-btn-danger" data-action="delete-expense" data-id="${esc(id)}" style="width:28px;height:28px;padding:0;border:none;background:transparent;color:#ef4444;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;" title="削除">${deleteIcon}</button>`;
-      return `<tr data-id="${esc(id)}" class="exp-dash-row">
-        <td class="center" style="width:40px;"><input type="checkbox" class="exp-dash-bulk-cb" data-id="${esc(id)}" style="cursor:pointer;" /></td>
-        <td class="id"><a href="#" data-action="open-drawer" data-id="${esc(id)}">${esc(id)}</a></td>
-        <td>${esc(name)}</td>
-        <td>${esc(dept)}</td>
-        <td class="center">${esc(monthText)}</td>
-        <td class="money">${esc(amt)}</td>
-        <td class="center"><span class="pill ${stCls}">${esc(stLabel)}</span></td>
-        <td class="center">${esc(appliedAt || '')}</td>
-        <td class="center">
-          <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
-            <button type="button" class="btn exp-dash-btn-ghost" data-action="open-drawer" data-id="${esc(id)}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;">明細</button>
-            ${deleteBtnHtml}
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    
-    let bulkToolbar = '';
-    const deleteIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
-    const approveIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
-    const cancelIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-    
-    if (state.status === 'applied') {
-      bulkToolbar = `
-        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
-          <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
-          <button type="button" class="btn" id="expDashBulkApprove" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${approveIcon}一括承認</button>
-          <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${cancelIcon}一括取消</button>
-          <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIcon}一括削除</button>
-        </div>
-      `;
-    } else {
-      bulkToolbar = `
-        <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
-          <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
-          <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${cancelIcon}一括取消</button>
-          <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIcon}一括削除</button>
-        </div>
-      `;
-    }
-
-    host.innerHTML = `
-      ${bulkToolbar}
-      <div class="exp-dash-tablewrap">
-        <table class="exp-dash-table">
-          <thead><tr>
-            <th class="center" style="width:40px;"><input type="checkbox" id="expDashBulkCheckAll" style="cursor:pointer;" /></th>
-            <th>申請ID</th><th>申請者</th><th>部署</th><th class="center">対象月</th><th class="money">金額</th><th class="center">ステータス</th><th class="center">申請日時</th><th class="center">操作</th>
-          </tr></thead>
-          <tbody>${bodyRows || `<tr><td colspan="9" class="center" style="padding:16px;color:#64748b;">データはありません</td></tr>`}</tbody>
-        </table>
-      </div>
-      <div class="exp-dash-pager">
-        <button type="button" class="btn exp-dash-btn-ghost" data-action="prev" ${page <= 1 ? 'disabled' : ''}>前</button>
-        <div class="exp-dash-muted">${page} / ${totalPages}</div>
-        <button type="button" class="btn exp-dash-btn-ghost" data-action="next" ${page >= totalPages ? 'disabled' : ''}>次</button>
-      </div>
-    `;
 
     // Bulk action event listeners
     const checkAll = document.getElementById('expDashBulkCheckAll');
     const cbList = document.querySelectorAll('.exp-dash-bulk-cb');
     
-    // Make entire row click toggle checkbox (but NOT open drawer)
-    document.querySelectorAll('.exp-dash-row').forEach(row => {
-      row.addEventListener('click', (e) => {
-        // Prevent toggle if clicking on links or action buttons
-        if (e.target.closest('a') || e.target.closest('button')) return;
-        
-        // Prevent event from bubbling up to the table body click handler which opens the drawer
-        e.stopPropagation();
-        
-        const cb = row.querySelector('.exp-dash-bulk-cb');
-        if (cb && e.target !== cb) {
-          cb.checked = !cb.checked;
-          // Trigger change event for 'checkAll' logic if needed
-          cb.dispatchEvent(new Event('change'));
-        }
+    // Make entire row click toggle group checkbox for non-monthly modes
+    if (state.status !== 'monthly_approval') {
+      document.querySelectorAll('.exp-dash-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('a') || e.target.closest('button')) return;
+          e.stopPropagation();
+          const cb = row.querySelector('.exp-dash-bulk-group');
+          if (cb && e.target !== cb) {
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event('change'));
+          }
+        });
       });
-    });
+    }
 
     document.querySelectorAll('button[data-action="open-drawer"]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -2197,7 +2231,21 @@ const render = async () => {
     });
     document.getElementById('expDashList')?.addEventListener('click', async (e) => {
       const t = e.target;
-      
+
+      const toggleBtn = t?.closest ? t.closest('button[data-action="toggle-dash-group"]') : null;
+      if (toggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetId = toggleBtn.getAttribute('data-target');
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          const isHidden = targetEl.style.display === 'none';
+          targetEl.style.display = isHidden ? 'table-row' : 'none';
+          toggleBtn.textContent = isHidden ? '閉じる' : '明細';
+        }
+        return;
+      }
+
       const btnDelete = t?.closest ? t.closest('button[data-action="delete-expense"]') : null;
       if (btnDelete) {
         e.preventDefault();

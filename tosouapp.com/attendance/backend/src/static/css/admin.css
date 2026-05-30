@@ -21,13 +21,14 @@
   .admin .topbar .topbar-inner {
     display: flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
+    justify-content: space-between !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
     min-width: 0 !important;
   }
 
   .admin .topbar .brand {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
+    display: none !important;
   }
 
   .admin .topbar .user {
@@ -2057,6 +2058,12 @@ body.drawer-open.admin.has-sidebar .content {
     overflow: visible;
   }
 
+  .admin .kpi-grid,
+  .admin .dash-grid {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
   .admin .kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -2074,6 +2081,15 @@ body.drawer-open.admin.has-sidebar .content {
 
   .admin .dash-card {
     min-height: 108px;
+  }
+
+  /* Align primary admin content to the left */
+  .admin #adminContent,
+  .admin.employees-wide #adminContent,
+  .admin #adjustRequestsHost,
+  .admin .exp-admin-page {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 }
 
@@ -2256,6 +2272,7 @@ body.drawer-open.admin.has-sidebar .content {
   }
 
   .admin .topbar {
+    box-sizing: border-box !important;
     background: #0b2c66 !important;
     border-bottom: 1px solid #072149;
     min-height: 46px;
@@ -2266,27 +2283,35 @@ body.drawer-open.admin.has-sidebar .content {
     right: 0;
     width: 100%;
     z-index: 2147483000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
   }
 
   .admin .topbar-inner {
+    box-sizing: border-box !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: space-between;
-    gap: 8px !important;
-    width: 100%;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    flex: 1 1 auto !important;
+    width: calc(100% - 46px) !important;
     min-width: 0;
-    padding-right: 8px;
+    margin: 0 !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
     position: relative;
   }
 
   .admin .topbar .search {
-    display: inline-flex !important;
+    display: flex !important;
     align-items: center !important;
     flex: 1 1 auto !important;
     min-width: 96px !important;
     max-width: none !important;
     height: 32px !important;
-    margin: 0 6px !important;
+    margin: 0 !important;
     padding: 0 8px !important;
     border-radius: 8px !important;
     border: 1px solid rgba(255, 255, 255, .28) !important;
@@ -2375,8 +2400,10 @@ body.drawer-open.admin.has-sidebar .content {
   .admin .topbar .user {
     display: inline-flex !important;
     align-items: center;
+    justify-content: center;
     margin-left: auto;
-    min-width: 0;
+    width: 46px;
+    min-width: 46px;
     height: 46px;
     padding: 0;
     position: relative;
@@ -2395,14 +2422,16 @@ body.drawer-open.admin.has-sidebar .content {
 
   .admin .mobile-btn {
     display: inline-flex !important;
+    position: static !important;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    min-width: 40px;
+    width: 46px;
+    min-width: 46px;
     height: 46px;
+    padding: 0 !important;
     margin: 0 !important;
     border: 0 !important;
-    border-right: 1px solid rgba(255, 255, 255, .22);
+    border-right: 1px solid rgba(255, 255, 255, .22) !important;
     border-radius: 0 !important;
     background: transparent !important;
     color: #ffffff !important;
@@ -2414,17 +2443,7 @@ body.drawer-open.admin.has-sidebar .content {
   }
 
   .admin .topbar .brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: 46px;
-    padding: 0 6px !important;
-    background: transparent;
-    color: #ffffff;
-    text-decoration: none;
-    flex: 0 0 auto;
-    min-width: 0;
-    overflow: hidden;
+    display: none !important;
   }
 
   .admin .topbar .brand .icon {

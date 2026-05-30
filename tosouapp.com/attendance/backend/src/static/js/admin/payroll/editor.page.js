@@ -194,10 +194,9 @@ export async function mount() {
   wrap.appendChild(actionTopBar);
 
   const summaryCard = document.createElement('div');
-  summaryCard.style.padding = '0';
-  summaryCard.style.margin = '0';
+  summaryCard.className = 'pe-card';
   summaryCard.innerHTML = `
-    <div class="pe-title" style="border:none; padding:0; margin:0; font-size:16px;">総計（リアルタイム）</div>
+    <div class="pe-title" style="margin-top:0;">総計（リアルタイム）</div>
     <div class="pe-kpi">
       <div><div class="k">支払内訳合計（総支給額）</div><div class="v" id="kpiGross">-</div></div>
       <div><div class="k">控除合計（総控除額）</div><div class="v" id="kpiDeduct">-</div></div>

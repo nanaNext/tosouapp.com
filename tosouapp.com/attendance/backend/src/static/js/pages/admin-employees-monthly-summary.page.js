@@ -639,8 +639,8 @@ function renderSummarySection(title, prefix, fields) {
       <div class="admin-ms-section-head" style="margin-bottom: 8px;">
         <h3 style="margin:0; color:#0d2c5b; font-size:16px;">${title}</h3>
       </div>
-      <div style="overflow-x:auto;">
-        <table class="excel-table" style="width: max-content; margin-bottom: 0; table-layout: auto;">
+      <div style="overflow-x:auto; width: 100%;">
+        <table class="excel-table" style="width: 100%; min-width: max-content; margin-bottom: 0; table-layout: auto;">
           <tbody>
             ${rowsHtml}
           </tbody>
@@ -699,9 +699,7 @@ function renderScaffold(root) {
           </label>
           <div class="admin-ms-actions">
             <button type="button" class="admin-ms-btn" id="btnSumLoad">読込</button>
-            <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnSumSave">保存</button>
           </div>
-          <span id="sumStatus" class="admin-ms-status"></span>
         </div>
       </section>
       <section class="admin-ms-summary">
@@ -762,6 +760,14 @@ function renderScaffold(root) {
           <div id="wdTable" class="admin-ms-table-wrap" style="margin-top:8px;"></div>
         </div>
       </section>
+
+      <div class="form-actions" style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; z-index: 9999; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
+        <div id="sumStatus" style="color: #ef4444; font-weight: 600; font-size: 14px; flex: 1; text-align: left; display: none;"></div>
+        <button type="button" id="btnSumSave" style="background: transparent; color: #2b6cb0; border: none; min-width: 100px; height: 40px; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; cursor: pointer;">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+          <span>保存</span>
+        </button>
+      </div>
     </div>
   `;
 }
@@ -869,7 +875,17 @@ export async function mount() {
   const empSelect = $('#msEmpSelect', root);
   const monthEl = $('#sumMonth', root);
   const statusEl = $('#sumStatus', root);
-  const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg || ''; };
+  const setStatus = (msg) => { 
+        if (statusEl) {
+          statusEl.textContent = msg || ''; 
+          statusEl.style.display = msg ? 'block' : 'none';
+          if (msg && (msg.includes('失敗') || msg.includes('エラー') || msg.includes('してください'))) {
+            statusEl.style.color = '#f87171';
+          } else {
+            statusEl.style.color = '#60a5fa';
+          }
+        }
+      };
   const wdStatusEl = $('#wdStatus', root);
   const setWdStatus = (msg) => { if (wdStatusEl) wdStatusEl.textContent = msg || ''; };
   const saStatusEl = $('#saStatus', root);
@@ -952,24 +968,52 @@ export async function mount() {
   };
 
   const save = async () => {
-    const ym = String(monthEl?.value || '').trim();
-    const uid = String(empSelect?.value || '').trim();
-    if (!/^\d{4}-\d{2}$/.test(ym) || !uid) return;
-    const all = getSummaryValues(root, 'sumAll');
-    const inhouse = getSummaryValues(root, 'sumIh');
-    if (!all || !inhouse) {
-      setStatus('時間はH:MMで入力してください');
-      return;
-    }
-    const y = parseInt(ym.slice(0, 4), 10);
-    const m = parseInt(ym.slice(5, 7), 10);
-    setStatus('保存中...');
-    await fetchJSONAuth(`/api/attendance/month/summary?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}&userId=${encodeURIComponent(uid)}`, {
-      method: 'PUT',
-      body: JSON.stringify({ year: y, month: m, userId: uid, all, inhouse })
-    });
-    setStatus('保存しました');
-  };
+        const ym = String(monthEl?.value || '').trim();
+        const uid = String(empSelect?.value || '').trim();
+        if (!/^\d{4}-\d{2}$/.test(ym) || !uid) return;
+        const all = getSummaryValues(root, 'sumAll');
+        const inhouse = getSummaryValues(root, 'sumIh');
+        if (!all || !inhouse) {
+          setStatus('時間はH:MMで入力してください');
+          return;
+        }
+        const y = parseInt(ym.slice(0, 4), 10);
+        const m = parseInt(ym.slice(5, 7), 10);
+        setStatus('');
+        const btn = $('#btnSumSave', root);
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> <span>保存中...</span>`;
+        }
+        
+        try {
+          await fetchJSONAuth(`/api/attendance/month/summary?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}&userId=${encodeURIComponent(uid)}`, {
+            method: 'PUT',
+            body: JSON.stringify({ year: y, month: m, userId: uid, all, inhouse })
+          });
+          setStatus('');
+          if (btn) {
+            btn.style.background = 'transparent';
+            btn.style.borderColor = 'transparent';
+            btn.style.color = '#10b981';
+            btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> <span>保存成功</span>`;
+            setTimeout(() => {
+              btn.style.background = 'transparent';
+              btn.style.borderColor = 'transparent';
+              btn.style.color = '#2b6cb0';
+              btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> <span>保存</span>`;
+              btn.disabled = false;
+            }, 2000);
+          }
+        } catch (e) {
+          setStatus(String(e?.message || '保存失敗'));
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> <span>保存</span>`;
+          }
+          throw e;
+        }
+      };
 
   const val = (id) => String(($(id, root)?.value ?? '')).trim();
   const normDate = (s) => {
