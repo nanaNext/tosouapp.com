@@ -13,7 +13,7 @@ const fmtStatus = (v) => {
   if (s === 'draft') return '下書き';
   if (s === 'pending') return '未申請';
   if (s === 'denied') return '却下';
-  if (s === 'paid') return '支払済み';
+  if (s === 'paid') return '支給済み';
   return s || '-';
 };
 // Lấy dữ liệu từ URL rồi hiển thị dữ liệu lên màn hình

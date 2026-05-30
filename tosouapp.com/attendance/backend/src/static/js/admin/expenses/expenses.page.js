@@ -36,6 +36,7 @@ const statusLabel = (st) => {
   const v = String(st || '').toLowerCase();
   if (v === 'applied') return '承認待ち';
   if (v === 'approved') return '承認済';
+  if (v === 'paid') return '支給済';
   if (v === 'rejected') return '差戻し';
   if (v === 'draft') return '下書き';
   if (v === 'pending') return '未申請';
@@ -44,6 +45,7 @@ const statusLabel = (st) => {
 const statusPillClass = (st) => {
   const v = String(st || '').toLowerCase();
   if (v === 'approved') return 'st-approved';
+  if (v === 'paid') return 'st-paid';
   if (v === 'applied') return 'st-applied';
   if (v === 'rejected') return 'st-rejected';
   return 'st-other';
@@ -1693,6 +1695,15 @@ const render = async () => {
         <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIconBtn}一括削除</button>
       </div>
       `;
+    } else if (state.status === 'approved') {
+      bulkToolbar = `
+      <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
+        <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
+        <button type="button" class="btn" id="expDashBulkPay" style="display:flex; align-items:center; background:#9333ea; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${checkIcon}一括支給</button>
+        <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${xIcon}一括取消</button>
+        <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIconBtn}一括削除</button>
+      </div>
+      `;
     } else if (!isArchived) {
       bulkToolbar = `
       <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
@@ -1905,7 +1916,32 @@ const render = async () => {
         } catch (e) {
           alert('一部の承認に失敗しました。');
           btnBulkApprove.disabled = false;
-          btnBulkApprove.innerHTML = `${approveIcon}一括承認`;
+          btnBulkApprove.innerHTML = `${checkIcon}一括承認`;
+        }
+      });
+    }
+
+    const btnBulkPay = document.getElementById('expDashBulkPay');
+    if (btnBulkPay) {
+      btnBulkPay.addEventListener('click', async () => {
+        const ids = getSelectedIds();
+        if (ids.length === 0) return alert('支給する項目を選択してください。');
+        if (!confirm(`選択した ${ids.length} 件を一括支給済みにしますか？`)) return;
+        
+        btnBulkPay.disabled = true;
+        btnBulkPay.innerHTML = '処理中...';
+        try {
+          for (const id of ids) {
+            await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/status`, { 
+              method: 'PATCH', 
+              body: JSON.stringify({ status: 'paid', note: '一括支給' }) 
+            });
+          }
+          await reloadListOnly();
+        } catch (err) {
+          alert('一部の処理に失敗しました。');
+          btnBulkPay.disabled = false;
+          btnBulkPay.innerHTML = `${checkIcon}一括支給`;
         }
       });
     }

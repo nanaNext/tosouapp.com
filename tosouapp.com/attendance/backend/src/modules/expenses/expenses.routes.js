@@ -570,7 +570,7 @@ router.patch('/:id/status',
       try {
         const row = await repo.getById(id);
         if (row && row.userId && st !== 'pending') {
-          const statusLabel = st === 'approved' ? '承認' : (st === 'rejected' ? '差戻し' : st);
+          const statusLabel = st === 'approved' ? '承認' : (st === 'rejected' ? '差戻し' : (st === 'paid' ? '支給' : st));
           await noticesRepo.createNotice({
             targetUserId: row.userId,
             targetDate: row.date ? String(row.date).slice(0, 10) : null,
