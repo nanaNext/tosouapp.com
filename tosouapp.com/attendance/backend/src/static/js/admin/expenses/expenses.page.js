@@ -1557,7 +1557,13 @@ const render = async () => {
 
         let actionHtml = '';
         if (!showAccordion) {
-          actionHtml = `<a href="${detailUrl}" class="btn exp-dash-btn-ghost" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;text-decoration:none;color:#0f172a;">明細</a>`;
+          actionHtml = `<div style="display:flex;gap:4px;align-items:center;">
+            <a href="${detailUrl}" class="btn exp-dash-btn-ghost" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;text-decoration:none;color:#0f172a;">明細</a>`;
+          if (state.status === 'approved') {
+            const ids = r.items.map(i => i.id).join(',');
+            actionHtml += `<button type="button" class="btn" data-action="pay-user-month" data-ids="${ids}" data-name="${esc(r.userName)}" style="min-height:28px;padding:0 8px;font-size:12px;border:none;background:#9333ea;color:#fff;border-radius:4px;cursor:pointer;white-space:nowrap;">支給</button>`;
+          }
+          actionHtml += `</div>`;
         } else {
           actionHtml = `<button type="button" class="btn exp-dash-btn-ghost" data-action="toggle-dash-group" data-target="grp_${r.userId}_${r.month}" style="min-height:28px;padding:0 8px;font-size:12px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;display:inline-flex;align-items:center;color:#0f172a;">明細</button>`;
         }
@@ -1635,9 +1641,9 @@ const render = async () => {
       }
 
       return `<tr class="exp-dash-row">
-        <td class="center" style="width:40px;">
+        ${state.status === 'approved' ? '' : `<td class="center" style="width:40px;">
           <input type="checkbox" class="${state.status === 'monthly_approval' ? 'exp-dash-bulk-cb-monthly' : 'exp-dash-bulk-group'}" data-uid="${esc(r.userId)}" data-month="${esc(r.month)}" style="cursor:pointer;" />
-        </td>
+        </td>`}
         <td>
           <div style="font-weight: 800; color: #0f172a;">${esc(r.userName)}</div>
           ${r.userCode ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${esc(r.userCode)}</div>` : ''}
@@ -1696,14 +1702,7 @@ const render = async () => {
       </div>
       `;
     } else if (state.status === 'approved') {
-      bulkToolbar = `
-      <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
-        <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
-        <button type="button" class="btn" id="expDashBulkPay" style="display:flex; align-items:center; background:#9333ea; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${checkIcon}一括支給</button>
-        <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${xIcon}一括取消</button>
-        <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIconBtn}一括削除</button>
-      </div>
-      `;
+      bulkToolbar = '';
     } else if (!isArchived) {
       bulkToolbar = `
       <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
@@ -1719,14 +1718,14 @@ const render = async () => {
       <div class="exp-dash-tablewrap">
         <table class="exp-dash-table">
           <thead><tr>
-            <th class="center" style="width:40px;"><input type="checkbox" id="${state.status === 'monthly_approval' ? 'expDashBulkCheckAllMonthly' : 'expDashBulkCheckAll'}" style="cursor:pointer;" /></th>
+            ${state.status === 'approved' ? '' : `<th class="center" style="width:40px;"><input type="checkbox" id="${state.status === 'monthly_approval' ? 'expDashBulkCheckAllMonthly' : 'expDashBulkCheckAll'}" style="cursor:pointer;" /></th>`}
             <th>社員名</th><th>部署</th><th class="center">対象月</th><th class="money">合計金額</th><th class="center">${isArchived ? '件数' : '申請件数'}</th><th>操作</th>
           </tr></thead>
-          <tbody>${bodyRows || `<tr><td colspan="7" class="center" style="padding: 24px; color: #64748b;">データがありません</td></tr>`}</tbody>
+          <tbody>${bodyRows || `<tr><td colspan="${state.status === 'approved' ? '6' : '7'}" class="center" style="padding: 24px; color: #64748b;">データがありません</td></tr>`}</tbody>
           ${userRows.length > 0 ? `
           <tfoot>
             <tr style="background-color: #f8fafc; border-top: 2px solid #cbd5e1;">
-              <td colspan="4" style="text-align: right; font-weight: 800; color: #0f172a; padding: 12px 16px;">総合計 (Grand Total)</td>
+              <td colspan="${state.status === 'approved' ? '3' : '4'}" style="text-align: right; font-weight: 800; color: #0f172a; padding: 12px 16px;">総合計 (Grand Total)</td>
               <td class="money" style="font-weight: 800; color: #0f172a; font-size: 14px;">¥${grandTotal.toLocaleString('ja-JP')}</td>
               <td class="center" style="font-weight: 800; color: #0f172a;">${totalCount}件</td>
               <td></td>
@@ -1849,18 +1848,63 @@ const render = async () => {
       });
     });
 
+    document.querySelectorAll('button[data-action="pay-user-month"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const idsRaw = btn.getAttribute('data-ids');
+        const name = btn.getAttribute('data-name');
+        if (!idsRaw) return;
+        const ids = idsRaw.split(',').filter(Boolean);
+        if (ids.length === 0) return;
+        if (!confirm(`【${name}】の交通費（${ids.length}件）を支給済みにしますか？`)) return;
+        
+        btn.disabled = true;
+        btn.textContent = '処理中...';
+        try {
+          await fetchJSONAuth('/api/expenses/admin/bulk-status', {
+            method: 'POST',
+            body: JSON.stringify({ ids, status: 'paid', note: '支給' })
+          });
+          await reloadListOnly();
+        } catch (err) {
+          alert('支給処理に失敗しました。');
+          btn.disabled = false;
+          btn.textContent = '支給';
+        }
+      });
+    });
+
     if (checkAll) {
       checkAll.addEventListener('change', (e) => {
         const isChecked = e.target.checked;
         cbList.forEach(cb => cb.checked = isChecked);
+        document.querySelectorAll('.exp-dash-bulk-group').forEach(cb => cb.checked = isChecked);
       });
     }
 
     const getSelectedIds = () => {
       const ids = [];
-      document.querySelectorAll('.exp-dash-bulk-cb:checked').forEach(cb => {
-        ids.push(cb.getAttribute('data-id'));
-      });
+      // First try to get IDs from the individual checkboxes (child checkboxes)
+      const childCbs = document.querySelectorAll('.exp-dash-bulk-cb:checked');
+      if (childCbs.length > 0) {
+        childCbs.forEach(cb => {
+          const id = cb.getAttribute('data-id');
+          if (id) ids.push(id);
+        });
+      } else {
+        // If no child checkboxes are visible or checked, but group checkboxes are checked,
+        // we need to get the IDs from the items in those groups.
+        // We can find the underlying items by looking at the hidden expanded rows.
+        document.querySelectorAll('.exp-dash-bulk-group:checked').forEach(cb => {
+          const uid = cb.getAttribute('data-uid');
+          const month = cb.getAttribute('data-month');
+          const childCbsInGroup = document.querySelectorAll(`.child-cb-${uid}-${month}`);
+          childCbsInGroup.forEach(child => {
+            const id = child.getAttribute('data-id');
+            if (id) ids.push(id);
+          });
+        });
+      }
       return ids;
     };
 
@@ -1889,7 +1933,7 @@ const render = async () => {
     const btnBulkCancel = document.getElementById('expDashBulkCancel');
     if (btnBulkCancel) {
       btnBulkCancel.addEventListener('click', () => {
-        const cbList = document.querySelectorAll('.exp-dash-bulk-cb');
+        const cbList = document.querySelectorAll('.exp-dash-bulk-cb, .exp-dash-bulk-group');
         const checkAll = document.getElementById('expDashBulkCheckAll');
         cbList.forEach(cb => cb.checked = false);
         if (checkAll) checkAll.checked = false;
@@ -1910,12 +1954,20 @@ const render = async () => {
             method: 'POST',
             body: JSON.stringify({ ids, status: 'approved', note: '一括承認' })
           });
-          const approvedTab = document.querySelector('.exp-dash-nav[data-status="approved"]');
-          if (approvedTab) {
-            approvedTab.click();
-          } else {
-            await reloadListOnly();
-          }
+          state.status = 'approved';
+          state.page = 1;
+          applyViewMode();
+          const setTitle = (t) => { const el = document.getElementById('expDashTitle'); if (el) el.textContent = t; };
+          setTitle('承認済み');
+          document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach(x => x.classList.remove('is-active'));
+          const approvedTab = document.querySelector('.exp-dash-side .exp-dash-nav[data-status="approved"]');
+          if (approvedTab) approvedTab.classList.add('is-active');
+          try {
+            const url = new URL(window.location);
+            url.searchParams.set('tab', 'approved');
+            window.history.replaceState({}, '', url);
+          } catch {}
+          await reloadAll();
         } catch (e) {
           alert('一部の承認に失敗しました。');
           btnBulkApprove.disabled = false;
@@ -1938,12 +1990,20 @@ const render = async () => {
             method: 'POST',
             body: JSON.stringify({ ids, status: 'paid', note: '一括支給' })
           });
-          const paidTab = document.querySelector('.exp-dash-nav[data-status="paid"]');
-          if (paidTab) {
-            paidTab.click();
-          } else {
-            await reloadListOnly();
-          }
+          state.status = 'paid';
+          state.page = 1;
+          applyViewMode();
+          const setTitle = (t) => { const el = document.getElementById('expDashTitle'); if (el) el.textContent = t; };
+          setTitle('支給済み');
+          document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach(x => x.classList.remove('is-active'));
+          const paidTab = document.querySelector('.exp-dash-side .exp-dash-nav[data-status="paid"]');
+          if (paidTab) paidTab.classList.add('is-active');
+          try {
+            const url = new URL(window.location);
+            url.searchParams.set('tab', 'paid');
+            window.history.replaceState({}, '', url);
+          } catch {}
+          await reloadAll();
         } catch (err) {
           alert('一部の処理に失敗しました。');
           btnBulkPay.disabled = false;
@@ -2152,9 +2212,20 @@ const render = async () => {
           alert(`${ym} の月次締めが完了しました。`);
           
           // Switch to archive tab to show result
+          state.status = 'archived';
+          state.page = 1;
+          applyViewMode();
+          const setTitle = (t) => { const el = document.getElementById('expDashTitle'); if (el) el.textContent = t; };
+          setTitle('月次締め履歴');
+          document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach(x => x.classList.remove('is-active'));
           const btnArchive = document.querySelector('.exp-dash-side .exp-dash-nav[data-status="archived"]');
-          if (btnArchive) btnArchive.click();
-          else await reloadAll();
+          if (btnArchive) btnArchive.classList.add('is-active');
+          try {
+            const url = new URL(window.location);
+            url.searchParams.set('tab', 'archived');
+            window.history.replaceState({}, '', url);
+          } catch {}
+          await reloadAll();
         } catch (err) {
           alert(`月次締めに失敗しました: ${err.message || 'unknown'}`);
           btnMonthClose.disabled = false;

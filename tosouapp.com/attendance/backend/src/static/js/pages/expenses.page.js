@@ -262,7 +262,7 @@ const fmtYmJa = (ym) => {
 const firstDayOfYm = (ym) => (/^\d{4}-\d{2}$/.test(String(ym || '')) ? `${String(ym)}-01` : '-');
 const isSubmittedStatus = (v) => {
   const s = String(v || '').toLowerCase();
-  return s === 'applied' || s === 'approved';
+  return s === 'applied' || s === 'approved' || s === 'paid' || s === 'rejected';
 };
 const isNoticeFeedbackStatus = (v) => {
   const s = String(v || '').toLowerCase();
@@ -527,8 +527,13 @@ const renderList = async () => {
       const st = String(r.status || '').toLowerCase();
       if (st === 'draft') continue;
       const amt = Number(r.amount) || 0;
-      all++;
-      allAmt += amt;
+      
+      // "すべて" (All) tab ignores "paid" (支給済み) items to keep the view clean
+      if (st !== 'paid') {
+        all++;
+        allAmt += amt;
+      }
+      
       if (st === 'applied') { pending++; pendingAmt += amt; }
       else if (st === 'approved') { approved++; approvedAmt += amt; }
       else if (st === 'paid') { paid++; paidAmt += amt; }
@@ -604,13 +609,14 @@ const renderList = async () => {
         if (prev._claims.includes('rejected')) prev.status = 'rejected';
         else if (prev._claims.includes('applied')) prev.status = 'applied';
         else if (prev._claims.includes('approved')) prev.status = 'approved';
+        else if (prev._claims.includes('paid')) prev.status = 'paid';
       }
     }
 
     const allMonths = Array.from(g.values()).sort((a, b) => String(b.ym).localeCompare(String(a.ym)));
     
     const filteredMonths = activeSummaryCard === 'all' 
-      ? allMonths 
+      ? allMonths.filter(m => m.status !== 'paid') 
       : allMonths.filter(m => {
           if (activeSummaryCard === 'pending') return m.status === 'applied';
           return m.status === activeSummaryCard;
@@ -666,29 +672,29 @@ const renderList = async () => {
             <span style="font-size: 13px; font-weight: 700; margin-left: 4px;">閉じる</span>
           </button>
         </div>
-        <table class="adj-table" style="width: 100%; border-collapse: collapse; background: #fff;">
+        <table class="adj-table" style="width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border);">
           <thead>
-            <tr>
-              <th style="padding: 16px 14px; text-align: left; color: #64748b; font-weight: 700; border-bottom: 1px solid var(--border);">申請月</th>
-              <th style="padding: 16px 14px; text-align: left; color: #64748b; font-weight: 700; border-bottom: 1px solid var(--border);">申請番号</th>
-              <th style="padding: 16px 14px; text-align: right; color: #64748b; font-weight: 700; border-bottom: 1px solid var(--border);">合計金額</th>
-              <th style="padding: 16px 14px; text-align: center; color: #64748b; font-weight: 700; border-bottom: 1px solid var(--border);">ステータス</th>
-              <th style="padding: 16px 14px; text-align: left; color: #64748b; font-weight: 700; border-bottom: 1px solid var(--border);">最終更新日</th>
-              <th style="padding: 16px 14px; text-align: center; color: #64748b; font-weight: 700; border-bottom: 1px solid var(--border);">操作</th>
+            <tr style="background: #f8fafc;">
+              <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">申請月</th>
+              <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">申請番号</th>
+              <th style="padding: 14px 12px; text-align: right; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">合計金額</th>
+              <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">ステータス</th>
+              <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">最終更新日</th>
+              <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">操作</th>
             </tr>
           </thead>
           <tbody>
             ${filteredMonths.map(m => `
               <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;">
-                <td style="padding: 16px 14px; color: var(--brand); font-weight: 700;">${m.ym.replace('-', '年')}月</td>
-                <td style="padding: 16px 14px; color: #475569;">TRF-${m.ym.replace('-', '')}-001</td>
-                <td style="padding: 16px 14px; text-align: right; font-weight: 700; color: #0f172a;">${fmtMoney(m.amount)}</td>
-                <td style="padding: 16px 14px; text-align: center;">${getStatusHtml(m.status)}</td>
-                <td style="padding: 16px 14px; color: #475569;">${fmtDate(m.updated)}</td>
-                <td style="padding: 16px 14px; text-align: center;">
-                  <div style="display: flex; gap: 8px; justify-content: center;">
-                    <button type="button" class="btn" data-action="open-month" data-month="${m.ym}" data-status="${m.status}" style="background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 6px; padding: 6px 16px; height: 32px; font-size: 13px;">詳細</button>
-                    ${(m.status === 'applied' || m.status === 'approved' || m.status === 'paid' || m.status === 'rejected') ? `<button type="button" class="btn" data-action="add-more" data-month="${m.ym}" style="background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 6px; padding: 6px 16px; height: 32px; font-size: 13px;">追加</button>` : ''}
+                <td style="padding: 14px 12px; color: var(--brand); font-weight: 800; font-size: 14px;">${m.ym.replace('-', '年')}月</td>
+                <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">TRF-${m.ym.replace('-', '')}-001</td>
+                <td style="padding: 14px 12px; text-align: right; font-weight: 800; color: #0f172a; font-size: 14px;">${fmtMoney(m.amount)}</td>
+                <td style="padding: 14px 12px; text-align: center;">${getStatusHtml(m.status)}</td>
+                <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">${fmtDate(m.updated)}</td>
+                <td style="padding: 14px 12px; text-align: center;">
+                  <div style="display: flex; gap: 6px; justify-content: center;">
+                    <button type="button" class="btn" data-action="open-month" data-month="${m.ym}" data-status="${m.status}" style="background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px;">詳細</button>
+                    ${(m.status === 'applied' || m.status === 'approved' || m.status === 'rejected') ? `<button type="button" class="btn" data-action="add-more" data-month="${m.ym}" style="background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px;">追加</button>` : ''}
                   </div>
                 </td>
               </tr>
@@ -1419,8 +1425,8 @@ const renderList = async () => {
       const noteHtml = st === 'rejected' && r.manager_note ? `<div style="color:#ef4444;font-size:12px;">理由: ${r.manager_note}</div>` : '';
       const isNoticeOnly = activeHistoryTab === 'notice';
       const replyBtn = (!isNoticeOnly && st === 'rejected') ? `<button class="btn" data-action="reply" style="height:28px;margin-right:6px;">取り戻し理由</button>` : '';
-      const editBtn = !isNoticeOnly ? `<button class="btn" data-action="edit" style="height:28px;margin-right:6px;">編集</button>` : '';
-      const delBtn = !isNoticeOnly ? `<button class="icon-btn" data-action="delete" aria-label="削除"><img src="/static/images/xoa.png" alt=""></button>` : '';
+      const editBtn = (!isNoticeOnly && st !== 'paid') ? `<button class="btn" data-action="edit" style="height:28px;margin-right:6px;">編集</button>` : '';
+      const delBtn = (!isNoticeOnly && st !== 'paid') ? `<button class="icon-btn" data-action="delete" aria-label="削除"><img src="/static/images/xoa.png" alt=""></button>` : '';
       const ru = r.receipt_url ? String(r.receipt_url) : (r.first_file_path ? String(r.first_file_path) : '');
       const ruAttr = ru ? ` data-url="${ru}"` : '';
       const count = Number(r.file_count || 0);
