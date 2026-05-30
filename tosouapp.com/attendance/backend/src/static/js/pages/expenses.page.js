@@ -1345,8 +1345,8 @@ const renderList = async () => {
     const isCompactSplit = showMonthProgressInNewMode && (activeHistoryTab === 'new' || activeHistoryTab === 'applied');
     const colSpan = isCompactSplit ? 6 : 7;
     const detailHeadRow = isCompactSplit
-      ? '<tr><th>日</th><th>種別</th><th>経路</th><th>用途</th><th>金額</th><th>ステータス</th><th>領収書</th><th>操作</th></tr>'
-      : '<tr><th>日付</th><th>種別</th><th>経路</th><th>用途</th><th>金額</th><th>ステータス</th><th>メモ</th><th>領収書</th><th>操作</th></tr>';
+      ? '<tr><th style="min-width:40px; white-space:nowrap;">日</th><th style="min-width:60px; white-space:nowrap;">種別</th><th style="min-width:120px; white-space:nowrap;">経路</th><th style="min-width:60px; white-space:nowrap;">用途</th><th style="min-width:60px; white-space:nowrap;">金額</th><th style="min-width:90px; white-space:nowrap;">ステータス</th><th style="min-width:60px; white-space:nowrap;">領収書</th><th style="min-width:80px; white-space:nowrap;">操作</th></tr>'
+      : '<tr><th style="min-width:60px; white-space:nowrap;">日付</th><th style="min-width:60px; white-space:nowrap;">種別</th><th style="min-width:140px; white-space:nowrap;">経路</th><th style="min-width:60px; white-space:nowrap;">用途</th><th style="min-width:60px; white-space:nowrap;">金額</th><th style="min-width:90px; white-space:nowrap;">ステータス</th><th style="min-width:120px; white-space:nowrap;">メモ</th><th style="min-width:60px; white-space:nowrap;">領収書</th><th style="min-width:80px; white-space:nowrap;">操作</th></tr>';
     if (!Array.isArray(rows) || rows.length === 0) {
       const emptyText = activeHistoryTab === 'notice'
         ? '通知・確認事項はありません'
@@ -1458,9 +1458,9 @@ const renderList = async () => {
             ? `<button class="btn" data-action="files" data-url="${ru}" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>`
             : `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:11px;color:#1e40af;text-decoration:none;">表示</a>`)
           : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>` : '<span style="color:#64748b;font-size:11px;">-</span>');
-        return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${purposeDisplay}</td><td>${a}</td><td>${statusCell}</td><td>${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
+        return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${purposeDisplay}</td><td>${a}</td><td>${statusCell}</td><td style="text-align:center;">${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
       }
-      return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}${tripBadge}</span></td><td>${purposeDisplay}</td><td>${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
+      return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}${tripBadge}</span></td><td>${purposeDisplay}</td><td>${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td style="white-space:pre-wrap; word-break:break-word; min-width:120px;">${r.memo || ''}${noteHtml}</td><td style="text-align:center;"><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
     }).join('');
     const totalRow = `<tr class="total-row"><td colspan="${colSpan}" style="font-weight:800;text-align:left;padding-bottom:20px;">合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}</td></tr>`;
     window.goBackToMonthlyList = async () => {
