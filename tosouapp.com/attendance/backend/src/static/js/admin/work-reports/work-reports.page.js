@@ -353,14 +353,14 @@ export async function mount() {
         <tr>
           <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
           <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
-          <td style="color:#64748b;">${esc(code)}</td>
-          <td style="font-weight:500;">${esc(it.username || '')}</td>
-          <td>${dept}</td>
-          <td>${kubun}</td>
-          <td style="font-family:monospace; font-size:14px;">${checkIn}</td>
-          <td style="font-family:monospace; font-size:14px;">${checkOut}</td>
-          <td>${wType}</td>
-          <td>${site}</td>
+          <td style="color:#64748b; white-space:nowrap;">${esc(code)}</td>
+          <td style="font-weight:500; white-space:nowrap;">${esc(it.username || '')}</td>
+          <td style="white-space:nowrap;">${dept}</td>
+          <td style="white-space:nowrap;">${kubun}</td>
+          <td style="font-family:monospace; font-size:14px; white-space:nowrap;">${checkIn}</td>
+          <td style="font-family:monospace; font-size:14px; white-space:nowrap;">${checkOut}</td>
+          <td style="white-space:nowrap;">${wType}</td>
+          <td style="white-space:nowrap;">${site}</td>
           <td style="white-space:pre-wrap; word-break:break-word; color:#475569; min-width:200px;">${work}</td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
