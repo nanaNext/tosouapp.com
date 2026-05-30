@@ -78,6 +78,174 @@ export async function mount() {
     content.className = 'card';
     content.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
   }
+  
+  if (!document.querySelector('#wrToolbarStyle')) {
+    const style = document.createElement('style');
+    style.id = 'wrToolbarStyle';
+    style.textContent = `
+      .wr-toolbar {
+        background: transparent;
+        padding: 0;
+        margin-top: 16px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+      .wr-input {
+        padding: 0 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        height: 40px;
+        font-size: 14px;
+        color: #0f172a;
+        background: #fff;
+        box-sizing: border-box;
+        outline: none;
+        transition: all 0.2s;
+      }
+      .wr-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+      }
+      .wr-select {
+        appearance: none;
+        padding-right: 32px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 16px;
+      }
+      .wr-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #334155;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        user-select: none;
+        margin-left: 8px;
+      }
+      .wr-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: #2b6cb0;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .wr-btn-home {
+        text-decoration: none;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        border-radius: 4px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background 0.2s;
+        margin-left: auto;
+      }
+      .wr-btn-home:hover { background: #f1f5f9; }
+      
+      .wr-search-container {
+        display: flex;
+        width: 100%;
+      }
+      .wr-search-container input {
+        width: 100%;
+      }
+      .wr-group-container {
+        display: flex;
+        align-items: center;
+      }
+
+      @media (min-width: 1025px) {
+        .wr-toolbar {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr) auto;
+        }
+        .wr-month, .wr-sort, .wr-dept, .wr-search-container {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 1024px) {
+        .wr-toolbar {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .wr-month, .wr-sort, .wr-dept, .wr-search-container {
+          width: 100%;
+        }
+        .wr-group-container {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .wr-toolbar { 
+          display: grid; 
+          grid-template-columns: 1fr 1fr; 
+          gap: 10px; 
+          background: transparent;
+          border: none;
+          border-radius: 0;
+          padding: 0; 
+        }
+        .wr-month, .wr-sort, .wr-dept, .wr-search-container { 
+          grid-column: auto;
+          width: 100%; 
+          min-width: 0 !important; 
+          max-width: none !important; 
+        }
+        .wr-search-container input { width: 100%; min-width: 0; }
+        .wr-group-container {
+          grid-column: 1 / -1;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 4px;
+        }
+        .wr-checkbox-label { margin-left: 0; }
+        .wr-btn-home { margin-left: 0; }
+      }
+      .wr-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      .wr-table th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 12px;
+        padding: 4px 6px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+      }
+      .wr-table td {
+        padding: 4px 6px;
+        font-size: 13px;
+        color: #334155;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+      }
+      .wr-table tbody tr:hover td {
+        background: #f8fafc;
+      }
+      .wr-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   const profile = await requireAdmin();
   if (!profile || !content) return;
 
@@ -92,29 +260,44 @@ export async function mount() {
   content.className = 'card';
   content.innerHTML = `
     <div class="dashboard">
-      <div class="dashboard-head">
-        <h3 style="margin:0;">作業報告</h3>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <input id="wrMonth" type="month" value="${initMonth}" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;">
-          <select id="wrSort" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;">
-            <option value="dateDesc" ${initSort === 'dateDesc' ? 'selected' : ''}>日付↓ / 社員↑</option>
-            <option value="employee" ${initSort === 'employee' ? 'selected' : ''}>社員↑ / 日付↓</option>
-            <option value="name" ${initSort === 'name' ? 'selected' : ''}>氏名↑ / 日付↓</option>
-            <option value="department" ${initSort === 'department' ? 'selected' : ''}>部署↑ / 社員↑ / 日付↓</option>
-            <option value="missingFirst" ${initSort === 'missingFirst' ? 'selected' : ''}>未提出を上に</option>
-          </select>
-          <select id="wrDept" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;min-width:160px;">
-            <option value="">全部署</option>
-          </select>
-          <input id="wrSearch" placeholder="社員番号/氏名で検索" value="${esc(initQ)}" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;min-width:220px;">
-          <label style="display:flex;align-items:center;gap:6px;color:#334155;font-weight:650;">
-            <input id="wrGroup" type="checkbox" ${initGroup ? 'checked' : ''}>
+      <div class="dashboard-head" style="margin-bottom:0; padding-bottom:0; border-bottom:none;">
+        <h3 style="margin:0; font-size:20px; color:#0f172a;">作業報告</h3>
+      </div>
+      
+      <style>
+        .mobile-only-btn { display: none !important; }
+        @media (max-width: 768px) {
+          .mobile-only-btn { display: flex !important; }
+        }
+      </style>
+      <div class="wr-toolbar">
+        <input id="wrMonth" type="month" class="wr-input wr-month" value="${initMonth}">
+        <select id="wrSort" class="wr-input wr-select wr-sort">
+          <option value="dateDesc" ${initSort === 'dateDesc' ? 'selected' : ''}>日付↓ / 社員↑</option>
+          <option value="employee" ${initSort === 'employee' ? 'selected' : ''}>社員↑ / 日付↓</option>
+          <option value="name" ${initSort === 'name' ? 'selected' : ''}>氏名↑ / 日付↓</option>
+          <option value="department" ${initSort === 'department' ? 'selected' : ''}>部署↑ / 社員↑ / 日付↓</option>
+          <option value="missingFirst" ${initSort === 'missingFirst' ? 'selected' : ''}>未提出を上に</option>
+        </select>
+        <select id="wrDept" class="wr-input wr-select wr-dept" style="min-width:160px;">
+          <option value="">全部署</option>
+        </select>
+        <div class="wr-search-container">
+          <input id="wrSearch" class="wr-input" placeholder="社員番号/氏名で検索" value="${esc(initQ)}">
+        </div>
+        <div class="wr-group-container">
+          <label class="wr-checkbox-label">
+            <input id="wrGroup" type="checkbox" class="wr-checkbox" ${initGroup ? 'checked' : ''}>
             社員ごとにまとめる
           </label>
-          <a class="btn" href="/admin/dashboard" style="text-decoration:none;">ホームへ</a>
+          <a class="wr-btn-home mobile-only-btn" href="/admin/dashboard">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            ホームへ
+          </a>
         </div>
       </div>
-      <div id="wrSummary" style="margin-bottom:12px;color:#475569;font-weight:650;"></div>
+
+      <div id="wrSummary" style="margin-bottom:12px;color:#475569;font-weight:650;font-size:14px;line-height:1.6;"></div>
       <div id="wrTable"></div>
     </div>
   `;
@@ -143,47 +326,62 @@ export async function mount() {
     }
 
     const rows = items.map((it) => {
+      const dash = `<span style="color:#cbd5e1;">—</span>`;
       const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
       const stx = effectiveStatus(it);
       const meta = statusMeta(stx);
-      const kubun = String(it.kubun || '').trim() || '—';
-      const site = String(it.site || '').trim() || '—';
-      const work = String(it.work || '').trim() || '—';
+      const kubun = String(it.kubun || '').trim() ? esc(String(it.kubun).trim()) : dash;
+      const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
+      const work = String(it.work || '').trim() ? esc(String(it.work).trim()) : dash;
+      const dept = String(it.departmentName || '').trim() ? esc(String(it.departmentName).trim()) : dash;
+      const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
+      const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
+      const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
+
       const dc = dowClass(it.weekday);
+      const displayDate = it.date ? it.date.split('-').pop() : '';
+      const isHoliday = it.holiday || (it.date && (
+        it.date.endsWith('05-03') || 
+        it.date.endsWith('05-04') || 
+        it.date.endsWith('05-05') || 
+        it.date.endsWith('05-06')
+      ));
+      const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
+      
       return `
         <tr>
-          <td class="${dc}">${esc(it.date || '')}</td>
-          <td class="${dc}" style="text-align:center;">${esc(it.weekday || '')}</td>
-          <td>${esc(code)}</td>
-          <td>${esc(it.username || '')}</td>
-          <td>${esc(it.departmentName || '—')}</td>
-          <td>${esc(kubun)}</td>
-          <td>${esc(fmtTime(it.attendance?.checkIn))}</td>
-          <td>${esc(fmtTime(it.attendance?.checkOut))}</td>
-          <td>${esc(workTypeLabel(it.workType))}</td>
-          <td>${esc(site)}</td>
-          <td style="white-space:pre-wrap;min-width:320px;">${esc(work)}</td>
-          <td><span class="dash-pill" style="${meta.style}">${esc(meta.label)}</span></td>
+          <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
+          <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
+          <td style="color:#64748b;">${esc(code)}</td>
+          <td style="font-weight:500;">${esc(it.username || '')}</td>
+          <td>${dept}</td>
+          <td>${kubun}</td>
+          <td style="font-family:monospace; font-size:14px;">${checkIn}</td>
+          <td style="font-family:monospace; font-size:14px;">${checkOut}</td>
+          <td>${wType}</td>
+          <td>${site}</td>
+          <td style="white-space:pre-wrap; word-break:break-word; color:#475569;">${work}</td>
+          <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
     }).join('');
 
     tableHost.innerHTML = `
-      <div style="overflow:auto;border:1px solid #e5e7eb;border-radius:12px;background:#fff;">
-        <table class="dash-table wr-table">
+      <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;">
+        <table class="wr-table">
           <colgroup>
-            <col style="width:120px;">
-            <col style="width:52px;">
+            <col style="width:40px;">
+            <col style="width:40px;">
             <col style="width:100px;">
             <col style="width:120px;">
-            <col style="width:140px;">
-            <col style="width:110px;">
+            <col style="width:120px;">
+            <col style="width:100px;">
             <col style="width:70px;">
             <col style="width:70px;">
             <col style="width:110px;">
             <col style="width:140px;">
-            <col style="width:520px;">
-            <col style="width:90px;">
+            <col style="width:300px;">
+            <col style="width:120px;">
           </colgroup>
           <thead>
             <tr>
@@ -347,46 +545,62 @@ export async function mount() {
         </div>
       `;
       const rows = g.items.map(it => {
+        const dash = `<span style="color:#cbd5e1;">—</span>`;
         const stx = effectiveStatus(it);
         const meta = statusMeta(stx);
-        const kubun = String(it.kubun || '').trim() || '—';
-        const site = String(it.site || '').trim() || '—';
-        const work = String(it.work || '').trim() || '—';
+        const kubun = String(it.kubun || '').trim() ? esc(String(it.kubun).trim()) : dash;
+        const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
+        const work = String(it.work || '').trim() ? esc(String(it.work).trim()) : dash;
+        const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
+        const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
+        const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
+
         const dc = dowClass(it.weekday);
+        const displayDate = it.date ? it.date.split('-').pop() : '';
+        const isHoliday = it.holiday || (it.date && (
+          it.date.endsWith('05-03') || 
+          it.date.endsWith('05-04') || 
+          it.date.endsWith('05-05') || 
+          it.date.endsWith('05-06')
+        ));
+        const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
+        
         return `
           <tr>
-            <td class="${dc}">${esc(it.date || '')}</td>
-            <td class="${dc}" style="text-align:center;">${esc(it.weekday || '')}</td>
-            <td>${esc(kubun)}</td>
-            <td>${esc(fmtTime(it.attendance?.checkIn))}</td>
-            <td>${esc(fmtTime(it.attendance?.checkOut))}</td>
-            <td>${esc(workTypeLabel(it.workType))}</td>
-            <td>${esc(site)}</td>
-            <td style="white-space:pre-wrap;">${esc(work)}</td>
-            <td><span class="dash-pill" style="${meta.style}">${esc(meta.label)}</span></td>
+            <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
+            <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
+            <td>${kubun}</td>
+            <td style="font-family:monospace; font-size:14px;">${checkIn}</td>
+            <td style="font-family:monospace; font-size:14px;">${checkOut}</td>
+            <td>${wType}</td>
+            <td>${site}</td>
+            <td style="white-space:pre-wrap; word-break:break-word; color:#475569;">${work}</td>
+            <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
           </tr>
         `;
       }).join('');
       return `
-        <div class="dash-card" style="margin-bottom:12px;">
-          <div class="dash-card-title" style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <div style="font-weight:800;color:#0f172a;">
-              ${esc(g.employeeCode)} ${esc(g.username)} <span style="color:#64748b;font-weight:700;">/ ${esc(g.departmentName)}</span>
+        <div style="margin-bottom:24px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:12px;border-bottom:2px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-weight:800;color:#0f172a;font-size:16px;display:flex;align-items:center;gap:8px;">
+              <span style="background:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:13px;color:#475569;">${esc(g.employeeCode)}</span>
+              ${esc(g.username)} 
+              <span style="color:#64748b;font-weight:600;font-size:14px;margin-left:4px;">${esc(g.departmentName)}</span>
             </div>
             ${headerRight}
           </div>
-          <div style="overflow:auto;border:1px solid #e5e7eb;border-radius:12px;background:#fff;">
-            <table class="dash-table wr-table">
+          <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;">
+            <table class="wr-table">
               <colgroup>
+                <col style="width:40px;">
+                <col style="width:40px;">
+                <col style="width:100px;">
+                <col style="width:70px;">
+                <col style="width:70px;">
+                <col style="width:110px;">
+                <col style="width:140px;">
+                <col style="width:300px;">
                 <col style="width:120px;">
-                <col style="width:52px;">
-                <col style="width:110px;">
-                <col style="width:70px;">
-                <col style="width:70px;">
-                <col style="width:110px;">
-                <col style="width:160px;">
-                <col style="width:680px;">
-                <col style="width:90px;">
               </colgroup>
               <thead>
                 <tr>
@@ -469,6 +683,7 @@ export async function mount() {
           attendance: { checkIn: null, checkOut: null },
           kubun: entry?.kubun || null,
           workType: null,
+          holiday: entry?.holiday || false,
           site,
           work,
           status

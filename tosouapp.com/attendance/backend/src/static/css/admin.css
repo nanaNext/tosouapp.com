@@ -27,8 +27,15 @@
     min-width: 0 !important;
   }
 
-  .admin .topbar .brand {
+  .admin .topbar .brand,
+  .admin .topbar .topbar-actions {
     display: none !important;
+  }
+
+  .admin .topbar .search {
+    flex: 1 1 auto;
+    margin: 0 8px;
+    max-width: 100%;
   }
 
   .admin .topbar .user {
@@ -526,6 +533,7 @@ body.drawer-open.admin.has-sidebar .content {
   border: 1px solid transparent;
   border-radius: 8px;
   font-weight: 650;
+  display: none !important; /* Hide dashboard link on desktop to prevent visual clutter */
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav a[data-admin-link="dashboard"]:hover {
