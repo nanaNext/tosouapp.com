@@ -1598,7 +1598,7 @@ const render = async () => {
           const deleteIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
           const deleteBtn = `<button type="button" class="btn" data-action="delete-expense" data-id="${esc(id)}" style="background:transparent;border:none;color:#ef4444;padding:4px;cursor:pointer;" title="削除">${deleteIcon}</button>`;
           
-          const checkbox = (st === 'applied' || st === 'pending') ? `<input type="checkbox" class="exp-dash-bulk-cb child-cb-${r.userId}-${r.month}" data-id="${esc(id)}" style="cursor:pointer;" />` : '';
+          const checkbox = (st === 'applied' || st === 'pending' || st === 'approved') ? `<input type="checkbox" class="exp-dash-bulk-cb child-cb-${r.userId}-${r.month}" data-id="${esc(id)}" style="cursor:pointer;" />` : '';
           
           return `
             <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -1906,13 +1906,16 @@ const render = async () => {
         btnBulkApprove.disabled = true;
         btnBulkApprove.innerHTML = '処理中...';
         try {
-          for (const id of ids) {
-            await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/status`, { 
-              method: 'PATCH', 
-              body: JSON.stringify({ status: 'approved', note: '一括承認' }) 
-            });
+          await fetchJSONAuth('/api/expenses/admin/bulk-status', {
+            method: 'POST',
+            body: JSON.stringify({ ids, status: 'approved', note: '一括承認' })
+          });
+          const approvedTab = document.querySelector('.exp-dash-nav[data-status="approved"]');
+          if (approvedTab) {
+            approvedTab.click();
+          } else {
+            await reloadListOnly();
           }
-          await reloadListOnly();
         } catch (e) {
           alert('一部の承認に失敗しました。');
           btnBulkApprove.disabled = false;
@@ -1931,13 +1934,16 @@ const render = async () => {
         btnBulkPay.disabled = true;
         btnBulkPay.innerHTML = '処理中...';
         try {
-          for (const id of ids) {
-            await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/status`, { 
-              method: 'PATCH', 
-              body: JSON.stringify({ status: 'paid', note: '一括支給' }) 
-            });
+          await fetchJSONAuth('/api/expenses/admin/bulk-status', {
+            method: 'POST',
+            body: JSON.stringify({ ids, status: 'paid', note: '一括支給' })
+          });
+          const paidTab = document.querySelector('.exp-dash-nav[data-status="paid"]');
+          if (paidTab) {
+            paidTab.click();
+          } else {
+            await reloadListOnly();
           }
-          await reloadListOnly();
         } catch (err) {
           alert('一部の処理に失敗しました。');
           btnBulkPay.disabled = false;
