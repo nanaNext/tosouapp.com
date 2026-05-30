@@ -936,7 +936,7 @@ const render = async () => {
             <div style="font-size: 11px; color: #64748b; font-weight: 800; padding: 16px 20px 4px;">処理完了・履歴</div>
             <button type="button" class="exp-dash-nav" data-status="paid">
               <span class="left">
-                <span class="ico" style="color: #9333ea;">
+                <span class="ico" style="color: #c084fc;">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                 </span>
                 <span>支給済み</span>

@@ -43,10 +43,33 @@ const render = async () => {
         .exp-month-detail table { width:100%; border-collapse:collapse; border-spacing:0; }
         .exp-month-detail th, .exp-month-detail td { border:1px solid #e5eaf2; padding:10px 12px; font-size:13px; }
         .exp-month-detail th { background:#f8fafc; text-align:left; }
+        .print-header { display: none; }
+        @media print {
+          @page { size: A4 portrait; margin: 15mm; }
+          body * { visibility: hidden; }
+          .exp-month-detail, .exp-month-detail * { visibility: visible; }
+          .exp-month-detail { position: absolute; left: 0; top: 0; width: 100%; }
+          .no-print { display: none !important; }
+          .print-header { display: block; margin-bottom: 20px; }
+          .print-header h2 { text-align: center; margin: 0 0 20px 0; font-size: 24px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .print-header .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; margin-bottom: 15px; }
+          .print-header .info-item { display: flex; }
+          .print-header .info-label { width: 120px; font-weight: bold; }
+          .exp-month-detail .table-wrap { border: none; }
+          .exp-month-detail table { border: 1px solid #000; }
+          .exp-month-detail th, .exp-month-detail td { border: 1px solid #000; padding: 6px 8px; font-size: 11px; }
+          .exp-month-detail th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .exp-month-detail .head .title { display: none; }
+        }
       </style>
+      <div class="print-header" id="printHeader"></div>
       <div class="head">
         <h3 class="title">交通費申請詳細</h3>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;" class="no-print">
+          <button id="downloadPdf" class="btn" type="button" style="display:flex; align-items:center; gap:6px; background:#fff; color:#dc2626; border-color:#dc2626; font-weight:bold;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            PDF出力
+          </button>
           <button id="backToExpenseList" class="btn" type="button">一覧へ戻る</button>
         </div>
       </div>
@@ -137,8 +160,32 @@ const render = async () => {
       </tr>`;
     }).join('');
     
+    const downloadPdfBtn = $('#downloadPdf');
+    if (downloadPdfBtn) {
+      downloadPdfBtn.addEventListener('click', () => {
+        window.print();
+      });
+    }
+
     if (meta) {
       meta.innerHTML = `対象: ${selectedName} / ${month} <span style="margin-left:16px; font-weight:bold; font-size:16px; color:#b91c1c;">合計: ¥${totalAmount.toLocaleString('ja-JP')}</span>`;
+    }
+
+    const printHeader = $('#printHeader');
+    if (printHeader) {
+      const targetUser = users.find(u => String(u.id) === String(userId)) || {};
+      const empCode = targetUser.employee_code || targetUser.employeeCode || '';
+      const birthDate = targetUser.birth_date || targetUser.birthDate ? String(targetUser.birth_date || targetUser.birthDate).slice(0, 10) : '';
+      printHeader.innerHTML = `
+        <h2>交通費精算書</h2>
+        <div class="info-grid">
+          <div class="info-item"><span class="info-label">会社名</span><span>飯塚塗研株式会社</span></div>
+          <div class="info-item"><span class="info-label">対象月</span><span>${month}</span></div>
+          <div class="info-item"><span class="info-label">社員番号</span><span>${empCode}</span></div>
+          <div class="info-item"><span class="info-label">氏名</span><span>${selectedName}</span></div>
+          <div class="info-item"><span class="info-label">生年月日</span><span>${birthDate}</span></div>
+        </div>
+      `;
     }
 
     if (tableHost) {
