@@ -22,7 +22,7 @@ function key(req, keyBy = 'ip') {
   return `${method}:${path}:${identity}`;
 }
 
-function rateLimit({ windowMs = 60_000, max = 60, keyBy = 'user_or_ip' } = {}) {
+function rateLimit({ windowMs = 60_000, max = 600, keyBy = 'user_or_ip' } = {}) {
   return (req, res, next) => {
     const k = key(req, keyBy);
     const now = Date.now();
@@ -40,7 +40,7 @@ function rateLimit({ windowMs = 60_000, max = 60, keyBy = 'user_or_ip' } = {}) {
 function rateLimitNamed(name, defaults = {}) {
   const base = 'RATE_' + String(name || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
   const defW = defaults.windowMs != null ? Number(defaults.windowMs) : 60_000;
-  const defM = defaults.max != null ? Number(defaults.max) : 60;
+  const defM = defaults.max != null ? Number(defaults.max) : 600;
   const defKeyBy = String(defaults.keyBy || 'user_or_ip');
   const w = parseInt(process.env[`${base}_WINDOW_MS`] || process.env.RATE_WINDOW_MS || String(defW), 10) || defW;
   const m = parseInt(process.env[`${base}_MAX`] || process.env.RATE_MAX || String(defM), 10) || defM;

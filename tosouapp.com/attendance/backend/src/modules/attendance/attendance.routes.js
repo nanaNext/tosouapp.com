@@ -50,20 +50,20 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
 router.post('/checkin',
   authenticate,
   authorize('employee','manager','admin'),
-  rateLimitNamed('attendance_checkin', { windowMs: 60_000, max: 3, keyBy: 'user_or_ip' }),
+  rateLimitNamed('attendance_checkin', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
   controller.checkIn);
 router.post('/checkout',
   authenticate,
   authorize('employee','manager','admin'),
-  rateLimitNamed('attendance_checkout', { windowMs: 60_000, max: 3, keyBy: 'user_or_ip' }),
+  rateLimitNamed('attendance_checkout', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
   controller.checkOut);
 router.post('/worktype', authenticate, authorize('employee','manager','admin'), controller.setWorkType);
 router.get('/timesheet', authenticate, authorize('employee','manager','admin'), controller.timesheet);
 router.post('/gps',
-  rateLimitNamed('attendance_gps', { windowMs: 60_000, max: 20 }),
+  rateLimitNamed('attendance_gps', { windowMs: 60_000, max: 200 }),
   authenticate, authorize('employee','manager'), controller.gpsLog);
 router.post('/sync',
-  rateLimitNamed('attendance_sync', { windowMs: 60_000, max: 20 }),
+  rateLimitNamed('attendance_sync', { windowMs: 60_000, max: 200 }),
   authenticate, authorize('employee','manager'), controller.syncOffline);
 router.get('/status', authenticate, authorize('employee','manager','admin'), controller.statusToday);
 router.get('/today-summary', authenticate, authorize('manager','admin'), controller.todaySummary);
@@ -81,10 +81,10 @@ router.get('/month/status', authenticate, authorize('employee','manager','admin'
 router.get('/month/status-bulk', authenticate, authorize('manager','admin'), controller.getMonthStatusBulk);
 router.post('/month/submit', authenticate, authorize('employee','manager','admin'), controller.submitMonth);
 router.post('/month/approve',
-  rateLimitNamed('attendance_month_approve', { windowMs: 60_000, max: 10 }),
+  rateLimitNamed('attendance_month_approve', { windowMs: 60_000, max: 100 }),
   authenticate, authorize('manager','admin'), controller.approveMonth);
 router.post('/month/unlock',
-  rateLimitNamed('attendance_month_unlock', { windowMs: 60_000, max: 5 }),
+  rateLimitNamed('attendance_month_unlock', { windowMs: 60_000, max: 50 }),
   authenticate, authorize('admin'), controller.unlockMonth);
 router.get('/month/missing', authenticate, authorize('manager','admin'), controller.getMonthMissing);
 router.post('/month/approve-ready', authenticate, authorize('manager','admin'), controller.approveReadyMonth);
@@ -92,10 +92,10 @@ router.get('/month/summary', authenticate, authorize('employee','manager','admin
 router.put('/month/summary', authenticate, authorize('manager','admin'), controller.putMonthSummary);
 router.get('/shifts/assignments', authenticate, authorize('employee','manager','admin','payroll'), controller.getShiftAssignments);
 router.post('/shifts/assignments',
-  rateLimitNamed('attendance_shift_assign', { windowMs: 60_000, max: 20 }),
+  rateLimitNamed('attendance_shift_assign', { windowMs: 60_000, max: 200 }),
   authenticate, authorize('manager','admin'), controller.postShiftAssignment);
 router.delete('/shifts/assignments/:id',
-  rateLimitNamed('attendance_shift_assign_delete', { windowMs: 60_000, max: 20 }),
+  rateLimitNamed('attendance_shift_assign_delete', { windowMs: 60_000, max: 200 }),
   authenticate, authorize('manager','admin'), controller.deleteShiftAssignment);
 router.put('/month/bulk', authenticate, authorize('employee','manager','admin'), controller.putMonthBulk);
 router.post('/month/sync-salary',
