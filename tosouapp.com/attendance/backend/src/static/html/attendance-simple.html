@@ -76,7 +76,7 @@
           <div class="simple-actuals-left">
             <div class="simple-form">
               <div class="simple-row">
-                <label class="simple-label">勤務区分</label>
+                <label class="simple-label" for="kubun">勤務区分</label>
                 <select id="kubun" class="simple-select">
                   <option value="出勤">出勤</option>
                   <option value="休日">休日</option>
@@ -93,27 +93,27 @@
                 <input id="workType" type="hidden" value="">
               </div>
               <div class="simple-row">
-                <label class="simple-label">企業名</label>
-                <select id="company" class="simple-select">
+                <label class="simple-label" for="company">企業名</label>
+                <select id="company" name="company" autocomplete="organization" class="simple-select">
                   <option value=""></option>
                   <option value="iizuka">飯塚塗研</option>
                 </select>
               </div>
               <div class="simple-stamp-stack" aria-label="打刻">
                 <div class="simple-stamp-row">
-                  <div class="simple-label">開始時間</div>
+                  <label class="simple-label" for="startTime">開始時間</label>
                   <input id="startTime" type="time" class="simple-stamp-time" value="08:00">
                   <button id="btnStartStamp" class="simple-stamp-btn" type="button">開始打刻</button>
                 </div>
                 <div class="simple-stamp-row">
-                  <div class="simple-label">終了時間</div>
+                  <label class="simple-label" for="endTime">終了時間</label>
                   <input id="endTime" type="time" class="simple-stamp-time" value="">
                   <button id="btnEndStamp" class="simple-stamp-btn" type="button">終了打刻</button>
                 </div>
               </div>
               <div class="simple-grid2">
                 <div class="simple-time">
-                  <label class="simple-label">休憩時間</label>
+                  <label class="simple-label" for="breakMin">休憩時間</label>
                   <select id="breakMin" class="simple-select">
                     <option value="60">1:00</option>
                     <option value="45">0:45</option>
@@ -122,7 +122,7 @@
                   </select>
                 </div>
                 <div class="simple-time">
-                  <label class="simple-label">深夜時間</label>
+                  <label class="simple-label" for="nightBreakMin">深夜時間</label>
                   <select id="nightBreakMin" class="simple-select">
                     <option value="0">0:00</option>
                     <option value="30">0:30</option>
@@ -152,11 +152,11 @@
 
               <div class="simple-work-report">
                 <div class="simple-row">
-                  <label class="simple-label">現場（任意）</label>
+                  <label class="simple-label" for="workSite">現場（任意）</label>
                   <input id="workSite" class="simple-input" placeholder="現場名（未入力可）">
                 </div>
                 <div class="simple-row">
-                  <label class="simple-label">作業内容</label>
+                  <label class="simple-label" for="workContent">作業内容</label>
                   <textarea id="workContent" class="simple-textarea" placeholder="本日の作業内容を入力してください"></textarea>
                 </div>
               </div>
@@ -185,16 +185,16 @@
         <div class="simple-form">
           <div class="simple-grid2">
             <div class="simple-time">
-              <label class="simple-label">遅刻</label>
+              <label class="simple-label" for="lateMin">遅刻</label>
               <input id="lateMin" type="number" class="simple-number" min="0" value="0">
             </div>
             <div class="simple-time">
-              <label class="simple-label">早退</label>
+              <label class="simple-label" for="earlyMin">早退</label>
               <input id="earlyMin" type="number" class="simple-number" min="0" value="0">
             </div>
           </div>
           <div class="simple-row">
-            <label class="simple-label">社内業務</label>
+            <label class="simple-label" for="taskType">社内業務</label>
             <select id="taskType" class="simple-select">
               <option value="internal">社内業務</option>
             </select>
