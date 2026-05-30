@@ -785,7 +785,7 @@ function ensureEditorLayoutStyle() {
 
       .admin-ms-grid-shift{display:grid;grid-template-columns:minmax(280px,2fr) repeat(2,minmax(180px,1fr));gap:10px;align-items:end;}
       .admin-ms-grid-two{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:10px;}
-      .admin-ms-table-wrap{overflow:auto;}
+      .admin-ms-table-wrap{overflow:auto;max-width:100vw;}
       #saTable .excel-table,#wdTable .excel-table{width:100%;min-width:980px;table-layout:fixed;border-collapse:collapse;}
       #saTable .excel-table th,#saTable .excel-table td,#wdTable .excel-table th,#wdTable .excel-table td{border:1px solid #dbe4f0;padding:8px 10px;vertical-align:middle;}
       #saTable .excel-table th,#wdTable .excel-table th{white-space:nowrap;background:#f8fbff;}
@@ -793,6 +793,12 @@ function ensureEditorLayoutStyle() {
       #saTable .admin-ms-btn,#wdTable .admin-ms-btn{height:30px;padding:0 10px;min-width:auto;}
       .admin-ms-op{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;}
       @media (max-width: 980px){.admin-ms-grid-shift,.admin-ms-grid-two{grid-template-columns:1fr;}}
+      @media (max-width: 640px){
+        #adminContent { margin-left: 0 !important; padding-left: 12px; padding-right: 12px; }
+        .admin-ms-page-head { margin-left: 0 !important; }
+        .admin-ms-shell { padding: 4px 0 80px; }
+        #saTable .excel-table,#wdTable .excel-table{min-width: 640px;}
+      }
     `;
     document.head.appendChild(st);
   } catch { }
