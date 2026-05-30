@@ -267,28 +267,28 @@
       <td class="sticky-col-1">${showDateDow ? `<span style="font-weight:900;">${esc(dateMmdd)}</span><span class="dow" style="font-weight:900;color:${esc(dowColor)};">(${esc(dow)})</span>` : ''}</td>
       <td>
         <div class="se-kubun-wrap">
-          <select class="se-select se-kubun-select ${kubunInit === '' ? 'is-planned' : ''}" data-field="classification" ${state.editableMonth ? '' : 'disabled'}>
+          <select id="classification_${dateStr}" name="classification_${dateStr}" class="se-select se-kubun-select ${kubunInit === '' ? 'is-planned' : ''}" data-field="classification" ${state.editableMonth ? '' : 'disabled'}>
             ${kubunOptionsHtml}
           </select>
         </div>
       </td>
-      <td style="text-align:center;"><input class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><input class="se-input" data-field="location" type="text" value="${esc(dLoc)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><input class="se-input" data-field="memo" type="text" value="${esc(dMemo)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input id="ckOnsite_${dateStr}" name="ckOnsite_${dateStr}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input id="ckRemote_${dateStr}" name="ckRemote_${dateStr}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input id="ckSatellite_${dateStr}" name="ckSatellite_${dateStr}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input id="location_${dateStr}" name="location_${dateStr}" class="se-input" data-field="location" type="text" value="${esc(dLoc)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input id="memo_${dateStr}" name="memo_${dateStr}" class="se-input" data-field="memo" type="text" value="${esc(dMemo)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}">
+          <input id="checkIn_${dateStr}" name="checkIn_${dateStr}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}">
         </div>
       </td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}">
+          <input id="checkOut_${dateStr}" name="checkOut_${dateStr}" class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}">
         </div>
       </td>
       <td>
-        <select class="se-select" data-field="break" ${!canEditWorkRow ? 'disabled' : ''}>
+        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditWorkRow ? 'disabled' : ''}>
           <option value="1:00" ${brVal === '1:00' ? 'selected' : ''}>1:00</option>
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>
@@ -296,7 +296,7 @@
         </select>
       </td>
       <td>
-        <select class="se-select" data-field="nightBreak" ${!canEditWorkRow ? 'disabled' : ''}>
+        <select id="nightBreak_${dateStr}" name="nightBreak_${dateStr}" class="se-select" data-field="nightBreak" ${!canEditWorkRow ? 'disabled' : ''}>
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
@@ -306,7 +306,7 @@
       <td data-field="excess" class="${otAutoCls}" style="text-align:center;color:#0f172a;font-weight:900;">${esc(otHm)}</td>
       <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => { if (!isWorkDay) return '—'; const inM = parseHm(finalIn); const stM = parseHm(shiftStart); const outM = parseHm(finalOut); const etM = parseHm(shiftEnd); const late = (inM!=null && stM!=null && inM>stM); const early = (() => { if (outM==null || stM==null || etM==null) return false; const overnight = etM < stM; const endAbs = overnight ? (etM + 24*60) : etM; const outAbs = overnight && outM < stM ? (outM + 24*60) : outM; return outAbs < endAbs; })(); return late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—'; })()}</td>
       <td>
-        <select class="se-select" data-field="reason" ${effectiveKubun === '欠勤' && state.editableMonth ? '' : 'disabled'} style="width:140px;${effectiveKubun === '欠勤' ? '' : 'visibility:hidden;'}">
+        <select id="reason_${dateStr}" name="reason_${dateStr}" class="se-select" data-field="reason" ${effectiveKubun === '欠勤' && state.editableMonth ? '' : 'disabled'} style="width:140px;${effectiveKubun === '欠勤' ? '' : 'visibility:hidden;'}">
           <option value=""></option>
           <option value="private" ${dReason === 'private' ? 'selected' : ''}>私用</option>
           <option value="late" ${dReason === 'late' ? 'selected' : ''}>遅刻</option>
@@ -315,7 +315,7 @@
         </select>
       </td>
       <td>
-        <input class="se-input" data-field="notes" type="text" value="${esc(dNotes)}" ${!canEditWorkRow ? 'disabled' : ''} style="width:100%;">
+        <input id="notes_${dateStr}" name="notes_${dateStr}" class="se-input" data-field="notes" type="text" value="${esc(dNotes)}" ${!canEditWorkRow ? 'disabled' : ''} style="width:100%;">
       </td>
       <td>
         <div class="se-status-wrap">
