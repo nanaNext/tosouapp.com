@@ -1345,8 +1345,8 @@ const renderList = async () => {
     const isCompactSplit = showMonthProgressInNewMode && (activeHistoryTab === 'new' || activeHistoryTab === 'applied');
     const colSpan = isCompactSplit ? 6 : 7;
     const detailHeadRow = isCompactSplit
-      ? '<tr><th>日</th><th>経路</th><th>金額</th><th>ステータス</th><th>領収書</th><th>操作</th></tr>'
-      : '<tr><th>日付</th><th>経路</th><th>金額</th><th>ステータス</th><th>メモ</th><th>領収書</th><th>操作</th></tr>';
+      ? '<tr><th>日</th><th>種別</th><th>経路</th><th>用途</th><th>金額</th><th>ステータス</th><th>領収書</th><th>操作</th></tr>'
+      : '<tr><th>日付</th><th>種別</th><th>経路</th><th>用途</th><th>金額</th><th>ステータス</th><th>メモ</th><th>領収書</th><th>操作</th></tr>';
     if (!Array.isArray(rows) || rows.length === 0) {
       const emptyText = activeHistoryTab === 'notice'
         ? '通知・確認事項はありません'
@@ -1431,17 +1431,36 @@ const renderList = async () => {
       const ruAttr = ru ? ` data-url="${ru}"` : '';
       const count = Number(r.file_count || 0);
       const ruInline = ru ? `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;">表示${count > 1 ? `(${count}件)` : ''}</a>` : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:24px;">表示(${count}件)</button>` : '<span style="color:#64748b;font-size:12px;">なし</span>');
+      const typeMap = {
+        train: '電車',
+        bus: 'バス',
+        taxi: 'タクシー',
+        car: '社用車',
+        private_car: '自家用車',
+        parking: '駐車場',
+        highway: '高速道路',
+        hotel: '宿泊',
+        other: 'その他'
+      };
+      const typeDisplay = typeMap[String(r.category || r.type || '')] || (r.category || r.type || '-');
+      
+      const purposeDisplay = String(r.purpose || '').trim() || '-';
+      
+      const tripType = String(r.trip_type || '');
+      const tripTypeDisplay = tripType === 'round_trip' ? '往復' : (tripType === 'one_way' ? '片道' : '');
+      const tripBadge = tripTypeDisplay ? `<span style="font-size:10px; background:#e2e8f0; padding:2px 4px; border-radius:4px; margin-left:4px;">${tripTypeDisplay}</span>` : '';
+      
       if (isCompactSplit) {
-        const routeCell = routeDisplay;
+        const routeCell = routeDisplay + tripBadge;
         const statusCell = `<span class="status-pill status-${stClass}">${stLabel}</span>`;
         const receiptCell = ru
           ? (count > 1
             ? `<button class="btn" data-action="files" data-url="${ru}" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>`
             : `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:11px;color:#1e40af;text-decoration:none;">表示</a>`)
           : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>` : '<span style="color:#64748b;font-size:11px;">-</span>');
-        return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${a}</td><td>${statusCell}</td><td>${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
+        return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${purposeDisplay}</td><td>${a}</td><td>${statusCell}</td><td>${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
       }
-      return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}</span></td><td>${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
+      return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}${tripBadge}</span></td><td>${purposeDisplay}</td><td>${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
     }).join('');
     const totalRow = `<tr class="total-row"><td colspan="${colSpan}" style="font-weight:800;text-align:left;">合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}</td></tr>`;
     window.goBackToMonthlyList = async () => {

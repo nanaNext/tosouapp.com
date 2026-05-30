@@ -338,8 +338,8 @@ async function computePayslipForUser(userId, month, options = null) {
   const otherItems = normalizeItems(opts.otherItems);
   const その他 = {};
   let additionalMedicalFee = 0;
-  let yecFee = 0; // 年末調整徴収
-  let yerFee = 0; // 年末調整還付
+  let yecFee = 0;  // 年末調整徴収
+  let yerFee = 0;  // 年末調整還付
 
   for (const it of otherItems) {
     if (it.label === '差額計算') {
