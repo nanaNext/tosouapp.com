@@ -412,6 +412,7 @@ const wireDrawer = () => {
   closeBtn?.addEventListener('click', (e) => { e.preventDefault(); close(); });
   backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  drawer.querySelectorAll('.drawer-item, a').forEach(el => el.addEventListener('click', close));
 };
 const openQuickEditExpense = async (recId) => {
   const id = String(recId || '');
