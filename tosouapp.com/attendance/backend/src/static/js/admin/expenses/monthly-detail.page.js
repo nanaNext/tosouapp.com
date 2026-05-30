@@ -39,8 +39,8 @@ const render = async () => {
         .exp-month-detail .meta { color:#475569; font-size:13px; }
         .exp-month-detail .btn { height:32px; padding:0 12px; border:1px solid #cbd5e1; background:#fff; border-radius:0; cursor:pointer; }
         .exp-month-detail .btn.primary { background:#0b5ed7; border-color:#0b5ed7; color:#fff; }
-        .exp-month-detail .table-wrap { border:1px solid #dbe3ee; border-radius:0; background:#fff; overflow:hidden; }
-        .exp-month-detail table { width:100%; border-collapse:collapse; border-spacing:0; }
+        .exp-month-detail .table-wrap { border:1px solid #dbe3ee; border-radius:0; background:#fff; overflow-x:auto; }
+        .exp-month-detail table { width:100%; min-width:800px; border-collapse:collapse; border-spacing:0; }
         .exp-month-detail th, .exp-month-detail td { border:1px solid #e5eaf2; padding:10px 12px; font-size:13px; }
         .exp-month-detail th { background:#f8fafc; text-align:left; }
         .print-header { display: none; }
