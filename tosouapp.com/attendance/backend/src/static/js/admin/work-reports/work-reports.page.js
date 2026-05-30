@@ -368,7 +368,7 @@ export async function mount() {
     }).join('');
 
     tableHost.innerHTML = `
-      <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;">
+      <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
         <table class="wr-table">
           <colgroup>
             <col style="width:40px;">
@@ -590,7 +590,7 @@ export async function mount() {
             </div>
             ${headerRight}
           </div>
-          <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;">
+          <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
             <table class="wr-table">
               <colgroup>
                 <col style="width:40px;">

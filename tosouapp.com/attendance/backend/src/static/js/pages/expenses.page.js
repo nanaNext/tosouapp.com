@@ -1462,7 +1462,7 @@ const renderList = async () => {
       }
       return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}${tripBadge}</span></td><td>${purposeDisplay}</td><td>${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td>${r.memo || ''}${noteHtml}</td><td><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
     }).join('');
-    const totalRow = `<tr class="total-row"><td colspan="${colSpan}" style="font-weight:800;text-align:left;">合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}</td></tr>`;
+    const totalRow = `<tr class="total-row"><td colspan="${colSpan}" style="font-weight:800;text-align:left;padding-bottom:20px;">合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}</td></tr>`;
     window.goBackToMonthlyList = async () => {
       selectedHistoryMonth = '';
       const listHost = document.getElementById('exListHost');
