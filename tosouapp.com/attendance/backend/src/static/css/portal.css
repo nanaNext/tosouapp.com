@@ -86,9 +86,10 @@
   margin: 0 auto;
 }
 .subbar .subnav a {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   color: #111827;
-  text-decoration: none;
+  text-decoration: none !important;
   font-size: 15px;
   font-weight: 400;
   padding: 6px 10px;
@@ -97,18 +98,19 @@
   border: 2px solid transparent;
   transition: background .18s ease, border-color .18s ease;
   outline: none;
-  text-underline-offset: 4px;
-  text-decoration-thickness: 2px;
   position: relative;
   box-shadow: inset 0 -0px 0 transparent;
+  height: 100%;
+  box-sizing: border-box;
 }
 .subbar .subnav a::after {
   display: none !important;
 }
 .subbar .subnav > a:hover {
   background: rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.1);
-  text-decoration: none;
+  border-color: transparent;
+  border-bottom-color: rgba(0,0,0,0.1);
+  text-decoration: none !important;
 }
 .subbar .subnav > a:focus,
 .subbar .subnav > a:focus-visible,
@@ -116,35 +118,41 @@
   outline: none;
   border-color: transparent;
   background: transparent;
-  text-decoration: none;
+  text-decoration: none !important;
 }
 .subbar .subnav > a[aria-current="page"],
 .subbar .subnav .menu .menu-btn[aria-current="page"] {
-  text-decoration: underline;
-  text-decoration-color: #111827;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 6px;
+  border-bottom-color: #111827;
+  border-bottom-width: 2px;
+  border-radius: 4px 4px 0 0;
 }
 
 .subbar .subnav .menu {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
 }
 .subbar .subnav .menu .menu-btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
   color: #111827;
   background: transparent;
   border: 2px solid transparent;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 15px;
   font-weight: 400;
-  padding: 6px 10px;
+  padding: 0 10px;
+  margin: 0 4px;
   cursor: pointer;
-  line-height: 1.4;
+  box-sizing: border-box;
 }
 .subbar .subnav .menu:hover .menu-btn,
 .subbar .subnav .menu:focus-within .menu-btn {
   background: rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.1);
+  border-color: transparent;
+  border-bottom-color: rgba(0,0,0,0.1);
 }
 .subbar .subnav .menu .submenu {
   display: none;
@@ -164,7 +172,8 @@
 }
 .subbar .subnav .menu.open .menu-btn {
   background: rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.1);
+  border-color: transparent;
+  border-bottom-color: rgba(0,0,0,0.1);
 }
 .subbar .subnav .menu .submenu a {
   display: block;
@@ -1412,23 +1421,22 @@ body:not(.admin) .topbar-inner .user #userName {
     word-break: break-word;
   }
 }
-  .admin.employees-wide #adminContent table th,
-  .admin.employees-wide #adminContent table td {
-    text-align: left;
-    padding: 6px 8px;
-  }
-  .admin.employees-wide .emp-filters {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-start;
-  }
-  .admin.employees-wide #empPageInfo {
-    display: inline-block;
-    min-width: 80px;
-    text-align: left;
-  }
+.admin.employees-wide #adminContent table th,
+.admin.employees-wide #adminContent table td {
+  text-align: left;
+  padding: 6px 8px;
+}
+.admin.employees-wide .emp-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+.admin.employees-wide #empPageInfo {
+  display: inline-block;
+  min-width: 80px;
+  text-align: left;
 }
 
 .tabs {
