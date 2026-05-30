@@ -332,7 +332,8 @@ export async function mount() {
       const meta = statusMeta(stx);
       const kubun = String(it.kubun || '').trim() ? esc(String(it.kubun).trim()) : dash;
       const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
-      const work = String(it.work || '').trim() ? esc(String(it.work).trim()) : dash;
+      const rawWork = String(it.work || '').trim();
+      const work = rawWork ? esc(rawWork) : dash;
       const dept = String(it.departmentName || '').trim() ? esc(String(it.departmentName).trim()) : dash;
       const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
       const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
@@ -360,7 +361,9 @@ export async function mount() {
           <td style="font-family:monospace; font-size:14px;">${checkOut}</td>
           <td>${wType}</td>
           <td>${site}</td>
-          <td style="white-space:pre-wrap; word-break:break-word; color:#475569;">${work}</td>
+          <td style="color:#475569; max-width:300px;">
+            <div title="${rawWork ? esc(rawWork) : ''}" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:help;">${work}</div>
+          </td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
