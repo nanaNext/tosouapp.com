@@ -39,7 +39,7 @@ const render = async () => {
         .exp-month-detail .meta { color:#475569; font-size:13px; }
         .exp-month-detail .btn { height:32px; padding:0 12px; border:1px solid #cbd5e1; background:#fff; border-radius:0; cursor:pointer; }
         .exp-month-detail .btn.primary { background:#0b5ed7; border-color:#0b5ed7; color:#fff; }
-        .exp-month-detail .table-wrap { border:1px solid #dbe3ee; border-radius:0; background:#fff; overflow-x:auto; }
+        .exp-month-detail .table-wrap { border:1px solid #dbe3ee; border-radius:0; background:#fff; overflow-x:auto; padding-bottom:12px; }
         .exp-month-detail table { width:100%; min-width:800px; border-collapse:collapse; border-spacing:0; }
         .exp-month-detail th, .exp-month-detail td { border:1px solid #e5eaf2; padding:10px 12px; font-size:13px; }
         .exp-month-detail th { background:#f8fafc; text-align:left; }
@@ -206,9 +206,9 @@ const render = async () => {
             <tbody>
               ${body}
               <tr style="background:#f8fafc; font-weight:bold; border-top: 2px solid #e2e8f0;">
-                <td colspan="6" style="text-align:right;">合計</td>
-                <td style="text-align:right; color:#0f172a;">¥${totalAmount.toLocaleString('ja-JP')}</td>
-                <td colspan="2"></td>
+                <td colspan="6" style="text-align:right; padding-bottom: 20px;">合計</td>
+                <td style="text-align:right; color:#0f172a; padding-bottom: 20px;">¥${totalAmount.toLocaleString('ja-JP')}</td>
+                <td colspan="2" style="padding-bottom: 20px;"></td>
               </tr>
             </tbody>
           </table>
