@@ -133,21 +133,21 @@
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // Hint logic
-      const inInit = inHm || (isWorkDay ? shiftStart : '');
-      const outInit = outHm || (isWorkDay ? shiftEnd : '');
+      const inInit = inHm || (isWorkDay || isPlanned ? shiftStart : '');
+      const outInit = outHm || (isWorkDay || isPlanned ? shiftEnd : '');
       
       // CHỐT: Nếu KHÔNG phải ngày đi làm (isWorkDay = false) thì KHÔNG ĐƯỢC CÓ GIỜ
       // NHƯNG nếu user đổi trạng thái về lại đi làm, ta nên ưu tiên inHm/outHm thực tế (đã lưu)
       // Khôi phục logic cũ: dùng inInit/outInit để show giờ dự kiến mờ cho những ngày chưa có dữ liệu.
-      const finalIn = isWorkDay ? inInit : '';
-      const finalOut = isWorkDay ? outInit : '';
+      const finalIn = (isWorkDay || isPlanned) ? inInit : '';
+      const finalOut = (isWorkDay || isPlanned) ? outInit : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
       const isManualOut = !!outHm;
 
-      const autoIn = isWorkDay && !inHm && shiftStartOk;
-      const autoOut = isWorkDay && !outHm && shiftEndOk;
+      const autoIn = (isWorkDay || isPlanned) && !inHm && shiftStartOk;
+      const autoOut = (isWorkDay || isPlanned) && !outHm && shiftEndOk;
       
       // Field-level visual logic:
       // - check-in stays faded until it has real value.
@@ -165,8 +165,8 @@
       const totalBmin = brMin + nbMin;
 
       // Show planned work hours (faded) even before actual punches exist.
-      const workHm = (isWorkDay && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
-      const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
+      const workHm = ((isWorkDay || isPlanned) && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
+      const isAutoWork = (isWorkDay || isPlanned) && (autoIn || autoOut) && !!workHm;
       const hasCompletedActual = hasActualIn && hasActualOut;
       const workAutoCls = (isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
