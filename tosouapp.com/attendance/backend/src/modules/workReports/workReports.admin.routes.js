@@ -120,9 +120,12 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
             ? (hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working'))
             : (dayIsOff ? 'leave' : 'not_checked_in'));
       // Normalize display kubun for off-days even when daily record is empty.
-      const effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff ? '休日' : ''));
+      let effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff ? '休日' : ''));
+      if (effectiveKubun === '休日出勤' && !hasIn && !hasOut) effectiveKubun = '休日';
       const hasReport = !!(r.site || r.work);
       const wt = r.work_type || null;
+      let kubunOut = effectiveKubun;
+      if (kubunOut === '休日出勤' && !hasIn && !hasOut && !hasReport) kubunOut = '休日';
       return {
         userId: r.userId,
         employeeCode: r.employeeCode || null,
@@ -135,7 +138,7 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
           checkOut: r.checkOut || null
         },
         status,
-        dailyKubun: effectiveKubun || null,
+        dailyKubun: kubunOut || null,
         workType: wt,
         report: hasReport ? {
           workType: wt,
@@ -231,17 +234,50 @@ router.get('/export.xlsx',
       return out;
     })();
     const yearsInRange = Array.from(new Set(dates.map(d => parseInt(String(d).slice(0, 4), 10)).filter(Boolean)));
-    const offByYear = new Map();
+    const calByYear = new Map();
     for (const y of yearsInRange) {
       const cal = await calendarRepo.computeYear(y).catch(() => null);
-      const off = new Set((cal?.off_days || []).map(ds => String(ds).slice(0, 10)));
-      offByYear.set(y, off);
+      calByYear.set(y, cal);
     }
-    const isOffDate = (dateStr) => {
+
+    const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
+    const buildOffSet = (cal, isKouji) => {
+      const detail = cal?.detail || [];
+      const byDate = new Map();
+      for (const it of detail) {
+        const ds = String(it?.date || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+        if (!byDate.has(ds)) byDate.set(ds, []);
+        byDate.get(ds).push({ type: String(it?.type || ''), is_off: Number(it?.is_off || 0) === 1 });
+      }
+      const off = new Set();
+      for (const [ds, list] of byDate.entries()) {
+        if (!isKouji) {
+          if (list.some(x => x.is_off)) off.add(ds);
+          continue;
+        }
+        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
+        const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
+        const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
+        if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
+      }
+      if (!off.size && Array.isArray(cal?.off_days) && !isKouji) {
+        for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
+      }
+      return off;
+    };
+
+    const isOffDate = (dateStr, deptName) => {
+      const isKouji = String(deptName || '').includes('工事部');
       const y = parseInt(String(dateStr).slice(0, 4), 10);
-      const set = offByYear.get(y);
-      if (!set) return false;
-      return set.has(String(dateStr).slice(0, 10));
+      const cal = calByYear.get(y);
+      if (!cal) return false;
+      // Note: we can cache the sets by (y, isKouji)
+      const cacheKey = `${y}_${isKouji}`;
+      if (!calByYear.has(cacheKey)) {
+        calByYear.set(cacheKey, buildOffSet(cal, isKouji));
+      }
+      return calByYear.get(cacheKey).has(String(dateStr).slice(0, 10));
     };
 
     const [users] = await db.query(`
@@ -317,7 +353,7 @@ router.get('/export.xlsx',
         return '';
       }
     };
-    const wtLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : '';
+    const wtLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場・出張' : '';
     const leaveLabel = (t) => {
       const s = String(t || '').toLowerCase();
       if (s === 'paid') return '有給';
@@ -335,17 +371,19 @@ router.get('/export.xlsx',
       const att = attMap.get(`${uid}|${d}`) || null;
       const rep = repMap.get(`${uid}|${d}`) || null;
       const wt = String(rep?.work_type || att?.work_type || '').trim();
-      let status = '未出勤';
+      let status = '';
       let cin = '';
       let cout = '';
-      if (isOffDate(d) && !att?.checkIn) {
-        status = '休日';
-      } else if (leave) {
+      if (leave) {
         status = leaveLabel(leave.type);
+      } else if (!att?.checkIn && isOffDate(d, dept)) {
+        status = '休日';
       } else if (att?.checkIn) {
-        status = att?.checkOut ? (isOffDate(d) ? '休日出勤' : '退勤済') : (isOffDate(d) ? '休日出勤' : '出勤中');
+        status = att?.checkOut ? (isOffDate(d, dept) ? '休日出勤' : '出勤') : (isOffDate(d, dept) ? '休日出勤' : '出勤');
         cin = fmtHm(att.checkIn);
         cout = fmtHm(att.checkOut);
+      } else if (!isOffDate(d, dept)) {
+        status = '出勤';
       }
       return {
         uid,
@@ -357,9 +395,9 @@ router.get('/export.xlsx',
         status,
         cin,
         cout,
-        site: isOffDate(d) && !att?.checkIn ? '' : String(rep?.site || ''),
-        work: isOffDate(d) && !att?.checkIn ? '' : String(rep?.work || ''),
-        isOff: isOffDate(d)
+        site: isOffDate(d, dept) && !att?.checkIn ? '' : String(rep?.site || ''),
+        work: isOffDate(d, dept) && !att?.checkIn ? '' : String(rep?.work || ''),
+        isOff: isOffDate(d, dept)
       };
     };
 
@@ -384,12 +422,12 @@ router.get('/export.xlsx',
         const dept = u.departmentName || '';
         const dayCells = dates.map(d => {
           const r = buildRow(u, d);
-          if (r.status === '休日') return '休日';
-          const t1 = r.status ? r.status : '';
-          const t2 = r.wtText ? r.wtText : '';
-          const t3 = r.cin || r.cout ? `${r.cin || ''}${r.cout ? '-' + r.cout : ''}` : '';
-          const t4 = r.site ? r.site : '';
-          return [t2, t1, t3, t4].filter(Boolean).join('\n');
+      if (r.status === '休日') return '休日';
+      const t1 = r.status ? r.status : '';
+      const t2 = r.wtText ? r.wtText : '';
+      const t3 = r.cin || r.cout ? `${r.cin || ''}${r.cout ? '-' + r.cout : ''}` : '';
+      const t4 = r.site ? r.site : '';
+      return [t1, t2, t4].filter(Boolean).join('\n');
         });
         return { isOff: false, cells: [code, name, dept, ...dayCells] };
       });
@@ -399,10 +437,10 @@ router.get('/export.xlsx',
         { header: '氏名', width: 14 },
         { header: '部署', width: 22 },
         { header: '勤務区分', width: 12 },
-        { header: '状態', width: 10 },
-        { header: '出勤', width: 8 },
-        { header: '退勤', width: 8 },
-        { header: '現場', width: 18 },
+        { header: '出社', width: 8 },
+        { header: '在宅', width: 8 },
+        { header: '現場・出張', width: 10 },
+        { header: '現場（任意）', width: 18 },
         { header: '作業内容', width: 52 }
       ];
       const sheets = [
@@ -417,10 +455,10 @@ router.get('/export.xlsx',
               r.code,
               r.name,
               r.dept,
-              r.wtText || '',
               r.status || '',
-              r.cin || '',
-              r.cout || '',
+              r.wt === 'onsite' ? '✓' : '',
+              r.wt === 'remote' ? '✓' : '',
+              r.wt === 'satellite' ? '✓' : '',
               r.site || '',
               r.work || ''
             ]
@@ -448,10 +486,10 @@ router.get('/export.xlsx',
             r.code,
             r.name,
             r.dept,
-            r.wtText,
             r.status,
-            r.cin,
-            r.cout,
+            r.wt === 'onsite' ? '✓' : '',
+            r.wt === 'remote' ? '✓' : '',
+            r.wt === 'satellite' ? '✓' : '',
             r.site,
             r.work
           ]
@@ -466,10 +504,10 @@ router.get('/export.xlsx',
       { header: '氏名', width: 14 },
       { header: '部署', width: 22 },
       { header: '勤務区分', width: 12 },
-      { header: '状態', width: 10 },
-      { header: '出勤', width: 8 },
-      { header: '退勤', width: 8 },
-      { header: '現場', width: 18 },
+      { header: '出社', width: 8 },
+      { header: '在宅', width: 8 },
+      { header: '現場・出張', width: 10 },
+      { header: '現場（任意）', width: 18 },
       { header: '作業内容', width: 52 }
     ];
 
@@ -788,16 +826,53 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       }
       return out;
     })();
-    const offSet = new Set();
+    const calByYear = new Map();
     try {
       const years = Array.from(new Set(ymDateList.map(d => parseInt(String(d).slice(0, 4), 10)).filter(Boolean)));
       for (const y of years) {
         const cal = await calendarRepo.computeYear(y).catch(() => null);
-        const arr = Array.isArray(cal?.off_days) ? cal.off_days : [];
-        for (const ds of arr) offSet.add(String(ds).slice(0, 10));
+        calByYear.set(y, cal);
       }
     } catch {}
-    const isOffDate = (dateStr) => offSet.has(String(dateStr || '').slice(0, 10));
+
+    const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
+    const buildOffSet = (cal, isKouji) => {
+      const detail = cal?.detail || [];
+      const byDate = new Map();
+      for (const it of detail) {
+        const ds = String(it?.date || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+        if (!byDate.has(ds)) byDate.set(ds, []);
+        byDate.get(ds).push({ type: String(it?.type || ''), is_off: Number(it?.is_off || 0) === 1 });
+      }
+      const off = new Set();
+      for (const [ds, list] of byDate.entries()) {
+        if (!isKouji) {
+          if (list.some(x => x.is_off)) off.add(ds);
+          continue;
+        }
+        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
+        const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
+        const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
+        if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
+      }
+      if (!off.size && Array.isArray(cal?.off_days) && !isKouji) {
+        for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
+      }
+      return off;
+    };
+
+    const isOffDate = (dateStr, deptName) => {
+      const isKouji = String(deptName || '').includes('工事部');
+      const y = parseInt(String(dateStr).slice(0, 4), 10);
+      const cal = calByYear.get(y);
+      if (!cal) return false;
+      const cacheKey = `${y}_${isKouji}`;
+      if (!calByYear.has(cacheKey)) {
+        calByYear.set(cacheKey, buildOffSet(cal, isKouji));
+      }
+      return calByYear.get(cacheKey).has(String(dateStr).slice(0, 10));
+    };
     const leaveTypeToKubun = (type) => {
       const v = String(type || '').toLowerCase();
       if (v === 'paid') return '有給休暇';
@@ -979,8 +1054,10 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       if (!kubun) {
         const leaveKubun = leaveByUserDate.get(key) || '';
         if (leaveKubun) kubun = leaveKubun;
-        else kubun = isOffDate(date) ? '休日出勤' : '出勤';
+        else if (status === 'missing' && !hasReportContent && isOffDate(date, user.departmentName)) kubun = '休日';
+        else kubun = isOffDate(date, user.departmentName) ? '休日出勤' : '出勤';
       }
+      if (kubun === '休日出勤' && !a.firstCheckIn && !a.lastCheckOut) kubun = '休日';
       if (status === 'submitted' || status === 'checkout_missing_submitted') submitted++;
       else if (status === 'missing' || status === 'checkout_missing') missing++;
       workingUsers.add(userId);
@@ -1021,6 +1098,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       const rep = reportMap.get(key) || null;
       let kubun = String(daily?.kubun || '').trim();
       if (!kubun) kubun = String(leaveByUserDate.get(key) || '').trim();
+      if (kubun === '休日出勤' && !a.firstCheckIn && !a.lastCheckOut && !hasContent) kubun = '休日';
       const site = pickNonEmptyText(daily?.location, rep?.site);
       const work = pickNonEmptyText(daily?.memo, rep?.work);
       const hasContent = !!(site || work);
@@ -1028,7 +1106,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       const fallbackOutHm = hasContent ? resolveShiftEndHm(userId, String(date).slice(0, 10)) : '';
 
       let status = '';
-      if (holidayKubun.has(kubun) || (!kubun && isOffDate(date))) status = 'off';
+      if (holidayKubun.has(kubun) || (!kubun && isOffDate(date, user.departmentName))) status = 'off';
       else if (paidLeaveKubun.has(kubun)) status = 'paid_leave';
       else if (unpaidLeaveKubun.has(kubun)) status = 'unpaid_leave';
       else if (absenceKubun.has(kubun)) status = 'absence';
@@ -1141,9 +1219,10 @@ router.get('/month/:userId', authorize('admin', 'manager'), async (req, res) => 
     })();
 
     const items = days.map(d => {
-      if (isOnLeave(d)) return { date: d, status: 'leave', report: null };
-      const a = attLatest.get(d) || null;
-      const status = a ? (a.checkOut ? 'checked_out' : 'working') : 'not_checked_in';
+      const att = attLatest.get(d) || null;
+      let status = '';
+      if (isOnLeave(d)) status = 'leave';
+      else status = att ? (att.checkOut ? 'checked_out' : 'working') : 'not_checked_in';
       const rep = reportMap.get(d) || null;
       const report = rep ? { site: rep.site, work: rep.work, updatedAt: rep.updated_at || rep.updatedAt || null } : null;
       return { date: d, status, report };

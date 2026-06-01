@@ -113,9 +113,53 @@
   };
 
   const bindWorkflowButtons = () => {
-    document.querySelector('#btnSubmitMonth')?.addEventListener('click', async (e) => { e.preventDefault(); await controller.submitMonth(); });
-    document.querySelector('#btnApproveMonth')?.addEventListener('click', async (e) => { e.preventDefault(); await controller.approveMonth(); });
-    document.querySelector('#btnUnlockMonth')?.addEventListener('click', async (e) => { e.preventDefault(); await controller.unlockMonth(); });
+    const applyFeedback = async (btn, actionText, actionFn) => {
+      if (!btn) return;
+      if (btn.dataset.saving === '1') return;
+      btn.dataset.saving = '1';
+      const originalText = btn.dataset.originalText || btn.innerHTML;
+      btn.dataset.originalText = originalText;
+      btn.disabled = true;
+      btn.innerHTML = actionText + '中...';
+      core.showSpinner('save', false);
+      try {
+        await actionFn();
+        btn.innerHTML = actionText + '成功';
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#fff';
+        core.showSpinner('save', true);
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+          btn.disabled = false;
+          btn.dataset.saving = '0';
+          core.hideSpinner();
+        }, 1500);
+
+      } catch (err) {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        btn.dataset.saving = '0';
+        core.hideSpinner();
+        alert(String(err?.message || actionText + '失敗しました'));
+      }
+    };
+
+    document.querySelector('#btnSubmitMonth')?.addEventListener('click', async (e) => { 
+      e.preventDefault(); 
+      await applyFeedback(e.currentTarget, '提出', async () => { await controller.submitMonth(); });
+    });
+    document.querySelector('#btnApproveMonth')?.addEventListener('click', async (e) => { 
+      e.preventDefault(); 
+      await applyFeedback(e.currentTarget, '承認', async () => { await controller.approveMonth(); });
+    });
+    document.querySelector('#btnUnlockMonth')?.addEventListener('click', async (e) => { 
+      e.preventDefault(); 
+      await applyFeedback(e.currentTarget, '取消', async () => { await controller.unlockMonth(); });
+    });
   };
 
   const bindUserPicker = () => {
@@ -170,27 +214,38 @@
   const bindSaveExportImport = () => {
     const handleSave = async (e, btn) => {
       e.preventDefault();
+      if (btn.dataset.saving === '1') return;
       if (!state.editableMonth) { alert('この月は入力できません。'); return; }
+      if (!confirm('保存しますか？')) return;
       clearDirty();
-      const originalText = btn.innerHTML;
+      btn.dataset.saving = '1';
+      const originalText = btn.dataset.originalText || btn.innerHTML;
+      btn.dataset.originalText = originalText;
       btn.disabled = true;
       btn.innerHTML = '保存中...';
+      core.showSpinner('save', false);
       try {
         await controller.saveManual();
         btn.innerHTML = '保存成功';
         btn.style.background = '#10b981'; // green
         btn.style.borderColor = '#10b981';
         btn.style.color = '#fff';
+        core.showSpinner('save', true);
         setTimeout(() => {
           btn.innerHTML = originalText;
           btn.style.background = '';
           btn.style.borderColor = '';
           btn.style.color = '';
           btn.disabled = false;
-        }, 2000);
+          btn.dataset.saving = '0';
+          core.hideSpinner();
+        }, 1500);
       } catch (err) {
         btn.innerHTML = originalText;
         btn.disabled = false;
+        btn.dataset.saving = '0';
+        core.hideSpinner();
+        if (err && err.message) alert(err.message);
       }
     };
 

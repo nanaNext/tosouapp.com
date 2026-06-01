@@ -5,12 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>簡易登録画面</title>
   <style>
-    #pageSpinner .boot-ring{
-      width:42px;height:42px;border-radius:999px;
-      border:4px solid #dbeafe;border-top-color:#2563eb;
-      animation:boot-spin .8s linear infinite;
-    }
-    @keyframes boot-spin { to { transform: rotate(360deg); } }
   </style>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260421-empcache3">
   <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260421-empcache3">
@@ -20,11 +14,11 @@
 </head>
 <body>
   <div id="pageSpinner" class="simple-spinner" hidden>
-    <div class="boot-ring" aria-hidden="true"></div>
     <div class="lds-spinner" aria-hidden="true">
       <div></div><div></div><div></div><div></div><div></div><div></div>
       <div></div><div></div><div></div><div></div><div></div><div></div>
     </div>
+    <div class="kintai-success-anim" aria-hidden="true"></div>
   </div>
 
   <header class="simple-top">

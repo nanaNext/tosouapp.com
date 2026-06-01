@@ -17,31 +17,33 @@
   // Mark core nav as owner early so HTML fallback does not bind competing handlers.
   try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch {}
 
-  let monthlySpinnerDelay = null;
-  const showSpinner = (mode = '') => {
+  const showSpinner = (mode = '', isSuccess = false) => {
     try {
       const el = $('#pageSpinner');
       if (!el) return;
       try {
+        if (isSuccess) {
+          el.classList.add('is-success');
+        } else {
+          el.classList.remove('is-success');
+        }
         if (mode) el.setAttribute('data-mode', String(mode));
         else el.removeAttribute('data-mode');
       } catch {}
-      if (monthlySpinnerDelay) clearTimeout(monthlySpinnerDelay);
-      monthlySpinnerDelay = setTimeout(() => {
+      
+      if (isSuccess) {
         try { el.removeAttribute('hidden'); } catch {}
-        monthlySpinnerDelay = null;
-      }, 180);
+      } else {
+        try { el.removeAttribute('hidden'); } catch {}
+      }
     } catch {}
   };
   const hideSpinner = () => {
     try {
       const el = $('#pageSpinner');
       if (!el) return;
-      if (monthlySpinnerDelay) {
-        clearTimeout(monthlySpinnerDelay);
-        monthlySpinnerDelay = null;
-      }
       try { el.removeAttribute('data-mode'); } catch {}
+      try { el.classList.remove('is-success'); } catch {}
       el.setAttribute('hidden', '');
     } catch {}
   };

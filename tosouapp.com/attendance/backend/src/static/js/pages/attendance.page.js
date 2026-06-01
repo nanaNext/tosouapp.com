@@ -15,11 +15,25 @@ const prefillUserName = () => {
   } catch {}
 };
 
-const showSpinner = () => {
-  try { $('#pageSpinner')?.removeAttribute('hidden'); } catch {}
+const showSpinner = (isSuccess = false) => {
+  try { 
+    const el = $('#pageSpinner');
+    if (!el) return;
+    if (isSuccess) {
+      el.classList.add('is-success');
+    } else {
+      el.classList.remove('is-success');
+    }
+    el.removeAttribute('hidden');
+  } catch {}
 };
 const hideSpinner = () => {
-  try { $('#pageSpinner')?.setAttribute('hidden', ''); } catch {}
+  try { 
+    const el = $('#pageSpinner');
+    if (!el) return;
+    el.classList.remove('is-success');
+    el.setAttribute('hidden', ''); 
+  } catch {}
 };
 
 const showErr = (msg) => {
@@ -578,20 +592,48 @@ const renderAttendance = async () => {
         hideSpinner();
       }
     });
-    $('#btnConfirm')?.addEventListener('click', async () => {
+    $('#btnConfirm')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const btn = e.currentTarget;
+      if (btn.dataset.saving === '1') return;
+      if (!confirm('保存しますか？')) return;
+      btn.dataset.saving = '1';
+      const originalText = btn.dataset.originalText || btn.innerHTML;
+      btn.dataset.originalText = originalText;
+      btn.disabled = true;
+      btn.innerHTML = '確定中...';
       showErr('');
-      showSpinner();
+      showSpinner(false);
       try {
         const kubun = String($('#kubun')?.value || defaultKubun);
         const wt = hideKubunSet.has(kubun) ? null : (String($('#workType')?.value || loadWT()) || null);
         await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, { method: 'PUT', body: JSON.stringify({ kubun, workType: wt }) });
         await syncPaidLeaveRequest(kubun);
         await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/submit`, { method: 'POST', body: JSON.stringify({}) }).catch(() => null);
+        
+        btn.innerHTML = '確定成功';
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#fff';
+        
+        showSpinner(true);
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+          btn.disabled = false;
+          btn.dataset.saving = '0';
+          hideSpinner();
+        }, 1500);
+        
         await renderAttendance();
-      } catch (e) {
-        showErr(e?.message || '確定に失敗しました');
-      } finally {
+      } catch (err) {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        btn.dataset.saving = '0';
         hideSpinner();
+        showErr(err?.message || '確定に失敗しました');
       }
     });
   } catch (e) {

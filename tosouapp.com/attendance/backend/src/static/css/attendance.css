@@ -69,6 +69,53 @@ body {
   100% { opacity: 0; }
 }
 
+.kintai-spinner .kintai-success-anim {
+  display: none;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #10b981;
+  position: relative;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  animation: kintai-success-pulse 0.4s ease-out forwards;
+}
+
+@keyframes kintai-success-pulse {
+  0% { transform: scale(0.6); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.kintai-spinner .kintai-success-anim::after {
+  content: "";
+  position: absolute;
+  left: 34px;
+  top: 34px;
+  width: 16px;
+  height: 28px;
+  border: solid #fff;
+  border-width: 0 4px 4px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+  opacity: 0;
+  animation: kintai-success-check 0.3s ease-out 0.2s forwards;
+}
+
+@keyframes kintai-success-check {
+  0% { opacity: 0; transform: translate(-50%, -60%) rotate(45deg) scale(0.5); }
+  100% { opacity: 1; transform: translate(-50%, -60%) rotate(45deg) scale(1); }
+}
+
+.kintai-spinner.is-success .lds-spinner {
+  display: none;
+}
+.kintai-spinner.is-success .kintai-success-anim {
+  display: block;
+}
+.kintai-spinner.is-success[data-mode="save"]::after {
+  content: "保存成功";
+  color: #10b981;
+}
+
 .kintai-spinner[hidden] {
   display: none;
 }

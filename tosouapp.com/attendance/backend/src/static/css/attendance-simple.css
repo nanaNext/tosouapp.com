@@ -10,13 +10,104 @@ body {
 .simple-spinner {
   position: fixed;
   inset: 0;
-  background: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(1.5px);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 3000;
 }
 .simple-spinner[hidden] { display: none; }
+
+.simple-spinner .lds-spinner {
+  color: #60a5fa;
+  display: inline-block;
+  position: relative;
+  width: 68px;
+  height: 68px;
+}
+.simple-spinner .lds-spinner div {
+  transform-origin: 34px 34px;
+  animation: kintai-lds-spinner 1.2s linear infinite;
+}
+.simple-spinner .lds-spinner div:after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 4px;
+  left: 31px;
+  width: 6px;
+  height: 16px;
+  border-radius: 20%;
+  background: #60a5fa;
+}
+.simple-spinner .lds-spinner div:nth-child(1) { transform: rotate(0deg); animation-delay: -1.1s; }
+.simple-spinner .lds-spinner div:nth-child(2) { transform: rotate(30deg); animation-delay: -1.0s; }
+.simple-spinner .lds-spinner div:nth-child(3) { transform: rotate(60deg); animation-delay: -0.9s; }
+.simple-spinner .lds-spinner div:nth-child(4) { transform: rotate(90deg); animation-delay: -0.8s; }
+.simple-spinner .lds-spinner div:nth-child(5) { transform: rotate(120deg); animation-delay: -0.7s; }
+.simple-spinner .lds-spinner div:nth-child(6) { transform: rotate(150deg); animation-delay: -0.6s; }
+.simple-spinner .lds-spinner div:nth-child(7) { transform: rotate(180deg); animation-delay: -0.5s; }
+.simple-spinner .lds-spinner div:nth-child(8) { transform: rotate(210deg); animation-delay: -0.4s; }
+.simple-spinner .lds-spinner div:nth-child(9) { transform: rotate(240deg); animation-delay: -0.3s; }
+.simple-spinner .lds-spinner div:nth-child(10) { transform: rotate(270deg); animation-delay: -0.2s; }
+.simple-spinner .lds-spinner div:nth-child(11) { transform: rotate(300deg); animation-delay: -0.1s; }
+.simple-spinner .lds-spinner div:nth-child(12) { transform: rotate(330deg); animation-delay: 0s; }
+@keyframes kintai-lds-spinner {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.simple-spinner .boot-ring { display: none; }
+
+.simple-spinner .kintai-success-anim {
+  display: none;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #10b981;
+  position: relative;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  animation: kintai-success-pulse 0.4s ease-out forwards;
+}
+.simple-spinner .kintai-success-anim::after {
+  content: "";
+  position: absolute;
+  left: 34px;
+  top: 34px;
+  width: 16px;
+  height: 28px;
+  border: solid #fff;
+  border-width: 0 4px 4px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+  opacity: 0;
+  animation: kintai-success-check 0.3s ease-out 0.2s forwards;
+}
+@keyframes kintai-success-pulse {
+  0% { transform: scale(0.6); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+@keyframes kintai-success-check {
+  0% { opacity: 0; transform: translate(-50%, -60%) rotate(45deg) scale(0.5); }
+  100% { opacity: 1; transform: translate(-50%, -60%) rotate(45deg) scale(1); }
+}
+.simple-spinner.is-success .lds-spinner { display: none; }
+.simple-spinner.is-success .kintai-success-anim { display: block; }
+.simple-spinner.is-success::after {
+  content: "成功";
+  color: #10b981;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 14px;
+}
+.simple-spinner.is-success[data-mode="save"]::after {
+  content: "保存成功";
+}
+.simple-spinner.is-success[data-mode="stamp"]::after {
+  content: "打刻成功";
+}
 
 .simple-top {
   height: 46px;

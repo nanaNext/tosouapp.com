@@ -25,7 +25,7 @@ function showPageSpinner() {
       ps = document.createElement('div');
       ps.id = 'pageSpinner';
       ps.className = 'page-spinner';
-      ps.innerHTML = '<div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
+      ps.innerHTML = '<div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div><div class="kintai-success-anim" aria-hidden="true"></div>';
       document.body.appendChild(ps);
     }
     ps.removeAttribute('hidden');

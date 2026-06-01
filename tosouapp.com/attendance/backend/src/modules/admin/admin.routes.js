@@ -158,7 +158,36 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     `, [id, start, end]);
 
     const cal = await calendarRepo.computeYear(year).catch(() => null);
-    const offSet = new Set((cal?.off_days || []).map(ds => String(ds).slice(0, 10)));
+    const isKouji = String(target.departmentName || '').includes('工事部');
+    
+    const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
+    const buildOffSet = (cal, isKouji) => {
+      const detail = cal?.detail || [];
+      const byDate = new Map();
+      for (const it of detail) {
+        const ds = String(it?.date || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+        if (!byDate.has(ds)) byDate.set(ds, []);
+        byDate.get(ds).push({ type: String(it?.type || ''), is_off: Number(it?.is_off || 0) === 1 });
+      }
+      const off = new Set();
+      for (const [ds, list] of byDate.entries()) {
+        if (!isKouji) {
+          if (list.some(x => x.is_off)) off.add(ds);
+          continue;
+        }
+        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
+        const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
+        const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
+        if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
+      }
+      if (!off.size && Array.isArray(cal?.off_days) && !isKouji) {
+        for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
+      }
+      return off;
+    };
+    
+    const offSet = buildOffSet(cal, isKouji);
     const isOff = (dateStr) => offSet.has(String(dateStr).slice(0, 10));
 
     const fmt = (v) => (v == null ? '' : String(v));
