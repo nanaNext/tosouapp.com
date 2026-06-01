@@ -163,8 +163,8 @@
       const totalBmin = brMin + nbMin;
 
       // Show planned work hours (faded) even before actual punches exist.
-      const workHm = (isWorkDay && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
-      const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
+      const workHm = ((isWorkDay || isPlanned) && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
+      const isAutoWork = (isWorkDay || isPlanned) && (autoIn || autoOut) && !!workHm;
       const hasCompletedActual = hasActualIn && hasActualOut;
       const workAutoCls = (isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
