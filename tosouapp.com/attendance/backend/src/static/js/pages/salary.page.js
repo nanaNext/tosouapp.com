@@ -471,7 +471,10 @@ const render = async () => {
           <div id="salPaneDetails" class="sal-pane active">
             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;">
               <div class="sal-detail-title">${esc(title)}</div>
-              <button id="salOpenPdf" class="sal-btn" type="button">印刷用に表示</button>
+              <button id="salOpenPdf" class="sal-btn sal-btn-primary" type="button" style="display:inline-flex;align-items:center;gap:6px;">
+                <span aria-hidden="true" style="font-size:16px;">👁️</span> 
+                <span>表示</span>
+              </button>
             </div>
             <div class="sal-kv">
               <div class="k">所有者</div><div class="v">${esc(owner)}</div>
@@ -501,20 +504,20 @@ const render = async () => {
             p2.classList.add('active'); p1.classList.remove('active');
           }
         };
-      document.getElementById('salTabDetails')?.addEventListener('click', () => activate('details'));
-      document.getElementById('salTabRelated')?.addEventListener('click', () => activate('related'));
-      document.querySelector('.sal-back')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        try {
-          const ref = String(document.referrer || '');
-          const fromSalary = ref.includes('/ui/salary');
-          if (fromSalary && window.history.length > 1) {
-            window.history.back();
-            return;
-          }
-        } catch {}
-        window.location.replace('/ui/salary');
-      });
+        document.getElementById('salTabDetails')?.addEventListener('click', () => activate('details'));
+        document.getElementById('salTabRelated')?.addEventListener('click', () => activate('related'));
+        document.querySelector('.sal-back')?.addEventListener('click', (e) => {
+          e.preventDefault();
+          try {
+            const ref = String(document.referrer || '');
+            const fromSalary = ref.includes('/ui/salary');
+            if (fromSalary && window.history.length > 1) {
+              window.history.back();
+              return;
+            }
+          } catch {}
+          window.location.replace('/ui/salary');
+        });
       }
       document.getElementById('salOpenPdf')?.addEventListener('click', async () => {
         await openPublishedFile(month);
