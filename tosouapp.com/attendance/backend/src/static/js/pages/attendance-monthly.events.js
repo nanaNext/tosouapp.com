@@ -488,7 +488,7 @@
       const offDay = String(row.dataset.baseOff || '') === '1' || row.classList.contains('off') || dow === '土' || dow === '日';
       const plannedKubun = offDay ? '休日' : '出勤';
       const effective = v || plannedKubun;
-      const isHoliday = effective === '休日' || effective === '代替休日';
+      const isHoliday = effective === '休日' || effective === '代替休日' || effective === '無給休暇' || effective === '有給休暇' || effective === '欠勤';
       const lockByNoKubun = !v;
       const ctrls = Array.from(row.querySelectorAll('input, select, textarea, button')).filter(el => !el.matches('select[data-field="classification"], button[data-action="history"]'));
       for (const el of ctrls) {
@@ -508,12 +508,33 @@
       if (ckRe) ckRe.checked = false;
       if (ckSa) ckSa.checked = false;
       try { row.dataset.workType = ''; } catch {}
-      if (lockByNoKubun) return;
+      
+      const inEl = row.querySelector('input.se-time[data-field="checkIn"]');
+      const outEl = row.querySelector('input.se-time[data-field="checkOut"]');
+      const br = row.querySelector('select[data-field="break"]');
+      const nb = row.querySelector('select[data-field="nightBreak"]');
+      
+      if (!isHoliday && !lockByNoKubun) {
+        if (inEl && !inEl.value) {
+          inEl.value = inEl.dataset.actual || inEl.dataset.autoVal || '';
+          if (inEl.dataset.actual) inEl.dataset.manual = '1';
+        }
+        if (outEl && !outEl.value) {
+          outEl.value = outEl.dataset.actual || outEl.dataset.autoVal || '';
+          if (outEl.dataset.actual) outEl.dataset.manual = '1';
+        }
+        if (br && br.value === '0:00' && br.dataset.actual && br.dataset.actual !== '0:00') {
+          br.value = br.dataset.actual;
+        }
+        if (nb && nb.value === '0:00' && nb.dataset.actual && nb.dataset.actual !== '0:00') {
+          nb.value = nb.dataset.actual;
+        }
+        return;
+      }
+      
       const loc = row.querySelector('input[data-field="location"]');
       const memo = row.querySelector('input[data-field="memo"]');
       const notes = row.querySelector('input[data-field="notes"]');
-      const inEl = row.querySelector('input.se-time[data-field="checkIn"]');
-      const outEl = row.querySelector('input.se-time[data-field="checkOut"]');
       if (loc) loc.value = '';
       if (memo) memo.value = '';
       if (notes) notes.value = '';
@@ -521,8 +542,6 @@
       if (outEl) outEl.value = '';
       try { inEl?.classList?.remove('invalid'); } catch {}
       try { outEl?.classList?.remove('invalid'); } catch {}
-      const br = row.querySelector('select[data-field="break"]');
-      const nb = row.querySelector('select[data-field="nightBreak"]');
       if (br) br.value = '0:00';
       if (nb) nb.value = '0:00';
       const idRaw = String(row.dataset.id || '').trim();

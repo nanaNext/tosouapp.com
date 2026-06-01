@@ -671,12 +671,26 @@ const applyHolidayRestMode = () => {
   } else {
     const st = $('#startTime');
     const et = $('#endTime');
-    if (st && !String(st.value || '').trim() && /^\d{2}:\d{2}$/.test(String((window.state || {}).shiftStart || ''))) {
-      applyAutoTime(st, (window.state || {}).shiftStart);
+    if (st && !String(st.value || '').trim()) {
+      if (st.dataset.actual) {
+        st.value = st.dataset.actual;
+        clearAutoTime(st);
+      } else if (/^\d{2}:\d{2}$/.test(String((window.state || {}).shiftStart || ''))) {
+        applyAutoTime(st, (window.state || {}).shiftStart);
+      }
     }
-    if (et && !String(et.value || '').trim() && /^\d{2}:\d{2}$/.test(String((window.state || {}).shiftEnd || ''))) {
-      applyAutoTime(et, (window.state || {}).shiftEnd);
+    if (et && !String(et.value || '').trim()) {
+      if (et.dataset.actual) {
+        et.value = et.dataset.actual;
+        clearAutoTime(et);
+      } else if (/^\d{2}:\d{2}$/.test(String((window.state || {}).shiftEnd || ''))) {
+        applyAutoTime(et, (window.state || {}).shiftEnd);
+      }
     }
+    const btnIn = $('#btnStartStamp');
+    const btnOut = $('#btnEndStamp');
+    if (btnIn) btnIn.disabled = false;
+    if (btnOut) btnOut.disabled = false;
     renderWorkMinutes();
   }
   applyWorkTypeGate();
@@ -946,23 +960,26 @@ const load = async (date, opts = {}) => {
     if (st) {
       if (stampSeg?.checkIn) {
         st.value = String(stampSeg.checkIn).slice(11, 16);
+        st.dataset.actual = st.value;
         clearAutoTime(st);
       } else {
         applyAutoTime(st, shiftStart);
+        try { delete st.dataset.actual; } catch {}
       }
       try { delete st.dataset.touched; } catch {}
     }
     if (et) {
       if (stampSeg?.checkOut) {
         et.value = String(stampSeg.checkOut).slice(11, 16);
+        et.dataset.actual = et.value;
         clearAutoTime(et);
       } else {
         if (stampSeg?.checkIn && !stampSeg?.checkOut) {
-          // Started but not ended yet: keep planned end-time in faded style.
           applyAutoTime(et, shiftEnd);
         } else {
           applyAutoTime(et, shiftEnd);
         }
+        try { delete et.dataset.actual; } catch {}
       }
       try { delete et.dataset.touched; } catch {}
     }
