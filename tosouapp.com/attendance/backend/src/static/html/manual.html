@@ -161,20 +161,24 @@
           <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
             <li>メニューから <strong>簡易登録画面</strong> を開きます。</li>
             <li>本日の日付であることを確認します。</li>
-            <li><strong>[出勤]</strong> ボタンを押します。（システムが現在の時刻を自動記録します）</li>
+            <li><span style="background-color:#fef08a;color:#b45309;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #fde047;">[出勤]</span> ボタンを押します。（システムが現在の時刻を自動記録します）</li>
           </ol>
 
           <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 退勤時:</div>
           <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>業務終了後、再度画面を開き、<strong>[退勤]</strong> ボタンを押します。</li>
+            <li>業務終了後、再度画面を開き、<span style="background-color:#fef08a;color:#b45309;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #fde047;">[退勤]</span> ボタンを押します。</li>
           </ol>
 
           <div style="background:#e7f3ff;padding:15px;border-radius:6px;">
             <div style="font-weight:bold;color:#1e40af;margin-bottom:8px;">💡 作業情報の入力（※修正可能箇所）</div>
             <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.6;font-size:14px;">
               <li>時間は修正できませんが、その日の <strong>現場</strong>（作業場所）や <strong>作業内容</strong> は従業員自身で入力・修正が可能です。</li>
-              <li>入力後は必ず画面下部の <strong>[保存]</strong> ボタンを押してください。</li>
+              <li>入力後は必ず画面下部の <span style="background-color:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #bfdbfe;">[保存]</span> ボタンを押してください。</li>
             </ul>
+          </div>
+
+          <div style="text-align:center;margin-top:20px;">
+            <a href="/ui/attendance/simple" style="display:inline-block;padding:12px 30px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(37,99,235,0.2);transition:all 0.2s;">簡易登録画面へ移動する ➔</a>
           </div>
         </div>
       </div>
@@ -194,8 +198,12 @@
 
           <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 承認ステータスの確認:</div>
           <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>一番右の列に現在の状態（<em>未申請</em>, <em>承認待ち</em>, <em>承認済み</em>）が表示されます。</li>
+            <li>一番右の列に現在の状態（<em style="color:#f59e0b;font-weight:bold;">未申請</em>, <em style="color:#3b82f6;font-weight:bold;">承認待ち</em>, <em style="color:#10b981;font-weight:bold;">承認済み</em>）が表示されます。</li>
           </ul>
+
+          <div style="text-align:center;margin-top:20px;">
+            <a href="/ui/attendance/monthly" style="display:inline-block;padding:12px 30px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(37,99,235,0.2);transition:all 0.2s;">月次勤怠入力画面へ移動する ➔</a>
+          </div>
         </div>
       </div>
 
@@ -209,13 +217,17 @@
             <li>申請したい日付（未来の日付も可）を探します。</li>
             <li><strong>勤務区分</strong> のプルダウンから、該当する休暇を選択します：
               <ul style="margin-top:5px;margin-bottom:5px;">
-                <li><code>有給休暇</code>（給与が発生する休暇）</li>
-                <li><code>欠勤</code>（給与が発生しない欠勤）</li>
+                <li><span style="background-color:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-weight:bold;">有給休暇</span>（給与が発生する休暇）</li>
+                <li><span style="background-color:#fee2e2;color:#b91c1c;padding:2px 6px;border-radius:4px;font-weight:bold;">欠勤</span>（給与が発生しない欠勤）</li>
               </ul>
             </li>
             <li>必要に応じて、<strong>備考</strong> 欄に理由を記入します。</li>
-            <li>月末や指示されたタイミングで、<strong>[提出]</strong> ボタンを押して管理者に申請を送ります。</li>
+            <li>月末や指示されたタイミングで、<span style="background-color:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #bfdbfe;">[提出]</span> ボタンを押して管理者に申請を送ります。</li>
           </ol>
+
+          <div style="text-align:center;margin-top:20px;">
+            <a href="/ui/attendance/monthly" style="display:inline-block;padding:12px 30px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(37,99,235,0.2);transition:all 0.2s;">休暇を申請する ➔</a>
+          </div>
         </div>
       </div>
 
@@ -226,7 +238,7 @@
           <p style="color:#334155;margin-bottom:15px;">立て替えた交通費や経費を請求する場合の手順です：</p>
           <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
             <li>メニューから <strong>交通費申請</strong> を開きます。</li>
-            <li><strong>[追加]</strong> ボタンを押し、新しい申請を作成します。</li>
+            <li><span style="background-color:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #bfdbfe;">[追加]</span> ボタンを押し、新しい申請を作成します。</li>
             <li>日付、出発地・到着地、金額を入力し、必要に応じて領収書の画像を添付して保存します。</li>
           </ol>
           
@@ -239,6 +251,10 @@
             </ul>
             <p style="font-size:13px;color:#666;margin-top:10px;margin-bottom:0;">*ヒント: 申請一覧の「すべて」タブでは、見やすくするために「支給済み」のデータは自動的に非表示になります。過去の履歴を見たい場合は「支給済み」タブを開いてください。</p>
           </div>
+
+          <div style="text-align:center;margin-top:20px;">
+            <a href="/ui/expenses" style="display:inline-block;padding:12px 30px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(37,99,235,0.2);transition:all 0.2s;">交通費申請画面へ移動する ➔</a>
+          </div>
         </div>
       </div>
 
@@ -250,9 +266,13 @@
           <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
             <li>メニューから <strong>給与明細</strong> を開きます。</li>
             <li>確認したい対象年月を選択します。</li>
-            <li>目のアイコン 👁️ (プレビュー) を押すと、基本給、残業代、交通費、控除額（税金・保険料など）の詳細が確認できます。</li>
+            <li>目のアイコン <span style="background-color:#f1f5f9;color:#475569;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #cbd5e1;">👁️ 表示</span> を押すと、基本給、残業代、交通費、控除額（税金・保険料など）の詳細が確認できます。</li>
             <li>必要に応じてPDF形式でダウンロード可能です。</li>
           </ol>
+
+          <div style="text-align:center;margin-top:20px;">
+            <a href="/ui/salary" style="display:inline-block;padding:12px 30px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(37,99,235,0.2);transition:all 0.2s;">給与明細を確認する ➔</a>
+          </div>
         </div>
       </div>
 
@@ -267,6 +287,11 @@
           
           <div style="background:#f8d7da;padding:15px;border-radius:6px;margin-top:20px;border-left:4px solid #dc3545;">
             <div style="color:#721c24;font-weight:bold;">※打刻忘れやシステムエラーでデータが間違っている場合は、絶対に自分で直そうとせず、すぐに直属の管理者へ報告してください。</div>
+          </div>
+
+          <div style="text-align:center;margin-top:20px;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;">
+            <a href="/ui/faq" style="display:inline-block;padding:12px 30px;background-color:#0f766e;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(15,118,110,0.2);transition:all 0.2s;">よくある質問 (FAQ) ➔</a>
+            <a href="/ui/change-password" style="display:inline-block;padding:12px 30px;background-color:#475569;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(71,85,105,0.2);transition:all 0.2s;">パスワードを変更する ➔</a>
           </div>
         </div>
       </div>
