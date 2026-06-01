@@ -96,19 +96,19 @@
               <div class="simple-stamp-stack" aria-label="打刻">
                 <div class="simple-stamp-row">
                   <label class="simple-label" for="startTime">開始時間</label>
-                  <input id="startTime" type="time" class="simple-stamp-time" value="08:00">
+                  <input id="startTime" type="time" class="simple-stamp-time" value="08:00" readonly>
                   <button id="btnStartStamp" class="simple-stamp-btn" type="button">開始打刻</button>
                 </div>
                 <div class="simple-stamp-row">
                   <label class="simple-label" for="endTime">終了時間</label>
-                  <input id="endTime" type="time" class="simple-stamp-time" value="">
+                  <input id="endTime" type="time" class="simple-stamp-time" value="" readonly>
                   <button id="btnEndStamp" class="simple-stamp-btn" type="button">終了打刻</button>
                 </div>
               </div>
               <div class="simple-grid2">
                 <div class="simple-time">
                   <label class="simple-label" for="breakMin">休憩時間</label>
-                  <select id="breakMin" class="simple-select">
+                  <select id="breakMin" class="simple-select" disabled>
                     <option value="60">1:00</option>
                     <option value="45">0:45</option>
                     <option value="30">0:30</option>
@@ -117,7 +117,7 @@
                 </div>
                 <div class="simple-time">
                   <label class="simple-label" for="nightBreakMin">深夜時間</label>
-                  <select id="nightBreakMin" class="simple-select">
+                  <select id="nightBreakMin" class="simple-select" disabled>
                     <option value="0">0:00</option>
                     <option value="30">0:30</option>
                     <option value="60">1:00</option>
