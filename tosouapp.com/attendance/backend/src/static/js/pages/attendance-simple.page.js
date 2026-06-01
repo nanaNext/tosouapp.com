@@ -1538,8 +1538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('#btnAdd')?.addEventListener('click', () => { showErr('この画面では勤務区分追加は未対応です'); });
 
-  // Instant paint from recent snapshot, then sync with server in background.
-  try { restoreFastSnapshot(state.date, state); } catch {}
-  await load(state.date, { spinner: false });
+  // Instant paint removed to prevent stale UI flickering. Wait for real server data.
+  await load(state.date, { spinner: true });
   showSpinner(false);
 });
