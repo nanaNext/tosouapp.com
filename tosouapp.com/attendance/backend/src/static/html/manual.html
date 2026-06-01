@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=0.75,minimum-scale=0.75,maximum-scale=3,user-scalable=yes">
-  <title>操作マニュアル</title>  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
+  <title>操作マニュアル</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
   <link rel="stylesheet" href="/static/css/attendance.css?v=navy-20260424-2">
   <link rel="stylesheet" href="/static/css/attendance-monthly.css?v=navy-20260416-1">
   <link rel="icon" href="data:,">
@@ -52,17 +53,27 @@
         </div>
       </div>
     </div>
-  </header>  <main class="kintai-main">
+  </header>
+
+  <main class="kintai-main">
     <section class="kintai-grid" style="max-width:1000px;margin:0 auto;padding:20px;">
       <!-- Title Section -->
       <div class="kintai-card" style="margin-bottom:20px;">
-        <div class="kintai-card-title">操作マニュアル</div>
+        <div class="kintai-card-title">スマートE勤怠 操作マニュアル（従業員用）</div>
         <div style="padding:20px;color:#334155;">
-          <p style="margin:0 0 15px 0;font-size:14px;">
-            本ページは、スマートE勤怠システムの使い方をご説明するための資料です。
-            <br>
+          <p style="margin:0 0 15px 0;font-size:14px;line-height:1.6;">
+            本ページは、スマートE勤怠システムの使い方をご説明するための資料です。<br>
+            日々の勤怠打刻やシステム操作の基本手順について説明します。<br>
             わからないことがあれば、以下の項目から該当する説明を選んでください。
           </p>
+          <div style="background:#fff3cd;padding:15px;border-radius:6px;border-left:4px solid #ffc107;">
+            <div style="font-weight:bold;color:#856404;margin-bottom:8px;">⚠️ 【重要】勤怠ルールについて（必ずお読みください）</div>
+            <ul style="margin:0;padding-left:20px;color:#856404;font-size:14px;line-height:1.6;">
+              <li><strong>確実な打刻と時間厳守:</strong> システムは分単位で正確な時間を記録します。必ずご自身で出勤時および退勤時に打刻ボタンを押してください。</li>
+              <li><strong>時間の自己修正不可:</strong> 出勤時間、退勤時間、休憩時間などの時間は従業員側では変更（ロック）できません。打刻忘れや押し間違いがあった場合は、ご自身で修正せず、直属の管理者（Manager/Admin）に修正を依頼してください。</li>
+              <li><strong>未来の出勤打刻不可:</strong> 未来の日付に対して「出勤」を選択することはできません。未来の日付で操作できるのは、事前の休暇申請のみです。</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -71,56 +82,56 @@
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('login')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">🔑</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">ログイン方法</div>
-            <div style="font-size:12px;color:#666;">ID・パスワードでログインする</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">1. ログイン方法</div>
+            <div style="font-size:12px;color:#666;">システムへのアクセス</div>
           </div>
         </div>
 
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('simple')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">⏱️</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">簡易打刻方法</div>
-            <div style="font-size:12px;color:#666;">開始・終了打刻の操作</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">2. 毎日の打刻</div>
+            <div style="font-size:12px;color:#666;">簡易登録画面の使い方</div>
           </div>
         </div>
 
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('monthly')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">📋</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">月次勤怠入力</div>
-            <div style="font-size:12px;color:#666;">勤務区分・現場などの詳細入力</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">3. 勤怠状況の確認</div>
+            <div style="font-size:12px;color:#666;">月次勤怠入力の見方</div>
           </div>
         </div>
 
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('payroll')">
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('leave')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">🌴</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">4. 休暇申請</div>
+            <div style="font-size:12px;color:#666;">有給・欠勤の申請手順</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('expenses')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">🚃</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">5. 交通費・経費申請</div>
+            <div style="font-size:12px;color:#666;">経費の登録と確認</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('payslip')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">💴</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">給与管理（管理者）</div>
-            <div style="font-size:12px;color:#666;">給与入力・PDF作成・公開手順</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">6. 給与明細の確認</div>
+            <div style="font-size:12px;color:#666;">給与明細の閲覧・PDF出力</div>
           </div>
         </div>
 
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('troubleshoot')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">🛠️</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">トラブル対処</div>
-            <div style="font-size:12px;color:#666;">よくあるエラーと対応方法</div>
-          </div>
-        </div>
-
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('smartphone')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">📱</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">スマートフォン利用</div>
-            <div style="font-size:12px;color:#666;">モバイルでの操作ガイド</div>
-          </div>
-        </div>
-
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('rules')">
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('others')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">⚙️</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">利用ルール</div>
-            <div style="font-size:12px;color:#666;">基本ルールと禁止事項</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">7. その他の機能</div>
+            <div style="font-size:12px;color:#666;">パスワード変更・FAQなど</div>
           </div>
         </div>
       </div>
@@ -129,86 +140,40 @@
 
       <!-- 1. ログイン方法 -->
       <div class="kintai-card" id="section-login" style="margin-bottom:30px;">
-        <div class="kintai-card-title" id="login">🔑 ログイン方法</div>
+        <div class="kintai-card-title">🔑 1. ログイン（システムへのアクセス）</div>
         <div style="padding:20px;">
-          <div style="background:#f8f9fa;padding:15px;border-radius:6px;margin-bottom:15px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">推奨ブラウザ</div>
-            <ul style="margin:0;padding-left:20px;color:#334155;">
-              <li>Google Chrome（最新版）</li>
-              <li>Microsoft Edge（最新版）</li>
-              <li>Safari（最新版）</li>
-            </ul>
-          </div>
-
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">ログイン手順</div>
-            <ol style="margin:0;padding-left:20px;color:#334155;">
-              <li style="margin-bottom:10px;">
-                <strong>ログイン画面を開く</strong>
-                <br><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;">https://tosouapp.com/ui/login</code>
-              </li>
-              <li style="margin-bottom:10px;">
-                <strong>ログインID を入力</strong>
-                <br><span style="font-size:13px;color:#666;">会社から配布されたID</span>
-              </li>
-              <li style="margin-bottom:10px;">
-                <strong>パスワード を入力</strong>
-                <br><span style="font-size:13px;color:#666;">会社から配布されたパスワード</span>
-              </li>
-              <li style="margin-bottom:10px;">
-                <strong>「ログイン」ボタンを押す</strong>
-              </li>
-              <li>
-                <strong>メニューから必要な画面を選択</strong>
-              </li>
-            </ol>
-          </div>
-
-          <div style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107;">
-            <strong>⚠️ 注意:</strong> Edgeでログインできない、表示不具合が出る場合は、Google Chromeをご利用ください。
-          </div>
+          <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>会社から提供されたシステムURLにアクセスします。</li>
+            <li><strong>社員番号（ID）</strong> と <strong>パスワード</strong> を入力します。</li>
+            <li><strong>[ログイン]</strong> ボタンをクリックします。</li>
+          </ol>
+          <p style="font-size:13px;color:#666;margin-top:10px;">※パスワードを忘れた場合は、管理者にお問い合わせください。</p>
         </div>
       </div>
 
-      <!-- 2. 簡易打刻方法 -->
+      <!-- 2. 毎日の打刻 -->
       <div class="kintai-card" id="section-simple" style="margin-bottom:30px;">
-        <div class="kintai-card-title" id="simple">⏱️ 簡易打刻方法</div>
+        <div class="kintai-card-title">⏱️ 2. 毎日の打刻（簡易登録画面）</div>
         <div style="padding:20px;">
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">毎日の基本運用（推奨）</div>
-            <ol style="margin:0;padding-left:20px;color:#334155;">
-              <li style="margin-bottom:15px;">
-                <strong>出勤時に「開始打刻」を押す</strong>
-                <br><span style="font-size:13px;color:#666;">簡易登録画面で「開始打刻」ボタンをクリック</span>
-              </li>
-              <li style="margin-bottom:15px;">
-                <strong>退勤時に「終了打刻」を押す</strong>
-                <br><span style="font-size:13px;color:#666;">「終了打刻」ボタンをクリック</span>
-              </li>
-              <li style="margin-bottom:15px;">
-                <strong>当日または月内に月次勤怠画面で確認・補足入力する</strong>
-              </li>
-              <li>
-                <strong>必要に応じて現場・作業内容・理由などを入力して保存</strong>
-              </li>
-            </ol>
-          </div>
+          <p style="color:#334155;margin-bottom:15px;">日々の打刻は主にこの画面を使用します。</p>
+          
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 出勤時:</div>
+          <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>メニューから <strong>簡易登録画面</strong> を開きます。</li>
+            <li>本日の日付であることを確認します。</li>
+            <li><strong>[出勤]</strong> ボタンを押します。（システムが現在の時刻を自動記録します）</li>
+          </ol>
 
-          <div style="background:#e7f3ff;padding:15px;border-radius:6px;margin-bottom:15px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">「開始打刻」について</div>
-            <ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
-              <li>出勤時に<strong>1回だけ</strong>押してください</li>
-              <li>「開始打刻済み」と表示されたら、再度押さないでください</li>
-              <li>時刻修正が必要な場合は、月次勤怠画面で修正してください</li>
-            </ul>
-          </div>
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 退勤時:</div>
+          <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>業務終了後、再度画面を開き、<strong>[退勤]</strong> ボタンを押します。</li>
+          </ol>
 
-          <div style="background:#f0f8ff;padding:15px;border-radius:6px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">「終了打刻」について</div>
-            <ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
-              <li>退勤時に押してください</li>
-              <li>同じボタンを連続で何度も押さないでください</li>
-              <li>時刻修正が必要な場合は、月次勤怠画面で修正してください</li>
+          <div style="background:#e7f3ff;padding:15px;border-radius:6px;">
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:8px;">💡 作業情報の入力（※修正可能箇所）</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.6;font-size:14px;">
+              <li>時間は修正できませんが、その日の <strong>現場</strong>（作業場所）や <strong>作業内容</strong> は従業員自身で入力・修正が可能です。</li>
+              <li>入力後は必ず画面下部の <strong>[保存]</strong> ボタンを押してください。</li>
             </ul>
           </div>
         </div>
@@ -216,231 +181,92 @@
 
       <!-- 3. 月次勤怠入力 -->
       <div class="kintai-card" id="section-monthly" style="margin-bottom:30px;">
-        <div class="kintai-card-title" id="monthly">📋 月次勤怠入力</div>
+        <div class="kintai-card-title">📋 3. 勤怠状況の確認（月次勤怠入力）</div>
         <div style="padding:20px;">
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">入力できる主な項目</div>
-            <div style="background:#f9f9f9;padding:15px;border-radius:6px;">
-              <ul style="margin:0;padding-left:20px;color:#334155;">
-                <li><strong>勤務区分</strong> - 出勤、休日出勤、半休、休日、有給休暇など</li>
-                <li><strong>現場</strong> - 担当している現場名</li>
-                <li><strong>作業内容</strong> - 実施した業務内容</li>
-                <li><strong>開始時間 / 終了時間</strong> - 勤務時間の修正</li>
-                <li><strong>休憩時間</strong> - 休憩の時間設定</li>
-                <li><strong>理由</strong> - 必要な場合に入力</li>
+          <p style="color:#334155;margin-bottom:15px;">月間の勤務日数、労働時間、残業時間などを確認する画面です。</p>
+          
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 表示の見方:</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li><strong>薄い文字の時間:</strong> 会社のカレンダーに基づく「予定時間」です。（実際の労働時間ではありません）</li>
+            <li><strong>濃い黒文字の時間:</strong> 実際に打刻された「実績時間」です。（給与計算の対象となります）</li>
+            <li><strong><code>--:--</code> 表示:</strong> 休日（祝日、シフトのない土日など）を示します。</li>
+          </ul>
+
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 承認ステータスの確認:</div>
+          <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>一番右の列に現在の状態（<em>未申請</em>, <em>承認待ち</em>, <em>承認済み</em>）が表示されます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 4. 休暇申請 -->
+      <div class="kintai-card" id="section-leave" style="margin-bottom:30px;">
+        <div class="kintai-card-title">🌴 4. 休暇申請</div>
+        <div style="padding:20px;">
+          <p style="color:#334155;margin-bottom:15px;">用事や体調不良で休む場合の手順です：</p>
+          <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li><strong>月次勤怠入力</strong> 画面を開きます。</li>
+            <li>申請したい日付（未来の日付も可）を探します。</li>
+            <li><strong>勤務区分</strong> のプルダウンから、該当する休暇を選択します：
+              <ul style="margin-top:5px;margin-bottom:5px;">
+                <li><code>有給休暇</code>（給与が発生する休暇）</li>
+                <li><code>欠勤</code>（給与が発生しない欠勤）</li>
               </ul>
-            </div>
-          </div>
+            </li>
+            <li>必要に応じて、<strong>備考</strong> 欄に理由を記入します。</li>
+            <li>月末や指示されたタイミングで、<strong>[提出]</strong> ボタンを押して管理者に申請を送ります。</li>
+          </ol>
+        </div>
+      </div>
 
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">保存方法</div>
-            <ul style="margin:0;padding-left:20px;color:#334155;">
-              <li style="margin-bottom:10px;">行を変更すると<strong>自動保存される場合があります</strong></li>
-              <li style="margin-bottom:10px;">画面上部/下部の<strong>「保存」ボタン</strong>でも保存できます</li>
-              <li>保存後に画面を<strong>再読込</strong>し、内容が反映されていることを確認してください</li>
+      <!-- 5. 交通費・経費申請 -->
+      <div class="kintai-card" id="section-expenses" style="margin-bottom:30px;">
+        <div class="kintai-card-title">🚃 5. 交通費・経費申請（交通費申請）</div>
+        <div style="padding:20px;">
+          <p style="color:#334155;margin-bottom:15px;">立て替えた交通費や経費を請求する場合の手順です：</p>
+          <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>メニューから <strong>交通費申請</strong> を開きます。</li>
+            <li><strong>[追加]</strong> ボタンを押し、新しい申請を作成します。</li>
+            <li>日付、出発地・到着地、金額を入力し、必要に応じて領収書の画像を添付して保存します。</li>
+          </ol>
+          
+          <div style="background:#f9f9f9;padding:15px;border-radius:6px;">
+            <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ ステータスの確認:</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.6;font-size:14px;">
+              <li><strong>Pending (保留):</strong> 作成直後。修正・削除が可能です。</li>
+              <li><strong>Approved (承認済み):</strong> 管理者が承認した状態です。</li>
+              <li><strong>Paid (支給済み):</strong> すでに支払いが完了した状態です。<br><strong>※注意:</strong> この状態になるとデータは完全にロックされ、追加・修正・削除ボタンは非表示になります。</li>
             </ul>
-          </div>
-
-          <div style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107;">
-            <strong>重要:</strong> 「出勤」や「休日出勤」を選択した場合、必要に応じて時刻も確認してください。
+            <p style="font-size:13px;color:#666;margin-top:10px;margin-bottom:0;">*ヒント: 申請一覧の「すべて」タブでは、見やすくするために「支給済み」のデータは自動的に非表示になります。過去の履歴を見たい場合は「支給済み」タブを開いてください。</p>
           </div>
         </div>
       </div>
 
-      <!-- 4. 給与管理（管理者） -->
-      <div class="kintai-card" id="section-payroll" style="margin-bottom:30px;">
-        <div class="kintai-card-title" id="payroll">💴 給与管理（管理者向け）</div>
+      <!-- 6. 給与明細の確認 -->
+      <div class="kintai-card" id="section-payslip" style="margin-bottom:30px;">
+        <div class="kintai-card-title">💴 6. 給与明細の確認</div>
         <div style="padding:20px;">
-          <div style="background:#e7f3ff;padding:15px;border-radius:6px;margin-bottom:15px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">利用画面</div>
-            <div style="color:#334155;font-size:14px;line-height:1.7;">
-              管理ポータルの <strong>給与管理</strong> から操作します。対象社員・対象年月を選び、
-              <strong>保存 → プレビュー → PDF作成 → PDFダウンロード → 社員へ送信（公開）</strong>
-              の順で進めるのが基本です。
-            </div>
-          </div>
-
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">基本操作の流れ</div>
-            <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
-              <li><strong>社員選択</strong> と <strong>対象年月</strong> を指定します。</li>
-              <li><strong>基本給（月給）</strong> を入力します。</li>
-              <li>必要に応じて <strong>自動計算（保険・税）</strong> を選択します。</li>
-              <li>勤怠情報、支給、控除、その他、支払方法を確認し、必要な箇所だけ手入力で調整します。</li>
-              <li><strong>保存</strong> を押して月次給与データを保存します。</li>
-              <li><strong>プレビュー</strong> で内容確認後、問題なければ <strong>PDF作成</strong> を実行します。</li>
-              <li>作成後に <strong>PDFダウンロード</strong> で帳票確認し、問題なければ <strong>社員へ送信（公開）</strong> を押します。</li>
-            </ol>
-          </div>
-
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">画面ごとの意味</div>
-            <div style="background:#f9f9f9;padding:15px;border-radius:6px;">
-              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
-                <li><strong>総計（リアルタイム）</strong> - 総支給額、総控除額、手取り、支払方法合計をその場で確認します。</li>
-                <li><strong>勤怠情報</strong> - 出勤日数、欠勤日数、就業時間、法外時間外、週40超時間、月60超時間、深夜勤務時間を確認・補正します。</li>
-                <li><strong>支給</strong> - 基本給、交通手当、時間外手当、深夜勤手当、欠勤控除、追加支給などを確認します。</li>
-                <li><strong>控除</strong> - 社会保険、税金、家賃控除、追加控除を確認します。</li>
-                <li><strong>支払方法</strong> - 振込、現金、現物の内訳を設定します。合計は手取り額と一致させてください。</li>
-              </ul>
-            </div>
-          </div>
-
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">給与計算の考え方</div>
-            <div style="background:#f8f9fa;padding:15px;border-radius:6px;margin-bottom:12px;">
-              <div style="font-weight:bold;color:#334155;margin-bottom:8px;">1. 勤怠の集計</div>
-              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
-                <li>出勤日数は日次勤怠と打刻実績から自動集計されます。</li>
-                <li>有給休暇・欠勤・無給休暇は、日次区分と申請データの両方を参照して反映します。</li>
-                <li>就業時間、時間外、深夜、週40超、月60超は勤怠実績から自動計算されます。</li>
-                <li>画面で手入力した値がある場合は、手入力値を優先します。</li>
-              </ul>
-            </div>
-            <div style="background:#f8f9fa;padding:15px;border-radius:6px;margin-bottom:12px;">
-              <div style="font-weight:bold;color:#334155;margin-bottom:8px;">2. 支給額の計算</div>
-              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
-                <li><strong>基礎給</strong> は基本給（月給）です。</li>
-                <li><strong>就業手当</strong> は交通手当欄の値または社員設定値を使います。</li>
-                <li><strong>時間外手当 / 深夜勤手当 / 所休出手当 / 週40超手当 / 月60超手当 / 法休出手当</strong> は、勤怠時間と会社設定の割増率から自動計算されます。</li>
-                <li><strong>欠勤控除</strong> は、欠勤日数 + 無給休暇があり、手入力の欠勤控除がない場合に自動計算されます。</li>
-                <li>追加支給、差額計算、年末調整還付などは必要に応じて加算されます。</li>
-              </ul>
-            </div>
-            <div style="background:#f8f9fa;padding:15px;border-radius:6px;">
-              <div style="font-weight:bold;color:#334155;margin-bottom:8px;">3. 控除額と手取り</div>
-              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
-                <li><strong>自動計算（保険・税）= する</strong> にした場合、健康保険、介護保険、厚生年金、雇用保険、所得税が自動計算されます。</li>
-                <li>住民税、家賃控除、追加控除、年末調整徴収、追加診療費などは必要に応じて調整します。</li>
-                <li><strong>総支給額 - 総控除額 = 差引支払額（手取り）</strong> です。</li>
-                <li><strong>振込 + 現金 + 現物 = 支払方法合計</strong> となり、手取り額と一致している必要があります。</li>
-              </ul>
-            </div>
-          </div>
-
-          <div style="margin-bottom:20px;">
-            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">運用上の注意</div>
-            <div style="background:#fff3cd;padding:15px;border-radius:6px;border-left:4px solid #ffc107;">
-              <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
-                <li>まず勤怠が正しいか確認してから給与入力を行ってください。</li>
-                <li>基本給や保険税の設定を変えた後は、必ず <strong>プレビュー</strong> で再確認してください。</li>
-                <li>PDF作成後は、そのPDFを開いて文字化け・金額・社員名・年月を確認してください。</li>
-                <li><strong>社員へ送信（公開）</strong> を押すと、社員側マイページから閲覧可能になります。</li>
-              </ul>
-            </div>
-          </div>
-
-          <div style="background:#d4edda;padding:15px;border-radius:6px;border-left:4px solid #28a745;">
-            <div style="font-weight:bold;color:#155724;margin-bottom:10px;">チェックリスト</div>
-            <ul style="margin:0;padding-left:20px;color:#155724;line-height:1.8;">
-              <li>対象社員・対象年月が正しい</li>
-              <li>総支給額、総控除額、手取りが想定どおり</li>
-              <li>振込・現金・現物の合計が手取りと一致</li>
-              <li>プレビュー確認済み</li>
-              <li>PDF作成・PDFダウンロード確認済み</li>
-              <li>問題なければ社員へ送信（公開）</li>
-            </ul>
-          </div>
+          <p style="color:#334155;margin-bottom:15px;">給与支給日になると、管理者から電子給与明細が発行されます。</p>
+          <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>メニューから <strong>給与明細</strong> を開きます。</li>
+            <li>確認したい対象年月を選択します。</li>
+            <li>目のアイコン 👁️ (プレビュー) を押すと、基本給、残業代、交通費、控除額（税金・保険料など）の詳細が確認できます。</li>
+            <li>必要に応じてPDF形式でダウンロード可能です。</li>
+          </ol>
         </div>
       </div>
 
-      <!-- 5. トラブル対処 -->
-      <div class="kintai-card" id="section-troubleshoot" style="margin-bottom:30px;">
-        <div class="kintai-card-title" id="troubleshoot">🛠️ トラブル対処</div>
+      <!-- 7. その他の機能 -->
+      <div class="kintai-card" id="section-others" style="margin-bottom:30px;">
+        <div class="kintai-card-title">⚙️ 7. その他の機能</div>
         <div style="padding:20px;">
-          <div style="margin-bottom:20px;">
-            <div style="background:#f5f5f5;padding:15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #dc3545;">
-              <div style="font-weight:bold;color:#dc3545;margin-bottom:10px;">❌ 保存したのに戻る / 変わらない</div>
-              <div style="color:#334155;margin-bottom:10px;">対応方法:</div>
-              <ol style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
-                <li><strong>Ctrl + F5</strong> で強制再読込</li>
-                <li>一度ログアウトして再ログイン</li>
-                <li>Google Chromeで再度確認</li>
-              </ol>
-            </div>
-
-            <div style="background:#f5f5f5;padding:15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #dc3545;">
-              <div style="font-weight:bold;color:#dc3545;margin-bottom:10px;">❌ 打刻ボタンが押せない</div>
-              <div style="color:#334155;margin-bottom:10px;">対応方法:</div>
-              <ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
-                <li>すでに「開始打刻済み」の可能性があります</li>
-                <li>画面を再読込（Ctrl + F5）してください</li>
-                <li>時刻修正が必要な場合は、月次勤怠画面で行ってください</li>
-              </ul>
-            </div>
-
-            <div style="background:#f5f5f5;padding:15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #dc3545;">
-              <div style="font-weight:bold;color:#dc3545;margin-bottom:10px;">❌ 画面が遅い / 反映が遅い</div>
-              <div style="color:#334155;margin-bottom:10px;">対応方法:</div>
-              <ol style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
-                <li>5～10秒待機してから再確認</li>
-                <li>通信環境（Wi-Fi / 4G）を切り替え</li>
-                <li>不要なブラウザタブを閉じる</li>
-                <li>画面を再読込（Ctrl + F5）</li>
-              </ol>
-            </div>
-          </div>
-
-          <div style="background:#d4edda;padding:15px;border-radius:6px;border-left:4px solid #28a745;">
-            <div style="font-weight:bold;color:#155724;margin-bottom:10px;">💡 解決しない場合は？</div>
-            <div style="color:#155724;font-size:14px;">
-              直属管理者またはシステム担当へ以下の情報を含めて報告してください：
-            </div>
-            <ul style="margin:10px 0 0 0;padding-left:20px;color:#155724;font-size:14px;">
-              <li>エラー画面のスクリーンショット</li>
-              <li>発生日時と操作内容</li>
-              <li>利用端末とブラウザ（Chrome / Edge等）</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- 6. スマートフォン利用 -->
-      <div class="kintai-card" id="section-smartphone" style="margin-bottom:30px;">
-        <div class="kintai-card-title" id="smartphone">📱 スマートフォン利用</div>
-        <div style="padding:20px;">
-          <div style="background:#e7f3ff;padding:15px;border-radius:6px;margin-bottom:15px;">
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:10px;">✅ スマートフォンで利用可能な機能</div>
-            <ul style="margin:0;padding-left:20px;color:#334155;">
-              <li>ログイン</li>
-              <li>簡易打刻（開始・終了）</li>
-              <li>月次勤怠入力の確認・修正</li>
-            </ul>
-          </div>
-
-          <div style="background:#fff3cd;padding:15px;border-radius:6px;">
-            <div style="font-weight:bold;color:#856404;margin-bottom:10px;">⚠️ 注意事項</div>
-            <ul style="margin:0;padding-left:20px;color:#334155;">
-              <li>詳細な設定・管理操作はPC利用を推奨します</li>
-              <li>タテ向き（ポートレート）でのご利用をお勧めします</li>
-              <li>通信環境が不安定な場合は、Wi-Fi接続をお勧めします</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- 7. 利用ルール -->
-      <div class="kintai-card" id="section-rules" style="margin-bottom:30px;">
-        <div class="kintai-card-title" id="rules">⚙️ 利用ルール</div>
-        <div style="padding:20px;">
-          <div style="background:#d4edda;padding:15px;border-radius:6px;margin-bottom:15px;">
-            <div style="font-weight:bold;color:#155724;margin-bottom:10px;">✅ 正しい操作方法</div>
-            <ul style="margin:0;padding-left:20px;color:#155724;">
-              <li>打刻時に十分な間隔をあけてからボタンを押してください</li>
-              <li>同じボタンを連続で何度も押さないでください</li>
-              <li>定期的にパスワードを変更してください</li>
-              <li>異常時は画面を撮影し、すぐに管理者へ報告してください</li>
-            </ul>
-          </div>
-
-          <div style="background:#f8d7da;padding:15px;border-radius:6px;">
-            <div style="font-weight:bold;color:#721c24;margin-bottom:10px;">❌ 禁止事項</div>
-            <ul style="margin:0;padding-left:20px;color:#721c24;">
-              <li><strong>アカウントの共有</strong> - 絶対に他人と共有しないでください</li>
-              <li><strong>他人のID・パスワード利用</strong> - 自分のアカウントのみ使用してください</li>
-              <li><strong>エラー時の連打操作</strong> - エラー時は画面を再読込し、管理者に相談してください</li>
-              <li><strong>不正な打刻</strong> - 実際の勤務と異なる入力は行わないでください</li>
-            </ul>
+          <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li style="margin-bottom:10px;"><strong>パスワード変更:</strong><br>アカウント保護のため、定期的に「共通機能 > パスワード変更」からパスワードを更新してください。</li>
+            <li><strong>よくある質問 (FAQ):</strong><br>システムの操作やルールで分からないことがあれば、画面右上の <strong>[よくある質問]</strong> をクリックしてください。チャットボットとFAQが統合された一つの画面で、簡単に情報を検索できます。</li>
+          </ul>
+          
+          <div style="background:#f8d7da;padding:15px;border-radius:6px;margin-top:20px;border-left:4px solid #dc3545;">
+            <div style="color:#721c24;font-weight:bold;">※打刻忘れやシステムエラーでデータが間違っている場合は、絶対に自分で直そうとせず、すぐに直属の管理者へ報告してください。</div>
           </div>
         </div>
       </div>
@@ -452,7 +278,7 @@
             ご不明な点がございましたら、直属管理者またはシステム担当へお気軽にお問い合わせください。
           </div>
           <div style="font-size:12px;color:#999;">
-            最終更新: 2026年5月
+            最終更新: 2026年6月
           </div>
         </div>
       </div>
@@ -477,21 +303,6 @@
         }
       });
     });
-
-    document.addEventListener('DOMContentLoaded', () => {
-      try {
-        const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-        const u = raw ? JSON.parse(raw) : null;
-        const role = String(u?.role || '').toLowerCase();
-        if (role === 'employee') {
-          const pCard = document.querySelector('[onclick="scrollToSection(\'payroll\')"]');
-          if (pCard) pCard.style.display = 'none';
-          const pSec = document.getElementById('section-payroll');
-          if (pSec) pSec.style.display = 'none';
-        }
-      } catch {}
-    });
   </script>
 </body>
 </html>
-
