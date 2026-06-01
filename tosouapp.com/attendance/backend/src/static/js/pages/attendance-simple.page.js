@@ -438,6 +438,12 @@ const isTodayShiftGhostSegment = (seg, shiftStart, shiftEnd, date) => {
     const ss = String(shiftStart || '').trim();
     const se = String(shiftEnd || '').trim();
     if (!ss || inHm !== ss) return false;
+    
+    // Check if it has real punch data (workType or labels)
+    const wt = String(seg?.work_type || seg?.workType || '').trim();
+    const labels = String(seg?.labels || '').trim();
+    if (wt || labels) return false;
+
     // On today screen, a pure shift-shaped row is treated as ghost/planned
     // so employee can stamp actual click-time.
     return !outHm || !se || outHm === se;
@@ -882,9 +888,19 @@ const load = async (date, opts = {}) => {
     const fallbackKubun = kubunInit || defaultKubun || localDefaultKubun;
 
     try {
+      const isFuture = date > todayJST();
+      const isAdminView = String(window.userRole || '').toLowerCase() === 'admin' || String(window.userRole || '').toLowerCase() === 'manager';
       const selK = $('#kubun');
       if (selK) {
-        selK.innerHTML = `<option value="" disabled>${kubunGroupLabel}</option>${kubunOptions.map(k => `<option value="${k}">${k}</option>`).join('')}`;
+        selK.innerHTML = `<option value="" disabled>${kubunGroupLabel}</option>${kubunOptions.map(k => {
+          let disabledOpt = '';
+          if (!isAdminView && isFuture) {
+            if (['出勤', '休日出勤', '代替出勤', '半休'].includes(k)) {
+              disabledOpt = 'disabled';
+            }
+          }
+          return `<option value="${k}" ${disabledOpt}>${k}</option>`;
+        }).join('')}`;
         selK.value = kubunOptions.includes(fallbackKubun) ? fallbackKubun : localDefaultKubun;
         selK.classList.toggle('is-planned', !kubunSaved);
         setupSimpleCombo(selK);
