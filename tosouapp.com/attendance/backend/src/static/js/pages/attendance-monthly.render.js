@@ -537,6 +537,18 @@
         }
       }
 
+      // Update reason visibility/disability based on kubun
+      if (reasonSel) {
+        if (effectiveKubun === '欠勤' && !!state.editableMonth) {
+          reasonSel.removeAttribute('disabled');
+          reasonSel.style.visibility = '';
+        } else {
+          reasonSel.setAttribute('disabled', '');
+          reasonSel.style.visibility = 'hidden';
+          if (reasonSel.value !== '') reasonSel.value = '';
+        }
+      }
+
       // Update Planned option visibility/disability (Admin/Manager can always select Planned)
       // Get role dynamically to avoid referencing non-existent globals
       let currentRole = '';
