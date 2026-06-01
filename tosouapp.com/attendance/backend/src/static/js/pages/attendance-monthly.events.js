@@ -500,21 +500,14 @@
           if (state.editableMonth && !el.hasAttribute('data-fixed-disabled')) el.removeAttribute('disabled');
         }
       }
-      if (!isHoliday && !lockByNoKubun) return;
-      const ckOn = row.querySelector('input[data-field="ckOnsite"]');
-      const ckRe = row.querySelector('input[data-field="ckRemote"]');
-      const ckSa = row.querySelector('input[data-field="ckSatellite"]');
-      if (ckOn) ckOn.checked = false;
-      if (ckRe) ckRe.checked = false;
-      if (ckSa) ckSa.checked = false;
-      try { row.dataset.workType = ''; } catch {}
       
-      const inEl = row.querySelector('input.se-time[data-field="checkIn"]');
-      const outEl = row.querySelector('input.se-time[data-field="checkOut"]');
-      const br = row.querySelector('select[data-field="break"]');
-      const nb = row.querySelector('select[data-field="nightBreak"]');
-      
-      if (!isHoliday && !lockByNoKubun) {
+      // Khôi phục giờ nếu được đổi về ngày đi làm (kể cả khi chỉ là Dự kiến)
+      if (!isHoliday) {
+        const inEl = row.querySelector('input.se-time[data-field="checkIn"]');
+        const outEl = row.querySelector('input.se-time[data-field="checkOut"]');
+        const br = row.querySelector('select[data-field="break"]');
+        const nb = row.querySelector('select[data-field="nightBreak"]');
+        
         if (inEl && !inEl.value) {
           inEl.value = inEl.dataset.actual || inEl.dataset.autoVal || '';
           if (inEl.dataset.actual) inEl.dataset.manual = '1';
@@ -529,8 +522,23 @@
         if (nb && nb.value === '0:00' && nb.dataset.actual && nb.dataset.actual !== '0:00') {
           nb.value = nb.dataset.actual;
         }
+        // Nếu là ngày đi làm (hoặc dự kiến đi làm) thì KHÔNG được clear dữ liệu
         return;
       }
+      
+      // Nếu là ngày nghỉ thì clear các ô
+      const ckOn = row.querySelector('input[data-field="ckOnsite"]');
+      const ckRe = row.querySelector('input[data-field="ckRemote"]');
+      const ckSa = row.querySelector('input[data-field="ckSatellite"]');
+      if (ckOn) ckOn.checked = false;
+      if (ckRe) ckRe.checked = false;
+      if (ckSa) ckSa.checked = false;
+      try { row.dataset.workType = ''; } catch {}
+      
+      const inEl = row.querySelector('input.se-time[data-field="checkIn"]');
+      const outEl = row.querySelector('input.se-time[data-field="checkOut"]');
+      const br = row.querySelector('select[data-field="break"]');
+      const nb = row.querySelector('select[data-field="nightBreak"]');
       
       const loc = row.querySelector('input[data-field="location"]');
       const memo = row.querySelector('input[data-field="memo"]');
