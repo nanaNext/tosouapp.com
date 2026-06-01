@@ -132,29 +132,20 @@
       // Permission check: if employee role and has selection or actual data, disable planned options
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
-      // Hint logic
-      const inInit = inHm || (isWorkDay || isPlanned ? shiftStart : '');
-      const outInit = outHm || (isWorkDay || isPlanned ? shiftEnd : '');
-      
-      // CHỐT: Nếu KHÔNG phải ngày đi làm (isWorkDay = false) thì KHÔNG ĐƯỢC CÓ GIỜ
-      // NHƯNG nếu user đổi trạng thái về lại đi làm, ta nên ưu tiên inHm/outHm thực tế (đã lưu)
-      // Khôi phục logic cũ: dùng inInit/outInit để show giờ dự kiến mờ cho những ngày chưa có dữ liệu.
-      const finalIn = (isWorkDay || isPlanned) ? inInit : '';
-      const finalOut = (isWorkDay || isPlanned) ? outInit : '';
+      // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay). Ngày nghỉ thì để trống.
+      const finalIn = isWorkDay ? (inHm || shiftStart) : (inHm || '');
+      const finalOut = isWorkDay ? (outHm || shiftEnd) : (outHm || '');
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
       const isManualOut = !!outHm;
 
-      const autoIn = (isWorkDay || isPlanned) && !inHm && shiftStartOk;
-      const autoOut = (isWorkDay || isPlanned) && !outHm && shiftEndOk;
+      const autoIn = isWorkDay && !inHm && shiftStartOk;
+      const autoOut = isWorkDay && !outHm && shiftEndOk;
       
       // Field-level visual logic:
-      // - check-in stays faded until it has real value.
-      // - check-out stays faded until it has real value (even if check-in is real).
-      // Treat any row without actual punches but marked as workday as 'is-auto' (faded)
-      const inAutoCls = (autoIn && !hasActualIn) ? 'is-auto' : '';
-      const outAutoCls = (autoOut && !hasActualOut) ? 'is-auto' : '';
+      const inAutoCls = autoIn ? 'is-auto' : '';
+      const outAutoCls = autoOut ? 'is-auto' : '';
 
       const canEditTimeRow = canEditWorkRow && !isEmployee;
 
@@ -164,9 +155,9 @@
       const nbMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.nightBreakMinutes ?? 0) : 0) : 0;
       const totalBmin = brMin + nbMin;
 
-      // Show planned work hours (faded) even before actual punches exist.
-      const workHm = ((isWorkDay || isPlanned) && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
-      const isAutoWork = (isWorkDay || isPlanned) && (autoIn || autoOut) && !!workHm;
+      // Show planned work hours (faded) only for work days
+      const workHm = ((isWorkDay || hasActual) && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
+      const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
       const hasCompletedActual = hasActualIn && hasActualOut;
       const workAutoCls = (isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
@@ -488,7 +479,7 @@
       const outManual = String(outEl?.dataset?.manual || '') === '1';
 
       const cls = String(clsSel?.value || '').trim();
-      const offDay = baseOff || dow === '日' || dow === '土';
+      const offDay = baseOff;
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       const effectiveKubun = cls || (offDay ? '休日' : '出勤');
       const isWorkDay = workKubunSet.has(effectiveKubun);

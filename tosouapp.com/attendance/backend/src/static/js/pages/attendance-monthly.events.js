@@ -485,7 +485,7 @@
       const dow = (() => {
         try { return core?.dowJa?.(dateStr) || ''; } catch { return ''; }
       })();
-      const offDay = String(row.dataset.baseOff || '') === '1' || row.classList.contains('off') || dow === '土' || dow === '日';
+      const offDay = String(row.dataset.baseOff || '') === '1';
       const plannedKubun = offDay ? '休日' : '出勤';
       const effective = v || plannedKubun;
       const isHoliday = effective === '休日' || effective === '代替休日' || effective === '無給休暇' || effective === '有給休暇' || effective === '欠勤';
