@@ -133,20 +133,20 @@
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // Hint logic
-      const inInit = inHm || (isWorkDay ? shiftStart : '');
-      const outInit = outHm || (isWorkDay ? shiftEnd : '');
+      const inInit = inHm || (isWorkDay || isPlanned ? shiftStart : '');
+      const outInit = outHm || (isWorkDay || isPlanned ? shiftEnd : '');
       
-      // CHỐT: Nếu KHÔNG phải ngày đi làm (isWorkDay = false) thì KHÔNG ĐƯỢC CÓ GIỜ
+      // CHỐT: Nếu KHÔNG phải ngày đi làm (isWorkDay = false) và KHÔNG phải ngày Dự kiến (isPlanned) thì KHÔNG ĐƯỢC CÓ GIỜ
       // NHƯNG nếu user đổi trạng thái về lại đi làm, ta nên ưu tiên inHm/outHm thực tế (đã lưu)
-      const finalIn = isWorkDay ? (inHm || shiftStart) : '';
-      const finalOut = isWorkDay ? (outHm || shiftEnd) : '';
+      const finalIn = (isWorkDay || isPlanned) ? (inHm || shiftStart) : '';
+      const finalOut = (isWorkDay || isPlanned) ? (outHm || shiftEnd) : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
       const isManualOut = !!outHm;
 
-      const autoIn = isWorkDay && !inHm && shiftStartOk;
-      const autoOut = isWorkDay && !outHm && shiftEndOk;
+      const autoIn = (isWorkDay || isPlanned) && !inHm && shiftStartOk;
+      const autoOut = (isWorkDay || isPlanned) && !outHm && shiftEndOk;
       
       // Field-level visual logic:
       // - check-in stays faded until it has real value.

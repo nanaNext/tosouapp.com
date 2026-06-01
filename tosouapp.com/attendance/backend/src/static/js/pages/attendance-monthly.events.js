@@ -492,7 +492,7 @@
       const lockByNoKubun = !v;
       const ctrls = Array.from(row.querySelectorAll('input, select, textarea, button')).filter(el => !el.matches('select[data-field="classification"], button[data-action="history"]'));
       for (const el of ctrls) {
-        if (isHoliday || lockByNoKubun) {
+        if (isHoliday) {
           el.setAttribute('disabled', '');
           el.setAttribute('data-row-disabled', '1');
         } else {
