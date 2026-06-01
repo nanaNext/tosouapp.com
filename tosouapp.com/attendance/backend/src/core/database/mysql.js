@@ -15,6 +15,7 @@ const pool = mysql.createPool({
   queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '0', 10),
   dateStrings: true,
   charset: 'utf8mb4',
+  timezone: '+09:00',
   ssl: sslEnabled ? (sslStrict ? { rejectUnauthorized: true } : {}) : undefined
 });
 
@@ -63,6 +64,7 @@ pool.getConnection = async function() {
   try {
     await conn.query(`SET NAMES utf8mb4`);
     try { await conn.query(`SET collation_connection = utf8mb4_0900_ai_ci`); } catch {}
+    try { await conn.query(`SET time_zone = '+09:00'`); } catch {}
   } catch {}
   const origConnQuery = conn.query.bind(conn);
   conn.query = async function(...args) {

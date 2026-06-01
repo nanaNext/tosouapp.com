@@ -2,6 +2,9 @@ const jwt = require('jsonwebtoken');
 const userRepo = require('../../modules/users/user.repository');
 // Middleware xác thực và phân quyền dựa trên JWT
 
+const tokenVersionCache = new Map();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút
+
 const lastActiveTouch = new Map();
 const touchMinMs = Math.max(5_000, Number.parseInt(process.env.LAST_ACTIVE_TOUCH_MIN_MS || '60000', 10) || 60_000);
 const normalizeRole = (v) => {
@@ -27,6 +30,34 @@ function redirectToLogin(req, res) {
   return res.redirect(302, target);
 }
 
+async function getCachedUser(id) {
+  const now = Date.now();
+  const cached = tokenVersionCache.get(id);
+  if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+    return cached.user;
+  }
+  const user = await userRepo.getUserById(id);
+  if (user) {
+    tokenVersionCache.set(id, { 
+      user: {
+        id: user.id,
+        role: user.role,
+        token_version: user.token_version,
+        email: user.email,
+        username: user.username
+      }, 
+      timestamp: now 
+    });
+  }
+  
+  if (tokenVersionCache.size > 2000) {
+    for (const [k, v] of tokenVersionCache.entries()) {
+      if (now - v.timestamp >= CACHE_TTL_MS) tokenVersionCache.delete(k);
+    }
+  }
+  return user;
+}
+
 async function authenticateToken(token) {
   const secrets = [
     process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET,
@@ -44,7 +75,7 @@ async function authenticateToken(token) {
     err.status = 403;
     throw err;
   }
-  const user = await userRepo.getUserById(decoded.id);
+  const user = await getCachedUser(decoded.id);
   const dbVersion = user?.token_version || 1;
   const tokenVersion = decoded?.v || 1;
   if (!user || dbVersion !== tokenVersion) {
