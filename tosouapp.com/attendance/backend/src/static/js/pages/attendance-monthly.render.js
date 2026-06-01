@@ -137,8 +137,9 @@
       const outInit = outHm || (isWorkDay ? shiftEnd : '');
       
       // CHỐT: Nếu KHÔNG phải ngày đi làm (isWorkDay = false) thì KHÔNG ĐƯỢC CÓ GIỜ
-      const finalIn = isWorkDay ? inInit : '';
-      const finalOut = isWorkDay ? outInit : '';
+      // NHƯNG nếu user đổi trạng thái về lại đi làm, ta nên ưu tiên inHm/outHm thực tế (đã lưu)
+      const finalIn = isWorkDay ? (inHm || shiftStart) : '';
+      const finalOut = isWorkDay ? (outHm || shiftEnd) : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
