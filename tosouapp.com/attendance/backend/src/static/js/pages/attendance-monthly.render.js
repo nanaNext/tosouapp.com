@@ -133,28 +133,27 @@
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // Hint logic
-      const inInit = inHm || (isWorkDay || isPlanned ? shiftStart : '');
-      const outInit = outHm || (isWorkDay || isPlanned ? shiftEnd : '');
+      const inInit = inHm || (isWorkDay ? shiftStart : '');
+      const outInit = outHm || (isWorkDay ? shiftEnd : '');
       
-      // CHỐT: Nếu KHÔNG phải ngày đi làm (isWorkDay = false) và KHÔNG phải ngày Dự kiến (isPlanned) thì KHÔNG ĐƯỢC CÓ GIỜ
+      // CHỐT: Nếu KHÔNG phải ngày đi làm (isWorkDay = false) thì KHÔNG ĐƯỢC CÓ GIỜ
       // NHƯNG nếu user đổi trạng thái về lại đi làm, ta nên ưu tiên inHm/outHm thực tế (đã lưu)
-      const finalIn = (isWorkDay || isPlanned) ? (inHm || shiftStart) : '';
-      const finalOut = (isWorkDay || isPlanned) ? (outHm || shiftEnd) : '';
+      const finalIn = isWorkDay ? (inHm || shiftStart) : '';
+      const finalOut = isWorkDay ? (outHm || shiftEnd) : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
       const isManualOut = !!outHm;
 
-      const autoIn = (isWorkDay || isPlanned) && !inHm && shiftStartOk;
-      const autoOut = (isWorkDay || isPlanned) && !outHm && shiftEndOk;
+      const autoIn = isWorkDay && !inHm && shiftStartOk;
+      const autoOut = isWorkDay && !outHm && shiftEndOk;
       
       // Field-level visual logic:
       // - check-in stays faded until it has real value.
       // - check-out stays faded until it has real value (even if check-in is real).
-      // Note: Always treat isPlanned rows as auto/faded regardless of whether they have a real value,
-      // because they haven't been confirmed as an actual working day yet.
-      const inAutoCls = ((autoIn || isPlanned) && !isManualIn && !hasActualIn) ? 'is-auto' : '';
-      const outAutoCls = ((autoOut || isPlanned) && !isManualOut && !hasActualOut) ? 'is-auto' : '';
+      // Treat any row without actual punches but marked as workday as 'is-auto' (faded)
+      const inAutoCls = (autoIn && !hasActualIn) ? 'is-auto' : '';
+      const outAutoCls = (autoOut && !hasActualOut) ? 'is-auto' : '';
 
       const canEditTimeRow = canEditWorkRow && !isEmployee;
 
@@ -165,8 +164,8 @@
       const totalBmin = brMin + nbMin;
 
       // Show planned work hours (faded) even before actual punches exist.
-      const workHm = ((isWorkDay || isPlanned) && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
-      const isAutoWork = (isWorkDay || isPlanned) && (autoIn || autoOut || isPlanned) && !!workHm;
+      const workHm = (isWorkDay && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
+      const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
       const hasCompletedActual = hasActualIn && hasActualOut;
       const workAutoCls = (isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
