@@ -260,9 +260,20 @@
 
       const dowColor = (isOff || dow === '日') ? '#b91c1c' : (dow === '土') ? '#1d4ed8' : '#334155';
       const dateMmdd = dateStr.slice(5).replace('-', '/');
+      const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      const isFuture = dateStr > todayStr;
+      
       const kubunOptionsHtml = `
       <option value="" ${disablePlanned ? 'disabled' : ''} ${kubunInit === '' ? 'selected' : ''}>${esc(plannedLabel)}</option>
-      ${kubunOptions.map((k) => `<option value="${esc(k)}" ${kubunInit === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}
+      ${kubunOptions.map((k) => {
+        let disabledOpt = '';
+        if (!isAdminView && isFuture) {
+          if (['出勤', '休日出勤', '代替出勤', '半休'].includes(k)) {
+            disabledOpt = 'disabled';
+          }
+        }
+        return `<option value="${esc(k)}" ${kubunInit === k ? 'selected' : ''} ${disabledOpt}>${esc(k)}</option>`;
+      }).join('')}
     `;
 
       tr.innerHTML = `
