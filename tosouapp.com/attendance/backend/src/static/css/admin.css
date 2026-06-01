@@ -113,13 +113,7 @@
 }
 
 /* Admin SPA: never show legacy nav spinner overlay */
-.admin #pageSpinner,
-.admin .page-spinner {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
+
 
 .admin.has-sidebar #adminChrome+.content,
 .admin.has-sidebar .content {

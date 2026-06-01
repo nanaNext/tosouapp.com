@@ -477,6 +477,20 @@
         }
       });
     });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+        const u = raw ? JSON.parse(raw) : null;
+        const role = String(u?.role || '').toLowerCase();
+        if (role === 'employee') {
+          const pCard = document.querySelector('[onclick="scrollToSection(\'payroll\')"]');
+          if (pCard) pCard.style.display = 'none';
+          const pSec = document.getElementById('section-payroll');
+          if (pSec) pSec.style.display = 'none';
+        }
+      } catch {}
+    });
   </script>
 </body>
 </html>

@@ -27,7 +27,7 @@ const statusMeta = (status) => {
 const workTypeLabel = (value) => {
   if (value === 'onsite') return '出社';
   if (value === 'remote') return '在宅';
-  if (value === 'satellite') return '現場/出張';
+  if (value === 'satellite') return '現場・出張';
   return '—';
 };
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -330,7 +330,11 @@ export async function mount() {
       const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
       const stx = effectiveStatus(it);
       const meta = statusMeta(stx);
-      const kubun = String(it.kubun || '').trim() ? esc(String(it.kubun).trim()) : dash;
+      let kubunStr = String(it.kubun || '').trim();
+      if (kubunStr === '休日出勤' && !it.attendance?.checkIn && !it.attendance?.checkOut && (!it.site && !it.work)) {
+        kubunStr = '休日';
+      }
+      const kubun = kubunStr ? esc(kubunStr) : dash;
       const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
       const rawWork = String(it.work || '').trim();
       const work = rawWork ? esc(rawWork) : dash;
@@ -549,7 +553,11 @@ export async function mount() {
         const dash = `<span style="color:#cbd5e1;">—</span>`;
         const stx = effectiveStatus(it);
         const meta = statusMeta(stx);
-        const kubun = String(it.kubun || '').trim() ? esc(String(it.kubun).trim()) : dash;
+        let kubunStr = String(it.kubun || '').trim();
+        if (kubunStr === '休日出勤' && !it.attendance?.checkIn && !it.attendance?.checkOut && (!it.site && !it.work)) {
+          kubunStr = '休日';
+        }
+        const kubun = kubunStr ? esc(kubunStr) : dash;
         const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
         const work = String(it.work || '').trim() ? esc(String(it.work).trim()) : dash;
         const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;

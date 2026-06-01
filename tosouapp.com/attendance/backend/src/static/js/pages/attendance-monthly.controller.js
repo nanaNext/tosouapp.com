@@ -940,8 +940,7 @@
       } catch {}
       if (ctx.tableHost && ctx.tableHost.querySelector('.invalid')) {
         showErr('入力内容を確認してください（赤枠の項目）');
-        alert('入力内容を確認してください（赤枠の項目）');
-        return;
+        throw new Error('入力内容を確認してください（赤枠の項目）');
       }
       showSpinner('save');
       const payload = collectUpdates(ctx.tableHost, ym, ctx.actingUserId || null, { includeAll: true });
@@ -1064,17 +1063,7 @@
         const updateRowVisual = (tr) => {
           if (!tr) return;
           const inEl = tr.querySelector('input.se-time[data-field="checkIn"]');
-          const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
-          if (inEl) {
-            inEl.dataset.auto = '';
-            inEl.dataset.autoVal = '';
-            inEl.classList.remove('is-auto');
-          }
-          if (outEl) {
-            outEl.dataset.auto = '';
-            outEl.dataset.autoVal = '';
-            outEl.classList.remove('is-auto');
-          }
+    const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
         };
         for (const u of updates0) {
           const id = u?.id != null ? String(u.id) : '';
@@ -1319,9 +1308,17 @@
       const inEl = tr.querySelector('input.se-time[data-field="checkIn"]');
       const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
       
-      // Đảm bảo lấy giá trị mới nhất từ DOM ngay lúc này
-      const rawIn = String(inEl?.value || '').trim();
-      const rawOut = String(outEl?.value || '').trim();
+      const effTime = (el) => {
+        const v = String(el?.value || '').trim();
+        const isAuto = String(el?.dataset?.auto || '') === '1';
+        const autoVal = String(el?.dataset?.autoVal || '').trim();
+        if (isAuto && autoVal && v === autoVal) return '';
+        return v;
+      };
+      
+      // Đảm bảo lấy giá trị mới nhất từ DOM ngay lúc này, bỏ qua giá trị auto-planned
+      const rawIn = effTime(inEl);
+      const rawOut = effTime(outEl);
       
       const inDt = rawIn && toDateTime ? toDateTime(dateStr, rawIn) : null;
       let outDt = rawOut && toDateTime ? toDateTime(dateStr, rawOut) : null;
@@ -1484,66 +1481,6 @@
     } finally {
       ctx.autoSaveInFlight = false;
     }
-  };
-
-  const ensureTimesForWorkKubun = async (tr, kubunVal) => {
-    try {
-      if (!state.editableMonth) return;
-      if (!tr) return;
-      const dateStr = String(tr.dataset.date || '').slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
-      const k = String(kubunVal || '').trim();
-      const workNeedTimes = new Set(['出勤', '休日出勤', '代替出勤']);
-      if (!workNeedTimes.has(k)) return;
-      const todayStr = (() => {
-        try { return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch { return null; }
-      })();
-      if (todayStr && dateStr > todayStr) return;
-      const inEl = tr.querySelector('input.se-time[data-field="checkIn"]');
-      const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
-      const inNow = String(inEl?.value || '').trim();
-      const outNow = String(outEl?.value || '').trim();
-      const effTime = (el) => {
-        const v = String(el?.value || '').trim();
-        const isAuto = String(el?.dataset?.auto || '') === '1';
-        const autoVal = String(el?.dataset?.autoVal || '').trim();
-        if (isAuto && autoVal && v === autoVal) return '';
-        return v;
-      };
-      const inEff = effTime(inEl);
-      const outEff = effTime(outEl);
-      if (inEff || outEff) return;
-
-      const dayShift = (() => {
-        try {
-          const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
-          return days.find(d => String(d?.date || '').slice(0, 10) === dateStr)?.shift || null;
-        } catch {
-          return null;
-        }
-      })();
-      const shiftStart = String(dayShift?.start_time || '').trim();
-      const shiftEnd = String(dayShift?.end_time || '').trim();
-      let inCand = /^\d{2}:\d{2}$/.test(inNow) ? inNow : shiftStart;
-      let outCand = /^\d{2}:\d{2}$/.test(outNow) ? outNow : shiftEnd;
-      if (!/^\d{2}:\d{2}$/.test(inCand)) inCand = '08:00';
-      if (!/^\d{2}:\d{2}$/.test(outCand)) outCand = '17:00';
-
-      if (inEl) {
-        inEl.value = inCand;
-        inEl.dataset.auto = '';
-        inEl.dataset.autoVal = '';
-        try { inEl.classList.remove('is-auto'); } catch {}
-      }
-      if (outEl) {
-        outEl.value = outCand;
-        outEl.dataset.auto = '';
-        outEl.dataset.autoVal = '';
-        try { outEl.classList.remove('is-auto'); } catch {}
-      }
-      try { tr.dataset.dirty = '1'; } catch {}
-      await saveRowTimesNow(tr);
-    } catch {}
   };
 
   const exportXlsx = async () => {
@@ -2056,7 +1993,6 @@
     saveManual,
     saveRowNow,
     saveRowTimesNow,
-    ensureTimesForWorkKubun,
     exportXlsx,
     submitMonth,
     approveMonth,

@@ -2248,7 +2248,9 @@ exports.exportMonthXlsx = async (req, res) => {
     for (let day = 1; day <= lastDay; day++) {
       const ds = `${y}-${pad(m)}-${pad(day)}`;
       const dow = dowJa(ds);
-      const isOff = off.has(ds) || dow === '日' || dow === '土';
+      
+      // Determine isOff logically the same way the frontend does (from calendar rule)
+      const isOff = off.has(ds);
       
       // Sheet 1: 入力用勤怠表
       const segs0 = (segMap.get(ds) || []).slice().sort((a, b) => String(a?.checkIn || '').localeCompare(String(b?.checkIn || '')));
@@ -2277,6 +2279,9 @@ exports.exportMonthXlsx = async (req, res) => {
       const plannedLabel = isOff ? '【予定休日】' : '【予定出勤】';
       const kubunInfo = (() => {
         if (isOff) {
+          // If the user explicitly set '出勤' on a holiday, preserve it instead of defaulting to '休日出勤'
+          if (dailyKubun === '出勤') return { display: '出勤', effective: '出勤' };
+          
           if (dailyKubun === '休日' || dailyKubun === '休日出勤' || dailyKubun === '代替出勤') {
             return { display: dailyKubun, effective: dailyKubun };
           }
@@ -2499,15 +2504,33 @@ exports.exportMonthXlsx = async (req, res) => {
         const style = (isTimeCell || (ci >= 2 && ci <= 17)) ? 12 : (isTextWide ? 13 : 12);
         // Highlight only the date cell (日付) for Sundays.
         const styleWithDay = (isSunday && ci === 0) ? 16 : (isTimeCell ? 12 : style);
+        
+        let cellValue = String(v || '');
+        if (ci === 1) {
+          if (cellValue === '休日出勤' && !vals[7] && !vals[8] && !vals[10] && !vals[11]) {
+            // Keep as is if user explicitly chose 休日出勤, but if it's auto-inferred and has no time, it falls back to 休日
+            const ds = String(vals[2] || '');
+            const daily = ds ? dailyMap.get(ds) : null;
+            if (daily?.kubun !== '休日出勤') cellValue = '休日';
+          }
+        }
+        if (ci === 2) {
+          if (cellValue === '休日出勤' && !vals[7] && !vals[8] && !vals[10] && !vals[11]) {
+            const ds = String(vals[2] || '');
+            const daily = ds ? dailyMap.get(ds) : null;
+            if (daily?.kubun !== '休日出勤') cellValue = '休日';
+          }
+        }
+
         if (ci === 11) {
           const f = `ROUNDDOWN(S${rowNum}/60,0)&":"&TEXT(MOD(S${rowNum},60),"00")`;
-          return formulaCell(ref, f, String(v || '0:00'), styleWithDay);
+          return formulaCell(ref, f, cellValue || '0:00', styleWithDay);
         }
         if (ci === 12) {
           const f = `IF(S${rowNum}>480,ROUNDDOWN((S${rowNum}-480)/60,0)&":"&TEXT(MOD((S${rowNum}-480),60),"00"),"0:00")`;
-          return formulaCell(ref, f, String(v || '0:00'), styleWithDay);
+          return formulaCell(ref, f, cellValue || '0:00', styleWithDay);
         }
-        return cell(ref, v, styleWithDay);
+        return cell(ref, cellValue, styleWithDay);
       });
       xmlCells.push(numberCell(`S${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
       push1(rowNum, xmlCells, 18);
@@ -2534,6 +2557,7 @@ exports.exportMonthXlsx = async (req, res) => {
   <sheetFormatPr defaultRowHeight="18"/>
   <cols>${sheet1Cols}</cols>
   <sheetData>${sheet1Rows.join('')}</sheetData>
+  <sheetProtection sheet="1" objects="1" scenarios="1" />
   <mergeCells count="${(sheet1Merges.match(/<mergeCell /g) || []).length}">${sheet1Merges}</mergeCells>
   <dataValidations count="3">${sheet1Validations}</dataValidations>
 </worksheet>`;
@@ -2570,6 +2594,7 @@ exports.exportMonthXlsx = async (req, res) => {
   <sheetFormatPr defaultRowHeight="18"/>
   <cols>${sheet2Cols}</cols>
   <sheetData>${sheet2Rows.join('')}</sheetData>
+  <sheetProtection sheet="1" objects="1" scenarios="1" />
 </worksheet>`;
     const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">

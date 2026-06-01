@@ -508,7 +508,9 @@
       }
 
       if (statusWrap) {
-        const roleStr = String(profile?.role || '').toLowerCase();
+        let currentRole = '';
+        try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch {}
+        const roleStr = currentRole;
         const isAdminView = roleStr === 'admin' || roleStr === 'manager';
         const isRegularOffRowNow = !!offDay && !hasActualNow && (effectiveKubun === '休日' || effectiveKubun === '代替休日');
         const leaveKubunSetNow = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
@@ -539,12 +541,16 @@
 
       // Update reason visibility/disability based on kubun
       if (reasonSel) {
-        if (effectiveKubun === '欠勤' && !!state.editableMonth) {
-          reasonSel.removeAttribute('disabled');
+        if (effectiveKubun === '欠勤') {
           reasonSel.style.visibility = '';
+          if (state.editableMonth) {
+            reasonSel.removeAttribute('disabled');
+          } else {
+            reasonSel.setAttribute('disabled', '');
+          }
         } else {
-          reasonSel.setAttribute('disabled', '');
           reasonSel.style.visibility = 'hidden';
+          reasonSel.setAttribute('disabled', '');
           if (reasonSel.value !== '') reasonSel.value = '';
         }
       }
@@ -673,19 +679,7 @@
         rowEl.dataset.workType = '';
       }
 
-      if (reasonSel) {
-        const allowReason = effectiveKubun === '欠勤';
-        if (!allowReason && reasonSel.value !== '') {
-          reasonSel.value = '';
-        }
-        if (allowReason && !!cls) {
-          reasonSel.removeAttribute('disabled');
-          reasonSel.style.visibility = '';
-        } else {
-          reasonSel.setAttribute('disabled', '');
-          reasonSel.style.visibility = 'hidden';
-        }
-      }
+
 
       // Xử lý hiển thị ĐẬM / NHẠT
       const inVal = String(inEl?.value || '');

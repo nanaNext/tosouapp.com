@@ -4,25 +4,25 @@ import '/static/js/pages/employee-notify.sticky.js';
 
 const $ = (sel) => document.querySelector(sel);
 
-let spinnerDelayTimer = null;
 let simpleUserId = '';
-const showSpinner = (v) => {
-  const el = $('#pageSpinner');
-  if (!el) return;
-  if (spinnerDelayTimer) {
-    clearTimeout(spinnerDelayTimer);
-    spinnerDelayTimer = null;
-  }
-  if (v) {
-    // Avoid flashing a full-page spinner for fast operations.
-    spinnerDelayTimer = setTimeout(() => {
-      try { el.removeAttribute('hidden'); } catch {}
-      spinnerDelayTimer = null;
-    }, 180);
-  } else {
-    el.setAttribute('hidden', '');
-  }
-};
+const showSpinner = (v, isSuccess = false, mode = 'save') => {
+    const el = $('#pageSpinner');
+    if (!el) return;
+    if (v) {
+      el.setAttribute('data-mode', mode);
+      if (isSuccess) {
+        el.classList.add('is-success');
+        el.removeAttribute('hidden');
+      } else {
+        el.classList.remove('is-success');
+        el.removeAttribute('hidden');
+      }
+    } else {
+      el.classList.remove('is-success');
+      el.removeAttribute('data-mode');
+      el.setAttribute('hidden', '');
+    }
+  };
 
 const showErr = (msg) => {
   const el = $('#error');
@@ -792,7 +792,7 @@ const loadMonthStatus = async (date) => {
     const m = String(date || '').slice(5, 7);
     if (!/^\d{4}$/.test(y) || !/^\d{2}$/.test(m)) return 'draft';
     // Fast path: use dedicated lightweight status endpoint instead of full month payload.
-    const r = await fetchJSONAuth(`/api/attendance/month/status?year=${encodeURIComponent(y)}&month=${encodeURIComponent(parseInt(m, 10))}`);
+    const r = await fetchJSONAuth(`/api/attendance/month/status?year=${encodeURIComponent(y)}&month=${encodeURIComponent(parseInt(m, 10))}&_t=${Date.now()}`);
     const st = String(r?.status || '').trim();
     return st || 'draft';
   } catch {
@@ -822,9 +822,9 @@ const load = async (date, opts = {}) => {
     const monthStatusTask = loadMonthStatus(date).catch(() => 'draft');
     const isOffTask = getCalendarOff(date).catch(() => false);
     const shiftTask = getShiftForDate(date).catch(() => null);
-    const dailyTask = fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`).catch(() => null);
-    const dayTask = fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`).catch(() => ({ segments: [] }));
-    const reportTask = fetchJSONAuth(`/api/work-reports/my?date=${encodeURIComponent(date)}`).catch(() => null);
+    const dailyTask = fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily?_t=${Date.now()}`).catch(() => null);
+    const dayTask = fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}?_t=${Date.now()}`).catch(() => ({ segments: [] }));
+    const reportTask = fetchJSONAuth(`/api/work-reports/my?date=${encodeURIComponent(date)}&_t=${Date.now()}`).catch(() => null);
 
     state.currentMonthStatus = await monthStatusTask;
     const [isOff, shift, daily0, day] = await Promise.all([isOffTask, shiftTask, dailyTask, dayTask]);
@@ -922,7 +922,7 @@ const load = async (date, opts = {}) => {
     if (!openSeg?.checkIn && !seg?.checkIn) {
       if (date === todayJST()) {
         try {
-          const st = await fetchJSONAuth(`/api/attendance/status?date=${encodeURIComponent(date)}`).catch(() => null);
+          const st = await fetchJSONAuth(`/api/attendance/status?date=${encodeURIComponent(date)}&_t=${Date.now()}`).catch(() => null);
           if (st?.attendance?.checkIn) {
             const fromStatus = { checkIn: st.attendance.checkIn, checkOut: st.attendance.checkOut || null };
             if (hasExplicitDailyInput || !isTodayShiftGhostSegment(fromStatus, shiftStart, shiftEnd, date)) {
@@ -980,6 +980,19 @@ const load = async (date, opts = {}) => {
       else if (saved) sel.value = saved;
       else if (!String(sel.value || '').trim()) sel.value = '';
     }
+    if (daily) {
+      if (daily.breakMinutes !== undefined && daily.breakMinutes !== null) {
+        const bm = parseInt(daily.breakMinutes, 10);
+        const hm = `${Math.floor(bm / 60)}:${String(bm % 60).padStart(2, '0')}`;
+        if ($('#breakMin')) $('#breakMin').value = hm;
+      }
+      if (daily.nightBreakMinutes !== undefined && daily.nightBreakMinutes !== null) {
+        const nbm = parseInt(daily.nightBreakMinutes, 10);
+        const hm = `${Math.floor(nbm / 60)}:${String(nbm % 60).padStart(2, '0')}`;
+        if ($('#nightBreakMin')) $('#nightBreakMin').value = hm;
+      }
+    }
+
     ensureDefaultWorkTypeForToday(date);
     // Do not auto-create/update daily rows on load.
 
@@ -987,13 +1000,28 @@ const load = async (date, opts = {}) => {
     const applyReport = (rep) => {
       const siteEl = $('#workSite');
       const workEl = $('#workContent');
-      if (rep && (rep.site || rep.work)) {
-        if (siteEl) siteEl.value = rep.site || '';
-        if (workEl) workEl.value = rep.work || '';
+      
+      let siteVal = '';
+      let workVal = '';
+      let hasData = false;
+
+      if (daily && (daily.location != null || daily.memo != null)) {
+        siteVal = daily.location || '';
+        workVal = daily.memo || '';
+        hasData = true;
+      } else if (rep && (rep.site || rep.work)) {
+        siteVal = rep.site || '';
+        workVal = rep.work || '';
+        hasData = true;
+      }
+
+      siteVal = String(siteVal).trim();
+      workVal = String(workVal).trim();
+
+      if (hasData) {
+        if (siteEl) siteEl.value = siteVal;
+        if (workEl) workEl.value = workVal;
         clearDraft(date);
-      } else if (daily && (daily.location || daily.memo)) {
-        if (siteEl) siteEl.value = daily.location || '';
-        if (workEl) workEl.value = daily.memo || '';
       } else {
         const draft = loadDraft(date);
         if (draft) {
@@ -1202,8 +1230,6 @@ const save = async (date) => {
   } catch (e) {
     showErr(e?.message || '登録に失敗しました');
     return false;
-  } finally {
-    showSpinner(false);
   }
 };
 
@@ -1312,7 +1338,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       await load(state.date);
       if (r?.already) showToast('既に出勤済みです', 'error');
-      else if (r?.replacedShiftLike) showToast('開始打刻を反映しました');
+      else {
+        showSpinner(true, true, 'stamp');
+        await new Promise(res => setTimeout(res, 1500));
+      }
     } catch (e) {
       showErr(e?.message || '開始打刻に失敗しました');
     } finally {
@@ -1339,6 +1368,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const r = await tryCheckOut();
       await load(state.date);
       if (r?.noOpen) showToast('まだ出勤していません', 'error');
+      else {
+        showSpinner(true, true, 'stamp');
+        await new Promise(res => setTimeout(res, 1500));
+      }
     } catch (e) {
       showErr(e?.message || '終了打刻に失敗しました');
     } finally {
@@ -1393,41 +1426,66 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $('#btnReload')?.addEventListener('click', async () => { await load(state.date); });
   const persistSimpleEntry = async (btn) => {
-    const originalText = btn ? btn.innerHTML : '';
+    if (btn && btn.dataset.saving === '1') return;
+    const originalText = btn ? (btn.dataset.originalText || btn.innerHTML) : '';
     if (btn) {
+      btn.dataset.saving = '1';
+      btn.dataset.originalText = originalText;
       btn.disabled = true;
       btn.innerHTML = '保存中...';
     }
-    const saved = await save(state.date);
-    const rep = await saveWorkReportIfPossible(state.date);
-    if (saved) {
-      showToast('保存しました');
-      if (rep?.saved && rep?.report?.id) showToast(`作業報告も保存しました (id=${rep.report.id})`, 'success');
-      else if (rep?.attempted && !rep?.saved && rep?.message) showErr(rep.message);
-      
-      if (btn) {
-        btn.innerHTML = '保存成功';
-        btn.style.background = '#10b981';
-        btn.style.borderColor = '#10b981';
-        btn.style.color = '#fff';
-        setTimeout(() => {
+    showSpinner(true, false);
+    try {
+      const saved = await save(state.date);
+      const rep = await saveWorkReportIfPossible(state.date);
+      if (saved) {
+        showToast('保存しました');
+        if (rep?.saved && rep?.report?.id) showToast(`作業報告も保存しました (id=${rep.report.id})`, 'success');
+        else if (rep?.attempted && !rep?.saved && rep?.message) showErr(rep.message);
+        
+        if (btn) {
+          btn.innerHTML = '保存成功';
+          btn.style.background = '#10b981';
+          btn.style.borderColor = '#10b981';
+          btn.style.color = '#fff';
+          showSpinner(true, true);
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+            btn.disabled = false;
+            btn.dataset.saving = '0';
+            showSpinner(false);
+          }, 1500);
+        } else {
+          showSpinner(true, true);
+          setTimeout(() => {
+            showSpinner(false);
+          }, 1500);
+        }
+      } else {
+        showToast('保存に失敗しました', 'error');
+        if (btn) {
           btn.innerHTML = originalText;
-          btn.style.background = '';
-          btn.style.borderColor = '';
-          btn.style.color = '';
           btn.disabled = false;
-        }, 2000);
+          btn.dataset.saving = '0';
+        }
+        showSpinner(false);
       }
-    } else {
-      showToast('保存に失敗しました', 'error');
+    } catch (err) {
+      showToast(String(err?.message || '保存に失敗しました'), 'error');
       if (btn) {
         btn.innerHTML = originalText;
         btn.disabled = false;
+        btn.dataset.saving = '0';
       }
+      showSpinner(false);
     }
   };
   $('#btnSave')?.addEventListener('click', async (e) => {
     e.preventDefault(); // Chặn hành vi submit mặc định của form (tránh trắng trang)
+    if (!confirm('保存しますか？')) return;
     showErr('');
     if (!String($('#workType')?.value || '').trim() && !state.restHoliday) {
       showErr('先に勤務区分を選択してください');
@@ -1437,6 +1495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('#btnConfirm')?.addEventListener('click', async (e) => {
     e.preventDefault(); // Chặn hành vi submit mặc định của form (tránh trắng trang)
+    if (!confirm('保存しますか？')) return;
     showErr('');
     if (!String($('#workType')?.value || '').trim() && !state.restHoliday) {
       showErr('先に勤務区分を選択してください');
