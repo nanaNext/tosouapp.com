@@ -943,9 +943,6 @@
         alert('入力内容を確認してください（赤枠の項目）');
         return;
       }
-      if (!window.confirm('保存しますか？')) {
-        return;
-      }
       showSpinner('save');
       const payload = collectUpdates(ctx.tableHost, ym, ctx.actingUserId || null, { includeAll: true });
       try {
@@ -1215,6 +1212,7 @@
       } else {
         showErr(msg || '保存に失敗しました');
       }
+      throw e;
     } finally {
       hideSpinner();
     }

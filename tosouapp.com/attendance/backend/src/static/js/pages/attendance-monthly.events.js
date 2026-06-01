@@ -168,14 +168,36 @@
   };
 
   const bindSaveExportImport = () => {
-    $('#btnSave')?.addEventListener('click', async (e) => { e.preventDefault(); await controller.saveManual(); });
+    const handleSave = async (e, btn) => {
+      e.preventDefault();
+      if (!state.editableMonth) { alert('この月は入力できません。'); return; }
+      clearDirty();
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '保存中...';
+      try {
+        await controller.saveManual();
+        btn.innerHTML = '保存成功';
+        btn.style.background = '#10b981'; // green
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#fff';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+          btn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    };
+
+    $('#btnSave')?.addEventListener('click', (e) => handleSave(e, $('#btnSave')));
+    $('#btnSaveBottom')?.addEventListener('click', (e) => handleSave(e, $('#btnSaveBottom')));
     document.querySelectorAll('.saveBtn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (!state.editableMonth) { alert('この月は入力できません。'); return; }
-        clearDirty();
-        void controller.saveManual();
-      });
+      btn.addEventListener('click', (e) => handleSave(e, btn));
     });
     document.querySelectorAll('.exportBtn').forEach((btn) => {
       btn.addEventListener('click', async (e) => { e.preventDefault(); await controller.exportXlsx(); });
