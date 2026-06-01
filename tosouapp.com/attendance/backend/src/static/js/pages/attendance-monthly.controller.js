@@ -1654,29 +1654,30 @@
       lbl.textContent = '対象社員';
       lbl.style.fontWeight = '900';
       lbl.style.color = '#0b2c66';
-      lbl.style.fontSize = '12px';
+      lbl.style.fontSize = '10px';
       lbl.style.whiteSpace = 'nowrap';
 
       const input = document.createElement('input');
       input.type = 'search';
       input.placeholder = '社員番号 / 氏名';
       input.autocomplete = 'off';
-      input.style.height = '32px';
+      input.style.height = '24px';
       input.style.border = '1px solid #cbd5e1';
-      input.style.borderRadius = '8px';
-      input.style.padding = '0 10px';
-      input.style.minWidth = '180px';
-      input.style.fontSize = '14px';
+      input.style.borderRadius = '4px';
+      input.style.padding = '0 8px';
+      input.style.minWidth = '140px';
+      input.style.fontSize = '10px';
 
       const sel = document.createElement('select');
-      sel.style.height = '32px';
+      sel.style.height = '24px';
       sel.style.border = '1px solid #cbd5e1';
-      sel.style.borderRadius = '8px';
-      sel.style.padding = '0 10px';
-      sel.style.minWidth = '200px';
+      sel.style.borderRadius = '4px';
+      sel.style.padding = '0 8px';
+      sel.style.minWidth = '120px';
+      sel.style.maxWidth = '160px';
       sel.style.fontWeight = '800';
       sel.style.color = '#0b2c66';
-      sel.style.fontSize = '14px';
+      sel.style.fontSize = '10px';
 
       wrap.appendChild(lbl);
       wrap.appendChild(input);

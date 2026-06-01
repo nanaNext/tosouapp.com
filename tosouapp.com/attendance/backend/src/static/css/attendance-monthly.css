@@ -189,6 +189,8 @@ html, body {
     max-width: 1400px;
     padding: 0 8px;
   }
+  .se-target-select { display: none !important; }
+  .se-tab { height: 26px; font-size: 11px; padding: 0 6px; }
   .layout-container,
   .layout-main,
   .layout-contents {
@@ -307,7 +309,7 @@ body.embed .kintai-main {
   background: #0b2c66;
   color: #fff;
   font-weight: 900;
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .se-target-input-sample {
@@ -352,7 +354,21 @@ body.embed .kintai-main {
   box-shadow: none;
 }
 .se-avatar-img { width: 92%; height: 92%; object-fit: contain; border-radius: 0; }
-@media (max-width: 700px) { .se-avatar { display: none; } }
+@media (max-width: 700px) { 
+  .se-avatar { display: none; }
+  .se-employee-bar {
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    border-radius: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .se-employee-meta {
+    gap: 2px;
+  }
+  .se-employee-line { font-size: 11px; }
+  .se-employee-line .se-employee-v { font-size: 11px; }
+}
 
 .se-employee-meta {
   display: flex;
@@ -366,27 +382,27 @@ body.embed .kintai-main {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 800;
   color: #0f172a;
 }
 
 .se-employee-k {
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
   min-width: 0;
   white-space: nowrap;
 }
 .se-employee-v {
   color: #0b2c66;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 900;
 }
 
 .se-employee-v {
   color: #0f172a;
-  font-size: 14px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -479,23 +495,53 @@ body.embed .kintai-main {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    gap: 8px;
+    gap: 4px;
     white-space: nowrap;
     align-items: center;
+    justify-content: flex-start;
+    border: none;
+    box-shadow: none;
+    padding: 0;
   }
   #dailySection .common-buttons .se-btn,
   #dailySection .common-buttons .se-btn.se-btn-wide {
     flex: 0 0 auto;
-    min-width: 120px;
+    min-width: 0 !important;
+    width: auto !important;
     white-space: nowrap;
+    height: 22px !important;
+    padding: 0 6px !important;
+    font-size: 9px !important;
+    font-weight: normal !important;
+  }
+  #dailySection .common-buttons .lastMonthBtn,
+  #dailySection .common-buttons .nextMonthBtn {
+    min-width: 0 !important;
+    width: auto !important;
+    height: 22px !important;
+    padding: 0 6px !important;
+    font-size: 9px !important;
+    font-weight: normal !important;
+    letter-spacing: 0;
   }
   #dailySection .common-buttons .se-toolbar-field {
     flex: 0 0 auto;
     white-space: nowrap;
   }
   #dailySection .common-buttons .se-toolbar-select {
-    min-width: 160px;
+    min-width: 80px;
+    width: auto;
+    height: 22px;
+    padding: 0 4px;
+    font-size: 9px;
+    font-weight: normal !important;
     white-space: nowrap;
+  }
+  #dailySection .common-buttons .se-toolbar .se-toolbar-label {
+    height: 22px;
+    padding: 0 6px;
+    font-size: 9px;
+    font-weight: normal !important;
   }
 }
 
@@ -683,13 +729,14 @@ body.embed .se-month-table-wrap #monthTableReal thead th {
   color: #fff;
   box-shadow: 0 2px 6px rgba(15, 23, 42, .15);
 }
-.se-month-table-wrap #monthTableReal td.sticky-col-1,
-.se-month-table-wrap #monthTableReal th.sticky-col-1 {
-  position: sticky;
-  left: 0;
-  z-index: 20;
-  background: #fff;
-}
+  .se-month-table-wrap #monthTableReal td.sticky-col-1,
+  .se-month-table-wrap #monthTableReal th.sticky-col-1 {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: #fff;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
+  }
 
 .se-month-table-wrap #monthTableReal thead th.sticky-col-1 {
   z-index: 45; /* Phải cao hơn các header th khác */
@@ -727,15 +774,15 @@ body:not(.embed) #monthTable .se-month-scroll {
 }
 
 .se-tab {
-  height: 28px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 8px;
   border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #0b2c66;
   font-weight: 900;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .se-tab.active {
@@ -957,7 +1004,7 @@ body:not(.embed) #monthTable .se-month-scroll {
     font-size: 11px;
   }
   .se-page-head .se-target-month .se-target-input {
-    height: 30px;
+    height: 28px;
     padding: 0 8px;
     min-width: 120px;
   }
@@ -966,6 +1013,10 @@ body:not(.embed) #monthTable .se-month-scroll {
     padding: calc(var(--kintai-top-h, 44px) + 6px) 0 0;
     padding-bottom: calc(var(--se-bottom-bar-h, 72px) + 6px);
     box-sizing: border-box;
+  }
+  #monthTable th, #monthTable td {
+    padding: 4px 2px !important;
+    font-size: 11px !important;
   }
   #monthTable td {
     overflow: visible;
@@ -976,31 +1027,39 @@ body:not(.embed) #monthTable .se-month-scroll {
     width: 100% !important;
     max-width: calc(100vw - 24px);
     box-sizing: border-box;
+    height: 28px !important;
+    font-size: 11px !important;
+    padding: 0 2px !important;
   }
   .se-month { margin: 0; }
   .se-page-head { margin-bottom: 6px; }
   .se-section { margin: 6px 0; border-radius: 0; }
-  .se-section-head { padding: 6px 8px; gap: 12px; }
-  .se-section-body { padding: 6px 8px; }
-  .se-shortcuts { padding: 6px 8px; margin: 0 0 6px; }
-  .se-page-title { font-size: 14px; }
-  .se-target-month { display: flex; align-items: center; gap: 6px; }
+  .se-section-head { padding: 4px 6px; gap: 8px; min-height: 32px; }
+  .se-section-body { padding: 4px 6px; }
+  .se-shortcuts { padding: 4px 6px; margin: 0 0 4px; }
+  .se-page-title { font-size: 11px; font-weight: 800; margin-bottom: 2px; }
+  .se-target-month { display: flex; align-items: center; gap: 0; position: static; right: auto; top: auto; z-index: auto; margin-left: 0; justify-content: flex-start; flex-wrap: nowrap; }
   .se-page-head .se-target-month { display: none !important; }
-  .se-target-month { position: static; right: auto; top: auto; z-index: auto; margin-left: auto; }
-  .se-target-label { font-size: 10px; padding: 4px 6px; border-radius: 6px; background: #0b2c66; color: #fff; }
-  .se-target-input { height: 30px; padding: 0 8px; font-size: 12px; border-radius: 6px; }
+  .se-target-label { font-size: 9px; padding: 0 4px; border-radius: 4px 0 0 4px; background: #0b2c66; color: #fff; flex: 0 0 auto; height: 20px; line-height: 20px; font-weight: normal; }
+  .se-target-input { height: 20px; padding: 0 4px; font-size: 9px; border-radius: 0 4px 4px 0; min-width: 70px; width: 80px; direction: ltr; border: 1px solid #cbd5e1; border-left: none; }
   .se-target-month-seg { display: none; }
   .se-target-month-sample,
   .se-target-label-sample {
     display: inline-flex !important;
   }
+  .se-target-input-sample { height: 20px; padding: 0 4px; font-size: 9px; min-width: 70px; width: 80px; direction: ltr; border-radius: 0 4px 4px 0; border: 1px solid #cbd5e1; border-left: none; }
+  .se-target-label-sample { height: 20px; line-height: 20px; padding: 0 4px; font-size: 9px; flex: 0 0 auto; border-radius: 4px 0 0 4px; font-weight: normal; }
   .se-target-month.se-target-month-sample {
     display: flex !important;
     align-items: center;
-    gap: 6px;
-    margin-left: auto;
+    gap: 0;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
   }
+  .se-target-input-sample { height: 26px; padding: 0 6px; font-size: 11px; min-width: 100px; width: 120px; }
   .se-target-select { display: none !important; }
+  .se-tab { height: 26px; font-size: 11px; padding: 0 6px; }
   .layout-container,
   .layout-main,
   .layout-contents {
@@ -1008,15 +1067,15 @@ body:not(.embed) #monthTable .se-month-scroll {
     padding: 0;
     box-sizing: border-box;
   }
-  .se-section-title, .se-daily-text { font-size: 14px; font-weight: 900; }
-  .se-btn { height: 30px; font-size: 14px; padding: 6px 10px; }
-  .se-btn.small { height: 28px; font-size: 13px; padding: 5px 8px; }
+  .se-section-title, .se-daily-text { font-size: 11px; font-weight: 800; }
+  .se-btn { height: 26px; font-size: 11px; padding: 2px 6px; }
+  .se-btn.small { height: 24px; font-size: 11px; padding: 2px 4px; }
   .se-input, .se-select {
-    height: 30px;
-    font-size: 14px;
-    padding: 6px 8px;
-    border: 2px solid #93c5fd;
-    border-radius: 6px;
+    height: 26px;
+    font-size: 11px;
+    padding: 2px 4px;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
     box-sizing: border-box;
   }
   body:not(.embed) .se-month-table-wrap #monthTableReal thead th {
@@ -1024,13 +1083,13 @@ body:not(.embed) #monthTable .se-month-scroll {
   }
   .se-summary th,
   .se-summary td {
-    min-width: 54px;
-    height: 26px;
-    padding: 2px 4px;
-    line-height: 1.2;
-    font-size: 12px;
+    min-width: 50px;
+    height: 24px;
+    padding: 2px 2px;
+    line-height: 1.1;
+    font-size: 11px;
   }
-  .se-summary thead th { white-space: normal; word-break: break-word; }
+  .se-summary thead th { white-space: normal; word-break: break-word; font-size: 10px; }
   .se-summary tbody td { white-space: nowrap; word-break: keep-all; }
   /* Compact hơn cho mobile nhỏ */
   #dailySection .common-buttons .se-toolbar { gap: 6px; padding: 6px; }
@@ -1054,46 +1113,47 @@ body:not(.embed) #monthTable .se-month-scroll {
   }
   #monthTableReal th,
   #monthTableReal td {
-    padding: 6px 8px;
-    font-size: 12px;
-    line-height: 1.2;
+    padding: 4px 4px;
+    font-size: 11px;
+    line-height: 1.1;
   }
   #monthTableReal td {
     white-space: normal;
     word-break: break-word;
   }
   #monthTableReal .sticky-col-1 {
-    min-width: 64px;
-    width: 64px;
+    min-width: 58px;
+    width: 58px;
   }
   #monthTable input.se-time[data-field="checkIn"],
   #monthTable input.se-time[data-field="checkOut"] {
-    width: 120px;
-    min-width: 120px;
-    font-size: 14px;
-    height: 30px;
-    padding-left: 6px;
-    padding-right: 6px;
+    width: 90px;
+    min-width: 90px;
+    font-size: 13px;
+    height: 28px;
+    padding-left: 4px;
+    padding-right: 4px;
     letter-spacing: 0;
-    border: 2px solid #93c5fd;
-    border-radius: 6px;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
   }
   #monthTable .se-time-cell {
-    min-width: 130px;
+    min-width: 96px;
   }
   .se-time-hint {
     display: none;
   }
   #monthTable td select.se-select,
   #monthTable td input.se-input {
-    font-size: 12px !important;
-    border: 2px solid #93c5fd;
-    border-radius: 6px;
+    font-size: 11px !important;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    height: 28px !important;
   }
   #monthTable tbody td,
   #monthTable thead th {
-    font-size: 12px !important;
-    padding: 4px 4px;
+    font-size: 11px !important;
+    padding: 2px 2px;
   }
   #monthTable td[data-field="worked"],
   #monthTable td[data-field="excess"],
@@ -1115,15 +1175,16 @@ body:not(.embed) #monthTable .se-month-scroll {
   #monthTable .se-kubun-tags { display: none; }
   #monthSummaryTable.se-summary th,
   #monthSummaryTable.se-summary td {
-    padding: 6px 6px;
-    font-size: 12px;
-    line-height: 1.2;
+    padding: 2px 2px;
+    font-size: 11px;
+    line-height: 1.1;
   }
   #monthSummaryTable.se-summary th {
     white-space: normal;
     word-break: break-word;
     overflow: visible;
     text-overflow: clip;
+    font-size: 10px;
   }
   #monthSummaryTable.se-summary td {
     white-space: nowrap;
@@ -1146,32 +1207,32 @@ body:not(.embed) #monthTable .se-month-scroll {
   #dailySection .common-buttons .se-btn,
   #dailySection .common-buttons .se-btn.se-btn-wide {
     width: auto;
-    min-width: 92px;
+    min-width: 80px;
     flex: 0 0 auto;
     white-space: nowrap;
-    height: 28px;
-    padding: 4px 8px;
-    font-size: 12px;
+    height: 26px;
+    padding: 2px 6px;
+    font-size: 11px;
   }
   #dailySection .common-buttons .se-toolbar-select {
-    min-width: 120px;
+    min-width: 100px;
     width: auto;
     flex: 0 0 auto;
     white-space: nowrap;
-    height: 28px;
-    padding: 0 8px;
-    font-size: 12px;
+    height: 26px;
+    padding: 0 6px;
+    font-size: 11px;
   }
   #dailySection .common-buttons .se-toolbar .se-toolbar-label {
-    height: 28px;
-    padding: 0 8px;
-    font-size: 11px;
+    height: 26px;
+    padding: 0 6px;
+    font-size: 10px;
   }
   #dailySection .common-buttons .lastMonthBtn,
   #dailySection .common-buttons .nextMonthBtn {
-    min-width: 80px;
-    padding: 3px 8px;
-    font-size: 12px;
+    min-width: 70px;
+    padding: 2px 6px;
+    font-size: 11px;
     letter-spacing: 0;
     white-space: nowrap;
   }
@@ -1216,6 +1277,10 @@ body:not(.embed) #monthTable .se-month-scroll {
     border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
+  }
+  .se-hscroll,
+  .se-vscroll {
+    display: none !important;
   }
 }
 
@@ -2242,8 +2307,24 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
   }
 
   .se-page-head {
+    position: relative;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  #monthWorkflow {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    margin-top: 0 !important;
+    gap: 4px !important;
+  }
+  
+  #btnApproveMonth, #btnUnlockMonth {
+    height: 20px !important;
+    font-size: 9px !important;
+    padding: 0 6px !important;
+    border-radius: 4px !important;
   }
 
   .se-target-month {
@@ -2382,23 +2463,54 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
   outline: none !important;
   box-shadow: none !important;
 }
-/* Đồng bộ font trong bảng tháng */
-#monthTable{
-  font-size: 14px;
+/* Đồng bộ font trong bảng tháng (Chỉ áp dụng màn hình lớn) */
+@media (min-width: 901px) {
+  #monthTable{
+    font-size: 14px;
+  }
+
+  #monthTable thead th,
+  #monthTable tbody td{
+    font-size: 14px !important;
+  }
+
+  /* Đồng bộ font cho form controls trong ô */
+  #monthTable input,
+  #monthTable select,
+  #monthTable textarea,
+  #monthTable button{
+    font-size: 14px !important;
+    font-family: inherit;
+  }
 }
 
-#monthTable thead th,
-#monthTable tbody td{
-  font-size: 14px !important;
-}
-
-/* Đồng bộ font cho form controls trong ô */
-#monthTable input,
-#monthTable select,
-#monthTable textarea,
-#monthTable button{
-  font-size: 14px !important;
-  font-family: inherit;
+/* Ép toàn bộ giao diện siêu nhỏ trên mobile (< 900px) */
+@media (max-width: 900px) {
+  .se-page-title { font-size: 13px !important; }
+  .se-target-label, .se-target-label-sample { font-size: 10px !important; padding: 0 4px !important; height: 24px !important; }
+  .se-target-input, .se-target-input-sample, .se-target-select { font-size: 10px !important; height: 24px !important; }
+  
+  .se-employee-bar { padding: 4px 6px !important; margin-bottom: 6px !important; gap: 4px !important; }
+  .se-employee-line, .se-employee-v, .se-employee-k { font-size: 10px !important; }
+  
+  .se-tab, .se-btn { height: 24px !important; font-size: 10px !important; padding: 0 6px !important; }
+  .se-daily-text, .se-section-title { font-size: 11px !important; }
+  
+  #contractTable th, #contractTable td,
+  #monthSummaryTable.se-summary th, #monthSummaryTable.se-summary td {
+    font-size: 10px !important;
+    font-weight: normal !important;
+    padding: 2px 4px !important;
+    height: 22px !important;
+  }
+  
+  #monthTable{ font-size: 10px !important; }
+  #monthTable thead th, #monthTable tbody td{ font-size: 10px !important; padding: 2px !important; }
+  #monthTable input, #monthTable select, #monthTable textarea, #monthTable button{
+    font-size: 10px !important;
+    height: 24px !important;
+    padding: 0 2px !important;
+  }
 }
 @media (max-width: 420px) {
   .se-month { margin: 0 4px; }
@@ -2420,10 +2532,52 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
     padding: 0 6px;
     font-size: 10px;
   }
-  .se-bottombar .se-btn { min-width: 76px; height: 24px; padding: 2px 5px; font-size: 10px; }
-  .se-bottombar .se-file { height: 24px; line-height: 24px; font-size: 10px; }
-  #monthTable { font-size: 11px; }
-  #monthTable thead th, #monthTable tbody td { font-size: 11px !important; }
+  .se-bottombar .se-btn { min-width: 0 !important; height: 22px !important; padding: 0 4px !important; font-size: 8px !important; }
+  .se-bottombar .se-file { height: 22px !important; line-height: 22px !important; font-size: 8px !important; padding: 0 2px !important; min-width: 100px !important; width: auto !important; }
+  .se-bottombar .se-file::file-selector-button {
+    height: 20px !important;
+    font-size: 8px !important;
+    padding: 0 4px !important;
+    margin: 0 !important;
+  }
+  .se-bottombar {
+    width: 100vw !important;
+    padding: 4px 2px !important;
+    box-sizing: border-box !important;
+    left: 0 !important;
+    bottom: 0 !important;
+  }
+  .se-bottom-center {
+    gap: 4px !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Hide scrollbar Firefox */
+  }
+  .se-bottom-center::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari */
+  }
+  .se-bottom-center .se-btn.primary,
+  .se-bottom-back,
+  .se-bottom-confirm {
+    height: 22px !important;
+    font-size: 8px !important;
+    padding: 0 4px !important;
+    min-width: 36px !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .se-bottombar .exportBtn,
+  .se-bottombar .importBtn {
+    min-width: 0 !important;
+    width: auto !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  #monthTable { font-size: 10px; }
+  #monthTable thead th, #monthTable tbody td { font-size: 10px !important; }
 }
 
 /* Prevent random stretched cells on narrow phones */

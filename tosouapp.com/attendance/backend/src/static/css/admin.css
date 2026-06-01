@@ -151,6 +151,7 @@
 
 .admin .content {
   max-width: none;
+  transition: transform .2s ease;
 }
 
 /* Hide fixed sidebar when mobile drawer is open to free screen space */

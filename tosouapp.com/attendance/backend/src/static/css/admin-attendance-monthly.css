@@ -46,30 +46,30 @@ section.card {
 }
 
 .admin-monthly-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #475569;
 }
 
 .admin-monthly-month-label {
-  height: 34px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
-  padding: 0 12px;
-  border-radius: 8px;
+  padding: 0 8px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #f8fafc;
   color: #0b2c66;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 11px;
 }
 
 .admin-monthly-month {
-  height: 34px;
+  height: 28px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0 10px;
-  font-size: 13px;
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 11px;
   font-weight: 600;
   color: #0b2c66;
   outline: none;
@@ -82,13 +82,13 @@ section.card {
 
 /* Dropdown chọn nhân viên */
 .admin-monthly-emp-select {
-  height: 34px;
-  min-width: 220px;
+  height: 28px;
+  min-width: 180px;
   max-width: 340px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0 10px;
-  font-size: 13px;
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 11px;
   font-weight: 600;
   color: #0b2c66;
   background: #fff;
@@ -159,7 +159,7 @@ section.card {
   width: 100%;
   margin: 0;
   color: #0f172a;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
   text-align: left !important;
 }
@@ -337,7 +337,7 @@ section.card {
 .admin-ms-status {
   min-height: 20px;
   color: #0d2c5b;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
   align-self: center;
 }
@@ -354,7 +354,7 @@ section.card {
 .admin-ms-section-head h3 {
   margin: 0;
   color: #0d2c5b;
-  font-size: 18px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -385,7 +385,7 @@ section.card {
 }
 
 .admin-ms-section-head h3 {
-  font-size: 17px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -430,30 +430,43 @@ section.card {
 }
 
 @media (max-width: 560px) {
+  .admin-monthly-label { font-size: 11px; }
+  .admin-monthly-month-label { height: 28px; font-size: 11px; padding: 0 8px; border-radius: 4px; }
+  .admin-monthly-month { height: 28px; font-size: 11px; padding: 0 8px; border-radius: 4px; }
+  .admin-ms-summary-head h2,
+  .admin-ms-section-head h3 {
+    font-size: 11px;
+  }
   .admin-ms-toolbar {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: end;
-    gap: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 
   .admin-ms-employee {
-    grid-column: 1;
     min-width: 0;
+    width: 100%;
   }
 
   .admin-ms-toolbar-group {
-    display: contents;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 12px;
   }
 
   .admin-ms-toolbar-group .admin-ms-toolbar-field {
-    grid-column: 2;
     min-width: 0;
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: 0;
   }
 
   .admin-ms-month {
-    min-width: 0;
-    width: 100%;
+    min-width: 90px;
+    width: 100px;
   }
 
   .admin-ms-actions {
@@ -474,7 +487,7 @@ section.card {
   }
 
   .admin-ms-page-title {
-    font-size: 18px;
+    font-size: 14px;
   }
 
   .admin-ms-toolbar,
@@ -529,14 +542,15 @@ section.card {
   }
 
   .admin-ms-field-label {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .admin-ms-input,
   .admin-ms-select {
-    height: 34px;
-    font-size: 14px;
-    border-radius: 8px;
+    height: 28px;
+    font-size: 11px;
+    border-radius: 4px;
+    padding: 0 6px;
   }
 
   .admin-ms-toolbar-field {
@@ -546,9 +560,27 @@ section.card {
   .admin-ms-actions {
     width: 100%;
   }
+  
+  /* Bảng nhỏ gọn hơn trên mobile */
+  .admin-ms-table th,
+  .admin-ms-table td {
+    padding: 4px 4px !important;
+    font-size: 11px !important;
+    font-weight: normal !important;
+  }
+  
+  .admin-ms-table .admin-ms-input,
+  .admin-ms-table .admin-ms-select {
+    height: 26px !important;
+    font-size: 11px !important;
+    padding: 0 4px !important;
+  }
 
   .admin-ms-btn {
     flex: 1 1 0;
+    height: 28px;
+    font-size: 11px;
+    padding: 0 8px;
   }
 }
 
