@@ -153,6 +153,8 @@
       const inAutoCls = (autoIn && !isManualIn && !hasActualIn) ? 'is-auto' : '';
       const outAutoCls = (autoOut && !isManualOut && !hasActualOut) ? 'is-auto' : '';
 
+      const canEditTimeRow = canEditWorkRow && !isEmployee;
+
       const shiftBrRaw = Number(shift?.break_minutes ?? 60);
       const shiftBrMin = Number.isFinite(shiftBrRaw) && shiftBrRaw >= 0 ? shiftBrRaw : 60;
       const brMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.breakMinutes ?? 60) : 60) : 0;
@@ -279,16 +281,16 @@
       <td><input id="memo_${dateStr}" name="memo_${dateStr}" class="se-input" data-field="memo" type="text" value="${esc(dMemo)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input id="checkIn_${dateStr}" name="checkIn_${dateStr}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}">
+          <input id="checkIn_${dateStr}" name="checkIn_${dateStr}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}">
         </div>
       </td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input id="checkOut_${dateStr}" name="checkOut_${dateStr}" class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!canEditWorkRow ? 'disabled' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}">
+          <input id="checkOut_${dateStr}" name="checkOut_${dateStr}" class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}">
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditWorkRow ? 'disabled' : ''}>
+        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''}>
           <option value="1:00" ${brVal === '1:00' ? 'selected' : ''}>1:00</option>
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>
@@ -296,7 +298,7 @@
         </select>
       </td>
       <td>
-        <select id="nightBreak_${dateStr}" name="nightBreak_${dateStr}" class="se-select" data-field="nightBreak" ${!canEditWorkRow ? 'disabled' : ''}>
+        <select id="nightBreak_${dateStr}" name="nightBreak_${dateStr}" class="se-select" data-field="nightBreak" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''}>
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
