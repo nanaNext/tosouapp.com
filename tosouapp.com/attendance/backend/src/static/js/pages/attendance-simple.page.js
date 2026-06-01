@@ -1392,15 +1392,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch {}
 
   $('#btnReload')?.addEventListener('click', async () => { await load(state.date); });
-  const persistSimpleEntry = async () => {
+  const persistSimpleEntry = async (btn) => {
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '保存中...';
+    }
     const saved = await save(state.date);
     const rep = await saveWorkReportIfPossible(state.date);
     if (saved) {
       showToast('保存しました');
       if (rep?.saved && rep?.report?.id) showToast(`作業報告も保存しました (id=${rep.report.id})`, 'success');
       else if (rep?.attempted && !rep?.saved && rep?.message) showErr(rep.message);
+      
+      if (btn) {
+        btn.innerHTML = '保存成功';
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#fff';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+          btn.disabled = false;
+        }, 2000);
+      }
     } else {
       showToast('保存に失敗しました', 'error');
+      if (btn) {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
     }
   };
   $('#btnSave')?.addEventListener('click', async (e) => {
@@ -1410,7 +1433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showErr('先に勤務区分を選択してください');
       return;
     }
-    await persistSimpleEntry();
+    await persistSimpleEntry(e.currentTarget);
   });
   $('#btnConfirm')?.addEventListener('click', async (e) => {
     e.preventDefault(); // Chặn hành vi submit mặc định của form (tránh trắng trang)
@@ -1419,9 +1442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showErr('先に勤務区分を選択してください');
       return;
     }
-    const ok = window.confirm('保存しますか？');
-    if (!ok) return;
-    await persistSimpleEntry();
+    await persistSimpleEntry(e.currentTarget);
   });
   $('#btnAdd')?.addEventListener('click', () => { showErr('この画面では勤務区分追加は未対応です'); });
 
