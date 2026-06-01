@@ -151,8 +151,10 @@
       // Field-level visual logic:
       // - check-in stays faded until it has real value.
       // - check-out stays faded until it has real value (even if check-in is real).
-      const inAutoCls = (autoIn && !isManualIn && !hasActualIn) ? 'is-auto' : '';
-      const outAutoCls = (autoOut && !isManualOut && !hasActualOut) ? 'is-auto' : '';
+      // Note: Always treat isPlanned rows as auto/faded regardless of whether they have a real value,
+      // because they haven't been confirmed as an actual working day yet.
+      const inAutoCls = ((autoIn || isPlanned) && !isManualIn && !hasActualIn) ? 'is-auto' : '';
+      const outAutoCls = ((autoOut || isPlanned) && !isManualOut && !hasActualOut) ? 'is-auto' : '';
 
       const canEditTimeRow = canEditWorkRow && !isEmployee;
 
@@ -164,7 +166,7 @@
 
       // Show planned work hours (faded) even before actual punches exist.
       const workHm = ((isWorkDay || isPlanned) && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
-      const isAutoWork = (isWorkDay || isPlanned) && (autoIn || autoOut) && !!workHm;
+      const isAutoWork = (isWorkDay || isPlanned) && (autoIn || autoOut || isPlanned) && !!workHm;
       const hasCompletedActual = hasActualIn && hasActualOut;
       const workAutoCls = (isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
