@@ -473,6 +473,12 @@ body {
   border-color: #7fb3ff;
   box-shadow: 0 0 0 2px rgba(127,179,255,.35);
 }
+.simple-combo.is-disabled .simple-combo-btn {
+  background: #eef2f7;
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 1;
+}
 .simple-combo.is-planned .simple-combo-btn {
   border-color: #60a5fa;
   background: #eaf4ff;
@@ -514,8 +520,10 @@ body {
   background: #eef2f7;
   color: #64748b;
 }
-.simple-time-input[readonly] {
+.simple-time-input[readonly],
+.simple-stamp-time[readonly] {
   background: #ffffff;
+  pointer-events: none;
 }
 .simple-stamp-stack {
   display: grid;

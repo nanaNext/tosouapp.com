@@ -117,10 +117,21 @@ const setupSimpleCombo = (sel) => {
     const opt = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0] : sel.querySelector('option:not([disabled])');
     text.textContent = opt ? (opt.textContent || '') : '';
     wrap.classList.toggle('is-planned', sel.classList.contains('is-planned'));
+    btn.disabled = sel.disabled;
+    if (sel.disabled) wrap.classList.add('is-disabled');
+    else wrap.classList.remove('is-disabled');
   };
   sync();
   sel.dataset.comboInit = '1';
   sel.addEventListener('change', sync);
+  
+  // Watch for programmatic disabled attribute changes
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.attributeName === 'disabled') sync();
+    }
+  });
+  observer.observe(sel, { attributes: true });
 };
 
 const reportDraftKey = (date) => `attendanceSimple.workReport.${date}`;
