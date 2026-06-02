@@ -1043,13 +1043,13 @@ const load = async (date, opts = {}) => {
       else if (!String(sel.value || '').trim()) sel.value = '';
     }
     if (daily) {
-      if (daily.breakMinutes !== undefined && daily.breakMinutes !== null) {
-        if ($('#breakMin')) { $('#breakMin').value = daily.breakMinutes; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
+      if (daily.break_minutes !== undefined && daily.break_minutes !== null) {
+        if ($('#breakMin')) { $('#breakMin').value = daily.break_minutes; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       } else {
         if ($('#breakMin')) { $('#breakMin').value = '60'; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       }
-      if (daily.nightBreakMinutes !== undefined && daily.nightBreakMinutes !== null) {
-        if ($('#nightBreakMin')) { $('#nightBreakMin').value = daily.nightBreakMinutes; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
+      if (daily.night_break_minutes !== undefined && daily.night_break_minutes !== null) {
+        if ($('#nightBreakMin')) { $('#nightBreakMin').value = daily.night_break_minutes; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
       } else {
         if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
       }
