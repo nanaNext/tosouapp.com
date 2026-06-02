@@ -489,7 +489,6 @@
       const plannedKubun = offDay ? '休日' : '出勤';
       const effective = v || plannedKubun;
       const isHoliday = effective === '休日' || effective === '代替休日' || effective === '無給休暇' || effective === '有給休暇' || effective === '欠勤';
-      const lockByNoKubun = !v;
       const ctrls = Array.from(row.querySelectorAll('input, select, textarea, button')).filter(el => !el.matches('select[data-field="classification"], button[data-action="history"]'));
       for (const el of ctrls) {
         if (isHoliday) {
@@ -497,7 +496,14 @@
           el.setAttribute('data-row-disabled', '1');
         } else {
           el.removeAttribute('data-row-disabled');
-          if (state.editableMonth && !el.hasAttribute('data-fixed-disabled')) el.removeAttribute('disabled');
+          // Skip applying disabled state to break inputs on the monthly board 
+          // so employees can edit their break times manually
+          const isBreakInput = el.matches('select[data-field="break"], select[data-field="nightBreak"]');
+          if (isBreakInput) {
+            el.removeAttribute('disabled');
+          } else if (state.editableMonth && !el.hasAttribute('data-fixed-disabled')) {
+            el.removeAttribute('disabled');
+          }
         }
       }
       

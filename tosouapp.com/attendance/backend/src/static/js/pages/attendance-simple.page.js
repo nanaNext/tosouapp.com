@@ -1453,59 +1453,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await load(state.date);
   });
 
-  // Expose auto-calculation function
-  const calcAutoBreakTimes = () => {
-    if (state.restHoliday) return;
-    const stEl = $('#startTime');
-    const etEl = $('#endTime');
-    const cin = effectiveHm(stEl);
-    const cout = effectiveHm(etEl);
-    if (!cin || !cout || cout <= cin) return;
-    
-    const mIn = hhmmToMin(cin);
-    const mOut = hhmmToMin(cout);
-    const total = mOut - mIn;
-    
-    // Default simple rules similar to monthly:
-    // If worked >= 6 hours (360 mins), 1 hour break. Else 0.
-    let b = total >= 360 ? 60 : 0;
-    
-    // Night break (between 22:00 and 05:00)
-    let nb = 0;
-    const nStart = 22 * 60; // 22:00
-    const nEnd = 29 * 60; // 05:00 next day
-    
-    if (mOut > nStart) {
-       const overlapStart = Math.max(mIn, nStart);
-       const overlapEnd = Math.min(mOut, nEnd);
-       if (overlapEnd > overlapStart) {
-          const nightWorkMins = overlapEnd - overlapStart;
-          // E.g. give 30 mins night break if they work more than 2 hours into the night
-          if (nightWorkMins >= 120) nb = 30;
-       }
-    }
-    
-    // Prevent breaks from exceeding total worked time
-    if (b + nb > total) {
-       b = Math.max(0, total - nb);
-    }
-    
-    if ($('#breakMin')) {
-      $('#breakMin').value = b;
-      setupSimpleCombo(document.getElementById('breakMin'));
-      const evt = new Event('change');
-      $('#breakMin').dispatchEvent(evt);
-    }
-    if ($('#nightBreakMin')) {
-      $('#nightBreakMin').value = nb;
-      setupSimpleCombo(document.getElementById('nightBreakMin'));
-      const evt = new Event('change');
-      $('#nightBreakMin').dispatchEvent(evt);
-    }
-  };
-
-  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); calcAutoBreakTimes(); renderWorkMinutes(); renderSimpleStatus(); });
-  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); calcAutoBreakTimes(); renderWorkMinutes(); renderSimpleStatus(); });
+  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); renderSimpleStatus(); });
+  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); renderSimpleStatus(); });
   $('#breakMin')?.addEventListener('change', renderWorkMinutes);
   $('#nightBreakMin')?.addEventListener('change', renderWorkMinutes);
   wireWorkTypeButtons();
