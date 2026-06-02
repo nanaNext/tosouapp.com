@@ -173,8 +173,8 @@ const saveFastSnapshot = (date) => {
       endTime: String($('#endTime')?.value || ''),
       startAuto: String($('#startTime')?.dataset?.auto || '') === '1',
       endAuto: String($('#endTime')?.dataset?.auto || '') === '1',
-      breakMin: String($('#breakMin')?.value || '1:00'),
-      nightBreakMin: String($('#nightBreakMin')?.value || '0:00'),
+      breakMin: String($('#breakMin')?.value || '60'),
+      nightBreakMin: String($('#nightBreakMin')?.value || '0'),
       workSite: String($('#workSite')?.value || ''),
       workContent: String($('#workContent')?.value || '')
     };
@@ -242,8 +242,8 @@ const restoreFastSnapshot = (date, stateRef) => {
       else clearAutoTime(et);
     }
     if ($('#workType')) $('#workType').value = String(snap.workType || '');
-    if ($('#breakMin')) $('#breakMin').value = String(snap.breakMin || '1:00');
-    if ($('#nightBreakMin')) $('#nightBreakMin').value = String(snap.nightBreakMin || '0:00');
+    if ($('#breakMin')) $('#breakMin').value = String(snap.breakMin || '60');
+    if ($('#nightBreakMin')) $('#nightBreakMin').value = String(snap.nightBreakMin || '0');
     if ($('#workSite')) $('#workSite').value = String(snap.workSite || '');
     if ($('#workContent')) $('#workContent').value = String(snap.workContent || '');
 
@@ -499,17 +499,8 @@ const calcWorkMinutes = () => {
   // Use the visible time values for live UI calculation.
   const s = parseHm(String($('#startTime')?.value || '').trim());
   const e = parseHm(String($('#endTime')?.value || '').trim());
-  
-  // Extract minutes from readonly inputs formatted as "H:MM"
-  const parseBreak = (val) => {
-    if (!val) return 0;
-    const [h, m] = String(val).split(':').map(Number);
-    if (isNaN(h) || isNaN(m)) return 0;
-    return h * 60 + m;
-  };
-  
-  const b = parseBreak($('#breakMin')?.value);
-  const nb = parseBreak($('#nightBreakMin')?.value);
+  const b = parseInt($('#breakMin')?.value || '0', 10) || 0;
+  const nb = parseInt($('#nightBreakMin')?.value || '0', 10) || 0;
   
   if (!s || !e) return null;
   const raw = e.total - s.total - b - nb;
@@ -822,16 +813,8 @@ const getShiftForDate = async (date) => {
 const persistDaily = async (date) => {
   const kubun = String($('#kubun')?.value || '').trim();
   const workType = String($('#workType')?.value || '').trim();
-  
-  // Parse readonly text values back to minutes for the API
-  const parseBreak = (val) => {
-    if (!val) return 0;
-    const [h, m] = String(val).split(':').map(Number);
-    if (isNaN(h) || isNaN(m)) return 0;
-    return h * 60 + m;
-  };
-  const breakMinutes = parseBreak($('#breakMin')?.value);
-  const nightBreakMinutes = parseBreak($('#nightBreakMin')?.value);
+  const breakMinutes = Number($('#breakMin')?.value || 60);
+  const nightBreakMinutes = Number($('#nightBreakMin')?.value || 0);
   
   await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
     method: 'PUT',
@@ -1053,24 +1036,18 @@ const load = async (date, opts = {}) => {
     }
     if (daily) {
       if (daily.breakMinutes !== undefined && daily.breakMinutes !== null) {
-        const bm = parseInt(daily.breakMinutes, 10);
-        const hm = `${Math.floor(bm / 60)}:${String(bm % 60).padStart(2, '0')}`;
-        if ($('#breakMin')) $('#breakMin').value = hm;
+        if ($('#breakMin')) $('#breakMin').value = daily.breakMinutes;
       } else {
-        // Apply logic for default auto calculation if missing daily break
-        // For simplicity, keep default to 1:00 if worked > 6h, else 0:00 (this is just fallback)
-        if ($('#breakMin')) $('#breakMin').value = '1:00';
+        if ($('#breakMin')) $('#breakMin').value = '60';
       }
       if (daily.nightBreakMinutes !== undefined && daily.nightBreakMinutes !== null) {
-        const nbm = parseInt(daily.nightBreakMinutes, 10);
-        const hm = `${Math.floor(nbm / 60)}:${String(nbm % 60).padStart(2, '0')}`;
-        if ($('#nightBreakMin')) $('#nightBreakMin').value = hm;
+        if ($('#nightBreakMin')) $('#nightBreakMin').value = daily.nightBreakMinutes;
       } else {
-        if ($('#nightBreakMin')) $('#nightBreakMin').value = '0:00';
+        if ($('#nightBreakMin')) $('#nightBreakMin').value = '0';
       }
     } else {
-      if ($('#breakMin')) $('#breakMin').value = '1:00';
-      if ($('#nightBreakMin')) $('#nightBreakMin').value = '0:00';
+      if ($('#breakMin')) $('#breakMin').value = '60';
+      if ($('#nightBreakMin')) $('#nightBreakMin').value = '0';
     }
 
     ensureDefaultWorkTypeForToday(date);
@@ -1242,12 +1219,6 @@ const save = async (date) => {
       const siteStr = String(sEl?.value || '').trim();
       
       if (workStr || siteStr) {
-        const parseBreak = (val) => {
-          if (!val) return 0;
-          const [h, m] = String(val).split(':').map(Number);
-          if (isNaN(h) || isNaN(m)) return 0;
-          return h * 60 + m;
-        };
         // Must update daily table directly because attendance-monthly.render reads daily.location and daily.memo
         await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
           method: 'PUT',
@@ -1256,8 +1227,8 @@ const save = async (date) => {
             memo: workStr || ' ',
             kubun: String($('#kubun')?.value || '').trim(),
             workType: wt || null,
-            breakMinutes: parseBreak($('#breakMin')?.value) || 60,
-            nightBreakMinutes: parseBreak($('#nightBreakMin')?.value) || 0
+            breakMinutes: Number($('#breakMin')?.value || 60),
+            nightBreakMinutes: Number($('#nightBreakMin')?.value || 0)
           })
         });
         clearDraft(date);
@@ -1519,16 +1490,24 @@ document.addEventListener('DOMContentLoaded', async () => {
        b = Math.max(0, total - nb);
     }
     
-    const bStr = `${Math.floor(b/60)}:${String(b%60).padStart(2,'0')}`;
-    const nbStr = `${Math.floor(nb/60)}:${String(nb%60).padStart(2,'0')}`;
-    
-    if ($('#breakMin')) $('#breakMin').value = bStr;
-    if ($('#nightBreakMin')) $('#nightBreakMin').value = nbStr;
+    if ($('#breakMin')) {
+      $('#breakMin').value = b;
+      setupSimpleCombo(document.getElementById('breakMin'));
+      const evt = new Event('change');
+      $('#breakMin').dispatchEvent(evt);
+    }
+    if ($('#nightBreakMin')) {
+      $('#nightBreakMin').value = nb;
+      setupSimpleCombo(document.getElementById('nightBreakMin'));
+      const evt = new Event('change');
+      $('#nightBreakMin').dispatchEvent(evt);
+    }
   };
 
   $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); calcAutoBreakTimes(); renderWorkMinutes(); renderSimpleStatus(); });
   $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); calcAutoBreakTimes(); renderWorkMinutes(); renderSimpleStatus(); });
-  // Removed combo event listeners since break inputs are now readonly text inputs
+  $('#breakMin')?.addEventListener('change', renderWorkMinutes);
+  $('#nightBreakMin')?.addEventListener('change', renderWorkMinutes);
   wireWorkTypeButtons();
   $('#workType')?.addEventListener('change', () => { persistWorkType(); });
   $('#workType')?.addEventListener('change', () => { applyWorkTypeGate(); renderSimpleStatus(); });
@@ -1538,7 +1517,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSimpleStatus();
     try { await persistDaily(state.date); } catch {}
   });
-  // Combos for break times are removed. Only company combo is kept if applicable.
+  setupSimpleCombo(document.getElementById('breakMin'));
+  setupSimpleCombo(document.getElementById('nightBreakMin'));
   $('#workSite')?.addEventListener('input', () => {
     saveDraft(state.date, String($('#workSite')?.value || ''), String($('#workContent')?.value || ''));
     renderSimpleStatus();
