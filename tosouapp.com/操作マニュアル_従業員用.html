@@ -1,0 +1,5140 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=0.75,minimum-scale=0.75,maximum-scale=3,user-scalable=yes">
+  <title>操作マニュアル</title>  <style>html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Keep vertical scrollbar space reserved to prevent horizontal "jump" between pages */
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+}
+
+input,
+select,
+textarea,
+button {
+    font-family: Meiryo, "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+#btnLogout::before,
+#drawerLogout::before,
+[data-action="logout"]::before,
+.logout-link::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    background: url("/static/images/iconlogin.png") no-repeat center;
+    background-size: contain;
+    vertical-align: -2px;
+}
+</style>
+  <style>body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+:root {
+  --mobile-drawer-w: 280px;
+  --kintai-top-h: 56px;
+}
+
+.kintai-spinner {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(1.5px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+.kintai-spinner::after {
+  content: none;
+}
+.kintai-spinner[data-mode="save"]::after {
+  content: "保存中...";
+  color: #dbeafe;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .4px;
+}
+
+.kintai-spinner .lds-spinner {
+  color: #60a5fa;
+  display: inline-block;
+  position: relative;
+  width: 68px;
+  height: 68px;
+}
+.kintai-spinner .lds-spinner div {
+  transform-origin: 34px 34px;
+  animation: kintai-lds-spinner 1.2s linear infinite;
+}
+.kintai-spinner .lds-spinner div:after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 4px;
+  left: 31px;
+  width: 6px;
+  height: 16px;
+  border-radius: 20%;
+  background: #60a5fa;
+}
+.kintai-spinner .lds-spinner div:nth-child(1) { transform: rotate(0deg); animation-delay: -1.1s; }
+.kintai-spinner .lds-spinner div:nth-child(2) { transform: rotate(30deg); animation-delay: -1.0s; }
+.kintai-spinner .lds-spinner div:nth-child(3) { transform: rotate(60deg); animation-delay: -0.9s; }
+.kintai-spinner .lds-spinner div:nth-child(4) { transform: rotate(90deg); animation-delay: -0.8s; }
+.kintai-spinner .lds-spinner div:nth-child(5) { transform: rotate(120deg); animation-delay: -0.7s; }
+.kintai-spinner .lds-spinner div:nth-child(6) { transform: rotate(150deg); animation-delay: -0.6s; }
+.kintai-spinner .lds-spinner div:nth-child(7) { transform: rotate(180deg); animation-delay: -0.5s; }
+.kintai-spinner .lds-spinner div:nth-child(8) { transform: rotate(210deg); animation-delay: -0.4s; }
+.kintai-spinner .lds-spinner div:nth-child(9) { transform: rotate(240deg); animation-delay: -0.3s; }
+.kintai-spinner .lds-spinner div:nth-child(10) { transform: rotate(270deg); animation-delay: -0.2s; }
+.kintai-spinner .lds-spinner div:nth-child(11) { transform: rotate(300deg); animation-delay: -0.1s; }
+.kintai-spinner .lds-spinner div:nth-child(12) { transform: rotate(330deg); animation-delay: 0s; }
+@keyframes kintai-lds-spinner {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.kintai-spinner[hidden] {
+  display: none;
+}
+
+.kintai-toast {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 220px;
+  max-width: min(92vw, 520px);
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(11, 44, 102, 0.9);
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  z-index: 3300;
+  pointer-events: none;
+}
+.kintai-toast .sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 0.95;
+}
+.kintai-toast.show {
+  animation: kintai-toast-fade 1.8s ease forwards;
+}
+@keyframes kintai-toast-fade {
+  0% { opacity: 0; transform: translate(-50%, -42%); }
+  18% { opacity: 1; transform: translate(-50%, -50%); }
+  72% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -58%); }
+}
+
+.kintai-top {
+  background: #0b2c66;
+  color: #fff;
+  height: var(--kintai-top-h);
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2500;
+}
+
+/* Header stability: prevent repaint/flicker on input focus and page interactions */
+html {
+  scrollbar-gutter: stable;
+}
+body.nav-js {
+  overflow-y: scroll;
+}
+.kintai-top,
+.kintai-top-inner,
+.kintai-nav,
+.kintai-nav *,
+.kintai-top-links,
+.kintai-top-links * {
+  transition: none !important;
+  animation: none !important;
+}
+.kintai-top {
+  transform: none !important;
+  will-change: auto !important;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.kintai-nav-btn,
+.kintai-nav-btn:hover,
+.kintai-nav-btn:focus,
+.kintai-nav-btn:active,
+.kintai-nav-btn[aria-expanded="true"] {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.mobile-btn {
+  display: none;
+}
+
+.kintai-top-inner {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.kintai-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+  margin-left: -12px;
+}
+
+.kintai-logo {
+  font-weight: 800;
+  letter-spacing: .2px;
+  font-size: 32px;
+  line-height: 1.15;
+  height: auto;
+  padding-left: 12px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  top: 2px;
+}
+
+@media (min-width: 901px) {
+  .kintai-top {
+    overflow: visible;
+    padding-top: 0;
+    align-items: center;
+  }
+  .kintai-logo {
+    font-size: 30px;
+    line-height: 1;
+    top: 0;
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+.kintai-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.kintai-nav-dd {
+  position: relative;
+}
+
+.kintai-nav-btn {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, .92);
+  font-weight: 800;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .12s ease, color .12s ease, box-shadow .12s ease;
+}
+
+.kintai-nav-btn:hover {
+  background: rgba(255, 255, 255, .18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .12) inset;
+}
+
+.kintai-nav-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, .7);
+  outline-offset: 2px;
+}
+
+.kintai-nav-btn.active {
+  background: transparent;
+}
+
+.kintai-nav-btn.active:hover {
+  background: rgba(255, 255, 255, .18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .12) inset;
+}
+
+.kintai-nav-btn:active,
+.kintai-nav-btn[aria-expanded="true"] {
+  background: rgba(255, 255, 255, .18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .12) inset;
+}
+
+.kintai-nav-btn.active:active,
+.kintai-nav-btn.active[aria-expanded="true"] {
+  background: rgba(255, 255, 255, .18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .12) inset;
+}
+
+.kintai-caret {
+  font-size: 12px;
+  opacity: .9;
+}
+
+.kintai-dd {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  width: max-content;
+  background: #1f3553;
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  padding: 6px;
+  z-index: 2601;
+}
+
+.kintai-nav-dd .kintai-nav-btn[aria-expanded="true"]+.kintai-dd {
+  display: block !important;
+}
+
+.kintai-nav-dd:focus-within .kintai-dd {
+  display: block !important;
+}
+
+.kintai-nav-dd.open .kintai-dd {
+  display: block !important;
+}
+
+/* JS-controlled dropdown mode */
+body.nav-js .kintai-dd {
+  display: none !important;
+}
+
+body.nav-js .kintai-nav-dd .kintai-nav-btn[aria-expanded="true"]+.kintai-dd {
+  display: block !important;
+}
+
+body.nav-js .kintai-nav-dd .kintai-nav-btn[aria-expanded="true"]+.kintai-dd[hidden] {
+  display: block !important;
+}
+
+body.nav-js .kintai-nav-dd.open .kintai-dd {
+  display: block !important;
+}
+
+body.nav-js .kintai-dd.show {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+body.nav-js .kintai-nav-dd:focus-within .kintai-dd {
+  display: none !important;
+}
+
+body.nav-js .kintai-nav-dd:not(.open) .kintai-dd {
+  display: none !important;
+}
+
+/* Ensure visibility and interaction when open */
+body.nav-js .kintai-nav-dd.open .kintai-dd {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 900px) {
+  body.nav-js .kintai-nav-dd .kintai-nav-btn:focus+.kintai-dd {
+    display: block !important;
+  }
+
+  body.nav-js .kintai-nav-dd .kintai-nav-btn:focus+.kintai-dd[hidden] {
+    display: block !important;
+  }
+
+  /* Avoid clipping dropdown on mobile */
+  .kintai-nav {
+    overflow-y: visible;
+  }
+}
+
+.kintai-nav-dd::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 10px;
+}
+@media (max-width: 700px) {
+  /* Hover bridge can block taps to first dropdown item on mobile. */
+  .kintai-nav-dd::after {
+    display: none;
+  }
+}
+
+.kintai-dd a {
+  display: block;
+  color: rgba(255, 255, 255, .95);
+  text-decoration: none;
+  font-weight: 900;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.kintai-dd a:hover {
+  background: rgba(255, 255, 255, .10);
+}
+
+.kintai-dd a:active {
+  background: rgba(255, 255, 255, .12);
+}
+
+@media (hover:hover) and (pointer:fine) {
+  .kintai-nav-dd:hover .kintai-dd {
+    display: block;
+  }
+
+  .kintai-nav-dd:hover .kintai-dd[hidden] {
+    display: block;
+  }
+
+  body.nav-js .kintai-nav-dd:hover .kintai-dd {
+    display: none !important;
+  }
+
+  body.nav-js .kintai-nav-dd:hover .kintai-dd[hidden] {
+    display: none !important;
+  }
+}
+
+.kintai-user {
+  position: relative;
+}
+
+.kintai-top-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-right: 10px;
+}
+
+.kintai-top-link {
+  color: rgba(255, 255, 255, .95);
+  text-decoration: none;
+  font-weight: 900;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.kintai-top-link:hover {
+  background: rgba(255, 255, 255, .10);
+}
+
+.kintai-user-btn {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.kintai-user-btn:hover {
+  background: rgba(255, 255, 255, .10);
+}
+
+.kintai-user-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 180px;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .10);
+  padding: 8px;
+  z-index: 100;
+}
+
+.kintai-user-menu a,
+.kintai-user-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 650;
+}
+
+.kintai-user-menu a:hover,
+.kintai-user-menu button:hover {
+  background: #f1f5f9;
+}
+
+.kintai-main {
+  background: #f5f6f8;
+  min-height: calc(100vh - var(--kintai-top-h));
+  padding: calc(12px + var(--kintai-top-h)) 12px 24px;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --kintai-top-h: 52px;
+  }
+  .kintai-top {
+    height: var(--kintai-top-h);
+  }
+
+  .kintai-top-inner {
+    max-width: none;
+    padding: 0 8px;
+    gap: 4px;
+    position: relative;
+  }
+
+  .kintai-top {
+    border-bottom: 0;
+  }
+
+  .kintai-brand {
+    min-width: auto;
+  }
+
+  .kintai-brand {
+    margin-left: 0;
+  }
+
+  .kintai-logo {
+    font-size: 16px;
+    line-height: var(--kintai-top-h);
+    height: var(--kintai-top-h);
+    padding-left: 8px;
+  }
+
+  .mobile-btn {
+    display: none !important;
+    padding: 6px 10px;
+    border: 1px solid #a9c6e8;
+    background: #d0e8ff;
+    color: #0d2c5b;
+    font-size: 16px;
+    font-weight: 800;
+    margin-right: 8px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 6px;
+    position: relative;
+    left: 6px;
+    z-index: 3201;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
+  }
+
+  .mobile-btn:hover {
+    background: #dbeafe;
+    border-color: #7fb3ff;
+  }
+
+  .mobile-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  .kintai-nav {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    overflow: visible !important;
+    /* Tránh cuộn ngang gây "chuyển động" khi chạm */
+    scroll-snap-type: none !important;
+  }
+
+  /* Remove edge gradients on mobile to avoid color bleed */
+  .kintai-top-inner::before,
+  .kintai-top-inner::after {
+    content: none;
+    display: none;
+  }
+
+  .kintai-user {
+    margin-left: auto;
+  }
+
+  .kintai-top-links {
+    justify-content: flex-end;
+  }
+
+  .kintai-nav.mobile-open {
+    display: none;
+  }
+
+  .kintai-dd {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+  }
+
+  .kintai-nav-btn {
+    font-size: 14px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+    scroll-snap-align: none !important;
+  }
+
+  .kintai-caret {
+    font-size: 12px;
+  }
+
+  .kintai-top-link {
+    font-size: 14px;
+    padding: 8px 10px;
+  }
+
+  .mobile-drawer-backdrop {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: var(--mobile-drawer-w);
+    top: 0;
+    background: rgba(0, 0, 0, .35);
+    z-index: 2950;
+    display: none;
+    pointer-events: auto;
+  }
+
+  .mobile-drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--mobile-drawer-w);
+    background: #eaf2ff;
+    border-right: 1px solid #cbd5e1;
+    box-shadow: none;
+    z-index: 3000;
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  body.mobile-drawer-open .mobile-drawer {
+    transform: translateX(0);
+  }
+
+  body.mobile-drawer-open .mobile-drawer-backdrop {
+    display: block;
+  }
+
+  body.mobile-drawer-open {
+    overflow-x: hidden;
+  }
+
+  body.mobile-drawer-open .kintai-top,
+  body.mobile-drawer-open .kintai-top-inner,
+  body.mobile-drawer-open .kintai-brand,
+  body.mobile-drawer-open .kintai-user,
+  body.mobile-drawer-open .kintai-top-links {
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
+  }
+
+  body.mobile-drawer-open .kintai-main,
+  body.mobile-drawer-open .layout-main,
+  body.mobile-drawer-open .layout-contents {
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
+  }
+
+  body.mobile-drawer-open .layout-container,
+  body.mobile-drawer-open .se-month-table-wrap,
+  body.mobile-drawer-open .se-month-scroll {
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
+  }
+
+  /* Đảm bảo đẩy toàn bộ trang sang phải trên mọi màn hình kintai */
+  body.mobile-drawer-open> :not(#mobileDrawer):not(#mobileDrawerBackdrop) {
+    transform: translateX(var(--mobile-drawer-w)) !important;
+    transition: transform .2s ease !important;
+  }
+
+  .mobile-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mobile-drawer-title {
+    font-weight: 900;
+    color: #0b2c66;
+  }
+
+  .mobile-drawer-close {
+    border: 0;
+    background: transparent;
+    color: #0b2c66;
+    font-size: 18px;
+    font-weight: 900;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+
+  .mobile-drawer-search {
+    width: calc(100% - 20px);
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 0 10px;
+    margin: 0 10px;
+    font-size: 13px;
+    background: #fff;
+    color: #0f172a;
+    box-sizing: border-box;
+  }
+
+  .mobile-drawer-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-drawer-user-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .mobile-drawer-user-name {
+    font-size: 13px;
+    font-weight: 900;
+    color: #0b2c66;
+  }
+
+  .mobile-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: auto;
+  }
+
+  .drawer-group {
+    padding: 6px 0;
+  }
+
+  .drawer-group-btn {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: #0b2c66;
+    font-weight: 900;
+    font-size: 15px;
+    padding: 10px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 8px;
+    transition: background .12s ease, color .12s ease, box-shadow .12s ease;
+  }
+
+  .drawer-group-btn .drawer-chev {
+    font-size: 16px;
+    transform: rotate(0deg);
+    transition: transform .12s ease;
+  }
+
+  .drawer-group-btn.open .drawer-chev {
+    transform: rotate(90deg);
+  }
+
+  .drawer-group-btn:hover {
+    background: #dff1ff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .06);
+  }
+
+  .drawer-group-btn:active {
+    background: #dbeafe;
+  }
+
+  .drawer-group-btn.open {
+    background: #eaf6ff;
+  }
+
+  .drawer-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 6px 8px;
+  }
+
+  .drawer-group-list[hidden] {
+    display: none !important;
+  }
+
+  .drawer-group-list a {
+    display: block;
+    color: #0b2c66;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    transition: background .12s ease, transform .06s ease;
+    position: relative;
+  }
+
+  .drawer-group-list a:hover {
+    background: #e8f0ff;
+    transform: translateX(2px);
+  }
+
+  .drawer-group-list a::after {
+    content: '›';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    opacity: 0;
+    color: #0b2c66;
+    transition: opacity .12s ease, transform .12s ease;
+  }
+
+  .drawer-group-list a:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+
+  /* Ensure form texts are clearly visible on mobile monthly page */
+  #monthTable input.se-input,
+  #monthTable select.se-select,
+  #monthTable input.se-time {
+    background: #fff;
+    color: #0f172a;
+  }
+
+  #monthTable input.se-input::placeholder,
+  #monthTable input.se-time::placeholder {
+    color: #64748b;
+    opacity: 1;
+  }
+
+  .se-time-hint {
+    display: none !important;
+  }
+
+  .kintai-top-inner::before,
+  .kintai-top-inner::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .kintai-brand {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    z-index: 2;
+  }
+
+  .kintai-logo {
+    font-size: 17px;
+    line-height: 1.1;
+    height: auto;
+    position: static;
+    top: auto;
+  }
+
+  .kintai-nav-dd {
+    position: relative;
+  }
+
+  .kintai-dd {
+    position: absolute;
+    left: 0;
+    right: auto;
+    top: calc(100% + 4px);
+    width: max-content;
+    max-width: 90vw;
+    max-height: calc(100vh - 72px);
+    overflow: auto;
+    z-index: 2600;
+  }
+
+  .kintai-main {
+    padding: calc(var(--kintai-top-h) + 6px) 6px 12px;
+    padding-bottom: 12px;
+    box-sizing: border-box;
+  }
+
+  .kintai-top-links {
+    gap: 8px;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .kintai-top-link {
+    font-size: 11px;
+    padding: 3px 5px;
+    white-space: nowrap;
+  }
+
+  .kintai-top-links .kintai-top-link:not(.logout-link) { display: inline-flex; }
+
+  .kintai-user-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #d0e8ff;
+    border: 1px solid #a9c6e8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Keep brand/logo visible on narrow devices; let nav area shrink/scroll first */
+  .kintai-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .kintai-nav::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.kintai-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 700px);
+  gap: 14px;
+}
+
+.kintai-card {
+  background: #ffffff;
+  border: 1px solid #d7dbe3;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 20px rgba(2, 6, 23, .06);
+}
+
+.kintai-card-title {
+  font-weight: 900;
+  font-size: 14px;
+  color: #0f172a;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 12px;
+}
+
+.kintai-error {
+  max-width: 1100px;
+  margin: 0 auto 10px;
+  color: #b00020;
+  font-weight: 700;
+}
+
+.kintai-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.kintai-table th,
+.kintai-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  vertical-align: middle;
+}
+
+.kintai-table th {
+  background: #f8fafc;
+  text-align: left;
+  color: #0f172a;
+  font-weight: 900;
+  width: 150px;
+}
+
+.kintai-table tr:last-child th,
+.kintai-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.kintai-table tbody tr:nth-child(odd) td {
+  background: #fcfdff;
+}
+
+.kintai-table tbody tr:hover td {
+  background: #eef5ff;
+}
+
+.kintai-table select,
+.kintai-table input[type="text"],
+.kintai-table input[type="time"],
+.kintai-table input {
+  font-size: 16px;
+  height: 40px;
+  min-height: 40px;
+  line-height: normal;
+  padding: 8px 12px;
+  border: 1px solid #cfd6e3;
+  border-radius: 6px;
+  background: #fff;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+
+.kintai-table td {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.kintai-notice-meta {
+  display: grid;
+  gap: 8px;
+}
+
+.kintai-notice-meta-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.kintai-notice-meta-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.kintai-notice-meta-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.kintai-notice-section {
+  margin-top: 10px;
+}
+
+.kintai-notice-toolbar {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.kintai-notice-toggle {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0b2c66;
+  font-weight: 900;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.kintai-notice-toggle:hover {
+  background: #f8fafc;
+}
+
+.kintai-notice-list {
+  display: grid;
+  gap: 8px;
+}
+
+.kintai-notice-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.kintai-notice-item.is-unread {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .18), 0 10px 24px rgba(2, 6, 23, .08);
+}
+
+.kintai-notice-item.is-read {
+  border-color: #e5e7eb;
+}
+
+.kintai-notice-item[open] {
+  border-color: #93c5fd;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, .06);
+}
+
+.kintai-notice-item.is-unread .kintai-notice-summary {
+  background: linear-gradient(180deg, #dbeafe 0%, #ffffff 100%);
+}
+
+.kintai-notice-item.is-unread .kintai-notice-preview {
+  color: #0b2c66;
+  font-weight: 900;
+}
+
+.kintai-notice-item.is-unread .kintai-notice-tag {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.kintai-notice-item.is-read .kintai-notice-summary {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.kintai-notice-item.is-read .kintai-notice-preview {
+  color: #334155;
+  font-weight: 800;
+}
+
+.kintai-notice-item.is-read .kintai-notice-tag {
+  border-color: #e2e8f0;
+  background: #fff;
+  color: #334155;
+}
+
+.kintai-notice-item.is-unread .kintai-notice-time {
+  color: #1d4ed8;
+  font-weight: 900;
+}
+
+.kintai-notice-item.is-unread .kintai-notice-time::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ef4444;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.kintai-notice-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.kintai-notice-summary::-webkit-details-marker {
+  display: none;
+}
+
+.kintai-notice-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kintai-notice-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0b2c66;
+  font-weight: 900;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
+.kintai-notice-new {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-weight: 900;
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+.kintai-notice-preview {
+  font-weight: 900;
+  color: #0f172a;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.kintai-notice-time {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  flex: 0 0 auto;
+}
+
+.kintai-notice-body {
+  padding: 10px 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fff;
+}
+
+.kintai-notice-empty {
+  padding: 10px 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.kintai-notice-links {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.kintai-notice-links a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.kintai-notice-links a:hover {
+  text-decoration: underline;
+}
+
+.kintai-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.kintai-actions-split {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kintai-actions-left,
+.kintai-actions-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kintai-monthly-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #2563eb;
+  font-weight: 900;
+}
+
+.kintai-monthly-link:hover {
+  text-decoration: underline;
+}
+
+.kintai-icon-pc {
+  width: 32px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.kintai-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0b2c66;
+  font-weight: 800;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.kintai-btn.primary {
+  background: #0b2c66;
+  border-color: #0b2c66;
+  color: #fff;
+}
+
+.kintai-btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+
+@media (max-width: 900px) {
+  .kintai-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kintai-brand {
+    min-width: max-content;
+    flex: 0 0 auto;
+  }
+
+  .kintai-nav {
+    gap: 6px;
+  }
+
+  .kintai-nav-item {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 700px) {
+  .kintai-card {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .kintai-card-title {
+    font-size: 14px;
+  }
+
+  .kintai-table {
+    font-size: 15px;
+  }
+
+  .kintai-table th,
+  .kintai-table td {
+    padding: 10px 12px;
+  }
+
+  .kintai-table th {
+    width: 120px;
+  }
+
+  .kintai-table th,
+  .kintai-table td {
+    font-size: 16px;
+  }
+
+  .kintai-table select,
+  .kintai-table input[type="text"],
+  .kintai-table input[type="time"],
+  .kintai-table input {
+    font-size: 16px;
+    height: 40px;
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .kintai-actions {
+    gap: 8px;
+  }
+
+  .kintai-btn {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+}
+
+/* ...existing code... */
+
+/* Fix attendance form buttons visibility */
+#attendanceHost {
+  padding-bottom: 120px;
+}
+
+@media (max-width: 700px) {
+  #attendanceHost {
+    padding-bottom: 150px;
+  }
+}
+
+/* ...existing code... */
+
+/* Make table cells same height */
+.kintai-table td {
+  height: 50px;
+  padding: 0;
+  vertical-align: middle;
+}
+
+.kintai-table th {
+  height: 50px;
+  vertical-align: middle;
+  padding: 8px;
+}
+
+/* Fix kubun dropdown and input height to match label */
+.kintai-table select.simple-select,
+.kintai-table input {
+  height: 100%;
+  min-height: 50px;
+  padding: 12px 14px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+@media (max-width: 700px) {
+  #attendanceHost {
+    padding-bottom: 150px;
+  }
+
+  .kintai-table td {
+    height: 56px;
+  }
+
+  .kintai-table select.simple-select,
+  .kintai-table input {
+    min-height: 56px;
+    font-size: 16px;
+  }
+}
+
+/* Mobile-friendly attendance form */
+@media (max-width: 700px) {
+
+  /* Chuyển table thành dạng block để không bị lệch */
+  .kintai-table,
+  .kintai-table tr,
+  .kintai-table td,
+  .kintai-table th {
+    display: block;
+    width: 100%;
+  }
+
+  /* Label (th) nằm trên */
+  .kintai-table th {
+    background: transparent;
+    border: 0;
+    padding: 6px 0 2px;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  /* Input nằm dưới, full width */
+  .kintai-table td {
+    border: 0;
+    padding: 0 0 12px;
+  }
+
+  .kintai-table input,
+  .kintai-table select {
+    width: 100%;
+    min-height: 48px;
+    font-size: 16px;
+    padding: 10px 12px;
+    border-radius: 6px;
+  }
+}
+</style>
+  <style>.se-month {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  overflow: visible; /* Cho phép sticky hoạt động */
+}
+
+/* Page-level override: do not reserve a persistent scrollbar gutter on this screen */
+html,
+body,
+body.nav-js {
+  scrollbar-gutter: auto !important;
+}
+
+body.nav-js {
+  overflow-y: auto !important;
+}
+
+
+.layout-container {
+  display: block; /* Tránh flexbox làm mất sticky */
+  width: 100%;
+}
+.layout-main {
+  width: 100%;
+  max-width: none;
+}
+.layout-contents {
+  width: 100%;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  
+}
+
+.kintai-main {
+  --se-bottom-bar-h: 72px;
+  --se-bottom-bar-bottom: 12px;
+  height: calc(100vh - var(--kintai-top-h, 48px));
+  overflow: auto !important; /* Vùng cuộn duy nhất */
+  position: relative;
+  padding: var(--kintai-top-h, 48px) 0 0 0;
+}
+
+.kintai-top-inner {
+  max-width: none;
+}
+
+.kintai-top {
+  border-bottom: 0;
+  z-index: 5005 !important;
+  pointer-events: auto !important;
+}
+
+/* Desktop monthly page: align header density with legacy smart-E sample bar */
+@media (min-width: 901px) {
+  :root {
+    --kintai-top-h: 40px !important;
+  }
+
+  .kintai-top {
+    height: var(--kintai-top-h) !important;
+    min-height: var(--kintai-top-h) !important;
+    border-bottom: 1px solid #072149 !important;
+    left: 0 !important;
+    right: auto !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  .kintai-top-inner {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 4px !important;
+    gap: 6px !important;
+    justify-content: space-between !important;
+  }
+
+  .kintai-brand {
+    min-width: 0;
+    margin-left: 0;
+    height: var(--kintai-top-h) !important;
+    align-items: stretch !important;
+  }
+
+  .kintai-logo {
+    font-size: 30px !important;
+    line-height: var(--kintai-top-h) !important;
+    height: var(--kintai-top-h) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    top: 0 !important;
+    display: inline-block !important;
+    vertical-align: top !important;
+  }
+
+  .kintai-nav {
+    flex: 1 1 auto !important;
+    gap: 0 !important;
+    justify-content: flex-start !important;
+  }
+
+  .kintai-user {
+    margin-left: auto !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    flex: 0 0 auto !important;
+  }
+
+  .kintai-nav-btn {
+    font-size: 14px;
+    font-weight: 700;
+    padding: 5px 9px;
+    border-radius: 4px;
+  }
+
+  .kintai-caret {
+    font-size: 12px;
+  }
+
+  .kintai-top-links {
+    justify-content: flex-end !important;
+    gap: 4px !important;
+    margin-right: 0 !important;
+  }
+
+  .kintai-top-link {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    padding: 5px 9px !important;
+    border-radius: 4px;
+    color: #fff !important;
+    opacity: 1 !important;
+    letter-spacing: 0.1px;
+  }
+}
+
+.kintai-top *,
+.kintai-nav,
+.kintai-nav-dd,
+.kintai-nav-btn,
+.kintai-dd,
+.kintai-top-links,
+.kintai-top-link {
+  pointer-events: auto !important;
+}
+
+@media (min-width: 901px) {
+  .kintai-top::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 2px;
+    background: #0b2c66;
+    z-index: 10;
+    pointer-events: none;
+  }
+}
+
+.kintai-top .kintai-nav-dd::after {
+  content: none !important;
+  display: none !important;
+  height: 0 !important;
+}
+
+.kintai-error {
+  max-width: none;
+  padding: 0 12px;
+}
+
+@media (min-width: 901px) {
+  .se-month {
+  max-width: none;
+  margin: 0 8px;
+  padding: 0;
+}
+
+  .kintai-top-inner {
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  .kintai-error {
+    max-width: 1400px;
+    padding: 0 8px;
+  }
+  .se-target-select { display: none !important; }
+  .se-tab { height: 26px; font-size: 11px; padding: 0 6px; }
+  .layout-container,
+  .layout-main,
+  .layout-contents {
+    padding: 0 8px;
+    box-sizing: border-box;
+  }
+}
+
+.se-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.se-page-head .se-target-month {
+  display: none !important;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.se-page-head .se-target-month .se-target-label {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 6px 0 0 6px;
+  background: #0b2c66;
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.se-page-head .se-target-month .se-target-input {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 0 6px 6px 0;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-weight: 900;
+  color: #0b2c66;
+  min-width: 140px;
+}
+
+.se-page-title {
+  font-weight: 900;
+  font-size: 22px;
+  color: #1e64b7;
+}
+
+.se-target-month {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+
+.se-target-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.se-target-input {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-weight: 800;
+  color: #0b2c66;
+}
+
+.se-employee-bar.se-employee-bar-sample {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  background: transparent;
+  padding: 0 0 10px;
+}
+.se-target-month.se-target-month-sample {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-items: unset;
+}
+
+body.embed .se-target-month.se-target-month-sample,
+body.embed #yearSummary,
+body.embed .kintai-top-links,
+body.embed .kintai-nav {
+  display: none !important;
+}
+
+body.embed .layout-container {
+  justify-content: flex-start;
+}
+
+body.embed .layout-main {
+  width: 100%;
+}
+
+body.embed .kintai-main {
+  height: 100vh;
+  min-height: 100vh;
+  /* Đảm bảo content không bị che bởi fixed bottombar */
+  padding-bottom: 56px;
+  box-sizing: border-box;
+}
+.se-target-label-sample {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 6px 0 0 6px;
+  background: #0b2c66;
+  color: #fff;
+  font-weight: 900;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.se-target-input-sample {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 0 6px 6px 0;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-weight: 900;
+  color: #0b2c66;
+  min-width: 140px;
+}
+
+.se-employee-bar {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.se-employee-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  border: none;
+  box-shadow: none;
+}
+.se-avatar-img { width: 92%; height: 92%; object-fit: contain; border-radius: 0; }
+@media (max-width: 700px) { 
+  .se-avatar { display: none; }
+  .se-employee-bar {
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    border-radius: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .se-employee-meta {
+    gap: 2px;
+  }
+  .se-employee-line { font-size: 11px; }
+  .se-employee-line .se-employee-v { font-size: 11px; }
+}
+
+.se-employee-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 8px;
+}
+
+.se-employee-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.se-employee-k {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  min-width: 0;
+  white-space: nowrap;
+}
+.se-employee-v {
+  color: #0b2c66;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.se-employee-v {
+  color: #0f172a;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.se-employee-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.se-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 0 14px;
+}
+
+.se-shortcuts {
+  padding: 10px 12px;
+  margin: 0 0 8px;
+}
+
+#dailySection .common-buttons {
+  padding: 10px 12px;
+  margin: 0;
+}
+
+#dailySection .common-buttons .se-toolbar {
+  padding: 10px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, .04);
+  gap: 8px;
+}
+
+#dailySection .common-buttons .se-btn {
+  border-radius: 8px;
+}
+
+#dailySection .common-buttons .se-toolbar-select {
+  min-width: 160px;
+}
+.se-btn.se-btn-wide {
+  min-width: 126px;
+}
+.se-toolbar-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.se-toolbar-label {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 6px 0 0 6px;
+  background: #0b2c66;
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.se-toolbar-select {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 0 6px 6px 0;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-weight: 900;
+  color: #0b2c66;
+  min-width: 220px;
+}
+.se-file {
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 0 8px;
+  font-weight: 700;
+  color: #0f172a;
+  max-width: 320px;
+}
+
+@media (max-width: 700px) {
+  /* Một hàng ngang, cuộn được trên mobile */
+  #dailySection .common-buttons .se-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+    white-space: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  #dailySection .common-buttons .se-btn,
+  #dailySection .common-buttons .se-btn.se-btn-wide {
+    flex: 0 0 auto;
+    min-width: 0 !important;
+    width: auto !important;
+    white-space: nowrap;
+    height: 22px !important;
+    padding: 0 6px !important;
+    font-size: 9px !important;
+    font-weight: normal !important;
+  }
+  #dailySection .common-buttons .lastMonthBtn,
+  #dailySection .common-buttons .nextMonthBtn {
+    min-width: 0 !important;
+    width: auto !important;
+    height: 22px !important;
+    padding: 0 6px !important;
+    font-size: 9px !important;
+    font-weight: normal !important;
+    letter-spacing: 0;
+  }
+  #dailySection .common-buttons .se-toolbar-field {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  #dailySection .common-buttons .se-toolbar-select {
+    min-width: 80px;
+    width: auto;
+    height: 22px;
+    padding: 0 4px;
+    font-size: 9px;
+    font-weight: normal !important;
+    white-space: nowrap;
+  }
+  #dailySection .common-buttons .se-toolbar .se-toolbar-label {
+    height: 22px;
+    padding: 0 6px;
+    font-size: 9px;
+    font-weight: normal !important;
+  }
+}
+
+.se-btn {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0b2c66;
+  font-weight: 900;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.se-btn.small {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.se-btn.primary {
+  background: #0b2c66;
+  border-color: #0b2c66;
+  color: #fff;
+}
+.se-btn:hover {
+  background: #eef5ff;
+  border-color: #93c5fd;
+}
+.se-btn.primary:hover {
+  background: #2a5aa6;
+  border-color: #2a5aa6;
+}
+.se-btn.primary:active {
+  background: #1c4a8a;
+  border-color: #1c4a8a;
+}
+
+.se-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.se-section {
+  background: #fff;
+  border: 0;
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.se-section-head {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.se-section-head.se-daily-head {
+  background: #f8fafc;
+}
+
+.se-daily-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.se-daily-switch {
+  width: 30px;
+  height: 14px;
+  border-radius: 999px;
+  background: #0b2c66;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.se-daily-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.se-section.collapsed .se-daily-switch {
+  background: #64748b;
+}
+
+.se-section.collapsed .se-daily-switch::after {
+  left: 18px;
+}
+
+.se-section.collapsed .se-section-body {
+  display: none;
+}
+
+.se-tabs.se-tabs-seg {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 0;
+}
+
+.se-tabs.se-tabs-seg .se-tab {
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 12px;
+}
+
+.se-tabs.se-tabs-seg .se-tab:not(.active) {
+  color: #0b2c66;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(11,44,102,.18) inset;
+}
+
+.se-tabs.se-tabs-seg .se-tab.active {
+  background: #fff;
+  color: #0b2c66;
+  box-shadow: 0 0 0 1px #0b2c66 inset;
+}
+
+.se-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.se-section-title {
+  font-weight: 900;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.se-section-body {
+  padding: 0;
+}
+
+/* Sticky header (employee): .kintai-main scroll + sticky thead th under topbar height */
+body:not(.embed) .se-month-scroll {
+  overflow: visible !important;
+  height: auto;
+  padding-top: 0;
+}
+body:not(.embed) .se-toolbar {
+  position: static;
+}
+body:not(.embed) .se-month-table-wrap {
+  padding-top: 0;
+}
+body:not(.embed) #monthTable.se-table #monthTableReal thead th {
+  position: sticky;
+  top: calc(var(--kintai-top-h, 48px) - 1px);
+  z-index: 40;
+  background: #0b2c66;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, .15);
+}
+/* Sticky header: admin embed (iframe scroll area) */
+body.embed .se-month-table-wrap #monthTableReal thead th {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: #0b2c66;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, .15);
+}
+  .se-month-table-wrap #monthTableReal td.sticky-col-1,
+  .se-month-table-wrap #monthTableReal th.sticky-col-1 {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: #fff;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
+  }
+
+.se-month-table-wrap #monthTableReal thead th.sticky-col-1 {
+  z-index: 45; /* Phải cao hơn các header th khác */
+  top: 0;
+}
+.se-month-scroll { overflow-y: visible; }
+
+/* In admin embed, sticky header should be at top: 0 of scroll area */
+body.embed .se-month-scroll {
+  padding-top: 0;
+  /* Đặt max-height thay vì height cứng để scroll area không tạo khoảng trắng thừa */
+  height: auto;
+  max-height: calc(100vh - 112px); /* 100vh - bottombar(56px) - header nhân viên(~56px) */
+  overflow: auto !important;
+}
+
+/* Employee page: single horizontal scrollbar (custom #monthHScroll), hide native */
+body:not(.embed) .kintai-main {
+  height: calc(100vh - var(--kintai-top-h, 48px));
+  overflow: auto !important;
+  position: relative;
+  padding: var(--kintai-top-h, 48px) 0 0 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+body:not(.embed) .kintai-main::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+body:not(.embed) #monthTable .se-month-scroll {
+  overflow: visible !important;
+  height: auto;
+  padding-top: 0;
+}
+
+.se-tab {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0b2c66;
+  font-weight: 900;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.se-tab.active {
+  background: #0b2c66;
+  border-color: #0b2c66;
+  color: #fff;
+}
+
+.se-tab:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.se-actionbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.se-month-actions {
+  margin: 0 12px 12px;
+}
+
+.se-bottombar {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  bottom: 0;
+  z-index: 200;
+  background: #fff;
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+  border-radius: 0;
+  padding: 10px 56px 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.se-bottom-center {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: nowrap;
+  margin-left: auto;
+  margin-right: auto;
+}
+.se-bottom-confirm {
+  margin-right: 36px;
+  border-radius: 999px;
+  padding: 0 16px;
+}
+.se-bottombar .se-file {
+  width: 320px;
+  min-width: 240px;
+  padding: 0 8px;
+  overflow: visible;
+  border: 1px solid #cbd5e1;
+  background: #eef2f7;
+  color: #334155;
+}
+.se-bottombar .se-file::file-selector-button {
+  height: 30px;
+  padding: 0 12px;
+  margin: 0;
+  border: 1px solid #cbd5e1;
+  background: #e5e7eb;
+  color: #0f172a;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.se-bottom-center .se-btn.primary {
+  border-radius: 999px;
+  padding: 0 16px;
+}
+.se-bottom-back {
+  border-radius: 999px;
+  padding: 0 16px;
+  margin-left: 6px;
+}
+.se-bottom-back::before {
+  content: '↩';
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .se-bottombar {
+    padding: 8px 12px;
+  }
+  .se-bottom-center {
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    align-items: center;
+  }
+  .se-bottom-center .se-btn.primary,
+  .se-bottom-back,
+  .se-bottom-confirm {
+    height: 28px;
+    font-size: 12px;
+    padding: 0 12px;
+    border-radius: 999px;
+  }
+  .se-bottombar .se-file {
+    width: 140px;
+    min-width: 120px;
+    padding: 0 6px;
+  }
+}
+.se-hscroll {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 55px; /* Nằm trên thanh công cụ footer */
+  z-index: 110; /* Cao hơn footer */
+  height: 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: linear-gradient(180deg,#ffffff 0%, #f8fafc 100%);
+  border-top: 1px solid #cbd5e1;
+  margin: 0;
+  display: block !important;
+}
+.se-hscroll.inactive {
+  opacity: .35;
+}
+.se-hscroll-inner {
+  height: 1px;
+}
+
+@media (max-width: 900px) {
+  html,
+  body {
+    scrollbar-gutter: auto !important;
+  }
+
+  /* Paint the viewport gutter area (including scrollbar lane) in topbar color */
+  html {
+    background: linear-gradient(
+      to bottom,
+      #0b2c66 0,
+      #0b2c66 var(--kintai-top-h),
+      #ffffff var(--kintai-top-h),
+      #ffffff 100%
+    ) !important;
+  }
+
+  body {
+    background: transparent !important;
+  }
+
+  body.nav-js {
+    overflow-y: auto !important;
+  }
+
+  .kintai-top {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  .kintai-top-inner {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 4px !important;
+    gap: 4px !important;
+    align-items: center !important;
+  }
+
+  .kintai-user {
+    margin-left: auto !important;
+    min-width: 0;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .kintai-top-links {
+    gap: 6px !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+  }
+
+  .kintai-top-link {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    padding: 0 6px !important;
+    height: var(--kintai-top-h) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+}
+
+@media (max-width: 700px) {
+  /* Use baseline mobile topbar behavior from attendance.css (stable state). */
+  .kintai-top-inner::before,
+  .kintai-top-inner::after {
+    content: none !important;
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  :root { --se-sticky-top: 42px; }
+  .se-page-head .se-target-month { display: none !important; }
+  .se-page-head .se-target-month .se-target-label {
+    height: 30px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .se-page-head .se-target-month .se-target-input {
+    height: 28px;
+    padding: 0 8px;
+    min-width: 120px;
+  }
+  body:not(.embed) .kintai-main {
+    /* Keep header blocks visible below fixed topbar on phones */
+    padding: calc(var(--kintai-top-h, 44px) + 6px) 0 0;
+    padding-bottom: calc(var(--se-bottom-bar-h, 72px) + 6px);
+    box-sizing: border-box;
+  }
+  #monthTable th, #monthTable td {
+    padding: 4px 2px !important;
+    font-size: 11px !important;
+  }
+  #monthTable td {
+    overflow: visible;
+  }
+  #monthTable td select.se-select,
+  #monthTable td input.se-input,
+  #monthTable td input.se-time {
+    width: 100% !important;
+    max-width: calc(100vw - 24px);
+    box-sizing: border-box;
+    height: 28px !important;
+    font-size: 11px !important;
+    padding: 0 2px !important;
+  }
+  .se-month { margin: 0; }
+  .se-page-head { margin-bottom: 6px; }
+  .se-section { margin: 6px 0; border-radius: 0; }
+  .se-section-head { padding: 4px 6px; gap: 8px; min-height: 32px; }
+  .se-section-body { padding: 4px 6px; }
+  .se-shortcuts { padding: 4px 6px; margin: 0 0 4px; }
+  .se-page-title { font-size: 11px; font-weight: 800; margin-bottom: 2px; }
+  .se-target-month { display: flex; align-items: center; gap: 0; position: static; right: auto; top: auto; z-index: auto; margin-left: 0; justify-content: flex-start; flex-wrap: nowrap; }
+  .se-page-head .se-target-month { display: none !important; }
+  .se-target-label { font-size: 9px; padding: 0 4px; border-radius: 4px 0 0 4px; background: #0b2c66; color: #fff; flex: 0 0 auto; height: 20px; line-height: 20px; font-weight: normal; }
+  .se-target-input { height: 20px; padding: 0 4px; font-size: 9px; border-radius: 0 4px 4px 0; min-width: 70px; width: 80px; direction: ltr; border: 1px solid #cbd5e1; border-left: none; }
+  .se-target-month-seg { display: none; }
+  .se-target-month-sample,
+  .se-target-label-sample {
+    display: inline-flex !important;
+  }
+  .se-target-input-sample { height: 20px; padding: 0 4px; font-size: 9px; min-width: 70px; width: 80px; direction: ltr; border-radius: 0 4px 4px 0; border: 1px solid #cbd5e1; border-left: none; }
+  .se-target-label-sample { height: 20px; line-height: 20px; padding: 0 4px; font-size: 9px; flex: 0 0 auto; border-radius: 4px 0 0 4px; font-weight: normal; }
+  .se-target-month.se-target-month-sample {
+    display: flex !important;
+    align-items: center;
+    gap: 0;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+  .se-target-input-sample { height: 26px; padding: 0 6px; font-size: 11px; min-width: 100px; width: 120px; }
+  .se-target-select { display: none !important; }
+  .se-tab { height: 26px; font-size: 11px; padding: 0 6px; }
+  .layout-container,
+  .layout-main,
+  .layout-contents {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  .se-section-title, .se-daily-text { font-size: 11px; font-weight: 800; }
+  .se-btn { height: 26px; font-size: 11px; padding: 2px 6px; }
+  .se-btn.small { height: 24px; font-size: 11px; padding: 2px 4px; }
+  .se-input, .se-select {
+    height: 26px;
+    font-size: 11px;
+    padding: 2px 4px;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  body:not(.embed) .se-month-table-wrap #monthTableReal thead th {
+    top: calc(var(--kintai-top-h, 44px) - 1px);
+  }
+  .se-summary th,
+  .se-summary td {
+    min-width: 50px;
+    height: 24px;
+    padding: 2px 2px;
+    line-height: 1.1;
+    font-size: 11px;
+  }
+  .se-summary thead th { white-space: normal; word-break: break-word; font-size: 10px; }
+  .se-summary tbody td { white-space: nowrap; word-break: keep-all; }
+  /* Compact hơn cho mobile nhỏ */
+  #dailySection .common-buttons .se-toolbar { gap: 6px; padding: 6px; }
+  #dailySection .common-buttons .se-btn,
+  #dailySection .common-buttons .se-btn.se-btn-wide {
+    min-width: 92px;
+    height: 28px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  #dailySection .common-buttons .se-toolbar .se-toolbar-label {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  #dailySection .common-buttons .se-toolbar-select {
+    min-width: 120px;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  #monthTableReal th,
+  #monthTableReal td {
+    padding: 4px 4px;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+  #monthTableReal td {
+    white-space: normal;
+    word-break: break-word;
+  }
+  #monthTableReal .sticky-col-1 {
+    min-width: 58px;
+    width: 58px;
+  }
+  #monthTable input.se-time[data-field="checkIn"],
+  #monthTable input.se-time[data-field="checkOut"] {
+    width: 90px;
+    min-width: 90px;
+    font-size: 13px;
+    height: 28px;
+    padding-left: 4px;
+    padding-right: 4px;
+    letter-spacing: 0;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+  }
+  #monthTable .se-time-cell {
+    min-width: 96px;
+  }
+  .se-time-hint {
+    display: none;
+  }
+  #monthTable td select.se-select,
+  #monthTable td input.se-input {
+    font-size: 11px !important;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    height: 28px !important;
+  }
+  #monthTable tbody td,
+  #monthTable thead th {
+    font-size: 11px !important;
+    padding: 2px 2px;
+  }
+  #monthTable td[data-field="worked"],
+  #monthTable td[data-field="excess"],
+  #monthTable td[data-field="lateEarly"] {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+  #monthTable td[data-field="location"],
+  #monthTable td[data-field="memo"] {
+    white-space: normal;
+    word-break: break-word;
+  }
+  #monthTable td input.se-input,
+  #monthTable td select.se-select,
+  #monthTable td input.se-time {
+    font-size: 12px !important;
+  }
+  #monthTable .se-kubun-tags { display: none; }
+  #monthSummaryTable.se-summary th,
+  #monthSummaryTable.se-summary td {
+    padding: 2px 2px;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+  #monthSummaryTable.se-summary th {
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 10px;
+  }
+  #monthSummaryTable.se-summary td {
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  #monthSummaryTable.se-summary th:nth-child(n+9),
+  #monthSummaryTable.se-summary td:nth-child(n+9) {
+    min-width: 72px;
+  }
+  #dailySection .common-buttons .se-toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  #dailySection .common-buttons .se-btn,
+  #dailySection .common-buttons .se-btn.se-btn-wide {
+    width: auto;
+    min-width: 80px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    height: 26px;
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+  #dailySection .common-buttons .se-toolbar-select {
+    min-width: 100px;
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    height: 26px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+  #dailySection .common-buttons .se-toolbar .se-toolbar-label {
+    height: 26px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+  #dailySection .common-buttons .lastMonthBtn,
+  #dailySection .common-buttons .nextMonthBtn {
+    min-width: 70px;
+    padding: 2px 6px;
+    font-size: 11px;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+  .se-file {
+    max-width: none;
+    width: 100%;
+  }
+  #dailySection .common-buttons .se-toolbar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  #dailySection .common-buttons .se-btn {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  #dailySection .common-buttons .se-btn.small {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  #dailySection .common-buttons .se-btn.primary {
+    font-size: 12px;
+  }
+  .se-file {
+    height: 30px;
+    line-height: 30px;
+    padding: 0;
+    font-size: 12px;
+    width: 140px;
+    min-width: 140px;
+  }
+  .se-bottom-confirm {
+    margin-right: 0;
+  }
+  .se-file::file-selector-button {
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid #0b2c66;
+    background: #0b2c66;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .se-hscroll,
+  .se-vscroll {
+    display: none !important;
+  }
+}
+
+body.has-v-scroll .se-month {
+  padding-right: 28px;
+}
+
+.se-vscroll {
+  position: fixed;
+  top: var(--se-sticky-top, 48px);
+  right: 0;
+  bottom: var(--se-bottom-bar-h, 72px);
+  z-index: 109;
+  width: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fff;
+  border-left: 1px solid #cbd5e1;
+  margin: 0;
+  display: none; /* Initially hidden */
+}
+.se-vscroll.inactive {
+  opacity: .35;
+}
+.se-vscroll-inner {
+  width: 1px;
+}
+
+.kintai-dd-note {
+  color: rgba(255,255,255,.88);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px 2px;
+  line-height: 1.2;
+}
+
+.kintai-dd .kintai-dd-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.95);
+  font-weight: 750;
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.kintai-dd .kintai-dd-btn:hover {
+  background: rgba(255,255,255,.10);
+}
+
+#monthTable.hide-xscroll {
+  scrollbar-width: none;
+}
+#monthTable.hide-xscroll::-webkit-scrollbar {
+  display: none;
+}
+#monthTable.hide-xscroll .se-month-scroll {
+  scrollbar-width: none;
+}
+#monthTable.hide-xscroll .se-month-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.se-table {
+  
+  overflow: visible;
+  position: relative;
+  max-width: 100%;
+}
+/* Summary table compact layout */
+#monthSummaryTable.se-summary table {
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+}
+#monthSummaryTable.se-summary th,
+#monthSummaryTable.se-summary td {
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1.2;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+  vertical-align: middle;
+}
+#monthSummaryTable.se-summary thead th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 900;
+  border-top: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+#monthSummaryTable.se-summary tr > :first-child {
+  border-left: 1px solid #e5e7eb;
+}
+#monthSummaryTable.se-summary thead tr:first-child > :first-child {
+  border-top-left-radius: 8px;
+}
+#monthSummaryTable.se-summary thead tr:first-child > :last-child {
+  border-top-right-radius: 8px;
+}
+#monthSummaryTable.se-summary tbody tr:last-child > :first-child {
+  border-bottom-left-radius: 8px;
+}
+#monthSummaryTable.se-summary tbody tr:last-child > :last-child {
+  border-bottom-right-radius: 8px;
+}
+
+.se-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+#contractTable th,
+#contractTable td,
+#workDetailTable th,
+#workDetailTable td {
+  white-space: normal;
+  word-break: break-word;
+}
+
+#contractTable table,
+#workDetailTable table {
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+}
+
+#contractTable th,
+#contractTable td,
+#workDetailTable th,
+#workDetailTable td {
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1.2;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+#contractTable thead th,
+#workDetailTable thead th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 900;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+#contractTable tbody td,
+#workDetailTable tbody td {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+
+#contractTable tr > :first-child,
+#workDetailTable tr > :first-child {
+  border-left: 1px solid #e5e7eb;
+}
+
+#contractTable thead tr:first-child > :first-child,
+#workDetailTable thead tr:first-child > :first-child {
+  border-top-left-radius: 8px;
+}
+#contractTable thead tr:first-child > :last-child,
+#workDetailTable thead tr:first-child > :last-child {
+  border-top-right-radius: 8px;
+}
+#contractTable tbody tr:last-child > :first-child,
+#workDetailTable tbody tr:last-child > :first-child {
+  border-bottom-left-radius: 8px;
+}
+#contractTable tbody tr:last-child > :last-child,
+#workDetailTable tbody tr:last-child > :last-child {
+  border-bottom-right-radius: 8px;
+}
+
+#contractTable th:last-child,
+#contractTable td:last-child,
+#workDetailTable th:last-child,
+#workDetailTable td:last-child {
+  border-right: 1px solid #e5e7eb;
+}
+
+#monthTable.se-table {
+  overflow-x: visible;
+  overflow-y: visible;
+  --se-col1: 72px;
+  --se-col2: 0px;
+  overscroll-behavior: auto;
+}
+
+body.embed #monthTable .se-month-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+body.embed #monthTable .se-month-scroll::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none;
+}
+
+#monthTable input.se-time[data-field="checkIn"],
+#monthTable input.se-time[data-field="checkOut"] {
+  width: 84px;
+  min-width: 84px;
+  padding-left: 2px;
+  padding-right: 2px;
+  font-size: 14px;
+  text-align: center;
+}
+
+#monthTable select.se-select[data-field="break"],
+#monthTable select.se-select[data-field="nightBreak"] {
+  width: 76px;
+  min-width: 76px;
+  padding-left: 2px;
+  padding-right: 2px;
+  font-size: 14px;
+  margin: 0 auto;
+}
+
+#monthTable td[data-field="worked"],
+#monthTable td[data-field="excess"],
+#monthTable td[data-field="lateEarly"] {
+  width: 72px;
+  max-width: 72px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#monthTable thead tr.tier2 th:nth-child(12),
+#monthTable thead tr.tier2 th:nth-child(13),
+#monthTable thead tr.tier2 th:nth-child(14) {
+  font-size: 12px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+#monthTable.se-table table {
+  min-width: 2300px;
+  width: max-content;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+/* Compact mobile view: hide low-priority columns */
+body.mobile-compact #monthTable thead th:nth-child(3),
+body.mobile-compact #monthTable tbody td:nth-child(3),
+body.mobile-compact #monthTable thead th:nth-child(4),
+body.mobile-compact #monthTable tbody td:nth-child(4),
+body.mobile-compact #monthTable thead th:nth-child(5),
+body.mobile-compact #monthTable tbody td:nth-child(5),
+body.mobile-compact #monthTable thead th:nth-child(6),
+body.mobile-compact #monthTable tbody td:nth-child(6),
+body.mobile-compact #monthTable thead th:nth-child(7),
+body.mobile-compact #monthTable tbody td:nth-child(7),
+body.mobile-compact #monthTable thead th:nth-child(11),
+body.mobile-compact #monthTable tbody td:nth-child(11) {
+  display: none;
+}
+
+#monthTable .se-sticky-month-head {
+  position: static;
+  top: auto;
+  z-index: 2400;
+  pointer-events: none;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #0b2c66;
+  box-shadow: 0 1px 0 #e5e7eb;
+  isolation: isolate;
+}
+
+
+
+#monthTable .se-sticky-month-head.se-sticky-month-head-bottom {
+  display: none;
+}
+
+#monthTable .se-sticky-month-head.se-sticky-month-head-top::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -2px;
+  height: 2px;
+  background: #0b2c66;
+  z-index: 0;
+}
+
+#monthTable .se-sticky-month-head.se-sticky-month-head-bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: #0b2c66;
+  z-index: 0;
+}
+
+#monthTable .se-sticky-month-head table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+}
+
+/*#monthTable thead th {
+  position: static;
+  background: #0b2c66;
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.96);
+  font-weight: 900;
+  font-size: 14px;
+  padding: 8px 4px;
+  vertical-align: middle;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
+}*/
+/* Date + (曜) tighter spacing */
+#monthTable tbody td.sticky-col-1 .dow {
+  margin-left: -0px;
+  letter-spacing: -0.2px;
+}
+
+#monthTable thead th.sticky-col-1,
+#monthTable tbody td.sticky-col-1 {
+  min-width: 72px;
+  padding-left: 6px;
+  padding-right: 1px;
+}
+
+#monthTable thead th:nth-child(18),
+#monthTable thead th:nth-child(19),
+#monthTable thead th:nth-child(20),
+#monthTable tbody td:nth-child(18),
+#monthTable tbody td:nth-child(19),
+#monthTable tbody td:nth-child(20) {
+  min-width: 72px;
+  text-align: center;
+}
+
+#monthTable thead th:nth-child(3),
+#monthTable tbody td:nth-child(3) {
+  min-width: 56px;
+}
+
+#monthTable thead th:nth-child(4),
+#monthTable tbody td:nth-child(4) {
+  min-width: 56px;
+}
+
+#monthTable thead th:nth-child(5),
+#monthTable tbody td:nth-child(5) {
+  min-width: 92px;
+}
+
+#monthTable thead th:nth-child(11),
+#monthTable tbody td:nth-child(11) {
+  min-width: 72px;
+}
+
+#monthTable thead th:nth-child(12),
+#monthTable tbody td:nth-child(12) {
+  min-width: 72px;
+}
+
+#monthTable thead th:nth-child(13),
+#monthTable tbody td:nth-child(13) {
+  min-width: 88px;
+}
+#monthTable thead th:nth-child(2),
+#monthTable tbody td:nth-child(2) {
+  min-width: 96px;
+}
+
+#monthTable tbody td:nth-child(2) {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+/* tighten checkbox columns */
+#monthTable tbody td:nth-child(3),
+#monthTable tbody td:nth-child(4),
+#monthTable tbody td:nth-child(5) {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+/* make text inputs fill cells to avoid inner gaps */
+#monthTable td input.se-input,
+#monthTable td select.se-select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Prevent Safari mobile from stretching single cell controls unexpectedly */
+#monthTable td input.se-input,
+#monthTable td input.se-time,
+#monthTable td select.se-select,
+#monthTable td textarea.se-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+#monthTable tbody td {
+  overflow: hidden;
+}
+
+/* column min-widths compact but allow full-width input */
+#monthTable thead th:nth-child(6),
+#monthTable tbody td:nth-child(6) { min-width: 92px; }
+#monthTable thead th:nth-child(7),
+#monthTable tbody td:nth-child(7) { min-width: 168px; }
+
+#monthTable thead th:nth-child(16),
+#monthTable tbody td:nth-child(16) {
+  min-width: 92px;
+}
+
+#monthTable thead th:nth-child(17),
+#monthTable tbody td:nth-child(17) {
+  min-width: 72px;
+}
+
+#monthTable thead th:nth-child(18),
+#monthTable thead th:nth-child(19),
+#monthTable thead th:nth-child(20) {
+  padding: 8px 4px;
+}
+
+#monthTable thead .tier2 th {
+  z-index: auto;
+}
+
+#monthTable tbody td {
+  border: 1px solid #e5e7eb;
+  padding: 2px 2px;
+  vertical-align: middle;
+  text-align: center;
+  font-size: 14px;
+}
+
+#monthTable tbody td:nth-child(n+3):nth-child(-n+13) {
+  background: var(--se-row-bg);
+}
+
+.se-input.invalid,
+.se-time.invalid,
+.se-select.invalid {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1px rgba(220,38,38,.3);
+}
+
+#monthTable tbody tr {
+  --se-row-bg: #fff;
+}
+
+#monthTable tbody tr:nth-child(even) {
+  --se-row-bg: #f8fafc;
+}
+
+#monthTable tbody tr.off {
+  --se-row-bg: #eff6ff;
+}
+
+#monthTable tbody tr.sun {
+  --se-row-bg: #dbeafe;
+}
+
+#monthTable tbody tr.holiday {
+  --se-row-bg: #e0f2fe;
+}
+
+#monthTable tbody tr.sat {
+  --se-row-bg: #eff6ff;
+}
+
+#monthTable tbody tr.worked {
+  --se-row-bg: #dcfce7;
+}
+
+#monthTable tbody tr:hover {
+  --se-row-bg: #eaf2ff;
+}
+
+#monthTable tbody tr.off:hover {
+  --se-row-bg: #dbeafe;
+}
+
+#monthTable tbody tr.sun:hover {
+  --se-row-bg: #bfdbfe;
+}
+
+#monthTable tbody tr.holiday:hover {
+  --se-row-bg: #bae6fd;
+}
+
+#monthTable tbody tr.sat:hover { --se-row-bg: #fff; }
+#monthTable tbody tr.worked:hover { --se-row-bg: #fff; }
+#monthTable tbody td { background: #fff; }
+
+#monthTable tbody tr.saved td {
+  box-shadow: none;
+}
+
+#monthTable tbody td.sticky-col-1,
+#monthTable tbody td.sticky-col-2 {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
+  box-shadow: none !important;
+}
+
+#monthTable tbody tr.off.leave td .se-input,
+#monthTable tbody tr.off.leave td .se-select,
+#monthTable tbody tr.off.leave td .se-time {
+  background: #fff;
+  color: #64748b;
+}
+
+#monthTable tbody tr.planned td { background: #f8fafc; }
+#monthTable tbody tr.has-entry td { background: #fff; }
+#monthTable tbody tr.leave:not(.has-entry) td { background: #fff; }
+
+.se-table tbody tr:hover td {
+  background: var(--se-row-bg);
+}
+
+.se-input,
+.se-select,
+.se-time {
+  height: 32px;
+  border-radius: 3px;
+  border: 1px solid #cbd5e1;
+  padding: 0 4px;
+  background: #fff;
+  font-weight: 800;
+  color: #0b2c66;
+  font-size: 14px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  display: block;
+}
+
+.se-kubun-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+.se-kubun-tags {
+  display: inline-flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.se-kubun-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-weight: 900;
+  font-size: 12px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #6366f1;
+  white-space: nowrap;
+}
+
+.se-kubun-select {
+  width: 100%;
+  min-width: 0;
+}
+#monthTable tbody tr .se-kubun-select.is-planned {
+  border-color: #60a5fa;
+  background: #eaf4ff;
+  color: #2563eb !important;
+  font-weight: 800;
+}
+#monthTable tbody tr.off .se-kubun-select.is-planned {
+  border-color: #60a5fa;
+  background: #eaf4ff;
+  color: #2563eb !important;
+}
+.se-kubun-select option[value=""] {
+  color: #6366f1;
+  font-weight: 900;
+}
+
+#monthTable tbody tr.off .se-kubun-select option[value=""] {
+  color: #b91c1c;
+}
+
+.se-kubun-select option[value=""][disabled] {
+  color: #94a3b8;
+}
+
+.se-time {
+  width: 84px;
+  color: #0f172a;
+  font-weight: 900;
+  text-align: center;
+}
+
+.se-time.is-auto,
+.se-select.is-auto,
+.se-input.is-auto,
+td.is-auto {
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+}
+
+.se-time:not(.is-auto),
+.se-select:not(.is-auto),
+.se-input:not(.is-auto),
+td:not(.is-auto) {
+  color: #0b2c66 !important;
+  font-weight: 900 !important;
+}
+
+/* Lock style for non-editable months */
+.se-month-table-wrap.is-locked,
+.se-month-table-wrap.is-locked-ready {
+  background-color: #f3f4f6 !important; /* Lighter grey (slate-100) */
+}
+.se-month-table-wrap.is-locked #monthTable,
+.se-month-table-wrap.is-locked-ready #monthTable {
+  background-color: #f3f4f6 !important;
+}
+.se-month-table-wrap.is-locked #monthTable tbody tr,
+.se-month-table-wrap.is-locked-ready #monthTable tbody tr {
+  background-color: #f3f4f6 !important;
+}
+.se-month-table-wrap.is-locked #monthTable tbody td,
+.se-month-table-wrap.is-locked-ready #monthTable tbody td {
+  background-color: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  color: #6b7280 !important;
+}
+.se-month-table-wrap.is-locked .se-time:not(.is-auto),
+.se-month-table-wrap.is-locked-ready .se-time:not(.is-auto),
+.se-month-table-wrap.is-locked .se-select:not(.is-auto),
+.se-month-table-wrap.is-locked-ready .se-select:not(.is-auto),
+.se-month-table-wrap.is-locked .se-input:not(.is-auto),
+.se-month-table-wrap.is-locked-ready .se-input:not(.is-auto),
+.se-month-table-wrap.is-locked td:not(.is-auto),
+.se-month-table-wrap.is-locked-ready td:not(.is-auto) {
+  color: #4b5563 !important;
+}
+.se-month-table-wrap.is-locked .se-kubun-select,
+.se-month-table-wrap.is-locked-ready .se-kubun-select,
+.se-month-table-wrap.is-locked .se-time,
+.se-month-table-wrap.is-locked-ready .se-time,
+.se-month-table-wrap.is-locked .se-input,
+.se-month-table-wrap.is-locked-ready .se-input,
+.se-month-table-wrap.is-locked .se-select,
+.se-month-table-wrap.is-locked-ready .se-select,
+.se-month-table-wrap.is-locked .se-check,
+.se-month-table-wrap.is-locked-ready .se-check {
+  background-color: #e5e7eb !important; /* Lighter input bg */
+  color: #4b5563 !important;
+  cursor: not-allowed;
+  border-color: #d1d5db !important;
+  pointer-events: none;
+}
+.se-month-table-wrap.is-locked .se-icon-btn,
+.se-month-table-wrap.is-locked-ready .se-icon-btn,
+.se-month-table-wrap.is-locked .se-mini-btn,
+.se-month-table-wrap.is-locked-ready .se-mini-btn {
+  display: none !important;
+}
+.se-month-table-wrap.is-locked .se-status.ok,
+.se-month-table-wrap.is-locked-ready .se-status.ok {
+  background: #10b981 !important; /* Emerald 500 - Màu xanh lá sáng */
+  color: #fff !important;
+  font-weight: 900;
+}
+.se-status.warn {
+  background: #f59e0b !important; /* Amber 500 - Màu vàng cam */
+  color: #fff !important;
+  font-weight: 900;
+}
+tr[data-dirty="1"] {
+  background-color: #fffbeb; /* Light yellow background */
+}
+
+tr[data-dirty="1"] .se-status {
+  background-color: #fbbf24;
+  color: #fff;
+  border-color: #fbbf24;
+}
+
+tr[data-dirty="1"] .se-status::after {
+  content: ' (未保存)';
+  font-size: 10px;
+}
+
+/* Approved rows should never be shown as unsaved, even if stale dirty flag remains */
+tr[data-dirty="1"] .se-status.ok {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #fff !important;
+}
+tr[data-dirty="1"] .se-status.ok::after {
+  content: '' !important;
+}
+
+input.se-time[disabled][data-row-disabled="1"] {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  background: #f8fafc !important;
+}
+input.se-time[disabled][data-row-disabled="1"]::-webkit-datetime-edit {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  opacity: 1;
+  font-size: 13px !important;
+  background: #f8fafc !important;
+}
+input.se-time[disabled][data-row-disabled="1"]::-webkit-datetime-edit-fields-wrapper {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  opacity: 1;
+  font-size: 13px !important;
+  background: #f8fafc !important;
+}
+
+/* If employee already has actual punch times, keep them readable even when row is locked */
+input.se-time[disabled][data-row-disabled="1"][data-manual="1"] {
+  color: #0b2c66 !important;
+  -webkit-text-fill-color: #0b2c66 !important;
+  font-weight: 800 !important;
+  background: #ffffff !important;
+}
+input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetime-edit,
+input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetime-edit-fields-wrapper {
+  color: #0b2c66 !important;
+  -webkit-text-fill-color: #0b2c66 !important;
+  font-weight: 800 !important;
+  background: #ffffff !important;
+}
+
+.se-time::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  display: none;
+}
+
+.se-time::-webkit-clear-button {
+  display: none;
+}
+
+.se-time::-webkit-inner-spin-button {
+  display: none;
+}
+
+.se-time::-webkit-outer-spin-button {
+  display: none;
+}
+
+.se-time-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.se-time-hint {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.se-time-ro {
+  display: block;
+  height: 28px;
+  line-height: 28px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  padding: 0 8px;
+  background: #f1f5f9;
+  font-weight: 800;
+  color: #64748b;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.se-select {
+  width: 132px;
+}
+
+.se-check {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #fff;
+  border: 1px solid #93c5fd;
+  border-radius: 3px;
+  display: inline-grid;
+  place-content: center;
+  box-sizing: border-box;
+  margin: 0;
+}
+.se-check::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  transform: scale(0);
+  background: #fff;
+  clip-path: polygon(14% 44%, 0 57%, 41% 100%, 100% 16%, 84% 0, 40% 62%);
+}
+.se-check:checked {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.se-check:checked::after {
+  transform: scale(1);
+}
+.se-check:disabled {
+  opacity: 1;
+}
+
+#monthTable tbody td.is-checked { background: #fff; box-shadow: inset 0 0 0 1px #93c5fd; }
+
+.se-icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #0b2c66;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.se-icon-btn.secondary {
+  background: #64748b;
+  border-color: #64748b;
+}
+
+.se-icon-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.se-mini-btn {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #0b2c66;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.se-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 900;
+  font-size: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.se-status-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-saved {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 900;
+  font-size: 12px;
+  border: 1px solid #bbf7d0;
+  background: #dcfce7;
+  color: #166534;
+  white-space: nowrap;
+}
+
+.se-status.off {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.se-status.warn {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.se-status.plan {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.se-status.ok {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.se-status.danger {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.se-summary {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.se-summary table {
+  min-width: 0;
+  width: max-content;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.se-summary td,
+.se-summary th {
+  text-align: center;
+  white-space: nowrap;
+  word-break: keep-all;
+  padding: 2px 4px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 800;
+  min-width: 52px;
+  height: 24px;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+
+.se-summary thead th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 900;
+  border-top: 1px solid #e5e7eb;
+  font-size: 14px;
+  white-space: normal;
+  word-break: break-word;
+  padding: 2px 4px;
+}
+
+.se-summary tbody td {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.se-summary tr > :first-child {
+  border-left: 1px solid #e5e7eb;
+}
+.se-summary th:last-child,
+.se-summary td:last-child {
+  border-right: 1px solid #e5e7eb;
+}
+
+.se-summary thead tr:first-child > :first-child {
+  border-top-left-radius: 8px;
+}
+.se-summary thead tr:first-child > :last-child {
+  border-top-right-radius: 8px;
+}
+.se-summary tbody tr:last-child > :first-child {
+  border-bottom-left-radius: 8px;
+}
+.se-summary tbody tr:last-child > :last-child {
+  border-bottom-right-radius: 8px;
+}
+
+@media (max-width: 900px) {
+  .se-month {
+    padding: 0;
+    font-size: 12px;
+  }
+
+  .se-page-head {
+    position: relative;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #monthWorkflow {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    margin-top: 0 !important;
+    gap: 4px !important;
+  }
+  
+  #btnApproveMonth, #btnUnlockMonth {
+    height: 20px !important;
+    font-size: 9px !important;
+    padding: 0 6px !important;
+    border-radius: 4px !important;
+  }
+
+  .se-target-month {
+    justify-items: start;
+  }
+
+  .se-employee-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .se-employee-actions {
+    justify-content: flex-start;
+  }
+
+  .se-section-body {
+    padding: 8px 10px;
+  }
+
+  .se-btn {
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .se-btn.small {
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .se-input,
+  .se-select,
+  .se-time {
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .se-summary table {
+    min-width: 0;
+    width: max-content;
+    table-layout: auto;
+  }
+
+  .se-summary th,
+  .se-summary td {
+    white-space: nowrap;
+    word-break: keep-all;
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 1.35;
+    min-width: 68px;
+    width: 68px;
+    height: 34px;
+    box-sizing: border-box;
+  }
+
+  #monthTable.se-table {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #monthTable.se-table table {
+    min-width: 1500px;
+  }
+
+  #monthTable thead th,
+  #monthTable tbody td {
+    white-space: nowrap;
+    word-break: normal;
+  }
+
+  #monthTable thead th {
+    font-size: 11px;
+    padding: 7px 8px;
+  }
+
+  #monthTable tbody td {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .se-bottombar {
+    width: calc(100vw - 16px);
+    bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+  .se-hscroll {
+    width: calc(100vw - 16px);
+    margin-bottom: 0;
+  }
+
+  .se-time {
+    width: 78px;
+  }
+
+  .se-select {
+    width: 110px;
+  }
+
+}
+.common-buttons.fixed-contents-footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 100;
+  background: #fff;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+  border-top: 1px solid #cbd5e1;
+  padding: 10px 0;
+}
+
+/* Đảm bảo nội dung không bị che bởi footer cố định */
+.se-month, .layout-main, .layout-contents { padding-bottom: 70px; }
+
+@media (max-width: 700px) {
+  .common-buttons.fixed-contents-footer {
+    padding: 7px 14px;
+    height: auto;
+  }
+  .se-month, .layout-main, .layout-contents {
+    padding-bottom: 56px;
+  }
+}
+/* Sticky header for month table: always visible under topbar */
+/* Moved to employee specific section above */
+
+
+@media (max-width: 900px) {
+  #monthTable.se-table thead th {
+    top: calc(var(--kintai-top-h, 44px) - 1px);
+  }
+
+}
+
+#monthTable td:focus,
+#monthTable th:focus,
+#monthTable tr:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* Đồng bộ font trong bảng tháng (Chỉ áp dụng màn hình lớn) */
+@media (min-width: 901px) {
+  #monthTable{
+    font-size: 14px;
+  }
+
+  #monthTable thead th,
+  #monthTable tbody td{
+    font-size: 14px !important;
+  }
+
+  /* Đồng bộ font cho form controls trong ô */
+  #monthTable input,
+  #monthTable select,
+  #monthTable textarea,
+  #monthTable button{
+    font-size: 14px !important;
+    font-family: inherit;
+  }
+}
+
+/* Ép toàn bộ giao diện siêu nhỏ trên mobile (< 900px) */
+@media (max-width: 900px) {
+  .se-page-title { font-size: 13px !important; }
+  .se-target-label, .se-target-label-sample { font-size: 10px !important; padding: 0 4px !important; height: 24px !important; }
+  .se-target-input, .se-target-input-sample, .se-target-select { font-size: 10px !important; height: 24px !important; }
+  
+  .se-employee-bar { padding: 4px 6px !important; margin-bottom: 6px !important; gap: 4px !important; }
+  .se-employee-line, .se-employee-v, .se-employee-k { font-size: 10px !important; }
+  
+  .se-tab, .se-btn { height: 24px !important; font-size: 10px !important; padding: 0 6px !important; }
+  .se-daily-text, .se-section-title { font-size: 11px !important; }
+  
+  #contractTable th, #contractTable td,
+  #monthSummaryTable.se-summary th, #monthSummaryTable.se-summary td {
+    font-size: 10px !important;
+    font-weight: normal !important;
+    padding: 2px 4px !important;
+    height: 22px !important;
+  }
+  
+  #monthTable{ font-size: 10px !important; }
+  #monthTable thead th, #monthTable tbody td{ font-size: 10px !important; padding: 2px !important; }
+  #monthTable input, #monthTable select, #monthTable textarea, #monthTable button{
+    font-size: 10px !important;
+    height: 24px !important;
+    padding: 0 2px !important;
+  }
+}
+@media (max-width: 420px) {
+  .se-month { margin: 0 4px; }
+  #dailySection .common-buttons .se-btn,
+  #dailySection .common-buttons .se-btn.se-btn-wide {
+    min-width: 72px;
+    height: 24px;
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+  #dailySection .common-buttons .se-toolbar .se-toolbar-label {
+    height: 24px;
+    padding: 0 5px;
+    font-size: 9px;
+  }
+  #dailySection .common-buttons .se-toolbar-select {
+    min-width: 96px;
+    height: 24px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+  .se-bottombar .se-btn { min-width: 0 !important; height: 22px !important; padding: 0 4px !important; font-size: 8px !important; }
+  .se-bottombar .se-file { height: 22px !important; line-height: 22px !important; font-size: 8px !important; padding: 0 2px !important; min-width: 100px !important; width: auto !important; }
+  .se-bottombar .se-file::file-selector-button {
+    height: 20px !important;
+    font-size: 8px !important;
+    padding: 0 4px !important;
+    margin: 0 !important;
+  }
+  .se-bottombar {
+    width: 100vw !important;
+    padding: 4px 2px !important;
+    box-sizing: border-box !important;
+    left: 0 !important;
+    bottom: 0 !important;
+  }
+  .se-bottom-center {
+    gap: 4px !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Hide scrollbar Firefox */
+  }
+  .se-bottom-center::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari */
+  }
+  .se-bottom-center .se-btn.primary,
+  .se-bottom-back,
+  .se-bottom-confirm {
+    height: 22px !important;
+    font-size: 8px !important;
+    padding: 0 4px !important;
+    min-width: 36px !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .se-bottombar .exportBtn,
+  .se-bottombar .importBtn {
+    min-width: 0 !important;
+    width: auto !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  #monthTable { font-size: 10px; }
+  #monthTable thead th, #monthTable tbody td { font-size: 10px !important; }
+}
+
+/* Prevent random stretched cells on narrow phones */
+@media (max-width: 430px) {
+  #monthTable.se-table table {
+    min-width: 1180px !important;
+    table-layout: fixed !important;
+  }
+  #monthTable .se-time-cell {
+    min-width: 86px !important;
+  }
+  #monthTable input.se-time[data-field="checkIn"],
+  #monthTable input.se-time[data-field="checkOut"] {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+  }
+  #monthTable td,
+  #monthTable th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Disable fixed 日付 body column only (header still sticky with thead row) */
+#monthTable #monthTableReal tbody td.sticky-col-1 {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
+}
+
+/* Mobile final: force cloned sticky month header to stay visible under topbar */
+@media (max-width: 900px) {
+  #monthTable .se-sticky-month-head {
+    display: block !important;
+    position: sticky !important;
+    top: calc(var(--kintai-top-h, 30px) - 1px) !important;
+    z-index: 5200 !important;
+    pointer-events: auto !important;
+    background: #0b2c66 !important;
+  }
+
+  #monthTable .se-sticky-month-head.se-sticky-month-head-bottom {
+    display: none !important;
+  }
+
+  #monthTable .se-sticky-month-head th {
+    background: #0b2c66 !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, .16) !important;
+    white-space: nowrap !important;
+  }
+
+  #monthTable #monthTableReal thead th {
+    position: static !important;
+    top: auto !important;
+  }
+}
+
+/* Mobile: keep month-table header visible under topbar while scrolling */
+@media (max-width: 900px) {
+  #monthTable .se-sticky-month-head.se-sticky-month-head-top {
+    display: block !important;
+    position: sticky !important;
+    top: calc(var(--kintai-top-h, 30px) - 1px) !important;
+    z-index: 140 !important;
+    background: #0b2c66 !important;
+    border-bottom: 1px solid #072149 !important;
+  }
+
+  #monthTable #monthTableReal thead th {
+    position: static !important;
+    top: auto !important;
+  }
+
+  /* Keep same visible columns as desktop (do not hide by mobile-compact) */
+  body.mobile-compact #monthTable thead th:nth-child(3),
+  body.mobile-compact #monthTable tbody td:nth-child(3),
+  body.mobile-compact #monthTable thead th:nth-child(4),
+  body.mobile-compact #monthTable tbody td:nth-child(4),
+  body.mobile-compact #monthTable thead th:nth-child(5),
+  body.mobile-compact #monthTable tbody td:nth-child(5),
+  body.mobile-compact #monthTable thead th:nth-child(6),
+  body.mobile-compact #monthTable tbody td:nth-child(6),
+  body.mobile-compact #monthTable thead th:nth-child(7),
+  body.mobile-compact #monthTable tbody td:nth-child(7),
+  body.mobile-compact #monthTable thead th:nth-child(11),
+  body.mobile-compact #monthTable tbody td:nth-child(11) {
+    display: table-cell !important;
+  }
+
+  #monthTable .se-sticky-month-head th {
+    background: #0b2c66 !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, .16) !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Mobile topbar grouping: make left/center/right areas look like clear clusters */
+@media (max-width: 900px) {
+  .kintai-top {
+    background: #0b2c66 !important;
+    border-bottom: 1px solid #072149 !important;
+  }
+
+  .kintai-top-inner {
+    gap: 4px !important;
+    padding: 2px 4px !important;
+    align-items: center !important;
+  }
+
+  .kintai-brand,
+  .kintai-nav,
+  .kintai-user {
+    min-height: calc(var(--kintai-top-h) - 8px) !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 255, 255, .22) !important;
+    background: rgba(255, 255, 255, .08) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .kintai-brand {
+    padding: 0 4px !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .kintai-nav {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    padding: 0 3px !important;
+    gap: 2px !important;
+  }
+
+  .kintai-user {
+    flex: 0 0 auto !important;
+    margin-left: 0 !important;
+    padding: 0 2px !important;
+  }
+
+  .kintai-logo,
+  .kintai-nav-btn,
+  .kintai-top-link {
+    height: calc(var(--kintai-top-h) - 10px) !important;
+    line-height: calc(var(--kintai-top-h) - 10px) !important;
+  }
+
+  .kintai-nav-btn,
+  .kintai-top-link {
+    border-radius: 4px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .kintai-top-links {
+    gap: 2px !important;
+  }
+}
+
+/* Mobile topbar spacing tune: keep left 3 and right 3 items tighter */
+@media (max-width: 900px) {
+  .kintai-brand,
+  .kintai-nav,
+  .kintai-user {
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  .kintai-top-inner {
+    gap: 1px !important;
+  }
+
+  .kintai-nav {
+    gap: 0 !important;
+  }
+
+  .kintai-nav-dd {
+    margin: 0 !important;
+  }
+
+  .kintai-nav-btn {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    margin: 0 !important;
+  }
+
+  .kintai-top-links {
+    gap: 0 !important;
+  }
+
+  .kintai-top-link {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    margin: 0 !important;
+  }
+}
+
+/* FINAL LOCK: match mobile topbar density to reference */
+@media (max-width: 900px) {
+  :root {
+    --kintai-top-h: 30px !important;
+  }
+
+  .kintai-top {
+    height: var(--kintai-top-h) !important;
+    min-height: var(--kintai-top-h) !important;
+  }
+
+  .kintai-top-inner {
+    padding: 0 3px !important;
+    gap: 1px !important;
+    align-items: center !important;
+  }
+
+  .kintai-brand,
+  .kintai-nav,
+  .kintai-user,
+  .kintai-top-links {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+  }
+
+  .kintai-logo,
+  .kintai-nav-btn,
+  .kintai-top-link {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    height: 24px !important;
+    line-height: 24px !important;
+    padding: 0 2px !important;
+    border-radius: 3px !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .kintai-caret {
+    font-size: 8px !important;
+    margin-left: 1px !important;
+  }
+
+  /* Remove right-side gap on mobile caused by viewport gutter/overflow */
+  html,
+  body {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    scrollbar-gutter: auto !important;
+  }
+
+  .kintai-main,
+  .layout-container,
+  .layout-main,
+  .layout-contents,
+  .se-month {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  .kintai-top,
+  .kintai-top-inner {
+    overflow: visible !important;
+  }
+
+  .se-month-table-wrap,
+  #monthTable.se-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Compact mobile preset: closer density to left-side reference */
+@media (max-width: 900px) {
+  :root { --kintai-top-h: 34px !important; }
+
+  .kintai-main {
+    padding-top: calc(var(--kintai-top-h) + 4px) !important;
+  }
+
+  .kintai-logo,
+  .kintai-nav-btn,
+  .kintai-top-link {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    height: var(--kintai-top-h) !important;
+    line-height: var(--kintai-top-h) !important;
+    padding: 0 4px !important;
+  }
+
+  .se-page-head { margin-bottom: 3px !important; gap: 4px !important; }
+  .se-page-title { font-size: 15px !important; line-height: 1.15 !important; }
+
+  .se-employee-bar {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+    margin-bottom: 4px !important;
+    border-radius: 8px !important;
+  }
+  .se-employee-left {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .se-employee-meta {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    column-gap: 8px !important;
+    row-gap: 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .se-employee-meta::-webkit-scrollbar {
+    display: none;
+  }
+  .se-employee-line { gap: 3px !important; font-size: 11px !important; }
+  .se-employee-k { font-size: 10px !important; }
+  .se-employee-v { font-size: 11px !important; white-space: nowrap !important; }
+
+  .se-target-label-sample,
+  .se-target-label {
+    height: 24px !important;
+    font-size: 10px !important;
+    padding: 0 7px !important;
+  }
+  .se-target-input-sample,
+  .se-target-input {
+    height: 24px !important;
+    font-size: 11px !important;
+    padding: 0 7px !important;
+    min-width: 104px !important;
+  }
+
+  .se-section { margin: 3px 0 !important; border-radius: 8px !important; }
+  .se-section-head { padding: 3px 6px !important; }
+  .se-section-body { padding: 3px 6px !important; }
+  .se-daily-text, .se-section-title { font-size: 12px !important; }
+
+  .se-btn {
+    height: 24px !important;
+    font-size: 11px !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+  }
+  .se-btn.small {
+    height: 22px !important;
+    font-size: 10px !important;
+    padding: 1px 6px !important;
+  }
+
+  #monthTable thead th {
+    font-size: 10px !important;
+    padding: 4px 5px !important;
+  }
+  #monthTable tbody td {
+    font-size: 10px !important;
+    padding: 3px 5px !important;
+    line-height: 1.2 !important;
+  }
+  #monthTable input,
+  #monthTable select {
+    height: 22px !important;
+    font-size: 10px !important;
+    padding: 0 4px !important;
+  }
+}
+
+/* Mobile topbar typography normalization: keep all labels visually even */
+@media (max-width: 900px) {
+  .kintai-top-inner,
+  .kintai-brand,
+  .kintai-nav,
+  .kintai-user,
+  .kintai-top-links {
+    align-items: center !important;
+  }
+
+  .kintai-logo,
+  .kintai-nav-btn,
+  .kintai-top-link {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    line-height: var(--kintai-top-h) !important;
+    height: var(--kintai-top-h) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    letter-spacing: 0 !important;
+  }
+
+  .kintai-logo {
+    padding: 0 4px !important;
+    margin: 0 !important;
+  }
+
+  .kintai-nav-btn,
+  .kintai-top-link {
+    padding: 0 6px !important;
+    border-radius: 4px !important;
+  }
+
+  .kintai-caret {
+    font-size: 10px !important;
+    line-height: 1 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .kintai-logo,
+  .kintai-nav-btn,
+  .kintai-top-link {
+    font-size: 11px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+}
+
+/* Mobile: show full top-right links instead of hiding non-logout items */
+@media (max-width: 700px) {
+  .kintai-top-inner {
+    gap: 2px !important;
+    padding: 0 2px !important;
+  }
+
+  .kintai-logo {
+    font-size: 18px !important;
+    padding-left: 4px !important;
+  }
+
+  .kintai-top-links {
+    display: flex !important;
+    gap: 4px !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .kintai-top-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .kintai-top-links .kintai-top-link:not(.logout-link) {
+    display: inline-flex !important;
+  }
+
+  .kintai-top-link {
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    padding: 0 4px !important;
+    height: var(--kintai-top-h) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+}
+
+/* Hard override for legacy sticky-col-1 rules on body cells */
+.se-month-table-wrap #monthTableReal td.sticky-col-1 {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
+}
+
+/* UX request: disable monthly fullscreen loading spinner overlay */
+#pageSpinner.kintai-spinner {
+  display: none !important;
+}
+
+/* Ensure "日付" header cell is visible and sized correctly */
+#monthTable #monthTableReal thead th.sticky-col-1,
+#monthTable .se-sticky-month-head th.sticky-col-1 {
+  display: table-cell !important;
+  visibility: visible !important;
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  text-align: center !important;
+}
+
+/* Final behavior:
+   - Desktop: keep real thead sticky, hide cloned sticky header
+   - Mobile: show cloned sticky header under topbar (like desktop visibility while scrolling) */
+@media (min-width: 901px) {
+  #monthTable .se-sticky-month-head {
+    display: none !important;
+  }
+
+  #monthTable #monthTableReal thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 80 !important;
+  }
+
+  #monthTable #monthTableReal thead th.sticky-col-1 {
+    left: auto !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 81 !important;
+  }
+
+  #monthTable #monthTableReal tbody td.sticky-col-1 {
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
+  }
+}
+
+@media (max-width: 900px) {
+  #monthTable .se-sticky-month-head {
+    display: block !important;
+  }
+
+  #monthTable .se-sticky-month-head.se-sticky-month-head-top {
+    position: sticky !important;
+    top: calc(var(--kintai-top-h, 30px) - 1px) !important;
+    z-index: 5200 !important;
+    background: #0b2c66 !important;
+    border-bottom: 1px solid #072149 !important;
+  }
+
+  #monthTable .se-sticky-month-head.se-sticky-month-head-bottom {
+    display: none !important;
+  }
+
+  #monthTable .se-sticky-month-head[hidden] {
+    display: block !important;
+  }
+
+  #monthTable .se-sticky-month-head th {
+    background: #0b2c66 !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, .16) !important;
+    white-space: nowrap !important;
+  }
+
+  #monthTable #monthTableReal thead th {
+    position: static !important;
+    top: auto !important;
+  }
+}
+
+/* Mobile hard lock:
+   Always use real thead sticky like desktop and hide cloned sticky header. */
+@media (max-width: 900px) {
+  #monthTable .se-sticky-month-head,
+  #monthTable .se-sticky-month-head[hidden] {
+    display: none !important;
+  }
+
+  body:not(.embed) #monthTable.se-table #monthTableReal thead th,
+  #monthTable #monthTableReal thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 600 !important;
+    background: #0b2c66 !important;
+    color: #fff !important;
+  }
+
+  #monthTable #monthTableReal thead th.sticky-col-1 {
+    left: auto !important;
+    z-index: 601 !important;
+  }
+}
+
+/* FINAL COMPACT PRESET (mobile): keep layout dense like the reference screenshot */
+@media (max-width: 900px) {
+  :root { --kintai-top-h: 28px !important; }
+
+  .kintai-top {
+    height: var(--kintai-top-h) !important;
+    min-height: var(--kintai-top-h) !important;
+  }
+
+  .kintai-top-inner {
+    padding: 0 2px !important;
+    gap: 0 !important;
+    min-height: var(--kintai-top-h) !important;
+  }
+
+  .kintai-logo,
+  .kintai-nav-btn,
+  .kintai-top-link {
+    height: 22px !important;
+    line-height: 22px !important;
+    padding: 0 3px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    border-radius: 3px !important;
+  }
+
+  .kintai-nav,
+  .kintai-top-links {
+    gap: 0 !important;
+  }
+
+  .kintai-main {
+    padding-top: calc(var(--kintai-top-h) + 2px) !important;
+  }
+
+  #monthTable #monthTableReal thead th {
+    font-size: 9px !important;
+    padding: 3px 4px !important;
+    height: 24px !important;
+    line-height: 1.1 !important;
+  }
+
+  #monthTable #monthTableReal tbody td {
+    font-size: 9px !important;
+    padding: 2px 4px !important;
+    min-height: 24px !important;
+    line-height: 1.1 !important;
+  }
+
+  #monthTable #monthTableReal input:not(.se-check),
+  #monthTable #monthTableReal select,
+  #monthTable #monthTableReal .se-input,
+  #monthTable #monthTableReal .se-select,
+  #monthTable #monthTableReal .se-time {
+    height: 20px !important;
+    min-height: 20px !important;
+    font-size: 9px !important;
+    padding: 0 3px !important;
+  }
+
+  #monthTable .se-check {
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    padding: 0 !important;
+    border-radius: 2px !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* FINAL WIDTH TUNE (mobile):
+   tighten per-column widths so controls do not look stretched */
+@media (max-width: 900px) {
+  #monthTable.se-table table,
+  #monthTable #monthTableReal {
+    min-width: 980px !important;
+  }
+
+  #monthTable #monthTableReal thead th.sticky-col-1,
+  #monthTable #monthTableReal tbody td.sticky-col-1 {
+    min-width: 60px !important;
+    width: 60px !important;
+    max-width: 60px !important;
+    padding-left: 3px !important;
+    padding-right: 2px !important;
+  }
+
+  #monthTable #monthTableReal thead th:nth-child(2),
+  #monthTable #monthTableReal tbody td:nth-child(2) {
+    min-width: 82px !important;
+    width: 82px !important;
+  }
+
+  #monthTable #monthTableReal thead th:nth-child(3),
+  #monthTable #monthTableReal thead th:nth-child(4),
+  #monthTable #monthTableReal thead th:nth-child(5),
+  #monthTable #monthTableReal tbody td:nth-child(3),
+  #monthTable #monthTableReal tbody td:nth-child(4),
+  #monthTable #monthTableReal tbody td:nth-child(5) {
+    min-width: 44px !important;
+    width: 44px !important;
+  }
+
+  #monthTable #monthTableReal thead th:nth-child(6),
+  #monthTable #monthTableReal thead th:nth-child(7),
+  #monthTable #monthTableReal tbody td:nth-child(6),
+  #monthTable #monthTableReal tbody td:nth-child(7) {
+    min-width: 66px !important;
+    width: 66px !important;
+  }
+
+  #monthTable #monthTableReal td input.se-input,
+  #monthTable #monthTableReal td select.se-select,
+  #monthTable #monthTableReal td input.se-time {
+    width: calc(100% - 2px) !important;
+    max-width: calc(100% - 2px) !important;
+  }
+
+  #monthTable #monthTableReal input.se-time[data-field="checkIn"],
+  #monthTable #monthTableReal input.se-time[data-field="checkOut"] {
+    width: 54px !important;
+    min-width: 54px !important;
+  }
+
+  #monthTable #monthTableReal select.se-select[data-field="break"],
+  #monthTable #monthTableReal select.se-select[data-field="nightBreak"] {
+    width: 50px !important;
+    min-width: 50px !important;
+  }
+
+  #monthTable #monthTableReal .se-check {
+    width: 12px !important;
+    height: 12px !important;
+    min-width: 12px !important;
+    min-height: 12px !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+</style>
+  <link rel="icon" href="data:,">
+  
+  
+</head>
+<body>
+    <main class="kintai-main" style="padding-top: 20px; min-height: 100vh; height: auto; overflow: auto; background: #f5f6f8;">
+    <section class="kintai-grid" style="max-width:1000px;margin:0 auto;padding:20px;">
+      <!-- Title Section -->
+      <div class="kintai-card" style="margin-bottom:20px;">
+        <div class="kintai-card-title">操作マニュアル</div>
+        <div style="padding:20px;color:#334155;">
+          <p style="margin:0 0 15px 0;font-size:14px;">
+            本ページは、スマートE勤怠システムの使い方をご説明するための資料です。
+            <br>
+            わからないことがあれば、以下の項目から該当する説明を選んでください。
+          </p>
+        </div>
+      </div>
+
+      <!-- Navigation Cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;margin-bottom:30px;">
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('login')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">🔑</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">ログイン方法</div>
+            <div style="font-size:12px;color:#666;">ID・パスワードでログインする</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('simple')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">⏱️</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">簡易打刻方法</div>
+            <div style="font-size:12px;color:#666;">開始・終了打刻の操作</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('monthly')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">📋</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">月次勤怠入力</div>
+            <div style="font-size:12px;color:#666;">勤務区分・現場などの詳細入力</div>
+          </div>
+        </div>
+
+        
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('troubleshoot')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">🛠️</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">トラブル対処</div>
+            <div style="font-size:12px;color:#666;">よくあるエラーと対応方法</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('smartphone')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">📱</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">スマートフォン利用</div>
+            <div style="font-size:12px;color:#666;">モバイルでの操作ガイド</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('rules')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">⚙️</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">利用ルール</div>
+            <div style="font-size:12px;color:#666;">基本ルールと禁止事項</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Sections -->
+
+      <!-- 1. ログイン方法 -->
+      <div class="kintai-card" id="section-login" style="margin-bottom:30px;">
+        <div class="kintai-card-title" id="login">🔑 ログイン方法</div>
+        <div style="padding:20px;">
+          <div style="background:#f8f9fa;padding:15px;border-radius:6px;margin-bottom:15px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">推奨ブラウザ</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;">
+              <li>Google Chrome（最新版）</li>
+              <li>Microsoft Edge（最新版）</li>
+              <li>Safari（最新版）</li>
+            </ul>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">ログイン手順</div>
+            <ol style="margin:0;padding-left:20px;color:#334155;">
+              <li style="margin-bottom:10px;">
+                <strong>ログイン画面を開く</strong>
+                <br><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;">https://tosouapp.com/ui/login</code>
+              </li>
+              <li style="margin-bottom:10px;">
+                <strong>ログインID を入力</strong>
+                <br><span style="font-size:13px;color:#666;">会社から配布されたID</span>
+              </li>
+              <li style="margin-bottom:10px;">
+                <strong>パスワード を入力</strong>
+                <br><span style="font-size:13px;color:#666;">会社から配布されたパスワード</span>
+              </li>
+              <li style="margin-bottom:10px;">
+                <strong>「ログイン」ボタンを押す</strong>
+              </li>
+              <li>
+                <strong>メニューから必要な画面を選択</strong>
+              </li>
+            </ol>
+          </div>
+
+          <div style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107;">
+            <strong>⚠️ 注意:</strong> Edgeでログインできない、表示不具合が出る場合は、Google Chromeをご利用ください。
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 簡易打刻方法 -->
+      <div class="kintai-card" id="section-simple" style="margin-bottom:30px;">
+        <div class="kintai-card-title" id="simple">⏱️ 簡易打刻方法</div>
+        <div style="padding:20px;">
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">毎日の基本運用（推奨）</div>
+            <ol style="margin:0;padding-left:20px;color:#334155;">
+              <li style="margin-bottom:15px;">
+                <strong>出勤時に「開始打刻」を押す</strong>
+                <br><span style="font-size:13px;color:#666;">簡易登録画面で「開始打刻」ボタンをクリック</span>
+              </li>
+              <li style="margin-bottom:15px;">
+                <strong>退勤時に「終了打刻」を押す</strong>
+                <br><span style="font-size:13px;color:#666;">「終了打刻」ボタンをクリック</span>
+              </li>
+              <li style="margin-bottom:15px;">
+                <strong>当日または月内に月次勤怠画面で確認・補足入力する</strong>
+              </li>
+              <li>
+                <strong>必要に応じて現場・作業内容・理由などを入力して保存</strong>
+              </li>
+            </ol>
+          </div>
+
+          <div style="background:#e7f3ff;padding:15px;border-radius:6px;margin-bottom:15px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">「開始打刻」について</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
+              <li>出勤時に<strong>1回だけ</strong>押してください</li>
+              <li>「開始打刻済み」と表示されたら、再度押さないでください</li>
+              <li>時刻修正が必要な場合は、月次勤怠画面で修正してください</li>
+            </ul>
+          </div>
+
+          <div style="background:#f0f8ff;padding:15px;border-radius:6px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;">「終了打刻」について</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
+              <li>退勤時に押してください</li>
+              <li>同じボタンを連続で何度も押さないでください</li>
+              <li>時刻修正が必要な場合は、月次勤怠画面で修正してください</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 月次勤怠入力 -->
+      <div class="kintai-card" id="section-monthly" style="margin-bottom:30px;">
+        <div class="kintai-card-title" id="monthly">📋 月次勤怠入力</div>
+        <div style="padding:20px;">
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">入力できる主な項目</div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;">
+              <ul style="margin:0;padding-left:20px;color:#334155;">
+                <li><strong>勤務区分</strong> - 出勤、休日出勤、半休、休日、有給休暇など</li>
+                <li><strong>現場</strong> - 担当している現場名</li>
+                <li><strong>作業内容</strong> - 実施した業務内容</li>
+                <li><strong>開始時間 / 終了時間</strong> - 勤務時間の修正</li>
+                <li><strong>休憩時間</strong> - 休憩の時間設定</li>
+                <li><strong>理由</strong> - 必要な場合に入力</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="font-weight:bold;margin-bottom:10px;color:#1e40af;font-size:15px;">保存方法</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;">
+              <li style="margin-bottom:10px;">行を変更すると<strong>自動保存される場合があります</strong></li>
+              <li style="margin-bottom:10px;">画面上部/下部の<strong>「保存」ボタン</strong>でも保存できます</li>
+              <li>保存後に画面を<strong>再読込</strong>し、内容が反映されていることを確認してください</li>
+            </ul>
+          </div>
+
+          <div style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107;">
+            <strong>重要:</strong> 「出勤」や「休日出勤」を選択した場合、必要に応じて時刻も確認してください。
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. トラブル対処 -->
+      <div class="kintai-card" id="section-troubleshoot" style="margin-bottom:30px;">
+        <div class="kintai-card-title" id="troubleshoot">🛠️ トラブル対処</div>
+        <div style="padding:20px;">
+          <div style="margin-bottom:20px;">
+            <div style="background:#f5f5f5;padding:15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #dc3545;">
+              <div style="font-weight:bold;color:#dc3545;margin-bottom:10px;">❌ 保存したのに戻る / 変わらない</div>
+              <div style="color:#334155;margin-bottom:10px;">対応方法:</div>
+              <ol style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
+                <li><strong>Ctrl + F5</strong> で強制再読込</li>
+                <li>一度ログアウトして再ログイン</li>
+                <li>Google Chromeで再度確認</li>
+              </ol>
+            </div>
+
+            <div style="background:#f5f5f5;padding:15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #dc3545;">
+              <div style="font-weight:bold;color:#dc3545;margin-bottom:10px;">❌ 打刻ボタンが押せない</div>
+              <div style="color:#334155;margin-bottom:10px;">対応方法:</div>
+              <ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
+                <li>すでに「開始打刻済み」の可能性があります</li>
+                <li>画面を再読込（Ctrl + F5）してください</li>
+                <li>時刻修正が必要な場合は、月次勤怠画面で行ってください</li>
+              </ul>
+            </div>
+
+            <div style="background:#f5f5f5;padding:15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #dc3545;">
+              <div style="font-weight:bold;color:#dc3545;margin-bottom:10px;">❌ 画面が遅い / 反映が遅い</div>
+              <div style="color:#334155;margin-bottom:10px;">対応方法:</div>
+              <ol style="margin:0;padding-left:20px;color:#334155;font-size:14px;">
+                <li>5～10秒待機してから再確認</li>
+                <li>通信環境（Wi-Fi / 4G）を切り替え</li>
+                <li>不要なブラウザタブを閉じる</li>
+                <li>画面を再読込（Ctrl + F5）</li>
+              </ol>
+            </div>
+          </div>
+
+          <div style="background:#d4edda;padding:15px;border-radius:6px;border-left:4px solid #28a745;">
+            <div style="font-weight:bold;color:#155724;margin-bottom:10px;">💡 解決しない場合は？</div>
+            <div style="color:#155724;font-size:14px;">
+              直属管理者またはシステム担当へ以下の情報を含めて報告してください：
+            </div>
+            <ul style="margin:10px 0 0 0;padding-left:20px;color:#155724;font-size:14px;">
+              <li>エラー画面のスクリーンショット</li>
+              <li>発生日時と操作内容</li>
+              <li>利用端末とブラウザ（Chrome / Edge等）</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. スマートフォン利用 -->
+      <div class="kintai-card" id="section-smartphone" style="margin-bottom:30px;">
+        <div class="kintai-card-title" id="smartphone">📱 スマートフォン利用</div>
+        <div style="padding:20px;">
+          <div style="background:#e7f3ff;padding:15px;border-radius:6px;margin-bottom:15px;">
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:10px;">✅ スマートフォンで利用可能な機能</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;">
+              <li>ログイン</li>
+              <li>簡易打刻（開始・終了）</li>
+              <li>月次勤怠入力の確認・修正</li>
+            </ul>
+          </div>
+
+          <div style="background:#fff3cd;padding:15px;border-radius:6px;">
+            <div style="font-weight:bold;color:#856404;margin-bottom:10px;">⚠️ 注意事項</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;">
+              <li>詳細な設定・管理操作はPC利用を推奨します</li>
+              <li>タテ向き（ポートレート）でのご利用をお勧めします</li>
+              <li>通信環境が不安定な場合は、Wi-Fi接続をお勧めします</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. 利用ルール -->
+      <div class="kintai-card" id="section-rules" style="margin-bottom:30px;">
+        <div class="kintai-card-title" id="rules">⚙️ 利用ルール</div>
+        <div style="padding:20px;">
+          <div style="background:#d4edda;padding:15px;border-radius:6px;margin-bottom:15px;">
+            <div style="font-weight:bold;color:#155724;margin-bottom:10px;">✅ 正しい操作方法</div>
+            <ul style="margin:0;padding-left:20px;color:#155724;">
+              <li>打刻時に十分な間隔をあけてからボタンを押してください</li>
+              <li>同じボタンを連続で何度も押さないでください</li>
+              <li>定期的にパスワードを変更してください</li>
+              <li>異常時は画面を撮影し、すぐに管理者へ報告してください</li>
+            </ul>
+          </div>
+
+          <div style="background:#f8d7da;padding:15px;border-radius:6px;">
+            <div style="font-weight:bold;color:#721c24;margin-bottom:10px;">❌ 禁止事項</div>
+            <ul style="margin:0;padding-left:20px;color:#721c24;">
+              <li><strong>アカウントの共有</strong> - 絶対に他人と共有しないでください</li>
+              <li><strong>他人のID・パスワード利用</strong> - 自分のアカウントのみ使用してください</li>
+              <li><strong>エラー時の連打操作</strong> - エラー時は画面を再読込し、管理者に相談してください</li>
+              <li><strong>不正な打刻</strong> - 実際の勤務と異なる入力は行わないでください</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="kintai-card" style="background:#f0f4f8;">
+        <div style="padding:20px;text-align:center;color:#666;">
+          <div style="margin-bottom:10px;">
+            ご不明な点がございましたら、直属管理者またはシステム担当へお気軽にお問い合わせください。
+          </div>
+          <div style="font-size:12px;color:#999;">
+            最終更新: 2026年5月
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function scrollToSection(sectionId) {
+      const element = document.getElementById('section-' + sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // Add smooth scroll behavior for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+

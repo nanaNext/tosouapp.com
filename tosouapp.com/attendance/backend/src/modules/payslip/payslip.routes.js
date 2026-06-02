@@ -11,6 +11,7 @@ const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit')
 const { payslipEncKey, payslipKeyVersion } = require('../../config/env');
 const settingsService = require('../settings/settings.service');
 const crypto = require('crypto');
+const s3Service = require('../../core/services/s3.service');
 
 function rfc5987Encode(str) {
   return encodeURIComponent(String(str || ''))
@@ -60,21 +61,31 @@ router.post('/admin/upload',
     }
     let filename = req.file.filename;
     let iv = null, tag = null, hash = null, keyVersion = null;
+    const srcPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
+    let outBuf = fs.readFileSync(srcPath);
+
     if (payslipEncKey) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
       const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;
-      const srcPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
-      const src = fs.readFileSync(srcPath);
       iv = crypto.randomBytes(12);
       const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-      const enc = Buffer.concat([cipher.update(src), cipher.final()]);
+      const enc = Buffer.concat([cipher.update(outBuf), cipher.final()]);
       tag = cipher.getAuthTag();
-      hash = crypto.createHash('sha256').update(src).digest('hex');
+      hash = crypto.createHash('sha256').update(outBuf).digest('hex');
+      outBuf = enc;
       filename = filename + '.enc';
-      const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
-      fs.writeFileSync(dstPath, enc);
-      try { fs.unlinkSync(srcPath); } catch {}
       keyVersion = payslipKeyVersion;
+    }
+
+    if (s3Service.isR2Configured()) {
+      await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
+      try { fs.unlinkSync(srcPath); } catch {}
+    } else {
+      if (payslipEncKey) {
+        const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
+        fs.writeFileSync(dstPath, outBuf);
+        try { fs.unlinkSync(srcPath); } catch {}
+      }
     }
     let createdId = null;
     try {
@@ -262,8 +273,12 @@ router.delete('/admin/:id',
     }
     const deleted = await repo.deleteById(id);
     try {
-      const p = path.join(__dirname, '../../', 'uploads', 'payslips', deleted.filename);
-      fs.existsSync(p) && fs.unlinkSync(p);
+      if (s3Service.isR2Configured() && deleted.filename) {
+        await s3Service.deleteFromR2(`payslips/${deleted.filename}`);
+      } else {
+        const p = path.join(__dirname, '../../', 'uploads', 'payslips', deleted.filename);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
     } catch {}
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_delete', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id, filename: deleted.filename }), afterData: JSON.stringify({ reason: req.body?.reason }) });
@@ -309,21 +324,31 @@ router.post('/admin/replace/:id',
     const oldPath = path.join(__dirname, '../../', 'uploads', 'payslips', target.filename);
     let filename = req.file.filename;
     let iv = null, tag = null, hash = null, keyVersion = null;
+    const srcPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
+    let outBuf = fs.readFileSync(srcPath);
+
     if (payslipEncKey) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
       const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;
-      const srcPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
-      const src = fs.readFileSync(srcPath);
       iv = crypto.randomBytes(12);
       const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-      const enc = Buffer.concat([cipher.update(src), cipher.final()]);
+      const enc = Buffer.concat([cipher.update(outBuf), cipher.final()]);
       tag = cipher.getAuthTag();
-      hash = crypto.createHash('sha256').update(src).digest('hex');
+      hash = crypto.createHash('sha256').update(outBuf).digest('hex');
+      outBuf = enc;
       filename = filename + '.enc';
-      const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
-      fs.writeFileSync(dstPath, enc);
-      try { fs.unlinkSync(srcPath); } catch {}
       keyVersion = payslipKeyVersion;
+    }
+
+    if (s3Service.isR2Configured()) {
+      await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
+      try { fs.unlinkSync(srcPath); } catch {}
+    } else {
+      if (payslipEncKey) {
+        const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
+        fs.writeFileSync(dstPath, outBuf);
+        try { fs.unlinkSync(srcPath); } catch {}
+      }
     }
     const updated = await repo.updateFile(target.id, filename, req.file.originalname, req.user.id, iv, tag, keyVersion, hash);
     try { fs.existsSync(oldPath) && fs.unlinkSync(oldPath); } catch {}
@@ -367,21 +392,31 @@ router.post('/admin/replace-by-month',
     const oldPath2 = path.join(__dirname, '../../', 'uploads', 'payslips', target.filename);
     let filename = req.file.filename;
     let iv = null, tag = null, hash = null, keyVersion = null;
+    const srcPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
+    let outBuf = fs.readFileSync(srcPath);
+
     if (payslipEncKey) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
       const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;
-      const srcPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
-      const src = fs.readFileSync(srcPath);
       iv = crypto.randomBytes(12);
       const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-      const enc = Buffer.concat([cipher.update(src), cipher.final()]);
+      const enc = Buffer.concat([cipher.update(outBuf), cipher.final()]);
       tag = cipher.getAuthTag();
-      hash = crypto.createHash('sha256').update(src).digest('hex');
+      hash = crypto.createHash('sha256').update(outBuf).digest('hex');
+      outBuf = enc;
       filename = filename + '.enc';
-      const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
-      fs.writeFileSync(dstPath, enc);
-      try { fs.unlinkSync(srcPath); } catch {}
       keyVersion = payslipKeyVersion;
+    }
+
+    if (s3Service.isR2Configured()) {
+      await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
+      try { fs.unlinkSync(srcPath); } catch {}
+    } else {
+      if (payslipEncKey) {
+        const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
+        fs.writeFileSync(dstPath, outBuf);
+        try { fs.unlinkSync(srcPath); } catch {}
+      }
     }
     const updated = await repo.updateFile(target.id, filename, req.file.originalname, req.user.id, iv, tag, keyVersion, hash);
     try { fs.existsSync(oldPath2) && fs.unlinkSync(oldPath2); } catch {}
@@ -422,30 +457,42 @@ router.get('/me/file/:id',
       return res.status(403).json({ message: 'Forbidden: not your payslip' });
     }
     const filePath = path.join(__dirname, '../../', 'uploads', 'payslips', row.filename);
-    if (!fs.existsSync(filePath)) {
+    let fileBuffer = null;
+    
+    if (s3Service.isR2Configured()) {
+      fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`);
+    } else {
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+      }
+    }
+
+    if (!fileBuffer) {
       return res.status(404).json({ message: 'File missing' });
     }
+    
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
     } catch {}
+    
     res.setHeader('Content-Type', 'application/pdf');
     setAttachmentFilename(res, row.original_name || row.filename);
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     res.setHeader('Pragma', 'no-cache');
+    
     if (row.iv && row.auth_tag && payslipEncKey && String(row.filename || '').endsWith('.enc')) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
       const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;
-      const enc = fs.readFileSync(filePath);
       const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(row.iv));
       decipher.setAuthTag(Buffer.from(row.auth_tag));
-      const plain = Buffer.concat([decipher.update(enc), decipher.final()]);
+      const plain = Buffer.concat([decipher.update(fileBuffer), decipher.final()]);
       const h = crypto.createHash('sha256').update(plain).digest('hex');
       if (row.hash && h !== row.hash) {
         return res.status(500).json({ message: 'Integrity check failed' });
       }
       return res.status(200).send(plain);
     } else {
-      return res.sendFile(filePath);
+      return res.status(200).send(fileBuffer);
     }
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -478,28 +525,40 @@ router.get('/admin/file/:id',
       return res.status(403).json({ message: 'Forbidden: cross-department access' });
     }
     const filePath = path.join(__dirname, '../../', 'uploads', 'payslips', row.filename);
-    if (!fs.existsSync(filePath)) {
+    let fileBuffer = null;
+    
+    if (s3Service.isR2Configured()) {
+      fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`);
+    } else {
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+      }
+    }
+
+    if (!fileBuffer) {
       return res.status(404).json({ message: 'File missing' });
     }
+    
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
     } catch {}
+    
     res.setHeader('Content-Type', 'application/pdf');
     setAttachmentFilename(res, row.original_name || row.filename);
+    
     if (row.iv && row.auth_tag && payslipEncKey && String(row.filename || '').endsWith('.enc')) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
       const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;
-      const enc = fs.readFileSync(filePath);
       const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(row.iv));
       decipher.setAuthTag(Buffer.from(row.auth_tag));
-      const plain = Buffer.concat([decipher.update(enc), decipher.final()]);
+      const plain = Buffer.concat([decipher.update(fileBuffer), decipher.final()]);
       const h = crypto.createHash('sha256').update(plain).digest('hex');
       if (row.hash && h !== row.hash) {
         return res.status(500).json({ message: 'Integrity check failed' });
       }
       return res.status(200).send(plain);
     } else {
-      return res.sendFile(filePath);
+      return res.status(200).send(fileBuffer);
     }
   } catch (err) {
     res.status(500).json({ message: err.message });
