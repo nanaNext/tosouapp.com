@@ -461,10 +461,10 @@ router.get('/me/file/:id',
     
     if (s3Service.isR2Configured()) {
       fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`);
-    } else {
-      if (fs.existsSync(filePath)) {
-        fileBuffer = fs.readFileSync(filePath);
-      }
+    }
+    
+    if (!fileBuffer && fs.existsSync(filePath)) {
+      fileBuffer = fs.readFileSync(filePath);
     }
 
     if (!fileBuffer) {
@@ -529,10 +529,10 @@ router.get('/admin/file/:id',
     
     if (s3Service.isR2Configured()) {
       fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`);
-    } else {
-      if (fs.existsSync(filePath)) {
-        fileBuffer = fs.readFileSync(filePath);
-      }
+    }
+    
+    if (!fileBuffer && fs.existsSync(filePath)) {
+      fileBuffer = fs.readFileSync(filePath);
     }
 
     if (!fileBuffer) {
@@ -545,6 +545,8 @@ router.get('/admin/file/:id',
     
     res.setHeader('Content-Type', 'application/pdf');
     setAttachmentFilename(res, row.original_name || row.filename);
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
     
     if (row.iv && row.auth_tag && payslipEncKey && String(row.filename || '').endsWith('.enc')) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
