@@ -628,8 +628,14 @@
           try { 
             await controller.saveRowTimesNow(row); 
             if (timeEl) timeEl.dataset.prev = timeEl.value;
+            
+            // Update dataset so it reflects the saved values
+            const brSel = row.querySelector('select[data-field="break"]');
+            const nbrSel = row.querySelector('select[data-field="nightBreak"]');
+            if (brSel) brSel.dataset.actual = brSel.value || '';
+            if (nbrSel) nbrSel.dataset.actual = nbrSel.value || '';
           } catch (err) {
-            console.error('Save failed:', err);
+            console.warn('Save failed:', err);
           }
           render.recomputeRow(row);
         }
