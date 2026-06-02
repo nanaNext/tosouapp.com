@@ -113,15 +113,21 @@ const setupSimpleCombo = (sel) => {
     open(false);
   });
   const sync = () => {
-    renderList();
-    const opt = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0] : sel.querySelector('option:not([disabled])');
-    text.textContent = opt ? (opt.textContent || '') : '';
-    wrap.classList.toggle('is-planned', sel.classList.contains('is-planned'));
-    btn.disabled = sel.disabled;
-    if (sel.disabled) wrap.classList.add('is-disabled');
-    else wrap.classList.remove('is-disabled');
-  };
-  sync();
+      renderList();
+      const opt = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0] : sel.querySelector('option:not([disabled])');
+      text.textContent = opt ? (opt.textContent || '') : '';
+      if (!sel.value && opt) sel.value = opt.value;
+      wrap.classList.toggle('is-planned', sel.classList.contains('is-planned'));
+      btn.disabled = sel.disabled;
+      if (sel.disabled) wrap.classList.add('is-disabled');
+      else wrap.classList.remove('is-disabled');
+    };
+    // Initialize combo values properly and force sync to reflect actual select values
+    if (sel.value) {
+       const initialOpt = sel.querySelector(`option[value="${sel.value}"]`);
+       if (initialOpt) text.textContent = initialOpt.textContent;
+    }
+    sync();
   sel.dataset.comboInit = '1';
   sel.addEventListener('change', sync);
   
@@ -244,6 +250,8 @@ const restoreFastSnapshot = (date, stateRef) => {
     if ($('#workType')) $('#workType').value = String(snap.workType || '');
     if ($('#breakMin')) $('#breakMin').value = String(snap.breakMin || '60');
     if ($('#nightBreakMin')) $('#nightBreakMin').value = String(snap.nightBreakMin || '0');
+    try { $('#breakMin')?.dispatchEvent(new Event('change')); } catch {}
+    try { $('#nightBreakMin')?.dispatchEvent(new Event('change')); } catch {}
     if ($('#workSite')) $('#workSite').value = String(snap.workSite || '');
     if ($('#workContent')) $('#workContent').value = String(snap.workContent || '');
 
@@ -1036,24 +1044,18 @@ const load = async (date, opts = {}) => {
     }
     if (daily) {
       if (daily.breakMinutes !== undefined && daily.breakMinutes !== null) {
-        if ($('#breakMin')) $('#breakMin').value = daily.breakMinutes;
-        try { setupSimpleCombo(document.getElementById('breakMin')); const e = new Event('change'); document.getElementById('breakMin').dispatchEvent(e); } catch {}
+        if ($('#breakMin')) { $('#breakMin').value = daily.breakMinutes; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       } else {
-        if ($('#breakMin')) $('#breakMin').value = '60';
-        try { setupSimpleCombo(document.getElementById('breakMin')); const e = new Event('change'); document.getElementById('breakMin').dispatchEvent(e); } catch {}
+        if ($('#breakMin')) { $('#breakMin').value = '60'; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       }
       if (daily.nightBreakMinutes !== undefined && daily.nightBreakMinutes !== null) {
-        if ($('#nightBreakMin')) $('#nightBreakMin').value = daily.nightBreakMinutes;
-        try { setupSimpleCombo(document.getElementById('nightBreakMin')); const e = new Event('change'); document.getElementById('nightBreakMin').dispatchEvent(e); } catch {}
+        if ($('#nightBreakMin')) { $('#nightBreakMin').value = daily.nightBreakMinutes; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
       } else {
-        if ($('#nightBreakMin')) $('#nightBreakMin').value = '0';
-        try { setupSimpleCombo(document.getElementById('nightBreakMin')); const e = new Event('change'); document.getElementById('nightBreakMin').dispatchEvent(e); } catch {}
+        if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
       }
     } else {
-      if ($('#breakMin')) $('#breakMin').value = '60';
-      if ($('#nightBreakMin')) $('#nightBreakMin').value = '0';
-      try { setupSimpleCombo(document.getElementById('breakMin')); const e1 = new Event('change'); document.getElementById('breakMin').dispatchEvent(e1); } catch {}
-      try { setupSimpleCombo(document.getElementById('nightBreakMin')); const e2 = new Event('change'); document.getElementById('nightBreakMin').dispatchEvent(e2); } catch {}
+      if ($('#breakMin')) { $('#breakMin').value = '60'; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
+      if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
     }
 
     ensureDefaultWorkTypeForToday(date);
