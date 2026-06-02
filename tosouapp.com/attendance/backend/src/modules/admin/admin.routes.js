@@ -1234,10 +1234,9 @@ function validatePaymentConsistency(emp) {
 }
 
 const payslipDeliveryRepo = require('../salary/payslipDelivery.repository');
+const s3Service = require('../../core/services/s3.service');
 
 async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }) {
-  const dir = path.join(__dirname, '../../', 'uploads', 'payslips');
-  fs.mkdirSync(dir, { recursive: true });
   const baseName = `payslip_${userId}_${month}_${Date.now()}.pdf`;
   let filename = baseName;
   let iv = null;
@@ -1245,6 +1244,7 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }
   let hash = crypto.createHash('sha256').update(pdfBuf).digest('hex');
   let keyVersion = null;
   let outBuf = pdfBuf;
+  
   if (payslipEncKey) {
     const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
     const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;
@@ -1255,8 +1255,17 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }
     filename = baseName + '.enc';
     keyVersion = payslipKeyVersion;
   }
-  const filePath = path.join(dir, filename);
-  fs.writeFileSync(filePath, outBuf);
+
+  // Upload to R2 instead of local disk if configured
+  if (s3Service.isR2Configured()) {
+    await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
+  } else {
+    // Fallback to local fs if R2 not configured
+    const dir = path.join(__dirname, '../../', 'uploads', 'payslips');
+    fs.mkdirSync(dir, { recursive: true });
+    const filePath = path.join(dir, filename);
+    fs.writeFileSync(filePath, outBuf);
+  }
 
   const existing = await payslipRepo.findLatestByUserMonth(userId, month);
   const originalName2 = String(originalName || `payslip_${month}.pdf`);
@@ -1264,8 +1273,13 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }
   let version = 1;
   if (existing?.id) {
     try {
-      const oldPath = path.join(dir, String(existing.filename || ''));
-      if (existing.filename && fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      if (s3Service.isR2Configured() && existing.filename) {
+        await s3Service.deleteFromR2(`payslips/${existing.filename}`);
+      } else {
+        const dir = path.join(__dirname, '../../', 'uploads', 'payslips');
+        const oldPath = path.join(dir, String(existing.filename || ''));
+        if (existing.filename && fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
     } catch {}
     version = (existing.version || 1) + 1;
     const updated = await payslipRepo.updateFile(existing.id, filename, originalName2, actorId, iv, tag, keyVersion, hash, version);
