@@ -354,6 +354,8 @@ function computeSummary(detail, timesheet, mode) {
   let remoteDays2 = counts.remote;
   let satelliteDays2 = counts.satellite;
   let usedFrontend = false;
+  
+  const isPartTime = String(detail?.user?.employment_type || '').toLowerCase() === 'part_time' || String(detail?.user?.shift_id || '').includes('baito');
 
   try {
     if (scope.length > 0) {
@@ -412,6 +414,10 @@ function computeSummary(detail, timesheet, mode) {
         satelliteDays2 = Number(stored.satelliteDays == null ? satelliteDays2 : stored.satelliteDays) || 0;
       }
     }
+  }
+
+  if (isPartTime) {
+    plannedDays = attendDays2 + absent2 + Number(paidDays || 0) + Number(unpaidDays || 0) + holidayWorkDays2;
   }
 
   const res = {

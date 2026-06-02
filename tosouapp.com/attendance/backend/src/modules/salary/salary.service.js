@@ -214,7 +214,7 @@ async function computePayslipForUser(userId, month, options = null) {
 
   const userComp = await salaryRepo.getUserCompensation(userId);
   const opts = options && typeof options === 'object' ? options : {};
-  const baseMonthly = Object.prototype.hasOwnProperty.call(opts, 'baseMonthly')
+  let baseMonthly = Object.prototype.hasOwnProperty.call(opts, 'baseMonthly')
     ? yen(opts.baseMonthly)
     : (userComp?.base_salary ?? env.salaryBaseMonthly ?? 0);
   const empAllowance = Object.prototype.hasOwnProperty.call(opts, 'transportAllowance')
@@ -264,9 +264,20 @@ async function computePayslipForUser(userId, month, options = null) {
   // Holiday overrides are in days or hours? The UI uses inputs for days, but for hours?
   // UI has: 所定休出勤 (not in UI), 法定休出勤 (not in UI)
 
+  // Check if this is an hourly wage part-timer (if baseMonthly is < 10000, it's an hourly wage)
+  const isHourlyWage = (empType === 'part_time' || empType.includes('baito')) && baseMonthly > 0 && baseMonthly < 10000;
+  let hourlyWage = 0;
+
   const minutesPerMonth = conf?.working_minutes_per_month ?? env.salaryWorkingMinutesPerMonth ?? (160 * 60);
-  const baseRate = Number(conf?.base_hourly_rate ?? env.salaryBaseHourlyRate) || 0;
-  const minuteRate = baseRate > 0 ? baseRate / 60 : (minutesPerMonth > 0 ? baseMonthly / minutesPerMonth : 0);
+  let baseRate = Number(conf?.base_hourly_rate ?? env.salaryBaseHourlyRate) || 0;
+  let minuteRate = baseRate > 0 ? baseRate / 60 : (minutesPerMonth > 0 ? baseMonthly / minutesPerMonth : 0);
+
+  if (isHourlyWage) {
+    hourlyWage = baseMonthly;
+    minuteRate = hourlyWage / 60;
+    // Base monthly is calculated by regular hours * hourly wage
+    baseMonthly = Math.round((regularMin / 60) * hourlyWage);
+  }
 
   const otAllowance = yen(overtimeMin * minuteRate * ((conf?.overtime_rate ?? env.salaryOvertimeRate) - 1));
   const nightAllowance = yen(nightMin * minuteRate * ((conf?.late_night_rate ?? env.salaryLateNightRate) - 1));
