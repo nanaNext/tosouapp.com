@@ -550,6 +550,7 @@
       }
       return Math.max(0, dailyOverTotal + weeklyAdditional);
     })();
+    
     let plannedDays = working;
     let attendDays2 = attendDays;
     let holidayWorkDays2 = holidayWorkDays;
@@ -558,6 +559,8 @@
     let remoteDays2 = counts.remote;
     let satelliteDays2 = counts.satellite;
     let usedFrontend = false;
+    
+    const isPartTime = String(detail?.user?.employment_type || '').toLowerCase() === 'part_time' || String(detail?.user?.shift_id || '').includes('baito');
     
     // Auto re-calculate from frontend rows instead of using stored DB values
     try {
@@ -653,6 +656,10 @@
       }
     } catch(e) {}
     
+    if (isPartTime) {
+      plannedDays = attendDays2 + absent2 + Number(paidDays || 0) + Number(unpaidDays || 0) + holidayWorkDays2;
+    }
+
     // Optionally merge with stored if needed for things not calculatable
     if (stored && typeof stored === 'object') {
       if (plannedDays === 0) plannedDays = Number(stored.plannedDays == null ? plannedDays : stored.plannedDays) || 0;
