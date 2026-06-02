@@ -496,7 +496,7 @@
           el.setAttribute('data-row-disabled', '1');
         } else {
           el.removeAttribute('data-row-disabled');
-          // Skip applying disabled state to break inputs on the monthly board 
+          // Skip applying disabled state to break inputs on the monthly board
           // so employees can edit their break times manually
           const isBreakInput = el.matches('select[data-field="break"], select[data-field="nightBreak"]');
           if (isBreakInput) {
@@ -549,8 +549,9 @@
       const loc = row.querySelector('input[data-field="location"]');
       const memo = row.querySelector('input[data-field="memo"]');
       const notes = row.querySelector('input[data-field="notes"]');
-      if (loc) loc.value = '';
-      if (memo) memo.value = '';
+      // Không clear location và memo khi là ngày nghỉ để tránh mất dữ liệu
+      // if (loc) loc.value = '';
+      // if (memo) memo.value = '';
       if (notes) notes.value = '';
       if (inEl) inEl.value = '';
       if (outEl) outEl.value = '';
@@ -780,3 +781,4 @@
   root.Events = Events;
   globalThis.AttendanceMonthly = root;
 })();
+// end
