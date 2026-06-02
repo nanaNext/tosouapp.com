@@ -1037,17 +1037,23 @@ const load = async (date, opts = {}) => {
     if (daily) {
       if (daily.breakMinutes !== undefined && daily.breakMinutes !== null) {
         if ($('#breakMin')) $('#breakMin').value = daily.breakMinutes;
+        try { setupSimpleCombo(document.getElementById('breakMin')); const e = new Event('change'); document.getElementById('breakMin').dispatchEvent(e); } catch {}
       } else {
         if ($('#breakMin')) $('#breakMin').value = '60';
+        try { setupSimpleCombo(document.getElementById('breakMin')); const e = new Event('change'); document.getElementById('breakMin').dispatchEvent(e); } catch {}
       }
       if (daily.nightBreakMinutes !== undefined && daily.nightBreakMinutes !== null) {
         if ($('#nightBreakMin')) $('#nightBreakMin').value = daily.nightBreakMinutes;
+        try { setupSimpleCombo(document.getElementById('nightBreakMin')); const e = new Event('change'); document.getElementById('nightBreakMin').dispatchEvent(e); } catch {}
       } else {
         if ($('#nightBreakMin')) $('#nightBreakMin').value = '0';
+        try { setupSimpleCombo(document.getElementById('nightBreakMin')); const e = new Event('change'); document.getElementById('nightBreakMin').dispatchEvent(e); } catch {}
       }
     } else {
       if ($('#breakMin')) $('#breakMin').value = '60';
       if ($('#nightBreakMin')) $('#nightBreakMin').value = '0';
+      try { setupSimpleCombo(document.getElementById('breakMin')); const e1 = new Event('change'); document.getElementById('breakMin').dispatchEvent(e1); } catch {}
+      try { setupSimpleCombo(document.getElementById('nightBreakMin')); const e2 = new Event('change'); document.getElementById('nightBreakMin').dispatchEvent(e2); } catch {}
     }
 
     ensureDefaultWorkTypeForToday(date);
