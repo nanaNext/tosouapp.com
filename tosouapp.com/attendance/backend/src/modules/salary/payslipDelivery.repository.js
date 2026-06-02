@@ -9,11 +9,21 @@ async function ensureTable() {
       payslip_file_id BIGINT UNSIGNED NOT NULL,
       sent_by BIGINT UNSIGNED NULL,
       sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      is_read TINYINT(1) DEFAULT 0,
       INDEX idx_user_month (userId, month),
       INDEX idx_sent_at (sent_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `;
   await db.query(sql);
+  
+  // Add is_read if missing (migration)
+  try {
+    const [cols] = await db.query(`SHOW COLUMNS FROM payslip_deliveries LIKE 'is_read'`);
+    if (!cols || !cols.length) {
+      await db.query(`ALTER TABLE payslip_deliveries ADD COLUMN is_read TINYINT(1) DEFAULT 0 AFTER sent_at`);
+    }
+  } catch {}
+
   try {
     const [fk1] = await db.query(`
       SELECT CONSTRAINT_NAME
@@ -57,7 +67,7 @@ async function create({ userId, month, payslipFileId, sentBy }) {
 
 async function list({ userId = null, month = null, limit = 200 } = {}) {
   const sql = `
-    SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at,
+    SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at, d.is_read,
       u.username AS user_name, u.email AS user_email,
       s.username AS sender_name, s.email AS sender_email,
       f.original_name, f.created_at AS file_created_at
@@ -76,13 +86,18 @@ async function list({ userId = null, month = null, limit = 200 } = {}) {
 
 async function getById(id) {
   const sql = `
-    SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at
+    SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at, d.is_read
     FROM payslip_deliveries d
     WHERE d.id = ?
     LIMIT 1
   `;
   const [rows] = await db.query(sql, [id]);
   return rows[0] || null;
+}
+
+async function markAsRead(id) {
+  const sql = `UPDATE payslip_deliveries SET is_read = 1 WHERE id = ?`;
+  await db.query(sql, [id]);
 }
 
 async function deleteById(id) {
@@ -92,4 +107,4 @@ async function deleteById(id) {
   return before;
 }
 
-module.exports = { create, list, ensureTable, getById, deleteById };
+module.exports = { create, list, ensureTable, getById, deleteById, markAsRead };

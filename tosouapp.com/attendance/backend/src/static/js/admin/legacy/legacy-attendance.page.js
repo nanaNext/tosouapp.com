@@ -116,6 +116,8 @@ async function mountAttendanceImpl({
       table.innerHTML = '<thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>';
       const tbody = document.createElement('tbody');
       const selectedDateIsOff = isWeekend(date);
+      const isPastDate = date < today;
+      
       for (const it of items) {
         const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
         const name = it.username || '';
@@ -127,14 +129,41 @@ async function mountAttendanceImpl({
         const holidaySet = new Set(['休日', '代替休日']);
         const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
         const isHolidayKubun = holidaySet.has(kubun);
-        const stLabel = st === 'checked_out' ? '退勤済'
-          : (st === 'working' ? '出勤中'
-            : (st === 'holiday_work' || st === 'holiday_working' ? '休日出勤'
-              : ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun ? kubun || '休日' : (st === 'off' ? '休日' : '未出勤'))));
-        const stClass = st === 'checked_out' ? 'attrec-pill ok'
-          : (st === 'working' ? 'attrec-pill warn'
-            : (st === 'holiday_work' || st === 'holiday_working' ? 'attrec-pill warn'
-              : (((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) ? 'attrec-pill neutral' : (st === 'off' ? 'attrec-pill neutral' : 'attrec-pill neutral'))));
+        
+        let stLabel = '';
+        let stClass = '';
+        
+        if (st === 'checked_out') {
+          stLabel = '退勤済';
+          stClass = 'attrec-pill ok';
+        } else if (st === 'working' || st === 'holiday_working') {
+          if (isPastDate) {
+            stLabel = '退勤忘れ';
+            stClass = 'attrec-pill danger';
+          } else {
+            stLabel = st === 'working' ? '出勤中' : '休日出勤中';
+            stClass = 'attrec-pill warn';
+          }
+        } else if (st === 'holiday_work') {
+          stLabel = '休日出勤';
+          stClass = 'attrec-pill warn';
+        } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
+          stLabel = kubun || '休日';
+          stClass = 'attrec-pill neutral';
+        } else if (st === 'off') {
+          stLabel = '休日';
+          stClass = 'attrec-pill neutral';
+        } else {
+          // not_checked_in or empty
+          if (isPastDate) {
+            stLabel = '打刻なし';
+            stClass = 'attrec-pill danger';
+          } else {
+            stLabel = '未出勤';
+            stClass = 'attrec-pill neutral';
+          }
+        }
+
         const cin = fmtTime(it.attendance ? it.attendance.checkIn : undefined);
         const cout = fmtTime(it.attendance ? it.attendance.checkOut : undefined);
         const site = (it.report && it.report.site) ? it.report.site : '';

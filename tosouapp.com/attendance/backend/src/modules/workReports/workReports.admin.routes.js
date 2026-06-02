@@ -8,6 +8,9 @@ const calendarRepo = require('../calendar/calendar.repository');
 const db = require('../../core/database/mysql');
 const { classifyMonthlyDay } = require('../attendance/attendance.classifier');
 
+const s3Service = require('../../core/services/s3.service');
+const { buildXlsx } = require('./workReports.export');
+
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const isYM = (s) => /^\d{4}-\d{2}$/.test(String(s || ''));
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -468,6 +471,19 @@ router.get('/export.xlsx',
       }
 
       const buf = buildXlsxBook({ sheets });
+      
+      // Auto save to Cloudflare R2
+      try {
+        if (s3Service.isR2Configured()) {
+          const timestamp = Date.now();
+          const r2Key = `exports/work_reports/${fileName.replace('.xlsx', '')}_${timestamp}.xlsx`;
+          await s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+          console.log(`[Admin] Auto-saved weekly work report export to R2: ${r2Key}`);
+        }
+      } catch (e) {
+        console.error('Failed to auto-save weekly work report export to R2:', e);
+      }
+
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.status(200).send(buf);
@@ -513,6 +529,19 @@ router.get('/export.xlsx',
 
     const baseName = period === 'month' ? `月次_${qMonth}` : period === 'year' ? `年次_${qYear}` : `日次_${start}`;
     const buf = buildXlsx({ sheetName: baseName, columns, rows });
+    
+    // Auto save to Cloudflare R2
+    try {
+      if (s3Service.isR2Configured()) {
+        const timestamp = Date.now();
+        const r2Key = `exports/work_reports/${fileName.replace('.xlsx', '')}_${timestamp}.xlsx`;
+        await s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        console.log(`[Admin] Auto-saved work report export to R2: ${r2Key}`);
+      }
+    } catch (e) {
+      console.error('Failed to auto-save work report export to R2:', e);
+    }
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.status(200).send(buf);
@@ -1069,6 +1098,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         departmentName: user.departmentName || null,
         date,
         weekday: weekdayJa(date),
+        holiday: isOffDate(date, user.departmentName), // Thêm flag holiday
         attendance: {
           checkIn: a.firstCheckIn || null,
           checkOut: a.lastCheckOut || (fallbackOutHm ? `${date} ${fallbackOutHm}:00` : null)
@@ -1103,20 +1133,20 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       const work = pickNonEmptyText(daily?.memo, rep?.work);
       const hasContent = !!(site || work);
       const workType = daily?.workType || rep?.work_type || null;
-      const fallbackOutHm = hasContent ? resolveShiftEndHm(userId, String(date).slice(0, 10)) : '';
+      const fallbackOutHm = ''; // Do not fallback out time if no checkIn
 
       let status = '';
       if (holidayKubun.has(kubun) || (!kubun && isOffDate(date, user.departmentName))) status = 'off';
       else if (paidLeaveKubun.has(kubun)) status = 'paid_leave';
       else if (unpaidLeaveKubun.has(kubun)) status = 'unpaid_leave';
       else if (absenceKubun.has(kubun)) status = 'absence';
-      else if (workKubun.has(kubun) || hasContent) status = 'monthly_input_only';
+      else if (workKubun.has(kubun) || hasContent) status = 'not_punched'; // Treat as missing punch rather than monthly input only
       else continue;
       // Hide pure future off-day placeholders (no punch/report content) to match admin expectation.
       if (status === 'off' && String(date).slice(0, 10) > today && !hasContent) continue;
       if (!kubun && status === 'off') kubun = '休日';
 
-      if (status === 'monthly_input_only') submitted++;
+      if (status === 'not_punched' && hasContent) submitted++;
       workingUsers.add(userId);
       items.push({
         userId,
@@ -1126,6 +1156,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         departmentName: user.departmentName || null,
         date: String(date).slice(0, 10),
         weekday: weekdayJa(date),
+        holiday: isOffDate(date, user.departmentName), // Thêm flag holiday
         attendance: { checkIn: null, checkOut: fallbackOutHm ? `${String(date).slice(0, 10)} ${fallbackOutHm}:00` : null },
         kubun: kubun || null,
         workType,

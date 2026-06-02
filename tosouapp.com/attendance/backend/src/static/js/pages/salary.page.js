@@ -79,6 +79,12 @@ const markMonthViewed = (month) => {
     set.add(m);
     localStorage.setItem(viewedKey(), JSON.stringify(Array.from(set)));
   } catch {}
+  try {
+    fetchJSONAuth('/api/salary/my/read', {
+      method: 'POST',
+      body: JSON.stringify({ month: m })
+    }).catch(() => {});
+  } catch {}
 };
 
 const ensureAuthProfile = async () => {
@@ -576,7 +582,9 @@ const render = async () => {
               const m = month.slice(5, 7);
               const title = `${y}年${m}月給与明細`;
               const pub = it.publishedAt ? formatDateTime(it.publishedAt) : '';
-              const viewedCls = viewed.has(month) ? ' is-hidden' : '';
+              // Use server state first, fallback to local storage
+              const isRead = it.isRead || viewed.has(month);
+              const viewedCls = isRead ? ' is-hidden' : '';
               return `
                 <tr data-month="${esc(month)}">
                   <td><a href="#" data-month="${esc(month)}"><span class="dot${viewedCls}"></span><span>${esc(title)}</span></a></td>

@@ -1,5 +1,6 @@
 import { requireAdmin } from '../_shared/require-admin.js';
 import { fetchJSONAuth } from '../../api/http.api.js';
+import { downloadWithAuth } from '../../shared/api/client.js';
 
 const $ = (sel) => document.querySelector(sel);
 const isYM = (s) => /^\d{4}-\d{2}$/.test(String(s || ''));
@@ -20,7 +21,7 @@ const statusMeta = (status) => {
   if (status === 'paid_leave') return { label: '有給休暇', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
   if (status === 'unpaid_leave') return { label: '無給休暇', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
   if (status === 'absence') return { label: '欠勤', style: 'background:#fff1f1;color:#991b1b;border-color:#ffcccc;' };
-  if (status === 'not_punched') return { label: '未打刻', style: 'background:#fff1f1;color:#991b1b;border-color:#ffcccc;' };
+  if (status === 'not_punched') return { label: '打刻なし', style: 'background:#fff1f1;color:#991b1b;border-color:#ffcccc;' };
   if (status === 'working') return { label: '勤務中', style: 'background:#f8fafc;color:#475569;border-color:#cbd5e1;' };
   return { label: '—', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
 };
@@ -151,6 +152,22 @@ export async function mount() {
         margin-left: auto;
       }
       .wr-btn-home:hover { background: #f1f5f9; }
+      .wr-btn-export {
+        text-decoration: none;
+        background: #10b981;
+        border: 1px solid #059669;
+        color: #fff;
+        border-radius: 4px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background 0.2s;
+        cursor: pointer;
+      }
+      .wr-btn-export:hover { background: #059669; }
       
       .wr-search-container {
         display: flex;
@@ -290,6 +307,10 @@ export async function mount() {
             <input id="wrGroup" type="checkbox" class="wr-checkbox" ${initGroup ? 'checked' : ''}>
             社員ごとにまとめる
           </label>
+          <button id="wrExport" class="wr-btn-export" style="margin-left: 12px;">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Excel
+          </button>
           <a class="wr-btn-home mobile-only-btn" href="/admin/dashboard">
             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
             ホームへ
@@ -345,27 +366,26 @@ export async function mount() {
 
       const dc = dowClass(it.weekday);
       const displayDate = it.date ? it.date.split('-').pop() : '';
-      const isHoliday = it.holiday || (it.date && (
-        it.date.endsWith('05-03') || 
-        it.date.endsWith('05-04') || 
-        it.date.endsWith('05-05') || 
-        it.date.endsWith('05-06')
-      ));
+      // Calculate holiday from backend flag
+      const isHoliday = !!it.holiday;
       const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
       
+      const rowBg = (dc === 'wr-dow-sun' || isHoliday) ? 'background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'background:#fffbeb;' : '');
+      const textColor = (dc === 'wr-dow-sun' || isHoliday) ? 'color:#ef4444;' : (dc === 'wr-dow-sat' ? 'color:#d97706;' : '');
+
       return `
-        <tr>
+        <tr style="${rowBg}">
           <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
           <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
-          <td style="color:#64748b; white-space:nowrap;">${esc(code)}</td>
-          <td style="font-weight:500; white-space:nowrap;">${esc(it.username || '')}</td>
-          <td style="white-space:nowrap;">${dept}</td>
-          <td style="white-space:nowrap;">${kubun}</td>
-          <td style="font-family:monospace; font-size:14px; white-space:nowrap;">${checkIn}</td>
-          <td style="font-family:monospace; font-size:14px; white-space:nowrap;">${checkOut}</td>
-          <td style="white-space:nowrap;">${wType}</td>
-          <td style="white-space:nowrap;">${site}</td>
-          <td style="white-space:pre-wrap; word-break:break-word; color:#475569; min-width:200px;">${work}</td>
+          <td style="white-space:nowrap; ${textColor}">${esc(code)}</td>
+          <td style="font-weight:500; white-space:nowrap; ${textColor}">${esc(it.username || '')}</td>
+          <td style="white-space:nowrap; ${textColor}">${dept}</td>
+          <td style="white-space:nowrap; ${textColor}">${kubun}</td>
+          <td style="font-family:monospace; font-size:14px; white-space:nowrap; ${textColor}">${checkIn}</td>
+          <td style="font-family:monospace; font-size:14px; white-space:nowrap; ${textColor}">${checkOut}</td>
+          <td style="white-space:nowrap; ${textColor}">${wType}</td>
+          <td style="white-space:nowrap; ${textColor}">${site}</td>
+          <td style="white-space:pre-wrap; word-break:break-word; min-width:200px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
@@ -566,27 +586,26 @@ export async function mount() {
 
         const dc = dowClass(it.weekday);
         const displayDate = it.date ? it.date.split('-').pop() : '';
-        const isHoliday = it.holiday || (it.date && (
-          it.date.endsWith('05-03') || 
-          it.date.endsWith('05-04') || 
-          it.date.endsWith('05-05') || 
-          it.date.endsWith('05-06')
-        ));
+        // Calculate holiday from backend flag
+        const isHoliday = !!it.holiday;
         const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
-        
-        return `
-          <tr>
-            <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
-            <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
-            <td>${kubun}</td>
-            <td style="font-family:monospace; font-size:14px;">${checkIn}</td>
-            <td style="font-family:monospace; font-size:14px;">${checkOut}</td>
-            <td>${wType}</td>
-            <td>${site}</td>
-            <td style="white-space:pre-wrap; word-break:break-word; color:#475569;">${work}</td>
-            <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
-          </tr>
-        `;
+      
+      const rowBg = (dc === 'wr-dow-sun' || isHoliday) ? 'background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'background:#fffbeb;' : '');
+      const textColor = (dc === 'wr-dow-sun' || isHoliday) ? 'color:#ef4444;' : (dc === 'wr-dow-sat' ? 'color:#d97706;' : '');
+
+      return `
+        <tr style="${rowBg}">
+          <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
+          <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
+          <td style="${textColor}">${kubun}</td>
+          <td style="font-family:monospace; font-size:14px; ${textColor}">${checkIn}</td>
+          <td style="font-family:monospace; font-size:14px; ${textColor}">${checkOut}</td>
+          <td style="${textColor}">${wType}</td>
+          <td style="${textColor}">${site}</td>
+          <td style="white-space:pre-wrap; word-break:break-word; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
+          <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
+        </tr>
+      `;
       }).join('');
       return `
         <div style="margin-bottom:24px;">
@@ -810,6 +829,15 @@ export async function mount() {
     const view = filterAndSort(state.items);
     if (state.group) renderGrouped(view);
     else renderRows(view);
+  });
+
+  $('#wrExport')?.addEventListener('click', async () => {
+    try {
+      const url = `/api/admin/work-reports/export.xlsx?period=month&month=${encodeURIComponent(state.month)}`;
+      await downloadWithAuth(url, `work_reports_${state.month}.xlsx`);
+    } catch (e) {
+      alert(String(e?.message || 'エクスポートに失敗しました'));
+    }
   });
 
   await load();

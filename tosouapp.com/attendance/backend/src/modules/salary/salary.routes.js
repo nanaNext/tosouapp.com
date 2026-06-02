@@ -33,24 +33,53 @@ router.get('/my', authenticate, authorize('employee','manager','admin'), async (
 router.get('/my/published', authenticate, authorize('employee','manager','admin'), async (req, res) => {
   try {
     const deliveries = await payslipDeliveryRepo.list({ userId: req.user.id, month: null, limit: 500 });
+    
+    // Also fetch the published status from salary_inputs to ensure they are still published
+    const publishedInputs = await salaryInputRepo.listPublishedByUser(req.user.id);
+
     const latestByMonth = new Map();
     for (const row of deliveries) {
       const m = String(row?.month || '');
       if (!m) continue;
       if (!latestByMonth.has(m)) latestByMonth.set(m, row);
     }
-    const months = Array.from(latestByMonth.keys()).sort().reverse();
-    const items = months.map(m => {
+    
+    const items = publishedInputs.map(input => {
+      const m = String(input.month);
       const r = latestByMonth.get(m);
       return {
+        id: r?.id || null,
         month: m,
-        publishedAt: r?.sent_at || null,
-        publishedBy: r?.sent_by || null,
+        publishedAt: r?.sent_at || input.updated_at || null,
+        publishedBy: r?.sent_by || input.updated_by || null,
         hasPdf: true,
-        fileName: r?.original_name || null
+        fileName: r?.original_name || null,
+        isRead: !!r?.is_read
       };
     });
+    
+    // Sort by month descending
+    items.sort((a, b) => b.month.localeCompare(a.month));
+    
     res.status(200).json({ items });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/my/read', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+  try {
+    const month = req.body.month;
+    if (!month) return res.status(400).json({ message: 'Missing month' });
+    
+    // Get all deliveries for this user and month
+    const deliveries = await payslipDeliveryRepo.list({ userId: req.user.id, month, limit: 500 });
+    for (const d of deliveries) {
+      if (!d.is_read) {
+        await payslipDeliveryRepo.markAsRead(d.id);
+      }
+    }
+    res.status(200).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
