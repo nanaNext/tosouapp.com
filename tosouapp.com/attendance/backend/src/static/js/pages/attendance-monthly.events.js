@@ -604,7 +604,7 @@
               const sel = row.querySelector('.kubun-sel');
               if (sel) {
                 let k = sel.value || '';
-                if (!k || k.includes('予定')) {
+                if (!k || k.includes('予定') || k === '出勤' || k === '休日出勤') {
                   const isSat = !!row.querySelector('.col-date')?.classList.contains('sat');
                   const isSun = !!row.querySelector('.col-date')?.classList.contains('sun');
                   const isHol = !!row.querySelector('.col-date')?.classList.contains('hol');
@@ -613,7 +613,10 @@
                   } else {
                     k = '出勤';
                   }
-                  sel.value = k;
+                  if (sel.value !== k) {
+                    sel.value = k;
+                    try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch {}
+                  }
                   row.dataset.kubunConfirmed = '1';
                   applyHolidayLock(row);
                 }

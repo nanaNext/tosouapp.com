@@ -1136,11 +1136,12 @@ const tryCheckIn = async () => {
     
     // Auto-update classification dropdown locally to reflect DB change immediately
     const sel = $('#attendance-classification');
-    if (sel && (!sel.value || sel.value.includes('予定'))) {
+    if (sel && (!sel.value || sel.value.includes('予定') || sel.value === '出勤' || sel.value === '休日出勤')) {
       const isSat = !!document.querySelector('.date-text')?.textContent.includes('土');
       const isSun = !!document.querySelector('.date-text')?.textContent.includes('日');
       const isHol = !!document.querySelector('.date-text')?.textContent.includes('祝');
       sel.value = (isSat || isSun || isHol) ? '休日出勤' : '出勤';
+      try { sel.dispatchEvent(new Event('change')); } catch {} // Kích hoạt sự kiện change để lưu trạng thái
     }
 
     return { ok: true, already: false };
