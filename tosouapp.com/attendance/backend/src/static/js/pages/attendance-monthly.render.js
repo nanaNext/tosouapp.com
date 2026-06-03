@@ -147,7 +147,7 @@
       const inAutoCls = autoIn ? 'is-auto' : '';
       const outAutoCls = autoOut ? 'is-auto' : '';
 
-      const canEditTimeRow = canEditWorkRow && !isEmployee;
+      const canEditTimeRow = canEditWorkRow;
 
       const shiftBrRaw = Number(shift?.break_minutes ?? 60);
       const shiftBrMin = Number.isFinite(shiftBrRaw) && shiftBrRaw >= 0 ? shiftBrRaw : 60;
@@ -307,7 +307,7 @@
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.break_minutes !== null && daily.break_minutes !== undefined) ? 'data-manual="1"' : ''}>
+        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''}>
           <option value="1:00" ${brVal === '1:00' ? 'selected' : ''}>1:00</option>
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>
@@ -683,7 +683,7 @@
           outEl.dataset.auto = '1';
           outEl.dataset.autoVal = shiftEnd;
         }
-        if (brSel && (!brSel.value || brSel.value === '0:00' || brSel.dataset.auto === '1') && brSel.dataset.manual !== '1') {
+        if (brSel && (!brSel.value || brSel.dataset.auto === '1') && brSel.dataset.manual !== '1') {
           let rawBr = 60;
           if (dayShift && dayShift.break_minutes !== undefined) {
             rawBr = Number(dayShift.break_minutes);
