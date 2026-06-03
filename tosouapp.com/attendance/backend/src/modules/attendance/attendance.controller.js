@@ -591,14 +591,14 @@ exports.todayRoster = async (req, res) => {
         const assign = await attendanceRepo.getActiveAssignment(r.userId, date);
         if (assign?.shiftId) {
           const def = await attendanceRepo.getShiftById(assign.shiftId);
-          shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time } : null;
+          shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes } : null;
         } else if (Object.prototype.hasOwnProperty.call(assign || {}, 'shift') && assign.shift) {
           const [defs] = await db.query(`SELECT * FROM shift_definitions WHERE name = ? LIMIT 1`, [assign.shift]);
           const def = defs && defs[0] ? defs[0] : null;
-          shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time } : null;
+          shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes } : null;
         } else if (r.shiftId) {
           const def2 = await attendanceRepo.getShiftById(r.shiftId).catch(() => null);
-          shift = def2 ? { id: def2.id, name: def2.name, start_time: def2.start_time, end_time: def2.end_time } : null;
+          shift = def2 ? { id: def2.id, name: def2.name, start_time: def2.start_time, end_time: def2.end_time, break_minutes: def2.break_minutes } : null;
         }
       } catch {}
       const status = Number(r.isLeave || 0) ? 'leave' : (dayIsOff ? 'off' : 'work');

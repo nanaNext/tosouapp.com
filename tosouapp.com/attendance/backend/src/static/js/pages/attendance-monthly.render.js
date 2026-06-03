@@ -151,7 +151,19 @@
 
       const shiftBrRaw = Number(shift?.break_minutes ?? 60);
       const shiftBrMin = Number.isFinite(shiftBrRaw) && shiftBrRaw >= 0 ? shiftBrRaw : 60;
-      const brMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.breakMinutes ?? 60) : 60) : 0;
+      
+      let defaultBr = 60;
+      if (shift && shift.break_minutes !== undefined) {
+        defaultBr = Number(shift.break_minutes);
+      } else if (String(profile?.employment_type || '').toLowerCase() === 'part_time') {
+        const sM = parseHm(shiftStart);
+        const eM = parseHm(shiftEnd);
+        if (sM && eM && (eM.total - sM.total <= 5 * 60)) {
+          defaultBr = 0;
+        }
+      }
+
+      const brMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.breakMinutes ?? defaultBr) : defaultBr) : 0;
       const nbMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.nightBreakMinutes ?? 0) : 0) : 0;
       const totalBmin = brMin + nbMin;
 
@@ -672,7 +684,16 @@
           outEl.dataset.autoVal = shiftEnd;
         }
         if (brSel && (!brSel.value || brSel.value === '0:00' || brSel.dataset.auto === '1')) {
-          const rawBr = Number(dayShift?.break_minutes ?? 60);
+          let rawBr = 60;
+          if (dayShift && dayShift.break_minutes !== undefined) {
+            rawBr = Number(dayShift.break_minutes);
+          } else if (String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time') {
+            const stM = parseHm(shiftStart);
+            const etM = parseHm(shiftEnd);
+            if (stM && etM && (etM.total - stM.total <= 5 * 60)) {
+              rawBr = 0;
+            }
+          }
           const brVal = rawBr === 45 ? '0:45' : rawBr === 30 ? '0:30' : rawBr === 0 ? '0:00' : '1:00';
           if (brSel.value !== brVal) {
             brSel.value = brVal;
