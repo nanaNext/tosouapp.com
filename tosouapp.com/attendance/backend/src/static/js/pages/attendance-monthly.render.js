@@ -683,11 +683,11 @@
           outEl.dataset.auto = '1';
           outEl.dataset.autoVal = shiftEnd;
         }
-        if (brSel && (!brSel.value || brSel.value === '0:00' || brSel.dataset.auto === '1')) {
+        if (brSel && (!brSel.value || brSel.value === '0:00' || brSel.dataset.auto === '1') && brSel.dataset.manual !== '1') {
           let rawBr = 60;
           if (dayShift && dayShift.break_minutes !== undefined) {
             rawBr = Number(dayShift.break_minutes);
-          } else if (String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time') {
+          } else if (String(state.currentMonthDetail?.employee?.employment_type || '').toLowerCase() === 'part_time') {
             const stM = parseHm(shiftStart);
             const etM = parseHm(shiftEnd);
             if (stM && etM && (etM.total - stM.total <= 5 * 60)) {
