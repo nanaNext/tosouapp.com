@@ -72,6 +72,23 @@ exports.checkIn = async (req, res) => {
     if (!result) {
       return res.status(409).json({ message: 'Already checked in' });
     }
+
+    // Auto-update attendance_daily kubun to '出勤' upon check-in
+    try {
+      const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      const db = require('../../core/database/mysql');
+      const [dailies] = await db.query(`SELECT kubun FROM attendance_daily WHERE userId = ? AND date = ? LIMIT 1`, [userId, dtStr]);
+      if (!dailies.length || !dailies[0].kubun || dailies[0].kubun !== '出勤') {
+        await db.query(`
+          INSERT INTO attendance_daily (userId, date, kubun, updated_at) 
+          VALUES (?, ?, '出勤', NOW()) 
+          ON DUPLICATE KEY UPDATE kubun = '出勤', updated_at = NOW()
+        `, [userId, dtStr]);
+      }
+    } catch (err) {
+      console.error('Failed to auto-set kubun on checkin:', err);
+    }
+
     try {
       await auditRepo.writeLog({
         userId,
