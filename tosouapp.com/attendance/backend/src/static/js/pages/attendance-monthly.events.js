@@ -596,6 +596,15 @@
         const timeEl = e.target?.closest?.('input.se-time[data-field="checkIn"], input.se-time[data-field="checkOut"]');
         const otherEl = e.target?.closest?.('select[data-field], input[type="text"][data-field]');
         
+        const brInput = row.querySelector('select[data-field="break"], select[data-field="breakMin"]');
+        const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
+
+        // Always mark break time as manual when user explicitly selects a new value.
+        if (e.target === brInput || e.target === nbInput) {
+          e.target.dataset.manual = '1';
+          e.target.dataset.auto = '0';
+        }
+
         if (kubunSel || timeEl || otherEl) {
           if (timeEl) {
             const val = String(timeEl.value || '').trim();
