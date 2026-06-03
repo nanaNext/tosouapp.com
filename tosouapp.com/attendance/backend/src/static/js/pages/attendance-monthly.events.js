@@ -7,7 +7,13 @@
   const controller = root.Controller;
 
   const { $, setDirty, clearDirty, showErr, hideSpinner, wireUserMenu, wireTopNavDropdowns } = core;
-  const { recomputeRow } = render;
+  const { recomputeRow: _origRecomputeRow } = render;
+  const recomputeRow = (tr) => {
+    if (!tr) return;
+    if (tr.dataset.blockRecalc === '1') return; // Skip recalculation if blocked
+    if (_origRecomputeRow) return _origRecomputeRow(tr);
+  };
+  render.recomputeRow = recomputeRow;
 
   let lastAutoReloadAt = 0;
   const bindAutoReloadOnReturn = () => {
@@ -618,9 +624,11 @@
                     k = '出勤';
                   }
                   
-                  // Update the select element's visual value
+                  // Luôn luôn gán giá trị và gọi trigger change để UI cập nhật
+                  row.dataset.blockRecalc = '1';
                   sel.value = k;
                   try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch {}
+                  row.dataset.blockRecalc = '';
                   
                   row.dataset.kubunConfirmed = '1';
                   applyHolidayLock(row);
