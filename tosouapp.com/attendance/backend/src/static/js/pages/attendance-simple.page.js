@@ -1133,6 +1133,16 @@ const tryCheckIn = async () => {
   try {
     const wt = String($('#workType')?.value || '').trim();
     await fetchJSONAuth('/api/attendance/checkin', { method: 'POST', body: JSON.stringify({ workType: wt || null }) });
+    
+    // Auto-update classification dropdown locally to reflect DB change immediately
+    const sel = $('#attendance-classification');
+    if (sel && (!sel.value || sel.value.includes('予定'))) {
+      const isSat = !!document.querySelector('.date-text')?.textContent.includes('土');
+      const isSun = !!document.querySelector('.date-text')?.textContent.includes('日');
+      const isHol = !!document.querySelector('.date-text')?.textContent.includes('祝');
+      sel.value = (isSat || isSun || isHol) ? '休日出勤' : '出勤';
+    }
+
     return { ok: true, already: false };
   } catch (e) {
     const m = String(e?.message || '');

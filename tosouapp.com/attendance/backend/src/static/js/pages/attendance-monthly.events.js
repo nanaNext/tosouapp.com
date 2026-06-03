@@ -597,6 +597,28 @@
             timeEl.dataset.autoVal = '';
             timeEl.dataset.manual = '1';
             timeEl.classList.remove('is-auto');
+
+            const tIn = row.querySelector('input.se-time[data-field="checkIn"]')?.value;
+            const tOut = row.querySelector('input.se-time[data-field="checkOut"]')?.value;
+            if (tIn || tOut) {
+              const sel = row.querySelector('.kubun-sel');
+              if (sel) {
+                let k = sel.value || '';
+                if (!k || k.includes('予定')) {
+                  const isSat = !!row.querySelector('.col-date')?.classList.contains('sat');
+                  const isSun = !!row.querySelector('.col-date')?.classList.contains('sun');
+                  const isHol = !!row.querySelector('.col-date')?.classList.contains('hol');
+                  if (isSat || isSun || isHol) {
+                    k = '休日出勤';
+                  } else {
+                    k = '出勤';
+                  }
+                  sel.value = k;
+                  row.dataset.kubunConfirmed = '1';
+                  applyHolidayLock(row);
+                }
+              }
+            }
           }
           
           if (kubunSel) {
