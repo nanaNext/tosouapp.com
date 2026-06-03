@@ -1135,13 +1135,21 @@ const tryCheckIn = async () => {
     await fetchJSONAuth('/api/attendance/checkin', { method: 'POST', body: JSON.stringify({ workType: wt || null }) });
     
     // Auto-update classification dropdown locally to reflect DB change immediately
-    const sel = $('#attendance-classification');
+    const sel = $('#kubun');
     if (sel && (!sel.value || sel.value.includes('予定') || sel.value === '出勤' || sel.value === '休日出勤')) {
-      const isSat = !!document.querySelector('.date-text')?.textContent.includes('土');
-      const isSun = !!document.querySelector('.date-text')?.textContent.includes('日');
-      const isHol = !!document.querySelector('.date-text')?.textContent.includes('祝');
+      const isSat = !!document.querySelector('#topDate')?.textContent.includes('土');
+      const isSun = !!document.querySelector('#topDate')?.textContent.includes('日');
+      const isHol = !!document.querySelector('#topDate')?.textContent.includes('祝');
       sel.value = (isSat || isSun || isHol) ? '休日出勤' : '出勤';
-      try { sel.dispatchEvent(new Event('change')); } catch {} // Kích hoạt sự kiện change để lưu trạng thái
+      
+      // Force trigger the save to DB and UI update by simulating user action
+      try { 
+        sel.dispatchEvent(new Event('change', { bubbles: true })); 
+        const saveBtn = document.querySelector('#btnSave');
+        if (saveBtn) saveBtn.click();
+      } catch (e) {
+        console.error('Failed to trigger save after auto kubun:', e);
+      }
     }
 
     return { ok: true, already: false };
