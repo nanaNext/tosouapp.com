@@ -597,19 +597,18 @@
         const otherEl = e.target?.closest?.('select[data-field], input[type="text"][data-field]');
         
         const brInput = row.querySelector('select[data-field="break"], select[data-field="breakMin"]');
-    const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
-    
-    // Always mark break time as manual when user explicitly selects a new value.
-    if (e.target === brInput || e.target === nbInput) {
-      e.target.dataset.manual = '1';
-      e.target.dataset.auto = '0';
-      // When a user explicitly changes a break time, we want to immediately recalculate the row
-      // without triggering the auto-override logic.
-      if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
-        globalThis.MonthlyMonthlyRender.recomputeRow(row);
-      }
-      return; // Skip the rest of the auto-logic for check-in/out
-    }
+        const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
+        
+        // Always mark break time as manual when user explicitly selects a new value.
+        if (e.target === brInput || e.target === nbInput) {
+          e.target.dataset.manual = '1';
+          e.target.dataset.auto = '0';
+          // Immediately recalculate the row without triggering the auto-override logic.
+          if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
+            globalThis.MonthlyMonthlyRender.recomputeRow(row);
+          }
+          // DO NOT RETURN here, so that the change propagates to scheduleAutoSave and saveRowTimesNow
+        }
 
         if (kubunSel || timeEl || otherEl) {
           if (timeEl) {
