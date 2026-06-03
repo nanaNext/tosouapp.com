@@ -654,7 +654,7 @@
                   }
                   
                   // Also ensure break time doesn't get auto-overwritten by recomputeRow
-                  if (brSel) {
+                  if (brSel && origBrVal !== null) {
                     brSel.dataset.auto = '0';
                     brSel.dataset.manual = '1';
                   }

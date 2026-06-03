@@ -307,7 +307,7 @@
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}">
+        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditTimeRow ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.break_minutes !== null && daily.break_minutes !== undefined) ? 'data-manual="1"' : ''}>
           <option value="1:00" ${brVal === '1:00' ? 'selected' : ''}>1:00</option>
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>
