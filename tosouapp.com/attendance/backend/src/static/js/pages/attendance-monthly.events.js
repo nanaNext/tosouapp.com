@@ -503,8 +503,7 @@
         } else {
           el.removeAttribute('data-row-disabled');
           // Always unlock break times so employees/managers can edit them
-          const isBreakInput = el.matches('select[data-field="break"], select[data-field="nightBreak"], select[data-field="breakMin"], select[data-field="nightBreakMin"]');
-          if (isBreakInput) {
+          if (el.matches('select[data-field="break"], select[data-field="nightBreak"], select[data-field="breakMin"], select[data-field="nightBreakMin"]')) {
             el.removeAttribute('disabled');
             el.removeAttribute('data-fixed-disabled'); // Ensure break times are never locked
           } else if (state.editableMonth && !el.hasAttribute('data-fixed-disabled')) {
@@ -628,6 +627,14 @@
                   row.dataset.blockRecalc = '1';
                   sel.value = k;
                   try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch {}
+                  
+                  // Try to find break select and ensure it doesn't get overridden by auto logic
+                  const brSel = row.querySelector('select[data-field="break"]');
+                  if (brSel) {
+                    brSel.dataset.auto = '0';
+                    brSel.dataset.manual = '1';
+                  }
+                  
                   row.dataset.blockRecalc = '';
                   
                   row.dataset.kubunConfirmed = '1';
