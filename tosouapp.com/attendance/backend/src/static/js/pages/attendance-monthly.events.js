@@ -597,13 +597,19 @@
         const otherEl = e.target?.closest?.('select[data-field], input[type="text"][data-field]');
         
         const brInput = row.querySelector('select[data-field="break"], select[data-field="breakMin"]');
-        const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
-
-        // Always mark break time as manual when user explicitly selects a new value.
-        if (e.target === brInput || e.target === nbInput) {
-          e.target.dataset.manual = '1';
-          e.target.dataset.auto = '0';
-        }
+    const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
+    
+    // Always mark break time as manual when user explicitly selects a new value.
+    if (e.target === brInput || e.target === nbInput) {
+      e.target.dataset.manual = '1';
+      e.target.dataset.auto = '0';
+      // When a user explicitly changes a break time, we want to immediately recalculate the row
+      // without triggering the auto-override logic.
+      if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
+        globalThis.MonthlyMonthlyRender.recomputeRow(row);
+      }
+      return; // Skip the rest of the auto-logic for check-in/out
+    }
 
         if (kubunSel || timeEl || otherEl) {
           if (timeEl) {
@@ -634,11 +640,20 @@
                   
                   // Luôn luôn gán giá trị và gọi trigger change để UI cập nhật
                   row.dataset.blockRecalc = '1';
+                  
+                  // Keep track of original break values so they don't get lost during change event
+                  const brSel = row.querySelector('select[data-field="break"]');
+                  const origBrVal = brSel ? brSel.value : null;
+                  
                   sel.value = k;
                   try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch {}
                   
-                  // Try to find break select and ensure it doesn't get overridden by auto logic
-                  const brSel = row.querySelector('select[data-field="break"]');
+                  // Restore break value if it was wiped by any generic handler
+                  if (brSel && origBrVal !== null && brSel.value !== origBrVal) {
+                    brSel.value = origBrVal;
+                  }
+                  
+                  // Also ensure break time doesn't get auto-overwritten by recomputeRow
                   if (brSel) {
                     brSel.dataset.auto = '0';
                     brSel.dataset.manual = '1';
