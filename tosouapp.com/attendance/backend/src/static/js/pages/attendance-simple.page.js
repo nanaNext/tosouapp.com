@@ -1042,11 +1042,24 @@ const load = async (date, opts = {}) => {
       else if (saved) sel.value = saved;
       else if (!String(sel.value || '').trim()) sel.value = '';
     }
+    
+    // Default break calculation
+    let defaultBreak = 60;
+    if (shift && shift.break_minutes !== undefined) {
+      defaultBreak = Number(shift.break_minutes);
+    } else if (isPartTime) {
+      const sTotal = hhmmToMin(shiftStart);
+      const eTotal = hhmmToMin(shiftEnd);
+      if (eTotal - sTotal <= 5 * 60) {
+        defaultBreak = 0;
+      }
+    }
+
     if (daily) {
       if (daily.break_minutes !== undefined && daily.break_minutes !== null) {
         if ($('#breakMin')) { $('#breakMin').value = daily.break_minutes; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       } else {
-        if ($('#breakMin')) { $('#breakMin').value = '60'; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
+        if ($('#breakMin')) { $('#breakMin').value = String(defaultBreak); try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       }
       if (daily.night_break_minutes !== undefined && daily.night_break_minutes !== null) {
         if ($('#nightBreakMin')) { $('#nightBreakMin').value = daily.night_break_minutes; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
@@ -1054,7 +1067,7 @@ const load = async (date, opts = {}) => {
         if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
       }
     } else {
-      if ($('#breakMin')) { $('#breakMin').value = '60'; try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
+      if ($('#breakMin')) { $('#breakMin').value = String(defaultBreak); try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
     }
 
