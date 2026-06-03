@@ -496,12 +496,14 @@
           el.setAttribute('data-row-disabled', '1');
         } else {
           el.removeAttribute('data-row-disabled');
-          // Skip applying disabled state to break inputs on the monthly board
-          // so employees can edit their break times manually
-          const isBreakInput = el.matches('select[data-field="break"], select[data-field="nightBreak"]');
+          // Always unlock break times so employees/managers can edit them
+          const isBreakInput = el.matches('select[data-field="break"], select[data-field="nightBreak"], select[data-field="breakMin"], select[data-field="nightBreakMin"]');
           if (isBreakInput) {
             el.removeAttribute('disabled');
+            el.removeAttribute('data-fixed-disabled'); // Ensure break times are never locked
           } else if (state.editableMonth && !el.hasAttribute('data-fixed-disabled')) {
+            // If employee, checkIn and checkOut are permanently locked by HTML attributes.
+            // Do NOT remove disabled from them if they have data-fixed-disabled="1"
             el.removeAttribute('disabled');
           }
         }
