@@ -529,12 +529,14 @@
           outEl.value = outEl.dataset.actual || outEl.dataset.autoVal || '';
           if (outEl.dataset.actual) outEl.dataset.manual = '1';
         }
-        if (br && br.value === '0:00' && br.dataset.actual && br.dataset.actual !== '0:00') {
-          br.value = br.dataset.actual;
-        }
-        if (nb && nb.value === '0:00' && nb.dataset.actual && nb.dataset.actual !== '0:00') {
-          nb.value = nb.dataset.actual;
-        }
+        // Removed aggressive restore of break times to prevent race condition
+        // where selecting 0:00 gets immediately reverted by MutationObserver
+        // if (br && br.value === '0:00' && br.dataset.actual && br.dataset.actual !== '0:00') {
+        //   br.value = br.dataset.actual;
+        // }
+        // if (nb && nb.value === '0:00' && nb.dataset.actual && nb.dataset.actual !== '0:00') {
+        //   nb.value = nb.dataset.actual;
+        // }
         // Nếu là ngày đi làm (hoặc dự kiến đi làm) thì KHÔNG được clear dữ liệu
         return;
       }
@@ -733,6 +735,12 @@
         if (!state.editableMonth) return;
         try { row.dataset.dirty = '1'; } catch {} 
         
+        // Mark manual on input to prevent recomputeRow from overwriting during the input event
+        if (e.target.matches('select[data-field="break"], select[data-field="nightBreak"]')) {
+          e.target.dataset.manual = '1';
+          e.target.dataset.auto = '0';
+        }
+
         // Khi người dùng đang nhập, xóa ngay trạng thái tự động để đổi màu sắc (UX)
         const timeEl = e.target?.closest?.('input.se-time[data-field="checkIn"], input.se-time[data-field="checkOut"]');
         if (timeEl) {

@@ -807,7 +807,7 @@ async function computeMonthMissing(userId, y, m) {
 exports.getMonthStatus = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
-    if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
+    if (userId === '__forbidden__') { console.log('403 because userId is __forbidden__'); return res.status(403).json({ message: 'Forbidden' }); }
     const { year, month } = req.query || {};
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
@@ -1297,7 +1297,7 @@ exports.getMonth = async (req, res) => {
 exports.getMonthDetail = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
-    if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
+    if (userId === '__forbidden__') { console.log('403 in getMonthDetail because userId is __forbidden__'); return res.status(403).json({ message: 'Forbidden' }); }
     const { year, month } = req.query || {};
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
@@ -1311,6 +1311,7 @@ exports.getMonthDetail = async (req, res) => {
     const monthStatus = monthStatusObj?.status || 'draft';
     const approverName = monthStatusObj?.approved_by_name || null;
     if (role === 'payroll' && monthStatus !== 'approved') {
+      console.log('403 in getMonthDetail because payroll and not approved');
       return res.status(403).json({ message: 'Forbidden: month is not closed' });
     }
     let rows = [];
@@ -1836,7 +1837,7 @@ exports.putMonthBulk = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
     if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
-    const { year, month, updates, dailyUpdates } = req.body || {};
+    const { year, month, updates, dailyUpdates } = req.body || {}; console.log('dailyUpdates:', dailyUpdates);
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month || !Array.isArray(updates)) return res.status(400).json({ message: 'Missing fields' });
     const y = parseInt(year,10), m = parseInt(month,10);

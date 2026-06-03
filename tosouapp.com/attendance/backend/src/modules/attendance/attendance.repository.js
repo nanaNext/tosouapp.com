@@ -1416,8 +1416,8 @@ module.exports = {
               d.location || null,
               d.reason || null,
               d.memo || null,
-              d.breakMinutes || null,
-              d.nightBreakMinutes || null,
+              d.breakMinutes !== null && d.breakMinutes !== undefined ? d.breakMinutes : null,
+              d.nightBreakMinutes !== null && d.nightBreakMinutes !== undefined ? d.nightBreakMinutes : null,
               status
             ]
           );
