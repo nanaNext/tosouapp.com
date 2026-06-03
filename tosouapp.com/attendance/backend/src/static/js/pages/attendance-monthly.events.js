@@ -597,18 +597,33 @@
         const otherEl = e.target?.closest?.('select[data-field], input[type="text"][data-field]');
         
         const brInput = row.querySelector('select[data-field="break"], select[data-field="breakMin"]');
-        const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
+      const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
+      
+      // Always mark break time as manual when user explicitly selects a new value.
+      if (e.target === brInput || e.target === nbInput) {
+        e.target.dataset.manual = '1';
+        e.target.dataset.auto = '0';
         
-        // Always mark break time as manual when user explicitly selects a new value.
-        if (e.target === brInput || e.target === nbInput) {
-          e.target.dataset.manual = '1';
-          e.target.dataset.auto = '0';
-          // Immediately recalculate the row without triggering the auto-override logic.
+        // When changing break times, block auto kubun logic so it doesn't revert things
+        row.dataset.blockRecalc = '1';
+        try {
           if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
             globalThis.MonthlyMonthlyRender.recomputeRow(row);
           }
-          // DO NOT RETURN here, so that the change propagates to scheduleAutoSave and saveRowTimesNow
+        } finally {
+          row.dataset.blockRecalc = '';
         }
+        
+        try { 
+          await controller.saveRowTimesNow(row); 
+          // Make sure dataset actual is updated
+          if (brInput) brInput.dataset.actual = brInput.value || '';
+          if (nbInput) nbInput.dataset.actual = nbInput.value || '';
+        } catch (err) {
+          console.warn('Save failed:', err);
+        }
+        return; // Skip the rest of the auto-logic
+      }
 
         if (kubunSel || timeEl || otherEl) {
           if (timeEl) {
