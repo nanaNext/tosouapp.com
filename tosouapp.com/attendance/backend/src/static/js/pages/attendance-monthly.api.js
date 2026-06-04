@@ -46,7 +46,7 @@
         const kubunConfirmed = String(tr.dataset.kubunConfirmed || '') === '1' ? 1 : 0;
         const locEl = tr.querySelector('input[data-field="location"]');
         const reasonEl = tr.querySelector('select[data-field="reason"]');
-        const memoEl = tr.querySelector('input[data-field="memo"]');
+        const memoEl = tr.querySelector('[data-field="memo"]');
         const loc = locEl && locEl.value != null ? locEl.value : '';
         const reason = reasonEl && reasonEl.value != null ? reasonEl.value : '';
         const memo = memoEl && memoEl.value != null ? memoEl.value : '';
