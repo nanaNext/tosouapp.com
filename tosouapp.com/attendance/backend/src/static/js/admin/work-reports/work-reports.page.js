@@ -338,7 +338,11 @@ export async function mount() {
     } catch {}
   };
 
-  const renderRows = (items) => {
+  let currentPage = 1;
+  const pageSize = 10;
+
+  const renderRows = (items, resetPage = false) => {
+    if (resetPage) currentPage = 1;
     const tableHost = $('#wrTable');
     if (!tableHost) return;
     if (!items.length) {
@@ -346,7 +350,11 @@ export async function mount() {
       return;
     }
 
-    const rows = items.map((it) => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, items.length);
+    const pageItems = items.slice(startIndex, endIndex);
+
+    const rows = pageItems.map((it) => {
       const dash = `<span style="color:#cbd5e1;">—</span>`;
       const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
       const stx = effectiveStatus(it);
@@ -391,9 +399,28 @@ export async function mount() {
       `;
     }).join('');
 
+    let paginationHtml = '';
+    if (items.length > 0) {
+      const totalPages = Math.ceil(items.length / pageSize);
+      const prevDisabled = currentPage === 1 ? 'disabled' : '';
+      const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+      const prevBg = currentPage === 1 ? '#f1f5f9' : '#fff';
+      const nextBg = currentPage === totalPages ? '#f1f5f9' : '#fff';
+      const prevCursor = currentPage === 1 ? 'not-allowed' : 'pointer';
+      const nextCursor = currentPage === totalPages ? 'not-allowed' : 'pointer';
+      
+      paginationHtml = `
+        <div class="pagination-controls" style="display:flex; align-items:center; justify-content:flex-start; gap:15px; margin-top:15px; padding:10px 0;">
+          <button type="button" id="btnWrPrev" class="attrec-btn" ${prevDisabled} style="padding:4px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${prevBg}; cursor:${prevCursor};">前へ</button>
+          <span style="font-size:14px; color:#333;">${startIndex + 1}-${endIndex} / ${items.length}</span>
+          <button type="button" id="btnWrNext" class="attrec-btn" ${nextDisabled} style="padding:4px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${nextBg}; cursor:${nextCursor};">次へ</button>
+        </div>
+      `;
+    }
+
     tableHost.innerHTML = `
       <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
-        <table class="wr-table">
+        <table class="wr-table" style="min-width:1200px; width:100%; table-layout:fixed;">
           <colgroup>
             <col style="width:40px;">
             <col style="width:40px;">
@@ -427,7 +454,30 @@ export async function mount() {
           <tbody>${rows}</tbody>
         </table>
       </div>
+      ${paginationHtml}
     `;
+
+    if (items.length > 0) {
+      const btnPrev = document.getElementById('btnWrPrev');
+      if (btnPrev) {
+        btnPrev.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            renderRows(items);
+          }
+        });
+      }
+      const btnNext = document.getElementById('btnWrNext');
+      if (btnNext) {
+        btnNext.addEventListener('click', () => {
+          const totalPages = Math.ceil(items.length / pageSize);
+          if (currentPage < totalPages) {
+            currentPage++;
+            renderRows(items);
+          }
+        });
+      }
+    }
   };
 
   const normalize = (s) => String(s || '').trim().toLowerCase();
@@ -761,7 +811,7 @@ export async function mount() {
       }
       const view = filterAndSort(state.items);
       if (state.group) renderGrouped(view);
-      else renderRows(view);
+      else renderRows(view, true);
     } catch (e) {
       const tableHost = $('#wrTable');
       if (tableHost) {
@@ -783,7 +833,7 @@ export async function mount() {
     setUrl();
     const view = filterAndSort(state.items);
     if (state.group) renderGrouped(view);
-    else renderRows(view);
+    else renderRows(view, true);
     try {
       const summaryEl = $('#wrSummary');
       if (summaryEl && summaryEl.textContent) {
@@ -798,7 +848,7 @@ export async function mount() {
     setUrl();
     const view = filterAndSort(state.items);
     if (state.group) renderGrouped(view);
-    else renderRows(view);
+    else renderRows(view, true);
     try {
       const summaryEl = $('#wrSummary');
       if (summaryEl && summaryEl.textContent) {
@@ -813,7 +863,7 @@ export async function mount() {
     setUrl();
     const view = filterAndSort(state.items);
     if (state.group) renderGrouped(view);
-    else renderRows(view);
+    else renderRows(view, true);
     try {
       const summaryEl = $('#wrSummary');
       if (summaryEl && summaryEl.textContent) {
@@ -828,7 +878,7 @@ export async function mount() {
     setUrl();
     const view = filterAndSort(state.items);
     if (state.group) renderGrouped(view);
-    else renderRows(view);
+    else renderRows(view, true);
   });
 
   $('#wrExport')?.addEventListener('click', async () => {

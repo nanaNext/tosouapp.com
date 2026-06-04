@@ -108,100 +108,172 @@ async function mountAttendanceImpl({
         `;
         return;
       }
-      const table = document.createElement('table');
-      table.id = 'attrecList';
-      table.className = 'excel-table dash-table attrec-dash-table attrec-emp-like-table';
-      table.style.tableLayout = 'fixed';
-      table.style.width = '100%';
-      table.innerHTML = '<thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>';
-      const tbody = document.createElement('tbody');
-      const selectedDateIsOff = isWeekend(date);
-      const isPastDate = date < today;
-      
-      for (const it of items) {
-        const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
-        const name = it.username || '';
-        const dept = it.departmentName || '—';
-        const st = it.status || '';
-        const kubunRaw = String(it.dailyKubun || '').trim();
-        const kubun = kubunRaw || ((selectedDateIsOff && (st === 'leave' || st === 'not_checked_in')) ? '休日' : '');
-        const leaveSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇']);
-        const holidaySet = new Set(['休日', '代替休日']);
-        const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
-        const isHolidayKubun = holidaySet.has(kubun);
+      let currentPage = 1;
+      const pageSize = 10;
+      const renderTablePage = () => {
+        if (!host) return;
+        host.innerHTML = '';
         
-        let stLabel = '';
-        let stClass = '';
+        const table = document.createElement('table');
+        table.id = 'attrecList';
+        table.className = 'excel-table dash-table attrec-dash-table attrec-emp-like-table';
+        table.style.tableLayout = 'fixed';
+        table.style.width = '100%';
+        table.style.minWidth = '1200px'; // Ensure horizontal scroll
+        table.innerHTML = '<thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+        const selectedDateIsOff = isWeekend(date);
+        const isPastDate = date < today;
         
-        if (st === 'checked_out') {
-          stLabel = '退勤済';
-          stClass = 'attrec-pill ok';
-        } else if (st === 'working' || st === 'holiday_working') {
-          if (isPastDate) {
-            stLabel = '退勤忘れ';
-            stClass = 'attrec-pill danger';
-          } else {
-            stLabel = st === 'working' ? '出勤中' : '休日出勤中';
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, items.length);
+        const pageItems = items.slice(startIndex, endIndex);
+        
+        for (const it of pageItems) {
+          const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
+          const name = it.username || '';
+          const dept = it.departmentName || '—';
+          const st = it.status || '';
+          const kubunRaw = String(it.dailyKubun || '').trim();
+          const kubun = kubunRaw || ((selectedDateIsOff && (st === 'leave' || st === 'not_checked_in')) ? '休日' : '');
+          const leaveSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇']);
+          const holidaySet = new Set(['休日', '代替休日']);
+          const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
+          const isHolidayKubun = holidaySet.has(kubun);
+          
+          let stLabel = '';
+          let stClass = '';
+          
+          if (st === 'checked_out') {
+            stLabel = '退勤済';
+            stClass = 'attrec-pill ok';
+          } else if (st === 'working' || st === 'holiday_working') {
+            if (isPastDate) {
+              stLabel = '退勤忘れ';
+              stClass = 'attrec-pill danger';
+            } else {
+              stLabel = st === 'working' ? '出勤中' : '休日出勤中';
+              stClass = 'attrec-pill warn';
+            }
+          } else if (st === 'holiday_work') {
+            stLabel = '休日出勤';
             stClass = 'attrec-pill warn';
-          }
-        } else if (st === 'holiday_work') {
-          stLabel = '休日出勤';
-          stClass = 'attrec-pill warn';
-        } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
-          stLabel = kubun || '休日';
-          stClass = 'attrec-pill neutral';
-        } else if (st === 'off') {
-          stLabel = '休日';
-          stClass = 'attrec-pill neutral';
-        } else {
-          // not_checked_in or empty
-          if (isPastDate) {
-            stLabel = '打刻なし';
-            stClass = 'attrec-pill danger';
-          } else {
-            stLabel = '未出勤';
+          } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
+            stLabel = kubun || '休日';
             stClass = 'attrec-pill neutral';
+          } else if (st === 'off') {
+            stLabel = '休日';
+            stClass = 'attrec-pill neutral';
+          } else {
+            // not_checked_in or empty
+            if (isPastDate) {
+              stLabel = '打刻なし';
+              stClass = 'attrec-pill danger';
+            } else {
+              stLabel = '未出勤';
+              stClass = 'attrec-pill neutral';
+            }
           }
-        }
 
-        const cin = fmtTime(it.attendance ? it.attendance.checkIn : undefined);
-        const cout = fmtTime(it.attendance ? it.attendance.checkOut : undefined);
-        const site = (it.report && it.report.site) ? it.report.site : '';
-        const work = (it.report && it.report.work) ? it.report.work : '';
-        const dashOr = (v) => {
-          const s = String(v || '').trim();
-          return s ? s : '—';
-        };
-        const cinView = dashOr(cin);
-        const coutView = dashOr(cout);
-        const siteView = dashOr(site);
-        const workView = dashOr(work);
-        const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
-        const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : (st === 'off' ? '休日' : '—'));
-        const tr = document.createElement('tr');
-        tr.className = st === 'checked_out' ? 'attrec-row checkedout'
-          : (st === 'working' ? 'attrec-row working'
-            : (st === 'holiday_work' || st === 'holiday_working' ? 'attrec-row working'
-              : (((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) ? 'attrec-row absent' : (st === 'off' ? 'attrec-row absent' : 'attrec-row absent'))));
-        tr.innerHTML = `
-          <td>${esc(code)}</td>
-          <td>${esc(name)}</td>
-          <td>${esc(dept)}</td>
-          <td>${esc(wtLabel)}</td>
-          <td><span class="${stClass}">${esc(stLabel)}</span></td>
-          <td>${esc(cinView)}</td>
-          <td>${esc(coutView)}</td>
-          <td class="attrec-site"${site ? ` title="${esc(site)}"` : ''}>${esc(siteView)}</td>
-          <td class="attrec-work"${work ? ` title="${esc(work)}"` : ''}>${esc(workView)}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-      table.appendChild(tbody);
-      host.innerHTML = '';
-      const tableWrap = document.createElement('div');
-      tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
-      tableWrap.appendChild(table);
-      host.appendChild(tableWrap);
+          const cin = fmtTime(it.attendance ? it.attendance.checkIn : undefined);
+          const cout = fmtTime(it.attendance ? it.attendance.checkOut : undefined);
+          const site = (it.report && it.report.site) ? it.report.site : '';
+          const work = (it.report && it.report.work) ? it.report.work : '';
+          const dashOr = (v) => {
+            const s = String(v || '').trim();
+            return s ? s : '—';
+          };
+          const cinView = dashOr(cin);
+          const coutView = dashOr(cout);
+          const siteView = dashOr(site);
+          const workView = dashOr(work);
+          const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
+          const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : (st === 'off' ? '休日' : '—'));
+          const tr = document.createElement('tr');
+          tr.className = st === 'checked_out' ? 'attrec-row checkedout'
+            : (st === 'working' ? 'attrec-row working'
+              : (st === 'holiday_work' || st === 'holiday_working' ? 'attrec-row working'
+                : (((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) ? 'attrec-row absent' : (st === 'off' ? 'attrec-row absent' : 'attrec-row absent'))));
+          tr.innerHTML = `
+            <td>${esc(code)}</td>
+            <td>${esc(name)}</td>
+            <td>${esc(dept)}</td>
+            <td>${esc(wtLabel)}</td>
+            <td><span class="${stClass}">${esc(stLabel)}</span></td>
+            <td>${esc(cinView)}</td>
+            <td>${esc(coutView)}</td>
+            <td class="attrec-site"${site ? ` title="${esc(site)}"` : ''}>${esc(siteView)}</td>
+            <td class="attrec-work"${work ? ` title="${esc(work)}"` : ''}>${esc(workView)}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
+        tableWrap.style.overflowX = 'auto';
+        tableWrap.appendChild(table);
+        host.appendChild(tableWrap);
+
+        // Pagination controls
+        if (items.length > 0) {
+          const totalPages = Math.ceil(items.length / pageSize);
+          const paginationDiv = document.createElement('div');
+          paginationDiv.className = 'pagination-controls';
+          paginationDiv.style.display = 'flex';
+          paginationDiv.style.alignItems = 'center';
+          paginationDiv.style.justifyContent = 'flex-start';
+          paginationDiv.style.gap = '15px';
+          paginationDiv.style.marginTop = '15px';
+          paginationDiv.style.padding = '10px 0';
+          
+          const prevBtn = document.createElement('button');
+          prevBtn.type = 'button';
+          prevBtn.textContent = '前へ';
+          prevBtn.className = 'attrec-btn';
+          prevBtn.disabled = currentPage === 1;
+          prevBtn.style.padding = '4px 12px';
+          prevBtn.style.border = '1px solid #cbd5e1';
+          prevBtn.style.borderRadius = '4px';
+          prevBtn.style.background = prevBtn.disabled ? '#f1f5f9' : '#fff';
+          prevBtn.style.cursor = prevBtn.disabled ? 'not-allowed' : 'pointer';
+          prevBtn.onclick = () => {
+            if (currentPage > 1) {
+              currentPage--;
+              renderTablePage();
+            }
+          };
+
+          const nextBtn = document.createElement('button');
+          nextBtn.type = 'button';
+          nextBtn.textContent = '次へ';
+          nextBtn.className = 'attrec-btn';
+          nextBtn.disabled = currentPage === totalPages;
+          nextBtn.style.padding = '4px 12px';
+          nextBtn.style.border = '1px solid #cbd5e1';
+          nextBtn.style.borderRadius = '4px';
+          nextBtn.style.background = nextBtn.disabled ? '#f1f5f9' : '#fff';
+          nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : 'pointer';
+          nextBtn.onclick = () => {
+            if (currentPage < totalPages) {
+              currentPage++;
+              renderTablePage();
+            }
+          };
+
+          const infoSpan = document.createElement('span');
+          infoSpan.textContent = `${startIndex + 1}-${endIndex} / ${items.length}`;
+          infoSpan.style.fontSize = '14px';
+          infoSpan.style.color = '#333';
+
+          paginationDiv.appendChild(prevBtn);
+          paginationDiv.appendChild(infoSpan);
+          paginationDiv.appendChild(nextBtn);
+          host.appendChild(paginationDiv);
+        }
+      };
+      
+      renderTablePage();
     } catch (err) {
       if (err && err.name === 'AbortError') return;
       if (!isCurrent) return;
