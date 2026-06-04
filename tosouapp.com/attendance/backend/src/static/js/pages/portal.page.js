@@ -827,38 +827,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
   } catch { }
   if (role === 'employee' || role === 'manager') {
-    const tiles = document.querySelector('.tiles');
-    if (tiles) {
-      tiles.innerHTML = `
-        <a class="tile" href="/ui/attendance/simple"><div class="icon">⏱</div><div class="title">出退勤打刻</div></a>
-        <a class="tile" href="/ui/profile"><div class="icon">👤</div><div class="title">プロフィール</div></a>
-        <a class="tile" href="/ui/salary"><div class="icon">💴</div><div class="title">給与明細など</div></a>
-        <a class="tile" href="/ui/calendar"><div class="icon">📅</div><div class="title">カレンダー</div></a>
-        <a class="tile" href="/ui/requests"><div class="icon">✈️</div><div class="title">休暇申請</div></a>
-      `;
-    }
+    // tiles rendered by renderHomeTiles below
   }
 
   if (role === 'admin') {
-    const tiles = document.querySelector('.tiles');
-    if (tiles) {
-      tiles.innerHTML = `
-        <a class="tile" href="/ui/employees"><div class="icon">👤</div><div class="title">社員管理</div></a>
-        <a class="tile" href="/ui/admin?tab=dbcheck"><div class="icon">🗄️</div><div class="title">DB検査</div></a>
-        <a class="tile" href="/ui/admin?tab=users"><div class="icon">👥</div><div class="title">ユーザー管理</div></a>
-        <a class="tile" href="/ui/admin?tab=departments"><div class="icon">🏢</div><div class="title">部門管理</div></a>
-        <a class="tile" href="/ui/admin?tab=attendance"><div class="icon">⏱</div><div class="title">勤怠管理</div></a>
-        <a class="tile" href="/ui/admin?tab=approvals"><div class="icon">✅</div><div class="title">承認フロー</div></a>
-        <a class="tile" href="/ui/admin?tab=reports"><div class="icon">📊</div><div class="title">レポート</div></a>
-        <a class="tile" href="/ui/admin?tab=salary_list"><div class="icon">💴</div><div class="title">給与管理</div></a>
-        <a class="tile" href="/ui/admin?tab=settings"><div class="icon">⚙️</div><div class="title">システム設定</div></a>
-        <a class="tile" href="/ui/admin?tab=audit"><div class="icon">📝</div><div class="title">監査ログ</div></a>
-        <a class="tile" href="/ui/admin?tab=refresh"><div class="icon">🔑</div><div class="title">トークン管理</div></a>
-        <a class="tile" href="/ui/admin?tab=calendar"><div class="icon">📅</div><div class="title">カレンダー</div></a>
-        <a class="tile" href="/ui/admin?tab=shifts"><div class="icon">🗓️</div><div class="title">シフト</div></a>
-        <a class="tile" href="/ui/admin?tab=routes"><div class="icon">🔗</div><div class="title">API一覧</div></a>
-      `;
-    }
+    // tiles rendered by renderHomeTiles below
     const drawer = document.querySelector('#mobileDrawer');
     if (drawer) {
       drawer.innerHTML = `
