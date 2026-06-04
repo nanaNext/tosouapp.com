@@ -296,7 +296,7 @@
       <td style="text-align:center;"><input id="ckRemote_${dateStr}" name="ckRemote_${dateStr}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td style="text-align:center;"><input id="ckSatellite_${dateStr}" name="ckSatellite_${dateStr}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td><input id="location_${dateStr}" name="location_${dateStr}" class="se-input" data-field="location" type="text" value="${esc(dLoc)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><input id="memo_${dateStr}" name="memo_${dateStr}" class="se-input" data-field="memo" type="text" value="${esc(dMemo)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><textarea id="memo_${dateStr}" name="memo_${dateStr}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px;" ${!canEditWorkRow ? 'disabled' : ''}>${esc(dMemo)}</textarea></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
           <input id="checkIn_${dateStr}" name="checkIn_${dateStr}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditCheckTime ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}" data-actual="${esc(inHm)}">

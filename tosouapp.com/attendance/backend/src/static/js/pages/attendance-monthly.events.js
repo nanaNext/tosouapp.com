@@ -555,9 +555,9 @@
       const br = row.querySelector('select[data-field="break"]');
       const nb = row.querySelector('select[data-field="nightBreak"]');
       
-      const loc = row.querySelector('input[data-field="location"]');
-      const memo = row.querySelector('input[data-field="memo"]');
-      const notes = row.querySelector('input[data-field="notes"]');
+      const loc = row.querySelector('[data-field="location"]');
+      const memo = row.querySelector('[data-field="memo"]');
+      const notes = row.querySelector('[data-field="notes"]');
       // Không clear location và memo khi là ngày nghỉ để tránh mất dữ liệu
       // if (loc) loc.value = '';
       // if (memo) memo.value = '';
@@ -611,7 +611,7 @@
         
         const kubunSel = e.target?.closest?.('select[data-field="classification"]');
         const timeEl = e.target?.closest?.('input.se-time[data-field="checkIn"], input.se-time[data-field="checkOut"]');
-        const otherEl = e.target?.closest?.('select[data-field], input[type="text"][data-field]');
+        const otherEl = e.target?.closest?.('select[data-field], input[type="text"][data-field], textarea[data-field]');
         
         const brInput = row.querySelector('select[data-field="break"], select[data-field="breakMin"]');
       const nbInput = row.querySelector('select[data-field="nightBreak"], select[data-field="nightBreakMin"]');
