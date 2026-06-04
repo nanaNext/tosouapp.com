@@ -1418,8 +1418,6 @@ body.drawer-open.admin.has-sidebar .content {
 
 .admin .dash-table.wr-table th,
 .admin .dash-table.wr-table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
   vertical-align: middle;
 }
 
@@ -1571,8 +1569,6 @@ body.drawer-open.admin.has-sidebar .content {
     padding: 7px 10px;
     border-bottom: 1px solid #edf2f8;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     vertical-align: middle;
   }
 
@@ -1618,17 +1614,11 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin .attrec-work {
-  max-width: 520px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .admin .attrec-site {
-  max-width: 180px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .admin .attrec-pill {
