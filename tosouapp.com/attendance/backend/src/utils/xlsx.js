@@ -174,7 +174,7 @@ function stylesXml() {
     <font><sz val="11"/><color rgb="FF000000"/><name val="Meiryo"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Meiryo"/></font>
   </fonts>
-  <fills count="7">
+  <fills count="11">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF1F3553"/><bgColor indexed="64"/></patternFill></fill>
@@ -182,6 +182,10 @@ function stylesXml() {
     <fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF2563EB"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFE5E7EB"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFF0F0"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFBEB"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border>
@@ -198,7 +202,7 @@ function stylesXml() {
   <cellStyleXfs count="1">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellStyleXfs>
-  <cellXfs count="6">
+  <cellXfs count="10">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
       <alignment vertical="center" wrapText="1"/>
     </xf>
@@ -216,6 +220,18 @@ function stylesXml() {
     </xf>
     <xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center" wrapText="1"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment vertical="center" wrapText="1"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="8" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment vertical="center" wrapText="1"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment vertical="center" wrapText="1"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="10" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment vertical="center" wrapText="1"/>
     </xf>
   </cellXfs>
   <cellStyles count="1">
@@ -309,7 +325,7 @@ function safeSheetName(s, fallback = 'Sheet') {
 }
 
 function buildXlsxBook({ sheets }) {
-  const styles = { cell: 0, header: 1, off: 2, stripe: 3, checkOn: 4, headerGrey: 5 };
+  const styles = { cell: 0, header: 1, off: 2, stripe: 3, checkOn: 4, headerGrey: 5, absent: 6, late: 7, leave: 8, weekend: 9 };
   const rawSheets = Array.isArray(sheets) ? sheets : [];
   const s2 = rawSheets.length ? rawSheets.map((s, i) => ({
     name: safeSheetName(s?.name, `Sheet${i + 1}`),

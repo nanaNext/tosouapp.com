@@ -285,7 +285,7 @@ router.get('/export.xlsx',
 
     const [users] = await db.query(`
       SELECT u.id AS userId, u.employee_code AS employeeCode, u.username AS username,
-             d.name AS departmentName
+             d.name AS departmentName, u.birth_date AS birthDate, u.employment_type AS employmentType
       FROM users u
       LEFT JOIN departments d ON d.id = u.departmentId
       WHERE u.employment_status = 'active'
@@ -490,45 +490,165 @@ router.get('/export.xlsx',
       return;
     }
 
-    const rows = [];
-    for (const d of dates) {
+    let buf;
+    if (period === 'month') {
+      const dayNumbers = dates.map(d => parseInt(String(d).slice(8, 10), 10));
+      const s1Cols = [
+        { header: '社員番号', width: 12 },
+        { header: '氏名', width: 16 },
+        { header: '生年月日', width: 14 },
+        { header: '部署', width: 18 },
+        { header: '雇用形態', width: 12 },
+        ...dayNumbers.map(n => ({ header: `${n}日`, width: 10 })),
+        { header: '出勤日数', width: 10 },
+        { header: '遅刻回数', width: 10 },
+        { header: '合計時間', width: 12 }
+      ];
+
+      const s1Rows = [];
+      const s2Rows = [];
+      const s2Cols = [
+        { header: '日付', width: 12 },
+        { header: '曜日', width: 6 },
+        { header: '社員番号', width: 12 },
+        { header: '氏名', width: 16 },
+        { header: '現場', width: 20 },
+        { header: '勤務時間', width: 14 },
+        { header: '作業内容', width: 60 }
+      ];
+
+      const dailyPresentCount = new Array(dates.length).fill(0);
+
       for (const u of (users || [])) {
-        const r = buildRow(u, d);
-        rows.push({
-          isOff: r.isOff,
-          cells: [
-            d,
-            dowJa(d),
-            r.code,
-            r.name,
-            r.dept,
-            r.status,
-            r.wt === 'onsite' ? '✓' : '',
-            r.wt === 'remote' ? '✓' : '',
-            r.wt === 'satellite' ? '✓' : '',
-            r.site,
-            r.work
-          ]
-        });
+        const uid = Number(u.userId);
+        const code = u.employeeCode || `EMP${String(uid).padStart(3, '0')}`;
+        const name = u.username || '';
+        const dob = u.birthDate ? String(u.birthDate).slice(0, 10).replace(/-/g, '/') : '';
+        const dept = u.departmentName || '';
+        const empType = u.employmentType === 'part_time' ? 'アルバイト' : '正社員';
+
+        const s1Cells = [code, name, dob, dept, empType];
+        let workedDays = 0;
+        let lateCount = 0;
+        let totalHours = 0;
+
+        for (let di = 0; di < dates.length; di++) {
+          const d = dates[di];
+          const r = buildRow(u, d);
+          
+          let cellValue = '';
+          let cellStyle = 'cell';
+
+          if (r.status === '出勤' || r.status === '休日出勤') {
+            const cin = r.cin || '';
+            const cout = r.cout || '';
+            cellValue = '出勤';
+            
+            if (cin && cout) {
+              const [h1, m1] = cin.split(':').map(Number);
+              const [h2, m2] = cout.split(':').map(Number);
+              let h = (h2 + m2/60) - (h1 + m1/60);
+              if (h >= 6) h -= 1; // Auto subtract 1h break if >= 6 hours
+              if (h > 0) totalHours += h;
+            }
+
+            if (cin && cin > '08:00') {
+              lateCount++;
+              cellStyle = 'late';
+            }
+            workedDays++;
+            dailyPresentCount[di]++;
+          } else if (r.status === '有給' || r.status === '休暇' || r.status === '病欠') {
+            cellValue = r.status;
+            cellStyle = 'leave';
+          } else if (r.status === '休日') {
+            cellValue = '休日';
+            cellStyle = 'weekend';
+          } else {
+            if (!r.isOff) {
+               cellValue = '欠勤';
+               cellStyle = 'absent';
+            } else {
+               cellValue = '';
+               cellStyle = 'weekend';
+            }
+          }
+
+          s1Cells.push({ v: cellValue, s: cellStyle });
+
+          if (r.work || r.site || r.cin || r.cout) {
+             s2Rows.push({
+               cells: [ d, dowJa(d), code, name, r.site || '', r.cin || r.cout ? `${r.cin || ''}${r.cout ? '-'+r.cout : ''}` : '', r.work || '' ]
+             });
+          }
+        }
+
+        s1Cells.push(workedDays);
+        s1Cells.push(lateCount);
+        s1Cells.push(Math.round(totalHours * 10) / 10);
+        s1Rows.push({ cells: s1Cells });
       }
+
+      const bottomRowCells = [
+        { v: '合計', s: 'headerGrey' },
+        { v: `社員数: ${users.length}名`, s: 'headerGrey' },
+        { v: '', s: 'headerGrey' },
+        { v: '', s: 'headerGrey' },
+        { v: '', s: 'headerGrey' }
+      ];
+      for (let di = 0; di < dates.length; di++) {
+        bottomRowCells.push({ v: dailyPresentCount[di] + '名', s: 'headerGrey' });
+      }
+      bottomRowCells.push({ v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' });
+      s1Rows.push({ cells: bottomRowCells });
+
+      buf = buildXlsxBook({
+        sheets: [
+          { name: `サマリー_${qMonth}`, columns: s1Cols, rows: s1Rows, headerStyleKey: 'header' },
+          { name: `詳細_${qMonth}`, columns: s2Cols, rows: s2Rows, headerStyleKey: 'header' }
+        ]
+      });
+    } else {
+      const rows = [];
+      for (const d of dates) {
+        for (const u of (users || [])) {
+          const r = buildRow(u, d);
+          rows.push({
+            isOff: r.isOff,
+            cells: [
+              d,
+              dowJa(d),
+              r.code,
+              r.name,
+              r.dept,
+              r.status,
+              r.wt === 'onsite' ? '✓' : '',
+              r.wt === 'remote' ? '✓' : '',
+              r.wt === 'satellite' ? '✓' : '',
+              r.site,
+              r.work
+            ]
+          });
+        }
+      }
+
+      const columns = [
+        { header: '日付', width: 12 },
+        { header: '曜日', width: 6 },
+        { header: '社員番号', width: 12 },
+        { header: '氏名', width: 14 },
+        { header: '部署', width: 22 },
+        { header: '勤務区分', width: 12 },
+        { header: '出社', width: 8 },
+        { header: '在宅', width: 8 },
+        { header: '現場・出張', width: 10 },
+        { header: '現場（任意）', width: 18 },
+        { header: '作業内容', width: 52 }
+      ];
+
+      const baseName = period === 'year' ? `年次_${qYear}` : `日次_${start}`;
+      buf = buildXlsx({ sheetName: baseName, columns, rows });
     }
-
-    const columns = [
-      { header: '日付', width: 12 },
-      { header: '曜日', width: 6 },
-      { header: '社員番号', width: 12 },
-      { header: '氏名', width: 14 },
-      { header: '部署', width: 22 },
-      { header: '勤務区分', width: 12 },
-      { header: '出社', width: 8 },
-      { header: '在宅', width: 8 },
-      { header: '現場・出張', width: 10 },
-      { header: '現場（任意）', width: 18 },
-      { header: '作業内容', width: 52 }
-    ];
-
-    const baseName = period === 'month' ? `月次_${qMonth}` : period === 'year' ? `年次_${qYear}` : `日次_${start}`;
-    const buf = buildXlsx({ sheetName: baseName, columns, rows });
     
     // Auto save to Cloudflare R2
     try {
