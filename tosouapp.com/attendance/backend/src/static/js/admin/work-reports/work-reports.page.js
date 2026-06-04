@@ -373,7 +373,7 @@ export async function mount() {
       const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
 
       const dc = dowClass(it.weekday);
-      const displayDate = it.date ? it.date.split('-').pop() : '';
+      const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
       // Calculate holiday from backend flag
       const isHoliday = !!it.holiday;
       const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
@@ -635,7 +635,7 @@ export async function mount() {
         const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
 
         const dc = dowClass(it.weekday);
-        const displayDate = it.date ? it.date.split('-').pop() : '';
+        const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
         // Calculate holiday from backend flag
         const isHoliday = !!it.holiday;
         const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
