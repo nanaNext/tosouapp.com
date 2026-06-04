@@ -505,6 +505,18 @@ router.get('/export.xlsx',
         { header: '合計時間', width: 12 }
       ];
 
+      const s2Cols = [
+        { header: '日付', width: 12 },
+        { header: '曜日', width: 6 },
+        { header: '社員番号', width: 12 },
+        { header: '氏名', width: 16 },
+        { header: '勤務区分', width: 12 },
+        { header: '出社時間', width: 12 },
+        { header: '退社時間', width: 12 },
+        { header: '現場', width: 20 },
+        { header: '作業内容', width: 60 }
+      ];
+
       const s1Rows_all = [];
       const s1Rows_full = [];
       const s1Rows_part = [];
