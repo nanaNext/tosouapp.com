@@ -475,7 +475,7 @@
       const ckSa = rowEl.querySelector('input[data-field="ckSatellite"]');
       const locEl = rowEl.querySelector('input[data-field="location"]');
       const reasonSel = rowEl.querySelector('select[data-field="reason"]');
-      const memoEl = rowEl.querySelector('input[data-field="memo"]');
+      const memoEl = rowEl.querySelector('[data-field="memo"]');
       const worked = rowEl.querySelector('[data-field="worked"]');
       const excess = rowEl.querySelector('[data-field="excess"]');
       const lateEarly = rowEl.querySelector('[data-field="lateEarly"]');

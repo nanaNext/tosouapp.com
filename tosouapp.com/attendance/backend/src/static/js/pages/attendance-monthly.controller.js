@@ -1336,7 +1336,7 @@
         : String(tr.dataset.workType || '')).trim();
       const reason = String(tr.querySelector('select[data-field="reason"]')?.value || '').trim();
       const location = String(tr.querySelector('input[data-field="location"]')?.value || '').trim();
-      const memo = String(tr.querySelector('input[data-field="memo"]')?.value || '').trim();
+      const memo = String(tr.querySelector('[data-field="memo"]')?.value || '').trim();
       const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
       const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
       const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
@@ -1941,7 +1941,7 @@
     if (rSel) rSel.value = '';
     const ihSel = tr.querySelector('select[data-field="inhouse"]');
     if (ihSel) ihSel.value = '';
-    const memo = tr.querySelector('input[data-field="memo"]');
+    const memo = tr.querySelector('[data-field="memo"]');
     if (memo) memo.value = '';
     try { root.Render?.recomputeRow?.(tr); } catch {}
   };
