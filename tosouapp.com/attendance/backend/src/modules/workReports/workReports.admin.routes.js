@@ -505,19 +505,16 @@ router.get('/export.xlsx',
         { header: '合計時間', width: 12 }
       ];
 
-      const s1Rows = [];
-      const s2Rows = [];
-      const s2Cols = [
-        { header: '日付', width: 12 },
-        { header: '曜日', width: 6 },
-        { header: '社員番号', width: 12 },
-        { header: '氏名', width: 16 },
-        { header: '現場', width: 20 },
-        { header: '勤務時間', width: 14 },
-        { header: '作業内容', width: 60 }
-      ];
+      const s1Rows_all = [];
+      const s1Rows_full = [];
+      const s1Rows_part = [];
 
-      const dailyPresentCount = new Array(dates.length).fill(0);
+      const s2Rows_full = [];
+      const s2Rows_part = [];
+
+      const dailyPresentCount_all = new Array(dates.length).fill(0);
+      const dailyPresentCount_full = new Array(dates.length).fill(0);
+      const dailyPresentCount_part = new Array(dates.length).fill(0);
 
       for (const u of (users || [])) {
         const uid = Number(u.userId);
@@ -525,7 +522,8 @@ router.get('/export.xlsx',
         const name = u.username || '';
         const dob = u.birthDate ? String(u.birthDate).slice(0, 10).replace(/-/g, '/') : '';
         const dept = u.departmentName || '';
-        const empType = u.employmentType === 'part_time' ? 'アルバイト' : '正社員';
+        const isPartTime = u.employmentType === 'part_time';
+        const empType = isPartTime ? 'アルバイト' : '正社員';
 
         const s1Cells = [code, name, dob, dept, empType];
         let workedDays = 0;
@@ -557,7 +555,9 @@ router.get('/export.xlsx',
               cellStyle = 'late';
             }
             workedDays++;
-            dailyPresentCount[di]++;
+            dailyPresentCount_all[di]++;
+            if (isPartTime) dailyPresentCount_part[di]++;
+            else dailyPresentCount_full[di]++;
           } else if (r.status === '有給' || r.status === '休暇' || r.status === '病欠') {
             cellValue = r.status;
             cellStyle = 'leave';
@@ -577,35 +577,49 @@ router.get('/export.xlsx',
           s1Cells.push({ v: cellValue, s: cellStyle });
 
           if (r.work || r.site || r.cin || r.cout) {
-             s2Rows.push({
-               cells: [ d, dowJa(d), code, name, r.site || '', r.cin || r.cout ? `${r.cin || ''}${r.cout ? '-'+r.cout : ''}` : '', r.work || '' ]
-             });
+             const rowData = {
+               cells: [ d, dowJa(d), code, name, r.status || '', r.cin || '', r.cout || '', r.site || '', r.work || '' ]
+             };
+             if (isPartTime) s2Rows_part.push(rowData);
+             else s2Rows_full.push(rowData);
           }
         }
 
         s1Cells.push(workedDays);
         s1Cells.push(lateCount);
         s1Cells.push(Math.round(totalHours * 10) / 10);
-        s1Rows.push({ cells: s1Cells });
+        
+        s1Rows_all.push({ cells: [...s1Cells] });
+        if (isPartTime) s1Rows_part.push({ cells: [...s1Cells] });
+        else s1Rows_full.push({ cells: [...s1Cells] });
       }
 
-      const bottomRowCells = [
-        { v: '合計', s: 'headerGrey' },
-        { v: `社員数: ${users.length}名`, s: 'headerGrey' },
-        { v: '', s: 'headerGrey' },
-        { v: '', s: 'headerGrey' },
-        { v: '', s: 'headerGrey' }
-      ];
-      for (let di = 0; di < dates.length; di++) {
-        bottomRowCells.push({ v: dailyPresentCount[di] + '名', s: 'headerGrey' });
-      }
-      bottomRowCells.push({ v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' });
-      s1Rows.push({ cells: bottomRowCells });
+      const buildBottomRow = (countArr, countStr) => {
+        const bottomRowCells = [
+          { v: '合計', s: 'headerGrey' },
+          { v: countStr, s: 'headerGrey' },
+          { v: '', s: 'headerGrey' },
+          { v: '', s: 'headerGrey' },
+          { v: '', s: 'headerGrey' }
+        ];
+        for (let di = 0; di < dates.length; di++) {
+          bottomRowCells.push({ v: countArr[di] + '名', s: 'headerGrey' });
+        }
+        bottomRowCells.push({ v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' });
+        return { cells: bottomRowCells };
+      };
+
+      s1Rows_all.push(buildBottomRow(dailyPresentCount_all, `社員数: ${users.length}名`));
+      s1Rows_full.push(buildBottomRow(dailyPresentCount_full, `社員数: ${s1Rows_full.length}名`));
+      s1Rows_part.push(buildBottomRow(dailyPresentCount_part, `社員数: ${s1Rows_part.length}名`));
 
       buf = buildXlsxBook({
         sheets: [
-          { name: `サマリー_${qMonth}`, columns: s1Cols, rows: s1Rows, headerStyleKey: 'header' },
-          { name: `詳細_${qMonth}`, columns: s2Cols, rows: s2Rows, headerStyleKey: 'header' }
+          { name: `全社員サマリー_${qMonth}`, columns: s1Cols, rows: s1Rows_all, headerStyleKey: 'header' },
+          { name: `正社員サマリー_${qMonth}`, columns: s1Cols, rows: s1Rows_full, headerStyleKey: 'header' },
+          { name: `アルバイトサマリー_${qMonth}`, columns: s1Cols, rows: s1Rows_part, headerStyleKey: 'header' },
+          { name: `正社員詳細_${qMonth}`, columns: s2Cols, rows: s2Rows_full, headerStyleKey: 'header' },
+          { name: `アルバイト詳細_${qMonth}`, columns: s2Cols, rows: s2Rows_part, headerStyleKey: 'header' }
         ]
       });
     } else {
