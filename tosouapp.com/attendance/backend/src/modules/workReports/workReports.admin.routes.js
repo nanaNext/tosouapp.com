@@ -493,7 +493,18 @@ router.get('/export.xlsx',
     let buf;
     if (period === 'month') {
       const dayNumbers = dates.map(d => parseInt(String(d).slice(8, 10), 10));
-      const s1Cols = [
+      const s1Cols_all = [
+        { header: '社員番号', width: 12 },
+        { header: '氏名', width: 16 },
+        { header: '生年月日', width: 14 },
+        { header: '部署', width: 18 },
+        { header: '雇用形態', width: 12 },
+        { header: '出勤日数', width: 10 },
+        { header: '遅刻回数', width: 10 },
+        { header: '合計時間', width: 12 }
+      ];
+
+      const s1Cols_type = [
         { header: '社員番号', width: 12 },
         { header: '氏名', width: 16 },
         { header: '生年月日', width: 14 },
@@ -537,7 +548,8 @@ router.get('/export.xlsx',
         const isPartTime = u.employmentType === 'part_time';
         const empType = isPartTime ? 'アルバイト' : '正社員';
 
-        const s1Cells = [code, name, dob, dept, empType];
+        const s1Cells_all = [code, name, dob, dept, empType];
+        const s1Cells_type = [code, name, dob, dept, empType];
         let workedDays = 0;
         let lateCount = 0;
         let totalHours = 0;
@@ -552,24 +564,30 @@ router.get('/export.xlsx',
           if (r.status === '出勤' || r.status === '休日出勤') {
             const cin = r.cin || '';
             const cout = r.cout || '';
-            cellValue = '出勤';
             
-            if (cin && cout) {
-              const [h1, m1] = cin.split(':').map(Number);
-              const [h2, m2] = cout.split(':').map(Number);
-              let h = (h2 + m2/60) - (h1 + m1/60);
-              if (h >= 6) h -= 1; // Auto subtract 1h break if >= 6 hours
-              if (h > 0) totalHours += h;
-            }
+            if (!cin && !cout && r.status === '出勤') {
+              cellValue = '未';
+              cellStyle = 'absent';
+            } else {
+              cellValue = '出勤';
+              
+              if (cin && cout) {
+                const [h1, m1] = cin.split(':').map(Number);
+                const [h2, m2] = cout.split(':').map(Number);
+                let h = (h2 + m2/60) - (h1 + m1/60);
+                if (h >= 6) h -= 1; // Auto subtract 1h break if >= 6 hours
+                if (h > 0) totalHours += h;
+              }
 
-            if (cin && cin > '08:00') {
-              lateCount++;
-              cellStyle = 'late';
+              if (cin && cin > '08:00') {
+                lateCount++;
+                cellStyle = 'late';
+              }
+              workedDays++;
+              dailyPresentCount_all[di]++;
+              if (isPartTime) dailyPresentCount_part[di]++;
+              else dailyPresentCount_full[di]++;
             }
-            workedDays++;
-            dailyPresentCount_all[di]++;
-            if (isPartTime) dailyPresentCount_part[di]++;
-            else dailyPresentCount_full[di]++;
           } else if (r.status === '有給' || r.status === '休暇' || r.status === '病欠') {
             cellValue = r.status;
             cellStyle = 'leave';
@@ -578,7 +596,7 @@ router.get('/export.xlsx',
             cellStyle = 'weekend';
           } else {
             if (!r.isOff) {
-               cellValue = '欠勤';
+               cellValue = '未';
                cellStyle = 'absent';
             } else {
                cellValue = '';
@@ -586,7 +604,7 @@ router.get('/export.xlsx',
             }
           }
 
-          s1Cells.push({ v: cellValue, s: cellStyle });
+          s1Cells_type.push({ v: cellValue, s: cellStyle });
 
           if (r.work || r.site || r.cin || r.cout) {
              const rowData = {
@@ -597,13 +615,17 @@ router.get('/export.xlsx',
           }
         }
 
-        s1Cells.push(workedDays);
-        s1Cells.push(lateCount);
-        s1Cells.push(Math.round(totalHours * 10) / 10);
+        s1Cells_all.push(workedDays);
+        s1Cells_all.push(lateCount);
+        s1Cells_all.push(Math.round(totalHours * 10) / 10);
+
+        s1Cells_type.push(workedDays);
+        s1Cells_type.push(lateCount);
+        s1Cells_type.push(Math.round(totalHours * 10) / 10);
         
-        s1Rows_all.push({ cells: [...s1Cells] });
-        if (isPartTime) s1Rows_part.push({ cells: [...s1Cells] });
-        else s1Rows_full.push({ cells: [...s1Cells] });
+        s1Rows_all.push({ cells: [...s1Cells_all] });
+        if (isPartTime) s1Rows_part.push({ cells: [...s1Cells_type] });
+        else s1Rows_full.push({ cells: [...s1Cells_type] });
       }
 
       const buildBottomRow = (countArr, countStr) => {
@@ -621,15 +643,15 @@ router.get('/export.xlsx',
         return { cells: bottomRowCells };
       };
 
-      s1Rows_all.push(buildBottomRow(dailyPresentCount_all, `社員数: ${users.length}名`));
+      s1Rows_all.push({ cells: [ { v: '合計', s: 'headerGrey' }, { v: `社員数: ${users.length}名`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ] });
       s1Rows_full.push(buildBottomRow(dailyPresentCount_full, `社員数: ${s1Rows_full.length}名`));
       s1Rows_part.push(buildBottomRow(dailyPresentCount_part, `社員数: ${s1Rows_part.length}名`));
 
       buf = buildXlsxBook({
         sheets: [
-          { name: `全社員サマリー_${qMonth}`, columns: s1Cols, rows: s1Rows_all, headerStyleKey: 'header' },
-          { name: `正社員サマリー_${qMonth}`, columns: s1Cols, rows: s1Rows_full, headerStyleKey: 'header' },
-          { name: `アルバイトサマリー_${qMonth}`, columns: s1Cols, rows: s1Rows_part, headerStyleKey: 'header' },
+          { name: `全社員サマリー_${qMonth}`, columns: s1Cols_all, rows: s1Rows_all, headerStyleKey: 'header' },
+          { name: `正社員サマリー_${qMonth}`, columns: s1Cols_type, rows: s1Rows_full, headerStyleKey: 'header' },
+          { name: `アルバイトサマリー_${qMonth}`, columns: s1Cols_type, rows: s1Rows_part, headerStyleKey: 'header' },
           { name: `正社員詳細_${qMonth}`, columns: s2Cols, rows: s2Rows_full, headerStyleKey: 'header' },
           { name: `アルバイト詳細_${qMonth}`, columns: s2Cols, rows: s2Rows_part, headerStyleKey: 'header' }
         ]
