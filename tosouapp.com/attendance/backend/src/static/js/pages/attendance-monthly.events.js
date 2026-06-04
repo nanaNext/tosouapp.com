@@ -583,7 +583,22 @@
 
     applyHolidayLockAll();
     try {
-      const obs = new MutationObserver(() => { applyHolidayLockAll(); });
+      const obs = new MutationObserver((mutations) => {
+        let hasNewRows = false;
+        for (const m of mutations) {
+          if (m.addedNodes) {
+            for (let i = 0; i < m.addedNodes.length; i++) {
+              const n = m.addedNodes[i];
+              if (n.nodeName === 'TR' || n.nodeName === 'TBODY' || n.nodeName === 'TABLE') {
+                hasNewRows = true;
+                break;
+              }
+            }
+          }
+          if (hasNewRows) break;
+        }
+        if (hasNewRows) applyHolidayLockAll();
+      });
       obs.observe(tableHost, { childList: true, subtree: true });
       tableHost._monthlyHolidayObs = obs;
     } catch {}
@@ -606,14 +621,11 @@
         e.target.dataset.manual = '1';
         e.target.dataset.auto = '0';
         
-        // When changing break times, block auto kubun logic so it doesn't revert things
-        row.dataset.blockRecalc = '1';
-        try {
-          if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
-            globalThis.MonthlyMonthlyRender.recomputeRow(row);
-          }
-        } finally {
-          row.dataset.blockRecalc = '';
+        // Update immediately
+        if (typeof _origRecomputeRow === 'function') {
+          _origRecomputeRow(row);
+        } else if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
+          globalThis.MonthlyMonthlyRender.recomputeRow(row);
         }
         
         try { 
