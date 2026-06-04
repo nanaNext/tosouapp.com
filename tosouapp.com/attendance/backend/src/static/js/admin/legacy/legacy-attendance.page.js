@@ -117,7 +117,7 @@ async function mountAttendanceImpl({
         const table = document.createElement('table');
         table.id = 'attrecList';
         table.className = 'excel-table dash-table attrec-dash-table attrec-emp-like-table';
-        table.style.tableLayout = 'fixed';
+        table.style.tableLayout = 'auto';
         table.style.width = '100%';
         table.style.minWidth = '1200px'; // Ensure horizontal scroll
         table.innerHTML = '<thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>';
