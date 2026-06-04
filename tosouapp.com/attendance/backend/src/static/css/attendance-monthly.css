@@ -3293,3 +3293,14 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
     box-sizing: border-box !important;
   }
 }
+
+/* Fix textarea height overrides */
+#monthTable td textarea.se-input {
+  height: auto !important;
+  min-height: 28px !important;
+  resize: vertical !important;
+  white-space: pre-wrap !important;
+  line-height: 1.2 !important;
+  overflow-y: auto !important;
+}
+
