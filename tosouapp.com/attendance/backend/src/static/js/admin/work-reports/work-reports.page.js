@@ -393,7 +393,7 @@ export async function mount() {
           <td style="font-family:monospace; font-size:14px; white-space:nowrap; ${textColor}">${checkOut}</td>
           <td style="white-space:nowrap; ${textColor}">${wType}</td>
           <td style="white-space:nowrap; ${textColor}">${site}</td>
-          <td style="white-space:nowrap; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
+          <td style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
@@ -421,6 +421,20 @@ export async function mount() {
     tableHost.innerHTML = `
       <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
         <table class="wr-table" style="min-width:1200px; width:100%; table-layout:auto;">
+          <colgroup>
+            <col style="width:40px;">
+            <col style="width:40px;">
+            <col style="width:100px;">
+            <col style="width:120px;">
+            <col style="width:120px;">
+            <col style="width:100px;">
+            <col style="width:70px;">
+            <col style="width:70px;">
+            <col style="width:110px;">
+            <col style="width:200px;">
+            <col style="width:400px;">
+            <col style="width:120px;">
+          </colgroup>
           <thead>
             <tr>
               <th>日付</th>
@@ -638,7 +652,7 @@ export async function mount() {
           <td style="font-family:monospace; font-size:14px; ${textColor}">${checkOut}</td>
           <td style="${textColor}">${wType}</td>
           <td style="${textColor}">${site}</td>
-          <td style="white-space:nowrap; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
+          <td style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
@@ -654,7 +668,18 @@ export async function mount() {
             ${headerRight}
           </div>
           <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
-            <table class="wr-table" style="min-width:1000px; width:100%; table-layout:auto;">
+            <table class="wr-table" style="min-width:1200px; width:100%; table-layout:auto;">
+              <colgroup>
+                <col style="width:40px;">
+                <col style="width:40px;">
+                <col style="width:100px;">
+                <col style="width:70px;">
+                <col style="width:70px;">
+                <col style="width:110px;">
+                <col style="width:200px;">
+                <col style="width:400px;">
+                <col style="width:120px;">
+              </colgroup>
               <thead>
                 <tr>
                   <th>日付</th>

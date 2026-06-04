@@ -119,8 +119,21 @@ async function mountAttendanceImpl({
         table.className = 'excel-table dash-table attrec-dash-table attrec-emp-like-table';
         table.style.tableLayout = 'auto';
         table.style.width = '100%';
-        table.style.minWidth = '1200px'; // Ensure horizontal scroll
-        table.innerHTML = '<thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>';
+        table.style.minWidth = '1400px'; // Ensure horizontal scroll
+        table.innerHTML = `
+          <colgroup>
+            <col style="width:100px;">
+            <col style="width:120px;">
+            <col style="width:120px;">
+            <col style="width:100px;">
+            <col style="width:100px;">
+            <col style="width:70px;">
+            <col style="width:70px;">
+            <col style="width:200px;">
+            <col style="width:400px;">
+          </colgroup>
+          <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>
+        `;
         const tbody = document.createElement('tbody');
         const selectedDateIsOff = isWeekend(date);
         const isPastDate = date < today;
@@ -202,8 +215,8 @@ async function mountAttendanceImpl({
             <td><span class="${stClass}">${esc(stLabel)}</span></td>
             <td>${esc(cinView)}</td>
             <td>${esc(coutView)}</td>
-            <td class="attrec-site"${site ? ` title="${esc(site)}"` : ''}>${esc(siteView)}</td>
-            <td class="attrec-work"${work ? ` title="${esc(work)}"` : ''}>${esc(workView)}</td>
+            <td class="attrec-site" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px;"${site ? ` title="${esc(site)}"` : ''}>${esc(siteView)}</td>
+          <td class="attrec-work" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px;"${work ? ` title="${esc(work)}"` : ''}>${esc(workView)}</td>
           `;
           tbody.appendChild(tr);
         }
