@@ -1614,11 +1614,17 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin .attrec-work {
-  white-space: nowrap;
+  min-width: 300px;
+  max-width: 600px;
+  white-space: pre-wrap !important;
+  word-break: break-word;
 }
 
 .admin .attrec-site {
-  white-space: nowrap;
+  min-width: 150px;
+  max-width: 300px;
+  white-space: pre-wrap !important;
+  word-break: break-word;
 }
 
 .admin .attrec-pill {
