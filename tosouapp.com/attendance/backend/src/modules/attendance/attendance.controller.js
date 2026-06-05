@@ -1085,6 +1085,9 @@ exports.putDaily = async (req, res) => {
     if (req.user.role === 'employee' && !isEditableMonth(y, m)) {
       return res.status(403).json({ message: 'Forbidden: cannot edit past months' });
     }
+    
+    console.log(`[putDaily] Received payload for user ${userId} date ${date}:`, req.body);
+    
     await repo.upsertDaily(userId, date, req.body || {});
     const daily = await repo.getDaily(userId, date);
     try {
@@ -1403,6 +1406,11 @@ exports.getMonthDetail = async (req, res) => {
         location: r.location || report?.location || null,
         reason: r.reason || null,
         memo: r.memo || report?.memo || null,
+        notes: r.notes || null,
+        late_minutes: r.late_minutes == null ? null : Number(r.late_minutes),
+        early_minutes: r.early_minutes == null ? null : Number(r.early_minutes),
+        lateMinutes: r.late_minutes == null ? null : Number(r.late_minutes),
+        earlyMinutes: r.early_minutes == null ? null : Number(r.early_minutes),
         breakMinutes: r.break_minutes == null ? null : Number(r.break_minutes),
         nightBreakMinutes: r.night_break_minutes == null ? null : Number(r.night_break_minutes),
         status: r.status || null
@@ -2113,6 +2121,9 @@ exports.exportMonthXlsx = async (req, res) => {
         location: r.location || null,
         reason: r.reason || null,
         memo: r.memo || null,
+        notes: r.notes || null,
+        lateMinutes: r.late_minutes == null ? null : Number(r.late_minutes),
+        earlyMinutes: r.early_minutes == null ? null : Number(r.early_minutes),
         breakMinutes: r.break_minutes == null ? null : Number(r.break_minutes),
         nightBreakMinutes: r.night_break_minutes == null ? null : Number(r.night_break_minutes)
       });

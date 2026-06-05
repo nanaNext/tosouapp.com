@@ -41,9 +41,9 @@
         <th>勤務時間</th>
         <th>超過時間</th>
         <th>遅刻/早退</th>
-        <th>理由</th>
-        <th>備考</th>
-        <th>ステータス</th>
+      <th>理由</th>
+      <th>備考</th>
+      <th>ステータス</th>
         <th>承認者</th>
         <th>行クリア</th>
         <th>履歴</th>
@@ -248,6 +248,9 @@
       tr.dataset.primary = primary ? '1' : '0';
       tr.dataset.kubunConfirmed = kubunConfirmed ? '1' : '';
       tr.dataset.shiftStart = shiftStartOk ? shiftStart : '08:00';
+      tr.dataset.lateMinutes = String(daily?.lateMinutes || daily?.late_minutes || '');
+      tr.dataset.earlyMinutes = String(daily?.earlyMinutes || daily?.early_minutes || '');
+      tr.dataset.reasonBase = String(daily?.reason || '');
 
       const wtVal = (() => {
         if (isHolidayKubun) return '';
@@ -260,7 +263,7 @@
       
       const dLoc = isHolidayKubun ? '' : String(daily?.location || '');
       const dMemo = isHolidayKubun ? '' : String(daily?.memo || '');
-      const dReason = effectiveKubun === '欠勤' ? String(daily?.reason || '') : '';
+      const dReason = String(daily?.reason || '');
       const dNotes = isHolidayKubun ? '' : String(daily?.notes || '');
       const brVal = brMin === 45 ? '0:45' : brMin === 30 ? '0:30' : brMin === 0 ? '0:00' : '1:00';
       const nbVal = nbMin === 60 ? '1:00' : nbMin === 30 ? '0:30' : '0:00';
@@ -324,7 +327,36 @@
       </td>
       <td data-field="worked" class="${workAutoCls}" style="font-weight:900;color:#0f172a;">${esc(workHm)}</td>
       <td data-field="excess" class="${otAutoCls}" style="text-align:center;color:#0f172a;font-weight:900;">${esc(otHm)}</td>
-      <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => { if (!isWorkDay) return '—'; const inM = parseHm(finalIn); const stM = parseHm(shiftStart); const outM = parseHm(finalOut); const etM = parseHm(shiftEnd); const late = (inM!=null && stM!=null && inM>stM); const early = (() => { if (outM==null || stM==null || etM==null) return false; const overnight = etM < stM; const endAbs = overnight ? (etM + 24*60) : etM; const outAbs = overnight && outM < stM ? (outM + 24*60) : outM; return outAbs < endAbs; })(); return late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—'; })()}</td>
+      <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => {
+        if (!isWorkDay) return '—';
+        const inM = parseHm(finalIn);
+        const stM = parseHm(shiftStart);
+        const outM = parseHm(finalOut);
+        const etM = parseHm(shiftEnd);
+        const late = (inM!=null && stM!=null && inM>stM);
+        const early = (() => {
+          if (outM==null || stM==null || etM==null) return false;
+          const overnight = etM < stM;
+          const endAbs = overnight ? (etM + 24*60) : etM;
+          const outAbs = overnight && outM < stM ? (outM + 24*60) : outM;
+          return outAbs < endAbs;
+        })();
+        let txt = late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—';
+        const lateMin = Number(daily?.lateMinutes || daily?.late_minutes || 0);
+        const earlyMin = Number(daily?.earlyMinutes || daily?.early_minutes || 0);
+        
+        if (txt === '—' && (lateMin > 0 || earlyMin > 0)) {
+           txt = lateMin > 0 && earlyMin > 0 ? '遅刻/早退' : lateMin > 0 ? '遅刻' : '早退';
+        }
+        
+        let sub = [];
+        if (lateMin > 0) sub.push(`遅刻:${lateMin}分`);
+        if (earlyMin > 0) sub.push(`早退:${earlyMin}分`);
+        if (sub.length > 0) {
+          return `<div>${txt === '—' ? '' : txt}</div><div style="font-size:10px; color:#ef4444; line-height:1.2; margin-top:2px;">${sub.join('<br>')}</div>`;
+        }
+        return txt;
+      })()}</td>
       <td>
         <select id="reason_${dateStr}" name="reason_${dateStr}" class="se-select" data-field="reason" ${effectiveKubun === '欠勤' && state.editableMonth ? '' : 'disabled'} style="width:140px;${effectiveKubun === '欠勤' ? '' : 'visibility:hidden;'}">
           <option value=""></option>
@@ -335,7 +367,7 @@
         </select>
       </td>
       <td>
-        <input id="notes_${dateStr}" name="notes_${dateStr}" class="se-input" data-field="notes" type="text" value="${esc(dNotes)}" ${!canEditWorkRow ? 'disabled' : ''} style="width:100%;">
+        <input id="notes_${dateStr}" name="notes_${dateStr}" class="se-input" data-field="notes" type="text" value="${esc(dNotes)}" ${!state.editableMonth ? 'disabled' : ''} style="width:100%; box-sizing:border-box;" placeholder="">
       </td>
       <td>
         <div class="se-status-wrap">
@@ -523,7 +555,7 @@
       });
       const notesEl = rowEl.querySelector('input[data-field="notes"]');
       if (notesEl) {
-        if (canEditWorkInputs) notesEl.removeAttribute('disabled');
+        if (state.editableMonth) notesEl.removeAttribute('disabled');
         else notesEl.setAttribute('disabled', '');
       }
 
@@ -562,7 +594,7 @@
       // Update reason visibility/disability based on kubun
       if (reasonSel) {
         if (effectiveKubun === '欠勤') {
-          reasonSel.style.visibility = '';
+          reasonSel.style.visibility = 'visible';
           if (state.editableMonth) {
             reasonSel.removeAttribute('disabled');
           } else {
@@ -570,8 +602,7 @@
           }
         } else {
           reasonSel.style.visibility = 'hidden';
-          reasonSel.setAttribute('disabled', '');
-          if (reasonSel.value !== '') reasonSel.value = '';
+          reasonSel.value = '';
         }
       }
 

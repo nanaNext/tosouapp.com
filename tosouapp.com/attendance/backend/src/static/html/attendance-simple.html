@@ -175,28 +175,43 @@
           <span class="simple-switch-track" aria-hidden="true"></span>
         </label>
       </div>
-      <div id="detailPanelBody" class="simple-panel-body">
-        <div class="simple-form">
-          <div class="simple-grid2">
-            <div class="simple-time">
-              <label class="simple-label" for="lateMin">遅刻</label>
-              <input id="lateMin" type="number" class="simple-number" min="0" value="0">
+      <div id="detailPanelBody" class="simple-panel-body" style="padding: 0;">
+        <div class="simple-actuals" style="background: transparent; min-height: auto;">
+          <div class="simple-actuals-left" style="padding-top: 10px;">
+            <div class="simple-form">
+              <div class="simple-grid2" style="margin-bottom: 0;">
+                <div class="simple-time">
+                  <label class="simple-label" for="lateMin">遅刻</label>
+                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                    <input id="lateMin" type="number" class="simple-number" min="0" value="" style="flex: 1; min-width: 0;">
+                    <span style="color: #64748b; font-size: 14px; white-space: nowrap;">分</span>
+                  </div>
+                </div>
+                <div class="simple-time">
+                  <label class="simple-label" for="earlyMin">早退</label>
+                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                    <input id="earlyMin" type="number" class="simple-number" min="0" value="" style="flex: 1; min-width: 0;">
+                    <span style="color: #64748b; font-size: 14px; white-space: nowrap;">分</span>
+                  </div>
+                </div>
+              </div>
+              <div class="simple-row" style="margin-top: 0;">
+                <label class="simple-label" for="taskType">社内業務</label>
+                <div style="display: flex; align-items: center; flex: 1;">
+                  <select id="taskType" class="simple-select" style="flex: 1; max-width: none;">
+                    <option value="internal">社内業務</option>
+                  </select>
+                </div>
+              </div>
+              <div class="simple-row" style="margin-top: 0;">
+                <label class="simple-label" for="memo">備考</label>
+                <div style="display: flex; align-items: center; flex: 1;">
+                  <input id="memo" class="simple-input" placeholder="遅刻・早退などの理由" style="flex: 1; max-width: none;">
+                </div>
+              </div>
             </div>
-            <div class="simple-time">
-              <label class="simple-label" for="earlyMin">早退</label>
-              <input id="earlyMin" type="number" class="simple-number" min="0" value="0">
-            </div>
           </div>
-          <div class="simple-row">
-            <label class="simple-label" for="taskType">社内業務</label>
-            <select id="taskType" class="simple-select">
-              <option value="internal">社内業務</option>
-            </select>
-          </div>
-          <div class="simple-row">
-            <label class="simple-label" for="memo">備考</label>
-            <input id="memo" class="simple-input" placeholder="遅刻・早退などの理由">
-          </div>
+          <div class="simple-actuals-right" aria-hidden="true"></div>
         </div>
       </div>
     </section>

@@ -48,7 +48,18 @@ router.post('/', authorize('employee', 'manager', 'admin'), async (req, res) => 
     `, [userId, date]);
     const att = attRows && attRows[0] ? attRows[0] : null;
     await repo.upsert({ userId, date, attendanceId: att?.id || null, workType, site, work });
-    await attendanceRepo.upsertDaily(userId, date, { location: site, memo: work });
+    // Fetch existing daily to preserve notes, late_minutes, etc.
+    const existingDaily = await attendanceRepo.getDaily(userId, date).catch(() => null);
+    await attendanceRepo.upsertDaily(userId, date, { 
+      location: site, 
+      memo: work,
+      notes: existingDaily?.notes,
+      late_minutes: existingDaily?.late_minutes,
+      early_minutes: existingDaily?.early_minutes,
+      break_minutes: existingDaily?.break_minutes,
+      night_break_minutes: existingDaily?.night_break_minutes,
+      kubun: existingDaily?.kubun
+    });
     const saved = await repo.getByUserDate(userId, date);
     const daily = await attendanceRepo.getDaily(userId, date).catch(() => null);
     res.status(201).json({ date, report: saved, daily });

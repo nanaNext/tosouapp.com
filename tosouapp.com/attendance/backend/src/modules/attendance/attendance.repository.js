@@ -167,6 +167,9 @@ async function ensureAttendanceDailySchema() {
       location VARCHAR(120) NULL,
       reason VARCHAR(32) NULL,
       memo VARCHAR(255) NULL,
+      notes VARCHAR(255) NULL,
+      late_minutes INT NULL,
+      early_minutes INT NULL,
       break_minutes INT NULL,
       night_break_minutes INT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -190,6 +193,9 @@ async function ensureAttendanceDailySchema() {
     if (!set.has('location')) alters.push(`ADD COLUMN location VARCHAR(120) NULL`);
     if (!set.has('reason')) alters.push(`ADD COLUMN reason VARCHAR(32) NULL`);
     if (!set.has('memo')) alters.push(`ADD COLUMN memo VARCHAR(255) NULL`);
+    if (!set.has('notes')) alters.push(`ADD COLUMN notes VARCHAR(255) NULL`);
+    if (!set.has('late_minutes')) alters.push(`ADD COLUMN late_minutes INT NULL`);
+    if (!set.has('early_minutes')) alters.push(`ADD COLUMN early_minutes INT NULL`);
     if (!set.has('break_minutes')) alters.push(`ADD COLUMN break_minutes INT NULL`);
     if (!set.has('night_break_minutes')) alters.push(`ADD COLUMN night_break_minutes INT NULL`);
     if (!set.has('status')) alters.push(`ADD COLUMN status ENUM('未入力','未承認','遅刻','承認待ち','承認済み') NULL DEFAULT '未入力'`);
@@ -559,6 +565,8 @@ module.exports = {
     const incoming = daily && typeof daily === 'object' ? daily : {};
     const existing = await this.getDaily(userId, date);
 
+    console.log(`[upsertDaily] userId=${userId}, date=${date}, incoming=`, incoming, 'existing.notes=', existing?.notes);
+
     let kubun = existing?.kubun ?? null;
     if (Object.prototype.hasOwnProperty.call(incoming, 'kubun')) {
       const k = String(incoming.kubun || '').trim();
@@ -595,13 +603,36 @@ module.exports = {
       memo = incoming.memo != null ? String(incoming.memo).slice(0, 255) : null;
     }
 
-    let breakMin = existing?.break_minutes ?? null;
-    if (Object.prototype.hasOwnProperty.call(incoming, 'breakMinutes')) {
-      breakMin = incoming.breakMinutes == null ? null : Number(incoming.breakMinutes);
+    let notes = existing?.notes ?? null;
+    if (Object.prototype.hasOwnProperty.call(incoming, 'notes')) {
+      notes = incoming.notes != null ? String(incoming.notes).slice(0, 255) : null;
     }
 
+    let late_minutes = existing?.late_minutes ?? null;
+    if (Object.prototype.hasOwnProperty.call(incoming, 'late_minutes')) {
+      late_minutes = incoming.late_minutes == null ? null : Number(incoming.late_minutes);
+    } else if (Object.prototype.hasOwnProperty.call(incoming, 'lateMinutes')) {
+      late_minutes = incoming.lateMinutes == null ? null : Number(incoming.lateMinutes);
+    }
+    
+    let early_minutes = existing?.early_minutes ?? null;
+    if (Object.prototype.hasOwnProperty.call(incoming, 'early_minutes')) {
+      early_minutes = incoming.early_minutes == null ? null : Number(incoming.early_minutes);
+    } else if (Object.prototype.hasOwnProperty.call(incoming, 'earlyMinutes')) {
+      early_minutes = incoming.earlyMinutes == null ? null : Number(incoming.earlyMinutes);
+    }
+    
+    let breakMin = existing?.break_minutes ?? null;
+    if (Object.prototype.hasOwnProperty.call(incoming, 'break_minutes')) {
+      breakMin = incoming.break_minutes == null ? null : Number(incoming.break_minutes);
+    } else if (Object.prototype.hasOwnProperty.call(incoming, 'breakMinutes')) {
+      breakMin = incoming.breakMinutes == null ? null : Number(incoming.breakMinutes);
+    }
+    
     let nightBreakMin = existing?.night_break_minutes ?? null;
-    if (Object.prototype.hasOwnProperty.call(incoming, 'nightBreakMinutes')) {
+    if (Object.prototype.hasOwnProperty.call(incoming, 'night_break_minutes')) {
+      nightBreakMin = incoming.night_break_minutes == null ? null : Number(incoming.night_break_minutes);
+    } else if (Object.prototype.hasOwnProperty.call(incoming, 'nightBreakMinutes')) {
       nightBreakMin = incoming.nightBreakMinutes == null ? null : Number(incoming.nightBreakMinutes);
     }
     const sameValue = (a, b) => {
@@ -616,14 +647,17 @@ module.exports = {
         sameValue(existing.location, location) &&
         sameValue(existing.reason, reason) &&
         sameValue(existing.memo, memo) &&
+        sameValue(existing.notes, notes) &&
+        String(existing.late_minutes ?? '') === String(late_minutes ?? '') &&
+        String(existing.early_minutes ?? '') === String(early_minutes ?? '') &&
         String(existing.break_minutes ?? '') === String(breakMin ?? '') &&
         String(existing.night_break_minutes ?? '') === String(nightBreakMin ?? '');
       if (unchanged) return { ok: true, affectedRows: 0 };
     }
     const [res] = await db.query(
       `
-        INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, break_minutes, night_break_minutes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           kubun = VALUES(kubun),
           kubun_confirmed = VALUES(kubun_confirmed),
@@ -631,6 +665,9 @@ module.exports = {
           location = VALUES(location),
           reason = VALUES(reason),
           memo = VALUES(memo),
+          notes = VALUES(notes),
+          late_minutes = VALUES(late_minutes),
+          early_minutes = VALUES(early_minutes),
           break_minutes = VALUES(break_minutes),
           night_break_minutes = VALUES(night_break_minutes)
       `,
@@ -643,6 +680,9 @@ module.exports = {
         location,
         reason,
         memo,
+        notes,
+        late_minutes,
+        early_minutes,
         Number.isFinite(breakMin) ? breakMin : null,
         Number.isFinite(nightBreakMin) ? nightBreakMin : null
       ]
@@ -1394,8 +1434,8 @@ module.exports = {
 
           await conn.query(
             `
-            INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, break_minutes, night_break_minutes, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
               kubun = VALUES(kubun),
               kubun_confirmed = VALUES(kubun_confirmed),
@@ -1403,6 +1443,9 @@ module.exports = {
               location = VALUES(location),
               reason = VALUES(reason),
               memo = VALUES(memo),
+              notes = VALUES(notes),
+              late_minutes = VALUES(late_minutes),
+              early_minutes = VALUES(early_minutes),
               break_minutes = VALUES(break_minutes),
               night_break_minutes = VALUES(night_break_minutes),
               status = VALUES(status)
@@ -1416,6 +1459,9 @@ module.exports = {
               d.location || null,
               d.reason || null,
               d.memo || null,
+              d.notes || null,
+              d.lateMinutes != null ? d.lateMinutes : null,
+              d.earlyMinutes != null ? d.earlyMinutes : null,
               d.breakMinutes !== null && d.breakMinutes !== undefined ? d.breakMinutes : null,
               d.nightBreakMinutes !== null && d.nightBreakMinutes !== undefined ? d.nightBreakMinutes : null,
               status
