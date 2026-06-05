@@ -311,6 +311,12 @@ router.get('/export.xlsx',
       WHERE date >= ? AND date <= ?
     `, [start, end]);
 
+    const [dailyRows] = await db.query(`
+      SELECT userId, date, kubun
+      FROM attendance_daily
+      WHERE date >= ? AND date <= ?
+    `, [start, end]);
+
     const [leaveRows] = await db.query(`
       SELECT userId, startDate, endDate, type
       FROM leave_requests
@@ -326,6 +332,10 @@ router.get('/export.xlsx',
     const repMap = new Map();
     for (const r of (repRows || [])) {
       repMap.set(`${r.userId}|${String(r.date).slice(0, 10)}`, r);
+    }
+    const dailyMap = new Map();
+    for (const d of (dailyRows || [])) {
+      dailyMap.set(`${d.userId}|${String(d.date).slice(0, 10)}`, d);
     }
     const leaveByUser = new Map();
     for (const lr of (leaveRows || [])) {
@@ -373,19 +383,26 @@ router.get('/export.xlsx',
       const leave = isOnLeave(uid, d);
       const att = attMap.get(`${uid}|${d}`) || null;
       const rep = repMap.get(`${uid}|${d}`) || null;
+      const daily = dailyMap.get(`${uid}|${d}`) || null;
       const wt = String(rep?.work_type || att?.work_type || '').trim();
       let status = '';
       let cin = '';
       let cout = '';
+      
+      let isOff = isOffDate(d, dept);
+      if (daily?.kubun === '休日' || daily?.kubun === '所定休日') {
+        isOff = true;
+      }
+
       if (leave) {
         status = leaveLabel(leave.type);
-      } else if (!att?.checkIn && isOffDate(d, dept)) {
+      } else if (!att?.checkIn && isOff) {
         status = '休日';
       } else if (att?.checkIn) {
-        status = att?.checkOut ? (isOffDate(d, dept) ? '休日出勤' : '出勤') : (isOffDate(d, dept) ? '休日出勤' : '出勤');
+        status = att?.checkOut ? (isOff ? '休日出勤' : '出勤') : (isOff ? '休日出勤' : '出勤');
         cin = fmtHm(att.checkIn);
         cout = fmtHm(att.checkOut);
-      } else if (!isOffDate(d, dept)) {
+      } else if (!isOff) {
         status = '出勤';
       }
       return {
@@ -398,9 +415,9 @@ router.get('/export.xlsx',
         status,
         cin,
         cout,
-        site: isOffDate(d, dept) && !att?.checkIn ? '' : String(rep?.site || ''),
-        work: isOffDate(d, dept) && !att?.checkIn ? '' : String(rep?.work || ''),
-        isOff: isOffDate(d, dept)
+        site: isOff && !att?.checkIn ? '' : String(rep?.site || ''),
+        work: isOff && !att?.checkIn ? '' : String(rep?.work || ''),
+        isOff: isOff
       };
     };
 
