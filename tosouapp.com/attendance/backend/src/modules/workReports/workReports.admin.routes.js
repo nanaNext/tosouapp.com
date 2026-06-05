@@ -509,7 +509,7 @@ router.get('/export.xlsx',
         { header: '生年月日', width: 14 },
         { header: '部署', width: 18 },
         { header: '雇用形態', width: 12 },
-        ...dayNumbers.map(n => ({ header: `${n}日`, width: 10 })),
+        ...dayNumbers.map(n => ({ header: `${n}日`, width: 5 })),
         { header: '出勤日数', width: 10 },
         { header: '遅刻回数', width: 10 },
         { header: '合計時間', width: 12 }
@@ -657,11 +657,12 @@ router.get('/export.xlsx',
 
       const legendRows = [
         { cells: [] },
-        { cells: [{ v: '【色分けの凡例】', s: 'cell' }] },
-        { cells: [{ v: '未', s: 'absentText' }, { v: '未打刻（出勤予定日）', s: 'cell' }] },
-        { cells: [{ v: '休日', s: 'weekend' }, { v: '所定休日', s: 'cell' }] },
-        { cells: [{ v: '出勤 / 有給', s: 'present' }, { v: '定時出勤 / 休暇取得', s: 'cell' }] },
-        { cells: [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'cell' }] }
+        { cells: [{ v: '【色分けの凡例】', s: 'legend' }] },
+        { cells: [{ v: '未', s: 'absentText' }, { v: '未打刻（出勤予定日）', s: 'legend' }] },
+        { cells: [{ v: '休日', s: 'weekend' }, { v: '所定休日', s: 'legend' }] },
+        { cells: [{ v: '出勤', s: 'present' }, { v: '定時出勤', s: 'legend' }] },
+        { cells: [{ v: '有給', s: 'present' }, { v: '休暇取得', s: 'legend' }] },
+        { cells: [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'legend' }] }
       ];
 
       s1Rows_all.push(...legendRows);
