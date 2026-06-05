@@ -600,7 +600,7 @@ router.get('/export.xlsx',
                 if (h > 0) totalHours += h;
               }
 
-              if (cin && cin > '08:00') {
+              if (cin && cin > '09:00') {
                 isLate = 1;
                 lateCount++;
                 cellStyle = 'late'; // Green text, yellow bg
