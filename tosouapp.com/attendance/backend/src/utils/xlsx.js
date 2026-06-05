@@ -163,7 +163,7 @@ function sheetXml({ sheetName, columns, rows, styles, headerStyleKey }) {
     <row r="1">${header}</row>
     ${bodyRows}
   </sheetData>
-  <sheetProtection sheet="1" objects="1" scenarios="1" />
+  <sheetProtection sheet="0" objects="0" scenarios="0" />
 </worksheet>`;
 }
 
