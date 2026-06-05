@@ -1325,6 +1325,7 @@ const save = async (date) => {
       late_minutes: lateVal !== '' && lateVal != null ? Number(lateVal) : null,
       early_minutes: earlyVal !== '' && earlyVal != null ? Number(earlyVal) : null,
       kubun: String($('#kubun')?.value || '').trim(),
+      kubunConfirmed: $('#kubun')?.classList.contains('is-planned') ? 0 : 1,
       workType: wt || null,
       break_minutes: Number($('#breakMin')?.value || 60),
       night_break_minutes: Number($('#nightBreakMin')?.value || 0)
