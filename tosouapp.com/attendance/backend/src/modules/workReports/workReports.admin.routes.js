@@ -568,7 +568,7 @@ router.get('/export.xlsx',
             
             if (!cin && !cout && r.status === '出勤') {
               cellValue = '未';
-              cellStyle = 'absent';
+              cellStyle = 'absentText'; // Red text for '未'
             } else {
               cellValue = '出勤';
               
@@ -582,7 +582,7 @@ router.get('/export.xlsx',
 
               if (cin && cin > '08:00') {
                 lateCount++;
-                cellStyle = 'late';
+                cellStyle = 'warnLight'; // Yellow bg
               }
               workedDays++;
               dailyPresentCount_all[di]++;
@@ -591,17 +591,17 @@ router.get('/export.xlsx',
             }
           } else if (r.status === '有給' || r.status === '休暇' || r.status === '病欠') {
             cellValue = r.status;
-            cellStyle = 'leave';
+            cellStyle = 'success'; // Green bg
           } else if (r.status === '休日') {
             cellValue = '休日';
-            cellStyle = 'weekend';
+            cellStyle = 'warn'; // Red text, red bg
           } else {
             if (!r.isOff) {
                cellValue = '未';
-               cellStyle = 'absent';
+               cellStyle = 'absentText'; // Red text
             } else {
                cellValue = '';
-               cellStyle = 'weekend';
+               cellStyle = 'warn';
             }
           }
 
