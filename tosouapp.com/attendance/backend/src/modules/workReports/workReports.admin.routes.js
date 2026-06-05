@@ -568,9 +568,10 @@ router.get('/export.xlsx',
             
             if (!cin && !cout && r.status === '出勤') {
               cellValue = '未';
-              cellStyle = 'absentText'; // Red text for '未'
+              cellStyle = 'absentText'; // Blue text
             } else {
               cellValue = '出勤';
+              cellStyle = 'present'; // Green text, white bg
               
               if (cin && cout) {
                 const [h1, m1] = cin.split(':').map(Number);
@@ -582,7 +583,7 @@ router.get('/export.xlsx',
 
               if (cin && cin > '08:00') {
                 lateCount++;
-                cellStyle = 'warnLight'; // Yellow bg
+                cellStyle = 'late'; // Green text, yellow bg
               }
               workedDays++;
               dailyPresentCount_all[di]++;
@@ -591,17 +592,17 @@ router.get('/export.xlsx',
             }
           } else if (r.status === '有給' || r.status === '休暇' || r.status === '病欠') {
             cellValue = r.status;
-            cellStyle = 'success'; // Green bg
+            cellStyle = 'present'; // Green text
           } else if (r.status === '休日') {
             cellValue = '休日';
-            cellStyle = 'warn'; // Red text, red bg
+            cellStyle = 'weekend'; // Red text
           } else {
             if (!r.isOff) {
                cellValue = '未';
-               cellStyle = 'absentText'; // Red text
+               cellStyle = 'absentText'; // Blue text
             } else {
                cellValue = '';
-               cellStyle = 'warn';
+               cellStyle = 'weekend'; // Actually empty, weekend style is fine
             }
           }
 
@@ -653,6 +654,19 @@ router.get('/export.xlsx',
       s1Rows_all.push({ cells: [ { v: '合計', s: 'headerGrey' }, { v: `社員数: ${users.length}名`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ] });
       s1Rows_full.push(buildBottomRow(dailyPresentCount_full, `社員数: ${s1Rows_full.length}名`));
       s1Rows_part.push(buildBottomRow(dailyPresentCount_part, `社員数: ${s1Rows_part.length}名`));
+
+      const legendRows = [
+        { cells: [] },
+        { cells: [{ v: '【色分けの凡例】', s: 'cell' }] },
+        { cells: [{ v: '未', s: 'absentText' }, { v: '未打刻（出勤予定日）', s: 'cell' }] },
+        { cells: [{ v: '休日', s: 'weekend' }, { v: '所定休日', s: 'cell' }] },
+        { cells: [{ v: '出勤 / 有給', s: 'present' }, { v: '定時出勤 / 休暇取得', s: 'cell' }] },
+        { cells: [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'cell' }] }
+      ];
+
+      s1Rows_all.push(...legendRows);
+      s1Rows_full.push(...legendRows);
+      s1Rows_part.push(...legendRows);
 
       buf = buildXlsxBook({
         sheets: [
