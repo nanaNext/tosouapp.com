@@ -500,7 +500,10 @@ router.get('/export.xlsx',
         { header: '部署', width: 18 },
         { header: '雇用形態', width: 12 },
         { header: '所定労働日数', width: 14 },
-        { header: '所定労働時間', width: 14 }
+        { header: '所定労働時間', width: 14 },
+        { header: '', width: 2, headerStyle: 'empty' },
+        { header: '【色分けの凡例】', width: 12, headerStyle: 'legendHeader' },
+        { header: '', width: 24, headerStyle: 'legendHeader' }
       ];
 
       const s1Cols_type = [
@@ -509,7 +512,7 @@ router.get('/export.xlsx',
         { header: '生年月日', width: 14 },
         { header: '部署', width: 18 },
         { header: '雇用形態', width: 12 },
-        ...dayNumbers.map(n => ({ header: `${n}日`, width: 5 })),
+        ...dayNumbers.map(n => ({ header: `${n}日`, width: 6 })),
         { header: '出勤日数', width: 10 },
         { header: '遅刻回数', width: 10 },
         { header: '合計時間', width: 12 }
@@ -524,7 +527,9 @@ router.get('/export.xlsx',
         { header: '出社時間', width: 12 },
         { header: '退社時間', width: 12 },
         { header: '現場', width: 20 },
-        { header: '作業内容', width: 60 }
+        { header: '作業内容', width: 60 },
+        { header: '遅刻', width: 8 },
+        { header: '稼働時間', width: 10 }
       ];
 
       const s1Rows_all = [];
@@ -537,6 +542,18 @@ router.get('/export.xlsx',
       const dailyPresentCount_all = new Array(dates.length).fill(0);
       const dailyPresentCount_full = new Array(dates.length).fill(0);
       const dailyPresentCount_part = new Array(dates.length).fill(0);
+
+      const getColName = (n) => {
+        let s = '';
+        while (n > 0) {
+          const r = (n - 1) % 26;
+          s = String.fromCharCode(65 + r) + s;
+          n = Math.floor((n - 1) / 26);
+        }
+        return s;
+      };
+
+      const userRows_all = [];
 
       for (const u of (users || [])) {
         const uid = Number(u.userId);
@@ -561,6 +578,8 @@ router.get('/export.xlsx',
           
           let cellValue = '';
           let cellStyle = 'cell';
+          let isLate = 0;
+          let h = 0;
 
           if (r.status === '出勤' || r.status === '休日出勤') {
             const cin = r.cin || '';
@@ -576,12 +595,13 @@ router.get('/export.xlsx',
               if (cin && cout) {
                 const [h1, m1] = cin.split(':').map(Number);
                 const [h2, m2] = cout.split(':').map(Number);
-                let h = (h2 + m2/60) - (h1 + m1/60);
+                h = (h2 + m2/60) - (h1 + m1/60);
                 if (h >= 6) h -= 1; // Auto subtract 1h break if >= 6 hours
                 if (h > 0) totalHours += h;
               }
 
               if (cin && cin > '08:00') {
+                isLate = 1;
                 lateCount++;
                 cellStyle = 'late'; // Green text, yellow bg
               }
@@ -592,7 +612,7 @@ router.get('/export.xlsx',
             }
           } else if (r.status === '有給' || r.status === '休暇' || r.status === '病欠') {
             cellValue = r.status;
-            cellStyle = 'present'; // Green text
+            cellStyle = 'paidLeave'; // Green text, White background
           } else if (r.status === '休日') {
             cellValue = '休日';
             cellStyle = 'weekend'; // Red text
@@ -610,34 +630,56 @@ router.get('/export.xlsx',
 
           if (r.work || r.site || r.cin || r.cout) {
              const rowData = {
-               cells: [ d, dowJa(d), code, name, r.status || '', r.cin || '', r.cout || '', r.site || '', r.work || '' ]
+               cells: [ d, dowJa(d), code, name, r.status || '', r.cin || '', r.cout || '', r.site || '', r.work || '', { v: isLate, t: 'n' }, { v: Math.round(Math.max(0, h) * 10) / 10, t: 'n' } ]
              };
              if (isPartTime) s2Rows_part.push(rowData);
              else s2Rows_full.push(rowData);
           }
         }
 
-        // Add summary columns to the FIRST row of detail sheets for this user
         if (isPartTime) {
           s1Cells_all.push('-', '-'); // No expected hours for part-time
         } else {
           s1Cells_all.push(expectedWorkDays, expectedWorkDays * 8); // 8 hours per day for full-time
         }
 
-        s1Cells_all.push({ v: workedDays, t: 'n' });
-        s1Cells_all.push({ v: lateCount, t: 'n' });
-        s1Cells_all.push({ v: Math.round(totalHours * 10) / 10, t: 'n' });
-
-        s1Cells_type.push({ v: `COUNTIF(F${(isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2}:AJ${(isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2}, "出勤")`, f: true, s: 'cell' });
-        s1Cells_type.push({ v: lateCount, t: 'n' });
-        s1Cells_type.push({ v: Math.round(totalHours * 10) / 10, t: 'n' });
+        const lastDayColLetter = getColName(5 + dates.length);
+        const rowIdx = (isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2;
+        s1Cells_type.push({ v: '', s: 'empty' }); // Spacer column
+        s1Cells_type.push({ v: `COUNTIF(F${rowIdx}:${lastDayColLetter}${rowIdx}, "出勤")`, f: true, s: 'cell' });
         
-        s1Rows_all.push({ cells: [...s1Cells_all] });
+        const sheetName = isPartTime ? `アルバイト詳細_${qMonth}` : `正社員詳細_${qMonth}`;
+        s1Cells_type.push({ v: `SUMIF('${sheetName}'!C:C, A${rowIdx}, '${sheetName}'!J:J)`, f: true, s: 'cell' });
+        s1Cells_type.push({ v: `SUMIF('${sheetName}'!C:C, A${rowIdx}, '${sheetName}'!K:K)`, f: true, s: 'cell' });
+        
+        userRows_all.push(s1Cells_all);
         if (isPartTime) s1Rows_part.push({ cells: [...s1Cells_type] });
         else s1Rows_full.push({ cells: [...s1Cells_type] });
       }
 
-      const buildBottomRow = (countArr, countStr) => {
+      userRows_all.push([ { v: '合計', s: 'headerGrey' }, { v: `社員数: ${users.length}名`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ]);
+
+      const legendData = [
+        [{ v: '未', s: 'absentText' }, { v: '未打刻（出勤予定日）', s: 'legend' }],
+        [{ v: '休日', s: 'weekend' }, { v: '所定休日', s: 'legend' }],
+        [{ v: '出勤', s: 'present' }, { v: '定時出勤', s: 'legend' }],
+        [{ v: '有給', s: 'paidLeave' }, { v: '休暇取得', s: 'legend' }],
+        [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'legend' }]
+      ];
+
+      const maxRows = Math.max(userRows_all.length, legendData.length);
+      for (let i = 0; i < maxRows; i++) {
+        const rowCells = userRows_all[i] ? [...userRows_all[i]] : ['', '', '', '', '', '', ''];
+        while (rowCells.length < 7) rowCells.push('');
+        
+        rowCells.push(''); // Spacer H
+        if (i < legendData.length) {
+          rowCells.push(legendData[i][0], legendData[i][1]);
+        }
+        s1Rows_all.push({ cells: rowCells });
+      }
+
+      const buildBottomRow = (countArr, countStr, rowsCount) => {
         const bottomRowCells = [
           { v: '合計', s: 'headerGrey' },
           { v: countStr, s: 'headerGrey' },
@@ -646,28 +688,15 @@ router.get('/export.xlsx',
           { v: '', s: 'headerGrey' }
         ];
         for (let di = 0; di < dates.length; di++) {
-          bottomRowCells.push({ v: countArr[di] + '名', s: 'headerGrey' });
+          const colLetter = getColName(6 + di); // F is 6
+          const formula = `COUNTIF(${colLetter}2:${colLetter}${rowsCount + 1}, "出勤") & "名"`;
+          bottomRowCells.push({ v: formula, f: true, s: 'headerGrey' });
         }
         return { cells: bottomRowCells };
       };
 
-      s1Rows_all.push({ cells: [ { v: '合計', s: 'headerGrey' }, { v: `社員数: ${users.length}名`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ] });
-      s1Rows_full.push(buildBottomRow(dailyPresentCount_full, `社員数: ${s1Rows_full.length}名`));
-      s1Rows_part.push(buildBottomRow(dailyPresentCount_part, `社員数: ${s1Rows_part.length}名`));
-
-      const legendRows = [
-        { cells: [] },
-        { cells: [{ v: '【色分けの凡例】', s: 'legend' }] },
-        { cells: [{ v: '未', s: 'absentText' }, { v: '未打刻（出勤予定日）', s: 'legend' }] },
-        { cells: [{ v: '休日', s: 'weekend' }, { v: '所定休日', s: 'legend' }] },
-        { cells: [{ v: '出勤', s: 'present' }, { v: '定時出勤', s: 'legend' }] },
-        { cells: [{ v: '有給', s: 'present' }, { v: '休暇取得', s: 'legend' }] },
-        { cells: [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'legend' }] }
-      ];
-
-      s1Rows_all.push(...legendRows);
-      s1Rows_full.push(...legendRows);
-      s1Rows_part.push(...legendRows);
+      s1Rows_full.push(buildBottomRow(dailyPresentCount_full, `社員数: ${s1Rows_full.length}名`, s1Rows_full.length));
+      s1Rows_part.push(buildBottomRow(dailyPresentCount_part, `社員数: ${s1Rows_part.length}名`, s1Rows_part.length));
 
       buf = buildXlsxBook({
         sheets: [
@@ -1158,6 +1187,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         if (ed && ed < ds) continue;
         pick = a;
       }
+      // Fallback 1: user assigned shift end-time
       let def = null;
       if (pick?.shiftId != null) def = shiftById.get(Number(pick.shiftId)) || null;
       if (!def && pick?.shift) def = shiftByName.get(String(pick.shift)) || null;
