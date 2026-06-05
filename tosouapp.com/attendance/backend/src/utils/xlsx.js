@@ -122,7 +122,10 @@ function sheetXml({ sheetName, columns, rows, styles, headerStyleKey }) {
   }).join('');
   const header = (columns || []).map((c, i) => {
     const r = `${colName(i + 1)}1`;
-    const sk = headerStyleKey && Object.prototype.hasOwnProperty.call(styles, headerStyleKey) ? headerStyleKey : 'header';
+    let sk = headerStyleKey && Object.prototype.hasOwnProperty.call(styles, headerStyleKey) ? headerStyleKey : 'header';
+    if (c?.headerStyle && Object.prototype.hasOwnProperty.call(styles, c.headerStyle)) sk = c.headerStyle;
+    if (c?.header === '' && i === 7) sk = 'empty'; // H column spacer
+    
     return `<c r="${r}" t="inlineStr" s="${styles[sk]}"><is><t>${xmlEscape(c?.header || '')}</t></is></c>`;
   }).join('');
   const bodyRows = (rows || []).map((r, ri) => {
@@ -143,7 +146,12 @@ function sheetXml({ sheetName, columns, rows, styles, headerStyleKey }) {
         }
       }
       const addr = `${colName(ci + 1)}${rowNum}`;
-      const cellStyle = styleKey && Object.prototype.hasOwnProperty.call(styles, styleKey) ? styles[styleKey] : style;
+      // Do not apply default border if it's explicitly set to an empty style
+      let cellStyle = styleKey && Object.prototype.hasOwnProperty.call(styles, styleKey) ? styles[styleKey] : style;
+      if (styleKey === 'empty') {
+         cellStyle = styles.empty;
+      }
+
       if (isFormula) {
         return `<c r="${addr}" s="${cellStyle}"><f>${xmlEscape(v)}</f></c>`;
       }
@@ -154,11 +162,15 @@ function sheetXml({ sheetName, columns, rows, styles, headerStyleKey }) {
     }).join('');
     return `<row r="${rowNum}">${cells}</row>`;
   }).join('');
+  
+  const lastColName = colName(columns.length || 1);
+  const lastRowNum = (rows?.length || 0) + 1;
+  const autoFilterXml = sheetName.includes('詳細') ? `<autoFilter ref="A1:${lastColName}${lastRowNum}"/>` : '';
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheetViews>
-    <sheetView workbookViewId="0">
+    <sheetView workbookViewId="0" showRowColHeaders="0">
       <pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>
     </sheetView>
   </sheetViews>
@@ -169,6 +181,7 @@ function sheetXml({ sheetName, columns, rows, styles, headerStyleKey }) {
     ${bodyRows}
   </sheetData>
   <sheetProtection sheet="0" objects="0" scenarios="0" />
+  ${autoFilterXml}
 </worksheet>`;
 }
 
@@ -182,7 +195,7 @@ function stylesXml() {
     <font><sz val="11"/><color rgb="FFFF0000"/><name val="Meiryo"/></font>
     <font><sz val="11"/><color rgb="FF0070C0"/><name val="Meiryo"/></font>
   </fonts>
-  <fills count="12">
+  <fills count="16">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF1F3553"/><bgColor indexed="64"/></patternFill></fill>
@@ -195,23 +208,27 @@ function stylesXml() {
     <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFCC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF8CBAD"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF000000"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF92D050"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border>
       <left/><right/><top/><bottom/><diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FFE5E7EB"/></left>
-      <right style="thin"><color rgb="FFE5E7EB"/></right>
-      <top style="thin"><color rgb="FFE5E7EB"/></top>
-      <bottom style="thin"><color rgb="FFE5E7EB"/></bottom>
+      <left style="thin"><color rgb="FFD4D4D4"/></left>
+      <right style="thin"><color rgb="FFD4D4D4"/></right>
+      <top style="thin"><color rgb="FFD4D4D4"/></top>
+      <bottom style="thin"><color rgb="FFD4D4D4"/></bottom>
       <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellStyleXfs>
-  <cellXfs count="12">
+  <cellXfs count="15">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center" wrapText="1"/>
     </xf>
@@ -230,23 +247,32 @@ function stylesXml() {
     <xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center" wrapText="1"/>
     </xf>
-    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+    <xf numFmtId="0" fontId="4" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center" wrapText="1"/>
     </xf>
-    <xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+    <xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center" wrapText="1"/>
     </xf>
-    <xf numFmtId="0" fontId="2" fillId="11" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+    <xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center" wrapText="1"/>
     </xf>
-    <xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+    <xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center" wrapText="1"/>
     </xf>
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center" wrapText="1"/>
     </xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyBorder="0" applyAlignment="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
       <alignment horizontal="left" vertical="center" wrapText="1"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyBorder="0" applyAlignment="1">
+      <alignment horizontal="center" vertical="center" wrapText="1"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment horizontal="center" vertical="center"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyBorder="0" applyAlignment="1">
+      <alignment horizontal="center" vertical="center" wrapText="1" />
     </xf>
   </cellXfs>
   <cellStyles count="1">
@@ -340,7 +366,7 @@ function safeSheetName(s, fallback = 'Sheet') {
 }
 
 function buildXlsxBook({ sheets }) {
-  const styles = { cell: 0, header: 1, off: 2, stripe: 3, checkOn: 4, headerGrey: 5, absentText: 6, weekend: 7, late: 8, present: 9, center: 10, legend: 11 };
+  const styles = { cell: 0, header: 1, off: 2, stripe: 3, checkOn: 4, headerGrey: 5, absentText: 6, weekend: 7, late: 8, present: 9, center: 10, legend: 11, paidLeave: 12, legendHeader: 13, empty: 14 };
   const rawSheets = Array.isArray(sheets) ? sheets : [];
   const s2 = rawSheets.length ? rawSheets.map((s, i) => ({
     name: safeSheetName(s?.name, `Sheet${i + 1}`),
