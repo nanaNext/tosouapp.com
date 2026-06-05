@@ -262,6 +262,7 @@ const restoreFastSnapshot = (date, stateRef) => {
     }
 
     renderWorkMinutes();
+    calculateLateEarly();
     renderStampButtons({
       date,
       inHm: snap.hasStartedToday ? String(snap.startTime || '') : '',
@@ -532,6 +533,37 @@ const renderWorkMinutes = () => {
   const hh = Math.floor(m / 60);
   const mm = m % 60;
   box.textContent = `${hh}:${pad2(mm)}`;
+};
+
+const calculateLateEarly = () => {
+  const sStr = effectiveHm($('#startTime'));
+  const eStr = effectiveHm($('#endTime'));
+  const s = parseHm(sStr);
+  const e = parseHm(eStr);
+  const st = window.state || {};
+  const shiftStart = parseHm(st.shiftStart || FIXED_START);
+  const shiftEnd = parseHm(st.shiftEnd || FIXED_END);
+  
+  const lateEl = $('#lateMin');
+  const earlyEl = $('#earlyMin');
+  
+  if (lateEl && String(lateEl.dataset?.manual || '') !== '1') {
+    if (s && shiftStart && s.total > shiftStart.total) {
+      lateEl.value = s.total - shiftStart.total;
+    } else {
+      lateEl.value = '';
+    }
+  } else if (lateEl && lateEl.value === '0') {
+    lateEl.value = '';
+  }
+  
+  if (earlyEl && String(earlyEl.dataset?.manual || '') !== '1') {
+    if (e && shiftEnd && e.total < shiftEnd.total) {
+      earlyEl.value = shiftEnd.total - e.total;
+    } else {
+      earlyEl.value = '';
+    }
+  }
 };
 
 const getSimpleStatusMeta = () => {
@@ -823,14 +855,14 @@ const persistDaily = async (date) => {
   const workType = String($('#workType')?.value || '').trim();
   const breakMinutes = Number($('#breakMin')?.value || 60);
   const nightBreakMinutes = Number($('#nightBreakMin')?.value || 0);
-  
+
   await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
     method: 'PUT',
     body: JSON.stringify({
       kubun,
       workType: workType || null,
-      breakMinutes: Number.isFinite(breakMinutes) ? breakMinutes : 60,
-      nightBreakMinutes: Number.isFinite(nightBreakMinutes) ? nightBreakMinutes : 0
+      break_minutes: Number.isFinite(breakMinutes) ? breakMinutes : 60,
+      night_break_minutes: Number.isFinite(nightBreakMinutes) ? nightBreakMinutes : 0
     })
   });
 };
@@ -1066,6 +1098,17 @@ const load = async (date, opts = {}) => {
       } else {
         if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
       }
+      
+      // Load saved notes, late_minutes, and early_minutes
+      if ($('#memo')) $('#memo').value = daily.notes || '';
+      if ($('#lateMin')) {
+        $('#lateMin').value = daily.late_minutes !== null && daily.late_minutes !== undefined && daily.late_minutes !== 0 ? daily.late_minutes : '';
+        try { if (daily.late_minutes !== null && daily.late_minutes !== 0) $('#lateMin').dataset.manual = '1'; } catch {}
+      }
+      if ($('#earlyMin')) {
+        $('#earlyMin').value = daily.early_minutes !== null && daily.early_minutes !== undefined && daily.early_minutes !== 0 ? daily.early_minutes : '';
+        try { if (daily.early_minutes !== null && daily.early_minutes !== 0) $('#earlyMin').dataset.manual = '1'; } catch {}
+      }
     } else {
       if ($('#breakMin')) { $('#breakMin').value = String(defaultBreak); try { $('#breakMin').dispatchEvent(new Event('change')); } catch {} }
       if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch {} }
@@ -1107,6 +1150,20 @@ const load = async (date, opts = {}) => {
           if (workEl && !workEl.value) workEl.value = draft.work || '';
         }
       }
+      
+      if (daily) {
+        if ($('#memo')) $('#memo').value = daily.notes || '';
+        if ($('#lateMin')) {
+          $('#lateMin').value = daily.late_minutes !== null && daily.late_minutes !== undefined && daily.late_minutes !== 0 ? daily.late_minutes : '';
+          if (daily.late_minutes != null && daily.late_minutes !== 0) $('#lateMin').dataset.manual = '1';
+        }
+        if ($('#earlyMin')) {
+          $('#earlyMin').value = daily.early_minutes !== null && daily.early_minutes !== undefined && daily.early_minutes !== 0 ? daily.early_minutes : '';
+          if (daily.early_minutes != null && daily.early_minutes !== 0) $('#earlyMin').dataset.manual = '1';
+        }
+      }
+      
+      calculateLateEarly();
     };
     Promise.resolve(noticesTask).catch(() => null);
     Promise.resolve(reportTask).then((r) => applyReport(r?.report || null)).catch(() => applyReport(null));
@@ -1248,31 +1305,38 @@ const save = async (date) => {
 
   showSpinner(true);
   try {
-    try { await persistDaily(date); } catch {}
     const wt = state.restHoliday ? '' : String($('#workType')?.value || '');
     if (wt) saveWorkType(date, wt);
     
     const rEl = $('#workContent');
     const sEl = $('#workSite');
-    if (!state.restHoliday && (rEl || sEl)) {
-      const workStr = String(rEl?.value || '').trim();
-      const siteStr = String(sEl?.value || '').trim();
-      
-      if (workStr || siteStr) {
-        // Must update daily table directly because attendance-monthly.render reads daily.location and daily.memo
-        await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            location: siteStr || '飯塚塗研',
-            memo: workStr || ' ',
-            kubun: String($('#kubun')?.value || '').trim(),
-            workType: wt || null,
-            breakMinutes: Number($('#breakMin')?.value || 60),
-            nightBreakMinutes: Number($('#nightBreakMin')?.value || 0)
-          })
-        });
-        clearDraft(date);
-      }
+    
+    const workStr = state.restHoliday ? '' : String(rEl?.value || '').trim();
+    const siteStr = state.restHoliday ? '' : String(sEl?.value || '').trim();
+    const notesStr = String($('#memo')?.value || '').trim();
+    const lateVal = $('#lateMin')?.value;
+    const earlyVal = $('#earlyMin')?.value;
+    
+    // Always update daily table directly to save notes, lateMinutes, earlyMinutes, and report
+    const payload = {
+      location: siteStr || (state.restHoliday ? null : '飯塚塗研'),
+      memo: workStr || (state.restHoliday ? null : ' '),
+      notes: notesStr,
+      late_minutes: lateVal !== '' && lateVal != null ? Number(lateVal) : null,
+      early_minutes: earlyVal !== '' && earlyVal != null ? Number(earlyVal) : null,
+      kubun: String($('#kubun')?.value || '').trim(),
+      workType: wt || null,
+      break_minutes: Number($('#breakMin')?.value || 60),
+      night_break_minutes: Number($('#nightBreakMin')?.value || 0)
+    };
+    
+    await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    
+    if (!state.restHoliday && (workStr || siteStr)) {
+      clearDraft(date);
     }
 
     const day = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`);
@@ -1493,10 +1557,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     await load(state.date);
   });
 
-  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); renderSimpleStatus(); });
-  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); renderSimpleStatus(); });
+  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
+  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch {} clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
   $('#breakMin')?.addEventListener('change', renderWorkMinutes);
   $('#nightBreakMin')?.addEventListener('change', renderWorkMinutes);
+  
+  $('#lateMin')?.addEventListener('input', (e) => { 
+    if (e.currentTarget.value === '') {
+      e.currentTarget.dataset.manual = '0';
+      calculateLateEarly();
+    } else {
+      e.currentTarget.dataset.manual = '1'; 
+    }
+  });
+  $('#earlyMin')?.addEventListener('input', (e) => { 
+    if (e.currentTarget.value === '') {
+      e.currentTarget.dataset.manual = '0';
+      calculateLateEarly();
+    } else {
+      e.currentTarget.dataset.manual = '1'; 
+    }
+  });
+  
   wireWorkTypeButtons();
   $('#workType')?.addEventListener('change', () => { persistWorkType(); });
   $('#workType')?.addEventListener('change', () => { applyWorkTypeGate(); renderSimpleStatus(); });
