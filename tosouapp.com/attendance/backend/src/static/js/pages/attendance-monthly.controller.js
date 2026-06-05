@@ -924,8 +924,10 @@
           const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
           try { inEl?.classList?.remove('invalid'); } catch {}
           try { outEl?.classList?.remove('invalid'); } catch {}
-          const inV = String(inEl?.value || '').trim();
-          const outV = String(outEl?.value || '').trim();
+          const inAuto = String(inEl?.dataset?.auto || '') === '1';
+          const outAuto = String(outEl?.dataset?.auto || '') === '1';
+          const inV = inAuto ? '' : String(inEl?.value || '').trim();
+          const outV = outAuto ? '' : String(outEl?.value || '').trim();
           const idRaw = String(tr.dataset.id || '').trim();
           const clearFlag = String(tr.dataset.clear || '') === '1';
           if (outV && !inV) {
@@ -1311,8 +1313,7 @@
       const effTime = (el) => {
         const v = String(el?.value || '').trim();
         const isAuto = String(el?.dataset?.auto || '') === '1';
-        const autoVal = String(el?.dataset?.autoVal || '').trim();
-        if (isAuto && autoVal && v === autoVal) return '';
+        if (isAuto) return '';
         return v;
       };
       
