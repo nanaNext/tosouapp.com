@@ -124,8 +124,8 @@
         const v = String(el?.value || '');
         if (acceptAuto) return v;
         const isAuto = String(el?.dataset?.auto || '') === '1';
-        const autoVal = String(el?.dataset?.autoVal || '');
-        if (isAuto && autoVal && v === autoVal) return '';
+        // Always ignore auto-filled time for save. We only want REAL manual punches.
+        if (isAuto) return '';
         return v;
       };
       // Never persist planned auto-filled times as real attendance.
