@@ -632,7 +632,7 @@ router.get('/export.xlsx',
           s1Cells_all.push(expectedWorkDays, expectedWorkDays * 8); // 8 hours per day for full-time
         }
 
-        s1Cells_type.push(workedDays);
+        s1Cells_type.push({ v: `COUNTIF(F${(isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2}:AJ${(isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2}, "出勤")`, f: true, s: 'cell' });
         s1Cells_type.push(lateCount);
         s1Cells_type.push(Math.round(totalHours * 10) / 10);
         
