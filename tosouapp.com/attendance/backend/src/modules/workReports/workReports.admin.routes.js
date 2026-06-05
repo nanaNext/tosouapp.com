@@ -600,11 +600,13 @@ router.get('/export.xlsx',
                 if (h > 0) totalHours += h;
               }
 
-              const lateThreshold = dept.includes('工事') ? '08:00' : '09:00';
-              if (cin && cin > lateThreshold) {
-                isLate = 1;
-                lateCount++;
-                cellStyle = 'late'; // Green text, yellow bg
+              if (!isPartTime) {
+                const lateThreshold = dept.includes('工事') ? '08:00' : '09:00';
+                if (cin && cin > lateThreshold) {
+                  isLate = 1;
+                  lateCount++;
+                  cellStyle = 'late'; // Green text, yellow bg
+                }
               }
               workedDays++;
               dailyPresentCount_all[di]++;
