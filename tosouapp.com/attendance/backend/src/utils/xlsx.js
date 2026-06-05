@@ -133,17 +133,22 @@ function sheetXml({ sheetName, columns, rows, styles, headerStyleKey }) {
       let v = raw;
       let styleKey = '';
       let isFormula = false;
+      let forceType = null;
       if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
         if (Object.prototype.hasOwnProperty.call(raw, 'v') || Object.prototype.hasOwnProperty.call(raw, 'value')) {
           v = Object.prototype.hasOwnProperty.call(raw, 'v') ? raw.v : raw.value;
           styleKey = String(raw.s || raw.style || '');
           isFormula = !!raw.f;
+          forceType = raw.t;
         }
       }
       const addr = `${colName(ci + 1)}${rowNum}`;
       const cellStyle = styleKey && Object.prototype.hasOwnProperty.call(styles, styleKey) ? styles[styleKey] : style;
       if (isFormula) {
         return `<c r="${addr}" s="${cellStyle}"><f>${xmlEscape(v)}</f></c>`;
+      }
+      if (forceType === 'n' || typeof v === 'number') {
+        return `<c r="${addr}" t="n" s="${cellStyle}"><v>${v}</v></c>`;
       }
       return `<c r="${addr}" t="inlineStr" s="${cellStyle}"><is><t>${xmlEscape(v ?? '')}</t></is></c>`;
     }).join('');
@@ -219,7 +224,7 @@ function stylesXml() {
       <alignment horizontal="center" vertical="center"/>
     </xf>
     <xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
+      <alignment horizontal="right" vertical="center" wrapText="1"/>
     </xf>
     <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="center" wrapText="1"/>

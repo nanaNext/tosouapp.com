@@ -619,11 +619,11 @@ router.get('/export.xlsx',
         // Add summary columns to the FIRST row of detail sheets for this user
         if (s2Rows_full.length > 0 && !isPartTime) {
            const lastIdx = s2Rows_full.length - 1;
-           s2Rows_full[lastIdx].cells.push(workedDays, lateCount, Math.round(totalHours * 10) / 10);
+           s2Rows_full[lastIdx].cells.push(workedDays, lateCount, { v: Math.round(totalHours * 10) / 10, t: 'n' });
         }
         if (s2Rows_part.length > 0 && isPartTime) {
            const lastIdx = s2Rows_part.length - 1;
-           s2Rows_part[lastIdx].cells.push(workedDays, lateCount, Math.round(totalHours * 10) / 10);
+           s2Rows_part[lastIdx].cells.push(workedDays, lateCount, { v: Math.round(totalHours * 10) / 10, t: 'n' });
         }
 
         if (isPartTime) {
