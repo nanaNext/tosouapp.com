@@ -509,7 +509,10 @@ router.get('/export.xlsx',
         { header: '生年月日', width: 14 },
         { header: '部署', width: 18 },
         { header: '雇用形態', width: 12 },
-        ...dayNumbers.map(n => ({ header: `${n}日`, width: 10 }))
+        ...dayNumbers.map(n => ({ header: `${n}日`, width: 10 })),
+        { header: '出勤日数', width: 10 },
+        { header: '遅刻回数', width: 10 },
+        { header: '合計時間', width: 12 }
       ];
 
       const s2Cols = [
@@ -521,10 +524,7 @@ router.get('/export.xlsx',
         { header: '出社時間', width: 12 },
         { header: '退社時間', width: 12 },
         { header: '現場', width: 20 },
-        { header: '作業内容', width: 60 },
-        { header: '出勤日数', width: 10 },
-        { header: '遅刻回数', width: 10 },
-        { header: '合計時間', width: 12 }
+        { header: '作業内容', width: 60 }
       ];
 
       const s1Rows_all = [];
@@ -617,24 +617,19 @@ router.get('/export.xlsx',
         }
 
         // Add summary columns to the FIRST row of detail sheets for this user
-        if (s2Rows_full.length > 0 && !isPartTime) {
-           const lastIdx = s2Rows_full.length - 1;
-           s2Rows_full[lastIdx].cells.push(workedDays, lateCount, { v: Math.round(totalHours * 10) / 10, t: 'n' });
-        }
-        if (s2Rows_part.length > 0 && isPartTime) {
-           const lastIdx = s2Rows_part.length - 1;
-           s2Rows_part[lastIdx].cells.push(workedDays, lateCount, { v: Math.round(totalHours * 10) / 10, t: 'n' });
-        }
-
         if (isPartTime) {
           s1Cells_all.push('-', '-'); // No expected hours for part-time
         } else {
           s1Cells_all.push(expectedWorkDays, expectedWorkDays * 8); // 8 hours per day for full-time
         }
 
+        s1Cells_all.push({ v: workedDays, t: 'n' });
+        s1Cells_all.push({ v: lateCount, t: 'n' });
+        s1Cells_all.push({ v: Math.round(totalHours * 10) / 10, t: 'n' });
+
         s1Cells_type.push({ v: `COUNTIF(F${(isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2}:AJ${(isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2}, "出勤")`, f: true, s: 'cell' });
-        s1Cells_type.push(lateCount);
-        s1Cells_type.push(Math.round(totalHours * 10) / 10);
+        s1Cells_type.push({ v: lateCount, t: 'n' });
+        s1Cells_type.push({ v: Math.round(totalHours * 10) / 10, t: 'n' });
         
         s1Rows_all.push({ cells: [...s1Cells_all] });
         if (isPartTime) s1Rows_part.push({ cells: [...s1Cells_type] });
@@ -655,7 +650,7 @@ router.get('/export.xlsx',
         return { cells: bottomRowCells };
       };
 
-      s1Rows_all.push({ cells: [ { v: '合計', s: 'headerGrey' }, { v: `社員数: ${users.length}名`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ] });
+      s1Rows_all.push({ cells: [ { v: '合計', s: 'headerGrey' }, { v: `社員数: ${users.length}名`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ] });
       s1Rows_full.push(buildBottomRow(dailyPresentCount_full, `社員数: ${s1Rows_full.length}名`));
       s1Rows_part.push(buildBottomRow(dailyPresentCount_part, `社員数: ${s1Rows_part.length}名`));
 
