@@ -37,7 +37,7 @@ router.post('/', authorize('employee', 'manager', 'admin'), async (req, res) => 
     if (!work) {
       return res.status(400).json({ message: 'Missing work' });
     }
-    const site = siteRaw || '飯塚塗研';
+    const site = siteRaw || '';
     const [attRows] = await db.query(`
       SELECT id, checkIn, checkOut
       FROM attendance
@@ -48,18 +48,18 @@ router.post('/', authorize('employee', 'manager', 'admin'), async (req, res) => 
     `, [userId, date]);
     const att = attRows && attRows[0] ? attRows[0] : null;
     await repo.upsert({ userId, date, attendanceId: att?.id || null, workType, site, work });
-    // Fetch existing daily to preserve notes, late_minutes, etc.
-    const existingDaily = await attendanceRepo.getDaily(userId, date).catch(() => null);
-    await attendanceRepo.upsertDaily(userId, date, { 
-      location: site, 
-      memo: work,
-      notes: existingDaily?.notes,
-      late_minutes: existingDaily?.late_minutes,
-      early_minutes: existingDaily?.early_minutes,
-      break_minutes: existingDaily?.break_minutes,
-      night_break_minutes: existingDaily?.night_break_minutes,
-      kubun: existingDaily?.kubun
-    });
+    // Fetch existing daily to preserve kubun if needed
+    const existingDaily = await attendanceRepo.getDaily(userId, date).catch(() => null); 
+    
+    // Only update location and memo. upsertDaily will preserve other fields automatically
+    // if they are not included in the object.
+    const updatePayload = {
+      location: site,
+      memo: work
+    };
+    if (workType) updatePayload.workType = workType;
+    
+    await attendanceRepo.upsertDaily(userId, date, updatePayload);
     const saved = await repo.getByUserDate(userId, date);
     const daily = await attendanceRepo.getDaily(userId, date).catch(() => null);
     res.status(201).json({ date, report: saved, daily });

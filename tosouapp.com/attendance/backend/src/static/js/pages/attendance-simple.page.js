@@ -1187,7 +1187,7 @@ const saveWorkReportIfPossible = async (date) => {
   if (!site0 && !work) return { attempted: false, saved: false };
   saveDraft(date, site0, work);
   if (!work) return { attempted: true, saved: false, message: '作業内容を入力してください' };
-  const site = site0 || '飯塚塗研';
+  const site = site0 || '';
   try {
     const workType = String($('#workType')?.value || '').trim() || null;
     const r = await fetchJSONAuth('/api/work-reports', { method: 'POST', body: JSON.stringify({ date, site, work, workType }) });
@@ -1317,10 +1317,13 @@ const save = async (date) => {
     const lateVal = $('#lateMin')?.value;
     const earlyVal = $('#earlyMin')?.value;
     
+    // Save locally for fallback
+    if ($('#memo')) $('#memo').dataset.savedValue = notesStr;
+    
     // Always update daily table directly to save notes, lateMinutes, earlyMinutes, and report
     const payload = {
-      location: siteStr || (state.restHoliday ? null : '飯塚塗研'),
-      memo: workStr || (state.restHoliday ? null : ' '),
+      location: siteStr || (state.restHoliday ? null : ''),
+      memo: workStr || (state.restHoliday ? null : ''),
       notes: notesStr,
       late_minutes: lateVal !== '' && lateVal != null ? Number(lateVal) : null,
       early_minutes: earlyVal !== '' && earlyVal != null ? Number(earlyVal) : null,
@@ -1330,6 +1333,7 @@ const save = async (date) => {
       break_minutes: Number($('#breakMin')?.value || 60),
       night_break_minutes: Number($('#nightBreakMin')?.value || 0)
     };
+    console.log("PAYLOAD BEING SENT TO /daily:", payload);
     
     await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
       method: 'PUT',
@@ -1419,12 +1423,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
   } catch {}
+  // Kiểm tra vai trò của user
   const role = String(profile?.role || '').toLowerCase();
   if (role === 'admin') {
     try { document.body.dataset.roleAdmin = '1'; } catch {}
   }
   try { window.userRole = role; } catch {}
-
+// Kiểm tra nếu có ?date YYYY-MM-DD trong URL
+// Nếu có, sử dụng ngày đó
+// Nếu ko có, sử dụng ngày hôm nay
   const bootDate = (() => {
     const d = getUrlDate();
     if (shouldKeepDateOnBoot()) return d;
@@ -1618,7 +1625,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSpinner(true, false);
     try {
       const saved = await save(state.date);
+      // Wait for save to fully finish and update DB before calling report
       const rep = await saveWorkReportIfPossible(state.date);
+      
+      // Lấy dữ liệu dự phòng trước khi load đè
+      const fallbackMemo = document.querySelector('#memo')?.dataset?.savedValue;
+      
+      // Reload UI completely to show saved notes
+      await load(state.date, { spinner: false });
+      
+      // Khôi phục lại giá trị memo CHẮC CHẮN nếu load() làm mất
+      const memoEl = document.querySelector('#memo');
+      if (memoEl && fallbackMemo) {
+         memoEl.value = fallbackMemo;
+      }
+      
       if (saved) {
         showToast('保存しました');
         if (rep?.saved && rep?.report?.id) showToast(`作業報告も保存しました (id=${rep.report.id})`, 'success');

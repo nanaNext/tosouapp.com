@@ -376,15 +376,16 @@ export async function mount() {
       const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
       // Calculate holiday from backend flag
       const isHoliday = !!it.holiday;
-      const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
+      const isPublicHoliday = isHoliday && it.weekday !== '土' && it.weekday !== '日';
+      const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isPublicHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
       
-      const rowBg = (dc === 'wr-dow-sun' || isHoliday) ? 'background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'background:#fffbeb;' : '');
-      const textColor = (dc === 'wr-dow-sun' || isHoliday) ? 'color:#ef4444;' : (dc === 'wr-dow-sat' ? 'color:#d97706;' : '');
+      const rowBg = (dc === 'wr-dow-sun' || isPublicHoliday) ? 'background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'background:#fffbeb;' : '');
+      const textColor = (dc === 'wr-dow-sun' || isPublicHoliday) ? 'color:#ef4444;' : (dc === 'wr-dow-sat' ? 'color:#d97706;' : '');
 
       return `
         <tr style="${rowBg}">
           <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
-          <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
+          <td class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isPublicHoliday ? '祝' : (it.weekday || ''))}</td>
           <td style="white-space:nowrap; ${textColor}">${esc(code)}</td>
           <td style="font-weight:500; white-space:nowrap; ${textColor}">${esc(it.username || '')}</td>
           <td style="white-space:nowrap; ${textColor}">${dept}</td>

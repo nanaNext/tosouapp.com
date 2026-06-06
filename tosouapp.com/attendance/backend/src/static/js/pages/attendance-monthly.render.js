@@ -264,11 +264,11 @@
       const dLoc = isHolidayKubun ? '' : String(daily?.location || '');
       const dMemo = isHolidayKubun ? '' : String(daily?.memo || '');
       const dReason = String(daily?.reason || '');
-      const dNotes = isHolidayKubun ? '' : String(daily?.notes || '');
+      const dNotes = String(daily?.notes || '');
       const brVal = brMin === 45 ? '0:45' : brMin === 30 ? '0:30' : brMin === 0 ? '0:00' : '1:00';
       const nbVal = nbMin === 60 ? '1:00' : nbMin === 30 ? '0:30' : '0:00';
 
-      const dowColor = (isOff || dow === '日') ? '#b91c1c' : (dow === '土') ? '#1d4ed8' : '#334155';
+      const dowColor = (isOff && dow !== '土') || dow === '日' ? '#b91c1c' : (dow === '土') ? '#1d4ed8' : '#334155';
       const dateMmdd = dateStr.slice(5).replace('-', '/');
       const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const isFuture = dateStr > todayStr;
