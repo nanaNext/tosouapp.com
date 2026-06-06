@@ -47,9 +47,11 @@
         const locEl = tr.querySelector('input[data-field="location"]');
         const reasonEl = tr.querySelector('select[data-field="reason"]');
         const memoEl = tr.querySelector('[data-field="memo"]');
+        const notesEl = tr.querySelector('input[data-field="notes"]');
         const loc = locEl && locEl.value != null ? locEl.value : '';
         const reason = reasonEl && reasonEl.value != null ? reasonEl.value : '';
         const memo = memoEl && memoEl.value != null ? memoEl.value : '';
+        const notes = notesEl && notesEl.value != null ? notesEl.value : '';
         const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
         const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
         const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
@@ -60,6 +62,7 @@
           location: String(tr.dataset.locationBase || ''),
           reason: String(tr.dataset.reasonBase || ''),
           memo: String(tr.dataset.memoBase || ''),
+          notes: String(tr.dataset.notesBase || ''),
           breakVal: String(tr.dataset.breakBase || '1:00'),
           nightBreakVal: String(tr.dataset.nightBreakBase || '0:00'),
           kubunConfirmed: String(tr.dataset.kubunConfirmed || '') === '1' ? 1 : 0
@@ -72,6 +75,7 @@
           String(loc || '') !== base.location ||
           String(reason || '') !== base.reason ||
           String(memo || '') !== base.memo ||
+          String(notes || '') !== base.notes ||
           br !== base.breakVal ||
           nb !== base.nightBreakVal;
         const hasMeaningfulDaily =
@@ -81,12 +85,14 @@
           !!String(loc || '').trim() ||
           !!String(reason || '').trim() ||
           !!String(memo || '').trim() ||
+          !!String(notes || '').trim() ||
           !!base.kubun ||
           base.kubunConfirmed === 1 ||
           !!base.workType ||
           !!String(base.location || '').trim() ||
           !!String(base.reason || '').trim() ||
           !!String(base.memo || '').trim() ||
+          !!String(base.notes || '').trim() ||
           br !== '1:00' ||
           nb !== '0:00' ||
           base.breakVal !== '1:00' ||
@@ -102,6 +108,7 @@
             location: String(loc || '').trim(),
             reason: String(reason || '').trim(),
             memo: String(memo || '').trim(),
+            notes: String(notes || '').trim(),
             breakMinutes,
             nightBreakMinutes,
             shiftStart,

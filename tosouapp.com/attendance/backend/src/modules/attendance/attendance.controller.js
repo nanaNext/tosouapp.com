@@ -1402,10 +1402,10 @@ exports.getMonthDetail = async (req, res) => {
       dailyMap.set(d, {
         kubun: r.kubun || null,
         kubunConfirmed: kc,
-        workType: r.work_type || report?.workType || null,
-        location: r.location || report?.location || null,
+        workType: r.work_type != null ? r.work_type : (report?.workType || null),
+        location: r.location != null ? r.location : (report?.location || null),
         reason: r.reason || null,
-        memo: r.memo || report?.memo || null,
+        memo: r.memo != null ? r.memo : (report?.memo || null),
         notes: r.notes || null,
         late_minutes: r.late_minutes == null ? null : Number(r.late_minutes),
         early_minutes: r.early_minutes == null ? null : Number(r.early_minutes),
@@ -2490,7 +2490,7 @@ exports.exportMonthXlsx = async (req, res) => {
       cell('M6', '超過時間', 3),
       cell('N6', '遅刻/早退', 3),
       cell('O6', '理由', 3),
-      cell('P6', '社内業務', 3),
+      cell('P6', '備考', 3),
       cell('Q6', '承認ステータス', 14),
       cell('R6', '承認者', 14)
     ], 22);

@@ -1130,9 +1130,11 @@
                 day.daily.workType = wt;
                 const loc = tr.querySelector('input[data-field="location"]')?.value ?? '';
                 const memo = tr.querySelector('[data-field="memo"]')?.value ?? '';
+                const notes = tr.querySelector('input[data-field="notes"]')?.value ?? '';
                 const reason = tr.querySelector('select[data-field="reason"]')?.value ?? '';
                 day.daily.location = String(loc || '').trim();
                 day.daily.memo = String(memo || '').trim();
+                day.daily.notes = String(notes || '').trim();
                 day.daily.reason = String(reason || '').trim();
                 const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
                 const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
@@ -1143,6 +1145,7 @@
                   tr.dataset.workTypeBase = wt || '';
                   tr.dataset.locationBase = String(loc || '');
                   tr.dataset.memoBase = String(memo || '');
+                  tr.dataset.notesBase = String(notes || '');
                   tr.dataset.reasonBase = String(reason || '');
                   tr.dataset.breakBase = br;
                   tr.dataset.nightBreakBase = nb;
@@ -1229,6 +1232,7 @@
       const loc = String(tr.querySelector('input[data-field="location"]')?.value || '').trim();
       const reason = String(tr.querySelector('select[data-field="reason"]')?.value || '').trim();
       const memo = String(tr.querySelector('[data-field="memo"]')?.value || '').trim();
+      const notes = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
       const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
       const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
       const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
@@ -1244,6 +1248,7 @@
           location: loc,
           reason,
           memo,
+          notes,
           breakMinutes,
           nightBreakMinutes
         }]
@@ -1265,6 +1270,7 @@
           day.daily.location = loc;
           day.daily.reason = reason;
           day.daily.memo = memo;
+          day.daily.notes = notes;
           day.daily.breakMinutes = breakMinutes;
           day.daily.nightBreakMinutes = nightBreakMinutes;
         }
@@ -1274,6 +1280,7 @@
           tr.dataset.locationBase = loc || '';
           tr.dataset.reasonBase = reason || '';
           tr.dataset.memoBase = memo || '';
+          tr.dataset.notesBase = notes || '';
           tr.dataset.breakBase = (br === '0:45' || br === '0:30' || br === '0:00') ? br : '1:00';
           tr.dataset.nightBreakBase = (nb === '1:00' || nb === '0:30') ? nb : '0:00';
         } catch {}
@@ -1338,6 +1345,7 @@
       const reason = String(tr.querySelector('select[data-field="reason"]')?.value || '').trim();
       const location = String(tr.querySelector('input[data-field="location"]')?.value || '').trim();
       const memo = String(tr.querySelector('[data-field="memo"]')?.value || '').trim();
+      const notes = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
       const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
       const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
       const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
@@ -1406,6 +1414,7 @@
             location: location || '',
             reason: reason || '',
             memo: memo || '',
+            notes: notes || '',
             breakMinutes,
             nightBreakMinutes,
             shiftStart: String(tr.dataset.shiftStart || '08:00').trim(),
