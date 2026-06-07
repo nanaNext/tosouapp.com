@@ -18,12 +18,12 @@ export async function mount() {
   if (p === '/admin/attendance/holidays') {
     const mod = await import('../legacy/legacy-calendar.page.js');
     await mod.mountCalendar({ content });
-    return () => { try { content.innerHTML = ''; } catch {} };
+    return () => { try { content.innerHTML = ''; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } };
   }
   if (p === '/admin/attendance/shifts' || p === '/admin/attendance/shift-assignment') {
     const mod = await import('../legacy/legacy-shifts.page.js');
     await mod.mountShifts({ content });
-    return () => { try { content.innerHTML = ''; } catch {} };
+    return () => { try { content.innerHTML = ''; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } };
   }
   // Default: attendance records
   const mod = await import('../legacy/legacy-attendance.page.js');
@@ -36,7 +36,7 @@ export async function mount() {
     buildTimesheetExportURL
   });
   return () => {
-    try { if (typeof cleanup === 'function') cleanup(); } catch {}
-    try { content.innerHTML = ''; } catch {}
+    try { if (typeof cleanup === 'function') cleanup(); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+    try { content.innerHTML = ''; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   };
 }

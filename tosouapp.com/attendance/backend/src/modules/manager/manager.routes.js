@@ -48,7 +48,7 @@ async function ensureEmployeeProfilePhotosSchema() {
         CONSTRAINT fk_employee_profile_photos_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
-  } catch {}
+  } catch (e) { console.error('[manager.routes.js] Swallowed error:', e); }
 }
 
 async function ensureManagerDepartmentScope(req, targetUserId) {

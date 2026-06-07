@@ -29,7 +29,7 @@ async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attend
     });
     if (existed) return;
     await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid', reason });
-  } catch {}
+  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 }
 
 async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendance') {
@@ -42,7 +42,7 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
       return;
     }
     await leaveRepo.cancelOwnPaidByDate(userId, ds);
-  } catch {}
+  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 }
 
 // API: Nhân viên ấn nút Check-in (Đi làm)
@@ -77,13 +77,10 @@ exports.checkIn = async (req, res) => {
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const db = require('../../core/database/mysql');
-      const [dailies] = await db.query(`SELECT kubun FROM attendance_daily WHERE userId = ? AND date = ? LIMIT 1`, [userId, dtStr]);
+      const dailyRec = await repo.getDaily(userId, dtStr);
+      const dailies = dailyRec ? [dailyRec] : [];
       if (!dailies.length || !dailies[0].kubun || dailies[0].kubun !== '出勤') {
-        await db.query(`
-          INSERT INTO attendance_daily (userId, date, kubun, updated_at) 
-          VALUES (?, ?, '出勤', NOW()) 
-          ON DUPLICATE KEY UPDATE kubun = '出勤', updated_at = NOW()
-        `, [userId, dtStr]);
+        await repo.upsertDaily(userId, dtStr, { kubun: '出勤' });
       }
     } catch (err) {
       console.error('Failed to auto-set kubun on checkin:', err);
@@ -100,14 +97,14 @@ exports.checkIn = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ ...loc, workType, result })
       });
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const y = parseInt(dtStr.slice(0, 4), 10);
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     try {
       const u = await userRepo.getUserById(userId);
       const name = u ? (u.username || u.email || '従業員') : '従業員';
@@ -162,14 +159,14 @@ exports.checkOut = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ ...loc, result })
       });
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     try {
       const dtStr = String(result?.checkOut || result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const y = parseInt(dtStr.slice(0, 4), 10);
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     try {
       const u = await userRepo.getUserById(userId);
       const name = u ? (u.username || u.email || '従業員') : '従業員';
@@ -193,11 +190,12 @@ exports.checkOut = async (req, res) => {
         let breakMin = 60;
         try {
           const db = require('../../core/database/mysql');
-          const [dailies] = await db.query(`SELECT break_minutes, night_break_minutes FROM attendance_daily WHERE userId = ? AND date = ? LIMIT 1`, [userId, dtStr]);
+          const dailyRec = await repo.getDaily(userId, dtStr);
+          const dailies = dailyRec ? [dailyRec] : [];
           if (dailies.length > 0) {
             breakMin = Number(dailies[0].break_minutes || 0) + Number(dailies[0].night_break_minutes || 0);
           }
-        } catch(e) {}
+        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
         
         const diffMs = outDate - inDate;
         let totalMinutes = Math.floor(diffMs / 60000) - breakMin;
@@ -249,20 +247,15 @@ exports.userProfileForMonthly = async (req, res) => {
     const db = require('../../core/database/mysql');
     try {
       await require('./attendance.repository').ensureWorkDetailsSchemaPublic();
-    } catch {}
-    const [workRows] = await db.query(`
-      SELECT id, start_date, end_date, company_name, work_place_address, work_content, role_title, responsibility_level
-      FROM user_work_details
-      WHERE userId = ?
-      ORDER BY start_date DESC, id DESC
-      LIMIT 10
-    `, [userId]);
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    const workRows = await repo.getUserWorkDetails(userId, 10);
     let shift = null;
     const ym = String(req.query.ym || '').slice(0, 7);
     let targetDate = null;
     if (/^\d{4}-\d{2}$/.test(ym)) targetDate = ym + '-15';
     if (user?.shift_id) {
-      const [srows] = await db.query(`SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions WHERE id = ? LIMIT 1`, [user.shift_id]);
+      const shiftDef = await repo.getShiftById(user.shift_id);
+      const srows = shiftDef ? [shiftDef] : [];
       if (srows && srows[0]) shift = srows[0];
     }
     if (!shift) {
@@ -274,7 +267,8 @@ exports.userProfileForMonthly = async (req, res) => {
         const def = await repo.getShiftById(assign.shiftId).catch(() => null);
         if (def) shift = def;
       } else if (Object.prototype.hasOwnProperty.call(assign || {}, 'shift') && assign?.shift) {
-        const [defs] = await db.query(`SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions WHERE name = ? LIMIT 1`, [assign.shift]);
+        const shiftDef2 = await repo.getShiftByName(assign.shift);
+        const defs = shiftDef2 ? [shiftDef2] : [];
         if (defs && defs[0]) shift = defs[0];
       }
     }
@@ -367,7 +361,7 @@ exports.syncOffline = async (req, res) => {
         const r = await service.checkIn(userId, t);
         try {
           await auditRepo.writeLog({ userId, action: 'offline_checkin', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ time: t }) });
-        } catch {}
+        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
         results.push({ type: 'checkin', ok: true, id: r.id });
       } else if (ev.type === 'checkout') {
         const ms = Math.floor(new Date(ev.time || Date.now()).getTime() / 60000) * 60000;
@@ -380,7 +374,7 @@ exports.syncOffline = async (req, res) => {
         const r = await service.checkOut(userId, t);
         try {
           await auditRepo.writeLog({ userId, action: 'offline_checkout', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ time: t }) });
-        } catch {}
+        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
         results.push({ type: 'checkout', ok: !!r, id: r?.id || null });
       } else {
         results.push({ type: ev.type, ok: false, error: 'unknown type' });
@@ -423,45 +417,17 @@ exports.todaySummary = async (req, res) => {
     const db = require('../../core/database/mysql');
     const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
-    const [[{ c_checkin } = { c_checkin: 0 }]] = await db.query(`
-      SELECT COUNT(DISTINCT userId) AS c_checkin
-      FROM attendance
-      WHERE DATE(checkIn) = CURDATE()
-    `);
-    const [[{ c_open } = { c_open: 0 }]] = await db.query(`
-      SELECT COUNT(DISTINCT userId) AS c_open
-      FROM attendance
-      WHERE DATE(checkIn) = CURDATE() AND checkOut IS NULL
-    `);
-    const [[{ c_active } = { c_active: 0 }]] = await db.query(`
-      SELECT COUNT(*) AS c_active
-      FROM users
-      WHERE employment_status = 'active'
-        AND role IN ('employee','manager')
-    `);
-    let c_leave_users = 0;
-    try {
-      const [[{ c_leave_users: x } = { c_leave_users: 0 }]] = await db.query(`
-        SELECT COUNT(DISTINCT userId) AS c_leave_users
-        FROM leave_requests
-        WHERE status = 'approved'
-          AND CURDATE() BETWEEN startDate AND endDate
-      `);
-      c_leave_users = Number(x || 0);
-    } catch {}
+    const stats = await require('./attendance.repository').getTodaySummaryStats(today);
+    const c_checkin = stats.c_checkin;
+    const c_open = stats.c_open;
+    const c_active = stats.c_active;
+    const c_leave_users = stats.c_leave_users;
     const target = Math.max(0, Number(c_active || 0) - Number(c_leave_users || 0));
     const notCheckedIn = Math.max(0, target - Number(c_checkin || 0));
     const notCheckedOut = Number(c_open || 0);
 
     const open = await require('./attendance.repository').getOpenAttendanceForUser(userId);
-    const [myRows] = await db.query(`
-      SELECT id, checkIn, checkOut
-      FROM attendance
-      WHERE userId = ?
-        AND DATE(checkIn) = CURDATE()
-      ORDER BY checkIn DESC
-      LIMIT 1
-    `, [userId]);
+    const myRows = await require('./attendance.repository').getTodayAttendanceRecords(userId, today);
     const my = myRows && myRows[0] ? myRows[0] : null;
 
     res.status(200).json({
@@ -496,48 +462,7 @@ exports.todayRoster = async (req, res) => {
     const calendarRepo = require('../calendar/calendar.repository');
     const qDate = String(req.query?.date || '').slice(0, 10);
     const date = qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-    const [rows] = await db.query(`
-      SELECT
-        u.id AS userId,
-        u.employee_code AS employeeCode,
-        u.username AS username,
-        u.role AS role,
-        u.departmentId AS departmentId,
-        d.name AS departmentName,
-        a.id AS attendanceId,
-        a.shiftId AS shiftId,
-        a.checkIn AS checkIn,
-        a.checkOut AS checkOut,
-        ad.kubun AS dailyKubun
-      FROM users u
-      LEFT JOIN departments d
-        ON d.id = u.departmentId
-      LEFT JOIN leave_requests lr
-        ON lr.userId = u.id
-       AND lr.status = 'approved'
-       AND ? BETWEEN lr.startDate AND lr.endDate
-      LEFT JOIN attendance_daily ad
-        ON ad.userId = u.id AND ad.date = ?
-      LEFT JOIN (
-        SELECT t1.*
-        FROM attendance t1
-        INNER JOIN (
-          SELECT userId, MAX(checkIn) AS maxCheckIn
-          FROM attendance
-          WHERE DATE(checkIn) = ?
-          GROUP BY userId
-        ) t2
-          ON t2.userId = t1.userId AND t2.maxCheckIn = t1.checkIn
-      ) a
-        ON a.userId = u.id
-      WHERE u.employment_status = 'active'
-        AND u.role IN ('employee','manager')
-        AND lr.id IS NULL
-      ORDER BY
-        CASE WHEN a.checkIn IS NULL THEN 1 ELSE 0 END ASC,
-        COALESCE(u.employee_code, '') ASC,
-        u.id ASC
-    `, [date, date, date]);
+    const rows = await attendanceRepo.getTodayRosterItems(date);
 
     const items = (rows || []).map(r => {
       const hasIn = !!r.checkIn;
@@ -561,27 +486,7 @@ exports.todayRoster = async (req, res) => {
       };
     });
 
-    const [plannedBase] = await db.query(`
-      SELECT
-        u.id AS userId,
-        u.employee_code AS employeeCode,
-        u.username AS username,
-        u.role AS role,
-        u.departmentId AS departmentId,
-        d.name AS departmentName,
-        CASE WHEN lr.id IS NULL THEN 0 ELSE 1 END AS isLeave,
-        lr.type AS leaveType
-      FROM users u
-      LEFT JOIN departments d
-        ON d.id = u.departmentId
-      LEFT JOIN leave_requests lr
-        ON lr.userId = u.id
-       AND lr.status = 'approved'
-       AND ? BETWEEN lr.startDate AND lr.endDate
-      WHERE u.employment_status = 'active'
-        AND u.role IN ('employee','manager')
-      ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
-    `, [date]);
+    const plannedBase = await attendanceRepo.getTodayPlannedItems(date);
     const planned = [];
     let dayIsOff = false;
     try { dayIsOff = await calendarRepo.isOff(date); } catch { dayIsOff = false; }
@@ -593,14 +498,15 @@ exports.todayRoster = async (req, res) => {
           const def = await attendanceRepo.getShiftById(assign.shiftId);
           shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes } : null;
         } else if (Object.prototype.hasOwnProperty.call(assign || {}, 'shift') && assign.shift) {
-          const [defs] = await db.query(`SELECT * FROM shift_definitions WHERE name = ? LIMIT 1`, [assign.shift]);
+          const shiftDef3 = await attendanceRepo.getShiftByName(assign.shift);
+          const defs = shiftDef3 ? [shiftDef3] : [];
           const def = defs && defs[0] ? defs[0] : null;
           shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes } : null;
         } else if (r.shiftId) {
           const def2 = await attendanceRepo.getShiftById(r.shiftId).catch(() => null);
           shift = def2 ? { id: def2.id, name: def2.name, start_time: def2.start_time, end_time: def2.end_time, break_minutes: def2.break_minutes } : null;
         }
-      } catch {}
+      } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
       const status = Number(r.isLeave || 0) ? 'leave' : (dayIsOff ? 'off' : 'work');
       planned.push({
         userId: r.userId,
@@ -930,7 +836,7 @@ exports.submitMonth = async (req, res) => {
       if (missing.length) {
         return res.status(400).json({ message: `入力が未完了です`, missing });
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 
     await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'submitted' });
@@ -966,19 +872,7 @@ exports.approveReadyMonth = async (req, res) => {
     if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ message: 'Missing month (YYYY-MM)' });
     const y = parseInt(ym.slice(0, 4), 10);
     const m = parseInt(ym.slice(5, 7), 10);
-    const db = require('../../core/database/mysql');
-    const params = [];
-    let sql = `
-      SELECT u.id AS userId
-      FROM users u
-      WHERE u.employment_status = 'active'
-        AND u.role IN ('employee','manager')
-    `;
-    if (departmentId != null) {
-      sql += ` AND u.departmentId = ?`;
-      params.push(parseInt(String(departmentId), 10));
-    }
-    const [rows] = await db.query(sql, params);
+    const rows = await repo.getActiveUserIds(departmentId);
     let approved = 0, submitted = 0, skipped = 0;
     const results = [];
     for (const r of (rows || [])) {
@@ -1024,7 +918,7 @@ exports.approveMonth = async (req, res) => {
       if (missing.length) {
         return res.status(400).json({ message: `未承認: 勤務未入力の日があります`, missing });
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     await repo.setMonthStatus(userId, y, m, 'approved', req.user?.id);
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'approved' });
   } catch (err) {
@@ -1093,13 +987,13 @@ exports.putDaily = async (req, res) => {
     try {
       const kubun = String(daily?.kubun || req.body?.kubun || '').trim();
       await syncPaidLeaveByKubun(userId, date, kubun);
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
   try {
     const y = parseInt(date.slice(0, 4), 10);
     const m = parseInt(date.slice(5, 7), 10);
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-  } catch {}
+  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     res.status(200).json({ date, daily });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -1161,12 +1055,12 @@ exports.putDay = async (req, res) => {
           audience: 'admin_manager'
         });
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 
   try {
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-  } catch {}
+  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     res.status(200).json({ id: attendanceId });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -1214,13 +1108,13 @@ exports.addSegment = async (req, res) => {
           audience: 'admin_manager'
         });
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 
   try {
     const y = parseInt(date.slice(0,4),10), m = parseInt(date.slice(5,7),10);
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-  } catch {}
+  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     res.status(201).json({ id });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -1289,7 +1183,7 @@ exports.getMonth = async (req, res) => {
           to = todayStr;
         }
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     const result = await service.timesheet(userId, from, to);
     res.status(200).json({ ...result, monthStatus: { status } });
   } catch (err) {
@@ -1319,7 +1213,7 @@ exports.getMonthDetail = async (req, res) => {
     }
     let rows = [];
     let todayStr = null;
-    try { todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch {}
+    try { todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
     if (role !== 'payroll' && monthStatus !== 'approved' && todayStr && todayStr < from) {
       rows = [];
     } else {
@@ -1890,7 +1784,7 @@ exports.putMonthBulk = async (req, res) => {
         }
         seen.set(key, i);
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 
     // Normalize: if segment already exists (same checkIn), convert "create" into "update" to avoid unique error.
     try {
@@ -1905,7 +1799,7 @@ exports.putMonthBulk = async (req, res) => {
           delete u.clientId;
         }
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 
     const cleanedUpdates = normalizedUpdates.filter(Boolean);
 
@@ -1925,7 +1819,7 @@ exports.putMonthBulk = async (req, res) => {
               delete u.clientId;
             }
           }
-        } catch {}
+        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
         result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates });
       } else {
         throw err;
@@ -1943,7 +1837,7 @@ exports.putMonthBulk = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ targetUserId: userId, year: y, month: m, saved: result.saved })
       });
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 
     // Safety net: sync leave request by latest daily kubun for each touched date
     try {
@@ -1958,7 +1852,7 @@ exports.putMonthBulk = async (req, res) => {
       for (const [ds, kubun] of latestByDate.entries()) {
         await syncPaidLeaveByKubun(userId, ds, kubun);
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
 
     res.status(200).json(result);
   } catch (err) {
@@ -2294,7 +2188,7 @@ exports.exportMonthXlsx = async (req, res) => {
           if (def && !wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
             return false;
           }
-        } catch {}
+        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
         return true;
       });
       const seg = segs[0] || null;

@@ -64,13 +64,13 @@ const showSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch {}
+  } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
 };
 const hideSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch {}
+  } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
 };
 
 export async function mount() {
@@ -335,7 +335,7 @@ export async function mount() {
       if (state.group) u.searchParams.set('group', '1');
       else u.searchParams.delete('group');
       history.replaceState(null, '', u.pathname + u.search + u.hash);
-    } catch {}
+    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
   };
 
   let currentPage = 1;
@@ -372,6 +372,15 @@ export async function mount() {
       const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
       const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
 
+      const lateStr = Number(it.lateMinutes) > 0 ? `遅刻 (${it.lateMinutes}分)` : '';
+      const earlyStr = Number(it.earlyMinutes) > 0 ? `早退 (${it.earlyMinutes}分)` : '';
+      const reasonStr = it.reason ? it.reason : '';
+      let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join(' / ');
+      if (reasonStr && lateEarlyCombo) lateEarlyCombo += `<br><span style="font-size:11px;color:#64748b;">理由: ${esc(reasonStr)}</span>`;
+      else if (reasonStr) lateEarlyCombo = `<span style="font-size:11px;color:#64748b;">理由: ${esc(reasonStr)}</span>`;
+      
+      const lateEarlyHtml = lateEarlyCombo || dash;
+
       const dc = dowClass(it.weekday);
       const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
       // Calculate holiday from backend flag
@@ -395,6 +404,7 @@ export async function mount() {
           <td style="white-space:nowrap; ${textColor}">${wType}</td>
           <td style="white-space:nowrap; ${textColor}">${site}</td>
           <td style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
+          <td style="white-space:nowrap; ${textColor}">${lateEarlyHtml}</td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
@@ -433,7 +443,8 @@ export async function mount() {
             <col style="width:70px;">
             <col style="width:110px;">
             <col style="width:200px;">
-            <col style="width:400px;">
+            <col style="width:300px;">
+            <col style="width:100px;">
             <col style="width:120px;">
           </colgroup>
           <thead>
@@ -449,10 +460,13 @@ export async function mount() {
               <th>勤務形態</th>
               <th>現場</th>
               <th>作業内容</th>
+              <th>遅刻・早退等</th>
               <th>状態</th>
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody>
+            ${rows}
+          </tbody>
         </table>
       </div>
       ${paginationHtml}
@@ -841,7 +855,7 @@ export async function mount() {
         const shown = filterAndSort(state.items).length;
         summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
-    } catch {}
+    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
   });
   $('#wrDept')?.addEventListener('change', async () => {
     const sel = $('#wrDept');
@@ -856,7 +870,7 @@ export async function mount() {
         const shown = filterAndSort(state.items).length;
         summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
-    } catch {}
+    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
   });
   $('#wrSearch')?.addEventListener('input', async () => {
     const inp = $('#wrSearch');
@@ -871,7 +885,7 @@ export async function mount() {
         const shown = filterAndSort(state.items).length;
         summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
-    } catch {}
+    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
   });
   $('#wrGroup')?.addEventListener('change', async () => {
     const ck = $('#wrGroup');

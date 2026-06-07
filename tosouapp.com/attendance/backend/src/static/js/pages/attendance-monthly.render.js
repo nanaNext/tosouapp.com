@@ -100,13 +100,7 @@
       const segWt = String(seg?.workType || '').trim();
       const segLabels = String(seg?.labels || '').trim();
       // Ignore shift-shaped placeholder rows (planned auto rows), keep only real punches.
-      const isShiftPlaceholder = !!(
-        inHmRaw && outHmRaw &&
-        shiftStartOk && shiftEndOk &&
-        !segWt && !segLabels &&
-        inHmRaw === shiftStart &&
-        outHmRaw === shiftEnd
-      );
+      const isShiftPlaceholder = false;
       const inHm = isShiftPlaceholder ? '' : inHmRaw;
       const outHm = isShiftPlaceholder ? '' : outHmRaw;
       // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
@@ -133,8 +127,8 @@
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay). Ngày nghỉ thì để trống.
-      const finalIn = isWorkDay ? (inHm || shiftStart) : (inHm || '');
-      const finalOut = isWorkDay ? (outHm || shiftEnd) : (outHm || '');
+      const finalIn = isWorkDay ? (inHm || shiftStart) : '';
+      const finalOut = isWorkDay ? (outHm || shiftEnd) : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
@@ -252,19 +246,32 @@
       tr.dataset.earlyMinutes = String(daily?.earlyMinutes || daily?.early_minutes || '');
       tr.dataset.reasonBase = String(daily?.reason || '');
 
-      const wtVal = (() => {
-        if (isHolidayKubun) return '';
+      const wtValRaw = (() => {
         const dailyWt = allowDailyAsActual && primary ? daily?.workType : '';
         const v = String(seg?.workType || dailyWt || '').trim();
-        // Không tự động gán '出社' cho ngày 予定出勤; chỉ hiển thị khi có giá trị thực tế
         return (v === 'onsite' || v === 'remote' || v === 'satellite') ? v : '';
+      })();
+      tr.dataset.workTypeBase = wtValRaw;
+
+      const wtVal = (() => {
+        if (isHolidayKubun || effectiveKubun === '欠勤') return '';
+        return wtValRaw;
       })();
       tr.dataset.workType = wtVal;
       
-      const dLoc = isHolidayKubun ? '' : String(daily?.location || '');
-      const dMemo = isHolidayKubun ? '' : String(daily?.memo || '');
+      const dLoc = String(daily?.location || '');
+      const dMemo = String(daily?.memo || '');
       const dReason = String(daily?.reason || '');
       const dNotes = String(daily?.notes || '');
+      
+      // KHÔNG TRẢ VỀ RỖNG, LUÔN RENDER ĐÚNG GIÁ TRỊ, CHỈ DÙNG CSS HOẶC DISABLED ĐỂ LÀM MỜ.
+      // Nếu trả về rỗng, khi F5 lại trang, ô input sẽ bị rỗng thật sự, dẫn đến mất dữ liệu khi save.
+      const finalLoc = dLoc;
+      const finalMemo = dMemo;
+      const finalNotes = dNotes;
+      
+      const isHolidayHide = isHolidayKubun || effectiveKubun === '欠勤';
+      const hideStyle = isHolidayHide ? 'visibility: hidden;' : '';
       const brVal = brMin === 45 ? '0:45' : brMin === 30 ? '0:30' : brMin === 0 ? '0:00' : '1:00';
       const nbVal = nbMin === 60 ? '1:00' : nbMin === 30 ? '0:30' : '0:00';
 
@@ -273,6 +280,12 @@
       const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const isFuture = dateStr > todayStr;
       
+      tr.dataset.locationBase = dLoc;
+      tr.dataset.memoBase = dMemo;
+      tr.dataset.notesBase = dNotes;
+      tr.dataset.actualIn = hasActualIn ? inHm : '';
+      tr.dataset.actualOut = hasActualOut ? outHm : '';
+
       const kubunOptionsHtml = `
       <option value="" ${disablePlanned ? 'disabled' : ''} ${kubunInit === '' ? 'selected' : ''}>${esc(plannedLabel)}</option>
       ${kubunOptions.map((k) => {
@@ -295,11 +308,11 @@
           </select>
         </div>
       </td>
-      <td style="text-align:center;"><input id="ckOnsite_${dateStr}" name="ckOnsite_${dateStr}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input id="ckRemote_${dateStr}" name="ckRemote_${dateStr}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input id="ckSatellite_${dateStr}" name="ckSatellite_${dateStr}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><input id="location_${dateStr}" name="location_${dateStr}" class="se-input" data-field="location" type="text" value="${esc(dLoc)}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><textarea id="memo_${dateStr}" name="memo_${dateStr}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px;" ${!canEditWorkRow ? 'disabled' : ''}>${esc(dMemo)}</textarea></td>
+      <td style="text-align:center;"><input id="ckOnsite_${dateStr}" name="ckOnsite_${dateStr}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input id="ckRemote_${dateStr}" name="ckRemote_${dateStr}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input id="ckSatellite_${dateStr}" name="ckSatellite_${dateStr}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input id="location_${dateStr}" name="location_${dateStr}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><textarea id="memo_${dateStr}" name="memo_${dateStr}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px; ${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}>${esc(finalMemo)}</textarea></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
           <input id="checkIn_${dateStr}" name="checkIn_${dateStr}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditCheckTime ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}" data-actual="${esc(inHm)}">
@@ -311,7 +324,7 @@
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''}>
+        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
           <option value="1:00" ${brVal === '1:00' ? 'selected' : ''}>1:00</option>
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>
@@ -319,7 +332,7 @@
         </select>
       </td>
       <td>
-        <select id="nightBreak_${dateStr}" name="nightBreak_${dateStr}" class="se-select" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}">
+        <select id="nightBreak_${dateStr}" name="nightBreak_${dateStr}" class="se-select" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
@@ -358,16 +371,22 @@
         return txt;
       })()}</td>
       <td>
-        <select id="reason_${dateStr}" name="reason_${dateStr}" class="se-select" data-field="reason" ${effectiveKubun === '欠勤' && state.editableMonth ? '' : 'disabled'} style="width:140px;${effectiveKubun === '欠勤' ? '' : 'visibility:hidden;'}">
+        <select id="reason_${dateStr}" name="reason_${dateStr}" class="se-select" data-field="reason" ${state.editableMonth ? '' : 'disabled'} style="width:140px;${(effectiveKubun === '欠勤' || effectiveKubun === '遅刻' || effectiveKubun === '早退') ? '' : 'visibility:hidden;'}">
           <option value=""></option>
-          <option value="private" ${dReason === 'private' ? 'selected' : ''}>私用</option>
-          <option value="late" ${dReason === 'late' ? 'selected' : ''}>遅刻</option>
-          <option value="early" ${dReason === 'early' ? 'selected' : ''}>早退</option>
-          <option value="other" ${dReason === 'other' ? 'selected' : ''}>その他</option>
+          <option value="私用" ${dReason === '私用' || dReason === 'private' ? 'selected' : ''}>私用</option>
+          <option value="私用（詳細）" ${dReason === '私用（詳細）' ? 'selected' : ''}>私用（詳細）</option>
+          <option value="体調不良" ${dReason === '体調不良' ? 'selected' : ''}>体調不良</option>
+          <option value="家庭の事情" ${dReason === '家庭の事情' ? 'selected' : ''}>家庭の事情</option>
+          <option value="通院" ${dReason === '通院' ? 'selected' : ''}>通院</option>
+          <option value="交通機関の乱れ" ${dReason === '交通機関の乱れ' ? 'selected' : ''}>交通機関の乱れ</option>
+          <option value="悪天候" ${dReason === '悪天候' ? 'selected' : ''}>悪天候</option>
+          <option value="事故" ${dReason === '事故' ? 'selected' : ''}>事故</option>
+          <option value="忌引" ${dReason === '忌引' ? 'selected' : ''}>忌引</option>
+          <option value="その他" ${dReason === 'その他' || dReason === 'other' ? 'selected' : ''}>その他</option>
         </select>
       </td>
       <td>
-        <input id="notes_${dateStr}" name="notes_${dateStr}" class="se-input" data-field="notes" type="text" value="${esc(dNotes)}" ${!state.editableMonth ? 'disabled' : ''} style="width:100%; box-sizing:border-box;" placeholder="">
+        <input id="notes_${dateStr}" name="notes_${dateStr}" class="se-input" data-field="notes" type="text" value="${esc(finalNotes)}" ${!state.editableMonth ? 'disabled' : ''} style="width:100%; box-sizing:border-box;" placeholder="">
       </td>
       <td>
         <div class="se-status-wrap">
@@ -441,7 +460,7 @@
         table.querySelector('colgroup')?.remove();
         table.insertAdjacentElement('afterbegin', cg);
         table.style.tableLayout = 'fixed';
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
     };
     requestAnimationFrame(syncCols);
     try {
@@ -455,21 +474,21 @@
               const hs = w[key]?.handlers;
               if (!hs) return;
               for (const fn of Array.from(hs)) {
-                try { fn(); } catch {}
+                try { fn(); } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
               }
             });
-          } catch {}
+          } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
         }, { passive: true });
       }
       const reg = () => {
         if (!table.isConnected) {
-          try { w[key]?.handlers?.delete(reg); } catch {}
+          try { w[key]?.handlers?.delete(reg); } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
           return;
         }
         syncCols();
       };
       w[key].handlers.add(reg);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
   };
 
   const renderTable = (host, detail, profile) => {
@@ -481,14 +500,14 @@
       rowEl.classList.add('saved');
       const token = String(Date.now());
       rowEl.dataset.savedAt = token;
-      try { rowEl.dataset.dirty = ''; } catch {}
+      try { rowEl.dataset.dirty = ''; } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
       setTimeout(() => {
         try {
           if (rowEl.dataset.savedAt !== token) return;
           rowEl.classList.remove('saved');
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
       }, 5000);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
   };
 
   const recomputeRow = (rowEl) => {
@@ -508,6 +527,7 @@
       const locEl = rowEl.querySelector('input[data-field="location"]');
       const reasonSel = rowEl.querySelector('select[data-field="reason"]');
       const memoEl = rowEl.querySelector('[data-field="memo"]');
+      const notesEl = rowEl.querySelector('input[data-field="notes"]');
       const worked = rowEl.querySelector('[data-field="worked"]');
       const excess = rowEl.querySelector('[data-field="excess"]');
       const lateEarly = rowEl.querySelector('[data-field="lateEarly"]');
@@ -515,7 +535,7 @@
       const monthApproved = String(state.currentMonthStatus || '') === 'approved';
       if (monthApproved) {
         // Approved month must never appear as "unsaved" on row badges.
-        try { rowEl.dataset.dirty = ''; } catch {}
+        try { rowEl.dataset.dirty = ''; } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
       }
 
       const idVal = String(rowEl.dataset.id || '').trim();
@@ -527,9 +547,15 @@
       const offDay = baseOff;
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       const effectiveKubun = cls || (offDay ? '休日' : '出勤');
+      const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;
       const canEditWorkInputs = !!state.editableMonth && isWorkDay && !!cls;
+      
+      let currentRole = '';
+      try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+      const isEmployee = currentRole === 'employee';
+      const canEditCheckTime = canEditWorkInputs && !isEmployee;
       const inValNow = String(inEl?.value || '').trim();
       const outValNow = String(outEl?.value || '').trim();
       const inAutoNow = String(inEl?.dataset?.auto || '') === '1';
@@ -548,21 +574,48 @@
         clsSel.classList.toggle('is-planned', !cls);
       }
 
-      [inEl, outEl, brSel, nbSel, ckOn, ckRe, ckSa, locEl, memoEl].forEach((el) => {
+      [inEl, outEl].forEach((el) => {
         if (!el) return;
-        if (canEditWorkInputs) el.removeAttribute('disabled');
+        if (canEditCheckTime) el.removeAttribute('disabled');
         else el.setAttribute('disabled', '');
       });
-      const notesEl = rowEl.querySelector('input[data-field="notes"]');
+      
+      [brSel, nbSel, ckOn, ckRe, ckSa].forEach((el) => {
+        if (!el) return;
+        if (canEditWorkInputs) {
+          el.removeAttribute('disabled');
+          el.style.visibility = 'visible';
+        } else {
+          el.setAttribute('disabled', '');
+          if (isHolidayKubun || effectiveKubun === '欠勤') {
+            el.style.visibility = 'hidden';
+          }
+        }
+      });
+      
+      [locEl, memoEl].forEach((el) => {
+        if (!el) return;
+        if (canEditWorkInputs) {
+          el.removeAttribute('disabled');
+          el.style.visibility = 'visible';
+        } else {
+          el.setAttribute('disabled', '');
+          if (isHolidayKubun || effectiveKubun === '欠勤') {
+            el.style.visibility = 'hidden';
+          }
+        }
+      });
       if (notesEl) {
-        if (state.editableMonth) notesEl.removeAttribute('disabled');
-        else notesEl.setAttribute('disabled', '');
+        if (state.editableMonth) {
+          notesEl.removeAttribute('disabled');
+        } else {
+          notesEl.setAttribute('disabled', '');
+        }
+        notesEl.style.visibility = 'visible';
       }
 
       if (statusWrap) {
-        let currentRole = '';
-        try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch {}
-        const roleStr = currentRole;
+        let roleStr = currentRole;
         const isAdminView = roleStr === 'admin' || roleStr === 'manager';
         const isRegularOffRowNow = !!offDay && !hasActualNow && (effectiveKubun === '休日' || effectiveKubun === '代替休日');
         const leaveKubunSetNow = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
@@ -591,28 +644,9 @@
         }
       }
 
-      // Update reason visibility/disability based on kubun
-      if (reasonSel) {
-        if (effectiveKubun === '欠勤') {
-          reasonSel.style.visibility = 'visible';
-          if (state.editableMonth) {
-            reasonSel.removeAttribute('disabled');
-          } else {
-            reasonSel.setAttribute('disabled', '');
-          }
-        } else {
-          reasonSel.style.visibility = 'hidden';
-          reasonSel.value = '';
-        }
-      }
+      // Removed reason visibility logic from here
 
       // Update Planned option visibility/disability (Admin/Manager can always select Planned)
-      // Get role dynamically to avoid referencing non-existent globals
-      let currentRole = '';
-      try { currentRole = String(profile?.role || '').toLowerCase(); } catch {}
-      if (!currentRole) {
-         try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch {}
-      }
       const isEmployeeRole = currentRole === 'employee';
       if (clsSel && isEmployeeRole) {
         const plannedOpt = clsSel.querySelector('option[value=""]');
@@ -851,6 +885,19 @@
           }
         }
         if (lateEarly.textContent !== text) lateEarly.textContent = text;
+      }
+
+      // Update reason visibility/disability based on kubun and updated lateEarlyText
+      if (reasonSel) {
+        const lateEarlyText = lateEarly ? lateEarly.textContent : '—';
+        if (effectiveKubun === '欠勤' || lateEarlyText !== '—') {
+          reasonSel.style.visibility = 'visible';
+          reasonSel.disabled = !state.editableMonth;
+        } else {
+          reasonSel.style.visibility = 'hidden';
+          reasonSel.value = '';
+          reasonSel.disabled = true;
+        }
       }
 
       if (clsSel) {

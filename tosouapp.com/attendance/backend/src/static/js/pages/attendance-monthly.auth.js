@@ -15,7 +15,7 @@
     });
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch {}
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
       throw new Error(msg);
     }
     return res.json();
@@ -31,7 +31,7 @@
     });
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch {}
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
       throw new Error(msg);
     }
     return res.json();
@@ -81,8 +81,8 @@
       sessionStorage.removeItem('user');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch {}
-    try { window.location.href = '/ui/login'; } catch {}
+    } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
+    try { window.location.href = '/ui/login'; } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
   }
 
   async function fetchJSONAuth(url, options) {
@@ -115,14 +115,14 @@
           cache: cacheMode,
           ...options
         });
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
     }
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
       try {
         const j = await res.json();
         msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
       const m = String(msg || '').toLowerCase();
       if (res.status === 429 || m.includes('too many requests')) {
         throw new Error('Too many requests（操作が多すぎます。1分ほど待ってから再度お試しください）');
@@ -148,11 +148,11 @@
         tok = r.accessToken;
         const csrf2 = getCookie('csrfToken');
         res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tok, 'X-CSRF-Token': csrf2 || '' }, credentials: 'include' });
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
     }
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch {}
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
       throw new Error(msg);
     }
     const blob = await res.blob();
@@ -161,19 +161,19 @@
     a.href = objUrl;
     a.download = filename || 'download.xlsx';
     a.click();
-    setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch {} }, 1000);
+    setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); } }, 1000);
   }
 
   async function ensureAuthProfile() {
     let token = sessionStorage.getItem('accessToken');
     let profile = null;
-    if (token) { try { profile = await me(token); } catch {} }
+    if (token) { try { profile = await me(token); } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); } }
     if (!profile) {
       try {
         const r = await refreshCached();
         sessionStorage.setItem('accessToken', r.accessToken);
         profile = await me(r.accessToken);
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
     }
     if (!profile) {
       try {
@@ -181,7 +181,7 @@
         const user = userStr ? JSON.parse(userStr) : null;
         const role = String(user?.role || '').toLowerCase();
         profile = role === 'admin' || role === 'manager' || role === 'employee' ? user : null;
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.auth.js] Swallowed error:', e); }
     }
     return profile || null;
   }

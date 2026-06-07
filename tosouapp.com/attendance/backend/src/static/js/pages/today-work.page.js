@@ -11,21 +11,21 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch {}
+  } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
 };
 
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
   if (token) {
-    try { profile = await me(token); } catch {}
+    try { profile = await me(token); } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
   }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch {}
+    } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
   }
   if (!profile) {
     try {
@@ -34,7 +34,7 @@ async function ensureAuthProfile() {
       if (user && (user.role === 'admin' || user.role === 'manager' || user.role === 'employee')) {
         profile = user;
       }
-    } catch {}
+    } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
   }
   return profile || null;
 }
@@ -203,16 +203,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const goLogin = async () => {
-    try { await logout(); } catch {}
+    try { await logout(); } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
     try {
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
-    } catch {}
+    } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
     try {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch {}
+    } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
     try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
   };
 
@@ -220,19 +220,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const p = String(window.location.pathname || '');
     if ((p === '/ui/today-work' || p === '/ui/portal' || p === '/ui/dashboard') && document.body.dataset.backLoginBound !== '1') {
       document.body.dataset.backLoginBound = '1';
-      try { history.pushState({ back_to_login_guard: true }, '', window.location.href); } catch {}
+      try { history.pushState({ back_to_login_guard: true }, '', window.location.href); } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
       window.addEventListener('popstate', async () => {
         await goLogin();
       });
     }
-  } catch {}
+  } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
 
   // Do not force nav spinner on every link click. It causes visible flash.
 
   try {
     const userName = $('#userName');
     if (userName) userName.textContent = profile.username || profile.email || 'ユーザー';
-  } catch {}
+  } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
 
   try {
     const btn = document.querySelector('.user-btn');
@@ -250,13 +250,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         dd.setAttribute('hidden', '');
       });
     }
-  } catch {}
+  } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
 
   const doLogout = async () => {
     await goLogin();
   };
-  try { $('#btnLogout')?.addEventListener('click', doLogout); } catch {}
-  try { $('#drawerLogout')?.addEventListener('click', doLogout); } catch {}
+  try { $('#btnLogout')?.addEventListener('click', doLogout); } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
+  try { $('#drawerLogout')?.addEventListener('click', doLogout); } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
 
   try {
     const mobileBtn = $('#mobileMenuBtn');
@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       mobileBtn.addEventListener('click', () => toggleDrawer());
       if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
     }
-  } catch {}
+  } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
 
   try {
     const role = String(profile?.role || '').toLowerCase();
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let roster = null;
     if (role === 'admin' || role === 'manager') {
       summary = await fetchJSONAuth('/api/attendance/today-summary');
-      try { roster = await fetchJSONAuth('/api/attendance/today-roster'); } catch {}
+      try { roster = await fetchJSONAuth('/api/attendance/today-roster'); } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
     } else {
       summary = await loadEmployeeSummary();
     }
@@ -308,10 +308,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
       }
-    } catch {}
+    } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
   } catch (e) {
     showErr('データ取得に失敗しました: ' + (e?.message || 'unknown'));
   } finally {
-    try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch {}
+    try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch (e) { console.error('[today-work.page.js] Swallowed error:', e); }
   }
 });

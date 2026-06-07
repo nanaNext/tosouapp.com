@@ -35,7 +35,7 @@ exports.create = async (req, res) => {
         createdBy: userId,
         audience: 'admin_manager'
       });
-    } catch {}
+    } catch (e) { console.error('[adjust.controller.js] Swallowed error:', e); }
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -87,7 +87,7 @@ exports.updateStatus = async (req, res) => {
           title: '時間修正申請'
         });
       }
-    } catch {}
+    } catch (e) { console.error('[adjust.controller.js] Swallowed error:', e); }
     res.status(200).json({ id, status });
   } catch (err) {
     res.status(500).json({ message: err.message });

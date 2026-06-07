@@ -21,7 +21,7 @@ export function setTopbarHeightVar() {
       _topbarH = h;
       document.documentElement.style.setProperty('--topbar-height', `${h}px`);
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 }
 
 export function scheduleTopbarMeasure() {
@@ -51,7 +51,7 @@ export function initLayout() {
       });
       ro.observe(tb);
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 
   // Brand click
   try {
@@ -66,23 +66,23 @@ export function initLayout() {
         window.location.href = '/ui/portal';
       });
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 
   // Logout nav
   try {
     const logoutBtn = document.querySelector('#nav-logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
-        try { await logout(); } catch { }
+        try { await logout(); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch { }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch {}
+        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         window.location.replace('/ui/login');
       });
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 
   // User Dropdown
   const userBtn = document.querySelector('.user .user-btn');
@@ -92,7 +92,7 @@ export function initLayout() {
       try {
         document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
         document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      } catch {}
+      } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     };
     const placeDropdown = (btn, dd) => {
       try {
@@ -107,7 +107,7 @@ export function initLayout() {
         dd.style.right = 'auto';
         dd.style.zIndex = '2147483000';
         dd.style.minWidth = `${minW}px`;
-      } catch {}
+      } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     };
     const bindUserButtonsStable = () => {
       try {
@@ -127,7 +127,7 @@ export function initLayout() {
             if (hidden) {
               placeDropdown(btn, dd);
               dd.removeAttribute('hidden');
-              try { btn.setAttribute('aria-expanded', 'true'); } catch {}
+              try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
             }
           };
           btn.addEventListener('pointerdown', (e) => {
@@ -141,7 +141,7 @@ export function initLayout() {
             toggle();
           }, true);
         });
-      } catch {}
+      } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     };
     bindUserButtonsStable();
     try {
@@ -149,7 +149,7 @@ export function initLayout() {
       setTimeout(bindUserButtonsStable, 500);
       const mo = new MutationObserver(() => bindUserButtonsStable());
       mo.observe(document.body, { childList: true, subtree: true });
-    } catch {}
+    } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     const firstChar = (s) => {
       try {
         const t = String(s || '').trim();
@@ -168,13 +168,13 @@ export function initLayout() {
         try {
           const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || 'null');
           uname = (u?.username || '').trim();
-        } catch {}
+        } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         const full = uname || (nameEl?.textContent || '').trim() || (window.userName || '');
         const ch = firstChar(full);
         if (ddName) ddName.textContent = full || ddName.textContent || '';
         if (ddInit) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
         if (btnInit) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
-      } catch {}
+      } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     };
     setInitials();
     try {
@@ -183,7 +183,7 @@ export function initLayout() {
         const mo = new MutationObserver(() => setInitials());
         mo.observe(nameEl, { characterData: true, subtree: true, childList: true });
       }
-    } catch {}
+    } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     (async () => {
       try {
         const ddInit = document.querySelector('#userInitial');
@@ -199,11 +199,11 @@ export function initLayout() {
         const email = String(p?.email || '').trim();
         const full = uname || email || '';
         const ch = firstChar(full);
-        try { sessionStorage.setItem('user', JSON.stringify(p)); } catch {}
+        try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         if (nameEl && full && !hasName) nameEl.textContent = full;
         if (ddInit) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
         if (btnInit) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
-      } catch {}
+      } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     })();
     // Final retry loop (up to ~1.5s) to ensure initials appear even with late DOM paints
     try {
@@ -213,19 +213,19 @@ export function initLayout() {
         setInitials();
         if (tries >= 6) clearInterval(timer);
       }, 250);
-    } catch {}
+    } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     document.addEventListener('click', (e) => {
       const insideAnyUser = e.target && e.target.closest ? e.target.closest('.user') : null;
       if (insideAnyUser) return;
       try {
         document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
         document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      } catch {}
+      } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     });
     const btnLogout = document.querySelector('#btnLogout');
     if (btnLogout) {
       btnLogout.addEventListener('click', async () => {
-        try { await logout(); } catch { }
+        try { await logout(); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
@@ -243,16 +243,16 @@ export function initLayout() {
           const b = root ? root.querySelector('.user-btn') : userBtn;
           if (dd) dd.setAttribute('hidden', '');
           if (b) b.setAttribute('aria-expanded', 'false');
-        } catch {}
+        } catch (e) { console.error('[layout.js] Swallowed error:', e); }
       });
     });
     const applyTheme = (val) => {
       if (val === 'system' || val === '') {
-        try { document.documentElement.removeAttribute('data-theme'); } catch {}
+        try { document.documentElement.removeAttribute('data-theme'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
       } else {
         document.documentElement.dataset.theme = val;
       }
-      try { localStorage.setItem('theme', val); } catch {}
+      try { localStorage.setItem('theme', val); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
       Array.from(document.querySelectorAll('#themeDropdown .theme-item')).forEach(el => {
         const v = el.getAttribute('data-value') || '';
         if (v === val) el.classList.add('sel');
@@ -261,7 +261,7 @@ export function initLayout() {
     };
     const initTheme = () => {
       let v = 'system';
-      try { v = (localStorage.getItem('theme') || 'system'); } catch {}
+      try { v = (localStorage.getItem('theme') || 'system'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
       applyTheme(v);
     };
     initTheme();
@@ -306,7 +306,7 @@ export function initLayout() {
         if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
         if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'false');
       }
-    } catch {}
+    } catch (e) { console.error('[layout.js] Swallowed error:', e); }
   };
   normalizeDrawerState();
   if (mobileMenuBtn && mobileDrawer) {
@@ -320,7 +320,7 @@ export function initLayout() {
           const w = Math.round(mobileDrawer.getBoundingClientRect().width || 280);
           document.documentElement.style.setProperty('--drawer-offset', `${w}px`);
           document.body.classList.add('drawer-open');
-        } catch { }
+        } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         if (mobileBackdrop) { mobileBackdrop.removeAttribute('hidden'); }
         // Admin URL dynamic fix removed, using change-password for all users
       } else {
@@ -343,7 +343,7 @@ export function initLayout() {
       mobileBackdrop.setAttribute('hidden', '');
       if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'false');
       document.body.classList.remove('drawer-open');
-    } catch {}
+    } catch (e) { console.error('[layout.js] Swallowed error:', e); }
   });
   window.addEventListener('pageshow', normalizeDrawerState);
   window.addEventListener('resize', normalizeDrawerState);
@@ -368,7 +368,7 @@ export function initLayout() {
       if (tab === 'audit') return '/admin/system/audit-logs';
       if (tab === 'settings') return '/admin/system/settings';
       return '/admin/dashboard';
-    } catch {}
+    } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     return '/admin/dashboard';
   };
   document.addEventListener('click', (e) => {
@@ -380,10 +380,10 @@ export function initLayout() {
       e.preventDefault();
       const mapped = mapLegacyAdminHref(href);
       if (isAdminLayout()) {
-        try { sessionStorage.setItem('navSpinner', '1'); } catch {}
+        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         showNavSpinner();
       }
-      try { window.location.href = mapped; } catch {}
+      try { window.location.href = mapped; } catch (e) { console.error('[layout.js] Swallowed error:', e); }
       return;
     }
     if (href.startsWith('/ui/portal') || href.startsWith('/ui/admin?')) {
@@ -394,7 +394,7 @@ export function initLayout() {
       const samePath = target.pathname === now.pathname;
       const onlyHashChange = samePath && nowTab === targetTab && target.hash !== now.hash;
       if (isAdminLayout() && !onlyHashChange && nowTab !== targetTab) {
-        try { sessionStorage.setItem('navSpinner', '1'); } catch { }
+        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
         showNavSpinner();
       }
       if (a.classList.contains('tile')) {
@@ -437,7 +437,7 @@ export function initLayout() {
       try {
         if (spinnerHideTimer) clearTimeout(spinnerHideTimer);
         spinnerHideTimer = setTimeout(() => hideNavSpinner(), 10000);
-      } catch {}
+      } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     };
     document.addEventListener('click', (e) => {
       const a = e.target?.closest?.('a[href]');
@@ -445,7 +445,7 @@ export function initLayout() {
       showWithAutoHide();
     }, true);
     window.addEventListener('pageshow', () => {
-      try { if (spinnerShowTimer) clearTimeout(spinnerShowTimer); } catch {}
+      try { if (spinnerShowTimer) clearTimeout(spinnerShowTimer); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
       hideNavSpinner();
     });
   }
@@ -476,12 +476,12 @@ export function setSidebarActive(t) {
       const link = document.querySelector(sel);
       if (link) link.classList.add('active');
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 }
 
 export const showNavSpinner = () => {
   try {
-    try { sessionStorage.setItem('navSpinner', '1'); } catch { }
+    try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     let el = document.querySelector('#pageSpinner');
     if (!el) {
       el = document.createElement('div');
@@ -502,18 +502,18 @@ export const showNavSpinner = () => {
       el.style.display = 'grid';
       el.style.pointerEvents = 'none';
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 };
 
 export const hideNavSpinner = () => {
   try {
-    try { sessionStorage.removeItem('navSpinner'); } catch { }
+    try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[layout.js] Swallowed error:', e); }
     const el = document.querySelector('#pageSpinner');
     if (el) {
       el.setAttribute('hidden', 'true');
       el.style.display = 'none';
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 };
 
 export function ensureSpinnerStyle() {
@@ -541,7 +541,7 @@ export function ensureSpinnerStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 }
 
 export function ensureJapanSafeColorsStyle() {
@@ -570,7 +570,7 @@ export function ensureJapanSafeColorsStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 }
 
 export function ensureEmployeePillStyle() {
@@ -613,5 +613,5 @@ export function ensureEmployeePillStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch { }
+  } catch (e) { console.error('[layout.js] Swallowed error:', e); }
 }

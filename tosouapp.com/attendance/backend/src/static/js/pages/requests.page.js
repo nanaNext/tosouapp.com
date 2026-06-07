@@ -13,9 +13,9 @@ const prefillUserName = () => {
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) {
       el.textContent = name;
-      try { window.userName = name; } catch { }
+      try { window.userName = name; } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
     }
-  } catch { }
+  } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
 };
 
 const pinKey = 'se.req.pin';
@@ -53,7 +53,7 @@ function loadPin() {
   try { return localStorage.getItem(pinKey) === '1'; } catch { return false; }
 }
 function savePin(v) {
-  try { localStorage.setItem(pinKey, v ? '1' : '0'); } catch { }
+  try { localStorage.setItem(pinKey, v ? '1' : '0'); } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
 }
 
 function renderRows(rows) {
@@ -106,7 +106,7 @@ async function load(q = '', options = {}) {
   lastLoadedQuery = query;
   try {
     if (typeof window.__reqRecentHook === 'function') window.__reqRecentHook(rows);
-  } catch { }
+  } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
 }
 
 function bindUI() {
@@ -171,11 +171,11 @@ function bindUI() {
           };
         }
         renderNewList(newListFilter?.value || '');
-      } catch { }
+      } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
       newListMenu.hidden = false;
       btnNew.setAttribute('aria-expanded', 'true');
       if (!keepNewListOpen && shouldAutoFocus()) {
-        try { newListFilter?.focus(); } catch { }
+        try { newListFilter?.focus(); } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
       }
     };
 
@@ -317,7 +317,7 @@ function bindUI() {
     }
   };
   const saveRecent = (arr) => {
-    try { localStorage.setItem(recentKey, JSON.stringify((arr || []).slice(0, 8))); } catch { }
+    try { localStorage.setItem(recentKey, JSON.stringify((arr || []).slice(0, 8))); } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
   };
   const mergeRecent = (arr) => {
     const seen = new Set();
@@ -372,10 +372,10 @@ function bindUI() {
         if (appliedItems.length >= 50) break;
       }
       renderList(listFilter?.value || '');
-    } catch { }
+    } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
   };
   recentItems = loadRecent();
-  const saveSel = (v) => { try { localStorage.setItem(keySel, v); } catch { } };
+  const saveSel = (v) => { try { localStorage.setItem(keySel, v); } catch (e) { console.error('[requests.page.js] Swallowed error:', e); } };
   const loadSel = () => { try { return localStorage.getItem(keySel) || ''; } catch { return '' } };
   const renderList = (filter = '') => {
     const q = String(filter || '').toLowerCase();
@@ -519,8 +519,8 @@ function bindUI() {
   if (setResetWidth) {
     setResetWidth.addEventListener('click', () => {
       document.querySelectorAll('.req-table th').forEach(th => {
-        try { th.style.width = ''; } catch { }
-        try { th.removeAttribute('style'); } catch { }
+        try { th.style.width = ''; } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
+        try { th.removeAttribute('style'); } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
       });
       if (settingsMenu && !settingsMenu.hidden) settingsMenu.hidden = true;
       toolSettings?.setAttribute('aria-expanded', 'false');
@@ -538,7 +538,7 @@ export async function bootRequestsPage() {
   if (page.dataset.booted === '1') return;
   page.dataset.booted = '1';
   prefillUserName();
-  try { window.userName = window.userName || $('#userName')?.textContent || ''; } catch { }
+  try { window.userName = window.userName || $('#userName')?.textContent || ''; } catch (e) { console.error('[requests.page.js] Swallowed error:', e); }
   bindUI();
   await load('', { force: true });
 }

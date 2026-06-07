@@ -40,8 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
       showOk('パスワードを変更しました。再ログインしてください。');
       try {
         await fetch('/api/auth/revoke-all', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf } });
-      } catch {}
-      setTimeout(() => { try { location.href = '/ui/login'; } catch {} }, 1500);
+      } catch (e) { console.error('[change-password.page.js] Swallowed error:', e); }
+      setTimeout(() => { try { location.href = '/ui/login'; } catch (e) { console.error('[change-password.page.js] Swallowed error:', e); } }, 1500);
     } catch (ex) {
       showErr(String(ex?.message || 'エラーが発生しました'));
     }

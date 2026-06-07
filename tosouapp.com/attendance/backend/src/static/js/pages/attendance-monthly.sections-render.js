@@ -124,10 +124,10 @@
                 state.currentMonthTimesheet = timesheet;
                 rows = Array.isArray(detail?.shiftAssignments) ? detail.shiftAssignments : rows;
               }
-            } catch {}
+            } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
           }
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
     }
     const fmtBreak = (min) => {
       const m = Number(min);
@@ -234,10 +234,10 @@
               state.currentMonthDetail = detail;
               state.currentMonthTimesheet = timesheet;
               rows = Array.isArray(detail?.workDetails) ? detail.workDetails : rows;
-            } catch {}
+            } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
           }
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
     }
     const esc2 = (v) => esc(v == null ? '' : v);
     const table = document.createElement('table');
@@ -654,7 +654,7 @@
         remoteDays2 = frontendRemote;
         satelliteDays2 = frontendSatellite;
       }
-    } catch(e) {}
+    } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
     
     if (isPartTime) {
       plannedDays = attendDays2 + absent2 + Number(paidDays || 0) + Number(unpaidDays || 0) + holidayWorkDays2;

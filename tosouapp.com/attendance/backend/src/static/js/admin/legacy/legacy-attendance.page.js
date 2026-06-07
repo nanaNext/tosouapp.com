@@ -458,7 +458,7 @@ async function mountAttendanceImpl({
   });
 
   return () => {
-    try { content.innerHTML = ''; } catch { }
+    try { content.innerHTML = ''; } catch (e) { console.error('[legacy-attendance.page.js] Swallowed error:', e); }
     cleanup.run();
   };
 }

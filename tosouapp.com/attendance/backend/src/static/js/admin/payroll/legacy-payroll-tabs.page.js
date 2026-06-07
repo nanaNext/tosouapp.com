@@ -14,7 +14,7 @@ function ensurePayrollNavStyle() {
       .pe-nav a.active{color:#2563eb;border-bottom-color:#2563eb}
     `;
     document.head.appendChild(st);
-  } catch {}
+  } catch (e) { console.error('[legacy-payroll-tabs.page.js] Swallowed error:', e); }
 }
 
 function tabHref(tab) {
@@ -158,7 +158,7 @@ export async function mountSalaryCalc({ content, listUsers }) {
         a.download = 'salary.csv';
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } catch {}
+      } catch (e) { console.error('[legacy-payroll-tabs.page.js] Swallowed error:', e); }
     }
   });
 }
@@ -405,7 +405,7 @@ export async function mountPayslipSend({ content, listUsers }) {
       }
     } catch (e) {
       const msg = String(e?.message || '読み込み失敗');
-      try { console.error('payslip history load error:', e); } catch {}
+      try { console.error('payslip history load error:', e); } catch (e) { console.error('[legacy-payroll-tabs.page.js] Swallowed error:', e); }
       if (delivBox) delivBox.textContent = `読み込み失敗: ${msg}`;
       if (fileBox) fileBox.textContent = `読み込み失敗: ${msg}`;
     }
@@ -451,7 +451,7 @@ export async function mountPayslipSend({ content, listUsers }) {
       });
     } catch (e) {
       const msg = String(e?.message || '読み込み失敗');
-      try { console.error('payslip months summary error:', e); } catch {}
+      try { console.error('payslip months summary error:', e); } catch (e) { console.error('[legacy-payroll-tabs.page.js] Swallowed error:', e); }
       host.innerHTML = `<tr><td style="padding:10px 12px" colspan="3">読み込み失敗: ${msg}</td></tr>`;
     }
   }
@@ -460,5 +460,5 @@ export async function mountPayslipSend({ content, listUsers }) {
   const pm = document.getElementById('psMonth');
   if (pm) pm.addEventListener('change', () => { selectedMonth = String(pm.value || ''); loadHistory(); refreshMonthSummary(); });
   const pc = document.getElementById('psClear');
-  if (pc) pc.addEventListener('click', () => { selectedMonth = ''; try { document.getElementById('psMonth').value = ''; } catch {} loadHistory(); refreshMonthSummary(); });
+  if (pc) pc.addEventListener('click', () => { selectedMonth = ''; try { document.getElementById('psMonth').value = ''; } catch (e) { console.error('[legacy-payroll-tabs.page.js] Swallowed error:', e); } loadHistory(); refreshMonthSummary(); });
 }

@@ -27,7 +27,7 @@ async function mountEmployeesImpl({
   const signal = controller.signal;
   cleanup.add(() => { isCurrent = false; });
   cleanup.add(() => controller.abort());
-  cleanup.add(() => { try { content.innerHTML = ''; } catch { } });
+  cleanup.add(() => { try { content.innerHTML = ''; } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); } });
 
   try {
     const brand = document.querySelector('.topbar .brand');
@@ -35,9 +35,9 @@ async function mountEmployeesImpl({
     cleanup.add(() => {
       try {
         if (brand && brandHTML !== null) brand.innerHTML = brandHTML;
-      } catch { }
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     });
-  } catch { }
+  } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
 
   try {
     const contentEl = document.querySelector('#adminContent');
@@ -52,13 +52,13 @@ async function mountEmployeesImpl({
           contentEl.style.marginTop = contentMarginTop;
         }
         if (subbarEl) subbarEl.style.display = subbarDisplay;
-      } catch { }
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       try {
         document.body.classList.remove('emp-delete-mode');
         document.documentElement.classList.remove('emp-delete-mode');
-      } catch { }
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     });
-  } catch { }
+  } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   function renderEmployeesTopbar(mode) {
     try {
       const brand = document.querySelector('.topbar .brand');
@@ -90,7 +90,7 @@ async function mountEmployeesImpl({
             if (!inside) dd.setAttribute('hidden', '');
           };
           document.addEventListener('click', onDocClick);
-          cleanup.add(() => { try { document.removeEventListener('click', onDocClick); } catch { } });
+          cleanup.add(() => { try { document.removeEventListener('click', onDocClick); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); } });
           dd.addEventListener('click', async (e) => {
             const a = e.target.closest('a.item');
             if (!a) return;
@@ -119,13 +119,13 @@ async function mountEmployeesImpl({
           });
         }
       }
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   }
 
   try {
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') showNavSpinner();
-  } catch {}
+  } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   const seq = ++employeesRenderSeq;
   const params = new URLSearchParams(location.search);
   const detailId = params.get('detail');
@@ -142,7 +142,7 @@ async function mountEmployeesImpl({
     if (mode === 'list' && location.hash !== '#list') {
       history.replaceState(null, '', '#list');
     }
-  } catch {}
+  } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   try {
     const contentEl = document.querySelector('#adminContent');
     if (contentEl) {
@@ -159,11 +159,11 @@ async function mountEmployeesImpl({
         document.body.classList.remove('emp-delete-mode');
         document.documentElement.classList.remove('emp-delete-mode');
       }
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     if (mode === 'delete') {
       try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch { window.scrollTo(0, 0); }
     }
-  } catch {}
+  } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   if (detailId) {
     const u = await getEmployee(detailId, { signal });
     if (!isCurrent || seq !== employeesRenderSeq) return done;
@@ -188,7 +188,7 @@ async function mountEmployeesImpl({
       try {
         const x = new Date(raw);
         if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getDate()).padStart(2, '0')}`;
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       return raw;
     };
     content.innerHTML = '<h3 class="excel-header">社員詳細</h3>';
@@ -251,7 +251,7 @@ async function mountEmployeesImpl({
         aEls[0].setAttribute('href', editHref);
         aEls[1].setAttribute('href', backHref);
       }
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     hideNavSpinner();
     return done;
   }
@@ -367,7 +367,7 @@ async function mountEmployeesImpl({
       const cancelA = formEdit.querySelector('#btnCancelEdit');
       if (backA) backA.setAttribute('href', backHref);
       if (cancelA) cancelA.setAttribute('href', backHref);
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     formEdit.addEventListener('submit', async (e) => {
       e.preventDefault();
       const b = {
@@ -400,7 +400,7 @@ async function mountEmployeesImpl({
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`);
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       await renderEmployees();
     });
     const btnAvatar = formEdit.querySelector('#btnAvatarUpload');
@@ -415,7 +415,7 @@ async function mountEmployeesImpl({
           fd.append('file', fileEl.files[0]);
           await api.upload(`/api/admin/employees/${encodeURIComponent(u.id)}/avatar`, fd, { signal });
           if (statusEl) statusEl.textContent = 'アップロード完了';
-        } catch (err) {}
+        } catch (err) { console.error('[legacy-employees.page.js] Swallowed error:', err); }
       });
     }
     formEdit.querySelector('#editBack').addEventListener('click', async (e) => {
@@ -426,7 +426,7 @@ async function mountEmployeesImpl({
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`);
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       await renderEmployees();
     });
     formEdit.querySelector('#btnCancelEdit').addEventListener('click', async (e) => {
@@ -437,7 +437,7 @@ async function mountEmployeesImpl({
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`);
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       await renderEmployees();
     });
     content.appendChild(formEdit);
@@ -470,7 +470,7 @@ async function mountEmployeesImpl({
       const key = (document.querySelector('#editKey').value || '').trim();
       if (!key) {
         if (errEl) { errEl.style.display = 'block'; errEl.textContent = '社員番号を入力してください。'; }
-        try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch {}
+        try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
         return;
       }
       if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
@@ -500,7 +500,7 @@ async function mountEmployeesImpl({
       window.location.href = `/ui/admin?tab=employees&edit=${id}`;
     });
     content.appendChild(prompt);
-    try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch {}
+    try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     const tabsEl2 = content.querySelector('.tabs');
     if (tabsEl2) {
       tabsEl2.addEventListener('click', async (e) => {
@@ -509,7 +509,7 @@ async function mountEmployeesImpl({
         const target = a.getAttribute('href') || '#list';
         if (a.id === 'btnGoHome') {
           e.preventDefault();
-          try { sessionStorage.setItem('navSpinner', '1'); } catch {}
+          try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
           showNavSpinner();
           setTimeout(() => { window.location.href = '/ui/portal'; }, 300);
           return;
@@ -639,7 +639,7 @@ async function mountEmployeesImpl({
           });
         }
       }
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const msgEl = form.querySelector('#empCreateMsg');
@@ -683,9 +683,9 @@ async function mountEmployeesImpl({
             fd.append('file', fileEl.files[0]);
               await api.upload(`/api/admin/employees/${encodeURIComponent(r.id)}/avatar`, fd, { signal });
           }
-        } catch {}
+        } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
         if (msgEl) { msgEl.style.color = '#0f172a'; msgEl.textContent = '保存しました（1名追加）'; }
-        try { sessionStorage.setItem('navSpinner', '1'); } catch {}
+        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
         setTimeout(() => { window.location.href = '/ui/admin?tab=employees#list'; }, 350);
       } catch (err) {
         const m = String((err && err.message) ? err.message : '');
@@ -694,10 +694,10 @@ async function mountEmployeesImpl({
           msgEl.style.color = '#b00020';
           if (m.includes('社員番号') || low.includes('uniq_employee_code') || low.includes('duplicate entry')) {
             msgEl.textContent = '社員番号が既に存在します。別の番号を入力してください。';
-            try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch {}
+            try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
           } else if (m.includes('Email') || low.includes('email')) {
             msgEl.textContent = m;
-            try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch {}
+            try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
           } else {
             msgEl.textContent = '保存失敗: ' + (m || 'error');
           }
@@ -1030,7 +1030,7 @@ async function mountEmployeesImpl({
             `;
             document.head.appendChild(style);
           }
-        } catch {}
+        } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       } else {
         subnav.style.display = '';
         subnav.innerHTML = '';
@@ -1079,7 +1079,7 @@ async function mountEmployeesImpl({
     state.sortKey = params.get('sortKey') || state.sortKey;
     state.sortDir = params.get('sortDir') || state.sortDir;
     state.page = parseInt(params.get('page') || String(state.page), 10) || state.page;
-  } catch {}
+  } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
 
   const table = document.createElement('table');
   table.id = 'list';
@@ -1163,11 +1163,11 @@ async function mountEmployeesImpl({
         const thb = th.getBoundingClientRect();
         const left = Math.max(0, Math.round(thb.left - tb.left));
         box.style.marginLeft = `${left}px`;
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     };
     if (state.showAll || state.searchVisible) {
       alignBulk();
-      try { window.addEventListener('resize', alignBulk, { once: true }); } catch {}
+      try { window.addEventListener('resize', alignBulk, { once: true }); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     }
   }
 
@@ -1233,7 +1233,7 @@ async function mountEmployeesImpl({
     try {
       const x = new Date(raw);
       if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getDate()).padStart(2, '0')}`;
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     return raw;
   };
 
@@ -1353,7 +1353,7 @@ async function mountEmployeesImpl({
         const ok = sel.length === 1;
         editBtn.setAttribute('aria-disabled', ok ? 'false' : 'true');
       }
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   };
   table.addEventListener('change', (e) => {
     if (e.target && e.target.classList && e.target.classList.contains('empSel')) {
@@ -1422,7 +1422,7 @@ async function mountEmployeesImpl({
           if (state.page && state.page > 1) p.set('page', String(state.page));
           const s = p.toString();
           history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#delete');
-        } catch {}
+        } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       });
       tabShowAll.addEventListener('click', () => {
         state.showAll = true;
@@ -1444,7 +1444,7 @@ async function mountEmployeesImpl({
           p.set('showAll', '1');
           const s = p.toString();
           history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#delete');
-        } catch {}
+        } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       });
     }
     const tbEl = filterWrap.querySelector('.emp-del-toolbar'); if (tbEl) tbEl.style.display = (state.showAll || state.searchVisible) ? '' : 'none';
@@ -1455,7 +1455,7 @@ async function mountEmployeesImpl({
     const statusEl = filterWrap.querySelector('#empStatusFilter'); if (statusEl) statusEl.value = params.get('status') || '';
     const hireFromEl = filterWrap.querySelector('#empHireFrom'); if (hireFromEl) hireFromEl.value = params.get('hireFrom') || '';
     const hireToEl = filterWrap.querySelector('#empHireTo'); if (hireToEl) hireToEl.value = params.get('hireTo') || '';
-  } catch {}
+  } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
 
   filterWrap.querySelector('#btnEmpSearch').addEventListener('click', () => {
     const codeEl = filterWrap.querySelector('#empSearchCode');
@@ -1477,7 +1477,7 @@ async function mountEmployeesImpl({
           pager.style.display = 'none';
           listBox.style.display = 'none';
         }
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
       alert('検索条件を入力してください');
       return;
     }
@@ -1489,7 +1489,7 @@ async function mountEmployeesImpl({
         pager.style.display = '';
         listBox.style.display = '';
       }
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     try {
       const p = new URLSearchParams();
       if (state.code) p.set('code', state.code);
@@ -1506,7 +1506,7 @@ async function mountEmployeesImpl({
       if (state.page && state.page > 1) p.set('page', String(state.page));
       const s = p.toString();
       history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
-    } catch {}
+    } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   });
 
   if (mode === 'delete') {
@@ -1539,7 +1539,7 @@ async function mountEmployeesImpl({
         `;
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
-        const close = () => { try { document.body.removeChild(overlay); } catch {} };
+        const close = () => { try { document.body.removeChild(overlay); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); } };
         cleanup.add(close);
         overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
         modal.querySelector('#modalCancelDisable').addEventListener('click', close);
@@ -1548,7 +1548,7 @@ async function mountEmployeesImpl({
           btn.disabled = true;
           try {
             for (const id of ids) {
-              try { await deleteEmployee(id, { signal }); } catch {}
+              try { await deleteEmployee(id, { signal }); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
             }
             for (const id of ids) {
               const u = users.find(x => String(x.id) === String(id));
@@ -1585,9 +1585,9 @@ async function mountEmployeesImpl({
         if (state.page && state.page > 1) p.set('page', String(state.page));
         const s = p.toString();
         history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     }
-    try { const tb = filterWrap.querySelector('.emp-del-toolbar'); if (tb) tb.style.display = content.querySelectorAll('.empSel').length ? '' : 'none'; } catch {}
+    try { const tb = filterWrap.querySelector('.emp-del-toolbar'); if (tb) tb.style.display = content.querySelectorAll('.empSel').length ? '' : 'none'; } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   });
   next.addEventListener('click', () => {
     const total = applyFilterSort().length;
@@ -1608,14 +1608,14 @@ async function mountEmployeesImpl({
         if (state.page && state.page > 1) p.set('page', String(state.page));
         const s = p.toString();
         history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
-      } catch {}
+      } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     }
-    try { const tb = filterWrap.querySelector('.emp-del-toolbar'); if (tb) tb.style.display = table.querySelectorAll('.empSel').length ? '' : 'none'; } catch {}
+    try { const tb = filterWrap.querySelector('.emp-del-toolbar'); if (tb) tb.style.display = table.querySelectorAll('.empSel').length ? '' : 'none'; } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
   });
 
   cleanup.add(delegate(table, 'button[data-action="disable"]', 'click', async (e, btn) => {
     e.preventDefault();
-    try { e.stopPropagation(); } catch {}
+    try { e.stopPropagation(); } catch (e) { console.error('[legacy-employees.page.js] Swallowed error:', e); }
     const delId = btn.dataset.id || '';
     if (!delId) return;
     if (confirm('この社員を無効化しますか？')) {

@@ -7,7 +7,7 @@ const withAssetV = (path) => {
       const meta = document.querySelector('meta[name="asset-v"]');
       v = meta ? (meta.getAttribute('content') || '') : '';
       if (!v) v = window.__assetV ? String(window.__assetV) : '';
-    } catch {}
+    } catch (e) { console.error('[payroll.page.js] Swallowed error:', e); }
     if (!v) return p;
     return p + (p.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(v);
   } catch {

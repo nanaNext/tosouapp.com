@@ -42,7 +42,7 @@ async function ensureTable() {
     if (!set.has('version')) {
       try {
         await db.query(`ALTER TABLE payslip_files ADD COLUMN version INT NOT NULL DEFAULT 1`);
-      } catch {}
+      } catch (e) { console.error('[payslip.repository.js] Swallowed error:', e); }
     }
     const [idx] = await db.query(`
       SELECT index_name, non_unique
@@ -53,12 +53,12 @@ async function ensureTable() {
     if (!idxSet.has('uniq_user_month')) {
       try {
         await db.query(`ALTER TABLE payslip_files ADD CONSTRAINT uniq_user_month UNIQUE (userId, month)`);
-      } catch {}
+      } catch (e) { console.error('[payslip.repository.js] Swallowed error:', e); }
     }
     if (idxSet.has('idx_user_month')) {
       try {
         await db.query(`ALTER TABLE payslip_files DROP INDEX idx_user_month`);
-      } catch {}
+      } catch (e) { console.error('[payslip.repository.js] Swallowed error:', e); }
     }
     try {
       const [fk1] = await db.query(`
@@ -67,7 +67,7 @@ async function ensureTable() {
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payslip_files' AND COLUMN_NAME = 'userId' AND REFERENCED_TABLE_NAME IS NOT NULL
       `);
       if (!fk1 || !fk1.length) {
-        try { await db.query(`ALTER TABLE payslip_files ADD CONSTRAINT fk_payslip_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch {}
+        try { await db.query(`ALTER TABLE payslip_files ADD CONSTRAINT fk_payslip_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { console.error('[payslip.repository.js] Swallowed error:', e); }
       }
       const [fk2] = await db.query(`
         SELECT CONSTRAINT_NAME 
@@ -75,10 +75,10 @@ async function ensureTable() {
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payslip_files' AND COLUMN_NAME = 'uploaded_by' AND REFERENCED_TABLE_NAME IS NOT NULL
       `);
       if (!fk2 || !fk2.length) {
-        try { await db.query(`ALTER TABLE payslip_files ADD CONSTRAINT fk_payslip_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL`); } catch {}
+        try { await db.query(`ALTER TABLE payslip_files ADD CONSTRAINT fk_payslip_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL`); } catch (e) { console.error('[payslip.repository.js] Swallowed error:', e); }
       }
-    } catch {}
-  } catch {}
+    } catch (e) { console.error('[payslip.repository.js] Swallowed error:', e); }
+  } catch (e) { console.error('[payslip.repository.js] Swallowed error:', e); }
 }
 
 async function create({ userId, month, filename, originalName, uploadedBy, iv, authTag, keyVersion, hash, version = 1 }) {

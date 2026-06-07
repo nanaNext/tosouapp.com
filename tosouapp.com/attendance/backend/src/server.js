@@ -19,7 +19,7 @@ function initAutoGrantScheduler() {
       try {
         const users = await userRepo.listUsers();
         for (const u of users) {
-          try { await ensureUserGrants(u.id); } catch {}
+          try { await ensureUserGrants(u.id); } catch (e) { console.error('[server.js] Swallowed error:', e); }
         }
         lastRunDay = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
         console.log('[auto-grant] completed for day', lastRunDay);
@@ -68,7 +68,7 @@ async function start() {
         initBackupCronJob();
     }
   } catch (e) {
-    try { console.error('bootstrap_error', e && e.message ? e.message : e); } catch {}
+    try { console.error('bootstrap_error', e && e.message ? e.message : e); } catch (e) { console.error('[server.js] Swallowed error:', e); }
     process.exit(1);
   }
 }

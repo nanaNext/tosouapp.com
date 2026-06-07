@@ -24,7 +24,7 @@ const setNoStore = (res) => {
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     res.set('Surrogate-Control', 'no-store');
-  } catch { }
+  } catch (e) { console.error('[ui.routes.js] Swallowed error:', e); }
 };
 const sendPageNoCache = (file) => (req, res) => {
   setNoStore(res);
@@ -75,12 +75,12 @@ router.get('/ui/logout', async (req, res) => {
     const cookieRt = req.cookies?.refreshToken;
     const refreshToken = cookieRt || null;
     if (refreshToken) {
-      try { await refreshRepo.revokeToken(refreshToken); } catch { }
+      try { await refreshRepo.revokeToken(refreshToken); } catch (e) { console.error('[ui.routes.js] Swallowed error:', e); }
     }
     res.clearCookie('refreshToken', { path: '/api/auth' });
     res.clearCookie('csrfToken', { path: '/' });
     res.clearCookie('session_token', { path: '/' });
-  } catch { }
+  } catch (e) { console.error('[ui.routes.js] Swallowed error:', e); }
   const next = String(req.query?.next || '').trim();
   if (next) return res.redirect(302, next);
   return res.redirect(302, '/ui/login');

@@ -136,7 +136,7 @@ async function computeRecord(rec, ctx = null) {
         if (!wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
           template = true;
         }
-      } catch {}
+      } catch (e) { console.error('[attendance.rules.js] Swallowed error:', e); }
     }
   }
   if (!shift) {
