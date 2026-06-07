@@ -7,8 +7,8 @@ async function ensureDepartmentsTable() {
       name VARCHAR(255) NOT NULL UNIQUE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-  try { await db.query(`ALTER TABLE departments ADD COLUMN code VARCHAR(32) NULL`); } catch {}
-  try { await db.query(`ALTER TABLE departments ADD UNIQUE KEY uniq_departments_code (code)`); } catch {}
+  try { await db.query(`ALTER TABLE departments ADD COLUMN code VARCHAR(32) NULL`); } catch (e) { console.error('[department.repository.js] Swallowed error:', e); }
+  try { await db.query(`ALTER TABLE departments ADD UNIQUE KEY uniq_departments_code (code)`); } catch (e) { console.error('[department.repository.js] Swallowed error:', e); }
 }
 
 module.exports = {

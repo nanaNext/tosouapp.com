@@ -2,7 +2,7 @@
   const root = globalThis.AttendanceMonthly || {};
   const events = root.Events || null;
   const $ = (s) => document.querySelector(s);
-
+// Hàm này dùng để prefill tên người dùng vào ô userName
   const prefillUserName = () => {
     try {
       const el = $('#userName');
@@ -11,9 +11,9 @@
       const u = raw ? JSON.parse(raw) : null;
       const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
       if (name) el.textContent = name;
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.page.js] Swallowed error:', e); }
   };
-
+// Còn cái hàm này là dùng để set height cho các phần tử top và toolbar
   document.addEventListener('DOMContentLoaded', async () => {
     try {
       prefillUserName();
@@ -32,10 +32,10 @@
           const th2 = tb2 ? Math.max(0, tb2.offsetHeight) : 56;
           document.body.style.setProperty('--se-toolbar-height', `${th2}px`);
         }, { passive: true });
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.page.js] Swallowed error:', e); }
       if (events && typeof events.boot === 'function') await events.boot();
     } catch (e) {
-      try { root.Core?.showErr?.(String(e?.message || '')); } catch {}
+      try { root.Core?.showErr?.(String(e?.message || '')); } catch (e) { console.error('[attendance-monthly.page.js] Swallowed error:', e); }
     }
   });
 })();

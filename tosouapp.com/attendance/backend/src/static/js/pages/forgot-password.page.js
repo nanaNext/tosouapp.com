@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const birthDateInput = $('#birthDate');
   if (birthDateInput) {
     const closeDatePicker = (e) => {
-      try { e?.preventDefault(); } catch {}
+      try { e?.preventDefault(); } catch (e) { console.error('[forgot-password.page.js] Swallowed error:', e); }
       birthDateInput.blur();
     };
     // On some mobile browsers, tapping the date field again does not close the picker.

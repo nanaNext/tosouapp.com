@@ -49,7 +49,7 @@ router.post('/admin/upload',
     const maintenanceMode = !!flags.maintenanceMode;
     const disablePayslipUpload = !!flags.disablePayslipUpload;
     if (maintenanceMode || disablePayslipUpload) {
-      try { require('../../core/metrics').inc('maintenance_mode_hits', 1); } catch {}
+      try { require('../../core/metrics').inc('maintenance_mode_hits', 1); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
       return res.status(503).json({ message: 'Service temporarily disabled' });
     }
     const { userId, month } = req.body;
@@ -79,12 +79,12 @@ router.post('/admin/upload',
 
     if (s3Service.isR2Configured()) {
       await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
-      try { fs.unlinkSync(srcPath); } catch {}
+      try { fs.unlinkSync(srcPath); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     } else {
       if (payslipEncKey) {
         const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
         fs.writeFileSync(dstPath, outBuf);
-        try { fs.unlinkSync(srcPath); } catch {}
+        try { fs.unlinkSync(srcPath); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
       }
     }
     let createdId = null;
@@ -105,16 +105,16 @@ router.post('/admin/upload',
         try {
           const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
           fs.existsSync(dstPath) && fs.unlinkSync(dstPath);
-        } catch {}
+        } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
       }
       throw e;
     }
     const url = `/uploads/payslips/${filename}`;
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_upload', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id: createdId, userId: parseInt(userId, 10), month, filename }) });
-    } catch {}
+    } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     res.status(201).json({ id: createdId, userId: parseInt(userId, 10), month, url, originalName: req.file.originalname });
-    try { require('../../core/metrics').observe('payslip_upload_latency_ms', Date.now() - t0); } catch {}
+    try { require('../../core/metrics').observe('payslip_upload_latency_ms', Date.now() - t0); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -279,10 +279,10 @@ router.delete('/admin/:id',
         const p = path.join(__dirname, '../../', 'uploads', 'payslips', deleted.filename);
         if (fs.existsSync(p)) fs.unlinkSync(p);
       }
-    } catch {}
+    } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_delete', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id, filename: deleted.filename }), afterData: JSON.stringify({ reason: req.body?.reason }) });
-    } catch {}
+    } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     res.status(200).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -342,20 +342,20 @@ router.post('/admin/replace/:id',
 
     if (s3Service.isR2Configured()) {
       await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
-      try { fs.unlinkSync(srcPath); } catch {}
+      try { fs.unlinkSync(srcPath); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     } else {
       if (payslipEncKey) {
         const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
         fs.writeFileSync(dstPath, outBuf);
-        try { fs.unlinkSync(srcPath); } catch {}
+        try { fs.unlinkSync(srcPath); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
       }
     }
     const updated = await repo.updateFile(target.id, filename, req.file.originalname, req.user.id, iv, tag, keyVersion, hash);
-    try { fs.existsSync(oldPath) && fs.unlinkSync(oldPath); } catch {}
+    try { fs.existsSync(oldPath) && fs.unlinkSync(oldPath); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     const url = `/uploads/payslips/${updated.filename}`;
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_replace', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: target.id, filename: target.filename }), afterData: JSON.stringify({ filename: updated.filename, reason }) });
-    } catch {}
+    } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     res.status(200).json({ id: updated.id, userId: updated.userId, month: updated.month, url, originalName: updated.original_name });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -410,20 +410,20 @@ router.post('/admin/replace-by-month',
 
     if (s3Service.isR2Configured()) {
       await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
-      try { fs.unlinkSync(srcPath); } catch {}
+      try { fs.unlinkSync(srcPath); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     } else {
       if (payslipEncKey) {
         const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
         fs.writeFileSync(dstPath, outBuf);
-        try { fs.unlinkSync(srcPath); } catch {}
+        try { fs.unlinkSync(srcPath); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
       }
     }
     const updated = await repo.updateFile(target.id, filename, req.file.originalname, req.user.id, iv, tag, keyVersion, hash);
-    try { fs.existsSync(oldPath2) && fs.unlinkSync(oldPath2); } catch {}
+    try { fs.existsSync(oldPath2) && fs.unlinkSync(oldPath2); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     const url = `/uploads/payslips/${updated.filename}`;
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_replace', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: target.id, filename: target.filename }), afterData: JSON.stringify({ filename: updated.filename, reason }) });
-    } catch {}
+    } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     res.status(200).json({ id: updated.id, userId: updated.userId, month: updated.month, url, originalName: updated.original_name });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -445,7 +445,7 @@ router.get('/me/file/:id',
     const maintenanceMode3 = !!flags3.maintenanceMode;
     const disablePayslipDownload3 = !!flags3.disablePayslipDownload;
     if (maintenanceMode3 || disablePayslipDownload3) {
-      try { require('../../core/metrics').inc('maintenance_mode_hits', 1); } catch {}
+      try { require('../../core/metrics').inc('maintenance_mode_hits', 1); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
       return res.status(503).json({ message: 'Service temporarily disabled' });
     }
     const id = parseInt(req.params.id, 10);
@@ -473,7 +473,7 @@ router.get('/me/file/:id',
     
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
-    } catch {}
+    } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     
     res.setHeader('Content-Type', 'application/pdf');
     setAttachmentFilename(res, row.original_name || row.filename);
@@ -513,7 +513,7 @@ router.get('/admin/file/:id',
     const maintenanceMode4 = !!flags4.maintenanceMode;
     const disablePayslipDownload4 = !!flags4.disablePayslipDownload;
     if (maintenanceMode4 || disablePayslipDownload4) {
-      try { require('../../core/metrics').inc('maintenance_mode_hits', 1); } catch {}
+      try { require('../../core/metrics').inc('maintenance_mode_hits', 1); } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
       return res.status(503).json({ message: 'Service temporarily disabled' });
     }
     const id = parseInt(req.params.id, 10);
@@ -541,7 +541,7 @@ router.get('/admin/file/:id',
     
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
-    } catch {}
+    } catch (e) { console.error('[payslip.routes.js] Swallowed error:', e); }
     
     res.setHeader('Content-Type', 'application/pdf');
     setAttachmentFilename(res, row.original_name || row.filename);

@@ -40,17 +40,17 @@
     try { return localStorage.getItem('monthly.dailyCollapsed') === '1'; } catch { return false; }
   };
   const setDailyCollapsed = (v) => {
-    try { localStorage.setItem('monthly.dailyCollapsed', v ? '1' : '0'); } catch {}
+    try { localStorage.setItem('monthly.dailyCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
   const applyDailyCollapsed = (collapsed) => {
     const sec = $('#dailySection');
     const btn = $('#dailyToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch {}
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch {}
-      try { btn.setAttribute('aria-label', collapsed ? '日次実績を展開する' : '日次実績を折りたたむ'); } catch {}
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-label', collapsed ? '日次実績を展開する' : '日次実績を折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
   };
 
@@ -58,17 +58,17 @@
     try { return localStorage.getItem('monthly.contractCollapsed') === '1'; } catch { return false; }
   };
   const setContractCollapsed = (v) => {
-    try { localStorage.setItem('monthly.contractCollapsed', v ? '1' : '0'); } catch {}
+    try { localStorage.setItem('monthly.contractCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
   const applyContractCollapsed = (collapsed) => {
     const sec = $('#contractSection');
     const btn = $('#contractToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch {}
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch {}
-      try { btn.setAttribute('aria-label', collapsed ? '契約先一覧を展開する' : '契約先一覧を折りたたむ'); } catch {}
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-label', collapsed ? '契約先一覧を展開する' : '契約先一覧を折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
   };
 
@@ -76,17 +76,17 @@
     try { return localStorage.getItem('monthly.summaryCollapsed') === '1'; } catch { return false; }
   };
   const setSummaryCollapsed = (v) => {
-    try { localStorage.setItem('monthly.summaryCollapsed', v ? '1' : '0'); } catch {}
+    try { localStorage.setItem('monthly.summaryCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
   const applySummaryCollapsed = (collapsed) => {
     const sec = $('#summarySection');
     const btn = $('#summaryToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch {}
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch {}
-      try { btn.setAttribute('aria-label', collapsed ? '当月サマリを展開する' : '当月サマリを折りたたむ'); } catch {}
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-label', collapsed ? '当月サマリを展開する' : '当月サマリを折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
   };
 
@@ -94,17 +94,17 @@
     try { return localStorage.getItem('monthly.annualCollapsed') === '1'; } catch { return false; }
   };
   const setAnnualCollapsed = (v) => {
-    try { localStorage.setItem('monthly.annualCollapsed', v ? '1' : '0'); } catch {}
+    try { localStorage.setItem('monthly.annualCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
   const applyAnnualCollapsed = (collapsed) => {
     const sec = $('#annualSection');
     const btn = $('#annualToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch {}
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch {}
-      try { btn.setAttribute('aria-label', collapsed ? '年間サマリを展開する' : '年間サマリを折りたたむ'); } catch {}
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-label', collapsed ? '年間サマリを展開する' : '年間サマリを折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
   };
 
@@ -139,7 +139,7 @@
         main.style.setProperty('--se-bb-h', `${h}px`);
         main.style.setProperty('--se-hs-h', `${hsH}px`);
       }
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const syncStickyTop = () => {
@@ -147,7 +147,7 @@
       const top = document.querySelector('.kintai-top');
       const h = top ? Math.max(0, Math.round(top.getBoundingClientRect().height || 0)) : 0;
       document.documentElement.style.setProperty('--se-sticky-top', `${h}px`);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const syncTheadRowHeights = () => {
@@ -157,7 +157,7 @@
       const r1 = t?.querySelector('thead tr');
       const h = r1 ? Math.max(0, Math.round(r1.getBoundingClientRect().height || 0)) : 0;
       host?.style.setProperty('--se-thead-row1', `${h}px`);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const buildTargetDateSelect = (initialYM) => {
@@ -302,7 +302,7 @@
           at: Date.now()
         }));
       }
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const renderInstantRightSkeleton = (ym) => {
@@ -323,7 +323,7 @@
           </div>
         </div>
       `;
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const syncMonthHScroll = () => {
@@ -344,7 +344,7 @@
     const applyHeadTranslate = (headTables, scrollLeft) => {
       const x = Number(scrollLeft) || 0;
       for (const ht of headTables) {
-        try { ht.style.transform = `translateX(${-x}px)`; } catch {}
+        try { ht.style.transform = `translateX(${-x}px)`; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       }
     };
 
@@ -361,8 +361,8 @@
         requestAnimationFrame(() => refresh(attempt + 1));
         return;
       }
-      try { inner.style.width = `${sw}px`; } catch {}
-      try { if (host) bar.scrollLeft = host.scrollLeft; } catch {}
+      try { inner.style.width = `${sw}px`; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       applyHeadTranslate(headTables, host?.scrollLeft || 0);
       try {
         const need = (sw > cw + 1);
@@ -384,8 +384,8 @@
           if (need) rootEl.classList.add('hide-xscroll');
           else rootEl.classList.remove('hide-xscroll');
         }
-      } catch {}
-      try { syncFooterVars(); } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { syncFooterVars(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     };
 
     if (bar.dataset.wired !== '1') {
@@ -396,7 +396,7 @@
         const host = getHost();
         const rootEl = getRoot();
         const headTables = Array.from(rootEl?.querySelectorAll?.('.se-sticky-month-head table') || []);
-        try { if (host) host.scrollLeft = bar.scrollLeft; } catch {}
+        try { if (host) host.scrollLeft = bar.scrollLeft; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
@@ -407,7 +407,7 @@
         syncing = true;
         const host = getHost();
         const headTables = Array.from(getRoot()?.querySelectorAll?.('.se-sticky-month-head table') || []);
-        try { if (host) bar.scrollLeft = host.scrollLeft; } catch {}
+        try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
@@ -433,13 +433,13 @@
         requestAnimationFrame(() => refresh(attempt + 1));
         return;
       }
-      try { inner.style.height = `${sh}px`; } catch {}
-      try { if (host) bar.scrollTop = host.scrollTop; } catch {}
+      try { inner.style.height = `${sh}px`; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { if (host) bar.scrollTop = host.scrollTop; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       try {
         const need = (sh > ch + 1);
         bar.style.display = need ? 'block' : 'none';
         document.body.classList.toggle('has-v-scroll', need);
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     };
 
     if (bar.dataset.wired !== '1') {
@@ -448,7 +448,7 @@
         if (syncing) return;
         syncing = true;
         const host = getHost();
-        try { if (host) host.scrollTop = bar.scrollTop; } catch {}
+        try { if (host) host.scrollTop = bar.scrollTop; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         syncing = false;
       }, { passive: true });
       const hostNow = getHost();
@@ -456,7 +456,7 @@
         if (syncing) return;
         syncing = true;
         const host = getHost();
-        try { if (host) bar.scrollTop = host.scrollTop; } catch {}
+        try { if (host) bar.scrollTop = host.scrollTop; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         syncing = false;
       }, { passive: true });
       window.addEventListener('resize', () => { refresh(); }, { passive: true });
@@ -494,8 +494,8 @@
           if (need) rootEl.classList.add('hide-xscroll');
           else rootEl.classList.remove('hide-xscroll');
         }
-      } catch {}
-      try { syncFooterVars(); } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { syncFooterVars(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     };
     const schedule = () => {
       if (raf) return;
@@ -513,17 +513,17 @@
       const hs = document.querySelector('#monthHScroll');
       if (!bb && !hs) return;
       const ro = new ResizeObserver(() => {
-        try { syncFooterVars(); } catch {}
+        try { syncFooterVars(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       });
       if (bb) ro.observe(bb);
       if (hs) ro.observe(hs);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const ensureWorkflowUI = () => {
     const role = String(ctx.profile?.role || '').toLowerCase();
     if (role === 'employee') {
-      try { document.querySelector('#monthWorkflow')?.remove(); } catch {}
+      try { document.querySelector('#monthWorkflow')?.remove(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       ctx.wfWrap = null;
       ctx.btnPin = null;
       return;
@@ -576,12 +576,12 @@
         host.classList.remove('pin-month-head-top', 'pin-month-head-bottom');
         host.classList.add('pin-month-head-bottom');
       }
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     try {
       if (!ctx.btnPin) return;
       ctx.btnPin.style.display = 'none';
       ctx.btnPin.setAttribute('aria-pressed', 'true');
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const updateMonthWorkflowUI = () => {
@@ -598,19 +598,19 @@
   };
 
   const ensureCompactToggle = () => {
-    const head = document.querySelector('#dailySection .se-section-head');
+    const head = document.querySelector('.se-daily-actions');
     if (!head) return;
     if (document.getElementById('btnCompactView')) return;
-    const wrap = document.createElement('div');
-    wrap.style.display = 'inline-flex';
-    wrap.style.gap = '8px';
+    // Kiểm tra xem đã có nút nào có chữ "コンパクト表示" chưa để tránh tạo trùng lặp
+    const existingBtns = Array.from(head.querySelectorAll('button'));
+    if (existingBtns.some(b => b.textContent.includes('コンパクト表示'))) return;
+    
     const btn = document.createElement('button');
     btn.id = 'btnCompactView';
-    btn.className = 'se-btn small';
+    btn.className = 'se-tab';
     btn.type = 'button';
     btn.textContent = 'コンパクト表示';
-    wrap.appendChild(btn);
-    head.appendChild(wrap);
+    head.appendChild(btn);
     const applyState = () => {
       const isMobile = window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
       if (!isMobile) { document.body.classList.remove('mobile-compact'); return; }
@@ -627,7 +627,7 @@
     if (!ctx.tableHost) return;
     const ym = ctx.picker?.value || '';
     if (!/^\d{4}-\d{2}$/.test(ym)) return;
-    try { clearTimeout(ctx.autoSaveTimer); } catch {}
+    try { clearTimeout(ctx.autoSaveTimer); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     ctx.autoSaveTimer = setTimeout(async () => {
       if (!state.editableMonth) return;
       if (!ctx.tableHost) return;
@@ -635,7 +635,7 @@
       try {
         const until = Number(ctx.autoSavePausedUntil || 0);
         if (until && Date.now() < until) return;
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       if (ctx.tableHost.querySelector('.invalid')) return;
       const payload = collectUpdates(ctx.tableHost, ym, ctx.actingUserId || null, { includeAll: true });
       const body = JSON.stringify(payload);
@@ -653,7 +653,7 @@
             if (tr) tr.dataset.id = String(id);
           }
           if (created.length) ctx.lastAutoSavePayload = '';
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         try {
           const dates = new Set();
           for (const d of Array.isArray(payload?.dailyUpdates) ? payload.dailyUpdates : []) {
@@ -673,16 +673,16 @@
             const tr = ctx.tableHost.querySelector(`[data-row="1"][data-date="${cssEscape(ds)}"]`);
             if (tr) markRowSaved(tr);
           }
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         ctx.lastAutoSavePayload = body;
         clearDirty();
-        try { draft?.clear?.(ctx, ym); } catch {}
+        try { draft?.clear?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       } catch (e) {
         const msg = String(e?.message || '');
         if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
-          try { draft?.save?.(ctx, ym); } catch {}
-          try { ctx.lastAutoSavePayload = body; } catch {}
-          try { ctx.autoSavePausedUntil = Date.now() + 15000; } catch {}
+          try { draft?.save?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { ctx.lastAutoSavePayload = body; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { ctx.autoSavePausedUntil = Date.now() + 15000; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
           showErr('保存が競合しています。少し待ってから再度お試しください。');
         } else {
           showErr(msg || '保存に失敗しました');
@@ -703,7 +703,7 @@
     try {
       if (replace) history.replaceState(null, '', url.pathname + url.search + url.hash);
       else history.pushState(null, '', url.pathname + url.search + url.hash);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     if (ctx.picker1) ctx.picker1.value = ym;
     if (ctx.picker2) ctx.picker2.value = ym;
     showErr('');
@@ -713,7 +713,7 @@
       try {
         const raw = sessionStorage.getItem(`monthly.cache.${cacheKey}`);
         if (raw) persisted = JSON.parse(raw);
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       if (!persisted) {
         persisted = readFastMonthCache(cacheKey);
       }
@@ -722,7 +722,7 @@
           const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
           const latest = latestRaw ? JSON.parse(latestRaw) : null;
           if (latest && latest.detail && String(latest.ym || '') === String(ym || '')) persisted = latest;
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       }
     }
     let latestFast = null;
@@ -731,11 +731,11 @@
         const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
         const latest = latestRaw ? JSON.parse(latestRaw) : null;
         if (latest && latest.detail) latestFast = latest;
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
     const instant = cached || persisted || latestFast;
     if (!instant?.detail) {
-      try { renderInstantRightSkeleton(ym); } catch {}
+      try { renderInstantRightSkeleton(ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     }
     const useSpinner = opts?.spinner !== false && !instant;
     if (useSpinner) showSpinner();
@@ -749,11 +749,11 @@
           if ($('#staffName')) $('#staffName').textContent = '—';
           if ($('#officeCode')) $('#officeCode').textContent = '—';
           if ($('#empDept')) $('#empDept').textContent = '—';
-        } catch {}
-        try { renderContract(ctx.contractHost, null); } catch {}
-        try { renderWorkDetail(ctx.workDetailHost, null, ctx.profile); } catch {}
-        try { renderSummary(ctx.summaryHost, null, null); } catch {}
-        try { renderTable(ctx.tableHost, null, ctx.profile); } catch {}
+        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { renderContract(ctx.contractHost, null); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { renderWorkDetail(ctx.workDetailHost, null, ctx.profile); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { renderSummary(ctx.summaryHost, null, null); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { renderTable(ctx.tableHost, null, ctx.profile); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         return;
       }
 
@@ -787,7 +787,7 @@
       ctx.monthCache.set(cacheKey, { detail, timesheet: null, at: Date.now() });
       try {
         sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify({ detail, timesheet: null, at: Date.now() }));
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       writeFastMonthCache(cacheKey, { detail, timesheet: null });
       state.currentMonthDetail = detail;
       state.currentMonthTimesheet = null;
@@ -807,7 +807,7 @@
           $('#officeCode').textContent = String(officeCode || '').trim() || '—';
           $('#empDept').textContent = u2.departmentName || '—';
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       renderContract(ctx.contractHost, detail);
       renderWorkDetail(ctx.workDetailHost, detail, ctx.profile);
       renderSummary(ctx.summaryHost, detail, null);
@@ -820,7 +820,7 @@
       applyEditability(ym);
       updateMonthWorkflowUI();
       ensureCompactToggle();
-      try { draft?.restore?.(ctx, ym); } catch {}
+      try { draft?.restore?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       try {
         const role = String(ctx.profile?.role || '').toLowerCase();
         const lockedMsg = state.currentMonthStatus === 'submitted'
@@ -828,7 +828,7 @@
           : (state.currentMonthStatus === 'approved' ? 'この月は締め済のため編集できません。' : '');
         if (!state.editableMonth && lockedMsg) showErr(lockedMsg);
         else showErr('');
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       syncFooterVars();
       syncTheadRowHeights();
       syncMonthHScroll();
@@ -849,8 +849,8 @@
             ctx.monthCache.set(cacheKey, nextCache);
             sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify(nextCache));
             writeFastMonthCache(cacheKey, nextCache);
-          } catch {}
-          try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch {}
+          } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         })
         .catch(() => {});
       // Prefetch adjacent months for instant prev/next navigation.
@@ -862,7 +862,7 @@
           if (!py || !pm) return;
           const pDetail = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(py)}&month=${encodeURIComponent(pm)}${uidQ}`);
           ctx.monthCache.set(k, { detail: pDetail, timesheet: null, at: Date.now() });
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       };
       void prefetch(addMonths(ym, -1));
       void prefetch(addMonths(ym, 1));
@@ -885,17 +885,17 @@
       try {
         const ae = document.activeElement;
         const row = ae?.closest?.('[data-row="1"][data-date]');
-        try { ae?.blur?.(); } catch {}
+        try { ae?.blur?.(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         if (row) {
           row.dataset.dirty = '1';
           try {
             const sel = row.querySelector('select[data-field="classification"]');
             const v = String(sel?.value || '').trim();
             if (v) row.dataset.kubunConfirmed = '1';
-          } catch {}
-          try { root.Render?.recomputeRow?.(row); } catch {}
+          } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { root.Render?.recomputeRow?.(row); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       try {
         const rows = Array.from(ctx.tableHost?.querySelectorAll?.('[data-row="1"][data-date]') || []);
         for (const tr of rows) {
@@ -914,7 +914,7 @@
           tr.dataset.dirty = '1';
           if (v) tr.dataset.kubunConfirmed = '1';
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       // Keep auto planned times as virtual hints.
       // They must not be converted to "actual" just because user presses save.
       try {
@@ -922,8 +922,8 @@
         for (const tr of rows) {
           const inEl = tr.querySelector('input.se-time[data-field="checkIn"]');
           const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
-          try { inEl?.classList?.remove('invalid'); } catch {}
-          try { outEl?.classList?.remove('invalid'); } catch {}
+          try { inEl?.classList?.remove('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { outEl?.classList?.remove('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
           const inAuto = String(inEl?.dataset?.auto || '') === '1';
           const outAuto = String(outEl?.dataset?.auto || '') === '1';
           const inV = inAuto ? '' : String(inEl?.value || '').trim();
@@ -931,15 +931,15 @@
           const idRaw = String(tr.dataset.id || '').trim();
           const clearFlag = String(tr.dataset.clear || '') === '1';
           if (outV && !inV) {
-            try { inEl?.classList?.add('invalid'); } catch {}
-            try { outEl?.classList?.add('invalid'); } catch {}
+            try { inEl?.classList?.add('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+            try { outEl?.classList?.add('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
           }
           if (idRaw && !clearFlag && !inV && !outV) {
             tr.dataset.clear = '1';
             tr.dataset.dirty = '1';
           }
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       if (ctx.tableHost && ctx.tableHost.querySelector('.invalid')) {
         showErr('入力内容を確認してください（赤枠の項目）');
         throw new Error('入力内容を確認してください（赤枠の項目）');
@@ -965,7 +965,7 @@
           u.id = existingId;
           delete u.clientId;
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       const body = JSON.stringify(payload);
       const savedDates = new Set();
       try {
@@ -982,14 +982,14 @@
           const ds = tr ? String(tr.dataset.date || '').slice(0, 10) : '';
           if (ds) savedDates.add(ds);
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       let r = null;
       try {
         r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body });
       } catch (e) {
         const msg = String(e?.message || '');
         if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
-          try { draft?.save?.(ctx, ym); } catch {}
+          try { draft?.save?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
           const now = Date.now();
           const last = Number(ctx._dupRetryAt || 0);
           if (now - last > 5000) {
@@ -1022,7 +1022,7 @@
                     tr.dataset.clientId = '';
                   }
                 }
-              } catch {}
+              } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
               const body2 = JSON.stringify(payload);
               r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: body2 });
               if (r && r.ok === false) throw new Error(String(r?.message || '保存に失敗しました'));
@@ -1050,7 +1050,7 @@
           const tr = ctx.tableHost.querySelector(`[data-row="1"][data-client-id="${cssEscape(cid)}"]`);
           if (tr) tr.dataset.id = String(id);
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       try {
         const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
         const updates0 = Array.isArray(payload?.updates) ? payload.updates : [];
@@ -1080,15 +1080,23 @@
           const segs = ensureSegList(day);
           if (!segs) continue;
           if (id) {
-            const seg = segs.find(s => String(s?.id || '') === id);
-            if (seg) {
-              if (u.checkIn != null) seg.checkIn = u.checkIn;
-              if (Object.prototype.hasOwnProperty.call(u, 'checkOut')) seg.checkOut = u.checkOut;
-              if (Object.prototype.hasOwnProperty.call(u, 'workType')) seg.workType = u.workType;
+            if (u.delete === true) {
+              const idx = segs.findIndex(s => String(s?.id || '') === id);
+              if (idx !== -1) segs.splice(idx, 1);
+              if (tr && String(tr.dataset.id || '') === id) {
+                tr.dataset.id = '';
+              }
             } else {
-              segs.push({ id: u.id, checkIn: u.checkIn || null, checkOut: u.checkOut || null, workType: u.workType || null });
+              const seg = segs.find(s => String(s?.id || '') === id);
+              if (seg) {
+                if (u.checkIn != null) seg.checkIn = u.checkIn;
+                if (Object.prototype.hasOwnProperty.call(u, 'checkOut')) seg.checkOut = u.checkOut;
+                if (Object.prototype.hasOwnProperty.call(u, 'workType')) seg.workType = u.workType;
+              } else {
+                segs.push({ id: u.id, checkIn: u.checkIn || null, checkOut: u.checkOut || null, workType: u.workType || null });
+              }
+              updateRowVisual(tr);
             }
-            updateRowVisual(tr);
           } else if (cid) {
             const c = createdByCid.get(cid);
             const newId = c?.id != null ? String(c.id) : '';
@@ -1107,13 +1115,13 @@
             }
           }
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       try {
         for (const ds of savedDates) {
           const tr = ctx.tableHost.querySelector(`[data-row="1"][data-date="${cssEscape(ds)}"]`);
           if (tr) {
             markRowSaved(tr);
-            try { tr.dataset.clear = ''; } catch {}
+            try { tr.dataset.clear = ''; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
             try {
               const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
               const day = days.find(d => String(d?.date || '').slice(0,10) === ds);
@@ -1149,16 +1157,16 @@
                   tr.dataset.reasonBase = String(reason || '');
                   tr.dataset.breakBase = br;
                   tr.dataset.nightBreakBase = nb;
-                } catch {}
+                } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
               }
-            } catch {}
-            try { root.Render?.recomputeRow?.(tr); } catch {}
+            } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+            try { root.Render?.recomputeRow?.(tr); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
           }
         }
-      } catch {}
-      try { ctx.lastAutoSavePayload = body; } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { ctx.lastAutoSavePayload = body; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       clearDirty();
-      try { draft?.clear?.(ctx, ym); } catch {}
+      try { draft?.clear?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       const s = r?.saved || {};
       const daily = Number(s?.daily || 0);
       const created = Number(s?.segmentsCreated || 0);
@@ -1196,9 +1204,9 @@
           method: 'POST',
           body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId || null })
         }).catch((e) => {
-          try { console.error('Salary sync failed:', e); } catch {}
+          try { console.error('Salary sync failed:', e); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         });
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     } catch (e) {
       const msg = String(e?.message || '');
       if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
@@ -1283,9 +1291,9 @@
           tr.dataset.notesBase = notes || '';
           tr.dataset.breakBase = (br === '0:45' || br === '0:30' || br === '0:00') ? br : '1:00';
           tr.dataset.nightBreakBase = (nb === '1:00' || nb === '0:30') ? nb : '0:00';
-        } catch {}
-      } catch {}
-      try { root.Render?.recomputeRow?.(tr); } catch {}
+        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { root.Render?.recomputeRow?.(tr); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     } catch (e) {
       showErr(e?.message || '保存に失敗しました');
     } finally {
@@ -1338,14 +1346,31 @@
           outDt = toDateTime(addDaysISO(dateStr, 1), rawOut);
         }
       }
-      const wt = (tr.querySelector('input[data-field="ckOnsite"]')?.checked ? 'onsite'
+      const sel = tr.querySelector('select[data-field="classification"]');
+      const v = String(sel?.value || '').trim();
+      const rowBaseOff = String(tr.dataset.baseOff || '') === '1';
+      
+      const wtRaw = (tr.querySelector('input[data-field="ckOnsite"]')?.checked ? 'onsite'
         : tr.querySelector('input[data-field="ckRemote"]')?.checked ? 'remote'
         : tr.querySelector('input[data-field="ckSatellite"]')?.checked ? 'satellite'
         : String(tr.dataset.workType || '')).trim();
-      const reason = String(tr.querySelector('select[data-field="reason"]')?.value || '').trim();
-      const location = String(tr.querySelector('input[data-field="location"]')?.value || '').trim();
-      const memo = String(tr.querySelector('[data-field="memo"]')?.value || '').trim();
-      const notes = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
+      const reasonRaw = String(tr.querySelector('select[data-field="reason"]')?.value || '').trim();
+      const locationRaw = String(tr.querySelector('input[data-field="location"]')?.value || '').trim();
+      const memoRaw = String(tr.querySelector('[data-field="memo"]')?.value || '').trim();
+      const notesRaw = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
+      
+      const hasDailyInput = !!(v || wtRaw || locationRaw || reasonRaw || memoRaw);
+      const effectiveKubun = v || (hasDailyInput ? (rowBaseOff ? '休日出勤' : '出勤') : '');
+      const isHoliday = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '無給休暇' || effectiveKubun === '有給休暇' || effectiveKubun === '欠勤';
+      
+      // ĐẢM BẢO KHÔNG MẤT DỮ LIỆU KHI CHỌN 欠勤
+      // Khi là ngày nghỉ, lấy dữ liệu backup hoặc lấy chính cái hiện tại trên DOM (nếu nó bị ẩn chứ không bị xóa trắng)
+      const wt = isHoliday ? (tr.dataset.workTypeBackup || tr.dataset.workTypeBase || wtRaw || tr.dataset.workType || '') : wtRaw;
+      const reason = reasonRaw;
+      const location = isHoliday ? (tr.dataset.locBackup || tr.dataset.locationBase || locationRaw || String(tr.querySelector('input[data-field="location"]')?.value || '')) : locationRaw;
+      const memo = isHoliday ? (tr.dataset.memoBackup || tr.dataset.memoBase || memoRaw || String(tr.querySelector('[data-field="memo"]')?.value || '')) : memoRaw;
+      const notes = isHoliday ? (tr.dataset.notesBackup || tr.dataset.notesBase || notesRaw || String(tr.querySelector('input[data-field="notes"]')?.value || '')) : notesRaw;
+      
       const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
       const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
       const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
@@ -1362,8 +1387,16 @@
       if (idRaw) {
         const xid = parseInt(idRaw, 10);
         if (!inDt && !outDt) {
-          tr.dataset.clear = '1';
-          updates.push({ id: xid, delete: true });
+          // Không xóa bản ghi nếu đang ở trạng thái ngày nghỉ (để bảo lưu dữ liệu khi chuyển lại thành đi làm)
+          if (!isHoliday) {
+            // CHỈ xóa khi người dùng thực sự xóa trắng ô nhập liệu
+            const inEmpty = !inEl || String(inEl.value).trim() === '';
+            const outEmpty = !outEl || String(outEl.value).trim() === '';
+            if (inEmpty && outEmpty) {
+              tr.dataset.clear = '1';
+              updates.push({ id: xid, delete: true });
+            }
+          }
         } else if (inDt) {
           updates.push({ id: xid, checkIn: inDt, checkOut: outDt, workType: wt || null });
         } else {
@@ -1390,13 +1423,8 @@
             tr.dataset.clientId = '';
           }
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       
-      const sel = tr.querySelector('select[data-field="classification"]');
-      const v = String(sel?.value || '').trim();
-      const rowBaseOff = String(tr.dataset.baseOff || '') === '1';
-      const hasDailyInput = !!(v || wt || location || reason || memo);
-      const effectiveKubun = v || (hasDailyInput ? (rowBaseOff ? '休日出勤' : '出勤') : '');
       const hasDailyMeaningful = !!(effectiveKubun || wt || location || reason || memo || breakMinutes !== 60 || nightBreakMinutes !== 0);
       // Important: allow saving daily-only edits (kubun/work/location/memo) even when no time updates.
       if (!updates.length && !hasDailyMeaningful) return;
@@ -1459,7 +1487,14 @@
           day.segments = Array.isArray(day.segments) ? day.segments : [];
           for (const u of updates) {
             const id = u.id ? String(u.id) : null;
-            if (id) {
+            if (u.delete === true) {
+              if (id) {
+                day.segments = day.segments.filter(s => String(s?.id || '') !== id);
+                if (String(tr.dataset.id || '') === id) {
+                  tr.dataset.id = '';
+                }
+              }
+            } else if (id) {
               const seg = day.segments.find(s => String(s?.id || '') === id);
               if (seg) {
                 seg.checkIn = u.checkIn;
@@ -1482,7 +1517,7 @@
         tr.dataset.kubunConfirmed = effectiveKubun ? '1' : '';
         tr.dataset.kubunBase = effectiveKubun || '';
         if (sel && effectiveKubun && String(sel.value || '').trim() !== effectiveKubun) sel.value = effectiveKubun;
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       if (root.Render?.recomputeRow) root.Render.recomputeRow(tr);
       
     } catch (e) {
@@ -1542,7 +1577,7 @@
       const m = parseInt(ym.slice(5, 7), 10);
       try {
         await fetchJSONAuth('/api/attendance/month/submit', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       await fetchJSONAuth('/api/attendance/month/approve', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
       // Reflect approval immediately on UI, then sync in background.
       try {
@@ -1556,7 +1591,7 @@
         updateMonthWorkflowUI();
         renderTable(ctx.tableHost, state.currentMonthDetail, ctx.profile);
         renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet || null);
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       void setMonth(ym, true, { spinner: false }).catch(() => {});
     } catch (err) {
       showErr(err?.message || '承認に失敗しました');
@@ -1631,9 +1666,9 @@
 
       const fetchUsers = async () => {
         let role = '';
-        try { role = String(profile?.role || '').toLowerCase(); } catch {}
+        try { role = String(profile?.role || '').toLowerCase(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         if (!role) {
-          try { role = String(state?.profile?.role || '').toLowerCase(); } catch {}
+          try { role = String(state?.profile?.role || '').toLowerCase(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         }
         if (role === 'admin' || role === 'manager') {
           return fetchJSONAuth('/api/admin/users').catch(() => fetchJSONAuth('/api/manager/users'));
@@ -1692,16 +1727,16 @@
       rebuild();
       if (!ctx.actingUserId && users.length) {
         ctx.actingUserId = String(users[0].id || '').trim();
-        try { state.currentViewingUserId = ctx.actingUserId; } catch {}
-        try { sel.value = ctx.actingUserId; } catch {}
+        try { state.currentViewingUserId = ctx.actingUserId; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { sel.value = ctx.actingUserId; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
         // Force the URL to reflect the default user
         const url = new URL(window.location.href);
         url.searchParams.set('userId', ctx.actingUserId);
-        try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch {}
+        try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       }
 
       ctx.userPicker = { input, select: sel, rebuild };
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const initContractTabs = () => {
@@ -1715,7 +1750,7 @@
       if (ctx.contractHost) ctx.contractHost.toggleAttribute('hidden', String(key) === 'workDetail');
       if (ctx.workDetailHost) ctx.workDetailHost.toggleAttribute('hidden', String(key) !== 'workDetail');
     };
-    try { ctx.applyContractTab(); } catch {}
+    try { ctx.applyContractTab(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const initSummaryTabs = () => {
@@ -1728,7 +1763,7 @@
       for (const t of tabs) t.classList.toggle('active', String(t.dataset.tab || '') === String(key || ''));
       renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet);
     };
-    try { ctx.applySummaryTab(); } catch {}
+    try { ctx.applySummaryTab(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const initSummaryEditor = () => {
@@ -1774,12 +1809,12 @@
         state.currentMonthDetail.shiftAssignments = next.shiftAssignments;
         state.currentMonthDetail.workDetails = next.workDetails;
         state.currentMonthDetail.monthSummary = next.monthSummary;
-      } catch {}
-      try { renderContract(ctx.contractHost, state.currentMonthDetail); } catch {}
-      try { renderWorkDetail(ctx.workDetailHost, state.currentMonthDetail, ctx.profile); } catch {}
-      try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { renderContract(ctx.contractHost, state.currentMonthDetail); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { renderWorkDetail(ctx.workDetailHost, state.currentMonthDetail, ctx.profile); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     };
-    try { clearInterval(ctx.refreshTimer); } catch {}
+    try { clearInterval(ctx.refreshTimer); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     ctx.refreshFailCount = 0;
     ctx.refreshTimer = setInterval(async () => {
       try {
@@ -1788,12 +1823,12 @@
       } catch {
         ctx.refreshFailCount = (ctx.refreshFailCount || 0) + 1;
         if (ctx.refreshFailCount >= 2) {
-          try { clearInterval(ctx.refreshTimer); } catch {}
+          try { clearInterval(ctx.refreshTimer); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
           ctx.refreshTimer = null;
         }
       }
     }, 15000);
-    try { lastKey = buildKey(state.currentMonthDetail); } catch {}
+    try { lastKey = buildKey(state.currentMonthDetail); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const init = async () => {
@@ -1808,7 +1843,7 @@
     try {
       const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
       cachedProfile = raw ? JSON.parse(raw) : null;
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     const profileTask = ensureAuthProfile().catch(() => null);
     let profile = cachedProfile || null;
     if (!profile) {
@@ -1823,30 +1858,30 @@
     try {
       const top = document.querySelector('.kintai-top');
       if (top) top.style.display = '';
-      try { document.body.classList.remove('embed'); } catch {}
-    } catch {}
-    try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch {}
+      try { document.body.classList.remove('embed'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     try {
       const code = profile.employee_code || profile.employeeCode || (profile.id ? ('EMP' + String(profile.id).padStart(3, '0')) : '');
       $('#empCode').textContent = (ctx.role === 'employee') ? (code || '—') : '—';
-    } catch {}
-    try { $('#staffName').textContent = (ctx.role === 'employee') ? (profile.username || profile.email || '—') : '—'; } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { $('#staffName').textContent = (ctx.role === 'employee') ? (profile.username || profile.email || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     try {
       const officeCode = profile.office_code || profile.officeCode || '00084';
       $('#officeCode').textContent = (ctx.role === 'employee') ? (String(officeCode || '').trim() || '—') : '—';
-    } catch {}
-    try { $('#officeName').textContent = '飯塚塗研'; } catch {}
-    try { $('#empDept').textContent = (ctx.role === 'employee') ? (profile.departmentName || profile.department || '—') : '—'; } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { $('#officeName').textContent = '飯塚塗研'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { $('#empDept').textContent = (ctx.role === 'employee') ? (profile.departmentName || profile.department || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
 
     ctx.actingUserId = '';
     try {
       const u = new URL(window.location.href);
       const v = String(u.searchParams.get('userId') || '').trim();
       if (/^\d+$/.test(v) && ctx.role !== 'employee') ctx.actingUserId = v;
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     
     // For admin/manager, if no specific userId is set yet, wait for initUserPicker to set the first employee
-    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : (ctx.role === 'employee' ? String(profile.id || '') : ''); } catch {}
+    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : (ctx.role === 'employee' ? String(profile.id || '') : ''); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
 
     ctx.picker1 = $('#monthPicker');
     ctx.picker2 = $('#monthPicker2');
@@ -1871,7 +1906,7 @@
       setContractCollapsed(false);
       setSummaryCollapsed(false);
       setAnnualCollapsed(false);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
 
     applyDailyCollapsed(getDailyCollapsed());
     applyContractCollapsed(getContractCollapsed());
@@ -1887,7 +1922,7 @@
         const u = new URL(window.location.href);
         const m = String(u.searchParams.get('month') || '').slice(0, 7);
         if (/^\d{4}-\d{2}$/.test(m)) return m;
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       return monthJST();
     })();
     if (ctx.picker1) ctx.picker1.value = ctx.initialYM;
@@ -1896,7 +1931,7 @@
 
     // Do not block first month rendering on employee-list fetch.
     initUserPicker().then(() => {
-      try { root.Events?.bindUserPicker?.(); } catch {}
+      try { root.Events?.bindUserPicker?.(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       if (ctx.role !== 'employee') {
         // Force refresh for admin to show the auto-selected first employee
         setMonth(ctx.initialYM, true, { spinner: false }).catch(()=>{});
@@ -1930,8 +1965,8 @@
   };
 
   const clearRow = (tr) => {
-    try { tr.dataset.dirty = '1'; } catch {}
-    try { tr.dataset.clear = '1'; } catch {}
+    try { tr.dataset.dirty = '1'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { tr.dataset.clear = '1'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     const ckOn = tr.querySelector('input[data-field="ckOnsite"]');
     const ckRe = tr.querySelector('input[data-field="ckRemote"]');
     const ckSa = tr.querySelector('input[data-field="ckSatellite"]');
@@ -1953,7 +1988,7 @@
     if (ihSel) ihSel.value = '';
     const memo = tr.querySelector('[data-field="memo"]');
     if (memo) memo.value = '';
-    try { root.Render?.recomputeRow?.(tr); } catch {}
+    try { root.Render?.recomputeRow?.(tr); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
   };
 
   const checkImportFile = () => {
@@ -1970,15 +2005,15 @@
 
   const setActingUserId = async (nextUserId) => {
     ctx.actingUserId = String(nextUserId || '').trim();
-    try { if (ctx.monthCache instanceof Map) ctx.monthCache.clear(); } catch {}
-    try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch {}
+    try { if (ctx.monthCache instanceof Map) ctx.monthCache.clear(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     const ym = ctx.picker?.value || monthJST();
     
     // Pass userId to setMonth so it updates URL once
     const url = new URL(window.location.href);
     if (ctx.actingUserId) url.searchParams.set('userId', ctx.actingUserId);
     else url.searchParams.delete('userId');
-    try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch {}
+    try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     
     await setMonth(ym, true);
   };

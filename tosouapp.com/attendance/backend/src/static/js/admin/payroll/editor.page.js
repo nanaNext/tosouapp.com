@@ -495,7 +495,7 @@ export async function mount() {
     if (/^\d{4}-\d{2}$/.test(lastMonth)) {
       monthEl.value = lastMonth;
     }
-  } catch { }
+  } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
   let lastPdfKey = '';
   let lastSecureUrl = '';
   let lastEmpCode = '';
@@ -652,7 +652,7 @@ export async function mount() {
         btnDownloadPdf.disabled = !ok || !lastSecureUrl;
         btnDownloadPdf.style.opacity = (!ok || !lastSecureUrl) ? '0.55' : '1';
       }
-    } catch { }
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
   };
 
   const renderKv = (obj, { money = true, hide = [] } = {}) => {
@@ -698,7 +698,7 @@ export async function mount() {
 
   const updatePreview = (emp) => {
     if (!emp) return;
-    try { lastEmpCode = String((emp && emp['従業員コード']) ? emp['従業員コード'] : '').trim() || lastEmpCode; } catch { }
+    try { lastEmpCode = String((emp && emp['従業員コード']) ? emp['従業員コード'] : '').trim() || lastEmpCode; } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
     const totals = (emp && emp['合計'] && typeof emp['合計'] === 'object') ? emp['合計'] : {};
     const pay = (emp && emp['支払'] && typeof emp['支払'] === 'object') ? emp['支払'] : {};
     const kintai = (emp && emp['勤怠'] && typeof emp['勤怠'] === 'object') ? { ...emp['勤怠'] } : {};
@@ -730,7 +730,7 @@ export async function mount() {
       const sumEl = document.querySelector('#payrollPaySum');
       if (netEl) netEl.value = fmtNum(netPay);
       if (sumEl) sumEl.value = fmtNum(paySum);
-    } catch { }
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
     const autoEl = document.querySelector('#payrollAutoCalc');
     const isAuto = String(autoEl && autoEl.value != null ? autoEl.value : '0') === '1';
     const calcHint = isAuto ? '【自動計算ON】 保険料・所得税は自動算出されます' : '【自動計算OFF】 保険料・所得税は手入力の値が使用されます';
@@ -743,7 +743,7 @@ export async function mount() {
           absentEl.value = absentDays > 0 && val ? String(val) : '';
         }
       }
-    } catch { }
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
     previewCard.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div class="pe-title" style="margin:0;font-size:16px;">給与明細書（プレビュー）</div>
@@ -859,7 +859,7 @@ export async function mount() {
         const id = String(a.getAttribute('data-file-id') || '').trim();
         if (!id) return;
         let w = null;
-        try { w = window.open('about:blank', '_blank'); } catch { }
+        try { w = window.open('about:blank', '_blank'); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
         if (!w) { msg('ポップアップがブロックされました。許可してください。'); return; }
         setPopupMessage(w, '処理中…');
         let res = null;
@@ -872,7 +872,7 @@ export async function mount() {
         const ct = String(res.headers.get('content-type') || '').toLowerCase();
         if (!ct.includes('application/pdf')) {
           let t = '';
-          try { t = await res.clone().text(); } catch { }
+          try { t = await res.clone().text(); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
           setPopupMessage(w, 'PDFの取得に失敗しました。', t || '');
           return;
         }
@@ -880,8 +880,8 @@ export async function mount() {
         const url = URL.createObjectURL(blob);
         try {
           w.location.href = url;
-        } catch { }
-        setTimeout(() => { try { URL.revokeObjectURL(url); } catch { } }, 30000);
+        } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
+        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); } }, 30000);
       });
     });
   };
@@ -955,7 +955,7 @@ export async function mount() {
       const isAuto = String(acEl && acEl.value != null ? acEl.value : '0') === '1';
       const calcHint = isAuto ? '<span style="color:#3b82f6;background:#eff6ff;padding:2px 6px;border-radius:4px;font-size:12px;margin-left:8px;font-weight:600">自動計算ON</span>' : '<span style="color:#64748b;background:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:12px;margin-left:8px;font-weight:600">自動計算OFF</span>';
       setKpi({ gross: totals['総支給額'], deduct: totals['総控除額'], net, paySum: sum, hint: `${hint} ${calcHint}` });
-    } catch { }
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
     updatePreview(emp);
   };
 
@@ -968,17 +968,17 @@ export async function mount() {
     clearPdfStateIfKeyChanged
   });
 
-  const safeCloseWindow = (w) => { try { if (w && !w.closed) w.close(); } catch { } };
+  const safeCloseWindow = (w) => { try { if (w && !w.closed) w.close(); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); } };
   const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
   const setPopupMessage = (w, title, detail = '') => {
     if (!w || w.closed) return;
     const t = escapeHtml(title);
     const d = escapeHtml(detail);
-    try { w.document.open(); } catch { }
+    try { w.document.open(); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
     try {
       w.document.write(`<title>${t}</title><meta charset="utf-8"><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:24px;color:#0f172a}h1{font-size:16px;margin:0 0 12px}pre{white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px}</style><h1>${t}</h1>${d ? `<pre>${d}</pre>` : ''}`);
       w.document.close();
-    } catch { }
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
   };
 
   const createPdf = async (openedWindow) => {
@@ -1020,7 +1020,7 @@ export async function mount() {
     msg('処理中…');
     let w = openedWindow;
     if (!w) {
-      try { w = window.open('about:blank', '_blank'); } catch { }
+      try { w = window.open('about:blank', '_blank'); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
     }
     let res = null;
     try {
@@ -1033,7 +1033,7 @@ export async function mount() {
     const ct = String(res.headers.get('content-type') || '').toLowerCase();
     if (!ct.includes('application/pdf')) {
       let t = '';
-      try { t = await res.clone().text(); } catch { }
+      try { t = await res.clone().text(); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
       setPopupMessage(w, 'PDFの取得に失敗しました。', t || '');
       msg(t || 'PDFの取得に失敗しました。', false);
       return;
@@ -1047,12 +1047,12 @@ export async function mount() {
     try {
       if (w) {
         w.location.href = url;
-        try { w.document.title = filename; } catch { }
+        try { w.document.title = filename; } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
       } else {
         window.open(url, '_blank');
       }
-    } catch { }
-    setTimeout(() => { try { URL.revokeObjectURL(url); } catch { } }, 30000);
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); } }, 30000);
     msg('PDFを開きました', true);
   };
 
@@ -1071,7 +1071,7 @@ export async function mount() {
     const ct = String(res.headers.get('content-type') || '').toLowerCase();
     if (!ct.includes('application/pdf')) {
       let t = '';
-      try { t = await res.clone().text(); } catch { }
+      try { t = await res.clone().text(); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
       msg(t || 'PDFの取得に失敗しました。', false);
       return;
     }
@@ -1086,8 +1086,8 @@ export async function mount() {
       a.href = url;
       a.download = filename;
       a.click();
-    } catch { }
-    setTimeout(() => { try { URL.revokeObjectURL(url); } catch { } }, 30000);
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); } }, 30000);
     msg('PDFをダウンロードしました', true);
   };
 
@@ -1140,7 +1140,7 @@ export async function mount() {
   const btnCreate = actionTopBar.querySelector('#btnCreatePdf');
   if (btnCreate) btnCreate.addEventListener('click', () => {
     let w = null;
-    try { w = window.open('about:blank', '_blank'); } catch { }
+    try { w = window.open('about:blank', '_blank'); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
     if (!w) msg('ポップアップがブロックされました。許可してください。');
     createPdf(w).catch(e => showError(e));
   }, { signal });
@@ -1338,8 +1338,8 @@ export async function mount() {
     if (!userId || !/^\d{4}-\d{2}$/.test(ym)) return;
 
     clearPdfStateIfKeyChanged();
-    try { localStorage.setItem('payroll.lastUserId', userId); } catch { }
-    try { localStorage.setItem('payroll.lastMonth', ym); } catch { }
+    try { localStorage.setItem('payroll.lastUserId', userId); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
+    try { localStorage.setItem('payroll.lastMonth', ym); } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
 
     msg('データ取得中...');
 
@@ -1359,7 +1359,7 @@ export async function mount() {
           transportEl.value = u.allowance_transport != null ? String(u.allowance_transport) : '';
         }
       }
-    } catch { }
+    } catch (e) { console.error('[editor.page.js] Swallowed error:', e); }
 
     // 3. Tự động cập nhật số liệu chấm công mới nhất để đảm bảo chính xác tuyệt đối
     await autoFillKintaiCounts().catch(() => { });

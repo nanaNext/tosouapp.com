@@ -4,10 +4,10 @@ import { fetchJSONAuth } from '../../api/http.api.js';
 const $ = (sel) => document.querySelector(sel);
 
 const showSpinner = () => {
-  try { const el = document.querySelector('#pageSpinner'); if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; } } catch {}
+  try { const el = document.querySelector('#pageSpinner'); if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; } } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
 };
 const hideSpinner = () => {
-  try { const el = document.querySelector('#pageSpinner'); if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; } } catch {}
+  try { const el = document.querySelector('#pageSpinner'); if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; } } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
 };
 
 const todayISO = () => new Date().toLocaleDateString('sv-SE');
@@ -1186,7 +1186,7 @@ const render = async () => {
       
       const tableHost = document.getElementById('expDashList');
       if (tableHost) tableHost.style.display = 'block';
-    } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
   };
 
   const setStatusText = (t, isErr) => {
@@ -1415,7 +1415,7 @@ const render = async () => {
     try {
       const root = document.getElementById('expDashRoot');
       if (root && isDesktop()) root.classList.add('with-drawer');
-    } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     state.selectedId = String(id || '');
     drawer.removeAttribute('hidden');
     const desktop = isDesktop();
@@ -1427,7 +1427,7 @@ const render = async () => {
         backdrop?.removeAttribute('hidden');
         document.body.style.overflow = 'hidden';
       }
-    } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     body.innerHTML = `<div class="exp-dash-muted">読み込み中…</div>`;
     try {
       const [rec, files] = await Promise.all([
@@ -1507,8 +1507,8 @@ const render = async () => {
     try {
       const root = document.getElementById('expDashRoot');
       root?.classList.remove('with-drawer');
-    } catch {}
-    try { document.body.style.overflow = ''; } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { document.body.style.overflow = ''; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
   };
 
   const renderList = (result) => {
@@ -1966,7 +1966,7 @@ const render = async () => {
             const url = new URL(window.location);
             url.searchParams.set('tab', 'approved');
             window.history.replaceState({}, '', url);
-          } catch {}
+          } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
           await reloadAll();
         } catch (e) {
           alert('一部の承認に失敗しました。');
@@ -2002,7 +2002,7 @@ const render = async () => {
             const url = new URL(window.location);
             url.searchParams.set('tab', 'paid');
             window.history.replaceState({}, '', url);
-          } catch {}
+          } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
           await reloadAll();
         } catch (err) {
           alert('一部の処理に失敗しました。');
@@ -2098,7 +2098,7 @@ const render = async () => {
       if (el) el.textContent = String(name || '').trim();
       const chip = el?.closest?.('.exp-dash-userchip');
       if (chip) chip.setAttribute('title', String(name || '').trim());
-    } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     try {
       const depts = await fetchJSONAuth('/api/admin/departments').catch(() => fetchJSONAuth('/api/departments').catch(() => []));
       state.departments = Array.isArray(depts) ? depts : [];
@@ -2107,7 +2107,7 @@ const render = async () => {
       if (sel) {
         sel.innerHTML = `<option value="">全部署</option>` + state.departments.map((d) => `<option value="${esc(String(d.id))}">${esc(d.name || d.code || `#${String(d.id)}`)}</option>`).join('');
       }
-    } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     const monthInput = document.getElementById('expDashMonth');
     if (monthInput) monthInput.value = state.month;
     document.getElementById('expDashReload')?.addEventListener('click', async () => {
@@ -2161,7 +2161,7 @@ const render = async () => {
           const url = new URL(window.location);
           url.searchParams.set('tab', state.status || 'list');
           window.history.replaceState({}, '', url);
-        } catch {}
+        } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
 
         await reloadListOnly();
       });
@@ -2188,7 +2188,7 @@ const render = async () => {
           const url = new URL(window.location);
           url.searchParams.delete('tab');
           window.history.replaceState({}, '', url);
-        } catch {}
+        } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
 
         await reloadAll();
       });
@@ -2224,7 +2224,7 @@ const render = async () => {
             const url = new URL(window.location);
             url.searchParams.set('tab', 'archived');
             window.history.replaceState({}, '', url);
-          } catch {}
+          } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
           await reloadAll();
         } catch (err) {
           alert(`月次締めに失敗しました: ${err.message || 'unknown'}`);
@@ -2243,13 +2243,13 @@ const render = async () => {
         if (window.innerWidth <= 760) {
           const isOpen = root.classList.contains('mobile-open');
           btn.textContent = isOpen ? '✕' : '☰';
-          try { btn.setAttribute('aria-label', isOpen ? '閉じる' : 'メニュー'); } catch {}
+          try { btn.setAttribute('aria-label', isOpen ? '閉じる' : 'メニュー'); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
         } else {
           const collapsed = root.classList.contains('collapsed');
           btn.textContent = collapsed ? '☰' : '✕';
-          try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch {}
+          try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
         }
-      } catch {}
+      } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     };
     document.getElementById('expDashLogout')?.addEventListener('click', async () => {
       try {
@@ -2293,7 +2293,7 @@ const render = async () => {
           root.classList.toggle('collapsed');
         }
         syncBurger();
-      } catch {}
+      } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     });
     syncBurger();
     document.getElementById('expDashBell')?.addEventListener('click', (e) => {
@@ -2499,9 +2499,9 @@ const render = async () => {
   applyViewMode();
   await reloadAll();
   return () => {
-    try { if (pollTimer) window.clearInterval(pollTimer); } catch {}
-    try { hideSpinner(); } catch {}
-    try { closeDrawer(); } catch {}
+    try { if (pollTimer) window.clearInterval(pollTimer); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { hideSpinner(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { closeDrawer(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
   };
   const includeByMode = (status, mode) => {
     const st = String(status || '').toLowerCase();
@@ -2809,7 +2809,7 @@ const render = async () => {
           const latest = Array.from(monthSet).sort((a, b) => String(b).localeCompare(String(a)))[0] || '';
           const m = document.getElementById('expMonth');
           if (m && latest) m.value = latest;
-        } catch {}
+        } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
         viewState.selectedRowIds.clear();
         viewState.page = 1;
         await reload();
@@ -3203,7 +3203,7 @@ const render = async () => {
           const ok = window.confirm(`${ids.length}件を一括承認しますか？`);
           if (!ok) return;
           for (const rid of ids) {
-            try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch {}
+            try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
           }
           viewState.selectedRowIds.clear();
           await reload();
@@ -3288,7 +3288,7 @@ const render = async () => {
                if (!ok) return;
                approveGroupBtn.disabled = true;
                for (const rid of ids) {
-                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch {}
+                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                }
                viewState.selectedRowIds.clear();
                await reload();
@@ -3305,7 +3305,7 @@ const render = async () => {
                if (!ok) return;
                payGroupBtn.disabled = true;
                for (const rid of ids) {
-                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'paid', note: '' }) }); } catch {}
+                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'paid', note: '' }) }); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                }
                viewState.selectedRowIds.clear();
                await reload();
@@ -3393,7 +3393,7 @@ const render = async () => {
                   try {
                     const root = tableHost || document;
                     root.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'));
-                  } catch {}
+                  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                 };
                 const openEdit = async (recId) => {
                   closeOpenActionMenus();
@@ -3412,16 +3412,16 @@ const render = async () => {
                     set('adKm', r.distance_km != null ? String(r.distance_km) : '');
                     set('adUnitPrice', r.unit_price_per_km != null ? String(r.unit_price_per_km) : '');
                     set('adPurpose', r.purpose || '');
-                    try { const c1 = document.getElementById('adTeiki'); if (c1) c1.checked = !!r.teiki_flag; } catch {}
-                    try { const c2 = document.getElementById('adCommuter'); if (c2) c2.checked = !!r.commuter_pass; } catch {}
+                    try { const c1 = document.getElementById('adTeiki'); if (c1) c1.checked = !!r.teiki_flag; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+                    try { const c2 = document.getElementById('adCommuter'); if (c2) c2.checked = !!r.commuter_pass; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                     set('adAmount', r.amount != null ? String(r.amount) : '');
                     set('adMemo', r.memo || '');
-                  } catch {}
+                  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                   overlay.style.display = 'flex';
-                  try { document.body.style.overflow = 'hidden'; } catch {}
+                  try { document.body.style.overflow = 'hidden'; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                   const onCancel = () => {
                     overlay.style.display = 'none';
-                    try { document.body.style.overflow = ''; } catch {}
+                    try { document.body.style.overflow = ''; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                     cleanup();
                   };
                   const onSave = async () => {
@@ -3462,7 +3462,7 @@ const render = async () => {
                       const msg = changed.length ? ('変更内容:\n' + changed.join('\n') + '\n保存しますか？') : '変更はありません。保存しますか？';
                       const ok = window.confirm(msg);
                       if (!ok) return;
-                    } catch {}
+                    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                     try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(recId)}`, { method:'PATCH', body: JSON.stringify(payload) }); await reload(); onCancel(); } catch (errU) {
                       const status = document.getElementById('expStatus');
                       if (status) {
@@ -3510,7 +3510,7 @@ const render = async () => {
                 await openEdit(id);
               } else if (action === 'files') {
                 let rows = [];
-                try { rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch {}
+                try { rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
                 const next = rowEl3.nextElementSibling;
                 if (next && next.classList.contains('files-row')) {
                   next.remove();
@@ -3545,7 +3545,7 @@ const render = async () => {
                 await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method:'DELETE' });
                 await reload();
               }
-            } catch {}
+            } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
             if (action === 'chat') {
               const next = rowEl3.nextElementSibling;
               if (next && next.classList.contains('chat-row')) {
@@ -3575,7 +3575,7 @@ const render = async () => {
                 const rec = rows.find(x => String(x.id) === String(id));
                 const reason = rec && rec.manager_note ? String(rec.manager_note) : '';
                 if (reasonEl) reasonEl.textContent = reason ? ('差戻し理由: ' + reason) : '';
-              } catch {}
+              } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
               const load = async () => {
                 try {
                   const msgs = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/messages`);
@@ -3605,7 +3605,7 @@ const render = async () => {
                   await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/messages`, { method:'POST', body: JSON.stringify({ message: val }) });
                   text.value = '';
                   await load();
-                } catch (errSend) {}
+                } catch (errSend) { console.error('[expenses.page.js] Swallowed error:', errSend); }
                 send.disabled = false;
               };
               send.addEventListener('click', doSend);
@@ -3661,7 +3661,7 @@ const render = async () => {
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
   });
   const toggleDetailsBtn = $('#expToggleDetails');
   toggleDetailsBtn?.addEventListener('click', async () => {
@@ -3720,34 +3720,34 @@ const render = async () => {
         const month = $('#expMonth') ? $('#expMonth').value : todayMonth();
         const chats = await fetchJSONAuth(`/api/expenses/admin/messages?month=${encodeURIComponent(month)}`);
         renderChatNotice(chats, $('#expTableHost'));
-      } catch {}
+      } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     }, 30000);
-  } catch {}
+  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
   return () => {
-    try { if (pollTimer) window.clearInterval(pollTimer); } catch {}
-    try { hideSpinner(); } catch {}
+    try { if (pollTimer) window.clearInterval(pollTimer); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { hideSpinner(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     try {
       const backdrop = document.getElementById('drawerBackdrop');
       if (backdrop) {
         backdrop.setAttribute('hidden', '');
         backdrop.style.display = 'none';
       }
-    } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
     try {
       const overlay = document.getElementById('adminEditModalOverlay');
       if (overlay) {
         overlay.style.display = 'none';
         overlay.remove();
       }
-    } catch {}
-    try { document.body.style.overflow = ''; } catch {}
+    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { document.body.style.overflow = ''; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
   };
 };
 
 export async function mount() {
   const profile = await requireAdmin();
   if (!profile) return;
-  try { window.ADMIN_ID = profile.id; } catch {}
-  try { window.ADMIN_PROFILE = profile; } catch {}
+  try { window.ADMIN_ID = profile.id; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  try { window.ADMIN_PROFILE = profile; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
   return await render();
 }

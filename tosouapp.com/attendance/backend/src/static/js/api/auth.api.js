@@ -24,7 +24,7 @@ async function fetchJSON(url, options) {
     try {
       const j = await res.json();
       msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
-    } catch {}
+    } catch (e) { console.error('[auth.api.js] Swallowed error:', e); }
     throw new Error(msg);
   }
   return res.json();
@@ -42,11 +42,11 @@ export async function login(email, password) {
     try {
       const j = await res.json();
       msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
-    } catch {}
+    } catch (e) { console.error('[auth.api.js] Swallowed error:', e); }
     throw new Error(msg);
   }
   const data = await res.json();
-  try { localStorage.setItem('auth-login-event', Date.now()); } catch {}
+  try { localStorage.setItem('auth-login-event', Date.now()); } catch (e) { console.error('[auth.api.js] Swallowed error:', e); }
   return data;
 }
 
@@ -71,7 +71,7 @@ export async function me(accessToken) {
     try {
       const j = await res.json();
       msg = j.message || msg;
-    } catch {}
+    } catch (e) { console.error('[auth.api.js] Swallowed error:', e); }
     throw new Error(msg);
   }
   return res.json();
@@ -90,7 +90,7 @@ export async function refresh() {
     try {
       const j = await res.json();
       msg = j.message || msg;
-    } catch {}
+    } catch (e) { console.error('[auth.api.js] Swallowed error:', e); }
     throw new Error(msg);
   }
   return res.json();
@@ -114,7 +114,7 @@ export async function logout() {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.setItem('auth-logout-event', Date.now());
-  } catch {}
+  } catch (e) { console.error('[auth.api.js] Swallowed error:', e); }
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

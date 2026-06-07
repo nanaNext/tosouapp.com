@@ -12,7 +12,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch {}
+  } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
 };
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -33,27 +33,27 @@ const showSpinner = () => {
     spinnerCount++;
     if (!el) return;
     if (spinnerCount === 1) {
-      try { clearTimeout(spinnerTimer); } catch { }
+      try { clearTimeout(spinnerTimer); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
       spinnerTimer = setTimeout(() => {
         try {
           if (spinnerCount > 0) {
             el.removeAttribute('hidden');
             el.style.display = 'grid';
           }
-        } catch { }
+        } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
       }, 180);
     }
-  } catch { }
+  } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
 };
 const hideSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     spinnerCount = Math.max(0, spinnerCount - 1);
     if (spinnerCount !== 0) return;
-    try { clearTimeout(spinnerTimer); } catch { }
+    try { clearTimeout(spinnerTimer); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
     spinnerTimer = null;
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch { }
+  } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
 };
 
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
@@ -78,19 +78,19 @@ const wireUserMenu = () => {
     const open = !dd.hasAttribute('hidden');
     if (open) dd.setAttribute('hidden', '');
     else dd.removeAttribute('hidden');
-    try { btn.setAttribute('aria-expanded', open ? 'false' : 'true'); } catch { }
+    try { btn.setAttribute('aria-expanded', open ? 'false' : 'true'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
   });
   document.addEventListener('click', (e) => {
     if (e.target.closest('.user-menu')) return;
-    try { dd.setAttribute('hidden', ''); } catch { }
-    try { btn.setAttribute('aria-expanded', 'false'); } catch { }
+    try { dd.setAttribute('hidden', ''); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+    try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
   });
   const logoutBtn = $('#btnLogout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      try { await logout(); } catch { }
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch { }
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch { }
+      try { await logout(); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
       window.location.replace('/ui/login');
     });
   }
@@ -106,18 +106,18 @@ const wireDrawer = () => {
   btn.dataset.bound = '1';
 
   const close = () => {
-    try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch { }
-    try { document.body.classList.remove('drawer-open'); } catch { }
+    try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+    try { document.body.classList.remove('drawer-open'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
   };
   const open = () => {
-    try { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); } catch { }
-    try { document.body.classList.add('drawer-open'); } catch { }
+    try { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+    try { document.body.classList.add('drawer-open'); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
   };
   btn.addEventListener('click', (e) => { e.preventDefault(); if (drawer.hasAttribute('hidden')) open(); else close(); });
   closeBtn?.addEventListener('click', (e) => { e.preventDefault(); close(); });
   backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-  try { drawer.querySelectorAll('.drawer-item, a').forEach(el => el.addEventListener('click', close)); } catch {}
+  try { drawer.querySelectorAll('.drawer-item, a').forEach(el => el.addEventListener('click', close)); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
 };
 
 const pickLatestSegment = (segments) => {
@@ -188,8 +188,8 @@ const renderForm = async () => {
       const seg = pickLatestSegment(r?.segments);
       attendanceId = seg?.id || null;
       setCurrent(seg);
-      try { if (els.in && seg?.checkIn) els.in.value = String(seg.checkIn).slice(0, 16); } catch { }
-      try { if (els.out && seg?.checkOut) els.out.value = String(seg.checkOut).slice(0, 16); } catch { }
+      try { if (els.in && seg?.checkIn) els.in.value = String(seg.checkIn).slice(0, 16); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+      try { if (els.out && seg?.checkOut) els.out.value = String(seg.checkOut).slice(0, 16); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
     } catch (e) {
       attendanceId = null;
       setCurrent(null);
@@ -235,14 +235,14 @@ const renderForm = async () => {
         await fetchJSONAuth('/api/adjust', { method: 'POST', body: JSON.stringify({ attendanceId, requestedCheckIn: inV, requestedCheckOut: outV, reason }) });
         if (els.status) els.status.textContent = '申請しました';
       }
-      try { delete els.submit.dataset.editId; els.submit.textContent = '申請'; } catch {}
+      try { delete els.submit.dataset.editId; els.submit.textContent = '申請'; } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
       await renderList();
     } catch (e) {
       if (els.status) els.status.textContent = '';
       showErr(e?.message || '申請に失敗しました');
     } finally {
       hideSpinner();
-      try { if (els.submit) els.submit.disabled = false; } catch { }
+      try { if (els.submit) els.submit.disabled = false; } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
     }
   });
 };
@@ -346,7 +346,7 @@ const renderList = async () => {
       if (searchInput) {
         let t = 0;
         searchInput.addEventListener('input', () => {
-          try { clearTimeout(t); } catch {}
+          try { clearTimeout(t); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
           t = setTimeout(() => {
             const q = String(searchInput.value || '').trim().toLowerCase();
             const rows = host.querySelectorAll('.adj-table tbody tr');
@@ -360,8 +360,8 @@ const renderList = async () => {
       const newBtn = document.getElementById('adjustNewBtn');
       if (newBtn) {
         newBtn.addEventListener('click', () => {
-          try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
-          try { document.getElementById('adjReason')?.focus(); } catch {}
+          try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+          try { document.getElementById('adjReason')?.focus(); } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
         });
       }
       document.querySelectorAll('.btn-delete').forEach(btn => {
@@ -388,8 +388,8 @@ const renderList = async () => {
           if (inEl) inEl.value = cin.replace(' ', 'T');
           if (outEl) outEl.value = cout.replace(' ', 'T');
           if (rsEl) rsEl.value = reason;
-          try { document.getElementById('adjSubmit').textContent = '更新'; } catch {}
-          try { document.getElementById('adjSubmit').dataset.editId = id; } catch {}
+          try { document.getElementById('adjSubmit').textContent = '更新'; } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
+          try { document.getElementById('adjSubmit').dataset.editId = id; } catch (e) { console.error('[adjust.page.js] Swallowed error:', e); }
           const statusEl = document.getElementById('adjStatus');
           if (statusEl) statusEl.textContent = '編集モード';
           window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -127,6 +127,7 @@
       // IMPORTANT: classify by effective kubun (fallback to planned default),
       // otherwise planned workdays with empty kubun can be skipped from updates.
       const isWorkKubun = workKubunSet.has(effectiveKubun);
+      const isHoliday = !isWorkKubun;
       const effTime = (el, acceptAuto) => {
         const v = String(el?.value || '');
         if (acceptAuto) return v;
@@ -164,7 +165,10 @@
       const workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
       if (idRaw) {
         if (clearFlag || (!checkIn && !checkOut)) {
-          updates.push({ id: parseInt(idRaw, 10), delete: true });
+          // Không xóa bản ghi nếu đang là ngày nghỉ
+          if (!isHoliday) {
+            updates.push({ id: parseInt(idRaw, 10), delete: true });
+          }
         } else if (checkIn) {
           updates.push({ id: parseInt(idRaw, 10), checkIn, checkOut, workType });
         }

@@ -13,9 +13,9 @@
 
   const $ = (sel) => document.querySelector(sel);
 
-  try { globalThis.__monthlyBooted = Date.now(); } catch {}
+  try { globalThis.__monthlyBooted = Date.now(); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
   // Mark core nav as owner early so HTML fallback does not bind competing handlers.
-  try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch {}
+  try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
 
   const showSpinner = (mode = '', isSuccess = false) => {
     try {
@@ -29,23 +29,23 @@
         }
         if (mode) el.setAttribute('data-mode', String(mode));
         else el.removeAttribute('data-mode');
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       
       if (isSuccess) {
-        try { el.removeAttribute('hidden'); } catch {}
+        try { el.removeAttribute('hidden'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       } else {
-        try { el.removeAttribute('hidden'); } catch {}
+        try { el.removeAttribute('hidden'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       }
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
   };
   const hideSpinner = () => {
     try {
       const el = $('#pageSpinner');
       if (!el) return;
-      try { el.removeAttribute('data-mode'); } catch {}
-      try { el.classList.remove('is-success'); } catch {}
+      try { el.removeAttribute('data-mode'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
+      try { el.classList.remove('is-success'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       el.setAttribute('hidden', '');
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
   };
 
   const MonthlyAuth = globalThis.MonthlyAuth || {};
@@ -57,7 +57,7 @@
   const cssEscape = (s) => {
     try {
       if (globalThis.CSS && typeof globalThis.CSS.escape === 'function') return globalThis.CSS.escape(String(s));
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     return String(s).replace(/[\"\\]/g, '\\$&');
   };
 
@@ -65,7 +65,7 @@
     try {
       const c = globalThis.crypto;
       if (c && typeof c.randomUUID === 'function') return c.randomUUID();
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     return 'cid_' + Date.now() + '_' + Math.random().toString(16).slice(2);
   };
 
@@ -89,7 +89,7 @@
         try {
           el.classList.remove('show');
           el.setAttribute('hidden', '');
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
         return;
       }
       if (toastTimer) {
@@ -105,18 +105,18 @@
         try {
           el.classList.remove('show');
           el.setAttribute('hidden', '');
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
         toastTimer = null;
       }, 1850);
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
   };
 
   const setDirty = () => {
     state.dirty = true;
     window.onbeforeunload = (e) => {
-      try { e.preventDefault(); } catch {}
+      try { e.preventDefault(); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       const msg = '確定されていない内容は失われます。よろしいですか？';
-      try { e.returnValue = msg; } catch {}
+      try { e.returnValue = msg; } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       return msg;
     };
   };
@@ -161,9 +161,9 @@
     const menu = $('#userMenu');
     if (!btn || !menu) return;
     const doLogout = async () => {
-      try { await logout(); } catch {}
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch {}
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch {}
+      try { await logout(); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
+      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
+      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       window.location.replace('/ui/login');
     };
     btn.addEventListener('click', (e) => {
@@ -174,7 +174,7 @@
     });
     document.addEventListener('click', (e) => {
       if (e.target?.closest?.('#userBtn') || e.target?.closest?.('#userMenu')) return;
-      try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch {}
+      try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     });
     $('#btnLogout')?.addEventListener('click', doLogout);
     document.querySelectorAll('[data-action=\"logout\"]').forEach((el) => {
@@ -225,7 +225,7 @@
         panel.innerHTML = rows.map((r) => `<a href="${r.href}">${r.label}</a>`).join('');
       });
     };
-    try { ensurePanelLinks(); } catch {}
+    try { ensurePanelLinks(); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     // Normalize old/cached links that may miss "/ui" prefix on mobile devices.
     try {
       document.querySelectorAll('.kintai-dd[data-dd-panel] a[href^="/"]').forEach((a) => {
@@ -233,12 +233,12 @@
         const fixed = normalizeNavHref(href);
         if (fixed && fixed !== href) a.setAttribute('href', fixed);
       });
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     const btns = Array.from(document.querySelectorAll('.kintai-nav-btn[data-dd]'));
     const panels = Array.from(document.querySelectorAll('.kintai-dd[data-dd-panel]'));
     if (!btns.length || !panels.length) return;
-    try { document.body.classList.add('nav-js'); } catch {}
-    try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch {}
+    try { document.body.classList.add('nav-js'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
+    try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     try {
       if (document.documentElement.dataset.monthlyCoreNavLinkBound !== '1') {
         document.documentElement.dataset.monthlyCoreNavLinkBound = '1';
@@ -266,11 +266,11 @@
         document.addEventListener('touchend', go, true);
         document.addEventListener('click', go, true);
       }
-    } catch {}
+    } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
 
     const closeAll = () => {
       for (const b of btns) {
-        try { b.setAttribute('aria-expanded', 'false'); } catch {}
+        try { b.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       }
       for (const p of panels) {
         try {
@@ -285,20 +285,20 @@
           p.style.overflow = '';
           p.style.zIndex = '';
           p.style.transform = '';
-        } catch {}
+        } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       }
-      document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch {} });
+      document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); } });
     };
 
     const openOne = (key) => {
-      try { ensurePanelLinks(); } catch {}
+      try { ensurePanelLinks(); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       closeAll();
       const btn = btns.find(b => b.dataset.dd === key);
       const panel = panels.find(p => p.dataset.ddPanel === key);
       if (!btn || !panel) return;
-      try { btn.setAttribute('aria-expanded', 'true'); } catch {}
-      try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch {}
-      try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch {}
+      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
+      try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
+      try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
       try {
         const mobile = !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
         if (mobile) {
@@ -319,8 +319,8 @@
             const maxLeft = Math.max(6, (window.innerWidth || 0) - w - 6);
             left = Math.min(left, maxLeft);
             panel.style.left = `${left}px`;
-          } catch {}
-          try { panel.style.transform = 'none'; } catch {}
+          } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
+          try { panel.style.transform = 'none'; } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
         } else {
           panel.style.position = '';
           panel.style.left = '';
@@ -332,7 +332,7 @@
           panel.style.zIndex = '';
           panel.style.transform = '';
         }
-      } catch {}
+      } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     };
 
     for (const b of btns) {
@@ -374,10 +374,10 @@
   // Bind top nav independently so dropdown still works even if later boot steps fail.
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      try { wireTopNavDropdowns(); } catch {}
+      try { wireTopNavDropdowns(); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
     }, { once: true });
   } else {
-    try { wireTopNavDropdowns(); } catch {}
+    try { wireTopNavDropdowns(); } catch (e) { console.error('[attendance-monthly.core.js] Swallowed error:', e); }
   }
 
   const addMonths = (ym, delta) => {

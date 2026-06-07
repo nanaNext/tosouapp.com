@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
       var clean = Array.from(new Set((Array.isArray(arr) ? arr : []).map(function (x) { return parseInt(String(x || '0'), 10) || 0; }).filter(function (x) { return !!x; }))).slice(0, 2000);
       localStorage.setItem(ADMIN_HIDDEN_KEY, JSON.stringify(clean));
-    } catch {}
+    } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
   };
   var appendHiddenIds = function (ids) {
     var current = readHiddenIds();
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
       st.textContent = '.notify-btn{position:relative;min-width:44px;padding:0 10px}.notify-bell{font-size:16px;line-height:1}.notify-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff}.notify-badge[hidden]{display:none !important}.admin-notify-panel{position:fixed;top:56px;right:12px;width:360px;max-height:420px;overflow:auto;background:#fff;border:1px solid #dbe3f0;border-radius:10px;box-shadow:0 12px 36px rgba(15,23,42,.18);z-index:2147483646}.admin-notify-panel[hidden]{display:none}.admin-notify-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eef2f7;font-weight:700;color:#0f172a}.admin-notify-summary{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border-bottom:1px solid #eef2f7;background:#f8fafc}.admin-notify-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:2px 8px;font-size:11px;color:#334155}.admin-notify-chip strong{color:#0f172a}.admin-notify-chip .unread{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:700}.admin-notify-list{padding:6px}.admin-notify-row{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:8px;border:1px solid transparent}.admin-notify-row:hover{background:#f8fbff;border-color:#e5edf8}.admin-notify-row.is-unread{background:#eef6ff;border-color:#dbeafe}.admin-notify-item{display:block;flex:1;min-width:0;text-decoration:none;color:#0f172a}.admin-notify-count{display:inline-block;min-width:18px;padding:1px 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;margin-left:6px;vertical-align:middle}.admin-notify-delete{border:1px solid #e2e8f0;background:#fff;color:#64748b;border-radius:6px;font-size:11px;line-height:1;padding:4px 6px;cursor:pointer}.admin-notify-delete:hover{border-color:#cbd5e1;color:#334155;background:#f8fafc}.admin-notify-meta{font-size:11px;color:#64748b}.admin-notify-title{font-size:13px;font-weight:700;color:#0f172a;margin:2px 0}.admin-notify-empty{padding:14px;color:#64748b;font-size:12px}';
       document.head.appendChild(st);
     }
-  } catch {}
+  } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
 
   try {
     var btn = document.getElementById('userBtnInitial');
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var nameEl = document.getElementById('userName');
     var userStr = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     var full = '';
-    try { if (userStr) { var u = JSON.parse(userStr); full = (u && u.username) || (u && u.email) || ''; } } catch {}
+    try { if (userStr) { var u = JSON.parse(userStr); full = (u && u.username) || (u && u.email) || ''; } } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
     if (!full && nameEl && nameEl.textContent) full = nameEl.textContent.trim();
     var firstChar = function (s) { try { var t = String(s || '').trim(); if (!t) return ''; var arr = Array.from(t); return arr.length ? arr[0] : ''; } catch { return ''; } };
     var ch = firstChar(full);
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
       fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' }).then(function (r) { if (!r.ok) return null; return r.json(); })
         .then(function (p) {
           if (!p) return;
-          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch {}
+          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
           var full2 = (String(p.username || '').trim()) || (String(p.email || '').trim());
           var c = firstChar(full2);
           if (nameEl && full2 && !nameEl.textContent) nameEl.textContent = full2;
@@ -59,10 +59,10 @@ document.addEventListener('DOMContentLoaded', function () {
           var c2 = firstChar(cur);
           if (btn && !btn.getAttribute('data-initial')) { btn.textContent = ''; btn.setAttribute('data-initial', c2); }
           if (dd && !dd.getAttribute('data-initial')) { dd.textContent = ''; dd.setAttribute('data-initial', c2); }
-        } catch {}
+        } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
       }, 400);
     }
-  } catch {}
+  } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
 
   try {
     var notifyBtn = document.getElementById('btnAdminNotify');
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
           var right = Math.max(8, Math.round(window.innerWidth - rect.right));
           panel.style.top = String(top) + 'px';
           panel.style.right = String(right) + 'px';
-        } catch {}
+        } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
       };
 
       var fmtTime = function (v) {
@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function () {
           Promise.all(idsToDelete.map(function (idv) { return deleteNotice(idv); }))
             .then(function () { load(); })
             .catch(function (err) {
-              try { window.alert('削除に失敗しました: ' + String((err && err.message) ? err.message : 'unknown')); } catch {}
+              try { window.alert('削除に失敗しました: ' + String((err && err.message) ? err.message : 'unknown')); } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
               load();
             });
           return;
@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
       window.addEventListener('scroll', positionPanel, { passive: true });
       load();
       pollTimer = setInterval(load, 30000);
-      window.addEventListener('beforeunload', function () { try { clearInterval(pollTimer); } catch {} });
+      window.addEventListener('beforeunload', function () { try { clearInterval(pollTimer); } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); } });
     }
-  } catch {}
+  } catch (e) { console.error('[admin-topbar.notify.js] Swallowed error:', e); }
 });

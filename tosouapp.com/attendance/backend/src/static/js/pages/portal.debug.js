@@ -7,11 +7,11 @@ window.addEventListener('error', (e) => {
     }
     const st = document.querySelector('#status');
     if (st) st.textContent = 'Error';
-  } catch {}
+  } catch (e) { console.error('[portal.debug.js] Swallowed error:', e); }
 });
 window.addEventListener('DOMContentLoaded', () => {
   try {
     const st = document.querySelector('#status');
     if (st) st.textContent = '';
-  } catch {}
+  } catch (e) { console.error('[portal.debug.js] Swallowed error:', e); }
 });

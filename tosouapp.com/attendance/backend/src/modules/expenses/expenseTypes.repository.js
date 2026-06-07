@@ -25,6 +25,6 @@ module.exports.ensureTable = async function() {
     ['HIGHWAY', '高速代', 0]
   ];
   for (const [code, name, dist] of defaults) {
-    try { await db.query(`INSERT IGNORE INTO expense_types (code, name_ja, is_distance_based) VALUES (?, ?, ?)`, [code, name, dist ? 1 : 0]); } catch {}
+    try { await db.query(`INSERT IGNORE INTO expense_types (code, name_ja, is_distance_based) VALUES (?, ?, ?)`, [code, name, dist ? 1 : 0]); } catch (e) { console.error('[expenseTypes.repository.js] Swallowed error:', e); }
   }
 };

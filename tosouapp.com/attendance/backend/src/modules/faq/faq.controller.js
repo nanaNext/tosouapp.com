@@ -90,7 +90,7 @@ exports.createQuestion = async (req, res) => {
         createdBy: userId,
         audience: 'admin_manager'
       });
-    } catch {}
+    } catch (e) { console.error('[faq.controller.js] Swallowed error:', e); }
 
     console.log('✅ Question saved with id:', result.id);
     res.status(201).json({ 

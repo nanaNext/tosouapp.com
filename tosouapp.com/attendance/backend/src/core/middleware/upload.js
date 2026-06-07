@@ -16,7 +16,7 @@ function extFromMime(mime) {
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = path.join(__dirname, '../../uploads/');
-    try { fs.mkdirSync(dir, { recursive: true }); } catch {}
+    try { fs.mkdirSync(dir, { recursive: true }); } catch (e) { console.error('[upload.js] Swallowed error:', e); }
     cb(null, dir); // Thư mục lưu file
   },
   filename: function (req, file, cb) {

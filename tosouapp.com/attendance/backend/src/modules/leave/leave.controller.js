@@ -35,7 +35,7 @@ function overlapDays(aStart, aEnd, bStart, bEnd) {
 async function tryReconcileAttendance() {
   try {
     await repo.reconcileApprovedPaidWithAttendance();
-  } catch {}
+  } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
 }
 function scheduleGrants(hireDate, untilDate) {
   const grants = [];
@@ -90,7 +90,7 @@ async function getGrantAttendanceEligibility(userId, hireDate, grantDate) {
   let stats = { workDays: 0, presentDays: 0 };
   try {
     stats = await repo.getAttendanceStats(userId, periodStart, periodEnd);
-  } catch {}
+  } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
   const workDays = Number(stats.workDays || 0);
   const presentDays = Number(stats.presentDays || 0);
   const attendanceRate = workDays > 0 ? (presentDays / workDays) : 0;
@@ -173,7 +173,7 @@ exports.create = async (req, res) => {
         createdBy: userId,
         audience: 'admin_manager'
       });
-    } catch {}
+    } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -202,7 +202,7 @@ exports.createPaid = async (req, res) => {
         createdBy: userId,
         audience: 'admin_manager'
       });
-    } catch {}
+    } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -294,7 +294,7 @@ exports.updateStatus = async (req, res) => {
           title: '休暇申請'
         });
       }
-    } catch {}
+    } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     res.status(200).json({ id, status });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -381,7 +381,7 @@ exports.grant = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ targetUserId: Number(userId), days: parseInt(days, 10), grantDate: gDate, expiryDate: eDate })
       });
-    } catch {}
+    } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     res.status(201).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -460,7 +460,7 @@ exports.grantEligibleNow = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ mode, eligible: rows.length, granted })
       });
-    } catch {}
+    } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     res.status(200).json({ mode, eligible: rows.length, granted });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -487,7 +487,7 @@ exports.createRequest = async (req, res) => {
         createdBy: userId,
         audience: 'admin_manager'
       });
-    } catch {}
+    } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -516,7 +516,7 @@ exports.approve = async (req, res) => {
           title: '休暇申請'
         });
       }
-    } catch {}
+    } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     res.status(200).json({ id, status: s });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -587,7 +587,7 @@ exports.autoGrantNow = async (req, res) => {
       try {
         await ensureUserGrants(u.id);
         ok++;
-      } catch {}
+      } catch (e) { console.error('[leave.controller.js] Swallowed error:', e); }
     }
     res.status(200).json({ processed: list.length, ok, mode });
   } catch (err) {

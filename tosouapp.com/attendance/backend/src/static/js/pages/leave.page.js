@@ -28,11 +28,11 @@ const saveDraft = () => {
       reason: String($('#reason')?.value || '')
     };
     localStorage.setItem(draftKey(), JSON.stringify(payload));
-  } catch {}
+  } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
 };
 
 const clearDraft = () => {
-  try { localStorage.removeItem(draftKey()); } catch {}
+  try { localStorage.removeItem(draftKey()); } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
 };
 
 async function renderBalance() {
@@ -97,7 +97,7 @@ async function renderMyRequests() {
     if (q) {
       let t = 0;
       q.addEventListener('input', () => {
-        try { clearTimeout(t); } catch {}
+        try { clearTimeout(t); } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
         t = setTimeout(() => {
           const text = String(q.value || '').trim().toLowerCase();
           box.querySelectorAll('.adj-table tbody tr').forEach(tr => {
@@ -117,18 +117,18 @@ function initApply() {
   const result = $('#applyResult');
   const d = loadDraft();
   if (d) {
-    try { if (d.startDate) $('#startDate').value = d.startDate; } catch {}
-    try { if (d.endDate) $('#endDate').value = d.endDate; } catch {}
-    try { if (d.reason != null) $('#reason').value = d.reason; } catch {}
+    try { if (d.startDate) $('#startDate').value = d.startDate; } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
+    try { if (d.endDate) $('#endDate').value = d.endDate; } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
+    try { if (d.reason != null) $('#reason').value = d.reason; } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
   }
   try {
     const g = globalThis;
     if (!Array.isArray(g.__draftFlushers)) g.__draftFlushers = [];
     g.__draftFlushers.push(saveDraft);
-  } catch {}
+  } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
   let t = 0;
   const schedule = () => {
-    try { clearTimeout(t); } catch {}
+    try { clearTimeout(t); } catch (e) { console.error('[leave.page.js] Swallowed error:', e); }
     t = setTimeout(saveDraft, 400);
   };
   form.addEventListener('input', schedule);

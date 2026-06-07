@@ -51,7 +51,7 @@ router.post('/',
       else if (tripType === 'multi') amt = amt * (tripCount > 0 ? tripCount : 1);
       if (!(amt >= 0)) return res.status(400).json({ message: 'Invalid amount' });
       const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass, clientToken: b.clientToken });
-      try { await auditRepo.writeLog({ userId: req.user.id, action: 'expense_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, date, amount: amt, origin, destination }) }); } catch {}
+      try { await auditRepo.writeLog({ userId: req.user.id, action: 'expense_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, date, amount: amt, origin, destination }) }); } catch (e) { console.error('[expenses.routes.js] Swallowed error:', e); }
       res.status(201).json({ id });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -298,7 +298,7 @@ router.post('/admin/months/approve',
           message: `${month}の交通費申請が月次承認されました。`,
           createdBy: req.user.id
         });
-      } catch {}
+      } catch (e) { console.error('[expenses.routes.js] Swallowed error:', e); }
       res.status(200).json({ ok: true, result });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -629,7 +629,7 @@ router.patch('/:id/status',
             createdBy: req.user?.id || null
           });
         }
-      } catch {}
+      } catch (e) { console.error('[expenses.routes.js] Swallowed error:', e); }
       res.status(200).json({ ok: true });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -663,7 +663,7 @@ router.post('/:id/apply',
           createdBy: req.user?.id || null,
           audience: 'admin_manager'
         });
-      } catch {}
+      } catch (e) { console.error('[expenses.routes.js] Swallowed error:', e); }
       res.status(200).json({ ok: true });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -710,7 +710,7 @@ router.get('/:id/messages',
   authorize('employee','manager','admin'),
   async (req, res) => {
     try {
-      try { await repo.ensureTable(); } catch {}
+      try { await repo.ensureTable(); } catch (e) { console.error('[expenses.routes.js] Swallowed error:', e); }
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
       const r = await repo.getById(id);
@@ -731,7 +731,7 @@ router.post('/:id/messages',
   authorize('employee','manager','admin'),
   async (req, res) => {
     try {
-      try { await repo.ensureTable(); } catch {}
+      try { await repo.ensureTable(); } catch (e) { console.error('[expenses.routes.js] Swallowed error:', e); }
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
       const r = await repo.getById(id);

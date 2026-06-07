@@ -8,7 +8,7 @@ const storage = multer.diskStorage({
     const dir = path.join(__dirname, '../../', uploadDir, 'payslips');
     try {
       fs.mkdirSync(dir, { recursive: true });
-    } catch {}
+    } catch (e) { console.error('[uploadPdf.js] Swallowed error:', e); }
     cb(null, dir);
   },
   filename: function (req, file, cb) {

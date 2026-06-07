@@ -52,5 +52,5 @@ export async function mount() {
 
   void p;
   await mountLeaveUnified(content);
-  return () => { try { content.innerHTML = ''; } catch {} };
+  return () => { try { content.innerHTML = ''; } catch (e) { console.error('[leave.page.js] Swallowed error:', e); } };
 }

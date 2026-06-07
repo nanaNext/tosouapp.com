@@ -52,7 +52,7 @@ function wireTopbarMenus() {
     // Một tính năng thân thiện với người dùng:
     //  Nếu bạn đang mở menu mà muốn đóng nhanh, chỉ cần nhấn phím Escape (Esc).
 
-  } catch { }
+  } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
 }
 // Mục đích: Ngăn chặn trang web bị "treo" 
 // hoặc hiện lỗi đỏ trong console nếu trình duyệt của người dùng quá cũ hoặc không hỗ trợ một số hàm như closest hay dataset. 
@@ -393,7 +393,7 @@ function computeSummary(detail, timesheet, mode) {
       remoteDays2 = frontendRemote;
       satelliteDays2 = frontendSatellite;
     }
-  } catch { }
+  } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
 
   if (stored && typeof stored === 'object') {
     if (plannedDays === 0) plannedDays = Number(stored.plannedDays == null ? plannedDays : stored.plannedDays) || 0;
@@ -615,7 +615,7 @@ async function exactSummaryFromEmbed(uid, ym, mode) {
     }
     return null;
   } catch {
-    try { document.querySelectorAll('iframe').forEach((f) => { if ((f.src || '').includes('/admin/embed/attendance/monthly')) f.remove(); }); } catch { }
+    try { document.querySelectorAll('iframe').forEach((f) => { if ((f.src || '').includes('/admin/embed/attendance/monthly')) f.remove(); }); } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
     return null;
   }
 }
@@ -840,7 +840,7 @@ function ensureEditorLayoutStyle() {
       }
     `;
     document.head.appendChild(st);
-  } catch { }
+  } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
 }
 
 function setSummaryValues(root, prefix, obj) {
@@ -904,16 +904,16 @@ function getSummaryValues(root, prefix) {
 export async function mount() {
   const root = document.querySelector('#adminContent');
   if (!root) return;
-  try { wireAdminShell({ logoutRedirect: '/ui/login' }); } catch { }
-  try { wireTopbarMenus(); } catch { }
-  try { delete root.dataset.monthlySummaryMounted; } catch { }
+  try { wireAdminShell({ logoutRedirect: '/ui/login' }); } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
+  try { wireTopbarMenus(); } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
+  try { delete root.dataset.monthlySummaryMounted; } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
   try {
     const status = document.querySelector('#status');
     if (status) {
       status.textContent = '';
       status.style.display = 'none';
     }
-  } catch { }
+  } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
   ensureEditorLayoutStyle();
   renderScaffold(root);
 
@@ -1009,7 +1009,7 @@ export async function mount() {
       u.searchParams.set('userId', uid);
       u.searchParams.set('month', ym);
       history.replaceState(null, '', u.pathname + u.search + u.hash);
-    } catch { }
+    } catch (e) { console.error('[admin-employees-monthly-summary.page.js] Swallowed error:', e); }
   };
 
   const save = async () => {

@@ -44,7 +44,7 @@ module.exports = (app) => {
             secure: isHttps,
             path: '/'
           });
-        } catch {}
+        } catch (e) { console.error('[security.js] Swallowed error:', e); }
       }
     }
     next();
@@ -67,7 +67,7 @@ module.exports = (app) => {
       try {
         const u = new URL(origin || `http://${host}`);
         sameHost = !!(host && u.host.toLowerCase() === host);
-      } catch {}
+      } catch (e) { console.error('[security.js] Swallowed error:', e); }
       if (!isBrowserUA(ua) && !sameHost) {
         return res.status(403).json({ message: 'Forbidden: browser user-agent required' });
       }

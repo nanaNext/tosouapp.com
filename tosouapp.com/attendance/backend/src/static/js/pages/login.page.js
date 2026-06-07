@@ -7,7 +7,7 @@ try {
   if (p.includes('expenses-login')) {
     window.LOGIN_NEXT = '/ui/expenses';
   }
-} catch {}
+} catch (e) { console.error('[login.page.js] Swallowed error:', e); }
 
 function hidePageSpinner() {
   try {
@@ -15,7 +15,7 @@ function hidePageSpinner() {
     if (!ps) return;
     ps.setAttribute('hidden', '');
     ps.style.display = 'none';
-  } catch {}
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
 }
 
 function showPageSpinner() {
@@ -30,7 +30,7 @@ function showPageSpinner() {
     }
     ps.removeAttribute('hidden');
     ps.style.display = 'grid';
-  } catch {}
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
 }
 
 function setError(msg) {
@@ -43,7 +43,7 @@ function saveAuth({ accessToken, username, email, role }) {
   sessionStorage.setItem('user', JSON.stringify({ username, email, role }));
   try {
     localStorage.setItem('user', JSON.stringify({ username, email, role }));
-  } catch {}
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
 }
 
 async function tryRefresh() {
@@ -57,7 +57,7 @@ async function tryRefresh() {
 function getCookie(name) { return null; }
 
 function roleRedirect(role, nextPath) {
-  try { sessionStorage.setItem('navSpinner', '1'); } catch {}
+  try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   showPageSpinner();
   const r = String(role || '').toLowerCase();
   const suggested = String(nextPath || '').trim();
@@ -67,11 +67,11 @@ function roleRedirect(role, nextPath) {
     : '/ui/portal';
   
   if (safeSuggested && safeSuggested !== fallback) {
-    try { window.history.pushState(null, '', fallback); } catch {}
-    try { window.location.href = safeSuggested; return; } catch {}
+    try { window.history.pushState(null, '', fallback); } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
+    try { window.location.href = safeSuggested; return; } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   }
   
-  try { window.location.href = fallback; } catch {}
+  try { window.location.href = fallback; } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
 }
 
 async function handleSubmit(e) {
@@ -82,7 +82,7 @@ async function handleSubmit(e) {
   const password = $('#password').value;
   const form = $('#loginForm');
   if (form && !form.checkValidity()) {
-    try { form.reportValidity(); } catch {}
+    try { form.reportValidity(); } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
     setError('メール/パスワードを正しく入力してください');
     hidePageSpinner();
     return;
@@ -92,6 +92,17 @@ async function handleSubmit(e) {
     hidePageSpinner();
     return;
   }
+
+  // Clear localStorage BEFORE login to prevent state leak from previous accounts
+  try {
+    localStorage.removeItem('monthly.lastParams');
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('monthly.cache.')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
+
   const btn = $('#loginBtn');
   if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
   if (statusEl) { statusEl.textContent = 'ログイン中...'; }
@@ -103,7 +114,7 @@ async function handleSubmit(e) {
     try {
       const grp = document.querySelector('.input-group');
       if (grp) grp.classList.add('success');
-    } catch {}
+    } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
     navigated = true;
     roleRedirect(data.role, data.nextPath);
   } catch (err) {
@@ -128,42 +139,56 @@ async function handleSubmit(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  try { sessionStorage.removeItem('navSpinner'); } catch {}
+  try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   hidePageSpinner();
   try {
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('user');
-  } catch {}
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   try {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-  } catch {}
+    // Clear localStorage when returning to login page to prevent state leaks across accounts
+    localStorage.removeItem('monthly.lastParams');
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('monthly.cache.')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   try {
     const ref = document.referrer || '';
     void ref;
-  } catch {}
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   try {
     window.addEventListener('pageshow', () => {
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-      } catch {}
+      } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch {}
+        // Clear localStorage when returning to login page to prevent state leak across accounts
+        localStorage.removeItem('monthly.lastParams');
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('monthly.cache.')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
       try {
         sessionStorage.removeItem('navSpinner');
         hidePageSpinner();
         const ref = document.referrer || '';
         void ref;
-      } catch {}
+      } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
     });
-  } catch {}
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   const form = $('#loginForm');
-  if (form) { try { form.setAttribute('autocomplete', 'off'); } catch {} }
+  if (form) { try { form.setAttribute('autocomplete', 'off'); } catch (e) { console.error('[login.page.js] Swallowed error:', e); } }
   const emailInput = $('#email');
   const passwordInput = $('#password');
   try {
@@ -171,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (passwordInput) { passwordInput.setAttribute('autocomplete', 'off'); passwordInput.name = 'login_password'; }
     if (emailInput) { emailInput.readOnly = false; emailInput.disabled = false; if (localStorage.getItem('remember') !== '1') { emailInput.value = ''; } }
     if (passwordInput) { passwordInput.readOnly = false; passwordInput.disabled = false; if (localStorage.getItem('remember') !== '1') { passwordInput.value = ''; } }
-  } catch {}
+  } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   form.addEventListener('submit', handleSubmit);
   const btn = $('#loginBtn');
   const updateBtnState = () => {
@@ -186,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hasAny) grp.classList.add('filled');
         else grp.classList.remove('filled');
       }
-    } catch {}
+    } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
   };
   updateBtnState();
   if (emailInput) emailInput.addEventListener('input', updateBtnState);
@@ -214,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (!el) return;
     const go = (e) => {
-      try { e.preventDefault(); e.stopPropagation(); } catch {}
+      try { e.preventDefault(); e.stopPropagation(); } catch (e) { console.error('[login.page.js] Swallowed error:', e); }
       try { window.location.assign(href); } catch { window.location.href = href; }
     };
     el.addEventListener('click', go, true);

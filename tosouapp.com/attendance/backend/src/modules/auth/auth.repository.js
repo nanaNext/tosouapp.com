@@ -31,11 +31,11 @@ module.exports = {
         if (!set.has('email_lower')) {
           await db.query(`ALTER TABLE users ADD COLUMN email_lower VARCHAR(255) NULL`);
         }
-      } catch {}
+      } catch (e) { console.error('[auth.repository.js] Swallowed error:', e); }
     }
-    try { await db.query(`UPDATE users SET email = TRIM(email) WHERE email IS NOT NULL AND (email REGEXP '^[[:space:]]|[[:space:]]$')`); } catch {}
-    try { await db.query(`UPDATE users SET email_lower = LOWER(TRIM(email)) WHERE email IS NOT NULL AND (email_lower IS NULL OR email_lower = '' OR email_lower != LOWER(TRIM(email)))`); } catch {}
-    try { await db.query(`ALTER TABLE users ADD UNIQUE KEY uniq_email_lower (email_lower)`); } catch {}
+    try { await db.query(`UPDATE users SET email = TRIM(email) WHERE email IS NOT NULL AND (email REGEXP '^[[:space:]]|[[:space:]]$')`); } catch (e) { console.error('[auth.repository.js] Swallowed error:', e); }
+    try { await db.query(`UPDATE users SET email_lower = LOWER(TRIM(email)) WHERE email IS NOT NULL AND (email_lower IS NULL OR email_lower = '' OR email_lower != LOWER(TRIM(email)))`); } catch (e) { console.error('[auth.repository.js] Swallowed error:', e); }
+    try { await db.query(`ALTER TABLE users ADD UNIQUE KEY uniq_email_lower (email_lower)`); } catch (e) { console.error('[auth.repository.js] Swallowed error:', e); }
   },
   async findUserByEmail(email) {
     const e = String(email || '').trim();

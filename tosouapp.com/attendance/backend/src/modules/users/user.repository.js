@@ -218,7 +218,7 @@ module.exports = {
   },
 
   async touchLastActive(id, at = null) {
-    try { await db.query(`ALTER TABLE users ADD COLUMN last_active_at DATETIME NULL`); } catch {}
+    try { await db.query(`ALTER TABLE users ADD COLUMN last_active_at DATETIME NULL`); } catch (e) { console.error('[user.repository.js] Swallowed error:', e); }
     const sql = `UPDATE users SET last_active_at = COALESCE(?, NOW()) WHERE id = ?`;
     await db.query(sql, [at ? String(at).slice(0, 19).replace('T', ' ') : null, id]);
   }

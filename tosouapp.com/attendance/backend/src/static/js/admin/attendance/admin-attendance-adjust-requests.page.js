@@ -4,8 +4,8 @@ import { wireAdminShell } from '../../shell/admin-shell.js?v=navy-20260418-menuh
 
 const host = document.getElementById('adjustRequestsHost');
 
-try { document.body.style.visibility = ''; } catch {}
-try { document.getElementById('adminBootMask')?.remove(); } catch {}
+try { document.body.style.visibility = ''; } catch (e) { console.error('[admin-attendance-adjust-requests.page.js] Swallowed error:', e); }
+try { document.getElementById('adminBootMask')?.remove(); } catch (e) { console.error('[admin-attendance-adjust-requests.page.js] Swallowed error:', e); }
 
 // Tháng hiện tại dạng "2026-04"
 const nowDate = new Date();
@@ -32,7 +32,7 @@ function wireSubbarMenus() {
       });
     });
     document.addEventListener('click', () => closeAll());
-  } catch {}
+  } catch (e) { console.error('[admin-attendance-adjust-requests.page.js] Swallowed error:', e); }
 }
 
 function esc(s) {

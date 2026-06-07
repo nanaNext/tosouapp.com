@@ -56,7 +56,7 @@ async function renderWithIncludes(entryPath, { htmlRoot, maxDepth = 10 } = {}) {
     stack.add(key);
     let html = await readFileCached(filePath);
     const baseDir = path.dirname(filePath);
-    try { includeRe.lastIndex = 0; } catch {}
+    try { includeRe.lastIndex = 0; } catch (e) { console.error('[htmlIncludes.js] Swallowed error:', e); }
     html = await replaceAsync(html, includeRe, async (_m, rel) => {
       const incPath = resolveInclude({ baseDir, htmlRoot: root, rel });
       if (!incPath) throw new Error('Invalid include path');
@@ -86,7 +86,7 @@ function renderWithIncludesSync(entryPath, { htmlRoot, maxDepth = 10 } = {}) {
     stack.add(key);
     let html = readFileCachedSync(filePath);
     const baseDir = path.dirname(filePath);
-    try { includeRe.lastIndex = 0; } catch {}
+    try { includeRe.lastIndex = 0; } catch (e) { console.error('[htmlIncludes.js] Swallowed error:', e); }
     html = replaceSync(html, includeRe, (_m, rel) => {
       const incPath = resolveInclude({ baseDir, htmlRoot: root, rel });
       if (!incPath) throw new Error('Invalid include path');
@@ -100,7 +100,7 @@ function renderWithIncludesSync(entryPath, { htmlRoot, maxDepth = 10 } = {}) {
 
 function replaceAsync(str, re, fn) {
   const s = String(str || '');
-  try { re.lastIndex = 0; } catch {}
+  try { re.lastIndex = 0; } catch (e) { console.error('[htmlIncludes.js] Swallowed error:', e); }
   const matches = [];
   s.replace(re, (m, ...args) => {
     const offset = args[args.length - 2];
@@ -123,7 +123,7 @@ function replaceAsync(str, re, fn) {
 
 function replaceSync(str, re, fn) {
   const s = String(str || '');
-  try { re.lastIndex = 0; } catch {}
+  try { re.lastIndex = 0; } catch (e) { console.error('[htmlIncludes.js] Swallowed error:', e); }
   const matches = [];
   s.replace(re, (m, ...args) => {
     const offset = args[args.length - 2];

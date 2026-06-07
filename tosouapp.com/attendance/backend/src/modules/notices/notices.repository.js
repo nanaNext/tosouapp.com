@@ -55,15 +55,15 @@ async function ensureNoticesSchema() {
       INDEX idx_created_by (created_by)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-  try { await db.query(`ALTER TABLE notices ADD COLUMN target_user_id BIGINT UNSIGNED NULL`); } catch {}
-  try { await db.query(`CREATE INDEX idx_target_user_id ON notices (target_user_id)`); } catch {}
-  try { await db.query(`ALTER TABLE notices ADD COLUMN kind VARCHAR(64) NULL`); } catch {}
-  try { await db.query(`ALTER TABLE notices ADD COLUMN title VARCHAR(255) NULL`); } catch {}
-  try { await db.query(`ALTER TABLE notices ADD COLUMN link_url VARCHAR(255) NULL`); } catch {}
-  try { await db.query(`ALTER TABLE notices ADD COLUMN payload_json JSON NULL`); } catch {}
-  try { await db.query(`ALTER TABLE notices ADD COLUMN audience VARCHAR(32) NOT NULL DEFAULT 'all'`); } catch {}
-  try { await db.query(`CREATE INDEX idx_notices_audience ON notices (audience)`); } catch {}
-  try { await db.query(`CREATE INDEX idx_notices_kind ON notices (kind)`); } catch {}
+  try { await db.query(`ALTER TABLE notices ADD COLUMN target_user_id BIGINT UNSIGNED NULL`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`CREATE INDEX idx_target_user_id ON notices (target_user_id)`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`ALTER TABLE notices ADD COLUMN kind VARCHAR(64) NULL`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`ALTER TABLE notices ADD COLUMN title VARCHAR(255) NULL`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`ALTER TABLE notices ADD COLUMN link_url VARCHAR(255) NULL`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`ALTER TABLE notices ADD COLUMN payload_json JSON NULL`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`ALTER TABLE notices ADD COLUMN audience VARCHAR(32) NOT NULL DEFAULT 'all'`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`CREATE INDEX idx_notices_audience ON notices (audience)`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
+  try { await db.query(`CREATE INDEX idx_notices_kind ON notices (kind)`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
   try {
     const [cols] = await db.query(`
       SELECT column_name
@@ -84,9 +84,9 @@ async function ensureNoticesSchema() {
     if (!set.has('payload_json')) alters.push(`ADD COLUMN payload_json JSON NULL`);
     if (!set.has('audience')) alters.push(`ADD COLUMN audience VARCHAR(32) NOT NULL DEFAULT 'all'`);
     if (alters.length) {
-      try { await db.query(`ALTER TABLE notices ${alters.join(', ')}`); } catch {}
+      try { await db.query(`ALTER TABLE notices ${alters.join(', ')}`); } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
     }
-  } catch {}
+  } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
 }
 
 function buildSyntheticNoticeId(kind, sourceId) {
@@ -370,7 +370,7 @@ module.exports = {
           `
         );
         faqItems = rowsFaq || [];
-      } catch {}
+      } catch (e) { console.error('[notices.repository.js] Swallowed error:', e); }
       const mapped = []
         .concat((leaveItems || []).map((it) => ({
           id: buildSyntheticNoticeId('leave_request', it.sourceId),

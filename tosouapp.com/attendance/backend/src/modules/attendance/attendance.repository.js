@@ -1498,4 +1498,139 @@ module.exports = {
   async listColumns() {
     return listColumns();
   }
+,
+  // === ADDED REFACTOR METHODS ===
+  async getShiftByName(name) {
+    const [rows] = await db.query('SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions WHERE name = ? LIMIT 1', [name]);
+    return rows && rows[0] ? rows[0] : null;
+  },
+  async getUserWorkDetails(userId, limit = 10) {
+    const [rows] = await db.query(`
+      SELECT id, start_date, end_date, company_name, work_place_address, work_content, role_title, responsibility_level
+      FROM user_work_details
+      WHERE userId = ?
+      ORDER BY start_date DESC, id DESC
+      LIMIT ?
+    `, [userId, limit]);
+    return rows || [];
+  },
+  async getTodaySummaryStats(dateStr) {
+    const [[{ c_checkin } = { c_checkin: 0 }]] = await db.query(`
+      SELECT COUNT(DISTINCT userId) AS c_checkin
+      FROM attendance
+      WHERE DATE(checkIn) = ?
+    `, [dateStr]);
+    const [[{ c_open } = { c_open: 0 }]] = await db.query(`
+      SELECT COUNT(DISTINCT userId) AS c_open
+      FROM attendance
+      WHERE DATE(checkIn) = ? AND checkOut IS NULL
+    `, [dateStr]);
+    const [[{ c_active } = { c_active: 0 }]] = await db.query(`
+      SELECT COUNT(*) AS c_active
+      FROM users
+      WHERE employment_status = 'active'
+        AND role IN ('employee','manager')
+    `);
+    const [[{ c_leave_users } = { c_leave_users: 0 }]] = await db.query(`
+      SELECT COUNT(DISTINCT userId) AS c_leave_users
+      FROM leave_requests
+      WHERE status = 'approved'
+        AND ? BETWEEN startDate AND endDate
+    `, [dateStr]);
+    return { c_checkin, c_open, c_active, c_leave_users };
+  },
+  async getTodayAttendanceRecords(userId, dateStr) {
+    const [rows] = await db.query(`
+      SELECT id, checkIn, checkOut
+      FROM attendance
+      WHERE userId = ?
+        AND DATE(checkIn) = ?
+      ORDER BY checkIn DESC
+    `, [userId, dateStr]);
+    return rows || [];
+  },
+  async getTodayRosterItems(date) {
+    const [rows] = await db.query(`
+      SELECT
+        u.id AS userId,
+        u.employee_code AS employeeCode,
+        u.username AS username,
+        u.role AS role,
+        u.departmentId AS departmentId,
+        d.name AS departmentName,
+        a.id AS attendanceId,
+        a.shiftId AS shiftId,
+        a.checkIn AS checkIn,
+        a.checkOut AS checkOut,
+        ad.kubun AS dailyKubun
+      FROM users u
+      LEFT JOIN departments d
+        ON d.id = u.departmentId
+      LEFT JOIN leave_requests lr
+        ON lr.userId = u.id
+       AND lr.status = 'approved'
+       AND ? BETWEEN lr.startDate AND lr.endDate
+      LEFT JOIN attendance_daily ad
+        ON ad.userId = u.id AND ad.date = ?
+      LEFT JOIN (
+        SELECT t1.*
+        FROM attendance t1
+        INNER JOIN (
+          SELECT userId, MAX(checkIn) AS maxCheckIn
+          FROM attendance
+          WHERE DATE(checkIn) = ?
+          GROUP BY userId
+        ) t2
+          ON t2.userId = t1.userId AND t2.maxCheckIn = t1.checkIn
+      ) a
+        ON a.userId = u.id
+      WHERE u.employment_status = 'active'
+        AND u.role IN ('employee','manager')
+        AND lr.id IS NULL
+      ORDER BY
+        CASE WHEN a.checkIn IS NULL THEN 1 ELSE 0 END ASC,
+        COALESCE(u.employee_code, '') ASC,
+        u.id ASC
+    `, [date, date, date]);
+    return rows || [];
+  },
+  async getTodayPlannedItems(date) {
+    const [rows] = await db.query(`
+      SELECT
+        u.id AS userId,
+        u.employee_code AS employeeCode,
+        u.username AS username,
+        u.role AS role,
+        u.departmentId AS departmentId,
+        d.name AS departmentName,
+        CASE WHEN lr.id IS NULL THEN 0 ELSE 1 END AS isLeave,
+        lr.type AS leaveType
+      FROM users u
+      LEFT JOIN departments d
+        ON d.id = u.departmentId
+      LEFT JOIN leave_requests lr
+        ON lr.userId = u.id
+       AND lr.status = 'approved'
+       AND ? BETWEEN lr.startDate AND lr.endDate
+      WHERE u.employment_status = 'active'
+        AND u.role IN ('employee','manager')
+      ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
+    `, [date]);
+    return rows || [];
+  },
+  async getActiveUserIds(departmentId = null) {
+    const params = [];
+    let sql = `
+      SELECT u.id AS userId
+      FROM users u
+      WHERE u.employment_status = 'active'
+        AND u.role IN ('employee','manager')
+    `;
+    if (departmentId != null) {
+      sql += ` AND u.departmentId = ?`;
+      params.push(parseInt(String(departmentId), 10));
+    }
+    const [rows] = await db.query(sql, params);
+    return rows || [];
+  }
 };

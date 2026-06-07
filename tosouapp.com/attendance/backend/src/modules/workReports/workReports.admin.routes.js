@@ -79,6 +79,9 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
         ad.kubun AS daily_kubun,
         COALESCE(NULLIF(TRIM(ad.location), ''), NULLIF(TRIM(wr.site), '')) AS site,
         COALESCE(NULLIF(TRIM(ad.memo), ''), NULLIF(TRIM(wr.work), '')) AS work,
+        ad.late_minutes,
+        ad.early_minutes,
+        ad.reason,
         wr.updated_at AS updated_at
       FROM users u
       LEFT JOIN departments d
@@ -142,6 +145,9 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
         },
         status,
         dailyKubun: kubunOut || null,
+        lateMinutes: r.late_minutes || 0,
+        earlyMinutes: r.early_minutes || 0,
+        reason: r.reason || null,
         workType: wt,
         report: hasReport ? {
           workType: wt,
@@ -312,7 +318,7 @@ router.get('/export.xlsx',
     `, [start, end]);
 
     const [dailyRows] = await db.query(`
-      SELECT userId, date, kubun
+      SELECT userId, date, kubun, late_minutes, early_minutes, reason
       FROM attendance_daily
       WHERE date >= ? AND date <= ?
     `, [start, end]);
@@ -417,6 +423,9 @@ router.get('/export.xlsx',
         cout,
         site: isOff && !att?.checkIn ? '' : String(rep?.site || ''),
         work: isOff && !att?.checkIn ? '' : String(rep?.work || ''),
+        lateMinutes: daily?.late_minutes || 0,
+        earlyMinutes: daily?.early_minutes || 0,
+        reason: daily?.reason || '',
         isOff: isOff
       };
     };
@@ -745,7 +754,10 @@ router.get('/export.xlsx',
               r.wt === 'remote' ? '✓' : '',
               r.wt === 'satellite' ? '✓' : '',
               r.site,
-              r.work
+              r.work,
+              r.lateMinutes > 0 ? r.lateMinutes : '',
+              r.earlyMinutes > 0 ? r.earlyMinutes : '',
+              r.reason
             ]
           });
         }
@@ -762,7 +774,10 @@ router.get('/export.xlsx',
         { header: '在宅', width: 8 },
         { header: '現場・出張', width: 10 },
         { header: '現場（任意）', width: 18 },
-        { header: '作業内容', width: 52 }
+        { header: '作業内容', width: 52 },
+        { header: '遅刻', width: 8 },
+        { header: '早退', width: 8 },
+        { header: '理由', width: 15 }
       ];
 
       const baseName = period === 'year' ? `年次_${qYear}` : `日次_${start}`;
@@ -803,7 +818,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
       const cal = await calendarRepo.computeYear(y).catch(() => null);
       const off = new Set((cal?.off_days || []).map((d) => String(d).slice(0, 10)));
       isOffDate = (ds) => off.has(String(ds).slice(0, 10));
-    } catch {}
+    } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
 
     const [users] = await db.query(`
       SELECT u.id AS userId, u.employee_code AS employeeCode, u.username AS username,
@@ -891,7 +906,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
             )
         `, [start + ' 00:00:00', end + ' 00:00:00']);
         latestRows = attRows;
-      } catch {}
+      } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
     }
 
     const [leaveRows] = await db.query(`
@@ -1072,7 +1087,7 @@ router.post('/backfill/daily',
       try {
         const res1 = await attendanceRepo.upsertDaily(u, d, payload);
         updated += Number(res1?.affectedRows || 0);
-      } catch {}
+      } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
     }
     res.status(200).json({ ok: true, users: Array.from(users), from, to, updated });
   } catch (err) {
@@ -1101,7 +1116,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         const cal = await calendarRepo.computeYear(y).catch(() => null);
         calByYear.set(y, cal);
       }
-    } catch {}
+    } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
 
     const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
     const buildOffSet = (cal, isKouji) => {
@@ -1368,10 +1383,10 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       const rep = reportMap.get(key) || null;
       let kubun = String(daily?.kubun || '').trim();
       if (!kubun) kubun = String(leaveByUserDate.get(key) || '').trim();
-      if (kubun === '休日出勤' && !a.firstCheckIn && !a.lastCheckOut && !hasContent) kubun = '休日';
       const site = pickNonEmptyText(daily?.location, rep?.site);
       const work = pickNonEmptyText(daily?.memo, rep?.work);
       const hasContent = !!(site || work);
+      if (kubun === '休日出勤' && !hasContent) kubun = '休日';
       const workType = daily?.workType || rep?.work_type || null;
       const fallbackOutHm = ''; // Do not fallback out time if no checkIn
 

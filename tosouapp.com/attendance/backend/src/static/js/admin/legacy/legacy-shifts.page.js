@@ -87,7 +87,7 @@ export async function mountShifts({ content }) {
           sIn.value = d.start_time || '';
           eIn.value = d.end_time || '';
           brSel.value = String(d.break_minutes ?? 0);
-        } catch {}
+        } catch (e) { console.error('[legacy-shifts.page.js] Swallowed error:', e); }
       });
       tb.appendChild(tr);
     }

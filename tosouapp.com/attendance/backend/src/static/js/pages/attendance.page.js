@@ -12,7 +12,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
 };
 
 const showSpinner = (isSuccess = false) => {
@@ -25,7 +25,7 @@ const showSpinner = (isSuccess = false) => {
       el.classList.remove('is-success');
     }
     el.removeAttribute('hidden');
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
 };
 const hideSpinner = () => {
   try { 
@@ -33,7 +33,7 @@ const hideSpinner = () => {
     if (!el) return;
     el.classList.remove('is-success');
     el.setAttribute('hidden', ''); 
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
 };
 
 const showErr = (msg) => {
@@ -56,19 +56,19 @@ const isYukyuKubun = (v) => String(v || '').trim() === '有給休暇';
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
-  if (token) { try { profile = await me(token); } catch {} }
+  if (token) { try { profile = await me(token); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch {}
+    } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   }
   if (!profile) {
     try {
       const userStr = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
       profile = userStr ? JSON.parse(userStr) : null;
-    } catch {}
+    } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   }
   return profile || null;
 }
@@ -85,12 +85,12 @@ const wireUserMenu = () => {
   });
   document.addEventListener('click', (e) => {
     if (e.target?.closest?.('#userBtn') || e.target?.closest?.('#userMenu')) return;
-    try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch {}
+    try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   });
   $('#btnLogout')?.addEventListener('click', async () => {
-    try { await logout(); } catch {}
-    try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch {}
-    try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch {}
+    try { await logout(); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+    try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+    try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     window.location.replace('/ui/login');
   });
 };
@@ -138,7 +138,7 @@ const wireTopNavDropdowns = () => {
       panel.innerHTML = rows.map((r) => `<a href="${r.href}">${r.label}</a>`).join('');
     });
   };
-  try { ensurePanelLinks(); } catch {}
+  try { ensurePanelLinks(); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   // Normalize old/cached links that may miss "/ui" prefix on mobile devices.
   try {
     document.querySelectorAll('.kintai-dd[data-dd-panel] a[href^="/"]').forEach((a) => {
@@ -146,17 +146,17 @@ const wireTopNavDropdowns = () => {
       const fixed = normalizeNavHref(href);
       if (fixed && fixed !== href) a.setAttribute('href', fixed);
     });
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   // If shared topbar script already owns nav dropdowns, skip local binding.
   try {
     if (document.documentElement.dataset.kintaiTopNavDdBound === '1') return;
     if (document.documentElement.dataset.attendancePageNavBound === '1') return;
     document.documentElement.dataset.attendancePageNavBound = '1';
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   const btns = Array.from(document.querySelectorAll('.kintai-nav-btn[data-dd]'));
   const panels = Array.from(document.querySelectorAll('.kintai-dd[data-dd-panel]'));
   if (!btns.length || !panels.length) return;
-  try { document.body.classList.add('nav-js'); } catch {}
+  try { document.body.classList.add('nav-js'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
 
   // Ensure dropdown links always navigate even when other handlers interfere.
   try {
@@ -186,11 +186,11 @@ const wireTopNavDropdowns = () => {
       document.addEventListener('touchend', go, true);
       document.addEventListener('click', go, true);
     }
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
 
   const closeAll = () => {
     for (const b of btns) {
-      try { b.setAttribute('aria-expanded', 'false'); } catch {}
+      try { b.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     }
     for (const p of panels) {
       try {
@@ -205,20 +205,20 @@ const wireTopNavDropdowns = () => {
         p.style.overflow = '';
         p.style.zIndex = '';
         p.style.transform = '';
-      } catch {}
+      } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     }
-    document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch {} });
+    document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } });
   };
 
   const openOne = (key) => {
-    try { ensurePanelLinks(); } catch {}
+    try { ensurePanelLinks(); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     closeAll();
     const btn = btns.find(b => b.dataset.dd === key);
     const panel = panels.find(p => p.dataset.ddPanel === key);
     if (!btn || !panel) return;
-    try { btn.setAttribute('aria-expanded', 'true'); } catch {}
-    try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch {}
-    try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch {}
+    try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+    try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+    try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     try {
       const mobile = !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
       if (mobile) {
@@ -239,8 +239,8 @@ const wireTopNavDropdowns = () => {
           const maxLeft = Math.max(6, (window.innerWidth || 0) - w - 6);
           left = Math.min(left, maxLeft);
           panel.style.left = `${left}px`;
-        } catch {}
-        try { panel.style.transform = 'none'; } catch {}
+        } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+        try { panel.style.transform = 'none'; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
       } else {
         panel.style.position = '';
         panel.style.left = '';
@@ -252,7 +252,7 @@ const wireTopNavDropdowns = () => {
         panel.style.zIndex = '';
         panel.style.transform = '';
       }
-    } catch {}
+    } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   };
 
   for (const b of btns) {
@@ -366,7 +366,7 @@ const renderNotice = async (profile) => {
       const v = localStorage.getItem(prefKey);
       if (v === '0') return false;
       if (v === '1') return true;
-    } catch {}
+    } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     return true;
   })();
   host.innerHTML = `
@@ -389,14 +389,14 @@ const renderNotice = async (profile) => {
       const nextHidden = !curHidden;
       if (nextHidden) body?.setAttribute?.('hidden', '');
       else body?.removeAttribute?.('hidden');
-      try { localStorage.setItem(prefKey, nextHidden ? '0' : '1'); } catch {}
-      try { host.querySelector('#btnNoticeToggle').textContent = nextHidden ? '表示' : '非表示'; } catch {}
+      try { localStorage.setItem(prefKey, nextHidden ? '0' : '1'); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+      try { host.querySelector('#btnNoticeToggle').textContent = nextHidden ? '表示' : '非表示'; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     });
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
 
   const markOne = async (id) => {
     if (!id) return;
-    try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); } catch {}
+    try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   };
   host.querySelectorAll('details[data-notice-id]').forEach((el) => {
     el.addEventListener('toggle', () => {
@@ -407,7 +407,7 @@ const renderNotice = async (profile) => {
         el.classList.remove('is-unread');
         el.classList.add('is-read');
         markOne(id);
-      } catch {}
+      } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     });
   });
 };
@@ -511,14 +511,14 @@ const renderAttendance = async () => {
       if (sel) sel.value = loadWT();
       sel?.addEventListener('change', async () => {
         const v = String(sel.value || '');
-        try { localStorage.setItem(wtKey, v); } catch {}
+        try { localStorage.setItem(wtKey, v); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
         try {
           await fetchJSONAuth('/api/attendance/worktype', { method: 'POST', body: JSON.stringify({ date, workType: v }) });
           const kubun = String($('#kubun')?.value || kubunInit);
           await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, { method: 'PUT', body: JSON.stringify({ kubun, workType: v }) });
-        } catch {}
+        } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
       });
-    } catch {}
+    } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     const hideKubunSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
     const toggleWorkTypeRow = () => {
       const kubun = String($('#kubun')?.value || defaultKubun);
@@ -559,7 +559,7 @@ const renderAttendance = async () => {
           hideSpinner();
         }
       });
-    } catch {}
+    } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
     $('#btnCheckIn')?.addEventListener('click', async () => {
       showErr('');
       showSpinner();
@@ -656,12 +656,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = '/ui/attendance/simple';
       return;
     }
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   try {
-    const prevent = () => { try { history.pushState(null, '', location.href); } catch {} };
+    const prevent = () => { try { history.pushState(null, '', location.href); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } };
     prevent();
     window.addEventListener('popstate', () => { prevent(); });
-  } catch {}
+  } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   showErr('');
   wireUserMenu();
   wireTopNavDropdowns();
@@ -673,9 +673,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   const role = String(profile?.role || '').toLowerCase();
   if (role === 'admin') {
-    try { document.body.dataset.roleAdmin = '1'; } catch {}
+    try { document.body.dataset.roleAdmin = '1'; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   }
-  try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch {}
+  try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
   await renderNotice(profile);
   await renderAttendance();
   hideSpinner();
