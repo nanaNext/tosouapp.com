@@ -116,6 +116,41 @@
         });
       }
     }
+    
+    const dSec = $('#dailySection');
+    if (dSec && dSec.dataset.tabsWired !== '1') {
+      dSec.dataset.tabsWired = '1';
+      const tabs = Array.from(dSec.querySelectorAll('.se-tab[data-tab]'));
+      for (const t of tabs) {
+        t.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (t.hasAttribute('disabled')) return;
+          if (t.dataset.tab === 'plan') {
+            document.body.classList.add('view-plan');
+            const table = document.getElementById('monthTableReal');
+            if (table) {
+              const cg = table.querySelector('colgroup');
+              if (cg) cg.style.display = 'none';
+              table.style.tableLayout = '';
+              table.style.width = '';
+            }
+          } else if (t.dataset.tab === 'actual') {
+            document.body.classList.remove('view-plan');
+            const table = document.getElementById('monthTableReal');
+            if (table) {
+              const cg = table.querySelector('colgroup');
+              if (cg) cg.style.display = '';
+              table.style.tableLayout = '';
+              table.style.width = '';
+            }
+          }
+          for (const x of tabs) {
+            x.classList.toggle('active', x === t);
+          }
+          window.dispatchEvent(new Event('resize'));
+        });
+      }
+    }
   };
 
   const bindWorkflowButtons = () => {
@@ -944,7 +979,13 @@
           if (field !== 'ckRemote' && ckRe) ckRe.checked = false;
           if (field !== 'ckSatellite' && ckSa) ckSa.checked = false;
         }
-        recomputeRow(tr);
+          if (ev.target.dataset.field === 'classification') {
+            const val = ev.target.value;
+            ev.target.classList.toggle('is-holiday', val === '休日' || val === '代替休日');
+            ev.target.classList.toggle('is-absence', val === '欠勤');
+            ev.target.classList.toggle('is-planned', !val);
+          }
+          recomputeRow(tr);
         try { draft?.schedule?.(controller.ctx, controller.ctx?.picker?.value || controller.ctx?.initialYM); } catch (e) { console.error('[attendance-monthly.events.js] Swallowed error:', e); }
         try { controller.scheduleAutoSave(); } catch (e) { console.error('[attendance-monthly.events.js] Swallowed error:', e); }
         return;

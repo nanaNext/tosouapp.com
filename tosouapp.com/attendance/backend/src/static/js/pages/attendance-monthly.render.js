@@ -51,7 +51,7 @@
     </thead>
   `;
     const tbody = document.createElement('tbody');
-    const buildTr = (dateStr, isOff, shift, daily, seg, showDateDow) => {
+    const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
         // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
@@ -275,7 +275,7 @@
       const brVal = brMin === 45 ? '0:45' : brMin === 30 ? '0:30' : brMin === 0 ? '0:00' : '1:00';
       const nbVal = nbMin === 60 ? '1:00' : nbMin === 30 ? '0:30' : '0:00';
 
-      const dowColor = (isOff && dow !== '土') || dow === '日' ? '#b91c1c' : (dow === '土') ? '#1d4ed8' : '#334155';
+      const dowColor = (isOff && dow !== '土') || dow === '日' ? '#e11d48' : (dow === '土') ? '#1d4ed8' : '#334155';
       const dateMmdd = dateStr.slice(5).replace('-', '/');
       const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const isFuture = dateStr > todayStr;
@@ -295,15 +295,38 @@
             disabledOpt = 'disabled';
           }
         }
-        return `<option value="${esc(k)}" ${kubunInit === k ? 'selected' : ''} ${disabledOpt}>${esc(k)}</option>`;
+        let optStyle = '';
+        if (k === '休日' || k === '代替休日') optStyle = 'color:#e11d48; font-weight:bold;';
+        else if (k === '欠勤') optStyle = 'color:#ea580c; font-weight:bold;';
+        
+        return `<option value="${esc(k)}" ${kubunInit === k ? 'selected' : ''} ${disabledOpt} style="${optStyle}">${esc(k)}</option>`;
       }).join('')}
     `;
 
+      let goOutHtml = '';
+      if (goOutRecords && goOutRecords.length > 0) {
+        const totalPrivate = goOutRecords.filter(g => g.type === '私用').length;
+        const totalWork = goOutRecords.filter(g => g.type === '業務').length;
+        let tooltip = goOutRecords.map(g => {
+          const inTime = g.go_out_time ? g.go_out_time.slice(11, 16) : '--:--';
+          const outTime = g.return_time ? g.return_time.slice(11, 16) : '--:--';
+          return `${g.type}: ${inTime} - ${outTime}`;
+        }).join('&#10;');
+        
+        let badges = [];
+        if (totalWork > 0) badges.push(`<span class="se-badge" style="background:#0284c7;color:#fff;font-size:10px;padding:2px 4px;border-radius:4px;margin-right:2px;" title="${tooltip}">業務外出:${totalWork}</span>`);
+        if (totalPrivate > 0) badges.push(`<span class="se-badge" style="background:#ea580c;color:#fff;font-size:10px;padding:2px 4px;border-radius:4px;" title="${tooltip}">私用外出:${totalPrivate}</span>`);
+        
+        goOutHtml = `<div style="margin-top:4px;">${badges.join('')}</div>`;
+      }
+
+      const kubunClass = kubunInit === '' ? 'is-planned' : (kubunInit === '休日' || kubunInit === '代替休日' ? 'is-holiday' : (kubunInit === '欠勤' ? 'is-absence' : ''));
+
       tr.innerHTML = `
-      <td class="sticky-col-1">${showDateDow ? `<span style="font-weight:900;">${esc(dateMmdd)}</span><span class="dow" style="font-weight:900;color:${esc(dowColor)};">(${esc(dow)})</span>` : ''}</td>
+      <td class="sticky-col-1">${showDateDow ? `<span style="font-weight:900; color:${esc(dowColor)};">${esc(dateMmdd)}(${esc(dow)})</span>` : ''}</td>
       <td>
         <div class="se-kubun-wrap">
-          <select id="classification_${dateStr}" name="classification_${dateStr}" class="se-select se-kubun-select ${kubunInit === '' ? 'is-planned' : ''}" data-field="classification" ${state.editableMonth ? '' : 'disabled'}>
+          <select id="classification_${dateStr}" name="classification_${dateStr}" class="se-select se-kubun-select ${kubunClass}" data-field="classification" ${state.editableMonth ? '' : 'disabled'}>
             ${kubunOptionsHtml}
           </select>
         </div>
@@ -387,6 +410,7 @@
       </td>
       <td>
         <input id="notes_${dateStr}" name="notes_${dateStr}" class="se-input" data-field="notes" type="text" value="${esc(finalNotes)}" ${!state.editableMonth ? 'disabled' : ''} style="width:100%; box-sizing:border-box;" placeholder="">
+        ${goOutHtml}
       </td>
       <td>
         <div class="se-status-wrap">
@@ -406,9 +430,10 @@
       const shift = d?.shift || null;
       const daily = d?.daily || null;
       const segs = Array.isArray(d?.segments) ? d.segments : [];
+      const goOutRecords = Array.isArray(d?.goOutRecords) ? d.goOutRecords : [];
       const list0 = segs.length ? [...segs].sort((a, b) => String(b?.checkIn || '').localeCompare(String(a?.checkIn || ''))) : [null];
       const seg = list0.find(s => s && s.checkIn && !s.checkOut) || list0[0];
-      tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, true));
+      tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, goOutRecords, true));
     }
     table.appendChild(tbody);
     // Use native sticky header via CSS; avoid cloning header to prevent drift
@@ -440,7 +465,7 @@
           if (type === 'time') return;
         }
         const first = table.querySelector('tbody tr');
-        const cells = first ? Array.from(first.children) : [];
+        const cells = first ? Array.from(first.children).filter(td => getComputedStyle(td).display !== 'none') : [];
         const widthsMeasured = cells.map(td => Math.max(1, Math.round(td.getBoundingClientRect().width)));
         const ok = widthsMeasured.length && widthsMeasured.every(w => w > 0);
         if (!ok && attempt < 20) {
@@ -902,9 +927,9 @@
 
       if (clsSel) {
         const shouldBePlanned = !cls;
-        if (clsSel.classList.contains('is-planned') !== shouldBePlanned) {
-          clsSel.classList.toggle('is-planned', shouldBePlanned);
-        }
+        clsSel.classList.toggle('is-planned', shouldBePlanned);
+        clsSel.classList.toggle('is-holiday', cls === '休日' || cls === '代替休日');
+        clsSel.classList.toggle('is-absence', cls === '欠勤');
       }
     } catch (e) { console.warn('recomputeRow error:', e); }
   };

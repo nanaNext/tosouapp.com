@@ -139,6 +139,7 @@
       if (!Number.isFinite(m) || m < 0) return '—';
       return fmtHm(m);
     };
+    
     const table = document.createElement('table');
     table.innerHTML = `
     <thead>
@@ -438,8 +439,201 @@
     });
   };
 
+  const renderGoOutHistory = (host, detail) => {
+    if (!host) return;
+    const days = Array.isArray(detail?.days) ? detail.days : [];
+    const allRows = [];
+    
+    for (const d of days) {
+      const goOutRecords = Array.isArray(d.goOutRecords) ? d.goOutRecords : [];
+      for (const g of goOutRecords) {
+        allRows.push({
+          date: d.date,
+          goOutTime: g.go_out_time,
+          returnTime: g.return_time,
+          type: g.type,
+          reason: g.reason
+        });
+      }
+    }
+    
+    // Sort by date and time
+    allRows.sort((a, b) => {
+      const timeA = new Date(a.goOutTime).getTime();
+      const timeB = new Date(b.goOutTime).getTime();
+      return timeA - timeB;
+    });
+
+    host.innerHTML = '';
+
+    const controlBar = document.createElement('div');
+    controlBar.style.display = 'flex';
+    controlBar.style.justifyContent = 'space-between';
+    controlBar.style.alignItems = 'flex-end';
+    controlBar.style.marginBottom = '12px';
+    
+    const filterDiv = document.createElement('div');
+    filterDiv.style.display = 'flex';
+    filterDiv.style.gap = '12px';
+    filterDiv.innerHTML = `
+      <label style="font-size: 13px; font-weight: 500;">日付: <input type="date" id="goOutFilterDate" style="padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px;"></label>
+      <label style="font-size: 13px; font-weight: 500;">区分: 
+        <select id="goOutFilterType" style="padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px;">
+          <option value="">すべて</option>
+          <option value="業務">業務</option>
+          <option value="私用">私用</option>
+        </select>
+      </label>
+    `;
+    
+    const summaryDiv = document.createElement('div');
+    summaryDiv.style.fontSize = '14px';
+    summaryDiv.style.fontWeight = 'bold';
+    summaryDiv.style.color = '#1e293b';
+    
+    controlBar.appendChild(filterDiv);
+    controlBar.appendChild(summaryDiv);
+    host.appendChild(controlBar);
+
+    const tableContainer = document.createElement('div');
+    tableContainer.style.maxHeight = '500px';
+    tableContainer.style.overflowY = 'auto';
+    tableContainer.style.border = '1px solid #dbe4f0';
+    host.appendChild(tableContainer);
+
+    const table = document.createElement('table');
+    table.className = 'excel-table'; // Sử dụng class của hệ thống để đồng bộ style
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    table.style.margin = '0';
+    tableContainer.appendChild(table);
+    
+    const renderTable = () => {
+      const filterDate = document.getElementById('goOutFilterDate')?.value;
+      const filterType = document.getElementById('goOutFilterType')?.value;
+      
+      let filteredRows = allRows;
+      if (filterDate) {
+        filteredRows = filteredRows.filter(r => r.date === filterDate);
+      }
+      if (filterType) {
+        filteredRows = filteredRows.filter(r => r.type === filterType);
+      }
+      
+      let totalMin = 0;
+      let busMin = 0;
+      let priMin = 0;
+      
+      const tbodyHTML = filteredRows.length ? filteredRows.map((r, i) => {
+        const ds = String(r.date || '');
+        const dow = core.dowJa(ds);
+        const goHm = fromDateTime(r.goOutTime) || '—';
+        const retHm = fromDateTime(r.returnTime) || '—';
+        const type = r.type || '—';
+        const reason = r.reason || '';
+        let duration = '—';
+        
+        let returnDisplay = retHm;
+        if (retHm === '—') {
+          returnDisplay = `<span style="color: #d97706; font-weight: bold; font-size: 12px;"><span style="margin-right: 4px;">⏳</span>外出中</span>`;
+        }
+        
+        if (goHm !== '—' && retHm !== '—') {
+          const min = diffMinutesAllowOvernight(goHm, retHm);
+          if (min != null && min > 0) {
+            duration = fmtHm(min);
+            totalMin += min;
+            if (type === '業務') busMin += min;
+            else if (type === '私用') priMin += min;
+          }
+        }
+        
+        return `<tr style="background-color: #ffffff; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f1f5f9'" onmouseout="this.style.backgroundColor='#ffffff'">
+          <td style="text-align: center; padding: 6px 4px; border: 1px solid #dbe4f0; font-size: 13px; color: #1e293b;">${esc(ds.slice(5).replace('-', '/'))}(${esc(dow)})</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; font-size: 14px; padding: 6px 4px; border: 1px solid #dbe4f0; color: #334155;">${esc(goHm)}</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; font-size: 14px; padding: 6px 4px; border: 1px solid #dbe4f0; color: #334155;">${returnDisplay}</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; font-size: 14px; font-weight: 500; padding: 6px 4px; border: 1px solid #dbe4f0; color: #334155;">${esc(duration)}</td>
+          <td style="text-align: center; padding: 6px 4px; border: 1px solid #dbe4f0;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; background: ${type === '業務' ? '#e0f2fe' : '#fee2e2'}; color: ${type === '業務' ? '#0369a1' : '#b91c1c'}; border: 1px solid ${type === '業務' ? '#bae6fd' : '#fecaca'};">
+              ${esc(type)}
+            </span>
+          </td>
+          <td style="text-align: left; padding: 6px 8px; border: 1px solid #dbe4f0; font-size: 13px; color: #475569;">${esc(reason)}</td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="6" style="text-align:center; padding: 16px; color:#64748b; font-weight: 500; background: #fff; border: 1px solid #dbe4f0; font-size: 13px;">外出履歴がありません</td></tr>`;
+
+      const thStyle = "position: sticky; top: 0; z-index: 10; background: #0f2c62; color: #ffffff; text-align: center; font-weight: bold; padding: 8px 4px; border: 1px solid #dbe4f0; font-size: 13px;";
+      
+      table.innerHTML = `
+      <thead>
+        <tr>
+          <th style="width: 120px; ${thStyle}">日付</th>
+          <th style="width: 100px; ${thStyle}">外出時間</th>
+          <th style="width: 100px; ${thStyle}">戻り時間</th>
+          <th style="width: 100px; ${thStyle}">経過時間</th>
+          <th style="width: 100px; ${thStyle}">区分</th>
+          <th style="${thStyle}">理由</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tbodyHTML}
+      </tbody>
+      `;
+      
+      const formatJaTime = (mins) => {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h}時間${m}分`;
+      };
+      
+      const summaryPrefix = filterDate ? `${filterDate.replace(/-/g, '/')}の合計外出時間` : '今月の合計外出時間';
+      summaryDiv.innerHTML = `${summaryPrefix}：<span style="color:#0284c7; font-size: 16px;">${formatJaTime(totalMin)}</span> <span style="font-size:12px; color:#64748b; font-weight:normal; margin-left: 8px;">(業務: ${formatJaTime(busMin)} / 私用: ${formatJaTime(priMin)})</span>`;
+    };
+
+    renderTable();
+    
+    document.getElementById('goOutFilterDate')?.addEventListener('change', renderTable);
+    document.getElementById('goOutFilterType')?.addEventListener('change', renderTable);
+  };
+
   const renderSummary = (host, detail, timesheet) => {
     if (!host) return;
+    
+    // Bind Go Out History Toggle Button
+    const btnToggleGoOutHistory = document.querySelector('#btnToggleGoOutHistory');
+    const monthTable = document.querySelector('#monthTable');
+    const goOutHistoryTable = document.querySelector('#goOutHistoryTable');
+    
+    if (btnToggleGoOutHistory && monthTable && goOutHistoryTable) {
+      // Remove old listeners to prevent duplicates
+      const newBtn = btnToggleGoOutHistory.cloneNode(true);
+      btnToggleGoOutHistory.parentNode.replaceChild(newBtn, btnToggleGoOutHistory);
+      
+      newBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const mode = newBtn.dataset.mode;
+        
+        if (mode === 'daily') {
+          // Switch to Go Out History
+          monthTable.style.display = 'none';
+          goOutHistoryTable.style.display = 'block';
+          renderGoOutHistory(goOutHistoryTable, detail);
+          newBtn.dataset.mode = 'history';
+          newBtn.textContent = '日次実績に戻る';
+          newBtn.style.background = '#3b82f6'; // Blue for back button
+          newBtn.style.borderColor = '#3b82f6';
+        } else {
+          // Switch back to Daily Attendance
+          goOutHistoryTable.style.display = 'none';
+          monthTable.style.display = 'block';
+          newBtn.dataset.mode = 'daily';
+          newBtn.textContent = '外出履歴を表示';
+          newBtn.style.background = '#10b981'; // Green for show history
+          newBtn.style.borderColor = '#10b981';
+        }
+      });
+    }
+    
     const mode = (() => {
       try {
         const sec = document.querySelector('#summarySection');
@@ -559,6 +753,20 @@
     let remoteDays2 = counts.remote;
     let satelliteDays2 = counts.satellite;
     let usedFrontend = false;
+    
+    let privateGoOutMinTotal = 0;
+    let workGoOutMinTotal = 0;
+    for (const d of scope) {
+      if (Array.isArray(d.goOutRecords)) {
+        for (const g of d.goOutRecords) {
+          const m = diffMinutesAllowOvernight(fromDateTime(g.go_out_time), fromDateTime(g.return_time));
+          if (m > 0) {
+            if (g.type === '私用') privateGoOutMinTotal += m;
+            if (g.type === '業務') workGoOutMinTotal += m;
+          }
+        }
+      }
+    }
     
     const isPartTime = String(detail?.user?.employment_type || '').toLowerCase() === 'part_time' || String(detail?.user?.shift_id || '').includes('baito');
     
@@ -699,7 +907,8 @@
       planned: '所定日数', attend: '出勤日数', holiday: '休日出勤日数', standby: '待機日数',
       total: '総労働時間', night: '深夜時間', overtime: '総残業時間', legal: '法定外時間',
       paid: '有休日数', entitlement: '有給付与', substitute: '代休日数', unpaid: '無給休暇',
-      absent: '欠勤日数', deduction: '控除時間', onsite: '出社日数', remote: '在宅日数', satellite: '現場・出張日数'
+      absent: '欠勤日数', deduction: '控除時間', onsite: '出社日数', remote: '在宅日数', satellite: '現場・出張日数',
+      workGoOut: '業務外出', privateGoOut: '私用外出'
     };
     if (mode === 'sumAll') {
       table.innerHTML = `
@@ -719,6 +928,8 @@
           <th>${esc(L.unpaid)}</th>
           <th>${esc(L.absent)}</th>
           <th>${esc(L.deduction)}</th>
+          <th>${esc(L.workGoOut)}</th>
+          <th>${esc(L.privateGoOut)}</th>
           <th>${esc(L.onsite)}</th>
           <th>${esc(L.remote)}</th>
           <th>${esc(L.satellite)}</th>
@@ -740,6 +951,8 @@
           <td>${esc(unpaidDays)}日</td>
           <td>${esc(absent2)}日</td>
           <td>${esc(fmtHm(deductionTime))}</td>
+          <td>${esc(fmtHm(workGoOutMinTotal))}</td>
+          <td>${esc(fmtHm(privateGoOutMinTotal))}</td>
           <td>${esc(onsiteDays2)}日</td>
           <td>${esc(remoteDays2)}日</td>
           <td>${esc(satelliteDays2)}日</td>

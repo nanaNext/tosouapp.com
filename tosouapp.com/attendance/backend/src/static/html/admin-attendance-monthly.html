@@ -14,9 +14,9 @@
   <script src="/static/js/pages/attendance-monthly.core.js?v=navy-20260601-final-3" defer></script>
   <script src="/static/js/pages/attendance-monthly.render.js?v=navy-20260604-textarea3" defer></script>
   <script src="/static/js/pages/attendance-monthly.api.js?v=navy-20260601-final-3" defer></script>
-  <script src="/static/js/pages/attendance-monthly.sections-render.js?v=navy-20260601-final-3" defer></script>
+  <script src="/static/js/pages/attendance-monthly.sections-render.js?v=navy-20260608-go-out-history-10" defer></script>
   <script src="/static/js/pages/attendance-monthly.draft.js?v=navy-20260601-final-3" defer></script>
-  <script src="/static/js/pages/attendance-monthly.controller.js?v=navy-20260604-textarea3" defer></script>
+  <script src="/static/js/pages/attendance-monthly.controller.js?v=navy-20260608-fix3" defer></script>
   <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260604-textarea3" defer></script>
   <script src="/static/js/pages/attendance-monthly.page.js?v=navy-20260601-final-3" defer></script>
 </head>
@@ -141,10 +141,12 @@
                     <button type="button" class="se-daily-switch" id="dailyToggle" aria-label="日次実績を折りたたむ" aria-pressed="false"></button>
                     <span class="se-daily-text">日次実績</span>
                   </div>
-                  <div class="se-tabs se-tabs-seg" role="tablist" aria-label="日次">
-                    <button type="button" class="se-tab active" data-tab="actual">実績</button>
-                    <button type="button" class="se-tab" data-tab="plan" disabled>予定</button>
-                  </div>
+                  <div class="se-daily-actions" style="display: flex; gap: 4px; margin-left: auto; align-items: center;">
+                      <div class="se-tabs se-tabs-seg" role="tablist" aria-label="表示モード">
+                        <button type="button" class="se-tab active" data-tab="actual">実績</button>
+                        <button type="button" class="se-tab" data-tab="plan">予定</button>
+                      </div>
+                    </div>
                 </div>
                 <div class="se-section-body">
                   <div class="common-buttons">

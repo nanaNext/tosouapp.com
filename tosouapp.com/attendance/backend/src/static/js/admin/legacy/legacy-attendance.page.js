@@ -153,7 +153,11 @@ async function mountAttendanceImpl({
           const holidaySet = new Set(['休日', '代替休日']);
           const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
           const isHolidayKubun = holidaySet.has(kubun);
-          
+          // Hàm trạng thái
+          // chức năng dùng để hiển thị trạng thái của nhân viên
+          // 1.checked_out
+          // 2.working
+        
           let stLabel = '';
           let stClass = '';
           
@@ -458,7 +462,7 @@ async function mountAttendanceImpl({
   });
 
   return () => {
-    try { content.innerHTML = ''; } catch (e) { console.error('[legacy-attendance.page.js] Swallowed error:', e); }
+    try { content.innerHTML = ''; } catch { }
     cleanup.run();
   };
 }

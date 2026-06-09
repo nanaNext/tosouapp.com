@@ -6,6 +6,18 @@ function minutesBetween(a, b) {
   return Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
 }
 
+const getJSTDateStr = (val) => {
+  if (!val) return '';
+  if (typeof val === 'string') {
+    const p = val.split(' ')[0].split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(p)) return p;
+  }
+  const dateObj = val instanceof Date ? val : new Date(val);
+  if (isNaN(dateObj.getTime())) return '';
+  const jst = new Date(dateObj.getTime() + 9 * 3600 * 1000);
+  return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth()+1).padStart(2,'0')}-${String(jst.getUTCDate()).padStart(2,'0')}`;
+};
+
 /**
  * PURE FUNCTIONS FOR TESTING (Ưu tiên 2)
  * Tách logic tính toán ra khỏi DB để có thể viết Unit Test chí mạng.
@@ -104,12 +116,6 @@ async function computeRecord(rec, ctx = null) {
   const cfg = ctx?.cfg !== undefined ? ctx.cfg : await settingsRepo.getSettings().catch(() => null);
   const baseBreak = cfg?.breakMinutes || 60;
   
-  const getJSTDateStr = (val) => {
-    if (!val) return '';
-    if (typeof val === 'string') return val.split(' ')[0].split('T')[0];
-    const jst = new Date(val.getTime() + 9 * 3600 * 1000);
-    return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth()+1).padStart(2,'0')}-${String(jst.getUTCDate()).padStart(2,'0')}`;
-  };
   const dateStr = getJSTDateStr(rec.checkIn);
   
   const inDate = parseMySQLJSTToDate(rec.checkIn);
@@ -184,7 +190,41 @@ async function computeRecord(rec, ctx = null) {
   const breakMin = shift.breakMinutes ?? baseBreak;
   const inJ = parseMySQLJSTToDate(rec.checkIn);
   const outJ = parseMySQLJSTToDate(rec.checkOut);
-  const worked = minutesBetween(inJ, outJ);
+  let worked = minutesBetween(inJ, outJ);
+  
+  // Trừ thời gian ra ngoài việc cá nhân (私用)
+  let privateGoOutMinutes = 0;
+  let workGoOutMinutes = 0;
+  let goOuts = [];
+  if (ctx?.goOutCache && ctx.goOutCache[rec.userId] && ctx.goOutCache[rec.userId][dateStr]) {
+    goOuts = ctx.goOutCache[rec.userId][dateStr];
+  } else if (!ctx?.goOutCache) {
+    goOuts = await attendanceRepo.getGoOutRecords(rec.userId, dateStr).catch(() => []);
+  }
+  for (const g of goOuts) {
+    if (g.go_out_time) {
+      const gIn = new Date(g.go_out_time);
+      let gOut = null;
+      if (g.return_time) {
+        gOut = new Date(g.return_time);
+      } else if (rec.checkOut) {
+        gOut = parseMySQLJSTToDate(rec.checkOut);
+      }
+      
+      if (gOut) {
+        const mins = Math.max(0, minutesBetween(gIn, gOut));
+        if (g.type === '私用') {
+          privateGoOutMinutes += mins;
+        } else if (g.type === '業務') {
+          workGoOutMinutes += mins;
+        }
+      }
+    }
+  }
+  
+  // Trừ đi thời gian đi việc riêng
+  worked = Math.max(0, worked - privateGoOutMinutes);
+
   const isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
   const scheduled = isOff ? 0 : Math.max(0, minutesBetween(shift.start, shift.end) - breakMin);
   const regular = Math.min(worked, scheduled);
@@ -205,7 +245,9 @@ async function computeRecord(rec, ctx = null) {
     overtimeMinutes: overtime,
     nightMinutes: metrics.nightMinutes,
     isAnomaly: metrics.isAnomaly,
-    anomalyType: metrics.anomalyType
+    anomalyType: metrics.anomalyType,
+    privateGoOutMinutes,
+    workGoOutMinutes
   };
 }
 
@@ -257,7 +299,25 @@ async function computeRange(rows) {
     shiftCache[sid] = await attendanceRepo.getShiftById(sid).catch(() => null);
   }));
 
-  const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache };
+  // Cache go-out records
+  const goOutCache = {};
+  if (rows.length > 0) {
+    const uniqueDates = Array.from(new Set(rows.map(r => getJSTDateStr(r.checkIn))));
+    const ymMaps = new Set(uniqueDates.map(d => d.slice(0, 7)));
+    for (const uid of userIds) {
+      goOutCache[uid] = {};
+      for (const ym of ymMaps) {
+        const [yy, mm] = ym.split('-');
+        const goOuts = await attendanceRepo.getGoOutRecordsByMonth(uid, yy, mm).catch(() => []);
+        for (const g of goOuts) {
+          if (!goOutCache[uid][g.date]) goOutCache[uid][g.date] = [];
+          goOutCache[uid][g.date].push(g);
+        }
+      }
+    }
+  }
+
+  const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache };
 
   for (const r of rows) {
     if (!r.checkOut) continue;
@@ -267,10 +327,12 @@ async function computeRange(rows) {
   }
   const byDay = {};
   for (const it of items) {
-    if (!byDay[it.date]) byDay[it.date] = { date: it.date, regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0, items: [] };
+    if (!byDay[it.date]) byDay[it.date] = { date: it.date, regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0, privateGoOutMinutes: 0, workGoOutMinutes: 0, items: [] };
     byDay[it.date].regularMinutes += it.regularMinutes;
     byDay[it.date].overtimeMinutes += it.overtimeMinutes;
     byDay[it.date].nightMinutes += it.nightMinutes;
+    byDay[it.date].privateGoOutMinutes += it.privateGoOutMinutes || 0;
+    byDay[it.date].workGoOutMinutes += it.workGoOutMinutes || 0;
     byDay[it.date].items.push(it);
   }
   const days = Object.values(byDay);
@@ -278,8 +340,10 @@ async function computeRange(rows) {
     acc.regularMinutes += d.regularMinutes;
     acc.overtimeMinutes += d.overtimeMinutes;
     acc.nightMinutes += d.nightMinutes;
+    acc.privateGoOutMinutes += d.privateGoOutMinutes;
+    acc.workGoOutMinutes += d.workGoOutMinutes;
     return acc;
-  }, { regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0 });
+  }, { regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0, privateGoOutMinutes: 0, workGoOutMinutes: 0 });
   return { days, total };
 }
 

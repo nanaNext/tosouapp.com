@@ -480,7 +480,7 @@ function exactSummaryFromMonthly(detail, timesheet, mode) {
     const cells = Array.from(summaryHost.querySelectorAll('tbody td')).map(td => String(td.textContent || '').trim());
     shell.remove();
     if (!cells.length) return null;
-    if (mode === 'sumAll' && cells.length >= 17) {
+    if (mode === 'sumAll' && cells.length >= 19) {
       return {
         plannedDays: numText(cells[0]),
         attendDays: numText(cells[1]),
@@ -495,9 +495,11 @@ function exactSummaryFromMonthly(detail, timesheet, mode) {
         unpaidDays: numText(cells[11]),
         absentDays: numText(cells[12]),
         deductionMinutes: hmToMin(cells[13]) || 0,
-        onsiteDays: numText(cells[14]),
-        remoteDays: numText(cells[15]),
-        satelliteDays: numText(cells[16])
+        workGoOutMinutes: hmToMin(cells[14]) || 0,
+        privateGoOutMinutes: hmToMin(cells[15]) || 0,
+        onsiteDays: numText(cells[16]),
+        remoteDays: numText(cells[17]),
+        satelliteDays: numText(cells[18])
       };
     }
     if (mode !== 'sumAll' && cells.length >= 12) {
@@ -577,7 +579,7 @@ async function exactSummaryFromEmbed(uid, ym, mode) {
     const table = doc.querySelector('#monthSummaryTable table, #monthSummary table, #monthSummaryTable, #monthSummary');
     const cells = table ? Array.from(table.querySelectorAll('tbody td')).map(td => String(td.textContent || '').trim()) : [];
     iframe.remove();
-    if (mode === 'sumAll' && cells.length >= 17) {
+    if (mode === 'sumAll' && cells.length >= 19) {
       return {
         plannedDays: numText(cells[0]),
         attendDays: numText(cells[1]),
@@ -592,9 +594,11 @@ async function exactSummaryFromEmbed(uid, ym, mode) {
         unpaidDays: numText(cells[11]),
         absentDays: numText(cells[12]),
         deductionMinutes: hmToMin(cells[13]) || 0,
-        onsiteDays: numText(cells[14]),
-        remoteDays: numText(cells[15]),
-        satelliteDays: numText(cells[16])
+        workGoOutMinutes: hmToMin(cells[14]) || 0,
+        privateGoOutMinutes: hmToMin(cells[15]) || 0,
+        onsiteDays: numText(cells[16]),
+        remoteDays: numText(cells[17]),
+        satelliteDays: numText(cells[18])
       };
     }
     if (mode !== 'sumAll' && cells.length >= 12) {
@@ -649,23 +653,25 @@ function renderSummarySection(title, prefix, fields) {
 
 function renderScaffold(root) {
   const allFields = [
-    { id: 'PlannedDays', label: '所定日数', type: 'number', step: '1' },
-    { id: 'AttendDays', label: '出勤日数', type: 'number', step: '1' },
-    { id: 'HolidayWorkDays', label: '代出休出', type: 'number', step: '1' },
-    { id: 'StandbyDays', label: '待機日数', type: 'number', step: '1' },
-    { id: 'TotalWork', label: '総労働時間', placeholder: '0:00' },
-    { id: 'Night', label: '深夜時間', placeholder: '0:00' },
-    { id: 'Overtime', label: '総残業時間', placeholder: '0:00' },
-    { id: 'LegalOvertime', label: '法定外時間', placeholder: '0:00' },
-    { id: 'PaidDays', label: '有休日数', type: 'number', step: '0.1' },
-    { id: 'SubstituteDays', label: '代休日数', type: 'number', step: '1' },
-    { id: 'UnpaidDays', label: '無給休暇', type: 'number', step: '1' },
-    { id: 'AbsentDays', label: '欠勤日数', type: 'number', step: '1' },
-    { id: 'Deduction', label: '控除時間', placeholder: '0:00' },
-    { id: 'OnsiteDays', label: '出社日数', type: 'number', step: '1' },
-    { id: 'RemoteDays', label: '在宅日数', type: 'number', step: '1' },
-    { id: 'SatelliteDays', label: '現場・出張', type: 'number', step: '1' }
-  ];
+      { id: 'PlannedDays', label: '所定日数', type: 'number', step: '1' },
+      { id: 'AttendDays', label: '出勤日数', type: 'number', step: '1' },
+      { id: 'HolidayWorkDays', label: '代出休出', type: 'number', step: '1' },
+      { id: 'StandbyDays', label: '待機日数', type: 'number', step: '1' },
+      { id: 'TotalWork', label: '総労働時間', placeholder: '0:00' },
+      { id: 'Night', label: '深夜時間', placeholder: '0:00' },
+      { id: 'Overtime', label: '総残業時間', placeholder: '0:00' },
+      { id: 'LegalOvertime', label: '法定外時間', placeholder: '0:00' },
+      { id: 'PaidDays', label: '有休日数', type: 'number', step: '0.1' },
+      { id: 'SubstituteDays', label: '代休日数', type: 'number', step: '1' },
+      { id: 'UnpaidDays', label: '無給休暇', type: 'number', step: '1' },
+      { id: 'AbsentDays', label: '欠勤日数', type: 'number', step: '1' },
+      { id: 'Deduction', label: '控除時間', placeholder: '0:00' },
+      { id: 'WorkGoOut', label: '業務外出', placeholder: '0:00' },
+      { id: 'PrivateGoOut', label: '私用外出', placeholder: '0:00' },
+      { id: 'OnsiteDays', label: '出社日数', type: 'number', step: '1' },
+      { id: 'RemoteDays', label: '在宅日数', type: 'number', step: '1' },
+      { id: 'SatelliteDays', label: '現場・出張', type: 'number', step: '1' }
+    ];
   const inhouseFields = [
     { id: 'PlannedDays', label: '所定日数', type: 'number', step: '1' },
     { id: 'AttendDays', label: '出勤日数', type: 'number', step: '1' },
@@ -860,6 +866,8 @@ function setSummaryValues(root, prefix, obj) {
   set(`#${prefix}AbsentDays`, String(x.absentDays == null ? '' : x.absentDays));
   if (prefix === 'sumAll') {
     set('#sumAllDeduction', minToHm(x.deductionMinutes == null ? 0 : x.deductionMinutes));
+    set('#sumAllWorkGoOut', minToHm(x.workGoOutMinutes == null ? 0 : x.workGoOutMinutes));
+    set('#sumAllPrivateGoOut', minToHm(x.privateGoOutMinutes == null ? 0 : x.privateGoOutMinutes));
     set('#sumAllOnsiteDays', String(x.onsiteDays == null ? '' : x.onsiteDays));
     set('#sumAllRemoteDays', String(x.remoteDays == null ? '' : x.remoteDays));
     set('#sumAllSatelliteDays', String(x.satelliteDays == null ? '' : x.satelliteDays));
@@ -893,6 +901,8 @@ function getSummaryValues(root, prefix) {
     return {
       ...base,
       deductionMinutes,
+      workGoOutMinutes: hmToMin(val('#sumAllWorkGoOut')),
+      privateGoOutMinutes: hmToMin(val('#sumAllPrivateGoOut')),
       onsiteDays: num(val('#sumAllOnsiteDays')),
       remoteDays: num(val('#sumAllRemoteDays')),
       satelliteDays: num(val('#sumAllSatelliteDays'))
