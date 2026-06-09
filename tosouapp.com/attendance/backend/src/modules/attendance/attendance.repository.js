@@ -296,6 +296,16 @@ async function ensureAttendanceGoOutSchema() {
       CONSTRAINT fk_attendance_go_out_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  try {
+    await db.query(`ALTER TABLE attendance_go_out ADD COLUMN status VARCHAR(20) DEFAULT '外出中'`);
+  } catch (e) {
+    // ignore duplicate column error
+  }
+  try {
+    await db.query(`ALTER TABLE attendance_go_out ADD COLUMN admin_note VARCHAR(500) NULL`);
+  } catch (e) {
+    // ignore duplicate column error
+  }
 }
 async function getAttendanceColumnSet() {
   try {
