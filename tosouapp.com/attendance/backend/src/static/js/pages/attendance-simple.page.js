@@ -1,7 +1,7 @@
 import { me, refresh } from '../api/auth.api.js';
 import { fetchJSONAuth } from '../api/http.api.js';
 import '/static/js/pages/employee-notify.sticky.js';
-
+// Cái hàm const $ để tìm phần tử theo selector CSS
 const $ = (sel) => document.querySelector(sel);
 
 let simpleUserId = '';
@@ -139,11 +139,13 @@ const setupSimpleCombo = (sel) => {
   });
   observer.observe(sel, { attributes: true });
 };
-
+// Lưu và tải bản ghi work report
 const reportDraftKey = (date) => `attendanceSimple.workReport.${date}`;
 const saveDraft = (date, site, work) => {
   try { localStorage.setItem(reportDraftKey(date), JSON.stringify({ site: site || '', work: work || '' })); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
 };
+// Tải bản ghi work report
+// @param { string} date- ngày tháng năm định dạng yyyy-mm-dd
 const loadDraft = (date) => {
   try {
     const s = localStorage.getItem(reportDraftKey(date)) || '';
@@ -155,7 +157,6 @@ const loadDraft = (date) => {
 const clearDraft = (date) => {
   try { localStorage.removeItem(reportDraftKey(date)); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
 };
-
 const simpleFastCacheKey = (uid, date) => `attendanceSimple.fast.${uid}.${date}`;
 const simpleFastCachePersistKey = (uid, date) => `attendanceSimple.fast.persist.${uid}.${date}`;
 const saveFastSnapshot = (date) => {
@@ -190,6 +191,7 @@ const saveFastSnapshot = (date) => {
     localStorage.setItem(simpleFastCachePersistKey(simpleUserId, date), raw);
   } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
 };
+// Hàm này dùng để restore stateRef từ sessionStorage hoặc localStorage
 
 const restoreFastSnapshot = (date, stateRef) => {
   try {
@@ -567,6 +569,9 @@ const calculateLateEarly = () => {
 };
 
 const getSimpleStatusMeta = () => {
+  if (window.currentGoOutData && window.currentGoOutData.go_out_time) {
+    return { text: '外出中', cls: 'warn' };
+  }
   const roleStr = String(window.userRole || '').toLowerCase();
   const isAdminView = roleStr === 'admin' || roleStr === 'manager';
   const monthApproved = String(window.state?.currentMonthStatus || '').trim() === 'approved';
@@ -575,7 +580,16 @@ const getSimpleStatusMeta = () => {
   const hasActualNow = !!(effectiveHm($('#startTime')) || effectiveHm($('#endTime')));
   if (isPlanned && !hasActualNow) return { text: '未申請', cls: 'warn' };
   if (monthApproved) return { text: '承認済み', cls: 'ok' };
-  if (hasActualNow) return { text: isAdminView ? '承認待ち' : '未確認', cls: 'warn' };
+  
+  if (hasActualNow) {
+    if (window.state && window.state.hasEndedToday) {
+      return { text: '打刻済み', cls: 'ok' };
+    }
+    if (window.state && window.state.lastGoOutRecord && window.state.lastGoOutRecord.return_time) {
+      return { text: '戻り済み', cls: 'warn' };
+    }
+    return { text: isAdminView ? '承認待ち' : '未確認', cls: 'warn' };
+  }
   return { text: '未申請', cls: 'warn' };
 };
 
@@ -811,6 +825,67 @@ const applyPanelOpen = (toggleId, bodyId, open) => {
   btn.checked = !!open;
 };
 
+let goOutTimerInterval = null;
+const renderGoOutBanner = (currentGoOut) => {
+  const banner = document.getElementById('goOutStatusBanner');
+  const timerText = document.getElementById('goOutTimerText');
+  if (!banner || !timerText) return;
+
+  if (goOutTimerInterval) {
+    clearInterval(goOutTimerInterval);
+    goOutTimerInterval = null;
+  }
+
+  // Find latest log element
+  let logEl = document.getElementById('goOutRecentLog');
+  if (!logEl) {
+    logEl = document.createElement('div');
+    logEl.id = 'goOutRecentLog';
+    logEl.style.cssText = 'font-size: 13px; color: #64748b; margin-top: 8px; text-align: center;';
+    const formRow = document.querySelector('#panelGoOut .simple-actuals-left .simple-form');
+    if (formRow) {
+      formRow.appendChild(logEl);
+    }
+  }
+
+  if (!currentGoOut || !currentGoOut.go_out_time) {
+    banner.style.display = 'none';
+    
+    // Check if there was a previous go out today
+    if (window.state && window.state.lastGoOutRecord) {
+      const last = window.state.lastGoOutRecord;
+      if (last.return_time) {
+        const outTime = new Date(last.go_out_time);
+        const inTime = new Date(last.return_time);
+        const hmOut = `${String(outTime.getUTCHours() + 9).padStart(2, '0')}:${String(outTime.getUTCMinutes()).padStart(2, '0')}`;
+        const hmIn = `${String(inTime.getUTCHours() + 9).padStart(2, '0')}:${String(inTime.getUTCMinutes()).padStart(2, '0')}`;
+        logEl.innerHTML = `前回の外出：${hmOut} ～ ${hmIn}（${last.reason || '理由なし'}）`;
+      }
+    } else {
+      logEl.innerHTML = '';
+    }
+    return;
+  }
+
+  banner.style.display = 'flex';
+  
+  const goOutTime = new Date(currentGoOut.go_out_time).getTime();
+  const hmOut = `${String(new Date(currentGoOut.go_out_time).getUTCHours() + 9).padStart(2, '0')}:${String(new Date(currentGoOut.go_out_time).getUTCMinutes()).padStart(2, '0')}`;
+  logEl.innerHTML = `現在外出中：${hmOut} から（${currentGoOut.reason || '理由なし'}）`;
+  
+  const updateTimer = () => {
+    const now = Date.now();
+    const diffMs = Math.max(0, now - goOutTime);
+    const diffMins = Math.floor(diffMs / 60000);
+    const hh = Math.floor(diffMins / 60);
+    const mm = diffMins % 60;
+    timerText.textContent = `${hh}:${String(mm).padStart(2, '0')}`;
+  };
+  
+  updateTimer();
+  goOutTimerInterval = setInterval(updateTimer, 10000); // Cập nhật mỗi 10 giây
+};
+
 const getCalendarOff = async (date) => {
   // Ưu tiên trạng thái nghỉ từ API vì đã áp dụng policy theo phòng ban (ví dụ: 工事部).
   const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
@@ -913,6 +988,20 @@ const load = async (date, opts = {}) => {
     const shiftEnd = String(shift?.end_time || FIXED_END).trim();
     state.shiftStart = shiftStart;
     state.shiftEnd = shiftEnd;
+    
+    // Check previous go-out records for log
+    try {
+       const recs = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/go-out`).catch(() => []);
+       if (Array.isArray(recs) && recs.length > 0) {
+          state.lastGoOutRecord = recs[recs.length - 1];
+       } else {
+          state.lastGoOutRecord = null;
+       }
+    } catch(e) {}
+    
+    // Render Go Out Banner
+    window.currentGoOutData = day?.currentGoOut || null;
+    renderGoOutBanner(day?.currentGoOut || null);
     
     // Hiển thị thông tin ca làm việc cố định (Ưu tiên 2)
     const shiftInfoBox = $('#shiftInfo');
@@ -1424,6 +1513,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.replace('/ui/login');
     return;
   }
+
   simpleUserId = String(profile?.id || '');
   try {
     const panels = [
@@ -1724,6 +1814,201 @@ document.addEventListener('DOMContentLoaded', async () => {
     await persistSimpleEntry(e.currentTarget);
   });
   $('#btnAdd')?.addEventListener('click', () => { showErr('この画面では勤務区分追加は未対応です'); });
+
+  // --- Go Out Modal Logic (Now as Main Panel) ---
+  const panelGoOut = $('#panelGoOut');
+  const simplePanels = document.querySelectorAll('.simple-panel:not(#panelGoOut)');
+  const mainBottom = document.getElementById('mainBottom'); // Thanh chứa nút ở dưới cùng của trang chính
+  const goOutBottom = document.getElementById('goOutBottom'); // Thanh chứa nút ở dưới cùng của form Ra ngoài
+  
+  const tabGoOut = document.getElementById('tabGoOut');
+  if (tabGoOut && panelGoOut) {
+    tabGoOut.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      const isShowing = panelGoOut.style.display === 'block';
+      
+      if (isShowing) {
+        panelGoOut.style.display = 'none';
+        simplePanels.forEach(p => {
+          if (p.id !== 'panelGoOut') p.style.display = 'block';
+        });
+        if (mainBottom) mainBottom.style.display = 'flex'; // Hiện lại thanh bottom chính
+        if (goOutBottom) goOutBottom.style.display = 'none'; // Ẩn thanh bottom của Ra ngoài
+        
+        tabGoOut.classList.remove('active');
+        document.querySelector('.simple-tab[href="/ui/attendance/simple"]')?.classList.add('active');
+      } else {
+        simplePanels.forEach(p => {
+          if (p.id !== 'panelGoOut') p.style.display = 'none';
+        });
+        if (mainBottom) mainBottom.style.display = 'none'; // Ẩn thanh bottom chính đi
+        if (goOutBottom) goOutBottom.style.display = 'flex'; // Hiện thanh bottom của Ra ngoài
+        panelGoOut.style.display = 'block';
+        
+        document.querySelector('.simple-tab[href="/ui/attendance/simple"]')?.classList.remove('active');
+        tabGoOut.classList.add('active');
+        
+        const timeInput = $('#goOutTime');
+        if (timeInput) {
+          timeInput.value = nowHmJST();
+        }
+      }
+    });
+  }
+
+  // Type buttons logic
+  const goOutTypeBtns = document.querySelectorAll('.go-out-type-btn');
+  const goOutTypeInput = document.getElementById('goOutType');
+  const reasonChipsBusiness = document.getElementById('reasonChipsBusiness');
+  const reasonChipsPrivate = document.getElementById('reasonChipsPrivate');
+  const reasonInput = document.getElementById('goOutReason');
+
+  if (goOutTypeBtns.length) {
+    goOutTypeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        goOutTypeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const val = btn.dataset.value;
+        if (goOutTypeInput) goOutTypeInput.value = val;
+        
+        // Auto switch reason chips
+        if (val === '業務') {
+          if (reasonChipsBusiness) reasonChipsBusiness.style.display = 'flex';
+          if (reasonChipsPrivate) reasonChipsPrivate.style.display = 'none';
+        } else {
+          if (reasonChipsBusiness) reasonChipsBusiness.style.display = 'none';
+          if (reasonChipsPrivate) reasonChipsPrivate.style.display = 'flex';
+        }
+        
+        // Clear reason if user changes type (optional, but good for UX)
+        if (reasonInput) reasonInput.value = '';
+        document.querySelectorAll('.reason-chip').forEach(c => c.classList.remove('selected'));
+      });
+    });
+  }
+
+  // Reason chips logic
+  const reasonChips = document.querySelectorAll('.reason-chip');
+  if (reasonChips.length && reasonInput) {
+    reasonChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        reasonChips.forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        reasonInput.value = chip.textContent.trim();
+      });
+    });
+  }
+
+  const goOutAPI = async (endpoint, payload) => {
+    showSpinner(true);
+    try {
+      const res = await fetchJSONAuth(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      showToast('登録しました', 'success');
+      
+      // Hide Go Out Panel and Show Main Panels
+      if (panelGoOut) panelGoOut.style.display = 'none';
+      simplePanels.forEach(p => {
+        if (p.id !== 'panelGoOut') p.style.display = 'block';
+      });
+      
+      // Khôi phục lại các nút bấm chính
+      if (mainBottom) mainBottom.style.display = 'flex';
+      if (goOutBottom) goOutBottom.style.display = 'none';
+      
+      if (tabGoOut) tabGoOut.classList.remove('active');
+      document.querySelector('.simple-tab[href="/ui/attendance/simple"]')?.classList.add('active');
+      
+      await load(state.date);
+    } catch (err) {
+      showToast(err?.message || 'エラーが発生しました', 'error');
+    } finally {
+      showSpinner(false);
+    }
+  };
+
+  $('#btnGoOutSubmit')?.addEventListener('click', async () => {
+    const type = $('#goOutType')?.value;
+    const time = $('#goOutTime')?.value;
+    const reason = $('#goOutReason')?.value;
+    
+    if (!type) {
+      showToast('区分を選択してください', 'error');
+      return;
+    }
+    if (!reason || !reason.trim()) {
+      showToast('理由を入力、または選択してください', 'error');
+      $('#goOutReason')?.focus();
+      return;
+    }
+    if (!time) {
+      showToast('時間を入力してください', 'error');
+      return;
+    }
+
+    if (window.currentGoOutData && window.currentGoOutData.go_out_time) {
+      showToast('すでに外出中です。', 'error');
+      return;
+    }
+
+    if (!confirm('外出打刻を登録します。よろしいですか？')) return;
+
+    const btn = $('#btnGoOutSubmit');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-small" style="display:inline-block; width:16px; height:16px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right: 8px;"></span>登録中...';
+    }
+
+    const dateStr = state.date;
+    const fullTime = time ? `${dateStr}T${time}:00` : null;
+    await goOutAPI('/api/attendance/go-out', { time: fullTime, type, reason });
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '外出する';
+    }
+  });
+
+  $('#btnGoOutReturn')?.addEventListener('click', async () => {
+    const time = $('#goOutTime')?.value;
+    
+    if (!time) {
+      showToast('時間を入力してください', 'error');
+      return;
+    }
+
+    if (!window.currentGoOutData || !window.currentGoOutData.go_out_time) {
+      showToast('現在外出中ではありません。', 'error');
+      return;
+    }
+
+    if (!confirm('帰社打刻を登録します。よろしいですか？')) return;
+
+    const btn = $('#btnGoOutReturn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-small" style="display:inline-block; width:16px; height:16px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right: 8px;"></span>登録中...';
+    }
+
+    const dateStr = state.date;
+    const fullTime = time ? `${dateStr}T${time}:00` : null;
+    await goOutAPI('/api/attendance/return', { time: fullTime });
+    
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '戻る (帰社)';
+    }
+
+    // Clear form
+    const reasonInput = document.getElementById('goOutReason');
+    if (reasonInput) reasonInput.value = '';
+    document.querySelectorAll('.reason-chip').forEach(c => c.classList.remove('selected'));
+  });
+  // -------------------------
 
   // Instant paint removed to prevent stale UI flickering. Wait for real server data.
   await load(state.date, { spinner: true });

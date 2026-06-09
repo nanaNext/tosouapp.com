@@ -213,6 +213,44 @@ exports.checkOut = async (req, res) => {
   }
 };
 
+// API: Nhân viên ấn nút Ra ngoài (外出)
+exports.recordGoOut = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.body.userId;
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    const { time, type, reason } = req.body || {};
+    if (!type) return res.status(400).json({ message: 'Missing type (業務 or 私用)' });
+    
+    const ts = time ? formatInputToMySQLJST(time) : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    const dateStr = ts.slice(0, 10);
+    
+    const insertId = await repo.recordGoOut(userId, dateStr, ts, type, reason);
+    res.status(201).json({ id: insertId, userId, date: dateStr, go_out_time: ts, type, reason });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// API: Nhân viên ấn nút Quay lại (戻り)
+exports.recordReturn = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.body.userId;
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    const { time } = req.body || {};
+    
+    const ts = time ? formatInputToMySQLJST(time) : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    const dateStr = ts.slice(0, 10);
+    
+    const affected = await repo.recordReturn(userId, dateStr, ts);
+    if (affected === 0) {
+      return res.status(404).json({ message: 'No open go-out record found' });
+    }
+    res.status(200).json({ ok: true, return_time: ts });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // API: Đổi loại hình công việc (onsite, remote, satellite)
 exports.setWorkType = async (req, res) => {
   try {
@@ -398,10 +436,20 @@ exports.statusToday = async (req, res) => {
     }
     const range = await service.timesheet(userId, date, date);
     const open = date === today ? await require('./attendance.repository').getOpenAttendanceForUser(userId) : null;
+    
+    // Check active go-out status for the requested date
+    let currentGoOut = null;
+    if (open) {
+      const goOuts = await require('./attendance.repository').getGoOutRecords(userId, date);
+      const activeGoOut = goOuts.find(g => !g.return_time);
+      if (activeGoOut) currentGoOut = activeGoOut;
+    }
+
     res.status(200).json({
       date,
       open: !!open,
       attendance: open ? { id: open.id, checkIn: open.checkIn || null, checkOut: open.checkOut || null } : null,
+      currentGoOut,
       timesheet: range
     });
   } catch (err) {
@@ -943,13 +991,79 @@ exports.unlockMonth = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+exports.getGoOutHistory = async (req, res) => {
+  try {
+    const userId = await resolveTargetUserId(req);
+    if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
+    const { date } = req.params;
+    if (!userId || !date) return res.status(400).json({ message: 'Missing userId/date' });
+    const result = await repo.getGoOutRecords(userId, date);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.adminListGoOutRecords = async (req, res) => {
+  try {
+    const filters = {
+      userId: req.query.userId || null,
+      date: req.query.date || null,
+      month: req.query.month || null,
+      status: req.query.status || null,
+      type: req.query.type || null
+    };
+    const records = await repo.adminListGoOutRecords(filters);
+    res.status(200).json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.adminForceEndGoOut = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { returnTime, adminNote } = req.body;
+    if (!id || !returnTime) return res.status(400).json({ message: 'Missing parameters' });
+    const updated = await repo.adminForceEndGoOut(id, returnTime, '完了', adminNote || '管理者により修正');
+    res.status(200).json({ success: true, updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.adminUpdateGoOut = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { goOutTime, returnTime, type, reason, adminNote } = req.body;
+    if (!id || !goOutTime || !type) return res.status(400).json({ message: 'Missing parameters' });
+    const updated = await repo.adminUpdateGoOut(id, goOutTime, returnTime, type, reason, adminNote);
+    res.status(200).json({ success: true, updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.adminDeleteGoOut = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: 'Missing id' });
+    const deleted = await repo.adminDeleteGoOut(id);
+    res.status(200).json({ success: true, deleted });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getDay = async (req, res) => {
   try {
     const userId = req.user?.id;
     const date = req.params.date;
     if (!userId || !date) return res.status(400).json({ message: 'Missing date' });
     const rows = await repo.listByUserBetween(userId, date, date);
-    res.status(200).json({ date, segments: rows });
+    const goOuts = await repo.getGoOutRecords(userId, date);
+    const currentGoOut = goOuts.find(g => !g.return_time) || null;
+    res.status(200).json({ date, segments: rows, goOuts, currentGoOut });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1432,6 +1546,20 @@ exports.getMonthDetail = async (req, res) => {
         return { paidDays: 0, substituteDays: 0, unpaidDays: 0, standbyDays: 0, grantedDays: 0, grantedDaysTotal: 0 };
       }
     })();
+    const goOutRecordsRows = await repo.getGoOutRecordsByMonth(userId, y, m).catch(() => []);
+    const goOutMap = new Map();
+    for (const r of goOutRecordsRows) {
+      const d = String(r.date).slice(0, 10);
+      if (!goOutMap.has(d)) goOutMap.set(d, []);
+      goOutMap.get(d).push({
+        id: r.id,
+        go_out_time: r.go_out_time,
+        return_time: r.return_time,
+        type: r.type,
+        reason: r.reason
+      });
+    }
+    
     for (let day = 1; day <= lastDay; day++) {
       const ds = `${y}-${pad(m)}-${pad(day)}`;
       const plan = planRows.find(p => String(p.date).slice(0, 10) === ds) || null;
@@ -1446,7 +1574,8 @@ exports.getMonthDetail = async (req, res) => {
           location: plan.location,
           memo: plan.memo
         } : null,
-        segments: map.get(ds) || [] 
+        segments: map.get(ds) || [],
+        goOutRecords: goOutMap.get(ds) || []
       });
     }
     const u = await userRepo.getUserById(userId).catch(() => null);
@@ -2254,6 +2383,19 @@ exports.exportMonthXlsx = async (req, res) => {
       const workContent = String(daily?.memo || '').trim();
       const notesText = String(daily?.notes || '').trim();
       const inhouseWork = String(wd?.workContent || '').trim();
+      const goOuts = await repo.getGoOutRecords(userId, ds).catch(() => []);
+      
+      let goOutDetail = '';
+      if (Array.isArray(goOuts) && goOuts.length > 0) {
+        const parts = goOuts.map(g => {
+          const t1 = hm(g.go_out_time);
+          const t2 = hm(g.return_time) || '未戻';
+          const r = g.reason || '';
+          return `${t1}-${t2}(${r})`;
+        });
+        goOutDetail = parts.join(', ');
+      }
+      
       const approveStatus = monthStatus === 'approved' ? '承認済' : (() => {
         const labels = String(seg?.labels || '').split(',').map(s => s.trim()).filter(Boolean);
         if (labels.includes('submitted')) return '承認待ち';
@@ -2282,7 +2424,8 @@ exports.exportMonthXlsx = async (req, res) => {
           workContent,
           notesText,
           approveStatus,
-          ''
+          inhouseWork,
+          goOutDetail
         ]
       });
 

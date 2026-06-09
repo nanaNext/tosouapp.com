@@ -7,10 +7,10 @@
   <style>
   </style>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260421-empcache3">
-  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260602-break-final-sync3">
+  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260608-go-out-modal-37">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260421-empcache3" defer></script>
-  <script type="module" src="/static/js/pages/attendance-simple.page.js?v=navy-20260602-break-final-sync3"></script>
+  <script type="module" src="/static/js/pages/attendance-simple.page.js?v=navy-20260608-go-out-modal-37"></script>
 </head>
 <body>
   <div id="pageSpinner" class="simple-spinner" hidden>
@@ -33,10 +33,15 @@
   </header>
 
   <nav class="simple-tabs" aria-label="tabs">
-    <a class="simple-tab" href="/ui/attendance/simple">勤怠入力</a>
     <a class="simple-tab active" href="/ui/attendance/simple">簡易登録画面</a>
-    <a class="simple-tab" href="/ui/portal">共通機能</a>
+    <a class="simple-tab" id="tabGoOut" href="javascript:void(0);">外出打刻</a>
   </nav>
+
+  <!-- Go Out Status Banner -->
+  <div id="goOutStatusBanner" class="simple-goout-banner" style="display: none;">
+    <div class="goout-indicator"></div>
+    <div class="goout-text">現在外出中（<span id="goOutTimerText">00:00</span> 経過）</div>
+  </div>
 
   <main class="simple-main">
     <div id="error" class="simple-error" style="display:none;"></div>
@@ -175,38 +180,77 @@
           <span class="simple-switch-track" aria-hidden="true"></span>
         </label>
       </div>
-      <div id="detailPanelBody" class="simple-panel-body" style="padding: 0;">
+      <div id="detailPanelBody" class="simple-panel-body">
+        <div class="simple-form">
+          <div class="simple-grid2">
+            <div class="simple-time">
+              <label class="simple-label" for="lateMin">遅刻</label>
+              <input id="lateMin" type="number" class="simple-number" min="0" value="">
+            </div>
+            <div class="simple-time">
+              <label class="simple-label" for="earlyMin">早退</label>
+              <input id="earlyMin" type="number" class="simple-number" min="0" value="">
+            </div>
+          </div>
+          <div class="simple-row">
+            <label class="simple-label" for="taskType">社内業務</label>
+            <select id="taskType" class="simple-select">
+              <option value="internal">社内業務</option>
+            </select>
+          </div>
+          <div class="simple-row">
+            <label class="simple-label" for="memo">備考</label>
+            <input id="memo" class="simple-input" placeholder="遅刻・早退などの理由">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="simple-panel" id="panelGoOut" style="display: none;">
+      <div class="simple-panel-body">
         <div class="simple-actuals" style="background: transparent; min-height: auto;">
           <div class="simple-actuals-left" style="padding-top: 10px;">
             <div class="simple-form">
-              <div class="simple-grid2" style="margin-bottom: 0;">
-                <div class="simple-time">
-                  <label class="simple-label" for="lateMin">遅刻</label>
-                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
-                    <input id="lateMin" type="number" class="simple-number" min="0" value="" style="flex: 1; min-width: 0;">
-                    <span style="color: #64748b; font-size: 14px; white-space: nowrap;">分</span>
+              <div class="simple-row" style="margin-top:0">
+                <label class="simple-label" for="goOutTime">時間</label>
+                <input type="time" id="goOutTime" class="simple-time-input" style="text-align: left;">
+              </div>
+              <div class="simple-row">
+                <div class="simple-label">区分</div>
+                <input type="hidden" id="goOutType" value="業務">
+                <div style="display: flex; gap: 10px; width: 100%;">
+                  <div class="go-out-type-btn active" data-value="業務">
+                    <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #1e293b;">業務</div>
+                    <div style="font-size: 11px; color: #64748b; font-weight: 500;">給与控除なし</div>
                   </div>
-                </div>
-                <div class="simple-time">
-                  <label class="simple-label" for="earlyMin">早退</label>
-                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
-                    <input id="earlyMin" type="number" class="simple-number" min="0" value="" style="flex: 1; min-width: 0;">
-                    <span style="color: #64748b; font-size: 14px; white-space: nowrap;">分</span>
+                  <div class="go-out-type-btn" data-value="私用">
+                    <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #1e293b;">私用</div>
+                    <div style="font-size: 11px; color: #64748b; font-weight: 500;">給与控除あり</div>
                   </div>
                 </div>
               </div>
-              <div class="simple-row" style="margin-top: 0;">
-                <label class="simple-label" for="taskType">社内業務</label>
-                <div style="display: flex; align-items: center; flex: 1;">
-                  <select id="taskType" class="simple-select" style="flex: 1; max-width: none;">
-                    <option value="internal">社内業務</option>
-                  </select>
-                </div>
-              </div>
-              <div class="simple-row" style="margin-top: 0;">
-                <label class="simple-label" for="memo">備考</label>
-                <div style="display: flex; align-items: center; flex: 1;">
-                  <input id="memo" class="simple-input" placeholder="遅刻・早退などの理由" style="flex: 1; max-width: none;">
+              <div class="simple-row" style="align-items: flex-start;">
+                <label class="simple-label" for="goOutReason">理由</label>
+                <div style="display: flex; flex-direction: column; width: 100%;">
+                  <input type="text" id="goOutReason" class="simple-input" placeholder="例：銀行へ行く（直接入力または下から選択）">
+                  
+                  <div id="reasonChipsBusiness" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                    <div class="reason-chip">銀行</div>
+                    <div class="reason-chip">郵便局</div>
+                    <div class="reason-chip">役所</div>
+                    <div class="reason-chip">顧客訪問</div>
+                    <div class="reason-chip">現場確認</div>
+                    <div class="reason-chip">買い出し</div>
+                  </div>
+                  
+                  <div id="reasonChipsPrivate" style="display: none; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                    <div class="reason-chip">病院</div>
+                    <div class="reason-chip">銀行</div>
+                    <div class="reason-chip">役所</div>
+                    <div class="reason-chip">体調不良</div>
+                    <div class="reason-chip">家族の事情</div>
+                    <div class="reason-chip">その他</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -216,8 +260,14 @@
       </div>
     </section>
 
-    <div class="simple-bottom">
-      <a class="simple-monthly-link" href="/ui/attendance/monthly">
+    <!-- Nút bấm được đưa xuống dưới cùng, mô phỏng .simple-bottom -->
+    <div id="goOutBottom" class="simple-bottom" style="display: none; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100; box-sizing: border-box; background: #fff; padding: 10px 16px;">
+      <button type="button" id="btnGoOutSubmit" class="simple-btn primary" style="border-radius: 6px;">外出する</button>
+      <button type="button" id="btnGoOutReturn" class="simple-btn" style="background: #f59e0b; color: #fff; border-color: #f59e0b; border-radius: 6px;">戻る (帰社)</button>
+    </div>
+
+    <div class="simple-bottom" id="mainBottom" style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100; box-sizing: border-box; background: #fff; padding: 10px 16px;">
+      <a class="simple-monthly-link" href="/ui/attendance/monthly" id="btnMainMonthly">
         月次勤怠入力へ
         <svg class="simple-icon-pc" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"></path>
@@ -228,5 +278,7 @@
       <button class="simple-btn primary" id="btnConfirm" type="button">確定</button>
     </div>
   </main>
+
+  <!-- Go Out Modal - REMOVED, NOW IN MAIN CONTENT -->
 </body>
 </html>

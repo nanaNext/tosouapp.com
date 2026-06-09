@@ -57,6 +57,23 @@ router.post('/checkout',
   authorize('employee','manager','admin'),
   rateLimitNamed('attendance_checkout', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
   controller.checkOut);
+router.post('/go-out',
+  authenticate,
+  authorize('employee','manager','admin'),
+  rateLimitNamed('attendance_go_out', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
+  controller.recordGoOut);
+router.post('/return',
+  authenticate,
+  authorize('employee','manager','admin'),
+  rateLimitNamed('attendance_return', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
+  controller.recordReturn);
+
+// Admin Go-Out Management
+router.get('/go-out/admin-list', authenticate, authorize('manager','admin'), controller.adminListGoOutRecords);
+router.put('/go-out/admin/:id/force-end', authenticate, authorize('manager','admin'), controller.adminForceEndGoOut);
+router.put('/go-out/admin/:id', authenticate, authorize('manager','admin'), controller.adminUpdateGoOut);
+router.delete('/go-out/admin/:id', authenticate, authorize('manager','admin'), controller.adminDeleteGoOut);
+
 router.post('/worktype', authenticate, authorize('employee','manager','admin'), controller.setWorkType);
 router.get('/timesheet', authenticate, authorize('employee','manager','admin'), controller.timesheet);
 router.post('/gps',
@@ -70,6 +87,7 @@ router.get('/today-summary', authenticate, authorize('manager','admin'), control
 router.get('/today-roster', authenticate, authorize('admin','manager'), controller.todayRoster);
 router.get('/date/:date', authenticate, authorize('employee','manager','admin'), controller.getDay);
 router.get('/date/:date/daily', authenticate, authorize('employee','manager','admin'), controller.getDaily);
+router.get('/date/:date/go-out', authenticate, authorize('employee','manager','admin'), controller.getGoOutHistory);
 router.put('/date/:date', authenticate, authorize('employee','manager','admin'), controller.putDay);
 router.put('/date/:date/daily', authenticate, authorize('employee','manager','admin'), controller.putDaily);
 router.post('/date/:date/segments', authenticate, authorize('employee','manager'), controller.addSegment);

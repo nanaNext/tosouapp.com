@@ -1,0 +1,1 @@
+require('./src/core/database/mysql').query('SELECT * FROM attendance_daily ORDER BY updated_at DESC LIMIT 5').then(([rows]) => { console.log(rows); process.exit(0); }).catch(console.error);

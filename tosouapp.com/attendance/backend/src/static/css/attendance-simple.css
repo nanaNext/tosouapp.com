@@ -7,6 +7,49 @@ body {
   font-weight: 400;
 }
 
+/* Modal for Go Out */
+.simple-modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.simple-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+.simple-modal-head {
+  background: #1f3553;
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.simple-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.simple-modal-close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+.simple-modal-body {
+  padding: 16px;
+}
+
 .simple-spinner {
   position: fixed;
   inset: 0;
@@ -123,6 +166,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 2500;
+  /* Lấp khe hở trắng li ti do lỗi render của trình duyệt (sub-pixel) */
+  box-shadow: 0 1px 0 #1f3553, 0 -1px 0 #1f3553;
 }
 .simple-top-mid {
   text-align: center;
@@ -159,6 +204,33 @@ body {
 .simple-status.warn { color: #f59e0b; }
 .simple-status.danger { color: #ef4444; }
 
+/* Go Out Status Banner */
+.simple-goout-banner {
+  background: #dcfce7;
+  border-bottom: 1px solid #bbf7d0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #166534;
+  font-weight: 700;
+  font-size: 15px;
+}
+.goout-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: kintai-pulse-green 1.5s infinite;
+}
+@keyframes kintai-pulse-green {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
 .simple-tabs {
   background: #1f3553;
   display: flex;
@@ -166,8 +238,10 @@ body {
   padding: 8px 12px;
   border-top: 0;
   position: sticky;
-  top: calc(60px + env(safe-area-inset-top, 0px));
+  top: calc(59px + env(safe-area-inset-top, 0px)); /* Nhích lên 1px để đè lên khe hở */
+  margin-top: -1px;
   z-index: 2400;
+  box-shadow: 0 2px 0 #1f3553, 0 -2px 0 #1f3553;
 }
 .simple-tab {
   color: rgba(255,255,255,.92);
@@ -182,7 +256,7 @@ body {
 .simple-main {
   max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 70px 0;
   border-top: 0;
 }
 .simple-error {
@@ -400,7 +474,7 @@ body {
 .simple-form { display: grid; gap: 10px; }
 .simple-row { display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr); gap: 10px; align-items: stretch; }
 .simple-label {
-  font-weight: 400;
+  font-weight: 900;
   color: #0f172a;
   font-size: 16px;
   background: #dbeafe;
@@ -666,6 +740,7 @@ body {
   outline: none;
   border-color: #2563eb;
   background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+  box-shadow: inset 0 2px 4px rgba(37,99,235,.15);
 }
 .simple-wt-title {
   font-weight: 400;
@@ -707,11 +782,13 @@ body {
   padding: 8px 14px;
   cursor: pointer;
   font-size: 16px;
+  box-sizing: border-box;
 }
 .simple-btn.primary {
   background: #1f3553;
   border-color: #1f3553;
   color: #fff;
+  box-sizing: border-box;
 }
 .simple-btn.wide { width: 100%; padding: 12px 14px; font-size: 16px; }
 .simple-btn:disabled { opacity: .55; cursor: not-allowed; }
@@ -764,14 +841,17 @@ body {
 }
 
 .simple-bottom {
-  padding: 10px;
+  padding: 10px 16px;
   background: #fff;
-  border-bottom: 1px solid #d9dee7;
+  border-top: 1px solid #d9dee7;
   display: flex;
   gap: 12px;
+  align-items: center;
   justify-content: space-between;
   position: sticky;
   bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .simple-monthly-link {
   display: inline-flex;
@@ -782,19 +862,25 @@ body {
   background: #1f3553;
   border: 1px solid #1f3553;
   border-radius: 6px;
-  padding: 10px 14px;
+  padding: 10px 24px;
   font-weight: 900;
   font-size: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 140px;
   justify-content: center;
+  height: 44px;
   line-height: 1;
   box-sizing: border-box;
-  height: 44px;
+  transition: all 0.2s ease;
 }
 .simple-monthly-link:hover {
-  filter: brightness(1.05);
+  background: #2a476e;
+  border-color: #2a476e;
+}
+.simple-monthly-link:active {
+  background: #15253a;
+  border-color: #15253a;
 }
 .simple-icon-pc {
   width: 34px;
@@ -806,19 +892,53 @@ body {
   stroke-linejoin: round;
 }
 .simple-bottom .simple-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 12px 14px;
+  flex: 0 1 auto;
+  min-width: 140px;
+  padding: 12px 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
   box-sizing: border-box;
   height: 44px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+.simple-bottom .simple-btn.primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.simple-bottom .simple-btn.primary:active {
+  background: #1e40af;
+  border-color: #1e40af;
+}
+/* Nút "Trở về (vàng)" */
+.simple-bottom .simple-btn[id="btnGoOutReturn"]:hover {
+  background: #f59e0b !important; /* màu sáng hơn một chút sẽ là #fbbf24 nhưng để đồng bộ, ta có thể dùng filter hoặc màu tĩnh */
+  filter: brightness(1.1);
+}
+.simple-bottom .simple-btn[id="btnGoOutReturn"]:active {
+  filter: brightness(0.9);
 }
 
 @media (max-width: 700px) {
-  .simple-tabs { display: none; }
+  .simple-tabs { 
+    display: flex; 
+    overflow-x: auto; 
+    padding: 8px; 
+    gap: 8px; 
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .simple-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .simple-tab {
+    white-space: nowrap;
+    font-size: 14px;
+    padding: 6px 12px;
+  }
   .simple-actuals { grid-template-columns: 1fr; }
   .simple-actuals-right { display: none; }
   .simple-row { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
@@ -830,6 +950,7 @@ body {
     padding: 6px 8px;
     justify-content: flex-start;
     min-width: 0;
+    white-space: nowrap;
   }
   .simple-grid2 .simple-select {
     font-size: 15px;
@@ -839,12 +960,7 @@ body {
     min-width: 0;
   }
   .simple-grid2 .simple-select { text-align: left; padding: 8px 24px 8px 8px; font-size: 15px; }
-  /* Hàng thời gian + nút: chiều ngang gọn, chiều dọc rõ ràng và đồng đều */
-  .simple-stamp-row { grid-template-columns: minmax(90px, 104px) minmax(104px, 120px) 1fr; gap: 6px; align-items: stretch; }
-  .simple-stamp-row > * { min-width: 0; }
-  .simple-stamp-btn { font-size: 12px; padding: 8px 6px; height: 40px !important; width: 100%; max-width: 104px; min-width: 0; margin: 0; white-space: nowrap; line-height: normal; overflow: hidden; text-overflow: ellipsis; justify-content: center; text-align: center; justify-self: end; }
-  .simple-stamp-time { font-size: 14px; padding: 8px 8px; letter-spacing: 0; border: 2px solid #93c5fd; border-radius: 6px; height: 40px !important; min-height: 40px !important; line-height: normal !important; width: 100%; max-width: 120px; min-width: 0; margin: 0; box-sizing: border-box; text-align: center; justify-self: start; }
-  .simple-time-input { font-size: 14px; letter-spacing: 0; border: 2px solid #93c5fd; border-radius: 6px; width: 100%; min-width: 0; margin: 0; height: 40px !important; min-height: 40px !important; line-height: normal !important; box-sizing: border-box; text-align: center; }
+  .simple-time-input { font-size: 16px; letter-spacing: 0; border: 2px solid #93c5fd; border-radius: 6px; width: 100%; min-width: 0; margin: 0; height: 44px !important; min-height: 44px !important; line-height: normal !important; box-sizing: border-box; text-align: center; }
   .simple-stamp-time::-webkit-datetime-edit,
   .simple-time-input::-webkit-datetime-edit {
     font-size: 16px;
@@ -888,13 +1004,13 @@ body {
     pointer-events: none;
     cursor: default;
   }
-  .simple-row label, .simple-time label { font-size: 16px; font-weight: 900; padding: 0 12px; height: 44px !important; display: flex; align-items: center; justify-content: flex-start; text-align: left; box-sizing: border-box; border-width: 2px !important; }
+  .simple-row .simple-label, .simple-time .simple-label, .simple-stamp-row .simple-label { font-size: 16px; font-weight: 900; padding: 0 12px; height: 44px !important; display: flex; align-items: center; justify-content: flex-start; text-align: left; box-sizing: border-box; border-width: 2px !important; }
   .simple-stamp-time::-webkit-calendar-picker-indicator { display: none; }
   .simple-time-input::-webkit-calendar-picker-indicator { display: none; }
-  .simple-bottom .simple-btn { flex: 1 1 0; min-width: 0; padding: 12px 14px; font-size: 16px; height: 44px !important; }
+  .simple-bottom .simple-btn { flex: 1 1 0; min-width: 0; padding: 12px 14px; font-size: 16px; height: 44px !important; box-sizing: border-box; }
   .simple-monthly-link {
     font-size: 16px;
-    height: 44px;
+    height: 44px !important;
     line-height: 1;
     padding: 10px 14px;
     align-items: center;
@@ -907,52 +1023,68 @@ body {
     width: 100%;
     max-width: none;
   }
-  .simple-wt-title {
-    font-size: 15px;
-  }
-  .simple-wt-box {
-    width: 36px !important;
-    height: 36px !important;
-    line-height: 36px !important;
-    border: 2px solid #93c5fd !important;
-    background: #eaf2ff !important;
-  }
-  .simple-wt-btn[aria-pressed="true"] .simple-wt-box::after { font-size: 24px; }
-  /* Thu ngắn riêng 2 ô đầu (勤務区分/企業名) theo mẫu yêu cầu */
-  .simple-form .simple-row:nth-child(1) { grid-template-columns: 140px 260px; }
-  .simple-form .simple-row:nth-child(1) .simple-select { max-width: 260px !important; width: 260px !important; }
-  .simple-form .simple-row:nth-child(2) { grid-template-columns: 140px 220px; }
-  .simple-form .simple-row:nth-child(2) .simple-select,
-  .simple-form .simple-row:nth-child(2) .simple-input { max-width: 220px !important; width: 220px !important; }
-  /* Căn ngang bằng nhau cho 現場名 và 作業内容 */
-  .simple-work-report .simple-row { grid-template-columns: 140px 220px; }
-  .simple-work-report .simple-row:nth-child(1) .simple-input,
-  .simple-work-report .simple-row:nth-child(2) .simple-textarea { max-width: 220px !important; width: 220px !important; }
-  /* Đồng bộ theo layout chính: tất cả hàng dùng cột 140px + 1fr, không thu hẹp */
-  .simple-form .simple-row:nth-child(1),
-  .simple-form .simple-row:nth-child(2),
-  .simple-work-report .simple-row {
-    grid-template-columns: minmax(120px, 140px) minmax(0, 1fr) !important;
-  }
-  .simple-form .simple-row:nth-child(1) .simple-select,
-  .simple-form .simple-row:nth-child(2) .simple-select,
-  .simple-form .simple-row:nth-child(2) .simple-input,
-  .simple-work-report .simple-row:nth-child(1) .simple-input,
-  .simple-work-report .simple-row:nth-child(2) .simple-textarea {
-    max-width: none !important;
-    width: 100% !important;
-  }
-  .simple-stamp-row .simple-label {
-    font-weight: 900;
-    padding: 0 12px;
-    height: 44px !important;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    text-align: left;
-    box-sizing: border-box;
-    border-width: 2px !important;
-  }
+} /* End of @media (max-width: 700px) */
+
+/* Custom styles for Go Out feature */
+.go-out-type-btn {
+  flex: 1;
+  padding: 14px 8px;
+  border: 2px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 64px;
+}
+.go-out-type-btn.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+.go-out-type-btn.active div:first-child {
+  color: #1d4ed8;
+}
+.go-out-type-btn:active {
+  transform: scale(0.98);
+}
+.reason-chip {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  flex: 1 1 calc(33.333% - 8px);
+  text-align: center;
+  box-sizing: border-box;
+}
+.reason-chip:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+  color: #1e293b;
+}
+.reason-chip:active {
+  background: #e2e8f0;
+  transform: scale(0.96);
+}
+.reason-chip.selected {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  font-weight: 600;
 }
 
 /* Extra-compact phones: prevent time box and stamp button overlap */
@@ -1005,6 +1137,7 @@ body {
     font-size: 14px;
     padding: 6px 6px;
     justify-content: flex-start;
+    white-space: nowrap;
   }
   .simple-grid2 .simple-select {
     font-size: 14px;
@@ -1030,7 +1163,7 @@ body {
   }
   .simple-bottom { gap: 8px; padding: 8px; }
   .simple-monthly-link,
-  .simple-bottom .simple-btn { height: 42px; font-size: 14px; padding: 8px 10px; }
+  .simple-bottom .simple-btn { height: 42px !important; font-size: 14px; padding: 8px 10px; box-sizing: border-box; }
   .simple-monthly-link { gap: 6px; }
   .simple-icon-pc { width: 26px; height: 18px; }
 }

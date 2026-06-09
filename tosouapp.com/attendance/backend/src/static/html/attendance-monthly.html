@@ -13,9 +13,9 @@
   <script src="/static/js/pages/attendance-monthly.core.js?v=navy-20260601-final-3" defer></script>
   <script src="/static/js/pages/attendance-monthly.render.js?v=navy-20260604-textarea3" defer></script>
   <script src="/static/js/pages/attendance-monthly.api.js?v=navy-20260601-final-3" defer></script>
-  <script src="/static/js/pages/attendance-monthly.sections-render.js?v=navy-20260602-parttime-planned1" defer></script>
+  <script src="/static/js/pages/attendance-monthly.sections-render.js?v=navy-20260608-go-out-history-10" defer></script>
   <script src="/static/js/pages/attendance-monthly.draft.js?v=navy-20260601-final-3" defer></script>
-  <script src="/static/js/pages/attendance-monthly.controller.js?v=navy-20260604-textarea3" defer></script>
+  <script src="/static/js/pages/attendance-monthly.controller.js?v=navy-20260608-fix3" defer></script>
   <!-- cache buster -->
   <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260604-textarea3" defer></script>
   <script src="/static/js/pages/attendance-monthly.page.js?v=navy-20260604-textarea3" defer></script>
@@ -162,6 +162,7 @@
                 </div>
               </section>
             </div>
+            
             <div id="attendance" class="toggleTarget">
               <section class="se-section" id="dailySection">
                 <div class="se-section-head se-daily-head">
@@ -170,11 +171,11 @@
                     <span class="se-daily-text">日次実績</span>
                   </div>
                   <div class="se-daily-actions" style="display: flex; gap: 4px; margin-left: auto; align-items: center;">
-                    <div class="se-tabs se-tabs-seg" role="tablist" aria-label="日次">
-                      <button type="button" class="se-tab active" data-tab="actual">実績</button>
-                      <button type="button" class="se-tab" data-tab="plan" disabled>予定</button>
+                      <div class="se-tabs se-tabs-seg" role="tablist" aria-label="表示モード">
+                        <button type="button" class="se-tab active" data-tab="actual">実績</button>
+                        <button type="button" class="se-tab" data-tab="plan">予定</button>
+                      </div>
                     </div>
-                  </div>
                 </div>
                 <div class="se-section-body">
                   <div class="common-buttons">
@@ -188,10 +189,12 @@
                           <option value="all">全体</option>
                         </select>
                       </div>
+                      <button type="button" class="se-btn primary se-btn-wide" id="btnToggleGoOutHistory" style="background: #10b981; border-color: #10b981; margin-right: auto;" data-mode="daily">外出履歴を表示</button>
                       <a class="se-btn primary se-btn-wide" href="/ui/attendance" style="text-decoration:none;">個人カレンダー登録画面へ</a>
                     </div>
                   </div>
                   <div id="monthTable" class="se-table"></div>
+                  <div id="goOutHistoryTable" class="se-table" style="display: none; margin-top: 12px;"></div>
                   
                 </div>
               </section>
@@ -226,6 +229,7 @@
           </form>
           <button type="button" data-toggle="modal" data-target="#workingHistoryModal" data-backdrop="static" id="showWorkingHistoryModalBtn" style="display: none"></button>
           <div id="workingHistoryModalTarget"></div>
+          
           <div id="monthHScroll" class="se-hscroll" aria-hidden="true">
             <div class="se-hscroll-inner"></div>
           </div>

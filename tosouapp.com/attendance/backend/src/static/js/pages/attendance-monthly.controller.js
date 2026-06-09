@@ -598,28 +598,8 @@
   };
 
   const ensureCompactToggle = () => {
-    const head = document.querySelector('.se-daily-actions');
-    if (!head) return;
-    if (document.getElementById('btnCompactView')) return;
-    // Kiểm tra xem đã có nút nào có chữ "コンパクト表示" chưa để tránh tạo trùng lặp
-    const existingBtns = Array.from(head.querySelectorAll('button'));
-    if (existingBtns.some(b => b.textContent.includes('コンパクト表示'))) return;
-    
-    const btn = document.createElement('button');
-    btn.id = 'btnCompactView';
-    btn.className = 'se-tab';
-    btn.type = 'button';
-    btn.textContent = 'コンパクト表示';
-    head.appendChild(btn);
-    const applyState = () => {
-      const isMobile = window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
-      if (!isMobile) { document.body.classList.remove('mobile-compact'); return; }
-    };
-    btn.addEventListener('click', () => {
-      document.body.classList.toggle('mobile-compact');
-    });
-    applyState();
-    window.addEventListener('resize', applyState, { passive: true });
+    // Chức năng "コンパクト表示" đã được xóa theo yêu cầu
+    return;
   };
 
   const scheduleAutoSave = () => {
@@ -801,11 +781,11 @@
         const u2 = detail?.user || null;
         if (u2) {
           const code = u2.employee_code || u2.employeeCode || (u2.id ? ('EMP' + String(u2.id).padStart(3, '0')) : '');
-          $('#empCode').textContent = code || '—';
-          $('#staffName').textContent = u2.username || u2.email || '—';
+          if ($('#empCode')) $('#empCode').textContent = code || '—';
+          if ($('#staffName')) $('#staffName').textContent = u2.username || u2.email || '—';
           const officeCode = u2.office_code || u2.officeCode || ' ';
-          $('#officeCode').textContent = String(officeCode || '').trim() || '—';
-          $('#empDept').textContent = u2.departmentName || '—';
+          if ($('#officeCode')) $('#officeCode').textContent = String(officeCode || '').trim() || '—';
+          if ($('#empDept')) $('#empDept').textContent = u2.departmentName || '—';
         }
       } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
       renderContract(ctx.contractHost, detail);
@@ -1860,18 +1840,18 @@
       if (top) top.style.display = '';
       try { document.body.classList.remove('embed'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { if ($('#userName')) $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     try {
       const code = profile.employee_code || profile.employeeCode || (profile.id ? ('EMP' + String(profile.id).padStart(3, '0')) : '');
-      $('#empCode').textContent = (ctx.role === 'employee') ? (code || '—') : '—';
+      if ($('#empCode')) $('#empCode').textContent = (ctx.role === 'employee') ? (code || '—') : '—';
     } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { $('#staffName').textContent = (ctx.role === 'employee') ? (profile.username || profile.email || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { if ($('#staffName')) $('#staffName').textContent = (ctx.role === 'employee') ? (profile.username || profile.email || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
     try {
       const officeCode = profile.office_code || profile.officeCode || '00084';
-      $('#officeCode').textContent = (ctx.role === 'employee') ? (String(officeCode || '').trim() || '—') : '—';
+      if ($('#officeCode')) $('#officeCode').textContent = (ctx.role === 'employee') ? (String(officeCode || '').trim() || '—') : '—';
     } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { $('#officeName').textContent = '飯塚塗研'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { $('#empDept').textContent = (ctx.role === 'employee') ? (profile.departmentName || profile.department || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { if ($('#officeName')) $('#officeName').textContent = '飯塚塗研'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { if ($('#empDept')) $('#empDept').textContent = (ctx.role === 'employee') ? (profile.departmentName || profile.department || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
 
     ctx.actingUserId = '';
     try {
