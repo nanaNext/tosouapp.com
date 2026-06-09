@@ -1,0 +1,3 @@
+Error: Command failed: git add .
+fatal: Unable to create 'C:/.git/index.lock': Permission denied
+
