@@ -915,7 +915,7 @@
       // Update reason visibility/disability based on kubun and updated lateEarlyText
       if (reasonSel) {
         const lateEarlyText = lateEarly ? lateEarly.textContent : '—';
-        if (effectiveKubun === '欠勤' || lateEarlyText !== '—') {
+        if (effectiveKubun === '欠勤' || (lateEarlyText && lateEarlyText !== '—')) {
           reasonSel.style.visibility = 'visible';
           reasonSel.disabled = !state.editableMonth;
         } else {

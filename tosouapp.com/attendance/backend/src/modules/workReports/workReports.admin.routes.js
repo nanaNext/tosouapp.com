@@ -1258,7 +1258,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
     `, [start, end]);
 
     const [dailyRows] = await db.query(`
-      SELECT userId, date, kubun, work_type, location, memo
+      SELECT userId, date, kubun, work_type, location, memo, notes, late_minutes, early_minutes, reason
       FROM attendance_daily
       WHERE date >= ? AND date <= ?
     `, [start, end]);
@@ -1268,7 +1268,11 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         kubun: r.kubun || null,
         workType: r.work_type || null,
         location: r.location || null,
-        memo: r.memo || null
+        memo: r.memo || null,
+        notes: r.notes || null,
+        lateMinutes: r.late_minutes || 0,
+        earlyMinutes: r.early_minutes || 0,
+        reason: r.reason || ''
       });
     }
 
@@ -1362,6 +1366,11 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         workType,
         site,
         work,
+        memo: daily?.memo || null,
+        notes: daily?.notes || null,
+        lateMinutes: daily?.lateMinutes || 0,
+        earlyMinutes: daily?.earlyMinutes || 0,
+        reason: daily?.reason || '',
         status
       });
     }
@@ -1417,6 +1426,11 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         workType,
         site,
         work,
+        memo: daily?.memo || null,
+        notes: daily?.notes || null,
+        lateMinutes: daily?.lateMinutes || 0,
+        earlyMinutes: daily?.earlyMinutes || 0,
+        reason: daily?.reason || '',
         status
       });
     }
