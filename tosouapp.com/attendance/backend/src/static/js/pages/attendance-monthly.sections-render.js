@@ -467,58 +467,41 @@
     host.innerHTML = '';
 
     const controlBar = document.createElement('div');
+    controlBar.className = 'goout-history-controls';
     controlBar.style.display = 'flex';
-    controlBar.style.justifyContent = 'space-between';
-    controlBar.style.alignItems = 'flex-end';
+    controlBar.style.justifyContent = 'flex-end'; // Only summary is left, align it nicely
+    controlBar.style.alignItems = 'center';
     controlBar.style.marginBottom = '12px';
-    
-    const filterDiv = document.createElement('div');
-    filterDiv.style.display = 'flex';
-    filterDiv.style.gap = '12px';
-    filterDiv.innerHTML = `
-      <label style="font-size: 13px; font-weight: 500;">日付: <input type="date" id="goOutFilterDate" style="padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px;"></label>
-      <label style="font-size: 13px; font-weight: 500;">区分: 
-        <select id="goOutFilterType" style="padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px;">
-          <option value="">すべて</option>
-          <option value="業務">業務</option>
-          <option value="私用">私用</option>
-        </select>
-      </label>
-    `;
+    controlBar.style.flexWrap = 'wrap';
+    controlBar.style.gap = '8px';
     
     const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'goout-history-summary';
     summaryDiv.style.fontSize = '14px';
     summaryDiv.style.fontWeight = 'bold';
     summaryDiv.style.color = '#1e293b';
     
-    controlBar.appendChild(filterDiv);
     controlBar.appendChild(summaryDiv);
     host.appendChild(controlBar);
 
     const tableContainer = document.createElement('div');
     tableContainer.style.maxHeight = '500px';
     tableContainer.style.overflowY = 'auto';
+    tableContainer.style.overflowX = 'auto';
+    tableContainer.style.WebkitOverflowScrolling = 'touch';
     tableContainer.style.border = '1px solid #dbe4f0';
     host.appendChild(tableContainer);
 
     const table = document.createElement('table');
     table.className = 'excel-table'; // Sử dụng class của hệ thống để đồng bộ style
     table.style.width = '100%';
+    table.style.minWidth = '400px'; // Ensure horizontal scrolling on very narrow screens
     table.style.borderCollapse = 'collapse';
     table.style.margin = '0';
     tableContainer.appendChild(table);
     
     const renderTable = () => {
-      const filterDate = document.getElementById('goOutFilterDate')?.value;
-      const filterType = document.getElementById('goOutFilterType')?.value;
-      
       let filteredRows = allRows;
-      if (filterDate) {
-        filteredRows = filteredRows.filter(r => r.date === filterDate);
-      }
-      if (filterType) {
-        filteredRows = filteredRows.filter(r => r.type === filterType);
-      }
       
       let totalMin = 0;
       let busMin = 0;
@@ -548,31 +531,31 @@
           }
         }
         
-        return `<tr style="background-color: #ffffff; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f1f5f9'" onmouseout="this.style.backgroundColor='#ffffff'">
-          <td style="text-align: center; padding: 6px 4px; border: 1px solid #dbe4f0; font-size: 13px; color: #1e293b;">${esc(ds.slice(5).replace('-', '/'))}(${esc(dow)})</td>
-          <td style="text-align: center; font-family: monospace, sans-serif; font-size: 14px; padding: 6px 4px; border: 1px solid #dbe4f0; color: #334155;">${esc(goHm)}</td>
-          <td style="text-align: center; font-family: monospace, sans-serif; font-size: 14px; padding: 6px 4px; border: 1px solid #dbe4f0; color: #334155;">${returnDisplay}</td>
-          <td style="text-align: center; font-family: monospace, sans-serif; font-size: 14px; font-weight: 500; padding: 6px 4px; border: 1px solid #dbe4f0; color: #334155;">${esc(duration)}</td>
-          <td style="text-align: center; padding: 6px 4px; border: 1px solid #dbe4f0;">
-            <span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; background: ${type === '業務' ? '#e0f2fe' : '#fee2e2'}; color: ${type === '業務' ? '#0369a1' : '#b91c1c'}; border: 1px solid ${type === '業務' ? '#bae6fd' : '#fecaca'};">
+        return `<tr class="goout-history-row" style="background-color: #ffffff; transition: background-color 0.2s;">
+          <td style="text-align: center; border: 1px solid #dbe4f0; color: #1e293b; white-space: nowrap;">${esc(ds.slice(5).replace('-', '/'))}(${esc(dow)})</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; border: 1px solid #dbe4f0; color: #334155;">${esc(goHm)}</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; border: 1px solid #dbe4f0; color: #334155;">${returnDisplay}</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; font-weight: 500; border: 1px solid #dbe4f0; color: #334155;">${esc(duration)}</td>
+          <td style="text-align: center; border: 1px solid #dbe4f0; white-space: nowrap;">
+            <span class="goout-type-badge" style="display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 500; background: ${type === '業務' ? '#e0f2fe' : '#fee2e2'}; color: ${type === '業務' ? '#0369a1' : '#b91c1c'}; border: 1px solid ${type === '業務' ? '#bae6fd' : '#fecaca'};">
               ${esc(type)}
             </span>
           </td>
-          <td style="text-align: left; padding: 6px 8px; border: 1px solid #dbe4f0; font-size: 13px; color: #475569;">${esc(reason)}</td>
+          <td class="goout-col-reason" style="text-align: left; border: 1px solid #dbe4f0; color: #475569; word-break: break-word;">${esc(reason)}</td>
         </tr>`;
       }).join('') : `<tr><td colspan="6" style="text-align:center; padding: 16px; color:#64748b; font-weight: 500; background: #fff; border: 1px solid #dbe4f0; font-size: 13px;">外出履歴がありません</td></tr>`;
 
-      const thStyle = "position: sticky; top: 0; z-index: 10; background: #0f2c62; color: #ffffff; text-align: center; font-weight: bold; padding: 8px 4px; border: 1px solid #dbe4f0; font-size: 13px;";
+      const thStyle = "position: sticky; top: 0; z-index: 10; background: #0f2c62; color: #ffffff; text-align: center; font-weight: bold; border: 1px solid #dbe4f0; white-space: nowrap;";
       
       table.innerHTML = `
       <thead>
         <tr>
-          <th style="width: 120px; ${thStyle}">日付</th>
-          <th style="width: 100px; ${thStyle}">外出時間</th>
-          <th style="width: 100px; ${thStyle}">戻り時間</th>
-          <th style="width: 100px; ${thStyle}">経過時間</th>
-          <th style="width: 100px; ${thStyle}">区分</th>
-          <th style="${thStyle}">理由</th>
+          <th style="${thStyle}">日付</th>
+          <th style="${thStyle}">外出時間</th>
+          <th style="${thStyle}">戻り時間</th>
+          <th style="${thStyle}">経過時間</th>
+          <th style="${thStyle}">区分</th>
+          <th class="goout-col-reason" style="${thStyle}">理由</th>
         </tr>
       </thead>
       <tbody>
@@ -586,14 +569,10 @@
         return `${h}時間${m}分`;
       };
       
-      const summaryPrefix = filterDate ? `${filterDate.replace(/-/g, '/')}の合計外出時間` : '今月の合計外出時間';
-      summaryDiv.innerHTML = `${summaryPrefix}：<span style="color:#0284c7; font-size: 16px;">${formatJaTime(totalMin)}</span> <span style="font-size:12px; color:#64748b; font-weight:normal; margin-left: 8px;">(業務: ${formatJaTime(busMin)} / 私用: ${formatJaTime(priMin)})</span>`;
+      summaryDiv.innerHTML = `今月の合計外出時間：<span class="goout-summary-total" style="color:#0284c7; font-size: 16px;">${formatJaTime(totalMin)}</span> <span class="goout-summary-details" style="font-size:12px; color:#64748b; font-weight:normal; margin-left: 8px;">(業務: ${formatJaTime(busMin)} / 私用: ${formatJaTime(priMin)})</span>`;
     };
 
     renderTable();
-    
-    document.getElementById('goOutFilterDate')?.addEventListener('change', renderTable);
-    document.getElementById('goOutFilterType')?.addEventListener('change', renderTable);
   };
 
   const renderSummary = (host, detail, timesheet) => {
