@@ -76,7 +76,8 @@
   background: #fff;
   border-radius: 8px;
   border: 1px solid #d1d5db;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
@@ -85,6 +86,7 @@
 .adj-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 700px;
 }
 
 .adj-table thead tr {
@@ -132,6 +134,8 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .adj-list-title {
   margin: 0;
@@ -139,6 +143,7 @@
   font-weight: 700;
   color: #0b2c66;
   letter-spacing: .5px;
+  white-space: nowrap;
 }
 .adj-month-input {
   height: 34px;

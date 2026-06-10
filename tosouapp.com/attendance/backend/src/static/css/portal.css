@@ -2597,6 +2597,25 @@ body:not(.admin) .topbar-inner .user #userName {
 }
 
 @media (max-width: 430px) {
+  /* Thu nhỏ kích thước ô vuông trên mobile nhưng giữ chữ to */
+  .tiles.employee-portal .emp-tiles-3 .tile {
+    width: 106px;
+    min-height: 106px;
+    padding: 10px 6px;
+  }
+  .tiles.employee-portal .emp-tiles-3 .tile .icon {
+    font-size: 32px;
+  }
+  .tiles.employee-portal .emp-tiles-3 .tile .title {
+    font-size: 14px; /* Giữ chữ to rõ ràng */
+    margin-top: 8px;
+  }
+  .tiles.employee-portal .emp-tiles-3 .tile::after {
+    font-size: 20px;
+    right: 6px;
+    top: 6px;
+  }
+
   .tiles.employee-portal .emp-tiles-2 { grid-template-columns: minmax(240px, 280px); }
   .tiles.employee-portal .tile.emp-wide {
     height: 66px;
@@ -2635,7 +2654,7 @@ body:not(.admin) .topbar-inner .user #userName {
     display: none !important;
   }
   body:not(.admin) .subbar + .content {
-    padding-top: calc(var(--topbar-height) + 2px) !important;
+    padding-top: calc(var(--topbar-height) + 24px) !important;
   }
 }
 

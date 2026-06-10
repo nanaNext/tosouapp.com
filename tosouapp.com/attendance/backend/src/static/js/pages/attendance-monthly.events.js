@@ -1013,6 +1013,303 @@
     });
   };
 
+  const bindPdfModal = () => {
+    const btnOpen = document.querySelector('#btnExportWeek');
+    const modal = document.querySelector('#employmentNoticeModal');
+    const btnClose = document.querySelector('#btnEnmClose');
+    const btnCloseBottom = document.querySelector('#btnEnmCloseBottom');
+    const backdrop = document.querySelector('#enmBackdrop');
+    const btnPrint = document.querySelector('#btnEnmPrint');
+
+    if (!btnOpen || !modal) return;
+
+    // Enable the button since we have the feature now
+    btnOpen.removeAttribute('disabled');
+
+    const closeModal = () => {
+      modal.setAttribute('hidden', '');
+    };
+
+    const openModal = () => {
+      // Get current date
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.querySelector('#enmDate').textContent = `${yyyy}年${mm}月${dd}日`;
+
+      // Get user info from DOM or state
+      const targetMonthStr = document.querySelector('#monthPicker')?.value || '';
+      if (targetMonthStr) {
+        const [year, month] = targetMonthStr.split('-');
+        document.querySelector('#enmTargetMonth').textContent = `${year}年${parseInt(month, 10)}月`;
+      }
+
+      document.querySelector('#enmEmpCode').textContent = document.querySelector('#empCode')?.textContent || '—';
+      document.querySelector('#enmEmpName').textContent = document.querySelector('#staffName')?.textContent || '—';
+      document.querySelector('#enmEmpDept').textContent = document.querySelector('#empDept')?.textContent || '—';
+
+      // Build daily table rows AND calculate summary dynamically based ONLY on actual records up to today
+      const dailyTbody = document.querySelector('#enmDailyTable tbody');
+      
+      let sumAttendDays = 0;
+      let sumWorkMins = 0;
+      let sumOvertimeMins = 0;
+      let sumNightMins = 0;
+      let sumHolidayWorkMins = 0;
+      
+      const parseHmToMin = (hmStr) => {
+        if (!hmStr) return 0;
+        const parts = String(hmStr).trim().split(':');
+        if (parts.length !== 2) return 0;
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+      };
+      
+      if (dailyTbody) {
+        dailyTbody.innerHTML = '';
+        const rows = document.querySelectorAll('#monthTableReal tbody tr[data-date]');
+        
+        // Lấy ngày hiện tại để xác định "quá khứ" và "tương lai"
+        const currentYmd = new Date().toLocaleDateString('sv-SE'); // "YYYY-MM-DD"
+        
+        rows.forEach(tr => {
+          const dateStr = tr.dataset.date || ''; // "YYYY-MM-DD"
+          let dayDisplay = '';
+          if (dateStr) {
+            const m = parseInt(dateStr.slice(5, 7), 10);
+            const d = parseInt(dateStr.slice(8, 10), 10);
+            const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
+            // Dùng Non-breaking space (&nbsp;) để chắc chắn không bị xuống dòng giữa ngày và thứ
+            dayDisplay = `${m}/${d}&nbsp;${dow}`;
+          }
+          
+          const isFuture = dateStr > currentYmd;
+          const isWeekendOrHoliday = tr.classList.contains('sat') || tr.classList.contains('sun') || tr.classList.contains('holiday');
+          
+          // Trích xuất các trường từ UI
+          const selKubun = tr.querySelector('select[data-field="classification"]');
+          let kubun = selKubun ? selKubun.value : '';
+          
+          const inEl = tr.querySelector('input[data-field="checkIn"]');
+          const outEl = tr.querySelector('input[data-field="checkOut"]');
+          let timeIn = inEl ? inEl.value : '';
+          let timeOut = outEl ? outEl.value : '';
+          
+          const brSel = tr.querySelector('select[data-field="break"]');
+          const nbSel = tr.querySelector('select[data-field="nightBreak"]');
+          let breakNormal = brSel ? brSel.value : '';
+          let breakNight = nbSel ? nbSel.value : '';
+          
+          const ckOn = tr.querySelector('input[data-field="ckOnsite"]');
+          const ckRe = tr.querySelector('input[data-field="ckRemote"]');
+          const ckSa = tr.querySelector('input[data-field="ckSatellite"]');
+          let isOnsite = ckOn && ckOn.checked ? '〇' : '';
+          let isRemote = ckRe && ckRe.checked ? '〇' : '';
+          let isTravel = ckSa && ckSa.checked ? '〇' : ''; // Map satellite/travel
+          
+          const workedEl = tr.querySelector('td[data-field="worked"]');
+          let workedTime = workedEl ? workedEl.textContent.trim() : '';
+          
+          const excessEl = tr.querySelector('td[data-field="excess"]');
+          let excessTime = excessEl ? excessEl.textContent.trim() : '';
+          
+          const notesEl = tr.querySelector('input[data-field="notes"]');
+          let notes = notesEl ? notesEl.value : '';
+          
+          // Logic 予定 và Ẩn giờ nếu chưa làm:
+          const hasActualIn = inEl && inEl.dataset.actual;
+          const hasActualOut = outEl && outEl.dataset.actual;
+          const isPlanned = tr.classList.contains('planned');
+          const isHolidayKubun = kubun === '休日' || kubun === '代替休日';
+          const isLeaveKubun = kubun === '有給休暇' || kubun === '無給休暇' || kubun === '欠勤';
+          
+          if (!hasActualIn && !hasActualOut) {
+             if (isFuture || isPlanned) {
+                if (!kubun || kubun === '出勤') kubun = '予定';
+             }
+             
+             // Xóa giờ giấc và các thông tin liên quan nếu chưa đi làm (chưa có dữ liệu thực tế)
+             timeIn = '';
+             timeOut = '';
+             breakNormal = '';
+             breakNight = '';
+             workedTime = '';
+             excessTime = '';
+             
+             // Xóa cả địa điểm nếu là ngày chưa làm
+             isOnsite = '';
+             isRemote = '';
+             isTravel = '';
+          } else {
+             // Đảm bảo có giá trị 0:00 cho các trường nếu có đi làm
+             if (!breakNormal) breakNormal = '0:00';
+             if (!breakNight) breakNight = '0:00';
+             if (!excessTime) excessTime = '0:00';
+          }
+          
+          // Đảm bảo xóa vòng tròn "Nơi làm việc" (出社/在宅/出張) nếu là các ngày nghỉ/phép
+          if (isHolidayKubun || isLeaveKubun || kubun === '予定') {
+             isOnsite = '';
+             isRemote = '';
+             isTravel = '';
+          } else if (hasActualIn || hasActualOut) {
+            // NẾU CÓ DỮ LIỆU THỰC TẾ -> TÍNH TỔNG VÀO SUMMARY
+            if (!isHolidayKubun && kubun !== '欠勤') {
+               sumAttendDays++;
+               
+               const wMin = parseHmToMin(workedTime);
+               sumWorkMins += wMin;
+               
+               const oMin = parseHmToMin(excessTime);
+               sumOvertimeMins += oMin;
+               
+               // Tự động tính toán Giờ làm đêm (22:00 - 05:00) dựa trên Giờ vào/ra thực tế trên màn hình
+               // Bỏ qua dữ liệu của Backend vì Backend đang trả về dữ liệu ảo (dummy data) bị sai
+               if (timeIn && timeOut) {
+                 let start = parseHmToMin(timeIn);
+                 let end = parseHmToMin(timeOut);
+                 if (end < start) end += 24 * 60; // Làm qua ngày hôm sau
+                 
+                 let nightWork = 0;
+                 const nightRanges = [[0, 300], [1320, 1740], [2760, 3180]]; // 0:00-5:00, 22:00-29:00
+                 for (const [rStart, rEnd] of nightRanges) {
+                     const overlapStart = Math.max(start, rStart);
+                     const overlapEnd = Math.min(end, rEnd);
+                     if (overlapStart < overlapEnd) {
+                         nightWork += (overlapEnd - overlapStart);
+                     }
+                 }
+                 const nightBreakMins = parseHmToMin(breakNight);
+                 sumNightMins += Math.max(0, nightWork - nightBreakMins);
+               }
+               
+               // Chỉ cộng vào Giờ làm ngày nghỉ nếu phân loại (Sự do) được chọn đích danh là '休日出勤' (Làm ngày nghỉ)
+               if (kubun === '休日出勤') {
+                 sumHolidayWorkMins += wMin;
+               }
+            }
+          }
+          
+          // Trích xuất người phê duyệt từ dữ liệu state.currentMonthStatus
+          // Dữ liệu người phê duyệt thường áp dụng cho cả tháng, hoặc lấy từ monthStatus
+          let approver = '';
+          if (state.currentMonthStatus === 'approved') {
+            approver = state.currentMonthDetail?.monthStatus?.approverName || '';
+          }
+
+          const html = `
+            <tr>
+              <td>${dayDisplay}</td>
+              <td>${kubun}</td>
+              <td>${isOnsite}</td>
+              <td>${isRemote}</td>
+              <td>${isTravel}</td>
+              <td>${timeIn}</td>
+              <td>${timeOut}</td>
+              <td>${breakNormal}</td>
+              <td>${breakNight}</td>
+              <td>0:00</td>
+              <td>${workedTime}</td>
+              <td>${excessTime}</td>
+              <td class="left-align" style="font-size:10px;">${notes}</td>
+              <td>${approver}</td>
+            </tr>
+          `;
+          dailyTbody.insertAdjacentHTML('beforeend', html);
+        });
+      }
+      
+      // Cập nhật lại Summary Table bằng dữ liệu TÍNH TOÁN THỰC TẾ
+      const formatHm = (min) => {
+        if (min == null) return '0:00';
+        const m = Math.max(0, Number(min || 0));
+        const h = Math.floor(m / 60);
+        const r = Math.floor(m % 60);
+        return `${h}:${String(r).padStart(2, '0')}`;
+      };
+
+      // Vẫn lấy số ngày quy định từ state (vì nó cố định)
+      const s = state.currentMonthDetail?.monthSummary?.all || {};
+      document.querySelector('#enmPlanDays').textContent = (s.plannedDays || 0) + ' 日';
+      
+      // Ghi đè các thông số khác bằng dữ liệu quét thực tế từ UI
+      document.querySelector('#enmAttendDays').textContent = sumAttendDays + ' 日';
+      document.querySelector('#enmTotalWork').textContent = formatHm(sumWorkMins);
+      document.querySelector('#enmOvertime').textContent = formatHm(sumOvertimeMins);
+      
+      // Sử dụng tổng giờ làm đêm được tính toán trực tiếp từ dữ liệu thực tế trên màn hình (để ép về 0:00 nếu không làm đêm)
+      document.querySelector('#enmNightWork').textContent = formatHm(sumNightMins);
+      
+      document.querySelector('#enmHolidayWork').textContent = formatHm(sumHolidayWorkMins);
+
+      modal.removeAttribute('hidden');
+    };
+
+    btnOpen.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal();
+    });
+
+    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnCloseBottom) btnCloseBottom.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+
+    if (btnPrint) {
+      btnPrint.addEventListener('click', () => {
+        // Simple print: open a new window with just the content and call window.print()
+        const printContent = document.querySelector('#enmPrintArea').innerHTML;
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>就業状況通知書 - 印刷</title>
+              <style>
+                  body { font-family: "Meiryo", "Hiragino Kaku Gothic ProN", "MS PGothic", sans-serif; color: #000; padding: 20px; }
+                  .enm-title { text-align: center; font-size: 18px; letter-spacing: 2px; margin-bottom: 12px; font-weight: normal; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
+                .enm-company { font-size: 15px; font-weight: normal; }
+                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #000; }
+                .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px 5px; font-size: 11px; font-weight: normal; }
+                .enm-table th { background: #e2e8f0 !important; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .enm-table td { text-align: left; }
+                .enm-table.right-align td { text-align: right; }
+                .enm-table.center-align td { text-align: center; }
+                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 10px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 2px; font-size: 10px; font-weight: normal; text-align: center; vertical-align: middle; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .enm-daily-table td.left-align { text-align: left; }
+                .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
+                .enm-daily-table td:nth-child(1) { min-width: 45px; }
+                .enm-footer-text { font-size: 11px; margin-top: 10px; text-align: right; padding-right: 20px; }
+                @media print {
+                  @page { 
+                     margin: 8mm; 
+                     size: A4 portrait; 
+                  }
+                  body { margin: 0; padding: 0; }
+                  .no-print { display: none !important; }
+                }
+              </style>
+            </head>
+            <body>
+              <div style="text-align: right; margin-bottom: 20px;" class="no-print">
+                <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; background: #0b2c66; color: #fff; border: none; border-radius: 4px; cursor: pointer;">印刷する (Print)</button>
+              </div>
+              ${printContent}
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        
+        // Gọi lệnh in từ cửa sổ cha (tránh lỗi CSP block script inline)
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+        }, 500);
+      });
+    }
+  };
+
   const bind = () => {
     bindDirtyOnBlur();
     bindWindowResize();
@@ -1027,6 +1324,7 @@
     bindSaveExportImport();
     bindSummaryEditor();
     bindTableHost();
+    bindPdfModal();
     try { wireUserMenu(); } catch (e) { /* silently ignored */ }
   };
 
