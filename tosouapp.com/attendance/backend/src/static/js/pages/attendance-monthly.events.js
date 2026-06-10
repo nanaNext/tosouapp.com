@@ -1256,55 +1256,80 @@
 
     if (btnPrint) {
       btnPrint.addEventListener('click', () => {
-        // Simple print: open a new window with just the content and call window.print()
         const printContent = document.querySelector('#enmPrintArea').innerHTML;
-        const printWindow = window.open('', '_blank', 'width=800,height=600');
-        printWindow.document.write(`
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '210mm';
+        iframe.style.height = '297mm';
+        iframe.style.visibility = 'hidden';
+        iframe.style.zIndex = '-1';
+        document.body.appendChild(iframe);
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(`
+          <!DOCTYPE html>
           <html>
             <head>
-              <title>就業状況通知書 - 印刷</title>
+              <title>就業状況通知書</title>
               <style>
-                  body { font-family: "Meiryo", "Hiragino Kaku Gothic ProN", "MS PGothic", sans-serif; color: #000; padding: 20px; }
-                  .enm-title { text-align: center; font-size: 18px; letter-spacing: 2px; margin-bottom: 12px; font-weight: normal; }
-                .enm-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
-                .enm-company { font-size: 15px; font-weight: normal; }
-                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #000; }
-                .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px 5px; font-size: 11px; font-weight: normal; }
-                .enm-table th { background: #e2e8f0 !important; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @page { 
+                   margin: 5mm; 
+                   size: A4 portrait; 
+                }
+                body { 
+                  font-family: "Meiryo", "Hiragino Kaku Gothic ProN", "MS PGothic", sans-serif; 
+                  color: #000; 
+                  margin: 0; 
+                  padding: 0;
+                  box-sizing: border-box;
+                  -webkit-print-color-adjust: exact; 
+                  print-color-adjust: exact;
+                }
+                .enm-title { text-align: center; font-size: 16px; letter-spacing: 2px; margin-bottom: 8px; font-weight: normal; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; }
+                .enm-company { font-size: 13px; font-weight: normal; }
+                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #000; }
+                .enm-table th, .enm-table td { border: 1px solid #000; padding: 2px 4px; font-size: 10px; font-weight: normal; }
+                .enm-table th { background: #e2e8f0 !important; text-align: center; }
                 .enm-table td { text-align: left; }
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
-                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 10px; }
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 2px; font-size: 10px; font-weight: normal; text-align: center; vertical-align: middle; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 6px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 2px; font-size: 9px; line-height: 1.1; font-weight: normal; text-align: center; vertical-align: middle; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
-                .enm-daily-table td:nth-child(1) { min-width: 45px; }
-                .enm-footer-text { font-size: 11px; margin-top: 10px; text-align: right; padding-right: 20px; }
-                @media print {
-                  @page { 
-                     margin: 8mm; 
-                     size: A4 portrait; 
-                  }
-                  body { margin: 0; padding: 0; }
-                  .no-print { display: none !important; }
+                .enm-daily-table td:nth-child(1) { min-width: 40px; }
+                .enm-footer-text { font-size: 10px; margin-top: 6px; text-align: right; padding-right: 10px; }
+                
+                /* Tweak to ensure fitting exactly 1 page */
+                html, body {
+                  width: 190mm; /* Ép kích thước vật lý để mobile không phóng to */
+                  margin: 0 auto;
+                }
+                .print-container {
+                  width: 100%;
                 }
               </style>
             </head>
             <body>
-              <div style="text-align: right; margin-bottom: 20px;" class="no-print">
-                <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; background: #0b2c66; color: #fff; border: none; border-radius: 4px; cursor: pointer;">印刷する (Print)</button>
+              <div class="print-container">
+                ${printContent}
               </div>
-              ${printContent}
             </body>
           </html>
         `);
-        printWindow.document.close();
+        iframe.contentWindow.document.close();
         
-        // Gọi lệnh in từ cửa sổ cha (tránh lỗi CSP block script inline)
         setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+          }, 2000);
         }, 500);
       });
     }
