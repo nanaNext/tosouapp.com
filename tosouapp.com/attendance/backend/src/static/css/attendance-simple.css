@@ -902,6 +902,7 @@ body {
   box-sizing: border-box;
   height: 44px;
   border-radius: 6px;
+  font-weight: 900;
   transition: all 0.2s ease;
 }
 .simple-bottom .simple-btn.primary:hover {
