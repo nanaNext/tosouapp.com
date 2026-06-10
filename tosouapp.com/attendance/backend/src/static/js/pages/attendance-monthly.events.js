@@ -1276,7 +1276,7 @@
               <title>就業状況通知書</title>
               <style>
                 @page { 
-                   margin: 5mm; 
+                   margin: 0mm; /* Bỏ margin cứng của máy in, dùng padding của container thay thế */
                    size: A4 portrait; 
                 }
                 body { 
@@ -1288,30 +1288,32 @@
                   -webkit-print-color-adjust: exact; 
                   print-color-adjust: exact;
                 }
-                .enm-title { text-align: center; font-size: 16px; letter-spacing: 2px; margin-bottom: 8px; font-weight: normal; }
-                .enm-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; }
-                .enm-company { font-size: 13px; font-weight: normal; }
-                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #000; }
-                .enm-table th, .enm-table td { border: 1px solid #000; padding: 2px 4px; font-size: 10px; font-weight: normal; }
+                .enm-title { text-align: center; font-size: 18px; letter-spacing: 2px; margin-top: 10px; margin-bottom: 12px; font-weight: normal; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
+                .enm-company { font-size: 14px; font-weight: normal; }
+                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000; }
+                .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px; font-size: 11px; font-weight: normal; }
                 .enm-table th { background: #e2e8f0 !important; text-align: center; }
                 .enm-table td { text-align: left; }
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
-                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 6px; }
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 2px; font-size: 9px; line-height: 1.1; font-weight: normal; text-align: center; vertical-align: middle; }
+                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 8px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px; font-size: 10.5px; line-height: 1.2; font-weight: normal; text-align: center; vertical-align: middle; }
                 .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
                 .enm-daily-table td:nth-child(1) { min-width: 40px; }
-                .enm-footer-text { font-size: 10px; margin-top: 6px; text-align: right; padding-right: 10px; }
+                .enm-footer-text { font-size: 11px; margin-top: 8px; text-align: right; padding-right: 10px; }
                 
                 /* Tweak to ensure fitting exactly 1 page */
                 html, body {
-                  width: 190mm; /* Ép kích thước vật lý để mobile không phóng to */
+                  width: 210mm;
                   margin: 0 auto;
                 }
                 .print-container {
                   width: 100%;
+                  padding: 15mm 10mm 10mm 10mm; /* padding an toàn xung quanh (Top Right Bottom Left) */
+                  box-sizing: border-box;
                 }
               </style>
             </head>
