@@ -140,7 +140,7 @@
             if (table) {
               const cg = table.querySelector('colgroup');
               if (cg) cg.style.display = '';
-              table.style.tableLayout = '';
+              table.style.tableLayout = 'fixed';
               table.style.width = '';
             }
           }

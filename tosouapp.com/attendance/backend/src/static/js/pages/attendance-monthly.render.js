@@ -464,20 +464,13 @@
           const type = tag === 'input' ? String(active.getAttribute('type') || '').toLowerCase() : '';
           if (type === 'time') return;
         }
-        const first = table.querySelector('tbody tr');
-        const cells = first ? Array.from(first.children).filter(td => getComputedStyle(td).display !== 'none') : [];
-        const widthsMeasured = cells.map(td => Math.max(1, Math.round(td.getBoundingClientRect().width)));
-        const ok = widthsMeasured.length && widthsMeasured.every(w => w > 0);
-        if (!ok && attempt < 20) {
-          requestAnimationFrame(() => syncCols(attempt + 1));
-          return;
-        }
+        
         const defaultWidths = [
           90, 120, 70, 70, 120, 220, 240, 100, 100, 100, 100, 100, 100, 100, 140, 220, 120, 120, 80, 80
         ]; // 20 columns
-        const widths = ok ? widthsMeasured : defaultWidths.slice(0, cells.length);
+        
         const cg = document.createElement('colgroup');
-        for (const w of widths) {
+        for (const w of defaultWidths) {
           const col = document.createElement('col');
           col.style.width = `${w}px`;
           cg.appendChild(col);
