@@ -32,16 +32,29 @@
   max-width: 860px;
 }
 
+@media (max-width: 500px) {
+  .adjust-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .adjust-label {
+    margin-top: 6px;
+  }
+}
+
 .adjust-label {
   color: #475569;
   font-weight: 650;
 }
 
 .adjust-input {
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   box-sizing: border-box;
+  font-family: inherit;
+  font-size: 14px;
 }
 
 .adjust-input.full {
@@ -59,6 +72,11 @@
   color: #475569;
   font-weight: 650;
   align-self: center;
+}
+
+#adjSubmit {
+  padding: 8px 24px;
+  font-size: 15px;
 }
 
 .adjust-table-wrap {

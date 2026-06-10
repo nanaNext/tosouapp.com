@@ -1,0 +1,136 @@
+/* Modal styles for PDF-like report */
+.enm-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.enm-modal[hidden] {
+  display: none !important;
+}
+.enm-backdrop {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+}
+.enm-content {
+  position: relative;
+  background: #fff;
+  width: 95%;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.enm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ddd;
+  background: #f8fafc;
+  border-radius: 8px 8px 0 0;
+}
+.enm-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #0f172a;
+}
+.enm-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+}
+.enm-close:hover { color: #0f172a; }
+.enm-body {
+  padding: 30px;
+  overflow-y: auto;
+  color: #000;
+}
+.enm-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #ddd;
+  background: #f8fafc;
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.enm-paper {
+  background: #fff;
+  font-family: "Meiryo", "Hiragino Kaku Gothic ProN", "MS PGothic", sans-serif; /* Đổi sang font chữ thanh mảnh hiện đại giống ảnh mẫu */
+}
+.enm-title {
+  text-align: center;
+  font-size: 20px;
+  letter-spacing: 4px;
+  margin-bottom: 24px;
+  font-weight: normal;
+}
+.enm-title span {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.enm-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.enm-company {
+  font-size: 16px;
+  font-weight: normal;
+}
+.enm-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+  border: 1px solid #000;
+}
+.enm-table th, .enm-table td {
+  border: 1px solid #000;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: normal;
+}
+.enm-table th {
+  background: #e2e8f0; /* Màu xám nhạt như ảnh mẫu */
+  text-align: center;
+}
+.enm-table td {
+  text-align: left;
+}
+.enm-table.right-align td {
+  text-align: right;
+}
+.enm-table.center-align td {
+  text-align: center;
+}
+.enm-daily-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #000;
+  margin-bottom: 20px;
+}
+.enm-daily-table th, .enm-daily-table td {
+  border: 1px solid #000;
+  padding: 3px 4px;
+  font-size: 10px;
+  font-weight: normal;
+  text-align: center;
+  vertical-align: middle;
+}
+.enm-daily-table th {
+  background: #cbd5e1; /* Màu xám đậm hơn một chút cho tiêu đề bảng chi tiết */
+  font-weight: normal;
+}
+.enm-daily-table td.left-align {
+  text-align: left;
+}

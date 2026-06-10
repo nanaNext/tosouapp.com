@@ -3456,3 +3456,109 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
   overflow-y: auto !important;
 }
 
+/* Modal styles for PDF-like report */
+.enm-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.enm-backdrop {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+}
+.enm-content {
+  position: relative;
+  background: #fff;
+  width: 95%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.enm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ddd;
+  background: #f8fafc;
+  border-radius: 8px 8px 0 0;
+}
+.enm-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #0f172a;
+}
+.enm-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+}
+.enm-close:hover { color: #0f172a; }
+.enm-body {
+  padding: 30px;
+  overflow-y: auto;
+  color: #000;
+}
+.enm-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #ddd;
+  background: #f8fafc;
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.enm-paper {
+  background: #fff;
+  font-family: "MS Mincho", "MS PMincho", serif;
+}
+.enm-title {
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 2px;
+  margin-bottom: 30px;
+}
+.enm-title span {
+  border-bottom: 2px solid #000;
+  padding-bottom: 4px;
+}
+.enm-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.enm-company {
+  font-size: 18px;
+  font-weight: bold;
+}
+.enm-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  border: 1px solid #000;
+}
+.enm-table th, .enm-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  font-size: 14px;
+}
+.enm-table th {
+  background: #f0f0f0;
+  text-align: center;
+}
+.enm-table td {
+  text-align: left;
+}
+.enm-table.right-align td {
+  text-align: right;
+}

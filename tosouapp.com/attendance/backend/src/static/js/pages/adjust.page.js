@@ -174,7 +174,7 @@ const renderForm = async () => {
     if (!seg) { el.textContent = '対象日の勤怠が見つかりません'; return; }
     const cin = String(seg.checkIn || '').slice(0, 16).replace('T', ' ');
     const cout = String(seg.checkOut || '').slice(0, 16).replace('T', ' ');
-    el.textContent = `出勤: ${cin || '—'} / 退勤: ${cout || '—'}`;
+    el.innerHTML = `出勤: ${cin || '—'}<br>退勤: ${cout || '—'}`;
   };
 
   let attendanceId = null;

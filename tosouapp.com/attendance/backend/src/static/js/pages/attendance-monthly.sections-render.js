@@ -690,6 +690,39 @@
     let substituteDays = Number(mode === 'sumInhouse' ? 0 : (leave?.substituteDays || 0));
     let unpaidDays = Number(mode === 'sumInhouse' ? 0 : (leave?.unpaidDays || 0));
     let standbyDays = Number(mode === 'sumInhouse' ? 0 : (leave?.standbyDays || 0));
+    
+    // Tự động tính toán lại Giờ làm đêm (22:00 - 5:00) từ dữ liệu timesheet
+    let exactNightMins = 0;
+    if (timesheet?.days) {
+      timesheet.days.forEach(d => {
+         const segs = d.segments || [];
+         segs.forEach(s => {
+            const inHm = s.checkIn ? s.checkIn.slice(11, 16) : null;
+            const outHm = s.checkOut ? s.checkOut.slice(11, 16) : null;
+            if (inHm && outHm) {
+              const parseHmToMin = (hmStr) => {
+                const parts = String(hmStr).trim().split(':');
+                return parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : 0;
+              };
+              let start = parseHmToMin(inHm);
+              let end = parseHmToMin(outHm);
+              if (end < start) end += 24 * 60;
+              
+              let nightWork = 0;
+              const nightRanges = [[0, 300], [1320, 1740], [2760, 3180]]; // 0:00-5:00, 22:00-29:00
+              for (const [rStart, rEnd] of nightRanges) {
+                  const overlapStart = Math.max(start, rStart);
+                  const overlapEnd = Math.min(end, rEnd);
+                  if (overlapStart < overlapEnd) nightWork += (overlapEnd - overlapStart);
+              }
+              const breakNightStr = (d.daily && d.daily.nightBreakMinutes) ? `${Math.floor(d.daily.nightBreakMinutes/60)}:${d.daily.nightBreakMinutes%60}` : '0:00';
+              const nightBreakMins = parseHmToMin(breakNightStr);
+              exactNightMins += Math.max(0, nightWork - nightBreakMins);
+            }
+         });
+      });
+    }
+
     let totalWork = Math.max(0, Number(totals.regular || 0) + Number(totals.overtime || 0));
     let deductionTime = 0;
     let legalOvertimeMin = (() => {
@@ -787,8 +820,30 @@
           
           const inEl = row.querySelector('input.se-time[data-field="checkIn"]');
           const outEl = row.querySelector('input.se-time[data-field="checkOut"]');
+          const nbSel = row.querySelector('select[data-field="nightBreak"]');
           const inV = String(inEl?.value || '').trim();
           const outV = String(outEl?.value || '').trim();
+          
+          if (inV && outV) {
+             const parseHmToMin = (hmStr) => {
+               if (!hmStr) return 0;
+               const parts = String(hmStr).trim().split(':');
+               return parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : 0;
+             };
+             let start = parseHmToMin(inV);
+             let end = parseHmToMin(outV);
+             if (end < start) end += 24 * 60;
+             let nightWork = 0;
+             const nightRanges = [[0, 300], [1320, 1740], [2760, 3180]];
+             for (const [rStart, rEnd] of nightRanges) {
+                 const overlapStart = Math.max(start, rStart);
+                 const overlapEnd = Math.min(end, rEnd);
+                 if (overlapStart < overlapEnd) nightWork += (overlapEnd - overlapStart);
+             }
+             const nightBreakMins = parseHmToMin(nbSel ? nbSel.value : '');
+             frontendNight += Math.max(0, nightWork - nightBreakMins);
+          }
+          
           const inAuto = String(inEl?.dataset?.auto || '') === '1';
           const outAuto = String(outEl?.dataset?.auto || '') === '1';
           const hasManualTime = (!!inV && !inAuto) || (!!outV && !outAuto);
@@ -842,6 +897,9 @@
         satelliteDays2 = frontendSatellite;
       }
     } catch (e) { /* silently ignored */ }
+    
+    // Ghi đè vào biến totals.night để sử dụng số liệu tính lại từ Frontend thay vì số liệu ảo của Backend
+    totals.night = exactNightMins;
     
     if (isPartTime) {
       plannedDays = attendDays2 + absent2 + Number(paidDays || 0) + Number(unpaidDays || 0) + holidayWorkDays2;
