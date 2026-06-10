@@ -372,14 +372,40 @@ export async function mount() {
       const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
       const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
 
-      const lateStr = Number(it.lateMinutes) > 0 ? `遅刻 (${it.lateMinutes}分)` : '';
-      const earlyStr = Number(it.earlyMinutes) > 0 ? `早退 (${it.earlyMinutes}分)` : '';
-      const reasonStr = it.reason ? it.reason : '';
+      // Auto-detect late/early based on time if not manually set in DB
+      let autoLateStr = '';
+      if (it.attendance?.checkIn) {
+        const cin = fmtTime(it.attendance.checkIn);
+        const threshold = (it.departmentName || '').includes('工事') ? '08:00' : '09:00';
+        if (cin > threshold && it.status !== '休日出勤') {
+          const [h1, m1] = cin.split(':').map(Number);
+          const [h2, m2] = threshold.split(':').map(Number);
+          const diff = (h1 * 60 + m1) - (h2 * 60 + m2);
+          if (diff > 0 && !it.lateMinutes) it.lateMinutes = diff; // override for display
+        }
+      }
+
+      const formatDelay = (mins) => {
+        if (!mins || isNaN(mins)) return '';
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (h > 0 && m > 0) return `${h}時間${m}分`;
+        if (h > 0) return `${h}時間`;
+        return `${m}分`;
+      };
+
+      const lateStr = Number(it.lateMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">[遅刻]</span> (${formatDelay(it.lateMinutes)})` : '';
+      const earlyStr = Number(it.earlyMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">[早退]</span> (${formatDelay(it.earlyMinutes)})` : '';
       let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join(' / ');
-      if (reasonStr && lateEarlyCombo) lateEarlyCombo += `<br><span style="font-size:11px;color:#64748b;">理由: ${esc(reasonStr)}</span>`;
-      else if (reasonStr) lateEarlyCombo = `<span style="font-size:11px;color:#64748b;">理由: ${esc(reasonStr)}</span>`;
       
-      const lateEarlyHtml = lateEarlyCombo || dash;
+      // Đọc dữ liệu từ cột 備考 (notes) của attendance_daily
+      const combinedReasonMemo = [it.notes].filter(Boolean).join(' - ');
+      const tooltip = combinedReasonMemo ? `title="${esc(combinedReasonMemo)}"` : '';
+      const displayReason = combinedReasonMemo.length > 20 ? combinedReasonMemo.substring(0, 20) + '...' : combinedReasonMemo;
+
+      const reasonHtml = ''; // Remove reason from lateEarlyHtml since it has its own column now
+      
+      const lateEarlyHtml = (lateEarlyCombo || dash) + reasonHtml;
 
       const dc = dowClass(it.weekday);
       const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
@@ -403,8 +429,9 @@ export async function mount() {
           <td style="font-family:monospace; font-size:14px; white-space:nowrap; ${textColor}">${checkOut}</td>
           <td style="white-space:nowrap; ${textColor}">${wType}</td>
           <td style="white-space:nowrap; ${textColor}">${site}</td>
-          <td style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
+          <td style="white-space:pre-wrap; word-break:break-word; min-width:200px; max-width:400px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
           <td style="white-space:nowrap; ${textColor}">${lateEarlyHtml}</td>
+          <td style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; ${textColor ? textColor : 'color:#475569;'}">${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>
           <td><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
@@ -421,49 +448,55 @@ export async function mount() {
       const nextCursor = currentPage === totalPages ? 'not-allowed' : 'pointer';
       
       paginationHtml = `
-        <div class="pagination-controls" style="display:flex; align-items:center; justify-content:flex-start; gap:15px; margin-top:15px; padding:10px 0;">
-          <button type="button" id="btnWrPrev" class="attrec-btn" ${prevDisabled} style="padding:4px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${prevBg}; cursor:${prevCursor};">前へ</button>
-          <span style="font-size:14px; color:#333;">${startIndex + 1}-${endIndex} / ${items.length}</span>
-          <button type="button" id="btnWrNext" class="attrec-btn" ${nextDisabled} style="padding:4px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${nextBg}; cursor:${nextCursor};">次へ</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+          <div style="color:#64748b; font-size:14px;">
+            全 <span style="font-weight:700; color:#0f172a;">${items.length}</span> 件中 <span style="font-weight:700; color:#0f172a;">${startIndex + 1}</span> - <span style="font-weight:700; color:#0f172a;">${endIndex}</span> 件を表示
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button id="btnWrPrev" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${prevBg}; color:#475569; cursor:${prevCursor}; font-size:14px;" ${prevDisabled}>前へ</button>
+            <button id="btnWrNext" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${nextBg}; color:#475569; cursor:${nextCursor}; font-size:14px;" ${nextDisabled}>次へ</button>
+          </div>
         </div>
       `;
     }
 
     tableHost.innerHTML = `
       <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
-        <table class="wr-table" style="min-width:1200px; width:100%; table-layout:auto;">
-          <colgroup>
-            <col style="width:40px;">
-            <col style="width:40px;">
-            <col style="width:100px;">
-            <col style="width:120px;">
-            <col style="width:120px;">
-            <col style="width:100px;">
-            <col style="width:70px;">
-            <col style="width:70px;">
-            <col style="width:110px;">
-            <col style="width:200px;">
-            <col style="width:300px;">
-            <col style="width:100px;">
-            <col style="width:120px;">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>日付</th>
-              <th>曜</th>
-              <th>社員番号</th>
-              <th>氏名</th>
-              <th>部署</th>
-              <th>勤務区分</th>
-              <th>出勤</th>
-              <th>退勤</th>
-              <th>勤務形態</th>
-              <th>現場</th>
-              <th>作業内容</th>
-              <th>遅刻・早退等</th>
-              <th>状態</th>
-            </tr>
-          </thead>
+        <table class="wr-table" style="min-width:1400px; width:100%; table-layout:auto;">
+            <colgroup>
+              <col style="width:110px;">
+              <col style="width:50px;">
+              <col style="width:110px;">
+              <col style="width:120px;">
+              <col style="width:140px;">
+              <col style="width:100px;">
+              <col style="width:70px;">
+              <col style="width:70px;">
+              <col style="width:110px;">
+              <col style="width:200px;">
+              <col style="width:300px;">
+              <col style="width:180px;">
+              <col style="width:200px;">
+              <col style="width:120px;">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>曜</th>
+                <th>社員番号</th>
+                <th>氏名</th>
+                <th>部署</th>
+                <th>勤務区分</th>
+                <th>出勤</th>
+                <th>退勤</th>
+                <th>勤務形態</th>
+                <th>現場</th>
+                <th>作業内容</th>
+                <th>遅刻・早退等</th>
+                <th>備考</th>
+                <th>状態</th>
+              </tr>
+            </thead>
           <tbody>
             ${rows}
           </tbody>
