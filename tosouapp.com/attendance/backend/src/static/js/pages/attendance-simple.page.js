@@ -960,6 +960,10 @@ const load = async (date, opts = {}) => {
   showErr('');
   const useSpinner = opts?.spinner !== false;
   if (useSpinner) showSpinner(true);
+  
+  // Set document as loading so CSS hides content initially
+  document.body.classList.add('is-loading');
+
   try {
     $('#topDate').textContent = fmtJP(date);
     if (date === todayJST()) {
@@ -1282,6 +1286,8 @@ const load = async (date, opts = {}) => {
     showErr(e?.message || '読み込みに失敗しました');
   } finally {
     if (useSpinner) showSpinner(false);
+    // Remove loading class to reveal main content
+    document.body.classList.remove('is-loading');
   }
 };
 
@@ -1576,56 +1582,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       showErr('本日のみ打刻できます');
       return;
     }
-    try {
-      startStampInFlight = true;
-      showSpinner(true);
-      let r = null;
-      const hmNow = nowHmJST();
-      const overrideAttendanceId = state.plannedStampAttendanceId || null;
-      if (overrideAttendanceId) {
-        const cinNow = toMySQLDateTime(state.date, hmNow);
-        await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(state.date)}`, {
-          method: 'PUT',
-          body: JSON.stringify({ attendanceId: overrideAttendanceId, checkIn: cinNow, checkOut: null })
-        });
-        r = { ok: true, already: false, replacedPlannedOpen: true };
-      } else {
-        r = await tryCheckIn();
-        if (r?.already) {
-          const replaced = await tryReplaceShiftLikeSegmentWithNow(state.date);
-          if (replaced) r = { ok: true, already: false, replacedShiftLike: true };
-        }
-      }
-      if (!r?.already) {
-        try {
-          const hm = hmNow;
-          const st = $('#startTime');
-          if (st && String(st.dataset?.touched || '') !== '1') st.value = hm;
-          clearAutoTime(st);
-          try { if (st) st.dataset.touched = '1'; } catch (e) { /* silently ignored */ }
-          const btnIn = $('#btnStartStamp');
-          const btnOut = $('#btnEndStamp');
-          if (btnIn) {
-            btnIn.disabled = true;
-            const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
-            btnIn.textContent = isMobile ? `開始済 (${hm})` : `開始打刻済 (${hm})`;
-          }
-          if (btnOut) { btnOut.disabled = false; }
-        } catch (e) { /* silently ignored */ }
-      }
-      await load(state.date);
-      if (r?.already) showToast('既に出勤済みです', 'error');
-      else {
-        showSpinner(true, true, 'stamp');
-        await new Promise(res => setTimeout(res, 1500));
-      }
-    } catch (e) {
-      showErr(e?.message || '開始打刻に失敗しました');
-    } finally {
-      showSpinner(false);
-      startStampInFlight = false;
+    
+    const hmNow = nowHmJST();
+    const st = $('#startTime');
+    if (st) {
+      st.value = hmNow;
+      clearAutoTime(st);
+      st.dataset.touched = '1';
     }
+    
+    const btnIn = $('#btnStartStamp');
+    const btnOut = $('#btnEndStamp');
+    if (btnIn) {
+      const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
+      btnIn.textContent = isMobile ? `開始済 (${hmNow})` : `開始打刻済 (${hmNow})`;
+    }
+    if (btnOut) { btnOut.disabled = false; }
+    
+    renderWorkMinutes();
+    calculateLateEarly();
+    showToast('確定ボタンを押して保存してください', 'success');
   };
+  
   const doEndStamp = async () => {
     showErr('');
     if (state.hasEndedToday) {
@@ -1640,20 +1618,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       showErr('本日のみ打刻できます');
       return;
     }
-    try {
-      showSpinner(true);
-      const r = await tryCheckOut();
-      await load(state.date);
-      if (r?.noOpen) showToast('まだ出勤していません', 'error');
-      else {
-        showSpinner(true, true, 'stamp');
-        await new Promise(res => setTimeout(res, 1500));
-      }
-    } catch (e) {
-      showErr(e?.message || '終了打刻に失敗しました');
-    } finally {
-      showSpinner(false);
+
+    const hmNow = nowHmJST();
+    const et = $('#endTime');
+    if (et) {
+      et.value = hmNow;
+      clearAutoTime(et);
+      et.dataset.touched = '1';
     }
+    
+    const btnOut = $('#btnEndStamp');
+    if (btnOut) {
+      const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
+      btnOut.textContent = isMobile ? `終了済 (${hmNow})` : `終了打刻済 (${hmNow})`;
+    }
+    
+    renderWorkMinutes();
+    calculateLateEarly();
+    showToast('確定ボタンを押して保存してください', 'success');
   };
   $('#btnStartStamp')?.addEventListener('click', doStartStamp);
   $('#btnEndStamp')?.addEventListener('click', doEndStamp);
