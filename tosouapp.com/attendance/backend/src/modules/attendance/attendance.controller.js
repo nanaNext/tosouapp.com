@@ -29,7 +29,7 @@ async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attend
     });
     if (existed) return;
     await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid', reason });
-  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendance') {
@@ -42,7 +42,7 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
       return;
     }
     await leaveRepo.cancelOwnPaidByDate(userId, ds);
-  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 // API: Nhân viên ấn nút Check-in (Đi làm)
@@ -97,14 +97,14 @@ exports.checkIn = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ ...loc, workType, result })
       });
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const y = parseInt(dtStr.slice(0, 4), 10);
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       const u = await userRepo.getUserById(userId);
       const name = u ? (u.username || u.email || '従業員') : '従業員';
@@ -159,14 +159,14 @@ exports.checkOut = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ ...loc, result })
       });
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       const dtStr = String(result?.checkOut || result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const y = parseInt(dtStr.slice(0, 4), 10);
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       const u = await userRepo.getUserById(userId);
       const name = u ? (u.username || u.email || '従業員') : '従業員';
@@ -195,7 +195,7 @@ exports.checkOut = async (req, res) => {
           if (dailies.length > 0) {
             breakMin = Number(dailies[0].break_minutes || 0) + Number(dailies[0].night_break_minutes || 0);
           }
-        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         
         const diffMs = outDate - inDate;
         let totalMinutes = Math.floor(diffMs / 60000) - breakMin;
@@ -285,7 +285,7 @@ exports.userProfileForMonthly = async (req, res) => {
     const db = require('../../core/database/mysql');
     try {
       await require('./attendance.repository').ensureWorkDetailsSchemaPublic();
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const workRows = await repo.getUserWorkDetails(userId, 10);
     let shift = null;
     const ym = String(req.query.ym || '').slice(0, 7);
@@ -399,7 +399,7 @@ exports.syncOffline = async (req, res) => {
         const r = await service.checkIn(userId, t);
         try {
           await auditRepo.writeLog({ userId, action: 'offline_checkin', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ time: t }) });
-        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         results.push({ type: 'checkin', ok: true, id: r.id });
       } else if (ev.type === 'checkout') {
         const ms = Math.floor(new Date(ev.time || Date.now()).getTime() / 60000) * 60000;
@@ -412,7 +412,7 @@ exports.syncOffline = async (req, res) => {
         const r = await service.checkOut(userId, t);
         try {
           await auditRepo.writeLog({ userId, action: 'offline_checkout', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ time: t }) });
-        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         results.push({ type: 'checkout', ok: !!r, id: r?.id || null });
       } else {
         results.push({ type: ev.type, ok: false, error: 'unknown type' });
@@ -554,7 +554,7 @@ exports.todayRoster = async (req, res) => {
           const def2 = await attendanceRepo.getShiftById(r.shiftId).catch(() => null);
           shift = def2 ? { id: def2.id, name: def2.name, start_time: def2.start_time, end_time: def2.end_time, break_minutes: def2.break_minutes } : null;
         }
-      } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       const status = Number(r.isLeave || 0) ? 'leave' : (dayIsOff ? 'off' : 'work');
       planned.push({
         userId: r.userId,
@@ -884,7 +884,7 @@ exports.submitMonth = async (req, res) => {
       if (missing.length) {
         return res.status(400).json({ message: `入力が未完了です`, missing });
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'submitted' });
@@ -966,7 +966,7 @@ exports.approveMonth = async (req, res) => {
       if (missing.length) {
         return res.status(400).json({ message: `未承認: 勤務未入力の日があります`, missing });
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     await repo.setMonthStatus(userId, y, m, 'approved', req.user?.id);
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'approved' });
   } catch (err) {
@@ -1101,13 +1101,13 @@ exports.putDaily = async (req, res) => {
     try {
       const kubun = String(daily?.kubun || req.body?.kubun || '').trim();
       await syncPaidLeaveByKubun(userId, date, kubun);
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   try {
     const y = parseInt(date.slice(0, 4), 10);
     const m = parseInt(date.slice(5, 7), 10);
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
     res.status(200).json({ date, daily });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -1169,12 +1169,12 @@ exports.putDay = async (req, res) => {
           audience: 'admin_manager'
         });
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
   try {
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
     res.status(200).json({ id: attendanceId });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -1222,13 +1222,13 @@ exports.addSegment = async (req, res) => {
           audience: 'admin_manager'
         });
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
   try {
     const y = parseInt(date.slice(0,4),10), m = parseInt(date.slice(5,7),10);
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-  } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
     res.status(201).json({ id });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -1297,7 +1297,7 @@ exports.getMonth = async (req, res) => {
           to = todayStr;
         }
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const result = await service.timesheet(userId, from, to);
     res.status(200).json({ ...result, monthStatus: { status } });
   } catch (err) {
@@ -1327,7 +1327,7 @@ exports.getMonthDetail = async (req, res) => {
     }
     let rows = [];
     let todayStr = null;
-    try { todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    try { todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch (e) { /* silently ignored */ }
     if (role !== 'payroll' && monthStatus !== 'approved' && todayStr && todayStr < from) {
       rows = [];
     } else {
@@ -1913,7 +1913,7 @@ exports.putMonthBulk = async (req, res) => {
         }
         seen.set(key, i);
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     // Normalize: if segment already exists (same checkIn), convert "create" into "update" to avoid unique error.
     try {
@@ -1928,7 +1928,7 @@ exports.putMonthBulk = async (req, res) => {
           delete u.clientId;
         }
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     const cleanedUpdates = normalizedUpdates.filter(Boolean);
 
@@ -1948,7 +1948,7 @@ exports.putMonthBulk = async (req, res) => {
               delete u.clientId;
             }
           }
-        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates });
       } else {
         throw err;
@@ -1966,7 +1966,7 @@ exports.putMonthBulk = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ targetUserId: userId, year: y, month: m, saved: result.saved })
       });
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     // Safety net: sync leave request by latest daily kubun for each touched date
     try {
@@ -1981,7 +1981,7 @@ exports.putMonthBulk = async (req, res) => {
       for (const [ds, kubun] of latestByDate.entries()) {
         await syncPaidLeaveByKubun(userId, ds, kubun);
       }
-    } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     res.status(200).json(result);
   } catch (err) {
@@ -2317,7 +2317,7 @@ exports.exportMonthXlsx = async (req, res) => {
           if (def && !wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
             return false;
           }
-        } catch (e) { console.error('[attendance.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         return true;
       });
       const seg = segs[0] || null;

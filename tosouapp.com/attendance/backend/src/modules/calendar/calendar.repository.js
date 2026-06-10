@@ -95,9 +95,9 @@ module.exports = {
       `);
       const set = new Set((idx || []).map(i => String(i.index_name)));
       if (!set.has('idx_date')) {
-        try { await db.query(`ALTER TABLE company_holidays ADD INDEX idx_date (date)`); } catch (e) { console.error('[calendar.repository.js] Swallowed error:', e); }
+        try { await db.query(`ALTER TABLE company_holidays ADD INDEX idx_date (date)`); } catch (e) { /* silently ignored */ }
       }
-    } catch (e) { console.error('[calendar.repository.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   },
   async listFixed(year) {
     const [rows] = await db.query(`SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND type = 'fixed' ORDER BY date ASC`, [year]);

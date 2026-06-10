@@ -103,13 +103,13 @@ exports.login = async (req, res) => {
       } else {
         // ignore lock to ensure users can sign in
       }
-    } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const user = await authRepository.findUserByEmail(email);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     if (String(user.employment_status || 'active') !== 'active') {
-      try { await auditRepo.writeLog({ userId: user.id, action: 'login_block_inactive', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ employment_status: user.employment_status }) }); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+      try { await auditRepo.writeLog({ userId: user.id, action: 'login_block_inactive', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ employment_status: user.employment_status }) }); } catch (e) { /* silently ignored */ }
       return res.status(403).json({ message: 'Account inactive' });
     }
     if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
@@ -121,7 +121,7 @@ exports.login = async (req, res) => {
       if (fails >= 5) {
         await authRepository.lockUser(email, 15);
       }
-      try { require('../../core/metrics').inc('login_fail', 1); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+      try { require('../../core/metrics').inc('login_fail', 1); } catch (e) { /* silently ignored */ }
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     await authRepository.resetLock(email);
@@ -137,8 +137,8 @@ exports.login = async (req, res) => {
     const rt = crypto.randomBytes(48).toString('base64url');
     const expires = new Date(Date.now() + refreshTokenExpiresDays * 24 * 60 * 60 * 1000);
     await refreshRepo.createToken({ userId: user.id, token: rt, expiresAt: expires.toISOString().slice(0,19).replace('T',' '), userAgent: req.headers['user-agent'], ip: req.ip });
-    try { await userRepo.updateUser(user.id, { lastLogin: new Date().toISOString().slice(0,19).replace('T',' ') }); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
-    try { await userRepo.touchLastActive(user.id); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    try { await userRepo.updateUser(user.id, { lastLogin: new Date().toISOString().slice(0,19).replace('T',' ') }); } catch (e) { /* silently ignored */ }
+    try { await userRepo.touchLastActive(user.id); } catch (e) { /* silently ignored */ }
     const isHttps = isHttpsRequest(req);
     res.cookie('refreshToken', rt, {
       httpOnly: true,
@@ -176,8 +176,8 @@ exports.login = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ role })
       });
-    } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
-    try { require('../../core/metrics').inc('login_success', 1); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
+    try { require('../../core/metrics').inc('login_success', 1); } catch (e) { /* silently ignored */ }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -244,7 +244,7 @@ exports.forgotPassword = async (req, res) => {
         console.warn('[forgot-password] mail provider not configured; set MAIL_PROVIDER/MAIL_API_KEY/MAIL_FROM');
       }
     }
-    try { require('../../core/metrics').inc('forgot_password_requests', 1); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    try { require('../../core/metrics').inc('forgot_password_requests', 1); } catch (e) { /* silently ignored */ }
     res.status(202).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -360,7 +360,7 @@ exports.superBootstrap = async (req, res) => {
       baseSalary: null,
       shiftId: null
     });
-    try { await auditRepo.writeLog({ userId: id, action: 'super_bootstrap', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, email: targetEmail }) }); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    try { await auditRepo.writeLog({ userId: id, action: 'super_bootstrap', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, email: targetEmail }) }); } catch (e) { /* silently ignored */ }
     res.status(201).json({ id, email: targetEmail });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -389,7 +389,7 @@ exports.refresh = async (req, res) => {
             return res.status(403).json({ message: 'CSRF validation failed' });
           }
         }
-      } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     const row = await refreshRepo.findToken(refreshToken);
     if (!row) {
@@ -397,7 +397,7 @@ exports.refresh = async (req, res) => {
       if (any && any.revoked_at) {
         await refreshRepo.deleteUserTokens(any.userId);
       }
-      try { require('../../core/metrics').inc('refresh_fail', 1); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+      try { require('../../core/metrics').inc('refresh_fail', 1); } catch (e) { /* silently ignored */ }
       return res.status(401).json({ message: 'Invalid refresh token' });
     }
     if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
@@ -419,14 +419,14 @@ exports.refresh = async (req, res) => {
           return res.status(401).json({ message: 'Session expired (idle)' });
         }
       }
-    } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const token = jwt.sign({ id: row.userId, role: role2, v: tokenVersion2 }, jwtSecretCurrent, { expiresIn: accessTokenExpires });
     // rotate refresh token
     const newRt = crypto.randomBytes(48).toString('base64url');
     const expires = new Date(Date.now() + refreshTokenExpiresDays * 24 * 60 * 60 * 1000);
     await refreshRepo.revokeToken(refreshToken);
     await refreshRepo.createToken({ userId: row.userId, token: newRt, expiresAt: expires.toISOString().slice(0,19).replace('T',' '), userAgent: req.headers['user-agent'], ip: req.ip });
-    try { await userRepo.touchLastActive(row.userId); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    try { await userRepo.touchLastActive(row.userId); } catch (e) { /* silently ignored */ }
     res.cookie('refreshToken', newRt, {
       httpOnly: true,
       secure: isHttpsRequest(req),
@@ -436,7 +436,7 @@ exports.refresh = async (req, res) => {
     });
     setSessionCookie(req, res, token);
     res.status(200).json({ accessToken: token });
-    try { require('../../core/metrics').inc('token_refresh', 1); } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+    try { require('../../core/metrics').inc('token_refresh', 1); } catch (e) { /* silently ignored */ }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -462,7 +462,7 @@ exports.logout = async (req, res) => {
             return res.status(403).json({ message: 'CSRF validation failed' });
           }
         }
-      } catch (e) { console.error('[auth.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     await refreshRepo.revokeToken(refreshToken);
     res.clearCookie('refreshToken', { path: '/api/auth' });

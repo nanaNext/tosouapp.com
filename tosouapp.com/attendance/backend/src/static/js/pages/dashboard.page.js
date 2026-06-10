@@ -10,7 +10,7 @@ function prefillUserName() {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 function showSpinner() {
@@ -19,7 +19,7 @@ function showSpinner() {
     if (!el) return;
     el.removeAttribute('hidden');
     el.style.display = 'grid';
-  } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 function hideSpinner() {
@@ -28,7 +28,7 @@ function hideSpinner() {
     if (!el) return;
     el.setAttribute('hidden', '');
     el.style.display = 'none';
-  } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 function showError(msg) {
@@ -46,22 +46,22 @@ function esc(v) {
 
 async function ensureAuthProfile() {
   let token = '';
-  try { token = sessionStorage.getItem('accessToken') || ''; } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+  try { token = sessionStorage.getItem('accessToken') || ''; } catch (e) { /* silently ignored */ }
   if (token) {
     try {
       const p = await me(token);
       return p;
-    } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   try {
     const r = await refresh();
     token = r?.accessToken || '';
     if (token) {
-      try { sessionStorage.setItem('accessToken', token); } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+      try { sessionStorage.setItem('accessToken', token); } catch (e) { /* silently ignored */ }
       const p2 = await me(token);
       return p2;
     }
-  } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return null;
 }
 
@@ -81,16 +81,16 @@ function wireUserMenu() {
   const btnLogout = $('#btnLogout');
   if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+      try { await logout(); } catch (e) { /* silently ignored */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-      } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       window.location.replace('/ui/login');
     });
   }
@@ -234,8 +234,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const input = box.querySelector('input[type="search"]');
       const closeBtn = box.querySelector('.search-close');
       const hint = box.querySelector('.search-hint');
-      const open = () => { box.classList.add('active'); try { input?.focus(); input?.select(); } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); } };
-      const close = () => { box.classList.remove('active'); try { input?.blur(); } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); } };
+      const open = () => { box.classList.add('active'); try { input?.focus(); input?.select(); } catch (e) { /* silently ignored */ } };
+      const close = () => { box.classList.remove('active'); try { input?.blur(); } catch (e) { /* silently ignored */ } };
       if (input) input.addEventListener('focus', open);
       if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
       if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         close();
       });
     }
-  } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   try {
     const profile = await ensureAuthProfile();
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const s = JSON.stringify(profile || {});
       sessionStorage.setItem('user', s);
       localStorage.setItem('user', s);
-    } catch (e) { console.error('[dashboard.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const nameEl = $('#userName');
     if (nameEl) nameEl.textContent = profile.username || profile.email || 'ユーザー';
     renderProfile(profile);

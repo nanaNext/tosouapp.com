@@ -199,7 +199,7 @@ exports.approveProfileChange = async (req, res) => {
     const target = await userRepo.getUserById(row.user_id);
     if (String(status).toLowerCase() === 'approved') {
       let fields = {};
-      try { fields = JSON.parse(row.fields_json) || {}; } catch (e) { console.error('[manager.controller.js] Swallowed error:', e); }
+      try { fields = JSON.parse(row.fields_json) || {}; } catch (e) { /* silently ignored */ }
       await userRepo.updateUser(row.user_id, {
         username: fields.username,
         email: fields.email,

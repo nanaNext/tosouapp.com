@@ -92,7 +92,7 @@ router.get('/documents/:id/download',
     }
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'employee_document_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
-    } catch (e) { console.error('[employee.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const baseDir = path.join(__dirname, '../../', 'uploads', 'documents');
     const filePath = path.join(baseDir, row.filename);
     if (!fs.existsSync(filePath)) {
@@ -151,7 +151,7 @@ router.get('/payslips/:id/download',
     }
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'employee_payslip_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
-    } catch (e) { console.error('[employee.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     res.status(200).json({ secureUrl: `/api/payslips/me/file/${row.id}` });
   } catch (err) {
     res.status(500).json({ message: err.message });

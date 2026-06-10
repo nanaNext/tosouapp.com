@@ -36,7 +36,7 @@ module.exports = {
       if (!rows || !rows.length) {
         await db.query(`INSERT INTO settings (id) VALUES (1)`);
       }
-    } catch (e) { console.error('[settings.repository.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   },
   async getSettings() {
     const sql = `SELECT * FROM settings LIMIT 1`;

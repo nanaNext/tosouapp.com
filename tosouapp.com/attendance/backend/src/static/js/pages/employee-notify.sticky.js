@@ -16,7 +16,7 @@ const resolveEmployeeUid = () => {
   try {
     const fromWin = parseInt(String(window.__EMP_UID || 0), 10) || 0;
     if (fromWin) return fromWin;
-  } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     const u = raw ? JSON.parse(raw) : null;
@@ -64,7 +64,7 @@ function writeHiddenIds(setLike) {
   try {
     const arr = Array.from(setLike || []).map((x) => parseInt(String(x || 0), 10) || 0).filter((x) => !!x).slice(0, 1000);
     localStorage.setItem(HIDE_KEY, JSON.stringify(arr));
-  } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 function readCache() {
   try {
@@ -80,7 +80,7 @@ function readCache() {
 function writeCache(items) {
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), items: Array.isArray(items) ? items.slice(0, 60) : [] }));
-  } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 function ensureStyle() {
@@ -247,7 +247,7 @@ function render() {
         return it?.read_at ? it : { ...it, read_at: nowIso };
       });
       render();
-      try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+      try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { /* silently ignored */ }
       if (link) window.location.href = link;
     });
     onDelete?.addEventListener('click', (e) => {
@@ -341,7 +341,7 @@ function tryBoot() {
     refresh().catch(() => { });
     if (state.timer) clearInterval(state.timer);
     state.timer = setInterval(() => { refresh().catch(() => { }); }, 60000);
-    if (state.observer) { try { state.observer.disconnect(); } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); } state.observer = null; }
+    if (state.observer) { try { state.observer.disconnect(); } catch (e) { /* silently ignored */ } state.observer = null; }
     return true;
   } catch {
     return false;
@@ -389,7 +389,7 @@ function setNavCurrent(pathName) {
       if (u.pathname === pathName) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
-  } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 function syncPageHeadStyle(doc) {
   try {
@@ -403,7 +403,7 @@ function syncPageHeadStyle(doc) {
       document.head.appendChild(st);
     }
     st.textContent = styles.join('\n\n');
-  } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 async function softNavigateLocal(url, push = true) {
   try {
@@ -425,12 +425,12 @@ async function softNavigateLocal(url, push = true) {
       try {
         const mod = await import('/static/js/pages/requests.page.js');
         if (mod && typeof mod.bootRequestsPage === 'function') await mod.bootRequestsPage();
-      } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     } else if (url.pathname === EXP_PATH) {
       try {
         const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
         if (mod && typeof mod.bootExpensesPage === 'function') await mod.bootExpensesPage();
-      } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     return true;
   } catch {
@@ -494,24 +494,24 @@ function bindSoftRequestNavigation() {
         softNavInFlight = false;
       }
       if (!ok) window.location.reload();
-    } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   });
 }
 
 // Reduce header/subbar flicker feeling on employee pages.
-try { document.documentElement.classList.add('topbar-ready'); } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
-try { bindSelfNavigationGuard(); } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+try { document.documentElement.classList.add('topbar-ready'); } catch (e) { /* silently ignored */ }
+try { bindSelfNavigationGuard(); } catch (e) { /* silently ignored */ }
 // Keep a single navigation router (portal.page.js) to avoid race/flicker.
 try {
   const sp = document.getElementById('pageSpinner');
   if (sp) sp.setAttribute('hidden', '');
-} catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+} catch (e) { /* silently ignored */ }
 
 if (!tryBoot()) {
   // Mount as soon as subnav is inserted, without waiting full page lifecycle.
   try {
     state.observer = new MutationObserver(() => { if (tryBoot()) return; });
     state.observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
-  } catch (e) { console.error('[employee-notify.sticky.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   document.addEventListener('DOMContentLoaded', () => { tryBoot(); }, { once: true });
 }

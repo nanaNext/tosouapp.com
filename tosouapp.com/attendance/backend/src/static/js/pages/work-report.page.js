@@ -11,7 +11,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
@@ -21,14 +21,14 @@ async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
   if (token) {
-    try { profile = await me(token); } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+    try { profile = await me(token); } catch (e) { /* silently ignored */ }
   }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (!profile) {
     try {
@@ -37,7 +37,7 @@ async function ensureAuthProfile() {
       if (user && (user.role === 'admin' || user.role === 'manager' || user.role === 'employee')) {
         profile = user;
       }
-    } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   return profile || null;
 }
@@ -65,19 +65,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const userName = $('#userName');
     if (userName) userName.textContent = profile.username || profile.email || 'ユーザー';
-  } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const goLogin = async () => {
-    try { await logout(); } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+    try { await logout(); } catch (e) { /* silently ignored */ }
     try {
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
-    } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
   };
 
@@ -97,9 +97,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         dd.setAttribute('hidden', '');
       });
     }
-  } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
-  try { $('#btnLogout')?.addEventListener('click', goLogin); } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
-  try { $('#drawerLogout')?.addEventListener('click', goLogin); } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
+  try { $('#btnLogout')?.addEventListener('click', goLogin); } catch (e) { /* silently ignored */ }
+  try { $('#drawerLogout')?.addEventListener('click', goLogin); } catch (e) { /* silently ignored */ }
 
   try {
     const mobileBtn = $('#mobileMenuBtn');
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       mobileBtn.addEventListener('click', () => toggleDrawer());
       if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
     }
-  } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const params = new URLSearchParams(window.location.search);
   const date = isISODate(params.get('date')) ? String(params.get('date')) : todayJST();
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
       return;
     }
-  } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   let existing = null;
   let closed = false;
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const r = await fetchJSONAuth(`/api/work-reports/my?date=${encodeURIComponent(date)}`);
     existing = r?.report || null;
     closed = !!r?.closed;
-  } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const siteVal = esc(existing?.site || '');
@@ -221,5 +221,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch (e) { console.error('[work-report.page.js] Swallowed error:', e); }
+  try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
 });

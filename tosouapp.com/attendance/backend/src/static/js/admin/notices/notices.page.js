@@ -26,11 +26,11 @@ export async function mount() {
   try {
     const userName = document.querySelector('#userName');
     if (userName) userName.textContent = profile.username || profile.email || '管理者';
-  } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const status = document.querySelector('#status');
     if (status) status.textContent = '';
-  } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const host = document.querySelector('#adminContent');
   if (!host) return;
@@ -67,7 +67,7 @@ export async function mount() {
       rows = [];
     }
     let targets = [];
-    try { targets = await loadTargets(); } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+    try { targets = await loadTargets(); } catch (e) { /* silently ignored */ }
     const isMobileView = (() => {
       try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
     })();
@@ -77,7 +77,7 @@ export async function mount() {
         const v = localStorage.getItem(composerKey);
         if (v === '0') return false;
         if (v === '1') return true;
-      } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       return true;
     })();
     const tableKey = 'adminNotices.table.visible';
@@ -86,7 +86,7 @@ export async function mount() {
         const v = localStorage.getItem(tableKey);
         if (v === '0') return false;
         if (v === '1') return true;
-      } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       return true;
     })();
     const fmtRecipient = (r) => {
@@ -492,19 +492,19 @@ export async function mount() {
       const body = host.querySelector('#noticeComposerBody');
       const curHidden = !!(body && body.hasAttribute && body.hasAttribute('hidden'));
       const nextHidden = !curHidden;
-      if (nextHidden) { try { if (body) body.setAttribute('hidden', ''); } catch (e) { console.error('[notices.page.js] Swallowed error:', e); } }
-      else { try { if (body) body.removeAttribute('hidden'); } catch (e) { console.error('[notices.page.js] Swallowed error:', e); } }
-      try { localStorage.setItem(composerKey, nextHidden ? '0' : '1'); } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
-      try { host.querySelector('#btnNoticeComposerToggle').textContent = nextHidden ? '入力欄を表示' : '入力欄を隠す'; } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+      if (nextHidden) { try { if (body) body.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ } }
+      else { try { if (body) body.removeAttribute('hidden'); } catch (e) { /* silently ignored */ } }
+      try { localStorage.setItem(composerKey, nextHidden ? '0' : '1'); } catch (e) { /* silently ignored */ }
+      try { host.querySelector('#btnNoticeComposerToggle').textContent = nextHidden ? '入力欄を表示' : '入力欄を隠す'; } catch (e) { /* silently ignored */ }
     });
     const toggleNoticeTable = host.querySelector('#toggleNoticeTable');
     if (toggleNoticeTable) toggleNoticeTable.addEventListener('change', () => {
       const chk = toggleNoticeTable;
       const sec = host.querySelector('#noticeTableSection');
       const vis = !!chk.checked;
-      if (vis) { try { if (sec) sec.removeAttribute('hidden'); } catch (e) { console.error('[notices.page.js] Swallowed error:', e); } }
-      else { try { if (sec) sec.setAttribute('hidden', ''); } catch (e) { console.error('[notices.page.js] Swallowed error:', e); } }
-      try { localStorage.setItem(tableKey, vis ? '1' : '0'); } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+      if (vis) { try { if (sec) sec.removeAttribute('hidden'); } catch (e) { /* silently ignored */ } }
+      else { try { if (sec) sec.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ } }
+      try { localStorage.setItem(tableKey, vis ? '1' : '0'); } catch (e) { /* silently ignored */ }
     });
 
     const recipient = host.querySelector('#noticeRecipient');
@@ -519,7 +519,7 @@ export async function mount() {
         msg.style.height = '0px';
         const h = Math.max(120, msg.scrollHeight);
         msg.style.height = `${h}px`;
-      } catch (e) { console.error('[notices.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
 
     const applyScope = () => {

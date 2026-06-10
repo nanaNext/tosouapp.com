@@ -18,17 +18,17 @@ export async function mount() {
   if (p === '/admin/attendance/holidays') {
     const mod = await import('../legacy/legacy-calendar.page.js');
     await mod.mountCalendar({ content });
-    return () => { try { content.innerHTML = ''; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } };
+    return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
   }
   if (p === '/admin/attendance/shifts' || p === '/admin/attendance/shift-assignment') {
     const mod = await import('../legacy/legacy-shifts.page.js');
     await mod.mountShifts({ content });
-    return () => { try { content.innerHTML = ''; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } };
+    return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
   }
   if (p === '/admin/attendance/go-out') {
     const mod = await import('./admin-go-out.page.js');
     await mod.mountGoOut({ content });
-    return () => { try { content.innerHTML = ''; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); } };
+    return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
   }
   // Default: attendance records
   const mod = await import('../legacy/legacy-attendance.page.js');
@@ -41,7 +41,7 @@ export async function mount() {
     buildTimesheetExportURL
   });
   return () => {
-    try { if (typeof cleanup === 'function') cleanup(); } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
-    try { content.innerHTML = ''; } catch (e) { console.error('[attendance.page.js] Swallowed error:', e); }
+    try { if (typeof cleanup === 'function') cleanup(); } catch (e) { /* silently ignored */ }
+    try { content.innerHTML = ''; } catch (e) { /* silently ignored */ }
   };
 }

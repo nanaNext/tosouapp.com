@@ -11,7 +11,7 @@ try {
           sessionStorage.removeItem('user');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
-        } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         if (window.location.pathname !== '/ui/login') {
           window.location.replace('/ui/login');
         }
@@ -20,7 +20,7 @@ try {
         try {
           sessionStorage.removeItem('accessToken');
           sessionStorage.removeItem('user');
-        } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         // Reload to apply the new login state correctly
         if (window.location.pathname !== '/ui/login') {
           window.location.reload();
@@ -28,14 +28,14 @@ try {
       }
     });
   }
-} catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+} catch (e) { /* silently ignored */ }
 
 function getApiBase() {
   try {
     const h = String(window.location.hostname || '').toLowerCase();
     if (!h || h === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return '';
     if (h === 'tosouapp.com' || h.endsWith('.tosouapp.com')) return '';
-  } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return '';
 }
 
@@ -98,14 +98,14 @@ function redirectToLoginOnce() {
   redirecting = true;
   try {
     if (String(window.location && window.location.pathname || '') === '/ui/login') return;
-  } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('user');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-  } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const next = (() => {
       try {
@@ -118,15 +118,15 @@ function redirectToLoginOnce() {
       }
     })();
     const url = '/ui/login' + (next ? ('?next=' + encodeURIComponent(next)) : '');
-    try { window.location.href = url; return; } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
-  } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+    try { window.location.href = url; return; } catch (e) { /* silently ignored */ }
+  } catch (e) { /* silently ignored */ }
   try {
     const a = document.createElement('a');
     a.href = '/ui/login';
     a.textContent = 'ログイン画面へ';
     a.style.cssText = 'position:fixed;top:12px;right:12px;z-index:99999;background:#fff1f2;color:#7f1d1d;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-weight:900;';
     document.body.appendChild(a);
-  } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 async function doFetchAuth(url, options, accessToken) {
@@ -158,7 +158,7 @@ async function fetchAuthResponse(url, options) {
       if (tok) {
         sessionStorage.setItem('accessToken', tok);
       }
-    } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   let res = await doFetchAuth(url, options, tok);
   if (!res.ok && (res.status === 401 || res.status === 403)) {
@@ -196,7 +196,7 @@ async function fetchAuthResponse(url, options) {
     try {
       const j = await res.json();
       msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
-    } catch (e) { console.error('[http.api.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const m = String(msg || '').toLowerCase();
     if (res.status === 429 || m.includes('too many requests')) {
       throw new Error('Too many requests（操作が多すぎます。1分ほど待ってから再度お試しください）');

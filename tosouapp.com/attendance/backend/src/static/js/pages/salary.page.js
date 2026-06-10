@@ -12,7 +12,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const showErr = (msg) => {
@@ -27,13 +27,13 @@ const showSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const hideSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -78,24 +78,24 @@ const markMonthViewed = (month) => {
     const set = getViewedMonths();
     set.add(m);
     localStorage.setItem(viewedKey(), JSON.stringify(Array.from(set)));
-  } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     fetchJSONAuth('/api/salary/my/read', {
       method: 'POST',
       body: JSON.stringify({ month: m })
     }).catch(() => {});
-  } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const ensureAuthProfile = async () => {
   let accessToken = '';
-  try { accessToken = sessionStorage.getItem('accessToken') || ''; } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  try { accessToken = sessionStorage.getItem('accessToken') || ''; } catch (e) { /* silently ignored */ }
   if (!accessToken) {
     const r = await refresh();
     accessToken = r?.accessToken || '';
     try {
       if (accessToken) sessionStorage.setItem('accessToken', accessToken);
-    } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (!accessToken) throw new Error('Missing access token');
   const profile = await me(accessToken);
@@ -103,7 +103,7 @@ const ensureAuthProfile = async () => {
     const s = JSON.stringify(profile || {});
     sessionStorage.setItem('user', s);
     localStorage.setItem('user', s);
-  } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return profile;
 };
 
@@ -118,14 +118,14 @@ const wireUserMenu = () => {
   });
   document.addEventListener('click', (e) => {
     if (e.target.closest('.user-menu')) return;
-    try { dd.setAttribute('hidden', ''); } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+    try { dd.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
   });
   const logoutBtn = $('#btnLogout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+      try { await logout(); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
       window.location.replace('/ui/login');
     });
   }
@@ -140,17 +140,17 @@ const wireDrawer = () => {
   if (btn.dataset.bound === '1') return;
   btn.dataset.bound = '1';
   const close = () => {
-    try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+    try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
     try {
       drawer?.querySelectorAll?.('.drawer-group-btn[data-drawer-group]').forEach((b) => {
         b.setAttribute('aria-expanded', 'false');
         b.classList.remove('open');
       });
       drawer?.querySelectorAll?.('.drawer-group-list[data-drawer-panel]').forEach((p) => p.setAttribute('hidden', ''));
-    } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
   const open = () => {
-    try { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+    try { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
   };
   if (btn) btn.addEventListener('click', () => { if (drawer?.hasAttribute('hidden')) open(); else close(); });
   if (closeBtn) closeBtn.addEventListener('click', close);
@@ -179,7 +179,7 @@ const wireDrawer = () => {
       a.addEventListener('click', () => close());
     });
     drawer?.querySelectorAll?.('.drawer-item, a').forEach(el => el.addEventListener('click', close));
-  } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const render = async () => {
@@ -521,7 +521,7 @@ const render = async () => {
               window.history.back();
               return;
             }
-          } catch (e) { console.error('[salary.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
           window.location.replace('/ui/salary');
         });
       }

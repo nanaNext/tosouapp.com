@@ -40,7 +40,7 @@
         const k = localStorage.key(i);
         if (k && k.startsWith(prefix)) out.push(k);
       }
-    } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     return out;
   };
 
@@ -124,8 +124,8 @@
     try {
       row.dataset.dirty = '1';
       row.dataset.kubunConfirmed = '1';
-    } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
-    try { recomputeRow(row); } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
+    try { recomputeRow(row); } catch (e) { /* silently ignored */ }
     return true;
   };
 
@@ -133,7 +133,7 @@
     const key = ymKey(ctx, ym);
     const ms = String(state?.currentMonthStatus || '').trim().toLowerCase();
     if (ms === 'approved' || ms === 'submitted') {
-      try { localStorage.removeItem(key); } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+      try { localStorage.removeItem(key); } catch (e) { /* silently ignored */ }
       return { ok: false, restored: 0 };
     }
     const raw = (() => { try { return localStorage.getItem(key); } catch { return null; } })();
@@ -154,19 +154,19 @@
 
   const clear = (ctx, ym) => {
     const key = ymKey(ctx, ym);
-    try { localStorage.removeItem(key); } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+    try { localStorage.removeItem(key); } catch (e) { /* silently ignored */ }
   };
 
   const clearAllForUser = (ctx) => {
     const keys = listKeysForUser(ctx);
     for (const k of keys) {
-      try { localStorage.removeItem(k); } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+      try { localStorage.removeItem(k); } catch (e) { /* silently ignored */ }
     }
   };
 
   let saveTimer = 0;
   const schedule = (ctx, ym, delayMs = 700) => {
-    try { clearTimeout(saveTimer); } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+    try { clearTimeout(saveTimer); } catch (e) { /* silently ignored */ }
     saveTimer = setTimeout(() => { capture(ctx, ym); }, Math.max(150, Number(delayMs || 0)));
   };
 
@@ -175,14 +175,14 @@
       const c = root.Controller?.ctx;
       const ym = c?.picker?.value || c?.initialYM || '';
       if (c) capture(c, ym);
-    } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   try {
     const g = globalThis;
     if (!Array.isArray(g.__draftFlushers)) g.__draftFlushers = [];
     g.__draftFlushers.push(flush);
-  } catch (e) { console.error('[attendance-monthly.draft.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const Draft = { capture, restore, clear, clearAllForUser, schedule, flush };
   root.Draft = Draft;

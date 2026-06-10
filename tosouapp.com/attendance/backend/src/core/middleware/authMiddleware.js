@@ -68,7 +68,7 @@ async function authenticateToken(token) {
     try {
       decoded = jwt.verify(token, s);
       break;
-    } catch (e) { console.error('[authMiddleware.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (!decoded) {
     const err = new Error('Invalid or expired token');
@@ -101,7 +101,7 @@ async function attachUserActivity(req, fallbackDecoded) {
       lastActiveTouch.set(uid, now);
       void userRepo.touchLastActive(uid).catch(() => {});
     }
-  } catch (e) { console.error('[authMiddleware.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 async function authenticate(req, res, next) {
@@ -118,7 +118,7 @@ async function authenticate(req, res, next) {
   try {
     req.user = await authenticateToken(token);
   } catch (e) {
-    try { console.error('auth_db_error', e && e.message ? e.message : e); } catch (e) { console.error('[authMiddleware.js] Swallowed error:', e); }
+    try { console.error('auth_db_error', e && e.message ? e.message : e); } catch (e) { /* silently ignored */ }
     return res.status(Number(e?.status || 401)).json({ message: e?.message || 'Unauthorized' });
   }
   await attachUserActivity(req, req.user);

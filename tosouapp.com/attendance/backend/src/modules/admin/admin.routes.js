@@ -47,7 +47,7 @@ async function ensureEmployeeProfilePhotosSchema() {
         CONSTRAINT fk_employee_profile_photos_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 // Admin tổng hợp
 router.use(authenticate);
@@ -66,14 +66,14 @@ router.get('/users/:id', authorize('admin'), async (req, res) => {
 router.post('/users', async (req, res, next) => {
   try {
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify(req.body || {}) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, rateLimitNamed('admin_users_create', { windowMs: 60_000, max: 10 }), authorize('admin'), userCtrl.create);
 router.patch('/users/:id', async (req, res, next) => {
   try {
     const before = await userRepo.getUserById(req.params.id);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, rateLimitNamed('admin_users_update', { windowMs: 60_000, max: 30 }), authorize('admin'), userCtrl.update);
 router.delete('/users/:id', async (req, res, next) => {
@@ -84,7 +84,7 @@ router.delete('/users/:id', async (req, res, next) => {
       return res.status(403).json({ message: 'Cannot delete SUPER_ADMIN user' });
     }
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_delete', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: null });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, rateLimitNamed('admin_users_delete', { windowMs: 60_000, max: 10 }), authorize('admin'), userCtrl.remove);
 // Employees alias
@@ -366,7 +366,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
 router.post('/employees', async (req, res, next) => {
   try {
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify(req.body || {}) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, permit('employees','manage'), async (req, res, next) => {
   try {
@@ -379,7 +379,7 @@ router.put('/employees/:id', async (req, res, next) => {
   try {
     const before = await userRepo.getUserById(req.params.id);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, permit('employees','manage'), async (req, res, next) => {
   try {
@@ -392,7 +392,7 @@ router.patch('/employees/:id', async (req, res, next) => {
   try {
     const before = await userRepo.getUserById(req.params.id);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, permit('employees','manage'), async (req, res, next) => {
   try {
@@ -411,8 +411,8 @@ router.delete('/employees/:id', permit('employees','manage'), async (req, res) =
       return res.status(403).json({ message: 'Cannot deactivate SUPER_ADMIN user' });
     }
     await userRepo.updateUser(id, { employmentStatus: 'inactive' });
-    try { await require('../auth/refresh.repository').deleteUserTokens(id); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
-    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_deactivate', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify({ employment_status: 'inactive' }) }); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    try { await require('../auth/refresh.repository').deleteUserTokens(id); } catch (e) { /* silently ignored */ }
+    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_deactivate', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify({ employment_status: 'inactive' }) }); } catch (e) { /* silently ignored */ }
     res.status(200).json({ id, status: 'inactive' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -432,7 +432,7 @@ router.post('/employees/:id/avatar', permit('employees','manage'), async (req, r
     }
     const url = `/uploads/${req.file.filename}`;
     await userRepo.updateUser(id, { avatarUrl: url });
-    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_avatar_upload', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, avatarUrl: url, originalName: req.file.originalname }) }); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_avatar_upload', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, avatarUrl: url, originalName: req.file.originalname }) }); } catch (e) { /* silently ignored */ }
     res.status(201).json({ id, url, originalName: req.file.originalname });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -483,7 +483,7 @@ router.post('/employees/:id/photos', permit('employees','manage'), uploadEmploye
         beforeData: null,
         afterData: JSON.stringify({ id, count: items.length, items })
       });
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     res.status(201).json({ id, count: items.length, items });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -504,7 +504,7 @@ router.delete('/employees/:id/photos/:photoId', permit('employees','manage'), as
     try {
       const p = path.join(__dirname, '..', '..', String(row.url || '').replace(/^\/+uploads\//, 'uploads' + path.sep));
       if (fs.existsSync(p)) fs.unlinkSync(p);
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     res.status(200).json({ ok: true, id, photoId });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -514,14 +514,14 @@ router.patch('/users/:id/role', async (req, res, next) => {
   try {
     const before = await userRepo.getUserById(req.params.id);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_set_role', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, authorize('admin'), userCtrl.setRole);
 router.patch('/users/:id/department', async (req, res, next) => {
   try {
     const before = await userRepo.getUserById(req.params.id);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_set_department', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, authorize('admin'), userCtrl.setDepartment);
 router.patch('/users/:id/password', async (req, res, next) => {
@@ -532,7 +532,7 @@ router.patch('/users/:id/password', async (req, res, next) => {
       return res.status(403).json({ message: 'Only SUPER_ADMIN can change own password' });
     }
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_set_password', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: before?.id, email: before?.email }), afterData: JSON.stringify({ changed: true }) });
-  } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   next();
 }, authorize('admin'), userCtrl.setPassword);
 // Lock/Unlock tài khoản đăng nhập
@@ -543,7 +543,7 @@ router.patch('/users/:id/lock', authorize('admin'), async (req, res) => {
     const user = await userRepo.getUserById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     await authRepo.lockUser(user.email, minutes);
-    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_lock', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: user.id, email: user.email }), afterData: JSON.stringify({ minutes }) }); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_lock', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: user.id, email: user.email }), afterData: JSON.stringify({ minutes }) }); } catch (e) { /* silently ignored */ }
     res.status(200).json({ id, locked: true, minutes });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -555,7 +555,7 @@ router.patch('/users/:id/unlock', authorize('admin'), async (req, res) => {
     const user = await userRepo.getUserById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     await authRepo.resetLock(user.email);
-    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_unlock', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: user.id, email: user.email }), afterData: JSON.stringify({ unlocked: true }) }); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_unlock', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: user.id, email: user.email }), afterData: JSON.stringify({ unlocked: true }) }); } catch (e) { /* silently ignored */ }
     res.status(200).json({ id, unlocked: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -593,7 +593,7 @@ router.get('/db/check', authorize('admin'), async (req, res) => {
     try {
       const [deptRows] = await db.query('SELECT COUNT(*) AS total FROM departments');
       departmentsCount = deptRows && deptRows[0] ? deptRows[0] : { total: 0 };
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const [sampleUsers] = await db.query('SELECT id, employee_code, username, email, departmentId, employment_status, hire_date FROM users ORDER BY id DESC LIMIT 5');
     const [collRows] = await db.query(`
       SELECT TABLE_NAME AS table, TABLE_COLLATION AS collation
@@ -785,7 +785,7 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
   try {
     const role = String(req.user?.role || '').toLowerCase();
     const managerOnlyEmployee = role === 'manager';
-    try { await auditRepo.ensureTable(); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    try { await auditRepo.ensureTable(); } catch (e) { /* silently ignored */ }
 
     const whereRole = managerOnlyEmployee ? ` AND u.role = 'employee'` : ``;
 
@@ -953,7 +953,7 @@ router.patch('/attendance/:id', permit('attendance','manage'), async (req, res) 
     const { checkIn, checkOut } = req.body || {};
     if (!id) return res.status(400).json({ message: 'Missing id' });
     await attendanceRepo.updateTimes(id, checkIn || null, checkOut || null);
-    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_attendance_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id }), afterData: JSON.stringify({ checkIn, checkOut }) }); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_attendance_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id }), afterData: JSON.stringify({ checkIn, checkOut }) }); } catch (e) { /* silently ignored */ }
     res.status(200).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1140,7 +1140,7 @@ router.put('/salary/input', async (req, res) => {
     const row = await salaryInputRepo.upsert({ userId, month, payload, updatedBy: req.user.id });
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'salary_input_upsert', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ userId, month }) });
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     res.status(200).json({ ok: true, row });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1292,7 +1292,7 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }
         const oldPath = path.join(dir, String(existing.filename || ''));
         if (existing.filename && fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     version = (existing.version || 1) + 1;
     const updated = await payslipRepo.updateFile(existing.id, filename, originalName2, actorId, iv, tag, keyVersion, hash, version);
     id = updated?.id || existing.id;
@@ -1318,7 +1318,7 @@ router.post('/salary/payslip/generate', async (req, res) => {
     const emp = await salaryService.computePayslipForUser(userId, month, options || null);
     try {
       emp._bankAccountParts = normalizeBankAccountParts(options?.bankAccountParts);
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const bankCheck = validateBankAccount({ bankAccount: emp?.振込口座 || emp?.振込銀行, bankAccountParts: options?.bankAccountParts });
     if (!bankCheck.ok) return res.status(400).json({ message: bankCheck.message });
     const payCheck = validatePaymentConsistency(emp);
@@ -1335,7 +1335,7 @@ router.post('/salary/payslip/generate', async (req, res) => {
     const saved = await writePayslipFile({ userId, month, pdfBuf, actorId: req.user.id, originalName });
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_generate', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ userId, month, payslipId: saved.id }) });
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     res.status(201).json({ id: saved.id, month, secureUrl: `/api/payslips/admin/file/${saved.id}?v=${encodeURIComponent(saved.version || 1)}` });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1362,7 +1362,7 @@ router.post('/salary/publish', async (req, res) => {
     if (isPublished) {
       const file = await payslipRepo.findLatestByUserMonth(userId, month);
       if (!file?.id) return res.status(404).json({ message: 'PDFが作成されていません（先にPDF作成してください）' });
-      try { await payslipDeliveryRepo.create({ userId, month, payslipFileId: file.id, sentBy: req.user.id }); } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+      try { await payslipDeliveryRepo.create({ userId, month, payslipFileId: file.id, sentBy: req.user.id }); } catch (e) { /* silently ignored */ }
     }
 
     await salaryInputRepo.setPublished(userId, month, isPublished, req.user.id);
@@ -1378,7 +1378,7 @@ router.post('/salary/publish', async (req, res) => {
         beforeData: JSON.stringify({ is_published: input.is_published }), 
         afterData: JSON.stringify({ userId, month, is_published: isPublished }) 
       });
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     res.status(200).json({ message: isPublished ? '公開しました' : '非公開にしました', is_published: isPublished });
   } catch (err) {
@@ -1431,7 +1431,7 @@ router.delete('/salary/deliveries/:id', async (req, res) => {
     const before = await payslipDeliveryRepo.deleteById(id);
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_delivery_delete', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: null });
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     res.status(200).json({ ok: true, id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1461,7 +1461,7 @@ router.post('/auth/refresh/revoke-all', authorize('admin'), async (req, res) => 
   try {
     try {
       await auditRepo.writeLog({ userId: req.user?.id, action: 'admin_revoke_all_refresh_tokens', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: null });
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const r = await refreshRepo.deleteAllTokens();
     res.status(200).json(r);
   } catch (err) {
@@ -1481,7 +1481,7 @@ router.post('/system/flags',
     const after = await settingsService.setFlags(req.body || {});
     try {
       await auditRepo.writeLog({ userId: req.user?.id, action: 'admin_toggle_feature_flags', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before), afterData: JSON.stringify(after) });
-    } catch (e) { console.error('[admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     res.status(200).json({ ok: true, before, after });
   } catch (err) {
     res.status(500).json({ message: err.message });

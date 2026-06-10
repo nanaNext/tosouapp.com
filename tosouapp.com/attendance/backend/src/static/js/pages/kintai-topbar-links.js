@@ -1,6 +1,6 @@
 (function () {
   if (document.documentElement && document.documentElement.dataset.kintaiTopbarLinks === '1') return;
-  try { document.documentElement.dataset.kintaiTopbarLinks = '1'; } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+  try { document.documentElement.dataset.kintaiTopbarLinks = '1'; } catch (e) { /* silently ignored */ }
 
   function getCookie(name) {
     try {
@@ -21,16 +21,16 @@
           credentials: 'include',
           body: JSON.stringify({})
         });
-      } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-      } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     } finally {
       try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
     }
@@ -86,7 +86,7 @@
       navLoadShowTimer = null;
       if (navLoadHideTimer) clearTimeout(navLoadHideTimer);
       navLoadHideTimer = null;
-    } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const showNavLoading = (delayMs = 1200) => {
@@ -99,7 +99,7 @@
         if (navLoadHideTimer) clearTimeout(navLoadHideTimer);
         navLoadHideTimer = setTimeout(() => hideNavLoading(), 4000);
       }, Math.max(0, Number(delayMs) || 0));
-    } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const shouldShowForAnchor = (a, e) => {
@@ -136,20 +136,20 @@
   const ensureMobileMenu = () => {
     // Desktop does not use the mobile drawer; remove any previously injected nodes.
     if (!isMobile()) {
-      try { document.body.classList.remove('mobile-drawer-open'); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      try { document.body.classList.remove('mobile-drawer-open'); } catch (e) { /* silently ignored */ }
       try {
         const btn0 = document.getElementById('mobileMenuBtn');
         if (btn0 && btn0.classList.contains('mobile-btn')) btn0.remove();
-      } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         const drawer0 = document.getElementById('mobileDrawer');
         const isInjectedDrawer = !!(drawer0 && drawer0.classList.contains('mobile-drawer') && drawer0.querySelector('#mobileDrawerSearch'));
         if (isInjectedDrawer) drawer0.remove();
-      } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         const backdrop0 = document.getElementById('mobileDrawerBackdrop');
         if (backdrop0 && backdrop0.classList.contains('mobile-drawer-backdrop')) backdrop0.remove();
-      } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       return;
     }
 
@@ -328,10 +328,10 @@
   };
 
   document.addEventListener('DOMContentLoaded', () => {
-    try { document.body.classList.add('nav-js'); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
-    try { bindGlobalNavLoading(); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
-    try { ensureMobileMenu(); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
-    window.addEventListener('resize', () => { try { ensureMobileMenu(); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); } }, { passive: true });
+    try { document.body.classList.add('nav-js'); } catch (e) { /* silently ignored */ }
+    try { bindGlobalNavLoading(); } catch (e) { /* silently ignored */ }
+    try { ensureMobileMenu(); } catch (e) { /* silently ignored */ }
+    window.addEventListener('resize', () => { try { ensureMobileMenu(); } catch (e) { /* silently ignored */ } }, { passive: true });
     try {
       if (document.documentElement?.dataset?.kintaiTopNavDdBound === '1') return;
       document.documentElement.dataset.kintaiTopNavDdBound = '1';
@@ -358,7 +358,7 @@
               panel2.style.removeProperty('overflow');
               panel2.style.removeProperty('z-index');
               panel2.style.removeProperty('transform');
-            } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+            } catch (e) { /* silently ignored */ }
             const btn2 = dd2.querySelector('.kintai-nav-btn');
             btn2?.setAttribute('aria-expanded', 'false');
           });
@@ -369,13 +369,13 @@
           if (!btn2 || !panel2) return;
           let lastToggleAt = 0;
           const toggleDropdown = (e) => {
-            try { e.preventDefault(); e.stopPropagation(); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+            try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* silently ignored */ }
             const isOpen = !panel2.hasAttribute('hidden');
             closeAll();
             if (!isOpen) {
               dd2.classList.add('open');
               panel2.removeAttribute('hidden');
-              try { panel2.hidden = false; } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+              try { panel2.hidden = false; } catch (e) { /* silently ignored */ }
               try {
                 panel2.classList.add('show');
                 panel2.style.setProperty('display', 'block', 'important');
@@ -400,17 +400,17 @@
                     const maxLeft = Math.max(6, (window.innerWidth || 0) - w - 6);
                     left = Math.min(left, maxLeft);
                     panel2.style.left = `${left}px`;
-                  } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
-                  try { panel2.style.transform = 'none'; } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+                  } catch (e) { /* silently ignored */ }
+                  try { panel2.style.transform = 'none'; } catch (e) { /* silently ignored */ }
                 }
-              } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+              } catch (e) { /* silently ignored */ }
               btn2.setAttribute('aria-expanded', 'true');
             }
           };
           const onTouchLike = (e) => {
             const now = Date.now();
             if (now - lastToggleAt < 300) {
-              try { e.preventDefault(); e.stopPropagation(); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+              try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* silently ignored */ }
               return;
             }
             lastToggleAt = now;
@@ -419,7 +419,7 @@
           const onClick = (e) => {
             const now = Date.now();
             if (now - lastToggleAt < 700) {
-              try { e.preventDefault(); e.stopPropagation(); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+              try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* silently ignored */ }
               return;
             }
             lastToggleAt = now;
@@ -441,7 +441,7 @@
         }, { passive: true });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); }, { passive: true });
       }
-    } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   });
 
   // Auto-logout on inactivity (idle timeout)
@@ -449,10 +449,10 @@
     const IDLE_MS = 15 * 60 * 1000; // 15 minutes
     let idleTimer = null;
     const resetIdle = () => {
-      try { clearTimeout(idleTimer); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+      try { clearTimeout(idleTimer); } catch (e) { /* silently ignored */ }
       idleTimer = setTimeout(() => {
-        try { doLogout(); } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
-        try { location.href = '/ui/login?timeout=1'; } catch (e) { console.error('[kintai-topbar-links.js] Swallowed error:', e); }
+        try { doLogout(); } catch (e) { /* silently ignored */ }
+        try { location.href = '/ui/login?timeout=1'; } catch (e) { /* silently ignored */ }
       }, IDLE_MS);
     };
     ['click','keydown','mousemove','touchstart','scroll','visibilitychange'].forEach(ev => {

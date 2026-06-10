@@ -29,9 +29,9 @@ async function ensureTable() {
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'password_reset_tokens' AND COLUMN_NAME = 'userId' AND REFERENCED_TABLE_NAME IS NOT NULL
     `);
     if (!fk || !fk.length) {
-      try { await db.query(`ALTER TABLE password_reset_tokens ADD CONSTRAINT fk_password_reset_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { console.error('[password_reset.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE password_reset_tokens ADD CONSTRAINT fk_password_reset_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[password_reset.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 module.exports = {

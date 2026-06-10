@@ -79,7 +79,7 @@ module.exports = function(app) {
   try {
     const attendanceController = require('../modules/attendance/attendance.controller');
     app.get('/api/attendance/month/export.xlsx', authenticate, authorize('employee','manager','admin','payroll'), attendanceController.exportMonthXlsx);
-  } catch (e) { console.error('[index.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   app.use('/api/leave', leaveRoutes); // Nghỉ phép
   console.log('🔧 About to mount /api/adjust routes');
   app.use('/api/adjust', adjustRoutes); // Điều chỉnh chấm công

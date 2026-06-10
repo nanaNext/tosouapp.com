@@ -20,7 +20,7 @@ function resolveBuildId() {
   try {
     const sha = String(execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }) || '').trim();
     if (sha) return `git-${sha}`;
-  } catch (e) { console.error('[app.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return `runtime-${Date.now()}`;
 }
 const BUILD_ID = resolveBuildId();
@@ -62,9 +62,9 @@ app.use((req, res, next) => {
     const target = `https://${canonicalHost}${req.originalUrl || req.url || '/'}`;
     try {
       console.warn(`[canonical] redirect host=${host} direct=${directHost} forwarded=${forwardedHost} enforce=${enforceCanonical} inProd=${inProd} -> ${target}`);
-    } catch (e) { console.error('[app.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     return res.redirect(308, target);
-  } catch (e) { console.error('[app.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return next();
 });
 app.use((req, res, next) => {
@@ -83,7 +83,7 @@ app.use((req, res, next) => {
     if (ms > 500) {
       try {
         console.warn(JSON.stringify({ level: 'warn', type: 'slow_request', request_id: req.id, method: req.method, path: req.path, duration_ms: Math.round(ms) }));
-      } catch (e) { console.error('[app.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
   });
   next();

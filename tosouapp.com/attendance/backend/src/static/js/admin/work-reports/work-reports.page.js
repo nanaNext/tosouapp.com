@@ -64,13 +64,13 @@ const showSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const hideSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 export async function mount() {
@@ -335,7 +335,7 @@ export async function mount() {
       if (state.group) u.searchParams.set('group', '1');
       else u.searchParams.delete('group');
       history.replaceState(null, '', u.pathname + u.search + u.hash);
-    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   let currentPage = 1;
@@ -855,7 +855,7 @@ export async function mount() {
         const shown = filterAndSort(state.items).length;
         summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
-    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   });
   $('#wrDept')?.addEventListener('change', async () => {
     const sel = $('#wrDept');
@@ -870,7 +870,7 @@ export async function mount() {
         const shown = filterAndSort(state.items).length;
         summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
-    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   });
   $('#wrSearch')?.addEventListener('input', async () => {
     const inp = $('#wrSearch');
@@ -885,7 +885,7 @@ export async function mount() {
         const shown = filterAndSort(state.items).length;
         summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
-    } catch (e) { console.error('[work-reports.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   });
   $('#wrGroup')?.addEventListener('change', async () => {
     const ck = $('#wrGroup');

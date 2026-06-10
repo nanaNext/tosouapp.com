@@ -17,7 +17,7 @@ export async function getLoginOptions(email) {
 
 export async function verifyLogin(email, response) {
   const data = await postJSON('/api/webauthn/login/verify', { email, response });
-  try { localStorage.setItem('auth-login-event', Date.now()); } catch (e) { console.error('[webauthn.api.js] Swallowed error:', e); }
+  try { localStorage.setItem('auth-login-event', Date.now()); } catch (e) { /* silently ignored */ }
   return data;
 }
 

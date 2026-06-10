@@ -25,9 +25,9 @@ async function ensureTable() {
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'refresh_tokens' AND COLUMN_NAME = 'userId' AND REFERENCED_TABLE_NAME IS NOT NULL
     `);
     if (!fk || !fk.length) {
-      try { await db.query(`ALTER TABLE refresh_tokens ADD CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { console.error('[refresh.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE refresh_tokens ADD CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[refresh.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const [cols] = await db.query(`
       SELECT column_name 
@@ -38,16 +38,16 @@ async function ensureTable() {
     if (!set.has('token_hash')) {
       await db.query(`ALTER TABLE refresh_tokens ADD COLUMN token_hash VARCHAR(64) NULL`);
       if (set.has('token')) {
-        try { await db.query(`ALTER TABLE refresh_tokens MODIFY COLUMN token VARCHAR(255) NULL DEFAULT NULL`); } catch (e) { console.error('[refresh.repository.js] Swallowed error:', e); }
+        try { await db.query(`ALTER TABLE refresh_tokens MODIFY COLUMN token VARCHAR(255) NULL DEFAULT NULL`); } catch (e) { /* silently ignored */ }
         await db.query(`UPDATE refresh_tokens SET token_hash = LOWER(SHA2(token, 256)) WHERE token IS NOT NULL AND token_hash IS NULL`);
       }
       await db.query(`ALTER TABLE refresh_tokens MODIFY COLUMN token_hash VARCHAR(64) NOT NULL`);
-      try { await db.query(`ALTER TABLE refresh_tokens ADD UNIQUE KEY uniq_token_hash (token_hash)`); } catch (e) { console.error('[refresh.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE refresh_tokens ADD UNIQUE KEY uniq_token_hash (token_hash)`); } catch (e) { /* silently ignored */ }
       if (set.has('token')) {
-        try { await db.query(`ALTER TABLE refresh_tokens DROP COLUMN token`); } catch (e) { console.error('[refresh.repository.js] Swallowed error:', e); }
+        try { await db.query(`ALTER TABLE refresh_tokens DROP COLUMN token`); } catch (e) { /* silently ignored */ }
       }
     }
-  } catch (e) { console.error('[refresh.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 function hashToken(token) {

@@ -383,7 +383,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
     const setBusy = (flag) => {
       try {
         if (el && typeof el.disabled !== 'undefined') el.disabled = !!flag;
-      } catch (e) { console.error('[legacy-leave.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
 
     if (action === 'balance') {

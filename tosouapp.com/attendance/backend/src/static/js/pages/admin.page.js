@@ -24,11 +24,11 @@ const assetV = (() => {
     const meta = document.querySelector('meta[name="asset-v"]');
     const v = meta ? (meta.getAttribute('content') || '') : '';
     if (v) return String(v);
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const v2 = window.__assetV;
     return v2 ? String(v2) : '';
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return '';
 })();
 
@@ -44,7 +44,7 @@ async function ensureAdmin() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
   if (token) {
-    try { profile = await me(token); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    try { profile = await me(token); } catch (e) { /* silently ignored */ }
   }
   if (!profile) {
     try {
@@ -52,7 +52,7 @@ async function ensureAdmin() {
       sessionStorage.setItem('accessToken', r.accessToken);
       token = r.accessToken;
       profile = await me(token);
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (!profile) {
     try {
@@ -60,7 +60,7 @@ async function ensureAdmin() {
       sessionStorage.setItem('accessToken', r2.accessToken);
       token = r2.accessToken;
       profile = await me(token);
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (!profile) {
     try {
@@ -71,9 +71,9 @@ async function ensureAdmin() {
         try {
           const r3 = await refresh();
           sessionStorage.setItem('accessToken', r3.accessToken);
-        } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (!profile) {
     try {
@@ -87,9 +87,9 @@ async function ensureAdmin() {
             sessionStorage.setItem('accessToken', r4.accessToken);
             token = r4.accessToken;
           }
-        } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (!profile) {
     const err = document.querySelector('#error');
@@ -97,7 +97,7 @@ async function ensureAdmin() {
     try {
       const sp = document.querySelector('#pageSpinner');
       if (sp) { sp.setAttribute('hidden', ''); sp.style.display = 'none'; }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     return null;
   }
   const role = String(profile.role || '').toLowerCase();
@@ -135,11 +135,11 @@ async function bootLegacyAdminPage() {
     try {
       const sp = document.querySelector('#pageSpinner');
       if (sp) { sp.setAttribute('hidden', ''); sp.style.display = 'none'; }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       const st = document.querySelector('#status');
       if (st) st.textContent = '';
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     return;
   }
   
@@ -154,7 +154,7 @@ async function bootLegacyAdminPage() {
     if (ddName && full) ddName.textContent = full;
     if (ddInit && ch) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
     if (btnInit && ch) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   const content = $('#adminContent');
   
   function getCurrentTab() {
@@ -201,7 +201,7 @@ async function bootLegacyAdminPage() {
       setSidebarActive(tab);
       try {
         document.body.classList.remove('employees-wide');
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       const contentEl2 = document.querySelector('#adminContent');
       if (contentEl2) contentEl2.className = 'card';
       const tilesSection = document.querySelector('.tiles');
@@ -227,7 +227,7 @@ async function bootLegacyAdminPage() {
               return employeesDyn.mount(ctx);
             },
             unmount() {
-              try { if (employeesDyn && typeof employeesDyn.unmount === 'function') employeesDyn.unmount(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+              try { if (employeesDyn && typeof employeesDyn.unmount === 'function') employeesDyn.unmount(); } catch (e) { /* silently ignored */ }
               employeesDyn = null;
             }
           },
@@ -251,7 +251,7 @@ async function bootLegacyAdminPage() {
               return attendanceDyn.mount(ctx);
             },
             unmount() {
-              try { if (attendanceDyn && typeof attendanceDyn.unmount === 'function') attendanceDyn.unmount(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+              try { if (attendanceDyn && typeof attendanceDyn.unmount === 'function') attendanceDyn.unmount(); } catch (e) { /* silently ignored */ }
               attendanceDyn = null;
             }
           },
@@ -314,7 +314,7 @@ async function bootLegacyAdminPage() {
         const nextPage = routes[nextPageKey] || routes.home;
 
         if (currentPage) {
-          try { currentPage.unmount(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+          try { currentPage.unmount(); } catch (e) { /* silently ignored */ }
         }
 
         currentPage = nextPage;
@@ -343,20 +343,20 @@ async function bootLegacyAdminPage() {
         if (err) { err.style.display = 'block'; err.textContent = '読み込みエラー: ' + ((e && e.message) ? e.message : 'unknown'); }
       } finally {
         hideNavSpinner();
-        try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
       }
     }
     window.addEventListener('hashchange', async () => { hideNavSpinner(); await renderByTab(); });
     window.addEventListener('popstate', async () => { hideNavSpinner(); await renderByTab(); });
     await renderByTab();
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   try {
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') {
       showNavSpinner();
     }
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   if (status) status.textContent = '';
 }
 
@@ -364,14 +364,14 @@ function startLegacyAdminPage() {
   try {
     if (window.__legacyAdminPageBooting || window.__legacyAdminPageBooted) return;
     window.__legacyAdminPageBooting = true;
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   Promise.resolve()
     .then(() => bootLegacyAdminPage())
     .finally(() => {
       try {
         window.__legacyAdminPageBooting = false;
         window.__legacyAdminPageBooted = true;
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     });
 }
 

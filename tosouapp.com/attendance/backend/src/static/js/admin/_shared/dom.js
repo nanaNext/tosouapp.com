@@ -22,6 +22,6 @@ export function delegate(root, selector, type, handler, options) {
   };
   root.addEventListener(type, listener, options);
   return () => {
-    try { root.removeEventListener(type, listener, options); } catch (e) { console.error('[dom.js] Swallowed error:', e); }
+    try { root.removeEventListener(type, listener, options); } catch (e) { /* silently ignored */ }
   };
 }

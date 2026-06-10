@@ -22,7 +22,7 @@ async function ensureTable() {
     if (!cols || !cols.length) {
       await db.query(`ALTER TABLE payslip_deliveries ADD COLUMN is_read TINYINT(1) DEFAULT 0 AFTER sent_at`);
     }
-  } catch (e) { console.error('[payslipDelivery.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   try {
     const [fk1] = await db.query(`
@@ -31,9 +31,9 @@ async function ensureTable() {
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payslip_deliveries' AND COLUMN_NAME = 'userId' AND REFERENCED_TABLE_NAME IS NOT NULL
     `);
     if (!fk1 || !fk1.length) {
-      try { await db.query(`ALTER TABLE payslip_deliveries ADD CONSTRAINT fk_payslip_del_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { console.error('[payslipDelivery.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE payslip_deliveries ADD CONSTRAINT fk_payslip_del_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[payslipDelivery.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const [fk2] = await db.query(`
       SELECT CONSTRAINT_NAME
@@ -41,9 +41,9 @@ async function ensureTable() {
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payslip_deliveries' AND COLUMN_NAME = 'sent_by' AND REFERENCED_TABLE_NAME IS NOT NULL
     `);
     if (!fk2 || !fk2.length) {
-      try { await db.query(`ALTER TABLE payslip_deliveries ADD CONSTRAINT fk_payslip_del_sender FOREIGN KEY (sent_by) REFERENCES users(id) ON DELETE SET NULL`); } catch (e) { console.error('[payslipDelivery.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE payslip_deliveries ADD CONSTRAINT fk_payslip_del_sender FOREIGN KEY (sent_by) REFERENCES users(id) ON DELETE SET NULL`); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[payslipDelivery.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const [fk3] = await db.query(`
       SELECT CONSTRAINT_NAME
@@ -51,9 +51,9 @@ async function ensureTable() {
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payslip_deliveries' AND COLUMN_NAME = 'payslip_file_id' AND REFERENCED_TABLE_NAME IS NOT NULL
     `);
     if (!fk3 || !fk3.length) {
-      try { await db.query(`ALTER TABLE payslip_deliveries ADD CONSTRAINT fk_payslip_del_file FOREIGN KEY (payslip_file_id) REFERENCES payslip_files(id) ON DELETE CASCADE`); } catch (e) { console.error('[payslipDelivery.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE payslip_deliveries ADD CONSTRAINT fk_payslip_del_file FOREIGN KEY (payslip_file_id) REFERENCES payslip_files(id) ON DELETE CASCADE`); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[payslipDelivery.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 async function create({ userId, month, payslipFileId, sentBy }) {
