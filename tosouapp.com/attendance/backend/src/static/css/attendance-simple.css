@@ -1092,7 +1092,7 @@ body {
 /* Extra-compact phones: prevent time box and stamp button overlap */
 @media (max-width: 430px) {
   .simple-stamp-row {
-    grid-template-columns: minmax(84px, 100px) minmax(80px, 96px) 1fr;
+    grid-template-columns: minmax(84px, 96px) minmax(76px, 90px) 1fr;
     gap: 8px;
   }
   .simple-stamp-time,
@@ -1108,12 +1108,14 @@ body {
     padding: 8px 0;
   }
   .simple-stamp-btn {
-    font-size: 12px;
-    padding: 8px 10px;
-    justify-content: flex-end;
-    text-align: right;
-    width: auto;
+    width: 100%;
+    max-width: 120px;
     justify-self: flex-end;
+    justify-content: center;
+    text-align: center;
+    font-size: 12px;
+    padding: 8px 4px;
+    min-width: 0;
   }
 }
 
@@ -1151,19 +1153,20 @@ body {
     height: 44px !important;
   }
   .simple-stamp-row {
-    grid-template-columns: minmax(84px, 96px) minmax(80px, 96px) minmax(108px, 1fr);
+    grid-template-columns: minmax(84px, 96px) minmax(72px, 86px) minmax(108px, 1fr);
     gap: 6px;
   }
   .simple-stamp-btn {
     grid-column: auto;
-    width: auto;
-    max-width: none;
+    width: 100%;
+    max-width: 110px;
     justify-self: flex-end;
-    justify-content: flex-end;
-    text-align: right;
+    justify-content: center;
+    text-align: center;
     font-size: 11px;
-    padding: 8px 8px;
+    padding: 8px 4px;
     box-sizing: border-box;
+    min-width: 0;
   }
   .simple-stamp-time {
     max-width: none;
