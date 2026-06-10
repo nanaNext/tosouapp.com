@@ -5,7 +5,7 @@ export async function bootLegacyTab({ tab, hash }) {
     else url.searchParams.delete('tab');
     url.hash = hash || '';
     history.replaceState(null, '', url.pathname + url.search + url.hash);
-  } catch (e) { console.error('[legacy-tab.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   if (tab === 'payroll_editor') {
     let v = '';
@@ -13,7 +13,7 @@ export async function bootLegacyTab({ tab, hash }) {
       const meta = document.querySelector('meta[name="asset-v"]');
       v = meta ? (meta.getAttribute('content') || '') : '';
       if (!v) v = window.__assetV ? String(window.__assetV) : '';
-    } catch (e) { console.error('[legacy-tab.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const spec = v ? `../payroll/editor.page.js?v=${encodeURIComponent(v)}` : '../payroll/editor.page.js';
     const mod = await import(spec);
     await mod.mount();
@@ -27,16 +27,16 @@ export async function bootLegacyTab({ tab, hash }) {
     try {
       const meta = document.querySelector('meta[name="asset-v"]');
       v = meta ? (meta.getAttribute('content') || '') : '';
-    } catch (e) { console.error('[legacy-tab.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     if (!v) {
-      try { v = window.__assetV ? String(window.__assetV) : ''; } catch (e) { console.error('[legacy-tab.page.js] Swallowed error:', e); }
+      try { v = window.__assetV ? String(window.__assetV) : ''; } catch (e) { /* silently ignored */ }
     }
     if (v && p.indexOf('v=') < 0) p = p + '?v=' + encodeURIComponent(String(v));
-  } catch (e) { console.error('[legacy-tab.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   await import(p);
   try {
     // Notify legacy page to refresh tab without forcing modern admin router loop.
     window.__legacyTabPopstate = '1';
     window.dispatchEvent(new Event('popstate'));
-  } catch (e) { console.error('[legacy-tab.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }

@@ -54,7 +54,7 @@ export function createRealtimeController({ getKey, buildPayload, computeEmp, set
         const hint = Math.round(sum) !== Math.round(net) ? `支払内訳が一致しません（${Math.round(sum)} != ${Math.round(net)}）` : '';
         setKpi({ gross: totals['総支給額'], deduct: totals['総控除額'], net, paySum: sum, hint });
         updatePreview(emp);
-      } catch (e) { console.error('[editor.realtime.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }, 350);
   };
 

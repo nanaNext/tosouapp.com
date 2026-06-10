@@ -49,7 +49,7 @@ function ensureUserClickHandler(content) {
         }
       }
     });
-  } catch (e) { console.error('[legacy-users.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 export async function mountUsers({ content, listUsers, deleteUserAccount, resetUserPassword }) {

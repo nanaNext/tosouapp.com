@@ -11,7 +11,7 @@ const $ = (sel) => document.querySelector(sel);
 // Dùng để đánh dấu khi topbar đã sẵn sàng để sử dụng
 
 const markTopbarReady = () => {
-  try { document.documentElement.classList.add('topbar-ready'); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  try { document.documentElement.classList.add('topbar-ready'); } catch (e) { /* silently ignored */ }
 };
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,13 +30,13 @@ const resolveEmployeeUid = () => {
   try {
     const fromWin = parseInt(String(window.__EMP_UID || 0), 10) || 0;
     if (fromWin) return fromWin;
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     const u = raw ? JSON.parse(raw) : null;
     const id = parseInt(String(u?.id || 0), 10) || 0;
     if (id) return id;
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return 0;
 };
 const shouldHideEmployeeAppliedNotice = (it) => {
@@ -96,7 +96,7 @@ const ensureEmpNotifyStyle = () => {
       .emp-notify-empty { padding: 12px; color: #64748b; font-size: 12px; }
     `;
     document.head.appendChild(st);
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const mountEmployeeNoticeBell = () => {
   try {
@@ -319,7 +319,7 @@ const renderEmployeeNoticeBell = () => {
           return it?.read_at ? it : { ...it, read_at: nowIso };
         });
         renderEmployeeNoticeBell();
-        try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { /* silently ignored */ }
         if (link) {
           try {
             const to = new URL(link, window.location.origin);
@@ -333,7 +333,7 @@ const renderEmployeeNoticeBell = () => {
               window.location.href = href;
               return;
             }
-          } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
           window.location.href = link;
         }
       });
@@ -350,16 +350,16 @@ const renderEmployeeNoticeBell = () => {
         dropSet.forEach((id) => notifyState.hiddenIds.add(id));
         try {
           localStorage.setItem('emp_notify_hidden_v1', JSON.stringify(Array.from(notifyState.hiddenIds).slice(0, 1000)));
-        } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         notifyState.items = items.filter((it) => {
           const nid = parseInt(String(it?.id || 0), 10) || 0;
           return !dropSet.has(nid);
         });
         renderEmployeeNoticeBell();
-        try { await fetchJSONAuth('/api/notices/hide', { method: 'POST', body: JSON.stringify({ ids }) }); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        try { await fetchJSONAuth('/api/notices/hide', { method: 'POST', body: JSON.stringify({ ids }) }); } catch (e) { /* silently ignored */ }
       });
     });
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const refreshEmployeeNoticeBell = async () => {
   try {
@@ -368,7 +368,7 @@ const refreshEmployeeNoticeBell = async () => {
     const res = await fetchJSONAuth(`/api/notices?all=1&date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&limit=30`).catch(() => null);
     notifyState.items = (Array.isArray(res?.notices) ? res.notices : []).filter((it) => !shouldHideEmployeeAppliedNotice(it));
     renderEmployeeNoticeBell();
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const bootEmployeeNoticeBell = () => {
   try {
@@ -376,7 +376,7 @@ const bootEmployeeNoticeBell = () => {
     refreshEmployeeNoticeBell();
     if (notifyState.refreshTimer) clearInterval(notifyState.refreshTimer);
     notifyState.refreshTimer = setInterval(() => { refreshEmployeeNoticeBell(); }, 60000);
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const prefillUserName = () => {
@@ -387,7 +387,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const setUserNameStable = (nextName, { force = false } = {}) => {
@@ -400,12 +400,12 @@ const setUserNameStable = (nextName, { force = false } = {}) => {
     if (!force && current) return;
     if (current === next) return;
     el.textContent = next;
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 // Run as early as possible (module executes before DOMContentLoaded on these pages)
 // to reduce visible flicker in the user area while auth/profile is still resolving.
-try { prefillUserName(); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+try { prefillUserName(); } catch (e) { /* silently ignored */ }
 markTopbarReady();
 
 function getCookie(name) {
@@ -433,10 +433,10 @@ const wireExpandingSearch = () => {
         const editable = (t && (t.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'));
         if (editable) return;
         e.preventDefault();
-        try { input && input.focus({ preventScroll: true }); input && input.select(); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        try { input && input.focus({ preventScroll: true }); input && input.select(); } catch (e) { /* silently ignored */ }
       }
     });
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 async function ensureAuthProfile() {
@@ -473,7 +473,7 @@ async function ensureAuthProfile() {
           try {
             const r2 = await Promise.race([refresh(), timeoutPromise]);
             sessionStorage.setItem('accessToken', r2.accessToken);
-          } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
         }
       } catch (e) {
         console.warn('⚠️ Fallback profile failed:', e.message);
@@ -518,30 +518,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }, true);
     }
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   const pageSpinner = document.querySelector('#pageSpinner');
   try {
     const navEntry = (typeof performance !== 'undefined' && performance.getEntriesByType) ? performance.getEntriesByType('navigation')[0] : null;
     const navType = navEntry?.type || (performance && performance.navigation && performance.navigation.type === 2 ? 'back_forward' : '');
     if (navType === 'back_forward') {
       if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
-      try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
     }
     window.addEventListener('pageshow', () => {
-      try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
       if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
     });
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     /* giữ spinner đến khi xác thực xong, không auto-hide theo thời gian */
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1' && pageSpinner) {
       pageSpinner.removeAttribute('hidden');
     }
     sessionStorage.removeItem('navSpinner');
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   const waitMinDelay = async () => { };
   // Keep header height stable to avoid first-paint layout jump between pages.
   const setTopbarHeightVar = () => { };
@@ -562,9 +562,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const userStr = sessionStorage.getItem('user') || '';
     if (userStr) { localStorage.setItem('user', userStr); }
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   const role = String(profile.role || '').toLowerCase();
-  try { window.__EMP_UID = parseInt(String(profile.id || 0), 10) || 0; } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  try { window.__EMP_UID = parseInt(String(profile.id || 0), 10) || 0; } catch (e) { /* silently ignored */ }
   setUserNameStable(profile.username || profile.email || 'ユーザー');
   if (role === 'admin' || role === 'manager') {
     const p0 = String(window.location.pathname || '');
@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
           main.style.setProperty('padding-top', pad, 'important');
         }
-      } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const syncInlinePageStyle = (doc, pathName) => {
       try {
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.head.appendChild(st);
         }
         st.textContent = styles.join('\n\n');
-      } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const setNavCurrent = (pathName) => {
       try {
@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (u.pathname === pathName) a.setAttribute('aria-current', 'page');
           else a.removeAttribute('aria-current');
         });
-      } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const loadViaPjax = async (url, push = true) => {
       try {
@@ -650,8 +650,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (typeof window.__employeePageCleanup === 'function') {
             window.__employeePageCleanup();
           }
-        } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
-        try { delete window.__employeePageCleanup; } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
+        try { delete window.__employeePageCleanup; } catch (e) { /* silently ignored */ }
         const res = await fetch(url.pathname + url.search, { credentials: 'include', cache: 'no-store' });
         if (!res.ok) return false;
         const html = await res.text();
@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mod && typeof mod.bootRequestsPage === 'function') {
               await mod.bootRequestsPage();
             }
-          } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
         }
         if (url.pathname === EXP_PATH) {
           try {
@@ -679,7 +679,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mod && typeof mod.bootExpensesPage === 'function') {
               await mod.bootExpensesPage();
             }
-          } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
         }
         if (url.pathname === CHATBOT_PATH) {
           try {
@@ -687,10 +687,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mod && typeof mod.bootChatbotPage === 'function') {
               await mod.bootChatbotPage();
             }
-          } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
         }
         if (url.pathname === HOME_PATH) {
-          try { renderHomeTiles(role); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+          try { renderHomeTiles(role); } catch (e) { /* silently ignored */ }
           try {
             const tiles = document.querySelector('.tiles');
             if (tiles && tiles.dataset.navBound !== '1') {
@@ -711,7 +711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
               });
             }
-          } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
         }
         return true;
       } catch {
@@ -815,7 +815,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (document.querySelector('.req-page')) {
             window.location.reload();
           }
-        } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       });
     }
   };
@@ -825,7 +825,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // sub page -> home -> login
   // (do not force back button to jump directly to login)
   try {
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   if (role === 'employee' || role === 'manager') {
     // tiles rendered by renderHomeTiles below
   }
@@ -942,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   renderHomeTiles(role);
   if (role === 'employee') {
-    try { bootEmployeeNoticeBell(); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+    try { bootEmployeeNoticeBell(); } catch (e) { /* silently ignored */ }
   }
   try {
     const brand = document.querySelector('.topbar .brand');
@@ -960,7 +960,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/ui/portal';
       });
     }
-  } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   /* dùng biến pageSpinner đã khai báo ở đầu scope */
   function navigateWithSpinner(href) {
     const goSoft = window.__employeeSoftNavigate;
@@ -989,12 +989,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     drawerEl.addEventListener('click', async (e) => {
       const btn = e.target?.closest?.('#drawerLogout');
       if (btn) {
-        try { await logout(); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        try { await logout(); } catch (e) { /* silently ignored */ }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* silently ignored */ }
         window.location.replace('/ui/login');
       }
     });
@@ -1052,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           btn.setAttribute('aria-expanded', 'true');
           const firstItem = dd.querySelector('.item, a, button');
           if (firstItem && typeof firstItem.focus === 'function') {
-            try { firstItem.focus(); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+            try { firstItem.focus(); } catch (e) { /* silently ignored */ }
           }
         } else {
           dd.setAttribute('hidden', '');
@@ -1073,12 +1073,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnLogout && btnLogout.dataset.bound !== '1') {
       btnLogout.dataset.bound = '1';
       btnLogout.addEventListener('click', async () => {
-        try { await logout(); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        try { await logout(); } catch (e) { /* silently ignored */ }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* silently ignored */ }
         window.location.replace('/ui/login');
       });
     }
@@ -1104,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.style.right = '0';
         document.body.style.width = '100%';
         document.body.style.overflow = 'hidden';
-      } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const unlockViewport = () => {
       try {
@@ -1116,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.style.width = '';
         document.body.style.overflow = '';
         window.scrollTo(0, Math.max(0, Number(drawerScrollY) || 0));
-      } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const swallowWhenDrawerOpen = (e) => {
       try {
@@ -1124,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const inDrawer = e.target && e.target.closest && e.target.closest('#mobileDrawer');
         if (inDrawer) return;
         e.preventDefault();
-      } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     document.addEventListener('touchmove', swallowWhenDrawerOpen, { passive: false });
     document.addEventListener('wheel', swallowWhenDrawerOpen, { passive: false });
@@ -1136,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.body.classList.remove('drawer-open');
           unlockViewport();
           if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
-        } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         return;
       }
       const isHidden = mobileDrawer.hasAttribute('hidden');
@@ -1149,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.documentElement.style.setProperty('--drawer-offset', `${w}px`);
           document.body.classList.add('drawer-open');
           lockViewport();
-        } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         if (mobileBackdrop) { mobileBackdrop.removeAttribute('hidden'); }
       } else {
         mobileDrawer.setAttribute('hidden', '');
@@ -1191,5 +1191,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isMobileViewport()) toggleDrawer(false);
     /* backdrop không đóng, chỉ nút X mới đóng */
   }
-  try { wireExpandingSearch(); } catch (e) { console.error('[portal.page.js] Swallowed error:', e); }
+  try { wireExpandingSearch(); } catch (e) { /* silently ignored */ }
 });

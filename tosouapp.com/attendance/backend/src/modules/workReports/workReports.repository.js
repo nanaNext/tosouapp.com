@@ -20,7 +20,7 @@ async function ensureSchema() {
   `);
   try {
     await db.query(`ALTER TABLE work_reports ADD COLUMN work_type VARCHAR(24) NULL`);
-  } catch (e) { console.error('[workReports.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const [fk] = await db.query(`
       SELECT CONSTRAINT_NAME AS name
@@ -39,9 +39,9 @@ async function ensureSchema() {
           FOREIGN KEY (attendanceId) REFERENCES attendance(id)
           ON DELETE SET NULL
         `);
-      } catch (e) { console.error('[workReports.repository.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[workReports.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 async function ensureMonthClosureSchema() {

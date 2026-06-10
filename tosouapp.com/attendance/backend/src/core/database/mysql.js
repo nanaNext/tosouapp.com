@@ -53,8 +53,8 @@ pool.query = async function(...args) {
   if (dur > 200) {
     try {
       console.warn(JSON.stringify({ level: 'warn', type: 'slow_query', duration_ms: dur }));
-      try { require('../metrics').inc('slow_query_count', 1); } catch (e) { console.error('[mysql.js] Swallowed error:', e); }
-    } catch (e) { console.error('[mysql.js] Swallowed error:', e); }
+      try { require('../metrics').inc('slow_query_count', 1); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored */ }
   }
   return res;
 };
@@ -63,9 +63,9 @@ pool.getConnection = async function() {
   const conn = await origGetConnection();
   try {
     await conn.query(`SET NAMES utf8mb4`);
-    try { await conn.query(`SET collation_connection = utf8mb4_0900_ai_ci`); } catch (e) { console.error('[mysql.js] Swallowed error:', e); }
-    try { await conn.query(`SET time_zone = '+09:00'`); } catch (e) { console.error('[mysql.js] Swallowed error:', e); }
-  } catch (e) { console.error('[mysql.js] Swallowed error:', e); }
+    try { await conn.query(`SET collation_connection = utf8mb4_0900_ai_ci`); } catch (e) { /* silently ignored */ }
+    try { await conn.query(`SET time_zone = '+09:00'`); } catch (e) { /* silently ignored */ }
+  } catch (e) { /* silently ignored */ }
   const origConnQuery = conn.query.bind(conn);
   conn.query = async function(...args) {
     const t0 = Date.now();
@@ -74,8 +74,8 @@ pool.getConnection = async function() {
     if (dur > 200) {
       try {
         console.warn(JSON.stringify({ level: 'warn', type: 'slow_query', duration_ms: dur }));
-        try { require('../metrics').inc('slow_query_count', 1); } catch (e) { console.error('[mysql.js] Swallowed error:', e); }
-      } catch (e) { console.error('[mysql.js] Swallowed error:', e); }
+        try { require('../metrics').inc('slow_query_count', 1); } catch (e) { /* silently ignored */ }
+      } catch (e) { /* silently ignored */ }
     }
     return res;
   };

@@ -7,8 +7,8 @@
     if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
     return r;
   };
-  const reveal = () => { try { document.documentElement.classList.remove('portal-preboot'); } catch (e) { console.error('[portal-preboot.js] Swallowed error:', e); } };
-  try { document.documentElement.classList.add('portal-preboot'); } catch (e) { console.error('[portal-preboot.js] Swallowed error:', e); }
+  const reveal = () => { try { document.documentElement.classList.remove('portal-preboot'); } catch (e) { /* silently ignored */ } };
+  try { document.documentElement.classList.add('portal-preboot'); } catch (e) { /* silently ignored */ }
   const routeAdmin = () => { try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; } };
   try {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
@@ -17,6 +17,6 @@
       routeAdmin();
       return;
     }
-  } catch (e) { console.error('[portal-preboot.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   reveal();
 })();

@@ -288,28 +288,28 @@ module.exports.ensureTable = async function() {
       FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN type VARCHAR(16) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN purpose VARCHAR(255) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN teiki_flag TINYINT(1) NOT NULL DEFAULT 0`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN receipt_url VARCHAR(255) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN distance_km DECIMAL(10,2) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN unit_price_per_km DECIMAL(12,2) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN trip_type VARCHAR(16) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN trip_count INT NOT NULL DEFAULT 1`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN category VARCHAR(32) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'pending'`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN manager_note VARCHAR(255) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN approved_by BIGINT UNSIGNED NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN approver_id BIGINT UNSIGNED NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN approved_at DATETIME NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN applied_at DATETIME NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN via VARCHAR(255) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN commuter_pass TINYINT(1) NOT NULL DEFAULT 0`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN client_token VARCHAR(64) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN employee_note VARCHAR(255) NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN reply_at DATETIME NULL`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`ALTER TABLE expense_claims ADD UNIQUE KEY uniq_client_token (client_token)`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
-  try { await db.query(`CREATE INDEX idx_status ON expense_claims (status)`); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN type VARCHAR(16) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN purpose VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN teiki_flag TINYINT(1) NOT NULL DEFAULT 0`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN receipt_url VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN distance_km DECIMAL(10,2) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN unit_price_per_km DECIMAL(12,2) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN trip_type VARCHAR(16) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN trip_count INT NOT NULL DEFAULT 1`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN category VARCHAR(32) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'pending'`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN manager_note VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN approved_by BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN approver_id BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN approved_at DATETIME NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN applied_at DATETIME NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN via VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN commuter_pass TINYINT(1) NOT NULL DEFAULT 0`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN client_token VARCHAR(64) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN employee_note VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN reply_at DATETIME NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD UNIQUE KEY uniq_client_token (client_token)`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`CREATE INDEX idx_status ON expense_claims (status)`); } catch (e) { /* silently ignored */ }
   await db.query(`
     CREATE TABLE IF NOT EXISTS expense_files (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -499,10 +499,10 @@ module.exports.approveMonthByAdmin = async function({ userId, month, approverId 
       totalAmount: Number(sumRow?.total_amount || 0)
     };
   } catch (e) {
-    try { await conn.rollback(); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
+    try { await conn.rollback(); } catch (e) { /* silently ignored */ }
     throw e;
   } finally {
-    try { conn.release(); } catch (e) { console.error('[expenses.repository.js] Swallowed error:', e); }
+    try { conn.release(); } catch (e) { /* silently ignored */ }
   }
 };
 module.exports.startMonth = async function(userId, month) {

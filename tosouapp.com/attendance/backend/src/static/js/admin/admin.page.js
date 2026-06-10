@@ -24,7 +24,7 @@ try {
         err.message = String(err.message || baseMsg) + `\n@ ${loc}`;
       }
       lastRenderErr(err);
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   });
   window.addEventListener('unhandledrejection', (ev) => {
     if (globalErrShown) return;
@@ -34,9 +34,9 @@ try {
       const r = ev ? ev.reason : null;
       const err = r instanceof Error ? r : new Error(String(r || 'Unhandled rejection'));
       lastRenderErr(err);
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   });
-} catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+} catch (e) { /* silently ignored */ }
 
 const toLegacyState = (path) => {
   const p = normalizePath(path);
@@ -82,7 +82,7 @@ const syncUrlState = () => {
   if (state.tab) url.searchParams.set('tab', state.tab);
   else url.searchParams.delete('tab');
   url.hash = state.hash || '';
-  try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { /* silently ignored */ }
 };
 
 const markActiveNav = () => {
@@ -112,7 +112,7 @@ const markActiveNav = () => {
       try {
         if (a === best) a.setAttribute('aria-current', 'page');
         else a.removeAttribute('aria-current');
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
 
     // Also highlight top-level menu buttons when any of their submenu links match current path
@@ -139,17 +139,17 @@ const markActiveNav = () => {
         try {
           if (btn === bestMenu) btn.setAttribute('aria-current', 'page');
           else btn.removeAttribute('aria-current');
-        } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     try {
       const nav = document.querySelector('.sidebar .sidebar-nav');
       if (nav && !nav.querySelector('.selected')) {
         if (best) best.classList.add('selected');
       }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
+  } catch (e) { /* silently ignored */ }
 };
 
 const SIDEBAR_OPEN_KEY = 'admin.sidebar.open';
@@ -175,11 +175,11 @@ const expandActiveSidebarSection = () => {
       parent.open = true;
       parent.classList.add('active-section');
     }
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const showNavSpinner = () => {
-  try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
 };
 
 const wireSidebarAccordion = () => {
@@ -207,7 +207,7 @@ const wireSidebarAccordion = () => {
       
       details.open = isOpening;
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const wireUserMenu = () => {
@@ -222,33 +222,33 @@ const wireUserMenu = () => {
       const hidden = dd.hasAttribute('hidden');
       if (hidden) dd.removeAttribute('hidden');
       else dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', hidden ? 'true' : 'false'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-expanded', hidden ? 'true' : 'false'); } catch (e) { /* silently ignored */ }
     });
     document.addEventListener('click', (e) => {
       const t = e && e.target;
       if (t && t.closest && t.closest('.user-menu')) return;
       dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const btnLogout = document.querySelector('#btnLogout');
     if (!btnLogout || btnLogout.dataset.bound === '1') return;
     btnLogout.dataset.bound = '1';
     btnLogout.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { await logout(); } catch (e) { /* silently ignored */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const wireExpandingSearch = () => {
@@ -275,7 +275,7 @@ const wireExpandingSearch = () => {
           inner.style.gridTemplateColumns = `${bw || 'auto'} 1fr ${aw || 'auto'} ${uw || 'auto'}`;
           inner.dataset.searchLocked = '1';
         }
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       box.classList.add('active');
       try {
         if (input) {
@@ -283,7 +283,7 @@ const wireExpandingSearch = () => {
           input.focus(); input.select();
         }
         if (prefixTxt) prefixTxt.textContent = 'Search';
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const close = () => {
       box.classList.remove('active');
@@ -293,14 +293,14 @@ const wireExpandingSearch = () => {
           inner.style.gridTemplateColumns = '';
           delete inner.dataset.searchLocked;
         }
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         if (input) {
           if (originalPlaceholder) input.setAttribute('placeholder', originalPlaceholder);
           input.blur();
         }
         if (prefixTxt) prefixTxt.textContent = 'Projects';
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     input.addEventListener('focus', open);
     if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
@@ -331,7 +331,7 @@ const wireExpandingSearch = () => {
       if (t && t.closest && t.closest('.topbar-inner .search')) return;
       close();
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const wireMobileDrawer = () => {
@@ -348,28 +348,28 @@ const wireMobileDrawer = () => {
 
     const open = () => {
       if (closeTimer) clearTimeout(closeTimer);
-      try { drawer.removeAttribute('hidden'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { backdrop.removeAttribute('hidden'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { drawer.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
+      try { backdrop.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
       // Recover from forced inline hide set by transient reset logic.
-      try { drawer.style.display = ''; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { drawer.style.removeProperty('display'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { drawer.style.removeProperty('pointer-events'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { backdrop.style.display = ''; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { backdrop.style.removeProperty('display'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { document.body.classList.add('drawer-open'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { drawer.style.display = ''; } catch (e) { /* silently ignored */ }
+      try { drawer.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
+      try { drawer.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
+      try { backdrop.style.display = ''; } catch (e) { /* silently ignored */ }
+      try { backdrop.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
+      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
+      try { document.body.classList.add('drawer-open'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
     };
     const close = () => {
-      try { document.body.classList.remove('drawer-open'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
       closeTimer = setTimeout(() => {
-        try { drawer.setAttribute('hidden', ''); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { drawer.style.display = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { drawer.style.pointerEvents = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { backdrop.setAttribute('hidden', ''); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { backdrop.style.display = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { backdrop.style.pointerEvents = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        try { drawer.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+        try { drawer.style.display = 'none'; } catch (e) { /* silently ignored */ }
+        try { drawer.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+        try { backdrop.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+        try { backdrop.style.display = 'none'; } catch (e) { /* silently ignored */ }
+        try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
       }, 200); // Wait for the 0.18s CSS transform transition to finish
     };
     const toggle = () => {
@@ -382,7 +382,7 @@ const wireMobileDrawer = () => {
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
     backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const setTopbarHeightVar = () => {
@@ -393,7 +393,7 @@ const setTopbarHeightVar = () => {
     if (!topbar) return;
     const h = Math.round(topbar.getBoundingClientRect().height);
     if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const mapLegacyAdminToNewPath = (href) => {
@@ -415,7 +415,7 @@ const mapLegacyAdminToNewPath = (href) => {
     if (tab === 'audit') return '/admin/system/audit-logs';
     if (tab === 'settings') return '/admin/system/settings';
     return '/admin/dashboard';
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return null;
 };
 
@@ -438,11 +438,11 @@ const assetV = (() => {
     const meta = document.querySelector('meta[name="asset-v"]');
     const v = meta ? (meta.getAttribute('content') || '') : '';
     if (v) return String(v);
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const v2 = window.__assetV;
     return v2 ? String(v2) : '';
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return '';
 })();
 
@@ -479,7 +479,7 @@ const resetTransientUiState = () => {
     const btn = document.querySelector('.user-btn');
     if (dd && !dd.hasAttribute('hidden')) dd.setAttribute('hidden', '');
     if (btn) btn.setAttribute('aria-expanded', 'false');
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const drawer = document.querySelector('#mobileDrawer');
     const backdrop = document.querySelector('#drawerBackdrop');
@@ -496,36 +496,36 @@ const resetTransientUiState = () => {
     }
     if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('drawer-open');
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
-      try { spinner.setAttribute('hidden', 'true'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.display = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.pointerEvents = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.visibility = 'hidden'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.opacity = '0'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { spinner.setAttribute('hidden', 'true'); } catch (e) { /* silently ignored */ }
+      try { spinner.style.display = 'none'; } catch (e) { /* silently ignored */ }
+      try { spinner.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+      try { spinner.style.visibility = 'hidden'; } catch (e) { /* silently ignored */ }
+      try { spinner.style.opacity = '0'; } catch (e) { /* silently ignored */ }
     });
     const content = document.querySelector('#adminContent');
     if (content) content.style.visibility = '';
     sessionStorage.removeItem('navSpinner');
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     document.querySelectorAll('.modal-overlay').forEach((el) => {
-      try { el.remove(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { el.remove(); } catch (e) { /* silently ignored */ }
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const adminEditModal = document.querySelector('#adminEditModal');
     if (adminEditModal) {
       adminEditModal.style.display = 'none';
-      try { adminEditModal.remove(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { adminEditModal.remove(); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     document.querySelectorAll('.subbar .menu.open').forEach((el) => {
-      try { el.classList.remove('open'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { el.classList.remove('open'); } catch (e) { /* silently ignored */ }
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const search = document.querySelector('.topbar-inner .search');
     const inner = search ? search.closest('.topbar-inner') : null;
@@ -534,20 +534,20 @@ const resetTransientUiState = () => {
       inner.style.gridTemplateColumns = '';
       delete inner.dataset.searchLocked;
     }
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const hardHidePageSpinner = () => {
   try {
     document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
-      try { spinner.setAttribute('hidden', 'true'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.display = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.pointerEvents = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.visibility = 'hidden'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { spinner.style.opacity = '0'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { spinner.setAttribute('hidden', 'true'); } catch (e) { /* silently ignored */ }
+      try { spinner.style.display = 'none'; } catch (e) { /* silently ignored */ }
+      try { spinner.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+      try { spinner.style.visibility = 'hidden'; } catch (e) { /* silently ignored */ }
+      try { spinner.style.opacity = '0'; } catch (e) { /* silently ignored */ }
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-  try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
+  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
 };
 
 let currentViewCleanup = null;
@@ -558,7 +558,7 @@ const route = async () => {
     const cleanup = currentViewCleanup;
     currentViewCleanup = null;
     if (typeof cleanup === 'function') await cleanup();
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   resetTransientUiState();
   hardHidePageSpinner();
   try {
@@ -570,7 +570,7 @@ const route = async () => {
       host.style.visibility = '';
       prevHost.replaceWith(host);
     }
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   const mountModule = async (mod) => {
     if (!mod || typeof mod.mount !== 'function') {
       currentViewCleanup = null;
@@ -579,7 +579,7 @@ const route = async () => {
     const cleanup = await mod.mount();
     if (seq !== routeSeq) {
       if (typeof cleanup === 'function') {
-        try { await cleanup(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        try { await cleanup(); } catch (e) { /* silently ignored */ }
       }
       return;
     }
@@ -596,7 +596,7 @@ const route = async () => {
       try {
         const m = msg.match(/Module load failed:\s*(\S+)/);
         if (m && m[1]) hint = `読み込み失敗モジュール: ${m[1]}`;
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       host.innerHTML = `
         <div style="max-width:1100px;margin:18px auto;padding:0 12px;">
           <div style="border:1px solid #fecaca;background:#fff1f2;color:#7f1d1d;border-radius:12px;padding:14px 14px;">
@@ -612,7 +612,7 @@ const route = async () => {
         </div>
       `;
       const btnReload = host.querySelector('#btnAdminReload');
-      if (btnReload) btnReload.addEventListener('click', () => { try { window.location.reload(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); } });
+      if (btnReload) btnReload.addEventListener('click', () => { try { window.location.reload(); } catch (e) { /* silently ignored */ } });
       const btnHardReload = host.querySelector('#btnAdminHardReload');
       if (btnHardReload) btnHardReload.addEventListener('click', () => {
         try {
@@ -620,10 +620,10 @@ const route = async () => {
             caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => window.location.reload());
             return;
           }
-        } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { window.location.reload(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
+        try { window.location.reload(); } catch (e) { /* silently ignored */ }
       });
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
   lastRenderErr = renderErr;
 
@@ -634,24 +634,24 @@ const route = async () => {
       await navigate(mapped, true);
       return;
     }
-    try { document.body.classList.remove('employees-wide'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    try { document.body.classList.remove('employees-wide'); } catch (e) { /* silently ignored */ }
     try {
       const opens = document.querySelectorAll('.subbar .menu.open');
       for (const el of opens) el.classList.remove('open');
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     markActiveNav();
     try {
       const home = document.querySelector('.sidebar .sidebar-nav a[data-admin-link="dashboard"]');
       if (home) home.classList.add('pinned');
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     expandActiveSidebarSection();
     if (seq !== routeSeq) return;
 
     try {
       if (p === '/admin') {
-        try { history.replaceState(null, '', '/admin/dashboard'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        try { history.replaceState(null, '', '/admin/dashboard'); } catch (e) { /* silently ignored */ }
       }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     const p2 = normalizePath(window.location.pathname);
 
@@ -767,10 +767,10 @@ const navigate = async (href, replace = false) => {
       try {
         if (replace) history.replaceState(null, '', u.pathname + u.search + u.hash);
         else history.pushState(null, '', u.pathname + u.search + u.hash);
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
   } catch {
-    try { window.location.href = href; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    try { window.location.href = href; } catch (e) { /* silently ignored */ }
     return;
   }
   await route();
@@ -792,7 +792,7 @@ const wireLegacyLinkRewrite = () => {
       e.preventDefault();
       navigate(mapped);
     });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const wireSpaNav = () => {
@@ -822,11 +822,11 @@ const wireSpaNav = () => {
           window.__legacyTabPopstate = '';
           return;
         }
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       route();
     });
     window.addEventListener('hashchange', () => { route(); });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const wireTopbarMenus = () => {
@@ -858,7 +858,7 @@ const wireTopbarMenus = () => {
     }
     document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const wireNavSelection = () => {
@@ -879,7 +879,7 @@ const wireNavSelection = () => {
         const a = el.tagName === 'A' ? el : null;
         const key = a ? `a:${a.getAttribute('href') || ''}` : 'summary';
         sessionStorage.setItem('admin.nav.selected', key);
-      } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
 
     try {
@@ -889,7 +889,7 @@ const wireNavSelection = () => {
         const a = nav.querySelector(`a[href="${CSS.escape(href)}"]`);
         if (a) a.classList.add('selected');
       }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     nav.addEventListener('click', (e) => {
       const t = e && e.target;
@@ -903,12 +903,12 @@ const wireNavSelection = () => {
         selectEl(summary);
       }
     }, true);
-  } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const boot = async () => {
-  try { document.documentElement.classList.add('admin-preboot'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-  try { document.body.classList.add('booting'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  try { document.documentElement.classList.add('admin-preboot'); } catch (e) { /* silently ignored */ }
+  try { document.body.classList.add('booting'); } catch (e) { /* silently ignored */ }
   const isStandaloneExpenses = (() => {
     try {
       const p = normalizePath(window.location.pathname);
@@ -922,54 +922,54 @@ const boot = async () => {
   })();
   const applyStandaloneExpenses = () => {
     if (!isStandaloneExpenses) return;
-    try { document.title = '交通費管理'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    try { document.body.classList.remove('has-sidebar'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    try { document.body.classList.add('expenses-standalone'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    try { document.title = '交通費管理'; } catch (e) { /* silently ignored */ }
+    try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+    try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch (e) { /* silently ignored */ }
+    try { document.body.classList.remove('has-sidebar'); } catch (e) { /* silently ignored */ }
+    try { document.body.classList.add('expenses-standalone'); } catch (e) { /* silently ignored */ }
     try {
-      try { document.documentElement.style.setProperty('height', '100%', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { document.documentElement.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { document.documentElement.style.setProperty('height', '100%', 'important'); } catch (e) { /* silently ignored */ }
+      try { document.documentElement.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored */ }
     try {
-      try { document.body.style.setProperty('height', '100%', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { document.body.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { document.body.style.setProperty('height', '100%', 'important'); } catch (e) { /* silently ignored */ }
+      try { document.body.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored */ }
     try {
       const main = document.querySelector('main.content');
       if (main) {
-        try { main.style.setProperty('margin', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { main.style.setProperty('padding', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { main.style.setProperty('margin-top', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-        try { main.style.setProperty('padding-top', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+        try { main.style.setProperty('margin', '0', 'important'); } catch (e) { /* silently ignored */ }
+        try { main.style.setProperty('padding', '0', 'important'); } catch (e) { /* silently ignored */ }
+        try { main.style.setProperty('margin-top', '0', 'important'); } catch (e) { /* silently ignored */ }
+        try { main.style.setProperty('padding-top', '0', 'important'); } catch (e) { /* silently ignored */ }
       }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
-      try { document.documentElement.style.setProperty('margin', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { document.documentElement.style.setProperty('padding', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { document.documentElement.style.setProperty('margin', '0', 'important'); } catch (e) { /* silently ignored */ }
+      try { document.documentElement.style.setProperty('padding', '0', 'important'); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored */ }
     try {
-      try { document.body.style.setProperty('margin', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-      try { document.body.style.setProperty('padding', '0', 'important'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+      try { document.body.style.setProperty('margin', '0', 'important'); } catch (e) { /* silently ignored */ }
+      try { document.body.style.setProperty('padding', '0', 'important'); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored */ }
   };
   let revealed = false;
   const reveal = () => {
     if (revealed) return;
     revealed = true;
-    try { document.body.classList.remove('booting'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    try { document.documentElement.classList.remove('admin-preboot'); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    try { document.body.classList.remove('booting'); } catch (e) { /* silently ignored */ }
+    try { document.documentElement.classList.remove('admin-preboot'); } catch (e) { /* silently ignored */ }
     try {
       if (isStandaloneExpenses) applyStandaloneExpenses();
       else document.getElementById('adminChrome')?.removeAttribute('hidden');
-    } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    try { document.body.style.visibility = ''; } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
-    try { document.getElementById('adminBootMask')?.remove(); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
+    try { document.body.style.visibility = ''; } catch (e) { /* silently ignored */ }
+    try { document.getElementById('adminBootMask')?.remove(); } catch (e) { /* silently ignored */ }
   };
   let forceRevealTimer = null;
-  try { forceRevealTimer = setTimeout(reveal, 1200); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  try { forceRevealTimer = setTimeout(reveal, 1200); } catch (e) { /* silently ignored */ }
   setTopbarHeightVar();
-  try { window.addEventListener('resize', setTopbarHeightVar); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  try { window.addEventListener('resize', setTopbarHeightVar); } catch (e) { /* silently ignored */ }
   wireSidebarAccordion();
   wireNavSelection();
   wireLegacyLinkRewrite();
@@ -977,13 +977,13 @@ const boot = async () => {
   wireExpandingSearch();
   wireTopbarMenus();
   wireAdminShell({ logoutRedirect: '/ui/login' });
-  try { window.addEventListener('pageshow', hardHidePageSpinner); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+  try { window.addEventListener('pageshow', hardHidePageSpinner); } catch (e) { /* silently ignored */ }
   try {
     applyStandaloneExpenses();
     await route();
   } finally {
     hardHidePageSpinner();
-    try { if (forceRevealTimer) clearTimeout(forceRevealTimer); } catch (e) { console.error('[admin.page.js] Swallowed error:', e); }
+    try { if (forceRevealTimer) clearTimeout(forceRevealTimer); } catch (e) { /* silently ignored */ }
     try {
       requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(reveal, 40)));
     } catch {

@@ -29,7 +29,7 @@ async function ensureSchema() {
     if (typeCol && String(typeCol.dtype || '').toLowerCase() !== 'varchar') {
       try {
         await db.query(`ALTER TABLE leave_requests MODIFY COLUMN type VARCHAR(32) NOT NULL`);
-      } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
 
     const [idx] = await db.query(`
@@ -39,12 +39,12 @@ async function ensureSchema() {
     `);
     const idxSet = new Set((idx || []).map(i => String(i.index_name)));
     if (!idxSet.has('idx_user_status')) {
-      try { await db.query(`ALTER TABLE leave_requests ADD INDEX idx_user_status (userId, status)`); } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE leave_requests ADD INDEX idx_user_status (userId, status)`); } catch (e) { /* silently ignored */ }
     }
     if (!idxSet.has('idx_status_period')) {
-      try { await db.query(`ALTER TABLE leave_requests ADD INDEX idx_status_period (status, startDate, endDate)`); } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE leave_requests ADD INDEX idx_status_period (status, startDate, endDate)`); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     const [tbls] = await db.query(`
       SELECT table_name AS name
@@ -88,9 +88,9 @@ async function ensureSchema() {
               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'userId' AND REFERENCED_TABLE_NAME IS NOT NULL
             `, [grantsTable]);
             for (const fk of (fks || [])) {
-              try { await db.query(`ALTER TABLE ${grantsTable} DROP FOREIGN KEY ${fk.CONSTRAINT_NAME}`); } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+              try { await db.query(`ALTER TABLE ${grantsTable} DROP FOREIGN KEY ${fk.CONSTRAINT_NAME}`); } catch (e) { /* silently ignored */ }
             }
-          } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
           await db.query(`ALTER TABLE ${grantsTable} MODIFY COLUMN userId BIGINT UNSIGNED NOT NULL`);
         }
       }
@@ -106,10 +106,10 @@ async function ensureSchema() {
       `, [grantsTable]);
       const idxSet = new Set((idx || []).map(i => String(i.index_name)));
       if (!idxSet.has('uniq_user_grant')) {
-        try { await db.query(`ALTER TABLE ${grantsTable} ADD UNIQUE KEY uniq_user_grant (userId, type, grantDate)`); } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+        try { await db.query(`ALTER TABLE ${grantsTable} ADD UNIQUE KEY uniq_user_grant (userId, type, grantDate)`); } catch (e) { /* silently ignored */ }
       }
       if (!idxSet.has('idx_user_expiry')) {
-        try { await db.query(`ALTER TABLE ${grantsTable} ADD INDEX idx_user_expiry (userId, expiryDate)`); } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+        try { await db.query(`ALTER TABLE ${grantsTable} ADD INDEX idx_user_expiry (userId, expiryDate)`); } catch (e) { /* silently ignored */ }
       }
       const [fk] = await db.query(`
         SELECT CONSTRAINT_NAME 
@@ -117,10 +117,10 @@ async function ensureSchema() {
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'userId' AND REFERENCED_TABLE_NAME IS NOT NULL
       `, [grantsTable]);
       if (!fk || !fk.length) {
-        try { await db.query(`ALTER TABLE ${grantsTable} ADD CONSTRAINT fk_leave_grant_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+        try { await db.query(`ALTER TABLE ${grantsTable} ADD CONSTRAINT fk_leave_grant_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { /* silently ignored */ }
       }
     }
-  } catch (e) { console.error('[leave.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 module.exports = {

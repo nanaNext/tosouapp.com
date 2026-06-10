@@ -32,7 +32,7 @@ async function ensureTable() {
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'salary_inputs' AND COLUMN_NAME = 'userId' AND REFERENCED_TABLE_NAME IS NOT NULL
     `);
     if (!fk1 || !fk1.length) {
-      try { await db.query(`ALTER TABLE salary_inputs ADD CONSTRAINT fk_salary_inputs_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { console.error('[salaryInput.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE salary_inputs ADD CONSTRAINT fk_salary_inputs_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE`); } catch (e) { /* silently ignored */ }
     }
     const [fk2] = await db.query(`
       SELECT CONSTRAINT_NAME
@@ -40,9 +40,9 @@ async function ensureTable() {
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'salary_inputs' AND COLUMN_NAME = 'updated_by' AND REFERENCED_TABLE_NAME IS NOT NULL
     `);
     if (!fk2 || !fk2.length) {
-      try { await db.query(`ALTER TABLE salary_inputs ADD CONSTRAINT fk_salary_inputs_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL`); } catch (e) { console.error('[salaryInput.repository.js] Swallowed error:', e); }
+      try { await db.query(`ALTER TABLE salary_inputs ADD CONSTRAINT fk_salary_inputs_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL`); } catch (e) { /* silently ignored */ }
     }
-  } catch (e) { console.error('[salaryInput.repository.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 async function getByUserMonth(userId, month) {

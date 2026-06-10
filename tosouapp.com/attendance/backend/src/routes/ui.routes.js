@@ -24,7 +24,7 @@ const setNoStore = (res) => {
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     res.set('Surrogate-Control', 'no-store');
-  } catch (e) { console.error('[ui.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const sendPageNoCache = (file) => (req, res) => {
   setNoStore(res);
@@ -75,12 +75,12 @@ router.get('/ui/logout', async (req, res) => {
     const cookieRt = req.cookies?.refreshToken;
     const refreshToken = cookieRt || null;
     if (refreshToken) {
-      try { await refreshRepo.revokeToken(refreshToken); } catch (e) { console.error('[ui.routes.js] Swallowed error:', e); }
+      try { await refreshRepo.revokeToken(refreshToken); } catch (e) { /* silently ignored */ }
     }
     res.clearCookie('refreshToken', { path: '/api/auth' });
     res.clearCookie('csrfToken', { path: '/' });
     res.clearCookie('session_token', { path: '/' });
-  } catch (e) { console.error('[ui.routes.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   const next = String(req.query?.next || '').trim();
   if (next) return res.redirect(302, next);
   return res.redirect(302, '/ui/login');
@@ -161,11 +161,7 @@ router.get('/ui/faq', sendPageNoCache('faq.html'));
 router.get('/ui/contact', sendPage('contact.html'));
 router.get('/contact', sendPage('contact.html'));
 router.get('/faq-test', authenticateFromCookie, authorizePage('admin', 'manager'), sendPage('faq-test.html'));
-// React SPA entry (built by Vite to /static/react-app)
-router.get(/^\/ui\/app(?:\/.*)?$/, (req, res) => {
-  const p = path.join(__dirname, '..', 'static', 'react-app', 'index.html');
-  return res.sendFile(p);
-});
+// Removed abandoned React SPA entry
 
 router.get('/ui/:page.html', (req, res) => {
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');

@@ -8,7 +8,7 @@ export function createCleanup() {
 
     run() {
       for (const fn of tasks.splice(0)) {
-        try { fn(); } catch (e) { console.error('[createCleanup.js] Swallowed error:', e); }
+        try { fn(); } catch (e) { /* silently ignored */ }
       }
     }
   };

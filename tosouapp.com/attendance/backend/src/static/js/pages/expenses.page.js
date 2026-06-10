@@ -56,10 +56,10 @@ const prefillUserName = () => {
 
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
-        try { await logout(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
-        try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+        try { await logout(); } catch (e) { /* silently ignored */ }
+        try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* silently ignored */ }
         window.location.replace('/ui/login');
       });
     }
@@ -72,7 +72,7 @@ const prefillUserName = () => {
       if (standaloneNameEl) standaloneNameEl.textContent = name;
       if (standaloneInitEl) standaloneInitEl.textContent = name.charAt(0).toUpperCase();
     }
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 let _errTimer = null;
 const showErr = (m) => {
@@ -83,7 +83,7 @@ const showErr = (m) => {
   el.style.display = 'block';
   el.textContent = String(m);
   _errTimer = setTimeout(() => {
-    try { el.style.display = 'none'; el.textContent = ''; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { el.style.display = 'none'; el.textContent = ''; } catch (e) { /* silently ignored */ }
   }, 10_000);
 };
 let sc = 0;
@@ -94,27 +94,27 @@ const showSpinner = () => {
     sc++;
     if (!el) return;
     if (sc === 1) {
-      try { clearTimeout(spinnerTimer); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+      try { clearTimeout(spinnerTimer); } catch (e) { /* silently ignored */ }
       spinnerTimer = setTimeout(() => {
         try {
           if (sc > 0) {
             el.removeAttribute('hidden');
             el.style.display = 'grid';
           }
-        } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }, 180);
     }
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const hideSpinner = () => {
   try {
     const el = $('#pageSpinner');
     sc = Math.max(0, sc - 1);
     if (sc !== 0) return;
-    try { clearTimeout(spinnerTimer); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { clearTimeout(spinnerTimer); } catch (e) { /* silently ignored */ }
     spinnerTimer = null;
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const todayISO = () => new Date().toLocaleDateString('sv-SE');
 const currentYM = () => todayISO().slice(0, 7);
@@ -213,7 +213,7 @@ const clearFieldErrors = () => {
   try {
     document.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
     document.querySelectorAll('.field-msg').forEach((el) => el.remove());
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const setFieldError = (fieldId, message) => {
   try {
@@ -228,7 +228,7 @@ const setFieldError = (fieldId, message) => {
     msg.textContent = String(message || '');
     const host = el.closest('div') || el.parentElement;
     host?.appendChild(msg);
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 let formActive = false;
 let navBusy = false;
@@ -326,7 +326,7 @@ const setNoticeBadge = (n) => {
 const markNoticeSeen = () => {
   noticeSeenAtMs = Math.max(noticeSeenAtMs || 0, noticeLatestIncomingAtMs || Date.now());
   if (noticeSeenKey) {
-    try { localStorage.setItem(noticeSeenKey, String(noticeSeenAtMs)); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { localStorage.setItem(noticeSeenKey, String(noticeSeenAtMs)); } catch (e) { /* silently ignored */ }
   }
   noticeUnreadCount = 0;
   setNoticeBadge(0);
@@ -342,7 +342,7 @@ const refreshNoticeMessages = async () => {
     noticeLatestIncomingAtMs = latest;
     noticeUnreadCount = incoming.filter((m) => toMs(m?.created_at) > (noticeSeenAtMs || 0)).length;
     setNoticeBadge(noticeUnreadCount);
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const renderSummary = async () => {
     try {
@@ -358,8 +358,8 @@ const renderSummary = async () => {
         const elM = document.getElementById('empAppliedMonth');
         if (elM) elM.textContent = label ? (label.slice(0, 4) + '年' + label.slice(5, 7) + '月') : '-';
         if (cnt != null && sA) sA.textContent = String(cnt);
-      } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
-    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored */ }
   };
 
   // Add event listener for global year filter
@@ -394,13 +394,13 @@ const renderNotices = async () => {
     const n = Array.isArray(rows) ? rows.length : 0;
     const c = document.getElementById('empNoticeCount');
     if (c) c.textContent = String(n);
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 const wireUserMenu = () => {
   const btn = $('.user-btn'); const dd = $('#userDropdown'); if (!btn || !dd || btn.dataset.bound === '1') return; btn.dataset.bound = '1';
   btn.addEventListener('click', (e) => { e.preventDefault(); const open = !dd.hasAttribute('hidden'); if (open) dd.setAttribute('hidden', ''); else dd.removeAttribute('hidden'); btn.setAttribute('aria-expanded', open ? 'false' : 'true'); });
   document.addEventListener('click', (e) => { if (e.target.closest('.user-menu')) return; dd.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); });
-  const logoutBtn = $('#btnLogout'); if (logoutBtn) logoutBtn.addEventListener('click', async () => { try { await logout(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); } try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); } try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); } window.location.replace('/ui/login'); });
+  const logoutBtn = $('#btnLogout'); if (logoutBtn) logoutBtn.addEventListener('click', async () => { try { await logout(); } catch (e) { /* silently ignored */ } try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ } try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ } window.location.replace('/ui/login'); });
 
 };
 const wireDrawer = () => {
@@ -465,8 +465,8 @@ const openQuickEditExpense = async (recId) => {
   setVal('qePurpose', rec?.purpose || '');
   setVal('qeAmount', rec?.amount != null ? rec.amount : '');
   setVal('qeMemo', rec?.memo || '');
-  try { const c = document.getElementById('qeTeiki'); if (c) c.checked = !!rec?.teiki_flag; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
-  const close = () => { try { modal.remove(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); } try { backdrop.remove(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); } };
+  try { const c = document.getElementById('qeTeiki'); if (c) c.checked = !!rec?.teiki_flag; } catch (e) { /* silently ignored */ }
+  const close = () => { try { modal.remove(); } catch (e) { /* silently ignored */ } try { backdrop.remove(); } catch (e) { /* silently ignored */ } };
   return await new Promise((resolve) => {
     const cancelBtn = document.getElementById('qeCancel');
     const saveBtn = document.getElementById('qeSave');
@@ -1194,7 +1194,7 @@ const renderList = async () => {
         if (/^\d{4}-\d{2}$/.test(ym) && !months.some((m) => String(m?.month || '') === ym)) {
           months.push({ month: ym, is_active: 1, status: String(active?.status || 'draft') });
         }
-      } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       monthMetaByYm = new Map();
       for (const m of (Array.isArray(months) ? months : [])) {
         const ym = String(m?.month || '');
@@ -1296,7 +1296,7 @@ const renderList = async () => {
     try {
       const profileHost = document.getElementById('exMonthlyProfileHost');
       if (profileHost) profileHost.innerHTML = profileBlock || '';
-    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     let rows = [];
     if (activeHistoryTab === 'notice') {
       const allRows = await fetchJSONAuthSafeCached('/api/expenses/my', 8000);
@@ -1335,7 +1335,7 @@ const renderList = async () => {
         rows = rows.filter((r) => isSubmittedStatus(r?.status));
       }
     }
-    try { await renderSummary(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { await renderSummary(); } catch (e) { /* silently ignored */ }
     if (!Array.isArray(rows) || rows.length === 0) {
       const emptyText = activeHistoryTab === 'notice'
         ? '通知・確認事項はありません'
@@ -1647,7 +1647,7 @@ const renderList = async () => {
                   showErr(errFd?.message || 'ファイル削除に失敗しました'); b2.disabled = false; return;
                 }
                 let newRows = [];
-                try { newRows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+                try { newRows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (e) { /* silently ignored */ }
                 const newHtml = Array.isArray(newRows) && newRows.length
                   ? newRows.map((f, idx) => {
                     const url = String(f.path || f.url || f.file_path || '').startsWith('/') ? String(f.path || f.url || f.file_path) : '/' + String(f.path || f.url || f.file_path || '');
@@ -1659,7 +1659,7 @@ const renderList = async () => {
                   }).join('')
                   : '<li>ファイルなし</li>';
                 ul.innerHTML = newHtml;
-              } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+              } catch (e) { /* silently ignored */ }
               b2.disabled = false;
             });
           } else if (action === 'reply') {
@@ -1695,7 +1695,7 @@ const renderList = async () => {
               const rec = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`);
               const reason = rec && rec.manager_note ? String(rec.manager_note) : '';
               if (reasonEl) reasonEl.textContent = reason ? ('差戻し理由: ' + reason) : '';
-            } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+            } catch (e) { /* silently ignored */ }
             const load = async () => {
               try {
                 const rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/messages`);
@@ -1783,14 +1783,14 @@ const renderList = async () => {
                 set('edKm', r.distance_km != null ? String(r.distance_km) : '');
                 set('edUnitPrice', r.unit_price_per_km != null ? String(r.unit_price_per_km) : '');
                 set('edPurpose', r.purpose || '');
-                try { const c1 = document.getElementById('edTeiki'); if (c1) c1.checked = !!r.teiki_flag; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
-                try { const c2 = document.getElementById('edCommuter'); if (c2) c2.checked = !!r.commuter_pass; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+                try { const c1 = document.getElementById('edTeiki'); if (c1) c1.checked = !!r.teiki_flag; } catch (e) { /* silently ignored */ }
+                try { const c2 = document.getElementById('edCommuter'); if (c2) c2.checked = !!r.commuter_pass; } catch (e) { /* silently ignored */ }
                 set('edAmount', r.amount != null ? String(r.amount) : '');
                 set('edMemo', r.memo || '');
-              } catch (errR) { console.error('[expenses.page.js] Swallowed error:', errR); }
+              } catch (errR) { /* silently ignored */ }
               if (backdrop) { backdrop.removeAttribute('hidden'); backdrop.style.display = 'block'; }
               modal.style.display = 'block';
-              try { document.getElementById('edOrigin')?.focus(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+              try { document.getElementById('edOrigin')?.focus(); } catch (e) { /* silently ignored */ }
               const onCancel = () => { modal.style.display = 'none'; if (backdrop) { backdrop.setAttribute('hidden', ''); backdrop.style.display = 'none'; } cleanup(); };
               const onSave = async () => {
                 const payload = {
@@ -1830,7 +1830,7 @@ const renderList = async () => {
                   const msg = changed.length ? ('変更内容:\n' + changed.join('\n') + '\n保存しますか？') : '変更はありません。保存しますか？';
                   const ok = window.confirm(msg);
                   if (!ok) return;
-                } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+                } catch (e) { /* silently ignored */ }
                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(recId)}`, { method: 'PATCH', body: JSON.stringify(payload) }); await renderList(); onCancel(); } catch (errU) { showErr(errU?.message || '保存に失敗しました'); }
               };
               const onApply = async () => {
@@ -1848,11 +1848,11 @@ const renderList = async () => {
                 applyBtn?.removeEventListener('click', onApply);
               };
             };
-            btnEdit?.addEventListener('click', async () => { try { await openEdit(id); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); } });
+            btnEdit?.addEventListener('click', async () => { try { await openEdit(id); } catch (e) { /* silently ignored */ } });
             btnNew?.addEventListener('click', async () => {
               try {
                 const m = currentYM();
-                try { await fetchJSONAuth('/api/expenses/months/start', { method: 'POST', body: JSON.stringify({ month: m }) }); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+                try { await fetchJSONAuth('/api/expenses/months/start', { method: 'POST', body: JSON.stringify({ month: m }) }); } catch (e) { /* silently ignored */ }
                 const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
                 setVal('exDate', m + '-01');
                 setVal('exType', 'train');
@@ -1874,7 +1874,7 @@ const renderList = async () => {
                 } else {
                   window.location.reload();
                 }
-              } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+              } catch (e) { /* silently ignored */ }
             });
           }
         } finally {
@@ -1887,7 +1887,7 @@ const renderList = async () => {
     if (isTooManyReqErr(e)) {
       listRateLimitedUntilMs = Date.now() + 65000;
       host.innerHTML = '<div style="color:#b45309;font-weight:700;">アクセスが集中しています（Too many requests）。1分ほど待ってから自動再試行します。</div>';
-      try { if (listRetryTimer) clearTimeout(listRetryTimer); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+      try { if (listRetryTimer) clearTimeout(listRetryTimer); } catch (e) { /* silently ignored */ }
       listRetryTimer = setTimeout(() => { renderList().catch(() => { }); }, 65000);
     } else {
       host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${msg}</div>`;
@@ -1914,10 +1914,10 @@ export async function bootExpensesPage() {
   try {
     window.__employeePageCleanup = () => {
       expensesPageMounted = false;
-      try { if (noticePollTimer) clearInterval(noticePollTimer); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+      try { if (noticePollTimer) clearInterval(noticePollTimer); } catch (e) { /* silently ignored */ }
       noticePollTimer = null;
     };
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   prefillUserName();
   try {
     const p = await fetchJSONAuthSafe('/api/auth/me', undefined, 1);
@@ -1932,11 +1932,11 @@ export async function bootExpensesPage() {
       window.location.href = '/ui/login'; return;
     }
     const name = p.username || p.email || 'ユーザー'; const el = $('#userName'); if (el) el.textContent = name;
-    try { window.MY_ID = p.id; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { window.MY_ID = p.id; } catch (e) { /* silently ignored */ }
     try {
       noticeSeenKey = `expenses_notice_seen_at:${String(p.id || '')}`;
       noticeSeenAtMs = Number(localStorage.getItem(noticeSeenKey) || '0') || 0;
-    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       const params = new URLSearchParams(String(window.location.search || ''));
       const m = params.get('month');
@@ -1944,7 +1944,7 @@ export async function bootExpensesPage() {
         createTargetMonth = String(m);
         const d = document.getElementById('exDate'); if (d) d.value = String(m) + '-01';
         const mf = document.getElementById('exFilterMonth'); if (mf) mf.value = String(m);
-        try { await fetchJSONAuth('/api/expenses/months/start', { method: 'POST', body: JSON.stringify({ month: String(m) }) }); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+        try { await fetchJSONAuth('/api/expenses/months/start', { method: 'POST', body: JSON.stringify({ month: String(m) }) }); } catch (e) { /* silently ignored */ }
         formActive = true;
       } else {
         try {
@@ -1964,7 +1964,7 @@ export async function bootExpensesPage() {
           if (!isNotFoundErr(e)) throw e;
         }
       }
-    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   } catch (e) {
     const msg = String(e?.message || '');
     if (/401|403|invalid token|expired token/i.test(msg)) {
@@ -1986,7 +1986,7 @@ export async function bootExpensesPage() {
         }).catch(() => { window.location.href = '/ui/portal'; });
         return;
       }
-      try { window.location.href = '/ui/portal'; } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+      try { window.location.href = '/ui/portal'; } catch (e) { /* silently ignored */ }
     });
   }
   const d = $('#exDate'); if (d && !d.value) d.value = todayISO();
@@ -2037,7 +2037,7 @@ export async function bootExpensesPage() {
   toggleCarFields();
   toggleTripCount();
   bindAmountFormatter(amtEl);
-  try { if (amtEl && amtEl.value) amtEl.value = formatAmount(amtEl.value); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  try { if (amtEl && amtEl.value) amtEl.value = formatAmount(amtEl.value); } catch (e) { /* silently ignored */ }
   const frontInput = document.getElementById('exReceiptFront');
   const backInput = document.getElementById('exReceiptBack');
   const imagesInput = document.getElementById('exImages');
@@ -2164,7 +2164,7 @@ export async function bootExpensesPage() {
     if (Array.isArray(types) && types.length) {
       // optional enhancement: populate type filter dynamically if needed
     }
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const monthFilter = document.getElementById('exFilterMonth');
   const statusFilter = document.getElementById('exFilterStatus');
@@ -2302,7 +2302,7 @@ export async function bootExpensesPage() {
     }
     const mainHost = document.querySelector('.expense-main');
     activeHistoryTab = tab;
-    try { sessionStorage.setItem(EXPENSES_ACTIVE_TAB_KEY, activeHistoryTab); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    try { sessionStorage.setItem(EXPENSES_ACTIVE_TAB_KEY, activeHistoryTab); } catch (e) { /* silently ignored */ }
 
     if (tab === 'applied') {
       selectedHistoryMonth = '';
@@ -2561,7 +2561,7 @@ export async function bootExpensesPage() {
       if (qTab === 'new' || qTab === 'applied' || qTab === 'notice' || qTab === 'help') return qTab;
       const saved = String(sessionStorage.getItem(EXPENSES_ACTIVE_TAB_KEY) || '').toLowerCase();
       if (saved === 'new' || saved === 'applied' || saved === 'notice' || saved === 'help') return saved;
-    } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     return 'applied';
   })();
   await showTab(initialTab);
@@ -2579,21 +2579,21 @@ export async function bootExpensesPage() {
 
   await renderList();
 
-  try { await renderSummary(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  try { await renderSummary(); } catch (e) { /* silently ignored */ }
   try {
     await renderNotices();
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     await refreshNoticeMessages();
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     if (noticePollTimer) clearInterval(noticePollTimer);
     noticePollTimer = setInterval(async () => {
       if (!expensesPageMounted) return;
       // Keep polling lightweight to avoid 429 bursts from /api/expenses/my.
-      try { await refreshNoticeMessages(); } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+      try { await refreshNoticeMessages(); } catch (e) { /* silently ignored */ }
     }, 30000);
-  } catch (e) { console.error('[expenses.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

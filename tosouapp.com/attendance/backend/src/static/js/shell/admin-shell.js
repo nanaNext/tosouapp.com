@@ -38,7 +38,7 @@ export function wireUserInitials() {
         const u = JSON.parse(uStr);
         full = (u && u.username) ? String(u.username).trim() : (u && u.email ? String(u.email).trim() : '');
       }
-    } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     if (!full && nameEl && nameEl.textContent) full = nameEl.textContent.trim();
     if (full) {
       apply(full);
@@ -47,13 +47,13 @@ export function wireUserInitials() {
         .then(r => r && r.ok ? r.json() : null)
         .then(p => {
           if (!p) return;
-          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { /* silently ignored */ }
           const f = String(p.username || '').trim() || String(p.email || '').trim();
           apply(f);
         })
         .catch(() => {});
     }
-  } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 export function wireTopbarHeightVar() {
   const sync = () => {
@@ -63,10 +63,10 @@ export function wireTopbarHeightVar() {
       document.documentElement.style.removeProperty('--topbar-height');
       const h = topbar ? Math.round(topbar.getBoundingClientRect().height || 0) : 0;
       if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-    } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
   sync();
-  try { window.addEventListener('resize', sync); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+  try { window.addEventListener('resize', sync); } catch (e) { /* silently ignored */ }
 }
 
 export function wireUserMenu() {
@@ -83,10 +83,10 @@ export function wireUserMenu() {
       try {
         document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
         document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const closeAllSubMenus = () => {
-      try { document.querySelectorAll('.subbar .menu.open').forEach((m) => m.classList.remove('open')); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      try { document.querySelectorAll('.subbar .menu.open').forEach((m) => m.classList.remove('open')); } catch (e) { /* silently ignored */ }
     };
     const placeDropdown = (btn, dd) => {
       try {
@@ -101,7 +101,7 @@ export function wireUserMenu() {
         dd.style.right = 'auto';
         dd.style.zIndex = '2147483000';
         dd.style.minWidth = `${minW}px`;
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const clearDropdownPlacement = (dd) => {
       try {
@@ -111,7 +111,7 @@ export function wireUserMenu() {
         dd.style.right = '';
         dd.style.zIndex = '';
         dd.style.minWidth = '';
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const emergencyBtnId = 'emergencyUserBtn';
     const emergencyPanelId = 'emergencyUserPanel';
@@ -124,7 +124,7 @@ export function wireUserMenu() {
           p.style.visibility = 'hidden';
           p.style.opacity = '0';
         }
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const openEmergencyPanel = () => {
       try {
@@ -149,12 +149,12 @@ export function wireUserMenu() {
             p.style.overflowY = '';
             p.style.padding = '8px';
           }
-        } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         p.removeAttribute('hidden');
         p.style.display = 'block';
         p.style.visibility = 'visible';
         p.style.opacity = '1';
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const ensureEmergencyUserPanel = () => {
       try {
@@ -200,21 +200,21 @@ export function wireUserMenu() {
         const outBtn = p.querySelector('#emergencyLogoutBtn');
         if (outBtn) {
           outBtn.addEventListener('click', async () => {
-            try { await logout(); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+            try { await logout(); } catch (e) { /* silently ignored */ }
             try {
               sessionStorage.removeItem('accessToken');
               sessionStorage.removeItem('refreshToken');
               sessionStorage.removeItem('user');
-            } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+            } catch (e) { /* silently ignored */ }
             try {
               localStorage.removeItem('refreshToken');
               localStorage.removeItem('user');
-            } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+            } catch (e) { /* silently ignored */ }
             try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
           });
         }
         return p;
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       return null;
     };
     const toggleEmergencyPanel = () => {
@@ -226,7 +226,7 @@ export function wireUserMenu() {
         const hidden = p.hasAttribute('hidden');
         if (hidden) openEmergencyPanel();
         else closeEmergencyPanel();
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const ensureEmergencyUserButton = () => {
       try {
@@ -280,7 +280,7 @@ export function wireUserMenu() {
         };
         emBtn.addEventListener('pointerdown', onTap, true);
         emBtn.addEventListener('click', onTap, true);
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const toggleRealUserMenu = () => {
       try {
@@ -295,13 +295,13 @@ export function wireUserMenu() {
         if (hidden) {
           placeDropdown(btn, dd);
           dd.removeAttribute('hidden');
-          try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+          try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
           return true;
         } else {
           clearDropdownPlacement(dd);
           return true;
         }
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       return false;
     };
     const bindRealUserButton = () => {
@@ -327,15 +327,15 @@ export function wireUserMenu() {
           ev.stopPropagation();
           safeToggle();
         }, true);
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     const bindDynamicUserControls = () => {
       try {
         ensureEmergencyUserButton();
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         bindRealUserButton();
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     bindDynamicUserControls();
     if (!shellState.userMenuBoundDynamic) {
@@ -346,7 +346,7 @@ export function wireUserMenu() {
         setTimeout(bindDynamicUserControls, 100);
         setTimeout(bindDynamicUserControls, 500);
         setTimeout(bindDynamicUserControls, 1500);
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     if (!shellState.userMenuBoundDelegated) {
       shellState.userMenuBoundDelegated = '1';
@@ -368,7 +368,7 @@ export function wireUserMenu() {
           const dd = root ? root.querySelector('.dropdown') : null;
           if (!dd || dd.hasAttribute('hidden')) return;
           placeDropdown(btn, dd);
-        } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       });
       window.addEventListener('scroll', () => {
         try {
@@ -378,7 +378,7 @@ export function wireUserMenu() {
             clearDropdownPlacement(dd);
           });
           document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-        } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         closeEmergencyPanel();
       }, true);
     }
@@ -388,9 +388,9 @@ export function wireUserMenu() {
     if (themeDrop && themeDrop.dataset.bound !== '1') {
       themeDrop.dataset.bound = '1';
       const applyTheme = (val) => {
-        if (val === 'system' || val === '') { try { document.documentElement.removeAttribute('data-theme'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); } }
+        if (val === 'system' || val === '') { try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* silently ignored */ } }
         else { document.documentElement.dataset.theme = val; }
-        try { localStorage.setItem('theme', val); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+        try { localStorage.setItem('theme', val); } catch (e) { /* silently ignored */ }
         Array.from(themeDrop.querySelectorAll('.theme-item')).forEach(el => {
           const v = el.getAttribute('data-value') || '';
           if (v === val) el.classList.add('sel'); else el.classList.remove('sel');
@@ -414,7 +414,7 @@ export function wireUserMenu() {
         }
       });
     }
-  } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 export function wireTopbarSearch() {
@@ -434,7 +434,7 @@ export function wireTopbarSearch() {
         go();
       }
     });
-  } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 export function wireMobileDrawer() {
@@ -448,35 +448,35 @@ export function wireMobileDrawer() {
     if (btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
     // Recover from stale state after route/view swaps.
-    try { drawer.setAttribute('hidden', ''); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-    try { drawer.style.display = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-    try { drawer.style.pointerEvents = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-    try { backdrop.setAttribute('hidden', ''); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-    try { backdrop.style.display = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-    try { backdrop.style.pointerEvents = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-    try { document.body.classList.remove('drawer-open'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+    try { drawer.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+    try { drawer.style.display = 'none'; } catch (e) { /* silently ignored */ }
+    try { drawer.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+    try { backdrop.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+    try { backdrop.style.display = 'none'; } catch (e) { /* silently ignored */ }
+    try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+    try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
     const open = () => {
-      try { drawer.removeAttribute('hidden'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { backdrop.removeAttribute('hidden'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      try { drawer.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
+      try { backdrop.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
       // Recover from transient reset state that can force inline hide.
-      try { drawer.style.display = ''; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { drawer.style.removeProperty('display'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { drawer.style.removeProperty('pointer-events'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { backdrop.style.display = ''; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { backdrop.style.removeProperty('display'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { document.body.classList.add('drawer-open'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      try { drawer.style.display = ''; } catch (e) { /* silently ignored */ }
+      try { drawer.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
+      try { drawer.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
+      try { backdrop.style.display = ''; } catch (e) { /* silently ignored */ }
+      try { backdrop.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
+      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
+      try { document.body.classList.add('drawer-open'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
     };
     const close = () => {
-      try { drawer.setAttribute('hidden', ''); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { drawer.style.display = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { drawer.style.pointerEvents = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { backdrop.setAttribute('hidden', ''); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { backdrop.style.display = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { backdrop.style.pointerEvents = 'none'; } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { document.body.classList.remove('drawer-open'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      try { drawer.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+      try { drawer.style.display = 'none'; } catch (e) { /* silently ignored */ }
+      try { drawer.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+      try { backdrop.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+      try { backdrop.style.display = 'none'; } catch (e) { /* silently ignored */ }
+      try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+      try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
     };
     const toggle = () => {
       const isOpen = !drawer.hasAttribute('hidden');
@@ -499,8 +499,8 @@ export function wireMobileDrawer() {
       const now = Date.now();
       // Prevent double-toggle caused by pointerdown + click/touchstart firing together.
       if (now - lastMenuToggleAt < 260) {
-        try { e.preventDefault(); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-        try { e.stopPropagation(); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+        try { e.preventDefault(); } catch (e) { /* silently ignored */ }
+        try { e.stopPropagation(); } catch (e) { /* silently ignored */ }
         return;
       }
       lastMenuToggleAt = now;
@@ -519,7 +519,7 @@ export function wireMobileDrawer() {
         if (t && t.closest && t.closest('#mobileMenuBtn')) return;
         if (!tapWithinMenuBtn(e)) return;
         onMenuTap(e);
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }, true);
     document.addEventListener('touchstart', (e) => {
       try {
@@ -527,7 +527,7 @@ export function wireMobileDrawer() {
         if (t && t.closest && t.closest('#mobileMenuBtn')) return;
         if (!tapWithinMenuBtn(e)) return;
         onMenuTap(e);
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }, { capture: true, passive: false });
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
     drawer.addEventListener('click', (e) => {
@@ -610,8 +610,8 @@ export function wireMobileDrawer() {
         }
         if (filled) mount.dataset.filled = '1';
       }
-    } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
-  } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
+  } catch (e) { /* silently ignored */ }
 }
 
 export function wireLogout(logoutRedirect = '/ui/login') {
@@ -621,17 +621,17 @@ export function wireLogout(logoutRedirect = '/ui/login') {
     if (btnLogout.dataset.bound === '1') return;
     btnLogout.dataset.bound = '1';
     btnLogout.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      try { await logout(); } catch (e) { /* silently ignored */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try { window.location.replace(logoutRedirect); } catch { window.location.href = logoutRedirect; }
     });
-  } catch (e) { console.error('[admin-shell.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }

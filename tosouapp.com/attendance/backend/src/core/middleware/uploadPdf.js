@@ -3,19 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { uploadDir } = require('../../config/env');
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const dir = path.join(__dirname, '../../', uploadDir, 'payslips');
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-    } catch (e) { console.error('[uploadPdf.js] Swallowed error:', e); }
-    cb(null, dir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + '-' + file.originalname.replace(/\s+/g, '_'));
-  }
-});
+const storage = multer.memoryStorage();
 
 const uploadPdf = multer({
   storage,

@@ -485,7 +485,7 @@
         table.querySelector('colgroup')?.remove();
         table.insertAdjacentElement('afterbegin', cg);
         table.style.tableLayout = 'fixed';
-      } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
     requestAnimationFrame(syncCols);
     try {
@@ -499,21 +499,21 @@
               const hs = w[key]?.handlers;
               if (!hs) return;
               for (const fn of Array.from(hs)) {
-                try { fn(); } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+                try { fn(); } catch (e) { /* silently ignored */ }
               }
             });
-          } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
         }, { passive: true });
       }
       const reg = () => {
         if (!table.isConnected) {
-          try { w[key]?.handlers?.delete(reg); } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+          try { w[key]?.handlers?.delete(reg); } catch (e) { /* silently ignored */ }
           return;
         }
         syncCols();
       };
       w[key].handlers.add(reg);
-    } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const renderTable = (host, detail, profile) => {
@@ -525,14 +525,14 @@
       rowEl.classList.add('saved');
       const token = String(Date.now());
       rowEl.dataset.savedAt = token;
-      try { rowEl.dataset.dirty = ''; } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+      try { rowEl.dataset.dirty = ''; } catch (e) { /* silently ignored */ }
       setTimeout(() => {
         try {
           if (rowEl.dataset.savedAt !== token) return;
           rowEl.classList.remove('saved');
-        } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }, 5000);
-    } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const recomputeRow = (rowEl) => {
@@ -560,7 +560,7 @@
       const monthApproved = String(state.currentMonthStatus || '') === 'approved';
       if (monthApproved) {
         // Approved month must never appear as "unsaved" on row badges.
-        try { rowEl.dataset.dirty = ''; } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+        try { rowEl.dataset.dirty = ''; } catch (e) { /* silently ignored */ }
       }
 
       const idVal = String(rowEl.dataset.id || '').trim();
@@ -578,7 +578,7 @@
       const canEditWorkInputs = !!state.editableMonth && isWorkDay && !!cls;
       
       let currentRole = '';
-      try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch (e) { console.error('[attendance-monthly.render.js] Swallowed error:', e); }
+      try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch (e) { /* silently ignored */ }
       const isEmployee = currentRole === 'employee';
       const canEditCheckTime = canEditWorkInputs && !isEmployee;
       const inValNow = String(inEl?.value || '').trim();

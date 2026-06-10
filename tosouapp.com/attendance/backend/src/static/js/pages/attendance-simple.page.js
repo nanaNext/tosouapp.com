@@ -39,12 +39,12 @@ const showToast = (msg, kind = 'success') => {
   try {
     el.classList.remove('success', 'error');
     el.classList.add(kind === 'error' ? 'error' : 'success');
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   el.textContent = String(msg || '');
   el.removeAttribute('hidden');
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
-    try { el.setAttribute('hidden', ''); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { el.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
   }, 2000);
 };
 
@@ -142,7 +142,7 @@ const setupSimpleCombo = (sel) => {
 // Lưu và tải bản ghi work report
 const reportDraftKey = (date) => `attendanceSimple.workReport.${date}`;
 const saveDraft = (date, site, work) => {
-  try { localStorage.setItem(reportDraftKey(date), JSON.stringify({ site: site || '', work: work || '' })); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  try { localStorage.setItem(reportDraftKey(date), JSON.stringify({ site: site || '', work: work || '' })); } catch (e) { /* silently ignored */ }
 };
 // Tải bản ghi work report
 // @param { string} date- ngày tháng năm định dạng yyyy-mm-dd
@@ -155,7 +155,7 @@ const loadDraft = (date) => {
   }
 };
 const clearDraft = (date) => {
-  try { localStorage.removeItem(reportDraftKey(date)); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  try { localStorage.removeItem(reportDraftKey(date)); } catch (e) { /* silently ignored */ }
 };
 const simpleFastCacheKey = (uid, date) => `attendanceSimple.fast.${uid}.${date}`;
 const simpleFastCachePersistKey = (uid, date) => `attendanceSimple.fast.persist.${uid}.${date}`;
@@ -189,7 +189,7 @@ const saveFastSnapshot = (date) => {
     sessionStorage.setItem(simpleFastCacheKey(simpleUserId, date), raw);
     // Persist a short-lived fallback across re-login/new tab to improve first paint.
     localStorage.setItem(simpleFastCachePersistKey(simpleUserId, date), raw);
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 // Hàm này dùng để restore stateRef từ sessionStorage hoặc localStorage
 
@@ -205,7 +205,7 @@ const restoreFastSnapshot = (date, stateRef) => {
     if (!snap || String(snap.uid || '') !== String(simpleUserId) || String(snap.date || '') !== date) return false;
     const ageMs = Date.now() - Number(snap.savedAt || 0);
     if (!Number.isFinite(ageMs) || ageMs > 24 * 60 * 60 * 1000) return false;
-    try { sessionStorage.setItem(sessionKey, raw); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { sessionStorage.setItem(sessionKey, raw); } catch (e) { /* silently ignored */ }
 
     stateRef.isOff = !!snap.isOff;
     stateRef.currentMonthStatus = String(snap.currentMonthStatus || '');
@@ -213,7 +213,7 @@ const restoreFastSnapshot = (date, stateRef) => {
     stateRef.shiftEnd = String(snap.shiftEnd || FIXED_END);
     stateRef.hasStartedToday = !!snap.hasStartedToday;
     stateRef.hasEndedToday = !!snap.hasEndedToday;
-    try { $('#topDate').textContent = fmtJP(date); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { $('#topDate').textContent = fmtJP(date); } catch (e) { /* silently ignored */ }
 
     const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
 
@@ -252,8 +252,8 @@ const restoreFastSnapshot = (date, stateRef) => {
     if ($('#workType')) $('#workType').value = String(snap.workType || '');
     if ($('#breakMin')) $('#breakMin').value = String(snap.breakMin || '60');
     if ($('#nightBreakMin')) $('#nightBreakMin').value = String(snap.nightBreakMin || '0');
-    try { $('#breakMin')?.dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
-    try { $('#nightBreakMin')?.dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { $('#breakMin')?.dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ }
+    try { $('#nightBreakMin')?.dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ }
     if ($('#workSite')) $('#workSite').value = String(snap.workSite || '');
     if ($('#workContent')) $('#workContent').value = String(snap.workContent || '');
 
@@ -298,12 +298,12 @@ const applyAutoTime = (el, val) => {
   const v = String(val || '').trim();
   if (!/^\d{2}:\d{2}$/.test(v)) return;
   el.value = v;
-  try { el.dataset.auto = '1'; el.dataset.autoVal = v; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  try { el.dataset.auto = '1'; el.dataset.autoVal = v; } catch (e) { /* silently ignored */ }
 };
 
 const clearAutoTime = (el) => {
   if (!el) return;
-  try { delete el.dataset.auto; delete el.dataset.autoVal; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  try { delete el.dataset.auto; delete el.dataset.autoVal; } catch (e) { /* silently ignored */ }
 };
 
 const effectiveHm = (el) => {
@@ -374,12 +374,12 @@ const renderNotices = async (date) => {
         // Lazy mark as read
         fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
       }
-    } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   } catch {
     try {
       const box = $('#noticeBox');
       if (box) box.innerHTML = `<div class="simple-notice-empty">個人カレンダー登録画面 へご確認ください。</div>`;
-    } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
 };
 
@@ -402,13 +402,13 @@ const toMySQLDateTime = (date, hm) => {
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
-  if (token) { try { profile = await me(token); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } }
+  if (token) { try { profile = await me(token); } catch (e) { /* silently ignored */ } }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   return profile || null;
 }
@@ -479,7 +479,7 @@ const setUrlDate = (date) => {
     const u = new URL(window.location.href);
     u.searchParams.set('date', date);
     history.replaceState(null, '', u.pathname + u.search);
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const getUrlDate = () => {
@@ -487,7 +487,7 @@ const getUrlDate = () => {
     const p = new URLSearchParams(window.location.search);
     const d = p.get('date');
     if (isISODate(d)) return d;
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return todayJST();
 };
 const shouldKeepDateOnBoot = () => {
@@ -643,7 +643,7 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
         btnOut.textContent = isMobile ? `終了済 (${outHm})` : `終了打刻済 (${outHm})`;
       } else btnOut.textContent = '終了打刻';
     }
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const syncWorkTypeButtons = () => {
@@ -670,7 +670,7 @@ const ensureDefaultWorkTypeForToday = (date) => {
     el.value = 'onsite';
     saveWorkType(date, 'onsite');
     syncWorkTypeButtons();
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const applyWorkTypeGate = () => {
@@ -727,16 +727,16 @@ const applyHolidayRestMode = () => {
     if (st) {
       st.value = '';
       clearAutoTime(st);
-      try { delete st.dataset.touched; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+      try { delete st.dataset.touched; } catch (e) { /* silently ignored */ }
     }
     if (et) {
       et.value = '';
       clearAutoTime(et);
-      try { delete et.dataset.touched; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+      try { delete et.dataset.touched; } catch (e) { /* silently ignored */ }
     }
     const wt = $('#workType');
     if (wt) wt.value = '';
-    try { if (window.state?.date) saveWorkType(window.state.date, ''); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { if (window.state?.date) saveWorkType(window.state.date, ''); } catch (e) { /* silently ignored */ }
     const btnIn = $('#btnStartStamp');
     const btnOut = $('#btnEndStamp');
     if (btnIn) btnIn.disabled = true;
@@ -785,7 +785,7 @@ const wireWorkTypeButtons = () => {
       if (!v) return;
       el.value = v;
       syncWorkTypeButtons();
-      try { el.dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+      try { el.dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ }
     });
   });
   el.addEventListener('change', syncWorkTypeButtons);
@@ -802,7 +802,7 @@ const loadSavedWorkType = (date) => {
   }
 };
 const saveWorkType = (date, v) => {
-  try { localStorage.setItem(workTypeKey(date), String(v || '')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  try { localStorage.setItem(workTypeKey(date), String(v || '')); } catch (e) { /* silently ignored */ }
 };
 
 const loadPanelOpen = (key, def = true) => {
@@ -810,11 +810,11 @@ const loadPanelOpen = (key, def = true) => {
     const v = localStorage.getItem(String(key));
     if (v === '0') return false;
     if (v === '1') return true;
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   return !!def;
 };
 const savePanelOpen = (key, open) => {
-  try { localStorage.setItem(String(key), open ? '1' : '0'); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  try { localStorage.setItem(String(key), open ? '1' : '0'); } catch (e) { /* silently ignored */ }
 };
 const applyPanelOpen = (toggleId, bodyId, open) => {
   const btn = document.getElementById(toggleId);
@@ -971,7 +971,7 @@ const load = async (date, opts = {}) => {
           syncWorkTypeButtons();
           applyWorkTypeGate();
         }
-      } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     // Parallelize initial fetches to reduce mobile cold-start latency.
     const noticesTask = renderNotices(date).catch(() => null);
@@ -1071,7 +1071,7 @@ const load = async (date, opts = {}) => {
           }
         });
       }
-    } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const segmentsRaw = Array.isArray(day?.segments) ? day.segments : [];
     // If monthly data was explicitly edited/saved, treat shift-like rows as actual
     // (do not auto-classify them as planned ghost rows).
@@ -1113,7 +1113,7 @@ const load = async (date, opts = {}) => {
         if (/^\d{2}:\d{2}$/.test(outHmRaw) && outHmRaw > nowHm) {
           seg = { ...seg, checkOut: null };
         }
-      } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     if (!openSeg?.checkIn && !seg?.checkIn) {
       if (date === todayJST()) {
@@ -1125,7 +1125,7 @@ const load = async (date, opts = {}) => {
               seg = fromStatus;
             }
           }
-        } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
     }
     const hasStartedOnce = segments.some(s => !!s?.checkIn);
@@ -1133,7 +1133,7 @@ const load = async (date, opts = {}) => {
     state.hasStartedToday = hasStartedOnce || !!seg?.checkIn;
     state.hasEndedToday = hasEndedOnce || !!(seg?.checkIn && seg?.checkOut);
     renderSimpleStatus();
-    try { $('#topDate').textContent = fmtJP(date); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { $('#topDate').textContent = fmtJP(date); } catch (e) { /* silently ignored */ }
 
     const effectiveOpenSeg = openSeg || ((seg?.checkIn && !seg?.checkOut) ? seg : null);
     const stampSeg = effectiveOpenSeg || seg;
@@ -1146,9 +1146,9 @@ const load = async (date, opts = {}) => {
         clearAutoTime(st);
       } else {
         applyAutoTime(st, shiftStart);
-        try { delete st.dataset.actual; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+        try { delete st.dataset.actual; } catch (e) { /* silently ignored */ }
       }
-      try { delete st.dataset.touched; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+      try { delete st.dataset.touched; } catch (e) { /* silently ignored */ }
     }
     if (et) {
       if (stampSeg?.checkOut) {
@@ -1161,9 +1161,9 @@ const load = async (date, opts = {}) => {
         } else {
           applyAutoTime(et, shiftEnd);
         }
-        try { delete et.dataset.actual; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+        try { delete et.dataset.actual; } catch (e) { /* silently ignored */ }
       }
-      try { delete et.dataset.touched; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+      try { delete et.dataset.touched; } catch (e) { /* silently ignored */ }
     }
     renderStampButtons({
       date,
@@ -1194,29 +1194,29 @@ const load = async (date, opts = {}) => {
 
     if (daily) {
       if (daily.break_minutes !== undefined && daily.break_minutes !== null) {
-        if ($('#breakMin')) { $('#breakMin').value = daily.break_minutes; try { $('#breakMin').dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } }
+        if ($('#breakMin')) { $('#breakMin').value = daily.break_minutes; try { $('#breakMin').dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ } }
       } else {
-        if ($('#breakMin')) { $('#breakMin').value = String(defaultBreak); try { $('#breakMin').dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } }
+        if ($('#breakMin')) { $('#breakMin').value = String(defaultBreak); try { $('#breakMin').dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ } }
       }
       if (daily.night_break_minutes !== undefined && daily.night_break_minutes !== null) {
-        if ($('#nightBreakMin')) { $('#nightBreakMin').value = daily.night_break_minutes; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } }
+        if ($('#nightBreakMin')) { $('#nightBreakMin').value = daily.night_break_minutes; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ } }
       } else {
-        if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } }
+        if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ } }
       }
       
       // Load saved notes, late_minutes, and early_minutes
       if ($('#memo')) $('#memo').value = daily.notes || '';
       if ($('#lateMin')) {
         $('#lateMin').value = daily.late_minutes !== null && daily.late_minutes !== undefined && daily.late_minutes !== 0 ? daily.late_minutes : '';
-        try { if (daily.late_minutes !== null && daily.late_minutes !== 0) $('#lateMin').dataset.manual = '1'; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+        try { if (daily.late_minutes !== null && daily.late_minutes !== 0) $('#lateMin').dataset.manual = '1'; } catch (e) { /* silently ignored */ }
       }
       if ($('#earlyMin')) {
         $('#earlyMin').value = daily.early_minutes !== null && daily.early_minutes !== undefined && daily.early_minutes !== 0 ? daily.early_minutes : '';
-        try { if (daily.early_minutes !== null && daily.early_minutes !== 0) $('#earlyMin').dataset.manual = '1'; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+        try { if (daily.early_minutes !== null && daily.early_minutes !== 0) $('#earlyMin').dataset.manual = '1'; } catch (e) { /* silently ignored */ }
       }
     } else {
-      if ($('#breakMin')) { $('#breakMin').value = String(defaultBreak); try { $('#breakMin').dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } }
-      if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } }
+      if ($('#breakMin')) { $('#breakMin').value = String(defaultBreak); try { $('#breakMin').dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ } }
+      if ($('#nightBreakMin')) { $('#nightBreakMin').value = '0'; try { $('#nightBreakMin').dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ } }
     }
 
     ensureDefaultWorkTypeForToday(date);
@@ -1530,13 +1530,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         savePanelOpen(p.key, next);
       });
     }
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   // Kiểm tra vai trò của user
   const role = String(profile?.role || '').toLowerCase();
   if (role === 'admin') {
-    try { document.body.dataset.roleAdmin = '1'; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { document.body.dataset.roleAdmin = '1'; } catch (e) { /* silently ignored */ }
   }
-  try { window.userRole = role; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  try { window.userRole = role; } catch (e) { /* silently ignored */ }
 // Kiểm tra nếu có ?date YYYY-MM-DD trong URL
 // Nếu có, sử dụng ngày đó
 // Nếu ko có, sử dụng ngày hôm nay
@@ -1557,7 +1557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const wt = String($('#workType')?.value || '').trim();
       saveWorkType(state.date, wt || '');
-    } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const doStartStamp = async () => {
@@ -1602,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const st = $('#startTime');
           if (st && String(st.dataset?.touched || '') !== '1') st.value = hm;
           clearAutoTime(st);
-          try { if (st) st.dataset.touched = '1'; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+          try { if (st) st.dataset.touched = '1'; } catch (e) { /* silently ignored */ }
           const btnIn = $('#btnStartStamp');
           const btnOut = $('#btnEndStamp');
           if (btnIn) {
@@ -1611,7 +1611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnIn.textContent = isMobile ? `開始済 (${hm})` : `開始打刻済 (${hm})`;
           }
           if (btnOut) { btnOut.disabled = false; }
-        } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
       await load(state.date);
       if (r?.already) showToast('既に出勤済みです', 'error');
@@ -1673,8 +1673,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await load(state.date);
   });
 
-  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
-  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
+  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
+  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
   $('#breakMin')?.addEventListener('change', renderWorkMinutes);
   $('#nightBreakMin')?.addEventListener('change', renderWorkMinutes);
   
@@ -1702,7 +1702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('#kubun')?.classList.toggle('is-planned', !String($('#kubun')?.value || '').trim());
     applyHolidayRestMode();
     renderSimpleStatus();
-    try { await persistDaily(state.date); } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+    try { await persistDaily(state.date); } catch (e) { /* silently ignored */ }
   });
   setupSimpleCombo(document.getElementById('breakMin'));
   setupSimpleCombo(document.getElementById('nightBreakMin'));
@@ -1718,7 +1718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const company = $('#company');
     if (company && !company.value) company.value = 'iizuka';
     setupSimpleCombo(company);
-  } catch (e) { console.error('[attendance-simple.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   $('#btnReload')?.addEventListener('click', async () => { await load(state.date); });
   const persistSimpleEntry = async (btn) => {

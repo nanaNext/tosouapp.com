@@ -11,7 +11,7 @@
       const u = raw ? JSON.parse(raw) : null;
       const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
       if (name) el.textContent = name;
-    } catch (e) { console.error('[attendance-monthly.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 // Còn cái hàm này là dùng để set height cho các phần tử top và toolbar
   document.addEventListener('DOMContentLoaded', async () => {
@@ -32,10 +32,10 @@
           const th2 = tb2 ? Math.max(0, tb2.offsetHeight) : 56;
           document.body.style.setProperty('--se-toolbar-height', `${th2}px`);
         }, { passive: true });
-      } catch (e) { console.error('[attendance-monthly.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       if (events && typeof events.boot === 'function') await events.boot();
     } catch (e) {
-      try { root.Core?.showErr?.(String(e?.message || '')); } catch (e) { console.error('[attendance-monthly.page.js] Swallowed error:', e); }
+      try { root.Core?.showErr?.(String(e?.message || '')); } catch (e) { /* silently ignored */ }
     }
   });
 })();

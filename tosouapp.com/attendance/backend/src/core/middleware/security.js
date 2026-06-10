@@ -44,7 +44,7 @@ module.exports = (app) => {
             secure: isHttps,
             path: '/'
           });
-        } catch (e) { console.error('[security.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
     }
     next();
@@ -52,36 +52,28 @@ module.exports = (app) => {
   app.use((req, res, next) => {
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
       const enforceCsrf = String(process.env.ENFORCE_CSRF || '').toLowerCase() === 'true';
-      const ua = req.headers['user-agent'] || '';
       const origin = req.headers.origin || '';
-      const host = String(req.headers.host || '').toLowerCase();
       const path = String(req.path || '');
       const original = String(req.originalUrl || req.url || '');
+      
       if (path.includes('/api/auth/login') || original.includes('/api/auth/login')) {
         return next();
       }
       const skipCsrf =
         path.startsWith('/api/auth') ||
         original.includes('/api/auth/');
-      let sameHost = false;
-      try {
-        const u = new URL(origin || `http://${host}`);
-        sameHost = !!(host && u.host.toLowerCase() === host);
-      } catch (e) { console.error('[security.js] Swallowed error:', e); }
-      if (!isBrowserUA(ua) && !sameHost) {
-        return res.status(403).json({ message: 'Forbidden: browser user-agent required' });
-      }
+        
       if (!isAllowedOrigin(req, origin)) {
         return res.status(403).json({ message: 'Forbidden: invalid origin' });
       }
+      
+      // Strict CSRF check: Enforce token validation regardless of sameHost
       if (enforceCsrf && !skipCsrf) {
         const csrfHeader = req.headers['x-csrf-token'];
         const csrfCookie = req.cookies?.csrfToken;
-        if (!sameHost) {
-          if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
-            return res.status(401).json({ message: 'CSRF validation failed' });
-          }
-        } // same-origin: bỏ qua CSRF check
+        if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
+          return res.status(401).json({ message: 'CSRF validation failed' });
+        }
       }
     }
     next();

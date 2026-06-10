@@ -34,8 +34,8 @@ const CoreRules = {
       };
     }
 
-    const inJ = checkIn instanceof Date ? checkIn : new Date(checkIn);
-    const outJ = checkOut instanceof Date ? checkOut : new Date(checkOut);
+    const inJ = parseMySQLJSTToDate(checkIn);
+    const outJ = parseMySQLJSTToDate(checkOut);
 
     if (outJ < inJ) {
       throw new Error('Invalid time order: Checkout before Checkin');
@@ -45,9 +45,9 @@ const CoreRules = {
     const breakMin = shift?.breakMinutes ?? 60;
     
     // 1. Tính toán baseline (theo ca làm việc)
-    // Shift times are also Dates
-    const shiftStart = shift?.start instanceof Date ? shift.start : new Date(shift.start);
-    const shiftEnd = shift?.end instanceof Date ? shift.end : new Date(shift.end);
+    // Shift times are also parsed correctly
+    const shiftStart = shift?.start ? parseMySQLJSTToDate(shift.start) : new Date();
+    const shiftEnd = shift?.end ? parseMySQLJSTToDate(shift.end) : new Date();
 
     // Tính scheduled minutes dựa trên start/end của shift (không trừ break tự động ở đây)
     const scheduled = isOff ? 0 : minutesBetween(shiftStart, shiftEnd);
@@ -142,7 +142,7 @@ async function computeRecord(rec, ctx = null) {
         if (!wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
           template = true;
         }
-      } catch (e) { console.error('[attendance.rules.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
   }
   if (!shift) {
@@ -203,10 +203,10 @@ async function computeRecord(rec, ctx = null) {
   }
   for (const g of goOuts) {
     if (g.go_out_time) {
-      const gIn = new Date(g.go_out_time);
+      const gIn = parseMySQLJSTToDate(g.go_out_time);
       let gOut = null;
       if (g.return_time) {
-        gOut = new Date(g.return_time);
+        gOut = parseMySQLJSTToDate(g.return_time);
       } else if (rec.checkOut) {
         gOut = parseMySQLJSTToDate(rec.checkOut);
       }

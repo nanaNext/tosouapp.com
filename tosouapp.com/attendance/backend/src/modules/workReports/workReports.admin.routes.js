@@ -818,7 +818,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
       const cal = await calendarRepo.computeYear(y).catch(() => null);
       const off = new Set((cal?.off_days || []).map((d) => String(d).slice(0, 10)));
       isOffDate = (ds) => off.has(String(ds).slice(0, 10));
-    } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     const [users] = await db.query(`
       SELECT u.id AS userId, u.employee_code AS employeeCode, u.username AS username,
@@ -906,7 +906,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
             )
         `, [start + ' 00:00:00', end + ' 00:00:00']);
         latestRows = attRows;
-      } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
 
     const [leaveRows] = await db.query(`
@@ -1087,7 +1087,7 @@ router.post('/backfill/daily',
       try {
         const res1 = await attendanceRepo.upsertDaily(u, d, payload);
         updated += Number(res1?.affectedRows || 0);
-      } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     res.status(200).json({ ok: true, users: Array.from(users), from, to, updated });
   } catch (err) {
@@ -1116,7 +1116,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         const cal = await calendarRepo.computeYear(y).catch(() => null);
         calByYear.set(y, cal);
       }
-    } catch (e) { console.error('[workReports.admin.routes.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
     const buildOffSet = (cal, isKouji) => {

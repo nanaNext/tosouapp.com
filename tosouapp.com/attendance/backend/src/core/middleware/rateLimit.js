@@ -29,7 +29,7 @@ function rateLimit({ windowMs = 60_000, max = 600, keyBy = 'user_or_ip' } = {}) 
     const bucket = buckets.get(k) || [];
     const fresh = bucket.filter(ts => now - ts < windowMs);
     if (fresh.length >= max) {
-      try { require('../metrics').inc('rate_limit_hits', 1); } catch (e) { console.error('[rateLimit.js] Swallowed error:', e); }
+      try { require('../metrics').inc('rate_limit_hits', 1); } catch (e) { /* silently ignored */ }
       return res.status(429).json({ message: 'Too many requests' });
     }
     fresh.push(now);

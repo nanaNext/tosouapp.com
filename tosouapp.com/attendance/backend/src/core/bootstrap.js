@@ -21,18 +21,18 @@ async function runMigrations() {
       {
         id: '20260316_01_users_extended_columns',
         up: async () => {
-          try { await conn.query(`ALTER TABLE users ADD COLUMN birth_date DATE NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN gender VARCHAR(16) NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255) NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN probation_date DATE NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN official_date DATE NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN manager_id BIGINT UNSIGNED NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN level VARCHAR(32) NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN contract_end DATE NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN base_salary DECIMAL(12,2) NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN shift_id BIGINT UNSIGNED NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE users ADD COLUMN last_login DATETIME NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN birth_date DATE NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN gender VARCHAR(16) NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN probation_date DATE NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN official_date DATE NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN manager_id BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN level VARCHAR(32) NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN contract_end DATE NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN base_salary DECIMAL(12,2) NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN shift_id BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN last_login DATETIME NULL`); } catch (e) { /* silently ignored */ }
         }
       },
       {
@@ -44,8 +44,8 @@ async function runMigrations() {
               name VARCHAR(255) NOT NULL UNIQUE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
-          try { await conn.query(`ALTER TABLE departments ADD COLUMN code VARCHAR(32) NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`ALTER TABLE departments ADD UNIQUE KEY uniq_departments_code (code)`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
+          try { await conn.query(`ALTER TABLE departments ADD COLUMN code VARCHAR(32) NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE departments ADD UNIQUE KEY uniq_departments_code (code)`); } catch (e) { /* silently ignored */ }
         }
       },
       {
@@ -67,8 +67,8 @@ async function runMigrations() {
               INDEX idx_created_by (created_by)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
-          try { await conn.query(`ALTER TABLE notices ADD COLUMN target_user_id BIGINT UNSIGNED NULL`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
-          try { await conn.query(`CREATE INDEX idx_target_user_id ON notices (target_user_id)`); } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
+          try { await conn.query(`ALTER TABLE notices ADD COLUMN target_user_id BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`CREATE INDEX idx_target_user_id ON notices (target_user_id)`); } catch (e) { /* silently ignored */ }
         }
       },
       {
@@ -200,10 +200,10 @@ async function ensureModuleTables() {
   await requestsRepo.ensureTable();  await faqRepo.ensureTable();
   try {
     await faqRepo.seedIfEmpty();
-  } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   try {
     await salaryRepo.listHistory({ page: 1, pageSize: 1 });
-  } catch (e) { console.error('[bootstrap.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 let initPromise = null;

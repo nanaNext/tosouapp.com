@@ -3,7 +3,7 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 
 let fontkit = null;
-try { fontkit = require('fontkit'); } catch (e) { console.error('[payslipPdf.js] Swallowed error:', e); }
+try { fontkit = require('fontkit'); } catch (e) { /* silently ignored */ }
 
 const _fontFileCache = new Map();
 const _fontSubsetCache = new Map();
@@ -12,7 +12,7 @@ function pickExistingFile(paths) {
   for (const p of paths) {
     try {
       if (p && fs.existsSync(p)) return p;
-    } catch (e) { console.error('[payslipPdf.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   return null;
 }
@@ -160,14 +160,14 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
   const FONT_REG = hasJPRegular ? 'JP' : 'Helvetica';
   const FONT_BOLD = hasJPBold ? 'JP-Bold' : (hasJPRegular ? 'JP' : 'Helvetica-Bold');
   if (!hasJPRegular && !hasJPBold) {
-    try { console.warn(`JP font not found/usable. Falling back to Helvetica. Tried REG: ${jpRegularCandidates.filter(Boolean).join(' | ')}`); } catch (e) { console.error('[payslipPdf.js] Swallowed error:', e); }
+    try { console.warn(`JP font not found/usable. Falling back to Helvetica. Tried REG: ${jpRegularCandidates.filter(Boolean).join(' | ')}`); } catch (e) { /* silently ignored */ }
   }
   try {
     doc.font(FONT_REG);
     doc.font(FONT_BOLD);
   } catch (e) {
     finish(reject)(mapPdfFontSubsetError(e, fontCtx));
-    try { doc.end(); } catch (e) { console.error('[payslipPdf.js] Swallowed error:', e); }
+    try { doc.end(); } catch (e) { /* silently ignored */ }
     return;
   }
 
@@ -480,7 +480,7 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
 
     doc.end();
   } catch (e) {
-    try { doc.end(); } catch (e) { console.error('[payslipPdf.js] Swallowed error:', e); }
+    try { doc.end(); } catch (e) { /* silently ignored */ }
     finish(reject)(mapPdfFontSubsetError(e, fontCtx));
   }
   });

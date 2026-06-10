@@ -28,7 +28,7 @@ export async function downloadWithAuth(url, filename) {
   a.href = objUrl;
   a.download = filename || 'download';
   a.click();
-  setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { console.error('[client.js] Swallowed error:', e); } }, 1000);
+  setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { /* silently ignored */ } }, 1000);
 }
 
 export const api = {

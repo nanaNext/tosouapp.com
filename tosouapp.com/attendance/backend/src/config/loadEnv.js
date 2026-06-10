@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 function tryLoad(p, override) {
   if (!fs.existsSync(p)) return false;
-  try { require('dotenv').config({ path: p, override: !!override }); } catch (e) { console.error('[loadEnv.js] Swallowed error:', e); }
+  try { require('dotenv').config({ path: p, override: !!override }); } catch (e) { /* silently ignored */ }
   return true;
 }
 const appEnv = String(process.env.APP_ENV || '').trim();
@@ -31,5 +31,5 @@ try {
   if (appEnv && !loadedAppEnvFile) {
     console.warn(`[env] APP_ENV=${appEnv} but .env.${appEnv} not found; falling back to .env`);
   }
-} catch (e) { console.error('[loadEnv.js] Swallowed error:', e); }
+} catch (e) { /* silently ignored */ }
 module.exports = {};

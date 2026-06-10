@@ -25,7 +25,7 @@ export async function mountPayslipUpload({ content }) {
     let tok = sessionStorage.getItem('accessToken') || '';
     const res = await fetch('/api/payslips/admin/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd, credentials: 'include' });
     if (!res.ok) {
-      let msg = `HTTP ${res.status}`; try { const j = await res.json(); msg = j.message || msg; } catch (e) { console.error('[legacy-payslip-upload.page.js] Swallowed error:', e); }
+      let msg = `HTTP ${res.status}`; try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
       alert(msg); return;
     }
     const r = await res.json();

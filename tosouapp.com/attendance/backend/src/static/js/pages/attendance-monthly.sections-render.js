@@ -124,10 +124,10 @@
                 state.currentMonthTimesheet = timesheet;
                 rows = Array.isArray(detail?.shiftAssignments) ? detail.shiftAssignments : rows;
               }
-            } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
+            } catch (e) { /* silently ignored */ }
           }
         }
-      } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     const fmtBreak = (min) => {
       const m = Number(min);
@@ -235,10 +235,10 @@
               state.currentMonthDetail = detail;
               state.currentMonthTimesheet = timesheet;
               rows = Array.isArray(detail?.workDetails) ? detail.workDetails : rows;
-            } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
+            } catch (e) { /* silently ignored */ }
           }
         }
-      } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     const esc2 = (v) => esc(v == null ? '' : v);
     const table = document.createElement('table');
@@ -862,7 +862,7 @@
         remoteDays2 = frontendRemote;
         satelliteDays2 = frontendSatellite;
       }
-    } catch (e) { console.error('[attendance-monthly.sections-render.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     
     if (isPartTime) {
       plannedDays = attendDays2 + absent2 + Number(paidDays || 0) + Number(unpaidDays || 0) + holidayWorkDays2;

@@ -40,17 +40,17 @@
     try { return localStorage.getItem('monthly.dailyCollapsed') === '1'; } catch { return false; }
   };
   const setDailyCollapsed = (v) => {
-    try { localStorage.setItem('monthly.dailyCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { localStorage.setItem('monthly.dailyCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
   };
   const applyDailyCollapsed = (collapsed) => {
     const sec = $('#dailySection');
     const btn = $('#dailyToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { /* silently ignored */ }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-label', collapsed ? '日次実績を展開する' : '日次実績を折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-label', collapsed ? '日次実績を展開する' : '日次実績を折りたたむ'); } catch (e) { /* silently ignored */ }
     }
   };
 
@@ -58,17 +58,17 @@
     try { return localStorage.getItem('monthly.contractCollapsed') === '1'; } catch { return false; }
   };
   const setContractCollapsed = (v) => {
-    try { localStorage.setItem('monthly.contractCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { localStorage.setItem('monthly.contractCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
   };
   const applyContractCollapsed = (collapsed) => {
     const sec = $('#contractSection');
     const btn = $('#contractToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { /* silently ignored */ }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-label', collapsed ? '契約先一覧を展開する' : '契約先一覧を折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-label', collapsed ? '契約先一覧を展開する' : '契約先一覧を折りたたむ'); } catch (e) { /* silently ignored */ }
     }
   };
 
@@ -76,17 +76,17 @@
     try { return localStorage.getItem('monthly.summaryCollapsed') === '1'; } catch { return false; }
   };
   const setSummaryCollapsed = (v) => {
-    try { localStorage.setItem('monthly.summaryCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { localStorage.setItem('monthly.summaryCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
   };
   const applySummaryCollapsed = (collapsed) => {
     const sec = $('#summarySection');
     const btn = $('#summaryToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { /* silently ignored */ }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-label', collapsed ? '当月サマリを展開する' : '当月サマリを折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-label', collapsed ? '当月サマリを展開する' : '当月サマリを折りたたむ'); } catch (e) { /* silently ignored */ }
     }
   };
 
@@ -94,17 +94,17 @@
     try { return localStorage.getItem('monthly.annualCollapsed') === '1'; } catch { return false; }
   };
   const setAnnualCollapsed = (v) => {
-    try { localStorage.setItem('monthly.annualCollapsed', v ? '1' : '0'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { localStorage.setItem('monthly.annualCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
   };
   const applyAnnualCollapsed = (collapsed) => {
     const sec = $('#annualSection');
     const btn = $('#annualToggle');
     if (sec) {
-      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { sec.classList.toggle('collapsed', !!collapsed); } catch (e) { /* silently ignored */ }
     }
     if (btn) {
-      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { btn.setAttribute('aria-label', collapsed ? '年間サマリを展開する' : '年間サマリを折りたたむ'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-label', collapsed ? '年間サマリを展開する' : '年間サマリを折りたたむ'); } catch (e) { /* silently ignored */ }
     }
   };
 
@@ -139,7 +139,7 @@
         main.style.setProperty('--se-bb-h', `${h}px`);
         main.style.setProperty('--se-hs-h', `${hsH}px`);
       }
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const syncStickyTop = () => {
@@ -147,7 +147,7 @@
       const top = document.querySelector('.kintai-top');
       const h = top ? Math.max(0, Math.round(top.getBoundingClientRect().height || 0)) : 0;
       document.documentElement.style.setProperty('--se-sticky-top', `${h}px`);
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const syncTheadRowHeights = () => {
@@ -157,7 +157,7 @@
       const r1 = t?.querySelector('thead tr');
       const h = r1 ? Math.max(0, Math.round(r1.getBoundingClientRect().height || 0)) : 0;
       host?.style.setProperty('--se-thead-row1', `${h}px`);
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const buildTargetDateSelect = (initialYM) => {
@@ -302,7 +302,7 @@
           at: Date.now()
         }));
       }
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const renderInstantRightSkeleton = (ym) => {
@@ -323,7 +323,7 @@
           </div>
         </div>
       `;
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const syncMonthHScroll = () => {
@@ -344,7 +344,7 @@
     const applyHeadTranslate = (headTables, scrollLeft) => {
       const x = Number(scrollLeft) || 0;
       for (const ht of headTables) {
-        try { ht.style.transform = `translateX(${-x}px)`; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { ht.style.transform = `translateX(${-x}px)`; } catch (e) { /* silently ignored */ }
       }
     };
 
@@ -361,8 +361,8 @@
         requestAnimationFrame(() => refresh(attempt + 1));
         return;
       }
-      try { inner.style.width = `${sw}px`; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { inner.style.width = `${sw}px`; } catch (e) { /* silently ignored */ }
+      try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { /* silently ignored */ }
       applyHeadTranslate(headTables, host?.scrollLeft || 0);
       try {
         const need = (sw > cw + 1);
@@ -384,8 +384,8 @@
           if (need) rootEl.classList.add('hide-xscroll');
           else rootEl.classList.remove('hide-xscroll');
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { syncFooterVars(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
+      try { syncFooterVars(); } catch (e) { /* silently ignored */ }
     };
 
     if (bar.dataset.wired !== '1') {
@@ -396,7 +396,7 @@
         const host = getHost();
         const rootEl = getRoot();
         const headTables = Array.from(rootEl?.querySelectorAll?.('.se-sticky-month-head table') || []);
-        try { if (host) host.scrollLeft = bar.scrollLeft; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { if (host) host.scrollLeft = bar.scrollLeft; } catch (e) { /* silently ignored */ }
         applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
@@ -407,7 +407,7 @@
         syncing = true;
         const host = getHost();
         const headTables = Array.from(getRoot()?.querySelectorAll?.('.se-sticky-month-head table') || []);
-        try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { /* silently ignored */ }
         applyHeadTranslate(headTables, host?.scrollLeft || 0);
         syncing = false;
       }, { passive: true });
@@ -433,13 +433,13 @@
         requestAnimationFrame(() => refresh(attempt + 1));
         return;
       }
-      try { inner.style.height = `${sh}px`; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { if (host) bar.scrollTop = host.scrollTop; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { inner.style.height = `${sh}px`; } catch (e) { /* silently ignored */ }
+      try { if (host) bar.scrollTop = host.scrollTop; } catch (e) { /* silently ignored */ }
       try {
         const need = (sh > ch + 1);
         bar.style.display = need ? 'block' : 'none';
         document.body.classList.toggle('has-v-scroll', need);
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     };
 
     if (bar.dataset.wired !== '1') {
@@ -448,7 +448,7 @@
         if (syncing) return;
         syncing = true;
         const host = getHost();
-        try { if (host) host.scrollTop = bar.scrollTop; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { if (host) host.scrollTop = bar.scrollTop; } catch (e) { /* silently ignored */ }
         syncing = false;
       }, { passive: true });
       const hostNow = getHost();
@@ -456,7 +456,7 @@
         if (syncing) return;
         syncing = true;
         const host = getHost();
-        try { if (host) bar.scrollTop = host.scrollTop; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { if (host) bar.scrollTop = host.scrollTop; } catch (e) { /* silently ignored */ }
         syncing = false;
       }, { passive: true });
       window.addEventListener('resize', () => { refresh(); }, { passive: true });
@@ -494,8 +494,8 @@
           if (need) rootEl.classList.add('hide-xscroll');
           else rootEl.classList.remove('hide-xscroll');
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { syncFooterVars(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
+      try { syncFooterVars(); } catch (e) { /* silently ignored */ }
     };
     const schedule = () => {
       if (raf) return;
@@ -513,17 +513,17 @@
       const hs = document.querySelector('#monthHScroll');
       if (!bb && !hs) return;
       const ro = new ResizeObserver(() => {
-        try { syncFooterVars(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { syncFooterVars(); } catch (e) { /* silently ignored */ }
       });
       if (bb) ro.observe(bb);
       if (hs) ro.observe(hs);
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const ensureWorkflowUI = () => {
     const role = String(ctx.profile?.role || '').toLowerCase();
     if (role === 'employee') {
-      try { document.querySelector('#monthWorkflow')?.remove(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { document.querySelector('#monthWorkflow')?.remove(); } catch (e) { /* silently ignored */ }
       ctx.wfWrap = null;
       ctx.btnPin = null;
       return;
@@ -576,12 +576,12 @@
         host.classList.remove('pin-month-head-top', 'pin-month-head-bottom');
         host.classList.add('pin-month-head-bottom');
       }
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       if (!ctx.btnPin) return;
       ctx.btnPin.style.display = 'none';
       ctx.btnPin.setAttribute('aria-pressed', 'true');
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const updateMonthWorkflowUI = () => {
@@ -607,7 +607,7 @@
     if (!ctx.tableHost) return;
     const ym = ctx.picker?.value || '';
     if (!/^\d{4}-\d{2}$/.test(ym)) return;
-    try { clearTimeout(ctx.autoSaveTimer); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { clearTimeout(ctx.autoSaveTimer); } catch (e) { /* silently ignored */ }
     ctx.autoSaveTimer = setTimeout(async () => {
       if (!state.editableMonth) return;
       if (!ctx.tableHost) return;
@@ -615,7 +615,7 @@
       try {
         const until = Number(ctx.autoSavePausedUntil || 0);
         if (until && Date.now() < until) return;
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       if (ctx.tableHost.querySelector('.invalid')) return;
       const payload = collectUpdates(ctx.tableHost, ym, ctx.actingUserId || null, { includeAll: true });
       const body = JSON.stringify(payload);
@@ -633,7 +633,7 @@
             if (tr) tr.dataset.id = String(id);
           }
           if (created.length) ctx.lastAutoSavePayload = '';
-        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         try {
           const dates = new Set();
           for (const d of Array.isArray(payload?.dailyUpdates) ? payload.dailyUpdates : []) {
@@ -653,16 +653,16 @@
             const tr = ctx.tableHost.querySelector(`[data-row="1"][data-date="${cssEscape(ds)}"]`);
             if (tr) markRowSaved(tr);
           }
-        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         ctx.lastAutoSavePayload = body;
         clearDirty();
-        try { draft?.clear?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { draft?.clear?.(ctx, ym); } catch (e) { /* silently ignored */ }
       } catch (e) {
         const msg = String(e?.message || '');
         if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
-          try { draft?.save?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-          try { ctx.lastAutoSavePayload = body; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-          try { ctx.autoSavePausedUntil = Date.now() + 15000; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { draft?.save?.(ctx, ym); } catch (e) { /* silently ignored */ }
+          try { ctx.lastAutoSavePayload = body; } catch (e) { /* silently ignored */ }
+          try { ctx.autoSavePausedUntil = Date.now() + 15000; } catch (e) { /* silently ignored */ }
           showErr('保存が競合しています。少し待ってから再度お試しください。');
         } else {
           showErr(msg || '保存に失敗しました');
@@ -683,7 +683,7 @@
     try {
       if (replace) history.replaceState(null, '', url.pathname + url.search + url.hash);
       else history.pushState(null, '', url.pathname + url.search + url.hash);
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     if (ctx.picker1) ctx.picker1.value = ym;
     if (ctx.picker2) ctx.picker2.value = ym;
     showErr('');
@@ -693,7 +693,7 @@
       try {
         const raw = sessionStorage.getItem(`monthly.cache.${cacheKey}`);
         if (raw) persisted = JSON.parse(raw);
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       if (!persisted) {
         persisted = readFastMonthCache(cacheKey);
       }
@@ -702,7 +702,7 @@
           const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
           const latest = latestRaw ? JSON.parse(latestRaw) : null;
           if (latest && latest.detail && String(latest.ym || '') === String(ym || '')) persisted = latest;
-        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
     }
     let latestFast = null;
@@ -711,11 +711,11 @@
         const latestRaw = localStorage.getItem('monthly.cache.fast.self.latest') || '';
         const latest = latestRaw ? JSON.parse(latestRaw) : null;
         if (latest && latest.detail) latestFast = latest;
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     const instant = cached || persisted || latestFast;
     if (!instant?.detail) {
-      try { renderInstantRightSkeleton(ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { renderInstantRightSkeleton(ym); } catch (e) { /* silently ignored */ }
     }
     const useSpinner = opts?.spinner !== false && !instant;
     if (useSpinner) showSpinner();
@@ -729,11 +729,11 @@
           if ($('#staffName')) $('#staffName').textContent = '—';
           if ($('#officeCode')) $('#officeCode').textContent = '—';
           if ($('#empDept')) $('#empDept').textContent = '—';
-        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-        try { renderContract(ctx.contractHost, null); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-        try { renderWorkDetail(ctx.workDetailHost, null, ctx.profile); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-        try { renderSummary(ctx.summaryHost, null, null); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-        try { renderTable(ctx.tableHost, null, ctx.profile); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
+        try { renderContract(ctx.contractHost, null); } catch (e) { /* silently ignored */ }
+        try { renderWorkDetail(ctx.workDetailHost, null, ctx.profile); } catch (e) { /* silently ignored */ }
+        try { renderSummary(ctx.summaryHost, null, null); } catch (e) { /* silently ignored */ }
+        try { renderTable(ctx.tableHost, null, ctx.profile); } catch (e) { /* silently ignored */ }
         return;
       }
 
@@ -767,7 +767,7 @@
       ctx.monthCache.set(cacheKey, { detail, timesheet: null, at: Date.now() });
       try {
         sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify({ detail, timesheet: null, at: Date.now() }));
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       writeFastMonthCache(cacheKey, { detail, timesheet: null });
       state.currentMonthDetail = detail;
       state.currentMonthTimesheet = null;
@@ -787,7 +787,7 @@
           if ($('#officeCode')) $('#officeCode').textContent = String(officeCode || '').trim() || '—';
           if ($('#empDept')) $('#empDept').textContent = u2.departmentName || '—';
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       renderContract(ctx.contractHost, detail);
       renderWorkDetail(ctx.workDetailHost, detail, ctx.profile);
       renderSummary(ctx.summaryHost, detail, null);
@@ -800,7 +800,7 @@
       applyEditability(ym);
       updateMonthWorkflowUI();
       ensureCompactToggle();
-      try { draft?.restore?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { draft?.restore?.(ctx, ym); } catch (e) { /* silently ignored */ }
       try {
         const role = String(ctx.profile?.role || '').toLowerCase();
         const lockedMsg = state.currentMonthStatus === 'submitted'
@@ -808,7 +808,7 @@
           : (state.currentMonthStatus === 'approved' ? 'この月は締め済のため編集できません。' : '');
         if (!state.editableMonth && lockedMsg) showErr(lockedMsg);
         else showErr('');
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       syncFooterVars();
       syncTheadRowHeights();
       syncMonthHScroll();
@@ -829,8 +829,8 @@
             ctx.monthCache.set(cacheKey, nextCache);
             sessionStorage.setItem(`monthly.cache.${cacheKey}`, JSON.stringify(nextCache));
             writeFastMonthCache(cacheKey, nextCache);
-          } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-          try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
+          try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch (e) { /* silently ignored */ }
         })
         .catch(() => {});
       // Prefetch adjacent months for instant prev/next navigation.
@@ -842,7 +842,7 @@
           if (!py || !pm) return;
           const pDetail = await fetchJSONAuth(`/api/attendance/month/detail?year=${encodeURIComponent(py)}&month=${encodeURIComponent(pm)}${uidQ}`);
           ctx.monthCache.set(k, { detail: pDetail, timesheet: null, at: Date.now() });
-        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       };
       void prefetch(addMonths(ym, -1));
       void prefetch(addMonths(ym, 1));
@@ -865,17 +865,17 @@
       try {
         const ae = document.activeElement;
         const row = ae?.closest?.('[data-row="1"][data-date]');
-        try { ae?.blur?.(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { ae?.blur?.(); } catch (e) { /* silently ignored */ }
         if (row) {
           row.dataset.dirty = '1';
           try {
             const sel = row.querySelector('select[data-field="classification"]');
             const v = String(sel?.value || '').trim();
             if (v) row.dataset.kubunConfirmed = '1';
-          } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-          try { root.Render?.recomputeRow?.(row); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
+          try { root.Render?.recomputeRow?.(row); } catch (e) { /* silently ignored */ }
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         const rows = Array.from(ctx.tableHost?.querySelectorAll?.('[data-row="1"][data-date]') || []);
         for (const tr of rows) {
@@ -894,7 +894,7 @@
           tr.dataset.dirty = '1';
           if (v) tr.dataset.kubunConfirmed = '1';
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       // Keep auto planned times as virtual hints.
       // They must not be converted to "actual" just because user presses save.
       try {
@@ -902,8 +902,8 @@
         for (const tr of rows) {
           const inEl = tr.querySelector('input.se-time[data-field="checkIn"]');
           const outEl = tr.querySelector('input.se-time[data-field="checkOut"]');
-          try { inEl?.classList?.remove('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-          try { outEl?.classList?.remove('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { inEl?.classList?.remove('invalid'); } catch (e) { /* silently ignored */ }
+          try { outEl?.classList?.remove('invalid'); } catch (e) { /* silently ignored */ }
           const inAuto = String(inEl?.dataset?.auto || '') === '1';
           const outAuto = String(outEl?.dataset?.auto || '') === '1';
           const inV = inAuto ? '' : String(inEl?.value || '').trim();
@@ -911,15 +911,15 @@
           const idRaw = String(tr.dataset.id || '').trim();
           const clearFlag = String(tr.dataset.clear || '') === '1';
           if (outV && !inV) {
-            try { inEl?.classList?.add('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-            try { outEl?.classList?.add('invalid'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+            try { inEl?.classList?.add('invalid'); } catch (e) { /* silently ignored */ }
+            try { outEl?.classList?.add('invalid'); } catch (e) { /* silently ignored */ }
           }
           if (idRaw && !clearFlag && !inV && !outV) {
             tr.dataset.clear = '1';
             tr.dataset.dirty = '1';
           }
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       if (ctx.tableHost && ctx.tableHost.querySelector('.invalid')) {
         showErr('入力内容を確認してください（赤枠の項目）');
         throw new Error('入力内容を確認してください（赤枠の項目）');
@@ -945,7 +945,7 @@
           u.id = existingId;
           delete u.clientId;
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       const body = JSON.stringify(payload);
       const savedDates = new Set();
       try {
@@ -962,14 +962,14 @@
           const ds = tr ? String(tr.dataset.date || '').slice(0, 10) : '';
           if (ds) savedDates.add(ds);
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       let r = null;
       try {
         r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body });
       } catch (e) {
         const msg = String(e?.message || '');
         if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
-          try { draft?.save?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { draft?.save?.(ctx, ym); } catch (e) { /* silently ignored */ }
           const now = Date.now();
           const last = Number(ctx._dupRetryAt || 0);
           if (now - last > 5000) {
@@ -1002,7 +1002,7 @@
                     tr.dataset.clientId = '';
                   }
                 }
-              } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+              } catch (e) { /* silently ignored */ }
               const body2 = JSON.stringify(payload);
               r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: body2 });
               if (r && r.ok === false) throw new Error(String(r?.message || '保存に失敗しました'));
@@ -1030,7 +1030,7 @@
           const tr = ctx.tableHost.querySelector(`[data-row="1"][data-client-id="${cssEscape(cid)}"]`);
           if (tr) tr.dataset.id = String(id);
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
         const updates0 = Array.isArray(payload?.updates) ? payload.updates : [];
@@ -1095,13 +1095,13 @@
             }
           }
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       try {
         for (const ds of savedDates) {
           const tr = ctx.tableHost.querySelector(`[data-row="1"][data-date="${cssEscape(ds)}"]`);
           if (tr) {
             markRowSaved(tr);
-            try { tr.dataset.clear = ''; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+            try { tr.dataset.clear = ''; } catch (e) { /* silently ignored */ }
             try {
               const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
               const day = days.find(d => String(d?.date || '').slice(0,10) === ds);
@@ -1137,16 +1137,16 @@
                   tr.dataset.reasonBase = String(reason || '');
                   tr.dataset.breakBase = br;
                   tr.dataset.nightBreakBase = nb;
-                } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+                } catch (e) { /* silently ignored */ }
               }
-            } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-            try { root.Render?.recomputeRow?.(tr); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+            } catch (e) { /* silently ignored */ }
+            try { root.Render?.recomputeRow?.(tr); } catch (e) { /* silently ignored */ }
           }
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { ctx.lastAutoSavePayload = body; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
+      try { ctx.lastAutoSavePayload = body; } catch (e) { /* silently ignored */ }
       clearDirty();
-      try { draft?.clear?.(ctx, ym); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { draft?.clear?.(ctx, ym); } catch (e) { /* silently ignored */ }
       const s = r?.saved || {};
       const daily = Number(s?.daily || 0);
       const created = Number(s?.segmentsCreated || 0);
@@ -1184,9 +1184,9 @@
           method: 'POST',
           body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId || null })
         }).catch((e) => {
-          try { console.error('Salary sync failed:', e); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { console.error('Salary sync failed:', e); } catch (e) { /* silently ignored */ }
         });
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     } catch (e) {
       const msg = String(e?.message || '');
       if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
@@ -1271,9 +1271,9 @@
           tr.dataset.notesBase = notes || '';
           tr.dataset.breakBase = (br === '0:45' || br === '0:30' || br === '0:00') ? br : '1:00';
           tr.dataset.nightBreakBase = (nb === '1:00' || nb === '0:30') ? nb : '0:00';
-        } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { root.Render?.recomputeRow?.(tr); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
+      } catch (e) { /* silently ignored */ }
+      try { root.Render?.recomputeRow?.(tr); } catch (e) { /* silently ignored */ }
     } catch (e) {
       showErr(e?.message || '保存に失敗しました');
     } finally {
@@ -1403,7 +1403,7 @@
             tr.dataset.clientId = '';
           }
         }
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       
       const hasDailyMeaningful = !!(effectiveKubun || wt || location || reason || memo || breakMinutes !== 60 || nightBreakMinutes !== 0);
       // Important: allow saving daily-only edits (kubun/work/location/memo) even when no time updates.
@@ -1497,7 +1497,7 @@
         tr.dataset.kubunConfirmed = effectiveKubun ? '1' : '';
         tr.dataset.kubunBase = effectiveKubun || '';
         if (sel && effectiveKubun && String(sel.value || '').trim() !== effectiveKubun) sel.value = effectiveKubun;
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       if (root.Render?.recomputeRow) root.Render.recomputeRow(tr);
       
     } catch (e) {
@@ -1557,7 +1557,7 @@
       const m = parseInt(ym.slice(5, 7), 10);
       try {
         await fetchJSONAuth('/api/attendance/month/submit', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       await fetchJSONAuth('/api/attendance/month/approve', { method: 'POST', body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId }) });
       // Reflect approval immediately on UI, then sync in background.
       try {
@@ -1571,7 +1571,7 @@
         updateMonthWorkflowUI();
         renderTable(ctx.tableHost, state.currentMonthDetail, ctx.profile);
         renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet || null);
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       void setMonth(ym, true, { spinner: false }).catch(() => {});
     } catch (err) {
       showErr(err?.message || '承認に失敗しました');
@@ -1646,9 +1646,9 @@
 
       const fetchUsers = async () => {
         let role = '';
-        try { role = String(profile?.role || '').toLowerCase(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { role = String(profile?.role || '').toLowerCase(); } catch (e) { /* silently ignored */ }
         if (!role) {
-          try { role = String(state?.profile?.role || '').toLowerCase(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { role = String(state?.profile?.role || '').toLowerCase(); } catch (e) { /* silently ignored */ }
         }
         if (role === 'admin' || role === 'manager') {
           return fetchJSONAuth('/api/admin/users').catch(() => fetchJSONAuth('/api/manager/users'));
@@ -1707,16 +1707,16 @@
       rebuild();
       if (!ctx.actingUserId && users.length) {
         ctx.actingUserId = String(users[0].id || '').trim();
-        try { state.currentViewingUserId = ctx.actingUserId; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-        try { sel.value = ctx.actingUserId; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { state.currentViewingUserId = ctx.actingUserId; } catch (e) { /* silently ignored */ }
+        try { sel.value = ctx.actingUserId; } catch (e) { /* silently ignored */ }
         // Force the URL to reflect the default user
         const url = new URL(window.location.href);
         url.searchParams.set('userId', ctx.actingUserId);
-        try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+        try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { /* silently ignored */ }
       }
 
       ctx.userPicker = { input, select: sel, rebuild };
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const initContractTabs = () => {
@@ -1730,7 +1730,7 @@
       if (ctx.contractHost) ctx.contractHost.toggleAttribute('hidden', String(key) === 'workDetail');
       if (ctx.workDetailHost) ctx.workDetailHost.toggleAttribute('hidden', String(key) !== 'workDetail');
     };
-    try { ctx.applyContractTab(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { ctx.applyContractTab(); } catch (e) { /* silently ignored */ }
   };
 
   const initSummaryTabs = () => {
@@ -1743,7 +1743,7 @@
       for (const t of tabs) t.classList.toggle('active', String(t.dataset.tab || '') === String(key || ''));
       renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet);
     };
-    try { ctx.applySummaryTab(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { ctx.applySummaryTab(); } catch (e) { /* silently ignored */ }
   };
 
   const initSummaryEditor = () => {
@@ -1789,12 +1789,12 @@
         state.currentMonthDetail.shiftAssignments = next.shiftAssignments;
         state.currentMonthDetail.workDetails = next.workDetails;
         state.currentMonthDetail.monthSummary = next.monthSummary;
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { renderContract(ctx.contractHost, state.currentMonthDetail); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { renderWorkDetail(ctx.workDetailHost, state.currentMonthDetail, ctx.profile); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-      try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
+      try { renderContract(ctx.contractHost, state.currentMonthDetail); } catch (e) { /* silently ignored */ }
+      try { renderWorkDetail(ctx.workDetailHost, state.currentMonthDetail, ctx.profile); } catch (e) { /* silently ignored */ }
+      try { renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet); } catch (e) { /* silently ignored */ }
     };
-    try { clearInterval(ctx.refreshTimer); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { clearInterval(ctx.refreshTimer); } catch (e) { /* silently ignored */ }
     ctx.refreshFailCount = 0;
     ctx.refreshTimer = setInterval(async () => {
       try {
@@ -1803,12 +1803,12 @@
       } catch {
         ctx.refreshFailCount = (ctx.refreshFailCount || 0) + 1;
         if (ctx.refreshFailCount >= 2) {
-          try { clearInterval(ctx.refreshTimer); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+          try { clearInterval(ctx.refreshTimer); } catch (e) { /* silently ignored */ }
           ctx.refreshTimer = null;
         }
       }
     }, 15000);
-    try { lastKey = buildKey(state.currentMonthDetail); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { lastKey = buildKey(state.currentMonthDetail); } catch (e) { /* silently ignored */ }
   };
 
   const init = async () => {
@@ -1823,7 +1823,7 @@
     try {
       const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
       cachedProfile = raw ? JSON.parse(raw) : null;
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const profileTask = ensureAuthProfile().catch(() => null);
     let profile = cachedProfile || null;
     if (!profile) {
@@ -1838,30 +1838,30 @@
     try {
       const top = document.querySelector('.kintai-top');
       if (top) top.style.display = '';
-      try { document.body.classList.remove('embed'); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { if ($('#userName')) $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { document.body.classList.remove('embed'); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored */ }
+    try { if ($('#userName')) $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { /* silently ignored */ }
     try {
       const code = profile.employee_code || profile.employeeCode || (profile.id ? ('EMP' + String(profile.id).padStart(3, '0')) : '');
       if ($('#empCode')) $('#empCode').textContent = (ctx.role === 'employee') ? (code || '—') : '—';
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { if ($('#staffName')) $('#staffName').textContent = (ctx.role === 'employee') ? (profile.username || profile.email || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
+    try { if ($('#staffName')) $('#staffName').textContent = (ctx.role === 'employee') ? (profile.username || profile.email || '—') : '—'; } catch (e) { /* silently ignored */ }
     try {
       const officeCode = profile.office_code || profile.officeCode || '00084';
       if ($('#officeCode')) $('#officeCode').textContent = (ctx.role === 'employee') ? (String(officeCode || '').trim() || '—') : '—';
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { if ($('#officeName')) $('#officeName').textContent = '飯塚塗研'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { if ($('#empDept')) $('#empDept').textContent = (ctx.role === 'employee') ? (profile.departmentName || profile.department || '—') : '—'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
+    try { if ($('#officeName')) $('#officeName').textContent = '飯塚塗研'; } catch (e) { /* silently ignored */ }
+    try { if ($('#empDept')) $('#empDept').textContent = (ctx.role === 'employee') ? (profile.departmentName || profile.department || '—') : '—'; } catch (e) { /* silently ignored */ }
 
     ctx.actingUserId = '';
     try {
       const u = new URL(window.location.href);
       const v = String(u.searchParams.get('userId') || '').trim();
       if (/^\d+$/.test(v) && ctx.role !== 'employee') ctx.actingUserId = v;
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     
     // For admin/manager, if no specific userId is set yet, wait for initUserPicker to set the first employee
-    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : (ctx.role === 'employee' ? String(profile.id || '') : ''); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { state.currentViewingUserId = ctx.actingUserId ? String(ctx.actingUserId) : (ctx.role === 'employee' ? String(profile.id || '') : ''); } catch (e) { /* silently ignored */ }
 
     ctx.picker1 = $('#monthPicker');
     ctx.picker2 = $('#monthPicker2');
@@ -1886,7 +1886,7 @@
       setContractCollapsed(false);
       setSummaryCollapsed(false);
       setAnnualCollapsed(false);
-    } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     applyDailyCollapsed(getDailyCollapsed());
     applyContractCollapsed(getContractCollapsed());
@@ -1902,7 +1902,7 @@
         const u = new URL(window.location.href);
         const m = String(u.searchParams.get('month') || '').slice(0, 7);
         if (/^\d{4}-\d{2}$/.test(m)) return m;
-      } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       return monthJST();
     })();
     if (ctx.picker1) ctx.picker1.value = ctx.initialYM;
@@ -1911,7 +1911,7 @@
 
     // Do not block first month rendering on employee-list fetch.
     initUserPicker().then(() => {
-      try { root.Events?.bindUserPicker?.(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+      try { root.Events?.bindUserPicker?.(); } catch (e) { /* silently ignored */ }
       if (ctx.role !== 'employee') {
         // Force refresh for admin to show the auto-selected first employee
         setMonth(ctx.initialYM, true, { spinner: false }).catch(()=>{});
@@ -1945,8 +1945,8 @@
   };
 
   const clearRow = (tr) => {
-    try { tr.dataset.dirty = '1'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { tr.dataset.clear = '1'; } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { tr.dataset.dirty = '1'; } catch (e) { /* silently ignored */ }
+    try { tr.dataset.clear = '1'; } catch (e) { /* silently ignored */ }
     const ckOn = tr.querySelector('input[data-field="ckOnsite"]');
     const ckRe = tr.querySelector('input[data-field="ckRemote"]');
     const ckSa = tr.querySelector('input[data-field="ckSatellite"]');
@@ -1968,7 +1968,7 @@
     if (ihSel) ihSel.value = '';
     const memo = tr.querySelector('[data-field="memo"]');
     if (memo) memo.value = '';
-    try { root.Render?.recomputeRow?.(tr); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { root.Render?.recomputeRow?.(tr); } catch (e) { /* silently ignored */ }
   };
 
   const checkImportFile = () => {
@@ -1985,15 +1985,15 @@
 
   const setActingUserId = async (nextUserId) => {
     ctx.actingUserId = String(nextUserId || '').trim();
-    try { if (ctx.monthCache instanceof Map) ctx.monthCache.clear(); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
-    try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { if (ctx.monthCache instanceof Map) ctx.monthCache.clear(); } catch (e) { /* silently ignored */ }
+    try { state.currentViewingUserId = ctx.actingUserId || String(ctx.profile?.id || ''); } catch (e) { /* silently ignored */ }
     const ym = ctx.picker?.value || monthJST();
     
     // Pass userId to setMonth so it updates URL once
     const url = new URL(window.location.href);
     if (ctx.actingUserId) url.searchParams.set('userId', ctx.actingUserId);
     else url.searchParams.delete('userId');
-    try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { console.error('[attendance-monthly.controller.js] Swallowed error:', e); }
+    try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { /* silently ignored */ }
     
     await setMonth(ym, true);
   };

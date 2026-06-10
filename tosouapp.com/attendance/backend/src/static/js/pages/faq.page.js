@@ -27,7 +27,7 @@ async function apiFetchJson(url, options = {}, timeoutMs = 12000) {
       signal: controller.signal
     });
     let data = null;
-    try { data = await response.json(); } catch (e) { console.error('[faq.page.js] Swallowed error:', e); }
+    try { data = await response.json(); } catch (e) { /* silently ignored */ }
     if (!response.ok) {
       const msg = data?.message || (data?.errors?.[0]?.msg) || `HTTP ${response.status}`;
       throw new Error(msg);

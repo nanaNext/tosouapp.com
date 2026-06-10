@@ -47,18 +47,18 @@ function ensureEmployeePillStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 }
 
 const showNavSpinner = () => {
-  try { sessionStorage.removeItem('navSpinner'); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
 };
 
 const hideNavSpinner = () => {
   try {
     const c = document.querySelector('#adminContent');
     if (c) c.style.visibility = '';
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 let employeesRenderSeq = 0;
@@ -85,13 +85,13 @@ const bindTopbarSearchClear = () => {
     if (closeBtn.dataset.empClearBound === '1') return;
     closeBtn.dataset.empClearBound = '1';
     const clearAndBack = (e) => {
-      try { e.preventDefault(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-      try { e.stopPropagation(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      try { e.preventDefault(); } catch (e) { /* silently ignored */ }
+      try { e.stopPropagation(); } catch (e) { /* silently ignored */ }
       try { window.location.assign('/admin/employees#list'); } catch { window.location.href = '/admin/employees#list'; }
     };
     closeBtn.addEventListener('pointerdown', clearAndBack, true);
     closeBtn.addEventListener('click', clearAndBack, true);
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const syncTopbarSearchKeyword = (keyword) => {
@@ -108,7 +108,7 @@ const syncTopbarSearchKeyword = (keyword) => {
       return;
     }
     searchBox.classList.remove('emp-query-active');
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const clearTopbarNoResultState = () => {
@@ -123,7 +123,7 @@ const clearTopbarNoResultState = () => {
     hint.textContent = def || 'Ctrl+K';
     hint.removeAttribute('title');
     hint.style.display = '';
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 const setTopbarNoResultState = (searchedText) => {
@@ -145,7 +145,7 @@ const setTopbarNoResultState = (searchedText) => {
     hint.textContent = msg;
     hint.title = msg;
     hint.style.display = 'inline-flex';
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 };
 
 function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFlag) {
@@ -181,7 +181,7 @@ async function renderEmployees(profile) {
     if (!isEmployeesPath(currentPath)) return;
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') showNavSpinner();
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const seq = ++employeesRenderSeq;
   const content = $('#adminContent');
@@ -215,9 +215,9 @@ async function renderEmployees(profile) {
     if ((pathname === '/admin/employees' || pathname === '/admin/employees/') && !hash && !detailId && !editId && !summaryId && !createFlag) {
       history.replaceState(null, '', '/admin/employees#list');
     }
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
-  try { document.body.classList.remove('employees-wide'); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  try { document.body.classList.remove('employees-wide'); } catch (e) { /* silently ignored */ }
   try {
     if (mode === 'delete') {
       document.body.classList.add('emp-delete-mode');
@@ -226,8 +226,8 @@ async function renderEmployees(profile) {
       document.body.classList.remove('emp-delete-mode');
       document.documentElement.classList.remove('emp-delete-mode');
     }
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-  try { content.innerHTML = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
+  try { content.innerHTML = ''; } catch (e) { /* silently ignored */ }
 
   if (mode === 'detail' && detailId) {
     const u = await getEmployee(detailId);
@@ -254,7 +254,7 @@ async function renderEmployees(profile) {
       try {
         const x = new Date(raw);
         if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getDate()).padStart(2,'0')}`;
-      } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       return raw;
     };
 
@@ -276,7 +276,7 @@ async function renderEmployees(profile) {
       const allUsers3 = role2 === 'manager' ? await fetchJSONAuth('/api/manager/users') : await listUsers();
       const mgr3 = allUsers3.find(x => String(x.id) === String(u.manager_id));
       mgrName3 = mgr3 ? (mgr3.username || mgr3.email) : '';
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const avatarBlock3 = `<div class="avatar">${ini3}</div>`;
     panel.innerHTML = `
       <div class="head">
@@ -331,7 +331,7 @@ async function renderEmployees(profile) {
           try {
             const defs = await fetchJSONAuth('/api/attendance/shifts/definitions');
             def = (defs || []).find(d => String(d.id) === String(active.shiftId)) || null;
-          } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+          } catch (e) { /* silently ignored */ }
         }
         if (active.shift && typeof active.shift === 'object') {
           name = String(active.shift.name || '');
@@ -354,7 +354,7 @@ async function renderEmployees(profile) {
         const rangeText = range && !range.startsWith('—') ? ` ${range}` : '';
         rowShift.innerHTML = `<span style="display:inline-block;padding:4px 12px;border-radius:999px;background:#eef5ff;color:#0b2c66;font-weight:700;margin-right:8px;">${nm}</span><span style="font-weight:700;color:#334155;margin-right:8px;">${time}</span><span style="color:#64748b;">${rangeText}</span>`;
       }
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       const box = panel.querySelector('#detailAvatarGallery');
       if (box) {
@@ -394,7 +394,7 @@ async function renderEmployees(profile) {
       if (btnEdit) btnEdit.setAttribute('href', editHref);
       const btnBack = panel.querySelector('#btnDetailBack');
       if (btnBack) btnBack.setAttribute('href', backHref);
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     hideNavSpinner();
     return;
   }
@@ -404,7 +404,7 @@ async function renderEmployees(profile) {
       const month = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
       window.location.replace(`/admin/employees/monthly-summary?userId=${encodeURIComponent(summaryId)}&month=${encodeURIComponent(month)}`);
       return;
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     const u = await getEmployee(summaryId);
     if (seq !== employeesRenderSeq) return;
     content.innerHTML = ``;
@@ -780,7 +780,7 @@ async function renderEmployees(profile) {
         }
       });
       loadSa().catch(() => {});
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
 
     try {
       const wdStatus = wrap.querySelector('#wdStatus');
@@ -926,7 +926,7 @@ async function renderEmployees(profile) {
         }
       });
       loadWd().catch(() => {});
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     hideNavSpinner();
     return;
   }
@@ -996,7 +996,7 @@ async function renderEmployees(profile) {
       note.style.fontWeight = '700';
       note.textContent = '従業員が見つかりません。従業員が未登録か、表示条件に一致しません。';
       content.appendChild(note);
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
   if (errMsgs.length) {
     const msg = document.createElement('div');
@@ -1117,7 +1117,7 @@ async function renderEmployees(profile) {
       const cancelA = formEdit.querySelector('#btnCancelEdit');
       if (backA) backA.setAttribute('href', backHref);
       if (cancelA) cancelA.setAttribute('href', backHref);
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     formEdit.addEventListener('submit', async (e) => {
       e.preventDefault();
       const submitBtn = formEdit.querySelector('button[type="submit"]');
@@ -1165,7 +1165,7 @@ async function renderEmployees(profile) {
             });
             uploadedCount = Number(out?.count || saveFiles.length || 0);
             if (statusElOnSave) statusElOnSave.textContent = `アップロード完了 (${uploadedCount}件)`;
-            try { fileElOnSave.value = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+            try { fileElOnSave.value = ''; } catch (e) { /* silently ignored */ }
           } catch (uploadErr) {
             if (statusElOnSave) statusElOnSave.textContent = String(uploadErr?.message || 'アップロード失敗');
             throw new Error(`社員情報は保存済みですが、写真アップロードに失敗しました: ${String(uploadErr?.message || '')}`);
@@ -1174,14 +1174,14 @@ async function renderEmployees(profile) {
         try {
           const msg = uploadedCount > 0 ? `保存しました（写真${uploadedCount}件アップロード）` : '保存しました';
           sessionStorage.setItem('empFlashMessage', msg);
-        } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         try {
           const listKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
           const keep = new URLSearchParams();
           for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
           const qsKeep = keep.toString();
           history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-        } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         await renderEmployees(profile);
       } catch (err) {
         window.alert(String(err?.message || '保存に失敗しました'));
@@ -1282,7 +1282,7 @@ async function renderEmployees(profile) {
             body: fd
           });
           if (statusEl) statusEl.textContent = `アップロード完了 (${Number(out?.count || files.length)}件)`;
-          try { fileEl.value = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+          try { fileEl.value = ''; } catch (e) { /* silently ignored */ }
           renderSelectedPreview([]);
           await loadAvatarGallery();
         } catch (err) {
@@ -1299,7 +1299,7 @@ async function renderEmployees(profile) {
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-      } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       await renderEmployees(profile);
     });
     formEdit.querySelector('#btnCancelEdit').addEventListener('click', async (e) => {
@@ -1310,7 +1310,7 @@ async function renderEmployees(profile) {
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-      } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       await renderEmployees(profile);
     });
     content.appendChild(formEdit);
@@ -1343,7 +1343,7 @@ async function renderEmployees(profile) {
       const key = (document.querySelector('#editKey').value || '').trim();
       if (!key) {
         if (errEl) { errEl.style.display = 'block'; errEl.textContent = '社員番号を入力してください。'; }
-        try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
         return;
       }
       if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
@@ -1373,7 +1373,7 @@ async function renderEmployees(profile) {
       window.location.href = `/admin/employees?edit=${id}`;
     });
     content.appendChild(prompt);
-    try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
     hideNavSpinner();
     return;
   }
@@ -1482,7 +1482,7 @@ async function renderEmployees(profile) {
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-      } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       await renderEmployees(profile);
     });
 
@@ -1535,14 +1535,14 @@ async function renderEmployees(profile) {
               body: fd
             });
           }
-        } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         if (btn) {
           btn.style.background = 'transparent';
           btn.style.borderColor = 'transparent';
           btn.style.color = '#10b981';
           btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> <span>作成成功</span>`;
         }
-        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
         setTimeout(() => { window.location.href = '/admin/employees#list'; }, 1000);
         return;
       } catch (err) {
@@ -1553,10 +1553,10 @@ async function renderEmployees(profile) {
             msgEl.style.color = '#f87171';
             if (m.includes('社員番号') || low.includes('uniq_employee_code') || low.includes('duplicate entry')) {
               msgEl.textContent = '社員番号が既に存在します。別の番号を入力してください。';
-              try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+              try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
             } else if (m.includes('Email') || low.includes('email')) {
               msgEl.textContent = m;
-              try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+              try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
             } else {
               msgEl.textContent = '作成失敗: ' + (m || 'error');
             }
@@ -1698,7 +1698,7 @@ async function renderEmployees(profile) {
         `;
         document.head.appendChild(style);
       }
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
 
   const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', employmentType: '', status: '', sortKey: 'id', sortDir: 'asc', page: 1, pageSize: 10 };
@@ -1714,7 +1714,7 @@ async function renderEmployees(profile) {
     state.sortKey = params.get('sortKey') || state.sortKey;
     state.sortDir = params.get('sortDir') || state.sortDir;
     state.page = parseInt(params.get('page') || String(state.page), 10) || state.page;
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
   const updateUrl = (hashValue) => {
     try {
       const p = new URLSearchParams();
@@ -1730,7 +1730,7 @@ async function renderEmployees(profile) {
       if (state.page && state.page > 1) p.set('page', String(state.page));
       const qs = p.toString();
       history.replaceState(null, '', `/admin/employees${qs ? '?' + qs : ''}${hashValue || ''}`);
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const searchHint = document.createElement('div');
@@ -1746,7 +1746,7 @@ async function renderEmployees(profile) {
     if (tbl && mode === 'delete') tbl.after(searchHint);
     else if (act) act.after(searchHint);
     else filterWrap.appendChild(searchHint);
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const table = document.createElement('table');
   table.id = 'list';
@@ -1788,17 +1788,17 @@ async function renderEmployees(profile) {
   const syncPinnedColumnsSticky = () => {
     try {
       const removeOverlay = () => {
-        try { tableScrollWrap.classList.remove('has-freeze-overlay'); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { tableScrollWrap.classList.remove('has-freeze-overlay'); } catch (e) { /* silently ignored */ }
         try {
           const el = tableScrollWrap.querySelector('.emp-freeze-overlay');
           if (el) el.remove();
-        } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       };
       try {
         tableScrollWrap.classList.remove('use-pin-overlay');
         const legacyPanel = tableScrollWrap.querySelector('.emp-pin-panel');
         if (legacyPanel) legacyPanel.remove();
-      } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
       removeOverlay();
       const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
       const isNarrowMobile = isMobileFlatMode();
@@ -1828,12 +1828,12 @@ async function renderEmployees(profile) {
         setWidth(tds[1], w2);
       });
 
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
   if (!tableScrollWrap.dataset.pinBound) {
     tableScrollWrap.dataset.pinBound = '1';
-    try { window.addEventListener('resize', () => { try { syncPinnedColumnsSticky(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); } }); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-    try { window.addEventListener('orientationchange', () => { try { syncPinnedColumnsSticky(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); } }); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { window.addEventListener('resize', () => { try { syncPinnedColumnsSticky(); } catch (e) { /* silently ignored */ } }); } catch (e) { /* silently ignored */ }
+    try { window.addEventListener('orientationchange', () => { try { syncPinnedColumnsSticky(); } catch (e) { /* silently ignored */ } }); } catch (e) { /* silently ignored */ }
   }
 
   const pager = document.createElement('div');
@@ -1886,10 +1886,10 @@ async function renderEmployees(profile) {
   noResultCenter.textContent = '該当データがありません';
   content.appendChild(noResultCenter);
   const hideFilterWrap = () => {
-    try { filterWrap.style.setProperty('display', 'none', 'important'); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { filterWrap.style.setProperty('display', 'none', 'important'); } catch (e) { /* silently ignored */ }
   };
   const showFilterWrap = () => {
-    try { filterWrap.style.removeProperty('display'); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { filterWrap.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
   };
 
   const fmtEmpNo = (id) => 'EMP' + String(id).padStart(3, '0');
@@ -1954,7 +1954,7 @@ async function renderEmployees(profile) {
     try {
       const x = new Date(raw);
       if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getDate()).padStart(2,'0')}`;
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     return raw;
   };
   const normalizeSearchText = (v) => String(v || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -2030,29 +2030,29 @@ async function renderEmployees(profile) {
           ? `「${buildSearchSummaryJa()}」は見つかりません`
           : '該当データがありません';
         noResultCenter.textContent = noResultMsg;
-        try { noResultCenter.style.display = 'flex'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { noResultCenter.style.display = 'flex'; } catch (e) { /* silently ignored */ }
         hideFilterWrap();
-        try { if (listHeader) listHeader.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { if (listHeader) listHeader.style.display = 'none'; } catch (e) { /* silently ignored */ }
       } else {
-        try { noResultCenter.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { noResultCenter.style.display = 'none'; } catch (e) { /* silently ignored */ }
         showFilterWrap();
-        try { if (listHeader) listHeader.style.display = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { if (listHeader) listHeader.style.display = ''; } catch (e) { /* silently ignored */ }
       }
       clearTopbarNoResultState();
-      try { table.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-      try { tableScrollWrap.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-      try { pager.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      try { table.style.display = 'none'; } catch (e) { /* silently ignored */ }
+      try { tableScrollWrap.style.display = 'none'; } catch (e) { /* silently ignored */ }
+      try { pager.style.display = 'none'; } catch (e) { /* silently ignored */ }
       const pageInfo0 = content.querySelector('#empPageInfo');
       if (pageInfo0) pageInfo0.textContent = '';
       return;
     }
-    try { noResultCenter.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { noResultCenter.style.display = 'none'; } catch (e) { /* silently ignored */ }
     showFilterWrap();
-    try { if (listHeader) listHeader.style.display = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { if (listHeader) listHeader.style.display = ''; } catch (e) { /* silently ignored */ }
     clearTopbarNoResultState();
-    try { table.style.display = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-    try { tableScrollWrap.style.display = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-    try { pager.style.display = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { table.style.display = ''; } catch (e) { /* silently ignored */ }
+    try { tableScrollWrap.style.display = ''; } catch (e) { /* silently ignored */ }
+    try { pager.style.display = ''; } catch (e) { /* silently ignored */ }
     for (const u of pageItems) {
       const tr = document.createElement('tr');
       const rowStatus = String(u.employment_status || '').toLowerCase();
@@ -2124,13 +2124,13 @@ async function renderEmployees(profile) {
     }
     if (!isNarrowMobile) {
       syncPinnedColumnsSticky();
-      try { setTimeout(() => syncPinnedColumnsSticky(), 80); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-      try { setTimeout(() => syncPinnedColumnsSticky(), 220); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      try { setTimeout(() => syncPinnedColumnsSticky(), 80); } catch (e) { /* silently ignored */ }
+      try { setTimeout(() => syncPinnedColumnsSticky(), 220); } catch (e) { /* silently ignored */ }
     } else {
       try {
         tableScrollWrap.style.removeProperty('--pin-col-1');
         tableScrollWrap.style.removeProperty('--pin-col-2');
-      } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
   };
   const handleViewportLayoutChange = () => {
@@ -2139,12 +2139,12 @@ async function renderEmployees(profile) {
       if (lastMobileFlatMode === null) return;
       if (now === lastMobileFlatMode) return;
       renderRows();
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
   if (!tableScrollWrap.dataset.layoutBound) {
     tableScrollWrap.dataset.layoutBound = '1';
-    try { window.addEventListener('resize', handleViewportLayoutChange, { passive: true }); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-    try { window.addEventListener('orientationchange', handleViewportLayoutChange); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { window.addEventListener('resize', handleViewportLayoutChange, { passive: true }); } catch (e) { /* silently ignored */ }
+    try { window.addEventListener('orientationchange', handleViewportLayoutChange); } catch (e) { /* silently ignored */ }
   }
   renderRows();
   if (mode === 'delete') {
@@ -2180,7 +2180,7 @@ async function renderEmployees(profile) {
       if (tabSearch) tabSearch.addEventListener('click', () => {
         state.showAll = false;
         state.searchVisible = false;
-        try { searchHint.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { searchHint.style.display = 'none'; } catch (e) { /* silently ignored */ }
         setActive();
         updateUrl('#delete');
       });
@@ -2188,12 +2188,12 @@ async function renderEmployees(profile) {
         state.showAll = true;
         state.searchVisible = false;
         state.page = 1;
-        try { searchHint.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        try { searchHint.style.display = 'none'; } catch (e) { /* silently ignored */ }
         setActive();
         renderRows();
         updateUrl('#delete');
       });
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   }
 
   try {
@@ -2207,7 +2207,7 @@ async function renderEmployees(profile) {
       const hasAny0 = !!((params.get('code') || '').trim() || (params.get('q') || '').trim() || state.dept || state.employmentType || state.status);
       searchHint.style.display = hasAny0 ? 'none' : 'none';
     }
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   filterWrap.querySelector('#btnEmpSearch').addEventListener('click', () => {
     const codeEl2 = filterWrap.querySelector('#empSearchCode');
@@ -2225,8 +2225,8 @@ async function renderEmployees(profile) {
     if (!hasAny && !(mode === 'delete' && state.showAll)) {
       syncTopbarSearchKeyword('');
       clearTopbarNoResultState();
-      try { searchHint.style.display = 'block'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-      try { const el = filterWrap.querySelector('#empSearchCode'); if (el && el.focus) el.focus(); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      try { searchHint.style.display = 'block'; } catch (e) { /* silently ignored */ }
+      try { const el = filterWrap.querySelector('#empSearchCode'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
       if (mode === 'delete') {
         try {
           const listBox = filterWrap.querySelector('#empListBox');
@@ -2235,11 +2235,11 @@ async function renderEmployees(profile) {
           pager.style.display = 'none';
           const tb = filterWrap.querySelector('.emp-del-toolbar');
           if (tb) tb.style.display = 'none';
-        } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
       }
       return;
     }
-    try { searchHint.style.display = 'none'; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { searchHint.style.display = 'none'; } catch (e) { /* silently ignored */ }
     if (mode === 'delete') {
       state.searchVisible = hasAny;
       if (!hasAny && !state.showAll) {
@@ -2250,7 +2250,7 @@ async function renderEmployees(profile) {
           pager.style.display = 'none';
           const tb = filterWrap.querySelector('.emp-del-toolbar');
           if (tb) tb.style.display = 'none';
-        } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         return;
       }
       try {
@@ -2260,7 +2260,7 @@ async function renderEmployees(profile) {
         pager.style.display = '';
         const tb = filterWrap.querySelector('.emp-del-toolbar');
         if (tb) tb.style.display = '';
-      } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+      } catch (e) { /* silently ignored */ }
     }
     if (mode !== 'delete' && hasAny) {
       const matchedCount = applyFilterSort().length;
@@ -2269,7 +2269,7 @@ async function renderEmployees(profile) {
         updateUrl('#list');
         try {
           if (noResultBackTimer) clearTimeout(noResultBackTimer);
-        } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+        } catch (e) { /* silently ignored */ }
         noResultBackTimer = setTimeout(() => {
           state.code = '';
           state.q = '';
@@ -2277,11 +2277,11 @@ async function renderEmployees(profile) {
           state.employmentType = '';
           state.status = '';
           state.page = 1;
-          try { if (codeEl2) codeEl2.value = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-          try { if (keywordEl2) keywordEl2.value = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-          try { if (deptEl2) deptEl2.value = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-          try { if (typeEl2) typeEl2.value = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-          try { if (statusEl2) statusEl2.value = ''; } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+          try { if (codeEl2) codeEl2.value = ''; } catch (e) { /* silently ignored */ }
+          try { if (keywordEl2) keywordEl2.value = ''; } catch (e) { /* silently ignored */ }
+          try { if (deptEl2) deptEl2.value = ''; } catch (e) { /* silently ignored */ }
+          try { if (typeEl2) typeEl2.value = ''; } catch (e) { /* silently ignored */ }
+          try { if (statusEl2) statusEl2.value = ''; } catch (e) { /* silently ignored */ }
           renderRows();
           updateUrl('#list');
         }, 1500);
@@ -2353,7 +2353,7 @@ async function renderEmployees(profile) {
       `;
       overlay.appendChild(modal);
       document.body.appendChild(overlay);
-      const close = () => { try { document.body.removeChild(overlay); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); } };
+      const close = () => { try { document.body.removeChild(overlay); } catch (e) { /* silently ignored */ } };
       overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
       modal.querySelector('#modalCancelDisable').addEventListener('click', close);
       modal.querySelector('#modalConfirmDisable').addEventListener('click', async () => {
@@ -2361,7 +2361,7 @@ async function renderEmployees(profile) {
         btn.disabled = true;
         try {
           for (const id of ids) {
-            try { await deleteEmployee(id); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+            try { await deleteEmployee(id); } catch (e) { /* silently ignored */ }
           }
           for (const id of ids) {
             const u = users.find(x => String(x.id) === String(id));
@@ -2439,7 +2439,7 @@ export async function mount() {
   try {
     const userName = document.querySelector('#userName');
     if (userName) userName.textContent = profile.username || profile.email || '管理者';
-  } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const status = $('#status');
   if (status) status.textContent = '';
@@ -2453,16 +2453,16 @@ export async function mount() {
     try {
       if (!isEmployeesPath(location.pathname)) return;
       renderEmployees(profile);
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
   window.addEventListener('hashchange', onRouteUpdate);
   window.addEventListener('popstate', onRouteUpdate);
   return () => {
-    try { window.removeEventListener('hashchange', onRouteUpdate); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
-    try { window.removeEventListener('popstate', onRouteUpdate); } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    try { window.removeEventListener('hashchange', onRouteUpdate); } catch (e) { /* silently ignored */ }
+    try { window.removeEventListener('popstate', onRouteUpdate); } catch (e) { /* silently ignored */ }
     try {
       document.body.classList.remove('emp-delete-mode');
       document.documentElement.classList.remove('emp-delete-mode');
-    } catch (e) { console.error('[employees.page.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 }

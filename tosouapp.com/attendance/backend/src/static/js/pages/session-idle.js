@@ -23,7 +23,7 @@
   const now = () => Date.now();
 
   const setLastActivity = (t) => {
-    try { localStorage.setItem(ACTIVITY_KEY, String(t)); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    try { localStorage.setItem(ACTIVITY_KEY, String(t)); } catch (e) { /* silently ignored */ }
   };
 
   const getLastActivity = () => {
@@ -45,11 +45,11 @@
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
-    } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     try {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const goLogin = () => {
@@ -60,14 +60,14 @@
     try {
       const list = Array.isArray(globalThis.__draftFlushers) ? globalThis.__draftFlushers : [];
       for (const fn of list) {
-        try { if (typeof fn === 'function') fn(); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+        try { if (typeof fn === 'function') fn(); } catch (e) { /* silently ignored */ }
       }
-    } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
   };
 
   const doLogout = async () => {
     flushDrafts();
-    try { localStorage.setItem(FORCE_LOGOUT_KEY, String(now())); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    try { localStorage.setItem(FORCE_LOGOUT_KEY, String(now())); } catch (e) { /* silently ignored */ }
     try {
       const csrf = getCookie('csrfToken');
       await fetch('/api/auth/logout', {
@@ -76,7 +76,7 @@
         credentials: 'include',
         body: JSON.stringify({})
       });
-    } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    } catch (e) { /* silently ignored */ }
     clearClientTokens();
     goLogin();
   };
@@ -91,12 +91,12 @@
     });
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
       throw new Error(msg);
     }
     const j = await res.json();
     if (j && j.accessToken) {
-      try { sessionStorage.setItem('accessToken', j.accessToken); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+      try { sessionStorage.setItem('accessToken', j.accessToken); } catch (e) { /* silently ignored */ }
     }
     bump();
     return true;
@@ -248,11 +248,11 @@
     if (warnOpen) hideWarn();
   };
   for (const ev of activityEvents) {
-    try { window.addEventListener(ev, onActivity, { passive: true }); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    try { window.addEventListener(ev, onActivity, { passive: true }); } catch (e) { /* silently ignored */ }
   }
-  try { document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') onActivity(); }); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
-  try { window.addEventListener('focus', onActivity, { passive: true }); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
-  try { window.addEventListener('pageshow', onActivity, { passive: true }); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+  try { document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') onActivity(); }); } catch (e) { /* silently ignored */ }
+  try { window.addEventListener('focus', onActivity, { passive: true }); } catch (e) { /* silently ignored */ }
+  try { window.addEventListener('pageshow', onActivity, { passive: true }); } catch (e) { /* silently ignored */ }
   bump();
 
   let timer = 0;
@@ -283,7 +283,7 @@
 
     if (warnOpen) hideWarn();
   };
-  try { timer = window.setInterval(tick, CHECK_MS); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+  try { timer = window.setInterval(tick, CHECK_MS); } catch (e) { /* silently ignored */ }
 
   try {
     window.addEventListener('storage', (e) => {
@@ -294,16 +294,16 @@
       }
       if (k === ACTIVITY_KEY) { graceUntil = 0; if (warnOpen) hideWarn(); }
     });
-  } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+  } catch (e) { /* silently ignored */ }
 
   const stop = () => {
-    try { if (timer) window.clearInterval(timer); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    try { if (timer) window.clearInterval(timer); } catch (e) { /* silently ignored */ }
     timer = 0;
     for (const ev of activityEvents) {
-      try { window.removeEventListener(ev, onActivity); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+      try { window.removeEventListener(ev, onActivity); } catch (e) { /* silently ignored */ }
     }
-    try { window.removeEventListener('focus', onActivity); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
-    try { window.removeEventListener('pageshow', onActivity); } catch (e) { console.error('[session-idle.js] Swallowed error:', e); }
+    try { window.removeEventListener('focus', onActivity); } catch (e) { /* silently ignored */ }
+    try { window.removeEventListener('pageshow', onActivity); } catch (e) { /* silently ignored */ }
   };
 
   globalThis.SessionIdle = { bump, stop, doLogout };
