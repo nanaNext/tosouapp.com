@@ -2561,6 +2561,23 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
   }
 }
 
+/* Mặc định trên PC (màn hình lớn): Chữ to, đệm rộng */
+#goOutHistoryTable th {
+  font-size: 15px;
+  padding: 6px 8px;
+}
+#goOutHistoryTable td {
+  font-size: 15px;
+  padding: 6px 8px;
+}
+#goOutHistoryTable .goout-type-badge {
+  font-size: 14px;
+  padding: 2px 8px;
+}
+#goOutHistoryTable tr.goout-history-row:hover {
+  background-color: #f1f5f9 !important;
+}
+
 /* Ép toàn bộ giao diện siêu nhỏ trên mobile (< 900px) */
 @media (max-width: 900px) {
   .se-page-title { font-size: 13px !important; }
@@ -2590,8 +2607,53 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
     height: 24px !important;
     padding: 0 2px !important;
   }
-}
-@media (max-width: 420px) {
+  
+  /* Compact Go Out Table on Mobile */
+    #goOutHistoryTable th,
+    #goOutHistoryTable td {
+      font-size: 11px !important;
+      padding: 6px 4px !important;
+    }
+    #goOutHistoryTable .goout-type-badge {
+      font-size: 10px !important;
+      padding: 2px 4px !important;
+    }
+    /* Enable horizontal scroll for table wrapper */
+   #goOutHistoryTable {
+     overflow-x: auto;
+     -webkit-overflow-scrolling: touch;
+   }
+   #goOutHistoryTable table {
+     min-width: 400px; /* Force minimum width to allow scrolling instead of squishing text */
+   }
+   .goout-history-controls {
+     flex-direction: column;
+     align-items: flex-start !important;
+     gap: 12px !important;
+   }
+   .goout-history-filters label {
+     font-size: 11px !important;
+   }
+   .goout-history-filters input, .goout-history-filters select {
+     font-size: 12px !important;
+     height: 32px !important;
+   }
+   .goout-history-summary {
+      font-size: 12px !important;
+      line-height: 1.5;
+    }
+    .goout-history-summary .goout-summary-total {
+      font-size: 14px !important;
+      display: inline-block;
+    }
+    .goout-history-summary .goout-summary-details {
+      font-size: 10px !important;
+      display: block;
+      margin-left: 0 !important;
+      margin-top: 4px;
+    }
+  }
+  @media (max-width: 420px) {
   .se-month { margin: 0 4px; }
   #dailySection .common-buttons .se-btn,
   #dailySection .common-buttons .se-btn.se-btn-wide {
