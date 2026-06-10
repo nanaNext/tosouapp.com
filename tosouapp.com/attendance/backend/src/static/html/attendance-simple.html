@@ -5,15 +5,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>簡易登録画面</title>
   <style>
+    /* Hide main content while spinner is active */
+    body.is-loading .simple-top,
+    body.is-loading .simple-tabs,
+    body.is-loading .simple-main {
+      opacity: 0;
+      pointer-events: none;
+    }
   </style>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260421-empcache3">
-  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260610-fix-buttons-38">
+  <link rel="stylesheet" href="/static/css/attendance-simple.css?v=navy-20260610-fix-loading-39">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260421-empcache3" defer></script>
   <script type="module" src="/static/js/pages/attendance-simple.page.js?v=navy-20260608-go-out-modal-37"></script>
 </head>
-<body>
-  <div id="pageSpinner" class="simple-spinner" hidden>
+<body class="is-loading">
+  <div id="pageSpinner" class="simple-spinner">
     <div class="lds-spinner" aria-hidden="true">
       <div></div><div></div><div></div><div></div><div></div><div></div>
       <div></div><div></div><div></div><div></div><div></div><div></div>
