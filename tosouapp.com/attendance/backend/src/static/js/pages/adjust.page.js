@@ -232,16 +232,29 @@ const renderForm = async () => {
     }
   };
 
-  $('#btnToggleHistory')?.addEventListener('click', () => {
-    const listHost = $('#adjustListHost');
-    if (listHost.style.display === 'none') {
-      listHost.style.display = 'block';
-      $('#btnToggleHistory').innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> 履歴を隠す';
-      // Scroll to list
-      listHost.scrollIntoView({ behavior: 'smooth' });
+  const toggleDrawer = () => {
+    const drawer = $('#sapDrawer');
+    const overlay = $('#sapDrawerOverlay');
+    if (!drawer || !overlay) return;
+    
+    const isActive = drawer.classList.contains('active');
+    if (isActive) {
+      drawer.classList.remove('active');
+      overlay.classList.remove('active');
+      document.body.style.overflow = ''; // Restore scroll
     } else {
-      listHost.style.display = 'none';
-      $('#btnToggleHistory').innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 履歴を表示';
+      drawer.classList.add('active');
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    }
+  };
+
+  $('#btnToggleHistory')?.addEventListener('click', toggleDrawer);
+  
+  // Xử lý sự kiện click cho các nút động (close, overlay) bằng Event Delegation
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#btnDrawerClose') || e.target.id === 'sapDrawerOverlay') {
+      toggleDrawer();
     }
   });
 
@@ -354,51 +367,119 @@ const renderList = async () => {
       </tr>`;
     }).join('');
     host.innerHTML = `
-      <style>
-        .sap-table-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 0; max-width: 800px; margin: 0 0 20px 0; overflow: hidden; }
-        .sap-table-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; }
-        .sap-table-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
-        .sap-table-toolbar { display: flex; gap: 8px; }
-        .sap-table-input { padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 2px; outline: none; width: 120px; }
-        .sap-table-input:focus { border-color: #005eb8; }
-        .sap-table-wrap { overflow-x: auto; }
-        .sap-compact-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        .sap-compact-table th { background: #f1f5f9; padding: 6px 8px; font-size: 11px; font-weight: 600; color: #475569; text-align: left; border-bottom: 1px solid #cbd5e1; white-space: nowrap; }
-        .sap-compact-table td { padding: 6px 8px; font-size: 12px; color: #1e293b; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-        .sap-compact-table tr:hover { background: #f8fafc; }
-        .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; }
-        .sap-badge.approved { background: #dcfce7; color: #166534; }
-        .sap-badge.rejected { background: #fee2e2; color: #991b1b; }
-        .sap-badge.pending { background: #f1f5f9; color: #475569; }
-        .sap-action-btn { background: transparent; border: 1px solid transparent; color: #005eb8; padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; }
-        .sap-action-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
-        .sap-action-btn.delete { color: #ef4444; }
-      </style>
-      <div class="sap-table-card">
-        <div class="sap-table-header">
-          <h3 class="sap-table-title">申請履歴</h3>
-          <div class="sap-table-toolbar">
-            <input id="adjustSearch" placeholder="検索..." class="sap-table-input">
-            <input type="month" id="adjustMonthFilter" class="sap-table-input" value="${selectedMonth}">
+        <style>
+          /* SAP Fiori Drawer (Side Panel) Styles */
+          .sap-drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.4);
+            z-index: 9998;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+          }
+          .sap-drawer-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+          }
+          .sap-drawer {
+            position: fixed;
+            top: 0;
+            right: -800px;
+            width: 100%;
+            max-width: 800px;
+            height: 100vh;
+            background: #fff;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+            z-index: 9999;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+          }
+          .sap-drawer.active {
+            right: 0;
+          }
+          .sap-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid #cbd5e1;
+            background: #f8fafc;
+          }
+          .sap-drawer-title { font-size: 16px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px; }
+          .sap-drawer-close {
+            background: transparent;
+            border: none;
+            color: #475569;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .sap-drawer-close:hover { background: #e2e8f0; color: #0f172a; }
+          .sap-drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+          }
+          
+          .sap-table-toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+          .sap-table-input { padding: 6px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; width: 140px; }
+          .sap-table-input:focus { border-color: #005eb8; }
+          .sap-table-wrap { border: 1px solid #cbd5e1; border-radius: 4px; overflow-x: auto; }
+          .sap-compact-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+          .sap-compact-table th { background: #f1f5f9; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #475569; text-align: left; border-bottom: 1px solid #cbd5e1; white-space: nowrap; }
+          .sap-compact-table td { padding: 8px 12px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+          .sap-compact-table tr:hover { background: #f8fafc; }
+          .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; }
+          .sap-badge.approved { background: #dcfce7; color: #166534; }
+          .sap-badge.rejected { background: #fee2e2; color: #991b1b; }
+          .sap-badge.pending { background: #f1f5f9; color: #475569; }
+          .sap-action-btn { background: transparent; border: 1px solid transparent; color: #005eb8; padding: 4px; font-size: 12px; cursor: pointer; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; }
+          .sap-action-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+          .sap-action-btn.delete { color: #ef4444; }
+        </style>
+
+        <div id="sapDrawerOverlay" class="sap-drawer-overlay"></div>
+        <div id="sapDrawer" class="sap-drawer">
+          <div class="sap-drawer-header">
+            <h3 class="sap-drawer-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              申請履歴
+            </h3>
+            <button id="btnDrawerClose" class="sap-drawer-close" title="閉じる">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+          <div class="sap-drawer-body">
+            <div class="sap-table-toolbar">
+              <input id="adjustSearch" placeholder="検索..." class="sap-table-input">
+              <input type="month" id="adjustMonthFilter" class="sap-table-input" value="${selectedMonth}">
+            </div>
+            <div class="sap-table-wrap">
+              <table class="sap-compact-table">
+                <thead>
+                  <tr>
+                    <th>申請番号</th>
+                    <th>ステータス</th>
+                    <th>レコードタイプ</th>
+                    <th>申請詳細</th>
+                    <th>作成日時</th>
+                    <th>アクション</th>
+                  </tr>
+                </thead>
+                <tbody>${tr}</tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div class="sap-table-wrap">
-          <table class="sap-compact-table">
-            <thead>
-              <tr>
-                <th>申請番号</th>
-                <th>ステータス</th>
-                <th>レコードタイプ</th>
-                <th>申請詳細</th>
-                <th>作成日時</th>
-                <th>アクション</th>
-              </tr>
-            </thead>
-            <tbody>${tr}</tbody>
-          </table>
-        </div>
-      </div>
-    `;
+      `;
     // Gắn lại sự kiện onchange cho input tháng
     setTimeout(() => {
       const monthFilter = document.getElementById('adjustMonthFilter');
