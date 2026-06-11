@@ -403,6 +403,12 @@ const renderList = async () => {
             pointer-events: none;
             transition: opacity 0.3s ease;
           }
+          @media (min-width: 1025px) {
+            .sap-drawer-overlay {
+              top: calc(var(--topbar-height, 60px) + 44px);
+              height: calc(100vh - var(--topbar-height, 60px) - 44px);
+            }
+          }
           .sap-drawer-overlay.active {
             opacity: 1;
             pointer-events: auto;
@@ -410,32 +416,38 @@ const renderList = async () => {
           .sap-drawer {
             position: fixed;
             top: var(--topbar-height, 60px); /* Bám sát dưới thanh tiêu đề */
-            right: -400px;
-            width: 400px;
-            max-width: 100vw;
+            right: -800px;
+            width: 100%;
+            max-width: 800px;
             height: calc(100vh - var(--topbar-height, 60px));
             background: #fff;
-            box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
             z-index: 901;
             transition: right 0.3s ease;
             display: flex;
             flex-direction: column;
           }
+          @media (min-width: 1025px) {
+            .sap-drawer {
+              top: calc(var(--topbar-height, 60px) + 44px); /* Trên PC: Bám sát dưới thanh tiêu đề + thanh menu phụ (44px) */
+              height: calc(100vh - var(--topbar-height, 60px) - 44px);
+            }
+          }
           .sap-drawer.active {
             right: 0;
           }
           .sap-drawer-header {
-            padding: 12px 16px;
+            padding: 8px 12px;
             border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #f8fafc;
-            min-height: 48px;
+            min-height: 40px;
             box-sizing: border-box;
           }
           .sap-drawer-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             color: #0f172a;
             margin: 0;
@@ -558,6 +570,7 @@ const renderList = async () => {
       });
       document.querySelectorAll('.btn-edit').forEach(btn => {
         btn.addEventListener('click', (e) => {
+          e.preventDefault(); // Ngăn chặn nổi bọt hoặc hành vi mặc định
           const id = e.currentTarget.dataset.id;
           const cin = e.currentTarget.dataset.in || '';
           const cout = e.currentTarget.dataset.out || '';
@@ -568,10 +581,21 @@ const renderList = async () => {
           if (inEl) inEl.value = cin.replace(' ', 'T');
           if (outEl) outEl.value = cout.replace(' ', 'T');
           if (rsEl) rsEl.value = reason;
-          try { document.getElementById('adjSubmit').textContent = '更新'; } catch (e) { /* silently ignored */ }
-          try { document.getElementById('adjSubmit').dataset.editId = id; } catch (e) { /* silently ignored */ }
+          
+          const submitBtn = document.getElementById('adjSubmit');
+          if (submitBtn) {
+            submitBtn.dataset.editId = id;
+          }
+          
           const statusEl = document.getElementById('adjStatus');
           if (statusEl) statusEl.textContent = '編集モード';
+          
+          // Đóng drawer sau khi bấm Edit
+          const drawer = document.getElementById('sapDrawer');
+          const overlay = document.getElementById('sapDrawerOverlay');
+          if (drawer) drawer.classList.remove('active');
+          if (overlay) overlay.classList.remove('active');
+          
           window.scrollTo({ top: 0, behavior: 'smooth' });
         });
       });
