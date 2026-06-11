@@ -137,7 +137,7 @@ const renderForm = async () => {
   if (!host) return;
   host.innerHTML = `
     <style>
-      .sap-compact-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 12px 16px; max-width: 600px; margin: 20px auto 16px; }
+      .sap-compact-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 12px 16px; max-width: 600px; margin: 20px 0 16px 0; }
       .sap-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; }
       .sap-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; }
       .sap-toolbar { display: flex; gap: 8px; }
@@ -355,7 +355,7 @@ const renderList = async () => {
     }).join('');
     host.innerHTML = `
       <style>
-        .sap-table-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 0; max-width: 800px; margin: 0 auto; overflow: hidden; }
+        .sap-table-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 0; max-width: 800px; margin: 0 0 20px 0; overflow: hidden; }
         .sap-table-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; }
         .sap-table-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
         .sap-table-toolbar { display: flex; gap: 8px; }
