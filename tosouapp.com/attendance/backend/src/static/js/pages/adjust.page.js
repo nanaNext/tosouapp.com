@@ -141,15 +141,15 @@ const renderForm = async () => {
       .sap-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; }
       .sap-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; }
       .sap-toolbar { display: flex; gap: 8px; }
-      .sap-icon-btn { background: #fff; border: 1px solid #cbd5e1; color: #334155; border-radius: 4px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
-      .sap-icon-btn:hover { background: #f1f5f9; }
-      .sap-icon-btn.primary { background: #005eb8; color: #fff; border-color: #005eb8; }
-      .sap-icon-btn.primary:hover { background: #004b93; }
-      .sap-icon-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      .sap-icon-btn { background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; width: 24px; height: 24px; }
+      .sap-icon-btn:hover { opacity: 0.7; }
+      .sap-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
       .sap-grid { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; align-items: center; }
       .sap-label { font-size: 12px; font-weight: 600; color: #475569; text-align: right; }
       .sap-input { padding: 4px 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; max-width: 200px; outline: none; }
       .sap-input.full { max-width: 100%; }
+      .sap-textarea { padding: 6px 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; max-width: 100%; outline: none; resize: vertical; min-height: 60px; font-family: inherit; }
+      .sap-textarea:focus { border-color: #005eb8; }
       .sap-input:focus { border-color: #005eb8; }
       .sap-current { background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; font-size: 12px; color: #334155; border-radius: 2px; display: inline-block; line-height: 1.4; width: 100%; max-width: 200px; box-sizing: border-box; }
     </style>
@@ -159,14 +159,12 @@ const renderForm = async () => {
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
           修正申請
         </h3>
-        <div class="sap-toolbar">
+        <div class="sap-toolbar" style="display: flex; align-items: center; gap: 8px;">
           <button id="btnToggleHistory" class="sap-icon-btn" title="履歴">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            履歴
+            <img src="/static/images/rireki-1.png" alt="履歴" style="width: 100%; height: 100%; object-fit: contain; pointer-events: none;">
           </button>
-          <button id="adjSubmit" class="sap-icon-btn primary" title="申請">
-            <img src="/static/images/shinsei.webp" alt="申請" style="width: 16px; height: 16px; object-fit: contain;">
-            申請
+          <button id="adjSubmit" class="sap-icon-btn" title="送信">
+            <img src="/static/images/shinsei.webp" alt="送信" style="width: 100%; height: 100%; object-fit: contain; pointer-events: none;">
           </button>
         </div>
       </div>
@@ -184,8 +182,8 @@ const renderForm = async () => {
         <div class="sap-label">修正(退勤)</div>
         <div><input id="adjOut" class="sap-input" type="datetime-local"></div>
 
-        <div class="sap-label">理由(任意)</div>
-        <div><input id="adjReason" class="sap-input full" placeholder="例: 打刻し忘れ"></div>
+        <div class="sap-label" style="align-self: flex-start; margin-top: 6px;">理由(任意)</div>
+        <div><textarea id="adjReason" class="sap-textarea" placeholder="例: 打刻し忘れ"></textarea></div>
       </div>
       <div id="adjStatus" style="font-size: 12px; font-weight: 600; color: #059669; text-align: right; margin-top: 8px; min-height: 18px;"></div>
     </div>
@@ -261,24 +259,38 @@ const renderForm = async () => {
   els.date?.addEventListener('change', loadDay);
   await loadDay();
 
-  els.submit?.addEventListener('click', async () => {
+  const handleApply = async () => {
     if (!els.submit || els.submit.disabled) return;
+
+    // Yêu cầu xác nhận trước khi gửi
+    const isEdit = !!els.submit.dataset.editId;
+    const confirmMsg = isEdit ? 'この内容で申請を更新しますか？' : 'この内容で申請を送信しますか？';
+    if (!confirm(confirmMsg)) return;
+
     showErr('');
     els.submit.disabled = true;
-    if (els.status) els.status.textContent = (els.submit.dataset.editId ? '更新中…' : '申請中…');
+
+    // Thêm vòng quay xoay tròn trong lúc đang gửi
+    const originalIcon = els.submit.innerHTML;
+    els.submit.innerHTML = `<svg class="spinner" viewBox="0 0 50 50" style="width:100%;height:100%;animation:spin 1s linear infinite;"><circle cx="25" cy="25" r="20" fill="none" stroke="#005eb8" stroke-width="5" stroke-linecap="round" stroke-dasharray="80 200"></circle></svg><style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`;
+
+    if (els.status) els.status.textContent = (isEdit ? '更新中…' : '申請中…');
     const inV = toMySQLDateTime(els.in?.value);
     const outV = toMySQLDateTime(els.out?.value);
     const reason = String(els.reason?.value || '').trim();
     const editId = parseInt(String(els.submit?.dataset?.editId || 0), 10) || null;
+
     if (!attendanceId && !editId) {
       if (els.status) els.status.textContent = '';
       els.submit.disabled = false;
+      els.submit.innerHTML = originalIcon;
       showErr('対象日の勤怠が見つかりません');
       return;
     }
     if (!inV && !outV) {
       if (els.status) els.status.textContent = '';
       els.submit.disabled = false;
+      els.submit.innerHTML = originalIcon;
       showErr('修正(出勤)または修正(退勤)を入力してください');
       return;
     }
@@ -294,16 +306,26 @@ const renderForm = async () => {
         await fetchJSONAuth('/api/adjust', { method: 'POST', body: JSON.stringify({ attendanceId, requestedCheckIn: inV, requestedCheckOut: outV, reason }) });
         if (els.status) els.status.textContent = '申請しました';
       }
-      try { delete els.submit.dataset.editId; els.submit.textContent = '申請'; } catch (e) { /* silently ignored */ }
+      try { delete els.submit.dataset.editId; } catch (e) { /* silently ignored */ }
+      if (els.in) els.in.value = '';
+      if (els.out) els.out.value = '';
+      if (els.reason) els.reason.value = '';
       await renderList();
     } catch (e) {
       if (els.status) els.status.textContent = '';
       showErr(e?.message || '申請に失敗しました');
     } finally {
       hideSpinner();
-      try { if (els.submit) els.submit.disabled = false; } catch (e) { /* silently ignored */ }
+      try { 
+        if (els.submit) {
+          els.submit.disabled = false;
+          els.submit.innerHTML = originalIcon;
+        }
+      } catch (e) { /* silently ignored */ }
     }
-  });
+  };
+
+  els.submit?.addEventListener('click', handleApply);
 };
 
 const renderList = async () => {
@@ -371,12 +393,12 @@ const renderList = async () => {
           /* SAP Fiori Drawer (Side Panel) Styles */
           .sap-drawer-overlay {
             position: fixed;
-            top: 0;
+            top: 104px; /* Tránh đè lên header và subbar (60px header + 44px subbar) */
             left: 0;
             width: 100vw;
-            height: 100vh;
+            height: calc(100vh - 104px);
             background: rgba(15, 23, 42, 0.4);
-            z-index: 9998;
+            z-index: 900;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
@@ -387,14 +409,14 @@ const renderList = async () => {
           }
           .sap-drawer {
             position: fixed;
-            top: 0;
+            top: 104px; /* Tránh đè lên header và subbar */
             right: -800px;
             width: 100%;
             max-width: 800px;
-            height: 100vh;
+            height: calc(100vh - 104px);
             background: #fff;
             box-shadow: -4px 0 15px rgba(0,0,0,0.1);
-            z-index: 9999;
+            z-index: 901;
             transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
@@ -510,13 +532,14 @@ const renderList = async () => {
       }
       document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+          e.preventDefault();
           const id = e.currentTarget.dataset.id;
           if (!confirm('この申請を削除しますか？')) return;
           try {
             await fetchJSONAuth(`/api/adjust/${id}`, { method: 'DELETE' });
-            await renderList();
+            await renderList(); // Chỉ render lại danh sách, không redirect
           } catch (err) {
-            alert(String(err?.message || '削除に失敗しました'));
+            showErr(err?.message || '削除に失敗しました');
           }
         });
       });
