@@ -141,14 +141,17 @@ const renderForm = async () => {
       .sap-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; }
       .sap-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; }
       .sap-toolbar { display: flex; gap: 8px; }
-      .sap-grid { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; align-items: center; }
-      .sap-label { font-size: 12px; font-weight: 600; color: #475569; text-align: right; }
-      .sap-input { padding: 4px 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; max-width: 200px; outline: none; }
+      .sap-icon-btn { background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; width: 24px; height: 24px; }
+      .sap-icon-btn:hover { opacity: 0.7; }
+      .sap-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+      .sap-grid { display: grid; grid-template-columns: 100px 1fr; gap: 12px 16px; align-items: center; }
+      .sap-label { font-size: 13px; font-weight: 600; color: #334155; text-align: left; }
+      .sap-input { padding: 6px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; width: 100%; max-width: 260px; box-sizing: border-box; outline: none; transition: border-color 0.2s; display: block; }
       .sap-input.full { max-width: 100%; }
-      .sap-textarea { padding: 6px 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; max-width: 100%; outline: none; resize: vertical; min-height: 60px; font-family: inherit; }
-      .sap-textarea:focus { border-color: #005eb8; }
-      .sap-input:focus { border-color: #005eb8; }
-      .sap-current { background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; font-size: 12px; color: #334155; border-radius: 2px; display: inline-block; line-height: 1.4; width: 100%; max-width: 200px; box-sizing: border-box; }
+      .sap-textarea { padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; width: 100%; box-sizing: border-box; outline: none; resize: vertical; min-height: 80px; font-family: inherit; transition: border-color 0.2s; display: block; }
+      .sap-textarea:focus { border-color: #005eb8; box-shadow: 0 0 0 2px rgba(0,94,184,0.1); }
+      .sap-input:focus { border-color: #005eb8; box-shadow: 0 0 0 2px rgba(0,94,184,0.1); }
+      .sap-current { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 10px; font-size: 13px; color: #334155; border-radius: 4px; line-height: 1.5; width: 100%; max-width: 260px; box-sizing: border-box; display: block; }
     </style>
     <div class="sap-compact-card">
       <div class="sap-header">
@@ -390,10 +393,10 @@ const renderList = async () => {
           /* SAP Fiori Drawer (Side Panel) Styles */
           .sap-drawer-overlay {
             position: fixed;
-            top: 104px; /* Tránh đè lên header và subbar (60px header + 44px subbar) */
+            top: var(--topbar-height, 60px); /* Bám sát dưới thanh tiêu đề */
             left: 0;
             width: 100vw;
-            height: calc(100vh - 104px);
+            height: calc(100vh - var(--topbar-height, 60px));
             background: rgba(15, 23, 42, 0.4);
             z-index: 900;
             opacity: 0;
@@ -406,11 +409,11 @@ const renderList = async () => {
           }
           .sap-drawer {
             position: fixed;
-            top: 104px; /* Tránh đè lên header và subbar */
+            top: var(--topbar-height, 60px); /* Bám sát dưới thanh tiêu đề */
             right: -800px;
             width: 100%;
             max-width: 800px;
-            height: calc(100vh - 104px);
+            height: calc(100vh - var(--topbar-height, 60px));
             background: #fff;
             box-shadow: -4px 0 15px rgba(0,0,0,0.1);
             z-index: 901;
