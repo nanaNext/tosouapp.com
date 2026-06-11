@@ -164,9 +164,9 @@ const renderForm = async () => {
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             履歴
           </button>
-          <button id="adjSubmit" class="sap-icon-btn primary" title="送信">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-            送信
+          <button id="adjSubmit" class="sap-icon-btn primary" title="申請">
+            <img src="/static/images/shinsei.webp" alt="申請" style="width: 16px; height: 16px; object-fit: contain;">
+            申請
           </button>
         </div>
       </div>
