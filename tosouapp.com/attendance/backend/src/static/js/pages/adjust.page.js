@@ -141,9 +141,6 @@ const renderForm = async () => {
       .sap-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; }
       .sap-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; }
       .sap-toolbar { display: flex; gap: 8px; }
-      .sap-icon-btn { background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; width: 24px; height: 24px; }
-      .sap-icon-btn:hover { opacity: 0.7; }
-      .sap-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
       .sap-grid { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; align-items: center; }
       .sap-label { font-size: 12px; font-weight: 600; color: #475569; text-align: right; }
       .sap-input { padding: 4px 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; max-width: 200px; outline: none; }
@@ -160,11 +157,11 @@ const renderForm = async () => {
           修正申請
         </h3>
         <div class="sap-toolbar" style="display: flex; align-items: center; gap: 8px;">
-          <button id="btnToggleHistory" class="sap-icon-btn" title="履歴">
-            <img src="/static/images/rireki-1.png" alt="履歴" style="width: 100%; height: 100%; object-fit: contain; pointer-events: none;">
+          <button id="btnToggleHistory" title="履歴" class="sap-icon-btn">
+            <img src="/static/images/rireki-1.png" alt="履歴" style="width: 24px; height: 24px; object-fit: contain; pointer-events: none;">
           </button>
-          <button id="adjSubmit" class="sap-icon-btn" title="送信">
-            <img src="/static/images/shinsei.webp" alt="送信" style="width: 100%; height: 100%; object-fit: contain; pointer-events: none;">
+          <button id="adjSubmit" title="送信" class="sap-icon-btn">
+            <img src="/static/images/shinsei.webp" alt="送信" style="width: 24px; height: 24px; object-fit: contain; pointer-events: none;">
           </button>
         </div>
       </div>
@@ -272,7 +269,7 @@ const renderForm = async () => {
 
     // Thêm vòng quay xoay tròn trong lúc đang gửi
     const originalIcon = els.submit.innerHTML;
-    els.submit.innerHTML = `<svg class="spinner" viewBox="0 0 50 50" style="width:100%;height:100%;animation:spin 1s linear infinite;"><circle cx="25" cy="25" r="20" fill="none" stroke="#005eb8" stroke-width="5" stroke-linecap="round" stroke-dasharray="80 200"></circle></svg><style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`;
+    els.submit.innerHTML = `<svg class="spinner" viewBox="0 0 50 50" style="width:24px;height:24px;animation:spin 1s linear infinite;"><circle cx="25" cy="25" r="20" fill="none" stroke="#005eb8" stroke-width="5" stroke-linecap="round" stroke-dasharray="80 200"></circle></svg><style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`;
 
     if (els.status) els.status.textContent = (isEdit ? '更新中…' : '申請中…');
     const inV = toMySQLDateTime(els.in?.value);
