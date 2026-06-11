@@ -31,6 +31,13 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
 security(app);
+
+// Phản hồi ảnh favicon mặc định (hoặc icon SVG tự sinh) để tránh lỗi 404
+app.get('/favicon.ico', (req, res) => {
+  res.type('image/svg+xml');
+  res.send('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e3a8a"/><text x="50" y="65" font-family="Arial" font-size="50" font-weight="bold" fill="white" text-anchor="middle">T</text></svg>');
+});
+
 app.use((req, res, next) => {
   try {
     const forceDisableCanonical = ['1', 'true', 'yes', 'on'].includes(String(process.env.DISABLE_CANONICAL_HOST || '').toLowerCase());
