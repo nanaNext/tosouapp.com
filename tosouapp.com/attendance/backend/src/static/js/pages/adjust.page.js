@@ -137,130 +137,57 @@ const renderForm = async () => {
   if (!host) return;
   host.innerHTML = `
     <style>
-      .sap-form-container {
-        background: #fff;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      }
-      .sap-form-row {
-        display: flex;
-        align-items: center;
-        margin-bottom: 16px;
-        border-bottom: 1px dashed #f1f5f9;
-        padding-bottom: 16px;
-      }
-      .sap-form-row:last-child {
-        margin-bottom: 0;
-        border-bottom: none;
-        padding-bottom: 0;
-      }
-      .sap-form-label {
-        width: 200px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #475569;
-        flex-shrink: 0;
-      }
-      .sap-form-value {
-        flex: 1;
-        font-size: 14px;
-        color: #0f172a;
-      }
-      .sap-input {
-        width: 100%;
-        max-width: 400px;
-        padding: 8px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        font-size: 14px;
-        color: #0f172a;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        background: #fff;
-      }
-      .sap-input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-      }
-      .sap-btn-submit {
-        background: #005eb8;
-        color: #fff;
-        border: none;
-        padding: 10px 28px;
-        font-size: 14px;
-        font-weight: 600;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.2s;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-      }
-      .sap-btn-submit:hover {
-        background: #004b93;
-      }
-      .sap-btn-submit:disabled {
-        background: #94a3b8;
-        cursor: not-allowed;
-        box-shadow: none;
-      }
-      .sap-current-time {
-        background: #f8fafc;
-        padding: 10px 16px;
-        border-radius: 6px;
-        border: 1px solid #e2e8f0;
-        display: inline-block;
-        color: #334155;
-        font-weight: 600;
-        line-height: 1.5;
-      }
-      @media (max-width: 600px) {
-        .sap-form-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-        .sap-form-label { width: 100%; }
-        .sap-input { max-width: 100%; }
-      }
+      .sap-compact-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 12px 16px; max-width: 600px; margin: 20px auto 16px; }
+      .sap-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; }
+      .sap-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; }
+      .sap-toolbar { display: flex; gap: 8px; }
+      .sap-icon-btn { background: #fff; border: 1px solid #cbd5e1; color: #334155; border-radius: 4px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+      .sap-icon-btn:hover { background: #f1f5f9; }
+      .sap-icon-btn.primary { background: #005eb8; color: #fff; border-color: #005eb8; }
+      .sap-icon-btn.primary:hover { background: #004b93; }
+      .sap-icon-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      .sap-grid { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; align-items: center; }
+      .sap-label { font-size: 12px; font-weight: 600; color: #475569; text-align: right; }
+      .sap-input { padding: 4px 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; max-width: 200px; outline: none; }
+      .sap-input.full { max-width: 100%; }
+      .sap-input:focus { border-color: #005eb8; }
+      .sap-current { background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; font-size: 12px; color: #334155; border-radius: 2px; display: inline-block; line-height: 1.4; width: 100%; max-width: 200px; box-sizing: border-box; }
     </style>
-    <div class="sap-form-container">
-      <div class="sap-form-row">
-        <div class="sap-form-label">対象日 <span style="color:#ef4444; margin-left:4px;">*</span></div>
-        <div class="sap-form-value">
-          <input id="adjDate" class="sap-input" type="date" value="${todayISO()}">
-        </div>
-      </div>
-
-      <div class="sap-form-row">
-        <div class="sap-form-label">現在の打刻</div>
-        <div class="sap-form-value">
-          <div id="adjCurrent" class="sap-current-time">—</div>
-        </div>
-      </div>
-
-      <div class="sap-form-row">
-        <div class="sap-form-label">修正 (出勤)</div>
-        <div class="sap-form-value">
-          <input id="adjIn" class="sap-input" type="datetime-local">
-        </div>
-      </div>
-
-      <div class="sap-form-row">
-        <div class="sap-form-label">修正 (退勤)</div>
-        <div class="sap-form-value">
-          <input id="adjOut" class="sap-input" type="datetime-local">
-        </div>
-      </div>
-
-      <div class="sap-form-row">
-        <div class="sap-form-label">理由 (任意)</div>
-        <div class="sap-form-value">
-          <input id="adjReason" class="sap-input" style="max-width:100%;" placeholder="例: 打刻し忘れ、電車の遅延など">
+    <div class="sap-compact-card">
+      <div class="sap-header">
+        <h3 class="sap-title">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          修正申請
+        </h3>
+        <div class="sap-toolbar">
+          <button id="btnToggleHistory" class="sap-icon-btn" title="履歴">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            履歴
+          </button>
+          <button id="adjSubmit" class="sap-icon-btn primary" title="送信">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            送信
+          </button>
         </div>
       </div>
       
-      <div style="margin-top: 24px; display: flex; align-items: center; gap: 16px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-        <button id="adjSubmit" class="sap-btn-submit" type="button">申請を送信</button>
-        <div id="adjStatus" style="font-size: 14px; font-weight: 600; color: #059669;"></div>
+      <div class="sap-grid">
+        <div class="sap-label">対象日 <span style="color:#ef4444">*</span></div>
+        <div><input id="adjDate" class="sap-input" type="date" value="${todayISO()}"></div>
+
+        <div class="sap-label">現在の打刻</div>
+        <div><div id="adjCurrent" class="sap-current">—</div></div>
+
+        <div class="sap-label">修正(出勤)</div>
+        <div><input id="adjIn" class="sap-input" type="datetime-local"></div>
+
+        <div class="sap-label">修正(退勤)</div>
+        <div><input id="adjOut" class="sap-input" type="datetime-local"></div>
+
+        <div class="sap-label">理由(任意)</div>
+        <div><input id="adjReason" class="sap-input full" placeholder="例: 打刻し忘れ"></div>
       </div>
+      <div id="adjStatus" style="font-size: 12px; font-weight: 600; color: #059669; text-align: right; margin-top: 8px; min-height: 18px;"></div>
     </div>
   `;
 
@@ -304,6 +231,19 @@ const renderForm = async () => {
       hideSpinner();
     }
   };
+
+  $('#btnToggleHistory')?.addEventListener('click', () => {
+    const listHost = $('#adjustListHost');
+    if (listHost.style.display === 'none') {
+      listHost.style.display = 'block';
+      $('#btnToggleHistory').innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> 履歴を隠す';
+      // Scroll to list
+      listHost.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      listHost.style.display = 'none';
+      $('#btnToggleHistory').innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 履歴を表示';
+    }
+  });
 
   els.date?.addEventListener('change', loadDay);
   await loadDay();
@@ -402,113 +342,54 @@ const renderList = async () => {
       const detail = r.reason ? `${r.reason}` : '';
       const type = '打刻修正（申請）';
       const actions = st === 'pending'
-        ? `<button class="btn-edit" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" style="background:#fff; border:1px solid #005eb8; color:#005eb8; border-radius:4px; padding:4px 12px; font-size:12px; font-weight:600; cursor:pointer; margin-right:8px;">編集</button><button class="btn-delete" data-id="${r.id}" style="background:#fff; border:1px solid #ef4444; color:#ef4444; border-radius:4px; padding:4px 12px; font-size:12px; font-weight:600; cursor:pointer;">削除</button>`
+        ? `<button class="btn-edit sap-action-btn" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" title="編集"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button> <button class="btn-delete sap-action-btn delete" data-id="${r.id}" title="削除"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`
         : '';
-      return `<tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
-        <td class="adj-col-id" style="padding: 12px; font-size: 13px;"><a href="#" data-jump="${r.id}" style="color:#005eb8; text-decoration:none; font-weight:600;">${appNo}</a></td>
-        <td class="adj-col-status" style="padding: 12px; font-size: 13px;"><span class="${stClass}" style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:600; ${st==='approved'?'background:#dcfce7;color:#166534;':(st==='rejected'?'background:#fee2e2;color:#991b1b;':'background:#f1f5f9;color:#475569;')}">${esc(stLabel)}</span></td>
-        <td class="adj-col-type" style="padding: 12px; font-size: 13px; color:#334155;">${type}</td>
-        <td class="adj-col-detail" style="padding: 12px; font-size: 13px; color:#334155;">${esc(detail)}</td>
-        <td class="adj-col-staff" style="padding: 12px; font-size: 13px; color:#334155;">${esc(staff)}</td>
-        <td class="adj-col-office" style="padding: 12px; font-size: 13px; color:#334155;">—</td>
-        <td class="adj-col-created" style="padding: 12px; font-size: 13px; color:#64748b;">${created}</td>
-        <td class="adj-col-actions" style="padding: 12px;">${actions}</td>
+      return `<tr>
+        <td><a href="#" data-jump="${r.id}" style="color:#005eb8; text-decoration:none; font-weight:600;">${appNo}</a></td>
+        <td><span class="sap-badge ${stClass}">${esc(stLabel)}</span></td>
+        <td>${type}</td>
+        <td>${esc(detail)}</td>
+        <td>${created}</td>
+        <td>${actions}</td>
       </tr>`;
     }).join('');
     host.innerHTML = `
       <style>
-        .sap-list-container {
-          background: #fff;
-          border-radius: 8px;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-          overflow: hidden;
-        }
-        .sap-list-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 16px 24px;
-          border-bottom: 1px solid #e2e8f0;
-          background: #f8fafc;
-        }
-        .sap-list-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: #0f172a;
-          margin: 0;
-        }
-        .sap-toolbar {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-        .sap-search-input, .sap-month-input {
-          padding: 8px 12px;
-          border: 1px solid #cbd5e1;
-          border-radius: 6px;
-          font-size: 13px;
-          outline: none;
-        }
-        .sap-search-input:focus, .sap-month-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-        .sap-btn-new {
-          background: #fff;
-          border: 1px solid #cbd5e1;
-          color: #0f172a;
-          padding: 8px 16px;
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .sap-btn-new:hover {
-          background: #f1f5f9;
-        }
-        .sap-table-wrapper {
-          overflow-x: auto;
-        }
-        .sap-table {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 900px;
-        }
-        .sap-table th {
-          background: #f8fafc;
-          padding: 12px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #475569;
-          text-align: left;
-          border-bottom: 1px solid #e2e8f0;
-          white-space: nowrap;
-        }
-        .sap-table tbody tr:hover {
-          background: #f8fafc;
-        }
+        .sap-table-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 0; max-width: 800px; margin: 0 auto; overflow: hidden; }
+        .sap-table-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; }
+        .sap-table-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
+        .sap-table-toolbar { display: flex; gap: 8px; }
+        .sap-table-input { padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 2px; outline: none; width: 120px; }
+        .sap-table-input:focus { border-color: #005eb8; }
+        .sap-table-wrap { overflow-x: auto; }
+        .sap-compact-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .sap-compact-table th { background: #f1f5f9; padding: 6px 8px; font-size: 11px; font-weight: 600; color: #475569; text-align: left; border-bottom: 1px solid #cbd5e1; white-space: nowrap; }
+        .sap-compact-table td { padding: 6px 8px; font-size: 12px; color: #1e293b; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        .sap-compact-table tr:hover { background: #f8fafc; }
+        .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; }
+        .sap-badge.approved { background: #dcfce7; color: #166534; }
+        .sap-badge.rejected { background: #fee2e2; color: #991b1b; }
+        .sap-badge.pending { background: #f1f5f9; color: #475569; }
+        .sap-action-btn { background: transparent; border: 1px solid transparent; color: #005eb8; padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; }
+        .sap-action-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .sap-action-btn.delete { color: #ef4444; }
       </style>
-      <div class="sap-list-container">
-        <div class="sap-list-header">
-          <h3 class="sap-list-title">申請履歴</h3>
-          <div class="sap-toolbar">
-            <input id="adjustSearch" placeholder="検索..." class="sap-search-input">
-            <input type="month" id="adjustMonthFilter" class="sap-month-input" value="${selectedMonth}">
-            <button id="adjustNewBtn" class="sap-btn-new">新規作成</button>
+      <div class="sap-table-card">
+        <div class="sap-table-header">
+          <h3 class="sap-table-title">申請履歴</h3>
+          <div class="sap-table-toolbar">
+            <input id="adjustSearch" placeholder="検索..." class="sap-table-input">
+            <input type="month" id="adjustMonthFilter" class="sap-table-input" value="${selectedMonth}">
           </div>
         </div>
-        <div class="sap-table-wrapper">
-          <table class="sap-table">
+        <div class="sap-table-wrap">
+          <table class="sap-compact-table">
             <thead>
               <tr>
                 <th>申請番号</th>
                 <th>ステータス</th>
                 <th>レコードタイプ</th>
                 <th>申請詳細</th>
-                <th>スタッフ名</th>
-                <th>所属オフィス</th>
                 <th>作成日時</th>
                 <th>アクション</th>
               </tr>
