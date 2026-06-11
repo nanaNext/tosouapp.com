@@ -410,14 +410,14 @@ const renderList = async () => {
           .sap-drawer {
             position: fixed;
             top: var(--topbar-height, 60px); /* Bám sát dưới thanh tiêu đề */
-            right: -800px;
-            width: 100%;
-            max-width: 800px;
+            right: -400px;
+            width: 400px;
+            max-width: 100vw;
             height: calc(100vh - var(--topbar-height, 60px));
             background: #fff;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+            box-shadow: -2px 0 8px rgba(0,0,0,0.15);
             z-index: 901;
-            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: right 0.3s ease;
             display: flex;
             flex-direction: column;
           }
@@ -425,24 +425,37 @@ const renderList = async () => {
             right: 0;
           }
           .sap-drawer-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            min-height: 48px;
+            box-sizing: border-box;
+          }
+          .sap-drawer-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            border-bottom: 1px solid #cbd5e1;
-            background: #f8fafc;
+            gap: 6px;
           }
-          .sap-drawer-title { font-size: 16px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px; }
           .sap-drawer-close {
             background: transparent;
             border: none;
-            color: #475569;
+            font-size: 20px;
+            color: #64748b;
             cursor: pointer;
             padding: 4px;
             border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: color 0.2s;
+            line-height: 1;
           }
           .sap-drawer-close:hover { background: #e2e8f0; color: #0f172a; }
           .sap-drawer-body {
