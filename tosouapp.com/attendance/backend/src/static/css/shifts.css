@@ -145,6 +145,174 @@
   }
 }
 
+/* Styling for disabled submit button */
+#btnSubmitTop:disabled,
+.btn-submit:disabled {
+  background: #cbd5e1 !important; /* Màu xám nhạt */
+  border-color: #cbd5e1 !important;
+  color: #ffffff !important;
+  cursor: not-allowed !important;
+  opacity: 0.8 !important;
+}
+
+@media (max-width: 768px) {
+  .shifts-top-nav {
+    flex-direction: row; 
+    align-items: center;
+    flex-wrap: nowrap !important; 
+    gap: 4px !important; 
+  }
+  .shifts-top-nav-left {
+    width: auto; 
+    flex-shrink: 1; 
+  }
+  .shifts-top-nav-right {
+    width: auto;
+    flex-grow: 1; 
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    justify-content: flex-end;
+    display: flex; /* Bắt buộc thêm display flex để gap hoạt động */
+    align-items: center;
+  }
+  /* Ép 3 nút nhỏ lại để nhét vừa 1 hàng ngang và cân bằng */
+  #btnAllShifts, 
+  #btnSubmitTop {
+    height: 32px !important;
+    padding: 0 10px !important; /* Tăng nhẹ padding cho cân xứng */
+    font-size: 11px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+  }
+  
+  .modern-month-picker {
+    height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-grow: 1; /* Cho phép giãn ra tối đa ở giữa */
+  }
+  
+  .modern-month-display {
+    flex-grow: 1; 
+    min-width: 0 !important; 
+    font-size: 11px !important; /* Giảm font-size tháng một chút */
+    padding: 0 2px !important; /* Giảm padding thừa */
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important; /* Lệnh quan trọng nhất: cấm tuyệt đối xuống dòng */
+    letter-spacing: -0.5px; /* Ép chữ sát nhau hơn để tiết kiệm chỗ */
+  }
+  
+  .modern-btn-nav {
+    width: 24px !important; /* Thu nhỏ 2 mũi tên một chút xíu để nhường chỗ cho chữ */
+    min-width: 24px !important;
+    max-width: 24px !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Giảm padding 2 nút phụ để bù lại chỗ cho tháng */
+  #btnAllShifts, 
+  #btnSubmitTop {
+    padding: 0 6px !important; 
+  }
+  
+  #btnAllShifts svg,
+  #btnSubmitTop svg,
+  .modern-month-display svg {
+    display: none !important; /* Ẩn bớt icon để tiết kiệm chỗ trên mobile */
+  }
+  .shifts-top-nav-left > a {
+    width: 100%;
+    justify-content: center;
+  }
+  .shifts-grid-header-cell {
+    font-size: 12px;
+    padding: 4px 0;
+    word-break: break-all;
+  }
+  .shifts-grid-header-cell span {
+    display: none; /* Hide english sub text on mobile to save space */
+  }
+  .cell-date {
+    font-size: 12px; /* Đã giảm số ngày cho nhỏ lại */
+    padding-right: 2px;
+  }
+  .cell-date div:nth-child(2) {
+    font-size: 8px !important; /* Lịch âm cũng nhỏ lại 1 chút xíu */
+    margin-top: 0px !important;
+  }
+  .baito-cell-content {
+    padding: 0;
+    overflow: visible;
+  }
+  .baito-shift-select {
+    padding: 4px 0px; /* Trả lại padding để khung phình ra tự nhiên */
+    font-size: 10px; 
+    font-weight: normal !important;
+    height: auto; /* Bỏ fix cứng height gây lỗi trên iOS Safari */
+    line-height: normal; /* Bỏ fix cứng line-height */
+    text-align: center;
+    text-align-last: center;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none !important;
+    transform: none;
+    width: 100%;
+    margin: 0;
+  }
+  .status-working, .status-leave {
+    font-size: 9px; /* Ép nhỏ chữ text trạng thái xuống 9px */
+    font-weight: normal !important;
+  }
+  .shift-cell {
+    min-height: 36px;
+    padding: 1px;
+  }
+  .cell-content {
+    margin-top: 0;
+  }
+  .shifts-header {
+    padding: 12px !important;
+    border-left: none !important; /* Gỡ bỏ viền xanh bên trái trên mobile */
+  }
+  .shifts-header-info {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .shifts-header-info-right {
+    align-items: flex-start !important;
+  }
+  .modern-month-picker {
+    flex-grow: 1;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .modern-month-display {
+    flex-grow: 1;
+  }
+  #btnSubmitTop {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .shift-cell {
   background: white;
   border-bottom: 1px solid #d1d5db;
@@ -173,14 +341,50 @@
   background-color: #fef2f2;
 }
 
+.shifts-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.shifts-top-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shifts-top-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shifts-header-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shifts-header-info-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .cell-date {
-  font-weight: bold; /* Tăng độ đậm */
-  font-size: 16px; /* Tăng kích thước */
+  font-weight: 800; /* Đậm hơn */
+  font-size: 18px; /* Tăng kích thước từ 16px lên 18px */
   margin-bottom: 0px;
   padding-bottom: 2px;
-  padding-right: 4px;
+  padding-right: 6px; /* Cách lề một xíu cho đẹp */
   text-align: right;
-  color: #1e293b; /* Màu tối hơn để dễ nhìn */
+  color: #0f172a; /* Màu tối hơn hẳn để dễ nhìn */
 }
 
 .cell-content {
@@ -194,14 +398,14 @@
 
 .status-working {
   color: #16a34a; /* Xanh lá đậm hơn */
-  font-weight: bold; /* Đậm hơn */
-  font-size: 15px; /* To hơn chút */
+  font-weight: normal; /* Bỏ in đậm */
+  font-size: 14px; /* Thu nhỏ lại */
 }
 
 .status-leave {
   color: #dc2626; /* Đỏ đậm hơn */
-  font-weight: bold; /* Đậm hơn */
-  font-size: 15px; /* To hơn chút */
+  font-weight: normal; /* Bỏ in đậm */
+  font-size: 14px; /* Thu nhỏ lại */
   line-height: 1.2;
 }
 
@@ -216,7 +420,7 @@
   border: 1px solid #e2e8f0; /* Viền nhạt, tinh tế hơn */
   border-radius: 4px;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: normal; /* Đã bỏ in đậm theo yêu cầu */
   background-color: transparent; /* Nền trong suốt để ăn theo màu cell */
   cursor: pointer;
   color: inherit; /* Lấy màu chữ từ cell chứa nó */
@@ -245,6 +449,10 @@
   border-color: #e2e8f0;
 }
 
+
+.baito-cell-content {
+  padding: 0 4px 4px 4px;
+}
 
 .shifts-footer {
   text-align: center;

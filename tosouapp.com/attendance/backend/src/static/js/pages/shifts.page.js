@@ -281,15 +281,15 @@ function renderApp() {
   
   // Header row for days of week
   const daysOfWeek = [
-    { label: '日・SUN', class: 'sunday' },
-    { label: '月・MON', class: '' },
-    { label: '火・TUE', class: '' },
-    { label: '水・WED', class: '' },
-    { label: '木・THU', class: '' },
-    { label: '金・FRI', class: '' },
-    { label: '土・SAT', class: 'saturday' }
+    { label: '日', sub: 'SUN', class: 'sunday' },
+    { label: '月', sub: 'MON', class: '' },
+    { label: '火', sub: 'TUE', class: '' },
+    { label: '水', sub: 'WED', class: '' },
+    { label: '木', sub: 'THU', class: '' },
+    { label: '金', sub: 'FRI', class: '' },
+    { label: '土', sub: 'SAT', class: 'saturday' }
   ];
-  const daysHeaderHtml = daysOfWeek.map(d => `<div class="shifts-grid-header-cell ${d.class}">${d.label}</div>`).join('');
+  const daysHeaderHtml = daysOfWeek.map(d => `<div class="shifts-grid-header-cell ${d.class}">${d.label}<br><span style="font-size: 10px; font-weight: normal;">${d.sub}</span></div>`).join('');
 
   // Calculate trailing empty cells
   const totalCells = firstDay + days.length;
@@ -298,45 +298,71 @@ function renderApp() {
 
   let statusBadge = '';
   if (serverStatus === 'PENDING') {
-    statusBadge = '<span style="background: #ea580c; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 12px;">申請中 (承認待ち)</span>';
+    statusBadge = '<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">申請中 (承認待ち)</span>';
   } else if (serverStatus === 'APPROVED') {
-    statusBadge = '<span style="background: #16a34a; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 12px;">承認済</span>';
+    statusBadge = '<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">承認済</span>';
   } else if (serverStatus === 'RETURNED') {
-    statusBadge = '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 12px;">差戻し (再提出)</span>';
+    statusBadge = '<span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">差戻し (再提出)</span>';
   } else {
-    statusBadge = '<span style="background: #64748b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 12px;">未提出</span>';
+    statusBadge = '<span style="background: #94a3b8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">未提出</span>';
   }
 
   const html = `
     <div class="shifts-container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 16px;">
-          <div>
-            <a href="/ui/shifts-all" style="padding: 8px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); letter-spacing: 0.5px;">全員のシフト</a>
+      <div class="shifts-header" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding: 16px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #1e3a8a;">
+        
+        <!-- Row 1: Navigation and Actions -->
+        <div class="shifts-top-nav" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; width: 100%;">
+          <div class="shifts-top-nav-left">
+            <a href="/ui/shifts-all" id="btnAllShifts" style="padding: 8px 16px; border: 1px solid #d1d5db; background: #f8fafc; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #334155; display: flex; align-items: center; gap: 6px; text-decoration: none; transition: all 0.2s;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+              全員のシフト
+            </a>
           </div>
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div class="modern-month-picker">
-              <button id="prevMonth" class="modern-btn-nav" title="先月">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          
+          <div class="shifts-top-nav-right" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+            <div class="modern-month-picker" style="display: flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); height: 38px;">
+              <button id="prevMonth" class="modern-btn-nav" title="先月" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
               </button>
-              <div class="modern-month-display">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; color: #64748b;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                <span>${year}年 ${String(month + 1).padStart(2, '0')}月</span>
+              <div class="modern-month-display" style="padding: 0 16px; font-weight: bold; font-size: 15px; color: #0f172a; min-width: 120px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; height: 100%;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                ${year}年 ${String(month + 1).padStart(2, '0')}月
               </div>
-              <button id="nextMonth" class="modern-btn-nav" title="来月">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              <button id="nextMonth" class="modern-btn-nav" title="来月" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
             </div>
-            <button id="btnSubmitTop" class="btn-submit" style="padding: 6px 20px; font-size: 14px; border-radius: 4px; height: 36px; ${serverStatus === 'APPROVED' ? 'display: none;' : ''}">シフト提出</button>
+            
+            <button id="btnSubmitTop" class="btn-submit" ${serverStatus === 'APPROVED' || serverStatus === 'PENDING' ? 'disabled' : ''} style="padding: 0 20px; font-size: 14px; border-radius: 6px; height: 38px; display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              シフト提出
+            </button>
           </div>
         </div>
       
-      <div class="shifts-header">
-        <div style="font-weight: bold; margin-bottom: 4px; display:flex; align-items:center;">
-          従業員: <span id="profileName" style="margin-left: 4px;">${currentUser.username || currentUser.email || '未設定'}</span> (<span id="profileDept">${currentUser.departmentName || '未設定'}</span>)
-          ${statusBadge}
+        <hr style="border: none; border-top: 1px dashed #e2e8f0; margin: 2px 0; width: 100%;">
+
+        <!-- Row 2: User Profile and Status -->
+        <div class="shifts-header-info" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; width: 100%;">
+          <div class="shifts-header-info-left" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: #64748b;">従業員:</span>
+              <span id="profileName" style="font-weight: bold; color: #0f172a; font-size: 15px;">${currentUser.username || currentUser.email || '未設定'}</span>
+              <span id="profileDept" style="color: #64748b; font-size: 13px;">(${currentUser.departmentName || '未設定'})</span>
+            </div>
+            ${statusBadge}
+          </div>
+          
+          <div class="shifts-header-info-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <div style="font-size: 13px; color: #64748b;">
+              雇用形態: <span id="profileType" style="color: #0f172a; font-weight: bold;">${isSeishain ? '正社員' : 'アルバイト / パート'}</span>
+            </div>
+            <div style="color: #ea580c; font-size: 13px; font-weight: bold;" id="profileInstruction">
+              ${serverStatus === 'APPROVED' ? '※ この月のシフトは承認済みのため変更できません。' : (isSeishain ? '※ 休暇を取得したい日を選択してください。' : '※ 出勤できるシフト（時間帯）を選択してください。')}
+            </div>
+          </div>
         </div>
-        <div style="margin-bottom: 8px;">雇用形態: <span id="profileType">${isSeishain ? '正社員' : 'アルバイト / パート'}</span></div>
-        <div style="color: #ea580c; font-size: 0.9rem;" id="profileInstruction">${serverStatus === 'APPROVED' ? '※ この月のシフトは承認済みのため変更できません。' : (isSeishain ? '※ 休暇を取得したい日を選択してください。' : '※ 出勤できるシフト（時間帯）を選択してください。')}</div>
       </div>
 
       <div class="shifts-grid ${serverStatus === 'APPROVED' ? 'is-approved' : (serverStatus === 'PENDING' ? 'is-pending' : 'is-draft')}">
@@ -420,6 +446,27 @@ function renderDayCell(date, isSeishain) {
     dayClass += ' saturday';
   }
   
+  // Calculate Lunar Date
+  let lunarText = '';
+  try {
+    if (typeof window.Lunar !== 'undefined') {
+      const lunarDate = window.Lunar.fromDate(date);
+      const lDay = lunarDate.getDay();
+      const lMonth = lunarDate.getMonth();
+      if (lDay === 1) {
+        lunarText = `${lMonth}/${lDay}`;
+      } else {
+        lunarText = `${lDay}`;
+      }
+    } else {
+      // Fallback or debug
+      // If window.Lunar is not available, we can't show lunar date
+    }
+  } catch (e) {
+    console.error('Lunar error', e);
+  }
+  const lunarHtml = lunarText ? `<div style="font-size: 11px; font-weight: normal; color: #94a3b8; line-height: 1; margin-top: 1px;">${esc(lunarText)}</div>` : '';
+  
   let contentHtml = '';
   
   if (isSeishain) {
@@ -434,7 +481,7 @@ function renderDayCell(date, isSeishain) {
         const typeLabel = SEISHAIN_LEAVE_TYPES.find(t => t.value === data.leaveType)?.label || data.leaveType;
         const shortTypeLabel = typeLabel.includes('有給') ? '有休' : (typeLabel.includes('欠勤') ? '欠勤' : typeLabel);
         
-        contentHtml = `<div class="status-leave" style="color:#dc2626; font-weight:bold;">${shortTypeLabel}</div>`;
+        contentHtml = `<div class="status-leave" style="color:#dc2626; font-weight:normal;">${shortTypeLabel}</div>`;
       }
       dayClass += ' is-leave';
     }
@@ -451,7 +498,10 @@ function renderDayCell(date, isSeishain) {
     
     return `
       <div class="${dayClass} seishain-cell ${isLocked ? 'is-locked' : ''}" data-date="${dateStr}" ${lockStyle}>
-        <div class="cell-date">${date.getDate()}</div>
+        <div class="cell-date">
+          <div>${date.getDate()}</div>
+          ${lunarHtml}
+        </div>
         <div class="cell-content">${contentHtml}</div>
       </div>
     `;
@@ -473,9 +523,12 @@ function renderDayCell(date, isSeishain) {
     
     return `
       <div class="${dayClass} baito-cell ${cellClass}" data-date="${dateStr}">
-        <div class="cell-date">${date.getDate()}</div>
-        <div class="cell-content" style="padding: 0 4px 4px 4px;">
-          <select class="baito-shift-select" data-date="${dateStr}" ${isLocked ? 'disabled' : ''}>
+        <div class="cell-date">
+          <div>${date.getDate()}</div>
+          ${lunarHtml}
+        </div>
+        <div class="cell-content baito-cell-content">
+          <select id="shift-select-${dateStr}" name="shift-select-${dateStr}" class="baito-shift-select" data-date="${dateStr}" ${isLocked ? 'disabled' : ''} aria-label="${dateStr}のシフト">
             ${shifts.map(s => `<option value="${s.value}" ${data.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
           </select>
         </div>
@@ -559,19 +612,19 @@ function attachEvents(isSeishain) {
   
   if (btnSubmit) {
     btnSubmit.addEventListener('click', submitShifts);
-    if (serverStatus === 'APPROVED') {
-      btnSubmit.style.display = 'none';
+    if (serverStatus === 'APPROVED' || serverStatus === 'PENDING') {
+      btnSubmit.disabled = true;
     } else {
-      btnSubmit.style.display = 'inline-block';
+      btnSubmit.disabled = false;
     }
   }
 
   if (btnSubmitTop) {
     btnSubmitTop.addEventListener('click', submitShifts);
-    if (serverStatus === 'APPROVED') {
-      btnSubmitTop.style.display = 'none';
+    if (serverStatus === 'APPROVED' || serverStatus === 'PENDING') {
+      btnSubmitTop.disabled = true;
     } else {
-      btnSubmitTop.style.display = 'inline-block';
+      btnSubmitTop.disabled = false;
     }
   }
 }
