@@ -135,6 +135,15 @@ async function loadMonthData(year, month) {
         calendarDataMap[dateStr] = dow === 0 || dow === 6;
       }
     }));
+    
+    // Fallback dictionary for Koujibu (for 4th Saturday)
+    daysInMonth.forEach(d => {
+      const dateStr = formatDate(d);
+      const dow = d.getDay();
+      const isSunday = dow === 0;
+      const is4thSaturday = dow === 6 && d.getDate() >= 22 && d.getDate() <= 28;
+      calendarDataMap[`${dateStr}_koujibu`] = isSunday || is4thSaturday;
+    });
   } catch (err) {
     console.error('Failed to load all employees shifts', err);
     allEmployeesShifts = [];
@@ -208,8 +217,11 @@ function renderApp() {
         let cellHtml = '';
         
         const dow = d.getDay();
+        const isKoujibu = String(emp.departmentName || '').includes('工事部');
         const isRedDay = calendarDataMap[dateStr] === true;
-        const isWeekendOrHoliday = dow === 0 || dow === 6 || isRedDay;
+        // Check if the user has specific calendar based on department
+        const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
+        const isWeekendOrHoliday = isHolidayForUser;
         
         if (isSeishain) {
           if (shift && shift.status === 'LEAVE') {
@@ -218,8 +230,7 @@ function renderApp() {
             else if (shift.leaveType === 'unpaid') label = '欠勤';
             cellHtml = `<div style="color: #dc2626; font-weight: bold; font-size: 12px;">${label}</div>`;
           } else {
-             const isSeishainHoliday = dow === 0 || dow === 6 || isRedDay;
-             if (isSeishainHoliday && (!shift || shift.status !== 'WORKING')) {
+             if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
                  cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
              } else {
                  cellHtml = `<div style="color: #16a34a; font-size: 12px;">出勤</div>`;

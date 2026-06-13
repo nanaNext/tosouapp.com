@@ -181,17 +181,18 @@ async function loadMonthData(year, month) {
         const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(dateStr)}`);
         calendarData[dateStr] = Number(cal?.is_off || 0) === 1;
       } catch (e) {
-        // Fallback if API fails
-        const isKoujibuFallback = String(currentUser.departmentName || currentUser.departmentId || '').includes('工事部') || String(currentUser.departmentName || '').includes('Kouji');
-        if (isKoujibuFallback) {
-          const isSunday = dow === 0;
-          const is4thSaturday = dow === 6 && d.getDate() >= 22 && d.getDate() <= 28;
-          calendarData[dateStr] = isSunday || is4thSaturday;
-        } else {
-          calendarData[dateStr] = dow === 0 || dow === 6;
-        }
+        calendarData[dateStr] = dow === 0 || dow === 6;
       }
     }));
+    
+    // Add Koujibu fallback dict just for rendering
+    daysInMonth.forEach(d => {
+      const dateStr = formatDate(d);
+      const dow = d.getDay();
+      const isSunday = dow === 0;
+      const is4thSaturday = dow === 6 && d.getDate() >= 22 && d.getDate() <= 28;
+      calendarData[`${dateStr}_koujibu`] = isSunday || is4thSaturday;
+    });
     
     daysInMonth.forEach(d => {
       const dateStr = formatDate(d);
@@ -199,15 +200,15 @@ async function loadMonthData(year, month) {
       
       // Default initialization if not already set
       if (!shiftData[dateStr]) {
+        const isRedDay = calendarData[dateStr] === true;
+        const isHolidayForUser = isKoujibu ? calendarData[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
+        
         if (isSeishain) {
           // Backend API already accounts for Koujibu policy and returns `is_off` accordingly
-          const isHoliday = calendarData[dateStr];
-          
-          shiftData[dateStr] = { status: !isHoliday ? 'WORKING' : 'LEAVE', leaveType: !isHoliday ? undefined : undefined };
+          shiftData[dateStr] = { status: !isHolidayForUser ? 'WORKING' : 'LEAVE', leaveType: !isHolidayForUser ? undefined : undefined };
         } else {
           // Baito: Default to WORKING on weekdays, OFF on weekends, similar to Seishain but simpler
-          const isHoliday = calendarData[dateStr];
-          shiftData[dateStr] = { status: !isHoliday ? 'WORKING' : 'OFF' };
+          shiftData[dateStr] = { status: !isHolidayForUser ? 'WORKING' : 'OFF' };
         }
       }
     });
@@ -400,15 +401,17 @@ function renderDayCell(date, isSeishain) {
   let isHoliday = false;
   const isRedDay = calendarDataMap[dateStr] === true;
   
+  const isKoujibu = String(currentUser.departmentName || '').includes('工事部');
+  
   if (isSeishain) {
-    // If it's a day off (not WORKING) and we don't have a specific leaveType (like 'paid' which means user clicked it),
-    // OR if it's Sunday or a Red day, we treat it as a holiday for coloring purposes
-    if (dow === 0 || isRedDay || (data.status !== 'WORKING' && !data.leaveType)) {
+    const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
+    if (isHolidayForUser || (data.status !== 'WORKING' && !data.leaveType)) {
       isHoliday = true;
     }
   } else {
-    // For baito, color sundays and red days red
-    if (dow === 0 || isRedDay) isHoliday = true;
+    // For baito, color sundays and red days red. For Koujibu, 4th saturday is red day too.
+    const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
+    if (isHolidayForUser) isHoliday = true;
   }
   
   if (isHoliday) {
@@ -454,7 +457,8 @@ function renderDayCell(date, isSeishain) {
     `;
   } else {
     // Baito display logic
-    const isWeekendOrHoliday = dow === 0 || dow === 6 || isRedDay;
+    const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
+    const isWeekendOrHoliday = isHolidayForUser;
     const offLabel = isWeekendOrHoliday ? '休' : '休み';
     const shifts = [
       { value: 'OFF', label: offLabel },
