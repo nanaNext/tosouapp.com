@@ -190,6 +190,15 @@ exports.me = async (req, res) => {
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
     const user = await userRepo.getUserById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    // Attach department name if departmentId exists
+    if (user.departmentId) {
+      try {
+        const dept = await userRepo.getDepartmentById(user.departmentId);
+        if (dept) user.departmentName = dept.name;
+      } catch (e) { /* silently ignored */ }
+    }
+    
     res.status(200).json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });

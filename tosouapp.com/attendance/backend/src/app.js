@@ -74,12 +74,16 @@ app.use((req, res, next) => {
   } catch (e) { /* silently ignored */ }
   return next();
 });
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'static', 'html'));
+
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
   res.setHeader('X-Request-ID', req.id);
   res.setHeader('X-Build-Id', BUILD_ID);
   res.setHeader('X-Started-At', String(STARTED_AT));
   res.setHeader('X-Process-Id', String(process.pid));
+  res.locals.appVersion = BUILD_ID; // Inject version for EJS cache busting
   next();
 });
 app.use((req, res, next) => {
@@ -244,7 +248,6 @@ app.use('/static', express.static(path.join(__dirname, 'static'), {
 app.get('/static/css/base.css', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'css', 'base.css')); });
 app.get('/static/js/pages/login.page.js', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'js', 'pages', 'login.page.js')); });
 app.get('/static/js/api/auth.api.js', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'js', 'api', 'auth.api.js')); });
-app.get('/static/html/login.html', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'html', 'login.html')); });
 app.get('/static/css/login.css', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'css', 'login.css')); });
 app.get('/static/js/pages/dashboard.page.js', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'js', 'pages', 'dashboard.page.js')); });
 app.get('/static/css/portal.css', (req, res) => { res.sendFile(path.join(__dirname, 'static', 'css', 'portal.css')); });

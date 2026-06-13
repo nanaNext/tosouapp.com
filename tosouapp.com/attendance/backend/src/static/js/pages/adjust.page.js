@@ -182,8 +182,8 @@ const renderForm = async () => {
         <div class="sap-label">修正(退勤)</div>
         <div><input id="adjOut" class="sap-input" type="datetime-local"></div>
 
-        <div class="sap-label" style="align-self: flex-start; margin-top: 6px;">理由(任意)</div>
-        <div><textarea id="adjReason" class="sap-textarea" placeholder="例: 打刻し忘れ"></textarea></div>
+        <div class="sap-label" style="align-self: flex-start; margin-top: 6px;">理由 <span style="color:#ef4444">*</span></div>
+        <div><textarea id="adjReason" class="sap-textarea" placeholder="例: 打刻し忘れ（必須）"></textarea></div>
       </div>
       <div id="adjStatus" style="font-size: 12px; font-weight: 600; color: #059669; text-align: right; margin-top: 8px; min-height: 18px;"></div>
     </div>
@@ -292,6 +292,13 @@ const renderForm = async () => {
       els.submit.disabled = false;
       els.submit.innerHTML = originalIcon;
       showErr('修正(出勤)または修正(退勤)を入力してください');
+      return;
+    }
+    if (!reason) {
+      if (els.status) els.status.textContent = '';
+      els.submit.disabled = false;
+      els.submit.innerHTML = originalIcon;
+      showErr('理由を入力してください');
       return;
     }
     showSpinner();
@@ -473,24 +480,51 @@ const renderList = async () => {
           .sap-drawer-body {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 12px; /* Giảm padding trên mobile */
+          }
+          @media (min-width: 768px) {
+            .sap-drawer-body {
+              padding: 20px;
+            }
           }
           
-          .sap-table-toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
-          .sap-table-input { padding: 6px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; width: 140px; }
+          .sap-table-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+          .sap-table-input { padding: 6px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; width: 100%; max-width: 140px; box-sizing: border-box; }
+          @media (max-width: 400px) {
+            .sap-table-input { max-width: 100%; }
+          }
           .sap-table-input:focus { border-color: #005eb8; }
-          .sap-table-wrap { border: 1px solid #cbd5e1; border-radius: 4px; overflow-x: auto; }
+          .sap-table-wrap { border: 1px solid #cbd5e1; border-radius: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
           .sap-compact-table { width: 100%; border-collapse: collapse; min-width: 600px; }
           .sap-compact-table th { background: #f1f5f9; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #475569; text-align: left; border-bottom: 1px solid #cbd5e1; white-space: nowrap; }
           .sap-compact-table td { padding: 8px 12px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
           .sap-compact-table tr:hover { background: #f8fafc; }
-          .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; }
+          .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; white-space: nowrap; }
           .sap-badge.approved { background: #dcfce7; color: #166534; }
           .sap-badge.rejected { background: #fee2e2; color: #991b1b; }
           .sap-badge.pending { background: #f1f5f9; color: #475569; }
           .sap-action-btn { background: transparent; border: 1px solid transparent; color: #005eb8; padding: 4px; font-size: 12px; cursor: pointer; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; }
           .sap-action-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
           .sap-action-btn.delete { color: #ef4444; }
+
+          /* Mobile Inline Edit Form Styles */
+          .inline-edit-container {
+            padding: 12px; 
+            background: #eef4ff; 
+            border-top: 2px solid #005eb8; 
+            border-bottom: 2px solid #005eb8; 
+            position: relative; 
+            width: 100%; 
+            box-sizing: border-box;
+          }
+          /* Sticky Left Behavior for small screens (khi bảng bị cuộn) */
+          @media (max-width: 640px) {
+            .inline-edit-container {
+              position: sticky;
+              left: 0;
+              width: calc(100vw - 24px); /* Độ rộng bằng màn hình trừ đi padding của drawer */
+            }
+          }
         </style>
 
         <div id="sapDrawerOverlay" class="sap-drawer-overlay"></div>
@@ -570,33 +604,97 @@ const renderList = async () => {
       });
       document.querySelectorAll('.btn-edit').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          e.preventDefault(); // Ngăn chặn nổi bọt hoặc hành vi mặc định
+          e.preventDefault();
+          const tr = e.currentTarget.closest('tr');
+          if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('inline-edit-row')) return;
+
+          // Đóng các form sửa inline khác đang mở
+          document.querySelectorAll('.inline-edit-row').forEach(el => el.remove());
+          document.querySelectorAll('tr[data-hidden="1"]').forEach(el => {
+            el.style.display = '';
+            delete el.dataset.hidden;
+          });
+
           const id = e.currentTarget.dataset.id;
           const cin = e.currentTarget.dataset.in || '';
           const cout = e.currentTarget.dataset.out || '';
           const reason = e.currentTarget.dataset.reason || '';
-          const inEl = document.getElementById('adjIn');
-          const outEl = document.getElementById('adjOut');
-          const rsEl = document.getElementById('adjReason');
-          if (inEl) inEl.value = cin.replace(' ', 'T');
-          if (outEl) outEl.value = cout.replace(' ', 'T');
-          if (rsEl) rsEl.value = reason;
-          
-          const submitBtn = document.getElementById('adjSubmit');
-          if (submitBtn) {
-            submitBtn.dataset.editId = id;
-          }
-          
-          const statusEl = document.getElementById('adjStatus');
-          if (statusEl) statusEl.textContent = '編集モード';
-          
-          // Đóng drawer sau khi bấm Edit
-          const drawer = document.getElementById('sapDrawer');
-          const overlay = document.getElementById('sapDrawerOverlay');
-          if (drawer) drawer.classList.remove('active');
-          if (overlay) overlay.classList.remove('active');
-          
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+
+          // Ẩn dòng hiện tại
+          tr.style.display = 'none';
+          tr.dataset.hidden = '1';
+
+          // Tạo dòng form sửa inline mới
+          const editTr = document.createElement('tr');
+          editTr.className = 'inline-edit-row';
+          editTr.innerHTML = `
+            <td colspan="6" style="padding: 0; border: none;">
+              <div class="inline-edit-container">
+                <button class="inline-close" style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; cursor: pointer; color: #64748b; font-size: 14px; padding: 4px; line-height: 1;" title="閉じる">✕</button>
+                <div style="font-weight: 600; color: #005eb8; margin-bottom: 12px; font-size: 13px;">申請の編集</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+                  <div style="flex: 1 1 130px; min-width: 130px;">
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">修正(出勤)</div>
+                    <input type="datetime-local" class="sap-table-input inline-in" style="width: 100%; max-width: 100%; box-sizing: border-box;" value="${cin.replace(' ', 'T')}">
+                  </div>
+                  <div style="flex: 1 1 130px; min-width: 130px;">
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">修正(退勤)</div>
+                    <input type="datetime-local" class="sap-table-input inline-out" style="width: 100%; max-width: 100%; box-sizing: border-box;" value="${cout.replace(' ', 'T')}">
+                  </div>
+                  <div style="flex: 1 1 200px; min-width: 200px;">
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">理由 <span style="color:#ef4444">*</span></div>
+                    <input type="text" class="sap-table-input inline-reason" style="width: 100%; max-width: 100%; box-sizing: border-box;" value="${esc(reason)}" placeholder="理由を入力してください">
+                  </div>
+                  <div style="display: flex; gap: 8px; flex: 1 1 auto; justify-content: flex-end;">
+                    <button class="sap-icon-btn inline-cancel" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 16px; width: auto; height: 36px; font-size: 13px;">キャンセル</button>
+                    <button class="sap-icon-btn inline-save" style="background: #005eb8; color: #fff; border-radius: 4px; padding: 0 16px; width: auto; height: 36px; font-size: 13px; font-weight: 600;">保存</button>
+                  </div>
+                </div>
+              </div>
+            </td>
+          `;
+          tr.parentNode.insertBefore(editTr, tr.nextSibling);
+
+          // Hủy sửa
+          const cancelEdit = (ev) => {
+            ev.preventDefault();
+            editTr.remove();
+            tr.style.display = '';
+            delete tr.dataset.hidden;
+          };
+          editTr.querySelector('.inline-cancel').addEventListener('click', cancelEdit);
+          editTr.querySelector('.inline-close').addEventListener('click', cancelEdit);
+
+          // Lưu sửa
+          editTr.querySelector('.inline-save').addEventListener('click', async (ev) => {
+            ev.preventDefault();
+            const btnSave = ev.currentTarget;
+            const newIn = toMySQLDateTime(editTr.querySelector('.inline-in').value);
+            const newOut = toMySQLDateTime(editTr.querySelector('.inline-out').value);
+            const newReason = editTr.querySelector('.inline-reason').value.trim();
+
+            if (!newReason) {
+              showErr('理由を入力してください');
+              return;
+            }
+
+            btnSave.disabled = true;
+            btnSave.textContent = '保存中...';
+            showErr('');
+
+            try {
+              await fetchJSONAuth('/api/adjust/' + id, {
+                method: 'PATCH',
+                body: JSON.stringify({ requestedCheckIn: newIn, requestedCheckOut: newOut, reason: newReason })
+              });
+              // Cập nhật lại toàn bộ bảng (bảng sẽ vẫn mở)
+              await renderList();
+            } catch (err) {
+              btnSave.disabled = false;
+              btnSave.textContent = '保存';
+              showErr(err?.message || '更新に失敗しました');
+            }
+          });
         });
       });
     }, 0);

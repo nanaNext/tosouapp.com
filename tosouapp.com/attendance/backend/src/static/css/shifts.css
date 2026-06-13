@@ -1,0 +1,399 @@
+/* shifts.css */
+.shifts-container {
+  padding: 12px;
+  max-width: 100%;
+  margin: 0 auto;
+  margin-top: -30px; /* Pull it up even tighter under the nav tabs */
+  background-color: #f1f5f9;
+  min-height: calc(100vh - 50px);
+}
+
+.shifts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-left: 4px solid #0b2c66;
+  font-size: 12px;
+}
+
+.shifts-header h2 {
+  font-size: 20px;
+  color: #0b2c66;
+  margin: 0;
+}
+
+/* Modern Month Picker Styles */
+.modern-month-picker {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  height: 36px;
+}
+
+.modern-btn-nav {
+  background: transparent;
+  border: none;
+  padding: 0 12px;
+  height: 100%;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modern-btn-nav:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.modern-month-display {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-weight: bold;
+  font-size: 15px;
+  color: #1e293b;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  min-width: 130px;
+  justify-content: center;
+  height: 100%;
+}
+
+.shifts-user-info {
+  background: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.shifts-user-info p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.shifts-hint {
+  color: #d97706;
+  font-size: 13px !important;
+  font-weight: bold;
+}
+
+.shifts-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  margin-bottom: 16px;
+  border-top: 1px solid #d1d5db;
+  border-left: 1px solid #d1d5db;
+  border-radius: 0px;
+  background: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.shifts-grid-header {
+  display: contents;
+}
+
+.shifts-grid-header-cell {
+  background: #334155;
+  text-align: center;
+  font-weight: bold;
+  padding: 10px 0; /* Tăng padding để thanh header rộng ra một chút, chữ to không bị ép */
+  border-bottom: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
+  font-size: 14px; /* Tăng font size từ 11px lên 14px */
+  color: white;
+}
+
+.shifts-grid-header-cell.sunday {
+  color: #fca5a5;
+}
+
+.shifts-grid-header-cell.saturday {
+  color: #93c5fd;
+}
+
+.shift-cell.empty-cell {
+  background-color: #f8fafc;
+  border-right: 1px solid #d1d5db;
+  border-bottom: 1px solid #d1d5db;
+  min-height: 40px;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .shifts-grid {
+    grid-template-columns: repeat(7, 1fr); /* Always keep 7 columns like SAP/Enterprise */
+  }
+}
+
+@media (max-width: 400px) {
+  .shifts-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.shift-cell {
+  background: white;
+  border-bottom: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
+  padding: 2px;
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.seishain-cell:hover {
+  background-color: #f1f5f9;
+}
+
+.shift-cell.sunday .cell-date {
+  color: #ef4444;
+}
+
+.shift-cell.saturday .cell-date {
+  color: #3b82f6;
+}
+
+.shift-cell.is-leave {
+  background-color: #fef2f2;
+}
+
+.cell-date {
+  font-weight: bold; /* Tăng độ đậm */
+  font-size: 16px; /* Tăng kích thước */
+  margin-bottom: 0px;
+  padding-bottom: 2px;
+  padding-right: 4px;
+  text-align: right;
+  color: #1e293b; /* Màu tối hơn để dễ nhìn */
+}
+
+.cell-content {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.status-working {
+  color: #16a34a; /* Xanh lá đậm hơn */
+  font-weight: bold; /* Đậm hơn */
+  font-size: 15px; /* To hơn chút */
+}
+
+.status-leave {
+  color: #dc2626; /* Đỏ đậm hơn */
+  font-weight: bold; /* Đậm hơn */
+  font-size: 15px; /* To hơn chút */
+  line-height: 1.2;
+}
+
+.status-working-btn, .status-leave-btn {
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+.baito-shift-select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #e2e8f0; /* Viền nhạt, tinh tế hơn */
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  background-color: transparent; /* Nền trong suốt để ăn theo màu cell */
+  cursor: pointer;
+  color: inherit; /* Lấy màu chữ từ cell chứa nó */
+  transition: all 0.2s;
+}
+
+.baito-shift-select:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.baito-shift-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+/* Thêm class màu nền cho select (chỉ tô màu ô vuông) */
+.baito-cell.is-working .baito-shift-select {
+  background-color: #dcfce7;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+.baito-cell.is-off .baito-shift-select {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+
+.shifts-footer {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.btn-submit {
+  background-color: #0b2c66;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(11, 44, 102, 0.2);
+  transition: background-color 0.2s ease;
+}
+
+.btn-submit:hover {
+  background-color: #1e40af;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay[hidden] {
+  display: none;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #0b2c66;
+  font-size: 18px;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 8px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+  justify-content: flex-end;
+}
+
+.modal-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-save {
+  background: #0b2c66;
+  color: white;
+}
+
+.btn-clear {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* State-based styling for the grid */
+.shifts-grid.is-draft {
+  /* Editable state */
+}
+.shifts-grid.is-draft .shifts-grid-header-cell {
+  background: #334155; /* Normal header */
+}
+
+.shifts-grid.is-pending .shifts-grid-header-cell {
+  background: #f59e0b; /* Màu cam nhạt/vàng êm dịu hơn (Amber) */
+}
+
+.shifts-grid.is-approved .shifts-grid-header-cell {
+  background: #10b981; /* Xanh lá êm dịu hơn */
+}
+
+.shifts-grid.is-approved {
+  /* Cho phép click vào bảng để xem lý do */
+  pointer-events: auto;
+}
+.shifts-grid.is-approved .shift-cell:not(.is-leave) {
+  background-color: #ffffff; /* Bỏ màu xám mờ mờ, giữ nguyên nền trắng cho rõ */
+}
+
+.shifts-grid.is-pending {
+  /* Cho phép click vào bảng để xem/sửa lý do */
+  pointer-events: auto;
+}
+.shifts-grid.is-pending .shift-cell:not(.is-leave) {
+  background-color: #ffffff; /* Bỏ màu xám mờ mờ, giữ nguyên nền trắng cho rõ */
+}
+
+/* Make baito buttons look locked */
+.shifts-grid.is-approved .baito-shift-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  pointer-events: none;
+  /* Giữ nguyên viền để không bị mất khung nhìn mờ mờ */
+}

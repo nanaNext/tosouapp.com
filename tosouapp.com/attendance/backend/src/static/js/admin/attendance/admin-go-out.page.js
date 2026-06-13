@@ -67,8 +67,8 @@ export async function mountGoOut({ content }) {
       .btn-edit:hover { background-color: #eff6ff !important; }
     </style>
     <div style="padding: 0; margin-top: -16px; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #e0f2fe; min-height: 100vh;">
-      <div class="page-header-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 16px;">
-        <h2 class="page-header-title" style="font-size: 16px; font-weight: bold; color: #1e293b; margin: 0;">外出管理</h2>
+      <div class="page-header-container" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 8px; padding: 16px 16px 8px 16px;">
+        <h2 class="page-header-title" style="display: none;">外出管理</h2>
         
         <div style="display: flex; align-items: center; gap: 8px;">
           <input type="month" id="goOutAdminFilterMonth" style="height: 38px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; width: 160px; color: #1f2937; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;">
@@ -79,16 +79,16 @@ export async function mountGoOut({ content }) {
       <div class="go-out-table-wrapper" style="overflow-x: auto; border-top: 1px solid #eeeeee; border-bottom: 1px solid #eeeeee; max-height: 600px; overflow-y: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05); background: white;">
         <table class="go-out-table">
           <thead style="position: sticky; top: 0; z-index: 10;">
-            <tr style="background: #f8fafc; color: #334155; text-align: left; border-bottom: 2px solid #e2e8f0;">
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700; white-space: nowrap;">日付</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700;">氏名（社員名）</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700; text-align: left;">外出時間</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700; text-align: left;">戻り時間</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700; text-align: left;">経過時間</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700;">区分</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700; max-width: 150px;">理由</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700;">ステータス</th>
-              <th style="padding: 10px 12px; font-size: 13px; font-weight: 700; text-align: center;">操作</th>
+            <tr style="background: #f8fafc; color: #334155; text-align: left; border-bottom: 1px solid #cbd5e1; height: 28px;">
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; border-right: 1px solid #e2e8f0;">日付</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; border-right: 1px solid #e2e8f0;">氏名（社員名）</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: left; border-right: 1px solid #e2e8f0;">外出時間</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: left; border-right: 1px solid #e2e8f0;">戻り時間</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: left; border-right: 1px solid #e2e8f0;">経過時間</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; border-right: 1px solid #e2e8f0;">区分</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; max-width: 150px; border-right: 1px solid #e2e8f0;">理由</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; border-right: 1px solid #e2e8f0;">ステータス</th>
+              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: center;">操作</th>
             </tr>
           </thead>
           <tbody id="goOutAdminTableBody" style="background: white;">
@@ -226,16 +226,14 @@ export async function mountGoOut({ content }) {
       let actions = '';
       if (r.status === '外出中') {
         actions += `
-          <button class="btn-force-end" data-id="${r.id}" data-date="${r.date}" data-gotime="${goTime}" style="background: white; color: #ef4444; border: 1px solid #fca5a5; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: background 0.2s;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+          <button class="btn-force-end" data-id="${r.id}" data-date="${r.date}" data-gotime="${goTime}" style="background: transparent; color: #ef4444; border: none; padding: 0 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: underline;">
             強制終了
           </button>
         `;
       }
       // Hiển thị nút sửa khi trạng thái là 外出中
       actions += `
-        <button class="btn-edit" data-id="${r.id}" data-json='${escapeHtml(JSON.stringify(r))}' style="background: white; color: #3b82f6; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: background 0.2s;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <button class="btn-edit" data-id="${r.id}" data-json='${escapeHtml(JSON.stringify(r))}' style="background: transparent; color: #3b82f6; border: none; padding: 0 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: underline;">
           編集
         </button>
       `;
@@ -249,15 +247,12 @@ export async function mountGoOut({ content }) {
       const shortAdminNote = fullAdminNote.length > 15 ? fullAdminNote.substring(0, 15) + '...' : fullAdminNote;
 
       html += `
-        <tr class="go-out-row" style="background: ${rowBg}; border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s;" data-bg="${rowBg}">
+        <tr class="go-out-row" style="background: ${rowBg}; border-bottom: 1px solid #e2e8f0; transition: background-color 0.15s;" data-bg="${rowBg}">
           <!-- Mobile View -->
           <td class="mobile-cell">
             <div class="td-date-status">
               <span>${escapeHtml(r.date)}</span>
-              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${statusBg}; color: ${statusColor};">
-                <span style="width: 6px; height: 6px; border-radius: 50%; background: ${statusColor};"></span>
-                ${escapeHtml(r.status)}
-              </span>
+              <span style="font-size: 12px; color: #1e293b;">${escapeHtml(r.status)}</span>
             </div>
             <div class="td-employee">${escapeHtml(r.employeeName)}</div>
             <div class="td-time" style="display: flex; align-items: stretch;">
@@ -266,9 +261,7 @@ export async function mountGoOut({ content }) {
             </div>
             <div class="td-type-reason" style="margin-top: 8px; display: flex; align-items: stretch;">
               <span class="td-type-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 32px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">区分</span>
-              <span style="display: inline-flex; align-items: center; min-height: 32px;">
-                <span style="display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: bold; background: ${typeBg}; color: ${typeColor};">${escapeHtml(r.type)}</span>
-              </span>
+              <span style="display: inline-flex; align-items: center; min-height: 32px; font-size: 12px;">${escapeHtml(r.type)}</span>
             </div>
             <div class="td-type-reason" style="margin-top: 8px; display: flex; align-items: stretch;">
               <span class="td-type-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 48px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">理由</span>
@@ -285,25 +278,18 @@ export async function mountGoOut({ content }) {
           </td>
 
           <!-- Desktop View -->
-          <td class="desktop-cell" style="padding: 8px 12px; font-size: 13px; color: #1e293b;">${escapeHtml(r.date)}</td>
-          <td class="desktop-cell" style="padding: 8px 12px; font-size: 13px; color: #1e293b; font-weight: 500;">${escapeHtml(r.employeeName)}</td>
-          <td class="desktop-cell" style="padding: 8px 12px; font-size: 13px; font-family: monospace; text-align: left;">${goTime}</td>
-          <td class="desktop-cell" style="padding: 8px 12px; font-size: 13px; font-family: monospace; text-align: left;">${retTime}</td>
-          <td class="desktop-cell" style="padding: 8px 12px; font-size: 13px; font-family: monospace; text-align: left; color: #64748b;">${duration}</td>
-          <td class="desktop-cell" style="padding: 8px 12px;">
-            <span style="display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; background: ${typeBg}; color: ${typeColor};">${escapeHtml(r.type)}</span>
-          </td>
-          <td class="desktop-cell" style="padding: 8px 12px; font-size: 12px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; color: #1e293b; height: 28px; border-right: 1px solid #e2e8f0;">${escapeHtml(r.date)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; color: #1e293b; font-weight: 500; border-right: 1px solid #e2e8f0;">${escapeHtml(r.employeeName)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; font-family: monospace; text-align: left; border-right: 1px solid #e2e8f0;">${goTime}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; font-family: monospace; text-align: left; border-right: 1px solid #e2e8f0;">${retTime}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; font-family: monospace; text-align: left; color: #64748b; border-right: 1px solid #e2e8f0;">${duration}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; border-right: 1px solid #e2e8f0;">${escapeHtml(r.type)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-right: 1px solid #e2e8f0;">
             <div title="${fullReason}">${shortReason}</div>
             ${r.admin_note ? `<div title="${fullAdminNote}" style="font-size: 11px; color: #94a3b8; margin-top: 2px;">(備考: ${shortAdminNote})</div>` : ''}
           </td>
-          <td class="desktop-cell" style="padding: 8px 12px;">
-            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${statusBg}; color: ${statusColor};">
-              <span style="width: 6px; height: 6px; border-radius: 50%; background: ${statusColor};"></span>
-              ${escapeHtml(r.status)}
-            </span>
-          </td>
-          <td class="desktop-cell" style="padding: 8px 12px; white-space: nowrap; text-align: center;">${actions}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; border-right: 1px solid #e2e8f0;">${escapeHtml(r.status)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; white-space: nowrap; text-align: center;">${actions}</td>
         </tr>
       `;
     });

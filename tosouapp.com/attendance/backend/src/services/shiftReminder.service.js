@@ -116,13 +116,27 @@ async function processReminders() {
     const [dailies] = await db.query(`SELECT userId, kubun FROM attendance_daily WHERE date = ?`, [todayStr]);
     const dailyMap = new Map(dailies.map(d => [d.userId, String(d.kubun || '').trim()]));
 
+    // Fetch shift_requests for today
+    const [shiftReqs] = await db.query(`SELECT userId, status FROM shift_requests WHERE date = ?`, [todayStr]);
+    const shiftReqMap = new Map(shiftReqs.map(sr => [sr.userId, sr.status]));
+
     // 3. For each active user, check if we need to send a reminder
     for (const user of users) {
       const userId = user.id;
       if (!user.email) continue;
       
-      // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
-      if (user.employment_type === 'part_time') continue;
+      const isPartTime = user.employment_type === 'part_time';
+      const shiftReqStatus = shiftReqMap.get(userId);
+
+      // Nếu là part-time, chỉ nhắc nhở nếu có đăng ký đi làm (WORKING)
+      if (isPartTime) {
+        if (shiftReqStatus !== 'WORKING') continue; // Không nhắc nếu đăng ký nghỉ (OFF) hoặc chưa đăng ký
+      }
+
+      // Nếu là Seishain, kiểm tra xem có đăng ký nghỉ phép trên lịch ca không (LEAVE)
+      if (!isPartTime && shiftReqStatus === 'LEAVE') {
+        continue; // Không nhắc nhở nếu đã đăng ký nghỉ
+      }
 
       // Kiểm tra xem có phải là nhân viên bộ phận Công trình (Koujibu) hay không
         const isKoujiUser = String(user.departmentName || '').includes('工事部');
@@ -277,12 +291,26 @@ async function checkDailyMissingAttendance() {
     const [dailies] = await db.query(`SELECT userId, kubun FROM attendance_daily WHERE date = ?`, [todayStr]);
     const dailyMap = new Map(dailies.map(d => [d.userId, String(d.kubun || '').trim()]));
 
+    // Fetch shift_requests for today
+    const [shiftReqs] = await db.query(`SELECT userId, status FROM shift_requests WHERE date = ?`, [todayStr]);
+    const shiftReqMap = new Map(shiftReqs.map(sr => [sr.userId, sr.status]));
+
     for (const user of users) {
       if (!user.email) continue;
       const userId = user.id;
       
-      // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
-      if (user.employment_type === 'part_time') continue;
+      const isPartTime = user.employment_type === 'part_time';
+      const shiftReqStatus = shiftReqMap.get(userId);
+
+      // Nếu là part-time, chỉ nhắc nhở nếu có đăng ký đi làm (WORKING)
+      if (isPartTime) {
+        if (shiftReqStatus !== 'WORKING') continue;
+      }
+
+      // Nếu là Seishain, kiểm tra xem có đăng ký nghỉ phép trên lịch ca không (LEAVE)
+      if (!isPartTime && shiftReqStatus === 'LEAVE') {
+        continue;
+      }
 
       const isKoujiUser = String(user.departmentName || '').includes('工事部');
       

@@ -925,6 +925,29 @@ const getShiftForDate = async (date) => {
   return best || null;
 };
 
+// State quản lý việc có thay đổi chưa lưu hay không
+let hasUnsavedChanges = false;
+
+// Đăng ký sự kiện cảnh báo khi rời trang nếu có thay đổi chưa lưu
+window.addEventListener('beforeunload', (e) => {
+  if (hasUnsavedChanges) {
+    const msg = '保存されていない変更があります。ページを離れてもよろしいですか？';
+    e.preventDefault();
+    e.returnValue = msg;
+    return msg;
+  }
+});
+
+// Hàm đánh dấu có thay đổi
+const markAsUnsaved = () => {
+  hasUnsavedChanges = true;
+};
+
+// Hàm đánh dấu đã lưu
+const markAsSaved = () => {
+  hasUnsavedChanges = false;
+};
+
 const persistDaily = async (date) => {
   const kubun = String($('#kubun')?.value || '').trim();
   const workType = String($('#workType')?.value || '').trim();
@@ -1061,6 +1084,7 @@ const load = async (date, opts = {}) => {
         
         // Auto-clear work content when classification changes to Absence
         selK.addEventListener('change', () => {
+          markAsUnsaved();
           if (selK.value === '欠勤') {
             const workEl = $('#workContent');
             if (workEl) {
@@ -1260,6 +1284,10 @@ const load = async (date, opts = {}) => {
         }
       }
       
+      // Bind markAsUnsaved to text areas and inputs
+      if (siteEl) siteEl.addEventListener('input', markAsUnsaved);
+      if (workEl) workEl.addEventListener('input', markAsUnsaved);
+      
       if (daily) {
         if ($('#memo')) $('#memo').value = daily.notes || '';
         if ($('#lateMin')) {
@@ -1453,6 +1481,9 @@ const save = async (date) => {
       body: JSON.stringify(payload)
     });
     
+    // Đánh dấu đã lưu thành công
+    markAsSaved();
+    
     if (!state.restHoliday && (workStr || siteStr)) {
       clearDraft(date);
     }
@@ -1599,6 +1630,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (btnOut) { btnOut.disabled = false; }
     
+    // Đánh dấu là có thay đổi chưa lưu
+    markAsUnsaved();
+    
     renderWorkMinutes();
     calculateLateEarly();
     showToast('確定ボタンを押して保存してください', 'success');
@@ -1632,6 +1666,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
       btnOut.textContent = isMobile ? `終了済 (${hmNow})` : `終了打刻済 (${hmNow})`;
     }
+    
+    // Đánh dấu là có thay đổi chưa lưu
+    markAsUnsaved();
     
     renderWorkMinutes();
     calculateLateEarly();

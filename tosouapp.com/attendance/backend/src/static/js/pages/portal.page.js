@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Route-level hardening: prevent style bleed when navigating from expenses page.
         let pad;
         if (isMobile) {
-          pad = 'calc(var(--topbar-height) + 2px)';
+          pad = pathName === '/ui/portal' ? 'calc(var(--topbar-height) + 32px)' : 'calc(var(--topbar-height) + 2px)';
           main.style.setProperty('margin-top', '0px', 'important');
         } else {
           pad = 'calc(var(--topbar-height) + var(--subbar-height) + 24px)';
@@ -721,6 +721,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!window.__employeePjaxReqBound) {
       window.__employeePjaxReqBound = true;
       applyContentSpacing(String(window.location.pathname || ''));
+      window.addEventListener('resize', () => {
+        applyContentSpacing(String(window.location.pathname || ''));
+      });
       const softNavigateSafe = async (to, push = true) => {
         if (pjaxNavInFlight) return true;
         pjaxNavInFlight = true;
@@ -879,6 +882,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           <a class="tile" href="/ui/adjust">
             <div class="icon">⏲</div>
             <div class="title">調整申請</div>
+          </a>
+          <a class="tile" href="/ui/shifts">
+            <div class="icon">🗓</div>
+            <div class="title">シフト登録</div>
           </a>
         </div>
         <div class="emp-tiles-2">

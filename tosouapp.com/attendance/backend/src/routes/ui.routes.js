@@ -1,13 +1,12 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { makeHtmlSenderSync } = require('../core/middleware/htmlIncludes');
 const { authenticateFromCookie } = require('../core/middleware/authMiddleware');
 const refreshRepo = require('../modules/auth/refresh.repository');
 
 const router = express.Router();
 const htmlRoot = path.join(__dirname, '..', 'static', 'html');
-const sendHtml = makeHtmlSenderSync({ htmlRoot });
+
 const roleOf = (v) => {
   const r = String(v || '').trim().toLowerCase();
   if (r === 'admin' || r === 'manager' || r === 'employee' || r === 'payroll') return r;
@@ -17,7 +16,11 @@ const roleOf = (v) => {
   return r;
 };
 
-const sendPage = (file) => (req, res) => sendHtml(req, res, file);
+const sendPage = (file) => (req, res) => {
+  const templateName = file.replace(/\.html$/, '');
+  res.render(templateName);
+};
+
 const setNoStore = (res) => {
   try {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -26,13 +29,17 @@ const setNoStore = (res) => {
     res.set('Surrogate-Control', 'no-store');
   } catch (e) { /* silently ignored */ }
 };
+
 const sendPageNoCache = (file) => (req, res) => {
   setNoStore(res);
-  return sendHtml(req, res, file);
+  const templateName = file.replace(/\.html$/, '');
+  res.render(templateName);
 };
-const sendAdminPageNoCache = (req, res, file = 'admin.html') => {
+
+const sendAdminPageNoCache = (req, res, file = 'admin') => {
   setNoStore(res);
-  return sendHtml(req, res, file);
+  const templateName = file.replace(/\.html$/, '');
+  res.render(templateName);
 };
 const authorizePage = (...roles) => (req, res, next) => {
   const role = roleOf(req.user?.role);
@@ -87,7 +94,7 @@ router.get('/ui/logout', async (req, res) => {
 });
 
 router.get('/ui-check', (req, res) => {
-  const file = path.join(htmlRoot, 'login.html');
+  const file = path.join(htmlRoot, 'login.ejs');
   res.status(200).json({ exists: fs.existsSync(file), file });
 });
 
@@ -101,13 +108,13 @@ router.get('/ui/portal', (req, res) => {
   setNoStore(res);
   const role = roleOf(req.user?.role);
   if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
-  return sendHtml(req, res, 'portal.html');
+  return res.render('portal');
 });
 router.get('/ui/portal/', (req, res) => {
   setNoStore(res);
   const role = roleOf(req.user?.role);
   if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
-  return sendHtml(req, res, 'portal.html');
+  return res.render('portal');
 });
 
 router.get('/admin/embed/attendance/monthly', sendPage('attendance-monthly.html'));
@@ -123,6 +130,7 @@ router.get('/ui/admin', (req, res) => {
   if (tab === 'employees') return res.redirect(302, '/admin/employees');
   if (tab === 'attendance') return res.redirect(302, '/admin/attendance');
   if (tab === 'shifts') return res.redirect(302, '/admin/attendance/shifts');
+  if (tab === 'shifts_approvals') return res.redirect(302, '/admin/attendance/shifts-approvals');
   if (tab === 'calendar') return res.redirect(302, '/admin/attendance/holidays');
   if (tab === 'leave_grant') return res.redirect(302, '/admin/leave/grants');
   if (tab === 'leave_balance') return res.redirect(302, '/admin/leave/balance');
@@ -143,8 +151,8 @@ router.get('/admin/employees/monthly-summary', (req, res) => sendAdminPageNoCach
 router.get('/admin/employees/monthly-summary/', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
 router.get('/admin/attendance/adjust-requests', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
 router.get('/admin/attendance/adjust-requests/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
-router.get('/ui/admin-faq', authenticateFromCookie, authorizePage('admin', 'manager'), (req, res) => res.redirect(302, '/admin/chatbot/faq'));
-router.get('/admin/faq', authenticateFromCookie, authorizePage('admin', 'manager'), (req, res) => res.redirect(302, '/admin/chatbot/faq'));
+router.get('/admin/attendance/shifts-approvals', (req, res) => sendAdminPageNoCache(req, res, 'admin-shifts-approvals.html'));
+router.get('/admin/attendance/shifts-approvals/', (req, res) => sendAdminPageNoCache(req, res, 'admin-shifts-approvals.html'));
 router.get(/^\/admin(?:\/.*)?$/, (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
 
 router.get('/ui/overtime', sendPage('overtime.html'));
@@ -166,22 +174,22 @@ router.get('/faq-test', authenticateFromCookie, authorizePage('admin', 'manager'
 router.get('/ui/:page.html', (req, res) => {
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (!page) return res.status(404).json({ message: 'Not Found', path: req.path });
-  if (page === 'employees') return sendHtml(req, res, 'admin.html');
-  return sendHtml(req, res, `${page}.html`);
+  if (page === 'employees') return res.render('admin');
+  return res.render(page);
 });
 
 router.get('/ui/:page', (req, res) => {
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (page === 'employees') {
-    return sendHtml(req, res, 'admin.html');
+    return res.render('admin');
   }
-  return sendHtml(req, res, `${page}.html`);
+  return res.render(page);
 });
 
 router.get('/:page.html', (req, res) => {
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (!page) return res.status(404).json({ message: 'Not Found', path: req.path });
-  return sendHtml(req, res, `${page}.html`);
+  return res.render(page);
 });
 
 module.exports = router;

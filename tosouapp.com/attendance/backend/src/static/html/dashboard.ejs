@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Home</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260416-mobilefix4">
+  <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
+  <script type="module" src="/static/js/pages/dashboard.page.js?v=navy-20260421-empcache1"></script>
+  <link rel="icon" href="/static/images/logo1.png?v=<%= appVersion %>" type="image/png">
+</head>
+<body>
+  <div id="pageSpinner" class="page-spinner">
+    <div class="lds-spinner" aria-hidden="true">
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+  </div>
+  <%- include('_partials/employee-header.ejs') %>
+  <main class="content">
+    <div id="error" style="display:none;color:#b00020;font-weight:600;"></div>
+    <section class="tiles" id="tiles"></section>
+  </main>
+</body>
+</html>

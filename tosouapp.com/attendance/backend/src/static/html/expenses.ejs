@@ -1,0 +1,3242 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>交通費申請</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=20260416-1">
+  <link rel="stylesheet" href="/static/css/portal.css?v=20260416-1">
+  <link rel="icon" href="data:,">
+  <script type="module" src="/static/js/pages/expenses.page.js?v=20260529-23"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --brand: #2563eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --surface: #ffffff;
+      --field: #ffffff;
+      --border: #e5e7eb;
+      --ok: #16a34a;
+      --warn: #f59e0b;
+      --error: #ef4444;
+      --bg-color: #f8fafc;
+    }
+
+    html {
+      background: #f7f9fb;
+      overflow-y: scroll;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    body {
+      background: #f7f9fb;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    body:not(.admin) {
+      overflow: visible !important;
+      padding-top: 0 !important;
+      margin-top: 0 !important;
+    }
+
+    .content {
+      width: 100%;
+      max-width: none;
+      padding: 0 12px 12px 12px;
+      box-sizing: border-box;
+      background: #f7f9fb;
+      height: auto;
+      min-height: 0;
+      overflow: visible;
+      min-height: calc(100vh - var(--topbar-height) - var(--subbar-height));
+    }
+
+    body:not(.admin) .topbar,
+    body:not(.admin) .subbar {
+      display: none !important;
+    }
+
+    body:not(.admin) .content,
+    body:not(.admin) .subbar+.content {
+      padding-top: 0 !important;
+      background: #f1f5f9;
+      margin: 0 !important;
+      max-width: 100% !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    /* Sidebar Toggle Icons (Desktop Default) */
+    #expIconClose {
+      display: block;
+    }
+
+    #expIconMenu {
+      display: none;
+    }
+
+    .sidebar-collapsed #expIconClose {
+      display: none;
+    }
+
+    .sidebar-collapsed #expIconMenu {
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+
+      body:not(.admin) .content,
+      body:not(.admin) .subbar+.content {
+        padding-top: 0 !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+
+      body:not(.admin) .content,
+      body:not(.admin) .subbar+.content {
+        padding-top: 0 !important;
+      }
+    }
+
+    /* Đảm bảo khoảng cách sát với thanh tiêu đề */
+    main.content {
+      margin-top: 0 !important;
+      padding: 0 16px 16px;
+    }
+
+    .card {
+      max-width: 100%;
+      width: 100%;
+      margin: 0;
+      background: transparent;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0;
+      height: auto;
+    }
+
+    .form-wrap {
+      max-width: 920px;
+      width: 100%;
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    .form-wrap.adjust-grid {
+      background: #ffffff;
+      border: 1px solid #dbe3ee;
+      border-top: 4px solid #3b82f6;
+      border-radius: 12px;
+      padding: 24px 24px 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+      margin-bottom: 20px;
+    }
+
+    .list-wrap {
+      max-width: 100%;
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid #dbe3ee;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+    }
+
+    .adjust-grid {
+      display: grid;
+      grid-template-columns: 100px minmax(0, 1fr) 100px minmax(0, 1fr);
+      gap: 16px 12px;
+      align-items: center;
+    }
+
+    .adjust-grid .full-row {
+      grid-column: 1 / -1;
+    }
+
+    .adjust-label {
+      color: #1e293b;
+      font-weight: 700;
+      font-family: Meiryo, "Meiryo UI", "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+      margin-top: 0;
+      padding-top: 0;
+      padding-right: 4px;
+      align-self: center;
+      justify-self: start;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .adjust-label-right {
+      padding-left: 24px;
+      padding-right: 4px;
+    }
+
+    .req {
+      color: #dc2626;
+      font-weight: 700;
+      margin-left: 3px;
+    }
+
+    .section-head {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0b2c66;
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin-bottom: 4px;
+    }
+
+    .month-picker-card {
+      max-width: 920px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      box-shadow: none;
+      margin-bottom: 10px;
+    }
+
+    .month-picker-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .month-chip-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .month-chip {
+      height: 38px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .month-chip:hover {
+      background: #e2e8f0;
+    }
+
+    .month-chip.active {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    }
+
+    .month-picker-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .month-picker-actions input[type="month"] {
+      height: 34px;
+      border: 1px solid #d7dee9;
+      border-radius: 8px;
+      padding: 0 8px;
+      font-size: 13px;
+    }
+
+    .create-profile-box {
+
+      margin-top: 10px;
+      border: 1px solid #dbe2ea;
+      background: #fff;
+      padding: 10px;
+      border-radius: 0;
+    }
+
+    .create-profile-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .create-profile-item {
+      min-width: 0;
+    }
+
+    .create-profile-label {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+
+    .create-profile-item input {
+      width: 100%;
+      height: 34px;
+      border: 1px solid #d7dee9;
+      border-radius: 0;
+      padding: 0 8px;
+      font-size: 13px;
+      color: #0f172a;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .create-profile-status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    .adjust-grid>div {
+      min-width: 0;
+    }
+
+    .adjust-input,
+    .adjust-grid input[type="text"],
+    .adjust-grid input[type="number"],
+    .adjust-grid input[type="date"],
+    .adjust-grid input[type="month"],
+    .adjust-grid textarea,
+    .adjust-grid select {
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      padding: 6px 12px;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 360px;
+      font-family: Meiryo, "Meiryo UI", "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+      transition: all .2s;
+    }
+
+    .adjust-grid input:focus,
+    .adjust-grid select:focus,
+    .adjust-grid textarea:focus {
+      outline: none;
+      background: #ffffff;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .field-error {
+      border-color: #d32f2f !important;
+      box-shadow: 0 0 0 3px rgba(211, 47, 47, .10) !important;
+      background: #fff9f9 !important;
+    }
+
+    .field-msg {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #d32f2f;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      line-height: 1.35;
+    }
+
+    .field-msg::before {
+      content: "⚠";
+      font-size: 11px;
+    }
+
+    .adjust-grid textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    #exVia::placeholder {
+      color: #64748b;
+      opacity: 1;
+      font-weight: 600;
+    }
+
+    .adjust-grid input[type="file"] {
+      width: 100%;
+      min-height: 38px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 4px 8px;
+      box-sizing: border-box;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .adjust-grid input[type="file"]:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .adjust-grid input[type="file"]::file-selector-button {
+      border: none;
+      border-radius: 6px;
+      background: #e2e8f0;
+      color: #1e293b;
+      padding: 4px 12px;
+      margin-right: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .adjust-grid input[type="file"]::file-selector-button:hover {
+      background: #cbd5e1;
+    }
+
+    .receipt-upload-row {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      gap: 12px !important;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    .upload-card {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      padding: 0;
+    }
+
+    .receipt-upload-row>div {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      min-width: 0;
+    }
+
+    .image-upload-wrap {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+    }
+
+    .upload-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .upload-section-help {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .upload-box {
+      border: 1px solid #dbe3ee;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 12px;
+      transition: all .2s;
+    }
+
+    .upload-box:hover {
+      border-color: #cbd5e1;
+      background: #f1f5f9;
+    }
+
+    .upload-box input[type="file"] {
+      border: none;
+      background: transparent;
+      padding: 0;
+      min-height: 0;
+    }
+
+    .upload-box-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      color: #475569;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .upload-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #e8f0fe;
+      color: #1e40af;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .upload-preview {
+      margin-top: 8px;
+      min-height: 24px;
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .upload-thumb {
+      width: 84px;
+      height: 84px;
+      object-fit: cover;
+      border: 1px solid #dbe6f5;
+      border-radius: 8px;
+      background: #fff;
+      display: inline-block;
+    }
+
+    .upload-file-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #dbe6f5;
+      background: #fff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      max-width: 100%;
+    }
+
+    .upload-file-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 360px;
+      display: inline-block;
+    }
+
+    .upload-sections {
+      border-top: 1px solid #e5e7eb;
+      margin-top: 8px;
+      padding-top: 12px;
+      background: transparent;
+      border-radius: 0;
+      border: none;
+      padding: 12px 0 0;
+    }
+
+    .checkbox-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .adjust-grid input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 6px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .adjust-actions {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+      margin-top: 0;
+      padding-left: 2px;
+      justify-content: flex-end;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 8px;
+    }
+
+    .form-head-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      margin-bottom: 8px;
+    }
+
+    .form-head-left {
+      min-width: 0;
+    }
+
+    .form-head-row .section-head {
+      margin-bottom: 4px;
+    }
+
+    .form-head-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+      flex: 0 0 auto;
+    }
+
+    .adjust-actions .btn {
+      height: 44px;
+      border-radius: 10px;
+      padding: 0 24px;
+      font-family: Meiryo, "Meiryo UI", "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    #empSummary .btn,
+    .adjust-actions .btn,
+    #historySection .btn {
+      border-radius: 10px !important;
+    }
+
+    #historySection .history-mode-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      line-height: 1;
+      margin: 0;
+      height: 28px;
+      padding: 0;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      border: none !important;
+      background: transparent !important;
+      color: #475569 !important;
+      border-radius: 0 !important;
+    }
+
+    #historySection .history-mode-chip {
+      cursor: default;
+    }
+
+    #historySection .action-icon-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      color: #111827;
+    }
+
+    #historySection .action-icon-btn:hover:not([disabled]) {
+      color: #7c3aed;
+    }
+
+    #historySection .action-icon-btn[data-action="delete-month"] {
+      color: #111827;
+    }
+
+    #historySection .action-icon-btn[data-action="delete-month"]:hover:not([disabled]) {
+      color: #111827;
+    }
+
+    #historySection .action-icon-btn[disabled] {
+      opacity: 1;
+      cursor: not-allowed;
+    }
+
+    #homeSection .form-head-actions .action-icon-btn {
+      width: 52px;
+      height: 52px;
+      padding: 0;
+      margin: 0;
+      color: #111827;
+    }
+
+    #homeSection .form-head-actions .action-icon-btn:hover:not([disabled]) {
+      color: #7c3aed;
+    }
+
+    #homeSection .form-head-actions .action-icon-btn svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.24);
+      border-radius: 6px;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .expense-main :where(button, .btn, .icon-btn, .tab, .month-chip, .history-month-chip, a[href], [data-action], [role="button"]):not([disabled]) {
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .06s ease;
+      cursor: pointer;
+    }
+
+    .expense-main :where(button, .btn, .icon-btn, .tab, .month-chip, .history-month-chip, a[href], [data-action], [role="button"]):not(.action-icon-btn):not([disabled]):hover {
+      border-color: #7c3aed !important;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.20);
+    }
+
+    .expense-main :where(button, .btn, .icon-btn, .tab, .month-chip, .history-month-chip, a[href], [data-action], [role="button"]):not(.action-icon-btn):not([disabled]):active {
+      transform: translateY(1px);
+    }
+
+    .action-icon-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 2px;
+      line-height: 1;
+    }
+
+    .action-icon-btn:hover:not([disabled]) {
+      box-shadow: none !important;
+      border-color: transparent !important;
+    }
+
+    .action-icon-btn:active {
+      transform: none !important;
+    }
+
+    .action-icon-btn svg {
+      display: block;
+    }
+
+    .action-icon-btn[data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 8px;
+      background: rgba(17, 24, 39, 0.92);
+      color: #fff;
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .action-icon-btn[data-tooltip]:hover::before {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 2px;
+      border: 6px solid transparent;
+      border-top-color: rgba(17, 24, 39, 0.92);
+      z-index: 51;
+      pointer-events: none;
+    }
+
+    /*  cái này là button secondary dùng để hiển thị trạng thái của phiếu chi phí */
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #334155;
+      border: 1px solid #d1d5db;
+      box-shadow: none;
+    }
+
+    .adjust-status {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+
+    .adj-table-card {
+      margin-top: 14px;
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding-bottom: 12px;
+    }
+
+    .adj-table {
+      width: 100%;
+      min-width: 800px;
+      border-collapse: collapse;
+      border-spacing: 0;
+    }
+
+    .adj-table th,
+    .adj-table td {
+      padding: 16px 14px;
+      font-family: Meiryo, "Meiryo UI", "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .adj-table thead th {
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: 700;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      border-top: 1px solid var(--border);
+    }
+
+    .adj-table tbody tr {
+      transition: background .15s;
+    }
+
+    .adj-table tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    .adj-table tbody tr.total-row {
+      background: #f8fafc;
+    }
+
+    .adj-table tbody tr.total-row td {
+      border-top: 2px solid #cbd5e1;
+    }
+
+    #historySection .adj-table td {
+      vertical-align: middle;
+    }
+
+    #historySection .adj-table th {
+      padding: 7px 8px;
+      font-size: 12px;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    #historySection .adj-table td {
+      padding: 7px 8px;
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    #historySection .status-pill {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    #historySection .history-route-chip {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    #historySection .history-month-pick {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #historySection .history-month-pick input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: #7c3aed;
+    }
+
+    @media (max-width: 768px) {
+      #historySection .history-month-pick input[type="checkbox"] {
+        display: none !important;
+      }
+    }
+
+    #historySection .history-month-pick button.history-month-chip {
+      margin: 0;
+    }
+
+    #historySection .adj-table {
+      width: 100%;
+    }
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    .row-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    #historySection .adj-table td:last-child .btn {
+      height: 24px;
+      border-radius: 999px !important;
+      border: 1px solid #c9dafc;
+      background: #eef4ff;
+      color: #1e40af;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 0 8px;
+      box-shadow: none;
+      min-width: 0;
+    }
+
+    #historySection .adj-table td:last-child .btn:hover {
+      background: #e0ecff;
+      border-color: #b8cefb;
+    }
+
+    #historySection .adj-table td:last-child .icon-btn {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #historySection .adj-table td:last-child .icon-btn:hover {
+      background: #fff5f5;
+      border-color: #fecaca;
+    }
+
+    #historySection .adj-table td:last-child .icon-btn img {
+      width: 13px;
+      height: 13px;
+      margin: 0;
+    }
+
+    /* status-pill updated to match mockups */
+    .status-pill {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .status-draft { background: #f1f5f9; color: #64748b; }
+    .status-applied { background: #fff7ed; color: #ea580c; }
+    .status-approved { background: #f0fdf4; color: #16a34a; }
+    .status-paid { background: #faf5ff; color: #9333ea; }
+    .status-rejected { background: #fef2f2; color: #dc2626; }
+
+    .history-route-chip {
+      display: inline-block;
+      max-width: 100%;
+      padding: 2px 8px;
+      border: 1px solid #dbe2ea;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #0f172a;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+
+    .status-draft {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .status-applied {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-approved {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-rejected {
+      background: #fee2e2;
+      color: #7f1d1d;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .icon-btn img {
+      width: 22px;
+      height: 22px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .summary-card {
+      border: 1px solid #dbe2ea;
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: box-shadow .15s ease, border-color .15s ease, transform .1s ease;
+    }
+
+    .summary-card:hover {
+      border-color: #c7d7ef;
+      box-shadow: 0 6px 16px rgba(11, 44, 102, .08);
+    }
+
+    .summary-card:active {
+      transform: translateY(1px);
+    }
+
+    .summary-card-title {
+      color: #0b2c66;
+      font-weight: 800;
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .summary-card-sub {
+      color: #334155;
+      font-size: 13px;
+      line-height: 1.35;
+      min-height: 34px;
+    }
+
+    .summary-card-meta {
+      margin-top: 8px;
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .history-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 10px;
+    }
+
+    .history-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .history-top-actions {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #historySection .history-head {
+      padding: 6px 0 8px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #dbe2ea;
+    }
+
+    #historySection #historyModeLabel {
+      margin: 0 0 6px !important;
+      font-size: 18px;
+      line-height: 1.15;
+      font-weight: 800 !important;
+      letter-spacing: .2px;
+      color: #0b2c66 !important;
+    }
+
+    #historySection #exMonthlyBoardHost {
+      margin: 0 0 6px;
+    }
+
+    #historySection #exMonthlyProfileHost {
+      margin: 0;
+    }
+
+    .history-profile-bar {
+      margin: 0;
+      border: none;
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    .history-profile-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .history-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .history-filters label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #334155;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .history-filters input,
+    .history-filters select {
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 10px;
+      font-size: 13px;
+      color: #0f172a;
+      background: #fff;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-left: auto;
+      flex-wrap: nowrap;
+    }
+
+    .history-months-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .history-month-chip {
+      height: 38px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 0 16px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .history-month-chip:hover {
+      background: #e2e8f0;
+    }
+
+    .history-month-chip.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    }
+
+    .history-month-empty {
+      color: #64748b;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .history-continue-wrap {
+      margin-bottom: 8px;
+    }
+
+    .history-continue-btn {
+      height: 28px;
+      border-radius: 0 !important;
+      padding: 0 10px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+    }
+
+    .history-mode-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid #111827;
+      background: #fff;
+      color: #111827;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 0;
+      margin-bottom: 0;
+    }
+
+    .expense-main.new-progress-split #historySection #historyModeLabel {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    #historySection #exListHost {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    #historySection.applied-month-mode .history-toolbar {
+      display: none;
+    }
+
+    #historySection.applied-month-mode #exListHost {
+      margin-top: 4px;
+    }
+
+    #historySection.notice-mode .history-toolbar,
+    #historySection.notice-mode .history-month-empty {
+      display: none !important;
+    }
+
+    #historySection.notice-mode #exListHost {
+      margin-top: 2px;
+    }
+
+    .notice-month-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+
+    .notice-month-summary-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #dbe2ea;
+      background: #fff;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .expense-inline-tabs {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      margin: 0;
+      max-width: 100%;
+      width: 100%;
+      background: transparent;
+      padding: 0;
+      border: none;
+    }
+
+    .expense-inline-tabs .tab {
+      height: 40px;
+      padding: 0 20px;
+      border: none;
+      border-radius: 8px;
+      background: #e2e8f0;
+      color: #475569;
+      font-weight: 700;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+
+    .expense-inline-tabs .tab:hover {
+      background: #cbd5e1;
+      color: #1e293b;
+    }
+
+    .expense-inline-tabs .tab.active {
+      background: #2563eb;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .expense-layout {
+      --side-tabs-w: 260px;
+      display: block;
+      padding-left: var(--side-tabs-w);
+      height: auto;
+      min-height: auto;
+      position: relative;
+      background: transparent;
+      transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body:not(.admin) .expense-layout.sidebar-collapsed {
+      padding-left: 0 !important;
+    }
+
+    body:not(.admin) .expense-layout.sidebar-collapsed .expense-side-tabs {
+      transform: translateX(-260px);
+    }
+
+    .expense-side-tabs {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 260px;
+      height: 100vh;
+      overflow-y: auto;
+      background: #ffffff;
+      border-right: 1px solid var(--border);
+      border-radius: 0;
+      padding: 0 0 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      z-index: 100;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .expense-side-tabs::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .expense-side-tabs::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .expense-side-tabs::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .22);
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    .expense-side-tabs::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, .34);
+    }
+
+    .expense-side-tabs .expense-inline-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: stretch;
+      margin: 0;
+      width: 100%;
+      background: transparent;
+      padding: 0;
+      border: none;
+    }
+
+    .expense-inline-tabs .tab {
+      width: 100%;
+      height: 48px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #475569;
+      font-weight: 700;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      cursor: pointer;
+      transition: all .2s ease;
+      text-align: left;
+    }
+
+    .expense-inline-tabs .tab:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .expense-inline-tabs .tab.active {
+      background: #eff6ff;
+      color: var(--brand);
+      box-shadow: none;
+      border-left: 3px solid var(--brand);
+      padding-left: 17px;
+    }
+
+    .expense-main {
+      min-width: 0;
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+      padding: 24px;
+      background: #f1f5f9;
+      transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .expense-main>section {
+      margin-top: 8px;
+    }
+
+    .expense-main.new-progress-split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+      gap: 24px;
+      align-items: start;
+      overflow: visible;
+      isolation: isolate;
+      max-width: 100%;
+    }
+
+    .expense-main.new-progress-split #homeSection {
+      grid-column: 1;
+      margin: 0;
+      min-width: 0;
+      overflow: visible;
+      padding-right: 12px;
+      border-right: 0;
+    }
+
+    .expense-main.new-progress-split #historySection {
+      grid-column: 2;
+      margin: 0;
+      min-width: 0;
+      max-width: none;
+      overflow: visible;
+      margin-top: 0;
+      padding-left: 12px;
+    }
+
+    .expense-main.new-progress-split .form-wrap {
+      max-width: none;
+      width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .expense-main.new-progress-split .form-wrap.adjust-grid {
+      margin-bottom: 0;
+      padding: 10px 10px 8px;
+      border-radius: 0;
+    }
+
+    .expense-main.new-progress-split #homeSection .adjust-grid {
+      grid-template-columns: 90px minmax(0, 1fr) 90px minmax(0, 1fr);
+      gap: 12px 8px;
+    }
+
+    .expense-main.new-progress-split #homeSection .adjust-label {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: normal;
+      line-height: 1.25;
+    }
+
+    .expense-main.new-progress-split #homeSection .adjust-grid input[type="text"],
+    .expense-main.new-progress-split #homeSection .adjust-grid input[type="number"],
+    .expense-main.new-progress-split #homeSection .adjust-grid input[type="date"],
+    .expense-main.new-progress-split #homeSection .adjust-grid textarea,
+    .expense-main.new-progress-split #homeSection .adjust-grid select {
+      max-width: 100%;
+      font-size: 12px;
+      height: 32px;
+      border-radius: 0;
+    }
+
+    .expense-main.new-progress-split #homeSection .receipt-upload-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px !important;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-box {
+      padding: 6px 8px;
+      border-radius: 0;
+      border: 1px solid #d7e3f4;
+    }
+
+    .expense-main.new-progress-split #homeSection input[type="file"] {
+      border-radius: 0;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-box-head {
+      margin-bottom: 2px;
+      font-size: 12px;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-preview {
+      margin-top: 4px;
+      min-height: 0;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #homeSection .upload-section-help {
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .expense-main.new-progress-split #historySection .list-wrap {
+      max-width: 100%;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table-card {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #dbe3ee;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+      padding-bottom: 12px;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table {
+      min-width: 600px;
+      width: 100%;
+      table-layout: auto;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection #historyModeLabel {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: .2px;
+      color: #0b2c66 !important;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f8fbff;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table tbody tr:nth-child(even) {
+      background: #fbfdff;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table tbody tr:hover {
+      background: #f1f6ff;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table th,
+    .expense-main.new-progress-split #historySection .adj-table td {
+      padding: 6px 6px;
+      font-size: 11px;
+      line-height: 1.4;
+      border: 1px solid #dbe2ea;
+      vertical-align: middle;
+      border-radius: 0;
+    }
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(6) .btn {
+      height: 24px;
+      min-width: 34px;
+      padding: 0 6px;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table td:nth-child(6) .icon-btn {
+      width: 22px;
+      height: 22px;
+    }
+
+    .expense-main.new-progress-split #historySection .adj-table .row-actions {
+      gap: 2px;
+      justify-content: center;
+    }
+
+    .expense-main.new-progress-split #historySection .status-pill {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection .history-route-chip {
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    .expense-main.new-progress-split #historySection .history-toolbar,
+    .expense-main.new-progress-split #historySection .history-months-wrap,
+    .expense-main.new-progress-split #historySection .history-month-empty {
+      display: none !important;
+    }
+
+    .expense-main.new-progress-split #historySection #historyModeLabel {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .expense-main.new-progress-split #historySection #exListHost {
+      margin-top: 0;
+    }
+
+    @media (max-width: 1360px) {
+      .expense-main.new-progress-split {
+        display: block;
+      }
+
+      .expense-main.new-progress-split #homeSection,
+      .expense-main.new-progress-split #historySection {
+        margin: 0;
+      }
+
+      .expense-main.new-progress-split #homeSection {
+        border-right: 0;
+        padding-right: 0;
+      }
+
+      .expense-main.new-progress-split #historySection {
+        margin-top: 10px;
+        min-width: 0;
+        max-width: 100%;
+        padding-left: 0;
+      }
+
+      .expense-main.new-progress-split .form-wrap {
+        max-width: 100%;
+      }
+
+      .expense-main.new-progress-split #homeSection .adjust-grid {
+        grid-template-columns: 100px minmax(0, 1fr) 100px minmax(0, 1fr);
+        gap: 16px 12px;
+      }
+
+      .expense-main.new-progress-split #homeSection .receipt-upload-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px !important;
+      }
+
+      .expense-main.new-progress-split #historySection .adj-table-card {
+        overflow-x: auto;
+      }
+
+      .expense-main.new-progress-split #historySection .adj-table {
+        width: 100%;
+      }
+    }
+
+    .grid-span-all {
+      grid-column: 2 / -1;
+    }
+
+    @media (max-width: 1200px) {
+
+      .adjust-grid,
+      .expense-main.new-progress-split #homeSection .adjust-grid {
+        grid-template-columns: 100px minmax(0, 1fr);
+      }
+
+      .adjust-label-right {
+        padding-left: 0;
+      }
+
+      .adjust-grid .full-row {
+        grid-column: 1 / -1;
+      }
+
+      .grid-span-all {
+        grid-column: 2 / -1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body.exp-drawer-open {
+        overflow: hidden !important;
+        touch-action: none !important;
+        overscroll-behavior: none !important;
+      }
+
+      body:not(.admin) .expense-layout {
+        width: 100%;
+        position: relative;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      body:not(.admin) .expense-layout.sidebar-collapsed {
+        transform: translateX(260px);
+      }
+
+      /* Mobile default: Sidebar is closed/hidden as a drawer */
+      body:not(.admin) .expense-layout .expense-side-tabs {
+        width: 260px;
+        transform: translateX(-260px);
+        z-index: 1050;
+        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+        position: absolute;
+        /* Keep it inside the shifted layout */
+        left: 0;
+        top: 0;
+        bottom: 0;
+        height: 100%;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      body:not(.admin) .expense-layout.sidebar-collapsed .expense-side-tabs {
+        transform: translateX(-260px);
+        /* Counter-act the layout shift so it stays on screen edge */
+      }
+
+      /* Mobile Icons logic (inverted from desktop) */
+      #expIconClose {
+        display: none;
+      }
+
+      #expIconMenu {
+        display: block;
+      }
+
+      .sidebar-collapsed #expIconClose {
+        display: block;
+      }
+
+      .sidebar-collapsed #expIconMenu {
+        display: none;
+      }
+
+      #expMobileCloseDrawer {
+        display: inline-flex !important;
+      }
+
+      .expense-standalone-title,
+      .expense-standalone-vsep,
+      .expense-standalone-user-info,
+      .expense-standalone-user-caret {
+        display: none !important;
+      }
+
+      .expense-layout {
+        display: block;
+        padding-left: 0 !important;
+        height: auto;
+      }
+
+      .expense-brand {
+        display: flex !important;
+      }
+
+      .expense-main {
+        height: auto;
+        overflow: visible;
+        padding: 12px;
+      }
+
+      body:not(.admin) .subbar+.content,
+      body:not(.admin) .content {
+        margin-top: 0 !important;
+      }
+
+      .expense-main.new-progress-split {
+        display: block;
+      }
+
+      .card {
+        padding: 0;
+        border-radius: 0;
+      }
+
+      .form-wrap,
+      .list-wrap,
+      #empSummary {
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: auto;
+      }
+
+      .form-wrap.adjust-grid {
+        padding: 8px;
+        border-radius: 10px;
+      }
+
+      .adjust-grid,
+      .expense-main.new-progress-split #homeSection .adjust-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .month-chip-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .grid-span-all {
+        grid-column: 1 / -1;
+      }
+
+      .adjust-label {
+        line-height: 1.3;
+        font-size: 12px;
+        margin-top: 4px;
+        margin-bottom: 2px;
+      }
+
+      .adjust-input,
+      .adjust-grid input[type="text"],
+      .adjust-grid input[type="number"],
+      .adjust-grid input[type="date"],
+      .adjust-grid input[type="month"],
+      .adjust-grid textarea,
+      .adjust-grid select {
+        height: 34px;
+        font-size: 12px;
+        max-width: 100%;
+      }
+
+      .adjust-grid textarea {
+        min-height: 86px;
+      }
+
+      .receipt-upload-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+      }
+
+      .receipt-upload-row>div {
+        flex: initial;
+        min-width: 0;
+        width: auto;
+      }
+
+      .receipt-upload-row label {
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: #334155 !important;
+        margin-bottom: 5px !important;
+        line-height: 1.25;
+      }
+
+      .receipt-upload-row input[type="file"] {
+        min-height: 36px;
+        padding: 4px 6px;
+        border-radius: 8px;
+        font-size: 11px;
+      }
+
+      .receipt-upload-row input[type="file"]::file-selector-button {
+        font-size: 11px;
+        padding: 4px 7px;
+      }
+
+
+
+      #historySection .adj-table-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #historySection .adj-table {
+        min-width: 760px;
+      }
+
+      #historySection label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #historySection .history-toolbar {
+        align-items: stretch;
+      }
+
+      #historySection .history-filters {
+        width: 100%;
+      }
+
+      #historySection .history-actions {
+        margin-left: 0;
+      }
+
+      #historySection .history-months-wrap {
+        gap: 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+
+      html,
+      body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+
+      body {
+        margin: 0 auto !important;
+      }
+
+      .content {
+        padding: 2px 6px 8px 6px;
+        width: 100%;
+        margin: 0;
+        display: flex;
+        justify-content: flex-start;
+        height: auto;
+        overflow: visible;
+      }
+
+      .content>section.card {
+        width: min(100%, 420px);
+        margin: 0;
+      }
+
+      #empSummary,
+      .form-wrap,
+      .list-wrap,
+      #homeSection,
+      #historySection {
+        width: 100%;
+        max-width: 420px;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+      }
+
+      .adjust-actions {
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        gap: 2px;
+      }
+
+      #homeSection .adjust-actions .btn {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 132px;
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      #exApply {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+
+      #homeSection #exStatus {
+        display: none;
+      }
+    }
+
+    #empSummary {
+      max-width: 980px;
+      width: 100%;
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    #empSummary .adj-table th,
+    #empSummary .adj-table td {
+      padding: 8px 10px;
+    }
+
+    #empSummary .btn {
+      height: 32px;
+    }
+
+    #empSummary {
+      background: var(--surface);
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+    }
+
+    #empSummary .adj-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    #empSummary .adj-table thead th {
+      background: #f8fafc;
+      color: var(--brand);
+      font-weight: 800;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    #empSummary .adj-table tbody tr {
+      border-bottom: 1px solid #eef2f7;
+    }
+
+    #empSummary .adj-table tbody tr:hover {
+      background: transparent;
+    }
+
+    #empSummary .adj-table td:first-child {
+      width: 160px;
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    #empSummary .adj-table td:last-child {
+      text-align: right;
+    }
+
+    #empSummary input[type="month"] {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    #empSummary .btn {
+      border-radius: 10px;
+      padding: 0 14px;
+    }
+
+    #empSummary #empNewStart {
+      min-width: 96px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    #empSummary .new-month-row {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 8px !important;
+      width: 100%;
+    }
+
+    #empSummary .new-month-row #empNewMonth {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    #empSummary .new-month-row #empNewStart {
+      flex: 0 0 auto;
+    }
+
+    #empSummary #empNewStart,
+    #empSummary #empGoForm {
+      background: linear-gradient(180deg, #2b6cb0 0%, #245a96 100%);
+      color: #fff;
+      border: 1px solid #1e4e8c;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .1);
+      transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #empSummary #empNewStart:hover,
+    #empSummary #empGoForm:hover {
+      background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%) !important;
+      color: #fff !important;
+      border-color: #6d28d9 !important;
+      box-shadow: 0 4px 10px rgba(91, 33, 182, .28) !important;
+    }
+
+    #empSummary #empNewStart:focus,
+    #empSummary #empNewStart:focus-visible,
+    #empSummary #empGoForm:focus,
+    #empSummary #empGoForm:focus-visible,
+    #empSummary #empNewStart:active,
+    #empSummary #empGoForm:active {
+      background: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%) !important;
+      color: #fff !important;
+      border-color: #5b21b6 !important;
+      outline: none !important;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, .3) !important;
+    }
+
+    @media (max-width: 640px) {
+      #empSummary {
+        --summary-control-width: min(100%, 300px);
+      }
+
+      #empSummary .adj-table {
+        display: block;
+      }
+
+      #empSummary .adj-table thead {
+        display: none;
+      }
+
+      #empSummary .adj-table tbody {
+        display: block;
+      }
+
+      #empSummary .adj-table tr {
+        display: block;
+        padding: 6px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        margin-bottom: 8px;
+      }
+
+      #empSummary .adj-table td {
+        display: block;
+        padding: 4px 6px;
+        font-size: 13px;
+        border: 0;
+      }
+
+      #empSummary .adj-table td:first-child {
+        font-weight: 800;
+        color: var(--brand);
+      }
+
+      #empSummary .adj-table td:last-child {
+        text-align: left;
+      }
+
+      #empSummary .adj-table td>div[style*="display:flex"] {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 6px !important;
+        width: 100%;
+        margin: 0;
+      }
+
+      #empSummary .btn {
+        display: block;
+        width: var(--summary-control-width);
+        height: 34px;
+        font-size: 13px;
+        white-space: normal;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center !important;
+      }
+
+      #empSummary input[type="month"] {
+        display: block;
+        width: var(--summary-control-width);
+        height: 34px;
+        font-size: 13px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      #empSummary .adj-table td button,
+      #empSummary .adj-table td input[type="month"] {
+        max-width: 100%;
+      }
+
+      /* Keep month input + start button on one row in mobile summary */
+      #empSummary .adj-table tbody tr:first-child td:last-child>div.new-month-row {
+        flex-direction: row !important;
+        align-items: center !important;
+        width: var(--summary-control-width);
+        margin-left: auto;
+        margin-right: auto;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+      }
+
+      #empSummary #empNewMonth {
+        flex: 1 1 auto;
+        width: calc(100% - 92px) !important;
+        min-width: 0;
+        margin: 0;
+      }
+
+      #empSummary #empNewStart {
+        flex: 0 0 84px !important;
+        width: 84px !important;
+        min-width: 84px !important;
+        margin: 0;
+        white-space: nowrap !important;
+      }
+
+      /* Keep applied value + action button on one horizontal row */
+      #empSummary .adj-table tbody tr:nth-child(2) {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-areas:
+          "title title"
+          "value action";
+        align-items: center;
+        column-gap: 8px;
+        row-gap: 6px;
+      }
+
+      #empSummary .adj-table tbody tr:nth-child(2) td:first-child {
+        grid-area: title;
+      }
+
+      #empSummary .adj-table tbody tr:nth-child(2) td:nth-child(2) {
+        grid-area: value;
+        display: block;
+        padding-right: 0;
+      }
+
+      #empSummary .adj-table tbody tr:nth-child(2) td:nth-child(3) {
+        grid-area: action;
+        display: block;
+        text-align: right !important;
+        padding-left: 0;
+      }
+
+      #empSummary .adj-table tbody tr:nth-child(2) #empGoForm {
+        width: auto !important;
+        min-width: 120px;
+        margin: 0;
+      }
+
+      #historySection .history-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      #empSummary .summary-cards {
+        grid-template-columns: 1fr;
+      }
+
+      #empSummary .summary-card-title {
+        font-size: 15px;
+      }
+
+      #historySection .history-filters {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      #historySection .history-filters label {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      #historySection .history-filters input,
+      #historySection .history-filters select {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      #historySection .history-actions {
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      #historySection .history-actions .btn {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 34px;
+        font-size: 12px;
+        padding: 0 8px;
+        width: 100%;
+      }
+
+      #historySection .history-month-chip {
+        height: 30px;
+        font-size: 11px;
+        padding: 0 10px;
+        border-radius: 0;
+      }
+
+      #historySection .adj-table-card {
+        border-radius: 10px;
+      }
+
+      #historySection .adj-table th,
+      #historySection .adj-table td {
+        padding: 8px 8px;
+        font-size: 12px;
+      }
+    }
+
+    #editModal {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, .16);
+    }
+
+    #editModal .adjust-input,
+    #editModal input,
+    #editModal select {
+      background: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+
+    #editModal .adjust-label {
+      color: #0b2c66;
+      font-weight: 800;
+    }
+
+    .drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(17, 24, 39, .45);
+      z-index: 900;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .drawer-backdrop {
+        position: absolute;
+      }
+
+      body:not(.admin) .expense-layout.sidebar-collapsed .drawer-backdrop {
+        visibility: visible;
+        opacity: 1;
+      }
+    }
+
+    .expense-standalone-header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: -24px -24px 24px -24px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+
+    .expense-standalone-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .expense-standalone-close {
+      width: 32px;
+      height: 32px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #64748b;
+    }
+
+    .expense-standalone-close:hover {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    .expense-standalone-vsep {
+      width: 1px;
+      height: 24px;
+      background: #e2e8f0;
+    }
+
+    .expense-standalone-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: #0f172a;
+    }
+
+    .expense-standalone-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+    }
+
+    .expense-standalone-iconbtn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: #475569;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .expense-standalone-iconbtn:hover {
+      color: #0f172a;
+    }
+
+    .expense-standalone-user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+
+    .expense-standalone-user:hover {
+      background: #f8fafc;
+    }
+
+    .expense-standalone-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #bfdbfe;
+      color: #1d4ed8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+    }
+
+    .expense-standalone-user-info {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+    }
+
+    .expense-standalone-user-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .expense-standalone-user-role {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .expense-standalone-user-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 16px;
+      margin-top: 8px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      width: 200px;
+      display: none;
+      flex-direction: column;
+      z-index: 50;
+      padding: 8px 0;
+    }
+
+    .expense-standalone-user-dropdown.show {
+      display: flex;
+    }
+
+    .expense-standalone-dropdown-item {
+      padding: 10px 16px;
+      font-size: 14px;
+      color: #334155;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .expense-standalone-dropdown-item:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    @media (max-width: 768px) {
+      .expense-standalone-header {
+        margin: -12px -12px 12px -12px;
+        top: 0;
+      }
+      
+      .expense-standalone-user-dropdown {
+        right: -8px;
+        width: 240px;
+        padding: 12px;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        border: 1px solid #f1f5f9;
+        margin-top: 12px;
+      }
+
+      .expense-standalone-dropdown-item {
+        padding: 14px 16px;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        color: #ef4444;
+        background: #fff0f0;
+        justify-content: center;
+      }
+
+      .expense-standalone-dropdown-item svg {
+        width: 18px;
+        height: 18px;
+        stroke: #ef4444;
+      }
+
+      .expense-standalone-dropdown-item:hover {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+    }
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .summary-card-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .summary-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .summary-icon.blue { background: #eff6ff; color: #2563eb; }
+    .summary-icon.orange { background: #fff7ed; color: #ea580c; }
+    .summary-icon.green { background: #f0fdf4; color: #16a34a; }
+    .summary-icon.purple { background: #faf5ff; color: #9333ea; }
+    .summary-icon.red { background: #fef2f2; color: #dc2626; }
+
+    .summary-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .summary-count {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      text-align: center;
+    }
+
+    .summary-count small {
+      font-size: 13px;
+      color: #64748b;
+      margin-left: 4px;
+      font-weight: 700;
+    }
+
+    .summary-amount {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+      text-align: right;
+    }
+
+    @media (max-width: 1024px) {
+      #exSummaryCards {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      #exSummaryCards {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px;
+      }
+      
+      .summary-card {
+        padding: 12px;
+        gap: 8px;
+      }
+      
+      .summary-icon {
+        width: 28px;
+        height: 28px;
+      }
+      
+      .summary-icon svg {
+        width: 16px;
+        height: 16px;
+      }
+      
+      .summary-count {
+        font-size: 20px;
+      }
+      
+      .summary-card[data-type="rejected"] {
+        grid-column: 1 / -1;
+      }
+
+      /* Make Monthly List table responsive on mobile */
+      #exMonthlyBoardHost > div {
+        border-radius: 8px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      #exMonthlyBoardHost table {
+        min-width: 450px !important;
+      }
+      
+      #exMonthlyBoardHost table th,
+      #exMonthlyBoardHost table td {
+        white-space: nowrap;
+        padding: 12px 10px !important;
+      }
+      
+      /* Make Monthly Detail table responsive on mobile */
+      #historySection .adj-table-card {
+        overflow-x: auto !important;
+      }
+      
+      #historySection .adj-table,
+      .expense-main.new-progress-split #historySection .adj-table {
+        min-width: 600px !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="pageSpinner" class="page-spinner" hidden>
+    <div class="lds-spinner" aria-hidden="true">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <%- include('_partials/employee-header.ejs') %>
+  <main class="content">
+    <section class="card">
+      <h3
+        style="margin: 0 0 20px; font-size: 20px; font-weight: 800; color: #0b2c66; font-family: Meiryo, 'Meiryo UI', 'Segoe UI', Arial, sans-serif; display: none;">
+        交通費申請</h3>
+      <div id="error" class="adjust-error" style="display: none;"></div>
+      <div class="expense-layout">
+        <div id="expMobileBackdrop" class="drawer-backdrop"></div>
+        <aside class="expense-side-tabs">
+          <div
+            style="font-weight: 900; letter-spacing: .02em; padding: 0 16px; height: 60px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: #ffffff; flex: 0 0 auto; margin-bottom: 8px;"
+            class="expense-brand">
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round"
+                style="color: var(--brand); background: rgba(37, 99, 235, 0.1); padding: 4px; border-radius: 4px; width: 24px; height: 24px;">
+                <rect x="4" y="3" width="16" height="16" rx="2" ry="2"></rect>
+                <path d="M4 11h16"></path>
+                <path d="M12 3v8"></path>
+                <path d="M8 19l-2 3"></path>
+                <path d="M18 22l-2-3"></path>
+                <path d="M8 15h.01"></path>
+                <path d="M16 15h.01"></path>
+              </svg>
+              <div style="color: #0f172a; font-size: 15px; line-height: 1.1;">交通費申請</div>
+            </div>
+            <button type="button" id="expMobileCloseDrawer"
+              style="display: none; background: transparent; border: none; color: #475569; cursor: pointer; padding: 4px; align-items: center; justify-content: center;"
+              title="閉じる">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="expense-inline-tabs">
+            <button class="tab active" id="expNavApplied" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              申請一覧
+            </button>
+            <button class="tab" id="expNavNew" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              新規作成
+            </button>
+            <button class="tab" id="expNavHelp" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              ヘルプ
+            </button>
+          </div>
+        </aside>
+        <div class="expense-main">
+          <header class="expense-standalone-header">
+            <div class="expense-standalone-header-left">
+              <button class="expense-standalone-close" type="button" id="expToggleSidebarBtn" title="メニュー切替">
+                <svg id="expIconClose" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                <svg id="expIconMenu" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div class="expense-standalone-header-right">
+              <input type="number" id="exFilterYearGlobal" style="height: 32px; width: 80px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 10px; font-size: 13px; color: #0f172a; margin-right: 8px;" min="2020" max="2100">
+              <span style="font-size: 13px; font-weight: 700; color: #475569; margin-right: 16px;">年</span>
+              <div class="expense-standalone-user" id="expUserToggleBtn">
+                <div class="expense-standalone-avatar" id="expHeaderInitial">U</div>
+                <div class="expense-standalone-user-info">
+                  <div class="expense-standalone-user-name" id="expHeaderName">User</div>
+                  <div class="expense-standalone-user-role">社員</div>
+                </div>
+                <svg class="expense-standalone-user-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <div class="expense-standalone-user-dropdown" id="expUserDropdown">
+                <button type="button" class="expense-standalone-dropdown-item" id="expLogoutBtn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                  ログアウト
+                </button>
+              </div>
+            </div>
+          </header>
+          <section id="homeSection" style="display:none; max-width: 100%; margin: 0; position: relative;">
+            <div style="background: #f1f5f9; border-radius: 12px; padding: 24px; min-height: calc(100vh - 120px);">
+              <!-- Main Card -->
+              <div style="background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 32px; max-width: 900px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                
+                <!-- Progress Bar -->
+                <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 32px;">
+                  <div id="progStep1" style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #2563eb;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px;">1</div>
+                    明細入力
+                  </div>
+                  <div style="width: 48px; height: 1px; background: #e2e8f0;"></div>
+                  <div id="progStep2" style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #94a3b8;">
+                    <div id="progNum2" style="width: 28px; height: 28px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 14px;">2</div>
+                    内容確認
+                  </div>
+                  <div style="width: 48px; height: 1px; background: #e2e8f0;"></div>
+                  <div id="progStep3" style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #94a3b8;">
+                    <div id="progNum3" style="width: 28px; height: 28px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 14px;">3</div>
+                    完了
+                  </div>
+                </div>
+
+                <!-- Step 1: Input -->
+                <div id="step1Input">
+                  <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 16px;">明細一覧</h3>
+                  <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                      <thead style="background: #f8fafc; color: #64748b;">
+                        <tr>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">日付</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">利用区間・内容</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">交通手段</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0; text-align: center;">金額（円）</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">備考</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0; text-align: center;">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="exAppItemsList">
+                        <!-- items go here -->
+                      </tbody>
+                    </table>
+                    <div id="exAppItemsEmpty" style="padding: 24px; text-align: center; color: #64748b; font-size: 14px; display: none;">明細が登録されていません。</div>
+                  </div>
+
+                  <button type="button" id="exAppAddItemBtn" style="background: #fff; border: 1px solid #2563eb; color: #2563eb; font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 32px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    明細を追加
+                  </button>
+
+                  <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 24px; border-top: 1px solid #e2e8f0; margin-bottom: 24px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #0f172a;">合計金額（自動計算）</div>
+                    <div style="font-size: 24px; font-weight: 800; color: #0f172a;"><span id="exAppTotalAmount">0</span> <span style="font-size: 16px;">円</span></div>
+                  </div>
+
+                  <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" id="exAppCancelBtn" style="background: #fff; border: 1px solid #cbd5e1; color: #475569; font-size: 14px; font-weight: 700; padding: 0 32px; height: 44px; border-radius: 6px; cursor: pointer;">戻る</button>
+                    <button type="button" id="exAppToConfirmBtn" style="background: #2563eb; border: none; color: #fff; font-size: 14px; font-weight: 700; padding: 0 32px; height: 44px; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">内容確認へ</button>
+                  </div>
+                </div>
+
+                <!-- Step 2: Confirm -->
+                <div id="step2Confirm" style="display: none;">
+                  <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 16px;">申請情報</h3>
+                  <div style="display: grid; grid-template-columns: 120px 1fr; gap: 12px; margin-bottom: 32px; font-size: 14px;">
+                    <div style="color: #64748b; font-weight: 700;">申請月：</div>
+                    <div style="color: #0f172a; font-weight: 700;" id="confAppMonth">2024年5月</div>
+                    <div style="color: #64748b; font-weight: 700;">備考：</div>
+                    <div>
+                      <input type="text" id="exAppMemo" placeholder="-" style="border: none; background: transparent; width: 100%; outline: none; font-size: 14px; color: #0f172a; padding: 0;">
+                    </div>
+                  </div>
+
+                  <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 16px;">明細一覧</h3>
+                  <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 32px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                      <thead style="background: #f8fafc; color: #64748b;">
+                        <tr>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">日付</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">利用区間・内容</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">交通手段</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0; text-align: right;">金額（円）</th>
+                          <th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">備考</th>
+                        </tr>
+                      </thead>
+                      <tbody id="confAppItemsList">
+                        <!-- items go here -->
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 16px;">添付ファイル</h3>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px;">
+                    <div id="confFilesList" style="flex: 1; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 16px; min-height: 44px; display: flex; align-items: center; gap: 12px; color: #64748b; font-size: 14px;">
+                      添付ファイルはありません
+                    </div>
+                    <div style="margin-left: 16px;">
+                      <label style="background: #fff; border: 1px solid #cbd5e1; color: #475569; font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                        ファイルを追加
+                        <input type="file" id="exAppGlobalFiles" multiple style="display: none;">
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 24px; border-top: 1px solid #e2e8f0; margin-bottom: 24px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #0f172a;">合計金額</div>
+                    <div style="font-size: 24px; font-weight: 800; color: #0f172a;"><span id="confTotalAmount">0</span> <span style="font-size: 16px;">円</span></div>
+                  </div>
+
+                  <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" id="exAppBackToInputBtn" style="background: #fff; border: 1px solid #cbd5e1; color: #475569; font-size: 14px; font-weight: 700; padding: 0 32px; height: 44px; border-radius: 6px; cursor: pointer;">戻る</button>
+                    <button type="button" id="exAppConfirmBtn" style="background: #2563eb; border: none; color: #fff; font-size: 14px; font-weight: 700; padding: 0 32px; height: 44px; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">申請する</button>
+                  </div>
+                </div>
+
+                <!-- Step 3: Complete -->
+                <div id="step3Complete" style="display: none; text-align: center; padding: 40px 0;">
+                  <style>
+                    .success-checkmark {
+                      width: 80px;
+                      height: 80px;
+                      margin: 0 auto 24px;
+                    }
+                    .success-checkmark .check-circle {
+                      stroke-dasharray: 166;
+                      stroke-dashoffset: 166;
+                      stroke-width: 4;
+                      stroke-miterlimit: 10;
+                      stroke: #22c55e;
+                      fill: none;
+                      animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+                    }
+                    .success-checkmark .check-icon {
+                      transform-origin: 50% 50%;
+                      stroke-dasharray: 48;
+                      stroke-dashoffset: 48;
+                      stroke: #22c55e;
+                      stroke-width: 4;
+                      stroke-linecap: round;
+                      stroke-linejoin: round;
+                      fill: none;
+                      animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+                    }
+                    @keyframes stroke {
+                      100% {
+                        stroke-dashoffset: 0;
+                      }
+                    }
+                  </style>
+                  <div class="success-checkmark">
+                    <svg viewBox="0 0 52 52" style="width: 100%; height: 100%;">
+                      <circle class="check-circle" cx="26" cy="26" r="24"/>
+                      <path class="check-icon" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                    </svg>
+                  </div>
+                  <h2 style="font-size: 24px; font-weight: 800; color: #0f172a; margin: 0 0 16px;">申請が完了しました</h2>
+                  <p style="font-size: 14px; color: #475569; margin: 0 0 32px;">申請いただきありがとうございます。承認結果は通知または一覧画面でご確認ください。</p>
+                  
+                  <div style="max-width: 480px; margin: 0 auto 40px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; text-align: left;">
+                    <div style="display: grid; grid-template-columns: 120px 1fr; gap: 16px; font-size: 14px;">
+                      <div style="color: #64748b; font-weight: 700;">申請番号</div>
+                      <div style="color: #0f172a; font-weight: 700;" id="compAppNumber">TRF-202405-005</div>
+                      <div style="color: #64748b; font-weight: 700;">申請月</div>
+                      <div style="color: #0f172a; font-weight: 700;" id="compAppMonth">2024年5月</div>
+                      <div style="color: #64748b; font-weight: 700;">合計金額</div>
+                      <div style="color: #0f172a; font-weight: 700;"><span id="compTotalAmount">990</span>円</div>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; justify-content: center; gap: 16px;">
+                    <button type="button" id="exAppGoListBtn" style="background: #fff; border: 1px solid #cbd5e1; color: #475569; font-size: 14px; font-weight: 700; padding: 0 32px; height: 44px; border-radius: 6px; cursor: pointer;">申請一覧へ戻る</button>
+                    <button type="button" id="exAppContinueBtn" style="background: #2563eb; border: none; color: #fff; font-size: 14px; font-weight: 700; padding: 0 32px; height: 44px; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">続けて新規作成</button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </section>
+          <section id="historySection" style="display:none; max-width: 100%; margin: 0;">
+            <div class="list-wrap" style="background: transparent; border: none; box-shadow: none; padding: 0;">
+                                            <!-- Dashboard Summary Cards will go here -->
+              <div id="exSummaryCards" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <!-- すべて (All) -->
+                <div class="summary-card" data-type="all">
+                  <div class="summary-card-top">
+                    <div class="summary-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
+                    <div class="summary-label">すべて</div>
+                  </div>
+                  <div class="summary-count"><span id="sumAllCount">0</span><small>件</small></div>
+                  <div class="summary-amount" id="sumAllAmount">¥0</div>
+                </div>
+                <!-- 申請中 (Pending) -->
+                <div class="summary-card" data-type="pending">
+                  <div class="summary-card-top">
+                    <div class="summary-icon orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg></div>
+                    <div class="summary-label">申請中</div>
+                  </div>
+                  <div class="summary-count"><span id="sumPendingCount">0</span><small>件</small></div>
+                  <div class="summary-amount" id="sumPendingAmount">¥0</div>
+                </div>
+                <!-- 承認済み (Approved) -->
+                <div class="summary-card" data-type="approved">
+                  <div class="summary-card-top">
+                    <div class="summary-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                    <div class="summary-label">承認済み</div>
+                  </div>
+                  <div class="summary-count"><span id="sumApprovedCount">0</span><small>件</small></div>
+                  <div class="summary-amount" id="sumApprovedAmount">¥0</div>
+                </div>
+                <!-- 支給済み (Paid) -->
+                <div class="summary-card" data-type="paid">
+                  <div class="summary-card-top">
+                    <div class="summary-icon purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
+                    <div class="summary-label">支給済み</div>
+                  </div>
+                  <div class="summary-count"><span id="sumPaidCount">0</span><small>件</small></div>
+                  <div class="summary-amount" id="sumPaidAmount">¥0</div>
+                </div>
+                <!-- 差戻し (Rejected) -->
+                <div class="summary-card" data-type="rejected">
+                  <div class="summary-card-top">
+                    <div class="summary-icon red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+                    <div class="summary-label">差戻し</div>
+                  </div>
+                  <div class="summary-count"><span id="sumRejectedCount">0</span><small>件</small></div>
+                  <div class="summary-amount" id="sumRejectedAmount">¥0</div>
+                </div>
+              </div>
+              <div id="exMonthlyBoardHost" style="display: none;"></div>
+
+              <!-- Table Card -->
+              <div id="exListWrapper" style="background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: none;">
+                <div class="history-toolbar" style="margin-bottom: 20px; display: none; align-items: center; gap: 16px;">
+                  <div class="history-filters" style="display: flex; align-items: center; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="font-size: 13px; font-weight: 700; color: #475569;">申請月</label>
+                      <input id="exFilterMonth" type="month" class="adjust-input" style="height: 36px; width: 140px;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="font-size: 13px; font-weight: 700; color: #475569;">ステータス</label>
+                      <select id="exFilterStatus" class="adjust-input" style="height: 36px; width: 140px;">
+                        <option value="">すべて</option>
+                        <option value="draft">未申請</option>
+                        <option value="applied">申請中</option>
+                        <option value="approved">承認済み</option>
+                        <option value="rejected">差戻し</option>
+                      </select>
+                    </div>
+                  </div>
+                  <!-- Hide the old buttons, keep search if needed, but we can auto-search on change -->
+                  <div class="history-actions" style="display: none;">
+                    <button id="exSearch" class="btn btn-primary" type="button">検索</button>
+                    <button id="exClear" class="btn btn-secondary" type="button">クリア</button>
+                    <button id="exCsv" class="btn btn-secondary" type="button">CSV出力</button>
+                  </div>
+                </div>
+                <div id="exListHost"></div>
+              </div>
+            </div>
+          </section>
+          <section id="helpSection" style="display:none; max-width: 100%; margin: 0;">
+            <div class="list-wrap" style="background: transparent; border: none; box-shadow: none; padding: 0;">
+              <div class="history-head" style="margin-bottom: 24px;">
+                <h2 style="font-weight:800; font-size: 24px; color:#0f172a; margin: 0 0 8px 0;">ヘルプ</h2>
+                <p style="color: #64748b; font-size: 13px; margin: 0;">交通費申請に関するよくある質問と回答です。</p>
+              </div>
+              <div style="background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
+                <div style="margin-bottom: 24px;">
+                  <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Q. 定期区間の交通費はどのように申請しますか？</h3>
+                  <p style="font-size: 14px; color: #475569; margin: 0; line-height: 1.6;">A. 新規作成フォームにて、「定期区間を除外」のチェックボックスにチェックを入れてください。定期区間内の移動は金額が0円として計算されます。</p>
+                </div>
+                <div style="margin-bottom: 24px;">
+                  <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Q. 領収書の添付は必須ですか？</h3>
+                  <p style="font-size: 14px; color: #475569; margin: 0; line-height: 1.6;">A. 基本的に交通機関（電車・バス）の利用であれば任意ですが、タクシーや新幹線、駐車場代などの場合は領収書の画像またはPDFを添付してください。</p>
+                </div>
+                <div style="margin-bottom: 0;">
+                  <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Q. 申請した内容を修正・削除したいです。</h3>
+                  <p style="font-size: 14px; color: #475569; margin: 0; line-height: 1.6;">A. 「申請一覧」タブから該当の月を選択し、ステータスが「未申請」または「差戻し」の場合のみ、右側の操作列から「編集」または「削除」が可能です。「承認済み」の場合は修正できません。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <div id="monthSelectModal" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
+      <div style="background:#fff; border-radius:16px; width:400px; max-width:90%; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); transform: translateY(-20px); animation: modalPop 0.3s forwards;">
+        <div style="font-weight:800; font-size:18px; margin-bottom:16px; color:#0f172a; display:flex; align-items:center; gap:8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          対象年月を選択
+        </div>
+        <div id="exCreateMonthGrid" class="history-months-wrap" style="margin-bottom:20px;"></div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px; background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <div class="adjust-label" style="width:auto; margin:0; font-weight:700; color:#475569;">対象年月:</div>
+          <input type="month" id="exCreateMonthInput" class="adjust-input" style="width:140px; background:#fff;">
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:12px;">
+          <button class="btn" type="button" id="exCreateMonthCancel" style="height:38px; padding:0 16px; border-radius:8px;">キャンセル</button>
+          <button class="btn btn-primary" id="exCreateMonthStart" type="button" style="height:38px; padding:0 24px; border-radius:8px;">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Item Modal -->
+    <div id="exItemModal" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
+      <div style="background:#fff; border-radius:16px; width:800px; max-width:95%; max-height:90vh; overflow-y:auto; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); transform: translateY(-20px); animation: modalPop 0.3s forwards;">
+        <div style="font-weight:800; font-size:20px; margin-bottom:20px; color:#0f172a; display:flex; align-items:center; justify-content:space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
+          <div>明細の追加・編集</div>
+          <button type="button" id="exItemModalClose" style="background:transparent; border:none; cursor:pointer; color:#64748b;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="form-wrap adjust-grid" style="border:none; padding:0;">
+          <div class="form-head-row full-row" style="display:none;">
+            <div class="form-head-left">
+              <div id="exStatus" class="adjust-status"></div>
+            </div>
+          </div>
+          <div class="adjust-label">日付<span class="req">*</span></div>
+          <div><input id="exDate" type="date"></div>
+          <div class="adjust-label adjust-label-right">種別<span class="req">*</span></div>
+          <div>
+            <select id="exType" class="adjust-input">
+              <option value="train">電車</option>
+              <option value="bus">バス</option>
+              <option value="taxi">タクシー</option>
+              <option value="car">自家用車</option>
+              <option value="parking">駐車場代</option>
+              <option value="highway">高速料金</option>
+            </select>
+          </div>
+          <div class="adjust-label">出発地<span class="req">*</span></div>
+          <div><input id="exOrigin" type="text" class="adjust-input" placeholder="例）新宿駅"></div>
+          <div class="adjust-label adjust-label-right">経由</div>
+          <div><input id="exVia" type="text" class="adjust-input" placeholder="例）渋谷（任意）"></div>
+          <div class="adjust-label">到着地<span class="req">*</span></div>
+          <div><input id="exDestination" type="text" class="adjust-input" placeholder="例）東京駅"></div>
+          <div class="adjust-label adjust-label-right">片道/往復<span class="req">*</span></div>
+          <div>
+            <select id="exTripType" class="adjust-input">
+              <option value="one_way" selected>片道</option>
+              <option value="round_trip">往復</option>
+              <option value="multi">複数</option>
+            </select>
+          </div>
+          <div class="adjust-label">回数</div>
+          <div><input id="exTripCount" type="number" min="1" step="1" class="adjust-input" value="1"></div>
+          <div class="adjust-label">距離(km)</div>
+          <div><input id="exKm" type="number" step="0.1" min="0" class="adjust-input"></div>
+          <div class="adjust-label">単価(円/km)</div>
+          <div><input id="exUnitPrice" type="number" step="1" min="0" class="adjust-input"></div>
+          <div class="adjust-label">用途<span class="req">*</span></div>
+          <div><input id="exPurpose" type="text" class="adjust-input" placeholder="例）客先訪問（A社）"></div>
+          <div class="adjust-label adjust-label-right">金額<span class="req">*</span></div>
+          <div><input id="exAmount" type="text" inputmode="numeric" class="adjust-input" placeholder="例）1,240"></div>
+          <div class="adjust-label">定期</div>
+          <div><label class="checkbox-row"><input id="exTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
+          <div class="upload-sections full-row">
+            <div class="upload-section-title">添付ファイル（任意）</div>
+            <div class="upload-section-help">必要な場合のみ、ICカード / 定期券の写真またはPDFを添付してください</div>
+            <div class="receipt-upload-row">
+              <div class="upload-card">
+                <div class="upload-box">
+                  <div class="upload-box-head"><span class="upload-icon">↑</span><span>表（Front）</span></div>
+                  <input id="exReceiptFront" type="file" accept="application/pdf,image/*">
+                  <div id="exReceiptFrontPreview" class="upload-preview"></div>
+                </div>
+              </div>
+              <div class="upload-card">
+                <div class="upload-box">
+                  <div class="upload-box-head"><span class="upload-icon">↑</span><span>裏（Back）</span></div>
+                  <input id="exReceiptBack" type="file" accept="application/pdf,image/*">
+                  <div id="exReceiptBackPreview" class="upload-preview"></div>
+                </div>
+              </div>
+              <div class="upload-card">
+                <div class="upload-box">
+                  <div class="upload-box-head"><span class="upload-icon">↑</span><span>領収書・参考画像（任意）</span></div>
+                  <input id="exImages" type="file" accept="image/*" multiple>
+                  <div id="exImagesPreview" class="upload-preview"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="adjust-label full-row">メモ</div>
+          <div class="full-row"><textarea id="exMemo" class="adjust-input full" rows="3" placeholder="任意：補足情報があれば入力してください"></textarea></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+          <div id="exErrMsg" style="display:none; color:#ef4444; font-size:13px; font-weight:700; align-self:center; margin-right:auto;"></div>
+          <button class="btn" type="button" id="exItemModalCancel" style="height:44px; padding:0 24px; border-radius:8px; font-weight:700;">キャンセル</button>
+          <button class="btn btn-secondary" type="button" id="exSubmit" style="height:44px; padding:0 24px; border-radius:8px; font-weight:700; display:none;">一時保存</button>
+          <button class="btn btn-primary" id="exApply" type="button" style="height:44px; padding:0 32px; border-radius:8px; font-weight:700;">保存する</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <style>
+    @keyframes modalPop {
+      to { transform: translateY(0); }
+    }
+    
+    /* Mobile Modal UX Optimization */
+    @media (max-width: 768px) {
+      #exItemModal > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+        padding: 16px !important;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      #exItemModal .form-wrap {
+        flex: 1;
+        overflow-y: auto;
+      }
+      
+      #exItemModal .adjust-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      #exItemModal .adjust-grid > div.adjust-label {
+        margin-bottom: -8px;
+        text-align: left;
+        font-size: 13px;
+      }
+
+      #exItemModal .adjust-grid > div.adjust-label-right {
+        text-align: left;
+      }
+      
+      #exItemModal > div > div:last-child {
+        margin-top: auto;
+        padding-top: 16px;
+        padding-bottom: 24px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      
+      #exItemModal > div > div:last-child button {
+        flex: 1;
+        min-width: 120px;
+        justify-content: center;
+      }
+      
+      #exErrMsg {
+        width: 100%;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+    }
+  </style>
+</body>
+
+</html>
