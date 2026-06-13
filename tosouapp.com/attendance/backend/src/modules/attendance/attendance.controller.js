@@ -1912,7 +1912,7 @@ exports.getShiftApprovals = async (req, res) => {
       FROM shift_month_status s
       JOIN users u ON s.userId = u.id
       LEFT JOIN departments d ON u.departmentId = d.id
-      WHERE s.month = ?
+      WHERE s.month = ? AND u.role NOT IN ('admin', 'manager') AND u.employment_status = 'active'
       ORDER BY s.updated_at DESC
     `, [month]);
     
@@ -1970,6 +1970,7 @@ exports.getShiftMatrix = async (req, res) => {
       FROM users u
       LEFT JOIN departments d ON u.departmentId = d.id
       LEFT JOIN shift_month_status s ON u.id = s.userId AND s.month = ?
+      WHERE u.role NOT IN ('admin', 'manager') AND u.employment_status = 'active'
       ORDER BY d.name, u.employment_type, u.id
     `, [month]);
 
