@@ -311,7 +311,7 @@ function renderApp() {
     <div class="shifts-container">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 16px;">
           <div>
-            <a href="/ui/shifts-all" style="padding: 6px 16px; font-size: 13px; font-weight: 500; border-radius: 4px; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">全員のシフト</a>
+            <a href="/ui/shifts-all" style="padding: 8px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); letter-spacing: 0.5px;">全員のシフト</a>
           </div>
           <div style="display: flex; align-items: center; gap: 16px;">
             <div class="modern-month-picker">
