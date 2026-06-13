@@ -119,14 +119,16 @@ app.use((req, res, next) => {
       res.setHeader('Expires', '0');
     }
   }
+  // Cấu hình CSP để cho phép CDN bên ngoài (ví dụ lunar.js)
   const cspItems = [
     process.env.CSP_DEFAULT_SRC || "default-src 'self'",
-    process.env.CSP_IMG_SRC || "img-src 'self' data:",
-    process.env.CSP_STYLE_SRC || "style-src 'self' 'unsafe-inline'",
-    process.env.CSP_SCRIPT_SRC || "script-src 'self'",
+    process.env.CSP_IMG_SRC || "img-src 'self' data: https:",
+    process.env.CSP_STYLE_SRC || "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    process.env.CSP_SCRIPT_SRC || "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+    process.env.CSP_FONT_SRC || "font-src 'self' https://fonts.gstatic.com data:",
     process.env.CSP_OBJECT_SRC || "object-src 'none'",
     process.env.CSP_FRAME_ANCESTORS || "frame-ancestors 'self'",
-    process.env.CSP_CONNECT_SRC || "connect-src 'self'",
+    process.env.CSP_CONNECT_SRC || "connect-src 'self' https://*",
     process.env.CSP_BASE_URI || "base-uri 'self'",
     process.env.CSP_FORM_ACTION || "form-action 'self'",
     process.env.CSP_FRAME_SRC || "frame-src 'self'"
@@ -169,12 +171,13 @@ const swaggerSpec = swaggerJsdoc(options);
 if (process.env.NODE_ENV !== 'production') {
   const devCsp = [
     "default-src 'self'",
-    "img-src 'self' data:",
-    "style-src 'self' 'unsafe-inline'",
-    "script-src 'self' 'unsafe-inline' blob:",
+    "img-src 'self' data: https:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net",
+    "font-src 'self' https://fonts.gstatic.com data:",
     "object-src 'none'",
     "frame-ancestors 'none'",
-    "connect-src 'self'",
+    "connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://*",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-src 'self'"
