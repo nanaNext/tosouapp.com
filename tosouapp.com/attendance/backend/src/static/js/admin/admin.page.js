@@ -1,5 +1,5 @@
 import { logout } from '../api/auth.api.js';
-import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260423-hotfix6';
+import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260612-fixspa2';
 
 const normalizePath = (p) => {
   const s = String(p || '');
@@ -566,7 +566,16 @@ const route = async () => {
     if (prevHost) {
       const host = document.createElement('section');
       host.id = 'adminContent';
-      host.className = 'card';
+      
+      // Remove default card styling if it's the shifts approval page
+      if (window.location.pathname.includes('/admin/attendance/shifts-approvals')) {
+        host.className = '';
+        host.style.padding = '0';
+        host.style.margin = '0';
+      } else {
+        host.className = 'card';
+      }
+      
       host.style.visibility = '';
       prevHost.replaceWith(host);
     }
@@ -576,7 +585,7 @@ const route = async () => {
       currentViewCleanup = null;
       return;
     }
-    const cleanup = await mod.mount();
+    const cleanup = await mod.mount({ content: document.querySelector('#adminContent') });
     if (seq !== routeSeq) {
       if (typeof cleanup === 'function') {
         try { await cleanup(); } catch (e) { /* silently ignored */ }
@@ -677,6 +686,16 @@ const route = async () => {
       try { window.location.assign('/admin/attendance/monthly'); } catch { window.location.href = '/admin/attendance/monthly'; }
       return;
     }
+    if (p2 === '/admin/attendance/shifts-approvals' || p2 === '/admin/attendance/shifts-approvals/') {
+      try { window.location.assign('/admin/attendance/shifts-approvals'); } catch { window.location.href = '/admin/attendance/shifts-approvals'; }
+      return;
+    }
+    if (p2 === '/admin/attendance/go-out' || p2 === '/admin/attendance/go-out/') {
+      const mod = await loadModule('./attendance/admin-go-out.page.js?v=3');
+      if (seq !== routeSeq) return;
+      await mountModule(mod.mountGoOut ? { mount: mod.mountGoOut } : mod);
+      return;
+    }
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
       const mod = await loadModule('./attendance/attendance.page.js?v=navy-20260423-attrecsync1');
       if (seq !== routeSeq) return;
@@ -724,7 +743,8 @@ const route = async () => {
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
-    }    if (p2 === '/admin/notices') {
+    }
+    if (p2 === '/admin/notices') {
       const mod = await loadModule('./notices/notices.page.js?v=navy-20260423-noticemobile5');
       if (seq !== routeSeq) return;
       await mountModule(mod);
@@ -744,7 +764,13 @@ const route = async () => {
     }
     const host = document.querySelector('#adminContent');
     if (host) {
-      host.className = 'card';
+      if (p2.includes('/admin/attendance/shifts-approvals')) {
+        host.className = '';
+        host.style.padding = '0';
+        host.style.margin = '0';
+      } else {
+        host.className = 'card';
+      }
       host.innerHTML = '<div style="padding:16px;color:#0f172a;">ページが見つかりません。</div>';
     }
   } catch (err) {
@@ -811,8 +837,14 @@ const wireSpaNav = () => {
       if (!isSameOrigin(href)) return;
       const u = new URL(href, window.location.origin);
       if (!isAdminPath(u.pathname)) return;
-      if (u.pathname === '/admin/attendance/monthly' || u.pathname === '/admin/attendance/monthly/') return;
-      if (u.pathname === '/admin/employees/monthly-summary' || u.pathname === '/admin/employees/monthly-summary/') return;
+      if (u.pathname === '/admin/attendance/monthly' || u.pathname === '/admin/attendance/monthly/' ||
+          u.pathname === '/admin/employees/monthly-summary' || u.pathname === '/admin/employees/monthly-summary/' ||
+          u.pathname === '/admin/attendance/shifts-approvals' || u.pathname === '/admin/attendance/shifts-approvals/' ||
+          u.pathname === '/admin/attendance/adjust-requests' || u.pathname === '/admin/attendance/adjust-requests/') {
+        e.preventDefault();
+        window.location.href = u.href;
+        return;
+      }
       e.preventDefault();
       navigate(u.pathname + u.search + u.hash);
     });

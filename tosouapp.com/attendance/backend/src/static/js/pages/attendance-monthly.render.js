@@ -51,7 +51,7 @@
     </thead>
   `;
     const tbody = document.createElement('tbody');
-    const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow) => {
+    const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow, shiftRequest) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
         // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
@@ -61,7 +61,7 @@
         const kubunInitRaw = String(daily?.kubun || '').trim();
         const role = String(profile?.role || '').toLowerCase();
         const isEmployee = role === 'employee';
-        const isPartTime = String(profile?.employment_type || '').toLowerCase() === 'part_time';
+        const isPartTime = String(profile?.employment_type || '').toLowerCase() === 'part_time' || String(detail?.user?.employment_type || '').toLowerCase() === 'part_time' || String(profile?.shift?.id || '').includes('baito') || String(detail?.user?.shift_id || '').includes('baito');
 
       // Always include 休日 in the options if admin/manager
     
@@ -70,7 +70,7 @@
         kubunOptions = ['休日', '休日出勤', '代替出勤'];
       } else {
         kubunOptions = ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-        if (!isEmployee || isPartTime) {
+        if (!isEmployee) {
           kubunOptions.unshift('休日');
         }
       }
@@ -80,9 +80,47 @@
       let plannedKubun = offDay ? '休日' : '出勤';
       
       // Đối với part-time, mặc định là không có lịch làm việc cố định
-      if (isPartTime && !offDay) {
-        plannedLabel = '【予定なし】';
-        plannedKubun = '';
+      if (isPartTime) {
+        if (shiftRequest) {
+          if (shiftRequest.status === 'WORKING') {
+            plannedLabel = '【出勤予定】';
+            plannedKubun = '出勤'; // Dù là cuối tuần cũng hiện là 出勤 (theo yêu cầu)
+          } else if (shiftRequest.status === 'OFF') {
+            plannedLabel = offDay ? '【休日予定】' : '【休み】';
+            plannedKubun = '休日';
+          } else {
+            plannedLabel = offDay ? '【休日予定】' : '【予定なし】';
+            plannedKubun = offDay ? '休日' : '';
+          }
+        } else {
+          if (!offDay) {
+            plannedLabel = '【予定なし】';
+            plannedKubun = '';
+          } else {
+            plannedLabel = '【休日予定】';
+            plannedKubun = '休日';
+          }
+        }
+      } else {
+        // Đối với Seishain, nếu có đăng ký nghỉ (LEAVE) từ bảng ca, áp dụng vào Bảng tháng
+        if (shiftRequest && shiftRequest.status === 'LEAVE') {
+           const lType = shiftRequest.leaveType;
+           if (lType === 'paid') {
+             plannedKubun = '有給休暇';
+             plannedLabel = '【有給休暇】';
+           } else if (lType === 'unpaid') {
+             plannedKubun = '欠勤';
+             plannedLabel = '【欠勤】';
+           } else if (lType === 'special') {
+             plannedKubun = '無給休暇';
+             plannedLabel = '【無給休暇】';
+           }
+           
+           // Nếu chưa có lý do được lưu, lấy lý do từ shift_request
+           if (!daily?.reason && shiftRequest.reason) {
+              if (daily) daily.reason = shiftRequest.reason;
+           }
+        }
       }
 
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
@@ -244,7 +282,7 @@
       tr.dataset.shiftStart = shiftStartOk ? shiftStart : '08:00';
       tr.dataset.lateMinutes = String(daily?.lateMinutes || daily?.late_minutes || '');
       tr.dataset.earlyMinutes = String(daily?.earlyMinutes || daily?.early_minutes || '');
-      tr.dataset.reasonBase = String(daily?.reason || '');
+      tr.dataset.reasonBase = String(daily?.reason || (shiftRequest && !isPartTime && shiftRequest.status === 'LEAVE' ? shiftRequest.reason : ''));
 
       const wtValRaw = (() => {
         const dailyWt = allowDailyAsActual && primary ? daily?.workType : '';
@@ -261,7 +299,7 @@
       
       const dLoc = String(daily?.location || '');
       const dMemo = String(daily?.memo || '');
-      const dReason = String(daily?.reason || '');
+      const dReason = String(daily?.reason || (shiftRequest && !isPartTime && shiftRequest.status === 'LEAVE' ? shiftRequest.reason : ''));
       const dNotes = String(daily?.notes || '');
       
       // KHÔNG TRẢ VỀ RỖNG, LUÔN RENDER ĐÚNG GIÁ TRỊ, CHỈ DÙNG CSS HOẶC DISABLED ĐỂ LÀM MỜ.
@@ -394,12 +432,13 @@
         return txt;
       })()}</td>
       <td>
-        <select id="reason_${dateStr}" name="reason_${dateStr}" class="se-select" data-field="reason" ${state.editableMonth ? '' : 'disabled'} style="width:140px;${(effectiveKubun === '欠勤' || effectiveKubun === '遅刻' || effectiveKubun === '早退') ? '' : 'visibility:hidden;'}">
+        <select id="reason_${dateStr}" name="reason_${dateStr}" class="se-select" data-field="reason" ${state.editableMonth ? '' : 'disabled'} style="width:140px;${(effectiveKubun === '欠勤' || effectiveKubun === '遅刻' || effectiveKubun === '早退' || effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '代替休日') ? '' : 'visibility:hidden;'}">
           <option value=""></option>
-          <option value="私用" ${dReason === '私用' || dReason === 'private' ? 'selected' : ''}>私用</option>
+          <option value="私用" ${dReason === '私用' || dReason === 'private' || dReason === '私用のため' ? 'selected' : ''}>私用</option>
           <option value="私用（詳細）" ${dReason === '私用（詳細）' ? 'selected' : ''}>私用（詳細）</option>
           <option value="体調不良" ${dReason === '体調不良' ? 'selected' : ''}>体調不良</option>
           <option value="家庭の事情" ${dReason === '家庭の事情' ? 'selected' : ''}>家庭の事情</option>
+          <option value="定期健診" ${dReason === '定期健診' ? 'selected' : ''}>定期健診</option>
           <option value="通院" ${dReason === '通院' ? 'selected' : ''}>通院</option>
           <option value="交通機関の乱れ" ${dReason === '交通機関の乱れ' ? 'selected' : ''}>交通機関の乱れ</option>
           <option value="悪天候" ${dReason === '悪天候' ? 'selected' : ''}>悪天候</option>
@@ -433,7 +472,7 @@
       const goOutRecords = Array.isArray(d?.goOutRecords) ? d.goOutRecords : [];
       const list0 = segs.length ? [...segs].sort((a, b) => String(b?.checkIn || '').localeCompare(String(a?.checkIn || ''))) : [null];
       const seg = list0.find(s => s && s.checkIn && !s.checkOut) || list0[0];
-      tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, goOutRecords, true));
+      tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, goOutRecords, true, d.shiftRequest));
     }
     table.appendChild(tbody);
     // Use native sticky header via CSS; avoid cloning header to prevent drift

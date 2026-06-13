@@ -585,6 +585,12 @@ const renderAttendance = async () => {
         await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, { method: 'PUT', body: JSON.stringify({ kubun, workType: wt }) });
         await syncPaidLeaveRequest(kubun);
         await fetchJSONAuth('/api/attendance/checkout', { method: 'POST', body: JSON.stringify({}) });
+        
+        // Cập nhật trạng thái đã lưu sau khi 퇴勤 thành công
+        if (typeof window.markAsSaved === 'function') {
+          window.markAsSaved();
+        }
+        
         await renderAttendance();
       } catch (e) {
         showErr(e?.message || '退勤に失敗しました');

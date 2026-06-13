@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>シフト登録</title>
+  <style id="spinnerStyle">
+    .page-spinner{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:3000}
+    .page-spinner[hidden]{display:none}
+    .dot-spinner{position:relative;width:64px;height:64px}
+    .dot-spinner div{position:absolute;top:50%;left:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#666;opacity:.2;animation:dotfade 1s linear infinite}
+    @keyframes dotfade{0%{opacity:1}100%{opacity:.2}}
+    .dot-spinner div:nth-child(1){transform:rotate(0deg) translate(24px);animation-delay:-0.92s}
+    .dot-spinner div:nth-child(2){transform:rotate(30deg) translate(24px);animation-delay:-0.84s}
+    .dot-spinner div:nth-child(3){transform:rotate(60deg) translate(24px);animation-delay:-0.76s}
+    .dot-spinner div:nth-child(4){transform:rotate(90deg) translate(24px);animation-delay:-0.68s}
+    .dot-spinner div:nth-child(5){transform:rotate(120deg) translate(24px);animation-delay:-0.60s}
+    .dot-spinner div:nth-child(6){transform:rotate(150deg) translate(24px);animation-delay:-0.52s}
+    .dot-spinner div:nth-child(7){transform:rotate(180deg) translate(24px);animation-delay:-0.44s}
+    .dot-spinner div:nth-child(8){transform:rotate(210deg) translate(24px);animation-delay:-0.36s}
+    .dot-spinner div:nth-child(9){transform:rotate(240deg) translate(24px);animation-delay:-0.28s}
+    .dot-spinner div:nth-child(10){transform:rotate(270deg) translate(24px);animation-delay:-0.20s}
+    .dot-spinner div:nth-child(11){transform:rotate(300deg) translate(24px);animation-delay:-0.12s}
+    .dot-spinner div:nth-child(12){transform:rotate(330deg) translate(24px);animation-delay:-0.04s}
+  </style>
+  <style>
+    html.portal-preboot body { visibility: hidden !important; }
+  </style>
+  <script src="/static/js/pages/portal-preboot.js?v=<%= appVersion %>"></script>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
+  <link rel="stylesheet" href="/static/css/portal.css?v=<%= appVersion %>">
+  <!-- Reusing monthly attendance CSS for grid structure -->
+  <link rel="stylesheet" href="/static/css/admin-attendance-monthly.css?v=<%= appVersion %>">
+  <link rel="stylesheet" href="/static/css/shifts.css?v=<%= appVersion %>">
+  <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
+  <script type="module" src="/static/js/pages/shifts.page.js?v=<%= appVersion %>&update=22"></script>
+  <link rel="icon" href="/static/images/logo1.png?v=<%= appVersion %>" type="image/png">
+</head>
+
+<body>
+  <div id="pageSpinner" class="page-spinner" hidden><div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
+  <%- include('_partials/employee-header.ejs') %>
+  <main class="content">
+    <div id="shiftsApp">
+      <div class="shifts-header">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="font-weight: bold;">従業員: <span id="profileName"></span> (<span id="profileDept"></span>)</div>
+            <span id="headerStatusBadge" class="status-badge status-draft">未提出</span>
+          </div>
+          <div style="font-size: 13px;">雇用形態: <span id="profileType"></span></div>
+          <div style="color: #ea580c; font-size: 13px;" id="profileInstruction"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+
+</html>

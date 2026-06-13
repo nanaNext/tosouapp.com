@@ -376,7 +376,10 @@ export async function mount() {
       let autoLateStr = '';
       if (it.attendance?.checkIn) {
         const cin = fmtTime(it.attendance.checkIn);
-        const threshold = (it.departmentName || '').includes('工事') ? '08:00' : '09:00';
+        const isPartTime = String(it.role || '').toLowerCase() === 'part_time' || String(it.employment_type || '').toLowerCase() === 'part_time' || String(it.employment_type || '') === 'アルバイト';
+        // Koujibu standard start is 08:00, but Part-time can have flexible shifts like 09:00.
+        // For simplicity, we use 09:00 as the threshold for Part-time in Koujibu unless a specific shift dictates otherwise.
+        const threshold = (it.departmentName || '').includes('工事') && !isPartTime ? '08:00' : '09:00';
         if (cin > threshold && it.status !== '休日出勤') {
           const [h1, m1] = cin.split(':').map(Number);
           const [h2, m2] = threshold.split(':').map(Number);

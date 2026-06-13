@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>申請</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
+  <link rel="stylesheet" href="/static/css/attendance.css?v=navy-20260408-1">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260410-underline">
+  <link rel="stylesheet" href="/static/css/adjust.page.css?v=<%= appVersion %>">
+</head>
+<body>
+  <%- include('_partials/employee-header.ejs') %>
+  <main class="content">
+    <section id="balance"></section>
+    <section id="apply">
+      <h3>申請フォーム</h3>
+      <form id="applyForm">
+        <input id="startDate" type="date"> ～
+        <input id="endDate" type="date">
+        <input id="reason" placeholder="理由(任意)">
+        <button type="submit">申請する</button>
+      </form>
+      <div id="applyResult"></div>
+    </section>
+  </main>
+  <script src="/static/js/pages/session-idle.js?v=navy-20260403-1" defer></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=<%= appVersion %>"></script>
+  <script type="module" src="/static/js/pages/leave.page.prod.js?v=<%= appVersion %>"></script>
+</body>
+</html>

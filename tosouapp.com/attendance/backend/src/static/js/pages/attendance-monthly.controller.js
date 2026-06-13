@@ -677,6 +677,17 @@
     if (!(ctx.monthCache instanceof Map)) ctx.monthCache = new Map();
     const reqSeq = (ctx.monthReqSeq = Number(ctx.monthReqSeq || 0) + 1);
     const cacheKey = `${String(ctx.actingUserId || 'self')}:${String(ym || '')}`;
+    
+    // Bypass cache when forcing reload (e.g. from shift assignment or explicit refresh)
+    const forceReload = opts?.forceReload === true;
+    if (forceReload) {
+      ctx.monthCache.delete(cacheKey);
+      try {
+        sessionStorage.removeItem(`monthly.cache.${cacheKey}`);
+        localStorage.removeItem(`monthly.cache.fast.${cacheKey}`);
+      } catch (e) {}
+    }
+
     state.currentYM = String(ym || '').slice(0, 7);
     const url = new URL(window.location.href);
     url.searchParams.set('month', ym);
@@ -739,7 +750,7 @@
 
       const [y, m] = String(ym).split('-').map(x => parseInt(x, 10));
       const uidQ = ctx.actingUserId ? `&userId=${encodeURIComponent(ctx.actingUserId)}` : '';
-      if (instant?.detail) {
+      if (instant?.detail && !forceReload) {
         state.currentMonthDetail = instant.detail;
         state.currentMonthTimesheet = instant.timesheet || null;
         try {

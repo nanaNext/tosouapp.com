@@ -1335,6 +1335,18 @@ exports.getMonthDetail = async (req, res) => {
     }
     const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
     const planRows = await repo.listPlanBetween(userId, from, to).catch(() => []);
+    
+    // Lấy dữ liệu shift_requests (đăng ký ca)
+    const db = require('../../core/database/mysql');
+    const shiftReqRows = await db.query('SELECT date, status, leaveType, reason FROM shift_requests WHERE userId = ? AND date BETWEEN ? AND ?', [userId, from, to]).then(r => r[0]).catch(() => []);
+    const shiftReqMap = new Map();
+    for (const r of shiftReqRows || []) {
+      const dStr = String(r.date || '');
+      // Handle Date object
+      const d = dStr.includes('T') ? dStr.slice(0, 10) : (r.date instanceof Date ? r.date.toISOString().slice(0, 10) : dStr.slice(0, 10));
+      if (d) shiftReqMap.set(d, { status: r.status, leaveType: r.leaveType, reason: r.reason });
+    }
+
     const workReportRows = await workReportRepo.listByUserMonth(userId, `${y}-${pad(m)}`).catch(() => []);
     const off = await getUserOffDaySet(y, userId);
     const shiftDefs = await repo.listShiftDefinitions().catch(() => []);
@@ -1574,6 +1586,7 @@ exports.getMonthDetail = async (req, res) => {
           location: plan.location,
           memo: plan.memo
         } : null,
+        shiftRequest: shiftReqMap.get(ds) || null,
         segments: map.get(ds) || [],
         goOutRecords: goOutMap.get(ds) || []
       });
@@ -1774,6 +1787,374 @@ exports.postShiftAssignment = async (req, res) => {
     res.status(201).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.postShiftsBulk = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const db = require('../../core/database/mysql');
+    
+    // Ensure shift_requests table exists
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS shift_requests (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        userId BIGINT UNSIGNED NOT NULL,
+        date DATE NOT NULL,
+        status VARCHAR(32) NOT NULL,
+        leaveType VARCHAR(32) NULL,
+        reason VARCHAR(255) NULL,
+        detail TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_user_date (userId, date),
+        INDEX idx_date (date),
+        CONSTRAINT fk_shift_req_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS shift_month_status (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        userId BIGINT UNSIGNED NOT NULL,
+        month VARCHAR(7) NOT NULL,
+        status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_user_month (userId, month),
+        CONSTRAINT fk_sms_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    const { month, shifts } = req.body || {};
+    if (!month || !Array.isArray(shifts)) {
+      return res.status(400).json({ success: false, message: 'Invalid payload' });
+    }
+
+    // Insert or update each shift
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+      
+      for (const shift of shifts) {
+        if (!shift.date) continue;
+        
+        await conn.query(`
+          INSERT INTO shift_requests (userId, date, status, leaveType, reason, detail)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE 
+            status = VALUES(status), 
+            leaveType = VALUES(leaveType), 
+            reason = VALUES(reason), 
+            detail = VALUES(detail)
+        `, [
+          userId, 
+          shift.date, 
+          shift.status || 'OFF', 
+          shift.leaveType || null, 
+          shift.reason || null, 
+          shift.detail || null
+        ]);
+      }
+      
+      // Update submission status to PENDING
+      await conn.query(`
+        INSERT INTO shift_month_status (userId, month, status)
+        VALUES (?, ?, 'PENDING')
+        ON DUPLICATE KEY UPDATE status = 'PENDING'
+      `, [userId, month]);
+      
+      await conn.commit();
+      
+      // Also fetch and return the newly saved data so UI can update immediately if needed
+      res.status(200).json({ success: true, message: 'Shifts saved successfully', data: { submission_status: 'PENDING' } });
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    console.error('[postShiftsBulk]', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getShiftApprovals = async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const { month } = req.query || {};
+    if (!month) return res.status(400).json({ message: 'Missing month' });
+    
+    const db = require('../../core/database/mysql');
+    
+    // Ensure table exists just in case
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS shift_month_status (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        userId BIGINT UNSIGNED NOT NULL,
+        month VARCHAR(7) NOT NULL,
+        status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_user_month (userId, month),
+        CONSTRAINT fk_sms_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    const [rows] = await db.query(`
+      SELECT s.id, s.userId, s.month, s.status, s.updated_at,
+             u.username, u.email, u.employee_code, u.employment_type,
+             d.name as departmentName
+      FROM shift_month_status s
+      JOIN users u ON s.userId = u.id
+      LEFT JOIN departments d ON u.departmentId = d.id
+      WHERE s.month = ?
+      ORDER BY s.updated_at DESC
+    `, [month]);
+    
+    res.status(200).json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getShiftMatrix = async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const { month } = req.query || {};
+    if (!month) return res.status(400).json({ message: 'Missing month' });
+    
+    const db = require('../../core/database/mysql');
+    
+    // Ensure table exists just in case
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS shift_month_status (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        userId BIGINT UNSIGNED NOT NULL,
+        month VARCHAR(7) NOT NULL,
+        status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_user_month (userId, month),
+        CONSTRAINT fk_sms_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Ensure table exists just in case
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS shift_requests (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        userId BIGINT UNSIGNED NOT NULL,
+        date DATE NOT NULL,
+        status VARCHAR(32) NOT NULL,
+        leaveType VARCHAR(32) NULL,
+        reason VARCHAR(255) NULL,
+        detail TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_user_date (userId, date),
+        INDEX idx_date (date),
+        CONSTRAINT fk_shift_req_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Get all users
+    const [users] = await db.query(`
+      SELECT u.id, u.username, u.email, u.employee_code, u.employment_type,
+             d.name as departmentName, s.status as submission_status
+      FROM users u
+      LEFT JOIN departments d ON u.departmentId = d.id
+      LEFT JOIN shift_month_status s ON u.id = s.userId AND s.month = ?
+      ORDER BY d.name, u.employment_type, u.id
+    `, [month]);
+
+    // Get all shifts for the month
+    let shifts = [];
+    try {
+      const [rows1] = await db.query(`
+        SELECT userId, date, status, leaveType, reason, detail
+        FROM shift_requests
+        WHERE date LIKE ?
+      `, [`${month}-%`]);
+      shifts = rows1.map(r => ({ ...r, date: String(r.date).slice(0, 10) }));
+    } catch (e1) {
+      try {
+        const [rows2] = await db.query(`
+          SELECT user_id as userId, start_date as date, 'WORKING' as status
+          FROM user_shift_assignments 
+          WHERE start_date LIKE ?
+        `, [`${month}-%`]);
+        shifts = rows2.map(r => ({ ...r, date: String(r.date).slice(0, 10) }));
+      } catch (e2) {
+        console.warn('Fallback query failed too:', e2.message);
+      }
+    }
+
+    const matrix = users.map(u => {
+      const userShifts = shifts.filter(s => s.userId === u.id);
+      const schedule = {};
+      userShifts.forEach(s => {
+        schedule[s.date] = s;
+      });
+      return {
+        id: u.id,
+        username: u.username || u.email,
+        employee_code: u.employee_code,
+        employment_type: u.employment_type,
+        departmentName: u.departmentName,
+        submission_status: u.submission_status,
+        schedule
+      };
+    });
+    
+    res.status(200).json(matrix);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getAllEmployeeShifts = async (req, res) => {
+  try {
+    const { month } = req.query || {};
+    if (!month) return res.status(400).json({ message: 'Missing month' });
+
+    const db = require('../../core/database/mysql');
+    
+    // Fetch all active users who are NOT admin or manager
+    const [users] = await db.query(`
+      SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName
+      FROM users u
+      LEFT JOIN departments d ON u.departmentId = d.id
+      WHERE u.employment_status = 'active' AND u.role NOT IN ('admin', 'manager')
+      ORDER BY u.employee_code ASC, u.id ASC
+    `);
+
+    if (!users || users.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    // Fetch shift requests for these users for the given month
+    const [shifts] = await db.query(`
+      SELECT userId, date, status, leaveType
+      FROM shift_requests
+      WHERE date LIKE ?
+    `, [`${month}-%`]);
+
+    const matrix = users.map(u => {
+      const userShifts = shifts.filter(s => s.userId === u.id);
+      const schedule = {};
+      userShifts.forEach(s => {
+        schedule[s.date] = s;
+      });
+      return {
+        id: u.id,
+        username: u.username || u.email,
+        employee_code: u.employee_code,
+        employment_type: u.employment_type,
+        departmentName: u.departmentName,
+        schedule
+      };
+    });
+    
+    res.status(200).json(matrix);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.approveShiftMonth = async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const { userId, month, status } = req.body || {};
+    if (!userId || !month || !status) return res.status(400).json({ message: 'Missing fields' });
+    
+    const db = require('../../core/database/mysql');
+    await db.query(`
+      UPDATE shift_month_status 
+      SET status = ? 
+      WHERE userId = ? AND month = ?
+    `, [status, userId, month]);
+    
+    res.status(200).json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getUserShiftsForMonth = async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const { userId, month } = req.query || {};
+    if (!userId || !month) return res.status(400).json({ message: 'Missing fields' });
+    
+    const db = require('../../core/database/mysql');
+    const [rows] = await db.query(`
+      SELECT date, status, leaveType, reason, detail 
+      FROM shift_requests 
+      WHERE userId = ? AND date LIKE ?
+    `, [userId, `${month}-%`]);
+    
+    res.status(200).json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getMyMonthlyShifts = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { month } = req.params || {};
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    if (!month) return res.status(400).json({ message: 'Missing month' });
+
+    const db = require('../../core/database/mysql');
+    
+    // Get status
+    let submission_status = 'draft';
+    try {
+      const [statusRows] = await db.query(`
+        SELECT status FROM shift_month_status 
+        WHERE userId = ? AND month = ?
+      `, [userId, month]);
+      if (statusRows && statusRows.length > 0) {
+        submission_status = statusRows[0].status;
+      }
+    } catch (e) {
+      // table might not exist
+    }
+
+    // Get shifts
+    let schedule = {};
+    try {
+      const [shiftRows] = await db.query(`
+        SELECT date, status, leaveType, reason, detail 
+        FROM shift_requests 
+        WHERE userId = ? AND date LIKE ?
+      `, [userId, `${month}-%`]);
+      
+      shiftRows.forEach(r => {
+        schedule[String(r.date).slice(0, 10)] = r;
+      });
+    } catch (e) {
+      // table might not exist
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        submission_status,
+        schedule
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -2737,3 +3118,4 @@ exports.exportMonthXlsx = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+ 

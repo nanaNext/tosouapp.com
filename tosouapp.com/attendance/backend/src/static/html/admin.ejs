@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>管理ポータル</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260421-layoutfix1">
+  <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260604-pagination3">
+  <meta name="asset-v" content="navy-20260612-fixspa2">
+  <style></style>
+  
+  <script src="/static/js/pages/session-idle.js?v=navy-20260411-patch2" defer></script>
+  <script type="module" src="/static/js/admin/admin.page.js?v=navy-20260612-fixspa1"></script>
+  <link rel="icon" href="data:,">
+</head>
+
+<body class="admin has-sidebar">
+  <div id="adminChrome">
+  <%- include('_partials/admin-topbar.ejs') %>
+  <%- include('_partials/admin-mobile-drawer.ejs') %>
+  <div class="subbar">
+    <div class="subnav">
+      <a href="/admin/dashboard">ホーム</a>
+      <div class="menu">
+        <button class="menu-btn" type="button">社員管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/employees" role="menuitem">社員一覧</a>
+          <a href="/admin/employees/add" role="menuitem">社員追加</a>
+          <a href="/admin/employees/monthly-summary" role="menuitem">月次集計</a>
+        </div>
+      </div>
+      <div class="menu">
+        <button class="menu-btn" type="button">勤怠管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/attendance" role="menuitem">勤怠記録</a>
+          <a href="/admin/attendance/monthly" role="menuitem" target="_blank" rel="noopener noreferrer">月次勤怠入力(管理者)</a>
+          <a href="/admin/attendance/go-out" role="menuitem">外出管理</a>
+          <a href="/admin/work-reports" role="menuitem">作業報告</a>
+          <a href="/admin/attendance/shifts" role="menuitem">シフト管理</a>
+          <a href="/admin/attendance/shifts-approvals" role="menuitem">シフト承認</a>
+          <a href="/admin/attendance/holidays" role="menuitem">休日設定</a>
+          <a href="/admin-attendance-adjust-requests.html" role="menuitem">調整申請一覧</a>
+        </div>
+      </div>
+      <a href="/admin/leave/requests">休暇管理</a>
+      <div class="menu">
+        <button class="menu-btn" type="button">給与管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/payroll/salary" role="menuitem">給与</a>
+          <a href="/admin/payroll/payslips" role="menuitem">送信・履歴</a>
+        </div>
+      </div>
+      <a href="/admin/expenses?standalone=1" target="_blank" rel="noopener noreferrer">交通費</a>
+      <a href="/admin/departments">組織</a>
+      <div class="menu">
+        <button class="menu-btn" type="button">システム</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/notices" role="menuitem">お知らせ</a>
+          <a href="/admin/system/settings" role="menuitem">設定</a>
+          <a href="/admin/system/audit-logs" role="menuitem">監査ログ</a>
+        </div>
+      </div>
+      <a href="/admin/faq">FAQ管理</a>
+    </div>
+  </div>
+  </div>
+  <main class="content">
+    <div id="status" class="status" style="display:none;"></div>
+    <div id="error" class="error"></div>
+    
+    <section id="adminContent" class="card"></section>
+  </main>
+</body>
+
+</html>

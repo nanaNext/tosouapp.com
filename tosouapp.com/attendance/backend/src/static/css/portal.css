@@ -2098,27 +2098,32 @@ body:not(.admin) .topbar-inner .user #userName {
   gap: 18px;
 }
 .tiles.employee-portal .emp-tiles-3 {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(130px, 140px));
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
-  gap: 22px;
+  gap: 16px;
+  margin-top: 12px;
 }
 .tiles.employee-portal .emp-tiles-3 .tile {
   aspect-ratio: 1 / 1;
-  min-height: 132px;
-  padding: 16px 10px 12px;
-  border-width: 3px;
+  min-height: 110px;
+  padding: 10px 8px;
+  border-width: 2px;
   border-radius: 12px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 .tiles.employee-portal .emp-tiles-3 .tile .icon {
-  font-size: 40px;
+  font-size: 32px;
   color: #2a6ea5;
   line-height: 1;
 }
 .tiles.employee-portal .emp-tiles-3 .tile .title {
   margin-top: 8px;
-  font-size: 16px;
+  font-size: 14px;
   letter-spacing: 0;
   color: #0d2c5b;
 }
@@ -2126,41 +2131,41 @@ body:not(.admin) .topbar-inner .user #userName {
   content: '↗';
   position: absolute;
   right: 6px;
-  top: 2px;
+  top: 4px;
   color: #2a6ea5;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
 }
 .tiles.employee-portal .emp-tiles-2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(250px, 290px));
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
   gap: 14px;
 }
 .tiles.employee-portal .tile.emp-wide {
-  aspect-ratio: auto;
-  height: 74px;
+  width: 220px;
+  height: 60px;
   flex-direction: row;
   justify-content: flex-start;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 8px 12px;
   border-radius: 12px;
   border-width: 2px;
 }
 .tiles.employee-portal .tile.emp-wide .icon {
-  font-size: 28px;
+  font-size: 24px;
   color: #2a6ea5;
 }
 .tiles.employee-portal .tile.emp-wide .title {
   margin-top: 0;
   text-align: left;
   line-height: 1.15;
-  font-size: 14px;
+  font-size: 12px;
 }
 .tiles.employee-portal .tile.emp-wide .arrow {
   margin-top: 0;
   margin-left: auto;
-  font-size: 24px;
+  font-size: 20px;
   color: #2a6ea5;
 }
 @media (max-width: 900px) {
@@ -2487,12 +2492,13 @@ body:not(.admin) .topbar-inner .user #userName {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 14px 24px;
+    gap: 12px;
+    margin-top: 0;
   }
   .tiles.employee-portal .emp-tiles-3 .tile {
-    width: 128px;
-    min-height: 128px;
-    padding: 12px 8px;
+    width: 100px;
+    min-height: 100px;
+    padding: 8px 4px;
     border-width: 2px;
     border-radius: 12px;
     display: flex;
@@ -2501,29 +2507,38 @@ body:not(.admin) .topbar-inner .user #userName {
     justify-content: center;
     gap: 0;
   }
-  .tiles.employee-portal .emp-tiles-3 .tile .icon { font-size: 33px; }
-  .tiles.employee-portal .emp-tiles-3 .tile .title { margin-top: 10px; font-size: 15px; line-height: 1.2; font-weight: 700; }
-  .tiles.employee-portal .emp-tiles-3 .tile::after { right: 9px; top: 7px; font-size: 24px; font-weight: 700; line-height: 1; }
-  .tiles.employee-portal .emp-tiles-2 { grid-template-columns: minmax(260px, 300px); justify-content: center; gap: 14px; }
+  .tiles.employee-portal .emp-tiles-3 .tile .icon { font-size: 28px; }
+  .tiles.employee-portal .emp-tiles-3 .tile .title { margin-top: 6px; font-size: 13px; line-height: 1.2; font-weight: 700; }
+  .tiles.employee-portal .emp-tiles-3 .tile::after { right: 6px; top: 4px; font-size: 16px; font-weight: 700; line-height: 1; }
+  .tiles.employee-portal .emp-tiles-2 { 
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px; 
+  }
   .tiles.employee-portal .tile.emp-wide {
-    height: 70px;
-    padding: 10px 14px;
-    gap: 10px;
+    width: 250px;
+  }
+  .tiles.employee-portal .tile.emp-wide {
+    width: 200px;
+    height: 56px;
+    padding: 8px 12px;
+    gap: 8px;
     border-radius: 12px;
     border: 2px solid #2a6ea5 !important;
     background: #ffffff !important;
     box-shadow: 0 2px 8px rgba(17, 81, 172, 0.08) !important;
   }
   .tiles.employee-portal .tile.emp-wide .icon {
-    font-size: 22px;
+    font-size: 20px;
     margin-right: 4px;
   }
-  .tiles.employee-portal .tile.emp-wide .title { font-size: 14px; line-height: 1.2; font-weight: 700; letter-spacing: 0.1px; }
+  .tiles.employee-portal .tile.emp-wide .title { font-size: 12px; line-height: 1.2; font-weight: 700; letter-spacing: 0.1px; }
   .tiles.employee-portal .tile.emp-wide .arrow {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 800;
-    margin-left: 10px;
-    min-width: 20px;
+    margin-left: 8px;
+    min-width: 16px;
     text-align: right;
   }
 }
@@ -2598,27 +2613,40 @@ body:not(.admin) .topbar-inner .user #userName {
 
 @media (max-width: 430px) {
   /* Thu nhỏ kích thước ô vuông trên mobile nhưng giữ chữ to */
+  .tiles.employee-portal .emp-tiles-3 {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 0;
+  }
   .tiles.employee-portal .emp-tiles-3 .tile {
-    width: 106px;
-    min-height: 106px;
-    padding: 10px 6px;
+    width: 90px;
+    min-height: 90px;
+    padding: 6px 4px;
   }
   .tiles.employee-portal .emp-tiles-3 .tile .icon {
-    font-size: 32px;
+    font-size: 26px;
   }
   .tiles.employee-portal .emp-tiles-3 .tile .title {
-    font-size: 14px; /* Giữ chữ to rõ ràng */
-    margin-top: 8px;
+    font-size: 12px; /* Giữ chữ to rõ ràng */
+    margin-top: 4px;
   }
   .tiles.employee-portal .emp-tiles-3 .tile::after {
-    font-size: 20px;
-    right: 6px;
-    top: 6px;
+    font-size: 14px;
+    right: 4px;
+    top: 4px;
   }
 
-  .tiles.employee-portal .emp-tiles-2 { grid-template-columns: minmax(240px, 280px); }
+  .tiles.employee-portal .emp-tiles-2 { 
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px; 
+  }
   .tiles.employee-portal .tile.emp-wide {
-    height: 66px;
+    width: 200px;
+    height: 56px;
     padding: 8px 12px;
     gap: 8px;
   }
@@ -2654,7 +2682,7 @@ body:not(.admin) .topbar-inner .user #userName {
     display: none !important;
   }
   body:not(.admin) .subbar + .content {
-    padding-top: calc(var(--topbar-height) + 24px) !important;
+    padding-top: calc(var(--topbar-height) + 32px) !important;
   }
 }
 
