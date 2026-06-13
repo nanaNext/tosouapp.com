@@ -1971,7 +1971,9 @@ exports.getShiftMatrix = async (req, res) => {
       LEFT JOIN departments d ON u.departmentId = d.id
       LEFT JOIN shift_month_status s ON u.id = s.userId AND s.month = ?
       WHERE u.role NOT IN ('admin', 'manager') AND u.employment_status = 'active'
-      ORDER BY d.name, u.employment_type, u.id
+      ORDER BY 
+        CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END,
+        d.name, u.employment_type, u.id
     `, [month]);
 
     // Get all shifts for the month
@@ -2032,7 +2034,9 @@ exports.getAllEmployeeShifts = async (req, res) => {
       FROM users u
       LEFT JOIN departments d ON u.departmentId = d.id
       WHERE u.employment_status = 'active' AND u.role NOT IN ('admin', 'manager')
-      ORDER BY u.employee_code ASC, u.id ASC
+      ORDER BY 
+        CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END,
+        u.employee_code ASC, u.id ASC
     `);
 
     if (!users || users.length === 0) {
