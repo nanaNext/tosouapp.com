@@ -19,41 +19,44 @@ function ensureLeaveUiStyles() {
       margin-right: auto;
     }
     .leave-page-header {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      margin-bottom: 12px;
+      background: #FFFFFF;
+      padding: 16px 32px 0 32px;
+      border-bottom: 1px solid #D9D9D9;
+      margin: 0 0 24px 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     .leave-page-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: #111827;
-      margin: 0;
+      font-size: 20px;
+      font-weight: normal;
+      color: #32363A;
+      margin: 0 0 16px 0;
     }
     .leave-tabs {
       display: flex;
-      gap: 24px;
-      border-bottom: 1px solid #E5E7EB;
+      gap: 8px;
+      border-bottom: none;
     }
     .leave-tab {
-      padding: 8px 0;
+      padding: 12px 16px;
       font-size: 14px;
-      font-weight: 600;
-      color: #6B7280;
+      font-weight: normal;
+      color: #6A6D70;
       cursor: pointer;
-      border-bottom: 2px solid transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
       transition: all 0.2s ease;
-      background: none;
-      border-top: none;
-      border-left: none;
-      border-right: none;
-      margin-bottom: -1px;
+      background: transparent;
+      margin-bottom: 0;
+      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     .leave-tab:hover {
-      color: #374151;
+      color: #0854A0;
+      background: #F2F2F2;
     }
     .leave-tab.active {
       color: #0854A0;
+      font-weight: bold;
       border-bottom-color: #0854A0;
     }
     .leave-tab-content {
@@ -61,6 +64,11 @@ function ensureLeaveUiStyles() {
     }
     .leave-tab-content.active {
       display: block;
+      animation: fioriFadeIn 0.3s ease-out forwards;
+    }
+    @keyframes fioriFadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
       
     .leave-page #tab-balances .leave-toolbar {
@@ -1243,6 +1251,7 @@ export async function mountLeaveUnified({
   
   content.innerHTML = `
       <div class="leave-page-header">
+        <h2 class="leave-page-title">休暇管理</h2>
         <div class="leave-tabs">
           <button class="leave-tab active" data-target="tab-approvals">休暇申請承認</button>
           <button class="leave-tab" data-target="tab-grant">有給付与</button>
