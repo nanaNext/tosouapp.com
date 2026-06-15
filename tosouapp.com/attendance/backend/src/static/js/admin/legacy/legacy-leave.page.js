@@ -1316,21 +1316,29 @@ export async function mountLeaveUnified({
       margin: 0 !important;
       height: 100vh !important;
       overflow: hidden !important;
+      background: transparent !important; /* Force transparent background */
+      border: none !important; /* Force no border */
+      box-shadow: none !important; /* Force no shadow */
     }
     body.admin.has-sidebar #adminContent {
       padding: 0 !important;
       margin: 0 !important;
+      background: transparent !important; /* Force transparent background */
+      border: none !important; /* Force no border */
+      box-shadow: none !important; /* Force no shadow */
     }
   `;
   document.head.appendChild(style);
 
   // Reset parent containers to make it flush to the edges and prevent them from scrolling
   if (content.id === 'adminContent' || content.classList.contains('card')) {
+    content.classList.remove('card'); // Completely remove the card class
     content.style.padding = '0';
     content.style.margin = '0';
     content.style.maxWidth = 'none';
     content.style.border = 'none';
     content.style.boxShadow = 'none';
+    content.style.background = 'transparent';
     content.style.height = 'calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px))';
     content.style.overflow = 'hidden';
     const body = document.body;
