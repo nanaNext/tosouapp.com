@@ -17,13 +17,14 @@ async function runAutoBackup() {
     console.log('[Cron Job] Bắt đầu tự động backup Database...');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupFileName = `tosouapp_backup_${timestamp}.sql`;
-    // Lưu tạm vào thư mục uploads
-    const backupFilePath = path.join(__dirname, `../../../uploads/${backupFileName}`);
+    // Sửa lại đường dẫn lưu file để phù hợp với ổ cứng trên Render (đã mount vào uploads)
+    // __dirname là src/cron, cần lùi lại 1 bậc để ra src, sau đó vào uploads
+    const backupFilePath = path.join(__dirname, `../uploads/${backupFileName}`);
 
     try {
         // Đảm bảo thư mục uploads tồn tại
-        if (!fs.existsSync(path.join(__dirname, '../../../uploads'))) {
-            fs.mkdirSync(path.join(__dirname, '../../../uploads'), { recursive: true });
+        if (!fs.existsSync(path.join(__dirname, '../uploads'))) {
+            fs.mkdirSync(path.join(__dirname, '../uploads'), { recursive: true });
         }
 
         // 1. Tạo file backup SQL
