@@ -53,8 +53,8 @@ function ensureLeaveUiStyles() {
       color: #374151;
     }
     .leave-tab.active {
-      color: #2563EB;
-      border-bottom-color: #2563EB;
+      color: #0854A0;
+      border-bottom-color: #0854A0;
     }
     .leave-tab-content {
       display: none;
@@ -212,13 +212,50 @@ function ensureLeaveUiStyles() {
     .leave-grid-main { display: grid; grid-template-columns: minmax(0,1fr); gap: 24px; align-items: start; }
     .leave-grid-full { margin-top: 0; }
     .leave-form-grid {
-      display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 16px;
+      display: grid; 
+      grid-template-columns: 120px 1fr; 
+      gap: 12px 16px; 
+      margin-top: 16px; 
+      align-items: center; 
+      max-width: 480px;
+      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: #FFFFFF;
+      padding: 16px 24px;
+      border-radius: 4px;
+      box-shadow: 0 0 0 1px #E5E5E5, 0 2px 4px 0 rgba(0,0,0,0.05);
     }
-    .leave-form-grid > div { display: flex; flex-direction: column; gap: 6px; }
+    .leave-form-grid > div { display: contents; }
+    .leave-form-grid > div > label { 
+      text-align: right; 
+      margin-bottom: 0; 
+      color: #32363A; 
+      font-size: 14px; 
+      font-weight: normal; 
+    }
+    .leave-form-grid > div > input, .leave-form-grid > div > select { 
+      width: 100%; 
+      max-width: 320px; 
+      min-height: 32px !important;
+      height: 32px !important;
+      border: 1px solid #89919A !important;
+      border-radius: 2px !important;
+      font-size: 14px !important;
+      padding: 4px 8px !important;
+    }
+    .leave-form-grid > div > input:focus, .leave-form-grid > div > select:focus {
+      border-color: #0854A0 !important;
+      box-shadow: inset 0 0 0 1px #0854A0;
+      outline: none;
+    }
+    .leave-form-grid > div:last-child {
+      grid-column: 2; 
+      justify-self: start; 
+      margin-top: 8px;
+    }
     .leave-form-card {
       margin-top: 0; border-top: none; border-radius: 0; padding: 0; background: transparent;
     }
-    .leave-form-card h4 { margin: 0 0 8px; font-size: 16px; color: #111827; font-weight: 700; }
+    .leave-form-card h4 { margin: 0 0 12px; font-size: 16px; color: #32363A; font-weight: normal; font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif; }
     .leave-form-card p.sub-desc { margin: 0 0 24px; font-size: 14px; color: #6B7280; }
     .leave-mini-note { color: #6B7280; font-size: 13px; margin-top: 12px; }
     .leave-pager { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 16px; }
@@ -252,16 +289,17 @@ function ensureLeaveUiStyles() {
 
     /* Modal styles */
     .pto-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-    .pto-modal { background: #FFFFFF; border-radius: 8px; width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-    .pto-modal-header { padding: 16px 24px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; }
-    .pto-modal-title { font-size: 16px; font-weight: 700; color: #111827; margin: 0; }
-    .pto-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6B7280; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .pto-modal { background: #FFFFFF; border-radius: 4px; width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    .pto-modal-header { padding: 16px 24px; border-bottom: 1px solid #E5E5E5; display: flex; justify-content: space-between; align-items: center; background: #F2F2F2; border-radius: 4px 4px 0 0; }
+    .pto-modal-title { font-size: 16px; font-weight: normal; color: #32363A; margin: 0; }
+    .pto-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #32363A; padding: 0; display: flex; align-items: center; justify-content: center; }
     .pto-modal-body { padding: 24px; overflow-y: auto; }
-    .pto-modal-footer { padding: 16px 24px; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end; gap: 12px; }
+    .pto-modal-footer { padding: 12px 24px; border-top: 1px solid #E5E5E5; display: flex; justify-content: flex-end; gap: 8px; background: #F2F2F2; border-radius: 0 0 4px 4px; }
     
-    .pto-grant-row { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid #E5E7EB; border-radius: 4px; margin-bottom: 12px; background: #F9FAFB; }
-    .pto-grant-row input { padding: 4px 8px; border: 1px solid #D1D5DB; border-radius: 2px; font-size: 13px; width: 100%; box-sizing: border-box; min-height: 28px; }
-    .pto-grant-label { font-size: 11px; font-weight: 500; color: #4B5563; margin-bottom: 4px; display: block; }
+    .pto-grant-row { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid #E5E5E5; border-radius: 2px; margin-bottom: 12px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .pto-grant-row input { padding: 4px 8px; border: 1px solid #89919A; border-radius: 2px; font-size: 14px; width: 100%; box-sizing: border-box; min-height: 32px; }
+    .pto-grant-row input:focus { border-color: #0854A0; box-shadow: inset 0 0 0 1px #0854A0; outline: none; }
+    .pto-grant-label { font-size: 12px; font-weight: normal; color: #6A6D70; margin-bottom: 4px; display: block; }
   `;
   document.head.appendChild(s);
 }
@@ -577,17 +615,16 @@ export async function mountLeaveGrant({
   }
 
   const eligibleWrap = document.createElement('div');
-  eligibleWrap.style.cssText = 'margin:8px 0 12px;padding:0;border:0;border-radius:0;background:transparent;';
+  eligibleWrap.style.cssText = 'margin:16px 0;padding:16px 24px;border:1px solid #E5E5E5;border-radius:4px;background:#FFFFFF;box-shadow:0 2px 4px 0 rgba(0,0,0,0.05);max-width:800px;font-family:"72","Helvetica Neue",Helvetica,Arial,sans-serif;';
   eligibleWrap.innerHTML = `
-    <div class="leave-toolbar" style="margin:0 0 8px;">
-      <strong>付与対象候補</strong>
+    <div class="leave-toolbar" style="margin:0 0 12px;display:flex;align-items:center;gap:12px;">
+      <strong style="color:#32363A;font-weight:normal;font-size:16px;margin-right:auto;">付与対象候補</strong>
       <button class="leave-btn" data-action="load-eligible">候補を読込</button>
       <button class="leave-btn leave-btn-primary" data-action="grant-eligible">候補を一括付与</button>
-      <span id="eligibleInfo" style="color:#475569;font-size:12px;"></span>
     </div>
+    <div style="margin-bottom:8px;"><span id="eligibleInfo" style="color:#6A6D70;font-size:13px;"></span></div>
     <div id="eligibleTableHost"></div>
   `;
-  eligibleWrap.querySelector('.leave-toolbar')?.style.setProperty('padding', '0');
   c.appendChild(eligibleWrap);
 
   const eligibleInfo = eligibleWrap.querySelector('#eligibleInfo');
@@ -725,8 +762,8 @@ export async function mountLeaveGrant({
       <label class="leave-label">有効期限</label>
       <input id="expireDate" class="leave-input" type="date" value="${fmt(exp)}">
     </div>
-    <div style="margin-top:8px;">
-      <button type="submit" class="leave-btn leave-btn-primary" style="min-width:120px; align-self: flex-start;">付与</button>
+    <div>
+      <button type="submit" class="leave-btn leave-btn-primary" style="min-width:120px;">付与</button>
     </div>
   `;
 
@@ -797,9 +834,9 @@ async function showEditPtoModal(userId, userName, onSaved) {
     <div class="pto-modal-body">
       <div id="ptoModalLoading" style="text-align:center; padding: 20px; color:#6B7280;">読み込み中...</div>
       <div id="ptoGrantsList" style="display:none;"></div>
-      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed #E5E7EB;">
-        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">手動付与（追加）</h4>
-        <div class="pto-grant-row" style="background: #FFFFFF;">
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E5E5E5;">
+        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: normal; color: #32363A;">手動付与（追加）</h4>
+        <div class="pto-grant-row" style="background: #F4F4F4; box-shadow: none;">
           <div>
             <label class="pto-grant-label">付与日 (Grant Date)</label>
             <input type="date" id="newGrantDate" value="${new Date().toISOString().slice(0,10)}">
