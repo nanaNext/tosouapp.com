@@ -1251,7 +1251,6 @@ export async function mountLeaveUnified({
   
   content.innerHTML = `
       <div class="leave-page-header">
-        <h2 class="leave-page-title">休暇管理</h2>
         <div class="leave-tabs">
           <button class="leave-tab active" data-target="tab-approvals">休暇申請承認</button>
           <button class="leave-tab" data-target="tab-grant">有給付与</button>
