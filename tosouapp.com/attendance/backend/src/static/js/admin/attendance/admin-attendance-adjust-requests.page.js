@@ -1,11 +1,7 @@
 // admin-attendance-adjust-requests.page.js
 import { fetchJSONAuth } from '../../api/http.api.js';
-import { wireAdminShell } from '../../shell/admin-shell.js?v=navy-20260418-menuhotfix27';
 
-const host = document.getElementById('adjustRequestsHost');
-
-try { document.body.style.visibility = ''; } catch (e) { /* silently ignored */ }
-try { document.getElementById('adminBootMask')?.remove(); } catch (e) { /* silently ignored */ }
+let localHost = null;
 
 // Tháng hiện tại dạng "2026-04"
 const nowDate = new Date();
@@ -13,6 +9,32 @@ let currentMonth = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).pa
 
 // Cache toàn bộ dữ liệu để lọc phía client không cần gọi API lại
 let allRows = [];
+
+export async function mount({ content }) {
+  localHost = content;
+  localHost.style.visibility = '';
+  
+  // Set padding 0 to parent wrapper if we can to make sure it fills
+  if (localHost.parentElement) {
+      localHost.parentElement.style.padding = '0';
+  }
+  
+  const params = new URLSearchParams(window.location.search);
+  const isStandalone = params.get('standalone') === '1';
+  const vhExpr = isStandalone ? '100dvh' : 'calc(100dvh - var(--topbar-height) - var(--subbar-height))';
+
+  localHost.style.display = 'flex';
+  localHost.style.flexDirection = 'column';
+  localHost.style.height = vhExpr;
+  localHost.style.background = '#FFFFFF';
+  localHost.style.overflow = 'hidden';
+  localHost.style.flex = '1';
+  localHost.style.minWidth = '0';
+
+  const isAdmin = await checkAdminAuth();
+  if (isAdmin) await renderList();
+}
+
 
 function wireSubbarMenus() {
   try {
@@ -88,19 +110,19 @@ async function updateRequestStatus(id, status) {
 }
 
 function attachButtonListeners() {
-  host.querySelectorAll('.btn-approve').forEach(btn => {
+  localHost.querySelectorAll('.btn-approve').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
       if (confirm('この申請を承認しますか？')) updateRequestStatus(id, 'approved');
     });
   });
-  host.querySelectorAll('.btn-reject').forEach(btn => {
+  localHost.querySelectorAll('.btn-reject').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
       if (confirm('この申請を却下しますか？')) updateRequestStatus(id, 'rejected');
     });
   });
-  host.querySelectorAll('.btn-delete').forEach(btn => {
+  localHost.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const id = e.currentTarget.dataset.id;
       if (!confirm('この申請を削除しますか？この操作は取り消せません。')) return;
@@ -115,9 +137,9 @@ function attachButtonListeners() {
   });
 
   // Nút điều hướng tháng
-  const btnPrev = document.getElementById('btnMonthPrev');
-  const btnNext = document.getElementById('btnMonthNext');
-  const btnNow  = document.getElementById('btnMonthNow');
+  const btnPrev = localHost.querySelector('#btnMonthPrev');
+  const btnNext = localHost.querySelector('#btnMonthNext');
+  const btnNow  = localHost.querySelector('#btnMonthNow');
   if (btnPrev) btnPrev.onclick = () => { currentMonth = shiftMonth(currentMonth, -1); renderTable(); };
   if (btnNext) btnNext.onclick = () => { currentMonth = shiftMonth(currentMonth,  1); renderTable(); };
   if (btnNow)  btnNow.onclick  = () => {
@@ -128,6 +150,9 @@ function attachButtonListeners() {
 }
 
 function renderTable() {
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  const vhExpr = isStandalone ? '100dvh' : 'calc(100dvh - var(--topbar-height) - var(--subbar-height))';
+
   // Lọc theo tháng đã chọn (dựa vào created_at)
   const filtered = allRows.filter(r => {
     const ym = r.created_at ? String(r.created_at).slice(0, 7) : '';
@@ -148,53 +173,73 @@ function renderTable() {
         let stLabel, stClass, actionCell;        if (st === 'pending') {
           stLabel    = '確認待ち';
           stClass    = 'adj-status-pending';
-          actionCell = `<button class="btn-approve" data-id="${r.id}">承認</button><button class="btn-reject" data-id="${r.id}">却下</button><button class="btn-delete" data-id="${r.id}">削除</button>`;
+          actionCell = `<button class="btn-approve" data-id="${r.id}" style="height:24px;padding:0 8px;font-size:12px;border-radius:4px;border:1px solid #10b981;background:#10b981;color:white;cursor:pointer;margin-right:4px;">承認</button><button class="btn-reject" data-id="${r.id}" style="height:24px;padding:0 8px;font-size:12px;border-radius:4px;border:1px solid #f59e0b;background:#f59e0b;color:white;cursor:pointer;margin-right:4px;">却下</button><button class="btn-delete" data-id="${r.id}" style="height:24px;padding:0 8px;font-size:12px;border-radius:4px;border:1px solid #ef4444;background:#ef4444;color:white;cursor:pointer;">削除</button>`;
         } else if (st === 'approved') {
-          stLabel = '承認済み'; stClass = 'adj-status-approved'; actionCell = `<button class="btn-delete" data-id="${r.id}">削除</button>`;
+          stLabel = '承認済み'; stClass = 'adj-status-approved'; actionCell = `<button class="btn-delete" data-id="${r.id}" style="height:24px;padding:0 8px;font-size:12px;border-radius:4px;border:1px solid #ef4444;background:#ef4444;color:white;cursor:pointer;">削除</button>`;
         } else {
-          stLabel = '却下'; stClass = 'adj-status-rejected'; actionCell = `<button class="btn-delete" data-id="${r.id}">削除</button>`;
-        }        return `<tr>
-          <td>${user}</td>
-          <td>${created}</td>
-          <td>${cin}</td>
-          <td>${cout}</td>
+          stLabel = '却下'; stClass = 'adj-status-rejected'; actionCell = `<button class="btn-delete" data-id="${r.id}" style="height:24px;padding:0 8px;font-size:12px;border-radius:4px;border:1px solid #ef4444;background:#ef4444;color:white;cursor:pointer;">削除</button>`;
+        }
+
+        // Use standard td formatting from the hub CSS
+        return `<tr>
+          <td style="font-weight: 500;">${user}</td>
+          <td style="text-align:center;">${created}</td>
+          <td style="font-family:monospace; text-align:center;">${cin}</td>
+          <td style="font-family:monospace; text-align:center;">${cout}</td>
           <td>${esc(r.reason || '')}</td>
-          <td><span class="${stClass}">${stLabel}</span></td>
-          <td style="white-space:nowrap;">${actionCell}</td>
+          <td style="text-align:center;"><span class="${stClass}">${stLabel}</span></td>
+          <td style="white-space:nowrap; text-align:center;">${actionCell}</td>
         </tr>`;
-      }).join('');  host.innerHTML = `
+      }).join('');  localHost.innerHTML = `
+    <style>
+      .adj-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
+      .adj-table th { padding: 6px 8px; font-size: 13px; font-weight: 600; text-align: center; }
+      .adj-table td { padding: 6px 8px; vertical-align: middle; }
+      .adj-table tbody tr:hover td { background-color: #f8fafc; }
+      .adj-month-nav {
+        display: flex;
+        align-items: center;
+        padding: 16px 24px; justify-content: space-between; flex-shrink: 0;
+      }
+      .adj-month-nav-right {
+        display: flex; align-items: center;
+      }
+      .adj-month-btn {
+        background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; cursor: pointer; color: #475569; height: 28px;
+      }
+      .adj-month-btn:hover { background: #e2e8f0; }
+      .adj-month-label { font-weight: bold; margin: 0 12px; font-size: 15px; color: #1e293b; }
+      .adj-month-today { margin-left: 12px; font-size: 12px; cursor: pointer; background: #fff; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 4px; height: 28px; }
+      .adj-month-today:hover { background: #f8fafc; }
+      .adj-pending-badge { background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 8px; }
+      .adj-table-card { margin: 0; flex: 1; overflow-y: auto; max-height: calc(${vhExpr} - 62px); padding: 16px 24px 24px 24px; }
+    </style>
     <div class="adj-month-nav">
-      <button id="btnMonthPrev" class="adj-month-btn" title="前月">&#8249;</button>
-      <span class="adj-month-label">
-        ${fmtMonthLabel(currentMonth)}
-        ${pendingCount > 0 ? `<span class="adj-pending-badge">${pendingCount}件 確認待ち</span>` : ''}
-      </span>
-      <button id="btnMonthNext" class="adj-month-btn" title="翌月">&#8250;</button>
-      ${!isCurrentMonth ? `<button id="btnMonthNow" class="adj-month-today">今月</button>` : ''}
+      <h2 style="margin:0; font-size:16px; font-weight:700; color:#111827;">調整申請一覧</h2>
+      <div class="adj-month-nav-right">
+        <button id="btnMonthPrev" class="adj-month-btn" title="前月">&#8249;</button>
+        <span class="adj-month-label">
+          ${fmtMonthLabel(currentMonth)}
+          ${pendingCount > 0 ? `<span class="adj-pending-badge">${pendingCount}件 確認待ち</span>` : ''}
+        </span>
+        <button id="btnMonthNext" class="adj-month-btn" title="翌月">&#8250;</button>
+        ${!isCurrentMonth ? `<button id="btnMonthNow" class="adj-month-today">今月</button>` : ''}
+      </div>
     </div>
     <div class="adj-table-card">
-      <table class="adj-table">
-        <colgroup>
-          <col style="width:13%">
-          <col style="width:13%">
-          <col style="width:13%">
-          <col style="width:13%">
-          <col style="width:19%">
-          <col style="width:12%">
-          <col style="width:17%">
-        </colgroup>
-        <thead>
+      <table class="adj-table" style="margin: 0; width: 100%;">
+        <thead style="position:sticky; top:0; z-index:10;">
           <tr>
-            <th>ユーザー</th>
-            <th>作成</th>
-            <th>修正(出勤)</th>
-            <th>修正(退勤)</th>
-            <th>理由</th>
-            <th>状態</th>
-            <th>アクション</th>
+            <th style="width:120px;">ユーザー</th>
+            <th style="width:100px;">作成</th>
+            <th style="width:90px;">修正(出勤)</th>
+            <th style="width:90px;">修正(退勤)</th>
+            <th style="width:200px;">理由</th>
+            <th style="width:100px;">状態</th>
+            <th style="width:160px;">アクション</th>
           </tr>
         </thead>
-        <tbody>${tbody}</tbody>
+        <tbody style="background: white;">${tbody}</tbody>
       </table>
     </div>`;
 
@@ -202,20 +247,14 @@ function renderTable() {
 }
 
 async function renderList() {
-  if (!host) return;
-  host.innerHTML = '<div style="color:#475569;padding:16px;">読み込み中…</div>';
+  if (!localHost) return;
+  localHost.innerHTML = '<div style="color:#475569;padding:16px;">読み込み中…</div>';
   try {
     allRows = await fetchJSONAuth('/api/adjust/admin');
     if (!Array.isArray(allRows)) allRows = [];
     renderTable();
   } catch (e) {
-    host.innerHTML = `<div style="color:#b00020;padding:16px;">取得失敗: ${esc(e?.message || 'unknown')}</div>`;
+    localHost.innerHTML = `<div style="color:#b00020;padding:16px;">取得失敗: ${esc(e?.message || 'unknown')}</div>`;
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  wireAdminShell();
-  wireSubbarMenus();
-  const isAdmin = await checkAdminAuth();
-  if (isAdmin) await renderList();
-});

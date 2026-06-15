@@ -40,14 +40,79 @@ async function mountAttendanceImpl({
   const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
   const month = today.slice(0, 7);
 
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
+
   const rosterWrap = document.createElement('div');
+  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: ${vhExpr}; display: flex; flex-direction: column; overflow: hidden;`;
   rosterWrap.innerHTML = `
-    <div class="dash-card attrec-card">
-      <div class="attrec-head">
+    <style>
+      .attrec-fiori-override .dash-card-title {
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        color: #111827 !important;
+        letter-spacing: -0.01em;
+        margin: 0 !important;
+      }
+      .attrec-fiori-override.dash-card {
+        background: #fff !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+      }
+      .attrec-fiori-override .attrec-head {
+        padding: 16px 24px 8px 24px !important;
+        border-bottom: none !important;
+      }
+      .attrec-fiori-override .attrec-controls {
+        padding: 0 24px !important;
+        gap: 8px !important;
+        margin-top: 0 !important;
+      }
+      .attrec-fiori-override .attrec-control {
+        gap: 8px !important;
+      }
+      .attrec-fiori-override .attrec-input,
+      .attrec-fiori-override .attrec-btn {
+        height: 30px !important;
+        font-size: 13px !important;
+        padding: 0 10px !important;
+        border-radius: 4px !important;
+      }
+      .attrec-fiori-override .attrec-table {
+        margin: 0 !important;
+        padding: 0 24px 24px 24px !important;
+        border-top: none !important;
+      }
+      .attrec-fiori-override .attrec-dash-table th {
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+        background: #f8fafc !important;
+        color: #475569 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+      }
+      .attrec-fiori-override .attrec-dash-table td {
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+      }
+      .attrec-fiori-override .attrec-pill {
+        font-size: 11px !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+      }
+      .attrec-fiori-override .attrec-summary {
+        gap: 6px !important;
+      }
+    </style>
+    <div class="dash-card attrec-card attrec-fiori-override" style="display: flex; flex-direction: column; height: 100%;">
+      <div class="attrec-head" style="flex-shrink: 0;">
         <div class="dash-card-title">勤怠記録</div>
         <div id="rosterSummary" class="attrec-summary" aria-live="polite"></div>
       </div>
-      <div class="attrec-controls">
+      <div class="attrec-controls" style="margin-bottom: 12px; flex-shrink: 0;">
         <div class="attrec-control">
           <div class="attrec-label">日付</div>
           <input id="rosterDate" class="attrec-input" type="date" value="${esc(today)}">
@@ -62,7 +127,7 @@ async function mountAttendanceImpl({
           <button type="button" id="rosterExportYearXlsx" class="attrec-btn">年次Excel</button>
         </div>
       </div>
-      <div id="rosterTable" class="attrec-table"></div>
+      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow-y: auto;"></div>
     </div>
   `;
   content.appendChild(rosterWrap);

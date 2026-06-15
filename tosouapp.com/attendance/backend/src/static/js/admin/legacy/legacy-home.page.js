@@ -9,6 +9,7 @@ export async function mountHome({ content }) {
   }
 
   content.innerHTML = '';
+
   const wrap = document.createElement('div');
   wrap.className = 'dashboard';
 
