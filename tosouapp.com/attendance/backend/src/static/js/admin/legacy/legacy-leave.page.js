@@ -219,15 +219,18 @@ function ensureLeaveUiStyles() {
     .leave-muted { color: #6B7280; font-size: 13px; }
     
     .leave-balance-card {
-      border: 1px solid #E5E7EB;
-      border-radius: 12px;
-      padding: 16px;
       background: #FFFFFF;
-      transition: all 0.2s ease;
+      border-radius: 4px;
+      box-shadow: 0 0 0 1px #E5E5E5, 0 2px 4px 0 rgba(0,0,0,0.05);
+      padding: 16px;
+      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
     .leave-balance-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border-color: #93C5FD;
+      box-shadow: 0 0 0 1px #0854A0, 0 4px 8px 0 rgba(0,0,0,0.1);
       transform: translateY(-2px);
     }
     .leave-balance-grid {
@@ -1032,37 +1035,38 @@ export async function mountLeaveBalance({
       card.dataset.username = r.name || `User ${r.userId}`;
       card.style.cursor = 'pointer';
       
+      const initial = (r.name || 'U').charAt(0).toUpperCase();
+      
       card.innerHTML = `
-        <div style="font-weight:700; font-size:16px; color:#111827; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-          <span>${r.name || `User ${r.userId}`}</span>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button type="button" class="leave-btn-edit" data-userid="${r.userId}" data-username="${r.name}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px 4px;" title="編集">✏️</button>
-            <span style="font-size:12px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 8px; border-radius:12px;">社員番号: ${r.employeeCode || r.userId}</span>
+        <div style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #F2F2F2; padding-bottom:12px;">
+          <div style="width:40px; height:40px; border-radius:50%; background:#0854A0; color:#FFF; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px;">${initial}</div>
+          <div>
+            <h3 style="font-size:16px; font-weight:normal; color:#32363A; margin:0;">${r.name || `User ${r.userId}`}</h3>
+            <p style="font-size:12px; color:#6A6D70; margin:2px 0 0 0;">社員番号: ${r.employeeCode || r.userId}</p>
           </div>
         </div>
         
-        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-          <span style="color:#4B5563; font-size:14px; font-weight:500;">PTO Remaining</span>
-          <span style="color:#2563EB; font-size:16px; font-weight:700;">${remainD} <span style="font-size:12px;font-weight:500;">days</span></span>
+        <div style="display:flex; flex-direction:column; margin-top:4px;">
+          <span style="font-size:28px; font-weight:300; color:#111827;">${remainD} <span style="font-size:14px;">days</span></span>
+          <span style="font-size:12px; color:#6A6D70;">PTO Remaining</span>
         </div>
         
-        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <span style="color:#6B7280; font-size:13px;">Used</span>
-          <span style="color:#4B5563; font-size:13px; font-weight:600;">${usedD} / ${totalG}</span>
+        <div style="display:flex; justify-content:space-between; margin-top:4px; margin-bottom:0px;">
+          <span style="color:#6A6D70; font-size:12px;">Used: <span style="font-weight:600; color:#32363A;">${usedD} / ${totalG}</span></span>
         </div>
         
-        <div style="height:6px; background:#E5E7EB; border-radius:3px; overflow:hidden; margin-bottom:16px;">
-          <div style="height:100%; width:${pctUsed}%; background:#2563EB; border-radius:3px;"></div>
+        <div style="height:4px; background:#E5E5E5; border-radius:2px; overflow:hidden;">
+          <div style="height:100%; width:${pctUsed}%; background:#0854A0; border-radius:2px;"></div>
         </div>
         
-        <div style="font-size:13px; color:#4B5563; display:flex; flex-direction:column; gap:6px;">
+        <div style="font-size:12px; color:#6A6D70; display:flex; flex-direction:column; gap:4px; margin-top:auto; border-top:1px solid #F2F2F2; padding-top:12px;">
           <div style="display:flex; justify-content:space-between;">
-            <span style="color:#6B7280;">Nearest Expiry</span>
-            <span style="${isExpiringSoon ? 'color:#B45309;font-weight:600;' : ''}">${r.nearestExpiry || 'N/A'}</span>
+            <span>Nearest Expiry</span>
+            <span style="${isExpiringSoon ? 'color:#BB0000;font-weight:bold;' : 'color:#32363A;'}">${r.nearestExpiry || 'N/A'}</span>
           </div>
           <div style="display:flex; justify-content:space-between;">
-            <span style="color:#6B7280;">Obligation</span>
-            <span>${r.obligationRemaining || 0} days</span>
+            <span>Obligation</span>
+            <span style="color:#32363A;">${r.obligationRemaining || 0} days</span>
           </div>
         </div>
       `;
@@ -1112,10 +1116,6 @@ export async function mountLeaveBalance({
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           e.preventDefault();
-          // The click on the card will handle it, or if clicked exactly on btn, 
-          // we can just let it trigger the parent card click by NOT stopping propagation
-          // Actually, if we don't stop propagation, it bubbles up to the card. 
-          // So we don't need to do anything here except prevent default.
         });
       });
     }, 0);
