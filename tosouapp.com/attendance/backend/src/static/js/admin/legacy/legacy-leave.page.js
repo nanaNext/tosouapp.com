@@ -1309,7 +1309,7 @@ export async function mountLeaveUnified({
       border-right: 1px solid #E5E7EB !important;
     }
     body.admin.has-sidebar .content {
-      padding-top: calc(var(--topbar-height, 56px) + var(--subbar-height, 40px)) !important;
+      padding-top: var(--topbar-height, 48px) !important; /* Only use topbar height, not subbar */
       padding-left: 0 !important;
       padding-right: 0 !important;
       padding-bottom: 0 !important;
@@ -1326,6 +1326,7 @@ export async function mountLeaveUnified({
       background: #FFFFFF !important; /* Force content area background */
       border: none !important;
       box-shadow: none !important;
+      margin-top: -1px !important; /* Force pull up to close any 1px gap */
     }
     /* Hide the status and error bars if they are empty so they don't take up space */
     body.admin.has-sidebar .status:empty, 
@@ -1346,7 +1347,7 @@ export async function mountLeaveUnified({
     content.style.border = 'none';
     content.style.boxShadow = 'none';
     content.style.background = '#FFFFFF';
-    content.style.height = 'calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px))';
+    content.style.height = 'calc(100vh - var(--topbar-height, 48px))'; // Recalculate without subbar
     content.style.overflow = 'hidden';
     const body = document.body;
     body.style.overflow = 'hidden'; // Stop the whole page from scrolling
@@ -1354,10 +1355,12 @@ export async function mountLeaveUnified({
     // Also explicitly hide siblings like #status or #error if they exist to prevent top gap
     const parent = content.parentElement;
     if (parent) {
+      parent.style.padding = '0';
+      parent.style.margin = '0';
       const statusEl = parent.querySelector('#status');
-      if (statusEl && !statusEl.textContent.trim()) statusEl.style.display = 'none';
+      if (statusEl) statusEl.style.display = 'none';
       const errorEl = parent.querySelector('#error');
-      if (errorEl && !errorEl.textContent.trim()) errorEl.style.display = 'none';
+      if (errorEl) errorEl.style.display = 'none';
     }
   }
   
