@@ -361,7 +361,7 @@ exports.userBalance = async (req, res) => {
 exports.grant = async (req, res) => {
   try {
     const { userId, days, grantDate, expiryDate } = req.body || {};
-    if (!userId || !days) return res.status(400).json({ message: 'Missing userId/days' });
+    if (!userId || days === undefined || days === null || days === '') return res.status(400).json({ message: 'Missing userId/days' });
     const gDate = grantDate || fmt(new Date());
     let eDate = expiryDate;
     if (!eDate) {
