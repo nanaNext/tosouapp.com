@@ -946,21 +946,22 @@ async function showEditPtoModal(userId, userName, onSaved) {
         listEl.innerHTML = '<div style="color:#6B7280; font-size:13px; text-align:center;">付与履歴がありません。</div>';
       } else {
         listEl.innerHTML = grants.map((g, idx) => `
-          <div class="pto-grant-row">
+          <div class="pto-grant-row" data-grant-id="${g.id || ''}">
             <div>
               <label class="pto-grant-label">付与日</label>
               <input type="date" value="${String(g.grantDate).slice(0,10)}" readonly style="background:#F3F4F6; cursor:not-allowed;">
             </div>
             <div>
               <label class="pto-grant-label">日数</label>
-              <input type="number" class="edit-grant-days" data-idx="${idx}" data-date="${String(g.grantDate).slice(0,10)}" data-expiry="${String(g.expiryDate).slice(0,10)}" value="${g.daysGranted}" min="0" step="1">
+              <input type="number" class="edit-grant-days" data-idx="${idx}" data-date="${String(g.grantDate).slice(0,10)}" data-expiry="${String(g.expiryDate).slice(0,10)}" value="${g.daysGranted}" step="1">
             </div>
             <div>
               <label class="pto-grant-label">有効期限</label>
               <input type="date" class="edit-grant-expiry" data-idx="${idx}" value="${String(g.expiryDate).slice(0,10)}">
             </div>
-            <div style="align-self: flex-end;">
+            <div style="align-self: flex-end; display: flex; gap: 4px;">
               <button class="leave-btn secondary btn-save-grant" data-idx="${idx}">保存</button>
+              <button class="leave-btn btn-delete-grant" style="background: #FEF2F2; color: #DC2626; border-color: #FCA5A5;" data-idx="${idx}">削除</button>
             </div>
           </div>
         `).join('');
@@ -977,7 +978,7 @@ async function showEditPtoModal(userId, userName, onSaved) {
           const days = Number(daysInput.value);
           const expiryDate = expiryInput.value;
           
-          if (!days && days !== 0) return alert('日数を入力してください');
+          if (daysInput.value === '') return alert('日数を入力してください');
           
           btn.textContent = '...';
           btn.disabled = true;
@@ -989,6 +990,30 @@ async function showEditPtoModal(userId, userName, onSaved) {
           } catch (err) {
             alert('保存に失敗しました: ' + err.message);
             btn.textContent = '保存';
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // Attach delete events
+      listEl.querySelectorAll('.btn-delete-grant').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const idx = btn.dataset.idx;
+          const daysInput = listEl.querySelector(`.edit-grant-days[data-idx="${idx}"]`);
+          const grantDate = daysInput.dataset.date;
+          
+          if (!confirm('この付与履歴を削除してもよろしいですか？')) return;
+          
+          btn.textContent = '...';
+          btn.disabled = true;
+          try {
+            // Delete by setting days to 0
+            await api.post('/api/leave/grant', { userId: Number(userId), days: 0, grantDate, expiryDate: daysInput.dataset.expiry });
+            if (onSaved) onSaved();
+            await loadGrants(); // reload list to remove row
+          } catch (err) {
+            alert('削除に失敗しました: ' + err.message);
+            btn.textContent = '削除';
             btn.disabled = false;
           }
         });
