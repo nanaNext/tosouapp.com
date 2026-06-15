@@ -13,7 +13,7 @@ function ensureLeaveUiStyles() {
       border: none !important; 
       box-shadow: none !important; 
       padding: 0 !important; 
-      margin-top: -16px !important;
+      margin: 0 !important;
       width: 100%;
     }
     .leave-page-layout {
@@ -23,7 +23,7 @@ function ensureLeaveUiStyles() {
       padding: 0;
       align-items: stretch;
       width: 100%;
-      min-height: calc(100vh - 80px);
+      min-height: calc(100vh - 48px); /* Topbar is usually 48px */
     }
     .leave-sidebar {
       width: 240px;
@@ -1273,6 +1273,20 @@ export async function mountLeaveUnified({
 }) {
   ensureLeaveUiStyles();
   content.classList.add('leave-page');
+
+  // Reset parent containers to make it flush to the edges
+  if (content.id === 'adminContent' || content.classList.contains('card')) {
+    content.style.padding = '0';
+    content.style.margin = '0';
+    content.style.maxWidth = 'none';
+    content.style.border = 'none';
+    content.style.boxShadow = 'none';
+    const parent = content.parentElement;
+    if (parent && parent.classList.contains('content')) {
+      parent.style.padding = '0';
+      parent.style.margin = '0';
+    }
+  }
   
   content.innerHTML = `
       <div class="leave-page-layout">
