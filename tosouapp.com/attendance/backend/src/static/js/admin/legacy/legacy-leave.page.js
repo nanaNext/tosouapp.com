@@ -15,6 +15,9 @@ function ensureLeaveUiStyles() {
       padding: 0 !important; 
       margin: 0 !important;
       width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      box-sizing: border-box;
     }
     .leave-page-layout {
       display: flex;
@@ -23,8 +26,10 @@ function ensureLeaveUiStyles() {
       padding: 0;
       align-items: stretch;
       width: 100%;
+      max-width: 100%;
       height: calc(100vh - 96px); /* Fallback height */
       overflow: hidden; /* Prevent whole page from scrolling */
+      box-sizing: border-box;
     }
     
     /* Custom Scrollbar to match Render style */
@@ -1302,11 +1307,18 @@ export async function mountLeaveUnified({
   style.id = 'leave-dynamic-height';
   style.textContent = `
     .leave-page-layout {
-      height: calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px)) !important;
+      height: calc(100vh - var(--topbar-height, 48px)) !important;
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
     }
     .leave-sidebar {
-      height: calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px)) !important;
+      height: calc(100vh - var(--topbar-height, 48px)) !important;
       border-right: 1px solid #E5E7EB !important;
+    }
+    .leave-content-area {
+      overflow-x: hidden !important;
+      max-width: calc(100vw - 240px); /* Strictly prevent horizontal overflow */
     }
     body.admin.has-sidebar .content {
       padding-top: var(--topbar-height, 48px) !important; /* Only use topbar height, not subbar */
@@ -1315,14 +1327,20 @@ export async function mountLeaveUnified({
       padding-bottom: 0 !important;
       margin: 0 !important;
       height: 100vh !important;
+      width: 100vw !important;
+      max-width: 100% !important;
       overflow: hidden !important;
       background: #FFFFFF !important; /* Fix background issue to hide any gaps */
       border: none !important;
       box-shadow: none !important;
+      box-sizing: border-box !important;
     }
     body.admin.has-sidebar #adminContent {
       padding: 0 !important;
       margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
       background: #FFFFFF !important; /* Force content area background */
       border: none !important;
       box-shadow: none !important;
