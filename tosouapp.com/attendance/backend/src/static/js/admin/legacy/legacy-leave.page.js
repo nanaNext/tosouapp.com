@@ -47,7 +47,7 @@ function ensureLeaveUiStyles() {
       flex-shrink: 0;
       background: #F9FAFB;
       border-right: 1px solid #E5E7EB;
-      padding: 24px 16px;
+      padding: 16px; /* Reduced top padding to make items closer to header */
       height: 100%;
       overflow-y: auto;
       box-sizing: border-box;
@@ -103,7 +103,7 @@ function ensureLeaveUiStyles() {
       flex: 1;
       min-width: 0;
       background: #FFFFFF;
-      padding: 32px 40px;
+      padding: 16px 40px 32px 40px; /* Reduced top padding */
       height: 100%;
       overflow-y: auto; /* Enable independent scrolling here */
       box-sizing: border-box;
