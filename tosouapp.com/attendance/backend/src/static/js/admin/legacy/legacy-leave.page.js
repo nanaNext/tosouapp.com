@@ -18,46 +18,56 @@ function ensureLeaveUiStyles() {
       margin-left: auto;
       margin-right: auto;
     }
-    .leave-page-header {
-      background: #FFFFFF;
-      padding: 16px 32px 0 32px;
-      border-bottom: 1px solid #D9D9D9;
-      margin: 0 0 24px 0;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    }
-    .leave-page-title {
-      font-size: 20px;
-      font-weight: normal;
-      color: #32363A;
-      margin: 0 0 16px 0;
-    }
-    .leave-tabs {
+    .leave-page-layout {
       display: flex;
-      gap: 8px;
-      border-bottom: none;
+      gap: 24px;
+      margin-top: 24px;
+      padding: 0 32px;
+      align-items: flex-start;
+    }
+    .leave-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: #FFFFFF;
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      border: 1px solid #D9D9D9;
+      padding: 8px 0;
+    }
+    .leave-tabs-vertical {
+      display: flex;
+      flex-direction: column;
     }
     .leave-tab {
-      padding: 12px 16px;
+      padding: 12px 24px;
       font-size: 14px;
       font-weight: normal;
-      color: #6A6D70;
+      color: #32363A;
       cursor: pointer;
       border: none;
-      border-bottom: 3px solid transparent;
+      border-left: 4px solid transparent;
+      text-align: left;
       transition: all 0.2s ease;
       background: transparent;
-      margin-bottom: 0;
       font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     .leave-tab:hover {
-      color: #0854A0;
       background: #F2F2F2;
     }
     .leave-tab.active {
       color: #0854A0;
       font-weight: bold;
-      border-bottom-color: #0854A0;
+      background: #E5F0FA;
+      border-left-color: #0854A0;
+    }
+    .leave-content-area {
+      flex: 1;
+      min-width: 0;
+      background: #FFFFFF;
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      border: 1px solid #D9D9D9;
+      padding: 24px;
     }
     .leave-tab-content {
       display: none;
@@ -1250,14 +1260,19 @@ export async function mountLeaveUnified({
   content.classList.add('leave-page');
   
   content.innerHTML = `
-      <div class="leave-page-header">
-        <div class="leave-tabs">
-          <button class="leave-tab active" data-target="tab-approvals">休暇申請承認</button>
-          <button class="leave-tab" data-target="tab-grant">有給付与</button>
-          <button class="leave-tab" data-target="tab-balances">有給残日数一覧</button>
+      <div class="leave-page-layout">
+        <div class="leave-sidebar">
+          <div class="leave-tabs-vertical">
+            <button class="leave-tab active" data-target="tab-approvals">休暇申請承認</button>
+            <button class="leave-tab" data-target="tab-grant">有給付与</button>
+            <button class="leave-tab" data-target="tab-balances">有給残日数一覧</button>
+          </div>
         </div>
+        <div class="leave-content-area" id="leave-content-area"></div>
       </div>
     `;
+
+  const contentArea = content.querySelector('#leave-content-area');
 
   // Tab containers
   const tabApprovals = document.createElement('div');
@@ -1272,9 +1287,9 @@ export async function mountLeaveUnified({
   tabBalances.className = 'leave-tab-content';
   tabBalances.id = 'tab-balances';
 
-  content.appendChild(tabApprovals);
-  content.appendChild(tabGrant);
-  content.appendChild(tabBalances);
+  contentArea.appendChild(tabApprovals);
+  contentArea.appendChild(tabGrant);
+  contentArea.appendChild(tabBalances);
 
   const secA = document.createElement('section');
   secA.className = 'leave-section';
