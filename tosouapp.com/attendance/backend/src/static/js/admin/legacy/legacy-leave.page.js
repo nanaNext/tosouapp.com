@@ -238,6 +238,19 @@ function ensureLeaveUiStyles() {
     @media (min-width: 1024px) {
       .leave-grid-main { grid-template-columns: minmax(0,1fr) 280px; align-items: stretch; gap: 24px; }
     }
+
+    /* Modal styles */
+    .pto-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .pto-modal { background: #FFFFFF; border-radius: 8px; width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    .pto-modal-header { padding: 16px 24px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; }
+    .pto-modal-title { font-size: 16px; font-weight: 700; color: #111827; margin: 0; }
+    .pto-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6B7280; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .pto-modal-body { padding: 24px; overflow-y: auto; }
+    .pto-modal-footer { padding: 16px 24px; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end; gap: 12px; }
+    
+    .pto-grant-row { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid #E5E7EB; border-radius: 4px; margin-bottom: 12px; background: #F9FAFB; }
+    .pto-grant-row input { padding: 4px 8px; border: 1px solid #D1D5DB; border-radius: 2px; font-size: 13px; width: 100%; box-sizing: border-box; min-height: 28px; }
+    .pto-grant-label { font-size: 11px; font-weight: 500; color: #4B5563; margin-bottom: 4px; display: block; }
   `;
   document.head.appendChild(s);
 }
@@ -758,6 +771,156 @@ export async function mountLeaveGrant({
   c.appendChild(formCard);
 }
 
+async function showEditPtoModal(userId, userName, onSaved) {
+  const overlay = document.createElement('div');
+  overlay.className = 'pto-modal-overlay';
+  
+  const modal = document.createElement('div');
+  modal.className = 'pto-modal';
+  
+  modal.innerHTML = `
+    <div class="pto-modal-header">
+      <h3 class="pto-modal-title">${userName} - 有給休暇の編集</h3>
+      <button class="pto-modal-close">&times;</button>
+    </div>
+    <div class="pto-modal-body">
+      <div id="ptoModalLoading" style="text-align:center; padding: 20px; color:#6B7280;">読み込み中...</div>
+      <div id="ptoGrantsList" style="display:none;"></div>
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed #E5E7EB;">
+        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">手動付与（追加）</h4>
+        <div class="pto-grant-row" style="background: #FFFFFF;">
+          <div>
+            <label class="pto-grant-label">付与日 (Grant Date)</label>
+            <input type="date" id="newGrantDate" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <div>
+            <label class="pto-grant-label">日数 (Days)</label>
+            <input type="number" id="newGrantDays" min="1" step="1" placeholder="日数">
+          </div>
+          <div>
+            <label class="pto-grant-label">有効期限 (Expiry)</label>
+            <input type="date" id="newGrantExpiry">
+          </div>
+          <div style="align-self: flex-end;">
+              <button class="leave-btn" id="btnAddGrant">追加</button>
+            </div>
+        </div>
+      </div>
+    </div>
+    <div class="pto-modal-footer">
+      <button class="leave-btn secondary pto-modal-close-btn">閉じる</button>
+    </div>
+  `;
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  
+  const closeBtns = modal.querySelectorAll('.pto-modal-close, .pto-modal-close-btn');
+  closeBtns.forEach(b => b.addEventListener('click', () => overlay.remove()));
+  
+  const loadingEl = modal.querySelector('#ptoModalLoading');
+  const listEl = modal.querySelector('#ptoGrantsList');
+  
+  // Set default expiry (2 years - 1 day)
+  const today = new Date();
+  const defExpiry = new Date(today.getUTCFullYear() + 2, today.getUTCMonth(), today.getUTCDate() - 1);
+  modal.querySelector('#newGrantExpiry').value = defExpiry.toISOString().slice(0,10);
+  
+  async function loadGrants() {
+    loadingEl.style.display = 'block';
+    listEl.style.display = 'none';
+    try {
+      const res = await api.get('/api/leave/user-balance?userId=' + userId);
+      const grants = res.grants || [];
+      
+      if (grants.length === 0) {
+        listEl.innerHTML = '<div style="color:#6B7280; font-size:13px; text-align:center;">付与履歴がありません。</div>';
+      } else {
+        listEl.innerHTML = grants.map((g, idx) => `
+          <div class="pto-grant-row">
+            <div>
+              <label class="pto-grant-label">付与日</label>
+              <input type="date" value="${String(g.grantDate).slice(0,10)}" readonly style="background:#F3F4F6; cursor:not-allowed;">
+            </div>
+            <div>
+              <label class="pto-grant-label">日数</label>
+              <input type="number" class="edit-grant-days" data-idx="${idx}" data-date="${String(g.grantDate).slice(0,10)}" data-expiry="${String(g.expiryDate).slice(0,10)}" value="${g.daysGranted}" min="0" step="1">
+            </div>
+            <div>
+              <label class="pto-grant-label">有効期限</label>
+              <input type="date" class="edit-grant-expiry" data-idx="${idx}" value="${String(g.expiryDate).slice(0,10)}">
+            </div>
+            <div style="align-self: flex-end;">
+              <button class="leave-btn secondary btn-save-grant" data-idx="${idx}">保存</button>
+            </div>
+          </div>
+        `).join('');
+      }
+      
+      // Attach save events
+      listEl.querySelectorAll('.btn-save-grant').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const idx = btn.dataset.idx;
+          const daysInput = listEl.querySelector(`.edit-grant-days[data-idx="${idx}"]`);
+          const expiryInput = listEl.querySelector(`.edit-grant-expiry[data-idx="${idx}"]`);
+          
+          const grantDate = daysInput.dataset.date;
+          const days = Number(daysInput.value);
+          const expiryDate = expiryInput.value;
+          
+          if (!days && days !== 0) return alert('日数を入力してください');
+          
+          btn.textContent = '...';
+          btn.disabled = true;
+          try {
+            await api.post('/api/leave/grant', { userId: Number(userId), days, grantDate, expiryDate });
+            btn.textContent = '保存済';
+            setTimeout(() => { btn.textContent = '保存'; btn.disabled = false; }, 2000);
+            if (onSaved) onSaved();
+          } catch (err) {
+            alert('保存に失敗しました: ' + err.message);
+            btn.textContent = '保存';
+            btn.disabled = false;
+          }
+        });
+      });
+      
+    } catch (err) {
+      listEl.innerHTML = '<div style="color:#DC2626;">エラー: ' + err.message + '</div>';
+    } finally {
+      loadingEl.style.display = 'none';
+      listEl.style.display = 'block';
+    }
+  }
+  
+  modal.querySelector('#btnAddGrant').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const gDate = modal.querySelector('#newGrantDate').value;
+    const gDays = Number(modal.querySelector('#newGrantDays').value);
+    const gExp = modal.querySelector('#newGrantExpiry').value;
+    
+    if (!gDate || !gDays || !gExp) {
+      return alert('全ての項目を入力してください');
+    }
+    
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      await api.post('/api/leave/grant', { userId: Number(userId), days: gDays, grantDate: gDate, expiryDate: gExp });
+      modal.querySelector('#newGrantDays').value = '';
+      await loadGrants();
+      if (onSaved) onSaved();
+    } catch (err) {
+      alert('追加に失敗しました: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '追加';
+    }
+  });
+  
+  await loadGrants();
+}
+
 export async function mountLeaveBalance({
   host,
   content,
@@ -865,7 +1028,10 @@ export async function mountLeaveBalance({
       card.innerHTML = `
         <div style="font-weight:700; font-size:16px; color:#111827; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <span>${r.name || `User ${r.userId}`}</span>
-          <span style="font-size:12px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 8px; border-radius:12px;">社員番号: ${r.employeeCode || r.userId}</span>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="leave-btn-edit" data-userid="${r.userId}" data-username="${r.name}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px 4px;" title="編集">✏️</button>
+            <span style="font-size:12px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 8px; border-radius:12px;">社員番号: ${r.employeeCode || r.userId}</span>
+          </div>
         </div>
         
         <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
@@ -911,6 +1077,24 @@ export async function mountLeaveBalance({
         if (dir === 'prev' && page > 1) page -= 1;
         if (dir === 'next' && page < totalPages) page += 1;
         render();
+      });
+    });
+
+    // Add event listeners for edit buttons
+    gridWrap.querySelectorAll('.leave-btn-edit').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const userId = btn.dataset.userid;
+        const userName = btn.dataset.username;
+        await showEditPtoModal(userId, userName, async () => {
+          // reload data
+          try {
+            data = await api.get('/api/leave/summary');
+            render();
+          } catch (e) {
+            console.error('Failed to reload data', e);
+          }
+        });
       });
     });
   };
