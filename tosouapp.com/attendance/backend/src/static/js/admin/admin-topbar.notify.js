@@ -289,6 +289,8 @@ document.addEventListener('DOMContentLoaded', function () {
           var idv = parseInt(String(it && it.id || '0'), 10) || 0;
           if (hiddenSet.has(idv)) return false;
           if (shouldHideAdminBellItem(it)) return false;
+          // Ẩn luôn thông báo đã đọc khỏi danh sách thả xuống
+          if (it.isRead === true) return false;
           return true;
         });
         unreadTotal = items.reduce(function (s, it) { return s + ((it && it.isRead === false) ? 1 : 0); }, 0);
