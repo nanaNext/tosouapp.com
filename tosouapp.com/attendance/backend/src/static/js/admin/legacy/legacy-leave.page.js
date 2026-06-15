@@ -26,6 +26,22 @@ function ensureLeaveUiStyles() {
       height: calc(100vh - 96px); /* Fallback height */
       overflow: hidden; /* Prevent whole page from scrolling */
     }
+    
+    /* Custom Scrollbar to match Render style */
+    .leave-page-layout *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .leave-page-layout *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .leave-page-layout *::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+    .leave-page-layout *::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
     .leave-sidebar {
       width: 240px;
       flex-shrink: 0;
