@@ -609,7 +609,6 @@ export async function mountLeaveGrant({
 }) {
   const c = host || content;
   ensureLeaveUiStyles();
-  c.innerHTML = '<h3>有給付与</h3>';
 
   if (!(opts && opts.unified)) {
     const nav = document.createElement('div');
@@ -632,7 +631,7 @@ export async function mountLeaveGrant({
   }
 
   const eligibleWrap = document.createElement('div');
-  eligibleWrap.style.cssText = 'margin:16px 0;padding:16px 24px;border:1px solid #E5E5E5;border-radius:4px;background:#FFFFFF;box-shadow:0 2px 4px 0 rgba(0,0,0,0.05);max-width:800px;font-family:"72","Helvetica Neue",Helvetica,Arial,sans-serif;';
+  eligibleWrap.style.cssText = 'display:none;';
   eligibleWrap.innerHTML = `
     <div class="leave-toolbar" style="margin:0 0 12px;display:flex;align-items:center;gap:12px;">
       <strong style="color:#32363A;font-weight:normal;font-size:16px;margin-right:auto;">付与対象候補</strong>
