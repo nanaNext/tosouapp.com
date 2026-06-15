@@ -362,6 +362,9 @@ exports.grant = async (req, res) => {
   try {
     const { userId, days, grantDate, expiryDate } = req.body || {};
     if (!userId || days === undefined || days === null || days === '') return res.status(400).json({ message: 'Missing userId/days' });
+    const parsedDays = parseInt(String(days), 10);
+    if (isNaN(parsedDays)) return res.status(400).json({ message: 'Missing userId/days' });
+    
     const gDate = grantDate || fmt(new Date());
     let eDate = expiryDate;
     if (!eDate) {
@@ -369,7 +372,7 @@ exports.grant = async (req, res) => {
       et.setUTCDate(et.getUTCDate() - 1);
       eDate = fmt(et);
     }
-    await repo.upsertGrant({ userId, type: 'paid', grantDate: gDate, daysGranted: parseInt(days, 10), expiryDate: eDate });
+    await repo.upsertGrant({ userId, type: 'paid', grantDate: gDate, daysGranted: parsedDays, expiryDate: eDate });
     try {
       await auditRepo.writeLog({
         userId: req.user?.id,
@@ -379,7 +382,7 @@ exports.grant = async (req, res) => {
         ip: req.ip,
         userAgent: req.headers['user-agent'],
         beforeData: null,
-        afterData: JSON.stringify({ targetUserId: Number(userId), days: parseInt(days, 10), grantDate: gDate, expiryDate: eDate })
+        afterData: JSON.stringify({ targetUserId: Number(userId), days: parsedDays, grantDate: gDate, expiryDate: eDate })
       });
     } catch (e) { /* silently ignored */ }
     res.status(201).json({ ok: true });
