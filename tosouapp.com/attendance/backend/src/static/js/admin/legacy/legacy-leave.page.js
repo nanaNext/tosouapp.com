@@ -23,7 +23,7 @@ function ensureLeaveUiStyles() {
       padding: 0;
       align-items: stretch;
       width: 100%;
-      height: calc(100vh - 48px); /* Force exact height of the screen minus topbar */
+      height: calc(100vh - 96px); /* Fallback height */
       overflow: hidden; /* Prevent whole page from scrolling */
     }
     .leave-sidebar {
@@ -1279,6 +1279,19 @@ export async function mountLeaveUnified({
   ensureLeaveUiStyles();
   content.classList.add('leave-page');
 
+  // Calculate precise height accounting for both topbar and subbar in admin
+  const style = document.createElement('style');
+  style.id = 'leave-dynamic-height';
+  style.textContent = `
+    .leave-page-layout {
+      height: calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px)) !important;
+    }
+    .leave-sidebar {
+      height: calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px)) !important;
+    }
+  `;
+  document.head.appendChild(style);
+
   // Reset parent containers to make it flush to the edges and prevent them from scrolling
   if (content.id === 'adminContent' || content.classList.contains('card')) {
     content.style.padding = '0';
@@ -1286,13 +1299,13 @@ export async function mountLeaveUnified({
     content.style.maxWidth = 'none';
     content.style.border = 'none';
     content.style.boxShadow = 'none';
-    content.style.height = 'calc(100vh - 48px)';
+    content.style.height = 'calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px))';
     content.style.overflow = 'hidden';
     const parent = content.parentElement;
     if (parent && parent.classList.contains('content')) {
       parent.style.padding = '0';
       parent.style.margin = '0';
-      parent.style.height = 'calc(100vh - 48px)';
+      parent.style.height = 'calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px))';
       parent.style.overflow = 'hidden';
     }
     const body = document.body;
