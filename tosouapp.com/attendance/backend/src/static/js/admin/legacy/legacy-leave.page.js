@@ -114,27 +114,29 @@ function ensureLeaveUiStyles() {
     }
     .leave-select:focus, .leave-input:focus { border-color: #2563EB !important; outline: none !important; }
     .leave-btn {
-      min-height: 28px !important; 
-      height: 28px !important;
-      border: 1px solid transparent !important; 
-      border-radius: 2px !important; 
-      background: #FFFFFF; 
-      padding: 0 12px !important; 
+      min-height: 36px !important; 
+      height: 36px !important;
+      border: 1px solid #0854A0 !important; 
+      border-radius: 4px !important; 
+      background: transparent; 
+      color: #0854A0 !important;
+      padding: 0 16px !important; 
       cursor: pointer; 
-      font-size: 12px !important; 
-      font-weight: 500; 
-      transition: background 0.2s ease;
+      font-size: 14px !important; 
+      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+      font-weight: normal; 
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
-    .leave-btn:hover { background: #F9FAFB; border-color: #E5E7EB; }
-    .leave-btn-primary { background: #2563EB; border-color: #2563EB; color: #FFFFFF; }
-    .leave-btn-primary:hover { background: #1D4ED8; border-color: #1D4ED8; color: #FFFFFF; }
-    .leave-btn-danger { background: #FEF2F2; color: #DC2626; }
-    .leave-btn-danger:hover { background: #FEE2E2; }
-    .leave-btn-subtle { background: #F9FAFB; color: #4B5563; border-color: #E5E7EB; }
-    .leave-btn-subtle:hover { background: #F3F4F6; }
+    .leave-btn:hover { background: #E5F0FA; border-color: #0854A0; }
+    .leave-btn-primary { background: #0854A0 !important; border-color: #0854A0 !important; color: #FFFFFF !important; }
+    .leave-btn-primary:hover { background: #0A6ED1 !important; border-color: #0A6ED1 !important; color: #FFFFFF !important; }
+    .leave-btn-danger { background: transparent !important; color: #BB0000 !important; border-color: #BB0000 !important; }
+    .leave-btn-danger:hover { background: #FFEEEE !important; }
+    .leave-btn-subtle { background: transparent !important; color: #32363A !important; border-color: transparent !important; }
+    .leave-btn-subtle:hover { background: #E5E5E5 !important; border-color: transparent !important; }
     .leave-table-wrap {
       overflow: auto; 
       background: #FFFFFF;
@@ -144,29 +146,29 @@ function ensureLeaveUiStyles() {
       flex-grow: 1;
     }
     .leave-table-wrap.sticky { max-height: 450px; }
-    .leave-page .leave-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .leave-page .leave-table { width: 100%; border-collapse: collapse; font-size: 14px; font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #FFFFFF; }
     .leave-page .leave-table th, .leave-page .leave-table td { border-left: none; border-right: none; }
     .leave-page .leave-table thead th {
-      background: #FFFFFF !important;
-      color: #6B7280 !important;
-      -webkit-text-fill-color: #6B7280 !important;
+      background: #F2F2F2 !important;
+      color: #32363A !important;
+      -webkit-text-fill-color: #32363A !important;
       text-align: left; 
-      font-weight: 600; 
+      font-weight: normal; 
       font-size: 12px;
-      padding: 6px 8px; 
-      border-bottom: 1px solid #E5E7EB; 
+      padding: 12px 16px; 
+      border-bottom: 1px solid #E5E5E5; 
       border-left: none;
       border-right: none;
       white-space: nowrap;
     }
     .leave-page .leave-table thead th * {
-      color: #6B7280 !important;
-      -webkit-text-fill-color: #6B7280 !important;
+      color: #32363A !important;
+      -webkit-text-fill-color: #32363A !important;
     }
     .leave-table-wrap.sticky .leave-table thead th { position: sticky; top: 0; z-index: 1; }
     .leave-page .leave-table tbody td { 
-      padding: 6px 8px; 
-      border-bottom: 1px solid #F3F4F6; 
+      padding: 12px 16px; 
+      border-bottom: 1px solid #E5E5E5; 
       vertical-align: middle; 
       color: #111827;
       border-left: none;
@@ -177,32 +179,36 @@ function ensureLeaveUiStyles() {
       right: 0;
       background: #FFFFFF;
       z-index: 1;
-      border-left: 1px solid #F3F4F6;
+      border-left: none;
     }
     .leave-page .leave-table thead th:last-child {
       position: sticky;
       right: 0;
-      background: #FFFFFF !important;
+      background: #F2F2F2 !important;
       z-index: 2;
-      border-left: 1px solid #F3F4F6;
+      border-left: none;
+    }
+    .leave-page .leave-table tbody tr:hover td {
+      background: #F4F4F4 !important;
     }
     .leave-page .leave-table tbody tr:hover td:last-child {
-      background: #F9FAFB;
+      background: #F4F4F4 !important;
     }
     .leave-page .leave-table .num { text-align: right; font-variant-numeric: tabular-nums; }
     .leave-badge { 
       display: inline-flex; 
       align-items: center; 
       justify-content: center;
-      border-radius: 2px !important; 
+      border-radius: 4px !important; 
       padding: 2px 8px !important; 
-      font-size: 11px !important; 
-      font-weight: 600; 
-      border: none; 
+      font-size: 12px !important; 
+      font-weight: normal; 
+      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+      border: 1px solid transparent; 
     }
-    .leave-badge.pending { color: #92400E; background: #FEF3C7; }
-    .leave-badge.approved { color: #166534; background: #DCFCE7; }
-    .leave-badge.rejected { color: #4B5563; background: #F3F4F6; }
+    .leave-badge.pending { color: #E9730C; background: #FFF8D6; border-color: #E9730C; }
+    .leave-badge.approved { color: #107E3E; background: #F5FAFF; border-color: #107E3E; }
+    .leave-badge.rejected { color: #BB0000; background: #FFEBEB; border-color: #BB0000; }
     .leave-grid-main { display: grid; grid-template-columns: minmax(0,1fr); gap: 24px; align-items: start; }
     .leave-grid-full { margin-top: 0; }
     .leave-form-grid {
