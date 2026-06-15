@@ -23,7 +23,8 @@ function ensureLeaveUiStyles() {
       padding: 0;
       align-items: stretch;
       width: 100%;
-      min-height: calc(100vh - 48px);
+      height: calc(100vh - 48px); /* Force exact height of the screen minus topbar */
+      overflow: hidden; /* Prevent whole page from scrolling */
     }
     .leave-sidebar {
       width: 240px;
@@ -31,9 +32,7 @@ function ensureLeaveUiStyles() {
       background: #F9FAFB;
       border-right: 1px solid #E5E7EB;
       padding: 24px 16px;
-      position: sticky;
-      top: 48px; /* Offset for topbar */
-      height: calc(100vh - 48px);
+      height: 100%;
       overflow-y: auto;
     }
     .leave-tabs-vertical {
@@ -88,6 +87,8 @@ function ensureLeaveUiStyles() {
       min-width: 0;
       background: #FFFFFF;
       padding: 32px 40px;
+      height: 100%;
+      overflow-y: auto; /* Enable independent scrolling here */
     }
     .leave-tab-content {
       display: none;
@@ -1278,18 +1279,24 @@ export async function mountLeaveUnified({
   ensureLeaveUiStyles();
   content.classList.add('leave-page');
 
-  // Reset parent containers to make it flush to the edges
+  // Reset parent containers to make it flush to the edges and prevent them from scrolling
   if (content.id === 'adminContent' || content.classList.contains('card')) {
     content.style.padding = '0';
     content.style.margin = '0';
     content.style.maxWidth = 'none';
     content.style.border = 'none';
     content.style.boxShadow = 'none';
+    content.style.height = 'calc(100vh - 48px)';
+    content.style.overflow = 'hidden';
     const parent = content.parentElement;
     if (parent && parent.classList.contains('content')) {
       parent.style.padding = '0';
       parent.style.margin = '0';
+      parent.style.height = 'calc(100vh - 48px)';
+      parent.style.overflow = 'hidden';
     }
+    const body = document.body;
+    body.style.overflow = 'hidden'; // Stop the whole page from scrolling
   }
   
   content.innerHTML = `
