@@ -845,7 +845,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <a href="/admin/employees" class="drawer-item">社員管理</a>
         <a href="/ui/admin?tab=users" class="drawer-item">ユーザー管理</a>
         <a href="/admin/departments" class="drawer-item">部門管理</a>
-        <a href="/admin/attendance" class="drawer-item">勤怠管理</a>
+        <a href="/admin/attendance?standalone=1" target="_blank" rel="noopener noreferrer" class="drawer-item">勤怠管理</a>
         <a href="/admin/leave/requests" class="drawer-item">承認フロー</a>
         <a href="/ui/admin?tab=reports" class="drawer-item">レポート</a>
         <a href="/admin/payroll/salary" class="drawer-item">給与管理</a>

@@ -46,12 +46,7 @@ const toLegacyState = (path) => {
   if (p === '/admin/employees/add') return { tab: 'employees', hash: '#add' };
   if (p === '/admin/employees/change-requests') return { tab: 'approvals', hash: '' };
 
-  if (p === '/admin/attendance') return { tab: 'attendance', hash: '' };
   if (p === '/admin/attendance/monthly') return { redirect: '/ui/attendance/monthly' };
-  if (p === '/admin/attendance/shifts') return { tab: 'shifts', hash: '' };
-  if (p === '/admin/attendance/shift-assignment') return { tab: 'shifts', hash: '' };
-  if (p === '/admin/attendance/adjust-requests') return { redirect: '/admin-attendance-adjust-requests.html' };
-  if (p === '/admin/attendance/holidays') return { tab: 'calendar', hash: '' };
 
   if (p === '/admin/leave/requests') return { tab: 'approvals', hash: '' };
   if (p === '/admin/leave/grants') return { tab: 'leave_grant', hash: '' };
@@ -567,8 +562,8 @@ const route = async () => {
       const host = document.createElement('section');
       host.id = 'adminContent';
       
-      // Remove default card styling if it's the shifts approval page
-      if (window.location.pathname.includes('/admin/attendance/shifts-approvals')) {
+      // Remove default card styling if it's an attendance hub page
+      if (window.location.pathname.includes('/admin/attendance') || window.location.pathname.includes('/admin/work-reports')) {
         host.className = '';
         host.style.padding = '0';
         host.style.margin = '0';
@@ -663,6 +658,7 @@ const route = async () => {
     } catch (e) { /* silently ignored */ }
 
     const p2 = normalizePath(window.location.pathname);
+    const host = document.querySelector('#adminContent');
 
     if (p2 === '/admin' || p2 === '/admin/dashboard') {
       const mod = await loadModule('./dashboard/dashboard.page.js?v=navy-20260418-dashfix3');
@@ -687,31 +683,65 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance/shifts-approvals' || p2 === '/admin/attendance/shifts-approvals/') {
-      try { window.location.assign('/admin/attendance/shifts-approvals'); } catch { window.location.href = '/admin/attendance/shifts-approvals'; }
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts-approvals' });
+      const mod = await loadModule('./attendance/admin-shifts-approvals.page.js?v=5');
+      if (seq !== routeSeq) return;
+      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
+      return;
+    }
+    if (p2 === '/admin/attendance/adjust-requests' || p2 === '/admin/attendance/adjust-requests/') {
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/adjust-requests' });
+      const mod = await loadModule('./attendance/admin-attendance-adjust-requests.page.js?v=5');
+      if (seq !== routeSeq) return;
+      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
     }
     if (p2 === '/admin/attendance/go-out' || p2 === '/admin/attendance/go-out/') {
-      const mod = await loadModule('./attendance/admin-go-out.page.js?v=3');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/go-out' });
+      const mod = await loadModule('./attendance/admin-go-out.page.js?v=5');
       if (seq !== routeSeq) return;
-      await mountModule(mod.mountGoOut ? { mount: mod.mountGoOut } : mod);
+      await mountModule(mod.mountGoOut ? { mount: () => mod.mountGoOut({ content: hubContent }) } : mod);
+      return;
+    }
+    if (p2 === '/admin/attendance/shifts' || p2 === '/admin/attendance/shifts/') {
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts' });
+      const mod = await loadModule('./legacy/legacy-shifts.page.js?v=5');
+      if (seq !== routeSeq) return;
+      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
+      return;
+    }
+    if (p2 === '/admin/attendance/holidays' || p2 === '/admin/attendance/holidays/') {
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/holidays' });
+      const mod = await loadModule('./legacy/legacy-calendar.page.js?v=5');
+      if (seq !== routeSeq) return;
+      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
     }
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
+      const hubContent = await hubMod.mount({ content: host, initialPath: p2 });
       const mod = await loadModule('./attendance/attendance.page.js?v=navy-20260423-attrecsync1');
       if (seq !== routeSeq) return;
-      await mountModule(mod);
+      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent, p2 }) } : { mount: () => mod.mount({ content: hubContent }) });
       return;
     }
     if (p2 === '/admin/leave/requests' || p2 === '/admin/leave/balance' || p2 === '/admin/leave/grants') {
-      const mod = await loadModule('./leave/leave.page.js');
+      const mod = await loadModule('./leave/leave.page.js?v=5');
       if (seq !== routeSeq) return;
       await mountModule(mod);
       return;
     }
     if (p2 === '/admin/work-reports') {
-      const mod = await loadModule('./work-reports/work-reports.page.js');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/work-reports' });
+      const mod = await loadModule('./work-reports/work-reports.page.js?v=5');
       if (seq !== routeSeq) return;
-      await mountModule(mod);
+      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
     }
     if (p2 === '/admin/payroll/salary' || p2 === '/admin/payroll/payslips') {
@@ -762,9 +792,9 @@ const route = async () => {
       await navigate('/admin/dashboard', true);
       return;
     }
-    const host = document.querySelector('#adminContent');
+    
     if (host) {
-      if (p2.includes('/admin/attendance/shifts-approvals')) {
+      if (p2.includes('/admin/attendance') || p2.includes('/admin/work-reports')) {
         host.className = '';
         host.style.padding = '0';
         host.style.margin = '0';
@@ -838,9 +868,7 @@ const wireSpaNav = () => {
       const u = new URL(href, window.location.origin);
       if (!isAdminPath(u.pathname)) return;
       if (u.pathname === '/admin/attendance/monthly' || u.pathname === '/admin/attendance/monthly/' ||
-          u.pathname === '/admin/employees/monthly-summary' || u.pathname === '/admin/employees/monthly-summary/' ||
-          u.pathname === '/admin/attendance/shifts-approvals' || u.pathname === '/admin/attendance/shifts-approvals/' ||
-          u.pathname === '/admin/attendance/adjust-requests' || u.pathname === '/admin/attendance/adjust-requests/') {
+          u.pathname === '/admin/employees/monthly-summary' || u.pathname === '/admin/employees/monthly-summary/') {
         e.preventDefault();
         window.location.href = u.href;
         return;
@@ -939,12 +967,52 @@ const wireNavSelection = () => {
 };
 
 const boot = async () => {
+  try {
+    const globalTableStyle = document.createElement('style');
+    globalTableStyle.textContent = `
+      /* Global Fiori Compact Table Styles for ALL admin tables (Desktop) */
+      @media (min-width: 769px) {
+        .admin table { border-collapse: collapse !important; width: 100% !important; }
+        .admin table th {
+          background-color: #e6f2ff !important; /* Light blue header */
+          color: #0f172a !important; 
+          font-weight: 600 !important;
+          border: 1px solid #cbd5e1 !important; 
+          padding: 6px 8px !important; /* Khăng khít */
+          font-size: 13px !important; 
+          text-align: center !important; 
+          white-space: nowrap !important;
+        }
+        .admin table td { 
+          border: 1px solid #cbd5e1 !important; 
+          padding: 6px 8px !important; 
+          font-size: 13px !important; 
+        }
+        .admin table tbody tr:hover td { 
+          background-color: #f8fafc !important; 
+        }
+        
+        /* Dark mode support */
+        :root[data-theme='dark'] .admin table th {
+          background-color: #1e3a8a !important; /* Dark blue for dark mode */
+          color: #f1f5f9 !important;
+          border-color: #334155 !important;
+        }
+        :root[data-theme='dark'] .admin table td {
+          border-color: #334155 !important;
+        }
+        :root[data-theme='dark'] .admin table tbody tr:hover td {
+          background-color: #0f172a !important;
+        }
+      }
+    `;
+    document.head.appendChild(globalTableStyle);
+  } catch (e) { /* silently ignored */ }
+
   try { document.documentElement.classList.add('admin-preboot'); } catch (e) { /* silently ignored */ }
   try { document.body.classList.add('booting'); } catch (e) { /* silently ignored */ }
-  const isStandaloneExpenses = (() => {
+  const isStandaloneApp = (() => {
     try {
-      const p = normalizePath(window.location.pathname);
-      if (p !== '/admin/expenses') return false;
       const sp = new URLSearchParams(window.location.search || '');
       const v = String(sp.get('standalone') || '').toLowerCase();
       return v === '1' || v === 'true' || v === 'yes';
@@ -952,9 +1020,16 @@ const boot = async () => {
       return false;
     }
   })();
-  const applyStandaloneExpenses = () => {
-    if (!isStandaloneExpenses) return;
-    try { document.title = '交通費管理'; } catch (e) { /* silently ignored */ }
+  const applyStandaloneApp = () => {
+    if (!isStandaloneApp) return;
+    try {
+      const p = normalizePath(window.location.pathname);
+      if (p.includes('/admin/expenses')) {
+        document.title = '交通費管理';
+      } else if (p.includes('/admin/attendance')) {
+        document.title = '勤怠管理';
+      }
+    } catch (e) { /* silently ignored */ }
     try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
     try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch (e) { /* silently ignored */ }
     try { document.body.classList.remove('has-sidebar'); } catch (e) { /* silently ignored */ }
@@ -992,7 +1067,7 @@ const boot = async () => {
     try { document.body.classList.remove('booting'); } catch (e) { /* silently ignored */ }
     try { document.documentElement.classList.remove('admin-preboot'); } catch (e) { /* silently ignored */ }
     try {
-      if (isStandaloneExpenses) applyStandaloneExpenses();
+      if (isStandaloneApp) applyStandaloneApp();
       else document.getElementById('adminChrome')?.removeAttribute('hidden');
     } catch (e) { /* silently ignored */ }
     try { document.body.style.visibility = ''; } catch (e) { /* silently ignored */ }
@@ -1011,7 +1086,7 @@ const boot = async () => {
   wireAdminShell({ logoutRedirect: '/ui/login' });
   try { window.addEventListener('pageshow', hardHidePageSpinner); } catch (e) { /* silently ignored */ }
   try {
-    applyStandaloneExpenses();
+    applyStandaloneApp();
     await route();
   } finally {
     hardHidePageSpinner();

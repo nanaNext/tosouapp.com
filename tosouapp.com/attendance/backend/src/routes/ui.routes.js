@@ -149,10 +149,6 @@ router.get('/admin/attendance/monthly', (req, res) => sendAdminPageNoCache(req, 
 router.get('/admin/attendance/monthly/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-monthly.html'));
 router.get('/admin/employees/monthly-summary', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
 router.get('/admin/employees/monthly-summary/', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
-router.get('/admin/attendance/adjust-requests', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
-router.get('/admin/attendance/adjust-requests/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-adjust-requests.html'));
-router.get('/admin/attendance/shifts-approvals', (req, res) => sendAdminPageNoCache(req, res, 'admin-shifts-approvals.html'));
-router.get('/admin/attendance/shifts-approvals/', (req, res) => sendAdminPageNoCache(req, res, 'admin-shifts-approvals.html'));
 router.get(/^\/admin(?:\/.*)?$/, (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
 
 router.get('/ui/overtime', sendPage('overtime.html'));

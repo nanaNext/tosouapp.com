@@ -1,16 +1,19 @@
 import { fetchJSONAuth } from '../../api/http.api.js';
-import { wireAdminShell } from '../../shell/admin-shell.js?v=1';
 
-const host = document.getElementById('shiftsApprovalsHost');
-
-try { document.body.style.visibility = ''; } catch (e) { /* silently ignored */ }
-try { document.getElementById('adminBootMask')?.remove(); } catch (e) { /* silently ignored */ }
-
-const nowDate = new Date();
-nowDate.setMonth(nowDate.getMonth() + 1);
-let currentMonth = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}`;
-
+let currentMonth = '';
 let allRows = [];
+let localHost = null;
+
+export async function mount({ content }) {
+  localHost = content;
+  localHost.style.visibility = '';
+  
+  const nowDate = new Date();
+  nowDate.setMonth(nowDate.getMonth() + 1);
+  currentMonth = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}`;
+  
+  await renderList();
+}
 
 function esc(s) {
   if (s == null) return '';
@@ -49,8 +52,7 @@ function wireSubbarMenus() {
 }
 
 async function renderList() {
-  const host = document.getElementById('shiftsApprovalsHost');
-  if (host) host.innerHTML = '<div style="padding: 20px; color: #64748b;">読み込み中...</div>';
+  if (localHost) localHost.innerHTML = '<div style="padding: 20px; color: #64748b;">読み込み中...</div>';
   
   try {
     const [year, monthStr] = currentMonth.split('-');
@@ -59,17 +61,20 @@ async function renderList() {
     allRows = Array.isArray(res) ? res : [];
     renderTable();
   } catch (e) {
-    if (host) host.innerHTML = `<div style="padding: 20px; color: #dc2626;">取得失敗: ${esc(e.message)}</div>`;
+    if (localHost) localHost.innerHTML = `<div style="padding: 20px; color: #dc2626;">取得失敗: ${esc(e.message)}</div>`;
   }
 }
 
 function renderTable() {
-  const host = document.getElementById('shiftsApprovalsHost');
-  if (!host) return;
+  if (!localHost) return;
 
   const [year, monthStr] = currentMonth.split('-');
   const monthNum = parseInt(monthStr, 10);
   const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
+  const tableVhExpr = isStandalone ? 'calc(100vh - 62px)' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 62px)';
 
   const styles = `
     /* Force absolute full width for the parent elements */
@@ -108,8 +113,9 @@ function renderTable() {
       padding: 0 !important;
       margin: 0 !important;
       font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      background: #e0f2fe;
-      min-height: calc(100vh - 56px);
+      background: #FFFFFF;
+      min-height: ${vhExpr};
+      height: ${vhExpr};
       display: flex;
       flex-direction: column;
       width: 100% !important;
@@ -121,8 +127,9 @@ function renderTable() {
       display: flex;
       justify-content: flex-end;
       align-items: center;
-      margin-bottom: 8px;
-      padding: 16px 16px 8px 16px;
+      margin-bottom: 0px;
+      padding: 16px 24px 8px 24px;
+      flex-shrink: 0;
     }
     
     .page-header-title {
@@ -130,19 +137,69 @@ function renderTable() {
     }
 
     .shift-table-wrapper {
-      flex: 1 1 auto;
+      flex: 1;
       overflow-y: auto; /* Enable vertical scrolling */
       overflow-x: auto; /* Enable horizontal scrolling if needed */
-      border-top: 1px solid #eeeeee;
-      border-bottom: 1px solid #eeeeee;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-top: none;
+      border-bottom: none;
+      box-shadow: none;
       background: white;
       margin: 0 !important;
-      padding: 0 !important;
+      padding: 0 24px 24px 24px !important;
       width: 100% !important;
       max-width: 100% !important;
       box-sizing: border-box;
-      max-height: calc(100vh - 120px); /* Constrain height to force internal scrolling */
+      max-height: ${tableVhExpr}; /* Fallback */
+    }
+    
+    .shift-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1200px;
+      font-size: 13px;
+    }
+    .shift-table th, .shift-table td {
+      border: 1px solid #cbd5e1;
+      text-align: center;
+      padding: 0;
+      height: 30px;
+      position: relative;
+    }
+    .shift-table th {
+      background: #e6f2ff;
+      color: #0f172a;
+      font-weight: 600;
+      padding: 4px;
+    }
+    .shift-table .sticky-col-1 {
+      position: sticky;
+      left: 0;
+      background: #e6f2ff;
+      z-index: 10;
+      text-align: left;
+      padding: 0 8px;
+    }
+    .shift-table .sticky-col-2 {
+      position: sticky;
+      left: 120px;
+      background: #e6f2ff;
+      z-index: 10;
+    }
+    .shift-table .sticky-col-3 {
+      position: sticky;
+      left: 170px;
+      background: #e6f2ff;
+      z-index: 10;
+    }
+    .shift-table tbody .sticky-col-1,
+    .shift-table tbody .sticky-col-2,
+    .shift-table tbody .sticky-col-3 {
+      background: #fff;
+    }
+    .shift-table tbody tr:hover td.sticky-col-1,
+    .shift-table tbody tr:hover td.sticky-col-2,
+    .shift-table tbody tr:hover td.sticky-col-3 {
+      background: #f8fafc;
     }
 
     /* Style the table scrollbar to look neat and clean */
@@ -178,20 +235,26 @@ function renderTable() {
       color: #1e293b;
     }
     .sap-dense-table th {
-      background: #f1f5f9; /* Changed to a slightly darker/distinct grey-blue */
+      background: #e6f2ff; /* Consistent blue header */
       font-weight: 600;
       position: sticky;
       top: 0;
       z-index: 10;
-      color: #334155; /* Darker text for better contrast */
+      color: #0f172a;
     }
-    .col-fixed-1 { position: sticky; left: 0; z-index: 11; background: #f1f5f9; min-width: 120px; max-width: 150px; text-align: left !important; padding-left: 4px !important; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .col-fixed-2 { position: sticky; left: 120px; z-index: 11; background: #f1f5f9; min-width: 52px; max-width: 52px; white-space: nowrap; }
-    .col-fixed-3 { position: sticky; left: 172px; z-index: 11; background: #f1f5f9; min-width: 44px; max-width: 44px; font-weight: bold; color: #0284c7; border-right: 2px solid #94a3b8 !important; white-space: nowrap; }
+    .col-fixed-1 { position: sticky; left: 0; z-index: 11; background: #e6f2ff; min-width: 120px; max-width: 150px; text-align: left !important; padding-left: 4px !important; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .col-fixed-2 { position: sticky; left: 120px; z-index: 11; background: #e6f2ff; min-width: 52px; max-width: 52px; white-space: nowrap; }
+    .col-fixed-3 { position: sticky; left: 172px; z-index: 11; background: #e6f2ff; min-width: 44px; max-width: 44px; font-weight: bold; color: #0284c7; border-right: 2px solid #cbd5e1 !important; white-space: nowrap; }
     
     .sap-dense-table th.col-fixed-1, .sap-dense-table th.col-fixed-2, .sap-dense-table th.col-fixed-3 {
-      z-index: 20;
-      background: #e2e8f0; /* Even darker for the fixed headers corner */
+      z-index: 12;
+      background: #e6f2ff; 
+    }
+    .sap-dense-table tbody .col-fixed-1, .sap-dense-table tbody .col-fixed-2, .sap-dense-table tbody .col-fixed-3 {
+      background: #fff;
+    }
+    .sap-dense-table tbody tr:hover .col-fixed-1, .sap-dense-table tbody tr:hover .col-fixed-2, .sap-dense-table tbody tr:hover .col-fixed-3 {
+      background: #f8fafc;
     }
     
     .col-action {
@@ -221,16 +284,16 @@ function renderTable() {
     }
     
     /* Cell styles */
-    .cell-work { background: #dbeafe; color: #1e40af; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    .cell-day { background: #dcfce7; color: #166534; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    .cell-afternoon { background: #fef08a; color: #9a3412; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    .cell-night { background: #f3e8ff; color: #701a75; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    .cell-leave { background: #fee2e2; color: #b91c1c; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    .cell-off { background: #f1f5f9; color: #94a3b8; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .cell-work { background: #eff6ff; color: #1e40af; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .cell-day { background: #eff6ff; color: #1e40af; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .cell-afternoon { background: #eff6ff; color: #1e40af; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .cell-night { background: #eff6ff; color: #1e40af; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .cell-leave { background: #fff1f1; color: #dc2626; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .cell-off { background: #fff1f1; color: #dc2626; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
     .cell-empty { color: #cbd5e1; }
 
-    .badge-sei { background: #dbeafe; color: #1e40af; padding: 2px 4px; border-radius: 2px; font-size: 10px; }
-    .badge-bai { background: #dcfce7; color: #166534; padding: 2px 4px; border-radius: 2px; font-size: 10px; }
+    .badge-sei { background: #eff6ff; color: #1e40af; padding: 2px 4px; border-radius: 2px; font-size: 10px; border: 1px solid #bfdbfe; }
+    .badge-bai { background: #dcfce7; color: #166534; padding: 2px 4px; border-radius: 2px; font-size: 10px; border: 1px solid #bbf7d0; }
     
     .btn-xs {
       padding: 4px 6px;
@@ -442,10 +505,10 @@ function renderTable() {
      </div>
   `;
 
-  host.innerHTML = html;
+  localHost.innerHTML = html;
 
   // Add event listeners
-  const monthFilter = document.getElementById('monthFilter');
+  const monthFilter = localHost.querySelector('#monthFilter');
   if (monthFilter) {
     monthFilter.addEventListener('change', () => {
       currentMonth = monthFilter.value;
@@ -454,9 +517,9 @@ function renderTable() {
   }
 
   // Modal logic
-  const modal = document.getElementById('reasonModal');
-  const modalText = document.getElementById('reasonModalText');
-  const closeBtn = document.getElementById('closeReasonModalBtn');
+  const modal = localHost.querySelector('#reasonModal');
+  const modalText = localHost.querySelector('#reasonModalText');
+  const closeBtn = localHost.querySelector('#closeReasonModalBtn');
   
   const closeModal = () => {
     if (modal) modal.classList.remove('show');
@@ -467,7 +530,7 @@ function renderTable() {
     if (e.target === modal) closeModal();
   });
 
-  document.querySelectorAll('.clickable-leave').forEach(cell => {
+  localHost.querySelectorAll('.clickable-leave').forEach(cell => {
     cell.addEventListener('click', (e) => {
       if (modalText && modal) {
         modalText.textContent = e.target.getAttribute('data-reason') || '理由なし';
@@ -476,14 +539,14 @@ function renderTable() {
     });
   });
 
-  document.querySelectorAll('.btn-approve').forEach(btn => {
+  localHost.querySelectorAll('.btn-approve').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const userId = e.target.getAttribute('data-id');
       if (confirm('このシフトを承認しますか？')) updateStatus(userId, 'APPROVED');
     });
   });
 
-  document.querySelectorAll('.btn-reject').forEach(btn => {
+  localHost.querySelectorAll('.btn-reject').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const userId = e.target.getAttribute('data-id');
       if (confirm('このシフトを差戻しますか？')) updateStatus(userId, 'REJECTED');
@@ -507,14 +570,3 @@ async function updateStatus(userId, status) {
   }
 }
 
-async function init() {
-  wireAdminShell();
-  wireSubbarMenus();
-  await renderList();
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}

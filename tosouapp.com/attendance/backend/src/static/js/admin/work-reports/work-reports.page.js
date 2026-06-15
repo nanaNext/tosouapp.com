@@ -74,193 +74,18 @@ const hideSpinner = () => {
 };
 
 export async function mount() {
-  const content = $('#adminContent');
-  if (content) {
-    content.className = 'card';
-    content.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
+  const tableVhExpr = isStandalone ? 'calc(100vh - 120px)' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 120px)';
+
+  const content = document.getElementById('attendanceHubContent') || document.getElementById('adminContent');
+  if (content && content.id === 'attendanceHubContent') {
+    content.style.padding = '16px 24px';
+    content.style.background = '#FFFFFF';
   }
-  
-  if (!document.querySelector('#wrToolbarStyle')) {
-    const style = document.createElement('style');
-    style.id = 'wrToolbarStyle';
-    style.textContent = `
-      .wr-toolbar {
-        background: transparent;
-        padding: 0;
-        margin-top: 16px;
-        margin-bottom: 20px;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 12px;
-      }
-      .wr-input {
-        padding: 0 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        height: 40px;
-        font-size: 14px;
-        color: #0f172a;
-        background: #fff;
-        box-sizing: border-box;
-        outline: none;
-        transition: all 0.2s;
-      }
-      .wr-input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-      }
-      .wr-select {
-        appearance: none;
-        padding-right: 32px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 10px center;
-        background-size: 16px;
-      }
-      .wr-checkbox-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #334155;
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
-        user-select: none;
-        margin-left: 8px;
-      }
-      .wr-checkbox {
-        width: 18px;
-        height: 18px;
-        accent-color: #2b6cb0;
-        cursor: pointer;
-        border-radius: 4px;
-      }
-      .wr-btn-home {
-        text-decoration: none;
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        color: #475569;
-        border-radius: 4px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        padding: 0 16px;
-        font-size: 14px;
-        font-weight: 600;
-        transition: background 0.2s;
-        margin-left: auto;
-      }
-      .wr-btn-home:hover { background: #f1f5f9; }
-      .wr-btn-export {
-        text-decoration: none;
-        background: #10b981;
-        border: 1px solid #059669;
-        color: #fff;
-        border-radius: 4px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        padding: 0 16px;
-        font-size: 14px;
-        font-weight: 600;
-        transition: background 0.2s;
-        cursor: pointer;
-      }
-      .wr-btn-export:hover { background: #059669; }
-      
-      .wr-search-container {
-        display: flex;
-        width: 100%;
-      }
-      .wr-search-container input {
-        width: 100%;
-      }
-      .wr-group-container {
-        display: flex;
-        align-items: center;
-      }
 
-      @media (min-width: 1025px) {
-        .wr-toolbar {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr) auto;
-        }
-        .wr-month, .wr-sort, .wr-dept, .wr-search-container {
-          width: 100%;
-        }
-      }
-
-      @media (max-width: 1024px) {
-        .wr-toolbar {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-        }
-        .wr-month, .wr-sort, .wr-dept, .wr-search-container {
-          width: 100%;
-        }
-        .wr-group-container {
-          grid-column: 1 / -1;
-        }
-      }
-
-      @media (max-width: 640px) {
-        .wr-toolbar { 
-          display: grid; 
-          grid-template-columns: 1fr 1fr; 
-          gap: 10px; 
-          background: transparent;
-          border: none;
-          border-radius: 0;
-          padding: 0; 
-        }
-        .wr-month, .wr-sort, .wr-dept, .wr-search-container { 
-          grid-column: auto;
-          width: 100%; 
-          min-width: 0 !important; 
-          max-width: none !important; 
-        }
-        .wr-search-container input { width: 100%; min-width: 0; }
-        .wr-group-container {
-          grid-column: 1 / -1;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-top: 4px;
-        }
-        .wr-checkbox-label { margin-left: 0; }
-        .wr-btn-home { margin-left: 0; }
-      }
-      .wr-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-      }
-      .wr-table th {
-        background: #f8fafc;
-        color: #64748b;
-        font-weight: 600;
-        font-size: 12px;
-        padding: 4px 6px;
-        text-align: left;
-        border-bottom: 1px solid #e2e8f0;
-        white-space: nowrap;
-      }
-      .wr-table td {
-        padding: 8px 6px;
-        font-size: 13px;
-        color: #334155;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: top;
-      }
-      .wr-table tbody tr:hover td {
-        background: #f8fafc;
-      }
-      .wr-table tbody tr:last-child td {
-        border-bottom: none;
-      }
-    `;
-    document.head.appendChild(style);
+  if (content) {
+    content.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
   }
 
   const profile = await requireAdmin();
@@ -274,54 +99,58 @@ export async function mount() {
   const initGroup = String(params.get('group') || '') === '1';
   const state = { month: initMonth, sort: initSort, dept: initDept, q: initQ, group: initGroup, items: [] };
 
-  content.className = 'card';
-  content.innerHTML = `
-    <div class="dashboard">
-      <div class="dashboard-head" style="margin-bottom:0; padding-bottom:0; border-bottom:none;">
-        <h3 style="margin:0; font-size:20px; color:#0f172a;">作業報告</h3>
-      </div>
-      
-      <style>
-        .mobile-only-btn { display: none !important; }
-        @media (max-width: 768px) {
-          .mobile-only-btn { display: flex !important; }
-        }
-      </style>
+  content.innerHTML = '';
+  
+  const layout = document.createElement('div');
+  layout.style.cssText = `display: flex; flex-direction: column; height: ${vhExpr}; background: #FFFFFF; font-family: Inter, 'Noto Sans JP', sans-serif; overflow: hidden;`;
+  
+  layout.innerHTML = `
+    <style>
+      .wr-input { height: 30px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 13px; color: #0f172a; outline: none; background: #fff; box-sizing: border-box; }
+      .wr-input:focus { border-color: #3b82f6; }
+      .wr-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; flex-shrink: 0; }
+      .wr-btn { height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; outline: none; transition: all .15s; }
+      .wr-btn-dl { background: #10b981; color: #fff; gap: 6px; }
+      .wr-btn-dl:hover { background: #059669; }
+      .wr-table { width: 100%; border-collapse: collapse; min-width: 1000px; font-size: 13px; table-layout: auto; }
+      .wr-table th { padding: 6px 12px; font-size: 12px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 10; font-weight: 500; text-align: left; white-space: nowrap; }
+      .wr-table td { padding: 6px 12px; vertical-align: middle; border: 1px solid #e2e8f0; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
+      .wr-table tbody tr:hover td { background: #f8fafc; }
+      .wr-pill { display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; border: 1px solid transparent; white-space: nowrap; }
+      .wr-dow-sat { color: #d97706; }
+      .wr-dow-sun { color: #dc2626; }
+      .wr-off-row td { background: #fff5f5 !important; }
+      .wr-off-row:hover td { background: #fee2e2 !important; }
+    </style>
+    <div style="flex-shrink: 0; padding-bottom: 12px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 700; color: #111827; letter-spacing: -0.01em; margin-bottom: 12px;">作業報告</h2>
       <div class="wr-toolbar">
-        <input id="wrMonth" type="month" class="wr-input wr-month" value="${initMonth}">
+        <input id="wrMonth" type="month" class="wr-input wr-month" value="${state.month}">
         <select id="wrSort" class="wr-input wr-select wr-sort">
-          <option value="dateDesc" ${initSort === 'dateDesc' ? 'selected' : ''}>日付↓ / 社員↑</option>
-          <option value="employee" ${initSort === 'employee' ? 'selected' : ''}>社員↑ / 日付↓</option>
-          <option value="name" ${initSort === 'name' ? 'selected' : ''}>氏名↑ / 日付↓</option>
-          <option value="department" ${initSort === 'department' ? 'selected' : ''}>部署↑ / 社員↑ / 日付↓</option>
-          <option value="missingFirst" ${initSort === 'missingFirst' ? 'selected' : ''}>未提出を上に</option>
+          <option value="dateDesc" ${state.sort === 'dateDesc' ? 'selected' : ''}>日付↓ / 社員↑</option>
+          <option value="employee" ${state.sort === 'employee' ? 'selected' : ''}>社員↑ / 日付↓</option>
+          <option value="name" ${state.sort === 'name' ? 'selected' : ''}>氏名↑ / 日付↓</option>
+          <option value="department" ${state.sort === 'department' ? 'selected' : ''}>部署↑ / 社員↑ / 日付↓</option>
+          <option value="missingFirst" ${state.sort === 'missingFirst' ? 'selected' : ''}>未提出を上に</option>
         </select>
-        <select id="wrDept" class="wr-input wr-select wr-dept" style="min-width:160px;">
+        <select id="wrDept" class="wr-input wr-select wr-dept">
           <option value="">全部署</option>
         </select>
-        <div class="wr-search-container">
-          <input id="wrSearch" class="wr-input" placeholder="社員番号/氏名で検索" value="${esc(initQ)}">
-        </div>
-        <div class="wr-group-container">
-          <label class="wr-checkbox-label">
-            <input id="wrGroup" type="checkbox" class="wr-checkbox" ${initGroup ? 'checked' : ''}>
-            社員ごとにまとめる
-          </label>
-          <button id="wrExport" class="wr-btn-export" style="margin-left: 12px;">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            Excel
-          </button>
-          <a class="wr-btn-home mobile-only-btn" href="/admin/dashboard">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-            ホームへ
-          </a>
-        </div>
+        <input id="wrSearch" type="text" class="wr-input wr-text wr-query" placeholder="社員番号/氏名で検索" value="${esc(state.q)}">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#334155;cursor:pointer;">
+          <input type="checkbox" id="wrGroup" ${state.group ? 'checked' : ''}> 社員ごとにまとめる
+        </label>
+        <button id="wrExport" class="wr-btn wr-btn-dl" type="button">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Excel
+        </button>
       </div>
-
-      <div id="wrSummary" style="margin-bottom:12px;color:#475569;font-weight:650;font-size:14px;line-height:1.6;"></div>
-      <div id="wrTable"></div>
+      <div id="wrSummary" style="font-size: 13px; color: #475569; font-weight: 600;"></div>
     </div>
+    <div class="wr-table-wrap" id="wrTable">
+      </div>
   `;
+  content.appendChild(layout);
 
   const setUrl = () => {
     try {
@@ -464,8 +293,8 @@ export async function mount() {
     }
 
     tableHost.innerHTML = `
-      <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
-        <table class="wr-table" style="min-width:1400px; width:100%; table-layout:auto;">
+      <div style="overflow-x:auto;border-top:none;border-bottom:none;background:#fff;padding-bottom:12px;">
+        <table class="wr-table" style="min-width:1400px; width:100%; table-layout:auto; border-collapse: collapse;">
             <colgroup>
               <col style="width:110px;">
               <col style="width:50px;">
@@ -482,22 +311,22 @@ export async function mount() {
               <col style="width:200px;">
               <col style="width:120px;">
             </colgroup>
-            <thead>
-              <tr>
-                <th>日付</th>
-                <th>曜</th>
-                <th>社員番号</th>
-                <th>氏名</th>
-                <th>部署</th>
-                <th>勤務区分</th>
-                <th>出勤</th>
-                <th>退勤</th>
-                <th>勤務形態</th>
-                <th>現場</th>
-                <th>作業内容</th>
-                <th>遅刻・早退等</th>
-                <th>備考</th>
-                <th>状態</th>
+            <thead style="position:sticky; top:0; z-index:10;">
+              <tr style="background:#e6f2ff; color:#0f172a; height:30px;">
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">日付</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">曜</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">社員番号</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">氏名</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">部署</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務区分</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">出勤</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">退勤</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務形態</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">現場</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">作業内容</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">遅刻・早退等</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">備考</th>
+                <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">状態</th>
               </tr>
             </thead>
           <tbody>
@@ -858,7 +687,7 @@ export async function mount() {
       const sum = r?.summary || {};
       const shown = filterAndSort(state.items).length;
       if (summaryEl) {
-        summaryEl.textContent = `対象月: ${state.month} / 出勤社員: ${sum.employees == null ? 0 : sum.employees} / 出勤日レコード: ${sum.workedDays == null ? 0 : sum.workedDays} / 表示: ${shown} / 提出済: ${sum.submitted == null ? 0 : sum.submitted} / 未提出: ${sum.missing == null ? 0 : sum.missing}`;
+        summaryEl.innerHTML = `対象月: ${esc(state.month)} / 出勤社員: ${sum.employees == null ? 0 : sum.employees} / 出勤日レコード: ${sum.workedDays == null ? 0 : sum.workedDays} / 表示: ${shown} / 提出済: ${sum.submitted == null ? 0 : sum.submitted} / <span style="color:#dc2626;">未提出: ${sum.missing == null ? 0 : sum.missing}</span>`;
       }
       const view = filterAndSort(state.items);
       if (state.group) renderGrouped(view);
@@ -887,9 +716,9 @@ export async function mount() {
     else renderRows(view, true);
     try {
       const summaryEl = $('#wrSummary');
-      if (summaryEl && summaryEl.textContent) {
+      if (summaryEl && summaryEl.innerHTML) {
         const shown = filterAndSort(state.items).length;
-        summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
+        summaryEl.innerHTML = String(summaryEl.innerHTML).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
     } catch (e) { /* silently ignored */ }
   });
@@ -902,14 +731,14 @@ export async function mount() {
     else renderRows(view, true);
     try {
       const summaryEl = $('#wrSummary');
-      if (summaryEl && summaryEl.textContent) {
+      if (summaryEl && summaryEl.innerHTML) {
         const shown = filterAndSort(state.items).length;
-        summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
+        summaryEl.innerHTML = String(summaryEl.innerHTML).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
     } catch (e) { /* silently ignored */ }
   });
-  $('#wrSearch')?.addEventListener('input', async () => {
-    const inp = $('#wrSearch');
+  $('#wrQuery')?.addEventListener('input', async () => {
+    const inp = $('#wrQuery');
     state.q = String(inp?.value || '');
     setUrl();
     const view = filterAndSort(state.items);
@@ -917,9 +746,9 @@ export async function mount() {
     else renderRows(view, true);
     try {
       const summaryEl = $('#wrSummary');
-      if (summaryEl && summaryEl.textContent) {
+      if (summaryEl && summaryEl.innerHTML) {
         const shown = filterAndSort(state.items).length;
-        summaryEl.textContent = String(summaryEl.textContent).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
+        summaryEl.innerHTML = String(summaryEl.innerHTML).replace(/\/ 表示: \d+ /, `/ 表示: ${shown} `);
       }
     } catch (e) { /* silently ignored */ }
   });
@@ -934,7 +763,16 @@ export async function mount() {
 
   $('#wrExport')?.addEventListener('click', async () => {
     try {
-      const url = `/api/admin/work-reports/export.xlsx?period=month&month=${encodeURIComponent(state.month)}`;
+      // Pass filtering & sorting parameters to the backend
+      const qParams = new URLSearchParams({
+        period: 'month',
+        month: state.month,
+        sort: state.sort,
+        dept: state.dept,
+        q: state.q,
+        group: state.group ? '1' : '0'
+      });
+      const url = `/api/admin/work-reports/export.xlsx?${qParams.toString()}`;
       await downloadWithAuth(url, `work_reports_${state.month}.xlsx`);
     } catch (e) {
       alert(String(e?.message || 'エクスポートに失敗しました'));

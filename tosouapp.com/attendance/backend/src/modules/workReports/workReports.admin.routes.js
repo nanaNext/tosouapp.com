@@ -322,7 +322,7 @@ router.get('/export.xlsx',
     `, [start, end]);
 
     const [dailyRows] = await db.query(`
-      SELECT userId, date, kubun, late_minutes, early_minutes, reason
+      SELECT userId, date, kubun, location, memo, late_minutes, early_minutes, reason
       FROM attendance_daily
       WHERE date >= ? AND date <= ?
     `, [start, end]);
@@ -425,8 +425,8 @@ router.get('/export.xlsx',
         status,
         cin,
         cout,
-        site: isOff && !att?.checkIn ? '' : String(rep?.site || ''),
-        work: isOff && !att?.checkIn ? '' : String(rep?.work || ''),
+        site: isOff && !att?.checkIn && !daily?.location && !rep?.site ? '' : String(daily?.location || rep?.site || ''),
+        work: isOff && !att?.checkIn && !daily?.memo && !rep?.work ? '' : String(daily?.memo || rep?.work || ''),
         lateMinutes: daily?.late_minutes || 0,
         earlyMinutes: daily?.early_minutes || 0,
         reason: daily?.reason || '',
@@ -521,6 +521,12 @@ router.get('/export.xlsx',
     }
 
     let buf;
+
+    // Disable redirect to single-sheet export, always use full multi-sheet export for month period
+    // if (period === 'month' && (req.query.sort || req.query.dept || req.query.q || req.query.group)) {
+    //   return res.redirect(`/api/admin/work-reports/month/export-table?${new URLSearchParams(req.query).toString()}`);
+    // }
+
     if (period === 'month') {
       const dayNumbers = dates.map(d => parseInt(String(d).slice(8, 10), 10));
       const s1Cols_all = [
@@ -661,7 +667,7 @@ router.get('/export.xlsx',
 
           s1Cells_type.push({ v: cellValue, s: cellStyle });
 
-          if (r.work || r.site || r.cin || r.cout) {
+          if (r.status === '出勤' || r.status === '休日出勤' || r.work || r.site || r.cin || r.cout) {
              const rowData = {
                cells: [ d, dowJa(d), code, name, r.status || '', r.cin || '', r.cout || '', r.site || '', r.work || '', { v: isLate, t: 'n' }, { v: Math.round(Math.max(0, h) * 10) / 10, t: 'n' } ]
              };
@@ -813,7 +819,86 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const { start, end } = monthRange(month);
     const closed = await repo.isMonthClosed(month).catch(() => false);
-    const wantDebug = String(req.query?.debug || '') === '1';
+    const reqSort = req.query.sort || 'dateDesc';
+    const reqDept = req.query.dept || '';
+    const reqQ = req.query.q || '';
+    const reqGroup = req.query.group === '1';
+
+    // Same sorting/filtering logic as the frontend
+    const normalize = (s) => String(s || '').trim().toLowerCase();
+    const cmpStr = (a, b) => {
+      const aa = normalize(a);
+      const bb = normalize(b);
+      if (aa === bb) return 0;
+      return aa < bb ? -1 : 1;
+    };
+    const statusRank = (st) => {
+      if (st === 'checkout_missing') return 0;
+      if (st === 'missing') return 0;
+      if (st === 'checkout_missing_submitted') return 1;
+      if (st === 'monthly_input_only') return 1;
+      if (st === 'working') return 1;
+      if (st === 'submitted') return 2;
+      return 3;
+    };
+
+    const filterAndSort = (items) => {
+      const dept = normalize(reqDept);
+      const q = normalize(reqQ);
+      let out = Array.isArray(items) ? items.slice() : [];
+      if (dept) {
+        out = out.filter(x => normalize(x?.departmentName) === dept);
+      }
+      if (q) {
+        out = out.filter(x => {
+          const code = normalize(x?.employeeCode);
+          const name = normalize(x?.username);
+          return (code && code.includes(q)) || (name && name.includes(q));
+        });
+      }
+      out.sort((a, b) => {
+        if (reqSort === 'employee') {
+          const c1 = cmpStr(a?.employeeCode, b?.employeeCode);
+          if (c1) return c1;
+          const d1 = cmpStr(b?.date, a?.date);
+          if (d1) return d1;
+          return Number(a?.userId || 0) - Number(b?.userId || 0);
+        }
+        if (reqSort === 'name') {
+          const n1 = cmpStr(a?.username, b?.username);
+          if (n1) return n1;
+          const c1 = cmpStr(a?.employeeCode, b?.employeeCode);
+          if (c1) return c1;
+          const d1 = cmpStr(b?.date, a?.date);
+          if (d1) return d1;
+          return Number(a?.userId || 0) - Number(b?.userId || 0);
+        }
+        if (reqSort === 'department') {
+          const dep = cmpStr(a?.departmentName, b?.departmentName);
+          if (dep) return dep;
+          const c1 = cmpStr(a?.employeeCode, b?.employeeCode);
+          if (c1) return c1;
+          const d1 = cmpStr(b?.date, a?.date);
+          if (d1) return d1;
+          return Number(a?.userId || 0) - Number(b?.userId || 0);
+        }
+        if (reqSort === 'missingFirst') {
+          const r1 = statusRank(a?.status) - statusRank(b?.status);
+          if (r1) return r1;
+          const d1 = cmpStr(b?.date, a?.date);
+          if (d1) return d1;
+          const c1 = cmpStr(a?.employeeCode, b?.employeeCode);
+          if (c1) return c1;
+          return Number(a?.userId || 0) - Number(b?.userId || 0);
+        }
+        const d1 = cmpStr(b?.date, a?.date);
+        if (d1) return d1;
+        const c1 = cmpStr(a?.employeeCode, b?.employeeCode);
+        if (c1) return c1;
+        return Number(a?.userId || 0) - Number(b?.userId || 0);
+      });
+      return out;
+    };
 
     // カレンダーの休日（祝日/土日）を取得して判定に利用
     let isOffDate = (ds) => false;
@@ -1015,14 +1100,17 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
         const rep = reportMap.get(`${uid}|${d}`) || null;
         const report = rep ? { site: rep.site, work: rep.work, updatedAt: rep.updated_at || rep.updatedAt || null } : null;
         const entry = { status, report, kubun: cls.kubun || kubun || null, plan: status === 'planned' ? cls.plan : null };
-        if (wantDebug) entry.debug = { date: d, userId: uid, kubun, plan, isOffDate: isOffDate(d), hasAttendance: !!a, hasOut: !!a?.checkOut, status };
-        perDay[d] = entry;
-        if (status === 'checked_out') {
-          requiredTotal++;
-          if (report) submittedTotal++;
-          else missingTotal++;
-        }
+        if (req.query.debug === '1') entry.debug = { date: d, userId: uid, kubun, plan, isOffDate: isOffDate(d), hasAttendance: !!a, hasOut: !!a?.checkOut, status };
+      perDay[d] = entry;
+      if (status === 'checked_out') {
+        requiredTotal++;
+        if (report) submittedTotal++;
+        else missingTotal++;
       }
+    }
+    
+    // We only push to items if we're grouping, otherwise we flatten
+    if (reqGroup) {
       items.push({
         userId: uid,
         employeeCode: u.employeeCode || null,
@@ -1031,17 +1119,234 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
         departmentName: u.departmentName || null,
         days: perDay
       });
+    } else {
+      for (const d of daysInMonth) {
+        const entry = perDay[d];
+        if (entry.status !== 'checked_out' && entry.status !== 'working' && entry.status !== 'holiday_work' && entry.status !== 'holiday_working') continue;
+        
+        const a = attLatest.get(`${uid}|${d}`) || null;
+        const daily = dailyByUserDate.get(`${uid}|${d}`) || null;
+
+        const hasOut = !!a?.checkOut;
+        const hasContent = !!(String(entry.report?.site || '').trim() || String(entry.report?.work || '').trim());
+        let effectiveStatusStr = entry.status;
+        if (entry.status === 'checked_out') {
+          effectiveStatusStr = hasContent ? 'submitted' : 'missing';
+        } else if (entry.status === 'working') {
+           if (d < todayJST() && !hasOut) {
+             effectiveStatusStr = hasContent ? 'checkout_missing_submitted' : 'checkout_missing';
+           }
+        }
+        
+        items.push({
+          userId: uid,
+          employeeCode: u.employeeCode || null,
+          username: u.username || null,
+          departmentId: u.departmentId || null,
+          departmentName: u.departmentName || null,
+          date: d,
+          weekday: weekdayJa(d),
+          attendance: a ? { checkIn: a.checkIn, checkOut: a.checkOut } : { checkIn: null, checkOut: null },
+          kubun: entry.kubun || null,
+          workType: a?.work_type || null,
+          holiday: isOffDate(d) || entry.kubun === '休日' || entry.kubun === '所定休日',
+          site: entry.report?.site || null,
+          work: entry.report?.work || null,
+          status: effectiveStatusStr
+        });
+      }
+    }
+  }
+
+  // apply filters before sending response
+  let finalItems = items;
+  if (!reqGroup) {
+    finalItems = filterAndSort(items);
+  } else {
+    // Basic grouping filter (by dept/search text), we don't sort the group object array deeply here since frontend renders it
+    const dept = normalize(reqDept);
+    const q = normalize(reqQ);
+    if (dept) finalItems = finalItems.filter(x => normalize(x?.departmentName) === dept);
+    if (q) {
+      finalItems = finalItems.filter(x => {
+        const code = normalize(x?.employeeCode);
+        const name = normalize(x?.username);
+        return (code && code.includes(q)) || (name && name.includes(q));
+      });
+    }
+    if (reqSort === 'employee') {
+      finalItems.sort((a,b) => cmpStr(a.employeeCode, b.employeeCode));
+    } else if (reqSort === 'name') {
+      finalItems.sort((a,b) => cmpStr(a.username, b.username));
+    }
+  }
+
+  res.status(200).json({
+    month,
+    closed,
+    range: { start, end },
+    days: daysInMonth,
+    summary: { required: requiredTotal, submitted: submittedTotal, missing: missingTotal },
+    items: finalItems
+  });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/month/export-table', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    // Re-use the logic from /month JSON endpoint, but return Excel
+    // We'll mock the res.status.json to capture the data and then build Excel from it.
+    let responseData = null;
+    const mockRes = {
+      status: () => mockRes,
+      json: (data) => { responseData = data; return mockRes; },
+      send: (data) => { responseData = data; return mockRes; }
+    };
+    
+    // Create a mock req with original query but debug off to ensure we get data
+    const mockReq = { ...req, query: { ...req.query, debug: '0' }, user: req.user };
+    
+    // Find the handler for /month
+    const monthHandler = router.stack.find(l => l.route && l.route.path === '/month')?.route?.stack[1]?.handle;
+    if (!monthHandler) throw new Error('Month handler not found');
+    
+    await monthHandler(mockReq, mockRes);
+    
+    if (!responseData || !responseData.items) {
+      throw new Error('Failed to generate table data: ' + (responseData ? JSON.stringify(responseData) : 'No response'));
     }
 
-    res.status(200).json({
-      month,
-      closed,
-      range: { start, end },
-      days: daysInMonth,
-      summary: { required: requiredTotal, submitted: submittedTotal, missing: missingTotal },
-      items
-    });
+    const fmtHm = (dt) => {
+      if (!dt) return '';
+      const s = String(dt);
+      return s.length >= 16 ? s.slice(11, 16) : s;
+    };
+    
+    const statusMeta = (status) => {
+      if (status === 'submitted') return '提出済';
+      if (status === 'missing') return '未提出';
+      if (status === 'checkout_missing') return '退勤漏れ';
+      if (status === 'checkout_missing_submitted') return '退勤漏れ(入力済み)';
+      if (status === 'monthly_input_only') return '月次入力済み（打刻なし）';
+      if (status === 'off') return '休日';
+      if (status === 'paid_leave') return '有給休暇';
+      if (status === 'unpaid_leave') return '無給休暇';
+      if (status === 'absence') return '欠勤';
+      if (status === 'not_punched') return '打刻なし';
+      if (status === 'working') return '勤務中';
+      return '—';
+    };
+
+    const workTypeLabel = (value) => {
+      if (value === 'onsite') return '出社';
+      if (value === 'remote') return '在宅';
+      if (value === 'satellite') return '現場・出張';
+      return '—';
+    };
+
+    const columns = [
+      { header: '日付', width: 12 },
+      { header: '曜', width: 6 },
+      { header: '社員番号', width: 12 },
+      { header: '氏名', width: 14 },
+      { header: '部署', width: 22 },
+      { header: '勤務区分', width: 12 },
+      { header: '出勤', width: 8 },
+      { header: '退勤', width: 8 },
+      { header: '勤務形態', width: 12 },
+      { header: '現場', width: 18 },
+      { header: '作業内容', width: 52 },
+      { header: '遅刻・早退等', width: 18 },
+      { header: '備考', width: 30 },
+      { header: '状態', width: 15 }
+    ];
+
+    const rows = [];
+    const items = responseData.items;
+    
+    // Helper for late/early reasons
+    const getLateEarlyText = (it) => {
+      let parts = [];
+      const am = it.attendance?.checkIn_memo || it.attendance?.checkInMemo;
+      const pm = it.attendance?.checkOut_memo || it.attendance?.checkOutMemo;
+      const isLate = it.attendance?.isLate;
+      const lateMinutes = it.attendance?.lateMinutes;
+      if (isLate) parts.push(`[遅刻] ${lateMinutes || 0}分`);
+      if (am) parts.push(`(出) ${am}`);
+      if (pm) parts.push(`(退) ${pm}`);
+      return parts.join('\n');
+    };
+
+    // Flat mode (group=0)
+    if (req.query.group !== '1') {
+      for (const it of items) {
+        const combinedReasonMemo = [it.attendance?.memo, it.attendance?.notes].filter(Boolean).join('\n');
+        rows.push({
+          cells: [
+            it.date,
+            it.weekday || '',
+            it.employeeCode || '',
+            it.username || '',
+            it.departmentName || '',
+            it.kubun || '',
+            fmtHm(it.attendance?.checkIn),
+            fmtHm(it.attendance?.checkOut),
+            workTypeLabel(it.workType),
+            it.site || '',
+            it.work || '',
+            getLateEarlyText(it),
+            combinedReasonMemo || '',
+            statusMeta(it.status)
+          ]
+        });
+      }
+    } else {
+       // Group mode
+        for (const g of items) {
+          rows.push({
+            cells: [ { v: `${g.employeeCode || ''} ${g.username || ''}`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ]
+          });
+          const days = g.days || {};
+          for (const d of responseData.days) {
+             const entry = days[d];
+             if (!entry || (entry.status !== 'checked_out' && entry.status !== 'working' && entry.status !== 'holiday_work' && entry.status !== 'holiday_working')) continue;
+             
+             // find the attendance data by recreating the attLatest map if we really needed to, 
+             // but since it's grouped, we can just export basic data
+             rows.push({
+               cells: [
+                 d,
+                 weekdayJa(d),
+                 g.employeeCode || '',
+                 g.username || '',
+                 g.departmentName || '',
+                 entry.kubun || '',
+                 '', // checkIn
+                 '', // checkOut
+                 '', // workType
+                 entry.report?.site || '',
+                 entry.report?.work || '',
+                 '', // late/early
+                 '', // notes
+                 statusMeta(entry.status)
+               ]
+             });
+          }
+        }
+    }
+
+    const { buildXlsx } = require('../../utils/xlsx');
+    const buf = buildXlsx({ sheetName: '作業報告一覧', columns, rows });
+    
+    const fileName = `work_reports_table_${responseData.month}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.status(200).send(buf);
+
   } catch (err) {
+    console.error('Export Table Error:', err);
     res.status(500).json({ message: err.message });
   }
 });

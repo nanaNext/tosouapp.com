@@ -1,10 +1,18 @@
 import { fetchJSONAuth } from '../../api/http.api.js';
 // Cái chỗ này dùng để render table 外出管理
 export async function mountGoOut({ content }) {
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
+
   content.innerHTML = `
     <style>
-      .go-out-table { width: 100%; border-collapse: collapse; min-width: 900px; margin: 0; }
+      .go-out-table { width: 100%; border-collapse: collapse; min-width: 900px; margin: 0; font-size: 13px; table-layout: auto; }
+      .go-out-table th { padding: 6px 12px; font-size: 12px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+      .go-out-table td { border: 1px solid #e2e8f0; padding: 6px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+      .go-out-table tbody tr:hover td { background-color: #f1f5f9; }
+      
       @media (max-width: 768px) {
+        .go-out-table th, .go-out-table td { font-size: 11px; padding: 4px; }
         .go-out-table-wrapper { border: none !important; box-shadow: none !important; background: transparent !important; max-height: none !important; overflow: visible !important; }
         .go-out-table { min-width: 100%; }
         .go-out-table thead { display: none; }
@@ -47,6 +55,7 @@ export async function mountGoOut({ content }) {
         }
         .page-header-container {
           margin-top: 16px !important; /* Add space from top nav */
+          flex-direction: row !important; /* Keep it in a row */
           justify-content: flex-end !important; /* Push date picker to right */
         }
         #goOutAdminFilterMonth {
@@ -66,31 +75,31 @@ export async function mountGoOut({ content }) {
       .btn-force-end:hover { background-color: #fef2f2 !important; }
       .btn-edit:hover { background-color: #eff6ff !important; }
     </style>
-    <div style="padding: 0; margin-top: -16px; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #e0f2fe; min-height: 100vh;">
-      <div class="page-header-container" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 8px; padding: 16px 16px 8px 16px;">
+    <div style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; min-height: ${vhExpr}; height: ${vhExpr}; display: flex; flex-direction: column;">
+      <div class="page-header-container" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 0px; padding: 16px 24px 8px 24px; flex-shrink: 0;">
         <h2 class="page-header-title" style="display: none;">外出管理</h2>
         
         <div style="display: flex; align-items: center; gap: 8px;">
-          <input type="month" id="goOutAdminFilterMonth" style="height: 38px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; width: 160px; color: #1f2937; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;">
+          <input type="month" id="goOutAdminFilterMonth" style="height: 30px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 140px; color: #1f2937; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;">
         </div>
       </div>
 
       <!-- Table -->
-      <div class="go-out-table-wrapper" style="overflow-x: auto; border-top: 1px solid #eeeeee; border-bottom: 1px solid #eeeeee; max-height: 600px; overflow-y: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05); background: white;">
-        <table class="go-out-table">
-          <thead style="position: sticky; top: 0; z-index: 10;">
-            <tr style="background: #f8fafc; color: #334155; text-align: left; border-bottom: 1px solid #cbd5e1; height: 28px;">
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; border-right: 1px solid #e2e8f0;">日付</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; border-right: 1px solid #e2e8f0;">氏名（社員名）</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: left; border-right: 1px solid #e2e8f0;">外出時間</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: left; border-right: 1px solid #e2e8f0;">戻り時間</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: left; border-right: 1px solid #e2e8f0;">経過時間</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; border-right: 1px solid #e2e8f0;">区分</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; max-width: 150px; border-right: 1px solid #e2e8f0;">理由</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; border-right: 1px solid #e2e8f0;">ステータス</th>
-              <th style="padding: 4px 8px; font-size: 12px; font-weight: 600; text-align: center;">操作</th>
-            </tr>
-          </thead>
+      <div class="go-out-table-wrapper" style="overflow-x: auto; border-top: none; border-bottom: none; flex: 1; min-height: 0; overflow-y: auto; box-shadow: none; background: white; padding: 16px 24px 24px 24px;">
+          <table class="go-out-table" style="width: 100%; border-collapse: collapse;">
+            <thead style="position: sticky; top: 0; z-index: 10;">
+              <tr style="background: #e6f2ff; color: #0f172a; text-align: center; height: 30px;">
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">日付</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">社員名</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">外出</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">戻り</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">時間</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">区分</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">理由</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">状態</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">アクション</th>
+              </tr>
+            </thead>
           <tbody id="goOutAdminTableBody" style="background: white;">
             <tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">読み込み中...</td></tr>
           </tbody>
@@ -247,7 +256,7 @@ export async function mountGoOut({ content }) {
       const shortAdminNote = fullAdminNote.length > 15 ? fullAdminNote.substring(0, 15) + '...' : fullAdminNote;
 
       html += `
-        <tr class="go-out-row" style="background: ${rowBg}; border-bottom: 1px solid #e2e8f0; transition: background-color 0.15s;" data-bg="${rowBg}">
+        <tr class="go-out-row" data-bg="${rowBg}">
           <!-- Mobile View -->
           <td class="mobile-cell">
             <div class="td-date-status">
@@ -278,18 +287,18 @@ export async function mountGoOut({ content }) {
           </td>
 
           <!-- Desktop View -->
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; color: #1e293b; height: 28px; border-right: 1px solid #e2e8f0;">${escapeHtml(r.date)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; color: #1e293b; font-weight: 500; border-right: 1px solid #e2e8f0;">${escapeHtml(r.employeeName)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; font-family: monospace; text-align: left; border-right: 1px solid #e2e8f0;">${goTime}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; font-family: monospace; text-align: left; border-right: 1px solid #e2e8f0;">${retTime}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; font-family: monospace; text-align: left; color: #64748b; border-right: 1px solid #e2e8f0;">${duration}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; border-right: 1px solid #e2e8f0;">${escapeHtml(r.type)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-right: 1px solid #e2e8f0;">
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; color: #1e293b; height: 30px; text-align: center;">${escapeHtml(r.date)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; color: #1e293b; font-weight: 500; text-align: center;">${escapeHtml(r.employeeName)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; font-family: monospace; text-align: center;">${goTime}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; font-family: monospace; text-align: center;">${retTime}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; font-family: monospace; text-align: center; color: #64748b;">${duration}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; text-align: center;">${escapeHtml(r.type)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left;">
             <div title="${fullReason}">${shortReason}</div>
             ${r.admin_note ? `<div title="${fullAdminNote}" style="font-size: 11px; color: #94a3b8; margin-top: 2px;">(備考: ${shortAdminNote})</div>` : ''}
           </td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; border-right: 1px solid #e2e8f0;">${escapeHtml(r.status)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 12px; white-space: nowrap; text-align: center;">${actions}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; text-align: center;">${escapeHtml(r.status)}</td>
+          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; white-space: nowrap; text-align: center;">${actions}</td>
         </tr>
       `;
     });

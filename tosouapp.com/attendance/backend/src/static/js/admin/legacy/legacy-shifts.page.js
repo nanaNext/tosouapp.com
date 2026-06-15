@@ -1,20 +1,52 @@
 import { api } from '../../shared/api/client.js';
 
+export async function mount({ content }) {
+  await mountShifts({ content });
+}
+
 export async function mountShifts({ content }) {
+  // Check if standalone
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  const vhExpr = isStandalone ? '100dvh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
+
+  content.style.margin = '0';
+  content.style.padding = '0';
+  content.style.width = '100%';
+  content.style.height = vhExpr;
+  content.style.display = 'flex';
+  content.style.flexDirection = 'column';
+  content.style.overflow = 'hidden';
+  content.style.background = '#FFFFFF';
+  content.style.flex = '1';
+  content.style.minWidth = '0';
   content.innerHTML = '';
   const wrap = document.createElement('div');
-  wrap.className = 'admin-shifts';
+  wrap.className = 'admin-shifts shift-fiori-override';
+  wrap.style.cssText = `display: flex; flex-direction: column; height: 100%;`;
 
   const head = document.createElement('div');
-  head.className = 'form-title';
+  head.className = 'form-title page-title';
   head.textContent = 'シフト管理';
+  head.style.display = 'none'; // Ẩn cái này đi vì đã có tiêu đề ở dưới
   wrap.appendChild(head);
 
   const defCard = document.createElement('div');
   defCard.className = 'form-card';
+  defCard.style.cssText = `
+    background: #fff;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    margin: 0;
+  `;
   const defTitle = document.createElement('div');
   defTitle.className = 'form-title';
-  defTitle.textContent = 'シフト定義';
+  defTitle.textContent = 'シフト管理'; // Đổi từ シフト定義 thành シフト管理
   defCard.appendChild(defTitle);
   const defTable = document.createElement('table');
   defTable.className = 'excel-table';
@@ -96,17 +128,21 @@ export async function mountShifts({ content }) {
     defs = await api.get('/attendance/shifts/definitions');
   } catch { defs = []; }
   renderDefs(defs);
-  defCard.appendChild(defTable);
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'table-container';
+  tableContainer.appendChild(defTable);
+  defCard.appendChild(tableContainer);
 
   const addWrap = document.createElement('div');
   addWrap.className = 'form-actions';
   nameIn = document.createElement('input');
-  nameIn.type = 'text'; nameIn.placeholder = '例: day_8_17'; nameIn.style.minWidth = '160px';
+  nameIn.type = 'text'; nameIn.placeholder = '例: day_8_17'; nameIn.style.minWidth = '160px'; nameIn.style.marginRight = '8px';
   sIn = document.createElement('input');
-  sIn.type = 'time'; sIn.value = '08:00';
+  sIn.type = 'time'; sIn.value = '08:00'; sIn.style.marginRight = '8px';
   eIn = document.createElement('input');
-  eIn.type = 'time'; eIn.value = '17:00';
+  eIn.type = 'time'; eIn.value = '17:00'; eIn.style.marginRight = '8px';
   brSel = document.createElement('select');
+  brSel.style.marginRight = '8px';
   brSel.innerHTML = '<option value="60">1:00</option><option value="45">0:45</option><option value="30">0:30</option><option value="0">0:00</option>';
   const buildPayload = () => ({
     name: normalizeName(nameIn.value),
@@ -150,6 +186,7 @@ export async function mountShifts({ content }) {
 
   const updateBtn = document.createElement('button');
   updateBtn.className = 'btn-primary';
+  updateBtn.style.marginLeft = '8px';
   updateBtn.textContent = '更新';
   updateBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -176,5 +213,151 @@ export async function mountShifts({ content }) {
   wrap.appendChild(defCard);
 
   content.innerHTML = '';
+  content.innerHTML = `
+    <style>
+      .shift-fiori-override .form-title {
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        color: #111827 !important;
+        letter-spacing: -0.01em;
+        margin: 0 !important;
+        padding: 16px 24px 16px 24px !important;
+        border-bottom: none !important;
+      }
+      .shift-fiori-override .form-card {
+        background: #fff !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+      }
+      .shift-fiori-override .form-card .form-title {
+        padding: 0 24px 12px 24px !important;
+      }
+      .shift-fiori-override .excel-table {
+        margin: 0 !important;
+        border-top: none !important;
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .shift-fiori-override .excel-table th {
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+        background: #f8fafc !important;
+        color: #475569 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        text-align: left;
+      }
+      .shift-fiori-override .excel-table td {
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+      }
+      .shift-fiori-override .excel-table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+      }
+      .shift-fiori-override .excel-table th {
+        background-color: #e6f2ff !important;
+        color: #0f172a !important;
+        font-weight: 600 !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 6px 8px !important;
+        font-size: 13px !important;
+        text-align: center !important;
+        white-space: nowrap;
+      }
+      .shift-fiori-override .excel-table td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 6px 8px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+      }
+      .shift-fiori-override .excel-table tbody tr {
+        cursor: pointer;
+        transition: background-color 0.15s;
+      }
+      .shift-fiori-override .excel-table tbody tr:hover td {
+        background-color: #f8fafc !important;
+      }
+      .shift-fiori-override input[type="text"],
+      .shift-fiori-override input[type="time"],
+      .shift-fiori-override select {
+        height: 30px !important;
+        font-size: 13px !important;
+        padding: 0 10px !important;
+        border-radius: 4px !important;
+        box-sizing: border-box;
+        border: 1px solid #cbd5e1;
+        outline: none;
+        transition: all 0.2s;
+        background: #fff;
+        color: #0f172a;
+      }
+      .shift-fiori-override input[type="text"]:focus,
+      .shift-fiori-override input[type="time"]:focus,
+      .shift-fiori-override select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+      }
+      .shift-fiori-override .btn-primary,
+      .shift-fiori-override .btn-danger {
+        height: 30px !important;
+        font-size: 13px !important;
+        padding: 0 16px !important;
+        border-radius: 4px !important;
+        box-sizing: border-box;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .shift-fiori-override .btn-primary {
+        background: #3b82f6 !important;
+        color: #fff !important;
+      }
+      .shift-fiori-override .btn-primary:hover {
+        background: #2563eb !important;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+      }
+      .shift-fiori-override .btn-danger {
+        background: #fef2f2 !important;
+        color: #dc2626 !important;
+        border: 1px solid #fca5a5 !important;
+        padding: 0 10px !important;
+        height: 26px !important;
+        font-size: 12px !important;
+      }
+      .shift-fiori-override .btn-danger:hover {
+        background: #fee2e2 !important;
+        border-color: #f87171 !important;
+      }
+      .shift-fiori-override .form-actions {
+        padding: 16px 24px !important;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+      }
+      .shift-fiori-override .table-container {
+        flex: 1;
+        overflow: auto;
+        padding: 0 24px 24px 24px;
+      }
+    </style>
+  `;
   content.appendChild(wrap);
 }

@@ -11,10 +11,9 @@ const normalizePath = (p) => {
   return s.length > 1 ? s.replace(/\/+$/, '') : s;
 };
 
-export async function mount() {
-  const content = document.querySelector('#adminContent');
+export async function mount({ content, p2 }) {
   if (!content) return;
-  const p = normalizePath(window.location.pathname);
+  const p = normalizePath(p2 || window.location.pathname);
   if (p === '/admin/attendance/holidays') {
     const mod = await import('../legacy/legacy-calendar.page.js');
     await mod.mountCalendar({ content });
