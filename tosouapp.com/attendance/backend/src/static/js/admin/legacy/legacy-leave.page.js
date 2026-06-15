@@ -14,16 +14,15 @@ function ensureLeaveUiStyles() {
       box-shadow: none !important; 
       padding: 0 !important; 
       margin-top: -16px !important;
-      max-width: 1440px;
-      margin-left: auto;
-      margin-right: auto;
+      width: 100%;
     }
     .leave-page-layout {
       display: flex;
       gap: 24px;
       margin-top: 24px;
-      padding: 0 32px;
+      padding: 0;
       align-items: flex-start;
+      width: 100%;
     }
     .leave-sidebar {
       width: 220px;
