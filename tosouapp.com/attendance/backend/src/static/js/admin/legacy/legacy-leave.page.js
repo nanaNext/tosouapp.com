@@ -1447,6 +1447,30 @@ export async function mountLeaveUnified({
     if (h3) h3.remove();
   };
   
+  // Dynamic height adjustment to perfectly fit the screen without cutting off the bottom
+  const adjustHeight = () => {
+    const layout = content.querySelector('.leave-page-layout');
+    if (layout) {
+      const top = layout.getBoundingClientRect().top;
+      const offset = top > 0 ? top : 56; // Fallback
+      const h = \`calc(100vh - \${offset}px)\`;
+      
+      layout.style.setProperty('height', h, 'important');
+      
+      const sidebar = content.querySelector('.leave-sidebar');
+      if (sidebar) sidebar.style.setProperty('height', h, 'important');
+      
+      const cArea = content.querySelector('.leave-content-area');
+      if (cArea) cArea.style.setProperty('height', h, 'important');
+      
+      content.style.setProperty('height', h, 'important');
+    }
+  };
+  
+  adjustHeight();
+  setTimeout(adjustHeight, 150);
+  window.addEventListener('resize', adjustHeight);
+  
   await mountApprovalsFn(secA, { status: 'pending', hideProfileSection: true, onDataChanged: refreshBalance });
   const aTitle = secA.querySelector('h3');
   if (aTitle) aTitle.remove();
