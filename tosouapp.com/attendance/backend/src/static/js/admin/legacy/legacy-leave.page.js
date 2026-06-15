@@ -50,6 +50,7 @@ function ensureLeaveUiStyles() {
       padding: 24px 16px;
       height: 100%;
       overflow-y: auto;
+      box-sizing: border-box;
     }
     .leave-tabs-vertical {
       display: flex;
@@ -105,6 +106,7 @@ function ensureLeaveUiStyles() {
       padding: 32px 40px;
       height: 100%;
       overflow-y: auto; /* Enable independent scrolling here */
+      box-sizing: border-box;
     }
     .leave-tab-content {
       display: none;
@@ -1304,6 +1306,7 @@ export async function mountLeaveUnified({
     }
     .leave-sidebar {
       height: calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px)) !important;
+      border-right: 1px solid #E5E7EB !important; /* Force the border to show */
     }
   `;
   document.head.appendChild(style);
