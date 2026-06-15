@@ -1453,7 +1453,7 @@ export async function mountLeaveUnified({
     if (layout) {
       const top = layout.getBoundingClientRect().top;
       const offset = top > 0 ? top : 56; // Fallback
-      const h = \`calc(100vh - \${offset}px)\`;
+      const h = `calc(100vh - ${offset}px)`;
       
       layout.style.setProperty('height', h, 'important');
       
