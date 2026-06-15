@@ -1306,7 +1306,20 @@ export async function mountLeaveUnified({
     }
     .leave-sidebar {
       height: calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px)) !important;
-      border-right: 1px solid #E5E7EB !important; /* Force the border to show */
+      border-right: 1px solid #E5E7EB !important;
+    }
+    body.admin.has-sidebar .content {
+      padding-top: calc(var(--topbar-height, 56px) + var(--subbar-height, 40px)) !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      padding-bottom: 0 !important;
+      margin: 0 !important;
+      height: 100vh !important;
+      overflow: hidden !important;
+    }
+    body.admin.has-sidebar #adminContent {
+      padding: 0 !important;
+      margin: 0 !important;
     }
   `;
   document.head.appendChild(style);
@@ -1320,13 +1333,6 @@ export async function mountLeaveUnified({
     content.style.boxShadow = 'none';
     content.style.height = 'calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px))';
     content.style.overflow = 'hidden';
-    const parent = content.parentElement;
-    if (parent && parent.classList.contains('content')) {
-      parent.style.padding = '0';
-      parent.style.margin = '0';
-      parent.style.height = 'calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px))';
-      parent.style.overflow = 'hidden';
-    }
     const body = document.body;
     body.style.overflow = 'hidden'; // Stop the whole page from scrolling
   }
