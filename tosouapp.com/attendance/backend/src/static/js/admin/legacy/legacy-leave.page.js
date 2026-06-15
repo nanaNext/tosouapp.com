@@ -975,10 +975,9 @@ async function showEditPtoModal(userId, userName, onSaved) {
           const expiryInput = listEl.querySelector(`.edit-grant-expiry[data-idx="${idx}"]`);
           
           const grantDate = daysInput.dataset.date;
+          if (daysInput.value === '') return alert('日数を入力してください');
           const days = Number(daysInput.value);
           const expiryDate = expiryInput.value;
-          
-          if (daysInput.value === '') return alert('日数を入力してください');
           
           btn.textContent = '...';
           btn.disabled = true;
