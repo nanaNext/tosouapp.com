@@ -56,12 +56,12 @@ module.exports = (app) => {
       const path = String(req.path || '');
       const original = String(req.originalUrl || req.url || '');
       
+      // Bỏ qua check CSRF chỉ cho route login (vì lúc này chưa có token)
       if (path.includes('/api/auth/login') || original.includes('/api/auth/login')) {
         return next();
       }
-      const skipCsrf =
-        path.startsWith('/api/auth') ||
-        original.includes('/api/auth/');
+      
+      const skipCsrf = false; // Xóa ngoại lệ cho toàn bộ /api/auth/ để bảo vệ route reset mật khẩu, đăng ký, v.v.
         
       if (!isAllowedOrigin(req, origin)) {
         return res.status(403).json({ message: 'Forbidden: invalid origin' });

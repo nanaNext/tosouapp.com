@@ -121,6 +121,8 @@ exports.login = async (req, res) => {
       if (fails >= 5) {
         await authRepository.lockUser(email, 15);
       }
+      // Chống brute-force timing attack bằng cách phản hồi với độ trễ ngẫu nhiên
+      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
       try { require('../../core/metrics').inc('login_fail', 1); } catch (e) { /* silently ignored */ }
       return res.status(401).json({ message: 'Invalid credentials' });
     }
