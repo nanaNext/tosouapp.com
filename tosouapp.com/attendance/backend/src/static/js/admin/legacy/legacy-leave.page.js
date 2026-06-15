@@ -23,7 +23,8 @@ function ensureLeaveUiStyles() {
       padding: 0;
       align-items: stretch;
       width: 100%;
-      min-height: calc(100vh - 48px); /* Topbar is usually 48px */
+      height: calc(100vh - 48px); /* Fixed height to enable split scrolling */
+      overflow: hidden;
     }
     .leave-sidebar {
       width: 240px;
@@ -31,6 +32,7 @@ function ensureLeaveUiStyles() {
       background: #F9FAFB;
       border-right: 1px solid #E5E7EB;
       padding: 24px 16px;
+      overflow-y: auto;
     }
     .leave-tabs-vertical {
       display: flex;
@@ -84,6 +86,7 @@ function ensureLeaveUiStyles() {
       min-width: 0;
       background: #FFFFFF;
       padding: 32px 40px;
+      overflow-y: auto;
     }
     .leave-tab-content {
       display: none;
