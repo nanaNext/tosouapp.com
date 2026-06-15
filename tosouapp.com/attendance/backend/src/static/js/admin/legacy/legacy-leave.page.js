@@ -18,55 +18,72 @@ function ensureLeaveUiStyles() {
     }
     .leave-page-layout {
       display: flex;
-      gap: 24px;
-      margin-top: 24px;
+      gap: 0;
+      margin-top: 0;
       padding: 0;
-      align-items: flex-start;
+      align-items: stretch;
       width: 100%;
+      min-height: calc(100vh - 80px);
     }
     .leave-sidebar {
-      width: 220px;
+      width: 240px;
       flex-shrink: 0;
-      background: #FFFFFF;
-      border-radius: 4px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      border: 1px solid #D9D9D9;
-      padding: 8px 0;
+      background: #F9FAFB;
+      border-right: 1px solid #E5E7EB;
+      padding: 24px 16px;
     }
     .leave-tabs-vertical {
       display: flex;
       flex-direction: column;
+      gap: 4px;
     }
     .leave-tab {
-      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
       font-size: 14px;
-      font-weight: normal;
-      color: #32363A;
+      font-weight: 500;
+      color: #4B5563;
       cursor: pointer;
       border: none;
-      border-left: 4px solid transparent;
+      border-radius: 6px;
       text-align: left;
       transition: all 0.2s ease;
       background: transparent;
-      font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-family: Inter, "Noto Sans JP", sans-serif;
+    }
+    .leave-tab svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.7;
     }
     .leave-tab:hover {
-      background: #F2F2F2;
+      background: #F3F4F6;
+      color: #111827;
+    }
+    .leave-tab:hover svg {
+      opacity: 1;
     }
     .leave-tab.active {
-      color: #0854A0;
-      font-weight: bold;
-      background: #E5F0FA;
-      border-left-color: #0854A0;
+      color: #7928CA;
+      font-weight: 600;
+      background: #F4EEFF;
+    }
+    .leave-tab.active svg {
+      opacity: 1;
+      color: #7928CA;
     }
     .leave-content-area {
       flex: 1;
       min-width: 0;
       background: #FFFFFF;
-      border-radius: 4px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      border: 1px solid #D9D9D9;
-      padding: 24px;
+      padding: 32px 40px;
     }
     .leave-tab-content {
       display: none;
@@ -1261,9 +1278,18 @@ export async function mountLeaveUnified({
       <div class="leave-page-layout">
         <div class="leave-sidebar">
           <div class="leave-tabs-vertical">
-            <button class="leave-tab active" data-target="tab-approvals">休暇申請承認</button>
-            <button class="leave-tab" data-target="tab-grant">有給付与</button>
-            <button class="leave-tab" data-target="tab-balances">有給残日数一覧</button>
+            <button class="leave-tab active" data-target="tab-approvals">
+              <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              休暇申請承認
+            </button>
+            <button class="leave-tab" data-target="tab-grant">
+              <svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+              有給付与
+            </button>
+            <button class="leave-tab" data-target="tab-balances">
+              <svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+              有給残日数一覧
+            </button>
           </div>
         </div>
         <div class="leave-content-area" id="leave-content-area"></div>
