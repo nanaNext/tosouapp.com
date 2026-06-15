@@ -1080,27 +1080,29 @@ export async function mountLeaveBalance({
       });
     });
 
-    // Add event listeners for edit buttons
-    gridWrap.querySelectorAll('.leave-btn-edit').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const userId = btn.dataset.userid;
-        const userName = btn.dataset.username;
-        await showEditPtoModal(userId, userName, async () => {
-          // reload data
-          try {
-            data = await api.get('/api/leave/summary');
-            render();
-          } catch (e) {
-            console.error('Failed to reload data', e);
-          }
+    // Add event listeners for edit buttons AFTER adding the gridWrap to the DOM
+    setTimeout(() => {
+      gridWrap.querySelectorAll('.leave-btn-edit').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const userId = btn.dataset.userid;
+          const userName = btn.dataset.username;
+          await showEditPtoModal(userId, userName, async () => {
+            // reload data
+            try {
+              data = await api.get('/api/leave/summary');
+              render();
+            } catch (e) {
+              console.error('Failed to reload data', e);
+            }
+          });
         });
       });
-    });
+    }, 0);
   };
 
   c.appendChild(gridWrap);
-  c.appendChild(pager);
   render();
   if (searchEl) searchEl.addEventListener('input', () => { page = 1; render(); });
   if (sortEl) sortEl.addEventListener('change', () => { page = 1; render(); });
