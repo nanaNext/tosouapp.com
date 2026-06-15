@@ -63,6 +63,8 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
         u.username AS username,
         u.departmentId AS departmentId,
         d.name AS departmentName,
+        u.role AS role,
+        u.employment_type AS employment_type,
         CASE
           WHEN EXISTS (
             SELECT 1
@@ -138,6 +140,8 @@ router.get('/', authorize('admin', 'manager'), async (req, res) => {
         username: r.username || null,
         departmentId: r.departmentId || null,
         departmentName: r.departmentName || null,
+        role: r.role || null,
+        employment_type: r.employment_type || null,
         attendance: {
           id: r.attendanceId || null,
           checkIn: r.checkIn || null,
@@ -822,7 +826,8 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
 
     const [users] = await db.query(`
       SELECT u.id AS userId, u.employee_code AS employeeCode, u.username AS username,
-             u.departmentId AS departmentId, d.name AS departmentName
+             u.departmentId AS departmentId, d.name AS departmentName,
+             u.role AS role, u.employment_type AS employment_type
       FROM users u
       LEFT JOIN departments d ON d.id = u.departmentId
       WHERE u.employment_status = 'active'
@@ -1171,7 +1176,9 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
              u.username AS username,
              u.shift_id AS shiftId,
              u.departmentId AS departmentId,
-             d.name AS departmentName
+             d.name AS departmentName,
+             u.role AS role,
+             u.employment_type AS employment_type
       FROM users u
       LEFT JOIN departments d ON d.id = u.departmentId
       WHERE u.employment_status = 'active'
@@ -1355,6 +1362,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         username: user.username || null,
         departmentId: user.departmentId || null,
         departmentName: user.departmentName || null,
+        role: user.role || null,
+        employment_type: user.employment_type || null,
         date,
         weekday: weekdayJa(date),
         holiday: isOffDate(date, user.departmentName), // Thêm flag holiday
@@ -1418,6 +1427,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         username: user.username || null,
         departmentId: user.departmentId || null,
         departmentName: user.departmentName || null,
+        role: user.role || null,
+        employment_type: user.employment_type || null,
         date: String(date).slice(0, 10),
         weekday: weekdayJa(date),
         holiday: isOffDate(date, user.departmentName), // Thêm flag holiday
