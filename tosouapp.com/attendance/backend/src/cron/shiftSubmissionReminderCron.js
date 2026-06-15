@@ -22,10 +22,13 @@ async function processMonthlyShiftReminders() {
         }
 
         // Tháng mục tiêu là tháng tiếp theo
-        const nextMonthDate = new Date(nowJST.getUTCFullYear(), nowJST.getUTCMonth() + 1, 1);
-        const y = nextMonthDate.getUTCFullYear();
-        const m = String(nextMonthDate.getUTCMonth() + 1).padStart(2, '0');
-        const targetMonthStr = `${y}-${m}`;
+        let y = nowJST.getUTCFullYear();
+        let m = nowJST.getUTCMonth() + 2; // +1 to next month, +1 because 0-indexed
+        if (m > 12) {
+            m = 1;
+            y += 1;
+        }
+        const targetMonthStr = `${y}-${String(m).padStart(2, '0')}`;
 
         console.log(`[ShiftReminderCron] Gửi nhắc nhở nộp lịch cho tháng: ${targetMonthStr}`);
 
