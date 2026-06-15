@@ -124,7 +124,7 @@ app.use((req, res, next) => {
     process.env.CSP_DEFAULT_SRC || "default-src 'self'",
     process.env.CSP_IMG_SRC || "img-src 'self' data: https:",
     process.env.CSP_STYLE_SRC || "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    process.env.CSP_SCRIPT_SRC || "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+    process.env.CSP_SCRIPT_SRC || "script-src 'self' https://cdn.jsdelivr.net",
     process.env.CSP_FONT_SRC || "font-src 'self' https://fonts.gstatic.com data:",
     process.env.CSP_OBJECT_SRC || "object-src 'none'",
     process.env.CSP_FRAME_ANCESTORS || "frame-ancestors 'self'",
