@@ -327,12 +327,12 @@ function ensureLeaveUiStyles() {
       background: #FFFFFF;
       border-radius: 4px;
       box-shadow: 0 0 0 1px #E5E5E5, 0 2px 4px 0 rgba(0,0,0,0.05);
-      padding: 16px;
+      padding: 12px; /* Reduce padding for compactness */
       font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif;
       transition: box-shadow 0.2s ease, transform 0.2s ease;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px; /* Reduce gap */
     }
     .leave-balance-card:hover {
       box-shadow: 0 0 0 1px #0854A0, 0 4px 8px 0 rgba(0,0,0,0.1);
@@ -340,9 +340,9 @@ function ensureLeaveUiStyles() {
     }
     .leave-balance-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 16px;
-      margin-top: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Reduce min-width for more cards per row */
+      gap: 12px; /* Reduce gap between cards */
+      margin-top: 12px;
     }
     
     @media (min-width: 1024px) {
@@ -1142,35 +1142,36 @@ export async function mountLeaveBalance({
       const initial = (r.name || 'U').charAt(0).toUpperCase();
       
       card.innerHTML = `
-        <div style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #F2F2F2; padding-bottom:12px;">
-          <div style="width:40px; height:40px; border-radius:50%; background:#0854A0; color:#FFF; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px;">${initial}</div>
+        <div style="display:flex; align-items:center; gap:8px; border-bottom:1px solid #F2F2F2; padding-bottom:8px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:#0854A0; color:#FFF; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px;">${initial}</div>
           <div>
-            <h3 style="font-size:16px; font-weight:normal; color:#32363A; margin:0;">${r.name || `User ${r.userId}`}</h3>
-            <p style="font-size:12px; color:#6A6D70; margin:2px 0 0 0;">社員番号: ${r.employeeCode || r.userId}</p>
+            <h3 style="font-size:14px; font-weight:bold; color:#32363A; margin:0; line-height:1.2;">${r.name || `User ${r.userId}`}</h3>
+            <p style="font-size:11px; color:#6A6D70; margin:2px 0 0 0;">${r.employeeCode || r.userId}</p>
           </div>
         </div>
         
-        <div style="display:flex; flex-direction:column; margin-top:4px;">
-          <span style="font-size:28px; font-weight:300; color:#111827;">${remainD} <span style="font-size:14px;">days</span></span>
-          <span style="font-size:12px; color:#6A6D70;">PTO Remaining</span>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:4px;">
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-size:24px; font-weight:300; color:#111827; line-height:1;">${remainD} <span style="font-size:12px; font-weight:normal;">days</span></span>
+            <span style="font-size:11px; color:#6A6D70; margin-top:2px;">Remaining</span>
+          </div>
+          <div style="text-align:right;">
+            <span style="color:#6A6D70; font-size:11px;">Used: <span style="font-weight:600; color:#32363A;">${usedD}/${totalG}</span></span>
+          </div>
         </div>
         
-        <div style="display:flex; justify-content:space-between; margin-top:4px; margin-bottom:0px;">
-          <span style="color:#6A6D70; font-size:12px;">Used: <span style="font-weight:600; color:#32363A;">${usedD} / ${totalG}</span></span>
-        </div>
-        
-        <div style="height:4px; background:#E5E5E5; border-radius:2px; overflow:hidden;">
+        <div style="height:4px; background:#E5E5E5; border-radius:2px; overflow:hidden; margin-top:2px;">
           <div style="height:100%; width:${pctUsed}%; background:#0854A0; border-radius:2px;"></div>
         </div>
         
-        <div style="font-size:12px; color:#6A6D70; display:flex; flex-direction:column; gap:4px; margin-top:auto; border-top:1px solid #F2F2F2; padding-top:12px;">
-          <div style="display:flex; justify-content:space-between;">
-            <span>Nearest Expiry</span>
+        <div style="font-size:11px; color:#6A6D70; display:flex; justify-content:space-between; margin-top:auto; border-top:1px solid #F2F2F2; padding-top:8px;">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span>Expiry</span>
             <span style="${isExpiringSoon ? 'color:#BB0000;font-weight:bold;' : 'color:#32363A;'}">${r.nearestExpiry || 'N/A'}</span>
           </div>
-          <div style="display:flex; justify-content:space-between;">
+          <div style="display:flex; flex-direction:column; gap:2px; text-align:right;">
             <span>Obligation</span>
-            <span style="color:#32363A;">${r.obligationRemaining || 0} days</span>
+            <span style="color:#32363A;">${r.obligationRemaining || 0}d</span>
           </div>
         </div>
       `;
