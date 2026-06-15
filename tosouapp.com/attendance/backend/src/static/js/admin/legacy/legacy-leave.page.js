@@ -1316,16 +1316,23 @@ export async function mountLeaveUnified({
       margin: 0 !important;
       height: 100vh !important;
       overflow: hidden !important;
-      background: transparent !important; /* Force transparent background */
-      border: none !important; /* Force no border */
-      box-shadow: none !important; /* Force no shadow */
+      background: #FFFFFF !important; /* Fix background issue to hide any gaps */
+      border: none !important;
+      box-shadow: none !important;
     }
     body.admin.has-sidebar #adminContent {
       padding: 0 !important;
       margin: 0 !important;
-      background: transparent !important; /* Force transparent background */
-      border: none !important; /* Force no border */
-      box-shadow: none !important; /* Force no shadow */
+      background: #FFFFFF !important; /* Force content area background */
+      border: none !important;
+      box-shadow: none !important;
+    }
+    /* Hide the status and error bars if they are empty so they don't take up space */
+    body.admin.has-sidebar .status:empty, 
+    body.admin.has-sidebar .error:empty {
+      display: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
   `;
   document.head.appendChild(style);
@@ -1338,11 +1345,20 @@ export async function mountLeaveUnified({
     content.style.maxWidth = 'none';
     content.style.border = 'none';
     content.style.boxShadow = 'none';
-    content.style.background = 'transparent';
+    content.style.background = '#FFFFFF';
     content.style.height = 'calc(100vh - var(--topbar-height, 56px) - var(--subbar-height, 40px))';
     content.style.overflow = 'hidden';
     const body = document.body;
     body.style.overflow = 'hidden'; // Stop the whole page from scrolling
+    
+    // Also explicitly hide siblings like #status or #error if they exist to prevent top gap
+    const parent = content.parentElement;
+    if (parent) {
+      const statusEl = parent.querySelector('#status');
+      if (statusEl && !statusEl.textContent.trim()) statusEl.style.display = 'none';
+      const errorEl = parent.querySelector('#error');
+      if (errorEl && !errorEl.textContent.trim()) errorEl.style.display = 'none';
+    }
   }
   
   content.innerHTML = `
