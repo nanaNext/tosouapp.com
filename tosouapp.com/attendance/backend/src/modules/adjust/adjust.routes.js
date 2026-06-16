@@ -6,6 +6,8 @@ console.log('🔧 adjust.routes.js loaded, controller.listAll exists:', typeof c
 // Routes yêu cầu sửa giờ - 放更具体的路由放在前面！
 router.get('/admin', authenticate, authorize('admin','manager'), controller.listAll);
 router.get('/my', authenticate, authorize('employee','manager','admin'), controller.listMine);
+router.get('/:id/messages', authenticate, authorize('employee','manager','admin'), controller.listMessages);
+router.post('/:id/messages', authenticate, authorize('employee','manager','admin'), controller.addMessage);
 router.patch('/:id/status', authenticate, authorize('manager','admin'), controller.updateStatus);
 router.post('/', authenticate, authorize('employee','manager','admin'), controller.create);
 router.get('/', authenticate, authorize('manager','admin'), controller.listUser);

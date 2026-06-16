@@ -67,6 +67,140 @@ const toMySQLDateTime = (dtLocal) => {
   return null;
 };
 
+let openAdjustChatId = null;
+const adjustChatCache = Object.create(null);
+const adjustChatLoading = Object.create(null);
+const adjustChatErrors = Object.create(null);
+
+const fmtAdjustChatDate = (val) => {
+  if (!val) return '';
+  return String(val).slice(0, 16).replace('T', ' ');
+};
+
+const loadAdjustMessages = async (id) => {
+  adjustChatLoading[id] = true;
+  delete adjustChatErrors[id];
+  try {
+    const rows = await fetchJSONAuth(`/api/adjust/${encodeURIComponent(id)}/messages`);
+    adjustChatCache[id] = Array.isArray(rows) ? rows : [];
+  } catch (e) {
+    adjustChatErrors[id] = e?.message || 'unknown';
+    adjustChatCache[id] = [];
+    throw e;
+  } finally {
+    delete adjustChatLoading[id];
+  }
+};
+
+const sendAdjustMessage = async (id, message) => {
+  await fetchJSONAuth(`/api/adjust/${encodeURIComponent(id)}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ message })
+  });
+  await loadAdjustMessages(id);
+};
+
+const openAdjustChatModal = (id) => {
+  const r = requestsCache.find((it) => String(it.id) === String(id));
+  if (!r) return;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.48);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+  const renderBody = () => {
+    const loading = !!adjustChatLoading[id];
+    const messages = Array.isArray(adjustChatCache[id]) ? adjustChatCache[id] : [];
+    const error = String(adjustChatErrors[id] || '').trim();
+    const intro = r.admin_note
+      ? `<div style="margin-bottom:8px;padding:8px 10px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;"><strong>差戻し理由:</strong> ${esc(r.admin_note)}</div>`
+      : '';
+    const errorHtml = error
+      ? `<div style="margin-bottom:8px;padding:8px 10px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px;">やり取りの読み込みに失敗しました: ${esc(error)}</div>`
+      : '';
+    const listHtml = loading
+      ? '<div style="font-size:12px;color:#64748b;">読み込み中...</div>'
+      : (messages.length
+          ? messages.map((msg) => {
+              const isMine = String(msg.sender_user_id) === String(r.userId);
+              const align = isMine ? 'flex-end' : 'flex-start';
+              const bg = isMine ? '#dbeafe' : '#f8fafc';
+              return `
+                <div style="display:flex;justify-content:${align};margin-bottom:8px;">
+                  <div style="max-width:85%;background:${bg};border:1px solid #dbeafe;border-radius:12px;padding:8px 10px;">
+                    <div style="font-size:11px;font-weight:700;color:#334155;margin-bottom:4px;">${esc(msg.sender_name || (isMine ? '自分' : '管理者'))}</div>
+                    <div style="font-size:12px;color:#0f172a;white-space:pre-wrap;word-break:break-word;">${esc(msg.message || '')}</div>
+                    <div style="font-size:10px;color:#64748b;margin-top:4px;">${esc(fmtAdjustChatDate(msg.created_at))}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          : '<div style="font-size:12px;color:#64748b;">まだやり取りはありません。</div>');
+
+    return `
+      <div style="width:100%;max-width:560px;background:#fff;border-radius:12px;box-shadow:0 20px 45px rgba(15,23,42,0.25);overflow:hidden;display:flex;flex-direction:column;max-height:85vh;">
+        <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:700;color:#0f172a;font-size:15px;">やり取り</div>
+          <button type="button" id="btnAdjustChatClose" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;padding:0;line-height:1;">&times;</button>
+        </div>
+        <div style="padding:16px 20px;overflow-y:auto;flex:1;background:#f8fafc;">
+          ${intro}
+          ${errorHtml}
+          ${listHtml}
+        </div>
+        <div style="padding:12px 20px;border-top:1px solid #e2e8f0;background:#fff;display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="adjustChatInputText" placeholder="メッセージを入力..." style="flex:1;min-height:72px;resize:vertical;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;box-sizing:border-box;font:inherit;"></textarea>
+          <button id="btnAdjustChatSend" type="button" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #005eb8;background:#005eb8;color:#fff;cursor:pointer;font-weight:600;">送信</button>
+        </div>
+      </div>
+    `;
+  };
+
+  const updateModalBody = () => {
+    modal.innerHTML = renderBody();
+    bindEvents();
+    const chatContainer = modal.children[0].children[1];
+    if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+  };
+
+  const close = () => {
+    try { document.body.removeChild(modal); } catch (e) { /* silently ignored */ }
+    openAdjustChatId = null;
+  };
+
+  const bindEvents = () => {
+    modal.querySelector('#btnAdjustChatClose')?.addEventListener('click', close);
+    modal.querySelector('#btnAdjustChatSend')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const input = modal.querySelector('#adjustChatInputText');
+      const text = String(input?.value || '').trim();
+      if (!text) {
+        input?.focus();
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '送信中...';
+      try {
+        await sendAdjustMessage(id, text);
+        updateModalBody();
+      } catch (err) {
+        adjustChatErrors[id] = err?.message || 'unknown';
+        updateModalBody();
+      }
+    });
+  };
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+
+  document.body.appendChild(modal);
+  updateModalBody();
+
+  if (!adjustChatCache[id]) {
+    loadAdjustMessages(id).then(updateModalBody).catch(updateModalBody);
+  }
+};
+
 const wireUserMenu = () => {
   const btn = document.querySelector('.user-btn');
   const dd = $('#userDropdown');
@@ -335,6 +469,9 @@ const renderForm = async () => {
   els.submit?.addEventListener('click', handleApply);
 };
 
+let currentPage = 1;
+const itemsPerPage = 15;
+
 const renderList = async () => {
   const host = $('#adjustListHost');
   if (!host) return;
@@ -355,8 +492,9 @@ const renderList = async () => {
     selectedMonth = now.toISOString().slice(0, 7); // yyyy-MM
 
     const monthInput = document.getElementById('adjustMonthFilter');
-    if (monthInput && monthInput.value) {
+    if (monthInput && monthInput.value && monthInput.value !== selectedMonth) {
       selectedMonth = monthInput.value;
+      currentPage = 1;
     }
 
     // Lọc dữ liệu theo tháng được chọn
@@ -365,12 +503,18 @@ const renderList = async () => {
       return created === selectedMonth;
     });
 
-    if (!Array.isArray(filteredRows) || filteredRows.length === 0) {
+    const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const pagedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    if (!Array.isArray(pagedRows) || pagedRows.length === 0) {
       host.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>申請はありません</div></div>';
       return;
     }
 
-    const tr = filteredRows.map((r, idx) => {
+    const tr = pagedRows.map((r) => {
       const cin  = String(r.requestedCheckIn  || '').slice(0, 16).replace('T', ' ');
       const cout = String(r.requestedCheckOut || '').slice(0, 16).replace('T', ' ');
       const st = String(r.status || 'pending');
@@ -379,21 +523,29 @@ const renderList = async () => {
       else if (st === 'rejected') { stLabel = '却下'; stClass = 'adj-status-rejected'; }
       else { stLabel = '承認待ち'; stClass = 'adj-status-pending'; }
       const created = r.created_at ? String(r.created_at).slice(0, 16).replace('T', ' ') : '—';
-      const staff = profile?.username || profile?.email || '';
       const appNo = `R-${String(r.id).padStart(7, '0')}`;
-      const detail = r.reason ? `${r.reason}` : '';
+      const detail = `
+        <div style="white-space:pre-wrap;word-break:break-word;">${esc(r.reason || '')}</div>
+        ${r.admin_note ? `<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;"><strong>差戻し理由:</strong> ${esc(r.admin_note)}</div>` : ''}
+      `;
       const type = '打刻修正（申請）';
-      const actions = st === 'pending'
-        ? `<button class="btn-edit sap-action-btn" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" title="編集"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button> <button class="btn-delete sap-action-btn delete" data-id="${r.id}" title="削除"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`
+      const editBtn = (st === 'pending' || st === 'rejected')
+        ? `<button class="btn-edit sap-action-btn" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" title="${st === 'rejected' ? '再申請' : '編集'}"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>`
         : '';
-      return `<tr>
+      const deleteBtn = st === 'pending'
+        ? ` <button class="btn-delete sap-action-btn delete" data-id="${r.id}" title="削除"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`
+        : '';
+      const chatBtn = ` <button class="btn-chat sap-action-btn" data-id="${r.id}" title="やり取り"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z"></path></svg></button>`;
+      const actions = `${editBtn}${chatBtn}${deleteBtn}`.trim();
+      const rowHtml = `<tr data-record-row="1" data-record-id="${r.id}">
         <td><a href="#" data-jump="${r.id}" style="color:#005eb8; text-decoration:none; font-weight:600;">${appNo}</a></td>
         <td><span class="sap-badge ${stClass}">${esc(stLabel)}</span></td>
         <td>${type}</td>
-        <td>${esc(detail)}</td>
+        <td>${detail}</td>
         <td>${created}</td>
         <td>${actions}</td>
       </tr>`;
+      return rowHtml;
     }).join('');
     host.innerHTML = `
         <style>
@@ -506,6 +658,7 @@ const renderList = async () => {
           .sap-action-btn { background: transparent; border: 1px solid transparent; color: #005eb8; padding: 4px; font-size: 12px; cursor: pointer; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; }
           .sap-action-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
           .sap-action-btn.delete { color: #ef4444; }
+          .sap-action-btn.btn-chat { color: #6366f1; }
 
           /* Mobile Inline Edit Form Styles */
           .inline-edit-container {
@@ -557,6 +710,13 @@ const renderList = async () => {
                 </thead>
                 <tbody>${tr}</tbody>
               </table>
+              ${totalPages > 1 ? `
+                <div style="display:flex;justify-content:center;align-items:center;padding:16px 0;gap:12px;">
+                  <button id="btnAdjustPagePrev" class="sap-btn" ${currentPage === 1 ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>前へ</button>
+                  <span style="font-size:13px;color:#475569;">${currentPage} / ${totalPages} ページ</span>
+                  <button id="btnAdjustPageNext" class="sap-btn" ${currentPage === totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>次へ</button>
+                </div>
+              ` : ''}
             </div>
           </div>
         </div>
@@ -567,6 +727,12 @@ const renderList = async () => {
       if (monthFilter) {
         monthFilter.addEventListener('change', renderList);
       }
+      
+      const btnPrev = document.getElementById('btnAdjustPagePrev');
+      const btnNext = document.getElementById('btnAdjustPageNext');
+      if (btnPrev) btnPrev.onclick = () => { if (currentPage > 1) { currentPage--; renderList(); } };
+      if (btnNext) btnNext.onclick = () => { if (currentPage < totalPages) { currentPage++; renderList(); } };
+
       const searchInput = document.getElementById('adjustSearch');
       if (searchInput) {
         let t = 0;
@@ -574,10 +740,14 @@ const renderList = async () => {
           try { clearTimeout(t); } catch (e) { /* silently ignored */ }
           t = setTimeout(() => {
             const q = String(searchInput.value || '').trim().toLowerCase();
-            const rows = host.querySelectorAll('.adj-table tbody tr');
+            const rows = host.querySelectorAll('tr[data-record-row="1"]');
             rows.forEach(tr => {
               const text = tr.textContent.toLowerCase();
-              tr.style.display = text.includes(q) ? '' : 'none';
+              const matched = text.includes(q);
+              tr.style.display = matched ? '' : 'none';
+              const recId = tr.getAttribute('data-record-id');
+              const chatRow = host.querySelector(`.adjust-chat-row[data-chat-owner="${recId}"]`);
+              if (chatRow) chatRow.style.display = matched ? '' : 'none';
             });
           }, 180);
         });
@@ -600,6 +770,14 @@ const renderList = async () => {
           } catch (err) {
             showErr(err?.message || '削除に失敗しました');
           }
+        });
+      });
+      document.querySelectorAll('.btn-chat').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const id = e.currentTarget.dataset.id;
+          openAdjustChatId = id;
+          openAdjustChatModal(id);
         });
       });
       document.querySelectorAll('.btn-edit').forEach(btn => {
@@ -631,7 +809,7 @@ const renderList = async () => {
             <td colspan="6" style="padding: 0; border: none;">
               <div class="inline-edit-container">
                 <button class="inline-close" style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; cursor: pointer; color: #64748b; font-size: 14px; padding: 4px; line-height: 1;" title="閉じる">✕</button>
-                <div style="font-weight: 600; color: #005eb8; margin-bottom: 12px; font-size: 13px;">申請の編集</div>
+                <div style="font-weight: 600; color: #005eb8; margin-bottom: 12px; font-size: 13px;">${String(e.currentTarget.title || '') === '再申請' ? '差戻しされた申請を修正して再申請' : '申請の編集'}</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
                   <div style="flex: 1 1 130px; min-width: 130px;">
                     <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">修正(出勤)</div>
@@ -687,7 +865,7 @@ const renderList = async () => {
                 method: 'PATCH',
                 body: JSON.stringify({ requestedCheckIn: newIn, requestedCheckOut: newOut, reason: newReason })
               });
-              // Cập nhật lại toàn bộ bảng (bảng sẽ vẫn mở)
+              delete adjustChatCache[id];
               await renderList();
             } catch (err) {
               btnSave.disabled = false;
