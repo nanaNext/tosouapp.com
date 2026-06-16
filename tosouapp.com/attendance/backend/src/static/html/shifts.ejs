@@ -44,16 +44,7 @@
   <%- include('_partials/employee-header.ejs') %>
   <main class="content">
     <div id="shiftsApp">
-      <div class="shifts-header">
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="font-weight: bold;">従業員: <span id="profileName"></span> (<span id="profileDept"></span>)</div>
-            <span id="headerStatusBadge" class="status-badge status-draft">未提出</span>
-          </div>
-          <div style="font-size: 13px;">雇用形態: <span id="profileType"></span></div>
-          <div style="color: #ea580c; font-size: 13px;" id="profileInstruction"></div>
-        </div>
-      </div>
+      <!-- Nội dung sẽ được render bằng JS (tránh hiện tượng chớp/nháy giao diện) -->
     </div>
   </main>
 </body>

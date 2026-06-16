@@ -1,5 +1,6 @@
 export async function mount({ content, initialPath }) {
   const layout = document.createElement('div');
+  layout.className = 'att-hub-layout';
   
   // Check if standalone
   const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
@@ -10,9 +11,11 @@ export async function mount({ content, initialPath }) {
     background: #FFFFFF;
     margin: 0;
     padding: 0;
+    position: relative;
   `;
   
   const sidebar = document.createElement('div');
+  sidebar.className = 'att-hub-sidebar';
   sidebar.style.cssText = `
     width: 220px;
     background: #F9FAFB;
@@ -25,7 +28,61 @@ export async function mount({ content, initialPath }) {
     overflow-y: auto;
     box-sizing: border-box;
     margin-top: -1px;
+    z-index: 100;
+    transition: transform 0.3s ease;
   `;
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'att-hub-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  `;
+  overlay.onclick = () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    mainContentWrapper.classList.remove('shifted');
+  };
+
+  const mainContentWrapper = document.createElement('div');
+  mainContentWrapper.className = 'att-hub-main-wrapper';
+  mainContentWrapper.style.cssText = `
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    transition: transform 0.3s ease;
+  `;
+
+  const mobileHeader = document.createElement('div');
+  mobileHeader.className = 'att-hub-mobile-header';
+  mobileHeader.style.cssText = `
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    background: #F9FAFB;
+    border-bottom: 1px solid #E5E7EB;
+    position: relative;
+    height: 50px;
+    box-sizing: border-box;
+  `;
+  mobileHeader.innerHTML = `
+    <button class="att-hub-menu-btn" style="position:absolute;left:16px;background:none;border:none;padding:4px;cursor:pointer;color:#4B5563;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+    <span style="font-weight:600;color:#111827;font-size:16px;" id="attHubMobileTitle">勤怠メニュー</span>
+  `;
+  mobileHeader.querySelector('.att-hub-menu-btn').onclick = () => {
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+    mainContentWrapper.classList.add('shifted');
+  };
   
   const mainContent = document.createElement('div');
   mainContent.id = 'attendanceHubContent';
@@ -39,6 +96,7 @@ export async function mount({ content, initialPath }) {
     min-width: 0;
     ${isStandalone ? 'height: 100vh;' : ''}
   `;
+
   
   const menuItems = [
     { id: 'att-records', label: '勤怠記録', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', href: '/admin/attendance' },
@@ -147,12 +205,79 @@ export async function mount({ content, initialPath }) {
       border-left: none !important;
       border-right: none !important;
     }
+    
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+      .att-hub-layout {
+        overflow-x: hidden;
+      }
+      .att-hub-mobile-header {
+        display: flex !important;
+      }
+      /* Hide the inner title (h2) on mobile since we have it in the header */
+      #attendanceHubContent h2 {
+        display: none !important;
+      }
+      .att-hub-sidebar {
+        position: fixed !important;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        height: 100vh !important;
+        transform: translateX(-100%);
+        z-index: 1001 !important;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        padding-top: 16px !important;
+      }
+      .att-hub-sidebar.open {
+        transform: translateX(0);
+      }
+      .att-hub-main-wrapper {
+        width: 100%;
+      }
+      .att-hub-main-wrapper.shifted {
+        transform: translateX(220px);
+      }
+      .att-hub-overlay {
+        display: block !important;
+        pointer-events: none;
+      }
+      .att-hub-overlay.open {
+        opacity: 1 !important;
+        pointer-events: auto;
+        z-index: 1000 !important;
+      }
+      #attendanceHubContent {
+        padding: 0 !important;
+      }
+      /* Ensure the inner layout for work reports fits nicely on mobile */
+      .wr-toolbar {
+        flex-direction: column;
+        align-items: stretch !important;
+      }
+      .wr-input {
+        width: 100%;
+      }
+      .wr-btn-dl {
+        width: 100%;
+      }
+    }
   `;
   document.head.appendChild(styleEl);
 
+  layout.appendChild(overlay);
   layout.appendChild(sidebar);
-  layout.appendChild(mainContent);
+  mainContentWrapper.appendChild(mobileHeader);
+  mainContentWrapper.appendChild(mainContent);
+  layout.appendChild(mainContentWrapper);
   content.appendChild(layout);
+
+  // Update title based on current path
+  const currentItem = menuItems.find(i => currentPath === i.href);
+  if (currentItem) {
+    const titleEl = document.getElementById('attHubMobileTitle');
+    if (titleEl) titleEl.textContent = currentItem.label;
+  }
 
   return mainContent;
 }

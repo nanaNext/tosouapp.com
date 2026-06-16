@@ -47,7 +47,101 @@ export async function mountShifts({ content }) {
   const defTitle = document.createElement('div');
   defTitle.className = 'form-title';
   defTitle.textContent = 'シフト管理'; // Đổi từ シフト定義 thành シフト管理
+  defTitle.style.display = 'none';
   defCard.appendChild(defTitle);
+  
+  const addWrap = document.createElement('div');
+  addWrap.className = 'form-actions';
+  addWrap.style.borderTop = 'none';
+  addWrap.style.borderBottom = '1px solid #e2e8f0';
+  let nameIn = document.createElement('input');
+  nameIn.type = 'text'; nameIn.placeholder = '例: day_8_17'; nameIn.style.minWidth = '160px'; nameIn.style.marginRight = '8px';
+  let sIn = document.createElement('input');
+  sIn.type = 'time'; sIn.value = '08:00'; sIn.style.marginRight = '8px';
+  let eIn = document.createElement('input');
+  eIn.type = 'time'; eIn.value = '17:00'; eIn.style.marginRight = '8px';
+  let brSel = document.createElement('select');
+  brSel.style.marginRight = '8px';
+  brSel.innerHTML = '<option value="60">1:00</option><option value="45">0:45</option><option value="30">0:30</option><option value="0">0:00</option>';
+  
+  const buildPayload = () => ({
+    name: normalizeName(nameIn.value),
+    start_time: String(sIn.value || '').trim(),
+    end_time: String(eIn.value || '').trim(),
+    break_minutes: parseInt(String(brSel.value || '0'), 10)
+  });
+  const validatePayload = (payload) => {
+    if (!payload.name) return false;
+    if (!/^\d{2}:\d{2}$/.test(payload.start_time)) return false;
+    if (!/^\d{2}:\d{2}$/.test(payload.end_time)) return false;
+    return true;
+  };
+  const refresh = async () => {
+    const rows = await api.get('/attendance/shifts/definitions');
+    defs = Array.isArray(rows) ? rows : [];
+    renderDefs(defs);
+  };
+  const clearInputs = () => {
+    nameIn.value = '';
+  };
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn-primary';
+  addBtn.textContent = '追加';
+  addBtn.style.padding = '0 12px';
+  addBtn.style.height = '30px';
+  addBtn.style.minHeight = '30px';
+  addBtn.style.width = 'auto';
+  addBtn.style.minWidth = '60px';
+  addBtn.style.boxSizing = 'border-box';
+  addBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const payload = buildPayload();
+    if (!validatePayload(payload)) {
+      alert('名称・開始・終了を入力してください');
+      return;
+    }
+    if (findDefByName(payload.name)) {
+      alert('同じ名称のシフトが既に存在します。更新する場合は「更新」を押してください。');
+      return;
+    }
+    await api.post('/attendance/shifts/definitions', payload);
+    await refresh();
+    clearInputs();
+  });
+
+  const updateBtn = document.createElement('button');
+  updateBtn.className = 'btn-secondary';
+  updateBtn.style.marginLeft = '8px';
+  updateBtn.style.padding = '0 12px';
+  updateBtn.style.height = '30px';
+  updateBtn.style.minHeight = '30px';
+  updateBtn.style.width = 'auto';
+  updateBtn.style.minWidth = '60px';
+  updateBtn.style.boxSizing = 'border-box';
+  updateBtn.textContent = '更新';
+  updateBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const payload = buildPayload();
+    if (!validatePayload(payload)) {
+      alert('名称・開始・終了を入力してください');
+      return;
+    }
+    if (!findDefByName(payload.name)) {
+      alert('更新できません: 対象のシフトが見つかりません。追加する場合は「追加」を押してください。');
+      return;
+    }
+    await api.post('/attendance/shifts/definitions', payload);
+    await refresh();
+  });
+  addWrap.appendChild(nameIn);
+  addWrap.appendChild(sIn);
+  addWrap.appendChild(eIn);
+  addWrap.appendChild(brSel);
+  addWrap.appendChild(addBtn);
+  addWrap.appendChild(updateBtn);
+  defCard.appendChild(addWrap);
+
   const defTable = document.createElement('table');
   defTable.className = 'excel-table';
   defTable.innerHTML = `
@@ -69,10 +163,6 @@ export async function mountShifts({ content }) {
     if (!n) return null;
     return (Array.isArray(defs) ? defs : []).find(d => normalizeName(d?.name) === n) || null;
   };
-  let nameIn = null;
-  let sIn = null;
-  let eIn = null;
-  let brSel = null;
   const renderDefs = (rows) => {
     const tb = defTable.querySelector('tbody');
     tb.innerHTML = '';
@@ -114,11 +204,16 @@ export async function mountShifts({ content }) {
       tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdE); tr.appendChild(tdB); tr.appendChild(tdM); tr.appendChild(tdDel);
       tr.addEventListener('click', () => {
         try {
-          if (!nameIn || !sIn || !eIn || !brSel) return;
-          nameIn.value = d.name || '';
-          sIn.value = d.start_time || '';
-          eIn.value = d.end_time || '';
-          brSel.value = String(d.break_minutes ?? 0);
+          const nameInput = document.querySelector('.form-actions input[type="text"]');
+          const timeInputs = document.querySelectorAll('.form-actions input[type="time"]');
+          const select = document.querySelector('.form-actions select');
+          
+          if (!nameInput || timeInputs.length < 2 || !select) return;
+          
+          nameInput.value = d.name || '';
+          timeInputs[0].value = d.start_time || '';
+          timeInputs[1].value = d.end_time || '';
+          select.value = String(d.break_minutes ?? 0);
         } catch (e) { /* silently ignored */ }
       });
       tb.appendChild(tr);
@@ -132,83 +227,6 @@ export async function mountShifts({ content }) {
   tableContainer.className = 'table-container';
   tableContainer.appendChild(defTable);
   defCard.appendChild(tableContainer);
-
-  const addWrap = document.createElement('div');
-  addWrap.className = 'form-actions';
-  nameIn = document.createElement('input');
-  nameIn.type = 'text'; nameIn.placeholder = '例: day_8_17'; nameIn.style.minWidth = '160px'; nameIn.style.marginRight = '8px';
-  sIn = document.createElement('input');
-  sIn.type = 'time'; sIn.value = '08:00'; sIn.style.marginRight = '8px';
-  eIn = document.createElement('input');
-  eIn.type = 'time'; eIn.value = '17:00'; eIn.style.marginRight = '8px';
-  brSel = document.createElement('select');
-  brSel.style.marginRight = '8px';
-  brSel.innerHTML = '<option value="60">1:00</option><option value="45">0:45</option><option value="30">0:30</option><option value="0">0:00</option>';
-  const buildPayload = () => ({
-    name: normalizeName(nameIn.value),
-    start_time: String(sIn.value || '').trim(),
-    end_time: String(eIn.value || '').trim(),
-    break_minutes: parseInt(String(brSel.value || '0'), 10)
-  });
-  const validatePayload = (payload) => {
-    if (!payload.name) return false;
-    if (!/^\d{2}:\d{2}$/.test(payload.start_time)) return false;
-    if (!/^\d{2}:\d{2}$/.test(payload.end_time)) return false;
-    return true;
-  };
-  const refresh = async () => {
-    const rows = await api.get('/attendance/shifts/definitions');
-    defs = Array.isArray(rows) ? rows : [];
-    renderDefs(defs);
-  };
-  const clearInputs = () => {
-    nameIn.value = '';
-  };
-
-  const addBtn = document.createElement('button');
-  addBtn.className = 'btn-primary';
-  addBtn.textContent = '追加';
-  addBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const payload = buildPayload();
-    if (!validatePayload(payload)) {
-      alert('名称・開始・終了を入力してください');
-      return;
-    }
-    if (findDefByName(payload.name)) {
-      alert('同じ名称のシフトが既に存在します。更新する場合は「更新」を押してください。');
-      return;
-    }
-    await api.post('/attendance/shifts/definitions', payload);
-    await refresh();
-    clearInputs();
-  });
-
-  const updateBtn = document.createElement('button');
-  updateBtn.className = 'btn-primary';
-  updateBtn.style.marginLeft = '8px';
-  updateBtn.textContent = '更新';
-  updateBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const payload = buildPayload();
-    if (!validatePayload(payload)) {
-      alert('名称・開始・終了を入力してください');
-      return;
-    }
-    if (!findDefByName(payload.name)) {
-      alert('更新できません: 対象のシフトが見つかりません。追加する場合は「追加」を押してください。');
-      return;
-    }
-    await api.post('/attendance/shifts/definitions', payload);
-    await refresh();
-  });
-  addWrap.appendChild(nameIn);
-  addWrap.appendChild(sIn);
-  addWrap.appendChild(eIn);
-  addWrap.appendChild(brSel);
-  addWrap.appendChild(addBtn);
-  addWrap.appendChild(updateBtn);
-  defCard.appendChild(addWrap);
 
   wrap.appendChild(defCard);
 
@@ -270,16 +288,17 @@ export async function mountShifts({ content }) {
         color: #0f172a !important;
         font-weight: 600 !important;
         border: 1px solid #cbd5e1 !important;
-        padding: 6px 8px !important;
+        padding: 4px 8px !important;
         font-size: 13px !important;
         text-align: center !important;
         white-space: nowrap;
       }
       .shift-fiori-override .excel-table td {
         border: 1px solid #cbd5e1 !important;
-        padding: 6px 8px !important;
+        padding: 2px 8px !important;
         font-size: 13px !important;
         vertical-align: middle !important;
+        text-align: center !important;
       }
       .shift-fiori-override .excel-table tbody tr {
         cursor: pointer;
@@ -309,12 +328,14 @@ export async function mountShifts({ content }) {
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
       }
       .shift-fiori-override .btn-primary,
+      .shift-fiori-override .btn-secondary,
       .shift-fiori-override .btn-danger {
         height: 30px !important;
+        min-height: 30px !important;
         font-size: 13px !important;
-        padding: 0 16px !important;
+        padding: 0 12px !important;
         border-radius: 4px !important;
-        box-sizing: border-box;
+        box-sizing: border-box !important;
         border: none;
         cursor: pointer;
         font-weight: 500;
@@ -322,14 +343,26 @@ export async function mountShifts({ content }) {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: auto !important;
+        min-width: 60px !important;
       }
       .shift-fiori-override .btn-primary {
-        background: #3b82f6 !important;
-        color: #fff !important;
+        background-color: #0a6ed1 !important;
+        border: 1px solid #0a6ed1 !important;
+        color: #ffffff !important;
       }
       .shift-fiori-override .btn-primary:hover {
-        background: #2563eb !important;
-        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        background-color: #0854a0 !important;
+        border-color: #0854a0 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+      }
+      .shift-fiori-override .btn-secondary {
+        background-color: transparent !important;
+        border: 1px solid #0a6ed1 !important;
+        color: #0a6ed1 !important;
+      }
+      .shift-fiori-override .btn-secondary:hover {
+        background-color: #e5f0fa !important;
       }
       .shift-fiori-override .btn-danger {
         background: #fef2f2 !important;

@@ -75,7 +75,7 @@ export async function mountGoOut({ content }) {
       .btn-force-end:hover { background-color: #fef2f2 !important; }
       .btn-edit:hover { background-color: #eff6ff !important; }
     </style>
-    <div style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; min-height: ${vhExpr}; height: ${vhExpr}; display: flex; flex-direction: column;">
+    <div style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; display: flex; flex-direction: column;">
       <div class="page-header-container" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 0px; padding: 16px 24px 8px 24px; flex-shrink: 0;">
         <h2 class="page-header-title" style="display: none;">外出管理</h2>
         
@@ -85,7 +85,7 @@ export async function mountGoOut({ content }) {
       </div>
 
       <!-- Table -->
-      <div class="go-out-table-wrapper" style="overflow-x: auto; border-top: none; border-bottom: none; flex: 1; min-height: 0; overflow-y: auto; box-shadow: none; background: white; padding: 16px 24px 24px 24px;">
+      <div class="go-out-table-wrapper" style="overflow-x: auto; border-top: none; border-bottom: none; box-shadow: none; background: white; padding: 16px 24px 24px 24px;">
           <table class="go-out-table" style="width: 100%; border-collapse: collapse;">
             <thead style="position: sticky; top: 0; z-index: 10;">
               <tr style="background: #e6f2ff; color: #0f172a; text-align: center; height: 30px;">
@@ -287,18 +287,18 @@ export async function mountGoOut({ content }) {
           </td>
 
           <!-- Desktop View -->
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; color: #1e293b; height: 30px; text-align: center;">${escapeHtml(r.date)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; color: #1e293b; font-weight: 500; text-align: center;">${escapeHtml(r.employeeName)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; font-family: monospace; text-align: center;">${goTime}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; font-family: monospace; text-align: center;">${retTime}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; font-family: monospace; text-align: center; color: #64748b;">${duration}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; text-align: center;">${escapeHtml(r.type)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left;">
-            <div title="${fullReason}">${shortReason}</div>
-            ${r.admin_note ? `<div title="${fullAdminNote}" style="font-size: 11px; color: #94a3b8; margin-top: 2px;">(備考: ${shortAdminNote})</div>` : ''}
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #1e293b; text-align: center;">${escapeHtml(r.date)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #1e293b; font-weight: 500; text-align: center;">${escapeHtml(r.employeeName)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center;">${goTime}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center;">${retTime}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center; color: #64748b;">${duration}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; text-align: center;">${escapeHtml(r.type)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left;">
+            <div title="${fullReason}" style="line-height: 1.2;">${shortReason}</div>
+            ${r.admin_note ? `<div title="${fullAdminNote}" style="font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.1;">(備考: ${shortAdminNote})</div>` : ''}
           </td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; text-align: center;">${escapeHtml(r.status)}</td>
-          <td class="desktop-cell" style="padding: 4px 8px; font-size: 13px; white-space: nowrap; text-align: center;">${actions}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; text-align: center;">${escapeHtml(r.status)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; white-space: nowrap; text-align: center;">${actions}</td>
         </tr>
       `;
     });
