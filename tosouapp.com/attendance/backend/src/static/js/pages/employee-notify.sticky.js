@@ -265,8 +265,6 @@ async function refresh() {
 }
 
 function mount() {
-  // Disabled by request to remove the bell icon next to logout
-  return;
   if (state.mounted) return;
   const subnav = document.querySelector('.subbar .subnav');
   const kintaiTopLinks = document.querySelector('.kintai-top .kintai-top-links');

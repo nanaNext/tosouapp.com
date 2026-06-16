@@ -123,7 +123,6 @@ export async function mount() {
       .wr-off-row:hover td { background: #fee2e2 !important; }
     </style>
     <div style="flex-shrink: 0; padding-bottom: 12px;">
-      <h2 style="margin: 0; font-size: 16px; font-weight: 700; color: #111827; letter-spacing: -0.01em; margin-bottom: 12px;">作業報告</h2>
       <div class="wr-toolbar">
         <input id="wrMonth" type="month" class="wr-input wr-month" value="${state.month}">
         <select id="wrSort" class="wr-input wr-select wr-sort">

@@ -271,50 +271,124 @@ const renderForm = async () => {
   if (!host) return;
   host.innerHTML = `
     <style>
-      .sap-compact-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 12px 16px; max-width: 600px; margin: 20px 0 16px 0; }
-      .sap-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; }
-      .sap-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; }
-      .sap-toolbar { display: flex; gap: 8px; }
-      .sap-icon-btn { background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; width: 24px; height: 24px; }
+      .sap-compact-card { background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 4px; padding: 12px 16px; max-width: 500px; margin: 0 0 16px 0; }
+      .sap-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px; }
+      .sap-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; }
+      .sap-toolbar { display: flex; gap: 6px; }
+      .sap-icon-btn { background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; width: 22px; height: 22px; }
       .sap-icon-btn:hover { opacity: 0.7; }
       .sap-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-      .sap-grid { display: grid; grid-template-columns: 100px 1fr; gap: 12px 16px; align-items: center; }
-      .sap-label { font-size: 13px; font-weight: 600; color: #334155; text-align: left; }
-      .sap-input { padding: 6px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; width: 100%; max-width: 260px; box-sizing: border-box; outline: none; transition: border-color 0.2s; display: block; }
+      .sap-grid { display: grid; grid-template-columns: 85px 1fr; gap: 8px 12px; align-items: center; }
+      .sap-label { font-size: 12px; font-weight: 600; color: #334155; text-align: left; }
+      .sap-input { padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.2s; display: block; height: 28px; }
       .sap-input.full { max-width: 100%; }
-      .sap-textarea { padding: 8px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; width: 100%; box-sizing: border-box; outline: none; resize: vertical; min-height: 80px; font-family: inherit; transition: border-color 0.2s; display: block; }
-      .sap-textarea:focus { border-color: #005eb8; box-shadow: 0 0 0 2px rgba(0,94,184,0.1); }
-      .sap-input:focus { border-color: #005eb8; box-shadow: 0 0 0 2px rgba(0,94,184,0.1); }
-      .sap-current { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 10px; font-size: 13px; color: #334155; border-radius: 4px; line-height: 1.5; width: 100%; max-width: 260px; box-sizing: border-box; display: block; }
+      .sap-textarea { padding: 6px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 2px; width: 100%; box-sizing: border-box; outline: none; resize: vertical; min-height: 50px; font-family: inherit; transition: border-color 0.2s; display: block; }
+      .sap-textarea:focus { border-color: #005eb8; box-shadow: 0 0 0 1px rgba(0,94,184,0.1); }
+      .sap-input:focus { border-color: #005eb8; box-shadow: 0 0 0 1px rgba(0,94,184,0.1); }
+      .sap-current { background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; font-size: 12px; color: #334155; border-radius: 2px; line-height: 1.4; width: 100%; box-sizing: border-box; display: block; min-height: 28px; display: flex; flex-direction: column; justify-content: center; }
+      
+      .action-required-card { background: #fff7ed; border-left: 4px solid #ea580c; border-radius: 6px; padding: 16px; max-width: 600px; margin: 0 0 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+      .action-required-title { font-size: 14px; font-weight: 700; color: #9a3412; margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px; }
+      .action-required-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+      .action-required-item { background: #fff; border: 1px solid #fed7aa; padding: 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px; }
+      .action-required-header { display: flex; justify-content: space-between; align-items: center; }
+      .action-required-date { font-weight: 700; color: #1e293b; font-size: 13px; }
+      .action-required-reason { font-size: 12px; color: #9a3412; display: block; line-height: 1.4; }
+      .action-required-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; border-top: 1px dashed #fed7aa; padding-top: 10px; }
+      .action-required-btn { background: #fff; border: 1px solid #cbd5e1; color: #334155; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+      .action-required-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+      .action-required-btn.primary { background: #ea580c; border-color: #ea580c; color: #fff; }
+      .action-required-btn.primary:hover { background: #c2410c; border-color: #c2410c; }
+      
+      .sap-tabs-container {
+        border-bottom: 1px solid #cbd5e1;
+        margin-bottom: 16px;
+        margin-top: -16px;
+        display: flex;
+        gap: 24px;
+        overflow-x: auto;
+      }
+      .sap-tab {
+        padding: 12px 4px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+      }
+      .sap-tab:hover { color: #0f172a; }
+      .sap-tab.active {
+        color: #005eb8;
+        border-bottom-color: #005eb8;
+      }
+      .sap-tab svg { width: 18px; height: 18px; }
+      .tab-badge {
+        background: #ea580c;
+        color: #fff;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        line-height: 1;
+      }
     </style>
-    <div class="sap-compact-card">
+
+    <div class="sap-tabs-container" style="justify-content: space-between; align-items: center;">
+      <div style="display: flex; gap: 24px; overflow-x: auto;">
+        <div class="sap-tab active" id="tabNew">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          新規作成
+        </div>
+        <div class="sap-tab" id="tabRejected">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          差戻し確認
+          <span id="rejectBadge" class="tab-badge" style="display:none;">0</span>
+        </div>
+        <div class="sap-tab" id="tabHistory">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+          申請履歴
+        </div>
+      </div>
+      <div id="adjustMonthFilterContainer" style="display: none; padding-bottom: 8px;">
+        <input type="month" id="adjustMonthFilter" class="sap-table-input" value="${new Date().toISOString().slice(0, 7)}">
+      </div>
+      <div id="actionRequiredHost" style="display: none;"></div>
+    </div>
+
+    <div id="newAdjustFormCard" class="sap-compact-card" style="margin-top: 0; display: block;">
       <div class="sap-header">
         <h3 class="sap-title">
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
           修正申請
         </h3>
         <div class="sap-toolbar" style="display: flex; align-items: center; gap: 8px;">
-          <button id="btnToggleHistory" title="履歴" class="sap-icon-btn">
-            <img src="/static/images/rireki-1.png" alt="履歴" style="width: 24px; height: 24px; object-fit: contain; pointer-events: none;">
-          </button>
           <button id="adjSubmit" title="送信" class="sap-icon-btn">
             <img src="/static/images/shinsei.webp" alt="送信" style="width: 24px; height: 24px; object-fit: contain; pointer-events: none;">
           </button>
         </div>
       </div>
       
+      <div id="adjRejectReasonContainer" style="display:none; margin: 12px 16px 0; padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; color: #9a3412;">
+        <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px;">差戻し理由:</div>
+        <div id="adjRejectReasonText" style="font-size: 13px; white-space: pre-wrap; word-break: break-word;"></div>
+      </div>
+
       <div class="sap-grid">
         <div class="sap-label">対象日 <span style="color:#ef4444">*</span></div>
-        <div><input id="adjDate" class="sap-input" type="date" value="${todayISO()}"></div>
+        <div><input id="adjDate" class="sap-input" type="date" value="${todayISO()}" style="width: 130px;"></div>
 
         <div class="sap-label">現在の打刻</div>
-        <div><div id="adjCurrent" class="sap-current">—</div></div>
+        <div><div id="adjCurrent" class="sap-current" style="width: 100%; max-width: none;">—</div></div>
 
         <div class="sap-label">修正(出勤)</div>
-        <div><input id="adjIn" class="sap-input" type="datetime-local"></div>
+        <div><input id="adjIn" class="sap-input" type="datetime-local" style="width: 180px;"></div>
 
         <div class="sap-label">修正(退勤)</div>
-        <div><input id="adjOut" class="sap-input" type="datetime-local"></div>
+        <div><input id="adjOut" class="sap-input" type="datetime-local" style="width: 180px;"></div>
 
         <div class="sap-label" style="align-self: flex-start; margin-top: 6px;">理由 <span style="color:#ef4444">*</span></div>
         <div><textarea id="adjReason" class="sap-textarea" placeholder="例: 打刻し忘れ（必須）"></textarea></div>
@@ -364,30 +438,49 @@ const renderForm = async () => {
     }
   };
 
-  const toggleDrawer = () => {
-    const drawer = $('#sapDrawer');
-    const overlay = $('#sapDrawerOverlay');
-    if (!drawer || !overlay) return;
+  // Xử lý sự kiện chuyển Tab
+  const switchTab = (tabId) => {
+    // Cập nhật UI Tab
+    document.querySelectorAll('.sap-tab').forEach(t => t.classList.remove('active'));
+    const activeTab = document.getElementById(tabId);
+    if (activeTab) activeTab.classList.add('active');
+
+    // Ẩn tất cả nội dung
+    const formCard = document.getElementById('newAdjustFormCard');
+    const actionCard = document.getElementById('actionRequiredCard');
+    const actionHost = document.getElementById('actionRequiredHost');
+    const historyBlock = document.getElementById('sapHistoryBlock');
     
-    const isActive = drawer.classList.contains('active');
-    if (isActive) {
-      drawer.classList.remove('active');
-      overlay.classList.remove('active');
-      document.body.style.overflow = ''; // Restore scroll
-    } else {
-      drawer.classList.add('active');
-      overlay.classList.add('active');
-      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    if (formCard) formCard.style.display = 'none';
+    if (actionCard) actionCard.style.display = 'none';
+    if (actionHost) actionHost.style.display = 'none';
+    if (historyBlock) historyBlock.style.display = 'none';
+
+    // Hiển thị nội dung tương ứng
+    if (tabId === 'tabNew' && formCard) {
+      formCard.style.display = 'block';
+    } else if (tabId === 'tabRejected') {
+      if (actionHost) actionHost.style.display = 'block';
+      if (actionCard) actionCard.style.display = 'block';
+    } else if (tabId === 'tabHistory') {
+      if (historyBlock) historyBlock.style.display = 'block';
+    }
+    
+    // Toggle month filter display
+    const monthFilterContainer = document.getElementById('adjustMonthFilterContainer');
+    if (monthFilterContainer) {
+      monthFilterContainer.style.display = tabId === 'tabHistory' ? 'block' : 'none';
     }
   };
 
-  $('#btnToggleHistory')?.addEventListener('click', toggleDrawer);
-  
+  $('#tabNew')?.addEventListener('click', () => switchTab('tabNew'));
+  $('#tabRejected')?.addEventListener('click', () => switchTab('tabRejected'));
+  $('#tabHistory')?.addEventListener('click', () => switchTab('tabHistory'));
+
+  // Xóa các event listener cũ của 3 nút Quick Actions do đã chuyển sang dùng Tab
   // Xử lý sự kiện click cho các nút động (close, overlay) bằng Event Delegation
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#btnDrawerClose') || e.target.id === 'sapDrawerOverlay') {
-      toggleDrawer();
-    }
+    // Không cần xử lý đóng drawer nữa
   });
 
   els.date?.addEventListener('change', loadDay);
@@ -491,6 +584,170 @@ const renderList = async () => {
     const now = new Date();
     selectedMonth = now.toISOString().slice(0, 7); // yyyy-MM
 
+    window.requestsCache = rows;
+
+    // Hiển thị danh sách các yêu cầu bị trả về ở ngay màn hình chính
+    const actionHost = document.getElementById('actionRequiredHost');
+    const rejectBadge = document.getElementById('rejectBadge');
+    
+    if (actionHost) {
+      const rejectedRows = rows.filter(row => row.status === 'rejected');
+      
+      // Cập nhật số lượng trên Badge của Tile
+      if (rejectBadge) {
+        if (rejectedRows.length > 0) {
+          rejectBadge.textContent = rejectedRows.length;
+          rejectBadge.style.display = 'block';
+        } else {
+          rejectBadge.style.display = 'none';
+        }
+      }
+
+      if (rejectedRows.length > 0) {
+        actionHost.innerHTML = `
+          <div class="action-required-card" style="display: none;" id="actionRequiredCard">
+            <h4 class="action-required-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              差戻しされた申請があります（${rejectedRows.length}件）
+            </h4>
+            <ul class="action-required-list">
+              ${rejectedRows.map(row => {
+                const dateLabel = String(row.requestedCheckIn || row.created_at || '').slice(0, 10).replace(/-/g, '/');
+                return `
+                  <li class="action-required-item">
+                    <div class="action-required-header">
+                      <span class="action-required-date">対象日: ${dateLabel}</span>
+                    </div>
+                    <div class="action-required-reason">
+                      <strong>差戻し理由:</strong> ${esc(row.admin_note || row.reason || '—')}
+                    </div>
+                    <div class="action-required-actions">
+                      <button type="button" class="action-required-btn btn-chat-action" data-id="${row.id}">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z"></path></svg>
+                        やり取り
+                      </button>
+                      <button type="button" class="action-required-btn primary btn-fix-action" data-id="${row.id}" data-in="${row.requestedCheckIn || ''}" data-out="${row.requestedCheckOut || ''}" data-reason="${esc(row.reason || '')}" data-adminnote="${esc(row.admin_note || '')}">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        修正する
+                      </button>
+                    </div>
+                  </li>
+                `;
+              }).join('')}
+            </ul>
+          </div>
+        `;
+
+        // Gắn sự kiện cho các nút trong Alert Box
+        actionHost.querySelectorAll('.btn-chat-action').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = e.currentTarget.dataset.id;
+            openAdjustChatId = id;
+            openAdjustChatModal(id);
+          });
+        });
+
+        actionHost.querySelectorAll('.btn-fix-action').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const dataset = e.currentTarget.dataset;
+            const id = dataset.id;
+            const cin = (dataset.in || '').slice(0, 16).replace(' ', 'T');
+            const cout = (dataset.out || '').slice(0, 16).replace(' ', 'T');
+            const reason = dataset.reason || '';
+            const adminNote = dataset.adminnote || '';
+            const targetDate = (dataset.in || dataset.out || '').slice(0, 10).replace(/-/g, '/');
+
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.48);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+            modal.innerHTML = `
+              <div style="width:100%;max-width:500px;background:#fff;border-radius:12px;box-shadow:0 20px 45px rgba(15,23,42,0.25);overflow:hidden;display:flex;flex-direction:column;">
+                <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:#f8fafc;">
+                  <div style="font-weight:700;color:#0f172a;font-size:15px;display:flex;align-items:center;gap:6px;">
+                    <svg width="18" height="18" fill="none" stroke="#ea580c" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    差戻し申請の再提出
+                  </div>
+                  <button type="button" class="btn-close-modal" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;padding:0;line-height:1;">&times;</button>
+                </div>
+                <div style="padding:20px;overflow-y:auto;flex:1;">
+                  <div style="margin-bottom:16px;font-size:13px;color:#334155;">
+                    <strong>対象日:</strong> ${targetDate}
+                  </div>
+                  ${adminNote ? `<div style="margin-bottom:16px;padding:10px 12px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:13px;"><strong>差戻し理由:</strong><br>${esc(adminNote)}</div>` : ''}
+                  
+                  <div style="margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;">修正(出勤)</div>
+                    <input type="datetime-local" id="fixIn" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;" value="${cin}">
+                  </div>
+                  <div style="margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;">修正(退勤)</div>
+                    <input type="datetime-local" id="fixOut" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;" value="${cout}">
+                  </div>
+                  <div style="margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;">理由 <span style="color:#ef4444">*</span></div>
+                    <input type="text" id="fixReason" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;" value="${esc(reason)}" placeholder="理由を入力してください">
+                  </div>
+                  <div id="fixError" style="color:#dc2626;font-size:13px;font-weight:600;margin-top:8px;display:none;"></div>
+                </div>
+                <div style="padding:12px 20px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;gap:12px;justify-content:flex-end;">
+                  <button type="button" class="btn-cancel-modal" style="padding:8px 16px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-weight:600;cursor:pointer;">キャンセル</button>
+                  <button type="button" id="btnFixSubmit" style="padding:8px 16px;border-radius:6px;border:none;background:#005eb8;color:#fff;font-weight:600;cursor:pointer;">再提出する</button>
+                </div>
+              </div>
+            `;
+
+            const close = () => {
+              try { document.body.removeChild(modal); } catch(e){}
+            };
+
+            modal.querySelector('.btn-close-modal').addEventListener('click', close);
+            modal.querySelector('.btn-cancel-modal').addEventListener('click', close);
+            modal.addEventListener('click', (e) => { if(e.target === modal) close(); });
+
+            const btnSubmit = modal.querySelector('#btnFixSubmit');
+            btnSubmit.addEventListener('click', async () => {
+              const errEl = modal.querySelector('#fixError');
+              errEl.style.display = 'none';
+
+              const newIn = toMySQLDateTime(modal.querySelector('#fixIn').value);
+              const newOut = toMySQLDateTime(modal.querySelector('#fixOut').value);
+              const newReason = modal.querySelector('#fixReason').value.trim();
+
+              if (!newReason) {
+                errEl.textContent = '理由を入力してください';
+                errEl.style.display = 'block';
+                return;
+              }
+
+              btnSubmit.disabled = true;
+              btnSubmit.textContent = '送信中...';
+
+              try {
+                await fetchJSONAuth('/api/adjust/' + id, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ requestedCheckIn: newIn, requestedCheckOut: newOut, reason: newReason })
+                });
+                delete adjustChatCache[id];
+                close();
+                await renderList();
+              } catch (err) {
+                errEl.textContent = err?.message || '更新に失敗しました';
+                errEl.style.display = 'block';
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = '再提出する';
+              }
+            });
+
+            document.body.appendChild(modal);
+          });
+        });
+      } else {
+        actionHost.innerHTML = '';
+      }
+    }
+
     const monthInput = document.getElementById('adjustMonthFilter');
     if (monthInput && monthInput.value && monthInput.value !== selectedMonth) {
       selectedMonth = monthInput.value;
@@ -530,7 +787,7 @@ const renderList = async () => {
       `;
       const type = '打刻修正（申請）';
       const editBtn = (st === 'pending' || st === 'rejected')
-        ? `<button class="btn-edit sap-action-btn" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" title="${st === 'rejected' ? '再申請' : '編集'}"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>`
+        ? `<button class="btn-edit sap-action-btn" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" data-adminnote="${esc(r.admin_note || '')}" title="${st === 'rejected' ? '再申請' : '編集'}"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>`
         : '';
       const deleteBtn = st === 'pending'
         ? ` <button class="btn-delete sap-action-btn delete" data-id="${r.id}" title="削除"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`
@@ -538,12 +795,12 @@ const renderList = async () => {
       const chatBtn = ` <button class="btn-chat sap-action-btn" data-id="${r.id}" title="やり取り"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z"></path></svg></button>`;
       const actions = `${editBtn}${chatBtn}${deleteBtn}`.trim();
       const rowHtml = `<tr data-record-row="1" data-record-id="${r.id}">
-        <td><a href="#" data-jump="${r.id}" style="color:#005eb8; text-decoration:none; font-weight:600;">${appNo}</a></td>
-        <td><span class="sap-badge ${stClass}">${esc(stLabel)}</span></td>
-        <td>${type}</td>
-        <td>${detail}</td>
-        <td>${created}</td>
-        <td>${actions}</td>
+        <td data-label="申請番号"><div class="mobile-td-content"><a href="#" data-jump="${r.id}" style="color:#005eb8; text-decoration:none; font-weight:600;">${appNo}</a></div></td>
+        <td data-label="ステータス"><div class="mobile-td-content"><span class="sap-badge ${stClass}">${esc(stLabel)}</span></div></td>
+        <td data-label="レコードタイプ"><div class="mobile-td-content">${type}</div></td>
+        <td data-label="申請詳細"><div class="mobile-td-content">${detail}</div></td>
+        <td data-label="作成日時"><div class="mobile-td-content">${created}</div></td>
+        <td data-label="アクション"><div class="mobile-td-content">${actions}</div></td>
       </tr>`;
       return rowHtml;
     }).join('');
@@ -646,11 +903,22 @@ const renderList = async () => {
             .sap-table-input { max-width: 100%; }
           }
           .sap-table-input:focus { border-color: #005eb8; }
-          .sap-table-wrap { border: 1px solid #cbd5e1; border-radius: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-          .sap-compact-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-          .sap-compact-table th { background: #f1f5f9; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #475569; text-align: left; border-bottom: 1px solid #cbd5e1; white-space: nowrap; }
-          .sap-compact-table td { padding: 8px 12px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-          .sap-compact-table tr:hover { background: #f8fafc; }
+          .sap-table-wrap { border: 1px solid #cbd5e1; overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff; }
+          .sap-compact-table { width: 100%; border-collapse: collapse; min-width: 600px; font-family: sans-serif; table-layout: fixed; }
+          .sap-compact-table th, .sap-compact-table td { border: 1px solid #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .sap-compact-table th { background: #e0f2fe; padding: 6px 8px; font-size: 11px; font-weight: 700; color: #1e293b; text-align: center; white-space: nowrap; }
+          .sap-compact-table td { padding: 6px 8px; font-size: 12px; color: #1e293b; vertical-align: middle; text-align: center; }
+          .sap-compact-table td:nth-child(4) { text-align: left; } /* 申請詳細 align left */
+          
+          /* Điều chỉnh độ rộng các cột cố định */
+          .sap-compact-table th:nth-child(1) { width: 100px; } /* 申請番号 */
+          .sap-compact-table th:nth-child(2) { width: 90px; }  /* ステータス */
+          .sap-compact-table th:nth-child(3) { width: 130px; } /* レコードタイプ */
+          .sap-compact-table th:nth-child(4) { width: 150px; } /* 申請詳細 */
+          .sap-compact-table th:nth-child(5) { width: 130px; } /* 作成日時 */
+          .sap-compact-table th:nth-child(6) { width: 100px; } /* アクション */
+
+          .sap-compact-table tr:hover { background: #f1f5f9; }
           .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; white-space: nowrap; }
           .sap-badge.approved { background: #dcfce7; color: #166534; }
           .sap-badge.rejected { background: #fee2e2; color: #991b1b; }
@@ -663,12 +931,12 @@ const renderList = async () => {
           /* Mobile Inline Edit Form Styles */
           .inline-edit-container {
             padding: 12px; 
-            background: #eef4ff; 
-            border-top: 2px solid #005eb8; 
-            border-bottom: 2px solid #005eb8; 
+            background: #f8fafc; 
+            border: 2px solid #005eb8; 
             position: relative; 
             width: 100%; 
             box-sizing: border-box;
+            box-shadow: inset 0 0 0 1px #fff;
           }
           /* Sticky Left Behavior for small screens (khi bảng bị cuộn) */
           @media (max-width: 640px) {
@@ -678,25 +946,129 @@ const renderList = async () => {
               width: calc(100vw - 24px); /* Độ rộng bằng màn hình trừ đi padding của drawer */
             }
           }
+          /* Media query cho tab trên mobile */
+          @media (max-width: 640px) {
+            .sap-table-wrap {
+              border: none;
+              background: transparent;
+            }
+            .sap-compact-table {
+              display: block;
+              width: 100%;
+              min-width: 0; /* Ghi đè min-width 600px của desktop */
+              table-layout: auto;
+            }
+            .sap-compact-table tbody {
+              display: block;
+              width: 100%;
+            }
+            .sap-compact-table tr {
+              display: block;
+              width: 100%;
+              margin-bottom: 16px;
+              background: #fff;
+              border: 1px solid #cbd5e1;
+              border-radius: 8px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+              box-sizing: border-box;
+            }
+            .sap-compact-table td {
+              display: flex;
+              flex-direction: row; /* Thay đổi từ column sang row để chia hai bên */
+              justify-content: space-between; /* Đẩy 2 bên xa nhau */
+              align-items: center; /* Căn giữa theo chiều dọc */
+              text-align: right; /* Mặc định nội dung sẽ dồn sang phải */
+              border: none;
+              border-bottom: 1px solid #f1f5f9;
+              padding: 10px 12px;
+              white-space: normal;
+              min-height: auto;
+              width: 100%; /* Ép chiếm 100% width của thẻ cha */
+              box-sizing: border-box; /* Tính cả padding vào width */
+            }
+            .sap-compact-table thead {
+              display: none; /* Ẩn phần header của bảng */
+            }
+            .sap-compact-table tr:hover { background: #fff; }
+            .sap-compact-table td:last-child {
+              border-bottom: none;
+            }
+            .sap-compact-table td::before {
+              content: attr(data-label);
+              font-weight: 600;
+              color: #64748b;
+              text-align: left; /* Nhãn căn trái */
+              font-size: 11px;
+              flex-shrink: 0;
+              margin-bottom: 0; 
+              margin-right: 12px; /* Tạo khoảng cách với nội dung bên phải */
+              width: auto; /* Nhãn tự co giãn */
+              display: block; 
+            }
+            .mobile-td-content {
+              flex: 1;
+              text-align: right; 
+              display: flex;
+              justify-content: flex-end; /* Nội dung căn phải */
+              align-items: center;
+              word-break: break-word;
+              font-size: 13px;
+              font-weight: 500;
+              width: auto; 
+            }
+            
+            /* Sửa lại form inline edit cho mobile (nếu có) để không bị lỗi layout */
+            .sap-compact-table tr.inline-edit-row {
+               padding: 0;
+            }
+            .sap-compact-table tr.inline-edit-row td {
+               display: block;
+               padding: 0;
+               border: none;
+            }
+            .sap-compact-table tr.inline-edit-row td::before {
+               content: none;
+            }
+
+            .sap-tabs-container {
+              gap: 8px; /* Thu hẹp khoảng cách giữa các tab */
+              justify-content: flex-start; /* Căn trái để không bị đè */
+              overflow-x: auto; /* Cho phép cuộn ngang nếu thiếu chỗ */
+              -webkit-overflow-scrolling: touch;
+              padding-bottom: 4px;
+              flex-wrap: wrap; /* Cho phép rớt dòng trên mobile */
+            }
+            .sap-tab {
+              padding: 8px 4px;
+              font-size: 11px; /* Chữ nhỏ lại một chút */
+              white-space: nowrap; /* Không cho rớt dòng trong từng tab */
+            }
+            .sap-tab svg {
+              width: 14px; /* Icon nhỏ lại */
+              height: 14px;
+            }
+            .sap-badge.notification {
+              padding: 0 4px;
+              font-size: 9px;
+            }
+            .adjust-search-bar {
+              margin-left: 0;
+              margin-top: 8px;
+              width: 100%;
+            }
+            .sap-table-input[type="month"] {
+              width: 120px; /* Thu gọn tối đa kích thước */
+              padding: 4px 6px; /* Giảm padding để nhỏ gọn hơn */
+              font-size: 11px; /* Thu nhỏ chữ */
+              height: 28px; /* Giảm chiều cao */
+              margin-top: 4px; /* Thêm khoảng cách phía trên khi rớt dòng */
+            }
+          }
         </style>
 
-        <div id="sapDrawerOverlay" class="sap-drawer-overlay"></div>
-        <div id="sapDrawer" class="sap-drawer">
-          <div class="sap-drawer-header">
-            <h3 class="sap-drawer-title">
-              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              申請履歴
-            </h3>
-            <button id="btnDrawerClose" class="sap-drawer-close" title="閉じる">
-              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-          </div>
-          <div class="sap-drawer-body">
-            <div class="sap-table-toolbar">
-              <input id="adjustSearch" placeholder="検索..." class="sap-table-input">
-              <input type="month" id="adjustMonthFilter" class="sap-table-input" value="${selectedMonth}">
-            </div>
-            <div class="sap-table-wrap">
+        <div id="sapHistoryBlock" class="sap-history-block" style="display: none;">
+            <div class="sap-history-body">
+              <div class="sap-table-wrap">
               <table class="sap-compact-table">
                 <thead>
                   <tr>
@@ -717,165 +1089,160 @@ const renderList = async () => {
                   <button id="btnAdjustPageNext" class="sap-btn" ${currentPage === totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>次へ</button>
                 </div>
               ` : ''}
+              </div>
             </div>
-          </div>
         </div>
       `;
-    // Gắn lại sự kiện onchange cho input tháng
-    setTimeout(() => {
-      const monthFilter = document.getElementById('adjustMonthFilter');
-      if (monthFilter) {
-        monthFilter.addEventListener('change', renderList);
-      }
-      
-      const btnPrev = document.getElementById('btnAdjustPagePrev');
-      const btnNext = document.getElementById('btnAdjustPageNext');
-      if (btnPrev) btnPrev.onclick = () => { if (currentPage > 1) { currentPage--; renderList(); } };
-      if (btnNext) btnNext.onclick = () => { if (currentPage < totalPages) { currentPage++; renderList(); } };
+    // Logic xử lý khi click vào nút chỉnh sửa trên hàng (inline edit)
+    const handleInlineEdit = (e) => {
+      const btn = e.target.closest('.btn-edit');
+      if (!btn) return;
+      const tr = btn.closest('tr');
+      if (!tr) return;
+      const recId = btn.getAttribute('data-id');
+      if (!recId) return;
 
-      const searchInput = document.getElementById('adjustSearch');
-      if (searchInput) {
-        let t = 0;
-        searchInput.addEventListener('input', () => {
-          try { clearTimeout(t); } catch (e) { /* silently ignored */ }
-          t = setTimeout(() => {
-            const q = String(searchInput.value || '').trim().toLowerCase();
-            const rows = host.querySelectorAll('tr[data-record-row="1"]');
-            rows.forEach(tr => {
-              const text = tr.textContent.toLowerCase();
-              const matched = text.includes(q);
-              tr.style.display = matched ? '' : 'none';
-              const recId = tr.getAttribute('data-record-id');
-              const chatRow = host.querySelector(`.adjust-chat-row[data-chat-owner="${recId}"]`);
-              if (chatRow) chatRow.style.display = matched ? '' : 'none';
-            });
-          }, 180);
-        });
-      }
-      const newBtn = document.getElementById('adjustNewBtn');
-      if (newBtn) {
-        newBtn.addEventListener('click', () => {
-          try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* silently ignored */ }
-          try { document.getElementById('adjReason')?.focus(); } catch (e) { /* silently ignored */ }
-        });
-      }
-      document.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          e.preventDefault();
-          const id = e.currentTarget.dataset.id;
-          if (!confirm('この申請を削除しますか？')) return;
-          try {
-            await fetchJSONAuth(`/api/adjust/${id}`, { method: 'DELETE' });
-            await renderList(); // Chỉ render lại danh sách, không redirect
-          } catch (err) {
-            showErr(err?.message || '削除に失敗しました');
-          }
-        });
+      // Đóng các form sửa inline khác đang mở
+      document.querySelectorAll('.inline-edit-row').forEach(el => el.remove());
+      document.querySelectorAll('tr[data-hidden="1"]').forEach(el => {
+        el.style.display = '';
+        delete el.dataset.hidden;
       });
-      document.querySelectorAll('.btn-chat').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          e.preventDefault();
-          const id = e.currentTarget.dataset.id;
-          openAdjustChatId = id;
-          openAdjustChatModal(id);
-        });
-      });
-      document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          const tr = e.currentTarget.closest('tr');
-          if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('inline-edit-row')) return;
 
-          // Đóng các form sửa inline khác đang mở
-          document.querySelectorAll('.inline-edit-row').forEach(el => el.remove());
-          document.querySelectorAll('tr[data-hidden="1"]').forEach(el => {
-            el.style.display = '';
-            delete el.dataset.hidden;
-          });
+      const cin = btn.getAttribute('data-in') || '';
+      const cout = btn.getAttribute('data-out') || '';
+      const reason = btn.getAttribute('data-reason') || '';
+      const adminNote = btn.getAttribute('data-adminnote') || '';
 
-          const id = e.currentTarget.dataset.id;
-          const cin = e.currentTarget.dataset.in || '';
-          const cout = e.currentTarget.dataset.out || '';
-          const reason = e.currentTarget.dataset.reason || '';
+      // Ẩn dòng hiện tại
+      tr.style.display = 'none';
+      tr.dataset.hidden = '1';
 
-          // Ẩn dòng hiện tại
-          tr.style.display = 'none';
-          tr.dataset.hidden = '1';
-
-          // Tạo dòng form sửa inline mới
-          const editTr = document.createElement('tr');
-          editTr.className = 'inline-edit-row';
-          editTr.innerHTML = `
-            <td colspan="6" style="padding: 0; border: none;">
-              <div class="inline-edit-container">
-                <button class="inline-close" style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; cursor: pointer; color: #64748b; font-size: 14px; padding: 4px; line-height: 1;" title="閉じる">✕</button>
-                <div style="font-weight: 600; color: #005eb8; margin-bottom: 12px; font-size: 13px;">${String(e.currentTarget.title || '') === '再申請' ? '差戻しされた申請を修正して再申請' : '申請の編集'}</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
-                  <div style="flex: 1 1 130px; min-width: 130px;">
-                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">修正(出勤)</div>
-                    <input type="datetime-local" class="sap-table-input inline-in" style="width: 100%; max-width: 100%; box-sizing: border-box;" value="${cin.replace(' ', 'T')}">
-                  </div>
-                  <div style="flex: 1 1 130px; min-width: 130px;">
-                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">修正(退勤)</div>
-                    <input type="datetime-local" class="sap-table-input inline-out" style="width: 100%; max-width: 100%; box-sizing: border-box;" value="${cout.replace(' ', 'T')}">
-                  </div>
-                  <div style="flex: 1 1 200px; min-width: 200px;">
-                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">理由 <span style="color:#ef4444">*</span></div>
-                    <input type="text" class="sap-table-input inline-reason" style="width: 100%; max-width: 100%; box-sizing: border-box;" value="${esc(reason)}" placeholder="理由を入力してください">
-                  </div>
-                  <div style="display: flex; gap: 8px; flex: 1 1 auto; justify-content: flex-end;">
-                    <button class="sap-icon-btn inline-cancel" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 16px; width: auto; height: 36px; font-size: 13px;">キャンセル</button>
-                    <button class="sap-icon-btn inline-save" style="background: #005eb8; color: #fff; border-radius: 4px; padding: 0 16px; width: auto; height: 36px; font-size: 13px; font-weight: 600;">保存</button>
-                  </div>
-                </div>
+      // Tạo một hàng mới ngay dưới hàng được click
+      const editTr = document.createElement('tr');
+      editTr.className = 'inline-edit-row';
+      editTr.innerHTML = `
+        <td colspan="6" style="padding: 0; border: none; background: #fff;">
+          <div class="inline-edit-container">
+            <button type="button" class="btn-close-inline-edit" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:16px; color:#64748b; cursor:pointer; padding:4px; line-height:1;" title="閉じる">&times;</button>
+            <div style="font-weight: 700; color: #005eb8; margin-bottom: 12px; font-size: 13px; text-align: center;">${String(btn.title || '') === '再申請' ? '差戻しされた申請を修正して再申請' : '申請の編集'}</div>
+            ${adminNote ? `<div style="margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px;"><strong>差戻し理由:</strong> ${esc(adminNote)}</div>` : ''}
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; justify-content:center;">
+              <div style="flex:1; min-width:180px; max-width:200px;">
+                <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:4px; text-align: center;">修正(出勤)</div>
+                <input type="datetime-local" class="sap-input full edit-in" value="${cin.replace(' ', 'T')}" style="height: 32px; font-size: 13px;">
               </div>
-            </td>
-          `;
-          tr.parentNode.insertBefore(editTr, tr.nextSibling);
+              <div style="flex:1; min-width:180px; max-width:200px;">
+                <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:4px; text-align: center;">修正(退勤)</div>
+                <input type="datetime-local" class="sap-input full edit-out" value="${cout.replace(' ', 'T')}" style="height: 32px; font-size: 13px;">
+              </div>
+              <div style="flex:2; min-width:250px;">
+                <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:4px; text-align: center;">理由 <span style="color:#ef4444">*</span></div>
+                <input type="text" class="sap-input full edit-reason" value="${esc(reason)}" placeholder="理由を入力してください" style="height: 32px; font-size: 13px;">
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-cancel-inline-edit" style="height:32px; padding:0 12px; border:1px solid #cbd5e1; background:#fff; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer; color:#475569;">キャンセル</button>
+                <button type="button" class="btn-save-inline-edit" data-id="${recId}" style="height:32px; padding:0 16px; border:none; background:#005eb8; color:#fff; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer;">保存</button>
+              </div>
+            </div>
+            <div class="edit-error" style="color:#ef4444; font-size:12px; font-weight:600; margin-top:8px; display:none; text-align: center;"></div>
+          </div>
+        </td>
+      `;
 
-          // Hủy sửa
-          const cancelEdit = (ev) => {
-            ev.preventDefault();
-            editTr.remove();
-            tr.style.display = '';
-            delete tr.dataset.hidden;
-          };
-          editTr.querySelector('.inline-cancel').addEventListener('click', cancelEdit);
-          editTr.querySelector('.inline-close').addEventListener('click', cancelEdit);
+      tr.after(editTr);
 
-          // Lưu sửa
-          editTr.querySelector('.inline-save').addEventListener('click', async (ev) => {
-            ev.preventDefault();
-            const btnSave = ev.currentTarget;
-            const newIn = toMySQLDateTime(editTr.querySelector('.inline-in').value);
-            const newOut = toMySQLDateTime(editTr.querySelector('.inline-out').value);
-            const newReason = editTr.querySelector('.inline-reason').value.trim();
+      // Gắn sự kiện cho form
+      const closeBtn = editTr.querySelector('.btn-close-inline-edit');
+      const cancelBtn = editTr.querySelector('.btn-cancel-inline-edit');
+      const saveBtn = editTr.querySelector('.btn-save-inline-edit');
 
-            if (!newReason) {
-              showErr('理由を入力してください');
-              return;
-            }
+      const closeForm = (ev) => {
+        if(ev) ev.preventDefault();
+        editTr.remove();
+        tr.style.display = '';
+        delete tr.dataset.hidden;
+      };
 
-            btnSave.disabled = true;
-            btnSave.textContent = '保存中...';
-            showErr('');
+      closeBtn.addEventListener('click', closeForm);
+      cancelBtn.addEventListener('click', closeForm);
 
-            try {
-              await fetchJSONAuth('/api/adjust/' + id, {
-                method: 'PATCH',
-                body: JSON.stringify({ requestedCheckIn: newIn, requestedCheckOut: newOut, reason: newReason })
-              });
-              delete adjustChatCache[id];
-              await renderList();
-            } catch (err) {
-              btnSave.disabled = false;
-              btnSave.textContent = '保存';
-              showErr(err?.message || '更新に失敗しました');
-            }
+      saveBtn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const errEl = editTr.querySelector('.edit-error');
+        errEl.style.display = 'none';
+
+        const newIn = toMySQLDateTime(editTr.querySelector('.edit-in').value);
+        const newOut = toMySQLDateTime(editTr.querySelector('.edit-out').value);
+        const newReason = editTr.querySelector('.edit-reason').value.trim();
+
+        if (!newReason) {
+          errEl.textContent = '理由を入力してください';
+          errEl.style.display = 'block';
+          return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
+
+        try {
+          await fetchJSONAuth(`/api/adjust/${recId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ requestedCheckIn: newIn, requestedCheckOut: newOut, reason: newReason })
           });
-        });
+          delete adjustChatCache[recId];
+          await renderList(); // Reload danh sách
+        } catch (err) {
+          errEl.textContent = err?.message || '保存に失敗しました';
+          errEl.style.display = 'block';
+          saveBtn.disabled = false;
+          saveBtn.textContent = '保存';
+        }
       });
-    }, 0);
+    };
+
+    // Xóa sự kiện lắng nghe trực tiếp trên `host` để tránh trùng lặp khi đã gắn vào từng nút
+    // host.addEventListener('click', handleInlineEdit);
+
+    const deleteHandler = async (e) => {
+      const btn = e.target.closest('.btn-delete');
+      if (!btn) return;
+      const recId = btn.getAttribute('data-id');
+      if (!recId) return;
+      if (!confirm('この申請を削除しますか？')) return;
+      btn.disabled = true;
+      try {
+        await fetchJSONAuth(`/api/adjust/${recId}`, { method: 'DELETE' });
+        await renderList();
+      } catch (err) {
+        showErr(err?.message || '削除に失敗しました');
+        btn.disabled = false;
+      }
+    };
+    // host.addEventListener('click', deleteHandler);
+
+    const chatHandler = async (e) => {
+      const btn = e.target.closest('.btn-chat');
+      if (!btn) return;
+      const recId = btn.getAttribute('data-id');
+      if (!recId) return;
+      openAdjustChatId = recId;
+      openAdjustChatModal(recId);
+    };
+    // host.addEventListener('click', chatHandler);
+      
+    // Fix: Remove document.querySelectorAll re-bindings to prevent duplicate events
+    // and just use event delegation on the host container which is much safer and cleaner.
+    host.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-edit')) {
+        handleInlineEdit(e);
+      } else if (e.target.closest('.btn-delete')) {
+        deleteHandler(e);
+      } else if (e.target.closest('.btn-chat')) {
+        chatHandler(e);
+      }
+    });
+
   } catch (e) {
     host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${esc(e?.message || 'unknown')}</div>`;
   } finally {

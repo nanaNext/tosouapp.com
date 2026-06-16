@@ -45,6 +45,9 @@ function initShiftReminders() {
   try {
     const shiftReminder = require('./services/shiftReminder.service');
     shiftReminder.init();
+
+    const { initShiftSubmissionReminderCron } = require('./cron/shiftSubmissionReminderCron');
+    initShiftSubmissionReminderCron();
   } catch (e) {
     console.error('[ShiftReminder] init error', e && e.message);
   }

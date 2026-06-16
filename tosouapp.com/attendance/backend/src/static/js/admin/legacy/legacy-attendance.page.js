@@ -106,10 +106,141 @@ async function mountAttendanceImpl({
       .attrec-fiori-override .attrec-summary {
         gap: 6px !important;
       }
+      .attrec-fiori-override .attrec-pill {
+        display: inline-block !important;
+        margin-bottom: 4px !important;
+      }
+      /* Mobile responsive styles for legacy attendance page */
+      @media (max-width: 768px) {
+        .attrec-fiori-override .dash-card-title {
+          display: none !important;
+        }
+        .attrec-fiori-override .attrec-head {
+          padding: 16px 16px 8px 16px !important;
+          border-bottom: none !important;
+        }
+        .attrec-fiori-override .attrec-controls {
+          flex-direction: column !important;
+          gap: 16px !important;
+          padding: 0 16px 16px 16px !important;
+        }
+        .attrec-fiori-override .attrec-control {
+          display: grid !important;
+          grid-template-columns: 1fr 1fr !important;
+          gap: 10px !important;
+          width: 100% !important;
+          background: #f8fafc !important;
+          padding: 16px !important;
+          border-radius: 12px !important;
+          border: 1px solid #e2e8f0 !important;
+          box-sizing: border-box !important;
+        }
+        .attrec-fiori-override .attrec-label {
+          grid-column: span 2 !important;
+          font-weight: 700 !important;
+          color: #334155 !important;
+          font-size: 14px !important;
+          margin-bottom: 2px !important;
+        }
+        .attrec-fiori-override .attrec-input {
+          grid-column: span 2 !important;
+          height: 44px !important;
+          font-size: 16px !important; /* Prevents zoom on iOS */
+          border-radius: 8px !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 0 12px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        .attrec-fiori-override .attrec-btn {
+          height: 44px !important;
+          border-radius: 8px !important;
+          font-size: 14px !important;
+          font-weight: 600 !important;
+          width: 100% !important;
+          background: #ffffff !important;
+          color: #475569 !important;
+          border: 1px solid #cbd5e1 !important;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        #rosterLoad {
+          grid-column: span 2 !important;
+          background: #3b82f6 !important;
+          color: #ffffff !important;
+          border-color: #3b82f6 !important;
+        }
+        .attrec-fiori-override .attrec-table {
+          padding: 0 16px 16px 16px !important;
+        }
+        /* Improve mobile cards for table */
+        .attrec-emp-like-table {
+          display: block !important;
+        }
+        .attrec-emp-like-table thead {
+          display: none !important;
+        }
+        .attrec-emp-like-table tbody {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 16px !important;
+        }
+        .attrec-emp-like-table tr {
+          display: flex !important;
+          flex-direction: column !important;
+          background: #ffffff !important;
+          border: 1px solid #e2e8f0 !important;
+          border-radius: 12px !important;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+          padding: 16px !important;
+          overflow: hidden !important;
+        }
+        .attrec-emp-like-table td {
+          display: flex !important;
+          justify-content: space-between !important;
+          align-items: center !important;
+          padding: 8px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          font-size: 14px !important;
+        }
+        .attrec-emp-like-table td:last-child {
+          border-bottom: none !important;
+        }
+        .attrec-emp-like-table td::before {
+          content: attr(data-label);
+          font-weight: 600;
+          color: #64748b;
+          margin-right: 16px;
+        }
+        /* Custom spacing for name/code header inside card */
+        .attrec-emp-like-table td:nth-child(1),
+        .attrec-emp-like-table td:nth-child(2) {
+          padding-top: 0 !important;
+        }
+        .attrec-emp-like-table td:nth-child(2) {
+          font-weight: 700 !important;
+          font-size: 16px !important;
+          color: #0f172a !important;
+          border-bottom: 2px solid #e2e8f0 !important;
+          padding-bottom: 12px !important;
+          margin-bottom: 8px !important;
+        }
+        .attrec-emp-like-table td:nth-child(1)::before,
+        .attrec-emp-like-table td:nth-child(2)::before {
+          display: none !important;
+        }
+        .attrec-emp-like-table td:nth-child(1) {
+          color: #64748b !important;
+          font-size: 12px !important;
+          border-bottom: none !important;
+          padding-bottom: 4px !important;
+        }
+      }
     </style>
-    <div class="dash-card attrec-card attrec-fiori-override" style="display: flex; flex-direction: column; height: 100%;">
-      <div class="attrec-head" style="flex-shrink: 0;">
-        <div class="dash-card-title">勤怠記録</div>
+    <div class="dash-card attrec-fiori-override" style="height: 100%; display: flex; flex-direction: column;">
+      <div class="attrec-head" style="flex-shrink: 0; padding-top: 16px;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite"></div>
       </div>
       <div class="attrec-controls" style="margin-bottom: 12px; flex-shrink: 0;">
@@ -277,15 +408,15 @@ async function mountAttendanceImpl({
               : (st === 'holiday_work' || st === 'holiday_working' ? 'attrec-row working'
                 : (((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) ? 'attrec-row absent' : (st === 'off' ? 'attrec-row absent' : 'attrec-row absent'))));
           tr.innerHTML = `
-            <td>${esc(code)}</td>
-            <td>${esc(name)}</td>
-            <td>${esc(dept)}</td>
-            <td>${esc(wtLabel)}</td>
-            <td><span class="${stClass}">${esc(stLabel)}</span></td>
-            <td>${esc(cinView)}</td>
-            <td>${esc(coutView)}</td>
-            <td class="attrec-site" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px;"${site ? ` title="${esc(site)}"` : ''}>${esc(siteView)}</td>
-          <td class="attrec-work" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px;"${work ? ` title="${esc(work)}"` : ''}>${esc(workView)}</td>
+            <td data-label="社員番号">${esc(code)}</td>
+            <td data-label="氏名" style="font-weight:600;">${esc(name)}</td>
+            <td data-label="部署">${esc(dept)}</td>
+            <td data-label="勤務区分">${esc(wtLabel)}</td>
+            <td data-label="状態"><span class="${stClass}">${esc(stLabel)}</span></td>
+            <td data-label="出勤" style="font-family:monospace;font-size:14px;">${esc(cinView)}</td>
+            <td data-label="退勤" style="font-family:monospace;font-size:14px;">${esc(coutView)}</td>
+            <td data-label="現場" class="attrec-site" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px;"${site ? ` title="${esc(site)}"` : ''}>${esc(siteView)}</td>
+          <td data-label="作業内容" class="attrec-work" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px;"${work ? ` title="${esc(work)}"` : ''}>${esc(workView)}</td>
           `;
           tbody.appendChild(tr);
         }

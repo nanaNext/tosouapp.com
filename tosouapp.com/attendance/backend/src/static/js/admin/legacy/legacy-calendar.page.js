@@ -73,6 +73,7 @@ export async function mountCalendar({ content }) {
         color: #111827 !important;
         letter-spacing: -0.01em;
         margin: 0 !important;
+        display: none !important;
       }
       .cal-fiori-override.dash-card {
         background: #fff !important;
@@ -145,16 +146,17 @@ export async function mountCalendar({ content }) {
         color: #0f172a !important;
         font-weight: 600 !important;
         border: 1px solid #cbd5e1 !important;
-        padding: 6px 8px !important;
+        padding: 4px 8px !important;
         font-size: 13px !important;
         text-align: center !important;
         white-space: nowrap;
       }
       .cal-fiori-override .cal-dash-table td {
         border: 1px solid #cbd5e1 !important;
-        padding: 6px 8px !important;
+        padding: 2px 8px !important;
         font-size: 13px !important;
         vertical-align: middle !important;
+        text-align: center !important;
       }
       .cal-fiori-override .cal-dash-table tbody tr {
         transition: background-color 0.15s;

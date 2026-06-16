@@ -66,27 +66,11 @@ async function init() {
       localStorage.setItem('user', JSON.stringify(currentUser));
     } catch (e) { /* silently ignored */ }
     
-    // Render user profile info inside the shifts-header box
+    // Render user profile info inside the shifts-header box (Now fully handled by renderApp)
     const uiName = currentUser.username || currentUser.email || '未設定';
     const uiDept = currentUser.departmentName || '未設定';
     const isSeishain = currentUser.employment_type === 'full_time' || currentUser.employment_type === '正社員';
     const uiType = isSeishain ? '正社員' : 'アルバイト / パート';
-    
-    const profileNameEl = $('#profileName');
-    if (profileNameEl) profileNameEl.textContent = uiName;
-    const profileDeptEl = $('#profileDept');
-    if (profileDeptEl) profileDeptEl.textContent = uiDept;
-    const profileTypeEl = $('#profileType');
-    if (profileTypeEl) profileTypeEl.textContent = uiType;
-    
-    const profileInstructionEl = $('#profileInstruction');
-    if (profileInstructionEl) {
-      if (isSeishain) {
-        profileInstructionEl.textContent = '※ 休暇を取得したい日を選択してください。';
-      } else {
-        profileInstructionEl.textContent = '※ 出勤できるシフト（時間帯）を選択してください。';
-      }
-    }
     
     await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
     renderApp();
