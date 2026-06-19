@@ -302,7 +302,7 @@ function renderTable() {
     // Generate rows for each day
     for (let d = 1; d <= daysInMonth; d++) {
       html += `<tr>`;
-      html += `<td class="col-fixed-1" style="${getDayColor(d)}; font-size: 10px; letter-spacing: -0.5px;">${monthNum}月${d}日</td>`;
+      html += `<td class="col-fixed-1" style="${getDayColor(d)} font-size: 10px; letter-spacing: -0.5px;">${monthNum}月${d}日</td>`;
       html += `<td class="col-fixed-2" style="${getDayColor(d)}">${getDayStr(d)}</td>`;
       
       filteredRows.forEach(emp => {

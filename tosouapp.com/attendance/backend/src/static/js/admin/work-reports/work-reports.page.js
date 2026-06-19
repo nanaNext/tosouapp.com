@@ -123,6 +123,8 @@ export async function mount() {
       .wr-dow-sun { color: #dc2626; }
       .wr-off-row td { background: #fff5f5 !important; }
       .wr-off-row:hover td { background: #fee2e2 !important; }
+      .attrec-btn { height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #cbd5e1; outline: none; transition: all .15s; background: #fff; color: #475569; }
+      .attrec-btn:hover { background: #f8fafc; border-color: #94a3b8; }
 
       .wr-layout { height: ${vhExpr}; overflow: hidden; display: flex; flex-direction: column; }
       .wr-table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; position: relative; z-index: 1; }

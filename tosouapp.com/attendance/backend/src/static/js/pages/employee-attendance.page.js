@@ -1,0 +1,1374 @@
+import { escapeHtml as esc, delegate } from '../admin/_shared/dom.js';
+import { api, downloadWithAuth } from '../shared/api/client.js';
+import { createPage } from '../shared/page/createPage.js';
+import { createCleanup } from '../shared/page/createCleanup.js';
+
+export async function mountAttendance(options) {
+  return await mountAttendanceImpl(options);
+}
+
+async function mountAttendanceImpl({
+  content,
+  listUsers,
+  getTimesheet,
+  getAttendanceDay,
+  updateAttendanceSegment,
+  buildTimesheetExportURL
+}) {
+  const cleanup = createCleanup();
+  let isCurrent = true;
+  const controller = new AbortController();
+  const signal = controller.signal;
+  cleanup.add(() => { isCurrent = false; });
+  cleanup.add(() => controller.abort());
+
+  let users = [];
+  try {
+    const isRecordsPage = window.location.pathname.includes('/ui/attendance-records');
+    if (!isRecordsPage && typeof listUsers === 'function') {
+      users = await listUsers({ signal });
+    }
+  } catch (e) {
+    console.warn('Could not fetch users for dropdown:', e);
+  }
+  content.innerHTML = '';
+
+  const fmtTime = (dt) => {
+    if (!dt) return '';
+    const s = String(dt);
+    return s.length >= 16 ? s.slice(11, 16) : s;
+  };
+  const isWeekend = (dateStr) => {
+    try {
+      const s = String(dateStr || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+      const [y, m, d] = s.split('-').map((n) => parseInt(n, 10));
+      const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+      return wd === 0 || wd === 6;
+    } catch {
+      return false;
+    }
+  };
+  const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // JST
+  const month = today.slice(0, 7);
+
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  
+  if (isStandalone) {
+    try {
+      const isMobile = window.innerWidth <= 768;
+      
+      const topbar = document.querySelector('.topbar');
+      const subbar = document.querySelector('.subbar');
+      
+      // Trên mobile, giữ nguyên Topbar như trang Home
+      if (topbar && !isMobile) topbar.style.display = 'none';
+      if (subbar && !isMobile) subbar.style.display = 'none';
+      
+      const adminChrome = document.querySelector('#adminChrome');
+      if (adminChrome && !isMobile) adminChrome.style.display = 'none';
+
+      // Không phá vỡ padding và biến CSS của hệ thống trên mobile
+      if (!isMobile) {
+        // Chỉ reset biến nếu đang ở trang độc lập và ĐÃ ẨN topbar thành công
+        if (topbar && topbar.style.display === 'none') {
+          document.body.style.paddingTop = '0';
+          const rootHtml = document.documentElement;
+          rootHtml.style.setProperty('--topbar-height', '0px');
+          rootHtml.style.setProperty('--subbar-height', '0px');
+        }
+      } else {
+        document.body.style.setProperty('padding-top', '48px', 'important'); // Chỉ giữ lại 48px cho topbar hệ thống
+        
+        // Cưỡng ép xóa khoảng trắng do file gốc (portal.js/attendance.js) tự render sau
+        const styleFix = document.createElement('style');
+        styleFix.id = 'employee-attendance-style-fix';
+        styleFix.innerHTML = `
+          body.admin main.content, main.content, .content { 
+            padding-top: 0px !important; margin-top: 0px !important; 
+          }
+        `;
+        // Remove existing fix if any
+        const existingFix = document.getElementById('employee-attendance-style-fix');
+        if (existingFix) existingFix.remove();
+        document.head.appendChild(styleFix);
+        cleanup.add(() => {
+          const fix = document.getElementById('employee-attendance-style-fix');
+          if (fix) fix.remove();
+        });
+        
+        if (content) {
+          content.style.setProperty('padding-top', '0px', 'important'); // Xóa padding-top 92px bị dính trên main.content
+          content.style.setProperty('margin-top', '0px', 'important');
+        }
+      }
+    } catch(e) {}
+  }
+
+  const vhExpr = (isStandalone && window.innerWidth > 768) ? '100vh' : '100vh';
+
+  const rosterWrap = document.createElement('div');
+  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: ${vhExpr}; display: flex; flex-direction: column; overflow: visible;`;
+  // Add mobile/desktop styles properly
+  rosterWrap.innerHTML = `
+    <style>
+      /* FULL WIDTH OVERRIDES */
+      #attendanceRecordsHost { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      
+      @media (max-width: 768px) {
+        body.admin .content, .content, main.content { padding-top: 0px !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 0 !important; margin-top: 0px !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }
+        .main-content { padding-top: 0px !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 0 !important; margin-top: 0px !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+        
+        /* Cưỡng chế xóa triệt để khoảng trắng bằng cách chèn tag ID nếu cần */
+        #attendanceRecordsHost { padding-top: 0px !important; margin-top: 0px !important; background: #f1f5f9 !important; }
+        .attrec-fiori-override { padding-top: 0px !important; margin-top: 0px !important; background: #f1f5f9 !important; }
+        
+        /* Bỏ background của thẻ dash-card trên mobile để nó không đè viền */
+        .attrec-fiori-override.dash-card {
+          padding: 0 !important;
+          margin: 0 !important;
+          background: #f1f5f9 !important; /* Màu xám nhạt để làm nổi bật các thẻ màu trắng */
+          border-radius: 0 !important;
+          width: 100% !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        #attendanceRecordsHost { padding: 0 !important; margin: 0 !important; width: 100% !important; }
+        .attrec-card h2 { display: none !important; margin: 0 !important; padding: 0 !important; }
+        .attrec-controls { margin-top: 0 !important; padding-top: 0 !important; }
+        .attrec-fiori-override .attrec-head { padding: 0 !important; margin: 0 !important; border: none !important; }
+        
+        .attrec-table {
+          padding: 0 !important;
+          margin: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        
+        .emp-list-scroll-wrap {
+          padding: 0 !important;
+          margin: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+      }
+      
+      .attrec-fiori-override .dash-card-title {
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        color: #111827 !important;
+        letter-spacing: -0.01em;
+        margin: 0 !important;
+      }
+      .attrec-fiori-override.dash-card {
+        background: #fff !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 24px !important;
+        box-sizing: border-box;
+      }
+      .attrec-fiori-override .attrec-head {
+        padding: 0 !important;
+        margin: 0 !important;
+        border-bottom: none !important;
+        min-height: 0 !important;
+        display: none !important; /* Ẩn hẳn luôn nếu không có nội dung */
+      }
+      .attrec-fiori-override .attrec-controls {
+          padding: 0 !important;
+          gap: 0 !important;
+          margin: 0 !important;
+          display: none !important;
+        }
+      .attrec-fiori-override .attrec-control {
+        gap: 8px !important;
+      }
+      .attrec-fiori-override .mobile-row {
+        display: contents; /* On desktop, act as if it's not there */
+      }
+      .attrec-fiori-override .attrec-input,
+      .attrec-fiori-override .attrec-btn {
+        height: 30px !important;
+        font-size: 13px !important;
+        padding: 0 10px !important;
+        border-radius: 4px !important;
+      }
+      .attrec-fiori-override .attrec-table {
+          margin: 0 !important;
+          padding: 0 !important;
+          border-top: none !important;
+        }
+      .attrec-fiori-override .attrec-dash-table th {
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+        background: #f8fafc !important;
+        color: #475569 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+      }
+      .attrec-fiori-override .attrec-dash-table td {
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+      }
+      .attrec-fiori-override .attrec-pill {
+        font-size: 11px !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+      }
+      .attrec-fiori-override .attrec-summary {
+        gap: 6px !important;
+      }
+      .attrec-fiori-override .attrec-pill {
+        display: inline-block !important;
+        margin-bottom: 4px !important;
+      }
+      
+      /* Excel Dropdown Styles */
+      .excel-dropdown-container {
+        position: relative;
+        display: inline-block;
+      }
+      .excel-dropdown-btn {
+        display: flex !important;
+        align-items: center;
+        gap: 6px;
+        background: #ffffff !important;
+        color: #475569 !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+        height: 34px !important;
+        padding: 0 12px !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+      }
+      .excel-dropdown-btn:hover {
+        background: #f8fafc !important;
+      }
+      .excel-dropdown-btn::after {
+        content: "▼";
+        font-size: 10px;
+        margin-left: 4px;
+      }
+      .excel-dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: white;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.1);
+        z-index: 9999 !important; /* Ensure it is always on top */
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        overflow: visible !important; /* Fix cutoff issue */
+        margin-top: 4px;
+      }
+      .excel-dropdown-menu.show {
+        display: block;
+      }
+      .excel-dropdown-menu button {
+        color: #334155;
+        padding: 10px 16px;
+        text-decoration: none;
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: none;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .excel-dropdown-menu button:last-child {
+        border-bottom: none;
+      }
+      .excel-dropdown-menu button:hover {
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
+      /* Responsive Hide/Show Classes */
+      .mobile-only {
+        display: none !important;
+      }
+      .attrec-emp-like-table td.desktop-only {
+        display: table-cell !important;
+      }
+      
+      /* Mobile responsive styles for legacy attendance page */
+      @media (max-width: 768px) {
+        .attrec-emp-like-table td.mobile-only {
+          display: block !important;
+        }
+        .attrec-emp-like-table td.m-code-cell.mobile-only {
+          display: flex !important;
+        }
+        .attrec-emp-like-table td.m-main-cell.mobile-only {
+          display: flex !important;
+        }
+        .attrec-emp-like-table td.desktop-only {
+          display: none !important;
+        }
+
+        .attrec-fiori-override .dash-card-title {
+          display: none !important;
+        }
+        .attrec-fiori-override .attrec-head {
+          padding: 0 !important;
+          border-bottom: none !important;
+          background: transparent !important; /* Thêm nền trắng cho phần header */
+          margin: 0 !important;
+          display: none !important;
+        }
+        .attrec-fiori-override .attrec-summary {
+          flex-wrap: wrap !important;
+          gap: 4px !important;
+        }
+        .attrec-fiori-override .attrec-controls {
+          flex-direction: column !important;
+          gap: 12px !important;
+          padding: 12px !important;
+          background: transparent !important; /* Force transparent background */
+          margin: 0 12px 12px 12px !important;
+          border-radius: 8px !important;
+          border: none !important; /* Remove border */
+        }
+        .attrec-fiori-override .attrec-control {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 12px !important; /* Increase gap between items on mobile */
+          width: 100% !important;
+          background: transparent !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+          border: none !important;
+          box-sizing: border-box !important;
+        }
+        .attrec-fiori-override .mobile-row {
+          display: flex !important;
+          gap: 6px !important;
+          width: 100% !important;
+          align-items: center !important;
+        }
+        .attrec-fiori-override .attrec-label {
+          display: none !important;
+        }
+        .attrec-fiori-override .attrec-control:nth-child(1) .mobile-row:nth-child(2)::before {
+          content: "日";
+          font-weight: 700 !important;
+          color: #475569 !important;
+          font-size: 13px !important;
+          margin-right: 2px !important;
+        }
+        .attrec-fiori-override .attrec-control:nth-child(2) .mobile-row:nth-child(2)::before {
+          content: "月";
+          font-weight: 700 !important;
+          color: #475569 !important;
+          font-size: 13px !important;
+          margin-right: 2px !important;
+        }
+        .attrec-fiori-override .attrec-input {
+          flex: 1 !important;
+          height: 34px !important;
+          font-size: 14px !important;
+          border-radius: 6px !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 0 8px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        .attrec-fiori-override .attrec-btn {
+          flex: 1 !important;
+          height: 34px !important;
+          border-radius: 6px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          background: #ffffff !important;
+          color: #475569 !important;
+          border: 1px solid #cbd5e1 !important;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 4px !important;
+        }
+        
+        /* Dropdown specific mobile styles */
+        .attrec-fiori-override .excel-dropdown-container {
+          width: 100% !important;
+        }
+        .attrec-fiori-override .excel-dropdown-btn {
+          width: 100% !important;
+          justify-content: space-between !important;
+          padding: 0 12px !important;
+          border: 1px solid #cbd5e1 !important; /* Ensure border exists on mobile */
+          height: 34px !important;
+        }
+        .attrec-fiori-override .excel-dropdown-menu {
+          width: 100% !important;
+          left: 0 !important;
+        }
+        /* Removed #rosterLoad styles as the button is no longer used */
+        .attrec-fiori-override .attrec-table {
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        /* Improve mobile cards for table to exactly match employees page */
+        .attrec-emp-like-table {
+          display: block !important;
+          background: transparent !important;
+        }
+        .attrec-emp-like-table thead {
+          display: none !important;
+        }
+        .attrec-emp-like-table tbody {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 12px !important;
+          background: transparent !important;
+        }
+        .attrec-emp-like-table tr {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: wrap !important;
+          background: #ffffff !important;
+          border: 1px solid #e2e8f0 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          padding: 0 !important; 
+          overflow: hidden !important;
+          margin-bottom: 0 !important; 
+        }
+        .attrec-emp-like-table td {
+          display: block !important;
+          padding: 0 !important; 
+          border-bottom: none !important;
+          margin: 0 !important;
+          width: 100% !important;
+          box-sizing: border-box !important; 
+          text-align: left !important;
+          min-height: auto !important;
+        }
+        .attrec-emp-like-table td::before {
+          display: none !important;
+        }
+        .attrec-emp-like-table .m-code-cell {
+          width: 90px !important;
+          min-width: 90px !important;
+          max-width: 90px !important;
+          background: #f8fafc !important;
+          border-right: 1px solid #e2e8f0 !important;
+          padding: 12px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          text-align: left !important;
+          box-sizing: border-box !important;
+        }
+        .attrec-emp-like-table .m-code-label {
+          font-size: 11px !important;
+          color: #64748b !important;
+          margin-bottom: 4px !important;
+        }
+        .attrec-emp-like-table .m-code-value {
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          color: #1e293b !important;
+          word-break: break-all !important;
+        }
+        .attrec-emp-like-table .m-main-cell {
+          flex: 1 !important;
+          min-width: 0 !important;
+          padding: 12px 16px !important;
+          background: #ffffff !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          text-align: left !important;
+          gap: 12px !important;
+        }
+        .attrec-emp-like-table .m-line {
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: flex-start !important;
+          width: 100% !important;
+          font-size: 13px !important;
+          line-height: 1.4 !important;
+          text-align: left !important;
+        }
+        .attrec-emp-like-table .m-k {
+          min-width: 70px !important;
+          color: #64748b !important;
+          flex-shrink: 0 !important;
+          text-align: left !important;
+        }
+        .attrec-emp-like-table .m-v {
+          color: #0f172a !important;
+          word-break: break-word !important;
+          flex: 1 !important;
+          text-align: left !important;
+        }
+        .attrec-emp-like-table .m-v-name {
+          font-size: 15px !important;
+          font-weight: 700 !important;
+        }
+        /* Style pill tags inside mobile cards */
+        .attrec-emp-like-table .m-v .attrec-pill {
+          margin-bottom: 0 !important;
+          font-size: 11px !important;
+          font-weight: bold !important;
+          padding: 2px 8px !important;
+          border-radius: 4px !important;
+        }
+      }
+    </style>
+    <div class="dash-card attrec-fiori-override" style="height: 100%; display: flex; flex-direction: column; overflow: visible !important; background: transparent !important; box-shadow: none !important; border: none !important;">
+      <div class="attrec-controls" style="margin-bottom: 0px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: none !important;">
+      </div>
+      <div class="attrec-head" style="flex-shrink: 0; padding-top: 0px; display: none !important; margin: 0 !important; min-height: 0 !important;">
+        <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: none; gap: 12px; margin-bottom: 0px;"></div>
+      </div>
+      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow-y: auto; overflow-x: auto;"></div>
+    </div>
+  `;
+  content.appendChild(rosterWrap);
+  
+  // Inject mobile header controls
+  const mobileActions = document.getElementById('attHubMobileActions');
+  if (window.innerWidth <= 768 && mobileActions) {
+    mobileActions.innerHTML = `
+    <div style="display:none; flex-direction:column; gap:8px; padding: 0 12px; background: #fff; margin: 0;">
+      <div style="display:flex; gap:8px; justify-content:space-between; margin: 0;">
+        <input type="date" id="rosterDateMobile" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="flex:1; height:34px; padding:0 12px; font-size:13px; box-sizing:border-box; margin: 0; display: none;">
+      </div>
+    </div>
+    `;
+    
+    // Removed mobile dropdown logic
+  }
+
+  // Restore Desktop controls
+  const desktopControlsHtml = `
+    <div style="display:flex; gap:16px; align-items:center; justify-content:flex-end; width:100%;">
+      <div id="rosterSummary" style="display:flex; gap:8px;"></div>
+      <input type="date" id="rosterDate" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:13px; max-width:140px; min-width:140px; box-sizing:border-box;">
+    </div>
+  `;
+  const controlsDiv = rosterWrap.querySelector('.attrec-controls');
+  if (controlsDiv) {
+    controlsDiv.innerHTML = desktopControlsHtml;
+  }
+  
+  // Resize listener to manage mobile header vs desktop header visibility
+  window.addEventListener('resize', () => {
+    const isMobile = window.innerWidth <= 768;
+    if (controlsDiv) {
+      controlsDiv.style.display = isMobile ? 'none' : 'block';
+    }
+  });
+  if (controlsDiv) {
+    controlsDiv.style.display = window.innerWidth <= 768 ? 'none' : 'block';
+  }
+
+  const renderSummary = (sum) => {
+    const s = sum && typeof sum === 'object' ? sum : {};
+    const required = Number(s.required == null ? 0 : s.required);
+    const submitted = Number(s.submitted == null ? 0 : s.submitted);
+    const missing = Number(s.missing == null ? 0 : s.missing);
+    const host = rosterWrap.querySelector('#rosterSummary');
+    if (!host) return;
+    
+    const basePill = "display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:22px; padding:0 8px; border-radius:12px; font-size:12px; font-weight:700; line-height:1; box-sizing:border-box;";
+    const styleNeutral = basePill + " background-color:#f1f5f9; color:#475569; border:1px solid #e2e8f0;";
+    const styleOk = basePill + " background-color:#f0fdf4; color:#166534; border:1px solid #bbf7d0;";
+    const styleDanger = basePill + " background-color:#fef2f2; color:#991b1b; border:1px solid #fecaca;";
+    
+    const missStyle = missing > 0 ? styleDanger : styleOk;
+    
+    host.innerHTML = `
+      <div style="display: none; gap:16px; align-items:center; font-size:13px; color:#475569; font-weight:500;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>必要(退勤済)</span>
+          <span style="${styleNeutral}">${esc(required)}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>提出</span>
+          <span style="${styleOk}">${esc(submitted)}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>未提出</span>
+          <span style="${missStyle}">${esc(missing)}</span>
+        </div>
+      </div>
+    `;
+  };
+
+  const loadRoster = async (date) => {
+    const host = rosterWrap.querySelector('#rosterTable');
+    if (host) {
+      host.innerHTML = `
+        <div class="empty-state">
+          <div style="font-size:28px;">⏳</div>
+          <div>読み込み中…</div>
+        </div>
+      `;
+    }
+    renderSummary(null);
+    try {
+      const r = await api.get(`/api/admin/work-reports?date=${encodeURIComponent(date)}`, { signal });
+      if (!isCurrent) return;
+      
+      let items = (r && Array.isArray(r.items)) ? r.items : [];
+      
+      // Lọc bỏ các tài khoản Admin và Manager, chỉ hiển thị nhân viên thường
+      items = items.filter(it => {
+        const role = String(it.role || '').toLowerCase();
+        return role !== 'admin' && role !== 'manager';
+      });
+      
+      // Tính toán lại summary sau khi đã lọc
+      const requiredItems = items.filter(i => i.status === 'checked_out');
+      const required = requiredItems.length;
+      const submitted = requiredItems.filter(i => !!i.report).length;
+      const missing = requiredItems.filter(i => !i.report).length;
+      
+      renderSummary({ required, submitted, missing });
+      
+      if (!host) return;
+      if (!items.length) {
+        host.innerHTML = `
+          <div class="empty-state">
+            <div style="font-size:28px;">🗂️</div>
+            <div>データがありません</div>
+          </div>
+        `;
+        return;
+      }
+      let currentPage = 1;
+      const pageSize = 10;
+      const renderTablePage = () => {
+        if (!host) return;
+        host.innerHTML = '';
+        
+        const table = document.createElement('table');
+        table.id = 'attrecList';
+        
+        // Clean aesthetic table structure
+        table.className = 'beautiful-table';
+        table.style.tableLayout = 'fixed';
+        table.style.width = '100%';
+        table.style.minWidth = '1000px'; 
+        table.style.borderCollapse = 'collapse';
+        table.style.border = '1px solid #e2e8f0';
+        
+        table.innerHTML = `
+          <style>
+            .beautiful-table {
+              box-shadow: none;
+            }
+            .beautiful-table thead {
+              background-color: #f8fafc;
+              border-bottom: 2px solid #e2e8f0;
+            }
+            .beautiful-table th {
+              padding: 14px 16px;
+              text-align: left;
+              font-weight: 600;
+              color: #334155;
+              font-size: 13px;
+              border-bottom: none;
+              white-space: nowrap;
+            }
+            .beautiful-table td {
+              padding: 16px;
+              border-bottom: 1px solid #f1f5f9;
+              color: #1e293b;
+              font-size: 14px;
+              vertical-align: middle;
+              word-break: break-word; /* Cho phép cắt từ nếu quá dài */
+              white-space: normal; /* Đảm bảo text được xuống dòng */
+              text-align: left;
+            }
+            .beautiful-table th:nth-child(5), /* Status */
+            .beautiful-table th:nth-child(6), /* In */
+            .beautiful-table th:nth-child(7)  /* Out */ {
+              text-align: center;
+            }
+            .beautiful-table td.empty-dash {
+              text-align: center !important;
+              color: #94a3b8;
+            }
+            .beautiful-table tbody tr:hover {
+              background-color: #f8fafc;
+            }
+            .beautiful-table tbody tr:last-child td {
+              border-bottom: none;
+            }
+            
+            /* Status Pills matching admin style */
+            .attrec-pill {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 4px 10px;
+              border-radius: 12px;
+              font-size: 12px;
+              font-weight: 600;
+              line-height: 1;
+              white-space: nowrap;
+            }
+            .attrec-pill.ok { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+            .attrec-pill.danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+            .attrec-pill.warn { background: #fef9c3; color: #9a3412; border: 1px solid #fde047; }
+            .attrec-pill.neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+            /* Parent container full width */
+            .attrec-table {
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              border-radius: 0 !important;
+            }
+            
+            .attrec-fiori-override.dash-card {
+              border-radius: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              padding: 24px !important;
+            }
+            .beautiful-table .attrec-pill {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 12px;
+              font-weight: 600;
+              background-color: #f1f5f9;
+              color: #475569;
+              border: 1px solid #e2e8f0;
+            }
+            .beautiful-table .attrec-pill.ok { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+            .beautiful-table .attrec-pill.warn { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
+            .beautiful-table .attrec-pill.danger { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; }
+            
+            /* Mobile Optimization (Card Layout) */
+               @media (max-width: 768px) {
+           body.admin .topbar { padding: 0 16px !important; background-color: #0b2c66 !important; }
+           body.admin .topbar .brand img { width: 32px !important; height: 32px !important; border-radius: 50% !important; object-fit: cover !important; }
+           
+           /* Sửa lỗi z-index làm cho menu trượt bị thanh Topbar đè lên */
+              #mobileDrawer { z-index: 2147483647 !important; }
+              #drawerBackdrop { z-index: 2147483646 !important; }
+              
+              /* Đảm bảo fallback offset nếu --drawer-offset chưa được set */
+                :root {
+                  --drawer-offset: 280px;
+                  --mobile-drawer-w: 280px;
+                }
+                
+                /* 1. Không can thiệp vào transform của .topbar và .content trên mobile nữa
+                   bởi vì css hệ thống (portal.css / attendance.css) ĐÃ CÓ SẴN hiệu ứng đẩy rồi. 
+                   Việc chúng ta ghi đè bằng !important vô tình làm hỏng logic gốc. */
+                
+                /* 2. Chỉ cần đồng bộ hiệu ứng cho khối bảng dữ liệu của trang standalone này thôi */
+                body.mobile-drawer-open .topbar,
+                body.drawer-open .topbar,
+                body.mobile-drawer-open .content,
+                body.drawer-open .content,
+                body.mobile-drawer-open .attrec-fiori-override,
+                body.drawer-open .attrec-fiori-override {
+                  transform: translateX(var(--mobile-drawer-w, 280px)) !important;
+                  transition: transform 0.2s ease !important;
+                }
+                
+                body:not(.mobile-drawer-open):not(.drawer-open) .topbar,
+                body:not(.mobile-drawer-open):not(.drawer-open) .content,
+                body:not(.mobile-drawer-open):not(.drawer-open) .attrec-fiori-override {
+                  transform: translateX(0) !important;
+                  transition: transform 0.2s ease !important;
+                }
+                
+                /* Hiển thị lớp phủ tối màu (Backdrop) đè lên bảng dữ liệu */
+                body.mobile-drawer-open #drawerBackdrop,
+                body.drawer-open #drawerBackdrop {
+                  display: block !important;
+                  opacity: 1 !important;
+                  z-index: 2147483646 !important; /* Phải nằm dưới menu trượt nhưng trên bảng */
+                }
+             
+           .attrec-fiori-override.dash-card {
+          padding: 0 !important;
+          margin: 0 !important;
+          background: transparent !important; /* Đổi lại nền trắng cho phù hợp viền phẳng */
+          box-shadow: none !important;
+          border: none !important;
+        }
+        .attrec-table {
+          padding: 0 !important;
+          margin: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+        .emp-list-scroll-wrap {
+          padding: 0 !important;
+          margin: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+        .beautiful-table {
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+          min-width: 0 !important;
+          width: 100% !important;
+          display: block;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .beautiful-table thead {
+          display: none;
+        }
+        .beautiful-table tbody {
+              display: flex;
+              flex-direction: column;
+              gap: 12px; /* Thêm khoảng cách giữa các thẻ */
+              padding: 12px; /* Thêm padding xung quanh list để thấy viền */
+              margin: 0 !important; 
+              width: 100% !important; 
+              box-sizing: border-box !important;
+              background: transparent !important;
+              border-radius: 0 !important;
+              border: none !important;
+              overflow: hidden;
+            }
+           .beautiful-table tr {
+               display: flex;
+               flex-direction: column;
+               background: #ffffff !important; /* Đặt nền trắng cho thẻ */
+               border: 1px solid #e2e8f0 !important; /* Thêm viền vuông màu xám nhạt */
+               border-radius: 8px !important; /* Bo góc nhẹ cho thẻ */
+               padding: 12px !important; /* Tăng padding bên trong thẻ */
+               margin: 0 !important;
+               box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; /* Thêm bóng đổ nhẹ */
+               width: 100% !important; 
+               box-sizing: border-box !important;
+               position: relative;
+             }
+             
+             /* Tiêu đề (Mã NV & Tên) đặt lên đầu thẻ */
+                 .beautiful-table tr::before {
+                   content: "[" attr(data-emp-code) "] " attr(data-emp-name);
+                   display: block;
+                   font-size: 16px; 
+                   font-weight: 700; 
+                   color: #0f172a;
+                   margin-bottom: 8px; 
+                   padding-bottom: 8px;
+                   padding-top: 0; 
+                   padding-left: 0; 
+                   padding-right: 0;
+                   border-bottom: 1px dashed #cbd5e1;
+                   margin-left: 0; 
+                   margin-right: 0; 
+                   box-sizing: border-box !important;
+                   width: 100% !important;
+                 }
+                 
+                 /* Ẩn các ô chứa mã NV và tên gốc để không bị lặp lại */
+                 .beautiful-table td:nth-child(1),
+                 .beautiful-table td:nth-child(2) {
+                   display: none !important;
+                 }
+                 
+                 /* Định dạng các dòng thông tin còn lại */
+                  .beautiful-table td {
+                     display: flex !important;
+                     justify-content: flex-start !important; 
+                     align-items: flex-start !important; /* Thay đổi từ center sang flex-start để text nhiều dòng bắt đầu từ trên cùng */
+                     padding: 6px 0 !important; 
+                     border-bottom: none !important;
+                     font-size: 15px !important; 
+                     white-space: normal !important;
+                     word-break: break-word !important;
+                   }
+                   
+                   /* Định dạng Nhãn (Tiêu đề) bên trái */
+                   .beautiful-table td::before {
+                     content: attr(data-label);
+                     font-weight: 500;
+                     color: #475569; /* Đổi màu xám đậm hơn cho dễ đọc */
+                     width: 85px !important; /* Giảm nhẹ độ rộng nhãn để dữ liệu sang trái thêm */
+                     min-width: 85px;
+                     text-align: left;
+                     flex-shrink: 0;
+                   }
+                  
+                  /* Ép phần nội dung bên phải căn trái sát lại gần nhãn */
+                    .beautiful-table td > *:not(.attrec-pill) {
+                       flex-grow: 0;
+                       text-align: left;
+                       padding-left: 0; /* Xóa khoảng trống thừa */
+                       color: #0f172a; /* Màu chữ đen đậm nhất */
+                       font-weight: 500;
+                       display: inline-block; /* Bắt buộc để nhận text-align left */
+                       white-space: normal; /* Cho phép xuống dòng */
+                       word-break: break-word; /* Tự động bẻ chữ nếu quá dài */
+                       max-width: 100%; /* Tránh tràn khối */
+                    }
+                    
+                    /* Riêng nội dung chữ trống (dấu -) */
+                    .beautiful-table td .empty-dash {
+                       text-align: left !important;
+                       flex-grow: 0;
+                       padding-left: 0;
+                       color: #475569; /* Màu dấu gạch ngang đậm lên theo màu nhãn */
+                       display: inline-block;
+                    }
+               
+               /* Ép Tag trạng thái (badge) ôm sát text */
+               .beautiful-table td .attrec-pill {
+                 display: inline-flex !important;
+                 width: auto !important;
+                 padding: 4px 10px !important;
+                 margin: 0 !important;
+                 margin-left: 0; 
+               }
+           .beautiful-table tr:first-child {
+               border-top: none !important;
+               padding-top: 0 !important; /* Xóa khoảng trống thừa trên thẻ đầu tiên */
+             }
+           .beautiful-table tr:last-child {
+             border-bottom: none !important;
+           }
+              
+              /* Ẩn phần Code cũ làm hỏng layout */
+              .beautiful-table td:nth-child(1) {
+                display: none !important;
+              }
+              .beautiful-table td:not(:nth-child(1)) {
+                /* Đã được ghi đè ở trên bằng flex */
+              }
+            }
+            .pagination-btn {
+              padding: 6px 12px;
+              background: #f8fafc;
+              border: 1px solid #cbd5e1;
+              border-radius: 4px;
+              cursor: pointer;
+              color: #334155;
+              font-size: 13px;
+              font-weight: 500;
+              transition: all 0.15s;
+            }
+            .pagination-btn:hover:not(:disabled) {
+              background: #e2e8f0;
+              color: #0f172a;
+            }
+            .pagination-btn:disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+            }
+            
+            @media (max-width: 768px) {
+              .pagination-controls.desktop-only {
+                display: none !important;
+              }
+            }
+          </style>
+          <colgroup>
+            <col style="width:10%;">
+            <col style="width:15%;">
+            <col style="width:12%;">
+            <col style="width:10%;">
+            <col style="width:10%;">
+            <col style="width:7%;">
+            <col style="width:7%;">
+            <col style="width:12%;">
+            <col style="width:17%;">
+          </colgroup>
+          <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>
+        `;
+        const tbody = document.createElement('tbody');
+        const selectedDateIsOff = isWeekend(date);
+        const isPastDate = date < today;
+        
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, items.length);
+        const pageItems = items.slice(startIndex, endIndex);
+        
+        for (const it of pageItems) {
+          const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
+          const name = it.username || '';
+          const dept = it.departmentName || '—';
+          const st = it.status || '';
+          const kubunRaw = String(it.dailyKubun || '').trim();
+          const kubun = kubunRaw || ((selectedDateIsOff && (st === 'leave' || st === 'not_checked_in')) ? '休日' : '');
+          const leaveSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇']);
+          const holidaySet = new Set(['休日', '代替休日']);
+          const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
+          const isHolidayKubun = holidaySet.has(kubun);
+          // Hàm trạng thái
+          // chức năng dùng để hiển thị trạng thái của nhân viên
+          // 1.checked_out
+          // 2.working
+        
+          let stLabel = '';
+          let stClass = '';
+          
+          if (st === 'checked_out') {
+            stLabel = '退勤済';
+            stClass = 'attrec-pill ok';
+          } else if (st === 'working' || st === 'holiday_working') {
+            if (isPastDate) {
+              stLabel = '退勤忘れ';
+              stClass = 'attrec-pill danger';
+            } else {
+              stLabel = st === 'working' ? '出勤中' : '休日出勤中';
+              stClass = 'attrec-pill warn';
+            }
+          } else if (st === 'holiday_work') {
+            stLabel = '休日出勤';
+            stClass = 'attrec-pill warn';
+          } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
+            stLabel = kubun || '休日';
+            stClass = 'attrec-pill neutral';
+          } else if (st === 'off') {
+            stLabel = '休日';
+            stClass = 'attrec-pill neutral';
+          } else {
+            // not_checked_in or empty
+            if (isPastDate) {
+              stLabel = '打刻なし';
+              stClass = 'attrec-pill danger';
+            } else {
+              stLabel = '未出勤';
+              stClass = 'attrec-pill neutral';
+            }
+          }
+
+          const cin = fmtTime(it.attendance ? it.attendance.checkIn : undefined);
+          const cout = fmtTime(it.attendance ? it.attendance.checkOut : undefined);
+          const site = (it.report && it.report.site) ? it.report.site : '';
+          const work = (it.report && it.report.work) ? it.report.work : '';
+          const dashOr = (v) => {
+            const s = String(v || '').trim();
+            return s ? s : '—';
+          };
+          const cinView = dashOr(cin);
+          const coutView = dashOr(cout);
+          const siteView = dashOr(site);
+          const workView = dashOr(work);
+          const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
+          const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : (st === 'off' ? '休日' : '—'));
+          const tr = document.createElement('tr');
+          tr.className = st === 'checked_out' ? 'attrec-row checkedout'
+            : (st === 'working' ? 'attrec-row working'
+              : (st === 'holiday_work' || st === 'holiday_working' ? 'attrec-row working'
+                : (((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) ? 'attrec-row absent' : (st === 'off' ? 'attrec-row absent' : 'attrec-row absent'))));
+          
+          tr.setAttribute('data-emp-code', code);
+          tr.setAttribute('data-emp-name', name);
+          
+          const emptyDash = (label) => `<td data-label="${label}"><span class="empty-dash">—</span></td>`;
+            
+            // Use standard table cell creation instead of weird layout elements
+            tr.innerHTML = `
+                <td data-label="社員番号" style="text-align:left;"><span>${esc(code)}</span></td>
+                <td data-label="氏名" style="font-weight: 600; color: #0f172a;"><span>${esc(name)}</span></td>
+              <td data-label="部署">${dept === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(dept)}</span>`}</td>
+              <td data-label="勤務区分">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(wtLabel)}</span>`}</td>
+              <td data-label="状態" style="text-align:left;"><span class="${stClass}">${esc(stLabel)}</span></td>
+              ${cinView === '—' ? emptyDash('出勤') : `<td data-label="出勤" style="text-align:left; font-family:monospace; font-size:14px;"><span>${esc(cinView)}</span></td>`}
+              ${coutView === '—' ? emptyDash('退勤') : `<td data-label="退勤" style="text-align:left; font-family:monospace; font-size:14px;"><span>${esc(coutView)}</span></td>`}
+              ${siteView === '—' ? emptyDash('現場') : `<td data-label="現場"><div style="font-size:12px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
+              ${workView === '—' ? emptyDash('作業内容') : `<td data-label="作業内容"><div style="font-size:12px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:80px; overflow-y:auto;">${esc(workView)}</div></td>`}
+            `;
+          
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
+        tableWrap.style.overflowX = 'auto';
+        tableWrap.appendChild(table);
+        host.appendChild(tableWrap);
+
+        // Pagination controls
+        if (items.length > 0) {
+          const totalPages = Math.ceil(items.length / pageSize);
+          const paginationDiv = document.createElement('div');
+          paginationDiv.className = 'pagination-controls desktop-only'; // Added desktop-only class
+          paginationDiv.style.display = 'flex';
+          paginationDiv.style.alignItems = 'center';
+          paginationDiv.style.justifyContent = 'flex-start';
+          paginationDiv.style.gap = '15px';
+          paginationDiv.style.marginTop = '15px';
+          paginationDiv.style.padding = '10px 0';
+          
+          const prevBtn = document.createElement('button');
+          prevBtn.type = 'button';
+          prevBtn.textContent = '前へ';
+          prevBtn.className = 'pagination-btn';
+          prevBtn.disabled = currentPage === 1;
+          prevBtn.onclick = () => {
+            if (currentPage > 1) {
+              currentPage--;
+              renderTablePage();
+            }
+          };
+
+          const nextBtn = document.createElement('button');
+          nextBtn.type = 'button';
+          nextBtn.textContent = '次へ';
+          nextBtn.className = 'pagination-btn';
+          nextBtn.disabled = currentPage === totalPages;
+          nextBtn.onclick = () => {
+            if (currentPage < totalPages) {
+              currentPage++;
+              renderTablePage();
+            }
+          };
+
+          const infoSpan = document.createElement('span');
+          infoSpan.textContent = `${startIndex + 1}-${endIndex} / ${items.length}`;
+          infoSpan.style.fontSize = '14px';
+          infoSpan.style.color = '#333';
+
+          paginationDiv.appendChild(prevBtn);
+          paginationDiv.appendChild(infoSpan);
+          paginationDiv.appendChild(nextBtn);
+          host.appendChild(paginationDiv);
+        }
+      };
+      
+      renderTablePage();
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      if (!isCurrent) return;
+      if (host) {
+        host.innerHTML = `
+          <div class="empty-state" style="color:#b00020;">
+            <div style="font-size:28px;">⚠️</div>
+            <div>読み込みに失敗しました: ${esc((err && err.message) ? err.message : 'unknown')}</div>
+          </div>
+        `;
+      }
+    }
+  };
+
+  /* Dropdown Menu Logic Removed */
+
+  const dateEl = rosterWrap.querySelector('#rosterDate');
+  const dateElMobile = document.getElementById('rosterDateMobile');
+  
+  // Navigate Date Helpers
+  const addDays = (dateStr, days) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  
+  const updateDate = (newDate) => {
+    if (dateEl) dateEl.value = newDate;
+    if (dateElMobile) dateElMobile.value = newDate;
+    handleDateChange();
+  };
+
+  const handleDateChange = async (e) => {
+    const d = (dateEl && dateEl.value) ? dateEl.value : (dateElMobile && dateElMobile.value ? dateElMobile.value : today);
+    if (d) {
+      if (dateEl && dateElMobile) {
+        dateEl.value = d;
+        dateElMobile.value = d;
+      }
+      await loadRoster(d);
+    }
+  };
+  if (dateEl) dateEl.addEventListener('change', handleDateChange);
+  if (dateElMobile) dateElMobile.addEventListener('change', handleDateChange);
+
+  // Setup navigation buttons
+  const setupNavBtn = (id, action) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', action);
+  };
+
+  const goPrevDay = () => {
+    const curr = (dateEl && dateEl.value) || today;
+    updateDate(addDays(curr, -1));
+  };
+
+  const goNextDay = () => {
+    const curr = (dateEl && dateEl.value) || today;
+    updateDate(addDays(curr, 1));
+  };
+
+  const goToday = () => updateDate(today);
+
+  setupNavBtn('rosterPrevDay', goPrevDay);
+  setupNavBtn('rosterNextDay', goNextDay);
+  setupNavBtn('rosterToday', goToday);
+  
+  setupNavBtn('rosterPrevDayMobile', goPrevDay);
+  setupNavBtn('rosterNextDayMobile', goNextDay);
+  setupNavBtn('rosterTodayMobile', goToday);
+  let profile = null;
+  try {
+    profile = await fetchJSONAuth('/api/auth/me');
+  } catch (e) {
+    //
+  }
+
+  if (profile && profile.role === 'employee') {
+    const excelBtns = content.querySelectorAll('.excel-dropdown-container, #rosterExportXlsx, #rosterExportXlsxMobile');
+    excelBtns.forEach(btn => { if(btn) btn.style.display = 'none'; });
+  }
+
+  const checkExportPerm = () => {
+    if (profile && profile.role !== 'admin' && profile.role !== 'manager') {
+      alert('権限がありません。');
+      return false;
+    }
+    return true;
+  };
+
+  const btnExpMonth = rosterWrap.querySelector('#rosterExportMonthXlsx');
+  const btnExpMonthMobile = document.getElementById('rosterExportMonthXlsxMobile');
+  const handleExportMonth = async () => {
+    if (!checkExportPerm()) return;
+    const mEl = rosterWrap.querySelector('#rosterMonth');
+    const mElMobile = document.getElementById('rosterMonthMobile');
+    const m = (mEl && mEl.value) ? mEl.value : (mElMobile && mElMobile.value ? mElMobile.value : month);
+    const url = `/api/admin/work-reports/export.xlsx?period=month&month=${encodeURIComponent(m)}`;
+    try {
+      await downloadWithAuth(url, `attendance_month_${m}.xlsx`);
+    } catch (e) {
+      alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
+    }
+  };
+  if (btnExpMonth) btnExpMonth.addEventListener('click', handleExportMonth);
+  if (btnExpMonthMobile) btnExpMonthMobile.addEventListener('click', handleExportMonth);
+
+  await loadRoster(today);
+
+  const form = document.createElement('form');
+  const yNow = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 4);
+  form.innerHTML = `
+    <select id="tsUser">${users.map(u => `<option value="${u.id}">${u.id} ${u.username || u.email}</option>`).join('')}</select>
+    <input id="tsYear" placeholder="Year(YYYY)" value="${yNow}" style="width:110px">
+    <button type="button" id="tsExportXlsx">Excel</button>
+    <input id="tsFrom" placeholder="From(YYYY-MM-DD)" style="width:150px">
+    <input id="tsTo" placeholder="To(YYYY-MM-DD)" style="width:150px">
+    <button type="submit">表示</button>
+    <button type="button" id="tsExport">CSV</button>
+  `;
+  const resultDiv = document.createElement('div');
+  const detailDiv = document.createElement('div');
+
+  let currentUserId = null;
+  delegate(resultDiv, 'button[data-action="day-detail"]', 'click', async (_e, btn) => {
+    const date = btn.dataset.date || '';
+    if (!date) return;
+    if (!currentUserId) return;
+    const q = await getAttendanceDay(currentUserId, date, { signal });
+    if (!isCurrent) return;
+    detailDiv.innerHTML = `<h4>${date} 編集</h4>`;
+    const t2 = document.createElement('table');
+    t2.style.width = '100%';
+    t2.innerHTML = '<thead><tr><th>ID</th><th>出勤</th><th>退勤</th><th>保存</th></tr></thead>';
+    const b2 = document.createElement('tbody');
+    for (const seg of (q.segments || [])) {
+      const tr2 = document.createElement('tr');
+      tr2.innerHTML = `
+        <td>${seg.id}</td>
+        <td><input data-in="${seg.id}" value="${seg.checkIn || ''}"></td>
+        <td><input data-out="${seg.id}" value="${seg.checkOut || ''}"></td>
+        <td><button type="button" data-action="save-att" data-id="${seg.id}">保存</button></td>
+      `;
+      b2.appendChild(tr2);
+    }
+    t2.appendChild(b2);
+    detailDiv.appendChild(t2);
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const userId = parseInt(form.querySelector('#tsUser').value, 10);
+    const from = form.querySelector('#tsFrom').value.trim();
+    const to = form.querySelector('#tsTo').value.trim();
+    currentUserId = userId;
+    const r = await getTimesheet(userId, from, to, { signal });
+    if (!isCurrent) return;
+    resultDiv.innerHTML = '';
+    detailDiv.innerHTML = '';
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.innerHTML = '<thead><tr><th>日付</th><th>通常</th><th>残業</th><th>深夜</th><th>操作</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    for (const d of (r.days || [])) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${d.date}</td><td>${d.regularMinutes}</td><td>${d.overtimeMinutes}</td><td>${d.nightMinutes}</td><td><button type="button" data-action="day-detail" data-date="${d.date}">詳細</button></td>`;
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    resultDiv.appendChild(table);
+  });
+
+  form.querySelector('#tsExport').addEventListener('click', () => {
+    if (!checkExportPerm()) return;
+    const userId = parseInt(form.querySelector('#tsUser').value, 10);
+    const from = form.querySelector('#tsFrom').value.trim();
+    const to = form.querySelector('#tsTo').value.trim();
+    const url = buildTimesheetExportURL(String(userId), from, to);
+    downloadWithAuth(url, 'timesheet.csv');
+  });
+  form.querySelector('#tsExportXlsx').addEventListener('click', async () => {
+    if (!checkExportPerm()) return;
+    const userId = parseInt(form.querySelector('#tsUser').value, 10);
+    const yEl = form.querySelector('#tsYear');
+    const year = String((yEl && yEl.value) ? yEl.value : yNow).trim() || yNow;
+    const url = `/api/admin/employees/${encodeURIComponent(String(userId))}/export.xlsx?year=${encodeURIComponent(year)}`;
+    try {
+      await downloadWithAuth(url, `employee_${userId}_${year}.xlsx`);
+    } catch (e) {
+      alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
+    }
+  });
+
+  // Hide Personal Timesheet Detail if not in an admin context or if it's the records standalone page
+  const isRecordsPage = window.location.pathname.includes('/ui/attendance-records');
+  if (!isRecordsPage) {
+    const adv = document.createElement('details');
+    adv.open = false;
+    adv.innerHTML = `<summary style="cursor:pointer;font-weight:900;padding:10px 0;">個人タイムシート（詳細）</summary>`;
+    adv.appendChild(form);
+    adv.appendChild(resultDiv);
+    adv.appendChild(detailDiv);
+    content.appendChild(adv);
+    delegate(adv, 'button[data-action="save-att"]', 'click', async (_e, btn) => {
+      const id = btn.dataset.id || '';
+      if (!id) return;
+      const inEl = adv.querySelector(`input[data-in="${id}"]`);
+      const outEl = adv.querySelector(`input[data-out="${id}"]`);
+      const inVal = inEl && inEl.value ? inEl.value : null;
+      const outVal = outEl && outEl.value ? outEl.value : null;
+      await updateAttendanceSegment(id, { checkIn: inVal, checkOut: outVal }, { signal });
+      alert('保存しました');
+    });
+  }
+
+  return () => {
+    try { content.innerHTML = ''; } catch { }
+    cleanup.run();
+  };
+}
+
+export const attendancePage = createPage({ mount: mountAttendanceImpl });
