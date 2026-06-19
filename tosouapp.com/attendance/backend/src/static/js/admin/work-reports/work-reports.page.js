@@ -82,9 +82,6 @@ export async function mount() {
   if (content && content.id === 'attendanceHubContent') {
     content.style.padding = window.innerWidth <= 768 ? '0' : '16px 24px';
     content.style.boxSizing = 'border-box';
-    content.style.display = 'flex';
-    content.style.flexDirection = 'column';
-    content.style.minHeight = '0';
     content.style.background = '#FFFFFF';
   }
 
@@ -107,7 +104,7 @@ export async function mount() {
 
   const layout = document.createElement('div');
   layout.className = 'wr-layout';
-  layout.style.cssText = `flex: 1; min-height: 0; display: flex; flex-direction: column; background: #FFFFFF; font-family: Inter, 'Noto Sans JP', sans-serif; width: 100%;`;
+  layout.style.cssText = `display: flex; flex-direction: column; background: #FFFFFF; font-family: Inter, 'Noto Sans JP', sans-serif; width: 100%;`;
 
   const PAGE_CSS = `
       .wr-input { height: 30px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 13px; color: #0f172a; outline: none; background: #fff; box-sizing: border-box; }
@@ -130,7 +127,7 @@ export async function mount() {
       .attrec-btn { height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #cbd5e1; outline: none; transition: all .15s; background: #fff; color: #475569; }
       .attrec-btn:hover { background: #f8fafc; border-color: #94a3b8; }
 
-      .wr-layout { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+      .wr-layout { height: calc(${vhExpr} - 32px); overflow: hidden; display: flex; flex-direction: column; }
       .wr-table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; position: relative; z-index: 1; }
 
       @media (max-width: 768px) {
