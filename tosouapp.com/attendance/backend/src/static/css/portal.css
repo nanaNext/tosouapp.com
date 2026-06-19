@@ -583,11 +583,11 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 
 /* Employee header keeps the search box centered (not admin-style expanding search) */
 body:not(.admin) .topbar-inner {
-  display: grid;
-  grid-template-columns: auto minmax(300px, 560px) 180px;
-  align-items: center;
-  gap: 16px;
-}
+      display: grid;
+      grid-template-columns: auto minmax(300px, 560px) 30px;
+      align-items: center;
+      gap: 16px;
+    }
 body:not(.admin) .topbar-inner .brand {
   justify-self: start;
 }
@@ -675,18 +675,20 @@ body:not(.admin) .topbar-inner .user #userName {
     width: auto;
   }
 }
-@media (max-width: 960px) {
-  body:not(.admin) .topbar-inner {
-    grid-template-columns: auto minmax(220px, 1fr) 140px;
-    gap: 10px;
-  }
+@media (max-width: 900px) {
+      body:not(.admin) .topbar-inner {
+        grid-template-columns: auto minmax(220px, 1fr) 30px;
+        gap: 10px;
+      }
   body:not(.admin) .topbar-inner .user {
-    width: 140px;
-    min-width: 140px;
-  }
-  body:not(.admin) .topbar-inner .user .user-btn {
-    max-width: 140px;
-  }
+      width: auto;
+      min-width: unset;
+      display: flex;
+      justify-content: flex-end;
+    }
+    body:not(.admin) .topbar-inner .user .user-btn {
+      max-width: none;
+    }
   body:not(.admin) .topbar-inner .user #userName {
     max-width: 84px;
   }

@@ -882,10 +882,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="icon">⏲</div>
             <div class="title">調整申請</div>
           </a>
-          <a class="tile" href="/ui/shifts">
-            <div class="icon">🗓</div>
-            <div class="title">シフト登録</div>
-          </a>
         </div>
         <div class="emp-tiles-2">
           <a class="tile emp-wide" href="/ui/faq">
