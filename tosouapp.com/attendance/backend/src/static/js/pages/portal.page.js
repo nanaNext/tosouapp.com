@@ -120,6 +120,7 @@ const mountEmployeeNoticeBell = () => {
       </div>
     `;
     wrap.style.marginLeft = 'auto';
+    wrap.style.marginRight = '24px'; // Thêm margin right để không bị sát lề phải
     subnav.appendChild(wrap);
     const btn = wrap.querySelector('#empNotifyBtn');
     const panel = wrap.querySelector('#empNotifyPanel');
@@ -902,7 +903,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     const cfg = [
-      { key: 'attendance_manage', title: '勤怠管理', icon: '', href: (r) => (r === 'admin' || r === 'manager') ? '/admin/attendance?standalone=1' : '/ui/attendance?standalone=1', target: '_blank', rel: 'noopener noreferrer', desc: (r) => (r === 'admin' || r === 'manager') ? 'Team attendance (missing/late)' : 'Attendance overview', prio: 10 },
+      { key: 'attendance_manage', title: '勤怠記録', icon: '', href: (r) => (r === 'admin' || r === 'manager') ? '/admin/attendance' : '/ui/attendance-records', desc: (r) => (r === 'admin' || r === 'manager') ? 'Team attendance (missing/late)' : 'Attendance overview', prio: 10 },
       { key: 'users', title: 'ユーザー管理', icon: '👥', href: '/ui/admin?tab=users', desc: 'User management', adminOnly: true, prio: 12 },
       { key: 'departments', title: '部門管理', icon: '🏢', href: '/admin/departments', desc: 'Departments', adminOnly: true, prio: 14 },
       { key: 'admin', title: '社員管理', icon: '🛠', href: '/admin/employees', desc: 'Admin portal', adminOnly: true, prio: 16 },

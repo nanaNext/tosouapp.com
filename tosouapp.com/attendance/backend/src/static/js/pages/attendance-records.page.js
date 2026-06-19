@@ -116,12 +116,14 @@ const wireTopNavDropdowns = () => {
     drawer.removeAttribute('hidden');
     if (backdrop) backdrop.removeAttribute('hidden');
     if (drawerBtn) drawerBtn.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('drawer-open', 'mobile-drawer-open');
   };
   const closeDrawer = () => {
     if (!drawer) return;
     drawer.setAttribute('hidden', '');
     if (backdrop) backdrop.setAttribute('hidden', '');
     if (drawerBtn) drawerBtn.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('drawer-open', 'mobile-drawer-open');
   };
 
   if (drawerBtn) drawerBtn.addEventListener('click', openDrawer);
@@ -525,7 +527,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { /* silently ignored */ }
   
   try {
-    const mod = await import('../admin/legacy/legacy-attendance.page.js?v=' + Date.now());
+    const mod = await import('./employee-attendance.page.js?v=' + Date.now());
     if (mod.mountAttendance) {
       const host = $('#attendanceRecordsHost');
       if (host) {
