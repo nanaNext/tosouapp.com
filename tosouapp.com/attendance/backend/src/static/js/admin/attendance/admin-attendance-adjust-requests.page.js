@@ -24,16 +24,54 @@ export async function mount({ content }) {
   const isStandalone = params.get('standalone') === '1';
   const vhExpr = isStandalone ? '100dvh' : 'calc(100dvh - var(--topbar-height) - var(--subbar-height))';
 
-  localHost.style.display = 'flex';
-  localHost.style.flexDirection = 'column';
-  localHost.style.height = vhExpr;
-  localHost.style.background = '#FFFFFF';
-  localHost.style.overflow = 'hidden';
-  localHost.style.flex = '1';
-  localHost.style.minWidth = '0';
+  localHost.className = (localHost.className || '') + ' adjust-page-content';
+  localHost.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; background: #FFFFFF; flex: 1; min-width: 0;`;
+
+  // Handle resize to show/hide mobile date picker dynamically
+  window.addEventListener('resize', () => {
+    if (localHost && document.getElementById('btnMonthPrev')) {
+      handleMobileHeader();
+    }
+  });
 
   const isAdmin = await checkAdminAuth();
   if (isAdmin) await renderList();
+}
+
+function handleMobileHeader() {
+  const mobileActions = document.getElementById('attHubMobileActions');
+  if (window.innerWidth <= 768 && mobileActions) {
+    let mobileNav = document.getElementById('adjustMonthNavMobile');
+    if (!mobileNav) {
+      mobileNav = document.createElement('div');
+      mobileNav.id = 'adjustMonthNavMobile';
+      mobileNav.style.cssText = 'display:flex; align-items:center; gap:4px;';
+      
+      const prevBtn = document.createElement('button');
+      prevBtn.innerHTML = '&#8249;';
+      prevBtn.style.cssText = 'background:transparent; border:none; padding:4px 8px; font-size:18px; color:#0a6ed1; cursor:pointer;';
+      prevBtn.onclick = () => { currentMonth = shiftMonth(currentMonth, -1); currentPage = 1; renderTable(); };
+      
+      const nextBtn = document.createElement('button');
+      nextBtn.innerHTML = '&#8250;';
+      nextBtn.style.cssText = 'background:transparent; border:none; padding:4px 8px; font-size:18px; color:#0a6ed1; cursor:pointer;';
+      nextBtn.onclick = () => { currentMonth = shiftMonth(currentMonth, 1); currentPage = 1; renderTable(); };
+      
+      const label = document.createElement('span');
+      label.id = 'adjustMonthLabelMobile';
+      label.style.cssText = 'font-weight:600; font-size:14px; color:#1e293b; min-width:60px; text-align:center;';
+      
+      mobileNav.appendChild(prevBtn);
+      mobileNav.appendChild(label);
+      mobileNav.appendChild(nextBtn);
+      
+      mobileActions.innerHTML = '';
+      mobileActions.appendChild(mobileNav);
+    }
+    document.getElementById('adjustMonthLabelMobile').textContent = fmtMonthLabel(currentMonth);
+  } else if (mobileActions) {
+    mobileActions.innerHTML = '';
+  }
 }
 
 function esc(s) {
@@ -406,7 +444,7 @@ function renderTable() {
         }
 
         const rowHtml = `
-          <tr>
+          <tr class="adj-desktop-row">
             <td style="font-weight:500;">${user}</td>
             <td style="font-family:monospace;">${created}</td>
             <td style="font-family:monospace;">${cin}</td>
@@ -415,43 +453,111 @@ function renderTable() {
             <td><span class="${stClass}">${stLabel}</span></td>
             <td style="white-space:nowrap;text-align:right;">${actionCell}</td>
           </tr>
+          <tr class="adj-mobile-row">
+            <td colspan="7" class="adj-mobile-cell">
+              <div class="adj-card">
+                <div class="adj-card-header">
+                  <div class="adj-card-user">${user}</div>
+                  <span class="${stClass}">${stLabel}</span>
+                </div>
+                <div class="adj-card-body">
+                  <div class="adj-card-row">
+                    <span class="adj-card-label">作成</span>
+                    <span class="adj-card-value">${created}</span>
+                  </div>
+                  <div class="adj-card-row">
+                    <span class="adj-card-label">修正(出勤)</span>
+                    <span class="adj-card-value">${cin}</span>
+                  </div>
+                  <div class="adj-card-row">
+                    <span class="adj-card-label">修正(退勤)</span>
+                    <span class="adj-card-value">${cout}</span>
+                  </div>
+                  <div class="adj-card-reason">
+                    <div class="adj-card-label" style="margin-bottom:4px;">理由 / 差戻し内容</div>
+                    <div class="adj-card-reason-content">${reasonHtml}</div>
+                  </div>
+                </div>
+                <div class="adj-card-actions">
+                  ${actionCell}
+                </div>
+              </div>
+            </td>
+          </tr>
         `;
         return rowHtml;
       }).join('');
 
   localHost.innerHTML = `
     <style>
-      .sap-card { background:#ffffff; border-radius:8px; box-shadow:0 1px 3px 0 rgba(0,0,0,0.1),0 1px 2px -1px rgba(0,0,0,0.1); margin:16px 24px; display:flex; flex-direction:column; overflow:hidden; }
-      .adj-table { width:100%; border-collapse:collapse; font-size:14px; table-layout:auto; font-family:"72","72full",Arial,Helvetica,sans-serif; }
-      .adj-table th { background-color:#ffffff; color:#32363a; padding:12px 16px; font-size:12px; font-weight:normal; text-align:left; border-bottom:1px solid #e5e5e5; text-transform:uppercase; letter-spacing:0.5px; }
-      .adj-table td { padding:12px 16px; vertical-align:middle; border-bottom:1px solid #e5e5e5; color:#32363a; }
-      .adj-table tbody tr:hover td { background-color:#f4f4f4; }
+      .adjust-page-content { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+      .adj-table-card { flex: 1 1 0%; min-height: 0; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      
+      .sap-card { background:#ffffff; border:none; box-shadow:none; margin:0; display:flex; flex-direction:column; overflow:hidden; flex: 1; min-height: 0; }
+      .adj-table { width:100%; border-collapse:collapse; font-size:13px; table-layout:auto; font-family:"72","72full",Arial,Helvetica,sans-serif; }
+      .adj-table th { background-color:#f8fafc; color:#475569; padding:8px 16px; font-size:12px; font-weight:600; text-align:left; border-bottom:1px solid #e2e8f0; border: 1px solid #e2e8f0; }
+      .adj-table td { padding:8px 16px; vertical-align:middle; border-bottom:1px solid #f1f5f9; color:#0f172a; border: 1px solid #e2e8f0; }
+      .adj-table tbody tr:hover td { background-color:#f8fafc; }
+      
+      .adj-table th { background-color: #e6f2ff !important; color: #0f172a !important; font-weight: 600 !important; border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; text-align: center !important; white-space: nowrap; }
+      .adj-table td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; }
+      
       .adj-month-nav { display:flex; align-items:center; padding:16px 24px; justify-content:space-between; flex-shrink:0; background:#ffffff; border-bottom:1px solid #e5e5e5; }
       .adj-month-nav-right { display:flex; align-items:center; gap:8px; }
-      .adj-month-btn { background:transparent; border:1px solid transparent; border-radius:4px; padding:4px 12px; cursor:pointer; color:#0a6ed1; font-weight:bold; height:32px; transition:background 0.2s; }
-      .adj-month-btn:hover:not([disabled]) { background:#e5f0fa; }
-      .adj-month-btn[disabled] { color:#8c8c8c; cursor:not-allowed; }
-      .adj-month-label { font-weight:bold; margin:0 8px; font-size:16px; color:#32363a; }
-      .adj-month-today { cursor:pointer; background:#ffffff; border:1px solid #0a6ed1; color:#0a6ed1; padding:4px 12px; border-radius:4px; height:32px; font-weight:bold; transition:all 0.2s; }
-      .adj-month-today:hover { background:#0a6ed1; color:#ffffff; }
-      .adj-pending-badge { background:#bb0000; color:white; padding:2px 8px; border-radius:12px; font-size:12px; margin-left:12px; font-weight:bold; }
-      .adj-table-card { margin:0; flex:1; overflow-y:auto; max-height:calc(${vhExpr} - 120px); }
-      .adj-status-pending, .adj-status-approved, .adj-status-rejected { display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:normal; border-width:1px; border-style:solid; }
-      .adj-status-pending { background:#fff8d6; color:#e9730c; border-color:#e9730c; }
-      .adj-status-approved { background:#f4f9f4; color:#2b7c2b; border-color:#2b7c2b; }
-      .adj-status-rejected { background:#ffebeb; color:#bb0000; border-color:#bb0000; }
-      .adj-action-btn { width:32px; height:32px; border-radius:4px; border:1px solid transparent; background:transparent; color:#0a6ed1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; margin:0 2px; transition:background 0.2s; }
-      .adj-action-btn:hover { background:#e5f0fa; }
-      .adj-action-btn.danger { color:#bb0000; }
-      .adj-action-btn.danger:hover { background:#ffebeb; }
-      .adj-action-btn.approve { color:#2b7c2b; }
-      .adj-action-btn.approve:hover { background:#f4f9f4; }
-      .adj-action-btn.reject { color:#e9730c; }
-      .adj-action-btn.reject:hover { background:#fff8d6; }
+      .adj-month-btn { background:transparent; border:1px solid #cbd5e1; border-radius:4px; padding:4px 12px; cursor:pointer; color:#475569; font-weight:500; height:32px; transition:background 0.2s; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+      .adj-month-btn:hover:not([disabled]) { background:#f1f5f9; }
+      .adj-month-btn[disabled] { color:#94a3b8; cursor:not-allowed; background:#f8fafc; border-color:#e2e8f0; }
+      .adj-month-label { font-weight:600; margin:0 8px; font-size:15px; color:#1e293b; }
+      .adj-pending-badge { background:#ef4444; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:12px; font-weight:bold; }
+      .adj-table-card { margin:0; padding: 16px 24px; }
+      .adj-status-pending, .adj-status-approved, .adj-status-rejected { display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; border-width:1px; border-style:solid; }
+      .adj-status-pending { background:#fff7ed; color:#ea580c; border-color:#fdba74; }
+      .adj-status-approved { background:#f0fdf4; color:#16a34a; border-color:#bbf7d0; }
+      .adj-status-rejected { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+      .adj-action-btn { width:32px; height:32px; border-radius:4px; border:1px solid #cbd5e1; background:#fff; color:#475569; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; margin:0 2px; transition:background 0.2s; }
+      .adj-action-btn:hover { background:#f1f5f9; }
+      .adj-action-btn.danger { color:#dc2626; border-color:#fecaca; background:#fef2f2; }
+      .adj-action-btn.danger:hover { background:#fee2e2; }
+      .adj-action-btn.approve { color:#16a34a; border-color:#bbf7d0; background:#f0fdf4; }
+      .adj-action-btn.approve:hover { background:#dcfce7; }
+      .adj-action-btn.reject { color:#ea580c; border-color:#fdba74; background:#fff7ed; }
+      .adj-action-btn.reject:hover { background:#ffedd5; }
+      
+      .adj-mobile-row { display: none; }
+      
+      @media (max-width: 768px) {
+        .adjust-page-content { flex: 1 1 0% !important; min-height: 0 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+        .adj-table-card { flex: 1 1 0% !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden !important; -webkit-overflow-scrolling: touch !important; padding: 12px !important; }
+        #adminContent.card { padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important; }
+        
+        .adj-month-nav { display: none !important; }
+        
+        .adj-table { border: none !important; }
+        .adj-table thead { display: none; }
+        .adj-desktop-row { display: none; }
+        .adj-mobile-row { display: table-row; }
+        
+        .adj-mobile-cell { padding: 0 !important; border: none !important; background: transparent !important; }
+        .adj-mobile-cell:hover { background: transparent !important; }
+        
+        .adj-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow: hidden; }
+        .adj-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+        .adj-card-user { font-weight: 700; font-size: 15px; color: #0f172a; }
+        
+        .adj-card-body { padding: 12px 16px; }
+        .adj-card-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; }
+        .adj-card-label { color: #64748b; width: 80px; flex-shrink: 0; font-weight: 500; }
+        .adj-card-value { color: #1e293b; font-family: monospace; font-size: 14px; }
+        
+        .adj-card-reason { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
+        .adj-card-reason-content { font-size: 13px; color: #334155; line-height: 1.5; }
+        
+        .adj-card-actions { display: flex; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #f1f5f9; background: #f8fafc; gap: 8px; }
+      }
     </style>
     <div class="sap-card">
       <div class="adj-month-nav">
-        <h2 style="margin:0; font-size:18px; font-weight:normal; color:#32363a; font-family:'72',sans-serif;">調整申請一覧</h2>
+        <h2 style="margin:0; font-size:16px; font-weight:700; color:#1e293b;">調整申請一覧</h2>
         <div class="adj-month-nav-right">
           <button id="btnMonthPrev" class="adj-month-btn" title="前月">&#8249;</button>
           <span class="adj-month-label">

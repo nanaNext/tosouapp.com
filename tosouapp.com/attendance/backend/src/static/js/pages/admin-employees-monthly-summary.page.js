@@ -83,7 +83,7 @@ function nameOf(u) {
 //u.email: Nếu không có tên, dùng địa chỉ email để định danh.
 // Tạo tên mặc định (u.id): Nếu tất cả các trường trên đều trống,
 //  nó sẽ lấy ID và gắn thêm chữ 社員 (Shain - Nhân viên) phía trước.Ví dụ: id: 123 $\rightarrow$ "社員123".
-// Mặc định cuối cùng: Nếu ngay cả ID cũng không có, trả về chuỗi rỗng ''
+// Mặc định cuối cùng: Nếu ngay cả ID cũng không có, trả về chuỗi rỗng ''Có
 function roleOf(u) {
   return String(u.role || '').toLowerCase();
 }

@@ -1,6 +1,5 @@
 html,
 body {
-    height: 100%;
     margin: 0;
 }
 
@@ -10,6 +9,7 @@ html {
     /* Keep vertical scrollbar space reserved to prevent horizontal "jump" between pages */
     overflow-y: scroll;
     scrollbar-gutter: stable;
+    min-height: 100%;
 }
 
 body {

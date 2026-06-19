@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { authenticateFromCookie } = require('../core/middleware/authMiddleware');
+const { authenticateFromCookie, authorize } = require('../core/middleware/authMiddleware');
 const refreshRepo = require('../modules/auth/refresh.repository');
 
 const router = express.Router();
@@ -100,7 +100,7 @@ router.get('/ui-check', (req, res) => {
 
 router.use('/ui/admin', authenticateFromCookie, authorizePage('admin', 'manager'));
 router.use('/ui/employees', authenticateFromCookie, authorizePage('admin', 'manager'));
-router.use('/admin', authenticateFromCookie, authorizePage('admin', 'manager'));
+router.use('/admin', authenticateFromCookie, authorizePage('admin', 'manager', 'employee'));
 router.use('/ui', authenticateFromCookie);
 
 router.get('/ui/dashboard', sendPage('dashboard.html'));
@@ -124,7 +124,13 @@ router.get('/ui/attendance', sendPage('attendance.html'));
 router.get('/ui/attendance/monthly', sendPage('attendance-monthly.html'));
 router.get('/ui/attendance/monthly/', sendPage('attendance-monthly.html'));
 
+// Redirect /ui/attendance (which employees click) to the admin version if they have permission,
+// or show the generic attendance page if not.
+router.get('/ui/attendance-records', authenticateFromCookie, sendPage('attendance-records.html'));
+
 router.get('/ui/admin', (req, res) => {
+  const role = roleOf(req.user?.role);
+  if (role === 'employee') return res.redirect(302, '/ui/portal');
   const tab = String(req.query?.tab || '').trim();
   if (!tab) return res.redirect(302, '/admin/dashboard');
   if (tab === 'employees') return res.redirect(302, '/admin/employees');
@@ -149,7 +155,14 @@ router.get('/admin/attendance/monthly', (req, res) => sendAdminPageNoCache(req, 
 router.get('/admin/attendance/monthly/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-monthly.html'));
 router.get('/admin/employees/monthly-summary', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
 router.get('/admin/employees/monthly-summary/', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
-router.get(/^\/admin(?:\/.*)?$/, (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
+router.get(/^\/admin(?:\/.*)?$/, (req, res) => {
+  const role = roleOf(req.user?.role);
+  if (role === 'employee') {
+    if (req.path === '/admin/attendance') return res.redirect(302, '/ui/attendance-records');
+    return res.redirect(302, '/ui/portal');
+  }
+  return sendAdminPageNoCache(req, res, 'admin.html');
+});
 
 router.get('/ui/overtime', sendPage('overtime.html'));
 router.get('/ui/leave', (req, res) => {

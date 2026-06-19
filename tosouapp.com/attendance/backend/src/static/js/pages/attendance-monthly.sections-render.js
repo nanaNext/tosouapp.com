@@ -1089,6 +1089,10 @@
             <td><input type="time" class="se-input plan-input" data-date="${ds}" data-field="endTime" value="${esc(et)}"></td>
             <td>
               <select class="se-select plan-input" data-date="${ds}" data-field="breakMinutes">
+                <option value="180" ${br === 180 ? 'selected' : ''}>3:00</option>
+                <option value="150" ${br === 150 ? 'selected' : ''}>2:30</option>
+                <option value="120" ${br === 120 ? 'selected' : ''}>2:00</option>
+                <option value="90" ${br === 90 ? 'selected' : ''}>1:30</option>
                 <option value="60" ${br === 60 ? 'selected' : ''}>1:00</option>
                 <option value="45" ${br === 45 ? 'selected' : ''}>0:45</option>
                 <option value="30" ${br === 30 ? 'selected' : ''}>0:30</option>

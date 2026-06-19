@@ -843,7 +843,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <a href="/admin/employees" class="drawer-item">社員管理</a>
         <a href="/ui/admin?tab=users" class="drawer-item">ユーザー管理</a>
         <a href="/admin/departments" class="drawer-item">部門管理</a>
-        <a href="/admin/attendance?standalone=1" target="_blank" rel="noopener noreferrer" class="drawer-item">勤怠管理</a>
+        <a href="/admin/attendance?standalone=1" class="drawer-item" target="_blank" rel="noopener noreferrer">勤怠管理</a>
         <a href="/admin/leave/requests" class="drawer-item">承認フロー</a>
         <a href="/ui/admin?tab=reports" class="drawer-item">レポート</a>
         <a href="/admin/payroll/salary" class="drawer-item">給与管理</a>
@@ -902,7 +902,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     const cfg = [
-      { key: 'attendance_manage', title: '勤怠管理', icon: '', href: (r) => (r === 'admin' || r === 'manager') ? '/admin/attendance' : '/ui/attendance', desc: (r) => (r === 'admin' || r === 'manager') ? 'Team attendance (missing/late)' : 'Attendance overview', prio: 10 },
+      { key: 'attendance_manage', title: '勤怠管理', icon: '', href: (r) => (r === 'admin' || r === 'manager') ? '/admin/attendance?standalone=1' : '/ui/attendance?standalone=1', target: '_blank', rel: 'noopener noreferrer', desc: (r) => (r === 'admin' || r === 'manager') ? 'Team attendance (missing/late)' : 'Attendance overview', prio: 10 },
       { key: 'users', title: 'ユーザー管理', icon: '👥', href: '/ui/admin?tab=users', desc: 'User management', adminOnly: true, prio: 12 },
       { key: 'departments', title: '部門管理', icon: '🏢', href: '/admin/departments', desc: 'Departments', adminOnly: true, prio: 14 },
       { key: 'admin', title: '社員管理', icon: '🛠', href: '/admin/employees', desc: 'Admin portal', adminOnly: true, prio: 16 },

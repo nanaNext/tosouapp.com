@@ -1,10 +1,28 @@
-export async function mount({ content, initialPath }) {
+export async function mount({ content, initialPath, profile }) {
   const layout = document.createElement('div');
   layout.className = 'att-hub-layout';
   
   // Check if standalone
   const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
   
+  if (isStandalone) {
+    // Hide topbar and subbar natively if possible
+    try {
+      const topbar = document.querySelector('.topbar');
+      const subbar = document.querySelector('.subbar');
+      if (topbar) topbar.style.display = 'none';
+      if (subbar) subbar.style.display = 'none';
+      
+      const adminChrome = document.querySelector('#adminChrome');
+      if (adminChrome) adminChrome.style.display = 'none';
+
+      document.body.style.paddingTop = '0';
+      const rootHtml = document.documentElement;
+      rootHtml.style.setProperty('--topbar-height', '0px');
+      rootHtml.style.setProperty('--subbar-height', '0px');
+    } catch(e) {}
+  }
+
   layout.style.cssText = `
     display: flex;
     min-height: ${isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))'};
@@ -64,8 +82,8 @@ export async function mount({ content, initialPath }) {
   mobileHeader.style.cssText = `
     display: none;
     align-items: center;
-    justify-content: center;
-    padding: 12px 16px;
+    justify-content: space-between;
+    padding: 8px 16px;
     background: #F9FAFB;
     border-bottom: 1px solid #E5E7EB;
     position: relative;
@@ -73,10 +91,13 @@ export async function mount({ content, initialPath }) {
     box-sizing: border-box;
   `;
   mobileHeader.innerHTML = `
-    <button class="att-hub-menu-btn" style="position:absolute;left:16px;background:none;border:none;padding:4px;cursor:pointer;color:#4B5563;display:flex;align-items:center;justify-content:center;border-radius:4px;">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-    </button>
-    <span style="font-weight:600;color:#111827;font-size:16px;" id="attHubMobileTitle">勤怠メニュー</span>
+    <div style="display:flex; align-items:center; gap: 12px;">
+      <button class="att-hub-menu-btn" style="background:none;border:none;padding:4px;cursor:pointer;color:#4B5563;display:flex;align-items:center;justify-content:center;border-radius:4px;margin-left:-4px;">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+      <span style="font-weight:600;color:#111827;font-size:16px;" id="attHubMobileTitle">勤怠メニュー</span>
+    </div>
+    <div id="attHubMobileActions" style="display:flex; align-items:center; justify-content:flex-end;"></div>
   `;
   mobileHeader.querySelector('.att-hub-menu-btn').onclick = () => {
     sidebar.classList.add('open');
@@ -94,20 +115,26 @@ export async function mount({ content, initialPath }) {
     padding: 0;
     margin: 0;
     min-width: 0;
-    ${isStandalone ? 'height: 100vh;' : ''}
+    ${isStandalone ? 'min-height: 100vh;' : ''}
   `;
 
   
-  const menuItems = [
+  let menuItems = [
     { id: 'att-records', label: '勤怠記録', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', href: '/admin/attendance' },
     { id: 'att-monthly', label: '月次勤怠入力(管理者)', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', href: '/admin/attendance/monthly', blank: true },
     { id: 'att-go-out', label: '外出管理', icon: 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1', href: '/admin/attendance/go-out' },
-    { id: 'work-reports', label: '作業報告', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', href: '/admin/work-reports' },
+    { id: 'att-work-reports', label: '作業報告', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', href: '/admin/work-reports' },
     { id: 'att-shifts', label: 'シフト管理', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', href: '/admin/attendance/shifts' },
     { id: 'att-shifts-approvals', label: 'シフト承認', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', href: '/admin/attendance/shifts-approvals' },
-    { id: 'att-holidays', label: '休日設定', icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z', href: '/admin/attendance/holidays' },
-    { id: 'att-adjust', label: '調整申請一覧', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z', href: '/admin/attendance/adjust-requests' },
+    { id: 'att-holidays', label: '休日設定', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', href: '/admin/attendance/holidays' },
+    { id: 'att-adjust', label: '調整申請一覧', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z', href: '/admin/attendance/adjust-requests' }
   ];
+
+  if (profile && profile.role === 'employee') {
+    menuItems = [
+      { id: 'att-records', label: '勤怠記録', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', href: '/ui/attendance-records' },
+    ];
+  }
   
   const currentPath = initialPath || window.location.pathname;
   
@@ -209,13 +236,31 @@ export async function mount({ content, initialPath }) {
     /* Mobile responsive styles */
     @media (max-width: 768px) {
       .att-hub-layout {
-        overflow-x: hidden;
+        height: calc(100dvh - 46px) !important;
+        overflow: hidden !important;
+      }
+      .att-hub-main-wrapper {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+      }
+      #attendanceHubContent {
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 0 !important;
       }
       .att-hub-mobile-header {
         display: flex !important;
       }
       /* Hide the inner title (h2) on mobile since we have it in the header */
       #attendanceHubContent h2 {
+        display: none !important;
+      }
+      /* Hide the page title in the mobile header when actions are present */
+      .att-hub-mobile-header.has-actions #attHubMobileTitle {
         display: none !important;
       }
       .att-hub-sidebar {
@@ -272,12 +317,57 @@ export async function mount({ content, initialPath }) {
   layout.appendChild(mainContentWrapper);
   content.appendChild(layout);
 
+  // Clear actions slot when navigating
+  const attHubMobileActions = document.getElementById('attHubMobileActions');
+  if (attHubMobileActions) {
+    attHubMobileActions.innerHTML = '';
+  }
+
   // Update title based on current path
   const currentItem = menuItems.find(i => currentPath === i.href);
   if (currentItem) {
     const titleEl = document.getElementById('attHubMobileTitle');
     if (titleEl) titleEl.textContent = currentItem.label;
   }
+
+  // Function to set up a MutationObserver to watch for actions being added/removed
+  const setupMobileActionsObserver = () => {
+    const actionsContainer = document.getElementById('attHubMobileActions');
+    const mobileHeader = document.querySelector('.att-hub-mobile-header');
+    
+    if (actionsContainer && mobileHeader) {
+      const checkActions = () => {
+        if (actionsContainer.children.length > 0) {
+          mobileHeader.classList.add('has-actions');
+        } else {
+          mobileHeader.classList.remove('has-actions');
+        }
+      };
+      
+      // Check initial state
+      checkActions();
+      
+      // Watch for changes
+      const observer = new MutationObserver(checkActions);
+      observer.observe(actionsContainer, { childList: true });
+    }
+  };
+
+  // Setup routing hook so we can update the title when navigating
+  const originalPushState = history.pushState;
+  history.pushState = function() {
+    originalPushState.apply(this, arguments);
+    setTimeout(() => {
+      const activeItem = menuItems.find(it => window.location.pathname.startsWith(it.href));
+      if (activeItem) {
+        document.getElementById('attHubMobileTitle').textContent = activeItem.label;
+      }
+      setupMobileActionsObserver();
+    }, 50);
+  };
+  
+  // Call it initially after DOM is ready
+  setTimeout(setupMobileActionsObserver, 100);
 
   return mainContent;
 }

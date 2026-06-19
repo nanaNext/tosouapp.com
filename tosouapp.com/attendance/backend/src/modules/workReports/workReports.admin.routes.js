@@ -52,7 +52,7 @@ const canManagerAccessUser = async (req, userId) => {
 
 router.use(authenticate);
 
-router.get('/', authorize('admin', 'manager'), async (req, res) => {
+router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
   try {
     const date = isISODate(req.query?.date) ? String(req.query.date) : todayJST();
     const isOff = await calendarRepo.isOff(date).catch(() => false);

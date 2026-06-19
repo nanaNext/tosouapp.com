@@ -8,8 +8,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY attendance/backend ./attendance/backend
-COPY attendance/frontend ./attendance/frontend
-RUN npm run frontend:build
+# Removed frontend copy as it does not exist in the project structure
+# COPY attendance/frontend ./attendance/frontend
+# RUN npm run frontend:build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
