@@ -364,6 +364,11 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
 
+        // Add additional check for standalone app routes where user might not be available in localStorage
+        if (window.location.pathname.includes('attendance/holidays') || window.location.pathname.includes('attendance?standalone=1')) {
+          return;
+        }
+
         fetchJSONAuth('/api/admin/notifications/feed?limit=100', { cache: 'no-store' })
           .then(function (d) { render(d || {}); })
           .catch(function () {
