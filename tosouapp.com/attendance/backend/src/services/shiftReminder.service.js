@@ -139,7 +139,8 @@ async function processReminders() {
       }
 
       // Kiểm tra xem có phải là nhân viên bộ phận Công trình (Koujibu) hay không
-        const isKoujiUser = String(user.departmentName || '').includes('工事部');
+        // (Part-time không áp dụng chính sách này)
+        const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('工事部');
 
         // Determine if today is considered an off day for this specific user
         let isUserOffDay = false;
@@ -312,7 +313,7 @@ async function checkDailyMissingAttendance() {
         continue;
       }
 
-      const isKoujiUser = String(user.departmentName || '').includes('工事部');
+      const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('工事部');
       
       let isUserOffDay = false;
       if (!isKoujiUser) {
@@ -431,7 +432,8 @@ async function checkMonthlyMissingAttendance() {
       if (user.employment_type === 'part_time') continue;
       
       // Kiểm tra xem có phải là nhân viên bộ phận Công trình (Koujibu) hay không
-      const isKoujiUser = String(user.departmentName || '').includes('工事部');
+      const isPartTime = user.employment_type === 'part_time';
+      const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('工事部');
 
       const cacheKey = `monthly_missing_${userId}_${monthStr}`;
       if (sentReminders.has(cacheKey)) continue;

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>全員の勤怠記録</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260416-mobilefix4">
+  <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260408-1">
+  <link rel="icon" href="/static/images/logo1.png?v=<%= appVersion %>" type="image/png">
+  <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
+  <script type="module" src="/static/js/pages/attendance-records.page.js?v=navy-20260427-15"></script>
+</head>
+<body>
+  <div id="pageSpinner" class="page-spinner" hidden><div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
+  
+  <%- include('_partials/employee-header.ejs') %>
+
+  <main class="content" style="padding-top: 140px;">
+    <div style="max-width: 1200px; margin: 0 auto; width: 100%; min-height: 80vh; padding: 0 16px;">
+      <style>
+        /* Force remove any blue background/borders from subnav links */
+        .subbar .subnav a {
+          background: transparent !important;
+          border: 2px solid transparent !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          color: #111827 !important;
+        }
+        .subbar .subnav a:hover {
+          border-bottom-color: rgba(0,0,0,0.1) !important;
+        }
+        .subbar .subnav a[aria-current="page"] {
+          border-bottom-color: #111827 !important;
+          border-bottom-width: 2px !important;
+          font-weight: bold !important;
+        }
+        
+        /* Mobile spacing optimization */
+        @media (max-width: 768px) {
+          main.content {
+            padding-top: 100px !important;
+          }
+          main.content > div {
+            padding: 0 8px !important;
+          }
+        }
+      </style>
+      <div id="attendanceRecordsHost" style="width: 100%;"></div>
+    </div>
+  </main>
+  <div id="error" style="display:none;color:#b00020;font-weight:600;text-align:center;margin-top:20px;"></div>
+</body>
+</html>
+
+

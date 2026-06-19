@@ -203,7 +203,27 @@ async function bootLegacyAdminPage() {
         document.body.classList.remove('employees-wide');
       } catch (e) { /* silently ignored */ }
       const contentEl2 = document.querySelector('#adminContent');
-      if (contentEl2) contentEl2.className = 'card';
+      if (contentEl2) {
+        contentEl2.className = 'card';
+        if (new URLSearchParams(window.location.search).get('standalone') === '1') {
+          contentEl2.style.border = 'none';
+          contentEl2.style.boxShadow = 'none';
+          contentEl2.style.margin = '0';
+          contentEl2.style.borderRadius = '0';
+          contentEl2.style.padding = '0';
+          contentEl2.style.minHeight = '100vh';
+          document.body.style.background = '#fff';
+          document.body.style.padding = '0';
+          document.body.style.margin = '0';
+          
+          const mainEl = document.querySelector('main.content');
+          if (mainEl) {
+            mainEl.style.padding = '0';
+            mainEl.style.margin = '0';
+            mainEl.style.maxWidth = '100%';
+          }
+        }
+      }
       const tilesSection = document.querySelector('.tiles');
       if (tilesSection) tilesSection.style.display = tab ? 'none' : '';
       const subBrand = document.querySelector('.brand .sub');

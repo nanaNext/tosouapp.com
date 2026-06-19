@@ -66,12 +66,20 @@
       // Always include 休日 in the options if admin/manager
     
       let kubunOptions = [];
-      if (offDay) {
-        kubunOptions = ['休日', '休日出勤', '代替出勤'];
+      if (isPartTime) {
+        if (offDay) {
+          kubunOptions = ['休日', '休日出勤']; // Ngày nghỉ cố định của công ty
+        } else {
+          kubunOptions = ['出勤', '休み', '欠勤', '有給休暇', '無給休暇']; // Ngày thường linh hoạt
+        }
       } else {
-        kubunOptions = ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-        if (!isEmployee) {
-          kubunOptions.unshift('休日');
+        if (offDay) {
+          kubunOptions = ['休日', '休日出勤', '代替出勤'];
+        } else {
+          kubunOptions = ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+          if (!isEmployee) {
+            kubunOptions.unshift('休日');
+          }
         }
       }
 
@@ -79,26 +87,30 @@
       let plannedLabel = offDay ? '【予定休日】' : '【予定出勤】';
       let plannedKubun = offDay ? '休日' : '出勤';
       
-      // Đối với part-time, mặc định là không có lịch làm việc cố định
+      // Đối với part-time, ngày thường (không phải offDay) là lịch linh hoạt (không có lịch cố định)
+      // Nhưng các ngày offDay (Thứ 7, CN, Lễ) vẫn là ngày nghỉ cố định của công ty.
       if (isPartTime) {
+        // Kiểm tra dữ liệu đăng ký ca làm việc (Shift Request) từ trang シフト登録
         if (shiftRequest) {
           if (shiftRequest.status === 'WORKING') {
             plannedLabel = '【出勤予定】';
-            plannedKubun = '出勤'; // Dù là cuối tuần cũng hiện là 出勤 (theo yêu cầu)
+            plannedKubun = '出勤';
           } else if (shiftRequest.status === 'OFF') {
-            plannedLabel = offDay ? '【休日予定】' : '【休み】';
-            plannedKubun = '休日';
+            plannedLabel = offDay ? '【休日予定】' : '休み'; // Nếu trùng ngày lễ thì ưu tiên hiện 休日予定
+            plannedKubun = offDay ? '休日' : '休み';
           } else {
+            // shiftRequest = 'NONE' hoặc không rõ ràng, xử lý theo ngày lễ
             plannedLabel = offDay ? '【休日予定】' : '【予定なし】';
             plannedKubun = offDay ? '休日' : '';
           }
         } else {
-          if (!offDay) {
-            plannedLabel = '【予定なし】';
-            plannedKubun = '';
-          } else {
+          // Nếu không có dữ liệu đăng ký ca, áp dụng quy tắc ngày nghỉ cố định của công ty
+          if (offDay) {
             plannedLabel = '【休日予定】';
             plannedKubun = '休日';
+          } else {
+            plannedLabel = '【予定なし】';
+            plannedKubun = '';
           }
         }
       } else {
@@ -127,7 +139,7 @@
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const canEditWorkRow = !!state.editableMonth && isWorkDay && !!kubunInit;
-      const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
+      const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
       
       const shiftStart = String(shift?.start_time || '08:00').trim();
       const shiftEnd = String(shift?.end_time || '17:00').trim();
@@ -310,7 +322,17 @@
       
       const isHolidayHide = isHolidayKubun || effectiveKubun === '欠勤';
       const hideStyle = isHolidayHide ? 'visibility: hidden;' : '';
-      const brVal = brMin === 45 ? '0:45' : brMin === 30 ? '0:30' : brMin === 0 ? '0:00' : '1:00';
+      const brVal = (() => {
+        if (brMin === 180) return '3:00';
+        if (brMin === 150) return '2:30';
+        if (brMin === 120) return '2:00';
+        if (brMin === 90) return '1:30';
+        if (brMin === 60) return '1:00';
+        if (brMin === 45) return '0:45';
+        if (brMin === 30) return '0:30';
+        if (brMin === 0) return '0:00';
+        return '1:00'; // default
+      })();
       const nbVal = nbMin === 60 ? '1:00' : nbMin === 30 ? '0:30' : '0:00';
 
       const dowColor = (isOff && dow !== '土') || dow === '日' ? '#e11d48' : (dow === '土') ? '#1d4ed8' : '#334155';
@@ -386,6 +408,10 @@
       </td>
       <td>
         <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
+          <option value="3:00" ${brVal === '3:00' ? 'selected' : ''}>3:00</option>
+          <option value="2:30" ${brVal === '2:30' ? 'selected' : ''}>2:30</option>
+          <option value="2:00" ${brVal === '2:00' ? 'selected' : ''}>2:00</option>
+          <option value="1:30" ${brVal === '1:30' ? 'selected' : ''}>1:30</option>
           <option value="1:00" ${brVal === '1:00' ? 'selected' : ''}>1:00</option>
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>

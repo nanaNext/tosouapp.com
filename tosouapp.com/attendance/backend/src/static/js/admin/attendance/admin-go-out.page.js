@@ -4,8 +4,17 @@ export async function mountGoOut({ content }) {
   const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
   const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
 
+  content.className = (content.className || '') + ' go-out-page-content';
+  content.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; background: #FFFFFF; flex: 1; min-width: 0;`;
   content.innerHTML = `
     <style>
+      .go-out-page-content { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+      .go-out-table-wrapper { flex: 1 1 0%; min-height: 0; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      @media (max-width: 768px) {
+        .go-out-page-content { flex: 1 1 0% !important; min-height: 0 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+        .go-out-table-wrapper { flex: 1 1 0% !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden !important; -webkit-overflow-scrolling: touch !important; }
+        #adminContent.card { padding: 0 !important; }
+      }
       .go-out-table { width: 100%; border-collapse: collapse; min-width: 900px; margin: 0; font-size: 13px; table-layout: auto; }
       .go-out-table th { padding: 6px 12px; font-size: 12px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
       .go-out-table td { border: 1px solid #e2e8f0; padding: 6px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
@@ -13,7 +22,12 @@ export async function mountGoOut({ content }) {
       
       @media (max-width: 768px) {
         .go-out-table th, .go-out-table td { font-size: 11px; padding: 4px; }
-        .go-out-table-wrapper { border: none !important; box-shadow: none !important; background: transparent !important; max-height: none !important; overflow: visible !important; }
+        .go-out-table-wrapper {
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+          max-height: none !important;
+        }
         .go-out-table { min-width: 100%; }
         .go-out-table thead { display: none; }
         .go-out-table tbody { display: block; background: transparent !important; }
@@ -49,19 +63,34 @@ export async function mountGoOut({ content }) {
           display: none !important;
         }
         
+        /* Remove outer card styling on mobile to avoid card-in-card */
+        #adminContent.card {
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+        }
+        .go-out-root-container {
+          background: transparent !important;
+        }
+        .page-header-container {
+          padding: 16px 0 8px 0 !important;
+        }
+        .go-out-table-wrapper {
+          padding: 0 !important;
+        }
+        
         /* Mobile Header Adjustments */
         .page-header-title {
           display: none !important; /* Hide "外出管理" on mobile */
         }
         .page-header-container {
-          margin-top: 16px !important; /* Add space from top nav */
-          flex-direction: row !important; /* Keep it in a row */
-          justify-content: flex-end !important; /* Push date picker to right */
+          display: none !important; /* Hide completely on mobile since we move date picker to top header */
         }
         #goOutAdminFilterMonth {
-          width: 140px !important; /* Make date picker smaller */
+          width: 130px !important; /* Make date picker smaller */
           height: 32px !important; /* Make it slightly thinner */
           font-size: 13px !important;
+          margin: 0 !important;
         }
       }
       @media (min-width: 769px) {
@@ -75,7 +104,7 @@ export async function mountGoOut({ content }) {
       .btn-force-end:hover { background-color: #fef2f2 !important; }
       .btn-edit:hover { background-color: #eff6ff !important; }
     </style>
-    <div style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; display: flex; flex-direction: column;">
+    <div class="go-out-root-container" style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0;">
       <div class="page-header-container" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 0px; padding: 16px 24px 8px 24px; flex-shrink: 0;">
         <h2 class="page-header-title" style="display: none;">外出管理</h2>
         
@@ -85,7 +114,7 @@ export async function mountGoOut({ content }) {
       </div>
 
       <!-- Table -->
-      <div class="go-out-table-wrapper" style="overflow-x: auto; border-top: none; border-bottom: none; box-shadow: none; background: white; padding: 16px 24px 24px 24px;">
+      <div class="go-out-table-wrapper" style="border-top: none; border-bottom: none; box-shadow: none; background: white; padding: 16px 24px 24px 24px;">
           <table class="go-out-table" style="width: 100%; border-collapse: collapse;">
             <thead style="position: sticky; top: 0; z-index: 10;">
               <tr style="background: #e6f2ff; color: #0f172a; text-align: center; height: 30px;">
@@ -125,14 +154,36 @@ export async function mountGoOut({ content }) {
       </div>
     </div>
   `;
-// Cấu trúc này là một bảng với các cột và hàng để hiển thị thông tin 
-// ngày, giờ vào giờ ra
+  // Cấu trúc này là một bảng với các cột và hàng để hiển thị thông tin 
+  // ngày, giờ vào giờ ra
   const tbody = document.getElementById('goOutAdminTableBody');
   const monthInput = document.getElementById('goOutAdminFilterMonth');
   
+  // Move date picker to top header on mobile if available
+  const mobileActions = document.getElementById('attHubMobileActions');
+  if (mobileActions && window.innerWidth <= 768) {
+    const monthClone = monthInput.cloneNode(true);
+    monthClone.id = 'goOutAdminFilterMonthMobile';
+    mobileActions.innerHTML = '';
+    mobileActions.appendChild(monthClone);
+    
+    monthClone.addEventListener('change', (e) => {
+      monthInput.value = e.target.value;
+      loadData();
+    });
+    monthClone.addEventListener('input', (e) => {
+      monthInput.value = e.target.value;
+      loadData();
+    });
+  }
+  
   // Set default month to current month
   const today = new Date();
-  monthInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  monthInput.value = defaultMonth;
+  if (document.getElementById('goOutAdminFilterMonthMobile')) {
+    document.getElementById('goOutAdminFilterMonthMobile').value = defaultMonth;
+  }
   
   let allRecords = [];
   let currentPage = 1;
@@ -171,10 +222,15 @@ export async function mountGoOut({ content }) {
   };
 
   const loadData = async () => {
+    const filterMonth = document.getElementById('goOutAdminFilterMonth');
+    if (!filterMonth) return;
+    
     // Get month value (YYYY-MM)
-    const monthVal = document.getElementById('goOutAdminFilterMonth').value;
-
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">読み込み中...</td></tr>`;
+    const monthVal = filterMonth.value;
+    const tbodyEl = document.getElementById('goOutAdminTableBody');
+    if (tbodyEl) {
+      tbodyEl.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">読み込み中...</td></tr>`;
+    }
 
     try {
       const qs = new URLSearchParams();
@@ -188,27 +244,38 @@ export async function mountGoOut({ content }) {
       currentPage = 1;
       renderTable();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #ef4444;">エラー: ${e.message}</td></tr>`;
+      if (document.getElementById('goOutAdminTableBody')) {
+        document.getElementById('goOutAdminTableBody').innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #ef4444;">エラー: ${e.message}</td></tr>`;
+      }
     }
   };
 
   const renderTable = () => {
     // For mobile devices, show all records (ignore pagination)
     const isMobile = window.innerWidth <= 768;
-    const pageSize = isMobile ? allRecords.length : parseInt(document.getElementById('goOutAdminPageSize').value, 10);
+    const pageSizeEl = document.getElementById('goOutAdminPageSize');
+    if (!pageSizeEl) return;
+    const pageSize = isMobile ? allRecords.length : parseInt(pageSizeEl.value, 10);
     const totalItems = allRecords.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     
     if (currentPage > totalPages) currentPage = totalPages;
     
-    document.getElementById('goOutAdminItemCount').textContent = `全 ${totalItems} 件`;
-    document.getElementById('goOutAdminPageInfo').textContent = `ページ ${currentPage} / ${totalPages}`;
+    const countEl = document.getElementById('goOutAdminItemCount');
+    if (countEl) countEl.textContent = `全 ${totalItems} 件`;
     
-    document.getElementById('goOutAdminPrevPage').disabled = currentPage <= 1;
-    document.getElementById('goOutAdminNextPage').disabled = currentPage >= totalPages;
+    const infoEl = document.getElementById('goOutAdminPageInfo');
+    if (infoEl) infoEl.textContent = `ページ ${currentPage} / ${totalPages}`;
+    
+    const prevBtn = document.getElementById('goOutAdminPrevPage');
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    
+    const nextBtn = document.getElementById('goOutAdminNextPage');
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 
+    const tbodyEl = document.getElementById('goOutAdminTableBody');
     if (totalItems === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">データがありません</td></tr>`;
+      if (tbodyEl) tbodyEl.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">データがありません</td></tr>`;
       return;
     }
 
@@ -302,7 +369,7 @@ export async function mountGoOut({ content }) {
         </tr>
       `;
     });
-    tbody.innerHTML = html;
+    if (tbodyEl) tbodyEl.innerHTML = html;
 
     // Attach events
     document.querySelectorAll('.btn-force-end').forEach(btn => {
@@ -477,11 +544,33 @@ export async function mountGoOut({ content }) {
   document.getElementById('goOutAdminFilterMonth').addEventListener('input', loadData);
   
   // Re-render table when resizing between mobile and desktop to adjust pagination logic
-  window.addEventListener('resize', () => {
-    if (allRecords.length > 0) {
+  const handleResize = () => {
+    if (allRecords.length > 0 && document.getElementById('goOutAdminItemCount')) {
       renderTable();
     }
-  });
+    
+    // Manage date picker position based on screen size
+    const mobileActions = document.getElementById('attHubMobileActions');
+    const mobileMonth = document.getElementById('goOutAdminFilterMonthMobile');
+    if (window.innerWidth <= 768) {
+      if (mobileActions && !mobileMonth) {
+        const monthClone = monthInput.cloneNode(true);
+        monthClone.id = 'goOutAdminFilterMonthMobile';
+        monthClone.value = monthInput.value;
+        mobileActions.innerHTML = '';
+        mobileActions.appendChild(monthClone);
+        monthClone.addEventListener('change', (e) => { monthInput.value = e.target.value; loadData(); });
+        monthClone.addEventListener('input', (e) => { monthInput.value = e.target.value; loadData(); });
+      }
+    } else {
+      if (mobileActions) mobileActions.innerHTML = '';
+    }
+  };
+  window.addEventListener('resize', handleResize);
 
   loadData();
+
+  return () => {
+    window.removeEventListener('resize', handleResize);
+  };
 }

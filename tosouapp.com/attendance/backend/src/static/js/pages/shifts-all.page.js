@@ -213,9 +213,11 @@ function renderApp() {
   `;
 
   let tbodyHtml = '';
+  let mobileHtml = '<div class="shift-mobile-list">';
   
   if (allEmployeesShifts.length === 0) {
     tbodyHtml = `<tr><td colspan="${3 + days.length}" style="text-align: center; padding: 20px;">データがありません</td></tr>`;
+    mobileHtml += `<div style="padding: 20px; text-align: center; color: #94a3b8;">データがありません</div>`;
   } else {
     allEmployeesShifts.forEach(emp => {
       const isSeishain = emp.employment_type === 'full_time' || emp.employment_type === '正社員';
@@ -228,11 +230,16 @@ function renderApp() {
           <td>${typeStr}</td>
       `;
       
+      let workCount = 0;
+      let mobileDaysHtml = '';
+      
       days.forEach(d => {
         const dowStr = getDayOfWeek(d);
         const dateStr = formatDate(d);
         const shift = emp.schedule && emp.schedule[dateStr];
         let cellHtml = '';
+        let cellMobileHtml = '-';
+        let cellMobileColor = '';
         
         const dow = d.getDay();
         const isKoujibu = String(emp.departmentName || '').includes('工事部');
@@ -247,34 +254,161 @@ function renderApp() {
             if (shift.leaveType === 'paid') label = '有休';
             else if (shift.leaveType === 'unpaid') label = '欠勤';
             cellHtml = `<div style="color: #dc2626; font-weight: bold; font-size: 12px;">${label}</div>`;
+            cellMobileHtml = label;
+            cellMobileColor = 'color: #dc2626; font-weight: bold; background: #fef2f2;';
           } else {
              if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
                  cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
+                 cellMobileHtml = '休';
+                 cellMobileColor = 'color: #dc2626; background: #fef2f2;';
              } else {
                  cellHtml = `<div style="color: #16a34a; font-size: 12px;">出勤</div>`;
+                 cellMobileHtml = '出';
+                 cellMobileColor = 'color: #1e3a8a; font-weight: bold;';
+                 workCount++;
              }
           }
         } else {
           if (shift && shift.status === 'WORKING') {
             cellHtml = `<div style="color: #16a34a; font-size: 12px;">出勤</div>`;
+            cellMobileHtml = '出';
+            cellMobileColor = 'color: #1e3a8a; font-weight: bold;';
+            workCount++;
           } else {
             if (isWeekendOrHoliday) {
               cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
+              cellMobileHtml = '休';
+              cellMobileColor = 'color: #dc2626; background: #fef2f2;';
             } else {
               cellHtml = `<div style="color: #94a3b8; font-size: 12px;">休み</div>`;
+              cellMobileHtml = '-';
+              cellMobileColor = 'color: #94a3b8;';
             }
           }
         }
         
         rowHtml += `<td style="text-align: center; vertical-align: middle;">${cellHtml}</td>`;
+        
+        let headerColor = '#0f172a';
+        if (dow === 0) headerColor = '#dc2626';
+        else if (dow === 6) headerColor = '#2563eb';
+        
+        mobileDaysHtml += `
+          <div class="sac-day-item">
+            <div class="sac-day-header" style="color: ${headerColor};">${d.getDate()}</div>
+            <div class="sac-day-val" style="${cellMobileColor}">${cellMobileHtml}</div>
+          </div>
+        `;
       });
       
       rowHtml += `</tr>`;
       tbodyHtml += rowHtml;
+      
+      mobileHtml += `
+        <div class="sac-card">
+          <div class="sac-header">
+            <div class="sac-name-wrap">
+              <span class="sac-name">${esc(emp.username)}</span>
+              <span class="${isSeishain ? 'badge-sei' : 'badge-bai'}">${typeStr}</span>
+            </div>
+          </div>
+          <div class="sac-summary">
+            <span class="sac-total-label">月計 (出勤日数):</span>
+            <span class="sac-total-val" style="font-weight:700; color:#0f172a;">${workCount}日</span>
+          </div>
+          <div class="sac-days-scroll">
+            ${mobileDaysHtml}
+          </div>
+        </div>
+      `;
     });
   }
+  mobileHtml += `</div>`;
 
   const html = `
+    <style>
+      .badge-sei { background: #eff6ff; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid #bfdbfe; }
+      .badge-bai { background: #f8fafc; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid #cbd5e1; }
+      
+      .shift-mobile-list {
+        display: none;
+        padding: 0;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .sac-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+      }
+      .sac-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 8px;
+      }
+      .sac-name-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .sac-name {
+        font-weight: 700;
+        font-size: 15px;
+        color: #0f172a;
+      }
+      .sac-summary {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 13px;
+        color: #475569;
+      }
+      .sac-days-scroll {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+      }
+      .sac-day-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: #fff;
+      }
+      .sac-day-header {
+        width: 100%;
+        text-align: center;
+        font-size: 10px;
+        background: #f8fafc;
+        padding: 2px 0;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 600;
+      }
+      .sac-day-val {
+        width: 100%;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+      
+      @media (max-width: 768px) {
+        .shifts-desktop-table { display: none !important; }
+        .shift-mobile-list { display: flex !important; }
+      }
+    </style>
     <div class="shifts-container" style="max-width: 100%; overflow-x: auto;">
       <div class="shifts-header" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding: 16px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #1e3a8a;">
         <div class="shifts-top-nav" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; width: 100%;">
@@ -308,7 +442,7 @@ function renderApp() {
         </div>
       </div>
 
-      <div style="overflow-x: auto; border: 1px solid #d1d5db; border-radius: 4px; background: white;">
+      <div class="shifts-desktop-table" style="overflow-x: auto; border: 1px solid #d1d5db; border-radius: 4px; background: white;">
         <table style="width: 100%; border-collapse: collapse; min-width: 800px; font-size: 13px;">
           <thead style="background: #334155; color: white;">
             ${theadHtml}
@@ -318,13 +452,14 @@ function renderApp() {
           </tbody>
         </table>
       </div>
+      ${mobileHtml}
     </div>
   `;
   
   app.innerHTML = html;
   
   // Attach styling for table cells dynamically
-  $$('td, th', app).forEach(cell => {
+  $$('.shifts-desktop-table td, .shifts-desktop-table th', app).forEach(cell => {
     cell.style.border = '1px solid #e2e8f0';
     cell.style.padding = '8px 4px';
   });

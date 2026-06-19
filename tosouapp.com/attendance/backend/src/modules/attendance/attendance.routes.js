@@ -14,6 +14,11 @@ async function isKoujiUser(userId) {
   try {
     const u = await userRepo.getUserById(userId);
     if (!u) return false;
+    
+    // Part-timers follow the general company calendar (Saturdays are off)
+    // Only Regular employees (正社員) of Koujibu follow the "work on Saturdays except 4th" policy.
+    if (String(u?.employment_type || '').toLowerCase() === 'part_time') return false;
+
     const dept = u?.departmentId ? (await userRepo.getDepartmentById(u.departmentId)) : null;
     const deptName = String(dept?.name || '').trim();
     return deptName.includes('工事部');

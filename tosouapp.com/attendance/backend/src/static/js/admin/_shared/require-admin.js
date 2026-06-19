@@ -6,7 +6,9 @@ export async function requireAdmin() {
     profile = await fetchJSONAuth('/api/auth/me');
   } catch (e) { /* silently ignored */ }
   const role = String(profile && profile.role ? profile.role : '').toLowerCase();
-  if (!profile || (role !== 'admin' && role !== 'manager')) {
+  const path = window.location.pathname;
+  const isAllowedEmployeePath = path === '/admin/attendance';
+  if (!profile || (role !== 'admin' && role !== 'manager' && !(role === 'employee' && isAllowedEmployeePath))) {
     try {
       const err = document.querySelector('#error');
       if (err) {

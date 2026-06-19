@@ -1,4 +1,6 @@
 import { logout } from '../api/auth.api.js';
+import { listUsers } from '../api/users.api.js';
+import { getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL } from '../api/attendance.api.js';
 import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260612-fixspa2';
 
 const normalizePath = (p) => {
@@ -657,7 +659,22 @@ const route = async () => {
       }
     } catch (e) { /* silently ignored */ }
 
+    let profile = { role: 'employee' };
+    try {
+      const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
+      if (userStr) profile = JSON.parse(userStr);
+    } catch (e) { /* silently ignored */ }
+    const role = profile.role || 'employee';
+
     const p2 = normalizePath(window.location.pathname);
+    if (role === 'employee') {
+      if (p2 === '/admin/attendance') {
+        window.location.replace('/ui/attendance-records');
+      } else {
+        window.location.replace('/ui/portal');
+      }
+      return;
+    }
     const host = document.querySelector('#adminContent');
 
     if (p2 === '/admin' || p2 === '/admin/dashboard') {
@@ -724,10 +741,10 @@ const route = async () => {
     }
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
-      const hubContent = await hubMod.mount({ content: host, initialPath: p2 });
-      const mod = await loadModule('./attendance/attendance.page.js?v=navy-20260423-attrecsync1');
+      const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
+      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260423-attrecsync1');
       if (seq !== routeSeq) return;
-      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent, p2 }) } : { mount: () => mod.mount({ content: hubContent }) });
+      await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
       return;
     }
     if (p2 === '/admin/leave/requests' || p2 === '/admin/leave/balance' || p2 === '/admin/leave/grants') {

@@ -389,7 +389,7 @@ module.exports = {
           kind: 'time_adjust',
           title: '時間修正',
           message: `${it.username || ''} さんの時間修正申請`,
-          linkUrl: '/admin-attendance-adjust-requests.html',
+          linkUrl: '/admin/attendance/adjust-requests',
           createdAt: it.createdAt || null,
           createdBy: null,
           audience: 'all',

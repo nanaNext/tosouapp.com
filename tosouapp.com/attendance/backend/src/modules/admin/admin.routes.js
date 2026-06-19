@@ -1586,7 +1586,7 @@ router.delete('/calendar/jp',
   try {
     const year = parseInt(String(req.query.year || req.body?.year || new Date().getUTCFullYear()), 10);
     const [result] = await require('../../core/database/mysql').query(
-      `DELETE FROM company_holidays WHERE YEAR(date) = ? AND type IN ('jp_auto','jp_substitute','jp_bridge')`,
+      `DELETE FROM company_holidays WHERE YEAR(date) = ? AND type NOT IN ('jp_auto','jp_substitute','jp_bridge')`,
       [year]
     );
     res.status(200).json({ ok: true, year, affected: result?.affectedRows ?? null });
@@ -1930,6 +1930,85 @@ router.get('/calendar/export.xlsx',
     res.status(500).json({ message: err.message });
   }
 });
+
+const multer = require('multer');
+const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
+
+router.post('/calendar/import', authorize('admin'), excelUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const xlsx = require('xlsx');
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+    
+    const headerRow = data[0] || [];
+    const colDate = headerRow.indexOf('日付');
+    const colType = headerRow.indexOf('種別');
+    const colOff = headerRow.indexOf('休日');
+    const colNameJa = headerRow.indexOf('名称');
+    const colNameEn = headerRow.indexOf('English');
+
+    if (colDate === -1) {
+      return res.status(400).json({ message: 'Excelのフォーマットが正しくありません。「日付」列が見つかりません。' });
+    }
+
+    const records = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
+      
+      const dateRaw = row[colDate];
+      if (!dateRaw) continue;
+      
+      let dateStr = '';
+      if (typeof dateRaw === 'number') {
+        const d = new Date(Math.round((dateRaw - 25569) * 86400 * 1000));
+        dateStr = d.toISOString().slice(0, 10);
+      } else {
+        dateStr = String(dateRaw).trim().slice(0, 10);
+        dateStr = dateStr.replace(/\//g, '-');
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue;
+
+      const type = String(row[colType] || '').trim();
+      const isOff = String(row[colOff] || '').trim() === '休' ? 1 : 0;
+      const nameJa = String(row[colNameJa] || '').trim();
+      const nameEn = String(row[colNameEn] || '').trim();
+      const name = nameEn ? `${nameJa} / ${nameEn}` : nameJa;
+
+      let typeCode = 'custom';
+      if (type === '祝日') typeCode = 'jp_auto';
+      else if (type === '振替') typeCode = 'jp_substitute';
+      else if (type === '国民の休日') typeCode = 'jp_bridge';
+      else if (type === '会社') typeCode = 'fixed';
+      else if (type) typeCode = type;
+
+      records.push({ date: dateStr, type: typeCode, name, is_off: isOff });
+    }
+
+    if (!records.length) {
+      return res.status(400).json({ message: '有効なデータが見つかりませんでした。' });
+    }
+
+    for (const r of records) {
+      await db.query(`
+        INSERT INTO company_holidays (date, type, name, is_off) 
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE type=VALUES(type), name=VALUES(name), is_off=VALUES(is_off)
+      `, [r.date, r.type, r.name, r.is_off]);
+    }
+
+    res.status(200).json({ ok: true, count: records.length });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Shift definitions & assignments (sub-router)
 const shiftsRouter = express.Router();
 shiftsRouter.get('/definitions', async (req, res) => {

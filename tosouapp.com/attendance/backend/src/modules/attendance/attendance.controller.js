@@ -654,6 +654,11 @@ async function isKoujiUser(userId) {
   try {
     const u = await userRepo.getUserById(userId);
     if (!u) return false;
+    
+    // Part-timers follow the general company calendar (Saturdays are off)
+    // Only Regular employees (正社員) of Koujibu follow the "work on Saturdays except 4th" policy.
+    if (String(u?.employment_type || '').toLowerCase() === 'part_time') return false;
+
     const dept = u?.departmentId ? (await userRepo.getDepartmentById(u.departmentId)) : null;
     const deptName = String(dept?.name || '').trim();
     return deptName.includes('工事部');
@@ -726,8 +731,8 @@ async function computeMonthMissing(userId, y, m) {
     const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
     const isOff = off.has(ds);
     const k0 = dailyKubun.get(ds) || '';
-    const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
-    const allowedOff = new Set(['休日', '休日出勤', '代替出勤']);
+    const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み']);
+    const allowedOff = new Set(['休日', '休日出勤', '代替出勤', '休み']);
     const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
     const segs = segByDate.get(ds) || [];
     const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
@@ -820,8 +825,8 @@ exports.getMonthStatusBulk = async (req, res) => {
           const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
           const isOff = off.has(ds);
           const k0 = dailyKubun.get(ds) || '';
-          const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
-          const allowedOff = new Set(['休日', '休日出勤', '代替出勤']);
+          const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み']);
+          const allowedOff = new Set(['休日', '休日出勤', '代替出勤', '休み']);
           const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
           const segs = segByDate.get(ds) || [];
           const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
@@ -1344,7 +1349,11 @@ exports.getMonthDetail = async (req, res) => {
       const dStr = String(r.date || '');
       // Handle Date object
       const d = dStr.includes('T') ? dStr.slice(0, 10) : (r.date instanceof Date ? r.date.toISOString().slice(0, 10) : dStr.slice(0, 10));
-      if (d) shiftReqMap.set(d, { status: r.status, leaveType: r.leaveType, reason: r.reason });
+      // Chỉ lấy những ngày có status rõ ràng là WORKING hoặc OFF. 
+      // Nếu là NONE, ta không đưa vào map để nó rơi vào trường hợp "không có lịch"
+      if (d && (r.status === 'WORKING' || r.status === 'OFF')) {
+        shiftReqMap.set(d, { status: r.status, leaveType: r.leaveType, reason: r.reason });
+      }
     }
 
     const workReportRows = await workReportRepo.listByUserMonth(userId, `${y}-${pad(m)}`).catch(() => []);

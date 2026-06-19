@@ -23,7 +23,7 @@ exports.create = async (req, res) => {
         kind: 'time_adjust',
         title: '時間修正申請',
         message: `${userName} さんが時間修正を申請しました`,
-        linkUrl: '/admin-attendance-adjust-requests.html',
+        linkUrl: '/admin/attendance/adjust-requests',
         payload: {
           source: 'adjust',
           requestId: id,
@@ -198,7 +198,7 @@ exports.updateByActor = async (req, res) => {
             kind: 'time_adjust',
             title: '時間修正再申請',
             message: `${userName} さんが時間修正を再申請しました`,
-            linkUrl: '/admin-attendance-adjust-requests.html',
+            linkUrl: '/admin/attendance/adjust-requests',
             payload: {
               source: 'adjust',
               requestId: id,

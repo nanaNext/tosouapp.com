@@ -199,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var toItemHtml = function (it) {
         var link = String(it && it.linkUrl || '').trim() || '/admin/dashboard';
         if (link === '/admin/faq' || link.indexOf('/admin/chatbot/faq') === 0) link = '/admin/chatbot/faq';
+        if (link === '/admin-attendance-adjust-requests.html') link = '/admin/attendance/adjust-requests';
         var title = String(it && it.title || '').trim() || '通知';
         var msg = String(it && it.message || '').trim();
         var rowCls = 'admin-notify-row' + ((Number(it && it.unread || 0) > 0) ? ' is-unread' : '');
@@ -350,6 +351,19 @@ document.addEventListener('DOMContentLoaded', function () {
       };
 
       var load = function () {
+        // Prevent employee users from hitting 403 when topbar loads on their pages
+        var rawUser = localStorage.getItem('user') || sessionStorage.getItem('user') || '{}';
+        var userRole = '';
+        try { 
+          var u = JSON.parse(rawUser); 
+          userRole = String(u.role || '').toLowerCase(); 
+        } catch(e) {}
+        
+        if (userRole && userRole !== 'admin' && userRole !== 'manager') {
+          if (notifyBadge) notifyBadge.hidden = true;
+          return;
+        }
+
         fetchJSONAuth('/api/admin/notifications/feed?limit=100', { cache: 'no-store' })
           .then(function (d) { render(d || {}); })
           .catch(function () {
