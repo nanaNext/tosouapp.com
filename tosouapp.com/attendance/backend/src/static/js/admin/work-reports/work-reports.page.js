@@ -460,7 +460,7 @@ export async function mount() {
           <td data-label="出勤" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${checkIn}</td>
           <td data-label="退勤" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${checkOut}</td>
           <td data-label="勤務形態" style="white-space:nowrap;">${wType}</td>
-          <td data-label="現場" style="white-space:nowrap;">${site}</td>
+          <td data-label="現場" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px;">${site}</td>
           <td data-label="作業内容" style="white-space:pre-wrap; word-break:break-word; min-width:200px; max-width:400px; color:#475569;">${work}</td>
           <td data-label="遅刻・早退等" style="white-space:nowrap;">${lateEarlyHtml}</td>
           <td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; color:#475569;">${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>
@@ -761,7 +761,7 @@ export async function mount() {
           <td data-label="出勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkIn}</td>
           <td data-label="退勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkOut}</td>
           <td data-label="勤務形態" style="${textColor}">${wType}</td>
-          <td data-label="現場" style="${textColor}">${site}</td>
+          <td data-label="現場" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px; ${textColor}">${site}</td>
           <td data-label="作業内容" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
           <td data-label="遅刻・早退等" style="white-space:nowrap; ${textColor}">${lateEarlyHtml}</td>
           <td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; ${textColor ? textColor : 'color:#475569;'}">${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>
