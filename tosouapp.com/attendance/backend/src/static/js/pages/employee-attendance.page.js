@@ -120,7 +120,7 @@ async function mountAttendanceImpl({
         .main-content { padding-top: 0px !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 0 !important; margin-top: 0px !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
         
         /* Cưỡng chế xóa triệt để khoảng trắng bằng cách chèn tag ID nếu cần */
-        #attendanceRecordsHost { padding-top: 0px !important; margin-top: 0px !important; background: #f1f5f9 !important; }
+        #attendanceRecordsHost { padding-top: 0px !important; margin-top: 0px !important; background: #f1f5f9 !important; width: 100% !important; max-width: 100% !important; }
         .attrec-fiori-override { padding-top: 0px !important; margin-top: 0px !important; background: #f1f5f9 !important; }
         
         /* Bỏ background của thẻ dash-card trên mobile để nó không đè viền */
@@ -139,11 +139,11 @@ async function mountAttendanceImpl({
         .attrec-fiori-override .attrec-head { padding: 0 !important; margin: 0 !important; border: none !important; }
         
         .attrec-table {
-          padding: 0 !important;
-          margin: 0 !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          box-sizing: border-box !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
         
         .emp-list-scroll-wrap {
@@ -168,7 +168,7 @@ async function mountAttendanceImpl({
         border: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
-        padding: 24px !important;
+        padding: 0 !important;
         box-sizing: border-box;
       }
       .attrec-fiori-override .attrec-head {
@@ -533,7 +533,7 @@ async function mountAttendanceImpl({
       <div class="attrec-head" style="flex-shrink: 0; padding-top: 0px; display: none !important; margin: 0 !important; min-height: 0 !important;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: none; gap: 12px; margin-bottom: 0px;"></div>
       </div>
-      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow-y: auto; overflow-x: auto;"></div>
+      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow-y: visible; overflow-x: hidden;"></div>
     </div>
   `;
   content.appendChild(rosterWrap);
@@ -728,10 +728,12 @@ async function mountAttendanceImpl({
             .attrec-pill.neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 
             /* Parent container full width */
-            .attrec-table {
-              padding: 0 !important;
-              border: none !important;
-              box-shadow: none !important;
+              .attrec-table {
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                max-width: 100% !important;
               border-radius: 0 !important;
             }
             
@@ -739,7 +741,7 @@ async function mountAttendanceImpl({
               border-radius: 0 !important;
               box-shadow: none !important;
               border: none !important;
-              padding: 24px !important;
+              padding: 0 !important;
             }
             .beautiful-table .attrec-pill {
               display: inline-flex;
@@ -810,9 +812,10 @@ async function mountAttendanceImpl({
           border: none !important;
         }
         .attrec-table {
-          padding: 0 !important;
-          margin: 0 !important;
-          width: 100% !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            width: 100% !important;
+            max-width: 800px !important;
           max-width: 100% !important;
         }
         .emp-list-scroll-wrap {
@@ -827,7 +830,8 @@ async function mountAttendanceImpl({
           background: transparent !important;
           min-width: 0 !important;
           width: 100% !important;
-          display: block;
+          display: flex !important;
+          flex-direction: column !important;
           margin: 0 !important;
           padding: 0 !important;
         }
@@ -837,8 +841,8 @@ async function mountAttendanceImpl({
         .beautiful-table tbody {
               display: flex;
               flex-direction: column;
-              gap: 12px; /* Thêm khoảng cách giữa các thẻ */
-              padding: 12px; /* Thêm padding xung quanh list để thấy viền */
+              gap: 8px; /* Khoảng cách dọc giữa các thẻ */
+              padding: 12px 0; /* Xóa padding hai bên để thẻ sát mép màn hình */
               margin: 0 !important; 
               width: 100% !important; 
               box-sizing: border-box !important;
@@ -850,12 +854,15 @@ async function mountAttendanceImpl({
            .beautiful-table tr {
                display: flex;
                flex-direction: column;
-               background: #ffffff !important; /* Đặt nền trắng cho thẻ */
-               border: 1px solid #e2e8f0 !important; /* Thêm viền vuông màu xám nhạt */
-               border-radius: 8px !important; /* Bo góc nhẹ cho thẻ */
-               padding: 12px !important; /* Tăng padding bên trong thẻ */
+               background: #ffffff !important; 
+               border-top: 1px solid #e2e8f0 !important; 
+               border-bottom: 1px solid #e2e8f0 !important;
+               border-left: none !important; /* Xóa viền trái */
+               border-right: none !important; /* Xóa viền phải */
+               border-radius: 0 !important; /* Bỏ bo góc để vuông vức sát mép */
+               padding: 12px 16px !important; /* Padding bên trong thẻ */
                margin: 0 !important;
-               box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; /* Thêm bóng đổ nhẹ */
+               box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; 
                width: 100% !important; 
                box-sizing: border-box !important;
                position: relative;
@@ -939,13 +946,7 @@ async function mountAttendanceImpl({
                  margin: 0 !important;
                  margin-left: 0; 
                }
-           .beautiful-table tr:first-child {
-               border-top: none !important;
-               padding-top: 0 !important; /* Xóa khoảng trống thừa trên thẻ đầu tiên */
-             }
-           .beautiful-table tr:last-child {
-             border-bottom: none !important;
-           }
+             /* Đã gỡ bỏ rule xóa padding/border thẻ đầu và thẻ cuối để tất cả các thẻ đều vuông vắn bằng nhau */
               
               /* Ẩn phần Code cũ làm hỏng layout */
               .beautiful-table td:nth-child(1) {
