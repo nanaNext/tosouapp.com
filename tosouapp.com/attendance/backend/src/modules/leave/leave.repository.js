@@ -189,9 +189,14 @@ module.exports = {
   },
   async listAllPending() {
     const sql = `
-      SELECT * FROM leave_requests
-      WHERE status = 'pending'
-      ORDER BY created_at DESC
+      SELECT
+        lr.*,
+        u.username,
+        u.employee_code
+      FROM leave_requests lr
+      LEFT JOIN users u ON u.id = lr.userId
+      WHERE lr.status = 'pending'
+      ORDER BY lr.created_at DESC, lr.id DESC
     `;
     const [rows] = await db.query(sql);
     return rows;
