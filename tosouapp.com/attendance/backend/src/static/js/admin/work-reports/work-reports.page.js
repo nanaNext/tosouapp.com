@@ -16,6 +16,7 @@ const statusMeta = (status) => {
   if (status === 'checkout_missing') return { label: '退勤漏れ', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'checkout_missing_submitted') return { label: '退勤漏れ(入力済)', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'missing') return { label: '未提出', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
+  if (status === 'not_checked_in') return { label: '未出勤', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'not_punched') return { label: '打刻なし', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'absence') return { label: '欠勤', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'monthly_input_only') return { label: '月次入力済み（打刻なし）', style: 'background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;' };
@@ -864,15 +865,22 @@ export async function mount() {
       for (const d of days) {
         const entry = dmap?.[d] || null;
         const st = String(entry?.status || '');
-        if (st !== 'checked_out' && st !== 'working' && st !== 'holiday_work' && st !== 'holiday_working') continue;
+        if (st !== 'checked_out' && st !== 'working' && st !== 'holiday_work' && st !== 'holiday_working' && st !== 'not_checked_in') continue;
         const rep = entry?.report || null;
         const site = String(rep?.site || '').trim() || null;
         const work = String(rep?.work || '').trim() || null;
-        const status = st === 'checked_out'
-          ? ((site || work) ? 'submitted' : 'missing')
-          : (String(d).slice(0, 10) < today ? ((site || work) ? 'checkout_missing_submitted' : 'checkout_missing') : 'working');
+        
+        let status = st;
+        if (st === 'not_checked_in') {
+          status = 'not_checked_in';
+        } else if (st === 'checked_out' || st === 'holiday_work') {
+           status = (site || work) ? 'submitted' : 'missing';
+        } else if (st === 'working' || st === 'holiday_working') {
+           status = (String(d).slice(0, 10) < today) ? ((site || work) ? 'checkout_missing_submitted' : 'checkout_missing') : 'working';
+        }
+        
         if (status === 'submitted' || status === 'checkout_missing_submitted') submitted++;
-        else if (status === 'missing' || status === 'checkout_missing') missing++;
+        else if (status === 'missing' || status === 'checkout_missing' || status === 'not_checked_in') missing++;
         workingUsers.add(uid);
         out.push({
           userId: uid,

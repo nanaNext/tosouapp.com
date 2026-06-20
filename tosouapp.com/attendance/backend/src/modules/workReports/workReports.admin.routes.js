@@ -119,14 +119,27 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       const kubun = String(r.daily_kubun || '').trim();
       const offKubun = new Set(['休日', '代替休日']);
       const leaveKubun = new Set(['有給休暇', '無給休暇', '欠勤']);
-      const workKubun = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+      const workKubun = new Set(['出勤', '休日出勤', '代替出勤', '半休']);
       const dayIsOff = offKubun.has(kubun) || (!workKubun.has(kubun) && isOff);
       const forceLeave = leaveKubun.has(kubun) || Number(r.has_approved_leave || 0) === 1;
-      const status = forceLeave
-        ? 'leave'
-        : (hasIn
-            ? (hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working'))
-            : (dayIsOff ? 'leave' : 'not_checked_in'));
+      
+      // Determine if they were supposed to work (planned)
+      const isPlannedToWork = !isOff || workKubun.has(kubun);
+      
+      let status;
+      if (forceLeave) {
+        status = 'leave';
+      } else if (hasIn) {
+        status = hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working');
+      } else if (dayIsOff) {
+        status = 'leave'; // Not expected to work, didn't work
+      } else if (isPlannedToWork && r.employment_type === 'full_time') {
+        // Seishain expected to work but didn't punch in
+        status = 'not_checked_in';
+      } else {
+        // Fallback for Baito or others
+        status = 'not_checked_in';
+      }
       // Normalize display kubun for off-days even when daily record is empty.
       let effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff ? '休日' : ''));
       if (effectiveKubun === '休日出勤' && !hasIn && !hasOut) effectiveKubun = '休日';
@@ -334,6 +347,18 @@ router.get('/export.xlsx',
         AND endDate >= ? AND startDate <= ?
     `, [start, end]);
 
+    const [shiftRows] = await db.query(`
+      SELECT userId, date, status
+      FROM shift_requests
+      WHERE date >= ? AND date <= ?
+    `, [start, end]);
+    
+    const [userAssignRows] = await db.query(`
+      SELECT userId, start_date
+      FROM user_shift_assignments
+      WHERE start_date >= ? AND start_date <= ?
+    `, [start, end]);
+
     const attMap = new Map();
     for (const a of (attRows || [])) {
       const d = String(a.date || a.checkIn || '').slice(0, 10);
@@ -352,6 +377,14 @@ router.get('/export.xlsx',
       const uid = Number(lr.userId);
       if (!leaveByUser.has(uid)) leaveByUser.set(uid, []);
       leaveByUser.get(uid).push({ start: String(lr.startDate).slice(0, 10), end: String(lr.endDate).slice(0, 10), type: String(lr.type || '') });
+    }
+    const shiftMap = new Map();
+    for (const sr of (shiftRows || [])) {
+      shiftMap.set(`${sr.userId}|${String(sr.date).slice(0, 10)}`, sr.status);
+    }
+    for (const ua of (userAssignRows || [])) {
+      // Treat user assignments as 'WORKING' for Baito
+      shiftMap.set(`${ua.userId}|${String(ua.start_date).slice(0, 10)}`, 'WORKING');
     }
     const isOnLeave = (uid, dateStr) => {
       const arr = leaveByUser.get(Number(uid));
