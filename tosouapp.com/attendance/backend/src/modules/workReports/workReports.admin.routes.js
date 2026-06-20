@@ -116,7 +116,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
     const items = (rows || []).map(r => {
       const hasIn = !!r.checkIn;
       const hasOut = !!r.checkOut;
-      const kubun = String(r.daily_kubun || '').trim();
+      let kubun = String(r.daily_kubun || '').trim();
+      if (kubun === '休み') kubun = '休日';
       const offKubun = new Set(['休日', '代替休日']);
       const leaveKubun = new Set(['有給休暇', '無給休暇', '欠勤']);
       const workKubun = new Set(['出勤', '休日出勤', '代替出勤', '半休']);
@@ -433,7 +434,18 @@ router.get('/export.xlsx',
       let cout = '';
       
       let isOff = isOffDate(d, dept);
-      if (daily?.kubun === '休日' || daily?.kubun === '所定休日') {
+      
+      const isPartTime = u.employmentType === 'part_time' || u.employment_type === 'part_time';
+      if (isPartTime) {
+        const shiftStatus = shiftMap.get(`${uid}|${d}`);
+        if (shiftStatus === 'WORKING' || shiftStatus === 'approved') {
+          isOff = false;
+        } else {
+          isOff = true;
+        }
+      }
+
+      if (daily?.kubun === '休日' || daily?.kubun === '所定休日' || daily?.kubun === '休み') {
         isOff = true;
       }
 
@@ -1653,7 +1665,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
     }
 
     const workKubun = new Set(['出勤', '休日出勤', '代替出勤', '半休']);
-    const holidayKubun = new Set(['休日', '代替休日']);
+    const holidayKubun = new Set(['休日', '代替休日', '休み']);
     const paidLeaveKubun = new Set(['有給休暇']);
     const unpaidLeaveKubun = new Set(['無給休暇']);
     const absenceKubun = new Set(['欠勤']);
@@ -1684,6 +1696,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
             ? (hasReportContent ? 'checkout_missing_submitted' : 'checkout_missing')
             : 'working');
       let kubun = String(daily?.kubun || '').trim();
+      if (kubun === '休み') kubun = '休日';
       if (!kubun) {
         const leaveKubun = leaveByUserDate.get(key) || '';
         if (leaveKubun) kubun = leaveKubun;
@@ -1739,6 +1752,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       const rep = reportMap.get(key) || null;
       let kubun = String(daily?.kubun || '').trim();
       if (!kubun) kubun = String(leaveByUserDate.get(key) || '').trim();
+      if (kubun === '休み') kubun = '休日';
       const site = pickNonEmptyText(daily?.location, rep?.site);
       const work = pickNonEmptyText(daily?.memo, rep?.work);
       const hasContent = !!(site || work);
