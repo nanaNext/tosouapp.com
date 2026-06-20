@@ -132,7 +132,9 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         status = 'leave';
       } else if (hasIn) {
         status = hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working');
-      } else if (dayIsOff) {
+      } else if (dayIsOff && !forceLeave && kubun === '休日' && r.employment_type === 'part_time') {
+        status = 'leave'; // explicitly 休日
+      } else if (dayIsOff && r.employment_type !== 'part_time') {
         status = 'leave'; // Not expected to work, didn't work
       } else if (isPlannedToWork && r.employment_type === 'full_time') {
         // Seishain expected to work but didn't punch in
@@ -142,7 +144,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         status = 'not_checked_in';
       }
       // Normalize display kubun for off-days even when daily record is empty.
-      let effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff ? '休日' : ''));
+      let effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff && r.employment_type !== 'part_time' ? '休日' : ''));
+      if (r.employment_type === 'part_time' && kubun === '休日') effectiveKubun = '休日';
       if (effectiveKubun === '休日出勤' && !hasIn && !hasOut) effectiveKubun = '休日';
       const hasReport = !!(r.site || r.work);
       const wt = r.work_type || null;
@@ -440,8 +443,10 @@ router.get('/export.xlsx',
         const shiftStatus = shiftMap.get(`${uid}|${d}`);
         if (shiftStatus === 'WORKING' || shiftStatus === 'approved') {
           isOff = false;
-        } else {
+        } else if (shiftStatus === 'OFF') {
           isOff = true;
+        } else {
+          isOff = false; // default to working so they get 未 if no punch and no explicitly 休日 applied
         }
       }
 
@@ -449,16 +454,25 @@ router.get('/export.xlsx',
         isOff = true;
       }
 
+      const today = todayJST();
       if (leave) {
         status = leaveLabel(leave.type);
-      } else if (!att?.checkIn && isOff) {
+      } else if (!att?.checkIn && isOff && (!isPartTime || (daily?.kubun === '休日' || daily?.kubun === '所定休日' || daily?.kubun === '休み'))) {
         status = '休日';
+      } else if (!att?.checkIn && isPartTime && d > today) {
+        status = ''; // Don't show 未 for future days in export
+      } else if (!att?.checkIn && isPartTime) {
+        status = '未';
+      } else if (!att?.checkIn && !isOff && d <= today) {
+        status = '未';
+      } else if (!att?.checkIn && !isOff && d > today) {
+        status = '';
       } else if (att?.checkIn) {
         status = att?.checkOut ? (isOff ? '休日出勤' : '出勤') : (isOff ? '休日出勤' : '出勤');
         cin = fmtHm(att.checkIn);
         cout = fmtHm(att.checkOut);
       } else if (!isOff) {
-        status = '出勤';
+        status = '出勤'; // Should not hit here if att?.checkIn is handled, but keep logic safe
       }
       return {
         uid,
@@ -1702,6 +1716,11 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         if (leaveKubun) kubun = leaveKubun;
         else if (status === 'missing' && !hasReportContent && isOffDate(date, user.departmentName)) kubun = '休日';
         else kubun = isOffDate(date, user.departmentName) ? '休日出勤' : '出勤';
+        
+        const isPartTime = user.employment_type === 'part_time' || user.employmentType === 'part_time';
+        if (isPartTime && kubun === '休日') {
+           kubun = ''; // Clear default 休日 for part-time if they didn't explicitly punch or set it
+        }
       }
       if (kubun === '休日出勤' && !a.firstCheckIn && !a.lastCheckOut) kubun = '休日';
       if (status === 'submitted' || status === 'checkout_missing_submitted') submitted++;
@@ -1761,15 +1780,27 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       const fallbackOutHm = ''; // Do not fallback out time if no checkIn
 
       let status = '';
-      if (holidayKubun.has(kubun) || (!kubun && isOffDate(date, user.departmentName))) status = 'off';
+      if (holidayKubun.has(kubun)) status = 'off';
+      else if (!kubun && isOffDate(date, user.departmentName) && user.employment_type !== 'part_time' && user.employmentType !== 'part_time') status = 'off';
       else if (paidLeaveKubun.has(kubun)) status = 'paid_leave';
       else if (unpaidLeaveKubun.has(kubun)) status = 'unpaid_leave';
       else if (absenceKubun.has(kubun)) status = 'absence';
-      else if (workKubun.has(kubun) || hasContent) status = 'not_punched'; // Treat as missing punch rather than monthly input only
+      else if (workKubun.has(kubun) || hasContent || (!kubun && (user.employment_type === 'part_time' || user.employmentType === 'part_time'))) status = 'not_punched'; // Treat as missing punch rather than monthly input only
       else continue;
       // Hide pure future off-day placeholders (no punch/report content) to match admin expectation.
-      if (status === 'off' && String(date).slice(0, 10) > today && !hasContent) continue;
+      if (status === 'off' && String(date).slice(0, 10) > today && !hasContent && !holidayKubun.has(kubun)) continue;
       if (!kubun && status === 'off') kubun = '休日';
+
+      // For part-time without a shift, and not explicitly marked as off, treat as missing
+      const isPartTime = user.employment_type === 'part_time' || user.employmentType === 'part_time';
+      if (isPartTime && status === 'off' && !holidayKubun.has(kubun)) {
+          status = 'not_punched';
+          kubun = '';
+      }
+      
+      if (status === 'not_punched' && !hasContent && String(date).slice(0, 10) > today) {
+          continue; // Hide pure future not punched to avoid clutter
+      }
 
       if (status === 'not_punched' && hasContent) submitted++;
       workingUsers.add(userId);
