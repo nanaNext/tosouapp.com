@@ -1,1 +1,8 @@
-SUCCESS
+ERROR
+Error: Command failed: git add attendance/backend/src/static/js/pages/shifts.page.js attendance/backend/src/static/js/pages/shifts-all.page.js
+fatal: Unable to create 'C:/.git/index.lock': Permission denied
+
+STDOUT:
+
+STDERR:
+fatal: Unable to create 'C:/.git/index.lock': Permission denied

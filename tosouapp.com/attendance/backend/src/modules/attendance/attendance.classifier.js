@@ -34,6 +34,11 @@ function classifyMonthlyDay({
 
   if (workKubun.has(k)) return { status: 'leave', plan: null, kubun: '欠勤' };
 
+  // If not working and planned to work and it's past
+  if (!isPlannedOff && d < todayJST()) {
+     return { status: 'leave', plan: 'work', kubun: '欠勤' };
+  }
+
   const plan = isPlannedOff ? 'off' : 'work';
   return { status: 'planned', plan, kubun: null };
 }
