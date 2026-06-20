@@ -731,7 +731,7 @@ async function computeMonthMissing(userId, y, m) {
     const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
     const isOff = off.has(ds);
     const k0 = dailyKubun.get(ds) || '';
-    const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み']);
+    const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み', '休日']);
     const allowedOff = new Set(['休日', '休日出勤', '代替出勤', '休み']);
     const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
     const segs = segByDate.get(ds) || [];
@@ -825,7 +825,7 @@ exports.getMonthStatusBulk = async (req, res) => {
           const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
           const isOff = off.has(ds);
           const k0 = dailyKubun.get(ds) || '';
-          const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み']);
+          const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み', '休日']);
           const allowedOff = new Set(['休日', '休日出勤', '代替出勤', '休み']);
           const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
           const segs = segByDate.get(ds) || [];
@@ -2735,7 +2735,7 @@ exports.exportMonthXlsx = async (req, res) => {
           if (hasTime) return { display: '休日出勤', effective: '休日出勤' };
           return { display: plannedLabel, effective: '休日' };
         }
-        const allowed = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日']);
+        const allowed = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休日']);
         if (allowed.has(dailyKubun) && dailyKubun) return { display: dailyKubun, effective: dailyKubun };
         return { display: plannedLabel, effective: '出勤' };
       })();

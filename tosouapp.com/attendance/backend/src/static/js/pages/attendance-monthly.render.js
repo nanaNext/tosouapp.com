@@ -58,10 +58,16 @@
         const offDay = !!isOff;
         
         const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
-        const kubunInitRaw = String(daily?.kubun || '').trim();
+        let kubunInitRaw = String(daily?.kubun || '').trim();
         const role = String(profile?.role || '').toLowerCase();
         const isEmployee = role === 'employee';
         const isPartTime = String(profile?.employment_type || '').toLowerCase() === 'part_time' || String(detail?.user?.employment_type || '').toLowerCase() === 'part_time' || String(profile?.shift?.id || '').includes('baito') || String(detail?.user?.shift_id || '').includes('baito');
+
+      if (isPartTime) {
+        if (kubunInitRaw === '休み') {
+          kubunInitRaw = '休日';
+        }
+      }
 
       // Always include 休日 in the options if admin/manager
     
@@ -70,7 +76,7 @@
         if (offDay) {
           kubunOptions = ['休日', '休日出勤']; // Ngày nghỉ cố định của công ty
         } else {
-          kubunOptions = ['出勤', '休み', '欠勤', '有給休暇', '無給休暇']; // Ngày thường linh hoạt
+          kubunOptions = ['出勤', '休日', '欠勤', '有給休暇', '無給休暇']; // Ngày thường linh hoạt
         }
       } else {
         if (offDay) {
