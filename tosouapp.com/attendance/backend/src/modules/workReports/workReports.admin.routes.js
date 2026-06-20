@@ -146,6 +146,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       // Normalize display kubun for off-days even when daily record is empty.
       let effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff && r.employment_type !== 'part_time' ? '休日' : ''));
       if (r.employment_type === 'part_time' && kubun === '休日') effectiveKubun = '休日';
+      if (r.employment_type === 'part_time' && !kubun) effectiveKubun = '';
       if (effectiveKubun === '休日出勤' && !hasIn && !hasOut) effectiveKubun = '休日';
       const hasReport = !!(r.site || r.work);
       const wt = r.work_type || null;
@@ -452,6 +453,8 @@ router.get('/export.xlsx',
 
       if (daily?.kubun === '休日' || daily?.kubun === '所定休日' || daily?.kubun === '休み') {
         isOff = true;
+      } else if (isPartTime && !daily?.kubun && isOffDate(d, dept)) {
+        isOff = false; // Part-time doesn't inherit company off-days unless explicitly set
       }
 
       const today = todayJST();
@@ -459,8 +462,8 @@ router.get('/export.xlsx',
         status = leaveLabel(leave.type);
       } else if (!att?.checkIn && isOff && (!isPartTime || (daily?.kubun === '休日' || daily?.kubun === '所定休日' || daily?.kubun === '休み'))) {
         status = '休日';
-      } else if (!att?.checkIn && isPartTime && d > today) {
-        status = ''; // Don't show 未 for future days in export
+      } else if (!att?.checkIn && isPartTime && d > today && !daily?.kubun) {
+        status = ''; // Don't show anything for pure future days in export
       } else if (!att?.checkIn && isPartTime) {
         status = '未';
       } else if (!att?.checkIn && !isOff && d <= today) {
@@ -1720,6 +1723,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         const isPartTime = user.employment_type === 'part_time' || user.employmentType === 'part_time';
         if (isPartTime && kubun === '休日') {
            kubun = ''; // Clear default 休日 for part-time if they didn't explicitly punch or set it
+        } else if (isPartTime && !daily?.kubun) {
+           kubun = ''; // Part-time users should not automatically get 休日出勤 or 出勤 text on empty days
         }
       }
       if (kubun === '休日出勤' && !a.firstCheckIn && !a.lastCheckOut) kubun = '休日';
@@ -1798,7 +1803,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
           kubun = '';
       }
       
-      if (status === 'not_punched' && !hasContent && String(date).slice(0, 10) > today) {
+      if (status === 'not_punched' && !hasContent && String(date).slice(0, 10) > today && !holidayKubun.has(kubun)) {
           continue; // Hide pure future not punched to avoid clutter
       }
 
