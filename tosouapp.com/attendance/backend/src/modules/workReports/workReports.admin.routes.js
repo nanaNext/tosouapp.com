@@ -123,13 +123,16 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       const workKubun = new Set(['出勤', '休日出勤', '代替出勤', '半休']);
       const dayIsOff = offKubun.has(kubun) || (!workKubun.has(kubun) && isOff);
       const forceLeave = leaveKubun.has(kubun) || Number(r.has_approved_leave || 0) === 1;
+      const isAbsence = kubun === '欠勤';
       
       // Determine if they were supposed to work (planned)
       const isPlannedToWork = !isOff || workKubun.has(kubun);
       
       let status;
-      if (forceLeave) {
+      if (forceLeave && !isAbsence) {
         status = 'leave';
+      } else if (isAbsence) {
+        status = 'absence';
       } else if (hasIn) {
         status = hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working');
       } else if (dayIsOff && !forceLeave && kubun === '休日' && r.employment_type === 'part_time') {
@@ -146,6 +149,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       // Normalize display kubun for off-days even when daily record is empty.
       let effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff && r.employment_type !== 'part_time' ? '休日' : ''));
       if (r.employment_type === 'part_time' && kubun === '休日') effectiveKubun = '休日';
+      if (kubun === '欠勤') effectiveKubun = '欠勤';
       if (r.employment_type === 'part_time' && !kubun) effectiveKubun = '';
       if (effectiveKubun === '休日出勤' && !hasIn && !hasOut) effectiveKubun = '休日';
       const hasReport = !!(r.site || r.work);
@@ -460,6 +464,9 @@ router.get('/export.xlsx',
       const today = todayJST();
       if (leave) {
         status = leaveLabel(leave.type);
+      } else if (daily?.kubun === '欠勤') {
+        status = '欠勤';
+        isOff = true; // Mark as "off" in row structure so it gets red text color
       } else if (!att?.checkIn && isOff && (!isPartTime || (daily?.kubun === '休日' || daily?.kubun === '所定休日' || daily?.kubun === '休み'))) {
         status = '休日';
       } else if (!att?.checkIn && isPartTime && d > today && !daily?.kubun) {
@@ -517,6 +524,9 @@ router.get('/export.xlsx',
         const dept = u.departmentName || '';
         const dayCells = dates.map(d => {
           const r = buildRow(u, d);
+      if (r.status === '欠勤') {
+        return '欠勤';
+      }
       if (r.status === '休日') return '休日';
       const t1 = r.status ? r.status : '';
       const t2 = r.wtText ? r.wtText : '';
@@ -679,11 +689,14 @@ router.get('/export.xlsx',
           let isLate = 0;
           let h = 0;
 
-          if (r.status === '出勤' || r.status === '休日出勤') {
+          if (r.status === '出勤' || r.status === '休日出勤' || r.status === '欠勤') {
             const cin = r.cin || '';
             const cout = r.cout || '';
             
-            if (!cin && !cout && r.status === '出勤') {
+            if (r.status === '欠勤') {
+              cellValue = '欠勤';
+              cellStyle = 'absentText'; // Usually red or blue
+            } else if (!cin && !cout && r.status === '出勤') {
               cellValue = '未';
               cellStyle = 'absentText'; // Blue text
             } else {
@@ -1723,7 +1736,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         const isPartTime = user.employment_type === 'part_time' || user.employmentType === 'part_time';
         if (isPartTime && kubun === '休日') {
            kubun = ''; // Clear default 休日 for part-time if they didn't explicitly punch or set it
-        } else if (isPartTime && !daily?.kubun) {
+        } else if (isPartTime && !daily?.kubun && kubun !== '欠勤') {
            kubun = ''; // Part-time users should not automatically get 休日出勤 or 出勤 text on empty days
         }
       }
@@ -1803,7 +1816,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
           kubun = '';
       }
       
-      if (status === 'not_punched' && !hasContent && String(date).slice(0, 10) > today && !holidayKubun.has(kubun)) {
+      if (status === 'not_punched' && !hasContent && String(date).slice(0, 10) > today && !holidayKubun.has(kubun) && !absenceKubun.has(kubun)) {
           continue; // Hide pure future not punched to avoid clutter
       }
 
