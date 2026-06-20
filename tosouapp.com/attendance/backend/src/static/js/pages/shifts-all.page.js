@@ -253,9 +253,17 @@ function renderApp() {
             let label = '休';
             if (shift.leaveType === 'paid') label = '有休';
             else if (shift.leaveType === 'unpaid') label = '欠勤';
-            cellHtml = `<div style="color: #dc2626; font-weight: bold; font-size: 12px;">${label}</div>`;
+            
+            // Add visual indicator if there's a reason or detail
+            const hasReason = shift.reason && shift.reason !== '' && shift.reason !== 'other';
+            const hasDetail = shift.detail && shift.detail.trim() !== '';
+            const indicator = (hasReason || hasDetail) ? '<div style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; position: absolute; top: 2px; right: 2px;" title="理由あり"></div>' : '';
+            
+            const tooltipTitle = `理由: ${shift.reason || 'なし'}${shift.detail ? ` - ${shift.detail}` : ''}`;
+            
+            cellHtml = `<div style="color: #dc2626; font-weight: bold; font-size: 12px; position: relative; cursor: help;" title="${tooltipTitle}">${label}${indicator}</div>`;
             cellMobileHtml = label;
-            cellMobileColor = 'color: #dc2626; font-weight: bold; background: #fef2f2;';
+            cellMobileColor = 'color: #dc2626; font-weight: bold; background: #fef2f2; position: relative;';
           } else {
              if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
                  cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
@@ -275,14 +283,31 @@ function renderApp() {
             cellMobileColor = 'color: #1e3a8a; font-weight: bold;';
             workCount++;
           } else {
-            if (isWeekendOrHoliday) {
-              cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
-              cellMobileHtml = '休';
-              cellMobileColor = 'color: #dc2626; background: #fef2f2;';
+            // Even if working status is not working, Baito might have requested leave with a reason
+            if (shift && shift.status === 'LEAVE') {
+                let label = '休';
+                if (shift.leaveType === 'paid') label = '有休';
+                else if (shift.leaveType === 'unpaid') label = '欠勤';
+                
+                const hasReason = shift.reason && shift.reason !== '' && shift.reason !== 'other';
+                const hasDetail = shift.detail && shift.detail.trim() !== '';
+                const indicator = (hasReason || hasDetail) ? '<div style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; position: absolute; top: 2px; right: 2px;" title="理由あり"></div>' : '';
+                
+                const tooltipTitle = `理由: ${shift.reason || 'なし'}${shift.detail ? ` - ${shift.detail}` : ''}`;
+                
+                cellHtml = `<div style="color: #dc2626; font-weight: bold; font-size: 12px; position: relative; cursor: help;" title="${tooltipTitle}">${label}${indicator}</div>`;
+                cellMobileHtml = label;
+                cellMobileColor = 'color: #dc2626; font-weight: bold; background: #fef2f2; position: relative;';
             } else {
-              cellHtml = `<div style="color: #94a3b8; font-size: 12px;">休み</div>`;
-              cellMobileHtml = '-';
-              cellMobileColor = 'color: #94a3b8;';
+                if (isWeekendOrHoliday) {
+                  cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
+                  cellMobileHtml = '休';
+                  cellMobileColor = 'color: #dc2626; background: #fef2f2;';
+                } else {
+                  cellHtml = `<div style="color: #94a3b8; font-size: 12px;">休み</div>`;
+                  cellMobileHtml = '-';
+                  cellMobileColor = 'color: #94a3b8;';
+                }
             }
           }
         }
