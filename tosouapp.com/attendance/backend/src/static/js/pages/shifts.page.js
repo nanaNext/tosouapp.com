@@ -493,7 +493,7 @@ function renderDayCell(date, isSeishain) {
     // Baito display logic
     const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
     const isWeekendOrHoliday = isHolidayForUser;
-    const offLabel = isWeekendOrHoliday ? '休' : '休み';
+    const offLabel = '休日';
     const shifts = [
       { value: 'OFF', label: offLabel },
       { value: 'WORKING', label: '出勤' }

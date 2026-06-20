@@ -96,8 +96,8 @@
             plannedLabel = '【出勤予定】';
             plannedKubun = '出勤';
           } else if (shiftRequest.status === 'OFF') {
-            plannedLabel = offDay ? '【休日予定】' : '休み'; // Nếu trùng ngày lễ thì ưu tiên hiện 休日予定
-            plannedKubun = offDay ? '休日' : '休み';
+            plannedLabel = offDay ? '【休日予定】' : '休日'; 
+            plannedKubun = '休日';
           } else {
             // shiftRequest = 'NONE' hoặc không rõ ràng, xử lý theo ngày lễ
             plannedLabel = offDay ? '【休日予定】' : '【予定なし】';
