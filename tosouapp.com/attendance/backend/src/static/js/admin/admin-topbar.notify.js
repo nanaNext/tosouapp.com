@@ -220,11 +220,13 @@ document.addEventListener('DOMContentLoaded', function () {
       var markRead = function (ids) {
         var arr = Array.isArray(ids) ? ids : [];
         if (!arr.length) return Promise.resolve();
+        var csrf = getCookie('csrfToken');
+        var headers = Object.assign({ 'Content-Type': 'application/json' }, (csrf ? { 'X-CSRF-Token': csrf } : {}));
         return fetch('/api/admin/notifications/read', {
           method: 'POST',
           keepalive: true,
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({ ids: arr })
         }).catch(function () {});
       };
