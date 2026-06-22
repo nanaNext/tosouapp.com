@@ -241,7 +241,7 @@ function renderApp() {
       
       // Find the day of week for the 1st of the month to add empty padding cells
       const firstDayOfMonth = new Date(year, month, 1).getDay();
-      let mobileDaysHtml = '<div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 4px; padding: 0 8px 8px 8px; justify-content: start;">';
+      let mobileDaysHtml = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0;">';
       
       // Add empty cells for days before the 1st
       for (let i = 0; i < firstDayOfMonth; i++) {
@@ -362,9 +362,9 @@ function renderApp() {
         }
         
         mobileDaysHtml += `
-          <div class="sac-day-item" style="border: 1px solid #e2e8f0; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 38px; background: ${statusColor === '#ef4444' ? '#fef2f2' : '#fff'};">
-            <div style="font-size: 10px; color: ${headerColor}; font-weight: bold; line-height: 1.2;">${d.getDate()}</div>
-            <div style="font-size: 11px; font-weight: bold; color: ${statusColor}; margin-top: 2px;">${statusLabel}</div>
+          <div class="sac-day-item" style="border: 1px solid #e2e8f0; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 42px; background: ${statusColor === '#ef4444' ? '#fef2f2' : '#fff'}; box-sizing: border-box;">
+            <div style="font-size: 11px; color: ${headerColor}; font-weight: bold; line-height: 1.2;">${d.getDate()}</div>
+            <div style="font-size: 12px; font-weight: bold; color: ${statusColor}; margin-top: 2px;">${statusLabel}</div>
           </div>
         `;
       });
@@ -385,10 +385,10 @@ function renderApp() {
             <span class="sac-total-label">月計 (出勤日数):</span>
             <span class="sac-total-val" style="font-weight:700; color:#0f172a;">${workCount}日</span>
           </div>
-          <div class="sac-days-scroll" style="overflow-x: auto;">
-            <div style="min-width: max-content;">
-              <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 4px; padding: 4px 8px 2px 8px; justify-content: start;">
-                ${['日', '月', '火', '水', '木', '金', '土'].map((d, i) => `<div style="width: 32px; text-align: center; font-size: 11px; font-weight: bold; color: ${i===0?'#ef4444':i===6?'#3b82f6':'#64748b'};">${d}</div>`).join('')}
+          <div class="sac-days-scroll" style="overflow-x: hidden; display: flex; justify-content: center; padding-bottom: 8px;">
+            <div style="width: 100%; max-width: 350px;">
+              <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 4px 0 2px 0;">
+                ${['日', '月', '火', '水', '木', '金', '土'].map((d, i) => `<div style="text-align: center; font-size: 11px; font-weight: bold; color: ${i===0?'#ef4444':i===6?'#3b82f6':'#64748b'};">${d}</div>`).join('')}
               </div>
               ${mobileDaysHtml}
             </div>
