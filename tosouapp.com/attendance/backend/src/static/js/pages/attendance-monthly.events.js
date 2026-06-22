@@ -1045,9 +1045,9 @@
         document.querySelector('#enmTargetMonth').textContent = `${year}年${parseInt(month, 10)}月`;
       }
 
-      document.querySelector('#enmEmpCode').textContent = document.querySelector('#empCode')?.textContent || '—';
-      document.querySelector('#enmEmpName').textContent = document.querySelector('#staffName')?.textContent || '—';
-      document.querySelector('#enmEmpDept').textContent = document.querySelector('#empDept')?.textContent || '—';
+      document.querySelector('#enmEmpCode').textContent = (document.querySelector('#empCode')?.textContent || '').trim() || '—';
+      document.querySelector('#enmEmpName').textContent = (document.querySelector('#staffName')?.textContent || '').trim() || '—';
+      document.querySelector('#enmEmpDept').textContent = (document.querySelector('#empDept')?.textContent || '').trim() || '—';
 
       // Build daily table rows AND calculate summary dynamically based ONLY on actual records up to today
       const dailyTbody = document.querySelector('#enmDailyTable tbody');
