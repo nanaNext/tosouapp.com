@@ -572,7 +572,7 @@ router.get('/export.xlsx',
         sheets.push({ name: `${mmdd(d)} ${dowJa(d)}`, columns: dayColumns, rows: dayRows });
       }
 
-      const buf = buildXlsxBook({ sheets });
+      const buf = await buildXlsxBook({ sheets });
       
       // Auto save to Cloudflare R2
       try {
@@ -812,7 +812,7 @@ router.get('/export.xlsx',
       s1Rows_full.push(buildBottomRow(dailyPresentCount_full, `社員数: ${s1Rows_full.length}名`, s1Rows_full.length));
       s1Rows_part.push(buildBottomRow(dailyPresentCount_part, `社員数: ${s1Rows_part.length}名`, s1Rows_part.length));
 
-      buf = buildXlsxBook({
+      buf = await buildXlsxBook({
         sheets: [
           { name: `全社員サマリー_${qMonth}`, columns: s1Cols_all, rows: s1Rows_all, headerStyleKey: 'header' },
           { name: `正社員サマリー_${qMonth}`, columns: s1Cols_type, rows: s1Rows_full, headerStyleKey: 'header' },
@@ -866,7 +866,7 @@ router.get('/export.xlsx',
       ];
 
       const baseName = period === 'year' ? `年次_${qYear}` : `日次_${start}`;
-      buf = buildXlsx({ sheetName: baseName, columns, rows });
+      buf = await buildXlsx({ sheetName: baseName, columns, rows });
     }
     
     // Auto save to Cloudflare R2
@@ -1413,7 +1413,7 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
     }
 
     const { buildXlsx } = require('../../utils/xlsx');
-    const buf = buildXlsx({ sheetName: '作業報告一覧', columns, rows });
+    const buf = await buildXlsx({ sheetName: '作業報告一覧', columns, rows });
     
     const fileName = `work_reports_table_${responseData.month}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

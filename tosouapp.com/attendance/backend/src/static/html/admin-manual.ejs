@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=0.75,minimum-scale=0.75,maximum-scale=3,user-scalable=yes">
+  <title>管理者マニュアル</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260421-layoutfix1">
+  <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260604-pagination3">
+  <link rel="stylesheet" href="/static/css/attendance.css?v=navy-20260424-2">
+  <link rel="icon" href="data:,">
+  <script src="/static/js/pages/session-idle.js?v=navy-20260403-1" defer></script>
+</head>
+<body class="admin has-sidebar">
+  <div id="adminChrome">
+  <%- include('_partials/admin-topbar.ejs') %>
+  <%- include('_partials/admin-mobile-drawer.ejs') %>
+  <div class="subbar">
+    <div class="subnav">
+      <a href="/admin/dashboard">ホーム</a>
+      <div class="menu">
+        <button class="menu-btn" type="button">社員管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/employees" role="menuitem">社員一覧</a>
+          <a href="/admin/employees/add" role="menuitem">社員追加</a>
+          <a href="/admin/employees/monthly-summary" role="menuitem">月次集計</a>
+        </div>
+      </div>
+      <a href="/admin/attendance?standalone=1" target="_blank" rel="noopener noreferrer">勤怠管理</a>
+      <a href="/admin/leave/requests">休暇管理</a>
+      <div class="menu">
+        <button class="menu-btn" type="button">給与管理</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/payroll/salary" role="menuitem">給与</a>
+          <a href="/admin/payroll/payslips" role="menuitem">送信・履歴</a>
+        </div>
+      </div>
+      <a href="/admin/expenses">交通費</a>
+      <a href="/admin/departments">組織</a>
+      <div class="menu">
+        <button class="menu-btn" type="button">システム</button>
+        <div class="submenu" role="menu">
+          <a href="/admin/notices" role="menuitem">お知らせ</a>
+          <a href="/admin/system/settings" role="menuitem">設定</a>
+          <a href="/admin/system/audit-logs" role="menuitem">監査ログ</a>
+        </div>
+      </div>
+      <a href="/admin/faq">FAQ管理</a>
+    </div>
+  </div>
+  </div>
+  <main class="content">
+    <section class="kintai-grid" style="max-width:1000px;margin:0 auto;padding:20px;">
+      <!-- Title Section -->
+      <div class="kintai-card" style="margin-bottom:20px;">
+        <div class="kintai-card-title">スマートE勤怠 操作マニュアル（管理者用）</div>
+        <div style="padding:20px;color:#334155;">
+          <p style="margin:0 0 15px 0;font-size:14px;line-height:1.6;">
+            本ページは、スマートE勤怠システムの管理者・マネージャー向け操作マニュアルです。<br>
+            従業員の管理、勤怠・休暇の承認、給与明細の発行など、管理者固有の機能について説明します。<br>
+            ※従業員としての自分自身の打刻や申請方法は「従業員用マニュアル」をご覧ください。
+          </p>
+          <div style="background:#e0f2fe;padding:15px;border-radius:6px;border-left:4px solid #3b82f6;">
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:8px;">💡 管理者画面へのアクセス</div>
+            <ul style="margin:0;padding-left:20px;color:#1e40af;font-size:14px;line-height:1.6;">
+              <li>ログイン後、左側のメニューから各管理機能にアクセスできます。</li>
+              <li>上部のナビゲーションバーにある <strong>+ New</strong> ボタンから、従業員や部署の新規作成が素早く行えます。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;margin-bottom:30px;">
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('employees')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">👥</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">社員管理</div>
+            <div style="font-size:12px;color:#666;">社員一覧・追加・月次集計</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('attendance')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">⏱️</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">勤怠管理</div>
+            <div style="font-size:12px;color:#666;">打刻・シフトの確認と承認</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('leave')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">🌴</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">休暇管理</div>
+            <div style="font-size:12px;color:#666;">有休付与・各種申請の承認</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('payroll')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">💴</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">給与管理</div>
+            <div style="font-size:12px;color:#666;">給与計算・明細の発行</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('expenses')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">🚃</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">交通費</div>
+            <div style="font-size:12px;color:#666;">交通費・経費のチェック</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('departments')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">🏢</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">組織</div>
+            <div style="font-size:12px;color:#666;">部署・チームの設定</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('system')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">⚙️</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">システム</div>
+            <div style="font-size:12px;color:#666;">お知らせ・設定・ログ</div>
+          </div>
+        </div>
+
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('faq')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">❓</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">FAQ管理</div>
+            <div style="font-size:12px;color:#666;">質問と回答の登録</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Sections -->
+
+      <!-- 社員管理 -->
+      <div class="kintai-card" id="section-employees" style="margin-bottom:30px;">
+        <div class="kintai-card-title">👥 社員管理</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 社員一覧</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>登録されている全社員の一覧を確認できます。</li>
+            <li>社員の名前をクリックすると、情報の編集や<strong>パスワードリセット</strong>（初期パスワード：生年月日8桁）が行えます。</li>
+          </ul>
+
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 社員追加</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>新入社員の情報をシステムに登録します。社員番号、氏名、メールアドレスが必須です。</li>
+          </ul>
+
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 月次集計</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>全社員の月間の労働時間、残業時間、休暇日数などを一覧で確認し、CSVやExcel形式で出力できます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 勤怠管理 -->
+      <div class="kintai-card" id="section-attendance" style="margin-bottom:30px;">
+        <div class="kintai-card-title">⏱️ 勤怠管理</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 日々の打刻とシフトの管理</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>従業員の日々の打刻実績や、翌月のシフト予定をカレンダー形式で確認できます。</li>
+            <li>打刻忘れがあった場合は、管理者が直接時間を修正することができます。</li>
+            <li>月末には、従業員から提出された勤怠データをチェックし、<strong>「承認」</strong>を行うことでデータを確定（ロック）させます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 休暇管理 -->
+      <div class="kintai-card" id="section-leave" style="margin-bottom:30px;">
+        <div class="kintai-card-title">🌴 休暇管理</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 有休付与と申請の承認</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>従業員から提出された有給休暇や欠勤の申請内容を確認し、「承認」または「却下」を行います。</li>
+            <li>各従業員に対して、有給休暇の日数を手動または自動で付与・管理することができます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 給与管理 -->
+      <div class="kintai-card" id="section-payroll" style="margin-bottom:30px;">
+        <div class="kintai-card-title">💴 給与管理</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 給与</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>承認済みの勤怠データを元に、基本給や残業代を自動計算し、給与明細のデータを作成します。</li>
+          </ul>
+
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 送信・履歴</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>作成した給与明細を従業員の画面に公開（送信）します。また、過去の明細発行履歴を確認できます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 交通費 -->
+      <div class="kintai-card" id="section-expenses" style="margin-bottom:30px;">
+        <div class="kintai-card-title">🚃 交通費</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 交通費・経費のチェック</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>従業員から上がってきた交通費や経費の申請内容（領収書画像など）を確認し、承認します。</li>
+            <li>実際の振込が完了した後は、ステータスを<strong>「支給済み (Paid)」</strong>に変更して管理します。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 組織 -->
+      <div class="kintai-card" id="section-departments" style="margin-bottom:30px;">
+        <div class="kintai-card-title">🏢 組織</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 部署・チームの設定</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>会社内の部署やチームを新規作成・編集します。ここで作成した部署は、従業員情報に紐付けることができます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- システム -->
+      <div class="kintai-card" id="section-system" style="margin-bottom:30px;">
+        <div class="kintai-card-title">⚙️ システム</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ お知らせ</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>従業員がログインした際にトップ画面に表示される社内通知（お知らせ）を作成・配信します。</li>
+          </ul>
+
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 設定</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>会社全体の勤務ルール（休日カレンダーの設定、各種手当のデフォルト値など）を管理します。</li>
+          </ul>
+
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 監査ログ</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>いつ、誰が、システム上でどのような操作をしたかの履歴（ログ）を確認し、不正操作がないかチェックします。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- FAQ管理 -->
+      <div class="kintai-card" id="section-faq" style="margin-bottom:30px;">
+        <div class="kintai-card-title">❓ FAQ管理</div>
+        <div style="padding:20px;">
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 質問と回答の登録</div>
+          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>従業員向けの「よくある質問」の項目を追加・編集します。ここで登録した内容は、従業員画面のチャットボットやFAQページに反映されます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="kintai-card" style="background:#f0f4f8;">
+        <div style="padding:20px;text-align:center;color:#666;">
+          <div style="margin-bottom:10px;">
+            ご不明な点がございましたら、システム担当へお気軽にお問い合わせください。
+          </div>
+          <div style="font-size:12px;color:#999;">
+            最終更新: 2026年6月
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/static/js/admin/admin.page.js?v=7" type="module"></script>
+  <script>
+    function scrollToSection(sectionId) {
+      const element = document.getElementById('section-' + sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // Add smooth scroll behavior for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

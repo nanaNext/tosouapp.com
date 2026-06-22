@@ -1,3 +1,174 @@
+const ExcelJS = require('exceljs');
+
+function safeSheetName(s, fallback = 'Sheet') {
+  const name = String(s || '').replace(/[\[\]\*\/\\\:\?]/g, '').trim();
+  return (name || fallback).slice(0, 31);
+}
+
+function applyStyle(cell, styleKey) {
+  // Common styles
+  const fontNormal = { name: 'Meiryo', size: 11, color: { argb: 'FF000000' } };
+  const fontBoldWhite = { name: 'Meiryo', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+  const fontGreen = { name: 'Meiryo', size: 11, color: { argb: 'FF00B050' } };
+  const fontRed = { name: 'Meiryo', size: 11, color: { argb: 'FFFF0000' } };
+  const fontBlue = { name: 'Meiryo', size: 11, color: { argb: 'FF0070C0' } };
+
+  const borderThin = {
+    top: { style: 'thin', color: { argb: 'FFD4D4D4' } },
+    left: { style: 'thin', color: { argb: 'FFD4D4D4' } },
+    bottom: { style: 'thin', color: { argb: 'FFD4D4D4' } },
+    right: { style: 'thin', color: { argb: 'FFD4D4D4' } }
+  };
+
+  const alignCenter = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  const alignLeft = { vertical: 'middle', horizontal: 'left', wrapText: true };
+  const alignRight = { vertical: 'middle', horizontal: 'right', wrapText: true };
+
+  // Set defaults
+  cell.font = fontNormal;
+  cell.border = borderThin;
+  cell.alignment = alignCenter;
+
+  switch (styleKey) {
+    case 'header': // 1
+      cell.font = fontBoldWhite;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3553' } };
+      break;
+    case 'off': // 2
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } };
+      break;
+    case 'stripe': // 3
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      break;
+    case 'checkOn': // 4
+      cell.font = fontBoldWhite;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+      break;
+    case 'headerGrey': // 5
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+      cell.alignment = alignRight;
+      break;
+    case 'absentText': // 6
+      cell.font = fontBlue;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
+      break;
+    case 'weekend': // 7
+      cell.font = fontRed;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE6E6' } };
+      break;
+    case 'late': // 8
+      cell.font = fontRed;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE6E6' } };
+      break;
+    case 'present': // 9
+      cell.font = fontGreen;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3553' } }; // mapping is weird in original, using same fill as 2 (which was rgb FF1F3553 in font? wait, let's use a default)
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } };
+      break;
+    case 'center': // 10
+      // default is center
+      break;
+    case 'legend': // 11
+      cell.alignment = alignLeft;
+      break;
+    case 'paidLeave': // 12
+      cell.border = {}; // no border
+      break;
+    case 'legendHeader': // 13
+      cell.font = fontNormal;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+      break;
+    case 'empty': // 14
+      cell.border = {};
+      break;
+    case 'cell': // 0
+    default:
+      // default cell
+      break;
+  }
+}
+
+async function buildXlsxBook({ sheets }) {
+  const workbook = new ExcelJS.Workbook();
+  const rawSheets = Array.isArray(sheets) ? sheets : [];
+  
+  if (rawSheets.length === 0) {
+    workbook.addWorksheet('Sheet1');
+  }
+
+  rawSheets.forEach((s, i) => {
+    const sheetName = safeSheetName(s?.name, `Sheet${i + 1}`);
+    const ws = workbook.addWorksheet(sheetName);
+
+    // Setup columns
+    const columns = Array.isArray(s?.columns) ? s.columns : [];
+    ws.columns = columns.map(c => ({
+      header: c?.header || '',
+      width: Number(c?.width || 12)
+    }));
+
+    // Header row styling
+    const headerRow = ws.getRow(1);
+    const headerStyleKey = String(s?.headerStyleKey || 'header').trim() || 'header';
+    
+    columns.forEach((c, ci) => {
+      const cell = headerRow.getCell(ci + 1);
+      let sk = headerStyleKey;
+      if (c?.headerStyle) sk = c.headerStyle;
+      if (c?.header === '' && ci === 7) sk = 'empty';
+      applyStyle(cell, sk);
+    });
+
+    // Setup rows
+    const rows = Array.isArray(s?.rows) ? s.rows : [];
+    rows.forEach((r, ri) => {
+      const rowNum = ri + 2;
+      const wsRow = ws.getRow(rowNum);
+      const isOff = !!r?.isOff;
+      const defaultStyle = isOff ? 'off' : (ri % 2 === 1 ? 'stripe' : 'cell');
+      
+      const cells = Array.isArray(r?.cells) ? r.cells : [];
+      cells.forEach((raw, ci) => {
+        const cell = wsRow.getCell(ci + 1);
+        let v = raw;
+        let styleKey = '';
+        let isFormula = false;
+        
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          if (Object.prototype.hasOwnProperty.call(raw, 'v') || Object.prototype.hasOwnProperty.call(raw, 'value')) {
+            v = Object.prototype.hasOwnProperty.call(raw, 'v') ? raw.v : raw.value;
+            styleKey = String(raw.s || raw.style || '');
+            isFormula = !!raw.f;
+          }
+        }
+        
+        if (isFormula) {
+          cell.value = { formula: String(v) };
+        } else {
+          cell.value = v;
+        }
+
+        const sk = styleKey || defaultStyle;
+        applyStyle(cell, sk);
+      });
+    });
+
+    // Auto filter if sheet name includes 詳細
+    if (sheetName.includes('詳細')) {
+      ws.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: rows.length + 1, column: columns.length || 1 }
+      };
+    }
+  });
+
+  return await workbook.xlsx.writeBuffer();
+}
+
+async function buildXlsx({ sheetName, columns, rows }) {
+  return buildXlsxBook({ sheets: [{ name: sheetName, columns, rows }] });
+}
+
 function u16(n) {
   const b = Buffer.alloc(2);
   b.writeUInt16LE(n >>> 0, 0);
@@ -8,14 +179,6 @@ function u32(n) {
   const b = Buffer.alloc(4);
   b.writeUInt32LE(n >>> 0, 0);
   return b;
-}
-
-function crc32(buf) {
-  let c = 0 ^ -1;
-  for (let i = 0; i < buf.length; i++) {
-    c = (c >>> 8) ^ CRC_TABLE[(c ^ buf[i]) & 0xff];
-  }
-  return (c ^ -1) >>> 0;
 }
 
 const CRC_TABLE = (() => {
@@ -30,6 +193,14 @@ const CRC_TABLE = (() => {
   return table;
 })();
 
+function crc32(buf) {
+  let c = 0 ^ -1;
+  for (let i = 0; i < buf.length; i++) {
+    c = (c >>> 8) ^ CRC_TABLE[(c ^ buf[i]) & 0xff];
+  }
+  return (c ^ -1) >>> 0;
+}
+
 function zipStore(files) {
   const entries = [];
   let offset = 0;
@@ -39,18 +210,8 @@ function zipStore(files) {
     const dataBuf = Buffer.isBuffer(f.data) ? f.data : Buffer.from(String(f.data ?? ''), 'utf8');
     const crc = crc32(dataBuf);
     const localHeader = Buffer.concat([
-      u32(0x04034b50),
-      u16(20),
-      u16(0),
-      u16(0),
-      u16(0),
-      u16(0),
-      u32(crc),
-      u32(dataBuf.length),
-      u32(dataBuf.length),
-      u16(nameBuf.length),
-      u16(0),
-      nameBuf
+      u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
+      u32(crc), u32(dataBuf.length), u32(dataBuf.length), u16(nameBuf.length), u16(0), nameBuf
     ]);
     chunks.push(localHeader, dataBuf);
     const localOffset = offset;
@@ -62,24 +223,9 @@ function zipStore(files) {
   const centralChunks = [];
   for (const e of entries) {
     const cdir = Buffer.concat([
-      u32(0x02014b50),
-      u16(20),
-      u16(20),
-      u16(0),
-      u16(0),
-      u16(0),
-      u16(0),
-      u32(e.crc),
-      u32(e.size),
-      u32(e.size),
-      u16(e.nameBuf.length),
-      u16(0),
-      u16(0),
-      u16(0),
-      u16(0),
-      u32(0),
-      u32(e.offset),
-      e.nameBuf
+      u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
+      u32(e.crc), u32(e.size), u32(e.size), u16(e.nameBuf.length), u16(0), u16(0), u16(0), u16(0),
+      u32(0), u32(e.offset), e.nameBuf
     ]);
     centralChunks.push(cdir);
     offset += cdir.length;
@@ -87,312 +233,10 @@ function zipStore(files) {
 
   const centralSize = offset - centralStart;
   const eocd = Buffer.concat([
-    u32(0x06054b50),
-    u16(0),
-    u16(0),
-    u16(entries.length),
-    u16(entries.length),
-    u32(centralSize),
-    u32(centralStart),
-    u16(0)
+    u32(0x06054b50), u16(0), u16(0), u16(entries.length), u16(entries.length),
+    u32(centralSize), u32(centralStart), u16(0)
   ]);
   return Buffer.concat([...chunks, ...centralChunks, eocd]);
-}
-
-function xmlEscape(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;' }[c]));
-}
-
-function colName(n) {
-  let x = n;
-  let s = '';
-  while (x > 0) {
-    const r = (x - 1) % 26;
-    s = String.fromCharCode(65 + r) + s;
-    x = Math.floor((x - 1) / 26);
-  }
-  return s;
-}
-
-function sheetXml({ sheetName, columns, rows, styles, headerStyleKey }) {
-  const colsXml = (columns || []).map((c, i) => {
-    const w = Number(c?.width || 12);
-    const idx = i + 1;
-    return `<col min="${idx}" max="${idx}" width="${w}" customWidth="1"/>`;
-  }).join('');
-  const header = (columns || []).map((c, i) => {
-    const r = `${colName(i + 1)}1`;
-    let sk = headerStyleKey && Object.prototype.hasOwnProperty.call(styles, headerStyleKey) ? headerStyleKey : 'header';
-    if (c?.headerStyle && Object.prototype.hasOwnProperty.call(styles, c.headerStyle)) sk = c.headerStyle;
-    if (c?.header === '' && i === 7) sk = 'empty'; // H column spacer
-    
-    return `<c r="${r}" t="inlineStr" s="${styles[sk]}"><is><t>${xmlEscape(c?.header || '')}</t></is></c>`;
-  }).join('');
-  const bodyRows = (rows || []).map((r, ri) => {
-    const rowNum = ri + 2;
-    const isOff = !!r?.isOff;
-    const style = isOff ? styles.off : (ri % 2 === 1 ? styles.stripe : styles.cell);
-    const cells = (r?.cells || []).map((raw, ci) => {
-      let v = raw;
-      let styleKey = '';
-      let isFormula = false;
-      let forceType = null;
-      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-        if (Object.prototype.hasOwnProperty.call(raw, 'v') || Object.prototype.hasOwnProperty.call(raw, 'value')) {
-          v = Object.prototype.hasOwnProperty.call(raw, 'v') ? raw.v : raw.value;
-          styleKey = String(raw.s || raw.style || '');
-          isFormula = !!raw.f;
-          forceType = raw.t;
-        }
-      }
-      const addr = `${colName(ci + 1)}${rowNum}`;
-      // Do not apply default border if it's explicitly set to an empty style
-      let cellStyle = styleKey && Object.prototype.hasOwnProperty.call(styles, styleKey) ? styles[styleKey] : style;
-      if (styleKey === 'empty') {
-         cellStyle = styles.empty;
-      }
-
-      if (isFormula) {
-        return `<c r="${addr}" s="${cellStyle}"><f>${xmlEscape(v)}</f></c>`;
-      }
-      if (forceType === 'n' || typeof v === 'number') {
-        return `<c r="${addr}" t="n" s="${cellStyle}"><v>${v}</v></c>`;
-      }
-      return `<c r="${addr}" t="inlineStr" s="${cellStyle}"><is><t>${xmlEscape(v ?? '')}</t></is></c>`;
-    }).join('');
-    return `<row r="${rowNum}">${cells}</row>`;
-  }).join('');
-  
-  const lastColName = colName(columns.length || 1);
-  const lastRowNum = (rows?.length || 0) + 1;
-  const autoFilterXml = sheetName.includes('詳細') ? `<autoFilter ref="A1:${lastColName}${lastRowNum}"/>` : '';
-
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheetViews>
-    <sheetView workbookViewId="0" showRowColHeaders="0">
-      <pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>
-    </sheetView>
-  </sheetViews>
-  <sheetFormatPr defaultRowHeight="18"/>
-  <cols>${colsXml}</cols>
-  <sheetData>
-    <row r="1">${header}</row>
-    ${bodyRows}
-  </sheetData>
-  <sheetProtection sheet="0" objects="0" scenarios="0" />
-  ${autoFilterXml}
-</worksheet>`;
-}
-
-function stylesXml() {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="5">
-    <font><sz val="11"/><color rgb="FF000000"/><name val="Meiryo"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Meiryo"/></font>
-    <font><sz val="11"/><color rgb="FF00B050"/><name val="Meiryo"/></font>
-    <font><sz val="11"/><color rgb="FFFF0000"/><name val="Meiryo"/></font>
-    <font><sz val="11"/><color rgb="FF0070C0"/><name val="Meiryo"/></font>
-  </fonts>
-  <fills count="16">
-    <fill><patternFill patternType="none"/></fill>
-    <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1F3553"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFECFDF5"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF2563EB"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFE5E7EB"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFE6E6"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFBEB"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFCC"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF8CBAD"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF000000"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF92D050"/><bgColor indexed="64"/></patternFill></fill>
-  </fills>
-  <borders count="2">
-    <border>
-      <left/><right/><top/><bottom/><diagonal/>
-    </border>
-    <border>
-      <left style="thin"><color rgb="FFD4D4D4"/></left>
-      <right style="thin"><color rgb="FFD4D4D4"/></right>
-      <top style="thin"><color rgb="FFD4D4D4"/></top>
-      <bottom style="thin"><color rgb="FFD4D4D4"/></bottom>
-      <diagonal/>
-    </border>
-  </borders>
-  <cellStyleXfs count="1">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
-  </cellStyleXfs>
-  <cellXfs count="15">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="1" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="right" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="4" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="left" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyBorder="0" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyBorder="0" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1" />
-    </xf>
-  </cellXfs>
-  <cellStyles count="1">
-    <cellStyle name="Normal" xfId="0" builtinId="0"/>
-  </cellStyles>
-</styleSheet>`;
-}
-
-function workbookXml(sheetName) {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <workbookPr/>
-  <sheets>
-    <sheet name="${xmlEscape(sheetName)}" sheetId="1" r:id="rId1"/>
-  </sheets>
-</workbook>`;
-}
-
-function workbookRelsXml() {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`;
-}
-
-function rootRelsXml() {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`;
-}
-
-function contentTypesXml() {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-</Types>`;
-}
-
-function workbookXmlMulti(sheets) {
-  const list = (sheets || []).map((s, i) => {
-    const id = i + 1;
-    return `<sheet name="${xmlEscape(s.name)}" sheetId="${id}" r:id="rId${id}"/>`;
-  }).join('');
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <workbookPr/>
-  <sheets>
-    ${list}
-  </sheets>
-</workbook>`;
-}
-
-function workbookRelsXmlMulti(sheetCount) {
-  const n = Math.max(1, Number(sheetCount || 1));
-  const rels = [];
-  for (let i = 1; i <= n; i++) {
-    rels.push(`<Relationship Id="rId${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i}.xml"/>`);
-  }
-  rels.push(`<Relationship Id="rId${n + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`);
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  ${rels.join('\n  ')}
-</Relationships>`;
-}
-
-function contentTypesXmlMulti(sheetCount) {
-  const n = Math.max(1, Number(sheetCount || 1));
-  const overrides = [];
-  overrides.push(`<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>`);
-  for (let i = 1; i <= n; i++) {
-    overrides.push(`<Override PartName="/xl/worksheets/sheet${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`);
-  }
-  overrides.push(`<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>`);
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  ${overrides.join('\n  ')}
-</Types>`;
-}
-
-function safeSheetName(s, fallback = 'Sheet') {
-  const name = String(s || '').replace(/[\[\]\*\/\\\:\?]/g, '').trim();
-  return (name || fallback).slice(0, 31);
-}
-
-function buildXlsxBook({ sheets }) {
-  const styles = { cell: 0, header: 1, off: 2, stripe: 3, checkOn: 4, headerGrey: 5, absentText: 6, weekend: 7, late: 8, present: 9, center: 10, legend: 11, paidLeave: 12, legendHeader: 13, empty: 14 };
-  const rawSheets = Array.isArray(sheets) ? sheets : [];
-  const s2 = rawSheets.length ? rawSheets.map((s, i) => ({
-    name: safeSheetName(s?.name, `Sheet${i + 1}`),
-    columns: Array.isArray(s?.columns) ? s.columns : [],
-    rows: Array.isArray(s?.rows) ? s.rows : [],
-    headerStyleKey: String(s?.headerStyleKey || '').trim()
-  })) : [{ name: 'Sheet1', columns: [], rows: [] }];
-
-  const files = [
-    { name: '[Content_Types].xml', data: contentTypesXmlMulti(s2.length) },
-    { name: '_rels/.rels', data: rootRelsXml() },
-    { name: 'xl/workbook.xml', data: workbookXmlMulti(s2) },
-    { name: 'xl/_rels/workbook.xml.rels', data: workbookRelsXmlMulti(s2.length) },
-    { name: 'xl/styles.xml', data: stylesXml() }
-  ];
-  for (let i = 0; i < s2.length; i++) {
-    files.push({
-      name: `xl/worksheets/sheet${i + 1}.xml`,
-      data: sheetXml({ sheetName: s2[i].name, columns: s2[i].columns, rows: s2[i].rows, styles, headerStyleKey: s2[i].headerStyleKey || '' })
-    });
-  }
-  return zipStore(files);
-}
-
-function buildXlsx({ sheetName, columns, rows }) {
-  return buildXlsxBook({ sheets: [{ name: sheetName, columns, rows }] });
 }
 
 function buildXlsxArchive(files) {
