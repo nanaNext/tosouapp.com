@@ -23,6 +23,17 @@ const sendPage = (file) => (req, res) => {
 
 const setNoStore = (res) => {
   try {
+    // Use helmet with permissive CSP for development and soft navigation
+    res.set(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; " +
+      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com data:; " +
+      "img-src 'self' data: https:; " +
+      "connect-src 'self';"
+    );
+    
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
