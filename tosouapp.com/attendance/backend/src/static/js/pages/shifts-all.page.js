@@ -238,8 +238,16 @@ function renderApp() {
       `;
       
       let workCount = 0;
-      let mobileDaysHtml = '';
       
+      // Find the day of week for the 1st of the month to add empty padding cells
+      const firstDayOfMonth = new Date(year, month, 1).getDay();
+      let mobileDaysHtml = '<div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 4px; padding: 0 8px 8px 8px; justify-content: start;">';
+      
+      // Add empty cells for days before the 1st
+      for (let i = 0; i < firstDayOfMonth; i++) {
+        mobileDaysHtml += `<div class="sac-day-item empty" style="border: none; background: transparent;"></div>`;
+      }
+
       days.forEach(d => {
         const dowStr = getDayOfWeek(d);
         const dateStr = formatDate(d);
@@ -325,13 +333,42 @@ function renderApp() {
         if (dow === 0) headerColor = '#dc2626';
         else if (dow === 6) headerColor = '#2563eb';
         
+        const st = shift || {};
+        let statusLabel = '';
+        let statusColor = '#0f172a'; // Default dark text
+        
+        if (st.status === 'WORKING') {
+          statusLabel = '出';
+          statusColor = '#1e40af'; // Blue for working
+        } else if (st.status === 'OFF') {
+          statusLabel = '休';
+          statusColor = '#ef4444'; // Red for holiday
+        } else if (st.status === 'LEAVE') {
+          if (st.leaveType && st.leaveType !== 'paid' && st.leaveType !== 'special' && st.leaveType !== 'absence') {
+            statusLabel = '休'; // Handle legacy string types
+          } else if (st.leaveType === 'paid') {
+            statusLabel = '有休';
+          } else if (st.leaveType === 'special') {
+            statusLabel = '特休';
+          } else if (st.leaveType === 'absence') {
+            statusLabel = '欠勤';
+          } else {
+            statusLabel = '休';
+          }
+          statusColor = '#ef4444'; // Red for leave
+        } else {
+          statusLabel = '未';
+          statusColor = '#94a3b8'; // Gray for unassigned
+        }
+        
         mobileDaysHtml += `
-          <div class="sac-day-item">
-            <div class="sac-day-header" style="color: ${headerColor};">${d.getDate()}</div>
-            <div class="sac-day-val" style="${cellMobileColor}">${cellMobileHtml}</div>
+          <div class="sac-day-item" style="border: 1px solid #e2e8f0; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 38px; background: ${statusColor === '#ef4444' ? '#fef2f2' : '#fff'};">
+            <div style="font-size: 10px; color: ${headerColor}; font-weight: bold; line-height: 1.2;">${d.getDate()}</div>
+            <div style="font-size: 11px; font-weight: bold; color: ${statusColor}; margin-top: 2px;">${statusLabel}</div>
           </div>
         `;
       });
+      mobileDaysHtml += `</div>`; // Close grid container
       
       rowHtml += `</tr>`;
       tbodyHtml += rowHtml;
@@ -348,8 +385,13 @@ function renderApp() {
             <span class="sac-total-label">月計 (出勤日数):</span>
             <span class="sac-total-val" style="font-weight:700; color:#0f172a;">${workCount}日</span>
           </div>
-          <div class="sac-days-scroll">
-            ${mobileDaysHtml}
+          <div class="sac-days-scroll" style="overflow-x: auto;">
+            <div style="min-width: max-content;">
+              <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 4px; padding: 4px 8px 2px 8px; justify-content: start;">
+                ${['日', '月', '火', '水', '木', '金', '土'].map((d, i) => `<div style="width: 32px; text-align: center; font-size: 11px; font-weight: bold; color: ${i===0?'#ef4444':i===6?'#3b82f6':'#64748b'};">${d}</div>`).join('')}
+              </div>
+              ${mobileDaysHtml}
+            </div>
           </div>
         </div>
       `;
