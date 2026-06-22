@@ -234,6 +234,11 @@ function renderApp() {
   const isSeishain = currentUser.employment_type === 'full_time';
   const app = $('#shiftsApp');
   
+  if (!app) {
+    console.error('Element #shiftsApp not found.');
+    return;
+  }
+  
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const days = getDaysInMonth(year, month);
