@@ -612,7 +612,7 @@ async function mountEmployeesImpl({
         const qInit = params.get('q') || '';
         subnav.innerHTML = `
           <div class="fi" style="display:flex;align-items:center;gap:8px;">
-            <input id="topEmpQ" placeholder="名前/メール" value="${qInit.replace(/"/g,'&quot;')}" style="height:32px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px;">
+            <input id="topEmpQ" placeholder="名前/メール" value="${qInit.replace(/"/g,'&quot;')}" style="height:32px;border:1px solid #cbd5e1;border-radius:0;padding:0 10px;">
             <button id="topEmpGoList" class="btn" type="button">一覧</button>
             <button id="topEmpGoSearch" class="btn" type="button">検索</button>
           </div>
@@ -713,7 +713,7 @@ async function mountEmployeesImpl({
   }
 
   const filterWrap = document.createElement('div');
-  filterWrap.style.margin = mode === 'delete' ? '0 0 8px' : '12px 0';
+  filterWrap.style.margin = mode === 'delete' ? '0 0 8px' : '4px 0 12px';
   filterWrap.className = mode === 'delete' ? 'emp-filters emp-del-wrap' : 'emp-filters filter-bar';
   const deptOptions = `<option value="">全て</option>${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}`;
   if (mode === 'delete') {
@@ -841,7 +841,7 @@ async function mountEmployeesImpl({
               .emp-del-filter input,
               .emp-del-filter select {
                 height: 36px;
-                border-radius: 10px;
+                border-radius: 0;
                 background: #fcfdff;
                 border: 1.5px solid #bcd0e6;
                 padding: 6px 12px;
@@ -861,7 +861,7 @@ async function mountEmployeesImpl({
               .emp-del-filter .date-range .tilde { width: 12px; text-align: center; color: #64748b; }
               .emp-del-filter .btn-search {
                 height: 36px;
-                border-radius: 10px;
+                border-radius: 0;
                 padding: 0 16px;
                 background: #2b6cb0;
                 border: 1px solid #1e4e8c;

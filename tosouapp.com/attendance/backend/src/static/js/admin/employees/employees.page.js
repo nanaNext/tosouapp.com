@@ -1575,7 +1575,7 @@ async function renderEmployees(profile) {
   }
 
   const filterWrap = document.createElement('div');
-  filterWrap.style.margin = mode === 'delete' ? '0 0 8px' : '12px 0';
+  filterWrap.style.margin = mode === 'delete' ? '0 0 8px' : '4px 0 12px';
   filterWrap.className = mode === 'delete' ? 'emp-filters emp-del-wrap' : 'emp-filters filter-bar';
   let listHeader = null;
   if (mode === 'delete') {
@@ -1676,7 +1676,7 @@ async function renderEmployees(profile) {
           .emp-del-filter tbody tr td:not(.actions) > * { width: 100%; }
           .emp-del-filter tbody td { padding: 10px 12px; vertical-align: middle; border-top: 1px solid #eef2f7; }
           .emp-del-filter input,
-          .emp-del-filter select { height: 36px; border-radius: 10px; background: #fcfdff; border: 1.5px solid #bcd0e6; padding: 6px 12px; box-sizing: border-box; display: block; }
+          .emp-del-filter select { height: 36px; border-radius: 0; background: #fcfdff; border: 1.5px solid #bcd0e6; padding: 6px 12px; box-sizing: border-box; display: block; }
           .emp-del-filter input::placeholder { color: #94a3b8; }
           .emp-del-filter input:focus,
           .emp-del-filter select:focus { border-color: #2b67b3; box-shadow: 0 0 0 3px rgba(43,103,179,.12); outline: none; }
@@ -1684,7 +1684,7 @@ async function renderEmployees(profile) {
           .emp-del-filter .date-range { display: flex; align-items: center; gap: 6px; }
           .emp-del-filter .date-range input { flex: 1 1 0; display: inline-block; min-width: 160px; }
           .emp-del-filter .date-range .tilde { width: 12px; text-align: center; color: #64748b; }
-          .emp-del-filter .btn-search { height: 36px; border-radius: 10px; padding: 0 16px; background: #2b6cb0; border: 1px solid #1e4e8c; color: #fff; transition: background-color .15s ease, border-color .15s ease; }
+          .emp-del-filter .btn-search { height: 36px; border-radius: 0; padding: 0 16px; background: #2b6cb0; border: 1px solid #1e4e8c; color: #fff; transition: background-color .15s ease, border-color .15s ease; }
           .emp-del-filter .btn-search:hover { background: #255ea7; border-color: #1e4e8c; }
           .emp-del-filter .btn-search:active { background: #1f4e8a; border-color: #163b6e; }
           #empListBox { display:block; width:100%; margin-top:0; overflow: auto; flex: 1 1 auto; min-height: 0; }

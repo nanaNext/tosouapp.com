@@ -1258,15 +1258,21 @@
       btnPrint.addEventListener('click', () => {
         const printContent = document.querySelector('#enmPrintArea').innerHTML;
         
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '210mm';
-        iframe.style.height = '297mm';
-        iframe.style.visibility = 'hidden';
-        iframe.style.zIndex = '-1';
-        document.body.appendChild(iframe);
+        let iframe = document.getElementById('print-iframe');
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = 'print-iframe';
+          iframe.style.position = 'fixed';
+          iframe.style.width = '100vw';
+          iframe.style.height = '100vh';
+          iframe.style.left = '0';
+          iframe.style.top = '0';
+          iframe.style.border = 'none';
+          iframe.style.opacity = '0';
+          iframe.style.zIndex = '-9999';
+          iframe.style.pointerEvents = 'none';
+          document.body.appendChild(iframe);
+        }
 
         iframe.contentWindow.document.open();
         iframe.contentWindow.document.write(`
@@ -1276,7 +1282,7 @@
               <title>就業状況通知書</title>
               <style>
                 @page { 
-                   margin: 0mm; /* Bỏ margin cứng của máy in, dùng padding của container thay thế */
+                   margin: 0mm;
                    size: A4 portrait; 
                 }
                 body { 
@@ -1305,14 +1311,13 @@
                 .enm-daily-table td:nth-child(1) { min-width: 40px; }
                 .enm-footer-text { font-size: 11px; margin-top: 8px; text-align: right; padding-right: 10px; }
                 
-                /* Tweak to ensure fitting exactly 1 page */
                 html, body {
                   width: 210mm;
                   margin: 0 auto;
                 }
                 .print-container {
                   width: 100%;
-                  padding: 15mm 10mm 10mm 10mm; /* padding an toàn xung quanh (Top Right Bottom Left) */
+                  padding: 15mm 10mm 10mm 10mm;
                   box-sizing: border-box;
                 }
               </style>
@@ -1326,13 +1331,8 @@
         `);
         iframe.contentWindow.document.close();
         
-        setTimeout(() => {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-          }, 2000);
-        }, 500);
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
       });
     }
   };
