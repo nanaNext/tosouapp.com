@@ -307,7 +307,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     });
 
     const { buildXlsxBook } = require('../../utils/xlsx');
-    const buf = buildXlsxBook({
+    const buf = await buildXlsxBook({
       sheets: [
         {
           name: `Profile ${year}`,
@@ -1922,7 +1922,7 @@ router.get('/calendar/export.xlsx',
     });
 
     const { buildXlsx } = require('../../utils/xlsx');
-    const buf = buildXlsx({ sheetName, columns, rows: dataRows });
+    const buf = await buildXlsx({ sheetName, columns, rows: dataRows });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=\"company_holidays_${year}.xlsx\"`);
     res.status(200).send(buf);
@@ -1940,11 +1940,25 @@ const excelUpload = multer({
 router.post('/calendar/import', authorize('admin'), excelUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-    const xlsx = require('xlsx');
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+    const sheet = workbook.worksheets[0];
+    
+    if (!sheet) {
+      return res.status(400).json({ message: 'Excelファイルにシートがありません。' });
+    }
+
+    const data = [];
+    sheet.eachRow((row, rowNumber) => {
+      // exceljs row.values is 1-indexed array
+      // To keep compatibility with the old 0-indexed array:
+      const rowValues = [];
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        rowValues[colNumber - 1] = cell.value;
+      });
+      data.push(rowValues);
+    });
     
     const headerRow = data[0] || [];
     const colDate = headerRow.indexOf('日付');

@@ -157,6 +157,7 @@ router.get('/ui/admin', (req, res) => {
   if (tab === 'departments') return res.redirect(302, '/admin/departments');
   if (tab === 'audit') return res.redirect(302, '/admin/system/audit-logs');
   if (tab === 'settings') return res.redirect(302, '/admin/system/settings');
+  if (tab === 'manual') return res.redirect(302, '/ui/admin-manual');
   return res.redirect(302, '/admin/dashboard');
 });
 router.get('/ui/employees', (req, res) => sendAdminPageNoCache(req, res, 'admin.html'));
@@ -166,6 +167,7 @@ router.get('/admin/attendance/monthly', (req, res) => sendAdminPageNoCache(req, 
 router.get('/admin/attendance/monthly/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-monthly.html'));
 router.get('/admin/employees/monthly-summary', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
 router.get('/admin/employees/monthly-summary/', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
+
 router.get(/^\/admin(?:\/.*)?$/, (req, res) => {
   const role = roleOf(req.user?.role);
   if (role === 'employee') {
@@ -185,6 +187,7 @@ router.get('/ui/salary', sendPage('salary.html'));
 router.get('/ui/chatbot', (req, res) => res.redirect('/ui/faq')); // Redirect old chatbot links to FAQ
 router.get('/ui/change-password', sendPage('change-password.html'));
 router.get('/ui/manual', sendPage('manual.html'));
+router.get('/ui/admin-manual', authenticateFromCookie, authorizePage('admin', 'manager'), sendPage('admin-manual.html'));
 router.get('/ui/faq', sendPageNoCache('faq.html'));
 router.get('/ui/contact', sendPage('contact.html'));
 router.get('/contact', sendPage('contact.html'));

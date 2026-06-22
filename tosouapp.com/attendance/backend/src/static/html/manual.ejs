@@ -87,18 +87,26 @@
           </div>
         </div>
 
+        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('shift')">
+          <div style="padding:20px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:10px;">📅</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">2. シフト登録</div>
+            <div style="font-size:12px;color:#666;">個人カレンダーの使い方</div>
+          </div>
+        </div>
+
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('simple')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">⏱️</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">2. 毎日の打刻</div>
-            <div style="font-size:12px;color:#666;">簡易登録画面の使い方</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">3. 毎日の打刻</div>
+            <div style="font-size:12px;color:#666;">出退勤・外出・戻り</div>
           </div>
         </div>
 
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('monthly')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">📋</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">3. 勤怠状況の確認</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">4. 勤怠状況の確認</div>
             <div style="font-size:12px;color:#666;">月次勤怠入力の見方</div>
           </div>
         </div>
@@ -106,7 +114,7 @@
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('leave')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">🌴</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">4. 休暇申請</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">5. 休暇申請</div>
             <div style="font-size:12px;color:#666;">有給・欠勤の申請手順</div>
           </div>
         </div>
@@ -114,7 +122,7 @@
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('expenses')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">🚃</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">5. 交通費・経費申請</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">6. 交通費・経費申請</div>
             <div style="font-size:12px;color:#666;">経費の登録と確認</div>
           </div>
         </div>
@@ -122,7 +130,7 @@
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('payslip')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">💴</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">6. 給与明細の確認</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">7. 給与明細の確認</div>
             <div style="font-size:12px;color:#666;">給与明細の閲覧・PDF出力</div>
           </div>
         </div>
@@ -130,7 +138,7 @@
         <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('others')">
           <div style="padding:20px;text-align:center;">
             <div style="font-size:28px;margin-bottom:10px;">⚙️</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">7. その他の機能</div>
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">8. その他の機能</div>
             <div style="font-size:12px;color:#666;">パスワード変更・FAQなど</div>
           </div>
         </div>
@@ -165,22 +173,50 @@
         </div>
       </div>
 
-      <!-- 2. 毎日の打刻 -->
-      <div class="kintai-card" id="section-simple" style="margin-bottom:30px;">
-        <div class="kintai-card-title">⏱️ 2. 毎日の打刻（簡易登録画面）</div>
+      <!-- 2. シフト登録 -->
+      <div class="kintai-card" id="section-shift" style="margin-bottom:30px;">
+        <div class="kintai-card-title">📅 2. シフト登録（個人カレンダー）</div>
         <div style="padding:20px;">
-          <p style="color:#334155;margin-bottom:15px;">日々の打刻は主にこの画面を使用します。</p>
+          <p style="color:#334155;margin-bottom:15px;">翌月のシフト（勤務予定）を登録・確認する画面です。</p>
           
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 出勤時:</div>
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ シフトの登録手順:</div>
           <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>メニューから <strong>簡易登録画面</strong> を開きます。</li>
-            <li>本日の日付であることを確認します。</li>
-            <li><span style="background-color:#fef08a;color:#b45309;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #fde047;">[出勤]</span> ボタンを押します。（システムが現在の時刻を自動記録します）</li>
+            <li>メニューから <strong>個人カレンダー登録画面</strong> を開きます。</li>
+            <li>カレンダー上の日付をタップ（クリック）します。</li>
+            <li>表示されたメニューから、該当する勤務区分（出社、在宅、現場・出張、休日など）を選択します。</li>
+            <li>選択すると、カレンダー上に予定が反映されます。間違えた場合は再度タップして変更できます。</li>
           </ol>
 
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 退勤時:</div>
+          <div style="background:#e7f3ff;padding:15px;border-radius:6px;">
+            <div style="font-weight:bold;color:#1e40af;margin-bottom:8px;">💡 スマートフォンでの操作</div>
+            <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.6;font-size:14px;">
+              <li>スマートフォンからでも見やすいカレンダー形式で、直感的にシフトを登録できます。</li>
+            </ul>
+          </div>
+
+          <div style="text-align:center;margin-top:20px;">
+            <a href="/ui/attendance" style="display:inline-block;padding:12px 30px;background-color:#2563eb;color:#fff;text-decoration:none;border-radius:30px;font-weight:bold;box-shadow:0 4px 6px rgba(37,99,235,0.2);transition:all 0.2s;">個人カレンダー登録画面へ移動する ➔</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 毎日の打刻 -->
+      <div class="kintai-card" id="section-simple" style="margin-bottom:30px;">
+        <div class="kintai-card-title">⏱️ 3. 毎日の打刻（簡易登録画面）</div>
+        <div style="padding:20px;">
+          <p style="color:#334155;margin-bottom:15px;">日々の出退勤、外出・戻りの打刻はこの画面を使用します。</p>
+          
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 出勤時・退勤時:</div>
           <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>業務終了後、再度画面を開き、<span style="background-color:#fef08a;color:#b45309;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #fde047;">[退勤]</span> ボタンを押します。</li>
+            <li>メニューから <strong>簡易登録画面</strong> を開きます。</li>
+            <li>本日の日付であることを確認し、<span style="background-color:#fef08a;color:#b45309;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #fde047;">[出勤]</span> または <span style="background-color:#fef08a;color:#b45309;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #fde047;">[退勤]</span> ボタンを押します。</li>
+          </ol>
+
+          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 外出時・戻り時:</div>
+          <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
+            <li>業務中に一時的に外出する場合は、<span style="background-color:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #bbf7d0;">[外出]</span> ボタンを押します。</li>
+            <li>外出から戻った際は、<span style="background-color:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-weight:bold;border:1px solid #bbf7d0;">[戻り]</span> ボタンを押します。</li>
+            <li style="font-size:13px;color:#666;">※外出中の時間は労働時間から除外される場合があります。</li>
           </ol>
 
           <div style="background:#e7f3ff;padding:15px;border-radius:6px;">
@@ -197,9 +233,9 @@
         </div>
       </div>
 
-      <!-- 3. 月次勤怠入力 -->
+      <!-- 4. 月次勤怠入力 -->
       <div class="kintai-card" id="section-monthly" style="margin-bottom:30px;">
-        <div class="kintai-card-title">📋 3. 勤怠状況の確認（月次勤怠入力）</div>
+        <div class="kintai-card-title">📋 4. 勤怠状況の確認（月次勤怠入力）</div>
         <div style="padding:20px;">
           <p style="color:#334155;margin-bottom:15px;">月間の勤務日数、労働時間、残業時間などを確認する画面です。</p>
           
@@ -221,9 +257,9 @@
         </div>
       </div>
 
-      <!-- 4. 休暇申請 -->
+      <!-- 5. 休暇申請 -->
       <div class="kintai-card" id="section-leave" style="margin-bottom:30px;">
-        <div class="kintai-card-title">🌴 4. 休暇申請</div>
+        <div class="kintai-card-title">🌴 5. 休暇申請</div>
         <div style="padding:20px;">
           <p style="color:#334155;margin-bottom:15px;">用事や体調不良で休む場合の手順です：</p>
           <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
@@ -245,9 +281,9 @@
         </div>
       </div>
 
-      <!-- 5. 交通費・経費申請 -->
+      <!-- 6. 交通費・経費申請 -->
       <div class="kintai-card" id="section-expenses" style="margin-bottom:30px;">
-        <div class="kintai-card-title">🚃 5. 交通費・経費申請（交通費申請）</div>
+        <div class="kintai-card-title">🚃 6. 交通費・経費申請（交通費申請）</div>
         <div style="padding:20px;">
           <p style="color:#334155;margin-bottom:15px;">立て替えた交通費や経費を請求する場合の手順です：</p>
           <ol style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
@@ -272,9 +308,9 @@
         </div>
       </div>
 
-      <!-- 6. 給与明細の確認 -->
+      <!-- 7. 給与明細の確認 -->
       <div class="kintai-card" id="section-payslip" style="margin-bottom:30px;">
-        <div class="kintai-card-title">💴 6. 給与明細の確認</div>
+        <div class="kintai-card-title">💴 7. 給与明細の確認</div>
         <div style="padding:20px;">
           <p style="color:#334155;margin-bottom:15px;">給与支給日になると、管理者から電子給与明細が発行されます。</p>
           <ol style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
@@ -290,9 +326,9 @@
         </div>
       </div>
 
-      <!-- 7. その他の機能 -->
+      <!-- 8. その他の機能 -->
       <div class="kintai-card" id="section-others" style="margin-bottom:30px;">
-        <div class="kintai-card-title">⚙️ 7. その他の機能</div>
+        <div class="kintai-card-title">⚙️ 8. その他の機能</div>
         <div style="padding:20px;">
           <ul style="margin:0;padding-left:20px;color:#334155;line-height:1.8;">
             <li style="margin-bottom:10px;"><strong>パスワード変更:</strong><br>アカウント保護のため、定期的に「共通機能 > パスワード変更」からパスワードを更新してください。</li>
