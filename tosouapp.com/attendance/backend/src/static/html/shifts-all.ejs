@@ -25,6 +25,15 @@
     .dot-spinner div:nth-child(12){transform:rotate(330deg) translate(24px);animation-delay:-0.04s}
   </style>
   <style>
+    /* Prevent header overlapping */
+    main.content {
+      padding-top: 130px !important;
+    }
+    @media (max-width: 768px) {
+      main.content {
+        padding-top: 100px !important;
+      }
+    }
     html.portal-preboot body { visibility: hidden !important; }
   </style>
   <script src="/static/js/pages/portal-preboot.js?v=<%= appVersion %>"></script>

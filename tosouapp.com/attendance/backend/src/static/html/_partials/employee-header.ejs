@@ -16,8 +16,23 @@
       <div class="user" style="padding-right: 0px; margin-right: -24px; margin-left: 12px; transform: translateX(10px);">
         <div class="user-menu">
           <button class="user-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="/static/images/use.png?v=<%= appVersion %>" alt="user" class="user-icon">
-            <span id="userName"></span>
+            <img src="/static/images/use.png?v=<%= appVersion %>" alt="user" class="user-icon" width="30" height="30" style="width: 30px; height: 30px; display: block; object-fit: cover;">
+            <span id="userName" style="display: inline-block; min-width: 50px; text-align: left;"><%= typeof user !== 'undefined' && user ? (user.username || user.email || '') : '' %></span>
+            <script>
+              try {
+                var rawUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+                if (rawUser) {
+                  var u = JSON.parse(rawUser);
+                  if (u && (u.username || u.email)) {
+                    var el = document.getElementById('userName');
+                    var next = u.username || u.email;
+                    if (el.textContent !== next) {
+                      el.textContent = next;
+                    }
+                  }
+                }
+              } catch(e) {}
+            </script>
             <span class="caret">▾</span>
           </button>
           <div class="dropdown" id="userDropdown" hidden>
@@ -49,3 +64,17 @@
       <a href="/ui/contact">お問い合わせ先</a>
     </nav>
   </div>
+  <script>
+    (function(){
+      try {
+        var path = window.location.pathname;
+        var links = document.querySelectorAll('.subbar .subnav a, #mobileDrawer a.drawer-item');
+        for(var i = 0; i < links.length; i++) {
+          var href = links[i].getAttribute('href');
+          if(href === path || (href !== '/' && path.indexOf(href) === 0)) {
+            links[i].setAttribute('aria-current', 'page');
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>

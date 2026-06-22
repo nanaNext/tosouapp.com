@@ -112,13 +112,14 @@ const mountEmployeeNoticeBell = () => {
     const wrap = document.createElement('span');
     wrap.className = 'emp-notify-wrap';
     wrap.innerHTML = `
-      <button id="empNotifyBtn" class="emp-notify-btn" type="button" aria-label="お知らせ" aria-expanded="false">🔔</button>
-      <span id="empNotifyBadge" class="emp-notify-badge" hidden>0</span>
-      <div id="empNotifyPanel" class="emp-notify-panel" hidden>
+      <button id="empNotifyBtn" class="emp-notify-btn" type="button" aria-label="お知らせ" aria-expanded="false" style="display:none !important;">🔔</button>
+      <span id="empNotifyBadge" class="emp-notify-badge" style="display:none !important;" hidden>0</span>
+      <div id="empNotifyPanel" class="emp-notify-panel" style="display:none !important;" hidden>
         <div class="emp-notify-head"><span>通知</span><span id="empNotifyHeadCount">0件</span></div>
         <div id="empNotifyList" class="emp-notify-list"><div class="emp-notify-empty">読み込み中...</div></div>
       </div>
     `;
+    wrap.style.display = 'none'; // Force hide the wrapper
     wrap.style.marginLeft = 'auto';
     wrap.style.marginRight = '24px'; // Thêm margin right để không bị sát lề phải
     subnav.appendChild(wrap);
@@ -578,7 +579,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const CONTACT_PATH = '/ui/contact';
     const HOME_PATH = '/ui/portal';
     const CHATBOT_PATH = '/ui/faq';
-    const SOFT_PATHS = new Set([CONTACT_PATH, HOME_PATH, REQ_PATH, EXP_PATH, CHATBOT_PATH]);
+    const ATT_RECORDS_PATH = '/ui/attendance-records';
+    const SHIFTS_PATH = '/ui/shifts';
+    const SOFT_PATHS = new Set([CONTACT_PATH, HOME_PATH, REQ_PATH, EXP_PATH, CHATBOT_PATH, ATT_RECORDS_PATH, SHIFTS_PATH]);
     let pjaxNavInFlight = false;
     const main = document.querySelector('main.content');
     if (!main) return;
@@ -604,29 +607,44 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) { /* silently ignored */ }
     };
     const syncInlinePageStyle = (doc, pathName) => {
-      try {
-        const id = 'req-pjax-inline-style';
-        let st = document.getElementById(id);
-        const needsInlineStyle =
-          pathName === REQ_PATH ||
-          pathName === EXP_PATH ||
-          pathName === CHATBOT_PATH;
-        if (!needsInlineStyle) {
-          if (st) st.textContent = '';
-          return;
-        }
-        const styles = Array.from(doc?.head?.querySelectorAll?.('style') || [])
-          .map((el) => String(el.textContent || ''))
-          .filter(Boolean);
-        if (!styles.length) return;
-        if (!st) {
-          st = document.createElement('style');
-          st.id = id;
-          document.head.appendChild(st);
-        }
-        st.textContent = styles.join('\n\n');
-      } catch (e) { /* silently ignored */ }
-    };
+        try {
+          // Sync external stylesheets
+          const currentLinks = new Set(Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).map(l => l.getAttribute('href').split('?')[0]));
+          const newLinks = Array.from(doc?.head?.querySelectorAll('link[rel="stylesheet"]') || []);
+          newLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && !currentLinks.has(href.split('?')[0])) {
+              const newLink = document.createElement('link');
+              newLink.rel = 'stylesheet';
+              newLink.href = href;
+              document.head.appendChild(newLink);
+            }
+          });
+
+          const id = 'req-pjax-inline-style';
+          let st = document.getElementById(id);
+          const needsInlineStyle =
+            pathName === REQ_PATH ||
+            pathName === EXP_PATH ||
+            pathName === CHATBOT_PATH ||
+            pathName === ATT_RECORDS_PATH ||
+            pathName === SHIFTS_PATH;
+          if (!needsInlineStyle) {
+            if (st) st.textContent = '';
+            return;
+          }
+          const styles = Array.from(doc?.head?.querySelectorAll?.('style') || [])
+            .map((el) => String(el.textContent || ''))
+            .filter(Boolean);
+          if (!styles.length) return;
+          if (!st) {
+            st = document.createElement('style');
+            st.id = id;
+            document.head.appendChild(st);
+          }
+          st.textContent = styles.join('\n\n');
+        } catch (e) { /* silently ignored */ }
+      };
     const setNavCurrent = (pathName) => {
       try {
         document.querySelectorAll('.subbar .subnav a[href]').forEach((a) => {
@@ -673,13 +691,29 @@ document.addEventListener('DOMContentLoaded', async () => {
           } catch (e) { /* silently ignored */ }
         }
         if (url.pathname === EXP_PATH) {
-          try {
-            const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
-            if (mod && typeof mod.bootExpensesPage === 'function') {
-              await mod.bootExpensesPage();
-            }
-          } catch (e) { /* silently ignored */ }
-        }
+            try {
+              const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
+              if (mod && typeof mod.bootExpensesPage === 'function') {
+                await mod.bootExpensesPage();
+              }
+            } catch (e) { /* silently ignored */ }
+          }
+          if (url.pathname === ATT_RECORDS_PATH) {
+            try {
+              const mod = await import('/static/js/pages/attendance-records.page.js?v=' + Date.now());
+              if (mod && typeof mod.bootAttendanceRecordsPage === 'function') {
+                await mod.bootAttendanceRecordsPage();
+              }
+            } catch (e) { /* silently ignored */ }
+          }
+          if (url.pathname === SHIFTS_PATH) {
+            try {
+              const mod = await import('/static/js/pages/shifts.page.js?v=' + Date.now());
+              if (mod && typeof mod.bootShiftsPage === 'function') {
+                await mod.bootShiftsPage();
+              }
+            } catch (e) { /* silently ignored */ }
+          }
         if (url.pathname === CHATBOT_PATH) {
           try {
             const mod = await import('/static/js/pages/chatbot.page.js');
@@ -758,7 +792,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.location.pathname === to.pathname && window.location.search === to.search) {
           e.preventDefault();
           e.stopImmediatePropagation();
-          // Force close drawer if clicking current page from drawer
+          // Force close user dropdown and mobile drawer
+          try {
+            const dropdown = document.querySelector('#userDropdown');
+            const userBtn = document.querySelector('.user .user-btn');
+            if (dropdown && !dropdown.hasAttribute('hidden')) {
+              dropdown.setAttribute('hidden', '');
+              if (userBtn) userBtn.setAttribute('aria-expanded', 'false');
+            }
+          } catch (err) {}
           if (a.closest('#mobileDrawer')) {
             const btn = document.getElementById('mobileMenuBtn');
             const drawer = document.getElementById('mobileDrawer');
@@ -779,6 +821,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         e.preventDefault();
         e.stopImmediatePropagation();
+        try {
+          const dropdown = document.querySelector('#userDropdown');
+          const userBtn = document.querySelector('.user .user-btn');
+          if (dropdown && !dropdown.hasAttribute('hidden')) {
+            dropdown.setAttribute('hidden', '');
+            if (userBtn) userBtn.setAttribute('aria-expanded', 'false');
+          }
+        } catch (err) {}
         if (a.closest('#mobileDrawer')) {
           const btn = document.getElementById('mobileMenuBtn');
           const drawer = document.getElementById('mobileDrawer');
@@ -803,11 +853,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           const p = String(window.location.pathname || '');
           if (SOFT_PATHS.has(p)) {
             const hasExpectedMain =
-              (p === CONTACT_PATH && !!document.querySelector('.contact-wrap')) ||
-              (p === HOME_PATH && !!document.querySelector('.tiles')) ||
-              (p === REQ_PATH && !!document.querySelector('.req-page')) ||
-              (p === EXP_PATH && !!document.querySelector('#exDate')) ||
-              (p === CHATBOT_PATH && !!document.querySelector('#cat'));
+                (p === CONTACT_PATH && !!document.querySelector('.contact-wrap')) ||
+                (p === HOME_PATH && !!document.querySelector('.tiles')) ||
+                (p === REQ_PATH && !!document.querySelector('.req-page')) ||
+                (p === EXP_PATH && !!document.querySelector('#exDate')) ||
+                (p === CHATBOT_PATH && !!document.querySelector('#cat')) ||
+                (p === ATT_RECORDS_PATH && !!document.querySelector('#attendanceRecordsHost')) ||
+                (p === SHIFTS_PATH && !!document.querySelector('.shifts-page'));
             if (!hasExpectedMain) {
               const ok = await softNavigateSafe(new URL(window.location.href), false);
               if (!ok) window.location.reload();
@@ -1039,37 +1091,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, { once: true });
   });
   const userBtn = document.querySelector('.user .user-btn');
-  const dropdown = document.querySelector('#userDropdown');
-  if (!window.__employeeUserMenuDelegated) {
-    window.__employeeUserMenuDelegated = true;
-    document.addEventListener('click', (e) => {
-      const btn = e.target?.closest?.('.user .user-btn');
-      const dd = document.querySelector('#userDropdown');
-      if (btn && dd) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        const hidden = dd.hasAttribute('hidden');
-        if (hidden) {
-          dd.removeAttribute('hidden');
-          btn.setAttribute('aria-expanded', 'true');
-          const firstItem = dd.querySelector('.item, a, button');
-          if (firstItem && typeof firstItem.focus === 'function') {
-            try { firstItem.focus(); } catch (e) { /* silently ignored */ }
+    const dropdown = document.querySelector('#userDropdown');
+    if (!window.__employeeUserMenuDelegated) {
+      window.__employeeUserMenuDelegated = true;
+      document.addEventListener('click', (e) => {
+        const isBtn = e.target && e.target.closest && e.target.closest('.user .user-btn');
+        const isMenu = e.target && e.target.closest && e.target.closest('.user-menu');
+        const dd = document.querySelector('#userDropdown');
+        const btn = document.querySelector('.user .user-btn');
+        
+        if (isBtn && dd && btn) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          const hidden = dd.hasAttribute('hidden');
+          if (hidden) {
+            dd.removeAttribute('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+            const firstItem = dd.querySelector('.item, a, button');
+            if (firstItem && typeof firstItem.focus === 'function') {
+              try { firstItem.focus(); } catch (err) { /* silently ignored */ }   
+            }
+          } else {
+            dd.setAttribute('hidden', '');
+            btn.setAttribute('aria-expanded', 'false');
           }
-        } else {
-          dd.setAttribute('hidden', '');
-          btn.setAttribute('aria-expanded', 'false');
+          return;
         }
-        return;
-      }
-      const menu = e.target?.closest?.('.user .user-menu');
-      if (!menu && dd && !dd.hasAttribute('hidden')) {
-        dd.setAttribute('hidden', '');
-        const anyBtn = document.querySelector('.user .user-btn');
-        if (anyBtn) anyBtn.setAttribute('aria-expanded', 'false');
-      }
-    }, true);
-  }
+        
+        if (!isMenu && dd && !dd.hasAttribute('hidden')) {
+          dd.setAttribute('hidden', '');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+      }, true);
+    }
   if (userBtn && dropdown) {
     const btnLogout = document.querySelector('#btnLogout');
     if (btnLogout && btnLogout.dataset.bound !== '1') {
