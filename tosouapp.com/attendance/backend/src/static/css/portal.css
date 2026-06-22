@@ -67,6 +67,7 @@
   display: flex;
   align-items: center;
   transition: transform .2s ease;
+  box-sizing: border-box;
 }
 .subbar .subnav {
   max-width: 1600px;
@@ -202,7 +203,7 @@
 }
 
 .subbar + .content {
-  padding-top: calc(var(--topbar-height) + var(--subbar-height) + 24px);
+  padding-top: calc(var(--topbar-height) + var(--subbar-height) + 64px);
   transition: transform .2s ease;
 }
 
@@ -2684,7 +2685,7 @@ body:not(.admin) .topbar-inner .user #userName {
     display: none !important;
   }
   body:not(.admin) .subbar + .content {
-    padding-top: calc(var(--topbar-height) + 32px) !important;
+    padding-top: calc(var(--topbar-height) + 16px) !important;
   }
 }
 

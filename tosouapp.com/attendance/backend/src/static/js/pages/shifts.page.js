@@ -84,28 +84,8 @@ async function init() {
 }
 
 function wireUserMenu() {
-  const btn = document.querySelector('.user .user-btn');
-  const dd = document.querySelector('#userDropdown');
-  if (!btn || !dd) return;
-  
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    const isHidden = dd.hasAttribute('hidden');
-    if (isHidden) {
-      dd.removeAttribute('hidden');
-      btn.setAttribute('aria-expanded', 'true');
-    } else {
-      dd.setAttribute('hidden', '');
-      btn.setAttribute('aria-expanded', 'false');
-    }
-  });
-
-  document.addEventListener('click', (e) => {
-    if (e.target?.closest('.user-menu') || e.target?.closest('.user')) return;
-    dd.setAttribute('hidden', '');
-    btn.setAttribute('aria-expanded', 'false');
-  });
-
+  if (window.__employeeUserMenuDelegated) return;
+  window.__employeeUserMenuDelegated = true;
   const btnLogout = document.querySelector('#btnLogout');
   if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
@@ -115,6 +95,33 @@ function wireUserMenu() {
       window.location.replace('/ui/login');
     });
   }
+
+  document.addEventListener('click', (e) => {
+    const isBtn = e.target && e.target.closest && e.target.closest('.user .user-btn');
+    const isMenu = e.target && e.target.closest && e.target.closest('.user-menu');
+    const d = document.querySelector('#userDropdown');
+    const b = document.querySelector('.user .user-btn');
+    
+    if (isBtn) {
+      e.preventDefault();
+      if (d && b) {
+        const isHidden = d.hasAttribute('hidden');
+        if (isHidden) {
+          d.removeAttribute('hidden');
+          b.setAttribute('aria-expanded', 'true');
+        } else {
+          d.setAttribute('hidden', '');
+          b.setAttribute('aria-expanded', 'false');
+        }
+      }
+      return;
+    }
+
+    if (!isMenu && d && !d.hasAttribute('hidden')) {
+      d.setAttribute('hidden', '');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    }
+  });
 }
 
 async function loadMonthData(year, month) {
@@ -769,8 +776,14 @@ function wireDrawer() {
   if (backdrop) backdrop.addEventListener('click', shut);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+export async function bootShiftsPage() {
   init();
   wireUserMenu();
   wireDrawer();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.pathname.includes('/ui/shifts')) {
+    bootShiftsPage();
+  }
 });

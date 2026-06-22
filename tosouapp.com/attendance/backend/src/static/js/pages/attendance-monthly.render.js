@@ -29,23 +29,23 @@
       <tr class="tier2">
         <th class="sticky-col-1">日付</th>
         <th>勤務区分</th>
-        <th>出社</th>
-        <th>在宅</th>
-        <th>現場・出張</th>
+        <th style="width: 56px !important; min-width: 56px !important; max-width: 56px !important; text-align: center; box-sizing: border-box;">出社</th>
+        <th style="width: 56px !important; min-width: 56px !important; max-width: 56px !important; text-align: center; box-sizing: border-box;">在宅</th>
+        <th style="width: 56px !important; min-width: 56px !important; max-width: 56px !important; text-align: center; font-size: 10px; line-height: 1.1; padding: 2px; box-sizing: border-box;">現場/<br>出張</th>
         <th>現場（任意）</th>
         <th>作業内容</th>
-        <th>開始時間</th>
-        <th>終了時間</th>
-        <th>休憩時間</th>
-        <th>深夜休憩</th>
-        <th>勤務時間</th>
-        <th>超過時間</th>
+        <th style="width: 40px !important; min-width: 40px !important; max-width: 40px !important; text-align: center; box-sizing: border-box; padding: 0 !important; letter-spacing: -1px; font-size: 10px;">開始時間</th>
+        <th style="width: 40px !important; min-width: 40px !important; max-width: 40px !important; text-align: center; box-sizing: border-box; padding: 0 !important; letter-spacing: -1px; font-size: 10px;">終了時間</th>
+        <th style="width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; box-sizing: border-box; padding: 0 !important; letter-spacing: -1px; font-size: 10px;">休憩時間</th>
+        <th style="width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; box-sizing: border-box; padding: 0 !important; letter-spacing: -1px; font-size: 10px;">深夜休憩</th>
+        <th style="width: 40px !important; min-width: 40px !important; max-width: 40px !important; text-align: center; box-sizing: border-box; padding: 0 !important; letter-spacing: -1px; font-size: 10px;">勤務時間</th>
+        <th style="width: 40px !important; min-width: 40px !important; max-width: 40px !important; text-align: center; box-sizing: border-box; padding: 0 !important; letter-spacing: -1px; font-size: 10px;">超過時間</th>
         <th>遅刻/早退</th>
       <th>理由</th>
       <th>備考</th>
       <th>ステータス</th>
         <th>承認者</th>
-        <th>行クリア</th>
+        <th style="width: 52px !important; min-width: 52px !important; max-width: 52px !important; text-align: center; box-sizing: border-box; padding-left: 0; padding-right: 0;">行クリア</th>
         <th>履歴</th>
       </tr>
     </thead>
@@ -431,8 +431,8 @@
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
         </select>
       </td>
-      <td data-field="worked" class="${workAutoCls}" style="font-weight:900;color:#0f172a;">${esc(workHm)}</td>
-      <td data-field="excess" class="${otAutoCls}" style="text-align:center;color:#0f172a;font-weight:900;">${esc(otHm)}</td>
+      <td data-field="worked" class="${workAutoCls}" style="text-align:center; font-weight:900;color:#0f172a; font-size:12px; letter-spacing:-0.5px;">${esc(workHm)}</td>
+      <td data-field="excess" class="${otAutoCls}" style="text-align:center;color:#0f172a;font-weight:900; font-size:12px; letter-spacing:-0.5px;">${esc(otHm)}</td>
       <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => {
         if (!isWorkDay) return '—';
         const inM = parseHm(finalIn);

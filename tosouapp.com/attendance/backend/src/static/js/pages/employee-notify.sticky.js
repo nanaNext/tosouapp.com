@@ -47,6 +47,12 @@ let selfNavGuardBound = false;
 let softReqNavBound = false;
 const REQ_PATH = '/ui/requests';
 const EXP_PATH = '/ui/expenses';
+const CONTACT_PATH = '/ui/contact';
+const HOME_PATH = '/ui/portal';
+const CHATBOT_PATH = '/ui/faq';
+const ATT_RECORDS_PATH = '/ui/attendance-records';
+const SHIFTS_PATH = '/ui/shifts';
+const SOFT_PATHS = new Set([CONTACT_PATH, HOME_PATH, REQ_PATH, EXP_PATH, CHATBOT_PATH, ATT_RECORDS_PATH, SHIFTS_PATH]);
 let softNavInFlight = false;
 const CACHE_KEY = 'emp_notify_cache_v1';
 const HIDE_KEY = 'emp_notify_hidden_v1';
@@ -91,10 +97,8 @@ function ensureStyle() {
     .emp-notify-wrap { position: relative; display: inline-flex; align-items: center; margin-left: 8px; }
     .emp-notify-btn { border: 0; background: transparent; color: #334155; cursor: pointer; font-size: 18px; line-height: 1; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .emp-notify-btn:hover { opacity: .85; }
-    .emp-notify-badge { position: absolute; top: -5px; right: -4px; min-width: 16px; height: 16px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 10px; line-height: 16px; text-align: center; padding: 0 4px; box-sizing: border-box; font-weight: 700; }
-    .emp-notify-badge[hidden] { display: none; }
-    .emp-notify-panel { position: absolute; top: 36px; right: 0; width: min(380px, calc(100vw - 24px)); max-height: 60vh; overflow: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 24px rgba(15, 23, 42, .18); z-index: 3600; }
-    .emp-notify-panel[hidden] { display: none; }
+    .emp-notify-badge { display: none !important; }
+    .emp-notify-panel { display: none !important; }
     .emp-notify-head { position: sticky; top: 0; background: #fff; border-bottom: 1px solid #e2e8f0; padding: 10px 12px; font-size: 12px; color: #0f172a; font-weight: 700; display:flex; justify-content:space-between; align-items:center; }
     .emp-notify-head-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:700; padding:0 6px; margin:0 4px; vertical-align:middle; }
     .emp-notify-list { display: flex; flex-direction: column; }
@@ -275,12 +279,13 @@ function mount() {
   const wrap = document.createElement('span');
   wrap.className = 'emp-notify-wrap';
   wrap.innerHTML = `
-    <button id="empNotifyStickyBtn" class="emp-notify-btn" type="button" aria-label="お知らせ" aria-expanded="false">🔔</button>
-    <span id="empNotifyStickyBadge" class="emp-notify-badge" hidden>0</span>
-    <div id="empNotifyStickyPanel" class="emp-notify-panel" hidden>
+    <button id="empNotifyStickyBtn" class="emp-notify-btn" type="button" aria-label="お知らせ" aria-expanded="false" style="display:none !important;">🔔</button>
+    <span id="empNotifyStickyBadge" class="emp-notify-badge" style="display:none !important;" hidden>0</span>
+    <div id="empNotifyStickyPanel" class="emp-notify-panel" style="display:none !important;" hidden>
       <div class="emp-notify-head"><span>通知</span><span id="empNotifyStickyHeadCount">0件</span></div>
       <div id="empNotifyStickyList" class="emp-notify-list"><div class="emp-notify-empty">読み込み中...</div></div>
     </div>`;
+  wrap.style.display = 'none'; // Force hide the wrapper
   wrap.style.marginLeft = subnav ? 'auto' : '8px';
   host.appendChild(wrap);
   const btn = wrap.querySelector('#empNotifyStickyBtn');
@@ -391,6 +396,19 @@ function setNavCurrent(pathName) {
 }
 function syncPageHeadStyle(doc) {
   try {
+    // Sync external stylesheets
+    const currentLinks = new Set(Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).map(l => l.getAttribute('href').split('?')[0]));
+    const newLinks = Array.from(doc?.head?.querySelectorAll('link[rel="stylesheet"]') || []);
+    newLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      if (href && !currentLinks.has(href.split('?')[0])) {
+        const newLink = document.createElement('link');
+        newLink.rel = 'stylesheet';
+        newLink.href = href;
+        document.head.appendChild(newLink);
+      }
+    });
+
     const id = 'pjax-requests-style';
     const styles = Array.from(doc?.head?.querySelectorAll?.('style') || []).map((el) => String(el.textContent || '')).filter(Boolean);
     if (!styles.length) return;
@@ -420,16 +438,26 @@ async function softNavigateLocal(url, push = true) {
     setNavCurrent(url.pathname);
     try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
     if (url.pathname === REQ_PATH) {
-      try {
-        const mod = await import('/static/js/pages/requests.page.js');
-        if (mod && typeof mod.bootRequestsPage === 'function') await mod.bootRequestsPage();
-      } catch (e) { /* silently ignored */ }
-    } else if (url.pathname === EXP_PATH) {
-      try {
-        const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
-        if (mod && typeof mod.bootExpensesPage === 'function') await mod.bootExpensesPage();
-      } catch (e) { /* silently ignored */ }
-    }
+        try {
+          const mod = await import('/static/js/pages/requests.page.js');
+          if (mod && typeof mod.bootRequestsPage === 'function') await mod.bootRequestsPage();
+        } catch (e) { /* silently ignored */ }
+      } else if (url.pathname === EXP_PATH) {
+        try {
+          const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
+          if (mod && typeof mod.bootExpensesPage === 'function') await mod.bootExpensesPage();
+        } catch (e) { /* silently ignored */ }
+      } else if (url.pathname === ATT_RECORDS_PATH) {
+        try {
+          const mod = await import('/static/js/pages/attendance-records.page.js?v=' + Date.now());
+          if (mod && typeof mod.bootAttendanceRecordsPage === 'function') await mod.bootAttendanceRecordsPage();
+        } catch (e) { /* silently ignored */ }
+      } else if (url.pathname === SHIFTS_PATH) {
+        try {
+          const mod = await import('/static/js/pages/shifts.page.js?v=' + Date.now());
+          if (mod && typeof mod.bootShiftsPage === 'function') await mod.bootShiftsPage();
+        } catch (e) { /* silently ignored */ }
+      }
     return true;
   } catch {
     return false;
@@ -447,17 +475,38 @@ function bindSoftRequestNavigation() {
     const href = String(a.getAttribute('href') || '').trim();
     if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
     let to = null;
-    try { to = new URL(href, window.location.href); } catch { return; }
-    if (!to || to.origin !== window.location.origin) return;
-    if (to.pathname !== REQ_PATH && to.pathname !== EXP_PATH) return;
-    if (window.location.pathname === to.pathname && window.location.search === to.search) {
-      e.preventDefault();
-      return;
-    }
+      try { to = new URL(href, window.location.href); } catch { return; }
+      if (!to || to.origin !== window.location.origin) return;
+      if (!SOFT_PATHS.has(to.pathname)) return;
+      if (window.location.pathname === to.pathname && window.location.search === to.search) {
+        e.preventDefault();
+        return;
+      }
     if (softNavInFlight) {
       e.preventDefault();
       return;
     }
+    
+    // Explicitly close user dropdown and mobile drawer when navigating
+    try {
+      const dropdown = document.querySelector('#userDropdown');
+      const btn = document.querySelector('.user .user-btn');
+      if (dropdown && !dropdown.hasAttribute('hidden')) {
+        dropdown.setAttribute('hidden', '');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+      
+      const drawer = document.getElementById('mobileDrawer');
+      const backdrop = document.getElementById('drawerBackdrop');
+      const drawerBtn = document.getElementById('mobileMenuBtn');
+      if (drawer && !drawer.hasAttribute('hidden')) {
+        drawer.setAttribute('hidden', '');
+        if (backdrop) backdrop.setAttribute('hidden', '');
+        if (drawerBtn) drawerBtn.setAttribute('aria-expanded', 'false');
+        document.body.classList.remove('drawer-open', 'mobile-drawer-open');
+      }
+    } catch (err) {}
+
     e.preventDefault();
     e.stopImmediatePropagation();
     softNavInFlight = true;
@@ -475,10 +524,10 @@ function bindSoftRequestNavigation() {
     if (!ok) window.location.href = to.pathname + to.search + to.hash;
   }, true);
   window.addEventListener('popstate', async () => {
-    try {
-      const p = String(window.location.pathname || '');
-      if (p !== REQ_PATH && p !== EXP_PATH) return;
-      if (softNavInFlight) return;
+      try {
+        const p = String(window.location.pathname || '');
+        if (!SOFT_PATHS.has(p)) return;
+        if (softNavInFlight) return;
       softNavInFlight = true;
       const portalSoft = window.__employeeSoftNavigate;
       let ok = false;

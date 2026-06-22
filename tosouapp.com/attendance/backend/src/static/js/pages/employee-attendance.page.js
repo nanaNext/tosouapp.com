@@ -72,83 +72,56 @@ async function mountAttendanceImpl({
       if (!isMobile) {
         // Chỉ reset biến nếu đang ở trang độc lập và ĐÃ ẨN topbar thành công
         if (topbar && topbar.style.display === 'none') {
-          document.body.style.paddingTop = '0';
-          const rootHtml = document.documentElement;
-          rootHtml.style.setProperty('--topbar-height', '0px');
-          rootHtml.style.setProperty('--subbar-height', '0px');
+          // document.body.style.paddingTop = '0';
+          // const rootHtml = document.documentElement;
+          // rootHtml.style.setProperty('--topbar-height', '0px');
+          // rootHtml.style.setProperty('--subbar-height', '0px');
         }
       } else {
-        document.body.style.setProperty('padding-top', '48px', 'important'); // Chỉ giữ lại 48px cho topbar hệ thống
-        
-        // Cưỡng ép xóa khoảng trắng do file gốc (portal.js/attendance.js) tự render sau
-        const styleFix = document.createElement('style');
-        styleFix.id = 'employee-attendance-style-fix';
-        styleFix.innerHTML = `
-          body.admin main.content, main.content, .content { 
-            padding-top: 0px !important; margin-top: 0px !important; 
-          }
-        `;
-        // Remove existing fix if any
-        const existingFix = document.getElementById('employee-attendance-style-fix');
-        if (existingFix) existingFix.remove();
-        document.head.appendChild(styleFix);
-        cleanup.add(() => {
-          const fix = document.getElementById('employee-attendance-style-fix');
-          if (fix) fix.remove();
-        });
-        
-        if (content) {
-          content.style.setProperty('padding-top', '0px', 'important'); // Xóa padding-top 92px bị dính trên main.content
-          content.style.setProperty('margin-top', '0px', 'important');
-        }
+         // document.body.style.setProperty('padding-top', '48px', 'important'); // Chỉ giữ lại 48px cho topbar hệ thống
+         
+         if (content) {
+           // content.style.setProperty('padding-top', '0px', 'important'); // Bỏ ghi đè padding-top ở đây
+         }
       }
     } catch(e) {}
   }
 
-  const vhExpr = (isStandalone && window.innerWidth > 768) ? '100vh' : '100vh';
+  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 24px)';
 
   const rosterWrap = document.createElement('div');
   rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: ${vhExpr}; display: flex; flex-direction: column; overflow: visible;`;
   // Add mobile/desktop styles properly
   rosterWrap.innerHTML = `
     <style>
+      /* Bỏ css can thiệp vào html, body, * để không làm hỏng thanh subnav */
       /* FULL WIDTH OVERRIDES */
       #attendanceRecordsHost { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
       
       @media (max-width: 768px) {
-        body.admin .content, .content, main.content { padding-top: 0px !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 0 !important; margin-top: 0px !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }
-        .main-content { padding-top: 0px !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 0 !important; margin-top: 0px !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
-        
         /* Cưỡng chế xóa triệt để khoảng trắng bằng cách chèn tag ID nếu cần */
-        #attendanceRecordsHost { padding-top: 0px !important; margin-top: 0px !important; background: #f1f5f9 !important; width: 100% !important; max-width: 100% !important; }
-        .attrec-fiori-override { padding-top: 0px !important; margin-top: 0px !important; background: #f1f5f9 !important; }
+        #attendanceRecordsHost { background: #f1f5f9 !important; width: 100% !important; max-width: 100% !important; }
+        .attrec-fiori-override { background: #f1f5f9 !important; }
         
         /* Bỏ background của thẻ dash-card trên mobile để nó không đè viền */
         .attrec-fiori-override.dash-card {
-          padding: 0 !important;
-          margin: 0 !important;
-          background: #f1f5f9 !important; /* Màu xám nhạt để làm nổi bật các thẻ màu trắng */
+          background: transparent !important; /* Màu xám nhạt để làm nổi bật các thẻ màu trắng */
           border-radius: 0 !important;
           width: 100% !important;
           border: none !important;
           box-shadow: none !important;
         }
-        #attendanceRecordsHost { padding: 0 !important; margin: 0 !important; width: 100% !important; }
-        .attrec-card h2 { display: none !important; margin: 0 !important; padding: 0 !important; }
-        .attrec-controls { margin-top: 0 !important; padding-top: 0 !important; }
-        .attrec-fiori-override .attrec-head { padding: 0 !important; margin: 0 !important; border: none !important; }
+        .attrec-card h2 { display: none !important; }
+        .attrec-controls { }
+        .attrec-fiori-override .attrec-head { border: none !important; }
         
         .attrec-table {
-            padding: 0 !important;
-            margin: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
         }
         
         .emp-list-scroll-wrap {
-          padding: 0 !important;
-          margin: 0 !important;
           width: 100% !important;
           max-width: 100% !important;
           border: none !important;
@@ -157,9 +130,9 @@ async function mountAttendanceImpl({
       }
       
       .attrec-fiori-override .dash-card-title {
-        font-size: 16px !important;
+        font-size: 18px !important;
         font-weight: 700 !important;
-        color: #111827 !important;
+        color: #0f172a !important;
         letter-spacing: -0.01em;
         margin: 0 !important;
       }
@@ -168,20 +141,15 @@ async function mountAttendanceImpl({
         border: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
-        padding: 0 !important;
         box-sizing: border-box;
       }
       .attrec-fiori-override .attrec-head {
-        padding: 0 !important;
-        margin: 0 !important;
         border-bottom: none !important;
         min-height: 0 !important;
-        display: none !important; /* Ẩn hẳn luôn nếu không có nội dung */
+        display: none !important;
       }
       .attrec-fiori-override .attrec-controls {
-          padding: 0 !important;
           gap: 0 !important;
-          margin: 0 !important;
           display: none !important;
         }
       .attrec-fiori-override .attrec-control {
@@ -192,14 +160,12 @@ async function mountAttendanceImpl({
       }
       .attrec-fiori-override .attrec-input,
       .attrec-fiori-override .attrec-btn {
-        height: 30px !important;
-        font-size: 13px !important;
-        padding: 0 10px !important;
+        height: 34px !important;
+        font-size: 14px !important;
+        padding: 0 12px !important;
         border-radius: 4px !important;
       }
       .attrec-fiori-override .attrec-table {
-          margin: 0 !important;
-          padding: 0 !important;
           border-top: none !important;
         }
       .attrec-fiori-override .attrec-dash-table th {
@@ -244,7 +210,7 @@ async function mountAttendanceImpl({
         height: 34px !important;
         padding: 0 12px !important;
         border-radius: 6px !important;
-        font-size: 13px !important;
+        font-size: 14px !important;
         font-weight: 500 !important;
       }
       .excel-dropdown-btn:hover {
@@ -282,7 +248,7 @@ async function mountAttendanceImpl({
         background: none;
         border: none;
         border-bottom: 1px solid #f1f5f9;
-        font-size: 13px;
+        font-size: 14px;
         cursor: pointer;
       }
       .excel-dropdown-menu button:last-child {
@@ -319,10 +285,8 @@ async function mountAttendanceImpl({
           display: none !important;
         }
         .attrec-fiori-override .attrec-head {
-          padding: 0 !important;
           border-bottom: none !important;
           background: transparent !important; /* Thêm nền trắng cho phần header */
-          margin: 0 !important;
           display: none !important;
         }
         .attrec-fiori-override .attrec-summary {
@@ -334,7 +298,6 @@ async function mountAttendanceImpl({
           gap: 12px !important;
           padding: 12px !important;
           background: transparent !important; /* Force transparent background */
-          margin: 0 12px 12px 12px !important;
           border-radius: 8px !important;
           border: none !important; /* Remove border */
         }
@@ -344,7 +307,6 @@ async function mountAttendanceImpl({
           gap: 12px !important; /* Increase gap between items on mobile */
           width: 100% !important;
           background: transparent !important;
-          padding: 0 !important;
           border-radius: 0 !important;
           border: none !important;
           box-sizing: border-box !important;
@@ -362,14 +324,14 @@ async function mountAttendanceImpl({
           content: "日";
           font-weight: 700 !important;
           color: #475569 !important;
-          font-size: 13px !important;
+          font-size: 14px !important;
           margin-right: 2px !important;
         }
         .attrec-fiori-override .attrec-control:nth-child(2) .mobile-row:nth-child(2)::before {
           content: "月";
           font-weight: 700 !important;
           color: #475569 !important;
-          font-size: 13px !important;
+          font-size: 14px !important;
           margin-right: 2px !important;
         }
         .attrec-fiori-override .attrec-input {
@@ -414,10 +376,6 @@ async function mountAttendanceImpl({
           left: 0 !important;
         }
         /* Removed #rosterLoad styles as the button is no longer used */
-        .attrec-fiori-override .attrec-table {
-          padding: 0 !important;
-          margin: 0 !important;
-        }
         /* Improve mobile cards for table to exactly match employees page */
         .attrec-emp-like-table {
           display: block !important;
@@ -440,9 +398,7 @@ async function mountAttendanceImpl({
           border: 1px solid #e2e8f0 !important;
           border-radius: 0 !important;
           box-shadow: none !important;
-          padding: 0 !important; 
           overflow: hidden !important;
-          margin-bottom: 0 !important; 
         }
         .attrec-emp-like-table td {
           display: block !important;
@@ -476,7 +432,7 @@ async function mountAttendanceImpl({
           margin-bottom: 4px !important;
         }
         .attrec-emp-like-table .m-code-value {
-          font-size: 13px !important;
+          font-size: 14px !important;
           font-weight: 700 !important;
           color: #1e293b !important;
           word-break: break-all !important;
@@ -497,7 +453,7 @@ async function mountAttendanceImpl({
           align-items: flex-start !important;
           justify-content: flex-start !important;
           width: 100% !important;
-          font-size: 13px !important;
+          font-size: 14px !important;
           line-height: 1.4 !important;
           text-align: left !important;
         }
@@ -530,10 +486,10 @@ async function mountAttendanceImpl({
     <div class="dash-card attrec-fiori-override" style="height: 100%; display: flex; flex-direction: column; overflow: visible !important; background: transparent !important; box-shadow: none !important; border: none !important;">
       <div class="attrec-controls" style="margin-bottom: 0px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: none !important;">
       </div>
-      <div class="attrec-head" style="flex-shrink: 0; padding-top: 0px; display: none !important; margin: 0 !important; min-height: 0 !important;">
+      <div class="attrec-head" style="flex-shrink: 0; display: none !important; margin: 0 !important; min-height: 0 !important;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: none; gap: 12px; margin-bottom: 0px;"></div>
       </div>
-      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow-y: visible; overflow-x: hidden;"></div>
+      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow: visible;"></div>
     </div>
   `;
   content.appendChild(rosterWrap);
@@ -544,7 +500,7 @@ async function mountAttendanceImpl({
     mobileActions.innerHTML = `
     <div style="display:none; flex-direction:column; gap:8px; padding: 0 12px; background: #fff; margin: 0;">
       <div style="display:flex; gap:8px; justify-content:space-between; margin: 0;">
-        <input type="date" id="rosterDateMobile" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="flex:1; height:34px; padding:0 12px; font-size:13px; box-sizing:border-box; margin: 0; display: none;">
+        <input type="date" id="rosterDateMobile" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="flex:1; height:34px; padding:0 12px; font-size:14px; box-sizing:border-box; margin: 0; display: none;">
       </div>
     </div>
     `;
@@ -556,7 +512,7 @@ async function mountAttendanceImpl({
   const desktopControlsHtml = `
     <div style="display:flex; gap:16px; align-items:center; justify-content:flex-end; width:100%;">
       <div id="rosterSummary" style="display:flex; gap:8px;"></div>
-      <input type="date" id="rosterDate" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:13px; max-width:140px; min-width:140px; box-sizing:border-box;">
+      <input type="date" id="rosterDate" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; max-width:140px; min-width:140px; box-sizing:border-box;">
     </div>
   `;
   const controlsDiv = rosterWrap.querySelector('.attrec-controls');
@@ -591,7 +547,7 @@ async function mountAttendanceImpl({
     const missStyle = missing > 0 ? styleDanger : styleOk;
     
     host.innerHTML = `
-      <div style="display: none; gap:16px; align-items:center; font-size:13px; color:#475569; font-weight:500;">
+      <div style="display: none; gap:16px; align-items:center; font-size:14px; color:#475569; font-weight:500;">
         <div style="display:flex; align-items:center; gap:6px;">
           <span>必要(退勤済)</span>
           <span style="${styleNeutral}">${esc(required)}</span>
@@ -668,31 +624,43 @@ async function mountAttendanceImpl({
         
         table.innerHTML = `
           <style>
+            /* SAP Fiori Inspired Table Style */
             .beautiful-table {
-              box-shadow: none;
+              background-color: #ffffff;
+              border: 1px solid #d9d9d9 !important;
+              box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+              border-radius: 4px;
+              overflow: hidden;
             }
             .beautiful-table thead {
-              background-color: #f8fafc;
-              border-bottom: 2px solid #e2e8f0;
+              background-color: #f4f5f6;
+              border-bottom: 1px solid #cccccc;
             }
             .beautiful-table th {
               padding: 14px 16px;
               text-align: left;
               font-weight: 600;
-              color: #334155;
-              font-size: 13px;
-              border-bottom: none;
+              color: #32363a;
+              font-size: 15px;
+              border-bottom: 1px solid #cccccc;
+              border-right: 1px solid #e5e5e5;
               white-space: nowrap;
             }
+            .beautiful-table th:last-child {
+              border-right: none;
+            }
             .beautiful-table td {
-              padding: 16px;
-              border-bottom: 1px solid #f1f5f9;
-              color: #1e293b;
-              font-size: 14px;
+              padding: 14px 16px;
+              border-bottom: 1px solid #e5e5e5;
+              border-right: 1px solid #e5e5e5;
+              color: #32363a;
+              font-size: 15px;
               vertical-align: middle;
-              word-break: break-word; /* Cho phép cắt từ nếu quá dài */
-              white-space: normal; /* Đảm bảo text được xuống dòng */
-              text-align: left;
+              word-break: break-word;
+              white-space: normal;
+            }
+            .beautiful-table td:last-child {
+              border-right: none;
             }
             .beautiful-table th:nth-child(5), /* Status */
             .beautiful-table th:nth-child(6), /* In */
@@ -701,31 +669,42 @@ async function mountAttendanceImpl({
             }
             .beautiful-table td.empty-dash {
               text-align: center !important;
-              color: #94a3b8;
+              color: #8a96a0;
+            }
+            .beautiful-table tbody tr {
+              transition: background-color 0.2s;
             }
             .beautiful-table tbody tr:hover {
-              background-color: #f8fafc;
+              background-color: #f0f8ff;
+            }
+            .beautiful-table tbody tr:nth-child(even) {
+              background-color: #fafafa;
             }
             .beautiful-table tbody tr:last-child td {
               border-bottom: none;
             }
             
-            /* Status Pills matching admin style */
+            /* Status Pills matching SAP Fiori Object Status */
             .attrec-pill {
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 4px 10px;
-              border-radius: 12px;
-              font-size: 12px;
-              font-weight: 600;
-              line-height: 1;
+              padding: 2px 8px;
+              border-radius: 2px;
+              font-size: 13px;
+              font-weight: bold;
+              line-height: 1.2;
               white-space: nowrap;
             }
-            .attrec-pill.ok { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-            .attrec-pill.danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-            .attrec-pill.warn { background: #fef9c3; color: #9a3412; border: 1px solid #fde047; }
-            .attrec-pill.neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+            .attrec-pill.ok { color: #107e3e; background: transparent; }
+            .attrec-pill.danger { color: #bb0000; background: transparent; }
+            .attrec-pill.warn { color: #e9730c; background: transparent; }
+            .attrec-pill.neutral { color: #5e696e; background: transparent; }
+
+            /* Add Fiori-like icons to status */
+            .attrec-pill.ok::before { content: "✓"; margin-right: 4px; font-weight: normal; }
+            .attrec-pill.danger::before { content: "✕"; margin-right: 4px; font-weight: normal; }
+            .attrec-pill.warn::before { content: "！"; margin-right: 4px; font-weight: normal; }
 
             /* Parent container full width */
               .attrec-table {
@@ -738,26 +717,12 @@ async function mountAttendanceImpl({
             }
             
             .attrec-fiori-override.dash-card {
-              border-radius: 0 !important;
-              box-shadow: none !important;
-              border: none !important;
-              padding: 0 !important;
+              border-radius: 4px !important;
+              box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+              border: 1px solid #d9d9d9 !important;
+              padding: 16px !important;
+              background-color: #ffffff !important;
             }
-            .beautiful-table .attrec-pill {
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 12px;
-              font-weight: 600;
-              background-color: #f1f5f9;
-              color: #475569;
-              border: 1px solid #e2e8f0;
-            }
-            .beautiful-table .attrec-pill.ok { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; }
-            .beautiful-table .attrec-pill.warn { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
-            .beautiful-table .attrec-pill.danger { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; }
             
             /* Mobile Optimization (Card Layout) */
                @media (max-width: 768px) {
@@ -839,119 +804,115 @@ async function mountAttendanceImpl({
           display: none;
         }
         .beautiful-table tbody {
-              display: flex;
-              flex-direction: column;
-              gap: 8px; /* Khoảng cách dọc giữa các thẻ */
-              padding: 12px 0; /* Xóa padding hai bên để thẻ sát mép màn hình */
+              display: flex !important;
+              flex-direction: column !important;
+              gap: 8px !important; /* Khoảng cách dọc giữa các thẻ */
+              padding: 12px 0 !important; /* Xóa padding hai bên để thẻ sát mép màn hình */
               margin: 0 !important; 
               width: 100% !important; 
               box-sizing: border-box !important;
               background: transparent !important;
               border-radius: 0 !important;
               border: none !important;
-              overflow: hidden;
+              overflow: hidden !important;
             }
-           .beautiful-table tr {
-               display: flex;
-               flex-direction: column;
-               background: #ffffff !important; 
-               border-top: 1px solid #e2e8f0 !important; 
-               border-bottom: 1px solid #e2e8f0 !important;
-               border-left: none !important; /* Xóa viền trái */
-               border-right: none !important; /* Xóa viền phải */
-               border-radius: 0 !important; /* Bỏ bo góc để vuông vức sát mép */
-               padding: 12px 16px !important; /* Padding bên trong thẻ */
-               margin: 0 !important;
-               box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; 
-               width: 100% !important; 
-               box-sizing: border-box !important;
-               position: relative;
-             }
+            .beautiful-table tr {
+                display: flex !important;
+                flex-direction: column !important;
+                background: #ffffff !important; 
+                border-top: 1px solid #e2e8f0 !important; 
+                border-bottom: 1px solid #e2e8f0 !important;
+                border-left: none !important; /* Xóa viền trái */
+                border-right: none !important; /* Xóa viền phải */
+                border-radius: 0 !important; /* Bỏ bo góc để vuông vức sát mép */
+                padding: 12px 16px !important; /* Padding bên trong thẻ */
+                margin: 0 !important;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; 
+                width: 100% !important; 
+                box-sizing: border-box !important;
+                position: relative !important;
+              }
              
              /* Tiêu đề (Mã NV & Tên) đặt lên đầu thẻ */
-                 .beautiful-table tr::before {
-                   content: "[" attr(data-emp-code) "] " attr(data-emp-name);
-                   display: block;
-                   font-size: 16px; 
-                   font-weight: 700; 
-                   color: #0f172a;
-                   margin-bottom: 8px; 
-                   padding-bottom: 8px;
-                   padding-top: 0; 
-                   padding-left: 0; 
-                   padding-right: 0;
-                   border-bottom: 1px dashed #cbd5e1;
-                   margin-left: 0; 
-                   margin-right: 0; 
-                   box-sizing: border-box !important;
-                   width: 100% !important;
-                 }
+              .beautiful-table tr::before {
+                content: "[" attr(data-emp-code) "] " attr(data-emp-name);
+                display: block !important;
+                font-size: 18px !important; 
+                font-weight: 700 !important; 
+                color: #0f172a !important;
+                margin-bottom: 8px !important; 
+                padding-bottom: 8px !important;
+                padding-top: 0 !important; 
+                padding-left: 0 !important; 
+                padding-right: 0 !important;
+                border-bottom: 1px dashed #cbd5e1 !important;
+                margin-left: 0 !important; 
+                margin-right: 0 !important; 
+                box-sizing: border-box !important;
+                width: 100% !important;
+              }
                  
-                 /* Ẩn các ô chứa mã NV và tên gốc để không bị lặp lại */
-                 .beautiful-table td:nth-child(1),
-                 .beautiful-table td:nth-child(2) {
-                   display: none !important;
-                 }
-                 
-                 /* Định dạng các dòng thông tin còn lại */
-                  .beautiful-table td {
-                     display: flex !important;
-                     justify-content: flex-start !important; 
-                     align-items: flex-start !important; /* Thay đổi từ center sang flex-start để text nhiều dòng bắt đầu từ trên cùng */
-                     padding: 6px 0 !important; 
-                     border-bottom: none !important;
-                     font-size: 15px !important; 
-                     white-space: normal !important;
-                     word-break: break-word !important;
-                   }
+              /* Ẩn các ô chứa mã NV và tên gốc để không bị lặp lại */
+              .beautiful-table td:nth-child(1),
+              .beautiful-table td:nth-child(2) {
+                display: none !important;
+              }
+              
+              /* Định dạng các dòng thông tin còn lại */
+               .beautiful-table td {
+                  display: flex !important;
+                  justify-content: flex-start !important; 
+                  align-items: flex-start !important; /* Thay đổi từ center sang flex-start để text nhiều dòng bắt đầu từ trên cùng */
+                  padding: 6px 0 !important; 
+                  border-bottom: none !important;
+                  font-size: 15px !important; 
+                  white-space: normal !important;
+                  word-break: break-word !important;
+                }
                    
-                   /* Định dạng Nhãn (Tiêu đề) bên trái */
-                   .beautiful-table td::before {
-                     content: attr(data-label);
-                     font-weight: 500;
-                     color: #475569; /* Đổi màu xám đậm hơn cho dễ đọc */
-                     width: 85px !important; /* Giảm nhẹ độ rộng nhãn để dữ liệu sang trái thêm */
-                     min-width: 85px;
-                     text-align: left;
-                     flex-shrink: 0;
-                   }
+                /* Định dạng Nhãn (Tiêu đề) bên trái */
+                .beautiful-table td::before {
+                  content: attr(data-label);
+                  font-weight: 500 !important;
+                  color: #475569 !important; /* Đổi màu xám đậm hơn cho dễ đọc */
+                  width: 85px !important; /* Giảm nhẹ độ rộng nhãn để dữ liệu sang trái thêm */
+                  min-width: 85px !important;
+                  text-align: left !important;
+                  flex-shrink: 0 !important;
+                }
                   
-                  /* Ép phần nội dung bên phải căn trái sát lại gần nhãn */
-                    .beautiful-table td > *:not(.attrec-pill) {
-                       flex-grow: 0;
-                       text-align: left;
-                       padding-left: 0; /* Xóa khoảng trống thừa */
-                       color: #0f172a; /* Màu chữ đen đậm nhất */
-                       font-weight: 500;
-                       display: inline-block; /* Bắt buộc để nhận text-align left */
-                       white-space: normal; /* Cho phép xuống dòng */
-                       word-break: break-word; /* Tự động bẻ chữ nếu quá dài */
-                       max-width: 100%; /* Tránh tràn khối */
-                    }
-                    
-                    /* Riêng nội dung chữ trống (dấu -) */
-                    .beautiful-table td .empty-dash {
-                       text-align: left !important;
-                       flex-grow: 0;
-                       padding-left: 0;
-                       color: #475569; /* Màu dấu gạch ngang đậm lên theo màu nhãn */
-                       display: inline-block;
-                    }
-               
-               /* Ép Tag trạng thái (badge) ôm sát text */
-               .beautiful-table td .attrec-pill {
-                 display: inline-flex !important;
-                 width: auto !important;
-                 padding: 4px 10px !important;
-                 margin: 0 !important;
-                 margin-left: 0; 
+               /* Ép phần nội dung bên phải căn trái sát lại gần nhãn */
+               .beautiful-table td > *:not(.attrec-pill) {
+                  flex-grow: 0 !important;
+                  text-align: left !important;
+                  padding-left: 0 !important; /* Xóa khoảng trống thừa */
+                  color: #0f172a !important; /* Màu chữ đen đậm nhất */
+                  font-weight: 500 !important;
+                  display: inline-block !important; /* Bắt buộc để nhận text-align left */
+                  white-space: normal !important; /* Cho phép xuống dòng */
+                  word-break: break-word !important; /* Tự động bẻ chữ nếu quá dài */
+                  max-width: 100% !important; /* Tránh tràn khối */
                }
+               
+               /* Riêng nội dung chữ trống (dấu -) */
+               .beautiful-table td .empty-dash {
+                  text-align: left !important;
+                  flex-grow: 0 !important;
+                  padding-left: 0 !important;
+                  color: #475569 !important; /* Màu dấu gạch ngang đậm lên theo màu nhãn */
+                  display: inline-block !important;
+               }
+               
+               .beautiful-table td .attrec-pill {
+                display: inline-flex !important;
+                width: auto !important;
+                padding: 4px 10px !important;
+                margin: 0 !important;
+                margin-left: 0 !important; 
+              }
              /* Đã gỡ bỏ rule xóa padding/border thẻ đầu và thẻ cuối để tất cả các thẻ đều vuông vắn bằng nhau */
               
               /* Ẩn phần Code cũ làm hỏng layout */
-              .beautiful-table td:nth-child(1) {
-                display: none !important;
-              }
               .beautiful-table td:not(:nth-child(1)) {
                 /* Đã được ghi đè ở trên bằng flex */
               }
@@ -963,7 +924,7 @@ async function mountAttendanceImpl({
               border-radius: 4px;
               cursor: pointer;
               color: #334155;
-              font-size: 13px;
+              font-size: 14px;
               font-weight: 500;
               transition: all 0.15s;
             }
@@ -1085,10 +1046,10 @@ async function mountAttendanceImpl({
               <td data-label="部署">${dept === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(dept)}</span>`}</td>
               <td data-label="勤務区分">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(wtLabel)}</span>`}</td>
               <td data-label="状態" style="text-align:left;"><span class="${stClass}">${esc(stLabel)}</span></td>
-              ${cinView === '—' ? emptyDash('出勤') : `<td data-label="出勤" style="text-align:left; font-family:monospace; font-size:14px;"><span>${esc(cinView)}</span></td>`}
-              ${coutView === '—' ? emptyDash('退勤') : `<td data-label="退勤" style="text-align:left; font-family:monospace; font-size:14px;"><span>${esc(coutView)}</span></td>`}
-              ${siteView === '—' ? emptyDash('現場') : `<td data-label="現場"><div style="font-size:12px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
-              ${workView === '—' ? emptyDash('作業内容') : `<td data-label="作業内容"><div style="font-size:12px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:80px; overflow-y:auto;">${esc(workView)}</div></td>`}
+              ${cinView === '—' ? emptyDash('出勤') : `<td data-label="出勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(cinView)}</span></td>`}
+              ${coutView === '—' ? emptyDash('退勤') : `<td data-label="退勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(coutView)}</span></td>`}
+              ${siteView === '—' ? emptyDash('現場') : `<td data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
+              ${workView === '—' ? emptyDash('作業内容') : `<td data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:80px; overflow-y:auto;">${esc(workView)}</div></td>`}
             `;
           
           tbody.appendChild(tr);

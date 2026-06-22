@@ -18,7 +18,7 @@ const roleOf = (v) => {
 
 const sendPage = (file) => (req, res) => {
   const templateName = file.replace(/\.html$/, '');
-  res.render(templateName);
+  res.render(templateName, { user: req.user || null });
 };
 
 const setNoStore = (res) => {
@@ -33,13 +33,13 @@ const setNoStore = (res) => {
 const sendPageNoCache = (file) => (req, res) => {
   setNoStore(res);
   const templateName = file.replace(/\.html$/, '');
-  res.render(templateName);
+  res.render(templateName, { user: req.user || null });
 };
 
 const sendAdminPageNoCache = (req, res, file = 'admin') => {
   setNoStore(res);
   const templateName = file.replace(/\.html$/, '');
-  res.render(templateName);
+  res.render(templateName, { user: req.user || null });
 };
 const authorizePage = (...roles) => (req, res, next) => {
   const role = roleOf(req.user?.role);
@@ -108,13 +108,13 @@ router.get('/ui/portal', (req, res) => {
   setNoStore(res);
   const role = roleOf(req.user?.role);
   if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
-  return res.render('portal');
+  return res.render('portal', { user: req.user || null });
 });
 router.get('/ui/portal/', (req, res) => {
   setNoStore(res);
   const role = roleOf(req.user?.role);
   if (role === 'admin' || role === 'manager') return res.redirect(302, '/admin/dashboard');
-  return res.render('portal');
+  return res.render('portal', { user: req.user || null });
 });
 
 router.get('/admin/embed/attendance/monthly', sendPage('attendance-monthly.html'));
@@ -183,22 +183,22 @@ router.get('/faq-test', authenticateFromCookie, authorizePage('admin', 'manager'
 router.get('/ui/:page.html', (req, res) => {
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (!page) return res.status(404).json({ message: 'Not Found', path: req.path });
-  if (page === 'employees') return res.render('admin');
-  return res.render(page);
+  if (page === 'employees') return res.render('admin', { user: req.user || null });
+  return res.render(page, { user: req.user || null });
 });
 
 router.get('/ui/:page', (req, res) => {
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (page === 'employees') {
-    return res.render('admin');
+    return res.render('admin', { user: req.user || null });
   }
-  return res.render(page);
+  return res.render(page, { user: req.user || null });
 });
 
 router.get('/:page.html', (req, res) => {
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (!page) return res.status(404).json({ message: 'Not Found', path: req.path });
-  return res.render(page);
+  return res.render(page, { user: req.user || null });
 });
 
 module.exports = router;

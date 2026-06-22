@@ -3,7 +3,7 @@
   padding: 12px;
   max-width: 100%;
   margin: 0 auto;
-  margin-top: -30px; /* Pull it up even tighter under the nav tabs */
+  margin-top: 0px; /* Reset negative margin */
   background-color: #f1f5f9;
   min-height: calc(100vh - 50px);
 }
@@ -156,6 +156,9 @@
 }
 
 @media (max-width: 768px) {
+  .subbar + .content {
+    padding-top: calc(var(--topbar-height) + var(--subbar-height) + 16px) !important;
+  }
   .shifts-top-nav {
     flex-direction: row; 
     align-items: center;

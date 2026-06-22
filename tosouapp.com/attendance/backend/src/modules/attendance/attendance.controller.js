@@ -2501,8 +2501,10 @@ exports.exportMonthXlsx = async (req, res) => {
     const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
     const from = `${y}-${pad(m)}-01`;
     const to = `${y}-${pad(m)}-${pad(lastDay)}`;
+    const monthStatusObj = await repo.getMonthStatus(userId, y, m).catch(() => null);
+    const monthStatus = String(monthStatusObj?.status || '').trim() || 'draft';
+    const monthApproverName = monthStatus === 'approved' ? String(monthStatusObj?.approved_by_name || '') : '';
     const role = String(req.user?.role || '').toLowerCase();
-    const monthStatus = await getMonthStatusValue(userId, y, m);
     if (role === 'payroll' && monthStatus !== 'approved') {
       return res.status(403).json({ message: 'Forbidden: month is not closed' });
     }
@@ -2955,16 +2957,16 @@ exports.exportMonthXlsx = async (req, res) => {
         src[16] || '',
         src[18] || '',
         src[19] || '',
-        src[20] || ''
+        monthApproverName
       ];
       const rowNum = 7 + i;
       const xmlCells = vals.map((v, ci) => {
         const ref = `${colRef(ci + 1)}${rowNum}`;
         const isTimeCell = (ci >= 7 && ci <= 12);
-        const isTextWide = ci === 5 || ci === 6 || ci === 15 || ci === 16 || ci === 17;
-        const style = (isTimeCell || (ci >= 2 && ci <= 17)) ? 12 : (isTextWide ? 13 : 12);
+        const isTextWide = ci === 5 || ci === 6 || ci === 14 || ci === 15;
+        const style = isTextWide ? 13 : 12;
         // Highlight only the date cell (日付) for Sundays.
-        const styleWithDay = (isSunday && ci === 0) ? 16 : (isTimeCell ? 12 : style);
+        const styleWithDay = (isSunday && ci === 0) ? 16 : style;
         
         let cellValue = String(v || '');
         if (ci === 1) {
@@ -2996,7 +2998,7 @@ exports.exportMonthXlsx = async (req, res) => {
       xmlCells.push(numberCell(`S${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
       push1(rowNum, xmlCells, 18);
     }
-    const sheet1VisibleCols = [12, 14, 5, 5, 12, 14, 16, 10, 10, 10, 10, 10, 10, 10, 12, 12, 14, 12];
+    const sheet1VisibleCols = [12, 14, 5, 5, 12, 14, 16, 10, 10, 10, 10, 10, 10, 10, 12, 26, 14, 12];
     const sheet1Cols = [
       ...sheet1VisibleCols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`),
       `<col min="19" max="19" width="2" hidden="1" customWidth="1"/>`
@@ -3098,7 +3100,7 @@ exports.exportMonthXlsx = async (req, res) => {
     <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="9" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="1" fillId="10" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="1" fillId="11" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="3" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>

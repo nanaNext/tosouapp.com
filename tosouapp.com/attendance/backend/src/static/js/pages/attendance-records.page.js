@@ -74,26 +74,28 @@ async function ensureAuthProfile() {
 }
 
 const wireUserMenu = () => {
-  if (!window.__employeeUserMenuDelegated) {
-    window.__employeeUserMenuDelegated = true;
-    document.addEventListener('click', (e) => {
-      const btn = e.target?.closest?.('.user .user-btn');
-      const dropdown = document.querySelector('#userDropdown');
-      if (btn && dropdown) {
-        e.preventDefault();
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        if (expanded) dropdown.setAttribute('hidden', '');
-        else dropdown.removeAttribute('hidden');
-      } else if (dropdown && !dropdown.hasAttribute('hidden') && !e.target?.closest?.('.user-menu')) {
-        dropdown.setAttribute('hidden', '');
-        const b = document.querySelector('.user .user-btn');
-        if (b) b.setAttribute('aria-expanded', 'false');
-      }
-    });
-  }
-  
-  const logoutBtn = document.querySelector('#btnLogout');
+    if (!window.__employeeUserMenuDelegated) {
+      window.__employeeUserMenuDelegated = true;
+      document.addEventListener('click', (e) => {
+        const isBtn = e.target && e.target.closest && e.target.closest('.user .user-btn');
+        const isMenu = e.target && e.target.closest && e.target.closest('.user-menu');
+        const dropdown = document.querySelector('#userDropdown');
+        const btn = document.querySelector('.user .user-btn');
+        
+        if (isBtn && dropdown && btn) {
+          e.preventDefault();
+          const expanded = btn.getAttribute('aria-expanded') === 'true';        
+          btn.setAttribute('aria-expanded', String(!expanded));
+          if (expanded) dropdown.setAttribute('hidden', '');
+          else dropdown.removeAttribute('hidden');
+        } else if (!isMenu && dropdown && !dropdown.hasAttribute('hidden')) {
+          dropdown.setAttribute('hidden', '');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    const logoutBtn = document.querySelector('#btnLogout');
   if (logoutBtn && !logoutBtn.dataset.bound) {
     logoutBtn.dataset.bound = '1';
     logoutBtn.addEventListener('click', async () => {
@@ -502,7 +504,7 @@ const renderAttendance = async () => {
   }
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
+export async function bootAttendanceRecordsPage() {
   prefillUserName();
   try {
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
@@ -530,8 +532,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mod = await import('./employee-attendance.page.js?v=' + Date.now());
     if (mod.mountAttendance) {
       const host = $('#attendanceRecordsHost');
-      if (host) {
-        host.innerHTML = '';
+        if (host) {
+          host.innerHTML = '';
+          
+          const style = document.createElement('style');
+        style.textContent = `
+          /* Reset padding cho trang attendance records */
+          main.content {
+            padding-top: calc(var(--topbar-height) + var(--subbar-height) + 24px) !important;
+          }
+          @media (max-width: 768px) {
+            main.content {
+              padding-top: calc(var(--topbar-height) + var(--subbar-height) + 16px) !important;
+            }
+          }
+        `;
+        document.head.appendChild(style);
         
         const { listUsers } = await import('../api/users.api.js');
         const { getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL } = await import('../api/attendance.api.js');
@@ -569,18 +585,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
           }
         }
-
-        // Ensure current page is highlighted in subnav
-        document.querySelectorAll('.subbar .subnav a').forEach(a => {
-          if (a.getAttribute('href') === '/ui/attendance-records') {
-            a.setAttribute('aria-current', 'page');
-          }
-        });
-        document.querySelectorAll('#mobileDrawer a.drawer-item').forEach(a => {
-          if (a.getAttribute('href') === '/ui/attendance-records') {
-            a.setAttribute('aria-current', 'page');
-          }
-        });
       }
     }
   } catch (err) {
@@ -589,4 +593,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   hideSpinner();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (window.location.pathname.includes('/ui/attendance-records')) {
+    bootAttendanceRecordsPage();
+  }
 });
