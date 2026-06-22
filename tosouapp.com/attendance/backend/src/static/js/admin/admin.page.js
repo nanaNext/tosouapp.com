@@ -834,6 +834,17 @@ const navigate = async (href, replace = false) => {
       window.location.href = u.href;
       return;
     }
+
+    // If there is no SPA container on the current page, do a full page navigation
+    if (!document.querySelector('#adminContent')) {
+      if (replace) {
+        window.location.replace(u.href);
+      } else {
+        window.location.href = u.href;
+      }
+      return;
+    }
+
     const cur = new URL(window.location.href);
     const same = normalizePath(cur.pathname) === normalizePath(u.pathname) && cur.search === u.search && cur.hash === u.hash;
     if (!same) {
@@ -882,6 +893,10 @@ const wireSpaNav = () => {
       const href = a.getAttribute('href') || '';
       if (!href) return;
       if (!isSameOrigin(href)) return;
+      
+      // If there is no SPA container on the current page, let the browser handle it
+      if (!document.querySelector('#adminContent')) return;
+
       const u = new URL(href, window.location.origin);
       if (!isAdminPath(u.pathname)) return;
       if (u.pathname === '/admin/attendance/monthly' || u.pathname === '/admin/attendance/monthly/' ||
