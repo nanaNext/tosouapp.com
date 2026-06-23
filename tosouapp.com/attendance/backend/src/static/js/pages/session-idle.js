@@ -4,8 +4,9 @@
 
   const host = String(location.hostname || '').toLowerCase();
   const isProd = host === 'tosouapp.com' || host.endsWith('.tosouapp.com');
-  const IDLE_TIMEOUT_MS = isProd ? (25 * 60 * 1000) : (8 * 60 * 60 * 1000);
-  const WARNING_MS = isProd ? (5 * 60 * 1000) : (10 * 60 * 1000);
+  // Set to 30 minutes for security
+  const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+  const WARNING_MS = 5 * 60 * 1000;
   const GRACE_MS = 3 * 60 * 1000;
   const CHECK_MS = 10 * 1000;
   const ACTIVITY_KEY = 'se.lastActivityAt';

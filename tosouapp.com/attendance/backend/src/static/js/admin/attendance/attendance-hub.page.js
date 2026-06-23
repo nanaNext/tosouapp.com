@@ -141,7 +141,7 @@ export async function mount({ content, initialPath, profile }) {
   // Append ?standalone=1 to hrefs if we are in standalone mode
   const qs = isStandalone ? '?standalone=1' : '';
 
-  sidebar.innerHTML = menuItems.map(item => {
+  const menuHtml = menuItems.map(item => {
     // If it already has a query string, we'd need to append with &, but let's assume simple paths for now.
     const finalHref = item.href + qs;
     return `
@@ -159,13 +159,39 @@ export async function mount({ content, initialPath, profile }) {
       transition: all 0.2s;
       font-family: Inter, 'Noto Sans JP', sans-serif;
     ">
-      <svg style="width:16px; height:16px; margin-right:10px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; opacity: ${currentPath === item.href ? '1' : '0.7'};" viewBox="0 0 24 24">
-        <path d="${item.icon}"></path>
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 12px; opacity: ${currentPath === item.href ? '1' : '0.7'};">
+        <path stroke-linecap="round" stroke-linejoin="round" d="${item.icon}"></path>
       </svg>
       ${item.label}
     </a>
     `;
   }).join('');
+
+  sidebar.innerHTML = `
+    <div style="flex: 1;">
+      ${menuHtml}
+    </div>
+    <div style="padding: 8px; border-top: 1px solid #E5E7EB; margin-top: auto;">
+      <a href="/ui/logout" class="att-sidebar-item" style="
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 6px;
+        color: #DC2626;
+        background: transparent;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+        font-family: Inter, 'Noto Sans JP', sans-serif;
+      ">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 12px; opacity: 0.8;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+        </svg>
+        ログアウト
+      </a>
+    </div>
+  `;
 
   // Hover effects
   sidebar.querySelectorAll('.att-sidebar-item:not(.active)').forEach(el => {
