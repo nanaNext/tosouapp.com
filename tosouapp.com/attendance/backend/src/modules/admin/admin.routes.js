@@ -998,7 +998,7 @@ router.post('/notifications/hide', authorize('admin','manager'), async (req, res
   }
 });
 // Attendance admin: view timesheet and edit records
-router.get('/attendance/timesheet', permit('attendance','view'), async (req, res) => {
+router.get('/attendance/timesheet', authorize('admin','manager'), async (req, res) => {
   try {
     const { userId, from, to } = req.query || {};
     if (!userId || !from || !to) {
@@ -1010,7 +1010,7 @@ router.get('/attendance/timesheet', permit('attendance','view'), async (req, res
     res.status(500).json({ message: err.message });
   }
 });
-router.get('/attendance/day', permit('attendance','view'), async (req, res) => {
+router.get('/attendance/day', authorize('admin','manager'), async (req, res) => {
   try {
     const { userId, date } = req.query || {};
     if (!userId || !date) {
@@ -1030,7 +1030,7 @@ router.get('/attendance/day', permit('attendance','view'), async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-router.patch('/attendance/:id', permit('attendance','manage'), async (req, res) => {
+router.patch('/attendance/:id', authorize('admin','manager'), async (req, res) => {
   try {
     const id = req.params.id;
     const { checkIn, checkOut } = req.body || {};
