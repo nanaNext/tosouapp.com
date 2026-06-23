@@ -107,6 +107,11 @@ async function buildXlsxBook({ sheets }) {
       width: Number(c?.width || 12)
     }));
 
+    // Freeze top row
+    ws.views = [
+      { state: 'frozen', xSplit: 0, ySplit: 1 }
+    ];
+
     // Header row styling
     const headerRow = ws.getRow(1);
     const headerStyleKey = String(s?.headerStyleKey || 'header').trim() || 'header';
