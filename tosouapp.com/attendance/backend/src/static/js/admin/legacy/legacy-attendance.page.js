@@ -1081,7 +1081,7 @@ async function mountAttendanceImpl({
           </thead>`;
         const tbody = document.createElement('tbody');
         const fmtHm = (mins) => {
-          if (!mins) return '0:00';
+          if (mins == null || isNaN(mins)) return '0:00';
           const h = Math.floor(mins / 60);
           const m = mins % 60;
           return `${h}:${m.toString().padStart(2, '0')}`;

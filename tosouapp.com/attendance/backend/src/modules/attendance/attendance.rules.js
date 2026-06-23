@@ -187,7 +187,20 @@ async function computeRecord(rec, ctx = null) {
       }
     }
   }
-  const breakMin = shift.breakMinutes ?? baseBreak;
+  let breakMin = shift.breakMinutes ?? baseBreak;
+  
+  let dailyRec = null;
+  if (ctx?.dailyCache && ctx.dailyCache[rec.userId] && ctx.dailyCache[rec.userId][dateStr]) {
+    dailyRec = ctx.dailyCache[rec.userId][dateStr];
+  } else if (!ctx?.dailyCache) {
+    dailyRec = await attendanceRepo.getDaily(rec.userId, dateStr).catch(() => null);
+  }
+  
+  if (dailyRec && dailyRec.break_minutes != null) {
+    breakMin = Number(dailyRec.break_minutes);
+    shift = { ...shift, breakMinutes: breakMin };
+  }
+
   const inJ = parseMySQLJSTToDate(rec.checkIn);
   const outJ = parseMySQLJSTToDate(rec.checkOut);
   let worked = minutesBetween(inJ, outJ);
@@ -299,13 +312,16 @@ async function computeRange(rows) {
     shiftCache[sid] = await attendanceRepo.getShiftById(sid).catch(() => null);
   }));
 
-  // Cache go-out records
   const goOutCache = {};
+  const dailyCache = {};
   if (rows.length > 0) {
     const uniqueDates = Array.from(new Set(rows.map(r => getJSTDateStr(r.checkIn))));
+    const minDate = uniqueDates.reduce((a, b) => a < b ? a : b);
+    const maxDate = uniqueDates.reduce((a, b) => a > b ? a : b);
     const ymMaps = new Set(uniqueDates.map(d => d.slice(0, 7)));
     for (const uid of userIds) {
       goOutCache[uid] = {};
+      dailyCache[uid] = {};
       for (const ym of ymMaps) {
         const [yy, mm] = ym.split('-');
         const goOuts = await attendanceRepo.getGoOutRecordsByMonth(uid, yy, mm).catch(() => []);
@@ -314,10 +330,18 @@ async function computeRange(rows) {
           goOutCache[uid][g.date].push(g);
         }
       }
+      
+      const dailies = await attendanceRepo.listDailyBetween(uid, minDate, maxDate).catch(() => []);
+      for (const d of dailies) {
+        if (d.date) {
+           const dStr = getJSTDateStr(d.date);
+           dailyCache[uid][dStr] = d;
+        }
+      }
     }
   }
 
-  const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache };
+  const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache, dailyCache };
 
   for (const r of rows) {
     if (!r.checkOut) continue;
