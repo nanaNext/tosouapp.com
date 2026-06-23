@@ -1073,21 +1073,27 @@ async function mountAttendanceImpl({
           <thead>
             <tr>
               <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">日付</th>
-              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">通常(分)</th>
-              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">残業(分)</th>
-              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">深夜(分)</th>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">通常(時間)</th>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">残業(時間)</th>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">深夜(時間)</th>
               <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:center;">操作</th>
             </tr>
           </thead>`;
         const tbody = document.createElement('tbody');
+        const fmtHm = (mins) => {
+          if (!mins) return '0:00';
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          return `${h}:${m.toString().padStart(2, '0')}`;
+        };
         for (const d of (r.days || [])) {
           const tr = document.createElement('tr');
           tr.style.borderBottom = '1px solid #e2e8f0';
           tr.innerHTML = `
             <td style="padding:10px;">${d.date}</td>
-            <td style="padding:10px; text-align:right;">${d.regularMinutes}</td>
-            <td style="padding:10px; text-align:right;">${d.overtimeMinutes}</td>
-            <td style="padding:10px; text-align:right;">${d.nightMinutes}</td>
+            <td style="padding:10px; text-align:right;">${fmtHm(d.regularMinutes)}</td>
+            <td style="padding:10px; text-align:right;">${fmtHm(d.overtimeMinutes)}</td>
+            <td style="padding:10px; text-align:right;">${fmtHm(d.nightMinutes)}</td>
             <td style="padding:10px; text-align:center;"><button type="button" class="attrec-btn" style="padding:4px 10px; font-size:12px;" data-action="day-detail" data-date="${d.date}">詳細</button></td>
           `;
           tbody.appendChild(tr);
