@@ -157,6 +157,13 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       ORDER BY startDate ASC, created_at ASC
     `, [id, start, end]);
 
+    const [dailyRows] = await db.query(`
+      SELECT date, kubun
+      FROM attendance_daily
+      WHERE userId = ?
+        AND date >= ? AND date <= ?
+    `, [id, start, end]);
+
     const cal = await calendarRepo.computeYear(year).catch(() => null);
     const isKouji = String(target.departmentName || '').includes('工事部');
     
@@ -259,37 +266,94 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     addKV('在留期限', fmtDate(info?.visa_expiry));
     addKV('保険番号', info?.insurance_number);
 
-    const segRows = (attRows || []).map(a => {
-      const d = fmtDate(a.checkIn);
-      return {
-        isOff: isOff(d),
-        cells: [
-          d,
-          dowJa(d),
-          fmt(a.id),
-          fmtHm(a.checkIn),
-          fmtHm(a.checkOut),
-          wtLabel(a.work_type),
-          fmt(a.shiftId),
-          fmt(a.labels)
-        ]
-      };
-    });
+    const dailyMap = new Map();
+    for (const r of dailyRows || []) {
+      dailyMap.set(fmtDate(r.date), r.kubun);
+    }
 
-    const wrRows = (repRows || []).map(r => {
+    const attMap = new Map();
+    for (const a of attRows || []) {
+      const d = fmtDate(a.checkIn);
+      if (!d) continue;
+      if (!attMap.has(d)) attMap.set(d, []);
+      attMap.get(d).push(a);
+    }
+
+    const wrMap = new Map();
+    for (const r of repRows || []) {
       const d = fmtDate(r.date);
-      return {
-        isOff: isOff(d),
-        cells: [
-          d,
-          dowJa(d),
-          wtLabel(r.work_type),
-          fmt(r.site),
-          fmt(r.work),
-          fmtDate(r.updated_at) + (r.updated_at ? ' ' + fmtHm(r.updated_at) : '')
-        ]
-      };
-    });
+      if (!d) continue;
+      if (!wrMap.has(d)) wrMap.set(d, []);
+      wrMap.get(d).push(r);
+    }
+
+    const allDates = [];
+    const dt0 = new Date(start + 'T00:00:00Z');
+    const dt1 = new Date(end + 'T00:00:00Z');
+    while (dt0.getTime() <= dt1.getTime()) {
+      allDates.push(dt0.toISOString().slice(0, 10));
+      dt0.setUTCDate(dt0.getUTCDate() + 1);
+    }
+
+    const segRows = [];
+    for (const d of allDates) {
+      const is_off = isOff(d);
+      const dayJa = dowJa(d);
+      const kubun = dailyMap.get(d) || '';
+      const atts = attMap.get(d) || [];
+      if (atts.length === 0) {
+        segRows.push({
+          isOff: is_off,
+          cells: [ d, dayJa, '', '', '', kubun, '', '' ]
+        });
+      } else {
+        for (const a of atts) {
+          const dispKubun = kubun || wtLabel(a.work_type);
+          segRows.push({
+            isOff: is_off,
+            cells: [
+              d,
+              dayJa,
+              fmt(a.id),
+              fmtHm(a.checkIn),
+              fmtHm(a.checkOut),
+              dispKubun,
+              fmt(a.shiftId),
+              fmt(a.labels)
+            ]
+          });
+        }
+      }
+    }
+
+    const wrRows = [];
+    for (const d of allDates) {
+      const is_off = isOff(d);
+      const dayJa = dowJa(d);
+      const kubun = dailyMap.get(d) || '';
+      const reps = wrMap.get(d) || [];
+      if (reps.length === 0) {
+        wrRows.push({
+          isOff: is_off,
+          cells: [ d, dayJa, kubun, '', '', '' ]
+        });
+      } else {
+        for (const r of reps) {
+          const dispKubun = kubun || wtLabel(r.work_type);
+          wrRows.push({
+            isOff: is_off,
+            cells: [
+              d,
+              dayJa,
+              dispKubun,
+              fmt(r.site),
+              fmt(r.work),
+              fmtDate(r.updated_at) + (r.updated_at ? ' ' + fmtHm(r.updated_at) : '')
+            ]
+          });
+        }
+      }
+    }
 
     const lvRows = (leaveRows || []).map(lr => {
       const d0 = fmtDate(lr.startDate);
@@ -355,7 +419,8 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       ]
     });
 
-    const fileName = `employee_${info?.employee_code || id}_${year}.xlsx`;
+    const targetName = String(info?.username || info?.email || id).replace(/[\\/:*?"<>|]/g, '_');
+    const fileName = `employee_${info?.employee_code || targetName}_${year}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.status(200).send(buf);
