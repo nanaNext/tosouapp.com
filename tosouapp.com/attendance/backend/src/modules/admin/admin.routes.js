@@ -622,7 +622,7 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
     }
     const ids = String(userIds).split(',').map(s => s.trim()).filter(Boolean);
     const lang = (req.query.lang || req.headers['accept-language'] || '').toLowerCase();
-    const isJa = lang.startsWith('ja');
+    const isJa = lang.startsWith('ja') || true; // Force Japanese for now
     const header = isJa
       ? '従業員ID,日付,通常勤務分,残業分,深夜分\n'
       : 'userId,date,regularMinutes,overtimeMinutes,nightMinutes\n';
@@ -633,9 +633,13 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
         csv += `${id},${d.date},${d.regularMinutes},${d.overtimeMinutes},${d.nightMinutes}\n`;
       }
     }
-    res.setHeader('Content-Type', 'text/csv');
+    
+    // Add BOM for Excel UTF-8 support
+    const bom = '\uFEFF';
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=\"timesheet.csv\"');
-    res.status(200).send(csv);
+    res.status(200).send(bom + csv);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

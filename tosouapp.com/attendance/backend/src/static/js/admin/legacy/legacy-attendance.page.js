@@ -74,10 +74,20 @@ async function mountAttendanceImpl({
   const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
 
   const rosterWrap = document.createElement('div');
-  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: ${vhExpr}; display: flex; flex-direction: column; overflow: visible;`;
+  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: auto; display: flex; flex-direction: column; overflow: visible;`;
   // Add mobile/desktop styles properly
   rosterWrap.innerHTML = `
     <style>
+      body, html {
+          margin: 0; padding: 0; min-height: 100vh; overflow: visible !important;
+        }
+        .content {
+          min-height: 100vh; overflow: visible !important;
+        }
+      .attrec-fiori-override {
+        height: auto !important;
+        overflow: visible !important;
+      }
       .attrec-fiori-override .dash-card-title {
         font-size: 16px !important;
         font-weight: 700 !important;
@@ -86,11 +96,11 @@ async function mountAttendanceImpl({
         margin: 0 !important;
       }
       .attrec-fiori-override.dash-card {
-        background: #fff !important;
+        background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
-        padding: 24px !important;
+        padding: 24px 16px !important;
         box-sizing: border-box;
       }
       .attrec-fiori-override .attrec-head {
@@ -119,6 +129,8 @@ async function mountAttendanceImpl({
         margin: 0 !important;
         padding: 0 0 24px 0 !important;
         border-top: none !important;
+        max-height: none !important;
+        border: none !important;
       }
       .attrec-fiori-override .attrec-dash-table th {
         padding: 6px 12px !important;
@@ -441,13 +453,13 @@ async function mountAttendanceImpl({
         }
       }
     </style>
-    <div class="dash-card attrec-fiori-override" style="height: 100%; display: flex; flex-direction: column; overflow: visible !important;">
+    <div class="dash-card attrec-fiori-override" style="height: auto; display: flex; flex-direction: column; overflow: visible !important;">
       <div class="attrec-controls" style="margin-bottom: 12px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: none !important;">
       </div>
       <div class="attrec-head" style="flex-shrink: 0; padding-top: 0px;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: flex; gap: 12px; margin-bottom: 8px;"></div>
       </div>
-      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow-y: auto; overflow-x: auto;"></div>
+      <div id="rosterTable" class="attrec-table" style="height: auto; overflow-y: visible; overflow-x: visible; max-height: none !important;"></div>
     </div>
   `;
   content.appendChild(rosterWrap);
@@ -458,10 +470,6 @@ async function mountAttendanceImpl({
     mobileActions.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px;">
         <input id="rosterDateMobile" type="date" value="${esc(today)}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 120px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
-        <input id="rosterMonthMobile" type="month" value="${esc(month)}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 110px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
-        <button type="button" id="rosterExportMonthXlsxMobile" style="height: 32px; padding: 0 8px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff; display: flex; align-items: center; justify-content: center; color: #0b2c66; cursor: pointer; margin: 0; font-size:12px; font-weight:600; white-space:nowrap;">
-          Excel出力
-        </button>
       </div>
     `;
     
@@ -470,10 +478,11 @@ async function mountAttendanceImpl({
 
   // Restore Desktop controls
   const desktopControlsHtml = `
-        <div class="attrec-control hidden-on-mobile" style="flex-direction: row !important; align-items: center !important; justify-content: flex-start !important; padding: 0 !important; gap: 12px; background: transparent !important; border: none !important; overflow: visible !important;">
-          <input id="rosterDate" class="attrec-input" type="date" value="${esc(today)}" style="width: 140px; border: 1px solid #cbd5e1; height: 34px; box-sizing: border-box;">
-          <input id="rosterMonth" class="attrec-input" type="month" value="${esc(month)}" style="width: 120px; border: 1px solid #cbd5e1; height: 34px; box-sizing: border-box;">
-          <button type="button" id="rosterExportMonthXlsx" class="attrec-btn">Excel出力</button>
+        <div class="attrec-control hidden-on-mobile" style="display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100%; padding: 0 !important; gap: 12px; background: transparent !important; border: none !important; overflow: visible !important;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <input id="rosterDate" class="attrec-input" type="date" value="${esc(today)}" style="width: 140px; border: 1px solid #cbd5e1; height: 34px; box-sizing: border-box;" />
+          </div>
+          <div id="topRightFormContainer" style="display: flex; align-items: center; gap: 8px;"></div>
         </div>
   `;
   const controlsDiv = rosterWrap.querySelector('.attrec-controls');
@@ -544,13 +553,13 @@ async function mountAttendanceImpl({
         
         // Clean aesthetic table structure
         table.className = 'beautiful-table';
-        table.style.tableLayout = 'fixed';
+        table.style.tableLayout = 'auto';
         table.style.width = '100%';
-        table.style.minWidth = '800px'; 
+        table.style.minWidth = '1200px'; 
         table.style.borderCollapse = 'collapse';
         table.style.border = '1px solid #d1d5db';
-        table.style.borderRadius = '8px';
-        table.style.overflow = 'hidden';
+        table.style.borderRadius = '0';
+        table.style.overflow = 'visible';
         
         table.innerHTML = `
           <style>
@@ -618,7 +627,7 @@ async function mountAttendanceImpl({
                 grid-auto-rows: auto;
                 background: #fff;
                 border: 1px solid #e2e8f0;
-                border-radius: 8px;
+                border-radius: 0;
                 padding: 0;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.05);
                 position: relative;
@@ -636,7 +645,7 @@ async function mountAttendanceImpl({
                 border: none;
                 border-right: 1px solid #e2e8f0;
                 background: #f8fafc;
-                border-radius: 8px 0 0 8px;
+                border-radius: 0;
                 text-align: left !important;
               }
               .beautiful-table td:nth-child(1)::before {
@@ -710,17 +719,6 @@ async function mountAttendanceImpl({
               cursor: not-allowed;
             }
           </style>
-          <colgroup>
-            <col style="width:10%;">
-            <col style="width:15%;">
-            <col style="width:10%;">
-            <col style="width:10%;">
-            <col style="width:10%;">
-            <col style="width:8%;">
-            <col style="width:8%;">
-            <col style="width:12%;">
-            <col style="width:17%;">
-          </colgroup>
           <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>
         `;
         const tbody = document.createElement('tbody');
@@ -804,14 +802,14 @@ async function mountAttendanceImpl({
           // Use standard table cell creation instead of weird layout elements
           tr.innerHTML = `
             <td data-label="社員番号" style="text-align:center;">${esc(code)}</td>
-            <td data-label="氏名" style="font-weight:600;">${esc(name)}</td>
-            <td data-label="部署">${esc(dept)}</td>
-            <td data-label="勤務区分">${esc(wtLabel)}</td>
-            <td data-label="状態" style="text-align:center;"><span class="${stClass}">${esc(stLabel)}</span></td>
-            <td data-label="出勤" style="text-align:center; font-family:monospace; font-size:14px;">${esc(cinView)}</td>
-            <td data-label="退勤" style="text-align:center; font-family:monospace; font-size:14px;">${esc(coutView)}</td>
-            <td data-label="現場"><div style="font-size:12px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>
-            <td data-label="作業内容"><div style="font-size:12px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:80px; overflow-y:auto;">${esc(workView)}</div></td>
+            <td data-label="氏名" style="font-weight:600; white-space:nowrap;">${esc(name)}</td>
+            <td data-label="部署" style="white-space:nowrap;">${esc(dept)}</td>
+            <td data-label="勤務区分" style="white-space:nowrap;">${esc(wtLabel)}</td>
+            <td data-label="状態" style="text-align:center; white-space:nowrap;"><span class="${stClass}">${esc(stLabel)}</span></td>
+            <td data-label="出勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;">${esc(cinView)}</td>
+            <td data-label="退勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;">${esc(coutView)}</td>
+            <td data-label="現場"><div style="font-size:13px; color:#475569;">${esc(siteView)}</div></td>
+            <td data-label="作業内容"><div style="font-size:13px; color:#475569; word-break:break-all; white-space:pre-wrap;">${esc(workView)}</div></td>
           `;
           
           tbody.appendChild(tr);
@@ -819,8 +817,12 @@ async function mountAttendanceImpl({
         table.appendChild(tbody);
         
         const tableWrap = document.createElement('div');
+        tableWrap.id = 'attrecTableWrap';
         tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
         tableWrap.style.overflowX = 'auto';
+        tableWrap.style.overflowY = 'auto';
+        tableWrap.style.maxHeight = 'calc(100vh - 200px)';
+        tableWrap.style.marginBottom = '20px';
         tableWrap.appendChild(table);
         host.appendChild(tableWrap);
 
@@ -828,13 +830,12 @@ async function mountAttendanceImpl({
         if (items.length > 0) {
           const totalPages = Math.ceil(items.length / pageSize);
           const paginationDiv = document.createElement('div');
-          paginationDiv.className = 'pagination-controls';
+          paginationDiv.className = 'attrec-paging';
           paginationDiv.style.display = 'flex';
           paginationDiv.style.alignItems = 'center';
           paginationDiv.style.justifyContent = 'flex-start';
           paginationDiv.style.gap = '15px';
-          paginationDiv.style.marginTop = '15px';
-          paginationDiv.style.padding = '10px 0';
+          paginationDiv.style.padding = '10px 0 20px 0';
           
           const prevBtn = document.createElement('button');
           prevBtn.type = 'button';
@@ -940,14 +941,19 @@ async function mountAttendanceImpl({
 
   const form = document.createElement('form');
   const yNow = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 4);
+  form.style.display = 'flex';
+  form.style.alignItems = 'center';
+  form.style.gap = '8px';
+  // Filter out admin and manager roles from the dropdown list
+  const employeeUsers = users.filter(u => u.role !== 'admin' && u.role !== 'manager');
   form.innerHTML = `
-    <select id="tsUser">${users.map(u => `<option value="${u.id}">${u.id} ${u.username || u.email}</option>`).join('')}</select>
-    <input id="tsYear" placeholder="Year(YYYY)" value="${yNow}" style="width:110px">
-    <button type="button" id="tsExportXlsx">Excel</button>
-    <input id="tsFrom" placeholder="From(YYYY-MM-DD)" style="width:150px">
-    <input id="tsTo" placeholder="To(YYYY-MM-DD)" style="width:150px">
-    <button type="submit">表示</button>
-    <button type="button" id="tsExport">CSV</button>
+    <select id="tsUser" style="height:34px; border:1px solid #cbd5e1; border-radius:4px; padding:0 8px; font-size:13px; max-width: 150px;">${employeeUsers.map(u => `<option value="${u.id}">${u.id} ${u.username || u.email}</option>`).join('')}</select>
+    <input id="tsYear" placeholder="Year(YYYY)" value="${yNow}" style="width:90px; height:34px; border:1px solid #cbd5e1; border-radius:4px; padding:0 8px; font-size:13px;">
+    <button type="button" id="tsExportXlsx" class="attrec-btn" style="height:34px; padding:0 12px; background:#fff; border:1px solid #cbd5e1; border-radius:4px; font-size:13px; font-weight:600; cursor:pointer;">Excel</button>
+    <input id="tsFrom" placeholder="From(YYYY-MM-DD)" style="width:140px; height:34px; border:1px solid #cbd5e1; border-radius:4px; padding:0 8px; font-size:13px;">
+    <input id="tsTo" placeholder="To(YYYY-MM-DD)" style="width:140px; height:34px; border:1px solid #cbd5e1; border-radius:4px; padding:0 8px; font-size:13px;">
+    <button type="submit" class="attrec-btn" style="height:34px; padding:0 12px; background:#fff; border:1px solid #cbd5e1; border-radius:4px; font-size:13px; font-weight:600; cursor:pointer;">表示</button>
+    <button type="button" id="tsExport" class="attrec-btn" style="height:34px; padding:0 12px; background:#fff; border:1px solid #cbd5e1; border-radius:4px; font-size:13px; font-weight:600; cursor:pointer;">CSV</button>
   `;
   const resultDiv = document.createElement('div');
   const detailDiv = document.createElement('div');
@@ -983,31 +989,62 @@ async function mountAttendanceImpl({
     const userId = parseInt(form.querySelector('#tsUser').value, 10);
     const from = form.querySelector('#tsFrom').value.trim();
     const to = form.querySelector('#tsTo').value.trim();
-    currentUserId = userId;
-    const r = await getTimesheet(userId, from, to, { signal });
-    if (!isCurrent) return;
-    resultDiv.innerHTML = '';
-    detailDiv.innerHTML = '';
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.innerHTML = '<thead><tr><th>日付</th><th>通常</th><th>残業</th><th>深夜</th><th>操作</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    for (const d of (r.days || [])) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${d.date}</td><td>${d.regularMinutes}</td><td>${d.overtimeMinutes}</td><td>${d.nightMinutes}</td><td><button type="button" data-action="day-detail" data-date="${d.date}">詳細</button></td>`;
-      tbody.appendChild(tr);
+    
+    if (!userId) {
+        alert('社員を選択してください');
+        return;
     }
-    table.appendChild(tbody);
-    resultDiv.appendChild(table);
+    if (!from || !to) {
+        alert('「From」と「To」の日付を入力してください。');
+        return;
+    }
+    
+    currentUserId = userId;
+    try {
+        const r = await getTimesheet(userId, from, to, { signal });
+        if (!isCurrent) return;
+        resultDiv.innerHTML = '';
+        detailDiv.innerHTML = '';
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.innerHTML = '<thead><tr><th>日付</th><th>通常</th><th>残業</th><th>深夜</th><th>操作</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+        for (const d of (r.days || [])) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${d.date}</td><td>${d.regularMinutes}</td><td>${d.overtimeMinutes}</td><td>${d.nightMinutes}</td><td><button type="button" data-action="day-detail" data-date="${d.date}">詳細</button></td>`;
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        resultDiv.appendChild(table);
+    } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        if (!isCurrent) return;
+        alert(String((err && err.message) ? err.message : 'データの取得に失敗しました'));
+    }
   });
 
-  form.querySelector('#tsExport').addEventListener('click', () => {
+  form.querySelector('#tsExport').addEventListener('click', async () => {
     if (!checkExportPerm()) return;
     const userId = parseInt(form.querySelector('#tsUser').value, 10);
     const from = form.querySelector('#tsFrom').value.trim();
     const to = form.querySelector('#tsTo').value.trim();
-    const url = buildTimesheetExportURL(String(userId), from, to);
-    downloadWithAuth(url, 'timesheet.csv');
+    if (!userId) {
+        alert('社員を選択してください');
+        return;
+    }
+    if (!from || !to) {
+        alert('「From」と「To」の日付を入力してください。');
+        return;
+    }
+    const url = typeof buildTimesheetExportURL === 'function' 
+        ? buildTimesheetExportURL(String(userId), from, to)
+        : `/api/admin/export/timesheet.csv?userIds=${encodeURIComponent(String(userId))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    
+    try {
+        await downloadWithAuth(url, `timesheet_${userId}.csv`);
+    } catch (e) {
+        alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
+    }
   });
   form.querySelector('#tsExportXlsx').addEventListener('click', async () => {
     if (!checkExportPerm()) return;
@@ -1025,18 +1062,25 @@ async function mountAttendanceImpl({
   // Hide Personal Timesheet Detail if not in an admin context or if it's the records standalone page
   const isRecordsPage = window.location.pathname.includes('/ui/attendance-records');
   if (!isRecordsPage) {
-    const adv = document.createElement('details');
-    adv.open = false;
-    adv.innerHTML = `<summary style="cursor:pointer;font-weight:900;padding:10px 0;">個人タイムシート（詳細）</summary>`;
-    adv.appendChild(form);
-    adv.appendChild(resultDiv);
-    adv.appendChild(detailDiv);
-    content.appendChild(adv);
-    delegate(adv, 'button[data-action="save-att"]', 'click', async (_e, btn) => {
+    const trContainer = rosterWrap.querySelector('#topRightFormContainer');
+    if (trContainer) {
+      trContainer.appendChild(form);
+    } else {
+      const adv = document.createElement('details');
+      adv.open = true;
+      adv.style.marginBottom = '12px';
+      adv.innerHTML = `<summary style="cursor:pointer;font-weight:900;padding:10px 0;">個人タイムシート（詳細）</summary>`;
+      adv.appendChild(form);
+      content.insertBefore(adv, rosterWrap);
+    }
+    content.appendChild(resultDiv);
+    content.appendChild(detailDiv);
+    
+    delegate(document.body, 'button[data-action="save-att"]', 'click', async (_e, btn) => {
       const id = btn.dataset.id || '';
       if (!id) return;
-      const inEl = adv.querySelector(`input[data-in="${id}"]`);
-      const outEl = adv.querySelector(`input[data-out="${id}"]`);
+      const inEl = document.querySelector(`input[data-in="${id}"]`);
+      const outEl = document.querySelector(`input[data-out="${id}"]`);
       const inVal = inEl && inEl.value ? inEl.value : null;
       const outVal = outEl && outEl.value ? outEl.value : null;
       await updateAttendanceSegment(id, { checkIn: inVal, checkOut: outVal }, { signal });

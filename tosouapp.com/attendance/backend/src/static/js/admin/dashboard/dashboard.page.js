@@ -150,11 +150,11 @@ const renderDashboard = async (profile) => {
   workCard.classList.add('clickable');
   workCard.setAttribute('role', 'button');
   workCard.setAttribute('tabindex', '0');
-  workCard.addEventListener('click', () => { window.location.href = '/admin/attendance'; });
+  workCard.addEventListener('click', () => { window.open('/admin/attendance?standalone=1', '_blank'); });
   workCard.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      window.location.href = '/admin/attendance';
+      window.open('/admin/attendance?standalone=1', '_blank');
     }
   });
   // Keep KPI cards text-only to avoid clipping artifacts from nested mini lists.
@@ -186,9 +186,8 @@ const renderDashboard = async (profile) => {
     const absentees = items.filter(it => {
       const p = planned.get(it.userId);
       const role = String((p?.role || it?.role || '')).toLowerCase();
-      const plannedWork = p && p.planned?.status === 'work';
       const kubunAbsent = String(it?.dailyKubun || '').trim() === '欠勤';
-      return role === 'employee' && (kubunAbsent || (it?.status === 'not_checked_in' && plannedWork));
+      return role === 'employee' && kubunAbsent;
     });
     if (!absentees.length) {
       const empty = document.createElement('div');
