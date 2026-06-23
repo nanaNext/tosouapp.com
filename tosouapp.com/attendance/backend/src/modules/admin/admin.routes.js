@@ -158,7 +158,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     `, [id, start, end]);
 
     const [dailyRows] = await db.query(`
-      SELECT date, kubun
+      SELECT date, kubun, location, memo
       FROM attendance_daily
       WHERE userId = ?
         AND date >= ? AND date <= ?
@@ -268,7 +268,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
 
     const dailyMap = new Map();
     for (const r of dailyRows || []) {
-      dailyMap.set(fmtDate(r.date), r.kubun);
+      dailyMap.set(fmtDate(r.date), { kubun: r.kubun, location: r.location, memo: r.memo });
     }
 
     const attMap = new Map();
@@ -299,7 +299,8 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     for (const d of allDates) {
       const is_off = isOff(d);
       const dayJa = dowJa(d);
-      const kubun = dailyMap.get(d) || '';
+      const daily = dailyMap.get(d) || {};
+      const kubun = daily.kubun || '';
       const atts = attMap.get(d) || [];
       if (atts.length === 0) {
         segRows.push({
@@ -330,12 +331,18 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     for (const d of allDates) {
       const is_off = isOff(d);
       const dayJa = dowJa(d);
-      const kubun = dailyMap.get(d) || '';
+      const daily = dailyMap.get(d) || {};
+      const kubun = daily.kubun || '';
       const reps = wrMap.get(d) || [];
       if (reps.length === 0) {
+        // Look up site/work from daily attendance if missing in work reports
+        const fallbackSite = daily.location || '';
+        const fallbackWork = daily.memo || '';
+        const hasFallback = fallbackSite || fallbackWork;
+        
         wrRows.push({
           isOff: is_off,
-          cells: [ d, dayJa, kubun, '', '', '' ]
+          cells: [ d, dayJa, kubun, fallbackSite, fallbackWork + (hasFallback ? ' (管理者入力)' : ''), '' ]
         });
       } else {
         for (const r of reps) {
@@ -420,7 +427,8 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     });
 
     const targetName = String(info?.username || info?.email || id).replace(/[\\/:*?"<>|]/g, '_');
-    const fileName = `employee_${info?.employee_code || targetName}_${year}.xlsx`;
+    const empCode = info?.employee_code ? `${info.employee_code}_` : '';
+    const fileName = `${empCode}${targetName}_${year}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.status(200).send(buf);
