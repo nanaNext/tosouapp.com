@@ -965,18 +965,29 @@ async function mountAttendanceImpl({
     if (!currentUserId) return;
     const q = await getAttendanceDay(currentUserId, date, { signal });
     if (!isCurrent) return;
-    detailDiv.innerHTML = `<h4>${date} 編集</h4>`;
+    detailDiv.innerHTML = `<h4 style="margin-top:0;">${date} 編集</h4>`;
     const t2 = document.createElement('table');
+    t2.className = 'beautiful-table';
     t2.style.width = '100%';
-    t2.innerHTML = '<thead><tr><th>ID</th><th>出勤</th><th>退勤</th><th>保存</th></tr></thead>';
+    t2.style.borderCollapse = 'collapse';
+    t2.innerHTML = `
+      <thead>
+        <tr>
+          <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">ID</th>
+          <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">出勤</th>
+          <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">退勤</th>
+          <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:center;">保存</th>
+        </tr>
+      </thead>`;
     const b2 = document.createElement('tbody');
     for (const seg of (q.segments || [])) {
       const tr2 = document.createElement('tr');
+      tr2.style.borderBottom = '1px solid #e2e8f0';
       tr2.innerHTML = `
-        <td>${seg.id}</td>
-        <td><input data-in="${seg.id}" value="${seg.checkIn || ''}"></td>
-        <td><input data-out="${seg.id}" value="${seg.checkOut || ''}"></td>
-        <td><button type="button" data-action="save-att" data-id="${seg.id}">保存</button></td>
+        <td style="padding:10px;">${seg.id}</td>
+        <td style="padding:10px;"><input type="time" class="attrec-input" data-in="${seg.id}" value="${seg.checkIn ? seg.checkIn.substring(11, 16) : ''}"></td>
+        <td style="padding:10px;"><input type="time" class="attrec-input" data-out="${seg.id}" value="${seg.checkOut ? seg.checkOut.substring(11, 16) : ''}"></td>
+        <td style="padding:10px; text-align:center;"><button type="button" class="attrec-btn" style="padding:4px 10px; font-size:12px;" data-action="save-att" data-id="${seg.id}">保存</button></td>
       `;
       b2.appendChild(tr2);
     }
@@ -1005,17 +1016,92 @@ async function mountAttendanceImpl({
         if (!isCurrent) return;
         resultDiv.innerHTML = '';
         detailDiv.innerHTML = '';
+        
+        // Add close button and styling to make it look like a popup/overlay
+        resultDiv.style.position = 'fixed';
+        resultDiv.style.top = '50%';
+        resultDiv.style.left = '50%';
+        resultDiv.style.transform = 'translate(-50%, -50%)';
+        resultDiv.style.backgroundColor = '#fff';
+        resultDiv.style.padding = '20px';
+        resultDiv.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+        resultDiv.style.borderRadius = '8px';
+        resultDiv.style.zIndex = '1000';
+        resultDiv.style.maxHeight = '80vh';
+        resultDiv.style.overflowY = 'auto';
+        resultDiv.style.width = '90%';
+        resultDiv.style.maxWidth = '800px';
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'tsOverlay';
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100vw';
+        overlay.style.height = '100vh';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.4)';
+        overlay.style.zIndex = '999';
+        overlay.addEventListener('click', () => {
+          resultDiv.style.display = 'none';
+          overlay.remove();
+          detailDiv.innerHTML = '';
+        });
+        document.body.appendChild(overlay);
+
+        const headerDiv = document.createElement('div');
+        headerDiv.style.display = 'flex';
+        headerDiv.style.justifyContent = 'space-between';
+        headerDiv.style.alignItems = 'center';
+        headerDiv.style.marginBottom = '15px';
+        headerDiv.innerHTML = `
+          <h3 style="margin:0; font-size:18px; color:#1e293b;">タイムシート詳細 (${from} ~ ${to})</h3>
+          <button type="button" id="tsCloseBtn" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
+        `;
+        resultDiv.appendChild(headerDiv);
+
+        headerDiv.querySelector('#tsCloseBtn').addEventListener('click', () => {
+          resultDiv.style.display = 'none';
+          overlay.remove();
+          detailDiv.innerHTML = '';
+        });
+
         const table = document.createElement('table');
+        table.className = 'beautiful-table';
         table.style.width = '100%';
-        table.innerHTML = '<thead><tr><th>日付</th><th>通常</th><th>残業</th><th>深夜</th><th>操作</th></tr></thead>';
+        table.style.borderCollapse = 'collapse';
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">日付</th>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">通常(分)</th>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">残業(分)</th>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:right;">深夜(分)</th>
+              <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:center;">操作</th>
+            </tr>
+          </thead>`;
         const tbody = document.createElement('tbody');
         for (const d of (r.days || [])) {
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${d.date}</td><td>${d.regularMinutes}</td><td>${d.overtimeMinutes}</td><td>${d.nightMinutes}</td><td><button type="button" data-action="day-detail" data-date="${d.date}">詳細</button></td>`;
+          tr.style.borderBottom = '1px solid #e2e8f0';
+          tr.innerHTML = `
+            <td style="padding:10px;">${d.date}</td>
+            <td style="padding:10px; text-align:right;">${d.regularMinutes}</td>
+            <td style="padding:10px; text-align:right;">${d.overtimeMinutes}</td>
+            <td style="padding:10px; text-align:right;">${d.nightMinutes}</td>
+            <td style="padding:10px; text-align:center;"><button type="button" class="attrec-btn" style="padding:4px 10px; font-size:12px;" data-action="day-detail" data-date="${d.date}">詳細</button></td>
+          `;
           tbody.appendChild(tr);
         }
         table.appendChild(tbody);
         resultDiv.appendChild(table);
+        resultDiv.style.display = 'block'; // Show it
+        
+        // Ensure detailDiv is styled correctly if it appears
+        detailDiv.style.marginTop = '20px';
+        detailDiv.style.borderTop = '1px solid #e2e8f0';
+        detailDiv.style.paddingTop = '15px';
+        resultDiv.appendChild(detailDiv); // Put detail inside the popup
+
     } catch (err) {
         if (err && err.name === 'AbortError') return;
         if (!isCurrent) return;
@@ -1085,8 +1171,25 @@ async function mountAttendanceImpl({
       if (!id) return;
       const inEl = document.querySelector(`input[data-in="${id}"]`);
       const outEl = document.querySelector(`input[data-out="${id}"]`);
-      const inVal = inEl && inEl.value ? inEl.value : null;
-      const outVal = outEl && outEl.value ? outEl.value : null;
+      // We expect format "HH:MM", we should attach a dummy date to save as datetime, or backend handles it?
+      // Looking at the codebase, updateAttendanceSegment expects full datetime if possible, or just what backend accepts.
+      // Wait, original code was: const inVal = inEl && inEl.value ? inEl.value : null; 
+      // If original worked, we just pass the value. But it might have been full datetime.
+      // Let's pass the date part from the h4 if needed, or just let backend handle HH:MM if it can.
+      // The original code passed `seg.checkIn` which was a full datetime string. If user edits "HH:MM", backend might fail if it expects datetime.
+      // Let's grab the date from the header.
+      const dateText = detailDiv.querySelector('h4')?.textContent || '';
+      const dateStr = dateText.split(' ')[0]; // "YYYY-MM-DD"
+      
+      let inVal = inEl && inEl.value ? inEl.value : null;
+      let outVal = outEl && outEl.value ? outEl.value : null;
+      
+      if (inVal && inVal.length <= 5) inVal = `${dateStr} ${inVal}:00`;
+      else if (inVal && inVal.length === 16) inVal = inVal.replace('T', ' ') + ':00';
+      
+      if (outVal && outVal.length <= 5) outVal = `${dateStr} ${outVal}:00`;
+      else if (outVal && outVal.length === 16) outVal = outVal.replace('T', ' ') + ':00';
+      
       await updateAttendanceSegment(id, { checkIn: inVal, checkOut: outVal }, { signal });
       alert('保存しました');
     });
