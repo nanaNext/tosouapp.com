@@ -2479,9 +2479,11 @@ exports.exportCsv = async (req, res) => {
     for (const d of r.days) {
       csv += `${d.date},${d.regularMinutes},${d.overtimeMinutes},${d.nightMinutes}\n`;
     }
-    res.setHeader('Content-Type', 'text/csv');
+    
+    const buf = Buffer.from('\uFEFF' + csv, 'utf8');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=\"timesheet.csv\"');
-    res.status(200).send(csv);
+    res.status(200).send(buf);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

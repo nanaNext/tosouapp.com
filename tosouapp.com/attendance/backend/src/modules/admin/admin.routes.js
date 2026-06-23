@@ -156,7 +156,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
         AND endDate >= ? AND startDate <= ?
       ORDER BY startDate ASC, created_at ASC
     `, [id, start, end]);
-
+// cái hàm này dùng để lấy dữ liệu ngày nghỉ của người dùng trong năm đó (khi không có năm thì lấy năm hiện tại)
     const [dailyRows] = await db.query(`
       SELECT date, kubun, location, memo
       FROM attendance_daily
@@ -339,10 +339,11 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
         const fallbackSite = daily.location || '';
         const fallbackWork = daily.memo || '';
         const hasFallback = fallbackSite || fallbackWork;
+        const managerInputStr = hasFallback ? '管理者入力' : '';
         
         wrRows.push({
           isOff: is_off,
-          cells: [ d, dayJa, kubun, fallbackSite, fallbackWork + (hasFallback ? ' (管理者入力)' : ''), '' ]
+          cells: [ d, dayJa, kubun, fallbackSite, fallbackWork, '', managerInputStr ]
         });
       } else {
         for (const r of reps) {
@@ -355,7 +356,8 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
               dispKubun,
               fmt(r.site),
               fmt(r.work),
-              fmtDate(r.updated_at) + (r.updated_at ? ' ' + fmtHm(r.updated_at) : '')
+              fmtDate(r.updated_at) + (r.updated_at ? ' ' + fmtHm(r.updated_at) : ''),
+              ''
             ]
           });
         }
@@ -407,7 +409,8 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
             { header: '勤務区分', width: 12 },
             { header: '現場', width: 18 },
             { header: '作業内容', width: 48 },
-            { header: '更新日', width: 18 }
+            { header: '更新日', width: 18 },
+            { header: '管理者入力', width: 14 }
           ],
           rows: wrRows
         },
@@ -697,22 +700,25 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
     const lang = (req.query.lang || req.headers['accept-language'] || '').toLowerCase();
     const isJa = lang.startsWith('ja') || true; // Force Japanese for now
     const header = isJa
-      ? '従業員ID,日付,通常勤務分,残業分,深夜分\n'
-      : 'userId,date,regularMinutes,overtimeMinutes,nightMinutes\n';
+      ? '社員番号,氏名,日付,通常勤務分,残業分,深夜分\n'
+      : 'employeeCode,userName,date,regularMinutes,overtimeMinutes,nightMinutes\n';
     let csv = header;
     for (const id of ids) {
+      const u = await userRepo.getUserById(id).catch(() => null);
+      const empCode = u?.employee_code || '';
+      const uName = String(u?.full_name || u?.fullName || u?.username || u?.email || `ID:${id}`);
       const r = await attendanceService.timesheet(id, from, to);
       for (const d of r.days) {
-        csv += `${id},${d.date},${d.regularMinutes},${d.overtimeMinutes},${d.nightMinutes}\n`;
+        csv += `"${empCode}","${uName}",${d.date},${d.regularMinutes},${d.overtimeMinutes},${d.nightMinutes}\n`;
       }
     }
     
     // Add BOM for Excel UTF-8 support
-    const bom = '\uFEFF';
+    const buf = Buffer.from('\uFEFF' + csv, 'utf8');
     
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=\"timesheet.csv\"');
-    res.status(200).send(bom + csv);
+    res.status(200).send(buf);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
