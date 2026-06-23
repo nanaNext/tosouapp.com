@@ -426,9 +426,9 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       ]
     });
 
-    const targetName = String(info?.username || info?.email || id).replace(/[\\/:*?"<>|]/g, '_');
+    const targetName = String(info?.username || info?.email || id).replace(/[^\w\s-]/gi, '_');
     const empCode = info?.employee_code ? `${info.employee_code}_` : '';
-    const fileName = `${empCode}${targetName}_${year}.xlsx`;
+    const fileName = encodeURIComponent(`${empCode}${targetName}_${year}.xlsx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.status(200).send(buf);
