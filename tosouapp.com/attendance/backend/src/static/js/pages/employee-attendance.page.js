@@ -1299,7 +1299,11 @@ async function mountAttendanceImpl({
     const year = String((yEl && yEl.value) ? yEl.value : yNow).trim() || yNow;
     const url = `/api/admin/employees/${encodeURIComponent(String(userId))}/export.xlsx?year=${encodeURIComponent(year)}`;
     try {
-      await downloadWithAuth(url, `employee_${userId}_${year}.xlsx`);
+      const uEl = form.querySelector('#tsUser');
+      const uText = uEl && uEl.options && uEl.options[uEl.selectedIndex] ? uEl.options[uEl.selectedIndex].text : String(userId);
+      const parts = uText.split(' ');
+      const fallbackName = parts.length > 1 ? parts.slice(1).join('_') : String(userId);
+      await downloadWithAuth(url, `employee_${fallbackName}_${year}.xlsx`);
     } catch (e) {
       alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
     }
