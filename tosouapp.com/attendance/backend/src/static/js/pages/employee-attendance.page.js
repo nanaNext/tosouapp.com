@@ -1303,7 +1303,7 @@ async function mountAttendanceImpl({
       const uText = uEl && uEl.options && uEl.options[uEl.selectedIndex] ? uEl.options[uEl.selectedIndex].text : String(userId);
       const parts = uText.split(' ');
       const fallbackName = parts.length > 1 ? parts.slice(1).join('_') : String(userId);
-      await downloadWithAuth(url, `employee_${fallbackName}_${year}.xlsx`);
+      await downloadWithAuth(url, `${fallbackName}_${year}.xlsx`);
     } catch (e) {
       alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
     }
