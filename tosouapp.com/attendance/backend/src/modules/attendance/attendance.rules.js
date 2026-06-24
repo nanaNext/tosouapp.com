@@ -249,19 +249,9 @@ async function computeRecord(rec, ctx = null) {
   worked = Math.max(0, worked - privateGoOutMinutes - breakMin);
 
   let isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
-  
-  // Override isOff based on daily record's work_type (kubun)
-  if (dailyRec && dailyRec.work_type) {
-    if (['出勤', '代替出勤', '半休'].includes(dailyRec.work_type)) {
-      isOff = false;
-    } else if (['休日', '代替休日', '休日出勤'].includes(dailyRec.work_type)) {
-      isOff = true;
-    }
-  } else if (rec.shiftId) {
-    // If an explicit shift is assigned for this record, it's considered a working day for this user
-    isOff = false;
+  if (dailyRec && dailyRec.kubun) {
+    isOff = ['休日', '法定休日', '欠勤'].includes(dailyRec.kubun);
   }
-
   const scheduled = isOff ? 0 : Math.max(0, minutesBetween(shift.start, shift.end) - breakMin);
   const regular = Math.min(worked, scheduled);
   const overtime = Math.max(0, worked - scheduled);
