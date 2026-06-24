@@ -1,0 +1,1 @@
+require('dotenv').config(); const db = require('./src/core/database/mysql'); const repo = require('./src/modules/attendance/attendance.repository'); async function run() { try { const id = await repo.createMissingCheckIn(1, '2026-06-24 11:30:00', null, null, 'missing_checkin'); console.log('Success:', id); } catch(e) { console.error('Error:', e); } process.exit(0); } run();

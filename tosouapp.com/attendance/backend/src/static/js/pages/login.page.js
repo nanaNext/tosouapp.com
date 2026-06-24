@@ -245,8 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('click', go, true);
     el.addEventListener('pointerdown', go, true);
   };
-  bindForceNav('termsLinkInline', '/static/html/terms.html');
-  bindForceNav('privacyLinkInline', '/static/html/privacy.html');
-  bindForceNav('termsLinkCircle', '/static/html/terms.html');
-  bindForceNav('privacyLinkCircle', '/static/html/privacy.html');
+  bindForceNav('termsLinkInline', '/terms');
+  bindForceNav('privacyLinkInline', '/privacy');
+  bindForceNav('termsLinkCircle', '/terms');
+  bindForceNav('privacyLinkCircle', '/privacy');
 });
