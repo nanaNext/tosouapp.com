@@ -461,9 +461,12 @@ const renderAttendance = async () => {
     for (const s of segments) {
       if (!last || String(s?.checkIn || '') > String(last?.checkIn || '')) last = s;
     }
+    const missingCheckInSeg = segments.find(s => !s.checkIn && s.checkOut && s.is_anomaly === 1 && s.anomaly_type === 'missing_checkin');
+    
     const st = last?.checkIn ? (last?.checkOut ? '退勤済' : '出勤中') : '未出勤';
     const canIn = !last?.checkIn;
-    const canOut = !!last?.checkIn && !last?.checkOut;
+    // Allow checkout even if no check-in
+    const canOut = !last?.checkOut;
     const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場/出張' : '出社';
     const kubunOptions = isOff
       ? ['休日', '休日出勤', '代替出勤']
@@ -473,7 +476,19 @@ const renderAttendance = async () => {
       <option value="" disabled>${esc(kubunGroupLabel)}</option>
       ${kubunOptions.map(k => `<option value="${esc(k)}" ${kubunInit === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}
     `;
+    
+    let warningHtml = '';
+    if (missingCheckInSeg) {
+      warningHtml = `
+        <div style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 6px; padding: 12px; margin-bottom: 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+          <div style="color: #b91c1c; font-weight: 700; font-size: 14px;">出勤打刻が未登録です。</div>
+          <button type="button" class="kintai-btn" style="background: #fff; color: #b91c1c; border-color: #ef4444; padding: 6px 12px; font-size: 13px;" onclick="window.location.href='/ui/adjust?type=time_adjust&date=${encodeURIComponent(date)}&attendanceId=${missingCheckInSeg.id}'">打刻修正を申請する</button>
+        </div>
+      `;
+    }
+    
     host.innerHTML = `
+      ${warningHtml}
       <div class="kintai-actions kintai-actions-split">
         <div class="kintai-actions-left">
           <a class="kintai-monthly-link" href="/ui/attendance/monthly">

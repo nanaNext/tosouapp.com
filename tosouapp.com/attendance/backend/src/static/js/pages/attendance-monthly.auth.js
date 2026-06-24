@@ -155,11 +155,28 @@
       try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
       throw new Error(msg);
     }
+    
+    let finalFilename = filename || 'download.xlsx';
+    const disposition = res.headers.get('content-disposition');
+    if (disposition) {
+      const utf8Regex = /filename\*=UTF-8''([^;\n]*)/i;
+      const utf8Matches = utf8Regex.exec(disposition);
+      if (utf8Matches != null && utf8Matches[1]) {
+        finalFilename = decodeURIComponent(utf8Matches[1]);
+      } else {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) {
+          finalFilename = matches[1].replace(/['"]/g, '');
+        }
+      }
+    }
+
     const blob = await res.blob();
     const objUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = objUrl;
-    a.download = filename || 'download.xlsx';
+    a.download = finalFilename;
     a.click();
     setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { /* silently ignored */ } }, 1000);
   }

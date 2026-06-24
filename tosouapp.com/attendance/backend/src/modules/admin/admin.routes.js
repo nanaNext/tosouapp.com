@@ -703,10 +703,17 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
       ? '社員番号,氏名,日付,通常勤務分,残業分,深夜分\n'
       : 'employeeCode,userName,date,regularMinutes,overtimeMinutes,nightMinutes\n';
     let csv = header;
+    let singleUserName = '';
+    let singleEmpCode = '';
+
     for (const id of ids) {
       const u = await userRepo.getUserById(id).catch(() => null);
       const empCode = u?.employee_code || '';
       const uName = String(u?.full_name || u?.fullName || u?.username || u?.email || `ID:${id}`);
+      if (ids.length === 1) {
+        singleUserName = uName;
+        singleEmpCode = empCode;
+      }
       const r = await attendanceService.timesheet(id, from, to);
       for (const d of r.days) {
         csv += `"${empCode}","${uName}",${d.date},${d.regularMinutes},${d.overtimeMinutes},${d.nightMinutes}\n`;
@@ -716,8 +723,21 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
     // Add BOM for Excel UTF-8 support
     const buf = Buffer.from('\uFEFF' + csv, 'utf8');
     
+    let filename = 'timesheet.csv';
+    const compactFrom = String(from).replace(/-/g, ''); // 20260501
+    const compactTo = String(to).replace(/-/g, ''); // 20260531
+    const dateRange = compactFrom === compactTo ? compactFrom : `${compactFrom}-${compactTo}`;
+
+    if (ids.length === 1) {
+      const safeName = singleUserName.replace(/[^\w\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_');
+      filename = `timesheet_${singleEmpCode}_${safeName}_${dateRange}.csv`;
+    } else {
+      filename = `timesheet_multiple_${dateRange}.csv`;
+    }
+    const encodedFilename = encodeURIComponent(filename);
+
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename=\"timesheet.csv\"');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
     res.status(200).send(buf);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -745,7 +765,7 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
         u.employee_code AS employeeCode,
         u.username AS username,
         d.name AS departmentName,
-        DATE(a.checkIn) AS date,
+        DATE(COALESCE(a.checkIn, a.checkOut)) AS date,
         MIN(a.checkIn) AS checkIn,
         MAX(a.checkOut) AS checkOut,
         MAX(wr.site) AS site,
@@ -754,15 +774,15 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
       LEFT JOIN departments d ON d.id = u.departmentId
       INNER JOIN attendance a
         ON a.userId = u.id
-       AND a.checkIn >= ? AND a.checkIn < ?
+       AND ((a.checkIn >= ? AND a.checkIn < ?) OR (a.checkIn IS NULL AND a.checkOut >= ? AND a.checkOut < ?))
       LEFT JOIN work_reports wr
-        ON wr.userId = u.id AND wr.date = DATE(a.checkIn)
+        ON wr.userId = u.id AND wr.date = DATE(COALESCE(a.checkIn, a.checkOut))
       WHERE u.employment_status = 'active'
         AND u.role IN ('employee','manager')
         ${whereDept}
-      GROUP BY u.id, DATE(a.checkIn)
+      GROUP BY u.id, DATE(COALESCE(a.checkIn, a.checkOut))
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC, date ASC
-    `, params1);
+    `, [start + ' 00:00:00', nextStart + ' 00:00:00', start + ' 00:00:00', nextStart + ' 00:00:00', ...(deptId ? [deptId] : [])]);
 
     const params2 = [start, nextStart];
     if (deptId) params2.push(deptId);
@@ -781,7 +801,7 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
       INNER JOIN users u ON u.id = wr.userId
       LEFT JOIN departments d ON d.id = u.departmentId
       LEFT JOIN attendance a
-        ON a.userId = wr.userId AND DATE(a.checkIn) = wr.date
+        ON a.userId = wr.userId AND DATE(COALESCE(a.checkIn, a.checkOut)) = wr.date
       WHERE wr.date >= ? AND wr.date < ?
         AND a.id IS NULL
         AND u.employment_status = 'active'
@@ -828,7 +848,7 @@ router.get('/home/stats', authorize('admin'), async (req, res) => {
     const [[{ c_checkin } = { c_checkin: 0 }]] = await db.query(`
       SELECT COUNT(DISTINCT userId) AS c_checkin
       FROM attendance
-      WHERE DATE(checkIn) = CURDATE()
+      WHERE DATE(COALESCE(checkIn, checkOut)) = CURDATE()
     `);
     const [[{ c_pending } = { c_pending: 0 }]] = await db.query(`
       SELECT COUNT(*) AS c_pending
@@ -846,11 +866,11 @@ router.get('/home/stats', authorize('admin'), async (req, res) => {
       FROM attendance a
       LEFT JOIN user_shift_assignments s
         ON s.userId = a.userId
-       AND s.start_date <= DATE(a.checkIn)
-       AND (s.end_date IS NULL OR s.end_date >= DATE(a.checkIn))
+       AND s.start_date <= DATE(COALESCE(a.checkIn, a.checkOut))
+       AND (s.end_date IS NULL OR s.end_date >= DATE(COALESCE(a.checkIn, a.checkOut)))
       LEFT JOIN shift_definitions d
         ON d.id = s.shiftId
-      WHERE DATE(a.checkIn) = CURDATE()
+      WHERE DATE(COALESCE(a.checkIn, a.checkOut)) = CURDATE()
         AND TIME(a.checkIn) > COALESCE(d.start_time, '09:00')
     `);
     res.status(200).json({

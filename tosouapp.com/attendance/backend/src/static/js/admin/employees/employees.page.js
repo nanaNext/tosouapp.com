@@ -685,6 +685,7 @@ async function renderEmployees(profile) {
         const m = Math.max(0, Number(min || 0));
         const h = Math.floor(m / 60);
         const r = Math.floor(m % 60);
+        if (h === 0 && r === 0) return '0:00';
         return `${h}:${String(r).padStart(2, '0')}`;
       };
       const renderSa = (items) => {

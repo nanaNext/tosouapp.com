@@ -182,8 +182,8 @@ async function mountAttendanceImpl({
         border-bottom: 1px solid #f1f5f9 !important;
       }
       .attrec-fiori-override .attrec-pill {
-        font-size: 11px !important;
-        padding: 2px 6px !important;
+        font-size: 14px !important;
+        padding: 4px 10px !important;
         border-radius: 4px !important;
       }
       .attrec-fiori-override .attrec-summary {
@@ -476,9 +476,9 @@ async function mountAttendanceImpl({
         /* Style pill tags inside mobile cards */
         .attrec-emp-like-table .m-v .attrec-pill {
           margin-bottom: 0 !important;
-          font-size: 11px !important;
+          font-size: 14px !important;
           font-weight: bold !important;
-          padding: 2px 8px !important;
+          padding: 4px 10px !important;
           border-radius: 4px !important;
         }
       }
@@ -606,7 +606,8 @@ async function mountAttendanceImpl({
         return;
       }
       let currentPage = 1;
-      const pageSize = 10;
+      const isMobile = window.innerWidth <= 768;
+      const pageSize = isMobile ? 1000 : 10;
       const renderTablePage = () => {
         if (!host) return;
         host.innerHTML = '';
@@ -689,9 +690,9 @@ async function mountAttendanceImpl({
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 2px 8px;
-              border-radius: 2px;
-              font-size: 13px;
+              padding: 4px 10px;
+              border-radius: 4px;
+              font-size: 14px;
               font-weight: bold;
               line-height: 1.2;
               white-space: nowrap;
@@ -1063,7 +1064,7 @@ async function mountAttendanceImpl({
         host.appendChild(tableWrap);
 
         // Pagination controls
-        if (items.length > 0) {
+        if (items.length > 0 && !isMobile) {
           const totalPages = Math.ceil(items.length / pageSize);
           const paginationDiv = document.createElement('div');
           paginationDiv.className = 'pagination-controls desktop-only'; // Added desktop-only class

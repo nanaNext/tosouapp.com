@@ -419,7 +419,7 @@ export async function mount() {
 
       const lateStr = Number(it.lateMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 遅刻 ${formatDelay(it.lateMinutes)}</span>` : '';
       const earlyStr = Number(it.earlyMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 早退 ${formatDelay(it.earlyMinutes)}</span>` : '';
-      let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join('');
+      let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join('<br>');
 
       // Đọc dữ liệu từ cột 備考 (notes) của attendance_daily
       const combinedReasonMemo = [it.notes].filter(Boolean).join(' - ');
@@ -735,7 +735,7 @@ export async function mount() {
         const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
         const lateStr = Number(it.lateMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 遅刻 ${formatDelay(it.lateMinutes)}</span>` : '';
         const earlyStr = Number(it.earlyMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 早退 ${formatDelay(it.earlyMinutes)}</span>` : '';
-        let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join('');
+        let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join('<br>');
 
         // Đọc dữ liệu từ cột 備考 (notes) của attendance_daily
         const combinedReasonMemo = [it.notes].filter(Boolean).join(' - ');

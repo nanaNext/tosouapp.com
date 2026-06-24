@@ -95,12 +95,12 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         SELECT t1.*
         FROM attendance t1
         INNER JOIN (
-          SELECT userId, MAX(checkIn) AS maxCheckIn
+          SELECT userId, MAX(COALESCE(checkIn, checkOut)) AS maxTime
           FROM attendance
-          WHERE DATE(checkIn) = ?
+          WHERE DATE(COALESCE(checkIn, checkOut)) = ?
           GROUP BY userId
         ) t2
-          ON t2.userId = t1.userId AND t2.maxCheckIn = t1.checkIn
+          ON t2.userId = t1.userId AND t2.maxTime = COALESCE(t1.checkIn, t1.checkOut)
       ) a
         ON a.userId = u.id
       LEFT JOIN work_reports wr
@@ -133,7 +133,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         status = 'leave';
       } else if (isAbsence) {
         status = 'absence';
-      } else if (hasIn) {
+      } else if (hasIn || hasOut) {
         status = hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working');
       } else if (dayIsOff && !forceLeave && kubun === '休日' && r.employment_type === 'part_time') {
         status = 'leave'; // explicitly 休日
@@ -326,15 +326,15 @@ router.get('/export.xlsx',
     `);
 
     const [attRows] = await db.query(`
-      SELECT a.userId, DATE(a.checkIn) AS date, a.checkIn, a.checkOut, a.work_type AS work_type
+      SELECT a.userId, DATE(COALESCE(a.checkIn, a.checkOut)) AS date, a.checkIn, a.checkOut, a.work_type AS work_type
       FROM attendance a
       INNER JOIN (
-        SELECT userId, DATE(checkIn) AS date, MAX(checkIn) AS maxCheckIn
+        SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS date, MAX(COALESCE(checkIn, checkOut)) AS maxTime
         FROM attendance
-        WHERE DATE(checkIn) >= ? AND DATE(checkIn) <= ?
-        GROUP BY userId, DATE(checkIn)
+        WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?
+        GROUP BY userId, DATE(COALESCE(checkIn, checkOut))
       ) t
-        ON t.userId = a.userId AND t.maxCheckIn = a.checkIn
+        ON t.userId = a.userId AND t.maxTime = COALESCE(a.checkIn, a.checkOut)
     `, [start, end]);
 
     const [repRows] = await db.query(`
@@ -370,7 +370,7 @@ router.get('/export.xlsx',
 
     const attMap = new Map();
     for (const a of (attRows || [])) {
-      const d = String(a.date || a.checkIn || '').slice(0, 10);
+      const d = String(a.date || a.checkIn || a.checkOut || '').slice(0, 10);
       attMap.set(`${a.userId}|${d}`, a);
     }
     const repMap = new Map();
@@ -1048,28 +1048,34 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
       const [x] = await db.query(`
         SELECT a.id, a.userId, a.checkIn, a.checkOut
         FROM attendance a
-        WHERE a.checkIn >= ? AND a.checkIn < DATE_ADD(?, INTERVAL 1 DAY)
+        WHERE (
+            (a.checkIn >= ? AND a.checkIn < DATE_ADD(?, INTERVAL 1 DAY))
+            OR (a.checkIn IS NULL AND a.checkOut >= ? AND a.checkOut < DATE_ADD(?, INTERVAL 1 DAY))
+          )
           AND a.userId IN (
             SELECT id
             FROM users
             WHERE employment_status = 'active'
               ${String(req.user?.role || '').toLowerCase() === 'manager' ? "AND role = 'employee'" : "AND role IN ('employee','manager')"}
           )
-      `, [start + ' 00:00:00', end + ' 00:00:00']);
+      `, [start + ' 00:00:00', end + ' 00:00:00', start + ' 00:00:00', end + ' 00:00:00']);
       latestRows = x;
     } catch {
       try {
         const [attRows] = await db.query(`
           SELECT id, userId, checkIn, checkOut
           FROM attendance
-          WHERE checkIn >= ? AND checkIn < DATE_ADD(?, INTERVAL 1 DAY)
+          WHERE (
+              (checkIn >= ? AND checkIn < DATE_ADD(?, INTERVAL 1 DAY))
+              OR (checkIn IS NULL AND checkOut >= ? AND checkOut < DATE_ADD(?, INTERVAL 1 DAY))
+            )
             AND userId IN (
               SELECT id
               FROM users
               WHERE employment_status = 'active'
                 ${String(req.user?.role || '').toLowerCase() === 'manager' ? "AND role = 'employee'" : "AND role IN ('employee','manager')"}
             )
-        `, [start + ' 00:00:00', end + ' 00:00:00']);
+        `, [start + ' 00:00:00', end + ' 00:00:00', start + ' 00:00:00', end + ' 00:00:00']);
         latestRows = attRows;
       } catch (e) { /* silently ignored */ }
     }
@@ -1115,7 +1121,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
 
     const attLatest = new Map();
     for (const a of (latestRows || [])) {
-      const d = String(a.checkIn).slice(0, 10);
+      const d = String(a.checkIn || a.checkOut || '').slice(0, 10);
       const key = `${a.userId}|${d}`;
       const prev = attLatest.get(key);
       if (!prev) {
@@ -1628,20 +1634,20 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
 
     const [attRows] = await db.query(`
       SELECT a.userId,
-             DATE(a.checkIn) AS date,
+             DATE(COALESCE(a.checkIn, a.checkOut)) AS date,
              MIN(a.checkIn) AS firstCheckIn,
              MAX(a.checkOut) AS lastCheckOut,
              MAX(CASE WHEN a.work_type IS NOT NULL AND a.work_type <> '' THEN a.work_type ELSE NULL END) AS attendanceWorkType
       FROM attendance a
-      WHERE DATE(a.checkIn) >= ? AND DATE(a.checkIn) <= ?
+      WHERE DATE(COALESCE(a.checkIn, a.checkOut)) >= ? AND DATE(COALESCE(a.checkIn, a.checkOut)) <= ?
         AND a.userId IN (
           SELECT id
           FROM users
             WHERE employment_status = 'active'
             ${String(req.user?.role || '').toLowerCase() === 'manager' ? "AND role = 'employee'" : "AND role IN ('employee','manager')"}
         )
-      GROUP BY a.userId, DATE(a.checkIn)
-      ORDER BY DATE(a.checkIn) ASC, a.userId ASC
+      GROUP BY a.userId, DATE(COALESCE(a.checkIn, a.checkOut))
+      ORDER BY DATE(COALESCE(a.checkIn, a.checkOut)) ASC, a.userId ASC
     `, [start, end]);
 
     const [dailyRows] = await db.query(`
@@ -1893,15 +1899,18 @@ router.get('/month/:userId', authorize('admin', 'manager'), async (req, res) => 
       SELECT id, checkIn, checkOut
       FROM attendance
       WHERE userId = ?
-        AND checkIn >= ? AND checkIn < DATE_ADD(?, INTERVAL 1 DAY)
-      ORDER BY checkIn ASC
-    `, [userId, start + ' 00:00:00', end + ' 00:00:00']);
+        AND (
+          (checkIn >= ? AND checkIn < DATE_ADD(?, INTERVAL 1 DAY))
+          OR (checkIn IS NULL AND checkOut >= ? AND checkOut < DATE_ADD(?, INTERVAL 1 DAY))
+        )
+      ORDER BY COALESCE(checkIn, checkOut) ASC
+    `, [userId, start + ' 00:00:00', end + ' 00:00:00', start + ' 00:00:00', end + ' 00:00:00']);
 
     const attLatest = new Map();
     for (const a of (attRows || [])) {
-      const d = String(a.checkIn).slice(0, 10);
+      const d = String(a.checkIn || a.checkOut || '').slice(0, 10);
       const prev = attLatest.get(d);
-      if (!prev || String(a.checkIn) > String(prev.checkIn)) attLatest.set(d, a);
+      if (!prev || String(a.checkIn || a.checkOut || '') > String(prev.checkIn || prev.checkOut || '')) attLatest.set(d, a);
     }
 
     const [leaveRows] = await db.query(`

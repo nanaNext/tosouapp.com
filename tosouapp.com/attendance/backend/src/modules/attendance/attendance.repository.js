@@ -975,7 +975,7 @@ module.exports = {
     const set = await getUSAColumnSet();
     const startCol = getUSAStartCol(set);
     const hasEnd = set.has('end_date');
-    const endCond = hasEnd ? 'AND (s.end_date IS NULL OR DATE(a.checkIn) <= s.end_date)' : '';
+    const endCond = hasEnd ? 'AND (s.end_date IS NULL OR DATE(COALESCE(a.checkIn, a.checkOut)) <= s.end_date)' : '';
     const hasShiftName = set.has('shift');
     const joinDef = hasShiftName ? 'LEFT JOIN shift_definitions d ON d.name = s.shift' : '';
     const setExpr = hasShiftName ? 'COALESCE(s.shiftId, d.id)' : 's.shiftId';
@@ -983,13 +983,13 @@ module.exports = {
       UPDATE attendance a
       JOIN user_shift_assignments s
         ON s.userId = a.userId
-       AND DATE(a.checkIn) >= s.${startCol}
+       AND DATE(COALESCE(a.checkIn, a.checkOut)) >= s.${startCol}
        ${endCond}
       ${joinDef}
       SET a.shiftId = ${setExpr}
-      WHERE a.userId = ? 
-        AND DATE(a.checkIn) >= ? 
-        AND DATE(a.checkIn) <= ?
+      WHERE a.userId = ?
+        AND DATE(COALESCE(a.checkIn, a.checkOut)) >= ?
+        AND DATE(COALESCE(a.checkIn, a.checkOut)) <= ?
     `;
     await db.query(sql, [userId, fromDate, toDate]);
     return { ok: true };
@@ -1127,6 +1127,26 @@ module.exports = {
     const [rows] = await db.query(sql, [userId, d]);
     return rows[0];
   },
+  async createMissingCheckIn(userId, checkOutTime, loc, labels, anomalyType) {
+    const set = await getAttendanceColumnSet();
+    const cols = ['userId', 'checkOut'];
+    const vals = [userId, checkOutTime];
+    if (set.has('is_anomaly')) { cols.push('is_anomaly'); vals.push(1); }
+    if (set.has('anomaly_type')) { cols.push('anomaly_type'); vals.push(anomalyType); }
+    if (set.has('out_latitude')) { cols.push('out_latitude'); vals.push(loc?.latitude ?? null); }
+    if (set.has('out_longitude')) { cols.push('out_longitude'); vals.push(loc?.longitude ?? null); }
+    if (set.has('out_accuracy')) { cols.push('out_accuracy'); vals.push(loc?.accuracy ?? null); }
+    if (set.has('out_locationSource')) { cols.push('out_locationSource'); vals.push(loc?.locationSource ?? null); }
+    if (set.has('out_countryCode')) { cols.push('out_countryCode'); vals.push(loc?.countryCode ?? null); }
+    if (set.has('out_note')) { cols.push('out_note'); vals.push(loc?.note ?? null); }
+    if (set.has('out_deviceId')) { cols.push('out_deviceId'); vals.push(loc?.deviceId ?? null); }
+    if (set.has('out_tzOffset')) { cols.push('out_tzOffset'); vals.push(loc?.tzOffset ?? null); }
+    if (set.has('labels')) { cols.push('labels'); vals.push(labels || null); }
+    const placeholders = cols.map(() => '?').join(', ');
+    const sql = `INSERT INTO attendance (${cols.join(', ')}) VALUES (${placeholders})`;
+    const [result] = await db.query(sql, vals);
+    return result.insertId;
+  },
   async setCheckOut(attendanceId, time, loc, labels) {
     const set = await getAttendanceColumnSet();
     const updates = ['checkOut = ?'];
@@ -1148,10 +1168,15 @@ module.exports = {
     const sql = `
       SELECT * FROM attendance
       WHERE userId = ?
-        AND checkIn >= ? AND checkIn <= ?
-      ORDER BY checkIn ASC
+        AND (
+          (checkIn >= ? AND checkIn <= ?)
+          OR (checkIn IS NULL AND checkOut >= ? AND checkOut <= ?)
+        )
+      ORDER BY COALESCE(checkIn, checkOut) ASC
     `;
-    const [rows] = await db.query(sql, [userId, fromDate + ' 00:00:00', toDate + ' 23:59:59']);
+    const start = fromDate + ' 00:00:00';
+    const end = toDate + ' 23:59:59';
+    const [rows] = await db.query(sql, [userId, start, end, start, end]);
     return rows;
   },
   async findCheckInByTime(userId, time) {
@@ -1172,20 +1197,23 @@ module.exports = {
     const inV = checkIn ? String(checkIn) : '';
     const outV = checkOut ? String(checkOut) : '';
     if (!inV && !outV) return;
-    if (!inV && outV) {
-      throw new Error('Missing checkIn');
-    }
+
     const current = await this.getById(attendanceId);
     if (!current) return;
     const currentUserId = parseInt(String(current.userId || 0), 10);
     if (!currentUserId) return;
     const nextIn = inV;
+    
+    // Allow saving missing checkIn by marking it as an anomaly
+    const isAnomaly = (!inV && outV) ? 1 : 0;
+    const anomalyType = (!inV && outV) ? 'missing_checkin' : null;
+
     const [dups] = await db.query(
       `SELECT id, checkOut, work_type, labels, shiftId FROM attendance WHERE userId = ? AND checkIn = ? AND id <> ? ORDER BY id ASC LIMIT 1`,
-      [currentUserId, nextIn, attendanceId]
+      [currentUserId, nextIn || '1970-01-01', attendanceId] // Prevent matching when nextIn is empty
     );
     const dup = dups && dups[0] ? dups[0] : null;
-    if (dup) {
+    if (dup && nextIn) {
       await db.query(`DELETE FROM attendance WHERE id = ?`, [dup.id]);
       const mergedLabels = mergeLabels(current.labels, dup.labels);
       const mergedShiftId = current.shiftId != null ? current.shiftId : dup.shiftId;
@@ -1196,7 +1224,9 @@ module.exports = {
               checkOut = ?,
               work_type = ?,
               labels = ?,
-              shiftId = ?
+              shiftId = ?,
+              is_anomaly = ?,
+              anomaly_type = ?
           WHERE id = ?
         `,
         [
@@ -1205,18 +1235,41 @@ module.exports = {
           current.work_type || dup.work_type || null,
           mergedLabels,
           mergedShiftId != null ? mergedShiftId : null,
+          isAnomaly,
+          anomalyType,
           attendanceId
         ]
       );
       return;
     }
-    const sql = `
-      UPDATE attendance
-      SET checkIn = ?,
-          checkOut = ?
-      WHERE id = ?
-    `;
-    await db.query(sql, [inV, outV || null, attendanceId]);
+    
+    // Check if table has is_anomaly and anomaly_type columns
+    const [cols] = await db.query(`
+      SELECT COLUMN_NAME AS name 
+      FROM information_schema.columns 
+      WHERE table_schema = DATABASE() AND table_name = 'attendance'
+    `);
+    const set = new Set((cols || []).map(c => String(c.name)));
+    
+    if (set.has('is_anomaly') && set.has('anomaly_type')) {
+      const sql = `
+        UPDATE attendance
+        SET checkIn = ?,
+            checkOut = ?,
+            is_anomaly = ?,
+            anomaly_type = ?
+        WHERE id = ?
+      `;
+      await db.query(sql, [inV || null, outV || null, isAnomaly, anomalyType, attendanceId]);
+    } else {
+      const sql = `
+        UPDATE attendance
+        SET checkIn = ?,
+            checkOut = ?
+        WHERE id = ?
+      `;
+      await db.query(sql, [inV || null, outV || null, attendanceId]);
+    }
   },
   async getMonthSummary(userId, year, month) {
     const uid = parseInt(String(userId), 10);
@@ -1573,9 +1626,12 @@ module.exports = {
       SELECT id, checkIn, checkOut
       FROM attendance
       WHERE userId = ?
-        AND DATE(checkIn) = ?
-      ORDER BY checkIn DESC
-    `, [userId, dateStr]);
+        AND (
+          DATE(checkIn) = ?
+          OR (checkIn IS NULL AND DATE(checkOut) = ?)
+        )
+      ORDER BY COALESCE(checkIn, checkOut) DESC
+    `, [userId, dateStr, dateStr]);
     return rows || [];
   },
   async getTodayRosterItems(date) {
@@ -1605,22 +1661,22 @@ module.exports = {
         SELECT t1.*
         FROM attendance t1
         INNER JOIN (
-          SELECT userId, MAX(checkIn) AS maxCheckIn
+          SELECT userId, MAX(COALESCE(checkIn, checkOut)) AS maxTime
           FROM attendance
-          WHERE DATE(checkIn) = ?
+          WHERE DATE(checkIn) = ? OR (checkIn IS NULL AND DATE(checkOut) = ?)
           GROUP BY userId
         ) t2
-          ON t2.userId = t1.userId AND t2.maxCheckIn = t1.checkIn
+          ON t2.userId = t1.userId AND t2.maxTime = COALESCE(t1.checkIn, t1.checkOut)
       ) a
         ON a.userId = u.id
       WHERE u.employment_status = 'active'
         AND u.role IN ('employee','manager')
         AND lr.id IS NULL
       ORDER BY
-        CASE WHEN a.checkIn IS NULL THEN 1 ELSE 0 END ASC,
+        CASE WHEN COALESCE(a.checkIn, a.checkOut) IS NULL THEN 1 ELSE 0 END ASC,
         COALESCE(u.employee_code, '') ASC,
         u.id ASC
-    `, [date, date, date]);
+    `, [date, date, date, date]);
     return rows || [];
   },
   async getTodayPlannedItems(date) {
