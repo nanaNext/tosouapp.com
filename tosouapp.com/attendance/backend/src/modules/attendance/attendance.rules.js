@@ -116,9 +116,9 @@ async function computeRecord(rec, ctx = null) {
   const cfg = ctx?.cfg !== undefined ? ctx.cfg : await settingsRepo.getSettings().catch(() => null);
   const baseBreak = cfg?.breakMinutes || 60;
   
-  const dateStr = getJSTDateStr(rec.checkIn);
+  const dateStr = getJSTDateStr(rec.checkIn || rec.checkOut);
   
-  const inDate = parseMySQLJSTToDate(rec.checkIn);
+  const inDate = rec.checkIn ? parseMySQLJSTToDate(rec.checkIn) : null;
   const [yStr, mStr, dStr] = dateStr.split('-');
   const y = parseInt(yStr, 10);
   const m = parseInt(mStr, 10) - 1;
@@ -168,9 +168,14 @@ async function computeRecord(rec, ctx = null) {
         shift = { name: 'day_8_17', start: jst(8, 0), end: jst(17, 0), breakMinutes: 60 };
       }
     } else {
-      const inJ2 = parseMySQLJSTToDate(rec.checkIn);
-      const outJ2 = parseMySQLJSTToDate(rec.checkOut);
-      const worked2 = minutesBetween(inJ2, outJ2);
+      let worked2 = 0;
+      let inJ2 = null;
+      let outJ2 = null;
+      if (rec.checkIn && rec.checkOut) {
+        inJ2 = parseMySQLJSTToDate(rec.checkIn);
+        outJ2 = parseMySQLJSTToDate(rec.checkOut);
+        worked2 = minutesBetween(inJ2, outJ2);
+      }
       const s1 = { name: 'day_8_17', start: jst(8, 0), end: jst(17, 0), breakMinutes: 60 };
       const s2 = { name: 'day_9_17', start: jst(9, 0), end: jst(17, 0), breakMinutes: 60 };
       const s3 = { name: 'part_9_14', start: jst(9, 0), end: jst(14, 0), breakMinutes: 0 };
@@ -201,9 +206,14 @@ async function computeRecord(rec, ctx = null) {
     shift = { ...shift, breakMinutes: breakMin };
   }
 
-  const inJ = parseMySQLJSTToDate(rec.checkIn);
-  const outJ = parseMySQLJSTToDate(rec.checkOut);
-  let worked = minutesBetween(inJ, outJ);
+  let worked = 0;
+  let inJ = null;
+  let outJ = null;
+  if (rec.checkIn && rec.checkOut) {
+    inJ = parseMySQLJSTToDate(rec.checkIn);
+    outJ = parseMySQLJSTToDate(rec.checkOut);
+    worked = minutesBetween(inJ, outJ);
+  }
   
   // Trừ thời gian ra ngoài việc cá nhân (私用)
   let privateGoOutMinutes = 0;
@@ -235,16 +245,29 @@ async function computeRecord(rec, ctx = null) {
     }
   }
   
-  // Trừ đi thời gian đi việc riêng
-  worked = Math.max(0, worked - privateGoOutMinutes);
+  // Trừ đi thời gian đi việc riêng và thời gian nghỉ
+  worked = Math.max(0, worked - privateGoOutMinutes - breakMin);
 
-  const isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
+  let isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
+  
+  // Override isOff based on daily record's work_type (kubun)
+  if (dailyRec && dailyRec.work_type) {
+    if (['出勤', '代替出勤', '半休'].includes(dailyRec.work_type)) {
+      isOff = false;
+    } else if (['休日', '代替休日', '休日出勤'].includes(dailyRec.work_type)) {
+      isOff = true;
+    }
+  } else if (rec.shiftId) {
+    // If an explicit shift is assigned for this record, it's considered a working day for this user
+    isOff = false;
+  }
+
   const scheduled = isOff ? 0 : Math.max(0, minutesBetween(shift.start, shift.end) - breakMin);
   const regular = Math.min(worked, scheduled);
   const overtime = Math.max(0, worked - scheduled);
 
   // Dùng CoreRules để lấy thêm thông tin Anomaly
-  const metrics = CoreRules.calculateWorkMetrics(inJ, outJ, shift, isOff);
+  const metrics = CoreRules.calculateWorkMetrics(rec.checkIn, rec.checkOut, shift, isOff);
 
   return {
     id: rec.id,

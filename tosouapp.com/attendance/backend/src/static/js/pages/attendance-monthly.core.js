@@ -442,6 +442,7 @@
     const m = Math.max(0, Number(min || 0));
     const h = Math.floor(m / 60);
     const mm = Math.floor(m % 60);
+    if (h === 0 && mm === 0) return '0:00';
     return `${String(h)}:${pad2(mm)}`;
   };
 

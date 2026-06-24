@@ -89,8 +89,8 @@
         }
       }
 
-      let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
-      let plannedLabel = offDay ? '【予定休日】' : '【予定出勤】';
+      let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : ''; 
+      let plannedLabel = offDay ? '【休日予定】' : '【出勤予定】';
       let plannedKubun = offDay ? '休日' : '出勤';
       
       // Đối với part-time, ngày thường (không phải offDay) là lịch linh hoạt (không có lịch cố định)
@@ -102,7 +102,7 @@
             plannedLabel = '【出勤予定】';
             plannedKubun = '出勤';
           } else if (shiftRequest.status === 'OFF') {
-            plannedLabel = offDay ? '【休日予定】' : '休日'; 
+            plannedLabel = '【休日予定】';
             plannedKubun = '休日';
           } else {
             // shiftRequest = 'NONE' hoặc không rõ ràng, xử lý theo ngày lễ
@@ -120,31 +120,38 @@
           }
         }
       } else {
-        // Đối với Seishain, nếu có đăng ký nghỉ (LEAVE) từ bảng ca, áp dụng vào Bảng tháng
-        if (shiftRequest && shiftRequest.status === 'LEAVE') {
-           const lType = shiftRequest.leaveType;
-           if (lType === 'paid') {
-             plannedKubun = '有給休暇';
-             plannedLabel = '【有給休暇】';
-           } else if (lType === 'unpaid') {
-             plannedKubun = '欠勤';
-             plannedLabel = '【欠勤】';
-           } else if (lType === 'special') {
-             plannedKubun = '無給休暇';
-             plannedLabel = '【無給休暇】';
-           }
-           
-           // Nếu chưa có lý do được lưu, lấy lý do từ shift_request
-           if (!daily?.reason && shiftRequest.reason) {
-              if (daily) daily.reason = shiftRequest.reason;
-           }
+        // Đối với Seishain
+        if (shiftRequest) {
+          if (shiftRequest.status === 'LEAVE') {
+             const lType = shiftRequest.leaveType;
+             if (lType === 'paid') {
+               plannedKubun = '有給休暇';
+               plannedLabel = '【有給休暇】';
+             } else if (lType === 'unpaid') {
+               plannedKubun = '欠勤';
+               plannedLabel = '【欠勤】';
+             } else if (lType === 'special') {
+               plannedKubun = '無給休暇';
+               plannedLabel = '【無給休暇】';
+             }
+             
+             // Nếu chưa có lý do được lưu, lấy lý do từ shift_request
+             if (!daily?.reason && shiftRequest.reason) {
+                if (daily) daily.reason = shiftRequest.reason;
+             }
+          } else if (shiftRequest.status === 'WORKING') {
+            plannedLabel = '【出勤予定】';
+            plannedKubun = '出勤';
+          } else if (shiftRequest.status === 'OFF') {
+            plannedLabel = '【休日予定】';
+            plannedKubun = '休日';
+          }
         }
       }
 
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
-      const canEditWorkRow = !!state.editableMonth && isWorkDay && !!kubunInit;
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
       
       const shiftStart = String(shift?.start_time || '08:00').trim();
@@ -175,16 +182,19 @@
       // which looked like "not saved" after reload.
       const allowDailyAsActual = hasActual || kubunConfirmed;
       if (!allowDailyAsActual) kubunInit = '';
-      const isPlanned = !kubunInit && !hasActual;
+      
+      const isPlanned = !kubunInit && !hasActual && !kubunConfirmed;
+      const canEditWorkRow = !!state.editableMonth && (isWorkDay || hasActual) && !!kubunInit;
+      
       // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
       const isPlannedLikeWork = !hasActual && isWorkDay;
 
       // Permission check: if employee role and has selection or actual data, disable planned options
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
-      // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay). Ngày nghỉ thì để trống.
-      const finalIn = isWorkDay ? (inHm || shiftStart) : '';
-      const finalOut = isWorkDay ? (outHm || shiftEnd) : '';
+      // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay) HOẶC là ngày nghỉ nhưng có dữ liệu làm việc (hasActual). Ngày nghỉ không có lịch làm việc thì để trống.
+      const finalIn = (isWorkDay || hasActual) ? (inHm || shiftStart) : '';
+      const finalOut = (isWorkDay || hasActual) ? (outHm || shiftEnd) : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;

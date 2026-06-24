@@ -719,7 +719,7 @@ async function computeMonthMissing(userId, y, m) {
   const segRows = await repo.listByUserBetween(userId, from, to).catch(() => []);
   const segByDate = new Map();
   for (const r of segRows || []) {
-    const ds = String(r?.checkIn || '').slice(0, 10);
+    const ds = String(r?.checkIn || r?.checkOut || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
     if (!segByDate.has(ds)) segByDate.set(ds, []);
     segByDate.get(ds).push(r);
@@ -814,7 +814,7 @@ exports.getMonthStatusBulk = async (req, res) => {
         const segRows = await repo.listByUserBetween(uid, from, to).catch(() => []);
         const segByDate = new Map();
         for (const r of segRows || []) {
-          const ds = String(r?.checkIn || '').slice(0, 10);
+          const ds = String(r?.checkIn || r?.checkOut || '').slice(0, 10);
           if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
           if (!segByDate.has(ds)) segByDate.set(ds, []);
           segByDate.get(ds).push(r);
@@ -1190,31 +1190,40 @@ exports.addSegment = async (req, res) => {
     const userId = req.user?.id;
     const date = req.params.date;
     const { checkIn, checkOut } = req.body || {};
-    if (!userId || !date || !checkIn) return res.status(400).json({ message: 'Missing checkIn' });
+    console.log(`[addSegment] called for userId=${userId}, date=${date}, checkIn=${checkIn}, checkOut=${checkOut}`);
+    if (!userId || !date) return res.status(400).json({ message: 'Missing date' });
+    if (!checkIn && !checkOut) return res.status(400).json({ message: 'Missing checkIn and checkOut' });
     const y = parseInt(date.slice(0,4),10), m = parseInt(date.slice(5,7),10);
     await assertMonthWritable(req, userId, y, m);
     if (req.user.role === 'employee' && !isEditableMonth(y,m)) {
       return res.status(403).json({ message: 'Forbidden: cannot edit past months' });
     }
     
-    const id = await repo.createCheckIn(userId, checkIn, null, null);
-    if (checkOut) {
-      await repo.setCheckOut(id, checkOut, null, null);
+    let id;
+    if (!checkIn && checkOut) {
+       id = await repo.createMissingCheckIn(userId, checkOut, null, null, 'missing_checkin');
+    } else {
+       id = await repo.createCheckIn(userId, checkIn, null, null);
+       if (checkOut) {
+         await repo.setCheckOut(id, checkOut, null, null);
+       }
     }
 
     try {
       const u = await userRepo.getUserById(userId);
       const name = u ? (u.username || u.email || '従業員') : '従業員';
       
-      const inTimeStr = String(checkIn).slice(11, 16);
-      await noticesRepo.createAdminNotification({
-        kind: 'attendance_punch',
-        title: '打刻通知',
-        message: `${name}さんが出勤打刻をしました（${inTimeStr}）`,
-        linkUrl: '/admin/attendance',
-        createdBy: userId,
-        audience: 'admin_manager'
-      });
+      if (checkIn) {
+        const inTimeStr = String(checkIn).slice(11, 16);
+        await noticesRepo.createAdminNotification({
+          kind: 'attendance_punch',
+          title: '打刻通知',
+          message: `${name}さんが出勤打刻をしました（${inTimeStr}）`,
+          linkUrl: '/admin/attendance',
+          createdBy: userId,
+          audience: 'admin_manager'
+        });
+      }
 
       if (checkOut) {
         const outTimeStr = String(checkOut).slice(11, 16);

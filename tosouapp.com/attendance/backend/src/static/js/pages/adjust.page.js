@@ -417,6 +417,9 @@ const renderForm = async () => {
   };
 
   let attendanceId = null;
+  let urlParams = new URLSearchParams(window.location.search);
+  let initialAttendanceId = urlParams.get('attendanceId');
+
   const loadDay = async () => {
     showErr('');
     const d = els.date?.value;
@@ -424,11 +427,17 @@ const renderForm = async () => {
     showSpinner();
     try {
       const r = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(d)}`);
-      const seg = pickLatestSegment(r?.segments);
+      let seg = null;
+      if (initialAttendanceId) {
+        seg = (r?.segments || []).find(s => String(s.id) === String(initialAttendanceId));
+        initialAttendanceId = null; // Only use it once
+      }
+      if (!seg) seg = pickLatestSegment(r?.segments);
+      
       attendanceId = seg?.id || null;
       setCurrent(seg);
-      try { if (els.in && seg?.checkIn) els.in.value = String(seg.checkIn).slice(0, 16); } catch (e) { /* silently ignored */ }
-      try { if (els.out && seg?.checkOut) els.out.value = String(seg.checkOut).slice(0, 16); } catch (e) { /* silently ignored */ }
+      try { if (els.in) els.in.value = seg?.checkIn ? String(seg.checkIn).slice(0, 16) : ''; } catch (e) { /* silently ignored */ }
+      try { if (els.out) els.out.value = seg?.checkOut ? String(seg.checkOut).slice(0, 16) : ''; } catch (e) { /* silently ignored */ }
     } catch (e) {
       attendanceId = null;
       setCurrent(null);
@@ -482,6 +491,14 @@ const renderForm = async () => {
   document.addEventListener('click', (e) => {
     // Không cần xử lý đóng drawer nữa
   });
+
+  const pDate = urlParams.get('date');
+  const pType = urlParams.get('type');
+
+  if (pType === 'time_adjust' && pDate && isISODate(pDate) && els.date) {
+    els.date.value = pDate;
+    if (els.reason) els.reason.value = '打刻し忘れ';
+  }
 
   els.date?.addEventListener('change', loadDay);
   await loadDay();

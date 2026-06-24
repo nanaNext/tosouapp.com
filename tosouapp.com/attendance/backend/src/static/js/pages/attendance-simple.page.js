@@ -418,8 +418,8 @@ const pickLatestSegment = (segments) => {
   if (!arr.length) return null;
   let best = arr[0];
   for (const s of arr) {
-    const a = String(s?.checkIn || '');
-    const b = String(best?.checkIn || '');
+    const a = String(s?.checkIn || s?.checkOut || '');
+    const b = String(best?.checkIn || best?.checkOut || '');
     if (a && a > b) best = s;
   }
   return best;
@@ -514,7 +514,12 @@ const calcWorkMinutes = () => {
   const nb = parseInt($('#nightBreakMin')?.value || '0', 10) || 0;
   
   if (!s || !e) return null;
-  const raw = e.total - s.total - b - nb;
+  // Tính tổng phút (có hỗ trợ làm qua đêm - overtime)
+  let diff = e.total - s.total;
+  if (diff < 0) {
+    diff += 24 * 60; // Cộng thêm 24 tiếng nếu giờ ra nhỏ hơn giờ vào
+  }
+  const raw = diff - b - nb;
   // If break time is larger than worked span, show 0:00 instead of blank.
   return Math.max(0, raw);
 };
@@ -524,6 +529,7 @@ const renderWorkMinutes = () => {
   if (!box) return;
   const stEl = $('#startTime');
   const etEl = $('#endTime');
+  const brEl = $('#breakMin');
   const stAuto = String(stEl?.dataset?.auto || '') === '1';
   const etAuto = String(etEl?.dataset?.auto || '') === '1';
   const stTouched = String(stEl?.dataset?.touched || '') === '1';
@@ -535,6 +541,29 @@ const renderWorkMinutes = () => {
   const hh = Math.floor(m / 60);
   const mm = m % 60;
   box.textContent = `${hh}:${pad2(mm)}`;
+
+  // Labor Law Break Time Warning
+  const b = parseInt(brEl?.value || '0', 10) || 0;
+  const nb = parseInt($('#nightBreakMin')?.value || '0', 10) || 0;
+  const totalBmin = b + nb;
+  let isBreakWarning = false;
+  if (m > 480 && totalBmin < 60) {
+    isBreakWarning = true;
+  } else if (m > 360 && totalBmin < 45) {
+    isBreakWarning = true;
+  }
+
+  if (brEl) {
+    if (isBreakWarning) {
+      brEl.style.border = '2px solid #ef4444';
+      brEl.style.backgroundColor = '#fef2f2';
+      brEl.title = '労基法違反の恐れ：労働時間が6時間を超える場合は45分、8時間を超える場合は60分の休憩が必要です。';
+    } else {
+      brEl.style.border = '';
+      brEl.style.backgroundColor = '';
+      brEl.title = '';
+    }
+  }
 };
 
 const calculateLateEarly = () => {
@@ -549,8 +578,9 @@ const calculateLateEarly = () => {
   const lateEl = $('#lateMin');
   const earlyEl = $('#earlyMin');
   
+  // Không tự động tính đi trễ nếu không có giờ check-in thực tế
   if (lateEl && String(lateEl.dataset?.manual || '') !== '1') {
-    if (s && shiftStart && s.total > shiftStart.total) {
+    if (s && st.hasStartedToday && shiftStart && s.total > shiftStart.total) {
       lateEl.value = s.total - shiftStart.total;
     } else {
       lateEl.value = '';
@@ -559,8 +589,9 @@ const calculateLateEarly = () => {
     lateEl.value = '';
   }
   
+  // Không tự động tính về sớm nếu không có giờ check-in thực tế (đang khuyết check-in)
   if (earlyEl && String(earlyEl.dataset?.manual || '') !== '1') {
-    if (e && shiftEnd && e.total < shiftEnd.total) {
+    if (e && st.hasStartedToday && shiftEnd && e.total < shiftEnd.total) {
       earlyEl.value = shiftEnd.total - e.total;
     } else {
       earlyEl.value = '';
@@ -632,13 +663,14 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
 
     if (btnIn) {
       btnIn.disabled = !canStamp || hasOpen || hasStarted;
+      // Chỉ hiện (10:05) nếu đã lưu hoặc đã có inHm. Nếu mới bấm StartStamp, nút StartStamp sẽ tự update chữ.
       btnIn.textContent = inHm
         ? (isMobile ? `開始済 (${inHm})` : `開始打刻済 (${inHm})`)
         : '開始打刻';
     }
     if (btnOut) {
-      btnOut.disabled = !canStamp || !hasStarted || hasEnded;
-      if (hasOpen || (hasStarted && !hasEnded)) btnOut.textContent = '終了打刻';
+      btnOut.disabled = !canStamp || hasEnded;
+      if (hasOpen || (!hasEnded)) btnOut.textContent = '終了打刻';
       else if (hasEnded && outHm) {
         btnOut.textContent = isMobile ? `終了済 (${outHm})` : `終了打刻済 (${outHm})`;
       } else btnOut.textContent = '終了打刻';
@@ -1128,6 +1160,7 @@ const load = async (date, opts = {}) => {
     state.shiftLikeOpenAttendanceId = shiftLikeOpenSeg?.id || null;
     state.plannedStampAttendanceId = ghostSeg?.id || null;
     const segments = segmentsRaw.filter((s) => {
+      if (s.is_anomaly === 1 && s.anomaly_type === 'missing_checkin') return false; // Lọc missing check-in khỏi segments chung để xử lý riêng
       if (hasExplicitDailyInput) return true;
       return !isPlannedPlaceholderSegment(s, shiftStart, shiftEnd) &&
         !isTodayShiftGhostSegment(s, shiftStart, shiftEnd, date);
@@ -1157,9 +1190,52 @@ const load = async (date, opts = {}) => {
       }
     }
     const hasStartedOnce = segments.some(s => !!s?.checkIn);
-    const hasEndedOnce = segments.some(s => !!s?.checkIn && !!s?.checkOut);
+    
+    // Check for missing check-in anomaly
+    const missingCheckInSeg = segmentsRaw.find(s => !s.checkIn && s.checkOut && s.is_anomaly === 1 && s.anomaly_type === 'missing_checkin');
+
+    const hasEndedOnce = segments.some(s => !!s?.checkOut) || !!missingCheckInSeg;
     state.hasStartedToday = hasStartedOnce || !!seg?.checkIn;
-    state.hasEndedToday = hasEndedOnce || !!(seg?.checkIn && seg?.checkOut);
+    state.hasEndedToday = hasEndedOnce || !!seg?.checkOut || !!missingCheckInSeg;
+    
+    // Nếu có missing check-in thì set missing checkin là segment hiện tại để renderStampButtons xử lý đúng
+    if (missingCheckInSeg) {
+        seg = missingCheckInSeg;
+    }
+    
+    if (missingCheckInSeg) {
+      let warnEl = document.getElementById('missingCheckInWarning');
+      if (!warnEl) {
+        warnEl = document.createElement('div');
+        warnEl.id = 'missingCheckInWarning';
+        warnEl.className = 'simple-row';
+        warnEl.style.cssText = 'background: #fee2e2; border: 1px solid #ef4444; border-radius: 6px; padding: 12px; margin-bottom: 16px; flex-direction: column; align-items: flex-start; gap: 8px;';
+        
+        const textEl = document.createElement('div');
+        textEl.style.cssText = 'color: #b91c1c; font-weight: 700; font-size: 14px;';
+        textEl.textContent = '出勤打刻が未登録です。';
+        
+        const btnEl = document.createElement('button');
+        btnEl.type = 'button';
+        btnEl.className = 'simple-btn';
+        btnEl.style.cssText = 'background: #fff; color: #b91c1c; border-color: #ef4444; padding: 6px 12px; font-size: 13px;';
+        btnEl.textContent = '打刻修正を申請する';
+        btnEl.addEventListener('click', () => {
+          // Open time adjust request page or show modal
+          window.location.href = `/ui/adjust?type=time_adjust&date=${encodeURIComponent(date)}&attendanceId=${missingCheckInSeg.id}`;
+        });
+        
+        warnEl.appendChild(textEl);
+        warnEl.appendChild(btnEl);
+        
+        const stackEl = document.querySelector('.simple-stamp-stack');
+        if (stackEl) stackEl.parentNode.insertBefore(warnEl, stackEl);
+      }
+    } else {
+      const warnEl = document.getElementById('missingCheckInWarning');
+      if (warnEl) warnEl.remove();
+    }
+
     renderSimpleStatus();
     try { $('#topDate').textContent = fmtJP(date); } catch (e) { /* silently ignored */ }
 
@@ -1183,6 +1259,10 @@ const load = async (date, opts = {}) => {
         et.value = String(stampSeg.checkOut).slice(11, 16);
         et.dataset.actual = et.value;
         clearAutoTime(et);
+      } else if (missingCheckInSeg?.checkOut) {
+        et.value = String(missingCheckInSeg.checkOut).slice(11, 16);
+        et.dataset.actual = et.value;
+        clearAutoTime(et);
       } else {
         if (stampSeg?.checkIn && !stampSeg?.checkOut) {
           applyAutoTime(et, shiftEnd);
@@ -1193,10 +1273,15 @@ const load = async (date, opts = {}) => {
       }
       try { delete et.dataset.touched; } catch (e) { /* silently ignored */ }
     }
+    
+    if (missingCheckInSeg) {
+        seg = missingCheckInSeg;
+    }
+    
     renderStampButtons({
       date,
       inHm: (effectiveOpenSeg?.checkIn ? String(effectiveOpenSeg.checkIn).slice(11, 16) : '') || (seg?.checkIn ? String(seg.checkIn).slice(11, 16) : ''),
-      outHm: seg?.checkOut ? String(seg.checkOut).slice(11, 16) : '',
+      outHm: missingCheckInSeg?.checkOut ? String(missingCheckInSeg.checkOut).slice(11, 16) : (seg?.checkOut ? String(seg.checkOut).slice(11, 16) : ''),
       hasOpen: !!effectiveOpenSeg?.checkIn && !effectiveOpenSeg?.checkOut
     });
 
@@ -1432,7 +1517,7 @@ const tryCheckOut = async () => {
   }
 };
 
-const save = async (date) => {
+  const save = async (date) => {
   showErr('');
   const stEl = $('#startTime');
   const etEl = $('#endTime');
@@ -1489,11 +1574,13 @@ const save = async (date) => {
     }
 
     const day = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`);
-    const seg = pickLatestSegment(day?.segments);
-    const startTouched = String(stEl?.dataset?.touched || '') === '1';
-    const endTouched = String(etEl?.dataset?.touched || '') === '1';
+    const missingCheckInSeg = day?.segments?.find(s => s.is_anomaly === 1 && s.anomaly_type === 'missing_checkin');
+    let seg = pickLatestSegment(day?.segments);
+    if (missingCheckInSeg) seg = missingCheckInSeg;
+    const startTouched = String(stEl?.dataset?.touched || '') === '1' || (cin && !seg?.checkIn);
+    const endTouched = String(etEl?.dataset?.touched || '') === '1' || (cout0 && !seg?.checkOut);
     
-    if (seg?.id) {
+    if (seg?.id && seg.id !== missingCheckInSeg?.id) {
       const endVal = String(etEl?.value || '').trim();
       const hasOut = !!seg?.checkOut;
       
@@ -1515,27 +1602,52 @@ const save = async (date) => {
       }
       
       if (shouldUpdate) {
-        if (!body.checkIn && !seg.checkIn) {
-           showErr('開始時間を入力してください');
-           return false;
-        }
+        await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`, { method: 'PUT', body: JSON.stringify(body) });
+      }
+    } else if (missingCheckInSeg?.id) {
+      // Update existing missing check-in
+      const body = { attendanceId: missingCheckInSeg.id };
+      let shouldUpdate = false;
+      
+      if (cin) {
+        body.checkIn = cin;
+        if (cout0) body.checkOut = cout0;
+        shouldUpdate = true;
+      } else if (endTouched && cout0) {
+        body.checkOut = cout0;
+        shouldUpdate = true;
+      }
+      
+      if (shouldUpdate) {
         await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`, { method: 'PUT', body: JSON.stringify(body) });
       }
     } else {
       if (startTouched || endTouched) {
-         if (!cin && startTouched) {
-            showErr('開始時間を入力してください');
-            return false;
-         }
          if (cin) {
            const body = { checkIn: cin };
            if (endTouched && cout0) body.checkOut = cout0;
            await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/segments`, { method: 'POST', body: JSON.stringify(body) });
+         } else if (!cin && cout0) {
+           // Create a completely fake segment for missing checkin if one doesn't exist
+           const reqBody = { checkIn: null, checkOut: cout0 };
+           await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/segments`, { method: 'POST', body: JSON.stringify(reqBody) }).catch(async (e) => {
+               // Fallback if the segments API refuses a null checkIn
+               const isoStr = `${date}T${cout0.slice(11,16)}:00Z`;
+               await fetchJSONAuth(`/api/attendance/checkout`, { method: 'POST', body: JSON.stringify({ time: new Date(isoStr).getTime() - 9 * 3600000 }) });
+           });
          }
+      } else if (!cin && cout0) {
+           // For explicit form inputs without button press
+           const reqBody = { checkIn: null, checkOut: cout0 };
+           await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/segments`, { method: 'POST', body: JSON.stringify(reqBody) }).catch(async (e) => {
+               const isoStr = `${date}T${cout0.slice(11,16)}:00Z`;
+               await fetchJSONAuth(`/api/attendance/checkout`, { method: 'POST', body: JSON.stringify({ time: new Date(isoStr).getTime() - 9 * 3600000 }) });
+           });
       }
     }
     
-    await load(date);
+    // Đợi 1 chút cho API ghi xong rồi mới return để load()
+    await new Promise(r => setTimeout(r, 200));
     return true;
   } catch (e) {
     showErr(e?.message || '登録に失敗しました');
@@ -1625,10 +1737,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnIn = $('#btnStartStamp');
     const btnOut = $('#btnEndStamp');
     if (btnIn) {
+      // Đổi chữ ngay khi bấm
       const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
       btnIn.textContent = isMobile ? `開始済 (${hmNow})` : `開始打刻済 (${hmNow})`;
+      btnIn.disabled = true;
     }
-    if (btnOut) { btnOut.disabled = false; }
+    if (btnOut) { 
+      btnOut.disabled = false; 
+      // Vô hiệu hóa tính năng tự nhảy về 17:00 nếu đang ở chế độ chờ bấm checkOut (mới bấm checkIn)
+      const et = $('#endTime');
+      if (et) {
+         et.value = '';
+         clearAutoTime(et);
+         try { delete et.dataset.actual; } catch (e) { /* silently ignored */ }
+      }
+    }
     
     // Đánh dấu là có thay đổi chưa lưu
     markAsUnsaved();
@@ -1658,6 +1781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (et) {
       et.value = hmNow;
       clearAutoTime(et);
+      et.dataset.actual = hmNow; // Bắt buộc lưu lại là thời gian thực tế người dùng bấm
       et.dataset.touched = '1';
     }
     
@@ -1665,6 +1789,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnOut) {
       const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
       btnOut.textContent = isMobile ? `終了済 (${hmNow})` : `終了打刻済 (${hmNow})`;
+      btnOut.disabled = true;
     }
     
     // Đánh dấu là có thay đổi chưa lưu
@@ -1751,17 +1876,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     showSpinner(true, false);
     try {
+      const et = $('#endTime');
+      const st = $('#startTime');
+      
       const saved = await save(state.date);
       // Wait for save to fully finish and update DB before calling report
       const rep = await saveWorkReportIfPossible(state.date);
       
       // Lấy dữ liệu dự phòng trước khi load đè
-      const fallbackMemo = document.querySelector('#memo')?.dataset?.savedValue;
-      
-      // Reload UI completely to show saved notes
-      await load(state.date, { spinner: false });
-      
-      // Khôi phục lại giá trị memo CHẮC CHẮN nếu load() làm mất
+    const fallbackMemo = document.querySelector('#memo')?.dataset?.savedValue;
+    const fallbackOut = et ? et.value : null;
+    const fallbackIn = st ? st.value : null;
+    
+    // Reload UI completely to show saved notes
+    await load(state.date, { spinner: false });
+    
+    // Khôi phục lại giá trị nếu load() làm mất (race condition chống trả về rỗng)
+    if (et && fallbackOut && !et.value) {
+      et.value = fallbackOut;
+      et.dataset.actual = fallbackOut;
+    }
+    if (st && fallbackIn && !st.value) {
+      st.value = fallbackIn;
+      st.dataset.actual = fallbackIn;
+    }
+    
+    // Khôi phục lại giá trị memo CHẮC CHẮN nếu load() làm mất
       const memoEl = document.querySelector('#memo');
       if (memoEl && fallbackMemo) {
          memoEl.value = fallbackMemo;

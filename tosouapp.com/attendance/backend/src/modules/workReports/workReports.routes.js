@@ -42,8 +42,8 @@ router.post('/', authorize('employee', 'manager', 'admin'), async (req, res) => 
       SELECT id, checkIn, checkOut
       FROM attendance
       WHERE userId = ?
-        AND DATE(checkIn) = ?
-      ORDER BY checkIn DESC
+        AND DATE(COALESCE(checkIn, checkOut)) = ?
+      ORDER BY COALESCE(checkIn, checkOut) DESC
       LIMIT 1
     `, [userId, date]);
     const att = attRows && attRows[0] ? attRows[0] : null;

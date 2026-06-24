@@ -146,8 +146,8 @@ async function mountAttendanceImpl({
         border-bottom: 1px solid #f1f5f9 !important;
       }
       .attrec-fiori-override .attrec-pill {
-        font-size: 11px !important;
-        padding: 2px 6px !important;
+        font-size: 14px !important;
+        padding: 4px 10px !important;
         border-radius: 4px !important;
       }
       .attrec-fiori-override .attrec-summary {
@@ -232,6 +232,9 @@ async function mountAttendanceImpl({
       
       /* Mobile responsive styles for legacy attendance page */
       @media (max-width: 768px) {
+        .desktop-only {
+          display: none !important;
+        }
         .attrec-emp-like-table td.mobile-only {
           display: block !important;
         }
@@ -446,9 +449,9 @@ async function mountAttendanceImpl({
         /* Style pill tags inside mobile cards */
         .attrec-emp-like-table .m-v .attrec-pill {
           margin-bottom: 0 !important;
-          font-size: 11px !important;
+          font-size: 14px !important;
           font-weight: bold !important;
-          padding: 2px 8px !important;
+          padding: 4px 10px !important;
           border-radius: 4px !important;
         }
       }
@@ -543,7 +546,8 @@ async function mountAttendanceImpl({
         return;
       }
       let currentPage = 1;
-      const pageSize = 10;
+      const isMobile = window.innerWidth <= 768;
+      const pageSize = isMobile ? 1000 : 10;
       const renderTablePage = () => {
         if (!host) return;
         host.innerHTML = '';
@@ -592,9 +596,9 @@ async function mountAttendanceImpl({
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 12px;
+              padding: 6px 12px;
+              border-radius: 6px;
+              font-size: 14px;
               font-weight: 600;
               background-color: #f1f5f9;
               color: #475569;
@@ -827,10 +831,10 @@ async function mountAttendanceImpl({
         host.appendChild(tableWrap);
 
         // Pagination controls
-        if (items.length > 0) {
+        if (items.length > 0 && !isMobile) {
           const totalPages = Math.ceil(items.length / pageSize);
           const paginationDiv = document.createElement('div');
-          paginationDiv.className = 'attrec-paging';
+          paginationDiv.className = 'attrec-paging desktop-only';
           paginationDiv.style.display = 'flex';
           paginationDiv.style.alignItems = 'center';
           paginationDiv.style.justifyContent = 'flex-start';
@@ -965,7 +969,7 @@ async function mountAttendanceImpl({
     if (!currentUserId) return;
     const q = await getAttendanceDay(currentUserId, date, { signal });
     if (!isCurrent) return;
-    detailDiv.innerHTML = `<h4 style="margin-top:0;">${date} 編集</h4>`;
+    detailDiv.innerHTML = `<h4 style="margin-top:0;">${date} 詳細</h4>`;
     const t2 = document.createElement('table');
     t2.className = 'beautiful-table';
     t2.style.width = '100%';
@@ -976,7 +980,6 @@ async function mountAttendanceImpl({
           <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">ID</th>
           <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">出勤</th>
           <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:left;">退勤</th>
-          <th style="padding:10px; border-bottom:2px solid #cbd5e1; background:#f8fafc; text-align:center;">保存</th>
         </tr>
       </thead>`;
     const b2 = document.createElement('tbody');
@@ -985,9 +988,8 @@ async function mountAttendanceImpl({
       tr2.style.borderBottom = '1px solid #e2e8f0';
       tr2.innerHTML = `
         <td style="padding:10px;">${seg.id}</td>
-        <td style="padding:10px;"><input type="time" class="attrec-input" data-in="${seg.id}" value="${seg.checkIn ? seg.checkIn.substring(11, 16) : ''}"></td>
-        <td style="padding:10px;"><input type="time" class="attrec-input" data-out="${seg.id}" value="${seg.checkOut ? seg.checkOut.substring(11, 16) : ''}"></td>
-        <td style="padding:10px; text-align:center;"><button type="button" class="attrec-btn" style="padding:4px 10px; font-size:12px;" data-action="save-att" data-id="${seg.id}">保存</button></td>
+        <td style="padding:10px;">${seg.checkIn ? seg.checkIn.substring(11, 16) : ''}</td>
+        <td style="padding:10px;">${seg.checkOut ? seg.checkOut.substring(11, 16) : ''}</td>
       `;
       b2.appendChild(tr2);
     }
@@ -1172,33 +1174,7 @@ async function mountAttendanceImpl({
     content.appendChild(resultDiv);
     content.appendChild(detailDiv);
     
-    delegate(document.body, 'button[data-action="save-att"]', 'click', async (_e, btn) => {
-      const id = btn.dataset.id || '';
-      if (!id) return;
-      const inEl = document.querySelector(`input[data-in="${id}"]`);
-      const outEl = document.querySelector(`input[data-out="${id}"]`);
-      // We expect format "HH:MM", we should attach a dummy date to save as datetime, or backend handles it?
-      // Looking at the codebase, updateAttendanceSegment expects full datetime if possible, or just what backend accepts.
-      // Wait, original code was: const inVal = inEl && inEl.value ? inEl.value : null; 
-      // If original worked, we just pass the value. But it might have been full datetime.
-      // Let's pass the date part from the h4 if needed, or just let backend handle HH:MM if it can.
-      // The original code passed `seg.checkIn` which was a full datetime string. If user edits "HH:MM", backend might fail if it expects datetime.
-      // Let's grab the date from the header.
-      const dateText = detailDiv.querySelector('h4')?.textContent || '';
-      const dateStr = dateText.split(' ')[0]; // "YYYY-MM-DD"
-      
-      let inVal = inEl && inEl.value ? inEl.value : null;
-      let outVal = outEl && outEl.value ? outEl.value : null;
-      
-      if (inVal && inVal.length <= 5) inVal = `${dateStr} ${inVal}:00`;
-      else if (inVal && inVal.length === 16) inVal = inVal.replace('T', ' ') + ':00';
-      
-      if (outVal && outVal.length <= 5) outVal = `${dateStr} ${outVal}:00`;
-      else if (outVal && outVal.length === 16) outVal = outVal.replace('T', ' ') + ':00';
-      
-      await updateAttendanceSegment(id, { checkIn: inVal, checkOut: outVal }, { signal });
-      alert('保存しました');
-    });
+
   }
 
   return () => {

@@ -51,10 +51,13 @@ async function checkIn(userId, time, loc) {
 
 async function checkOut(userId, time, loc) {
   const open = await repo.getOpenAttendanceForUser(userId);
-  if (!open) {
-    return null;
-  }
   const ts = time ? formatInputToMySQLJST(time) : nowJSTMySQL();
+  if (!open) {
+    const labels = [];
+    if (loc?.accuracy != null && Number(loc.accuracy) > 100) labels.push('low_accuracy');
+    const id = await repo.createMissingCheckIn(userId, ts, loc, labels.join(','), 'missing_checkin');
+    return { id, userId, checkIn: null, checkOut: ts, labels, anomaly_type: 'missing_checkin' };
+  }
   const labels = computeLabelsForCheckOut(open, ts, loc);
   await repo.setCheckOut(open.id, ts, loc, labels.join(','));
   return { id: open.id, userId, checkIn: open.checkIn, checkOut: ts, labels };

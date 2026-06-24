@@ -1057,6 +1057,11 @@
       let sumOvertimeMins = 0;
       let sumNightMins = 0;
       let sumHolidayWorkMins = 0;
+
+      // Ensure we get the latest timesheet
+      const timesheetData = state.currentMonthTimesheet || {};
+      const days = Array.isArray(timesheetData.days) ? timesheetData.days : [];
+      const totals = timesheetData.totals || {};
       
       const parseHmToMin = (hmStr) => {
         if (!hmStr) return 0;
@@ -1079,12 +1084,13 @@
             const m = parseInt(dateStr.slice(5, 7), 10);
             const d = parseInt(dateStr.slice(8, 10), 10);
             const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
-            // Dùng Non-breaking space (&nbsp;) để chắc chắn không bị xuống dòng giữa ngày và thứ
             dayDisplay = `${m}/${d}&nbsp;${dow}`;
           }
           
           const isFuture = dateStr > currentYmd;
-          const isWeekendOrHoliday = tr.classList.contains('sat') || tr.classList.contains('sun') || tr.classList.contains('holiday');
+          
+          // Lấy dữ liệu timesheet chuẩn từ server nếu có
+          const tsDay = days.find(d => d.date && d.date.slice(0, 10) === dateStr);
           
           // Trích xuất các trường từ UI
           const selKubun = tr.querySelector('select[data-field="classification"]');
@@ -1092,33 +1098,64 @@
           
           const inEl = tr.querySelector('input[data-field="checkIn"]');
           const outEl = tr.querySelector('input[data-field="checkOut"]');
-          let timeIn = inEl ? inEl.value : '';
-          let timeOut = outEl ? outEl.value : '';
+          const hasActualIn = inEl && inEl.dataset.actual;
+          const hasActualOut = outEl && outEl.dataset.actual;
+          let inHm = inEl ? inEl.value : '';
+          let outHm = outEl ? outEl.value : '';
           
-          const brSel = tr.querySelector('select[data-field="break"]');
-          const nbSel = tr.querySelector('select[data-field="nightBreak"]');
-          let breakNormal = brSel ? brSel.value : '';
-          let breakNight = nbSel ? nbSel.value : '';
+          const formatHm = (min) => {
+            if (min == null) return '0:00';
+            const m = Math.max(0, Number(min || 0));
+            const h = Math.floor(m / 60);
+            const r = Math.floor(m % 60);
+            if (h === 0 && r === 0) return '0:00';
+            return `${h}:${String(r).padStart(2, '0')}`;
+          };
+
+          let timeIn = inHm;
+          let timeOut = outHm;
+          let breakNormal = tr.querySelector('input[data-field="breakMinutes"]')?.value || '0:00';
+          let breakNight = '0:00';
+          let workedTime = '0:00';
+          let excessTime = '0:00';
           
-          const ckOn = tr.querySelector('input[data-field="ckOnsite"]');
-          const ckRe = tr.querySelector('input[data-field="ckRemote"]');
-          const ckSa = tr.querySelector('input[data-field="ckSatellite"]');
-          let isOnsite = ckOn && ckOn.checked ? '〇' : '';
-          let isRemote = ckRe && ckRe.checked ? '〇' : '';
-          let isTravel = ckSa && ckSa.checked ? '〇' : ''; // Map satellite/travel
-          
-          const workedEl = tr.querySelector('td[data-field="worked"]');
-          let workedTime = workedEl ? workedEl.textContent.trim() : '';
-          
-          const excessEl = tr.querySelector('td[data-field="excess"]');
-          let excessTime = excessEl ? excessEl.textContent.trim() : '';
+          let isOnsite = tr.querySelector('input[data-field="ckOnsite"]')?.checked ? '〇' : '';
+          let isRemote = tr.querySelector('input[data-field="ckRemote"]')?.checked ? '〇' : '';
+          let isTravel = tr.querySelector('input[data-field="ckSatellite"]')?.checked ? '〇' : '';
           
           const notesEl = tr.querySelector('input[data-field="notes"]');
           let notes = notesEl ? notesEl.value : '';
+
+          let dayWorkMins = 0;
+          let dayOvertimeMins = 0;
+          let dayNightMins = 0;
+          
+          if (tsDay) {
+            // Lấy thẳng số phút từ server tính toán chuẩn xác
+            dayWorkMins = tsDay.regularMinutes || 0;
+            dayOvertimeMins = tsDay.overtimeMinutes || 0;
+            dayNightMins = tsDay.nightMinutes || 0;
+            
+            workedTime = formatHm(dayWorkMins);
+            excessTime = formatHm(dayOvertimeMins);
+          } else if (inHm && outHm && !isFuture) {
+            // Fallback nếu không có dữ liệu từ server (chỉ để dự phòng)
+            let start = parseHmToMin(inHm);
+            let end = parseHmToMin(outHm);
+            if (end < start) end += 24 * 60; // Làm qua ngày hôm sau
+            
+            let nightWork = 0;
+            const nightRanges = [[0, 300], [1320, 1740], [2760, 3180]]; // 0:00-5:00, 22:00-29:00
+            for (const [rStart, rEnd] of nightRanges) {
+                const overlapStart = Math.max(start, rStart);
+                const overlapEnd = Math.min(end, rEnd);
+                if (overlapStart < overlapEnd) nightWork += (overlapEnd - overlapStart);
+            }
+            const nightBreakMins = parseHmToMin(breakNight);
+            dayNightMins = Math.max(0, nightWork - nightBreakMins);
+          }
           
           // Logic 予定 và Ẩn giờ nếu chưa làm:
-          const hasActualIn = inEl && inEl.dataset.actual;
-          const hasActualOut = outEl && outEl.dataset.actual;
           const isPlanned = tr.classList.contains('planned');
           const isHolidayKubun = kubun === '休日' || kubun === '代替休日';
           const isLeaveKubun = kubun === '有給休暇' || kubun === '無給休暇' || kubun === '欠勤';
@@ -1140,11 +1177,6 @@
              isOnsite = '';
              isRemote = '';
              isTravel = '';
-          } else {
-             // Đảm bảo có giá trị 0:00 cho các trường nếu có đi làm
-             if (!breakNormal) breakNormal = '0:00';
-             if (!breakNight) breakNight = '0:00';
-             if (!excessTime) excessTime = '0:00';
           }
           
           // Đảm bảo xóa vòng tròn "Nơi làm việc" (出社/在宅/出張) nếu là các ngày nghỉ/phép
@@ -1156,36 +1188,13 @@
             // NẾU CÓ DỮ LIỆU THỰC TẾ -> TÍNH TỔNG VÀO SUMMARY
             if (!isHolidayKubun && kubun !== '欠勤') {
                sumAttendDays++;
-               
-               const wMin = parseHmToMin(workedTime);
-               sumWorkMins += wMin;
-               
-               const oMin = parseHmToMin(excessTime);
-               sumOvertimeMins += oMin;
-               
-               // Tự động tính toán Giờ làm đêm (22:00 - 05:00) dựa trên Giờ vào/ra thực tế trên màn hình
-               // Bỏ qua dữ liệu của Backend vì Backend đang trả về dữ liệu ảo (dummy data) bị sai
-               if (timeIn && timeOut) {
-                 let start = parseHmToMin(timeIn);
-                 let end = parseHmToMin(timeOut);
-                 if (end < start) end += 24 * 60; // Làm qua ngày hôm sau
-                 
-                 let nightWork = 0;
-                 const nightRanges = [[0, 300], [1320, 1740], [2760, 3180]]; // 0:00-5:00, 22:00-29:00
-                 for (const [rStart, rEnd] of nightRanges) {
-                     const overlapStart = Math.max(start, rStart);
-                     const overlapEnd = Math.min(end, rEnd);
-                     if (overlapStart < overlapEnd) {
-                         nightWork += (overlapEnd - overlapStart);
-                     }
-                 }
-                 const nightBreakMins = parseHmToMin(breakNight);
-                 sumNightMins += Math.max(0, nightWork - nightBreakMins);
-               }
+               sumWorkMins += dayWorkMins;
+               sumOvertimeMins += dayOvertimeMins;
+               sumNightMins += dayNightMins;
                
                // Chỉ cộng vào Giờ làm ngày nghỉ nếu phân loại (Sự do) được chọn đích danh là '休日出勤' (Làm ngày nghỉ)
                if (kubun === '休日出勤') {
-                 sumHolidayWorkMins += wMin;
+                 sumHolidayWorkMins += dayWorkMins;
                }
             }
           }
@@ -1225,6 +1234,7 @@
         const m = Math.max(0, Number(min || 0));
         const h = Math.floor(m / 60);
         const r = Math.floor(m % 60);
+        if (h === 0 && r === 0) return '0:00';
         return `${h}:${String(r).padStart(2, '0')}`;
       };
 

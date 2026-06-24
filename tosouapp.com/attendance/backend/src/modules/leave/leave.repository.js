@@ -247,10 +247,10 @@ module.exports = {
         ON ad.userId = lr.userId
        AND ad.date = lr.startDate
       LEFT JOIN (
-        SELECT userId, DATE(checkIn) AS d,
+        SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS d,
                MAX(CASE WHEN checkIn IS NOT NULL OR checkOut IS NOT NULL THEN 1 ELSE 0 END) AS hasWork
         FROM attendance
-        GROUP BY userId, DATE(checkIn)
+        GROUP BY userId, DATE(COALESCE(checkIn, checkOut))
       ) aw
         ON aw.userId = lr.userId
        AND aw.d = lr.startDate
@@ -335,7 +335,7 @@ module.exports = {
          AND ad.date = lr.startDate
         LEFT JOIN attendance a
           ON a.userId = lr.userId
-         AND DATE(a.checkIn) = lr.startDate
+         AND DATE(COALESCE(a.checkIn, a.checkOut)) = lr.startDate
         SET
           lr.status = 'rejected',
           lr.reason = CASE
@@ -417,10 +417,10 @@ module.exports = {
           ON ad.userId = lr.userId
          AND ad.date = lr.startDate
         LEFT JOIN (
-          SELECT userId, DATE(checkIn) AS d,
+          SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS d,
                  MAX(CASE WHEN checkIn IS NOT NULL OR checkOut IS NOT NULL THEN 1 ELSE 0 END) AS hasWork
           FROM attendance
-          GROUP BY userId, DATE(checkIn)
+          GROUP BY userId, DATE(COALESCE(checkIn, checkOut))
         ) aw
           ON aw.userId = lr.userId
          AND aw.d = lr.startDate
