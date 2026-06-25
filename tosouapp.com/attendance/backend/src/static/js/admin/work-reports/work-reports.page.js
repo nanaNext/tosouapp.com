@@ -174,75 +174,123 @@ export async function mount() {
         
         .wr-table { display: block !important; width: 100% !important; min-width: 0 !important; border: none !important; border-collapse: separate !important; }
         .wr-table thead, .wr-table colgroup { display: none !important; }
-        .wr-table tbody { display: block !important; width: 100% !important; background: transparent !important; }
+        .wr-table tbody { display: flex !important; flex-direction: column !important; gap: 12px !important; padding: 12px 0 !important; width: 100% !important; background: transparent !important; }
         
-        .wr-table tbody tr { position: relative !important; display: flex !important; flex-wrap: wrap !important; margin-bottom: 16px !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; background: #fff !important; padding: 0 !important; overflow: hidden !important; align-items: flex-start !important; }
+        .wr-table tbody tr { display: grid !important; grid-template-columns: 90px 1fr !important; grid-auto-rows: auto !important; margin: 0 0 16px 0 !important; border: 1px solid #cbd5e1 !important; border-radius: 0 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; background: #fff !important; padding: 0 !important; position: relative !important; }
         .wr-table tbody td { border: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
         
-        .wr-table tbody td { display: flex !important; align-items: flex-start !important; padding: 10px 16px !important; margin: 0 !important; border: none !important; outline: none !important; width: 100% !important; box-sizing: border-box !important; text-align: left !important; font-size: 14px !important; color: #0f172a !important; background: transparent !important; clear: none !important; border-bottom: 1px solid #f1f5f9 !important; }
-        .wr-table tbody td:last-child { border-bottom: none !important; }
-        .wr-table tbody td::before { content: attr(data-label); font-weight: normal; color: #64748b; font-size: 13px; text-align: left; margin-right: 8px; flex-shrink: 0; width: 80px; display: inline-block; padding-top: 0 !important; }
-        
-        /* ---------------- Header Section ---------------- */
-        .wr-table tbody td.m-header-cell {
-          width: 100% !important;
-          background: #f8fafc !important;
-          padding: 12px 16px !important;
-          border-bottom: 1px solid #e2e8f0 !important;
+        /* First cell (Left Column) */
+        .wr-table tbody td:nth-child(1) {
+          grid-column: 1 / 2 !important;
+          grid-row: 1 / 20 !important; /* Span across all rows */
           display: flex !important;
           flex-direction: column !important;
-          gap: 4px !important;
-          order: 0 !important;
+          align-items: flex-start !important;
+          justify-content: flex-start !important;
+          padding: 16px 12px !important;
+          border: none !important;
+          border-right: 1px solid #e2e8f0 !important;
+          background: #f8fafc !important;
+          border-radius: 0 !important;
+          text-align: left !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
         }
-        .wr-table tbody td.m-header-cell::before { display: none !important; }
-        
-        .m-header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .m-header-date { font-weight: 600; font-size: 14px; color: #475569; }
-        .m-header-bottom { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .m-header-name { font-weight: 700; font-size: 16px; color: #0f172a; }
-        .m-header-meta { font-size: 13px; color: #64748b; }
-        
-        /* Hide individual old header cells */
-        .wr-table tbody td[data-label="氏名"]:not(.group-hide),
-        .wr-table tbody td[data-label="社員番号"]:not(.group-hide),
-        .wr-table tbody td[data-label="部署"]:not(.group-hide),
-        .wr-table tbody td[data-label="日付"],
-        .wr-table tbody td[data-label="曜"] {
-          display: none !important;
+        .wr-table tbody td:nth-child(1)::before {
+          content: attr(data-label) !important;
+          font-size: 11px !important;
+          font-weight: 400 !important;
+          color: #64748b !important;
+          margin-bottom: 4px !important;
+          margin-right: 0 !important;
+          width: auto !important;
+          min-width: 0 !important;
+          display: block !important;
+        }
+        .wr-table tbody td:nth-child(1) span,
+        .wr-table tbody td:nth-child(1) {
+          font-size: 14px !important;
+          font-weight: 700 !important;
+          color: #0f172a !important;
+        }
+
+        /* Other cells (Right Column) */
+        .wr-table tbody td:not(:nth-child(1)) {
+          grid-column: 2 / 3 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          padding: 8px 16px !important;
+          border: none !important;
+          border-bottom: 1px dashed #f1f5f9 !important;
+          text-align: left !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          margin: 0 !important;
+        }
+        .wr-table tbody td:last-child {
+          border-bottom: none !important;
         }
         
-        /* Middle Section */
-        .wr-table tbody td[data-label="状態"] { order: 1 !important; display: none !important; } /* We put status in header */
+        /* Label positioning for right column */
+        .wr-table tbody td:not(:nth-child(1))::before {
+          content: attr(data-label) !important;
+          width: 70px !important;
+          min-width: 70px !important;
+          font-size: 13px !important;
+          font-weight: 600 !important;
+          color: #64748b !important;
+          margin-right: 8px !important;
+          text-align: left !important;
+          flex-shrink: 0 !important;
+          display: inline-block !important;
+        }
         
-        .wr-table tbody td[data-label="遅刻・早退等"]:empty { display: none !important; }
-        .wr-table tbody td[data-label="遅刻・早退等"] { order: 2 !important; padding: 10px 16px !important; }
-        .wr-table tbody td[data-label="遅刻・早退等"] span { background: transparent !important; color: #e11d48 !important; border: 0 !important; padding: 0 !important; border-radius: 0 !important; font-size: 14px !important; font-weight: bold !important; display: inline-block !important; width: 100% !important; text-align: left !important; box-sizing: border-box !important; margin-top: 0 !important; }
+        /* Content styling */
+        .wr-table tbody td:not(:nth-child(1)) > div,
+        .wr-table tbody td:not(:nth-child(1)) > span {
+          text-align: left !important;
+          font-size: 14px !important;
+          color: #1e293b !important;
+          width: 100% !important;
+          word-break: break-word !important;
+        }
 
-        .wr-table tbody td[data-label="勤務区分"] { order: 3 !important; width: 100% !important; font-weight: 500 !important; }
+        /* Hide Day column since we can combine it, but let's just show it normally for now to match Attendance structure */
+        /* Grouped view specific fixes */
+        .wr-table tbody td.group-hide { display: none !important; }
         
-        /* 2-column layout for CheckIn / CheckOut */
-        .wr-table tbody td[data-label="出勤"] { order: 4 !important; width: 50% !important; }
-        .wr-table tbody td[data-label="退勤"] { order: 5 !important; width: 50% !important; }
-        .wr-table tbody td[data-label="出勤"]::before { width: 40px !important; }
-        .wr-table tbody td[data-label="退勤"]::before { width: 40px !important; }
-        .wr-table tbody td[data-label="出勤"], .wr-table tbody td[data-label="退勤"] { font-family: monospace !important; font-size: 15px !important; font-weight: 600 !important; padding: 10px 12px !important; }
+        /* Fix status pill in mobile */
+        .wr-table tbody td[data-label="状態"] .dash-pill {
+          display: inline-flex !important;
+          padding: 4px 10px !important;
+          border-radius: 4px !important;
+          font-size: 13px !important;
+          font-weight: 600 !important;
+        }
 
-        .wr-table tbody td[data-label="勤務形態"] { order: 6 !important; width: 100% !important; font-weight: 500 !important; }
-        .wr-table tbody td[data-label="現場"] { order: 7 !important; width: 100% !important; font-weight: 500 !important; }
-        .wr-table tbody td[data-label="作業内容"] { order: 8 !important; width: 100% !important; font-weight: 500 !important; flex-direction: column !important; gap: 4px !important; }
-        .wr-table tbody td[data-label="備考"] { order: 9 !important; width: 100% !important; font-weight: 500 !important; flex-direction: column !important; gap: 4px !important; }
         
-        .wr-table tbody td[data-label="作業内容"]::before, .wr-table tbody td[data-label="備考"]::before { width: 100% !important; margin-bottom: 2px !important; }
-        
-        /* Fix row backgrounds */
-        .wr-table tbody tr.wr-off-row td.m-header-cell { background: #f8fafc !important; border-bottom-color: #e2e8f0 !important; }
-        .wr-table tbody tr.wr-sat-row td.m-header-cell { background: #f8fafc !important; border-bottom-color: #e2e8f0 !important; }
-        .wr-table tbody tr.wr-off-row td.m-header-cell .m-header-date { color: #dc2626 !important; }
-        .wr-table tbody tr.wr-sat-row td.m-header-cell .m-header-date { color: #d97706 !important; }
+        /* Fix row backgrounds for left cell */
+        .wr-table tbody tr.wr-off-row td:nth-child(1) { background: #fff5f5 !important; border-right-color: #fecaca !important; color: #dc2626 !important; }
+        .wr-table tbody tr.wr-sat-row td:nth-child(1) { background: #eff6ff !important; border-right-color: #bfdbfe !important; color: #2563eb !important; }
         
         /* Mobile List Table Fixes */
-        .wr-table-container { border: none !important; box-shadow: none !important; background: transparent !important; padding-bottom: 0 !important; overflow-x: hidden !important; padding: 0 !important; }
+        .wr-table-container { border: none !important; box-shadow: none !important; background: transparent !important; padding-bottom: 60px !important; overflow-x: hidden !important; padding: 0 !important; }
         .wr-summary-container { padding: 0 12px !important; }
+        
+        /* Sticky Pagination for Mobile */
+        .wr-mobile-pagination {
+          position: fixed !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          background: #ffffff !important;
+          padding: 12px 16px !important;
+          box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+          z-index: 100 !important;
+          border-top: 1px solid #e2e8f0 !important;
+          margin-top: 0 !important;
+        }
         
         #adminContent.card { border: none !important; box-shadow: none !important; background: transparent !important; }
         
@@ -252,7 +300,6 @@ export async function mount() {
       }
       @media (min-width: 769px) {
         .group-hide { display: none !important; }
-        .m-header-cell { display: none !important; }
         .hidden-on-mobile { display: flex !important; }
         .hidden-on-desktop { display: none !important; }
         .wr-toolbar { display: flex !important; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; flex-shrink: 0; }
@@ -347,7 +394,8 @@ export async function mount() {
   };
 
   let currentPage = 1;
-  const pageSize = 10;
+  const isMobile = window.innerWidth <= 768;
+  const pageSize = isMobile ? 30 : 10;
 
   const formatDelay = (mins) => {
     if (!mins || isNaN(mins)) return '';
@@ -443,16 +491,6 @@ export async function mount() {
 
       return `
         <tr class="${rowClass}">
-          <td class="m-header-cell group-hide">
-            <div class="m-header-top">
-              <span class="m-header-date">${esc(displayDate)} (${esc(isPublicHoliday ? '祝' : (it.weekday || ''))})</span>
-              <span class="m-status"><span class="dash-pill" style="${meta.style}; display:inline-block; padding:4px 8px !important; border-radius:6px !important; font-size:13px !important; font-weight:600 !important;">${esc(meta.label)}</span></span>
-            </div>
-            <div class="m-header-bottom">
-              <span class="m-header-name">${esc(it.username || '')}</span>
-              <span class="m-header-meta">${esc(code)} | ${dept}</span>
-            </div>
-          </td>
           <td data-label="日付" class="${dc} ${textColorClass}" style="text-align:center; font-weight:600;">${esc(displayDate)}</td>
           <td data-label="曜" class="${dc} ${textColorClass}" style="text-align:center; font-weight:600;">${esc(isPublicHoliday ? '祝' : (it.weekday || ''))}</td>
           <td data-label="社員番号" style="white-space:nowrap;">${esc(code)}</td>
@@ -480,9 +518,10 @@ export async function mount() {
       const nextBg = currentPage === totalPages ? '#f1f5f9' : '#fff';
       const prevCursor = currentPage === 1 ? 'not-allowed' : 'pointer';
       const nextCursor = currentPage === totalPages ? 'not-allowed' : 'pointer';
+      const paginationClass = isMobile ? 'wr-mobile-pagination' : '';
 
       paginationHtml = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+        <div class="${paginationClass}" style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
           <div style="color:#64748b; font-size:14px;">
             全 <span style="font-weight:700; color:#0f172a;">${items.length}</span> 件中 <span style="font-weight:700; color:#0f172a;">${startIndex + 1}</span> - <span style="font-weight:700; color:#0f172a;">${endIndex}</span> 件を表示
           </div>
@@ -546,6 +585,12 @@ export async function mount() {
           if (currentPage > 1) {
             currentPage--;
             renderRows(items);
+            if (isMobile) {
+              setTimeout(() => {
+                const tableHost = $('#wrTable');
+                if (tableHost) tableHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 50);
+            }
           }
         });
       }
@@ -556,6 +601,12 @@ export async function mount() {
           if (currentPage < totalPages) {
             currentPage++;
             renderRows(items);
+            if (isMobile) {
+              setTimeout(() => {
+                const tableHost = $('#wrTable');
+                if (tableHost) tableHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 50);
+            }
           }
         });
       }
@@ -748,12 +799,6 @@ export async function mount() {
 
         return `
         <tr class="${trClass}" style="${rowBg} ${textColor}">
-          <td class="m-header-cell">
-            <div class="m-header-top">
-              <span class="m-header-date">${esc(displayDate)} (${esc(isHoliday ? '祝' : (it.weekday || ''))})</span>
-              <span class="m-status"><span class="dash-pill" style="${meta.style}; display:inline-block; padding:4px 8px !important; border-radius:6px !important; font-size:13px !important; font-weight:600 !important;">${esc(meta.label)}</span></span>
-            </div>
-          </td>
           <td data-label="日付" class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
           <td data-label="曜" class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
           <td data-label="社員番号" class="group-hide" style="white-space:nowrap; ${textColor}">${esc(code)}</td>
@@ -767,7 +812,7 @@ export async function mount() {
           <td data-label="作業内容" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
           <td data-label="遅刻・早退等" style="white-space:nowrap; ${textColor}">${lateEarlyHtml}</td>
           <td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; ${textColor ? textColor : 'color:#475569;'}">${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>
-          <td data-label="状態"><span class="dash-pill" style="${meta.style}; white-space:nowrap; background: transparent !important; padding: 0 !important; border: none !important; font-size: 14px !important;">${esc(meta.label)}</span></td>
+          <td data-label="状態"><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
       }).join('');

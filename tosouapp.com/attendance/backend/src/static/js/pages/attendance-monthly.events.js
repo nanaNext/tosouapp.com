@@ -604,24 +604,24 @@
         if (br) br.style.visibility = 'visible';
         if (nb) nb.style.visibility = 'visible';
         
-        const wtRestored = row.dataset.workTypeBackup || row.dataset.workTypeBase || '';
-        if (wtRestored) {
-          row.dataset.workType = wtRestored;
-          const ckOn = row.querySelector('input[data-field="ckOnsite"]');
-          const ckRe = row.querySelector('input[data-field="ckRemote"]');
-          const ckSa = row.querySelector('input[data-field="ckSatellite"]');
-          if (ckOn) {
-            ckOn.checked = (wtRestored === 'onsite');
-            ckOn.style.visibility = 'visible';
-          }
-          if (ckRe) {
-            ckRe.checked = (wtRestored === 'remote');
-            ckRe.style.visibility = 'visible';
-          }
-          if (ckSa) {
-            ckSa.checked = (wtRestored === 'satellite');
-            ckSa.style.visibility = 'visible';
-          }
+        let wtRestored = row.dataset.workTypeBackup || row.dataset.workTypeBase || '';
+        if (!wtRestored) wtRestored = 'onsite';
+        
+        row.dataset.workType = wtRestored;
+        const ckOn = row.querySelector('input[data-field="ckOnsite"]');
+        const ckRe = row.querySelector('input[data-field="ckRemote"]');
+        const ckSa = row.querySelector('input[data-field="ckSatellite"]');
+        if (ckOn) {
+          ckOn.checked = (wtRestored === 'onsite');
+          ckOn.style.visibility = 'visible';
+        }
+        if (ckRe) {
+          ckRe.checked = (wtRestored === 'remote');
+          ckRe.style.visibility = 'visible';
+        }
+        if (ckSa) {
+          ckSa.checked = (wtRestored === 'satellite');
+          ckSa.style.visibility = 'visible';
         }
         
         // Cập nhật lại UI sau khi khôi phục

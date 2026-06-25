@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const db = require('../core/database/mysql');
 const emailService = require('../core/notifications/email.service');
+const noticesRepo = require('../modules/notices/notices.repository');
 
 async function processMonthlyShiftReminders() {
     console.log('[ShiftReminderCron] Bắt đầu kiểm tra nhắc nhở nộp lịch ca tháng sau...');
@@ -177,6 +178,16 @@ ${appUrl}ui/manual
             }
 
             try {
+                // Tạo thông báo trong app (Cái chuông)
+                await noticesRepo.createNotice({
+                    targetUserId: user.id,
+                    targetMonth: targetMonthStr,
+                    message: `来月（${targetMonthStr}）のシフト提出をお願いします。`,
+                    createdBy: null,
+                    kind: 'system',
+                    title: 'シフト提出リマインド'
+                });
+
                 if (typeof emailService.sendViaResend === 'function') {
                     await emailService.sendViaResend({
                         from: senderFrom,
@@ -197,15 +208,15 @@ ${appUrl}ui/manual
 }
 
 function initShiftSubmissionReminderCron() {
-    // Chạy vào 10:00 sáng mỗi ngày
+    // Chạy vào 15:00 mỗi ngày
     // (Bên trong hàm sẽ tự check xem hôm nay có phải 15, 25, hoặc cuối tháng không)
-    cron.schedule('0 10 * * *', () => {
+    cron.schedule('0 15 * * *', () => {
         processMonthlyShiftReminders();
     }, {
         scheduled: true,
         timezone: "Asia/Tokyo"
     });
-    console.log('[Cron Job] Đã lên lịch tự động gửi nhắc nhở nộp lịch ca vào 10:00 sáng mỗi ngày (kiểm tra điều kiện ngày 15, 25, cuối tháng).');
+    console.log('[Cron Job] Đã lên lịch tự động gửi nhắc nhở nộp lịch ca vào 15:00 mỗi ngày (kiểm tra điều kiện ngày 15, 25, cuối tháng).');
 }
 
 module.exports = {

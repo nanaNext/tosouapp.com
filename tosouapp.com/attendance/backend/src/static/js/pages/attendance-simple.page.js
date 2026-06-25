@@ -647,29 +647,27 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
     // Keep compact labels in sync with mobile CSS breakpoints to avoid button text overflow.
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
 
-    // For non-today dates, keep labels neutral to avoid confusing "started at 08:00"
-    // from planned/legacy data while stamping is intentionally disabled.
-    if (!canStamp) {
-      if (btnIn) {
-        btnIn.disabled = true;
-        btnIn.textContent = '開始打刻';
-      }
-      if (btnOut) {
-        btnOut.disabled = true;
-        btnOut.textContent = '終了打刻';
-      }
-      return;
-    }
+    // Kiểm tra trạng thái ngày nghỉ
+    const kubun = String($('#kubun')?.value || '').trim();
+    const isNonWorking = !!st.restHoliday || ['欠勤', '有給休暇', '半休', '無給休暇'].includes(kubun);
 
     if (btnIn) {
-      btnIn.disabled = !canStamp || hasOpen || hasStarted;
+      if (isNonWorking) {
+        btnIn.disabled = true;
+      } else {
+        btnIn.disabled = !canStamp || hasOpen || hasStarted;
+      }
       // Chỉ hiện (10:05) nếu đã lưu hoặc đã có inHm. Nếu mới bấm StartStamp, nút StartStamp sẽ tự update chữ.
       btnIn.textContent = inHm
         ? (isMobile ? `開始済 (${inHm})` : `開始打刻済 (${inHm})`)
         : '開始打刻';
     }
     if (btnOut) {
-      btnOut.disabled = !canStamp || hasEnded;
+      if (isNonWorking) {
+        btnOut.disabled = true;
+      } else {
+        btnOut.disabled = !canStamp || hasEnded;
+      }
       if (hasOpen || (!hasEnded)) btnOut.textContent = '終了打刻';
       else if (hasEnded && outHm) {
         btnOut.textContent = isMobile ? `終了済 (${outHm})` : `終了打刻済 (${outHm})`;
@@ -690,7 +688,6 @@ const syncWorkTypeButtons = () => {
 
 const ensureDefaultWorkTypeForToday = (date) => {
   try {
-    if (String(date || '') !== todayJST()) return;
     const kubun = String($('#kubun')?.value || '').trim();
     const nonWorking = ['欠勤', '有給休暇', '半休', '無給休暇', '休日'].includes(kubun);
     if (nonWorking) return;
@@ -799,10 +796,12 @@ const applyHolidayRestMode = () => {
         applyAutoTime(et, (window.state || {}).shiftEnd);
       }
     }
-    const btnIn = $('#btnStartStamp');
-    const btnOut = $('#btnEndStamp');
-    if (btnIn) btnIn.disabled = false;
-    if (btnOut) btnOut.disabled = false;
+    // Also call renderStampButtons to ensure the text matches the state
+    try {
+      if (typeof window.renderStampButtons === 'function') {
+        window.renderStampButtons();
+      }
+    } catch(e) { console.error('Error triggering renderStampButtons:', e); }
     renderWorkMinutes();
   }
   applyWorkTypeGate();
@@ -1844,6 +1843,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#workType')?.addEventListener('change', () => { applyWorkTypeGate(); renderSimpleStatus(); });
   $('#kubun')?.addEventListener('change', async () => {
     $('#kubun')?.classList.toggle('is-planned', !String($('#kubun')?.value || '').trim());
+    ensureDefaultWorkTypeForToday(state.date);
     applyHolidayRestMode();
     renderSimpleStatus();
     try { await persistDaily(state.date); } catch (e) { /* silently ignored */ }
