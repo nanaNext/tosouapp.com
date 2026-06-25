@@ -1335,10 +1335,6 @@ exports.getMonthDetail = async (req, res) => {
     const monthStatusObj = await repo.getMonthStatus(userId, y, m);
     const monthStatus = monthStatusObj?.status || 'draft';
     const approverName = monthStatusObj?.approved_by_name || null;
-    if (role === 'payroll' && monthStatus !== 'approved') {
-      console.log('403 in getMonthDetail because payroll and not approved');
-      return res.status(403).json({ message: 'Forbidden: month is not closed' });
-    }
     let rows = [];
     let todayStr = null;
     try { todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch (e) { /* silently ignored */ }

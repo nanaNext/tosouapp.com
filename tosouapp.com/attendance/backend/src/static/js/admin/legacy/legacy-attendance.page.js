@@ -247,6 +247,28 @@ async function mountAttendanceImpl({
         .attrec-emp-like-table td.desktop-only {
           display: none !important;
         }
+        
+        /* Sticky Pagination for Mobile */
+        .attrec-mobile-pagination {
+          position: fixed !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          background: #ffffff !important;
+          padding: 12px 16px !important;
+          box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+          z-index: 100 !important;
+          border-top: 1px solid #e2e8f0 !important;
+          margin-top: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+        }
+        
+        /* Add padding to the bottom of the table to prevent overlap with sticky pagination */
+        .emp-list-scroll-wrap.attrec-list-scroll-wrap {
+          padding-bottom: 60px !important;
+        }
 
         .attrec-fiori-override .dash-card-title {
           display: none !important;
@@ -547,7 +569,7 @@ async function mountAttendanceImpl({
       }
       let currentPage = 1;
       const isMobile = window.innerWidth <= 768;
-      const pageSize = isMobile ? 1000 : 10;
+      const pageSize = isMobile ? 30 : 10;
       const renderTablePage = () => {
         if (!host) return;
         host.innerHTML = '';
@@ -831,49 +853,104 @@ async function mountAttendanceImpl({
         host.appendChild(tableWrap);
 
         // Pagination controls
-        if (items.length > 0 && !isMobile) {
+        if (items.length > 0) {
           const totalPages = Math.ceil(items.length / pageSize);
           const paginationDiv = document.createElement('div');
-          paginationDiv.className = 'attrec-paging desktop-only';
-          paginationDiv.style.display = 'flex';
-          paginationDiv.style.alignItems = 'center';
-          paginationDiv.style.justifyContent = 'flex-start';
-          paginationDiv.style.gap = '15px';
-          paginationDiv.style.padding = '10px 0 20px 0';
           
-          const prevBtn = document.createElement('button');
-          prevBtn.type = 'button';
-          prevBtn.textContent = '前へ';
-          prevBtn.className = 'pagination-btn';
-          prevBtn.disabled = currentPage === 1;
-          prevBtn.onclick = () => {
-            if (currentPage > 1) {
-              currentPage--;
-              renderTablePage();
-            }
-          };
+          if (isMobile) {
+            paginationDiv.className = 'attrec-mobile-pagination';
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.innerHTML = `全 <span style="font-weight:700; color:#0f172a;">${items.length}</span> 件中 <span style="font-weight:700; color:#0f172a;">${startIndex + 1}</span> - <span style="font-weight:700; color:#0f172a;">${endIndex}</span> 件を表示`;
+            infoDiv.style.color = '#64748b';
+            infoDiv.style.fontSize = '14px';
+            
+            const btnsDiv = document.createElement('div');
+            btnsDiv.style.display = 'flex';
+            btnsDiv.style.gap = '8px';
+            
+            const prevBg = currentPage === 1 ? '#f1f5f9' : '#fff';
+            const prevCursor = currentPage === 1 ? 'not-allowed' : 'pointer';
+            const prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.textContent = '前へ';
+            prevBtn.style.cssText = `padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${prevBg}; color:#475569; cursor:${prevCursor}; font-size:14px;`;
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+              if (currentPage > 1) {
+                currentPage--;
+                renderTablePage();
+                setTimeout(() => {
+                  if (host) host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }
+            };
 
-          const nextBtn = document.createElement('button');
-          nextBtn.type = 'button';
-          nextBtn.textContent = '次へ';
-          nextBtn.className = 'pagination-btn';
-          nextBtn.disabled = currentPage === totalPages;
-          nextBtn.onclick = () => {
-            if (currentPage < totalPages) {
-              currentPage++;
-              renderTablePage();
-            }
-          };
+            const nextBg = currentPage === totalPages ? '#f1f5f9' : '#fff';
+            const nextCursor = currentPage === totalPages ? 'not-allowed' : 'pointer';
+            const nextBtn = document.createElement('button');
+            nextBtn.type = 'button';
+            nextBtn.textContent = '次へ';
+            nextBtn.style.cssText = `padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${nextBg}; color:#475569; cursor:${nextCursor}; font-size:14px;`;
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+              if (currentPage < totalPages) {
+                currentPage++;
+                renderTablePage();
+                setTimeout(() => {
+                  if (host) host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }
+            };
+            
+            btnsDiv.appendChild(prevBtn);
+            btnsDiv.appendChild(nextBtn);
+            
+            paginationDiv.appendChild(infoDiv);
+            paginationDiv.appendChild(btnsDiv);
+            host.appendChild(paginationDiv);
+          } else {
+            paginationDiv.className = 'attrec-paging desktop-only';
+            paginationDiv.style.display = 'flex';
+            paginationDiv.style.alignItems = 'center';
+            paginationDiv.style.justifyContent = 'flex-start';
+            paginationDiv.style.gap = '15px';
+            paginationDiv.style.padding = '10px 0 20px 0';
+            
+            const prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.textContent = '前へ';
+            prevBtn.className = 'pagination-btn';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+              if (currentPage > 1) {
+                currentPage--;
+                renderTablePage();
+              }
+            };
 
-          const infoSpan = document.createElement('span');
-          infoSpan.textContent = `${startIndex + 1}-${endIndex} / ${items.length}`;
-          infoSpan.style.fontSize = '14px';
-          infoSpan.style.color = '#333';
+            const nextBtn = document.createElement('button');
+            nextBtn.type = 'button';
+            nextBtn.textContent = '次へ';
+            nextBtn.className = 'pagination-btn';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+              if (currentPage < totalPages) {
+                currentPage++;
+                renderTablePage();
+              }
+            };
 
-          paginationDiv.appendChild(prevBtn);
-          paginationDiv.appendChild(infoSpan);
-          paginationDiv.appendChild(nextBtn);
-          host.appendChild(paginationDiv);
+            const infoSpan = document.createElement('span');
+            infoSpan.textContent = `${startIndex + 1}-${endIndex} / ${items.length}`;
+            infoSpan.style.fontSize = '14px';
+            infoSpan.style.color = '#333';
+
+            paginationDiv.appendChild(prevBtn);
+            paginationDiv.appendChild(infoSpan);
+            paginationDiv.appendChild(nextBtn);
+            host.appendChild(paginationDiv);
+          }
         }
       };
       
