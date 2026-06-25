@@ -1,3 +1,5 @@
+const redisClient = require('../database/redis');
+
 const buckets = new Map();
 
 function getClientIp(req) {
@@ -19,13 +21,44 @@ function key(req, keyBy = 'ip') {
   const path = rawPath.split('?')[0] || '';
   const method = String(req.method || 'GET').toUpperCase();
   const identity = resolveIdentity(req, keyBy);
-  return `${method}:${path}:${identity}`;
+  return `ratelimit:${method}:${path}:${identity}`;
 }
 
 function rateLimit({ windowMs = 60_000, max = 600, keyBy = 'user_or_ip' } = {}) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const k = key(req, keyBy);
     const now = Date.now();
+
+    if (redisClient && redisClient.status === 'ready') {
+      try {
+        const windowStart = now - windowMs;
+        const pipeline = redisClient.pipeline();
+        
+        // 1. Xóa các request cũ ngoài cửa sổ thời gian
+        pipeline.zremrangebyscore(k, 0, windowStart);
+        // 2. Đếm số lượng request còn lại trong cửa sổ
+        pipeline.zcard(k);
+        // 3. Thêm request hiện tại vào (dùng now làm score và value, nối thêm random để chống trùng)
+        pipeline.zadd(k, now, `${now}-${Math.random()}`);
+        // 4. Set thời gian hết hạn cho key để tự động dọn rác
+        pipeline.pexpire(k, windowMs);
+
+        const results = await pipeline.exec();
+        // results[1] là kết quả của zcard
+        const requestCount = results[1][1];
+
+        if (requestCount >= max) {
+          try { require('../metrics').inc('rate_limit_hits', 1); } catch (e) { /* silently ignored */ }
+          return res.status(429).json({ message: 'Too many requests' });
+        }
+        return next();
+      } catch (err) {
+        console.error('[RateLimit] Redis error, fallback to in-memory:', err.message);
+        // Fallback xuống In-Memory nếu Redis có lỗi đột xuất
+      }
+    }
+
+    // In-Memory Fallback
     const bucket = buckets.get(k) || [];
     const fresh = bucket.filter(ts => now - ts < windowMs);
     if (fresh.length >= max) {
