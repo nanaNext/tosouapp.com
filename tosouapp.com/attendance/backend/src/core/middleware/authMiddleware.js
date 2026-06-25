@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const userRepo = require('../../modules/users/user.repository');
+const redisClient = require('../database/redis');
 // Middleware xác thực và phân quyền dựa trên JWT
 
 const tokenVersionCache = new Map();
@@ -32,29 +33,57 @@ function redirectToLogin(req, res) {
 
 async function getCachedUser(id) {
   const now = Date.now();
-  const cached = tokenVersionCache.get(id);
-  if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
-    return cached.user;
-  }
-  const user = await userRepo.getUserById(id);
-  if (user) {
-    tokenVersionCache.set(id, { 
-      user: {
-        id: user.id,
-        role: user.role,
-        token_version: user.token_version,
-        email: user.email,
-        username: user.username
-      }, 
-      timestamp: now 
-    });
-  }
   
-  if (tokenVersionCache.size > 2000) {
-    for (const [k, v] of tokenVersionCache.entries()) {
-      if (now - v.timestamp >= CACHE_TTL_MS) tokenVersionCache.delete(k);
+  // Dùng Redis nếu có
+  if (redisClient && redisClient.status === 'ready') {
+    const redisKey = `auth:user:${id}`;
+    try {
+      const cachedData = await redisClient.get(redisKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+    } catch (err) {
+      console.error('[AuthCache] Redis error, fallback to DB:', err.message);
+    }
+  } else {
+    // In-memory fallback
+    const cached = tokenVersionCache.get(id);
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+      return cached.user;
     }
   }
+
+  const user = await userRepo.getUserById(id);
+  
+  if (user) {
+    const userDataToCache = {
+      id: user.id,
+      role: user.role,
+      token_version: user.token_version,
+      email: user.email,
+      username: user.username
+    };
+
+    if (redisClient && redisClient.status === 'ready') {
+      try {
+        await redisClient.setex(`auth:user:${id}`, Math.floor(CACHE_TTL_MS / 1000), JSON.stringify(userDataToCache));
+      } catch (err) {
+        console.error('[AuthCache] Lỗi khi lưu Redis:', err.message);
+      }
+    } else {
+      tokenVersionCache.set(id, { 
+        user: userDataToCache, 
+        timestamp: now 
+      });
+      
+      if (tokenVersionCache.size > 2000) {
+        for (const [k, v] of tokenVersionCache.entries()) {
+          if (now - v.timestamp >= CACHE_TTL_MS) tokenVersionCache.delete(k);
+        }
+      }
+    }
+  }
+  
   return user;
 }
 

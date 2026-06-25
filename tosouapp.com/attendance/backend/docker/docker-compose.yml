@@ -18,6 +18,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD:-Iizuka@2026!}
       - DB_NAME=attendance_db
+      - REDIS_URL=redis://redis:6379
       - COMPANY_NAME=飯塚塗研株式会社
       - JWT_SECRET_CURRENT=${JWT_SECRET_CURRENT}
       - JWT_SECRET_PREVIOUS=${JWT_SECRET_PREVIOUS}
@@ -26,6 +27,7 @@ services:
       - ENFORCE_CSRF=true
     depends_on:
       - db
+      - redis
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/ping',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
@@ -76,6 +78,13 @@ services:
       - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:alpine
+    container_name: attendance-redis
+    restart: always
+    ports:
+      - "6380:6379"
 
   nginx:
     image: nginx:1.25-alpine

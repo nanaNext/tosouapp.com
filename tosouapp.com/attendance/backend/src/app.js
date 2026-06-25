@@ -5,6 +5,13 @@ const crypto = require('crypto');
 const { execSync } = require('child_process');
 require('./config/loadEnv'); // Tải các biến môi trường từ file .env
 const express = require('express');
+
+// Khởi chạy Background Workers (Chỉ chạy chung process khi ở môi trường Development để tiện test)
+// Trên Production, nên set DISABLE_EMBEDDED_WORKER=true và chạy src/workers/index.js bằng lệnh riêng.
+if (process.env.NODE_ENV !== 'production' && String(process.env.DISABLE_EMBEDDED_WORKER || '').toLowerCase() !== 'true') {
+  require('./workers/index');
+}
+
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { cors } = require('./core/middleware/cors'); // Cấu hình CORS (Cho phép domain nào được truy cập)
