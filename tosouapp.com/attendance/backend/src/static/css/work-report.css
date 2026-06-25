@@ -1,6 +1,11 @@
+* {
+    box-sizing: border-box;
+}
+
 .wr-wrap {
     max-width: 980px;
     margin: 0 auto;
+    padding: 0 16px;
     font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
 }
 
@@ -80,4 +85,15 @@
     font-size: 13px;
     font-weight: 650;
     color: #0b2c66;
+}
+
+@media (max-width: 600px) {
+    .wr-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+    .wr-label {
+        padding-top: 0;
+        padding-bottom: 4px;
+    }
 }
