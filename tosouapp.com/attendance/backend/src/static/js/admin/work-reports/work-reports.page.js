@@ -176,7 +176,7 @@ export async function mount() {
         .wr-table thead, .wr-table colgroup { display: none !important; }
         .wr-table tbody { display: flex !important; flex-direction: column !important; gap: 12px !important; padding: 12px 0 !important; width: 100% !important; background: transparent !important; }
         
-        .wr-table tbody tr { display: grid !important; grid-template-columns: 90px 1fr !important; grid-auto-rows: auto !important; margin: 0 0 16px 0 !important; border: 1px solid #cbd5e1 !important; border-radius: 0 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; background: #fff !important; padding: 0 !important; position: relative !important; }
+        .wr-table tbody tr { display: grid !important; grid-template-columns: 105px 1fr !important; grid-auto-rows: auto !important; margin: 0 0 16px 0 !important; border: 1px solid #cbd5e1 !important; border-radius: 0 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; background: #fff !important; padding: 0 !important; position: relative !important; }
         .wr-table tbody td { border: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
         
         /* First cell (Left Column) */
@@ -187,7 +187,7 @@ export async function mount() {
           flex-direction: column !important;
           align-items: flex-start !important;
           justify-content: flex-start !important;
-          padding: 16px 12px !important;
+          padding: 16px 8px !important;
           border: none !important;
           border-right: 1px solid #e2e8f0 !important;
           background: #f8fafc !important;
