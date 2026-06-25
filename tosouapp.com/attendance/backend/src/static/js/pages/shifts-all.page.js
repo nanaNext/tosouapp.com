@@ -1,4 +1,3 @@
-import { me } from '../api/auth.api.js';
 import { fetchJSONAuth } from '../api/http.api.js';
 
 // Add esc helper function at the top
@@ -46,9 +45,9 @@ async function init() {
   } catch (e) { /* silently ignored */ }
 
   try {
-    currentUser = await me();
-    if (!currentUser) {
-      window.location.replace('/ui/login');
+    currentUser = await fetchJSONAuth('/api/auth/me');
+    if (!currentUser || currentUser.error) {
+      window.location.replace('/ui/login?next=/ui/shifts-all');
       return;
     }
     
@@ -72,6 +71,10 @@ async function init() {
     renderApp();
   } catch (err) {
     console.error(err);
+    if (err.message && (err.message.includes('Invalid or expired token') || err.message.includes('No token provided'))) {
+      window.location.replace('/ui/login?next=/ui/shifts-all');
+      return;
+    }
     alert('ユーザー情報の読み込みに失敗しました。\n' + err.message + '\n' + err.stack);
   } finally {
     if (spinner) spinner.setAttribute('hidden', '');
