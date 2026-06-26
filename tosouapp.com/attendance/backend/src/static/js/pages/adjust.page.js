@@ -303,30 +303,47 @@ const renderForm = async () => {
       .sap-tabs-container {
         border-bottom: 1px solid #cbd5e1;
         margin-bottom: 16px;
-        margin-top: -16px;
-        display: flex;
+        margin-top: 10px;
+        display: flex !important;
         gap: 24px;
         overflow-x: auto;
+        width: 100%;
+        position: relative;
+        z-index: 10;
+        background: #ffffff;
+        min-height: 48px;
+        align-items: center;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      .sap-tabs-wrapper {
+        display: flex !important;
+        gap: 24px;
+        width: 100%;
+        visibility: visible !important;
+        opacity: 1 !important;
       }
       .sap-tab {
-        padding: 12px 4px;
+        padding: 12px 16px;
         font-size: 14px;
         font-weight: 600;
         color: #475569;
         cursor: pointer;
         border-bottom: 3px solid transparent;
         transition: all 0.2s;
-        display: flex;
+        display: flex !important;
         align-items: center;
         gap: 8px;
         white-space: nowrap;
+        visibility: visible !important;
+        opacity: 1 !important;
       }
       .sap-tab:hover { color: #0f172a; }
       .sap-tab.active {
         color: #005eb8;
         border-bottom-color: #005eb8;
       }
-      .sap-tab svg { width: 18px; height: 18px; }
+      .sap-tab svg { width: 18px; height: 18px; color: currentColor; }
       .tab-badge {
         background: #ea580c;
         color: #fff;
@@ -335,22 +352,85 @@ const renderForm = async () => {
         border-radius: 999px;
         line-height: 1;
       }
+
+      /* Mobile optimizations for the Adjust form */
+      @media (max-width: 768px) {
+        .sap-tabs-container {
+          margin-top: 4px; /* Fix overlapping with topbar */
+          margin-bottom: 12px;
+          gap: 8px;
+          padding: 0;
+          border-bottom: none;
+        }
+        .sap-tabs-wrapper {
+          gap: 12px !important;
+          padding-bottom: 4px;
+        }
+        .sap-tab {
+          padding: 8px 4px;
+          font-size: 13px;
+        }
+        .sap-compact-card {
+          max-width: 100%;
+          width: 100%;
+          margin: 0 auto 16px auto;
+          box-sizing: border-box;
+          padding: 12px;
+        }
+        .sap-grid {
+          grid-template-columns: 1fr;
+          gap: 4px 0;
+        }
+        .sap-label {
+          margin-top: 8px;
+        }
+        #adjDate, #adjIn, #adjOut {
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box;
+        }
+      }
+      /* Desktop optimizations */
+      @media (min-width: 769px) {
+        .sap-tabs-container {
+          margin-top: 10px !important;
+          margin-bottom: 20px;
+          border-bottom: 1px solid #cbd5e1;
+          background: transparent;
+          display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+        .sap-tabs-wrapper {
+          display: flex !important;
+          gap: 24px;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+        .sap-tab {
+          padding: 12px 16px;
+          font-size: 14px;
+          display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+      }
     </style>
 
-    <div class="sap-tabs-container" style="justify-content: space-between; align-items: center;">
-      <div style="display: flex; gap: 24px; overflow-x: auto;">
-        <div class="sap-tab active" id="tabNew">
+    <div class="sap-tabs-container" style="justify-content: flex-start; align-items: center; display: flex !important; position: relative; z-index: 50; margin-top: 0 !important; visibility: visible !important; opacity: 1 !important;">
+        <div class="sap-tabs-wrapper" style="display: flex !important; gap: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; width: 100%; opacity: 1 !important; visibility: visible !important;">
+          <div class="sap-tab active" id="tabNew" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-          新規作成
+          <span>新規作成</span>
         </div>
-        <div class="sap-tab" id="tabRejected">
+        <div class="sap-tab" id="tabRejected" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-          差戻し確認
+          <span>差戻し確認</span>
           <span id="rejectBadge" class="tab-badge" style="display:none;">0</span>
         </div>
-        <div class="sap-tab" id="tabHistory">
+        <div class="sap-tab" id="tabHistory" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-          申請履歴
+          <span>申請履歴</span>
         </div>
       </div>
       <div id="adjustMonthFilterContainer" style="display: none; padding-bottom: 8px;">
@@ -366,10 +446,10 @@ const renderForm = async () => {
           修正申請
         </h3>
         <div class="sap-toolbar" style="display: flex; align-items: center; gap: 8px;">
-          <button id="adjSubmit" title="送信" class="sap-icon-btn">
-            <img src="/static/images/shinsei.webp" alt="送信" style="width: 24px; height: 24px; object-fit: contain; pointer-events: none;">
-          </button>
-        </div>
+            <button id="adjSubmit" title="申請" style="height:32px; padding:0 16px; border:none; background:#005eb8; color:#fff; border-radius:4px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.1); transition: background 0.2s;">
+              申請
+            </button>
+          </div>
       </div>
       
       <div id="adjRejectReasonContainer" style="display:none; margin: 12px 16px 0; padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; color: #9a3412;">
@@ -515,8 +595,8 @@ const renderForm = async () => {
     els.submit.disabled = true;
 
     // Thêm vòng quay xoay tròn trong lúc đang gửi
-    const originalIcon = els.submit.innerHTML;
-    els.submit.innerHTML = `<svg class="spinner" viewBox="0 0 50 50" style="width:24px;height:24px;animation:spin 1s linear infinite;"><circle cx="25" cy="25" r="20" fill="none" stroke="#005eb8" stroke-width="5" stroke-linecap="round" stroke-dasharray="80 200"></circle></svg><style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`;
+      const originalIcon = els.submit.innerHTML;
+      els.submit.innerHTML = `<svg class="spinner" viewBox="0 0 50 50" style="width:18px;height:18px;animation:spin 1s linear infinite;"><circle cx="25" cy="25" r="20" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-dasharray="80 200"></circle></svg><style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`;
 
     if (els.status) els.status.textContent = (isEdit ? '更新中…' : '申請中…');
     const inV = toMySQLDateTime(els.in?.value);
@@ -956,7 +1036,7 @@ const renderList = async () => {
             box-shadow: inset 0 0 0 1px #fff;
           }
           /* Sticky Left Behavior for small screens (khi bảng bị cuộn) */
-          @media (max-width: 640px) {
+          @media (max-width: 768px) {
             .inline-edit-container {
               position: sticky;
               left: 0;
@@ -964,7 +1044,7 @@ const renderList = async () => {
             }
           }
           /* Media query cho tab trên mobile */
-          @media (max-width: 640px) {
+          @media (max-width: 768px) {
             .sap-table-wrap {
               border: none;
               background: transparent;

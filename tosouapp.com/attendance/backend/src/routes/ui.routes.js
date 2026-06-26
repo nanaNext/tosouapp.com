@@ -195,6 +195,7 @@ router.get('/faq-test', authenticateFromCookie, authorizePage('admin', 'manager'
 // Removed abandoned React SPA entry
 
 router.get('/ui/:page.html', (req, res) => {
+  setNoStore(res);
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (!page) return res.status(404).json({ message: 'Not Found', path: req.path });
   if (page === 'employees') return res.render('admin', { user: req.user || null });
@@ -202,6 +203,7 @@ router.get('/ui/:page.html', (req, res) => {
 });
 
 router.get('/ui/:page', (req, res) => {
+  setNoStore(res);
   const page = String(req.params.page || '').replace(/[^a-z0-9_-]/gi, '');
   if (page === 'employees') {
     return res.render('admin', { user: req.user || null });
