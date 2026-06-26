@@ -5,10 +5,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>交通費申請</title>
-  <link rel="stylesheet" href="/static/css/base.css?v=20260416-1">
-  <link rel="stylesheet" href="/static/css/portal.css?v=20260416-1">
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260626-18">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260626-18">
   <link rel="icon" href="data:,">
-  <script type="module" src="/static/js/pages/expenses.page.js?v=20260529-23"></script>
+  <script type="module" src="/static/js/pages/expenses.page.js?v=navy-20260626-25"></script>
   <style>
     *,
     *::before,
@@ -68,7 +68,7 @@
     }
 
     body:not(.admin) .content,
-    body:not(.admin) .subbar+.content {
+    body:not(.admin) .subbar~.content {
       padding-top: 0 !important;
       background: #f1f5f9;
       margin: 0 !important;
@@ -97,7 +97,7 @@
     @media (max-width: 768px) {
 
       body:not(.admin) .content,
-      body:not(.admin) .subbar+.content {
+      body:not(.admin) .subbar~.content {
         padding-top: 0 !important;
       }
     }
@@ -105,7 +105,7 @@
     @media (max-width: 480px) {
 
       body:not(.admin) .content,
-      body:not(.admin) .subbar+.content {
+      body:not(.admin) .subbar~.content {
         padding-top: 0 !important;
       }
     }
@@ -1773,7 +1773,7 @@
         padding: 12px;
       }
 
-      body:not(.admin) .subbar+.content,
+      body:not(.admin) .subbar~.content,
       body:not(.admin) .content {
         margin-top: 0 !important;
       }
@@ -2344,12 +2344,30 @@
       position: sticky;
       top: 0;
       z-index: 30;
+      width: calc(100% + 48px); /* Compensate for the -24px margins */
     }
 
     .expense-standalone-header-left {
       display: flex;
       align-items: center;
       gap: 12px;
+      flex: 1;
+    }
+
+    .expense-standalone-header-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    .expense-standalone-header-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      position: relative;
+      flex: 1;
+      padding-right: 8px;
     }
 
     .expense-standalone-close {
@@ -2380,13 +2398,6 @@
       font-weight: 800;
       font-size: 15px;
       color: #0f172a;
-    }
-
-    .expense-standalone-header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      position: relative;
     }
 
     .expense-standalone-iconbtn {
@@ -2590,33 +2601,46 @@
     }
 
     @media (max-width: 640px) {
-      #exSummaryCards {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 12px;
-      }
-      
-      .summary-card {
-        padding: 12px;
-        gap: 8px;
-      }
-      
-      .summary-icon {
-        width: 28px;
-        height: 28px;
-      }
-      
-      .summary-icon svg {
-        width: 16px;
-        height: 16px;
-      }
-      
-      .summary-count {
-        font-size: 20px;
-      }
-      
-      .summary-card[data-type="rejected"] {
-        grid-column: 1 / -1;
-      }
+        #exSummaryCards {
+          grid-template-columns: 1fr !important;
+          gap: 8px;
+        }
+
+        .summary-card {
+          flex-direction: row;
+          align-items: center;
+          padding: 12px 16px;
+          gap: 12px;
+        }
+
+        .summary-card-top {
+          flex: 1;
+        }
+
+        .summary-icon {
+          width: 32px;
+          height: 32px;
+        }
+
+        .summary-icon svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .summary-count {
+          font-size: 18px;
+          text-align: right;
+        }
+
+        .summary-amount {
+          font-size: 15px;
+          text-align: right;
+          min-width: 80px;
+        }
+
+        .summary-card[data-type="rejected"] {
+          grid-column: auto;
+        }
 
       /* Make Monthly List table responsive on mobile */
       #exMonthlyBoardHost > div {
@@ -2749,10 +2773,15 @@
                 </svg>
               </button>
             </div>
+            <div class="expense-standalone-header-center" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+              <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 4px 0 0; overflow: hidden;">
+                <label for="exFilterYearGlobal" style="display: none;">年を選択</label>
+                <input type="number" id="exFilterYearGlobal" style="height: 32px; width: 64px; border: none; background: transparent; padding: 0 4px 0 10px; font-size: 13px; font-weight: 600; color: #0f172a; outline: none;" min="2020" max="2100">
+                <span style="font-size: 13px; font-weight: 700; color: #64748b; padding-right: 8px; user-select: none;">年</span>
+              </div>
+            </div>
             <div class="expense-standalone-header-right">
-              <input type="number" id="exFilterYearGlobal" style="height: 32px; width: 80px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 10px; font-size: 13px; color: #0f172a; margin-right: 8px;" min="2020" max="2100">
-              <span style="font-size: 13px; font-weight: 700; color: #475569; margin-right: 16px;">年</span>
-              <div class="expense-standalone-user" id="expUserToggleBtn">
+                <div class="expense-standalone-user" id="expUserToggleBtn">
                 <div class="expense-standalone-avatar" id="expHeaderInitial">U</div>
                 <div class="expense-standalone-user-info">
                   <div class="expense-standalone-user-name" id="expHeaderName">User</div>
@@ -3012,11 +3041,11 @@
                 <div class="history-toolbar" style="margin-bottom: 20px; display: none; align-items: center; gap: 16px;">
                   <div class="history-filters" style="display: flex; align-items: center; gap: 16px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                      <label style="font-size: 13px; font-weight: 700; color: #475569;">申請月</label>
+                      <label for="exFilterMonth" style="font-size: 13px; font-weight: 700; color: #475569;">申請月</label>
                       <input id="exFilterMonth" type="month" class="adjust-input" style="height: 36px; width: 140px;">
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                      <label style="font-size: 13px; font-weight: 700; color: #475569;">ステータス</label>
+                      <label for="exFilterStatus" style="font-size: 13px; font-weight: 700; color: #475569;">ステータス</label>
                       <select id="exFilterStatus" class="adjust-input" style="height: 36px; width: 140px;">
                         <option value="">すべて</option>
                         <option value="draft">未申請</option>

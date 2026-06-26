@@ -639,14 +639,18 @@ const renderList = async () => {
       return allMonths;
     }
 
-    // Default to hide the table, only show if activeSummaryCard is 'all'
-    if (activeSummaryCard !== 'all' && activeSummaryCard !== 'pending' && activeSummaryCard !== 'approved' && activeSummaryCard !== 'paid' && activeSummaryCard !== 'rejected') {
-      boardHost.style.display = 'none';
-      return allMonths;
-    }
+    // Default to hide the table, only show if activeSummaryCard is NOT empty
+      if (activeSummaryCard === '') {
+        boardHost.style.display = 'none';
+        const summaryCards = document.getElementById('exSummaryCards');
+        if (summaryCards) summaryCards.style.display = 'grid';
+        return allMonths;
+      }
 
-// Hiển thị bảng tháng chi phí theo tháng
-    boardHost.style.display = 'block';
+      // Hiển thị bảng tháng chi phí theo tháng
+      boardHost.style.display = 'block';
+      const summaryCards = document.getElementById('exSummaryCards');
+      if (summaryCards) summaryCards.style.display = 'none';
 // hiển thị trạng thái chi phí
     const getStatusHtml = (st) => {
       // hiển thị trạng thái chi phí theo tháng
@@ -669,39 +673,63 @@ const renderList = async () => {
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--border);">
           <div style="font-weight: 700; color: #475569; font-size: 14px;">月別一覧</div>
           <button type="button" class="btn" data-action="close-monthly-board" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+            <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            <span style="font-size: 13px; font-weight: 700; margin-left: 4px;">閉じる</span>
           </button>
         </div>
-        <table class="adj-table" style="width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border);">
-          <thead>
-            <tr style="background: #f8fafc;">
-              <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">申請月</th>
-              <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">申請番号</th>
-              <th style="padding: 14px 12px; text-align: right; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">合計金額</th>
-              <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">ステータス</th>
-              <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">最終更新日</th>
-              <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px;">操作</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div class="adj-table-card" style="margin: 0; border: none; border-radius: 0;">
+          <!-- Desktop Table View -->
+          <div class="expense-desktop-only" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+            <table class="adj-table" style="width: 100%; border-collapse: collapse; background: #fff; border: none; min-width: 600px;">
+              <thead>
+                <tr style="background: #f8fafc;">
+                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">申請月</th>
+                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">申請番号</th>
+                  <th style="padding: 14px 12px; text-align: right; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">合計金額</th>
+                  <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">ステータス</th>
+                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">最終更新日</th>
+                  <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredMonths.map(m => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;">
+                    <td style="padding: 14px 12px; color: var(--brand); font-weight: 800; font-size: 14px; white-space: nowrap;">${m.ym.replace('-', '年')}月</td>
+                    <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">TRF-${m.ym.replace('-', '')}-001</td>
+                    <td style="padding: 14px 12px; text-align: right; font-weight: 800; color: #0f172a; font-size: 14px; white-space: nowrap;">${fmtMoney(m.amount)}</td>
+                    <td style="padding: 14px 12px; text-align: center; white-space: nowrap;">${getStatusHtml(m.status)}</td>
+                    <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">${fmtDate(m.updated)}</td>
+                    <td style="padding: 14px 12px; text-align: center; white-space: nowrap;">
+                      <div style="display: flex; gap: 6px; justify-content: center;">
+                        <button type="button" class="btn" data-action="open-month" data-month="${m.ym}" data-status="${m.status}" style="background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px; transition: all 0.2s; white-space: nowrap;">詳細</button>
+                        ${(m.status === 'applied' || m.status === 'approved' || m.status === 'rejected') ? `<button type="button" class="btn" data-action="add-more" data-month="${m.ym}" style="background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px; transition: all 0.2s; white-space: nowrap;">追加</button>` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile Card View -->
+          <div class="expense-mobile-only" style="padding: 12px; background: #f1f5f9; display: flex; flex-direction: column; gap: 12px;">
             ${filteredMonths.map(m => `
-              <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;">
-                <td style="padding: 14px 12px; color: var(--brand); font-weight: 800; font-size: 14px;">${m.ym.replace('-', '年')}月</td>
-                <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">TRF-${m.ym.replace('-', '')}-001</td>
-                <td style="padding: 14px 12px; text-align: right; font-weight: 800; color: #0f172a; font-size: 14px;">${fmtMoney(m.amount)}</td>
-                <td style="padding: 14px 12px; text-align: center;">${getStatusHtml(m.status)}</td>
-                <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">${fmtDate(m.updated)}</td>
-                <td style="padding: 14px 12px; text-align: center;">
-                  <div style="display: flex; gap: 6px; justify-content: center;">
-                    <button type="button" class="btn" data-action="open-month" data-month="${m.ym}" data-status="${m.status}" style="background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px;">詳細</button>
-                    ${(m.status === 'applied' || m.status === 'approved' || m.status === 'rejected') ? `<button type="button" class="btn" data-action="add-more" data-month="${m.ym}" style="background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px;">追加</button>` : ''}
-                  </div>
-                </td>
-              </tr>
+              <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div style="color: var(--brand); font-weight: 800; font-size: 16px;">${m.ym.replace('-', '年')}月</div>
+                  <div>${getStatusHtml(m.status)}</div>
+                </div>
+                <div style="text-align: center; margin-bottom: 16px;">
+                  <div style="font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 4px;">合計金額</div>
+                  <div style="font-size: 24px; font-weight: 800; color: #0f172a;">${fmtMoney(m.amount)}</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn" data-action="open-month" data-month="${m.ym}" data-status="${m.status}" style="flex: 1; background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 8px; height: 40px; font-size: 14px;">詳細を見る</button>
+                  ${(m.status === 'applied' || m.status === 'approved' || m.status === 'rejected') ? `<button type="button" class="btn" data-action="add-more" data-month="${m.ym}" style="flex: 1; background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 8px; height: 40px; font-size: 14px;">追加する</button>` : ''}
+                </div>
+              </div>
             `).join('')}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     `;
 
@@ -712,15 +740,17 @@ const renderList = async () => {
       boardHost.addEventListener('click', async (e) => {
         const closeBtn = e.target.closest('button[data-action="close-monthly-board"]');
         if (closeBtn) {
-          boardHost.style.display = 'none';
-          activeSummaryCard = '';
-          document.querySelectorAll('.summary-card').forEach(card => {
-            card.style.border = '1px solid var(--border)';
-            card.style.boxShadow = 'none';
-            card.style.background = '#fff';
-          });
-          return;
-        }
+            boardHost.style.display = 'none';
+            activeSummaryCard = '';
+            document.querySelectorAll('.summary-card').forEach(card => {
+              card.style.border = '1px solid var(--border)';
+              card.style.boxShadow = 'none';
+              card.style.background = '#fff';
+            });
+            const summaryCards = document.getElementById('exSummaryCards');
+            if (summaryCards) summaryCards.style.display = 'grid';
+            return;
+          }
 
         const addBtn = e.target.closest('button[data-action="add-more"]');
         if (addBtn) {
@@ -873,13 +903,13 @@ const renderList = async () => {
             const memo = r.memo || (r.teiki_flag ? '定期区間内' : '定期区間外');
 
             return `
-              <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 12px 16px;">
-                  <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; width: 130px;">
-                    <span>${d}</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                  </div>
-                </td>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 12px 16px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; width: fit-content; gap: 8px;">
+                      <span>${d}</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    </div>
+                  </td>
                 <td style="padding: 12px 16px;">
                   <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
                     ${route}${purpose}
@@ -1210,9 +1240,14 @@ const renderList = async () => {
     }
 
     const month = selectedHistoryMonth || document.getElementById('exFilterMonth')?.value || currentYM();
-    const monthJa = fmtYmJa(month);
-    
-    window.goBackToAppliedList = async () => {
+      const monthJa = fmtYmJa(month);
+
+      const summaryCards = document.getElementById('exSummaryCards');
+      if (summaryCards && activeHistoryTab === 'applied' && !selectedHistoryMonth) {
+        summaryCards.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
+      }
+
+      window.goBackToAppliedList = async () => {
       showMonthProgressInNewMode = false;
       formActive = false;
       selectedHistoryMonth = '';
@@ -1353,13 +1388,16 @@ const renderList = async () => {
         ? '通知・確認事項はありません'
         : (monthJa ? `${monthJa}の交通費提出履歴はありません` : '当月の交通費提出履歴はありません');
       host.innerHTML = `
-        <div class="adj-table-card">
+        <div class="adj-table-card expense-desktop-only">
           <table class="adj-table">
             <tbody>
               ${detailHeadRow}
               <tr><td colspan="${colSpan}" style="text-align:center;color:#334155;padding:18px 10px;">${emptyText}</td></tr>
             </tbody>
           </table>
+        </div>
+        <div class="expense-mobile-only" style="background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 24px 16px; text-align: center; color: #64748b;">
+          ${emptyText}
         </div>
       `;
       return;
@@ -1389,7 +1427,9 @@ const renderList = async () => {
         }).join('');
       noticeSummary = chips ? `<div class="notice-month-summary">${chips}</div>` : '';
     }
-    const tr = rows.map(r => {
+    let tr = '';
+    let cardsHtml = '';
+    rows.forEach(r => {
       const dFull = String(r.date || '').slice(0, 10);
       const d = (() => {
         if (!isCompactSplit) return dFull;
@@ -1451,6 +1491,7 @@ const renderList = async () => {
       const tripTypeDisplay = tripType === 'round_trip' ? '往復' : (tripType === 'one_way' ? '片道' : '');
       const tripBadge = tripTypeDisplay ? `<span style="font-size:10px; background:#e2e8f0; padding:2px 4px; border-radius:4px; margin-left:4px;">${tripTypeDisplay}</span>` : '';
       
+      // Desktop Table Row
       if (isCompactSplit) {
         const routeCell = routeDisplay + tripBadge;
         const statusCell = `<span class="status-pill status-${stClass}">${stLabel}</span>`;
@@ -1459,10 +1500,55 @@ const renderList = async () => {
             ? `<button class="btn" data-action="files" data-url="${ru}" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>`
             : `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:11px;color:#1e40af;text-decoration:none;">表示</a>`)
           : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>` : '<span style="color:#64748b;font-size:11px;">-</span>');
-        return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${purposeDisplay}</td><td style="white-space:nowrap;">${a}</td><td>${statusCell}</td><td style="text-align:center;">${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
+        tr += `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${purposeDisplay}</td><td style="white-space:nowrap;">${a}</td><td>${statusCell}</td><td style="text-align:center;">${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
+      } else {
+        tr += `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}${tripBadge}</span></td><td>${purposeDisplay}</td><td style="white-space:nowrap;">${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td style="white-space:pre-wrap; word-break:break-word; min-width:120px;">${r.memo || ''}${noteHtml}</td><td style="text-align:center;"><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
       }
-      return `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}${tripBadge}</span></td><td>${purposeDisplay}</td><td style="white-space:nowrap;">${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td style="white-space:pre-wrap; word-break:break-word; min-width:120px;">${r.memo || ''}${noteHtml}</td><td style="text-align:center;"><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
-    }).join('');
+
+      // Mobile Card HTML
+      const receiptCardCell = ru
+        ? (count > 1
+          ? `<button class="btn" data-action="files" data-url="${ru}" type="button" style="height:24px;font-size:12px;padding:0 8px;">表示(${count})</button>`
+          : `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;background:#f1f5f9;padding:4px 8px;border-radius:4px;">表示</a>`)
+        : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:24px;font-size:12px;padding:0 8px;">表示(${count})</button>` : '<span style="color:#64748b;font-size:12px;">なし</span>');
+
+      cardsHtml += `
+        <div data-id="${String(r.id || '')}" style="background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 800; color: #0f172a; font-size: 14px;">${d}</span>
+              <span style="font-size: 12px; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px;">${typeDisplay}</span>
+            </div>
+            <span class="status-pill status-${stClass}">${stLabel}</span>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 13px; color: #334155;">
+              <span style="color: #64748b; margin-right: 4px;">経路:</span>${routeDisplay}${tripBadge}
+            </div>
+            ${purposeDisplay !== '-' ? `<div style="font-size: 13px; color: #334155;"><span style="color: #64748b; margin-right: 4px;">用途:</span>${purposeDisplay}</div>` : ''}
+            ${r.memo ? `<div style="font-size: 13px; color: #334155;"><span style="color: #64748b; margin-right: 4px;">メモ:</span>${r.memo}</div>` : ''}
+            ${noteHtml}
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 8px; border-top: 1px dashed #f1f5f9;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: #64748b; font-size: 12px;">領収書:</span>
+              ${receiptCardCell}
+            </div>
+            <div style="font-weight: 800; color: #0f172a; font-size: 15px;">
+              ${a}
+            </div>
+          </div>
+          
+          ${(editBtn || delBtn || replyBtn) ? `
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+            ${replyBtn}${editBtn}${delBtn}
+          </div>
+          ` : ''}
+        </div>
+      `;
+    });
     const totalRow = `<tr class="total-row"><td colspan="${colSpan}" style="font-weight:800;text-align:left;padding-bottom:20px;">合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}</td></tr>`;
     window.goBackToMonthlyList = async () => {
       selectedHistoryMonth = '';
@@ -1470,14 +1556,12 @@ const renderList = async () => {
       const listWrapper = document.getElementById('exListWrapper');
       if (listHost) listHost.style.display = 'none';
       if (listWrapper) listWrapper.style.display = 'none';
-      
       const boardHost = document.getElementById('exMonthlyBoardHost');
-      if (boardHost && activeSummaryCard !== '') {
-        boardHost.style.display = 'block';
-      }
-      
+      if (boardHost) boardHost.style.display = (activeSummaryCard === '') ? 'none' : 'block';
       const summaryCards = document.getElementById('exSummaryCards');
-      if (summaryCards) summaryCards.style.display = 'grid';
+      if (summaryCards) {
+        summaryCards.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
+      }
     };
 
     // Attach event listener directly to host to handle back button click
@@ -1507,19 +1591,31 @@ const renderList = async () => {
           <div style="font-weight: 800; color: #0f172a; font-size: 16px;">${monthJa}の詳細</div>
         </div>
         ${noticeSummary}
-        <div class="adj-table-card">
+        <div class="adj-table-card expense-desktop-only">
           <table class="adj-table">
             <tbody>${detailHeadRow}${tr}${totalRow}</tbody>
           </table>
+        </div>
+        <div class="expense-mobile-only" style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px;">
+          ${cardsHtml}
+          <div style="background: #fff; padding: 16px; border-radius: 8px; border: 1px solid var(--border); font-weight: 800; text-align: right; color: #0f172a; font-size: 16px;">
+            合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}
+          </div>
         </div>
       `;
     } else {
       host.innerHTML = `
         ${noticeSummary}
-        <div class="adj-table-card">
+        <div class="adj-table-card expense-desktop-only">
           <table class="adj-table">
             <tbody>${detailHeadRow}${tr}${totalRow}</tbody>
           </table>
+        </div>
+        <div class="expense-mobile-only" style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px;">
+          ${cardsHtml}
+          <div style="background: #fff; padding: 16px; border-radius: 8px; border: 1px solid var(--border); font-weight: 800; text-align: right; color: #0f172a; font-size: 16px;">
+            合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}
+          </div>
         </div>
       `;
     }
@@ -1548,17 +1644,16 @@ const renderList = async () => {
         });
       });
     }
-    const tbody = host.querySelector('tbody');
-    if (tbody && !tbody.dataset.bindDel) {
-      tbody.dataset.bindDel = '1';
-      tbody.addEventListener('click', async (e) => {
+    if (!host.dataset.bindDel) {
+      host.dataset.bindDel = '1';
+      host.addEventListener('click', async (e) => {
         const link = e.target.closest('a.receipt-link');
-        const tr = e.target.closest('tr[data-id]');
-        if (link && tr) {
+        const row = e.target.closest('[data-id]');
+        if (link && row) {
           const c = parseInt(String(link.getAttribute('data-count') || '0'), 10);
           if (c > 1) {
             e.preventDefault();
-            const filesBtn = tr.querySelector('button[data-action="files"]');
+            const filesBtn = row.querySelector('button[data-action="files"]');
             filesBtn?.click();
             return;
           }
@@ -1566,8 +1661,8 @@ const renderList = async () => {
         // 
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
-        const tr2 = btn.closest('tr[data-id]');
-        const id = tr2 ? tr2.getAttribute('data-id') : '';
+        const row2 = btn.closest('[data-id]');
+        const id = row2 ? row2.getAttribute('data-id') : '';
         if (!id) return;
         const action = btn.getAttribute('data-action');
         btn.disabled = true;
@@ -1586,13 +1681,14 @@ const renderList = async () => {
             await renderList();
           } else if (action === 'files') {
             let rows = [];
+            const isTr = row2.tagName.toLowerCase() === 'tr';
             try { rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (errGet) {
-              const warn = document.createElement('tr'); warn.className = 'files-row';
-              warn.innerHTML = `<td colspan="${colSpan}"><div style="color:#b00020;">領収書の読み込みに失敗しました：${String(errGet?.message || 'unknown')}</div></td>`;
-              tr2.after(warn);
+              const warn = document.createElement(isTr ? 'tr' : 'div'); warn.className = 'files-row';
+              warn.innerHTML = isTr ? `<td colspan="7"><div style="color:#b00020;">領収書の読み込みに失敗しました：${String(errGet?.message || 'unknown')}</div></td>` : `<div style="color:#b00020;padding:8px;font-size:12px;">領収書の読み込みに失敗しました：${String(errGet?.message || 'unknown')}</div>`;
+              row2.after(warn);
               btn.disabled = false; return;
             }
-            const next = tr2.nextElementSibling;
+            const next = row2.nextElementSibling;
             if (next && next.classList.contains('files-row')) {
               next.remove();
               btn.disabled = false;
@@ -1626,10 +1722,11 @@ const renderList = async () => {
                   </li>`;
               }).join('')
               : '<li style="font-size:11px;color:#64748b;">ファイルなし</li>';
-            const expand = document.createElement('tr');
+            
+            const expand = document.createElement(isTr ? 'tr' : 'div');
             expand.className = 'files-row';
-            expand.innerHTML = `<td colspan="${colSpan}"><ul style="list-style:none;padding:0;margin:4px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${filesHtml}</ul></td>`;
-            tr2.after(expand);
+            expand.innerHTML = isTr ? `<td colspan="7"><ul style="list-style:none;padding:0;margin:4px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${filesHtml}</ul></td>` : `<ul style="list-style:none;padding:8px;margin:0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;margin-top:8px;">${filesHtml}</ul>`;
+            row2.after(expand);
             const ul = expand.querySelector('ul');
             ul?.addEventListener('click', async (ev) => {
               const b2 = ev.target.closest('button[data-action="file-delete"]');
@@ -1663,15 +1760,16 @@ const renderList = async () => {
               b2.disabled = false;
             });
           } else if (action === 'reply') {
-            const next = tr.nextElementSibling;
+            const isTr = row2.tagName.toLowerCase() === 'tr';
+            const next = row2.nextElementSibling;
             if (next && next.classList.contains('chat-row')) {
               next.remove();
               btn.disabled = false;
               return;
             }
-            const chat = document.createElement('tr');
+            const chat = document.createElement(isTr ? 'tr' : 'div');
             chat.className = 'chat-row';
-            chat.innerHTML = `<td colspan="${colSpan}">
+            chat.innerHTML = isTr ? `<td colspan="7">
               <div class="chat-box" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;">
                 <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">やり取り</div>
                 <div class="chat-reason" style="margin-bottom:8px;color:#7f1d1d;font-weight:700;"></div>
@@ -1685,8 +1783,22 @@ const renderList = async () => {
                   <button class="btn chat-new" type="button" style="height:32px;">新規作成</button>
                 </div>
               </div>
-            </td>`;
-            tr.after(chat);
+            </td>` : `
+              <div class="chat-box" style="border:1px solid #e5e7eb;border-radius:8px;padding:10px;background:#fff;margin-top:8px;">
+                <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">やり取り</div>
+                <div class="chat-reason" style="margin-bottom:8px;color:#7f1d1d;font-weight:700;"></div>
+                <div class="chat-messages" style="max-height:220px;overflow:auto;padding:6px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;"></div>
+                <div class="chat-input" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+                  <input type="text" class="chat-text" placeholder="メッセージを入力…" style="flex:1;height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;">
+                  <button class="btn chat-send" type="button" style="height:36px;width:100%;">送信</button>
+                </div>
+                <div class="chat-actions" style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="btn chat-edit" type="button" style="flex:1;height:32px;">編集</button>
+                  <button class="btn chat-new" type="button" style="flex:1;height:32px;">新規作成</button>
+                </div>
+              </div>
+            `;
+            row2.after(chat);
             const box = chat.querySelector('.chat-messages');
             const text = chat.querySelector('.chat-text');
             const send = chat.querySelector('.chat-send');
@@ -2305,16 +2417,20 @@ export async function bootExpensesPage() {
     try { sessionStorage.setItem(EXPENSES_ACTIVE_TAB_KEY, activeHistoryTab); } catch (e) { /* silently ignored */ }
 
     if (tab === 'applied') {
-      selectedHistoryMonth = '';
-      const listHost = document.getElementById('exListHost');
-      const listWrapper = document.getElementById('exListWrapper');
-      if (listHost) listHost.style.display = 'none';
-      if (listWrapper) listWrapper.style.display = 'none';
-      const boardHost = document.getElementById('exMonthlyBoardHost');
-      if (boardHost) boardHost.style.display = (activeSummaryCard === '') ? 'none' : 'block';
-      const summaryCards = document.getElementById('exSummaryCards');
-      if (summaryCards) summaryCards.style.display = 'grid';
-    }
+        selectedHistoryMonth = '';
+        const listHost = document.getElementById('exListHost');
+        const listWrapper = document.getElementById('exListWrapper');
+        if (listHost) listHost.style.display = 'none';
+        if (listWrapper) listWrapper.style.display = 'none';
+        const boardHost = document.getElementById('exMonthlyBoardHost');
+        if (boardHost) {
+          boardHost.style.display = (activeSummaryCard === '') ? 'none' : 'block';
+        }
+        const summaryCards = document.getElementById('exSummaryCards');
+        if (summaryCards) {
+          summaryCards.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
+        }
+      }
 
     const pageTitle = $('#expPageTitle');
     if (pageTitle) {
@@ -2471,13 +2587,14 @@ export async function bootExpensesPage() {
 
   const exSummaryCards = document.getElementById('exSummaryCards');
   if (exSummaryCards) {
-    exSummaryCards.addEventListener('click', async (e) => {
-      const card = e.target.closest('.summary-card');
-      if (!card) return;
-      activeSummaryCard = card.dataset.type || 'all';
-      await renderList();
-    });
-  }
+      exSummaryCards.addEventListener('click', async (e) => {
+        const card = e.target.closest('.summary-card');
+        if (!card) return;
+        activeSummaryCard = card.dataset.type || 'all';
+
+        await renderList();
+      });
+    }
 
   const bindTabClick = (els, handler) => {
     els.forEach((el) => {
