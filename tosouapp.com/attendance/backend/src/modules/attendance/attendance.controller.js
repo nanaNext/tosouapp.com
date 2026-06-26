@@ -2973,9 +2973,13 @@ exports.exportMonthXlsx = async (req, res) => {
         const isTextWide = ci === 5 || ci === 6 || ci === 14 || ci === 15;
         const style = isTextWide ? 13 : 12;
         // Highlight only the date cell (日付) for Sundays.
-        const styleWithDay = (isSunday && ci === 0) ? 16 : style;
+        let styleWithDay = (isSunday && ci === 0) ? 16 : style;
         
         let cellValue = String(v || '');
+        if ((ci === 2 || ci === 3 || ci === 4) && cellValue === '✓') {
+          styleWithDay = 20; // apply blue background style
+        }
+
         if (ci === 1) {
           if (cellValue === '休日出勤' && !vals[7] && !vals[8] && !vals[10] && !vals[11]) {
             // Keep as is if user explicitly chose 休日出勤, but if it's auto-inferred and has no time, it falls back to 休日
@@ -3074,7 +3078,7 @@ exports.exportMonthXlsx = async (req, res) => {
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Meiryo"/></font>
     <font><sz val="11"/><color rgb="FFC62828"/><name val="Meiryo"/></font>
   </fonts>
-  <fills count="12">
+  <fills count="13">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
@@ -3087,13 +3091,14 @@ exports.exportMonthXlsx = async (req, res) => {
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFEAF4FF"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFF4E5"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF4472C4"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border><left style="thin"><color rgb="FFD0D7DE"/></left><right style="thin"><color rgb="FFD0D7DE"/></right><top style="thin"><color rgb="FFD0D7DE"/></top><bottom style="thin"><color rgb="FFD0D7DE"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="20">
+  <cellXfs count="21">
     <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
@@ -3114,6 +3119,7 @@ exports.exportMonthXlsx = async (req, res) => {
     <xf numFmtId="0" fontId="3" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="12" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
