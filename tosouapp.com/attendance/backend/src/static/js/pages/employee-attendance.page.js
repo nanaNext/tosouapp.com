@@ -260,7 +260,7 @@ async function mountAttendanceImpl({
       }
       /* Responsive Hide/Show Classes */
       .mobile-only {
-        display: none !important;
+        display: none;
       }
       .attrec-emp-like-table td.desktop-only {
         display: table-cell !important;
@@ -269,13 +269,13 @@ async function mountAttendanceImpl({
       /* Mobile responsive styles for legacy attendance page */
       @media (max-width: 768px) {
         .attrec-emp-like-table td.mobile-only {
-          display: block !important;
+          display: block;
         }
         .attrec-emp-like-table td.m-code-cell.mobile-only {
-          display: flex !important;
+          display: flex;
         }
         .attrec-emp-like-table td.m-main-cell.mobile-only {
-          display: flex !important;
+          display: flex;
         }
         .attrec-emp-like-table td.desktop-only {
           display: none !important;
@@ -440,7 +440,7 @@ async function mountAttendanceImpl({
         .attrec-emp-like-table .m-main-cell {
           flex: 1 !important;
           min-width: 0 !important;
-          padding: 12px 16px !important;
+          padding: 12px 16px 12px 0 !important;
           background: #ffffff !important;
           display: flex !important;
           flex-direction: column !important;
@@ -469,7 +469,8 @@ async function mountAttendanceImpl({
           word-break: break-word !important;
           flex: 1 !important;
           text-align: left !important;
-          padding-left: 24px !important;
+          padding-left: 16px !important;
+          padding-top: 0 !important;
         }
         .attrec-emp-like-table .m-v-name {
           font-size: 15px !important;
@@ -721,10 +722,30 @@ async function mountAttendanceImpl({
             
             .attrec-fiori-override.dash-card {
               border-radius: 4px !important;
-              box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-              border: 1px solid #d9d9d9 !important;
-              padding: 16px !important;
-              background-color: #ffffff !important;
+              box-shadow: none !important;
+              border: none !important;
+              padding: 0 !important;
+              background-color: transparent !important;
+            }
+            
+            /* Remove the 2 vertical bars (scrollbars) */
+            .emp-list-scroll-wrap {
+              overflow-x: auto;
+              overflow-y: hidden;
+              width: 100%;
+            }
+            .emp-list-scroll-wrap::-webkit-scrollbar {
+              height: 8px;
+            }
+            .emp-list-scroll-wrap::-webkit-scrollbar-track {
+              background: #f1f5f9;
+            }
+            .emp-list-scroll-wrap::-webkit-scrollbar-thumb {
+              background: #cbd5e1;
+              border-radius: 4px;
+            }
+            .emp-list-scroll-wrap::-webkit-scrollbar-thumb:hover {
+              background: #94a3b8;
             }
             
             /* Mobile Optimization (Card Layout) */
@@ -1042,7 +1063,27 @@ async function mountAttendanceImpl({
           
           const emptyDash = (label) => `<td data-label="${label}"><span class="empty-dash">—</span></td>`;
             
-            // Use standard table cell creation instead of weird layout elements
+          // Add mobile-only layout to standard row via classes
+          if (window.innerWidth <= 768) {
+            tr.innerHTML = `
+              <td class="m-code-cell mobile-only">
+                <div class="m-code-label">社員番号</div>
+                <div class="m-code-value">${esc(code)}</div>
+              </td>
+              <td class="m-main-cell mobile-only">
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">氏名</div><div class="m-v m-v-name" style="padding-left: 16px; text-align: left; width: 100%;">${esc(name)}</div></div>
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; width: 100%;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">勤務区分</div><div class="m-v" style="padding-left: 16px; text-align: left; width: 100%;">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : esc(wtLabel)}</div></div>
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">状態</div><div class="m-v" style="padding-left: 16px; text-align: left; width: 100%;"><span class="${stClass}">${esc(stLabel)}</span></div></div>
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">出勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; width: 100%;">${cinView === '—' ? '<span class="empty-dash">—</span>' : esc(cinView)}</div></div>
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">退勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; width: 100%;">${coutView === '—' ? '<span class="empty-dash">—</span>' : esc(coutView)}</div></div>
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">現場</div><div class="m-v" style="padding-left: 16px; text-align: left; width: 100%;">${siteView === '—' ? '<span class="empty-dash">—</span>' : esc(siteView)}</div></div>
+                <div class="m-line"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; width: 100%;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
+              </td>
+            `;
+            table.classList.add('attrec-emp-like-table');
+          } else {
+            // Desktop standard layout
             tr.innerHTML = `
                 <td data-label="社員番号" style="text-align:left;"><span>${esc(code)}</span></td>
                 <td data-label="氏名" style="font-weight: 600; color: #0f172a;"><span>${esc(name)}</span></td>
@@ -1054,6 +1095,7 @@ async function mountAttendanceImpl({
               ${siteView === '—' ? emptyDash('現場') : `<td data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
               ${workView === '—' ? emptyDash('作業内容') : `<td data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:80px; overflow-y:auto;">${esc(workView)}</div></td>`}
             `;
+          }
           
           tbody.appendChild(tr);
         }
