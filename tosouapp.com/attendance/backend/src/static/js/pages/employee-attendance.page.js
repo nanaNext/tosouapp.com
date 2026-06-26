@@ -90,7 +90,7 @@ async function mountAttendanceImpl({
   const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 24px)';
 
   const rosterWrap = document.createElement('div');
-  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: ${vhExpr}; display: flex; flex-direction: column; overflow: visible;`;
+  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: ${vhExpr}; display: flex; flex-direction: column; overflow: hidden;`;
   // Add mobile/desktop styles properly
   rosterWrap.innerHTML = `
     <style>
@@ -486,13 +486,13 @@ async function mountAttendanceImpl({
         }
       }
     </style>
-    <div class="dash-card attrec-fiori-override" style="height: 100%; display: flex; flex-direction: column; overflow: visible !important; background: transparent !important; box-shadow: none !important; border: none !important;">
+    <div class="dash-card attrec-fiori-override" style="height: 100%; display: flex; flex-direction: column; overflow: hidden !important; background: transparent !important; box-shadow: none !important; border: none !important;">
       <div class="attrec-controls" style="margin-bottom: 0px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: none !important;">
       </div>
       <div class="attrec-head" style="flex-shrink: 0; display: none !important; margin: 0 !important; min-height: 0 !important;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: none; gap: 12px; margin-bottom: 0px;"></div>
       </div>
-      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow: visible;"></div>
+      <div id="rosterTable" class="attrec-table" style="flex: 1; overflow: hidden;"></div>
     </div>
   `;
   content.appendChild(rosterWrap);
@@ -718,6 +718,7 @@ async function mountAttendanceImpl({
                 margin: 0 !important;
                 max-width: 100% !important;
               border-radius: 0 !important;
+              overflow: hidden !important;
             }
             
             .attrec-fiori-override.dash-card {
@@ -730,8 +731,8 @@ async function mountAttendanceImpl({
             
             /* Remove the 2 vertical bars (scrollbars) */
             .emp-list-scroll-wrap {
-              overflow-x: auto;
-              overflow-y: hidden;
+              overflow-x: auto !important;
+              overflow-y: hidden !important;
               width: 100%;
             }
             .emp-list-scroll-wrap::-webkit-scrollbar {
@@ -1104,6 +1105,9 @@ async function mountAttendanceImpl({
         const tableWrap = document.createElement('div');
         tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
         tableWrap.style.overflowX = 'auto';
+        tableWrap.style.overflowY = 'hidden';
+        tableWrap.style.width = '100%';
+        tableWrap.style.position = 'relative';
         tableWrap.appendChild(table);
         host.appendChild(tableWrap);
 
