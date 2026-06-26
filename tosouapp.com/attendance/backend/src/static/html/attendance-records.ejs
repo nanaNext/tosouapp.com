@@ -9,15 +9,20 @@
   <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260408-1">
   <link rel="icon" href="/static/images/logo1.png?v=<%= appVersion %>" type="image/png">
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
-  <script type="module" src="/static/js/pages/attendance-records.page.js?v=navy-20260626-align4"></script>
+  <script type="module" src="/static/js/pages/attendance-records.page.js?v=navy-20260626-grid11"></script>
 </head>
 <body>
   <div id="pageSpinner" class="page-spinner" hidden><div class="lds-spinner" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
   
   <%- include('_partials/employee-header.ejs') %>
 
-  <main class="content" style="padding-top: 140px;">
-    <div style="max-width: 100%; margin: 0 auto; width: 100%; min-height: 80vh; padding: 0 16px;">
+  <main class="content attendance-records-content" style="padding-top: 100px;">
+    <style>
+      @media (max-width: 768px) {
+        .attendance-records-content { padding-top: 0 !important; margin-top: -16px !important; }
+      }
+    </style>
+    <div style="max-width: 100%; margin: 0 auto; width: 100%; min-height: 80vh; padding: 0;">
       <div id="attendanceRecordsHost" style="width: 100%;"></div>
     </div>
   </main>
