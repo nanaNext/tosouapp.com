@@ -459,6 +459,7 @@ async function mountAttendanceImpl({
         }
         .attrec-emp-like-table .m-k {
           min-width: 80px !important;
+          max-width: 80px !important;
           color: #64748b !important;
           flex-shrink: 0 !important;
           text-align: left !important;
@@ -468,7 +469,7 @@ async function mountAttendanceImpl({
           word-break: break-word !important;
           flex: 1 !important;
           text-align: left !important;
-          padding-left: 16px !important;
+          padding-left: 24px !important;
         }
         .attrec-emp-like-table .m-v-name {
           font-size: 15px !important;
