@@ -81,8 +81,8 @@ router.get('/privacy', sendPage('privacy.html'));
 // router.get('/expenses-login', sendPage('expenses-login.html'));
 
 // Make expenses page accessible and let FE handle auth redirect to /expenses-login
-router.get('/ui/expenses', authenticateFromCookie, sendPage('expenses.html'));
-router.get('/ui/expenses/', authenticateFromCookie, sendPage('expenses.html'));
+router.get('/ui/expenses', authenticateFromCookie, sendPageNoCache('expenses.html'));
+router.get('/ui/expenses/', authenticateFromCookie, sendPageNoCache('expenses.html'));
 // Serve simple attendance page immediately to improve first paint on mobile.
 // Authentication is still enforced by API calls and client-side auth guard.
 router.get('/ui/attendance/simple', sendPage('attendance-simple.html'));
