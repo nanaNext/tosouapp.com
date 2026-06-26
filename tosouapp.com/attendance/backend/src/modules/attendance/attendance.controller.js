@@ -3003,9 +3003,9 @@ exports.exportMonthXlsx = async (req, res) => {
         return cell(ref, cellValue, styleWithDay);
       });
       xmlCells.push(numberCell(`S${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
-      push1(rowNum, xmlCells, 18);
+      push1(rowNum, xmlCells);
     }
-    const sheet1VisibleCols = [12, 14, 5, 5, 12, 14, 16, 10, 10, 10, 10, 10, 10, 10, 12, 26, 14, 12];
+    const sheet1VisibleCols = [12, 14, 5, 5, 12, 25, 25, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
     const sheet1Cols = [
       ...sheet1VisibleCols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`),
       `<col min="19" max="19" width="2" hidden="1" customWidth="1"/>`
@@ -3049,7 +3049,7 @@ exports.exportMonthXlsx = async (req, res) => {
       const rowCells = vals.map((v, ci) => cell(`${colRef(ci + 1)}${rowNum}`, v == null ? '' : v, ci === 0 ? 10 : 11));
       rowCells.push(numberCell(`U${rowNum}`, plannedMinutes, 0));
       rowCells.push(cell(`V${rowNum}`, planWorkStyle, 0));
-      sheet2Rows.push(rowXml(rowNum, rowCells, 18));
+      sheet2Rows.push(rowXml(rowNum, rowCells));
     }
     const sheet2VisibleCols = [12, 10, 14, 20, 8, 8, 8, 8, 8, 8, 10, 12, 12, 12];
     const sheet2Cols = [
