@@ -949,14 +949,8 @@ async function mountAttendanceImpl({
                 padding: 12px 16px !important;
               }
                  
-              /* Ẩn các ô chứa mã NV và tên gốc để không bị lặp lại */
-              .beautiful-table td:nth-child(1),
-              .beautiful-table td:nth-child(2) {
-                display: none !important;
-              }
-              
               /* Định dạng các dòng thông tin còn lại */
-               .beautiful-table td {
+               .beautiful-table td:not(.m-code-cell) {
                   display: flex !important;
                   justify-content: flex-start !important; 
                   align-items: flex-start !important; /* Thay đổi từ center sang flex-start để text nhiều dòng bắt đầu từ trên cùng */
@@ -969,8 +963,8 @@ async function mountAttendanceImpl({
                   box-sizing: border-box !important;
                 }
                    
-                /* Định dạng Nhãn (Tiêu đề) bên trái */
-                .beautiful-table td::before {
+                /* Định dạng Nhãn (Tiêu đề) bên trái cho Desktop HTML */
+                .beautiful-table td:not(.mobile-only)::before {
                   content: attr(data-label);
                   font-weight: 500 !important;
                   color: #475569 !important; /* Đổi màu xám đậm hơn cho dễ đọc */
@@ -980,8 +974,8 @@ async function mountAttendanceImpl({
                   flex-shrink: 0 !important;
                 }
                   
-               /* Ép phần nội dung bên phải căn trái sát lại gần nhãn */
-               .beautiful-table td > *:not(.attrec-pill) {
+               /* Ép phần nội dung bên phải căn trái sát lại gần nhãn cho Desktop HTML */
+               .beautiful-table td:not(.mobile-only) > *:not(.attrec-pill) {
                   flex-grow: 0 !important;
                   text-align: left !important;
                   padding-left: 0 !important; /* Xóa khoảng trống thừa */
