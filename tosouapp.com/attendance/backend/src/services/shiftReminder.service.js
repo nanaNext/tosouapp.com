@@ -60,12 +60,12 @@ async function processReminders() {
     const todayJstStart = `${y}-${m}-${d} 00:00:00`;
     const todayJstEnd = `${y}-${m}-${d} 23:59:59`;
 
-    // 1. Fetch all active users (employees and managers) with their emails and department info
+    // 1. Fetch all active users (only employees) with their emails and department info
     const [users] = await db.query(`
       SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
       LEFT JOIN departments d ON u.departmentId = d.id 
-      WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
+      WHERE u.employment_status = 'active' AND u.role = 'employee'
     `);
     if (!users || users.length === 0) return;
 
@@ -260,7 +260,7 @@ async function checkDailyMissingAttendance() {
       SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
       LEFT JOIN departments d ON u.departmentId = d.id 
-      WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
+      WHERE u.employment_status = 'active' AND u.role = 'employee'
     `);
     if (!users || users.length === 0) return;
 
@@ -376,7 +376,7 @@ async function checkMonthlyMissingAttendance() {
       SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
       LEFT JOIN departments d ON u.departmentId = d.id 
-      WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
+      WHERE u.employment_status = 'active' AND u.role = 'employee'
     `);
     if (!users || users.length === 0) return;
 

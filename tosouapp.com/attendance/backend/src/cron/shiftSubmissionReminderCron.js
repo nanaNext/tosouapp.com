@@ -38,7 +38,7 @@ async function processMonthlyShiftReminders() {
             SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
             FROM users u 
             LEFT JOIN departments d ON u.departmentId = d.id 
-            WHERE u.employment_status = 'active' AND u.role IN ('employee', 'manager')
+            WHERE u.employment_status = 'active' AND u.role = 'employee'
         `);
 
         if (!users || users.length === 0) return;
