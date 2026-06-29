@@ -52,7 +52,7 @@ function mountStyle() {
   const st = document.createElement('style');
   st.id = 'payrollEditorStyle';
   st.textContent = `
-    .pe-wrap{width:100%;max-width:100%;margin:0;padding:12px 16px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;}
+    .pe-wrap{width:100%;max-width:100%;margin:0;padding:12px 16px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;overflow-y:auto !important;overflow-x:hidden;}
     .pe-wrap *{box-sizing:border-box;font-family:inherit;font-weight:400}
     .pe-card{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:16px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);min-width:0}
     .pe-title{font-size:16px;line-height:1.4;font-weight:600;color:#0f172a;margin:0 0 16px 0;border-bottom:2px solid #cbd5e1;padding-bottom:8px;display:flex;align-items:center;gap:8px}

@@ -514,11 +514,13 @@ const resetTransientUiState = () => {
   
   // Ensure body scroll is unlocked when resetting UI state
   try {
-    document.body.style.overflow = '';
+    document.body.style.setProperty('overflow', 'visible', 'important');
+    document.body.style.setProperty('overflow-y', 'auto', 'important');
     document.body.style.position = '';
     document.body.style.width = '';
     document.body.style.top = '';
-    document.documentElement.style.overflow = '';
+    document.documentElement.style.setProperty('overflow', 'visible', 'important');
+    document.documentElement.style.setProperty('overflow-y', 'auto', 'important');
   } catch (e) {}
   try {
     const adminEditModal = document.querySelector('#adminEditModal');
@@ -568,11 +570,13 @@ const route = async () => {
   
   // Make sure body doesn't have overflow hidden from other pages
   try {
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
+    document.body.style.setProperty('overflow', 'visible', 'important');
+    document.body.style.setProperty('overflow-y', 'auto', 'important');
+    document.documentElement.style.setProperty('overflow', 'visible', 'important');
+    document.documentElement.style.setProperty('overflow-y', 'auto', 'important');
     // Special fix for standalone SPA router
     if (document.body.classList.contains('has-sidebar')) {
-      document.body.style.overflowY = 'auto';
+      document.body.style.setProperty('overflow-y', 'auto', 'important');
     }
   } catch (e) {}
   
