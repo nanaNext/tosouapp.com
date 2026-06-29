@@ -419,8 +419,7 @@ async function mountAttendanceImpl({
         }
         .attrec-emp-like-table tr {
           display: flex !important;
-          flex-direction: row !important;
-          flex-wrap: wrap !important;
+          flex-direction: column !important;
           background: #ffffff !important;
           border: 1px solid #e2e8f0 !important;
           border-radius: 0 !important;
@@ -441,16 +440,12 @@ async function mountAttendanceImpl({
           display: none !important;
         }
         .attrec-emp-like-table .m-code-cell {
-          width: 90px !important;
-          min-width: 90px !important;
-          max-width: 90px !important;
-          background: #f8fafc !important;
-          border-right: 1px solid #e2e8f0 !important;
-          padding: 12px !important;
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: flex-start !important;
-          text-align: left !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          /* background color is now set inline dynamically based on status */
+          border-bottom: 1px solid #e2e8f0 !important;
+          padding: 12px 16px !important;
+          display: block !important;
           box-sizing: border-box !important;
         }
         .attrec-emp-like-table .m-code-label {
@@ -459,10 +454,12 @@ async function mountAttendanceImpl({
           margin-bottom: 4px !important;
         }
         .attrec-emp-like-table .m-code-value {
-          font-size: 14px !important;
+          font-size: 16px !important;
           font-weight: 700 !important;
-          color: #1e293b !important;
-          word-break: break-all !important;
+          /* text color is now set inline dynamically based on status */
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
         }
         .attrec-emp-like-table .m-main-cell {
           flex: 1 !important;
@@ -1139,10 +1136,24 @@ async function mountAttendanceImpl({
             
           // Add mobile-only layout to standard row via classes
           if (window.innerWidth <= 768) {
+            let headerBgColor = '#f8fafc'; // Default gray
+            let headerTextColor = '#0f172a'; // Default text color
+
+            if (st === 'working' || st === 'holiday_working') {
+              headerBgColor = '#e0f2fe'; // Light blue for currently working
+              headerTextColor = '#1e40af';
+            } else if (st === 'checked_out') {
+              headerBgColor = '#dcfce7'; // Light green for checked out
+              headerTextColor = '#166534';
+            } else if (st === 'holiday_work') {
+              headerBgColor = '#fef3c7'; // Light yellow/orange for holiday work
+              headerTextColor = '#9a3412';
+            }
+
             tr.innerHTML = `
-              <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important;">
-                <div class="m-code-label">社員番号</div>
-                <div class="m-code-value" style="word-break: break-all;">[${esc(code)}] ${esc(name)}</div>
+              <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
+                <div class="m-code-label" style="display: none !important;">社員番号</div>
+                <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important;">[${esc(code)}] ${esc(name)}</div>
               </td>
               <td class="m-main-cell mobile-only" style="display: flex; flex-direction: column; width: 100%; box-sizing: border-box;">
                 <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
