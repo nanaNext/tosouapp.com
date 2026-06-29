@@ -410,15 +410,6 @@ const render = async () => {
   const openPublishedFile = async (month) => {
     showErr('');
     if (!/^\d{4}-\d{2}$/.test(month)) return;
-    
-    // Mở tab mới NGAY LẬP TỨC trước khi gọi API (bắt buộc để vượt qua trình chặn popup trên Mobile/Safari)
-    let newWin = null;
-    try {
-      newWin = window.open('', '_blank');
-      if (newWin) {
-        newWin.document.write('読み込み中... (Loading...)');
-      }
-    } catch (e) { /* ignore */ }
 
     showSpinner();
     try {
@@ -427,19 +418,13 @@ const render = async () => {
       const dl = await fetchJSONAuth(`/api/salary/me/${encodeURIComponent(y)}/${encodeURIComponent(mStr)}/download`);
       const secureUrl = String(dl?.secureUrl || '').trim();
       if (!secureUrl) {
-        if (newWin) newWin.close();
         showErr('PDFが見つかりません');
         return;
       }
       
-      if (newWin && !newWin.closed) {
-        newWin.location.href = secureUrl;
-      } else {
-        // Fallback nếu trình duyệt chặn hoàn toàn window.open
-        window.location.href = secureUrl;
-      }
+      // Chuyển hướng trình duyệt ở tab hiện tại để đảm bảo hoạt động tốt trên Mobile/Safari
+      window.location.href = secureUrl;
     } catch (e) {
-      if (newWin) newWin.close();
       showErr(e?.message || 'PDF取得に失敗しました');
     } finally {
       hideSpinner();
