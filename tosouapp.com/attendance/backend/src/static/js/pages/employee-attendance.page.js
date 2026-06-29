@@ -935,6 +935,8 @@ async function mountAttendanceImpl({
                 background-color: #f8fafc !important;
                 padding: 12px 16px !important;
                 border-bottom: 1px solid #e2e8f0 !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
               }
               .beautiful-table .m-code-label {
                 display: none !important;
@@ -945,7 +947,7 @@ async function mountAttendanceImpl({
                 color: #0f172a !important;
               }
               
-              .beautiful-table .m-main-cell {
+              .beautiful-table td.m-main-cell {
                 padding: 12px 16px !important;
               }
                  
