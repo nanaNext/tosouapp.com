@@ -439,6 +439,7 @@ router.post('/shifts/bulk-test', controller.postShiftsBulk);
 router.get('/shifts/submissions', authenticate, authorize('manager','admin'), controller.getShiftApprovals);
 router.get('/shifts/matrix', authenticate, authorize('manager','admin'), controller.getShiftMatrix);
 router.get('/shifts/all-employees', authenticate, authorize('employee','manager','admin'), controller.getAllEmployeeShifts);
+router.get('/shifts/all-employees/export', authenticate, authorize('employee','manager','admin'), controller.exportAllEmployeeShiftsExcel);
 router.post('/shifts/submissions/approve', authenticate, authorize('manager','admin'), controller.approveShiftMonth);
 router.get('/shifts/user-month', authenticate, authorize('manager','admin'), controller.getUserShiftsForMonth);
 router.get('/shifts/monthly/:month', authenticate, authorize('employee','manager','admin'), controller.getMyMonthlyShifts);
