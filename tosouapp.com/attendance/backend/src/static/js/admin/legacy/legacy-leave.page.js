@@ -352,13 +352,13 @@ function ensureLeaveUiStyles() {
 
     /* Modal styles */
     .pto-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2147483647 !important; padding: 20px; box-sizing: border-box; }
-    .pto-modal { background: #FFFFFF; border-radius: 8px; width: 90%; max-width: 600px; max-height: 100%; display: flex; flex-direction: column; box-shadow: 0 4px 24px rgba(0,0,0,0.2); font-family: Inter, "Noto Sans JP", sans-serif; overflow: hidden; }
-    .pto-modal-header { padding: 16px 24px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; z-index: 10; flex-shrink: 0; position: relative; }
+    .pto-modal { background: #FFFFFF; border-radius: 8px; width: 90%; max-width: 600px; max-height: 100%; display: flex; flex-direction: column; box-shadow: 0 4px 24px rgba(0,0,0,0.2); font-family: Inter, "Noto Sans JP", sans-serif; overflow: hidden; position: relative; }
+    .pto-modal-header { padding: 16px 24px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; z-index: 10; flex-shrink: 0; position: sticky; top: 0; width: 100%; box-sizing: border-box; }
     .pto-modal-title { font-size: 16px; font-weight: 600; color: #111827; margin: 0; }
     .pto-modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #6B7280; padding: 0; display: flex; align-items: center; justify-content: center; transition: color 0.2s; line-height: 1; }
     .pto-modal-close:hover { color: #111827; }
-    .pto-modal-body { padding: 24px; overflow-y: auto; flex: 1; min-height: 0; background: #F9FAFB; }
-    .pto-modal-footer { padding: 16px 24px; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end; gap: 8px; background: #FFFFFF; flex-shrink: 0; }
+    .pto-modal-body { padding: 24px; overflow-y: auto; flex: 1; min-height: 0; background: #F9FAFB; position: relative; }
+    .pto-modal-footer { padding: 16px 24px; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end; gap: 8px; background: #FFFFFF; flex-shrink: 0; position: sticky; bottom: 0; width: 100%; box-sizing: border-box; z-index: 10; }
     
     .pto-grant-row { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 12px; align-items: center; padding: 16px; border: 1px solid #E5E7EB; border-radius: 6px; margin-bottom: 12px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     .pto-grant-row input { padding: 4px 8px; border: 1px solid #89919A; border-radius: 2px; font-size: 14px; width: 100%; box-sizing: border-box; min-height: 32px; }
