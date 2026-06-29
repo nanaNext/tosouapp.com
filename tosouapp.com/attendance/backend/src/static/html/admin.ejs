@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
   <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260610-ui1">
   <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260610-ui1">
-  <meta name="asset-v" content="navy-20260629-ui3">
+  <meta name="asset-v" content="navy-20260629-ui4">
   <style></style>
   <script>
     if (window.location.search.includes('standalone=1') || window.location.search.includes('standalone=true')) {
@@ -38,13 +38,8 @@
       </div>
       <a href="/admin/attendance?standalone=1" target="_blank" rel="noopener noreferrer">勤怠管理</a>
       <a href="/admin/leave/requests">休暇管理</a>
-      <div class="menu">
-        <button class="menu-btn" type="button">給与管理</button>
-        <div class="submenu" role="menu">
-          <a href="/admin/payroll/salary" role="menuitem">給与</a>
-          <a href="/admin/payroll/payslips" role="menuitem">送信・履歴</a>
-        </div>
-      </div>
+      <a href="/admin/payroll/salary">給与</a>
+      <a href="/admin/payroll/payslips">送信・履歴</a>
       <a href="/admin/expenses?standalone=1" target="_blank" rel="noopener noreferrer">交通費</a>
       <a href="/admin/departments">組織</a>
       <div class="menu">
