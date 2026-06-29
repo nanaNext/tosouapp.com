@@ -52,7 +52,7 @@ function mountStyle() {
   const st = document.createElement('style');
   st.id = 'payrollEditorStyle';
   st.textContent = `
-    .pe-wrap{width:100%;max-width:100%;margin:0;padding:12px 16px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;overflow-y:auto !important;overflow-x:hidden;}
+    .pe-wrap{width:100%;max-width:1400px;margin:0 auto;padding:20px 24px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;overflow-y:auto !important;overflow-x:hidden;}
     .pe-wrap *{box-sizing:border-box;font-family:inherit;font-weight:400}
     .pe-card{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:16px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);min-width:0}
     .pe-title{font-size:16px;line-height:1.4;font-weight:600;color:#0f172a;margin:0 0 16px 0;border-bottom:2px solid #cbd5e1;padding-bottom:8px;display:flex;align-items:center;gap:8px}
@@ -69,13 +69,13 @@ function mountStyle() {
     .pe-money input{padding-right:8px;text-align:right;flex:1}
     .pe-money span{position:static;transform:none;font-weight:400;color:#64748b;font-size:12px;background:transparent;padding:0;margin:0;line-height:1}
 
-    .pe-kpi{display:grid;grid-template-columns:1fr;gap:4px 24px}
+    .pe-kpi{display:grid;grid-template-columns:1fr;gap:12px}
     @media (min-width: 980px) {
-      .pe-kpi{grid-template-columns:repeat(4, 1fr)}
+      .pe-kpi{grid-template-columns:repeat(4, 1fr);gap:16px}
     }
-    .pe-kpi > div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:8px 0;border-bottom:1px dashed #e2e8f0}
+    .pe-kpi > div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:12px 16px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc}
     .pe-kpi .v{font-size:16px;font-weight:600;color:#0f172a;line-height:1.2;white-space:nowrap;text-align:left;align-self:flex-start}
-    .pe-kpi-net{background:#d1fae5;border:1px solid #10b981;border-radius:6px;padding:12px 16px !important;border-bottom:none !important;}
+    .pe-kpi-net{background:#d1fae5 !important;border:1px solid #10b981 !important;}
     .pe-kpi .v-net{color:#047857;font-size:24px;font-weight:700}
     .pe-kpi .k{font-size:12px;font-weight:500;color:#475569;line-height:1.4}
 
