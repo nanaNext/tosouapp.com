@@ -157,6 +157,8 @@ export async function mount() {
   aborter = new AbortController();
   const { signal } = aborter;
 
+  try { window.scrollTo(0, 0); } catch (e) { /* silently ignored */ }
+
   mountStyle();
 
   const content = document.querySelector('#adminContent');
@@ -165,7 +167,7 @@ export async function mount() {
 
   const wrap = document.createElement('div');
   wrap.className = 'pe-wrap';
-  wrap.style.marginTop = '-32px'; // Kéo lên mạnh hơn để triệt tiêu khoảng trắng của khung hệ thống
+  // Removed negative margin since we handle it in admin.page.js routing
   content.appendChild(wrap);
 
   const actionTopBar = document.createElement('div');
