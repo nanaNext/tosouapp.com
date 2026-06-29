@@ -511,6 +511,15 @@ const resetTransientUiState = () => {
       try { el.remove(); } catch (e) { /* silently ignored */ }
     });
   } catch (e) { /* silently ignored */ }
+  
+  // Ensure body scroll is unlocked when resetting UI state
+  try {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.top = '';
+    document.documentElement.style.overflow = '';
+  } catch (e) {}
   try {
     const adminEditModal = document.querySelector('#adminEditModal');
     if (adminEditModal) {
@@ -557,6 +566,16 @@ const route = async () => {
     if (typeof cleanup === 'function') await cleanup();
   } catch (e) { /* silently ignored */ }
   
+  // Make sure body doesn't have overflow hidden from other pages
+  try {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    // Special fix for standalone SPA router
+    if (document.body.classList.contains('has-sidebar')) {
+      document.body.style.overflowY = 'auto';
+    }
+  } catch (e) {}
+  
   try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch (e) { try { window.scrollTo(0, 0); } catch(err) {} }
 
   resetTransientUiState();
@@ -570,7 +589,8 @@ const route = async () => {
       // Remove default card styling if it's an attendance hub page or full-bleed page
       if (window.location.pathname.includes('/admin/attendance') || 
           window.location.pathname.includes('/admin/work-reports') ||
-          window.location.pathname.includes('/admin/payroll/salary')) {
+          window.location.pathname.includes('/admin/payroll/salary') ||
+          window.location.pathname.includes('/admin/payroll/payslips')) {
         host.className = '';
         host.style.padding = '0';
         host.style.margin = '0';
