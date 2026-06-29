@@ -2296,25 +2296,31 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
           const statusObj = rowData[colNumber - 1]; // -1 because colNumber is 1-based
           if (statusObj && typeof statusObj === 'object') {
             const type = statusObj.type;
-            // Hiển thị một ký tự gạch ngang dày thay cho việc tô full màu nền
-            cell.value = '▬'; 
+            
+            // Phục hồi lại chữ thật thay vì gạch ngang
+            cell.value = statusObj.text; 
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
             
+            // Phối màu cho chữ và nền nhạt
             if (type === 'working') {
-              cell.font = { color: { argb: 'FF22C55E' }, size: 14 }; // Green
+              cell.font = { color: { argb: 'FF16A34A' }, bold: true }; // Green
+              cell.fill = { type: 'pattern', pattern: 'none' };
             } else if (type === 'holiday') {
-              cell.font = { color: { argb: 'FFF97316' }, size: 14 }; // Orange (Cam nhạt thay cho đỏ tươi)
+              cell.font = { color: { argb: 'FFDC2626' }, bold: true }; // Red
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }; // Light red bg
             } else if (type === 'paid') {
-              cell.font = { color: { argb: 'FFEAB308' }, size: 14 }; // Yellow
+              cell.font = { color: { argb: 'FFD97706' }, bold: true }; // Amber
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } }; // Light yellow bg
             } else if (type === 'unpaid') {
-              cell.font = { color: { argb: 'FFA855F7' }, size: 14 }; // Purple
+              cell.font = { color: { argb: 'FF9333EA' }, bold: true }; // Purple
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } }; // Light purple bg
             } else if (type === 'holiday-work') {
-              cell.font = { color: { argb: 'FF06B6D4' }, size: 14 }; // Cyan
+              cell.font = { color: { argb: 'FF0284C7' }, bold: true }; // Cyan/Blue
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F9FF' } }; // Light blue bg
             } else {
-              cell.font = { color: { argb: 'FFCBD5E1' }, size: 14 }; // Gray
+              cell.font = { color: { argb: 'FF94A3B8' } }; // Gray
+              cell.fill = { type: 'pattern', pattern: 'none' };
             }
-            // Đảm bảo không có màu nền nào bị sót lại
-            cell.fill = { type: 'pattern', pattern: 'none' };
           }
         }
       });
