@@ -255,7 +255,7 @@ async function checkDailyMissingAttendance() {
     const todayJstStart = `${y}-${m}-${d} 00:00:00`;
     const todayJstEnd = `${y}-${m}-${d} 23:59:59`;
 
-    // 1. Fetch all active users
+    // 1. Fetch all active users (only employees)
     const [users] = await db.query(`
       SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
@@ -371,7 +371,7 @@ async function checkMonthlyMissingAttendance() {
     const monthStartJST = `${monthStartStr} 00:00:00`;
     const monthEndJST = `${monthEndStr} 23:59:59`;
 
-    // 1. Fetch all active users
+    // 1. Fetch all active users (only employees)
     const [users] = await db.query(`
       SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
       FROM users u 
