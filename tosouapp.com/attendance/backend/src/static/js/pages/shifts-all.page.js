@@ -604,8 +604,8 @@ function attachEvents() {
             <title>シフト印刷</title>
             <style>
               @page { 
-                size: A4 landscape; 
-                margin: 10mm; 
+                size: landscape; /* Cho phép người dùng tự do chọn A3, A4... trên hộp thoại in */
+                margin: 15mm 10mm; /* Tăng lề trên để không bị mất tiêu đề */
               }
               body { 
                 font-family: "Noto Sans JP", sans-serif; 
@@ -616,9 +616,10 @@ function attachEvents() {
               }
               h2 { 
                 text-align: center; 
-                margin: 0 0 15px 0; 
-                font-size: 18px; 
+                margin: 0 0 20px 0; 
+                font-size: 20px; 
                 color: #0f172a;
+                padding-top: 10px; /* Thêm padding để chắc chắn tiêu đề không dính mép giấy */
               }
               .print-container {
                 width: 100%;
