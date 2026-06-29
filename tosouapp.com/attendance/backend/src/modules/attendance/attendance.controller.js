@@ -2223,27 +2223,66 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
         const dateStr = `${targetMonth}-${String(i).padStart(2, '0')}`;
         const shift = userShifts.find(s => s.date === dateStr);
         
-        let cellText = '';
-        if (shift) {
-          if (shift.status === 'LEAVE' || shift.status === 'holiday' || shift.status === 'OFF') {
+        const dateObj = new Date(y, m - 1, i);
+         const dow = dateObj.getDay();
+         const isKoujibu = String(u.departmentName || '').includes('工事部');
+         
+         const isSeishain = u.employment_type === 'full_time' || u.employment_type === '正社員' || u.employment_type === '正';
+         const is4thSaturday = dow === 6 && Math.ceil(dateObj.getDate() / 7) === 4;
+         
+         let cellText = '';
+         let statusClass = '';
+         
+         // Đồng bộ logic ngày nghỉ như frontend (Không gọi được calendar API ở đây nên dùng logic chuẩn)
+         let isWeekendOrHoliday = false;
+         if (isKoujibu) {
+           // Nếu là Koujibu, tạm coi T7 CN là nghỉ trong Excel nếu không có lịch (hoặc tuỳ DB, ở đây dùng mặc định)
+           isWeekendOrHoliday = (dow === 0 || dow === 6);
+         } else {
+           if (isSeishain) {
+             // Chính thức: Nghỉ CN và Thứ 7 tuần 4
+             isWeekendOrHoliday = dow === 0 || is4thSaturday;
+           } else {
+             // Part-time: Nghỉ T7, CN
+             isWeekendOrHoliday = dow === 0 || dow === 6;
+           }
+         }
+         
+         if (shift && shift.status === 'LEAVE') {
+          if (shift.leaveType === 'paid') {
+            cellText = '有休';
+            statusClass = 'paid';
+          } else if (shift.leaveType === 'unpaid') {
+            cellText = '欠';
+            statusClass = 'unpaid';
+          } else {
             cellText = '休';
-            if (shift.leaveType === 'paid') cellText = '有休';
-            else if (shift.leaveType === 'unpaid') cellText = '欠勤';
+            statusClass = 'holiday';
           }
-          else if (shift.status === 'rest') cellText = '休み';
-          else if (shift.status === 'working' || shift.status === 'WORKING') cellText = '出';
+        } else if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
+          cellText = '休';
+          statusClass = 'holiday';
+        } else if (shift && shift.status === 'WORKING') {
+          if (isWeekendOrHoliday) {
+            cellText = '出';
+            statusClass = 'holiday-work';
+          } else {
+            cellText = '出'; // Excel cũng có thể dùng '出' cho gọn
+            statusClass = 'working';
+          }
         } else {
-          // If no shift record, check default behavior based on role/employment type
-          // Just as a fallback, output '-'
-          cellText = '-';
+          cellText = '休'; // Đồng bộ part-time
+          statusClass = 'empty';
         }
-        rowData.push(cellText);
+        
+        rowData.push({ text: cellText, type: statusClass });
       }
       
-      const row = sheet.addRow(rowData);
-      row.height = 18; // Make row height slightly compact
+      // Add row but only with text values
+      const row = sheet.addRow(rowData.map(item => typeof item === 'object' ? item.text : item));
+      row.height = 18; 
       
-      // Style data cells
+      // Style data cells with the exact same colors
       row.eachCell((cell, colNumber) => {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
@@ -2254,15 +2293,28 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
         };
         
         if (colNumber > 3) {
-          if (cell.value === '出勤' || cell.value === '出') {
-            cell.font = { color: { argb: 'FF1E40AF' }, bold: true }; // Blue for Working as in the UI image
-          } else if (cell.value === '休' || cell.value === '有休' || cell.value === '欠勤') {
-            cell.font = { color: { argb: 'FFDC2626' }, bold: true }; // Red for Holiday as in the UI image
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }; // Light red background
-          } else if (cell.value === '休み') {
-            cell.font = { color: { argb: 'FF94A3B8' } }; // Gray for Yasumi
-          } else if (cell.value === '-') {
-            cell.font = { color: { argb: 'FF94A3B8' } };
+          const statusObj = rowData[colNumber - 1]; // -1 because colNumber is 1-based
+          if (statusObj && typeof statusObj === 'object') {
+            const type = statusObj.type;
+            // Hiển thị một ký tự gạch ngang dày thay cho việc tô full màu nền
+            cell.value = '▬'; 
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            
+            if (type === 'working') {
+              cell.font = { color: { argb: 'FF22C55E' }, size: 14 }; // Green
+            } else if (type === 'holiday') {
+              cell.font = { color: { argb: 'FFF97316' }, size: 14 }; // Orange (Cam nhạt thay cho đỏ tươi)
+            } else if (type === 'paid') {
+              cell.font = { color: { argb: 'FFEAB308' }, size: 14 }; // Yellow
+            } else if (type === 'unpaid') {
+              cell.font = { color: { argb: 'FFA855F7' }, size: 14 }; // Purple
+            } else if (type === 'holiday-work') {
+              cell.font = { color: { argb: 'FF06B6D4' }, size: 14 }; // Cyan
+            } else {
+              cell.font = { color: { argb: 'FFCBD5E1' }, size: 14 }; // Gray
+            }
+            // Đảm bảo không có màu nền nào bị sót lại
+            cell.fill = { type: 'pattern', pattern: 'none' };
           }
         }
       });

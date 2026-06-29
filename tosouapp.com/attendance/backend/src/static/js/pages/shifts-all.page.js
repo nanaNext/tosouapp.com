@@ -257,80 +257,87 @@ function renderApp() {
         const shift = emp.schedule && emp.schedule[dateStr];
         let cellHtml = '';
         let cellMobileHtml = '-';
-        let cellMobileColor = '';
         
         const dow = d.getDay();
         const isKoujibu = String(emp.departmentName || '').includes('工事部');
         const isRedDay = calendarDataMap[dateStr] === true;
+        
+        // Xác định thứ 7 tuần thứ 4
+        const is4thSaturday = dow === 6 && Math.ceil(d.getDate() / 7) === 4;
+
         // Check if the user has specific calendar based on department
-        const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
+        let isHolidayForUser = false;
+        if (isKoujibu) {
+          isHolidayForUser = calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay;
+        } else {
+          if (isSeishain) {
+            // Nhân viên chính thức: Chủ nhật, Lễ, và Thứ 7 tuần thứ 4 là ngày nghỉ
+            // Các thứ 7 khác được tính là ngày đi làm bình thường
+            isHolidayForUser = dow === 0 || isRedDay || is4thSaturday;
+          } else {
+            // Part-time: Nghỉ Thứ 7, Chủ nhật, Lễ
+            isHolidayForUser = dow === 0 || dow === 6 || isRedDay;
+          }
+        }
         const isWeekendOrHoliday = isHolidayForUser;
         
-        if (isSeishain) {
-          if (shift && shift.status === 'LEAVE') {
-            let label = '休';
-            if (shift.leaveType === 'paid') label = '有休';
-            else if (shift.leaveType === 'unpaid') label = '欠勤';
-            
-            // Add visual indicator if there's a reason or detail
-            const hasReason = shift.reason && shift.reason !== '' && shift.reason !== 'other';
-            const hasDetail = shift.detail && shift.detail.trim() !== '';
-            const indicator = (hasReason || hasDetail) ? '<div style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; position: absolute; top: 2px; right: 2px;" title="理由あり"></div>' : '';
-            
-            const tooltipTitle = `理由: ${shift.reason || 'なし'}${shift.detail ? ` - ${shift.detail}` : ''}`;
-            
-            cellHtml = `<div style="color: #dc2626; font-weight: bold; font-size: 12px; position: relative; cursor: help;" title="${tooltipTitle}">${label}${indicator}</div>`;
-            cellMobileHtml = label;
-            cellMobileColor = 'color: #dc2626; font-weight: bold; background: #fef2f2; position: relative;';
+        let cellText = '';
+        let cellClass = '';
+        let cellTextColor = '';
+        
+        if (shift && shift.status === 'LEAVE') {
+          if (shift.leaveType === 'paid') {
+            cellText = '有休';
+            cellClass = 'status-paid';
+            cellTextColor = '#d97706'; // Amber
+          } else if (shift.leaveType === 'unpaid') {
+            cellText = '欠';
+            cellClass = 'status-unpaid';
+            cellTextColor = '#9333ea'; // Purple
           } else {
-             if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
-                 cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
-                 cellMobileHtml = '休';
-                 cellMobileColor = 'color: #dc2626; background: #fef2f2;';
-             } else {
-                 cellHtml = `<div style="color: #16a34a; font-size: 12px;">出勤</div>`;
-                 cellMobileHtml = '出';
-                 cellMobileColor = 'color: #1e3a8a; font-weight: bold;';
-                 workCount++;
-             }
+            cellText = '休';
+            cellClass = 'status-holiday';
+            cellTextColor = '#dc2626'; // Red
           }
-        } else {
-          if (shift && shift.status === 'WORKING') {
-            cellHtml = `<div style="color: #16a34a; font-size: 12px;">出勤</div>`;
-            cellMobileHtml = '出';
-            cellMobileColor = 'color: #1e3a8a; font-weight: bold;';
-            workCount++;
+        } else if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
+          cellText = '休';
+          cellClass = 'status-holiday';
+          cellTextColor = '#dc2626'; // Red
+        } else if (shift && shift.status === 'WORKING') {
+          if (isWeekendOrHoliday) {
+            cellText = '出'; // 休日出勤
+            cellClass = 'status-holiday-work';
+            cellTextColor = '#0284c7'; // Blue/Teal
           } else {
-            // Even if working status is not working, Baito might have requested leave with a reason
-            if (shift && shift.status === 'LEAVE') {
-                let label = '休';
-                if (shift.leaveType === 'paid') label = '有休';
-                else if (shift.leaveType === 'unpaid') label = '欠勤';
-                
-                const hasReason = shift.reason && shift.reason !== '' && shift.reason !== 'other';
-                const hasDetail = shift.detail && shift.detail.trim() !== '';
-                const indicator = (hasReason || hasDetail) ? '<div style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; position: absolute; top: 2px; right: 2px;" title="理由あり"></div>' : '';
-                
-                const tooltipTitle = `理由: ${shift.reason || 'なし'}${shift.detail ? ` - ${shift.detail}` : ''}`;
-                
-                cellHtml = `<div style="color: #dc2626; font-weight: bold; font-size: 12px; position: relative; cursor: help;" title="${tooltipTitle}">${label}${indicator}</div>`;
-                cellMobileHtml = label;
-                cellMobileColor = 'color: #dc2626; font-weight: bold; background: #fef2f2; position: relative;';
-            } else {
-                if (isWeekendOrHoliday) {
-                  cellHtml = `<div style="color: #dc2626; font-size: 12px;">休</div>`;
-                  cellMobileHtml = '休';
-                  cellMobileColor = 'color: #dc2626; background: #fef2f2;';
-                } else {
-                  cellHtml = `<div style="color: #94a3b8; font-size: 12px;">休み</div>`;
-                  cellMobileHtml = '-';
-                  cellMobileColor = 'color: #94a3b8;';
-                }
-            }
+            cellText = '出勤';
+            cellClass = 'status-working';
+            cellTextColor = '#16a34a'; // Green
+          }
+          workCount++;
+        } else {
+          cellText = '休'; // Đồng bộ part-time và seishain đều dùng '休' nếu không có lịch
+          cellClass = 'status-empty';
+          cellTextColor = '#94a3b8'; // Gray
+        }
+
+        // Add visual indicator if there's a reason or detail
+        let indicator = '';
+        if (shift && shift.status === 'LEAVE') {
+          const hasReason = shift.reason && shift.reason !== '' && shift.reason !== 'other';
+          const hasDetail = shift.detail && shift.detail.trim() !== '';
+          if (hasReason || hasDetail) {
+            indicator = '<div style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; position: absolute; top: 2px; right: 2px;" title="理由あり"></div>';
           }
         }
         
-        rowHtml += `<td style="text-align: center; vertical-align: middle;">${cellHtml}</td>`;
+        const tooltipTitle = (shift && shift.status === 'LEAVE') ? `理由: ${shift.reason || 'なし'}${shift.detail ? ` - ${shift.detail}` : ''}` : '';
+        const titleAttr = tooltipTitle ? `title="${tooltipTitle}"` : '';
+        const cursorStyle = tooltipTitle ? 'cursor: help;' : '';
+        
+        cellHtml = `<div class="shift-cell ${cellClass}" style="color: ${cellTextColor}; font-weight: bold; font-size: 12px; position: relative; width: 100%; height: 100%; min-height: 20px; display: flex; align-items: center; justify-content: center;" ${titleAttr}><span class="shift-text">${cellText}</span><div class="shift-line"></div>${indicator}</div>`;
+        cellMobileHtml = cellText;
+        
+        rowHtml += `<td class="print-cell ${cellClass}" style="text-align: center; vertical-align: middle; padding: 4px;">${cellHtml}</td>`;
         
         let headerColor = '#0f172a';
         if (dow === 0) headerColor = '#dc2626';
@@ -404,6 +411,7 @@ function renderApp() {
 
   const html = `
     <style>
+      .shift-line { display: none; }
       .badge-sei { background: #eff6ff; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid #bfdbfe; }
       .badge-bai { background: #f8fafc; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid #cbd5e1; }
       
@@ -627,25 +635,62 @@ function attachEvents() {
               table { 
                 width: 100% !important; 
                 border-collapse: collapse; 
-                table-layout: auto !important; 
+                table-layout: fixed !important; /* Đổi thành fixed để ép nhỏ các cột ngày */
               }
               th, td { 
                 border: 1px solid #94a3b8 !important; 
-                padding: 4px 2px !important; 
+                padding: 1px !important; /* Thu nhỏ padding để tiết kiệm diện tích tối đa */
                 text-align: center !important; 
-                font-size: 9px !important; 
+                font-size: 10px !important; 
                 word-break: keep-all !important; 
                 white-space: nowrap !important; 
-                position: static !important; /* Gỡ bỏ sticky header/column */
-                min-width: 0 !important; /* Gỡ bỏ min-width inline */
+                position: static !important; 
+                min-width: 0 !important; 
               }
               th { 
                 background-color: #334155 !important; 
                 color: white !important; 
               }
               th span, th div, td div {
-                font-size: 9px !important;
+                font-size: 10px !important;
               }
+              /* Ẩn toàn bộ chữ khi in, chỉ hiển thị màu nền */
+              .shift-text { 
+                display: none !important; 
+              }
+              /* Vẽ một vạch ngang ở giữa ô thay vì tô full nền */
+              .shift-line {
+                display: block !important;
+                width: 70% !important;
+                height: 6px !important;
+                border-radius: 2px !important;
+                margin: 0 auto !important;
+              }
+              .shift-cell { 
+                display: flex !important; 
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important; 
+                height: 18px !important; 
+                min-height: 18px !important; 
+              }
+              
+              /* Định nghĩa màu sắc cho các vạch ngang khi in */
+              td.status-working .shift-line { background-color: #22c55e !important; } /* Xanh lá: 出勤 */
+              td.status-holiday .shift-line { background-color: #f97316 !important; } /* Cam nhạt: 休 (thay cho đỏ tươi) */
+              td.status-paid .shift-line { background-color: #eab308 !important; } /* Vàng: 有休 */
+              td.status-unpaid .shift-line { background-color: #a855f7 !important; } /* Tím: 欠 */
+              td.status-holiday-work .shift-line { background-color: #06b6d4 !important; } /* Xanh lơ: 休日出勤 */
+              td.status-empty .shift-line { background-color: #cbd5e1 !important; } /* Xám nhạt: Không có lịch */
+
+              /* Thu hẹp tối đa các cột ngày tháng */
+              th:nth-child(n+4), td:nth-child(n+4) {
+                width: 15px !important;
+              }
+              th:nth-child(1) { width: 80px !important; } /* Tên NV */
+              th:nth-child(2) { width: 40px !important; } /* Bộ phận */
+              th:nth-child(3) { width: 30px !important; } /* Chức vụ */
+
               /* Bắt buộc in màu nền */
               * { 
                 -webkit-print-color-adjust: exact !important; 
