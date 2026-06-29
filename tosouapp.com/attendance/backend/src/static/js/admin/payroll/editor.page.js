@@ -75,7 +75,8 @@ function mountStyle() {
     }
     .pe-kpi > div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:8px 0;border-bottom:1px dashed #e2e8f0}
     .pe-kpi .v{font-size:16px;font-weight:600;color:#0f172a;line-height:1.2;white-space:nowrap;text-align:left;align-self:flex-start}
-    .pe-kpi .v-net{color:#2563eb;font-size:18px}
+    .pe-kpi-net{background:#d1fae5;border:1px solid #10b981;border-radius:6px;padding:12px 16px !important;border-bottom:none !important;}
+    .pe-kpi .v-net{color:#047857;font-size:24px;font-weight:700}
     .pe-kpi .k{font-size:12px;font-weight:500;color:#475569;line-height:1.4}
 
     .pe-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:0;align-items:start}
@@ -85,7 +86,7 @@ function mountStyle() {
     .pe-field{display:flex;flex-direction:column;gap:2px;min-width:0}
     .pe-field>span{font-size:11px;font-weight:500;color:#475569;line-height:1.1}
     .pe-field input,.pe-field select{height:30px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;font-size:13px;line-height:1.5;color:#0f172a;transition:border-color .2s,box-shadow .2s;width:100%}
-    .pe-field input:focus,.pe-field select:focus{border-color:#3b82f6;outline:none;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    .pe-field input:focus,.pe-field select:focus{border-color:#1e40af;outline:none;box-shadow:0 0 0 3px rgba(30,64,175,.15)}
     .pe-field input:hover,.pe-field select:hover{border-color:#94a3b8}
     .pe-field input:disabled,.pe-field select:disabled{background:#f8fafc;color:#94a3b8;cursor:not-allowed;border-color:#e2e8f0}
     .pe-field input::placeholder{color:#94a3b8}
@@ -95,7 +96,7 @@ function mountStyle() {
 
     .pe-paygrid{display:grid;grid-template-columns:1fr;gap:16px 24px;align-items:end}
     @media (min-width: 980px) {
-      .pe-paygrid{grid-template-columns:repeat(4, 1fr)}
+      .pe-paygrid{grid-template-columns:repeat(2, 1fr)}
     }
 
     .pe-items{display:flex;flex-direction:column;gap:4px;margin:0;padding:0}
@@ -106,7 +107,7 @@ function mountStyle() {
     .pe-item input{height:30px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;font-size:13px;line-height:1.5;color:#0f172a;transition:all .2s;text-align:right;width:100%;flex:1}
     .pe-item .pe-money-item{position:relative;width:100%;display:flex;align-items:center;gap:6px}
     .pe-item .pe-money-item span{position:static;transform:none;font-weight:400;color:#64748b;font-size:12px;background:transparent;padding:0;margin:0;line-height:1}
-    .pe-item input:focus{border-color:#3b82f6;outline:none;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    .pe-item input:focus{border-color:#1e40af;outline:none;box-shadow:0 0 0 3px rgba(30,64,175,.15)}
     .pe-item input:hover{border-color:#94a3b8}
     .pe-item span{justify-self:start;text-align:left;color:#64748b;font-weight:400;font-size:12px}
     .pe-item input:disabled{background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;cursor:not-allowed}
@@ -116,15 +117,15 @@ function mountStyle() {
     .pe-btn-add{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px dashed #cbd5e1;border-radius:4px;background:#fff;color:#3b82f6;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;width:100%;justify-content:center;margin-top:4px}
     .pe-btn-add:hover{border-color:#3b82f6;background:#eff6ff}
 
-    .pe-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0;padding:0;justify-content:flex-start;position:relative;z-index:10}
-    .pe-actions button{display:inline-flex;align-items:center;justify-content:center;height:32px;width:36px;padding:0;border:none;border-radius:4px;background:transparent;cursor:pointer;color:#64748b;transition:background-color .15s,color .15s}
-    .pe-actions button:hover{background:#f1f5f9;color:#0f172a}
-    .pe-actions button.pe-primary{color:#1d4ed8}
-    .pe-actions button.pe-primary:hover{background:#eff6ff;color:#1e40af}
-    #btnSavePayroll{color:#059669}
-    #btnSavePayroll:hover{background:#ecfdf5;color:#047857}
-    #btnPublishPayroll{color:#7c3aed}
-    #btnPublishPayroll:hover{background:#f5f3ff;color:#6d28d9}
+    .pe-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0;padding:0;justify-content:flex-start;align-items:center;position:relative;z-index:10;background:#fff;padding:12px 16px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+    .pe-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;color:#475569;font-weight:600;font-size:13px;transition:all .2s}
+    .pe-actions button:hover{background:#f8fafc;color:#0f172a;border-color:#cbd5e1}
+    .pe-actions button.pe-primary{color:#fff;background:#3b82f6;border-color:#3b82f6}
+    .pe-actions button.pe-primary:hover{background:#2563eb;color:#fff;border-color:#2563eb}
+    #btnSavePayroll{color:#059669;border-color:#059669;background:#fff}
+    #btnSavePayroll:hover{background:#ecfdf5;color:#047857;border-color:#047857}
+    #btnPublishPayroll{color:#fff;background:#7c3aed;border-color:#7c3aed;font-weight:700}
+    #btnPublishPayroll:hover{background:#6d28d9;color:#fff;border-color:#6d28d9}
     .pe-actions button:disabled{cursor:not-allowed;opacity:0.5}
 
     .pe-preview{margin-top:12px}
@@ -175,23 +176,33 @@ export async function mount() {
   actionTopBar.innerHTML = `
     <button type="button" id="btnLoadPayroll" title="読み込み">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      読込
     </button>
     <button type="button" id="btnSavePayroll" title="保存">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      保存
     </button>
     <button type="button" id="btnPreviewPayroll" title="プレビュー">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+      プレビュー
     </button>
     <button type="button" id="btnCreatePdf" title="PDF作成">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      PDF作成
     </button>
     <button type="button" id="btnDownloadPdf" title="PDFダウンロード">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 14 12 19 7 14"></polyline><line x1="12" y1="19" x2="12" y2="3"></line></svg>
+      ダウンロード
     </button>
-    <div id="payrollMsg" class="pe-msg" style="margin-left: 8px; font-size: 13px; font-weight: 500;"></div>
-    <button type="button" id="btnPublishPayroll" style="margin-left:auto;" title="社員へ送信（公開）">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-    </button>
+    <div id="payrollMsg" class="pe-msg" style="margin-left: 8px; font-size: 13px; font-weight: 500; margin-top: 0;"></div>
+    
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+      <span id="payrollStatusBadge" style="display:none; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700;"></span>
+      <button type="button" id="btnPublishPayroll" title="社員へ送信（公開）">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        給与明細を送信
+      </button>
+    </div>
   `;
   wrap.appendChild(actionTopBar);
 
@@ -200,9 +211,9 @@ export async function mount() {
   summaryCard.innerHTML = `
     <div class="pe-title" style="margin-top:0;">総計（リアルタイム）</div>
     <div class="pe-kpi">
+      <div class="pe-kpi-net"><div class="k" style="color:#065f46">差引支払額（手取り）</div><div class="v v-net" id="kpiNet">-</div></div>
       <div><div class="k">支払内訳合計（総支給額）</div><div class="v" id="kpiGross">-</div></div>
       <div><div class="k">控除合計（総控除額）</div><div class="v" id="kpiDeduct">-</div></div>
-      <div><div class="k">差引支払額（手取り）</div><div class="v v-net" id="kpiNet">-</div></div>
       <div><div class="k">支払方法合計（振込+現金+現物）</div><div class="v" id="kpiPaySum">-</div></div>
     </div>
     <div id="kpiHint" style="margin-top:12px;color:#64748b;font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px"></div>
@@ -235,8 +246,11 @@ export async function mount() {
         </label>
       </div>
 
-      <div class="pe-sub-title">勤怠情報</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+      <div class="pe-sub-title" style="cursor:pointer;user-select:none;margin-top:20px" id="toggleAttendance">
+        勤怠情報
+        <svg id="iconToggleAttendance" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform 0.2s;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+      <div id="payrollAttendanceSection" style="display:none; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
         <label class="pe-field">
           <span>出勤日数</span>
           <input id="payrollKWork" type="number" step="1" placeholder="自動">
@@ -342,25 +356,19 @@ export async function mount() {
   otherCard.className = 'pe-card';
   otherCard.innerHTML = `
     <div class="pe-title">その他</div>
-    <div class="pe-sub-title" style="margin-top:0;">年末調整・差額</div>
-    <div class="pe-items">
-      <div class="pe-item pe-item-short"><div class="pe-lbl">差額計算</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherDiff" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item pe-item-short"><div class="pe-lbl">追加診療費</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherMedical" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item pe-item-short"><div class="pe-lbl">年末調整徴収</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherYec" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item pe-item-short"><div class="pe-lbl">年末調整還付</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherYer" type="number" step="1" placeholder="0"><span>円</span></div></div>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:500;color:#0f172a;margin-bottom:12px">
+      <input type="checkbox" id="chkShowYearEnd" style="width:16px;height:16px;accent-color:#3b82f6;cursor:pointer;">
+      年末調整・差額を入力する（12月または発生時のみ）
+    </label>
+    <div id="payrollYearEndSection" style="display:none;">
+      <div class="pe-items">
+        <div class="pe-item pe-item-short"><div class="pe-lbl">差額計算</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherDiff" type="number" step="1" placeholder="0"><span>円</span></div></div>
+        <div class="pe-item pe-item-short"><div class="pe-lbl">追加診療費</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherMedical" type="number" step="1" placeholder="0"><span>円</span></div></div>
+        <div class="pe-item pe-item-short"><div class="pe-lbl">年末調整徴収</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherYec" type="number" step="1" placeholder="0"><span>円</span></div></div>
+        <div class="pe-item pe-item-short"><div class="pe-lbl">年末調整還付</div><div class="pe-money-item"><input class="pe-amt" id="payrollOtherYer" type="number" step="1" placeholder="0"><span>円</span></div></div>
+      </div>
     </div>
   `;
-
-  const grid = document.createElement('div');
-  grid.className = 'pe-grid';
-  grid.appendChild(basicCard);
-  grid.appendChild(earnCard);
-  grid.appendChild(dedCard);
-  grid.appendChild(otherCard);
-  wrap.appendChild(grid);
-
-  const lowerGrid = document.createElement('div');
-  lowerGrid.className = 'pe-grid-full';
 
   const payCard = document.createElement('div');
   payCard.className = 'pe-card';
@@ -370,7 +378,20 @@ export async function mount() {
     <div class="pe-paygrid">
       <div class="pe-field"><span>差引支払額（自動/手取り）</span><div class="pe-money"><input id="payrollNetPay" type="text" readonly><span>円</span></div></div>
       <div class="pe-field"><span>支払方法合計（振込+現金+現物）</span><div class="pe-money"><input id="payrollPaySum" type="text" readonly><span>円</span></div></div>
-      <div class="pe-field"><span>銀行名</span><input id="payrollBankName" type="text" placeholder="例: みずほ銀行"></div>
+      <div class="pe-field"><span>銀行名</span>
+        <input id="payrollBankName" type="text" list="bankList" placeholder="例: みずほ銀行">
+        <datalist id="bankList">
+          <option value="みずほ銀行">
+          <option value="三菱UFJ銀行">
+          <option value="三井住友銀行">
+          <option value="ゆうちょ銀行">
+          <option value="りそな銀行">
+          <option value="埼玉りそな銀行">
+          <option value="PayPay銀行">
+          <option value="楽天銀行">
+          <option value="住信SBIネット銀行">
+        </datalist>
+      </div>
       <div class="pe-field"><span>支店名</span><input id="payrollBranchName" type="text" placeholder="例: 渋谷支店"></div>
       
       <div class="pe-field"><span>種別</span><select id="payrollAccountType"><option value="">選択</option><option value="普通">普通</option><option value="当座">当座</option></select></div>
@@ -383,8 +404,16 @@ export async function mount() {
     </div>
   `;
 
-  lowerGrid.appendChild(payCard);
-  wrap.appendChild(lowerGrid);
+  // Dịch chuyển payCard vào dedCard thay vì để ở dưới cùng (lowerGrid)
+  dedCard.appendChild(payCard);
+
+  const grid = document.createElement('div');
+  grid.className = 'pe-grid';
+  grid.appendChild(basicCard);
+  grid.appendChild(earnCard);
+  grid.appendChild(dedCard);
+  grid.appendChild(otherCard);
+  wrap.appendChild(grid);
 
   const actionCard = document.createElement('div');
   actionCard.innerHTML = `
@@ -393,6 +422,27 @@ export async function mount() {
   wrap.insertBefore(actionCard, summaryCard);
 
 
+
+  const toggleAttendance = basicCard.querySelector('#toggleAttendance');
+  const payrollAttendanceSection = basicCard.querySelector('#payrollAttendanceSection');
+  const iconToggleAttendance = basicCard.querySelector('#iconToggleAttendance');
+  if (toggleAttendance && payrollAttendanceSection) {
+    toggleAttendance.addEventListener('click', () => {
+      const isHidden = payrollAttendanceSection.style.display === 'none';
+      payrollAttendanceSection.style.display = isHidden ? 'grid' : 'none';
+      if (iconToggleAttendance) {
+        iconToggleAttendance.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+      }
+    });
+  }
+
+  const chkShowYearEnd = otherCard.querySelector('#chkShowYearEnd');
+  const payrollYearEndSection = otherCard.querySelector('#payrollYearEndSection');
+  if (chkShowYearEnd && payrollYearEndSection) {
+    chkShowYearEnd.addEventListener('change', (e) => {
+      payrollYearEndSection.style.display = e.target.checked ? 'block' : 'none';
+    });
+  }
 
   const previewModalOverlay = document.createElement('div');
   previewModalOverlay.id = 'payrollPreviewModalOverlay';
