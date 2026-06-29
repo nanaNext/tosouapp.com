@@ -2126,6 +2126,9 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     const daysInMonth = new Date(y, m, 0).getDate();
     const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
     
+    // Create Title Row
+    sheet.addRow([`全員のシフト状況 - ${year}年${month}月`]);
+    
     // Create header rows
     const headerRow1 = ['従業員名', '部署', '雇用形態'];
     const headerRow2 = ['', '', '']; // Empty spaces under the first 3 columns
@@ -2142,18 +2145,27 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     sheet.addRow(headerRow1);
     sheet.addRow(headerRow2);
     
+    // Merge title row across all columns
+    const lastColLetter = sheet.getColumn(daysInMonth + 3).letter;
+    sheet.mergeCells(`A1:${lastColLetter}1`);
+    
+    const titleRowObj = sheet.getRow(1);
+    titleRowObj.height = 30;
+    titleRowObj.font = { size: 16, bold: true, color: { argb: 'FF0F172A' } };
+    titleRowObj.alignment = { horizontal: 'center', vertical: 'middle' };
+
     // Merge the first 3 columns headers
-    sheet.mergeCells('A1:A2');
-    sheet.mergeCells('B1:B2');
-    sheet.mergeCells('C1:C2');
+    sheet.mergeCells('A2:A3');
+    sheet.mergeCells('B2:B3');
+    sheet.mergeCells('C2:C3');
     
     // Freeze panes for easy scrolling
     sheet.views = [
-      { state: 'frozen', xSplit: 3, ySplit: 2 }
+      { state: 'frozen', xSplit: 3, ySplit: 3 }
     ];
     
     // Style headers
-    const titleRows = [sheet.getRow(1), sheet.getRow(2)];
+    const titleRows = [sheet.getRow(2), sheet.getRow(3)];
     titleRows.forEach(row => {
       row.height = 20; // Set a specific height
       row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -2168,7 +2180,7 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
         };
         
         // Color weekends in the second header row
-        if (row.number === 2 && colNumber > 3) {
+        if (row.number === 3 && colNumber > 3) {
           const text = cell.value;
           if (text === '日') cell.font = { bold: true, color: { argb: 'FFFCA5A5' } }; // Light Red for Sunday
           else if (text === '土') cell.font = { bold: true, color: { argb: 'FF93C5FD' } }; // Light Blue for Saturday
