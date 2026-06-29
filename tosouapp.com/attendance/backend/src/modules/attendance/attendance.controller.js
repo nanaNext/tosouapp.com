@@ -2086,6 +2086,189 @@ exports.getAllEmployeeShifts = async (req, res) => {
   }
 };
 
+exports.exportAllEmployeeShiftsExcel = async (req, res) => {
+  try {
+    const { year, month } = req.query || {};
+    if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
+    const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
+
+    const db = require('../../core/database/mysql');
+    
+    // Fetch all active users who are NOT admin or manager
+    const [users] = await db.query(`
+      SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName
+      FROM users u
+      LEFT JOIN departments d ON u.departmentId = d.id
+      WHERE u.employment_status = 'active' AND u.role NOT IN ('admin', 'manager')
+      ORDER BY 
+        CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END,
+        u.employee_code ASC, u.id ASC
+    `);
+
+    if (!users || users.length === 0) {
+      return res.status(404).json({ message: 'No data found' });
+    }
+
+    // Fetch shift requests for these users for the given month
+    const [shifts] = await db.query(`
+      SELECT userId, date, status, leaveType
+      FROM shift_requests
+      WHERE date LIKE ?
+    `, [`${targetMonth}-%`]);
+
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(`${year}年${month}月シフト`);
+    
+    // Calculate days in month
+    const y = parseInt(year, 10);
+    const m = parseInt(month, 10);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
+    
+    // Create header rows
+    const headerRow1 = ['従業員名', '部署', '雇用形態'];
+    const headerRow2 = ['', '', '']; // Empty spaces under the first 3 columns
+    const headerRow3 = ['', '', '']; // Row for lunar dates (if any)
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      headerRow1.push(`${i}`);
+      const dateObj = new Date(y, m - 1, i);
+      const dow = daysOfWeek[dateObj.getDay()];
+      headerRow2.push(dow);
+      headerRow3.push(''); // Leave empty for lunar or extra info, or omit
+    }
+    
+    sheet.addRow(headerRow1);
+    sheet.addRow(headerRow2);
+    
+    // Merge the first 3 columns headers
+    sheet.mergeCells('A1:A2');
+    sheet.mergeCells('B1:B2');
+    sheet.mergeCells('C1:C2');
+    
+    // Freeze panes for easy scrolling
+    sheet.views = [
+      { state: 'frozen', xSplit: 3, ySplit: 2 }
+    ];
+    
+    // Style headers
+    const titleRows = [sheet.getRow(1), sheet.getRow(2)];
+    titleRows.forEach(row => {
+      row.height = 20; // Set a specific height
+      row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      row.eachCell((cell, colNumber) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: {style:'thin', color: {argb:'FFD1D5DB'}},
+          left: {style:'thin', color: {argb:'FFD1D5DB'}},
+          bottom: {style:'thin', color: {argb:'FFD1D5DB'}},
+          right: {style:'thin', color: {argb:'FFD1D5DB'}}
+        };
+        
+        // Color weekends in the second header row
+        if (row.number === 2 && colNumber > 3) {
+          const text = cell.value;
+          if (text === '日') cell.font = { bold: true, color: { argb: 'FFFCA5A5' } }; // Light Red for Sunday
+          else if (text === '土') cell.font = { bold: true, color: { argb: 'FF93C5FD' } }; // Light Blue for Saturday
+        }
+      });
+    });
+    
+    // Set column widths to match web table compact layout
+    sheet.getColumn(1).width = 20; // 従業員名
+    sheet.getColumn(2).width = 12; // 部署
+    sheet.getColumn(3).width = 12; // 雇用形態
+    for (let i = 4; i <= daysInMonth + 3; i++) {
+      sheet.getColumn(i).width = 4.5; // Narrow width for days
+    }
+    
+    // Page setup for printing
+    sheet.pageSetup = {
+      paperSize: 9, // A4
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
+    };
+    
+    // Populate data
+    users.forEach(u => {
+      const isSeishain = u.employment_type === 'full_time' || u.employment_type === '正社員' || u.employment_type === '正';
+      const typeStr = isSeishain ? '正' : 'パート';
+      
+      const rowData = [
+        u.username || u.email,
+        u.departmentName || '',
+        typeStr
+      ];
+      
+      const userShifts = shifts.filter(s => s.userId === u.id);
+      
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dateStr = `${targetMonth}-${String(i).padStart(2, '0')}`;
+        const shift = userShifts.find(s => s.date === dateStr);
+        
+        let cellText = '';
+        if (shift) {
+          if (shift.status === 'LEAVE' || shift.status === 'holiday' || shift.status === 'OFF') {
+            cellText = '休';
+            if (shift.leaveType === 'paid') cellText = '有休';
+            else if (shift.leaveType === 'unpaid') cellText = '欠勤';
+          }
+          else if (shift.status === 'rest') cellText = '休み';
+          else if (shift.status === 'working' || shift.status === 'WORKING') cellText = '出';
+        } else {
+          // If no shift record, check default behavior based on role/employment type
+          // Just as a fallback, output '-'
+          cellText = '-';
+        }
+        rowData.push(cellText);
+      }
+      
+      const row = sheet.addRow(rowData);
+      row.height = 18; // Make row height slightly compact
+      
+      // Style data cells
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: {style:'thin', color: {argb:'FFE2E8F0'}},
+          left: {style:'thin', color: {argb:'FFE2E8F0'}},
+          bottom: {style:'thin', color: {argb:'FFE2E8F0'}},
+          right: {style:'thin', color: {argb:'FFE2E8F0'}}
+        };
+        
+        if (colNumber > 3) {
+          if (cell.value === '出勤' || cell.value === '出') {
+            cell.font = { color: { argb: 'FF1E40AF' }, bold: true }; // Blue for Working as in the UI image
+          } else if (cell.value === '休' || cell.value === '有休' || cell.value === '欠勤') {
+            cell.font = { color: { argb: 'FFDC2626' }, bold: true }; // Red for Holiday as in the UI image
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }; // Light red background
+          } else if (cell.value === '休み') {
+            cell.font = { color: { argb: 'FF94A3B8' } }; // Gray for Yasumi
+          } else if (cell.value === '-') {
+            cell.font = { color: { argb: 'FF94A3B8' } };
+          }
+        }
+      });
+    });
+    
+    // Set response headers
+    const fileName = encodeURIComponent(`シフト_${year}年${month}月.xlsx`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${fileName}`);
+    
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Excel Export Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.approveShiftMonth = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();

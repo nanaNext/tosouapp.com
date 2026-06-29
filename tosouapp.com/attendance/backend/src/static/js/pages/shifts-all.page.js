@@ -230,8 +230,8 @@ function renderApp() {
     mobileHtml += `<div style="padding: 20px; text-align: center; color: #94a3b8;">データがありません</div>`;
   } else {
     allEmployeesShifts.forEach(emp => {
-      const isSeishain = emp.employment_type === 'full_time' || emp.employment_type === '正社員';
-      const typeStr = isSeishain ? '正社員' : 'アルバイト';
+      const isSeishain = emp.employment_type === 'full_time' || emp.employment_type === '正社員' || emp.employment_type === '正';
+      const typeStr = isSeishain ? '正' : 'パート';
       
       let rowHtml = `
         <tr>
@@ -513,9 +513,21 @@ function renderApp() {
         
         <hr style="border: none; border-top: 1px dashed #e2e8f0; margin: 2px 0; width: 100%;">
         
-        <div style="font-weight: bold; font-size: 16px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          全員のシフト状況
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div style="font-weight: bold; font-size: 16px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            全員のシフト状況
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnPrint" class="modern-btn" style="background: #64748b; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              印刷
+            </button>
+            <button id="btnExportExcel" class="modern-btn" style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Excel出力
+            </button>
+          </div>
         </div>
       </div>
 
@@ -555,6 +567,110 @@ function attachEvents() {
     await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
     renderApp();
   });
+
+  const btnExportExcel = $('#btnExportExcel');
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', () => {
+      const year = currentMonth.getFullYear();
+      const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+      // Chuyển hướng trình duyệt để tải file
+      window.location.href = `/api/attendance/shifts/all-employees/export?year=${year}&month=${month}`;
+    });
+  }
+
+  const btnPrint = $('#btnPrint');
+  if (btnPrint) {
+    btnPrint.addEventListener('click', () => {
+      const tableDiv = document.querySelector('.shifts-desktop-table');
+      if (!tableDiv) return;
+      
+      const year = currentMonth.getFullYear();
+      const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+
+      // Mở một cửa sổ mới để in, tránh bị xung đột CSS với trang hiện tại
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('ポップアップがブロックされました。ブラウザの設定で許可してください。');
+        return;
+      }
+      
+      const tableHtml = tableDiv.innerHTML;
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ja">
+          <head>
+            <meta charset="utf-8">
+            <title>シフト印刷</title>
+            <style>
+              @page { 
+                size: A4 landscape; 
+                margin: 10mm; 
+              }
+              body { 
+                font-family: "Noto Sans JP", sans-serif; 
+                margin: 0; 
+                padding: 0; 
+                background: #fff; 
+                color: #000; 
+              }
+              h2 { 
+                text-align: center; 
+                margin: 0 0 15px 0; 
+                font-size: 18px; 
+                color: #0f172a;
+              }
+              .print-container {
+                width: 100%;
+              }
+              table { 
+                width: 100% !important; 
+                border-collapse: collapse; 
+                table-layout: auto !important; 
+              }
+              th, td { 
+                border: 1px solid #94a3b8 !important; 
+                padding: 4px 2px !important; 
+                text-align: center !important; 
+                font-size: 9px !important; 
+                word-break: keep-all !important; 
+                white-space: nowrap !important; 
+                position: static !important; /* Gỡ bỏ sticky header/column */
+                min-width: 0 !important; /* Gỡ bỏ min-width inline */
+              }
+              th { 
+                background-color: #334155 !important; 
+                color: white !important; 
+              }
+              th span, th div, td div {
+                font-size: 9px !important;
+              }
+              /* Bắt buộc in màu nền */
+              * { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+              }
+            </style>
+          </head>
+          <body>
+            <div class="print-container">
+              <h2>全員のシフト状況 - ${year}年${month}月</h2>
+              ${tableHtml}
+            </div>
+            <script>
+              window.onload = () => {
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 300);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    });
+  }
 }
 
 function wireDrawer() {
