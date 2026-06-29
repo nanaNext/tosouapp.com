@@ -66,7 +66,7 @@ function mountStyle() {
     .pe-nav a.active{background:#0f172a;border-color:#0f172a;color:#fff}
 
     .pe-money{position:relative;width:100%;display:flex;align-items:center;gap:6px}
-    .pe-money input{padding-right:6px;text-align:right;flex:1}
+    .pe-money input{padding-right:8px;text-align:right;flex:1}
     .pe-money span{position:static;transform:none;font-weight:400;color:#64748b;font-size:12px;background:transparent;padding:0;margin:0;line-height:1}
 
     .pe-kpi{display:grid;grid-template-columns:1fr;gap:4px 24px}
@@ -104,7 +104,7 @@ function mountStyle() {
     .pe-item:hover{background:#f8fafc}
     .pe-item-short{grid-template-columns:1fr 110px 24px}
     .pe-lbl{display:flex;align-items:center;height:auto;font-size:12px;font-weight:500;color:#334155;min-width:0;letter-spacing:-0.5px;padding-right:4px}
-    .pe-item input{height:30px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;font-size:13px;line-height:1.5;color:#0f172a;transition:all .2s;text-align:right;width:100%;flex:1}
+    .pe-item input{height:30px;padding:2px 8px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;font-size:13px;line-height:1.5;color:#0f172a;transition:all .2s;text-align:right;width:100%;flex:1}
     .pe-item .pe-money-item{position:relative;width:100%;display:flex;align-items:center;gap:6px}
     .pe-item .pe-money-item span{position:static;transform:none;font-weight:400;color:#64748b;font-size:12px;background:transparent;padding:0;margin:0;line-height:1}
     .pe-item input:focus{border-color:#1e40af;outline:none;box-shadow:0 0 0 3px rgba(30,64,175,.15)}
