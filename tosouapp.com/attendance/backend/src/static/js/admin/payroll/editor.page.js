@@ -52,7 +52,7 @@ function mountStyle() {
   const st = document.createElement('style');
   st.id = 'payrollEditorStyle';
   st.textContent = `
-    .pe-wrap{width:100%;max-width:1400px;margin:0 auto;padding:20px 24px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;overflow-y:auto !important;overflow-x:hidden;}
+    .pe-wrap{width:100%;max-width:1400px;margin:0 auto !important;padding:20px 24px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;overflow-y:auto !important;overflow-x:hidden;}
     .pe-wrap *{box-sizing:border-box;font-family:inherit;font-weight:400}
     .pe-card{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:16px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);min-width:0}
     .pe-title{font-size:16px;line-height:1.4;font-weight:600;color:#0f172a;margin:0 0 16px 0;border-bottom:2px solid #cbd5e1;padding-bottom:8px;display:flex;align-items:center;gap:8px}
@@ -69,9 +69,16 @@ function mountStyle() {
     .pe-money input{padding-right:8px;text-align:right;flex:1}
     .pe-money span{position:static;transform:none;font-weight:400;color:#64748b;font-size:12px;background:transparent;padding:0;margin:0;line-height:1}
 
-    .pe-kpi{display:grid;grid-template-columns:1fr;gap:12px}
+    .pe-tabs{display:flex;align-items:center;gap:24px;border-bottom:1px solid #cbd5e1;margin-top:16px;margin-bottom:20px;padding:0 8px;}
+    .pe-tab-btn{background:none;border:none;padding:12px 4px;font-size:15px;font-weight:600;color:#64748b;cursor:pointer;position:relative;transition:all 0.2s;}
+    .pe-tab-btn:hover{color:#0f172a;}
+    .pe-tab-btn.active{color:#2563eb;}
+    .pe-tab-btn.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;background-color:#2563eb;border-radius:3px 3px 0 0;}
+    .pe-history-view{display:none;}
+    .pe-editor-view{display:block;}
+    .pe-kpi{display:grid;grid-template-columns:1fr;gap:12px;width:100%}
     @media (min-width: 980px) {
-      .pe-kpi{grid-template-columns:repeat(4, 1fr);gap:16px}
+      .pe-kpi{grid-template-columns:repeat(4, 1fr);gap:16px;width:100%}
     }
     .pe-kpi > div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:12px 16px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc}
     .pe-kpi .v{font-size:16px;font-weight:600;color:#0f172a;line-height:1.2;white-space:nowrap;text-align:left;align-self:flex-start}
@@ -79,7 +86,10 @@ function mountStyle() {
     .pe-kpi .v-net{color:#047857;font-size:24px;font-weight:700}
     .pe-kpi .k{font-size:12px;font-weight:500;color:#475569;line-height:1.4}
 
-    .pe-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:0;align-items:start}
+    .pe-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:0;align-items:start}
+    @media (min-width: 980px) {
+      .pe-grid{grid-template-columns:repeat(4, 1fr);gap:24px}
+    }
     .pe-grid > *{min-width:0;margin-bottom:0}
 
     .pe-row{display:grid;grid-template-columns:1fr;gap:6px;align-items:end}
@@ -152,7 +162,7 @@ const tabHref = (tab) => {
   const base = p.startsWith('/admin/payroll') ? p : '/ui/admin';
   return `${base}?tab=${encodeURIComponent(String(tab || ''))}`;
 };
-
+// hàm này để mo
 export async function mount() {
   if (aborter) aborter.abort();
   aborter = new AbortController();
@@ -165,14 +175,21 @@ export async function mount() {
   const content = document.querySelector('#adminContent');
   if (!content) return;
   content.innerHTML = '';
+  
+  // Xóa mọi CSS rác từ #adminContent
+  content.style.cssText = 'width: 100%; margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; max-width: none; float: none; text-align: left;';
 
+  // Thẻ div to nhất bọc toàn bộ nội dung (nằm dưới menu chính) - Yêu cầu của User
   const wrap = document.createElement('div');
-  wrap.className = 'pe-wrap';
-  // Removed negative margin since we handle it in admin.page.js routing
+  wrap.className = 'max-w-[1400px] mx-auto px-6 w-full';
+  // Đảm bảo CSS inline luôn thắng mọi CSS legacy
+  wrap.style.cssText = 'max-width: 1400px; margin-left: auto !important; margin-right: auto !important; padding-left: 24px; padding-right: 24px; width: 100%; box-sizing: border-box; display: block; clear: both;';
   content.appendChild(wrap);
 
+  // Toolbar (Phần trên cùng)
   const actionTopBar = document.createElement('div');
-  actionTopBar.className = 'pe-actions';
+  actionTopBar.className = 'pe-actions w-full';
+  actionTopBar.style.cssText = 'width: 100%; margin: 0 0 24px 0; padding: 12px 16px; box-sizing: border-box;';
   actionTopBar.innerHTML = `
     <button type="button" id="btnLoadPayroll" title="読み込み">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -206,6 +223,22 @@ export async function mount() {
   `;
   wrap.appendChild(actionTopBar);
 
+  const tabContainer = document.createElement('div');
+  tabContainer.className = 'w-full';
+  tabContainer.style.cssText = 'width: 100%; box-sizing: border-box;';
+  tabContainer.innerHTML = `
+    <div class="pe-tabs w-full" style="width: 100%; margin-top:0; border-bottom: 1px solid #cbd5e1; margin-bottom: 24px; padding-bottom: 8px;">
+      <button type="button" class="pe-tab-btn active" data-tab="editor">給与明細作成・編集</button>
+      <button type="button" class="pe-tab-btn" data-tab="history">送信履歴</button>
+    </div>
+  `;
+  wrap.appendChild(tabContainer);
+
+  const editorViewDiv = document.createElement('div');
+  editorViewDiv.id = 'peEditorView';
+  editorViewDiv.className = 'pe-editor-view';
+  wrap.appendChild(editorViewDiv);
+
   const summaryCard = document.createElement('div');
   summaryCard.className = 'pe-card';
   summaryCard.innerHTML = `
@@ -218,7 +251,7 @@ export async function mount() {
     </div>
     <div id="kpiHint" style="margin-top:12px;color:#64748b;font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px"></div>
   `;
-  wrap.appendChild(summaryCard);
+  editorViewDiv.appendChild(summaryCard);
 
   const basicCard = document.createElement('div');
   basicCard.className = 'pe-card';
@@ -353,9 +386,11 @@ export async function mount() {
   `;
 
   const otherCard = document.createElement('div');
-  otherCard.className = 'pe-card';
+  otherCard.style.marginTop = '24px';
+  otherCard.style.borderTop = '1px dashed #cbd5e1';
+  otherCard.style.paddingTop = '20px';
   otherCard.innerHTML = `
-    <div class="pe-title">その他</div>
+    <div class="pe-title" style="border-bottom:none; margin-bottom:8px">その他</div>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:500;color:#0f172a;margin-bottom:12px">
       <input type="checkbox" id="chkShowYearEnd" style="width:16px;height:16px;accent-color:#3b82f6;cursor:pointer;">
       年末調整・差額を入力する（12月または発生時のみ）
@@ -371,10 +406,11 @@ export async function mount() {
   `;
 
   const payCard = document.createElement('div');
-  payCard.className = 'pe-card';
-  payCard.style.marginTop = '12px';
+  payCard.style.marginTop = '24px';
+  payCard.style.borderTop = '1px dashed #cbd5e1';
+  payCard.style.paddingTop = '20px';
   payCard.innerHTML = `
-    <div class="pe-title">支払方法（振込・現金・現物）</div>
+    <div class="pe-title" style="border-bottom:none; margin-bottom:8px">支払方法（振込・現金・現物）</div>
     <div class="pe-paygrid">
       <div class="pe-field"><span>差引支払額（自動/手取り）</span><div class="pe-money"><input id="payrollNetPay" type="text" readonly><span>円</span></div></div>
       <div class="pe-field"><span>支払方法合計（振込+現金+現物）</span><div class="pe-money"><input id="payrollPaySum" type="text" readonly><span>円</span></div></div>
@@ -404,22 +440,65 @@ export async function mount() {
     </div>
   `;
 
-  // Dịch chuyển payCard vào dedCard thay vì để ở dưới cùng (lowerGrid)
-  dedCard.appendChild(payCard);
+  const historyViewDiv = document.createElement('div');
+  historyViewDiv.id = 'peHistoryView';
+  historyViewDiv.className = 'pe-history-view w-full';
+  historyViewDiv.style.cssText = 'display: none; width: 100%; box-sizing: border-box;';
+  historyViewDiv.innerHTML = `
+    <div class="pe-card w-full" style="margin-top: 0; width: 100%; box-sizing: border-box;">
+      <div class="pe-title" style="margin-top:0">送信履歴</div>
+      
+      <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-end; flex-wrap: wrap;">
+        <label class="pe-field" style="width: 200px;">
+          <span>対象年月</span>
+          <input type="month" id="historyFilterMonth">
+        </label>
+        <label class="pe-field" style="width: 250px;">
+          <span>社員選択</span>
+          <select id="historyFilterUserId">
+            <option value="">すべて</option>
+          </select>
+        </label>
+        <button type="button" id="btnFilterHistory" style="padding: 0 16px; height: 30px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          絞り込み
+        </button>
+      </div>
 
-  const grid = document.createElement('div');
-  grid.className = 'pe-grid';
-  grid.appendChild(basicCard);
-  grid.appendChild(earnCard);
-  grid.appendChild(dedCard);
-  grid.appendChild(otherCard);
-  wrap.appendChild(grid);
-
-  const actionCard = document.createElement('div');
-  actionCard.innerHTML = `
-    <div id="payrollMsg" class="pe-msg" style="margin:0;"></div>
+      <div style="width: 100%; overflow-x: auto;">
+        <table class="pe-table w-full" style="width: 100%; box-sizing: border-box; table-layout: fixed;">
+          <thead>
+            <tr>
+              <th style="width:180px">送信日時</th>
+              <th style="width:100px">年月</th>
+              <th style="width:200px">対象者</th>
+              <th style="width:80px">結果</th>
+              <th>エラー詳細（ファイル名）</th>
+            </tr>
+          </thead>
+          <tbody id="payrollHistoryBody">
+            <tr><td colspan="5" style="text-align:center;padding:24px 16px;color:#64748b">送信履歴がありません</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   `;
-  wrap.insertBefore(actionCard, summaryCard);
+  wrap.appendChild(historyViewDiv);
+
+  // Layout 4 cột theo yêu cầu
+  const col3 = document.createElement('div');
+  col3.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
+  col3.appendChild(dedCard);
+  col3.appendChild(otherCard);
+
+  const editorViewContent = document.createElement('div');
+  editorViewContent.className = 'pe-grid';
+  editorViewContent.appendChild(basicCard); // Cột 1: Đối tượng + Chấm công
+  editorViewContent.appendChild(earnCard);  // Cột 2: Phát sinh (Dài nên để riêng)
+  editorViewContent.appendChild(col3);      // Cột 3: Khấu trừ + Cấu toán cuối năm
+  editorViewContent.appendChild(payCard);   // Cột 4: Phương thức thanh toán (Ngân hàng, Tiền mặt)
+
+  editorViewDiv.appendChild(editorViewContent);
 
 
 
@@ -497,9 +576,30 @@ export async function mount() {
     }
   };
 
-  const msgEl = actionCard.querySelector('#payrollMsg');
-  const btnCreatePdf = actionCard.querySelector('#btnCreatePdf');
-  const btnDownloadPdf = actionCard.querySelector('#btnDownloadPdf');
+    // Tab logic
+    const tabBtns = wrap.querySelectorAll('.pe-tab-btn');
+    const editorView = wrap.querySelector('#peEditorView');
+    const historyView = wrap.querySelector('#peHistoryView');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const t = btn.dataset.tab;
+        if (t === 'editor') {
+          editorView.style.display = 'block';
+          historyView.style.display = 'none';
+        } else {
+          editorView.style.display = 'none';
+          historyView.style.display = 'block';
+          // Tải lịch sử dựa theo bộ lọc khi mở tab
+          await refreshDeliveries();
+        }
+      });
+    });
+
+  const msgEl = actionTopBar.querySelector('#payrollMsg');
+  const btnCreatePdf = actionTopBar.querySelector('#btnCreatePdf');
+  const btnDownloadPdf = actionTopBar.querySelector('#btnDownloadPdf');
   if (btnDownloadPdf) btnDownloadPdf.disabled = true;
 
   let msgTimeout = null;
@@ -525,14 +625,22 @@ export async function mount() {
 
   const users = await listUsers().catch(() => []);
   const sel = basicCard.querySelector('#payrollUserId');
+  const historySel = document.getElementById('historyFilterUserId');
+  
   for (const u of users) {
     const role = String(u.role || '').toLowerCase();
     if (role === 'admin' || role === 'manager') continue;
+    
     const opt = document.createElement('option');
     opt.value = String(u.id);
     const code = formatEmployeeCode(u);
     opt.textContent = `${code} ${u.username || u.email}`.trim();
     sel.appendChild(opt);
+    
+    if (historySel) {
+      const hOpt = opt.cloneNode(true);
+      historySel.appendChild(hOpt);
+    }
   }
 
   const monthEl = basicCard.querySelector('#payrollMonth');
@@ -877,47 +985,36 @@ export async function mount() {
     return `${y}/${m}/${day} ${h}:${min}`;
   };
 
-  const deliveriesCard = document.createElement('div');
-  deliveriesCard.className = 'pe-card';
-  deliveriesCard.innerHTML = `
-    <div class="pe-title">送信履歴</div>
-    <div id="payrollDeliveries"></div>
-  `;
-  wrap.appendChild(deliveriesCard);
-  const deliveriesHost = deliveriesCard.querySelector('#payrollDeliveries');
-
   const renderDeliveries = (items) => {
-    if (!deliveriesHost) return;
+    const historyBody = document.getElementById('payrollHistoryBody');
+    if (!historyBody) return;
+    
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      deliveriesHost.innerHTML = `<div style="color:#64748b;font-weight:800;padding:6px 2px;">送信履歴がありません</div>`;
+      historyBody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px 16px;color:#64748b">送信履歴がありません</td></tr>`;
       return;
     }
-    deliveriesHost.innerHTML = `
-      <table class="pe-table" style="width:100%;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
-        <tbody>
-          ${list.map(it => {
+    historyBody.innerHTML = list.map(it => {
       const when = formatDateTime(it && it.sentAt ? it.sentAt : '');
       const who = escapeHtml(it && it.userName ? it.userName : '');
       const month = escapeHtml(it && it.month ? it.month : '');
       const fileName = escapeHtml(it && it.fileName ? it.fileName : '');
       const fileId = String((it && it.fileId != null) ? it.fileId : '');
+      const result = '成功'; // Assuming success if it's in the list, or we need to extract from it
+      const errorDetail = '-';
+      
       return `
-              <tr>
-                <td style="width:26%;font-weight:900;">${when}</td>
-                <td style="width:24%;">${who}</td>
-                <td style="width:16%;">${month}</td>
-                <td style="width:34%;">
-                  ${fileId ? `<a href="#" data-file-id="${escapeHtml(fileId)}" data-file-name="${fileName}" style="color:#1d4ed8;text-decoration:underline;font-weight:900;">${fileName || 'PDF'}</a>` : `${fileName || '-'}`}
-                </td>
-              </tr>
-            `;
-    }).join('')}
-        </tbody>
-      </table>
-    `;
+        <tr>
+          <td>${when}</td>
+          <td>${month}</td>
+          <td>${who}</td>
+          <td><span style="color:#10b981;font-weight:bold;">${result}</span></td>
+          <td>${fileId ? `<a href="#" data-file-id="${escapeHtml(fileId)}" data-file-name="${fileName}" style="color:#1d4ed8;text-decoration:underline;">${fileName || 'PDF'}</a>` : `${fileName || errorDetail}`}</td>
+        </tr>
+      `;
+    }).join('');
 
-    deliveriesHost.querySelectorAll('a[data-file-id]').forEach(a => {
+    historyBody.querySelectorAll('a[data-file-id]').forEach(a => {
       a.addEventListener('click', async (e) => {
         e.preventDefault();
         const id = String(a.getAttribute('data-file-id') || '').trim();
@@ -951,19 +1048,29 @@ export async function mount() {
   };
 
   const refreshDeliveries = async () => {
-    const k = getKey();
-    if (!k.userId) { renderDeliveries([]); return; }
     try {
-      const r = await listDeliveries({ userId: k.userId, month: null });
+      const hMonth = document.getElementById('historyFilterMonth')?.value || null;
+      const hUserId = document.getElementById('historyFilterUserId')?.value || null;
+      const r = await listDeliveries({ userId: hUserId, month: hMonth });
       renderDeliveries((r && Array.isArray(r.items)) ? r.items : []);
     } catch (e) {
-      if (deliveriesHost) {
-        deliveriesHost.innerHTML = `<div style="color:#b91c1c;font-weight:900;padding:6px 2px;">送信履歴の取得に失敗しました（サーバー再起動が必要な可能性があります）</div>`;
+      const historyBody = document.getElementById('payrollHistoryBody');
+      if (historyBody) {
+        historyBody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px 16px;color:#b91c1c;font-weight:600;">送信履歴の取得に失敗しました（サーバー再起動が必要な可能性があります）</td></tr>`;
       } else {
         renderDeliveries([]);
       }
     }
   };
+
+  const btnFilterHistory = document.getElementById('btnFilterHistory');
+  if (btnFilterHistory) {
+    btnFilterHistory.addEventListener('click', async () => {
+      msg('履歴を絞り込んでいます...');
+      await refreshDeliveries();
+      msg('絞り込み完了', true);
+    });
+  }
 
   const loadInput = async () => {
     const k = getKey();
@@ -1106,8 +1213,19 @@ export async function mount() {
     const url = URL.createObjectURL(blob);
     const y = k.month.slice(0, 4);
     const mm = k.month.slice(5, 7);
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
     const code = String(lastEmpCode || k.userId).trim() || String(k.userId);
-    const filename = `${y}年${mm}月給与明細${code}.pdf`;
+    
+    let empName = '';
+    const sel = document.getElementById('payrollUserId');
+    if (sel && sel.selectedIndex > 0) {
+      const text = sel.options[sel.selectedIndex].textContent;
+      empName = text.replace(code, '').trim();
+    }
+    const namePart = empName ? `_${empName}` : '';
+    const filename = `${y}年${mm}月${dd}日_給与明細${namePart}_${code}.pdf`;
+    
     try {
       if (w) {
         w.location.href = url;
@@ -1143,8 +1261,19 @@ export async function mount() {
     const url = URL.createObjectURL(blob);
     const y = k.month.slice(0, 4);
     const mm = k.month.slice(5, 7);
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
     const code = String(lastEmpCode || k.userId).trim() || String(k.userId);
-    const filename = `${y}年${mm}月給与明細${code}.pdf`;
+
+    let empName = '';
+    const sel = document.getElementById('payrollUserId');
+    if (sel && sel.selectedIndex > 0) {
+      const text = sel.options[sel.selectedIndex].textContent;
+      empName = text.replace(code, '').trim();
+    }
+    const namePart = empName ? `_${empName}` : '';
+    const filename = `${y}年${mm}月${dd}日_給与明細${namePart}_${code}.pdf`;
+
     try {
       const a = document.createElement('a');
       a.href = url;

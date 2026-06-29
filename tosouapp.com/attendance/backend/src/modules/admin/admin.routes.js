@@ -1433,8 +1433,11 @@ router.post('/salary/payslip/generate', async (req, res) => {
     const m = String(month || '');
     const y = m.slice(0, 4);
     const mm = m.slice(5, 7);
+    const dd = pad(today.getUTCDate());
     const empCode = String(emp?.従業員コード || emp?.userId || userId || '').trim() || String(userId);
-    const originalName = `${y}年${mm}月給与明細${empCode}.pdf`;
+    const empName = String(emp?.氏名 || '').trim();
+    const namePart = empName ? `_${empName}` : '';
+    const originalName = `${y}年${mm}月${dd}日_給与明細${namePart}_${empCode}.pdf`;
     const saved = await writePayslipFile({ userId, month, pdfBuf, actorId: req.user.id, originalName });
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_generate', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ userId, month, payslipId: saved.id }) });
