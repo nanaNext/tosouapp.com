@@ -396,6 +396,7 @@ export async function mount() {
 
   const previewModalOverlay = document.createElement('div');
   previewModalOverlay.id = 'payrollPreviewModalOverlay';
+  previewModalOverlay.className = 'modal-overlay';
   previewModalOverlay.style.display = 'none';
   previewModalOverlay.style.position = 'fixed';
   previewModalOverlay.style.top = '0';
@@ -488,14 +489,25 @@ export async function mount() {
   const getKey = () => ({ userId: String(sel.value || '').trim(), month: String(monthEl.value || '').trim() });
 
   try {
-    const lastUserId = String(localStorage.getItem('payroll.lastUserId') || '').trim();
+    let lastUserId = String(localStorage.getItem('payroll.lastUserId') || '').trim();
     const lastMonth = String(localStorage.getItem('payroll.lastMonth') || '').trim();
+    
+    // Auto-select first employee if no previous selection exists
+    if (!lastUserId && sel.options.length > 1) {
+      lastUserId = sel.options[1].value; // options[0] is the empty placeholder
+    }
+    
     if (lastUserId) {
       const opt = sel.querySelector(`option[value="${CSS.escape(lastUserId)}"]`);
       if (opt) sel.value = lastUserId;
     }
     if (/^\d{4}-\d{2}$/.test(lastMonth)) {
       monthEl.value = lastMonth;
+    } else {
+      // Default to current month if no previous month exists
+      const d = new Date();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      monthEl.value = `${d.getFullYear()}-${m}`;
     }
   } catch (e) { /* silently ignored */ }
   let lastPdfKey = '';
@@ -1385,4 +1397,12 @@ export async function mount() {
   if (getKey().userId && getKey().month) {
     onSelectionChange().catch(() => { });
   }
+
+  return () => {
+    if (aborter) aborter.abort();
+    try {
+      const modal = document.getElementById('payrollPreviewModalOverlay');
+      if (modal) modal.remove();
+    } catch (e) { /* silently ignored */ }
+  };
 }

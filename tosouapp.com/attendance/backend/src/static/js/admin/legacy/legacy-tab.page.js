@@ -16,8 +16,7 @@ export async function bootLegacyTab({ tab, hash }) {
     } catch (e) { /* silently ignored */ }
     const spec = v ? `../payroll/editor.page.js?v=${encodeURIComponent(v)}` : '../payroll/editor.page.js';
     const mod = await import(spec);
-    await mod.mount();
-    return;
+    return await mod.mount();
   }
 // cái này dùng để render legacy tab
 

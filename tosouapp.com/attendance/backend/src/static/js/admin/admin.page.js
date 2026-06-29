@@ -514,12 +514,15 @@ const resetTransientUiState = () => {
   
   // Ensure body scroll is unlocked when resetting UI state
   try {
-    document.body.style.setProperty('overflow', 'visible', 'important');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('overflow-y');
+    document.body.style.removeProperty('position');
+    document.body.style.removeProperty('width');
+    document.body.style.removeProperty('top');
     document.body.style.setProperty('overflow-y', 'auto', 'important');
-    document.body.style.position = '';
-    document.body.style.width = '';
-    document.body.style.top = '';
-    document.documentElement.style.setProperty('overflow', 'visible', 'important');
+    
+    document.documentElement.style.removeProperty('overflow');
+    document.documentElement.style.removeProperty('overflow-y');
     document.documentElement.style.setProperty('overflow-y', 'auto', 'important');
   } catch (e) {}
   try {
@@ -528,6 +531,10 @@ const resetTransientUiState = () => {
       adminEditModal.style.display = 'none';
       try { adminEditModal.remove(); } catch (e) { /* silently ignored */ }
     }
+  } catch (e) { /* silently ignored */ }
+  try {
+    const leaveDynamicHeight = document.querySelector('#leave-dynamic-height');
+    if (leaveDynamicHeight) leaveDynamicHeight.remove();
   } catch (e) { /* silently ignored */ }
   try {
     document.querySelectorAll('.subbar .menu.open').forEach((el) => {
@@ -570,9 +577,12 @@ const route = async () => {
   
   // Make sure body doesn't have overflow hidden from other pages
   try {
-    document.body.style.setProperty('overflow', 'visible', 'important');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('overflow-y');
     document.body.style.setProperty('overflow-y', 'auto', 'important');
-    document.documentElement.style.setProperty('overflow', 'visible', 'important');
+    
+    document.documentElement.style.removeProperty('overflow');
+    document.documentElement.style.removeProperty('overflow-y');
     document.documentElement.style.setProperty('overflow-y', 'auto', 'important');
     // Special fix for standalone SPA router
     if (document.body.classList.contains('has-sidebar')) {
@@ -607,6 +617,25 @@ const route = async () => {
       
       host.style.visibility = '';
       prevHost.replaceWith(host);
+
+      // Make sure the parent container (main.content) has no leftover inline styles from legacy pages
+      const parent = host.parentElement;
+      if (parent && parent.classList.contains('content')) {
+        parent.style.removeProperty('padding');
+        parent.style.removeProperty('margin');
+        parent.style.removeProperty('height');
+        parent.style.removeProperty('max-width');
+        parent.style.removeProperty('overflow');
+        parent.style.removeProperty('border');
+        parent.style.removeProperty('box-shadow');
+        parent.style.removeProperty('background');
+        
+        // Restore siblings like #status or #error if they were hidden
+        const statusEl = parent.querySelector('#status');
+        if (statusEl) statusEl.style.removeProperty('display');
+        const errorEl = parent.querySelector('#error');
+        if (errorEl) errorEl.style.removeProperty('display');
+      }
     }
   } catch (e) { /* silently ignored */ }
   const mountModule = async (mod) => {

@@ -28,12 +28,10 @@ const normalizePath = (p) => {
 export async function mount() {
   const p = normalizePath(window.location.pathname);
   if (p === '/admin/payroll/payslips') {
-    await bootLegacyTab({ tab: 'salary_send', hash: '' });
-    return;
+    return await bootLegacyTab({ tab: 'salary_send', hash: '' });
   }
   if (p === '/admin/payroll/salary') {
-    await bootLegacyTab({ tab: 'payroll_editor', hash: '' });
-    return;
+    return await bootLegacyTab({ tab: 'payroll_editor', hash: '' });
   }
-  await bootLegacyTab({ tab: 'payroll_editor', hash: '' });
+  return await bootLegacyTab({ tab: 'payroll_editor', hash: '' });
 }
