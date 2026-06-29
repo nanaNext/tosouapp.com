@@ -556,6 +556,9 @@ const route = async () => {
     currentViewCleanup = null;
     if (typeof cleanup === 'function') await cleanup();
   } catch (e) { /* silently ignored */ }
+  
+  try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch (e) { try { window.scrollTo(0, 0); } catch(err) {} }
+
   resetTransientUiState();
   hardHidePageSpinner();
   try {
@@ -564,11 +567,16 @@ const route = async () => {
       const host = document.createElement('section');
       host.id = 'adminContent';
       
-      // Remove default card styling if it's an attendance hub page
-      if (window.location.pathname.includes('/admin/attendance') || window.location.pathname.includes('/admin/work-reports')) {
+      // Remove default card styling if it's an attendance hub page or full-bleed page
+      if (window.location.pathname.includes('/admin/attendance') || 
+          window.location.pathname.includes('/admin/work-reports') ||
+          window.location.pathname.includes('/admin/payroll/salary')) {
         host.className = '';
         host.style.padding = '0';
         host.style.margin = '0';
+        host.style.border = 'none';
+        host.style.boxShadow = 'none';
+        host.style.background = 'transparent';
       } else {
         host.className = 'card';
       }
