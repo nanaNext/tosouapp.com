@@ -1140,9 +1140,9 @@ async function mountAttendanceImpl({
           // Add mobile-only layout to standard row via classes
           if (window.innerWidth <= 768) {
             tr.innerHTML = `
-              <td class="m-code-cell mobile-only">
+              <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important;">
                 <div class="m-code-label">社員番号</div>
-                <div class="m-code-value">[${esc(code)}] ${esc(name)}</div>
+                <div class="m-code-value" style="word-break: break-all;">[${esc(code)}] ${esc(name)}</div>
               </td>
               <td class="m-main-cell mobile-only" style="display: flex; flex-direction: column; width: 100%; box-sizing: border-box;">
                 <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
