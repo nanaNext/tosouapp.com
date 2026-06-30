@@ -95,6 +95,7 @@
       
       const hasActualIn = !!inHm;
       const hasActualOut = !!outHm;
+      const hasActual = hasActualIn || hasActualOut;
       
       // Nếu đã có giờ checkIn hoặc checkOut, xóa bỏ chữ "予定" vì đã thành sự thật
       if (hasActualIn || hasActualOut) {
@@ -176,11 +177,9 @@
       const outHm = isShiftPlaceholder ? '' : outHmRaw;
       // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
       if (offDay && !kubunInit) {
-        const hasActual = !!(inHm || outHm);
         if (hasActual) kubunInit = '休日出勤';
       }
       // Consider row "actual" only when visible (non-placeholder) punch times exist.
-      const hasActual = hasActualIn || hasActualOut;
       // For working-day classifications, only real punches can make row "actual".
       // This prevents auto/scheduled values from appearing as confirmed 出勤.
       // Keep explicitly saved kubun visible even when there is no check-in/out yet.
