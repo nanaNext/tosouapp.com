@@ -93,6 +93,9 @@
       let plannedLabel = offDay ? '【休日予定】' : '【出勤予定】';
       let plannedKubun = offDay ? '休日' : '出勤';
       
+      const hasActualIn = !!inHm;
+      const hasActualOut = !!outHm;
+      
       // Nếu đã có giờ checkIn hoặc checkOut, xóa bỏ chữ "予定" vì đã thành sự thật
       if (hasActualIn || hasActualOut) {
         plannedLabel = offDay ? '休日' : '出勤';
@@ -177,8 +180,6 @@
         if (hasActual) kubunInit = '休日出勤';
       }
       // Consider row "actual" only when visible (non-placeholder) punch times exist.
-      const hasActualIn = !!inHm;
-      const hasActualOut = !!outHm;
       const hasActual = hasActualIn || hasActualOut;
       // For working-day classifications, only real punches can make row "actual".
       // This prevents auto/scheduled values from appearing as confirmed 出勤.
