@@ -267,8 +267,8 @@ const restoreFastSnapshot = (date, stateRef) => {
     calculateLateEarly();
     renderStampButtons({
       date,
-      inHm: snap.hasStartedToday ? String(snap.startTime || '') : '',
-      outHm: snap.hasEndedToday ? String(snap.endTime || '') : '',
+      inHm: snap.startTime || '',
+      outHm: snap.endTime || '',
       hasOpen: !!snap.hasStartedToday && !snap.hasEndedToday
     });
     syncWorkTypeButtons();
@@ -671,6 +671,9 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
       if (hasOpen || (!hasEnded)) btnOut.textContent = '終了打刻';
       else if (hasEnded && outHm) {
         btnOut.textContent = isMobile ? `終了済 (${outHm})` : `終了打刻済 (${outHm})`;
+      } else if (outHm) {
+        btnOut.textContent = isMobile ? `終了済 (${outHm})` : `終了打刻済 (${outHm})`;
+        btnOut.disabled = true;
       } else btnOut.textContent = '終了打刻';
     }
   } catch (e) { /* silently ignored */ }
