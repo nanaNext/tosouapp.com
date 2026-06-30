@@ -6,6 +6,7 @@ const repo = require('./expenses.repository');
 const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
 const expenseTypesRepo = require('./expenseTypes.repository');
+const s3Service = require('../../core/services/s3.service');
 router.use(authenticate);
 router.get('/types',
   rateLimitNamed('expenses_types', { windowMs: 60_000, max: 30 }),
@@ -96,6 +97,15 @@ router.get('/export.csv',
         const safeMemo = /^[=\+\-\@]/.test(memo) ? "'" + memo : memo;
         return [r.date ? String(r.date).slice(0,10) : '', `"${safeRoute}"`, t, a, st, `"${safeMemo}"`].join(',');
       })).join('\n');
+      
+      if (s3Service.isR2Configured()) {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        const r2Key = `exports/csv/expenses/${ts}_expenses_${month || 'all'}.csv`;
+        s3Service.uploadToR2(r2Key, Buffer.from('\uFEFF' + csv, 'utf8'), 'text/csv').catch(e => {
+          console.error('Failed to auto-save export to R2:', e);
+        });
+      }
+
       res.status(200).send('\uFEFF' + csv);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -235,7 +245,17 @@ router.get('/admin/export.csv',
       }).join('\n');
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="expenses_admin_${month || 'all'}.csv"`);
-      res.status(200).send('\uFEFF' + csvHead + '\n' + csvBody);
+      
+      const csvOutput = '\uFEFF' + csvHead + '\n' + csvBody;
+      if (s3Service.isR2Configured()) {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        const r2Key = `exports/csv/expenses/${ts}_expenses_admin_${month || 'all'}.csv`;
+        s3Service.uploadToR2(r2Key, Buffer.from(csvOutput, 'utf8'), 'text/csv').catch(e => {
+          console.error('Failed to auto-save export to R2:', e);
+        });
+      }
+
+      res.status(200).send(csvOutput);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }

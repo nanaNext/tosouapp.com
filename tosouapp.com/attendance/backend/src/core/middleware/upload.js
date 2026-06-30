@@ -21,8 +21,17 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const extRaw = path.extname(String(file.originalname || '')).toLowerCase();
-    const ext = extRaw || extFromMime(file.mimetype) || '';
+    // Bảo mật: Ép buộc đuôi file theo đúng mimetype để tránh upload mã độc (ví dụ: .html, .php)
+    let ext = extFromMime(file.mimetype);
+    if (!ext) {
+      const extRaw = path.extname(String(file.originalname || '')).toLowerCase();
+      // Chỉ cho phép các đuôi file an toàn nếu mimetype không map được rõ ràng
+      if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.pdf'].includes(extRaw)) {
+        ext = extRaw;
+      } else {
+        ext = '.bin';
+      }
+    }
     cb(null, `${uniqueSuffix}${ext}`);
   }
 });

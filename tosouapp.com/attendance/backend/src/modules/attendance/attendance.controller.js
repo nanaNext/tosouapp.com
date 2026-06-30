@@ -2328,11 +2328,23 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     
     // Set response headers
     const fileName = encodeURIComponent(`シフト_${year}年${month}月.xlsx`);
+    
+    const buf = await workbook.xlsx.writeBuffer();
+    
+    // Auto-save export to R2
+    const s3Service = require('../../core/services/s3.service');
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/excel/shifts/${ts}_${fileName}`;
+      s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${fileName}`);
     
-    await workbook.xlsx.write(res);
-    res.end();
+    res.status(200).send(buf);
   } catch (err) {
     console.error('Excel Export Error:', err);
     res.status(500).json({ message: err.message });
@@ -3393,6 +3405,17 @@ exports.exportMonthXlsx = async (req, res) => {
       { name: 'xl/worksheets/sheet1.xml', data: sheet1Xml },
       { name: 'xl/worksheets/sheet2.xml', data: sheet2Xml }
     ]);
+
+    // Auto-save export to R2
+    const s3Service = require('../../core/services/s3.service');
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/excel/attendance_month/${ts}_${fileName}`;
+      s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.status(200).send(buf);

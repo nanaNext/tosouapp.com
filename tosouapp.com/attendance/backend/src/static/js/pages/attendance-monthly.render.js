@@ -93,26 +93,31 @@
       let plannedLabel = offDay ? '【休日予定】' : '【出勤予定】';
       let plannedKubun = offDay ? '休日' : '出勤';
       
+      // Nếu đã có giờ checkIn hoặc checkOut, xóa bỏ chữ "予定" vì đã thành sự thật
+      if (hasActualIn || hasActualOut) {
+        plannedLabel = offDay ? '休日' : '出勤';
+      }
+      
       // Đối với part-time, ngày thường (không phải offDay) là lịch linh hoạt (không có lịch cố định)
       // Nhưng các ngày offDay (Thứ 7, CN, Lễ) vẫn là ngày nghỉ cố định của công ty.
       if (isPartTime) {
         // Kiểm tra dữ liệu đăng ký ca làm việc (Shift Request) từ trang シフト登録
         if (shiftRequest) {
           if (shiftRequest.status === 'WORKING') {
-            plannedLabel = '【出勤予定】';
+            plannedLabel = (hasActualIn || hasActualOut) ? '出勤' : '【出勤予定】';
             plannedKubun = '出勤';
           } else if (shiftRequest.status === 'OFF') {
-            plannedLabel = '【休日予定】';
+            plannedLabel = (hasActualIn || hasActualOut) ? '休日' : '【休日予定】';
             plannedKubun = '休日';
           } else {
             // shiftRequest = 'NONE' hoặc không rõ ràng, xử lý theo ngày lễ
-            plannedLabel = offDay ? '【休日予定】' : '【予定なし】';
+            plannedLabel = offDay ? ((hasActualIn || hasActualOut) ? '休日' : '【休日予定】') : '【予定なし】';
             plannedKubun = offDay ? '休日' : '';
           }
         } else {
           // Nếu không có dữ liệu đăng ký ca, áp dụng quy tắc ngày nghỉ cố định của công ty
           if (offDay) {
-            plannedLabel = '【休日予定】';
+            plannedLabel = (hasActualIn || hasActualOut) ? '休日' : '【休日予定】';
             plannedKubun = '休日';
           } else {
             plannedLabel = '【予定なし】';
@@ -140,10 +145,10 @@
                 if (daily) daily.reason = shiftRequest.reason;
              }
           } else if (shiftRequest.status === 'WORKING') {
-            plannedLabel = '【出勤予定】';
+            plannedLabel = (hasActualIn || hasActualOut) ? '出勤' : '【出勤予定】';
             plannedKubun = '出勤';
           } else if (shiftRequest.status === 'OFF') {
-            plannedLabel = '【休日予定】';
+            plannedLabel = (hasActualIn || hasActualOut) ? '休日' : '【休日予定】';
             plannedKubun = '休日';
           }
         }
