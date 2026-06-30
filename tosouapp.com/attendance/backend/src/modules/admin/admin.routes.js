@@ -21,6 +21,7 @@ const upload = require('../../core/middleware/upload');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const s3Service = require('../../core/services/s3.service');
 const { buildPayslipPdf } = require('../salary/payslipPdf');
 const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process.env.ENABLE_DEBUG_ROUTES || '').toLowerCase() === 'true';
 const uploadEmployeePhotos = (req, res, next) => {
@@ -432,6 +433,16 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
     const targetName = String(info?.username || info?.email || id).replace(/[^\w\s-]/gi, '_');
     const empCode = info?.employee_code ? `${info.employee_code}_` : '';
     const fileName = encodeURIComponent(`${empCode}${targetName}_${year}.xlsx`);
+    
+    // Auto-save export to R2
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/excel/profile/${ts}_${fileName}`;
+      s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.status(200).send(buf);
@@ -738,6 +749,15 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
+
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/csv/timesheet/${ts}_${filename}`;
+      s3Service.uploadToR2(r2Key, buf, 'text/csv').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
     res.status(200).send(buf);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -836,7 +856,17 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
     const filename = `attendance_${month}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=\"${filename}\"`);
-    res.status(200).send('\uFEFF' + csv);
+    
+    const csvOutput = '\uFEFF' + csv;
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/csv/attendance/${ts}_${filename}`;
+      s3Service.uploadToR2(r2Key, Buffer.from(csvOutput, 'utf8'), 'text/csv').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
+    res.status(200).send(csvOutput);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1346,7 +1376,6 @@ function validatePaymentConsistency(emp) {
 }
 
 const payslipDeliveryRepo = require('../salary/payslipDelivery.repository');
-const s3Service = require('../../core/services/s3.service');
 
 async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }) {
   const baseName = `payslip_${userId}_${month}_${Date.now()}.pdf`;
@@ -1780,6 +1809,15 @@ router.get('/calendar/export.csv',
     }
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=\"company_holidays_${year}.csv\"`);
+    
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/csv/calendar/${ts}_company_holidays_${year}.csv`;
+      s3Service.uploadToR2(r2Key, Buffer.from(csv, 'utf8'), 'text/csv').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
     res.status(200).send(csv);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1955,6 +1993,16 @@ router.get('/calendar/export.xls',
 
     res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=\"company_holidays_${year}.xls\"`);
+
+    // Auto-save export to R2
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/excel/calendar/${ts}_company_holidays_${year}.xls`;
+      s3Service.uploadToR2(r2Key, Buffer.from(workbook, 'utf8'), 'application/vnd.ms-excel').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
     res.status(200).send(workbook);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2029,6 +2077,16 @@ router.get('/calendar/export.xlsx',
 
     const { buildXlsx } = require('../../utils/xlsx');
     const buf = await buildXlsx({ sheetName, columns, rows: dataRows });
+    
+    // Auto-save export to R2
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/excel/calendar/${ts}_company_holidays_${year}.xlsx`;
+      s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').catch(e => {
+        console.error('Failed to auto-save export to R2:', e);
+      });
+    }
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=\"company_holidays_${year}.xlsx\"`);
     res.status(200).send(buf);
