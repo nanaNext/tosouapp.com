@@ -89,19 +89,32 @@
         }
       }
 
-      let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : ''; 
-      let plannedLabel = offDay ? '【休日予定】' : '【出勤予定】';
-      let plannedKubun = offDay ? '休日' : '出勤';
+      const shiftStart = String(shift?.start_time || '08:00').trim();
+      const shiftEnd = String(shift?.end_time || '17:00').trim();
+      const shiftStartOk = /^\d{1,2}:\d{2}$/.test(shiftStart);
+      const shiftEndOk = /^\d{1,2}:\d{2}$/.test(shiftEnd);
+      const inHmRaw = fromDateTime(seg?.checkIn);
+      const outHmRaw = fromDateTime(seg?.checkOut);
+      const segWt = String(seg?.workType || '').trim();
+      const segLabels = String(seg?.labels || '').trim();
+      // Ignore shift-shaped placeholder rows (planned auto rows), keep only real punches.
+      const isShiftPlaceholder = false;
+      const inHm = isShiftPlaceholder ? '' : inHmRaw;
+      const outHm = isShiftPlaceholder ? '' : outHmRaw;
       
       const hasActualIn = !!inHm;
       const hasActualOut = !!outHm;
       const hasActual = hasActualIn || hasActualOut;
+
+      let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : ''; 
+      let plannedLabel = offDay ? '【休日予定】' : '【出勤予定】';
+      let plannedKubun = offDay ? '休日' : '出勤';
       
       // Nếu đã có giờ checkIn hoặc checkOut, xóa bỏ chữ "予定" vì đã thành sự thật
       if (hasActualIn || hasActualOut) {
         plannedLabel = offDay ? '休日' : '出勤';
       }
-      
+
       // Đối với part-time, ngày thường (không phải offDay) là lịch linh hoạt (không có lịch cố định)
       // Nhưng các ngày offDay (Thứ 7, CN, Lễ) vẫn là ngày nghỉ cố định của công ty.
       if (isPartTime) {
@@ -162,19 +175,7 @@
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
-      
-      const shiftStart = String(shift?.start_time || '08:00').trim();
-      const shiftEnd = String(shift?.end_time || '17:00').trim();
-      const shiftStartOk = /^\d{1,2}:\d{2}$/.test(shiftStart);
-      const shiftEndOk = /^\d{1,2}:\d{2}$/.test(shiftEnd);
-      const inHmRaw = fromDateTime(seg?.checkIn);
-      const outHmRaw = fromDateTime(seg?.checkOut);
-      const segWt = String(seg?.workType || '').trim();
-      const segLabels = String(seg?.labels || '').trim();
-      // Ignore shift-shaped placeholder rows (planned auto rows), keep only real punches.
-      const isShiftPlaceholder = false;
-      const inHm = isShiftPlaceholder ? '' : inHmRaw;
-      const outHm = isShiftPlaceholder ? '' : outHmRaw;
+
       // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
       if (offDay && !kubunInit) {
         if (hasActual) kubunInit = '休日出勤';
