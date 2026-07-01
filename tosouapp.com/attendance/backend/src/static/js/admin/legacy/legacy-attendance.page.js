@@ -983,7 +983,7 @@ async function mountAttendanceImpl({
   if (dateElMobile) dateElMobile.addEventListener('change', handleDateChange);
   let profile = null;
   try {
-    profile = await fetchJSONAuth('/api/auth/me');
+    profile = await api.get('/api/auth/me');
   } catch (e) {
     //
   }

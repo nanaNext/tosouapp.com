@@ -289,7 +289,7 @@ const renderAttendance = async () => {
           const dt = new Date(Date.UTC(y, m, d, 0, 0, 0));
           const dow = dt.getUTCDay();
           return dow === 0 || dow === 6;
-        } catch (e) {
+        } catch {
           return false;
         }
       })();
@@ -305,7 +305,7 @@ const renderAttendance = async () => {
       try {
         const v = localStorage.getItem(wtKey) || '';
         return v === 'onsite' || v === 'remote' || v === 'satellite' ? v : 'onsite';
-      } catch (e) {
+      } catch {
         return 'onsite';
       }
     };
@@ -315,11 +315,7 @@ const renderAttendance = async () => {
     for (const s of segments) {
       if (!last || String(s?.checkIn || '') > String(last?.checkIn || '')) last = s;
     }
-    // Auto-update "st" logic directly to reflect any SQL changes immediately
-    const inHmRaw = last?.checkIn ? String(last.checkIn).replace('T', ' ').slice(11, 16) : '';
-    const outHmRaw = last?.checkOut ? String(last.checkOut).replace('T', ' ').slice(11, 16) : '';
-    const finalSt = inHmRaw ? (outHmRaw ? '退勤済' : '出勤中') : '未出勤';
-    // Note: HTML status UI has been moved or refactored out.
+    const st = last?.checkIn ? (last?.checkOut ? '退勤済' : '出勤中') : '未出勤';
     const canIn = !last?.checkIn;
     const canOut = !!last?.checkIn && !last?.checkOut;
     const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場/出張' : '出社';
@@ -512,7 +508,7 @@ export async function bootAttendanceRecordsPage() {
   prefillUserName();
   try {
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
-    const params = (() => { try { return new URLSearchParams(String(window.location.search||'')); } catch (e) { return new URLSearchParams(); } })();
+    const params = (() => { try { return new URLSearchParams(String(window.location.search||'')); } catch { return new URLSearchParams(); } })();
     const isBack = params.get('back') === '1';
     const ref = String(document.referrer || '');
     const fromSimple = ref.includes('/ui/attendance/simple');
