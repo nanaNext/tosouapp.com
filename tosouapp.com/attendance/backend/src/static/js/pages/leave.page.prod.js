@@ -12,7 +12,7 @@ const loadDraft = () => {
     const raw = localStorage.getItem(draftKey());
     const j = raw ? JSON.parse(raw) : null;
     return j && typeof j === 'object' ? j : null;
-  } catch {
+  } catch (e) {
     return null;
   }
 };

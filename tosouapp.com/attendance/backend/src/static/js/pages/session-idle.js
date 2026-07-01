@@ -16,7 +16,7 @@
     try {
       const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
       return m ? decodeURIComponent(m[2]) : null;
-    } catch {
+    } catch (e) {
       return null;
     }
   };
@@ -31,7 +31,7 @@
     try {
       const v = Number(localStorage.getItem(ACTIVITY_KEY) || '0');
       return Number.isFinite(v) ? v : 0;
-    } catch {
+    } catch (e) {
       return 0;
     }
   };
@@ -54,7 +54,7 @@
   };
 
   const goLogin = () => {
-    try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+    try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
   };
 
   const flushDrafts = () => {
@@ -200,7 +200,7 @@
         await refreshSession();
         graceUntil = 0;
         hideWarn();
-      } catch {
+      } catch (e) {
         void doLogout();
       } finally {
         warnContinuing = false;

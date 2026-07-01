@@ -21,7 +21,7 @@ const resolveEmployeeUid = () => {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     const u = raw ? JSON.parse(raw) : null;
     return parseInt(String(u?.id || 0), 10) || 0;
-  } catch {
+  } catch (e) {
     return 0;
   }
 };
@@ -62,7 +62,7 @@ function readHiddenIds() {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return new Set();
     return new Set(arr.map((x) => parseInt(String(x || 0), 10) || 0).filter((x) => !!x));
-  } catch {
+  } catch (e) {
     return new Set();
   }
 }
@@ -79,7 +79,7 @@ function readCache() {
     const obj = JSON.parse(raw);
     const rows = Array.isArray(obj?.items) ? obj.items : [];
     return rows.slice(0, 60);
-  } catch {
+  } catch (e) {
     return [];
   }
 }
@@ -312,7 +312,7 @@ function mount() {
       if (wrap.contains(target)) return true;
       // Keep open only when clicking inside the notify UI itself.
       return false;
-    } catch {
+    } catch (e) {
       return false;
     }
   };
@@ -346,7 +346,7 @@ function tryBoot() {
     state.timer = setInterval(() => { refresh().catch(() => { }); }, 60000);
     if (state.observer) { try { state.observer.disconnect(); } catch (e) { /* silently ignored */ } state.observer = null; }
     return true;
-  } catch {
+  } catch (e) {
     return false;
   }
 }
@@ -367,7 +367,7 @@ function bindSelfNavigationGuard() {
     try {
       to = new URL(href, window.location.href);
       cur = new URL(window.location.href);
-    } catch {
+    } catch (e) {
       return;
     }
     if (!to || !cur) return;
@@ -436,7 +436,7 @@ async function softNavigateLocal(url, push = true) {
     syncPageHeadStyle(doc);
     if (push) history.pushState({ pjax: true, path: url.pathname }, '', url.pathname + url.search + url.hash);
     setNavCurrent(url.pathname);
-    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0, 0); }
     if (url.pathname === REQ_PATH) {
         try {
           const mod = await import('/static/js/pages/requests.page.js');
@@ -459,7 +459,7 @@ async function softNavigateLocal(url, push = true) {
         } catch (e) { /* silently ignored */ }
       }
     return true;
-  } catch {
+  } catch (e) {
     return false;
   }
 }
@@ -475,7 +475,7 @@ function bindSoftRequestNavigation() {
     const href = String(a.getAttribute('href') || '').trim();
     if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
     let to = null;
-      try { to = new URL(href, window.location.href); } catch { return; }
+      try { to = new URL(href, window.location.href); } catch (e) { return; }
       if (!to || to.origin !== window.location.origin) return;
       if (!SOFT_PATHS.has(to.pathname)) return;
       if (window.location.pathname === to.pathname && window.location.search === to.search) {

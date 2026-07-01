@@ -37,7 +37,7 @@
   };
 
   const getDailyCollapsed = () => {
-    try { return localStorage.getItem('monthly.dailyCollapsed') === '1'; } catch { return false; }
+    try { return localStorage.getItem('monthly.dailyCollapsed') === '1'; } catch (e) { return false; }
   };
   const setDailyCollapsed = (v) => {
     try { localStorage.setItem('monthly.dailyCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
@@ -55,7 +55,7 @@
   };
 
   const getContractCollapsed = () => {
-    try { return localStorage.getItem('monthly.contractCollapsed') === '1'; } catch { return false; }
+    try { return localStorage.getItem('monthly.contractCollapsed') === '1'; } catch (e) { return false; }
   };
   const setContractCollapsed = (v) => {
     try { localStorage.setItem('monthly.contractCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
@@ -73,7 +73,7 @@
   };
 
   const getSummaryCollapsed = () => {
-    try { return localStorage.getItem('monthly.summaryCollapsed') === '1'; } catch { return false; }
+    try { return localStorage.getItem('monthly.summaryCollapsed') === '1'; } catch (e) { return false; }
   };
   const setSummaryCollapsed = (v) => {
     try { localStorage.setItem('monthly.summaryCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
@@ -91,7 +91,7 @@
   };
 
   const getAnnualCollapsed = () => {
-    try { return localStorage.getItem('monthly.annualCollapsed') === '1'; } catch { return false; }
+    try { return localStorage.getItem('monthly.annualCollapsed') === '1'; } catch (e) { return false; }
   };
   const setAnnualCollapsed = (v) => {
     try { localStorage.setItem('monthly.annualCollapsed', v ? '1' : '0'); } catch (e) { /* silently ignored */ }
@@ -124,7 +124,7 @@
           const cs = getComputedStyle(hs);
           if (cs.display === 'none') return false;
           return true;
-        } catch {
+        } catch (e) {
           return !!hs && !hs.hasAttribute('hidden');
         }
       })();
@@ -279,7 +279,7 @@
       const obj = JSON.parse(raw); 
       if (!obj || typeof obj !== 'object' || !obj.detail) return null;
       return obj;
-    } catch {
+    } catch (e) {
       return null;
     }
   };
@@ -374,7 +374,7 @@
               return rr && rr.bottom > (mr.top + 48) && rr.top < (mr.bottom - 48);
             }
             return true;
-          } catch {
+          } catch (e) {
             return true;
           }
         })();
@@ -485,7 +485,7 @@
               return rr.bottom > (mr.top + 48) && rr.top < (mr.bottom - 48);
             }
             return rr.bottom > 0 && rr.top < window.innerHeight;
-          } catch {
+          } catch (e) {
             return true;
           }
         })();
@@ -756,7 +756,7 @@
         try {
           const st = String(instant.detail?.monthStatus?.status || '').trim();
           state.currentMonthStatus = st || 'draft';
-        } catch {
+        } catch (e) {
           state.currentMonthStatus = 'draft';
         }
         renderContract(ctx.contractHost, instant.detail);
@@ -785,7 +785,7 @@
       try {
         const st = String(detail?.monthStatus?.status || '').trim();
         state.currentMonthStatus = st || 'draft';
-      } catch {
+      } catch (e) {
         state.currentMonthStatus = 'draft';
       }
       try {
@@ -1018,7 +1018,7 @@
               r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: body2 });
               if (r && r.ok === false) throw new Error(String(r?.message || '保存に失敗しました'));
               showErr('');
-            } catch {
+            } catch (e) {
               throw e;
             }
           } else {
@@ -1177,7 +1177,7 @@
                    d.breakMinutes != null || d.nightBreakMinutes != null;
           });
           return dHas || up.length > 0;
-        } catch { return false; }
+        } catch (e) { return false; }
       })();
       if (n <= 0 && intent) throw new Error('保存対象がありません。入力内容を確認してください。');
       // Đã gỡ bỏ alert theo yêu cầu người dùng
@@ -1778,7 +1778,7 @@
         const w = Array.isArray(d?.workDetails) ? d.workDetails : [];
         const s = d?.monthSummary || null;
         return JSON.stringify({ a, w, s });
-      } catch {
+      } catch (e) {
         return '';
       }
     };
@@ -1811,7 +1811,7 @@
       try {
         await refresh();
         ctx.refreshFailCount = 0;
-      } catch {
+      } catch (e) {
         ctx.refreshFailCount = (ctx.refreshFailCount || 0) + 1;
         if (ctx.refreshFailCount >= 2) {
           try { clearInterval(ctx.refreshTimer); } catch (e) { /* silently ignored */ }
@@ -1931,7 +1931,7 @@
 
     Promise.resolve(profileTask).then((fresh) => {
       if (!fresh) {
-        try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+        try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
         return;
       }
       ctx.profile = fresh;

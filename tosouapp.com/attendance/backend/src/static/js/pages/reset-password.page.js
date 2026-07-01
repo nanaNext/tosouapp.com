@@ -11,7 +11,7 @@ function getToken() {
   try {
     const qs = new URLSearchParams(window.location.search);
     return String(qs.get('token') || '').trim();
-  } catch {
+  } catch (e) {
     return '';
   }
 }

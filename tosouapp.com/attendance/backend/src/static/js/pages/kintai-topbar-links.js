@@ -6,7 +6,7 @@
     try {
       const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
       return m ? decodeURIComponent(m[2]) : null;
-    } catch {
+    } catch (e) {
       return null;
     }
   }
@@ -32,7 +32,7 @@
         localStorage.removeItem('user');
       } catch (e) { /* silently ignored */ }
     } finally {
-      try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+      try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
     }
   }
 
@@ -113,7 +113,7 @@
     if (!hrefRaw || hrefRaw === '#' || hrefRaw.startsWith('#')) return false;
     if (/^(mailto:|tel:|javascript:)/i.test(hrefRaw)) return false;
     let to = null;
-    try { to = new URL(hrefRaw, location.href); } catch { return false; }
+    try { to = new URL(hrefRaw, location.href); } catch (e) { return false; }
     if (to.origin !== location.origin) return false;
     if (to.pathname === location.pathname && to.search === location.search && (to.hash || '') === (location.hash || '')) return false;
     if (to.pathname === location.pathname && to.search === location.search && to.hash && to.hash !== location.hash) return false;

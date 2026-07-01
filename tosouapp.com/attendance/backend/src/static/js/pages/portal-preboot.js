@@ -9,7 +9,7 @@
   };
   const reveal = () => { try { document.documentElement.classList.remove('portal-preboot'); } catch (e) { /* silently ignored */ } };
   try { document.documentElement.classList.add('portal-preboot'); } catch (e) { /* silently ignored */ }
-  const routeAdmin = () => { try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; } };
+  const routeAdmin = () => { try { window.location.replace('/admin/dashboard'); } catch (e) { window.location.href = '/admin/dashboard'; } };
   try {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     const cachedRole = roleOf((raw ? JSON.parse(raw) : {})?.role || '');

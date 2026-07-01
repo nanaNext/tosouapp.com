@@ -54,7 +54,7 @@ const getViewerId = () => {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     const u = raw ? JSON.parse(raw) : null;
     return String(u?.username || u?.email || 'anonymous');
-  } catch {
+  } catch (e) {
     return 'anonymous';
   }
 };
@@ -66,7 +66,7 @@ const getViewedMonths = () => {
     const raw = localStorage.getItem(viewedKey()) || '[]';
     const arr = JSON.parse(raw);
     return new Set(Array.isArray(arr) ? arr.map(v => String(v)) : []);
-  } catch {
+  } catch (e) {
     return new Set();
   }
 };
@@ -632,7 +632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const name = profile.username || profile.email || 'ユーザー';
     const el = $('#userName');
     if (el) el.textContent = name;
-  } catch {
+  } catch (e) {
     window.location.replace('/ui/login');
     return;
   }

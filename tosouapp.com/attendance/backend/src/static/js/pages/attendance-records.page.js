@@ -289,7 +289,7 @@ const renderAttendance = async () => {
           const dt = new Date(Date.UTC(y, m, d, 0, 0, 0));
           const dow = dt.getUTCDay();
           return dow === 0 || dow === 6;
-        } catch {
+        } catch (e) {
           return false;
         }
       })();
@@ -305,7 +305,7 @@ const renderAttendance = async () => {
       try {
         const v = localStorage.getItem(wtKey) || '';
         return v === 'onsite' || v === 'remote' || v === 'satellite' ? v : 'onsite';
-      } catch {
+      } catch (e) {
         return 'onsite';
       }
     };
@@ -512,7 +512,7 @@ export async function bootAttendanceRecordsPage() {
   prefillUserName();
   try {
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
-    const params = (() => { try { return new URLSearchParams(String(window.location.search||'')); } catch { return new URLSearchParams(); } })();
+    const params = (() => { try { return new URLSearchParams(String(window.location.search||'')); } catch (e) { return new URLSearchParams(); } })();
     const isBack = params.get('back') === '1';
     const ref = String(document.referrer || '');
     const fromSimple = ref.includes('/ui/attendance/simple');

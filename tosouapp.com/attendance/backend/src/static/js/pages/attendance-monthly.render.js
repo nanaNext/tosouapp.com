@@ -839,7 +839,7 @@
             const ds = dateStr.slice(0, 10);
             const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
             return days.find(d => String(d?.date || '').slice(0, 10) === ds)?.shift || null;
-          } catch { return null; }
+          } catch (e) { return null; }
         })();
         const shiftStart = String(dayShift?.start_time || '08:00').trim();
         const shiftEnd = String(dayShift?.end_time || '17:00').trim();
@@ -925,7 +925,7 @@
           const stM = parseHm(st);
           const etM = parseHm(et);
           return { st, et, stM, etM };
-        } catch { return null; }
+        } catch (e) { return null; }
       })();
 
       const whMin = (() => {

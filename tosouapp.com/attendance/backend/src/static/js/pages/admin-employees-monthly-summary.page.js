@@ -519,7 +519,7 @@ function exactSummaryFromMonthly(detail, timesheet, mode) {
       };
     }
     return null;
-  } catch {
+  } catch (e) {
     return null;
   }
 }
@@ -618,7 +618,7 @@ async function exactSummaryFromEmbed(uid, ym, mode) {
       };
     }
     return null;
-  } catch {
+  } catch (e) {
     try { document.querySelectorAll('iframe').forEach((f) => { if ((f.src || '').includes('/admin/embed/attendance/monthly')) f.remove(); }); } catch (e) { /* silently ignored */ }
     return null;
   }
@@ -1194,7 +1194,7 @@ export async function mount() {
       const defs = await fetchJSONAuth('/api/attendance/shifts/definitions');
       const rows = Array.isArray(defs) ? defs : [];
       saShift.innerHTML = `<option value="">シフト</option>${rows.map((d) => `<option value="${d.id}">${d.name} ${d.start_time}-${d.end_time}</option>`).join('')}`;
-    } catch {
+    } catch (e) {
       saShift.innerHTML = '<option value="">シフト</option>';
     }
   };

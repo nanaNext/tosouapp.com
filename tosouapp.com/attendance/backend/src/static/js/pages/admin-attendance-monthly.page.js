@@ -172,7 +172,7 @@ async function boot(root, { standalone = false } = {}) {
   if (standalone) wireAdminShell({ logoutRedirect: '/ui/login' });
   const profile = await ensureProfile();
   if (!profile) {
-    try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+    try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
     return;
   }
   const role = String(profile.role || '').toLowerCase();
@@ -205,7 +205,7 @@ async function boot(root, { standalone = false } = {}) {
 
   // Xác định userId mặc định
   const lastUid = (() => {
-    try { return String(localStorage.getItem('admin.monthly.lastUserId') || '').trim(); } catch { return ''; }
+    try { return String(localStorage.getItem('admin.monthly.lastUserId') || '').trim(); } catch (e) { return ''; }
   })();
   const defaultUid = (() => {
     try {
