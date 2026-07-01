@@ -529,13 +529,19 @@ export async function bootAttendanceRecordsPage() {
   try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { /* silently ignored */ }
   
   try {
-    const mod = await import('./employee-attendance.page.js?v=' + Date.now());
-    if (mod.mountAttendance) {
+    // Dynamic import to avoid loading issues in older browsers or during fast SPA navigation
+    const [mod, usersApi, attendanceApi] = await Promise.all([
+      import('./employee-attendance.page.js?v=' + Date.now()),
+      import('../api/users.api.js'),
+      import('../api/attendance.api.js')
+    ]);
+    
+    if (mod && mod.mountAttendance) {
       const host = $('#attendanceRecordsHost');
-        if (host) {
-          host.innerHTML = '';
-          
-          const style = document.createElement('style');
+      if (host) {
+        host.innerHTML = '';
+        
+        const style = document.createElement('style');
         style.textContent = `
           /* Reset padding cho trang attendance records */
           main.content {
@@ -549,18 +555,14 @@ export async function bootAttendanceRecordsPage() {
         `;
         document.head.appendChild(style);
         
-        const { listUsers } = await import('../api/users.api.js');
-        const { getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL } = await import('../api/attendance.api.js');
-        
         await mod.mountAttendance({
           content: host,
-          listUsers,
-          getTimesheet,
-          getAttendanceDay,
-          updateAttendanceSegment,
-          buildTimesheetExportURL
+          listUsers: usersApi.listUsers,
+          getTimesheet: attendanceApi.getTimesheet,
+          getAttendanceDay: attendanceApi.getAttendanceDay,
+          updateAttendanceSegment: attendanceApi.updateAttendanceSegment,
+          buildTimesheetExportURL: attendanceApi.buildTimesheetExportURL
         });
-        // giải thích một chút  chức năng của hàm này là 
 
         // Implement table search functionality
         const searchInput = document.getElementById('globalSearchInputEmp');
@@ -585,11 +587,15 @@ export async function bootAttendanceRecordsPage() {
             });
           }
         }
+      } else {
+        throw new Error('Host element #attendanceRecordsHost not found');
       }
+    } else {
+      throw new Error('mountAttendance export not found in module');
     }
   } catch (err) {
     console.error('Failed to load attendance records:', err);
-    showErr('データの読み込みに失敗しました。');
+    showErr('データの読み込みに失敗しました。: ' + (err.message || 'Unknown error'));
   }
 
   hideSpinner();
