@@ -1494,7 +1494,7 @@ async function mountAttendanceImpl({
   }
 
   return () => {
-    try { content.innerHTML = ''; } catch { }
+    try { content.innerHTML = ''; } catch (e) { /* ignore */ }
     cleanup.run();
   };
 };
