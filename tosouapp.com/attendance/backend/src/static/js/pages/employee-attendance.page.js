@@ -1136,7 +1136,6 @@ async function mountAttendanceImpl({
             
           // Add mobile-only layout to standard row via classes
           if (window.innerWidth <= 768) {
-            let headerBgColor = '#f8fafc'; // Default gray
             let headerBgColor = '#f1f5f9'; // Default background color
             let headerTextColor = '#0f172a'; // Default text color
 
@@ -1498,6 +1497,6 @@ async function mountAttendanceImpl({
     try { content.innerHTML = ''; } catch { }
     cleanup.run();
   };
-}
+};
 
 export const attendancePage = createPage({ mount: mountAttendanceImpl });
