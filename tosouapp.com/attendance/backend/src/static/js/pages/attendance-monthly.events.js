@@ -979,11 +979,11 @@
           if (field !== 'ckRemote' && ckRe) ckRe.checked = false;
           if (field !== 'ckSatellite' && ckSa) ckSa.checked = false;
         }
-          if (ev.target.dataset.field === 'classification') {
-            const val = ev.target.value;
-            ev.target.classList.toggle('is-holiday', val === '休日' || val === '代替休日');
-            ev.target.classList.toggle('is-absence', val === '欠勤');
-            ev.target.classList.toggle('is-planned', !val);
+          if (e.target.dataset.field === 'classification') {
+            const val = e.target.value;
+            e.target.classList.toggle('is-holiday', val === '休日' || val === '代替休日');
+            e.target.classList.toggle('is-absence', val === '欠勤');
+            e.target.classList.toggle('is-planned', !val);
           }
           recomputeRow(tr);
         try { draft?.schedule?.(controller.ctx, controller.ctx?.picker?.value || controller.ctx?.initialYM); } catch (e) { /* silently ignored */ }
