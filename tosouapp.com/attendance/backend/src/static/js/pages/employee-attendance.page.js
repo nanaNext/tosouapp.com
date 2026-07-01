@@ -52,7 +52,7 @@ async function mountAttendanceImpl({
   const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // JST
   const month = today.slice(0, 7);
 
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1' || window.location.pathname.includes('/ui/attendance-records');
   
   if (isStandalone) {
     try {
