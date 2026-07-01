@@ -1137,8 +1137,10 @@ async function mountAttendanceImpl({
           // Add mobile-only layout to standard row via classes
           if (window.innerWidth <= 768) {
             let headerBgColor = '#f8fafc'; // Default gray
+            let headerBgColor = '#f1f5f9'; // Default background color
             let headerTextColor = '#0f172a'; // Default text color
 
+            // Add dynamic header color support for Mobile
             if (st === 'working' || st === 'holiday_working') {
               headerBgColor = '#e0f2fe'; // Light blue for currently working
               headerTextColor = '#1e40af';
@@ -1150,12 +1152,12 @@ async function mountAttendanceImpl({
               headerTextColor = '#9a3412';
             }
 
-            tr.innerHTML = `
-              <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
-                <div class="m-code-label" style="display: none !important;">社員番号</div>
-                <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important;">[${esc(code)}] ${esc(name)}</div>
-              </td>
-              <td class="m-main-cell mobile-only" style="display: flex; flex-direction: column; width: 100%; box-sizing: border-box;">
+            if (isMobile) {
+                tr.innerHTML = `
+                  <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
+                    <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important; font-weight: 600;">[${esc(code)}] ${esc(name)}</div>
+                  </td>
+                  <td class="m-main-cell mobile-only" style="display: flex; flex-direction: column; width: 100%; box-sizing: border-box;">
                 <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
                 <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">勤務区分</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : esc(wtLabel)}</div></div>
                 <div class="m-line" style="display: flex; width: 100%; margin-top: 4px; align-items: center;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">状態</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;"><span class="${stClass}">${esc(stLabel)}</span></div></div>
@@ -1165,6 +1167,7 @@ async function mountAttendanceImpl({
                 <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
               </td>
             `;
+            // Re-apply layout class if accidentally lost during mobile transition
             table.classList.add('attrec-emp-like-table');
           } else {
             // Desktop standard layout

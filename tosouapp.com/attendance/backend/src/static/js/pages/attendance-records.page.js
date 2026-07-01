@@ -315,7 +315,11 @@ const renderAttendance = async () => {
     for (const s of segments) {
       if (!last || String(s?.checkIn || '') > String(last?.checkIn || '')) last = s;
     }
-    const st = last?.checkIn ? (last?.checkOut ? '退勤済' : '出勤中') : '未出勤';
+    // Auto-update "st" logic directly to reflect any SQL changes immediately
+    const inHmRaw = last?.checkIn ? String(last.checkIn).replace('T', ' ').slice(11, 16) : '';
+    const outHmRaw = last?.checkOut ? String(last.checkOut).replace('T', ' ').slice(11, 16) : '';
+    const finalSt = inHmRaw ? (outHmRaw ? '退勤済' : '出勤中') : '未出勤';
+    // Note: HTML status UI has been moved or refactored out.
     const canIn = !last?.checkIn;
     const canOut = !!last?.checkIn && !last?.checkOut;
     const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場/出張' : '出社';
