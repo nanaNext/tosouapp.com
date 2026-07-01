@@ -703,8 +703,24 @@ document.addEventListener('DOMContentLoaded', async () => {
               const mod = await import('/static/js/pages/attendance-records.page.js?v=' + Date.now());
               if (mod && typeof mod.bootAttendanceRecordsPage === 'function') {
                 await mod.bootAttendanceRecordsPage();
+              } else {
+                throw new Error('Module boot function not found');
               }
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { 
+              console.error('Failed to boot attendance records page:', e);
+              let errEl = document.getElementById('error');
+              if (!errEl) {
+                errEl = document.createElement('div');
+                errEl.id = 'error';
+                errEl.style.color = '#b00020';
+                errEl.style.fontWeight = '600';
+                errEl.style.textAlign = 'center';
+                errEl.style.padding = '20px';
+                document.querySelector('main.content').prepend(errEl);
+              }
+              errEl.style.display = 'block';
+              errEl.textContent = 'ページの読み込みに失敗しました: ' + e.message;
+            }
           }
           if (url.pathname === SHIFTS_PATH) {
             try {
