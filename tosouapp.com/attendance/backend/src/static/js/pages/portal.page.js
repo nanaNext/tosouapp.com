@@ -720,10 +720,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 errEl.style.fontWeight = '600';
                 errEl.style.textAlign = 'center';
                 errEl.style.padding = '20px';
-                document.querySelector('main.content').prepend(errEl);
+                const mainContent = document.querySelector('main.content');
+                if (mainContent) {
+                  mainContent.prepend(errEl);
+                } else {
+                  document.body.prepend(errEl);
+                }
               }
               errEl.style.display = 'block';
               errEl.textContent = 'ページの読み込みに失敗しました: ' + e.message;
+              try {
+                const spinner = document.querySelector('#pageSpinner');
+                if (spinner) {
+                  spinner.classList.remove('is-success');
+                  spinner.setAttribute('hidden', '');
+                }
+              } catch (e) { /* silently ignored */ }
             }
           }
           if (url.pathname === SHIFTS_PATH) {
@@ -828,7 +840,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (drawer) drawer.setAttribute('hidden', '');
             if (btn) btn.setAttribute('aria-expanded', 'false');
             if (backdrop) backdrop.setAttribute('hidden', '');
-            document.body.classList.remove('drawer-open');
+            document.body.classList.remove('drawer-open', 'mobile-drawer-open');
             document.documentElement.style.overflow = '';
             document.body.style.position = '';
             document.body.style.top = '';
@@ -856,7 +868,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (drawer) drawer.setAttribute('hidden', '');
           if (btn) btn.setAttribute('aria-expanded', 'false');
           if (backdrop) backdrop.setAttribute('hidden', '');
-          document.body.classList.remove('drawer-open');
+          document.body.classList.remove('drawer-open', 'mobile-drawer-open');
           document.documentElement.style.overflow = '';
           document.body.style.position = '';
           document.body.style.top = '';
@@ -1209,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           mobileDrawer.setAttribute('hidden', '');
           mobileBtn.setAttribute('aria-expanded', 'false');
-          document.body.classList.remove('drawer-open');
+          document.body.classList.remove('drawer-open', 'mobile-drawer-open');
           unlockViewport();
           if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
         } catch (e) { /* silently ignored */ }
@@ -1230,7 +1242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         mobileDrawer.setAttribute('hidden', '');
         mobileBtn.setAttribute('aria-expanded', 'false');
-        document.body.classList.remove('drawer-open');
+        document.body.classList.remove('drawer-open', 'mobile-drawer-open');
         unlockViewport();
         if (mobileBackdrop) { mobileBackdrop.setAttribute('hidden', ''); }
       }

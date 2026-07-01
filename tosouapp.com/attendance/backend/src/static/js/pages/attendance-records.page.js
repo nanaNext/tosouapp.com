@@ -505,6 +505,7 @@ const renderAttendance = async () => {
 };
 
 export async function bootAttendanceRecordsPage() {
+  try { document.body.classList.remove('drawer-open', 'mobile-drawer-open'); } catch(e) {}
   prefillUserName();
   try {
     const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
