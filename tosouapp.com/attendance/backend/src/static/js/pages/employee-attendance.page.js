@@ -45,7 +45,7 @@ async function mountAttendanceImpl({
       const [y, m, d] = s.split('-').map((n) => parseInt(n, 10));
       const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
       return wd === 0 || wd === 6;
-    } catch {
+    } catch (e) {
       return false;
     }
   };
