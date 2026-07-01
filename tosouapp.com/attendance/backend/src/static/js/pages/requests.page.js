@@ -50,7 +50,7 @@ async function submitPaidLeaveByPrompt(reasonPrefill = '') {
 }
 
 function loadPin() {
-  try { return localStorage.getItem(pinKey) === '1'; } catch { return false; }
+  try { return localStorage.getItem(pinKey) === '1'; } catch (e) { return false; }
 }
 function savePin(v) {
   try { localStorage.setItem(pinKey, v ? '1' : '0'); } catch (e) { /* silently ignored */ }
@@ -312,7 +312,7 @@ function bindUI() {
       const arr = JSON.parse(raw);
       if (!Array.isArray(arr)) return [];
       return arr.map(v => String(v || '').trim()).filter(Boolean).slice(0, 8);
-    } catch {
+    } catch (e) {
       return [];
     }
   };
@@ -376,7 +376,7 @@ function bindUI() {
   };
   recentItems = loadRecent();
   const saveSel = (v) => { try { localStorage.setItem(keySel, v); } catch (e) { /* silently ignored */ } };
-  const loadSel = () => { try { return localStorage.getItem(keySel) || ''; } catch { return '' } };
+  const loadSel = () => { try { return localStorage.getItem(keySel) || ''; } catch (e) { return '' } };
   const renderList = (filter = '') => {
     const q = String(filter || '').toLowerCase();
     const sel = loadSel();

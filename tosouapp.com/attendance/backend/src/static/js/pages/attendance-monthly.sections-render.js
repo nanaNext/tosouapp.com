@@ -618,7 +618,7 @@
         const sec = document.querySelector('#summarySection');
         const tab = sec?.querySelector?.('.se-tab.active[data-tab]');
         return String(tab?.dataset?.tab || tab?.getAttribute?.('data-tab') || '') || 'sumAll';
-      } catch {
+      } catch (e) {
         return 'sumAll';
       }
     })();

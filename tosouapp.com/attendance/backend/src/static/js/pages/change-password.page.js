@@ -2,7 +2,7 @@ const getCookie = (name) => {
   try {
     const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
     return m ? decodeURIComponent(m[2]) : null;
-  } catch { return null; }
+  } catch (e) { return null; }
 };
 
 document.addEventListener('DOMContentLoaded', () => {

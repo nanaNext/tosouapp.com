@@ -150,7 +150,7 @@ const loadDraft = (date) => {
   try {
     const s = localStorage.getItem(reportDraftKey(date)) || '';
     return s ? JSON.parse(s) : null;
-  } catch {
+  } catch (e) {
     return null;
   }
 };
@@ -276,7 +276,7 @@ const restoreFastSnapshot = (date, stateRef) => {
     applyWorkTypeGate();
     renderSimpleStatus();
     return true;
-  } catch {
+  } catch (e) {
     return false;
   }
 };
@@ -334,7 +334,7 @@ const fmtYmd = (dateTimeStr) => {
     const m = String(dt.getUTCMonth() + 1).padStart(2,'0');
     const d2 = String(dt.getUTCDate()).padStart(2,'0');
     return `${y}/${m}/${d2}`;
-  } catch { return '—'; }
+  } catch (e) { return '—'; }
 };
 const renderNotices = async (date) => {
   try {
@@ -375,7 +375,7 @@ const renderNotices = async (date) => {
         fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
       }
     } catch (e) { /* silently ignored */ }
-  } catch {
+  } catch (e) {
     try {
       const box = $('#noticeBox');
       if (box) box.innerHTML = `<div class="simple-notice-empty">個人カレンダー登録画面 へご確認ください。</div>`;
@@ -447,7 +447,7 @@ const isPlannedPlaceholderSegment = (seg, shiftStart, shiftEnd) => {
     const matchesPlan = !!(ss && inHm === ss && (!outHm || !se || outHm === se));
     // Ignore auto/planned row: shift-like time and no explicit workType/labels.
     return !!(matchesPlan && !wt && !labels);
-  } catch {
+  } catch (e) {
     return false;
   }
 };
@@ -469,7 +469,7 @@ const isTodayShiftGhostSegment = (seg, shiftStart, shiftEnd, date) => {
     // On today screen, a pure shift-shaped row is treated as ghost/planned
     // so employee can stamp actual click-time.
     return !outHm || !se || outHm === se;
-  } catch {
+  } catch (e) {
     return false;
   }
 };
@@ -494,7 +494,7 @@ const shouldKeepDateOnBoot = () => {
   try {
     const p = new URLSearchParams(window.location.search);
     return String(p.get('keepDate') || '') === '1';
-  } catch {
+  } catch (e) {
     return false;
   }
 };
@@ -831,7 +831,7 @@ const loadSavedWorkType = (date) => {
   try {
     const v = localStorage.getItem(workTypeKey(date)) || '';
     return v ? String(v) : null;
-  } catch {
+  } catch (e) {
     return null;
   }
 };
@@ -935,7 +935,7 @@ const getCalendarOff = async (date) => {
       const dt = new Date(Date.UTC(y, m - 1, d));
       const dow = dt.getUTCDay();
       return dow === 0 || dow === 6;
-    } catch { return false; }
+    } catch (e) { return false; }
   })();
   return weekend;
 };
@@ -1008,7 +1008,7 @@ const loadMonthStatus = async (date) => {
     const r = await fetchJSONAuth(`/api/attendance/month/status?year=${encodeURIComponent(y)}&month=${encodeURIComponent(parseInt(m, 10))}&_t=${Date.now()}`);
     const st = String(r?.status || '').trim();
     return st || 'draft';
-  } catch {
+  } catch (e) {
     return 'draft';
   }
 };
@@ -1151,7 +1151,7 @@ const load = async (date, opts = {}) => {
         if (!s?.id || !s?.checkIn || s?.checkOut) return false;
         const inHm = String(s.checkIn).slice(11, 16);
         return !!(shiftStart && inHm === shiftStart);
-      } catch {
+      } catch (e) {
         return false;
       }
     }) || null;
@@ -1484,7 +1484,7 @@ const tryReplaceShiftLikeSegmentWithNow = async (date) => {
         if (!inHm || !shiftStart || inHm !== shiftStart) return false;
         // Planned/fallback row shape: same start as shift and no end or shift end.
         return !outHm || !shiftEnd || outHm === shiftEnd;
-      } catch {
+      } catch (e) {
         return false;
       }
     };
@@ -1503,7 +1503,7 @@ const tryReplaceShiftLikeSegmentWithNow = async (date) => {
       body: JSON.stringify({ attendanceId: target.id, checkIn: cinNow, checkOut: null })
     });
     return true;
-  } catch {
+  } catch (e) {
     return false;
   }
 };

@@ -143,7 +143,7 @@ const fmtDT = (v) => {
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
     return `${y}-${m}-${day} ${hh}:${mm}`;
-  } catch { return String(v).replace('T', ' ').slice(0, 16); }
+  } catch (e) { return String(v).replace('T', ' ').slice(0, 16); }
 };
 const fmtDateOnly = (v) => {
   const s = String(v || '');
@@ -272,7 +272,7 @@ const toMs = (v) => {
   try {
     const t = new Date(v).getTime();
     return Number.isFinite(t) ? t : 0;
-  } catch { return 0; }
+  } catch (e) { return 0; }
 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms || 0))));
 const isTooManyReqErr = (e) => {
@@ -1697,11 +1697,11 @@ const renderList = async () => {
             if (Array.isArray(rows) && rows.length === 1) {
               const f = rows[0];
               const url = String(f.path || f.url || f.file_path || '').startsWith('/') ? String(f.path || f.url || f.file_path) : '/' + String(f.path || f.url || f.file_path || '');
-              try { window.open(url, '_blank'); } catch { window.location.href = url; }
+              try { window.open(url, '_blank'); } catch (e) { window.location.href = url; }
             }
             if ((!rows || rows.length === 0) && btn.hasAttribute('data-url')) {
               const url = btn.getAttribute('data-url') || '';
-              if (url) { try { window.open(url.startsWith('/') ? url : '/' + url, '_blank'); } catch { window.location.href = (url.startsWith('/') ? url : '/' + url); } }
+              if (url) { try { window.open(url.startsWith('/') ? url : '/' + url, '_blank'); } catch (e) { window.location.href = (url.startsWith('/') ? url : '/' + url); } }
             }
             const filesHtml = Array.isArray(rows) && rows.length
               ? rows.map((f, idx) => {
@@ -1824,7 +1824,7 @@ const renderList = async () => {
                       </div>`;
                   }).join('')
                   : '<div style="color:#64748b;">メッセージはありません</div>';
-              } catch {
+              } catch (e) {
                 box.innerHTML = '<div style="color:#b00020;">読み込みに失敗しました</div>';
               }
             };
@@ -2768,7 +2768,7 @@ function setupAutocomplete(inputId) {
       try {
         const rows = await fetchJSONAuth('/api/stations?search=' + encodeURIComponent(q));
         render(Array.isArray(rows) ? rows : []);
-      } catch {
+      } catch (e) {
         list.style.display = 'none';
       }
     }, 200);

@@ -314,7 +314,7 @@
       try {
         if (window.history.length > 1) window.history.back();
         else window.location.href = '/ui/attendance';
-      } catch {
+      } catch (e) {
         window.location.href = '/ui/attendance';
       }
     });
@@ -524,7 +524,7 @@
       const v = String(sel?.value || '').trim();
       const dateStr = String(row.dataset.date || '').slice(0, 10);
       const dow = (() => {
-        try { return core?.dowJa?.(dateStr) || ''; } catch { return ''; }
+        try { return core?.dowJa?.(dateStr) || ''; } catch (e) { return ''; }
       })();
       const offDay = String(row.dataset.baseOff || '') === '1';
       const plannedKubun = offDay ? '休日' : '出勤';

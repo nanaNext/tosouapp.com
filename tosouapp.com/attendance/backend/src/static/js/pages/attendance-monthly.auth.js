@@ -134,7 +134,7 @@
       }
       throw new Error(msg);
     }
-    try { return await res.json(); } catch { return null; }
+    try { return await res.json(); } catch (e) { return null; }
   }
 
   async function downloadWithAuth(url, filename) {

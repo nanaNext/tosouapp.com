@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const profile = await ensureAuthProfile();
   if (!profile) {
-    try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+    try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
     return;
   }
 
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
     } catch (e) { /* silently ignored */ }
-    try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+    try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
   };
 
   try {
@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const date = summary?.date || '';
         const r = await fetchJSONAuth(`/api/work-reports/my?date=${encodeURIComponent(date)}`);
         if (!r?.report) {
-          try { window.location.replace(`/ui/work-report?date=${encodeURIComponent(date)}`); } catch { window.location.href = `/ui/work-report?date=${encodeURIComponent(date)}`; }
+          try { window.location.replace(`/ui/work-report?date=${encodeURIComponent(date)}`); } catch (e) { window.location.href = `/ui/work-report?date=${encodeURIComponent(date)}`; }
           return;
         }
       }

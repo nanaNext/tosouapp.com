@@ -59,7 +59,7 @@ const notifyState = {
       const raw = localStorage.getItem('emp_notify_hidden_v1') || '[]';
       const arr = JSON.parse(raw);
       return new Set((Array.isArray(arr) ? arr : []).map((x) => parseInt(String(x || 0), 10) || 0).filter((x) => !!x));
-    } catch { return new Set(); }
+    } catch (e) { return new Set(); }
   })(),
   refreshTimer: null
 };
@@ -145,7 +145,7 @@ const mountEmployeeNoticeBell = () => {
       try {
         if (!(target instanceof Node)) return false;
         return wrap.contains(target);
-      } catch {
+      } catch (e) {
         return false;
       }
     };
@@ -165,7 +165,7 @@ const mountEmployeeNoticeBell = () => {
     document.addEventListener('visibilitychange', () => { if (document.hidden) closePanel(); });
     notifyState.mounted = true;
     return true;
-  } catch {
+  } catch (e) {
     return false;
   }
 };
@@ -508,7 +508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           to = new URL(href, window.location.href);
           cur = new URL(window.location.href);
-        } catch {
+        } catch (e) {
           return;
         }
         if (!to || !cur) return;
@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (role === 'admin' || role === 'manager') {
     const p0 = String(window.location.pathname || '');
     if (p0 === '/ui/portal' || p0 === '/ui/dashboard') {
-      try { window.location.replace('/admin/dashboard'); } catch { window.location.href = '/admin/dashboard'; }
+      try { window.location.replace('/admin/dashboard'); } catch (e) { window.location.href = '/admin/dashboard'; }
       return;
     }
   }
@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (push) history.pushState({ pjax: true }, '', url.pathname + url.search + url.hash);
         setNavCurrent(url.pathname);
         applyContentSpacing(url.pathname);
-        try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
+        try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0, 0); }
         if (url.pathname === REQ_PATH) {
           try {
             const mod = await import('/static/js/pages/requests.page.js');
@@ -747,7 +747,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           } catch (e) { /* silently ignored */ }
         }
         return true;
-      } catch {
+      } catch (e) {
         return false;
       }
     };
@@ -773,7 +773,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (!SOFT_PATHS.has(to.pathname)) return false;
           const ok = await softNavigateSafe(to, !!push);
           return !!ok;
-        } catch {
+        } catch (e) {
           return false;
         }
       };
@@ -786,7 +786,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const href = String(a.getAttribute('href') || '').trim();
         if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
         let to = null;
-        try { to = new URL(href, window.location.href); } catch { return; }
+        try { to = new URL(href, window.location.href); } catch (e) { return; }
         if (!to || to.origin !== window.location.origin) return;
         if (!SOFT_PATHS.has(to.pathname)) return;
         if (window.location.pathname === to.pathname && window.location.search === to.search) {
@@ -1147,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mobileBtn.dataset.bound === '1') return;
     mobileBtn.dataset.bound = '1';
     const isMobileViewport = () => {
-      try { return (window.innerWidth || 0) <= 480; } catch { return false; }
+      try { return (window.innerWidth || 0) <= 480; } catch (e) { return false; }
     };
     let drawerScrollY = 0;
     const lockViewport = () => {
@@ -1229,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       toggleDrawer(false);
       let to = null;
-      try { to = new URL(href, window.location.href); } catch { to = null; }
+      try { to = new URL(href, window.location.href); } catch (e) { to = null; }
       if (!to) return;
       if (to.pathname === window.location.pathname && to.search === window.location.search) return;
       const goSoft = window.__employeeSoftNavigate;

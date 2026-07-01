@@ -392,7 +392,7 @@
       const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(x => parseInt(x, 10));
       const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
       return ['日','月','火','水','木','金','土'][dt.getUTCDay()];
-    } catch {
+    } catch (e) {
       return '';
     }
   };
@@ -415,7 +415,7 @@
       const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
       const dd = String(dt.getUTCDate()).padStart(2, '0');
       return `${yy}-${mm}-${dd}`;
-    } catch {
+    } catch (e) {
       return String(dateStr).slice(0, 10);
     }
   };

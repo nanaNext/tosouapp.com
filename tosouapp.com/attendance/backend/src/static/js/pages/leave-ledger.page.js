@@ -81,7 +81,7 @@ async function renderEmpInfo() {
     const empName = qs('#empName');
     if (empCode) empCode.textContent = `${u.employeeCode || u.id}`;
     if (empName) empName.textContent = `${u.username || u.email || ''}`;
-  } catch {
+  } catch (e) {
     const empCode = qs('#empCode');
     const empName = qs('#empName');
     if (empCode) empCode.textContent = '';

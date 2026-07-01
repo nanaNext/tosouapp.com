@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const profile = await ensureAuthProfile();
   if (!profile) {
-    try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+    try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
     return;
   }
 
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
     } catch (e) { /* silently ignored */ }
-    try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
+    try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
   };
 
   try {

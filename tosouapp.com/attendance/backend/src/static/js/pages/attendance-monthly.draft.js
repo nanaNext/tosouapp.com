@@ -11,7 +11,7 @@
   const MAX_BYTES = 3500000;
 
   const safeJSONParse = (s) => {
-    try { return JSON.parse(String(s || '')); } catch { return null; }
+    try { return JSON.parse(String(s || '')); } catch (e) { return null; }
   };
 
   const safeJSONSet = (key, value) => {
@@ -20,7 +20,7 @@
       if (str.length > MAX_BYTES) return false;
       localStorage.setItem(key, str);
       return true;
-    } catch {
+    } catch (e) {
       return false;
     }
   };
@@ -136,7 +136,7 @@
       try { localStorage.removeItem(key); } catch (e) { /* silently ignored */ }
       return { ok: false, restored: 0 };
     }
-    const raw = (() => { try { return localStorage.getItem(key); } catch { return null; } })();
+    const raw = (() => { try { return localStorage.getItem(key); } catch (e) { return null; } })();
     const data = safeJSONParse(raw);
     if (Number(data?.version || 0) !== 2) return { ok: false, restored: 0 };
     const items = Array.isArray(data?.items) ? data.items : [];
@@ -147,7 +147,7 @@
       if (applyOne(ctx, it)) restored++;
     }
     if (restored) {
-      try { setDirty(); } catch { state.dirty = true; }
+      try { setDirty(); } catch (e) { state.dirty = true; }
     }
     return { ok: restored > 0, restored };
   };

@@ -1362,7 +1362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const name = profile.username || profile.email || 'ユーザー';
     const el = $('#userName');
     if (el) el.textContent = name;
-  } catch {
+  } catch (e) {
     window.location.replace('/ui/login');
     return;
   }

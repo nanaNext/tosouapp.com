@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el) return;
     const go = (e) => {
       try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* silently ignored */ }
-      try { window.location.assign(href); } catch { window.location.href = href; }
+      try { window.location.assign(href); } catch (e) { window.location.href = href; }
     };
     el.addEventListener('click', go, true);
     el.addEventListener('pointerdown', go, true);
