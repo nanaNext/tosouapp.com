@@ -700,6 +700,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           if (url.pathname === ATT_RECORDS_PATH) {
             try {
+              // Xóa fallback styles/scripts trước đó để tránh conflict module
+              const oldSt = document.getElementById('empNotifyStyle');
+              if (oldSt) oldSt.remove();
+              
               const mod = await import('/static/js/pages/attendance-records.page.js?v=' + Date.now());
               if (mod && typeof mod.bootAttendanceRecordsPage === 'function') {
                 await mod.bootAttendanceRecordsPage();
