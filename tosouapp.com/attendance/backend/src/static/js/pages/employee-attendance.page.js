@@ -1153,36 +1153,36 @@ async function mountAttendanceImpl({
             }
 
             if (isMobile) {
-                tr.innerHTML = `
-                  <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
-                    <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important; font-weight: 600;">[${esc(code)}] ${esc(name)}</div>
-                  </td>
-                  <td class="m-main-cell mobile-only" style="display: flex; flex-direction: column; width: 100%; box-sizing: border-box;">
-                <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">勤務区分</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : esc(wtLabel)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px; align-items: center;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">状態</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;"><span class="${stClass}">${esc(stLabel)}</span></div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">出勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${cinView === '—' ? '<span class="empty-dash">—</span>' : esc(cinView)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">退勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${coutView === '—' ? '<span class="empty-dash">—</span>' : esc(coutView)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">現場</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${siteView === '—' ? '<span class="empty-dash">—</span>' : esc(siteView)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
-              </td>
-            `;
-            // Re-apply layout class if accidentally lost during mobile transition
-            table.classList.add('attrec-emp-like-table');
-          } else {
-            // Desktop standard layout
-            tr.innerHTML = `
-                <td data-label="社員番号" style="text-align:left;"><span>${esc(code)}</span></td>
-                <td data-label="氏名" style="font-weight: 600; color: #0f172a;"><span>${esc(name)}</span></td>
-              <td data-label="部署">${dept === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(dept)}</span>`}</td>
-              <td data-label="勤務区分">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(wtLabel)}</span>`}</td>
-              <td data-label="状態" style="text-align:left;"><span class="${stClass}">${esc(stLabel)}</span></td>
-              ${cinView === '—' ? emptyDash('出勤') : `<td data-label="出勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(cinView)}</span></td>`}
-              ${coutView === '—' ? emptyDash('退勤') : `<td data-label="退勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(coutView)}</span></td>`}
-              ${siteView === '—' ? emptyDash('現場') : `<td data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
-              ${workView === '—' ? emptyDash('作業内容') : `<td data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:none; overflow:visible;">${esc(workView)}</div></td>`}
-            `;
-          }
+              tr.innerHTML = `
+                <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
+                  <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important; font-weight: 600;">[${esc(code)}] ${esc(name)}</div>
+                </td>
+                <td class="m-main-cell mobile-only" style="display: flex; flex-direction: column; width: 100%; box-sizing: border-box;">
+                  <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
+                  <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">勤務区分</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : esc(wtLabel)}</div></div>
+                  <div class="m-line" style="display: flex; width: 100%; margin-top: 4px; align-items: center;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">状態</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;"><span class="${stClass}">${esc(stLabel)}</span></div></div>
+                  <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">出勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${cinView === '—' ? '<span class="empty-dash">—</span>' : esc(cinView)}</div></div>
+                  <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">退勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${coutView === '—' ? '<span class="empty-dash">—</span>' : esc(coutView)}</div></div>
+                  <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">現場</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${siteView === '—' ? '<span class="empty-dash">—</span>' : esc(siteView)}</div></div>
+                  <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
+                </td>
+              `;
+              // Re-apply layout class if accidentally lost during mobile transition
+              table.classList.add('attrec-emp-like-table');
+            } else {
+              // Desktop standard layout
+              tr.innerHTML = `
+                  <td data-label="社員番号" style="text-align:left;"><span>${esc(code)}</span></td>
+                  <td data-label="氏名" style="font-weight: 600; color: #0f172a;"><span>${esc(name)}</span></td>
+                <td data-label="部署">${dept === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(dept)}</span>`}</td>
+                <td data-label="勤務区分">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(wtLabel)}</span>`}</td>
+                <td data-label="状態" style="text-align:left;"><span class="${stClass}">${esc(stLabel)}</span></td>
+                ${cinView === '—' ? emptyDash('出勤') : `<td data-label="出勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(cinView)}</span></td>`}
+                ${coutView === '—' ? emptyDash('退勤') : `<td data-label="退勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(coutView)}</span></td>`}
+                ${siteView === '—' ? emptyDash('現場') : `<td data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
+                ${workView === '—' ? emptyDash('作業内容') : `<td data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:none; overflow:visible;">${esc(workView)}</div></td>`}
+              `;
+            }
           
           tbody.appendChild(tr);
         }
