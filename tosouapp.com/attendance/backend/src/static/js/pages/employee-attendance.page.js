@@ -4,6 +4,7 @@ import { createPage } from '../shared/page/createPage.js';
 import { createCleanup } from '../shared/page/createCleanup.js';
 
 export async function mountAttendance(options) {
+  try { document.body.classList.remove('drawer-open', 'mobile-drawer-open'); } catch(e) {}
   return await mountAttendanceImpl(options);
 }
 
@@ -52,7 +53,7 @@ async function mountAttendanceImpl({
   const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // JST
   const month = today.slice(0, 7);
 
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1' || window.location.pathname.includes('/ui/attendance-records');
+  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
   
   if (isStandalone) {
     try {
@@ -278,8 +279,19 @@ async function mountAttendanceImpl({
         color: #0f172a;
       }
       /* Responsive Hide/Show Classes */
-      .mobile-only {
-        display: none;
+      @media (min-width: 769px) {
+        table.beautiful-table.attrec-emp-like-table tbody tr td.mobile-only,
+        .attrec-emp-like-table td.mobile-only,
+        .mobile-only {
+          display: none !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: none !important;
+          width: 0 !important;
+          overflow: hidden !important;
+        }
       }
       .attrec-emp-like-table td.desktop-only {
         display: table-cell !important;
@@ -287,17 +299,27 @@ async function mountAttendanceImpl({
       
       /* Mobile responsive styles for legacy attendance page */
       @media (max-width: 768px) {
-        .attrec-emp-like-table td.mobile-only {
-          display: block;
-        }
-        .attrec-emp-like-table td.m-code-cell.mobile-only {
-          display: flex;
-        }
-        .attrec-emp-like-table td.m-main-cell.mobile-only {
-          display: flex;
-        }
+        table.beautiful-table.attrec-emp-like-table tbody tr td.desktop-only,
         .attrec-emp-like-table td.desktop-only {
           display: none !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: none !important;
+        }
+        table.beautiful-table.attrec-emp-like-table tbody tr td.mobile-only,
+        .attrec-emp-like-table td.mobile-only {
+          display: block !important;
+        }
+        table.beautiful-table.attrec-emp-like-table tbody tr td.m-code-cell.mobile-only,
+        .attrec-emp-like-table td.m-code-cell.mobile-only {
+          display: flex !important;
+          width: 100% !important;
+        }
+        table.beautiful-table.attrec-emp-like-table tbody tr td.m-main-cell.mobile-only,
+        .attrec-emp-like-table td.m-main-cell.mobile-only {
+          display: flex !important;
         }
 
         .attrec-fiori-override .dash-card-title {
@@ -1135,51 +1157,50 @@ async function mountAttendanceImpl({
           const emptyDash = (label) => `<td data-label="${label}"><span class="empty-dash">—</span></td>`;
             
           // Add mobile-only layout to standard row via classes
-          if (window.innerWidth <= 768) {
-            let headerBgColor = '#f8fafc'; // Default gray
-            let headerTextColor = '#0f172a'; // Default text color
+          let headerBgColor = '#f8fafc'; // Default gray
+          let headerTextColor = '#0f172a'; // Default text color
 
-            if (st === 'working' || st === 'holiday_working') {
-              headerBgColor = '#e0f2fe'; // Light blue for currently working
-              headerTextColor = '#1e40af';
-            } else if (st === 'checked_out') {
-              headerBgColor = '#dcfce7'; // Light green for checked out
-              headerTextColor = '#166534';
-            } else if (st === 'holiday_work') {
-              headerBgColor = '#fef3c7'; // Light yellow/orange for holiday work
-              headerTextColor = '#9a3412';
-            }
-
-            tr.innerHTML = `
-              <td class="m-code-cell mobile-only" style="width: 100% !important; display: block !important; box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
-                <div class="m-code-label" style="display: none !important;">社員番号</div>
-                <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important;">[${esc(code)}] ${esc(name)}</div>
-              </td>
-              <td class="m-main-cell mobile-only" style="display: flex; flex-direction: column; width: 100%; box-sizing: border-box;">
-                <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">勤務区分</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : esc(wtLabel)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px; align-items: center;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">状態</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;"><span class="${stClass}">${esc(stLabel)}</span></div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">出勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${cinView === '—' ? '<span class="empty-dash">—</span>' : esc(cinView)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">退勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${coutView === '—' ? '<span class="empty-dash">—</span>' : esc(coutView)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">現場</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${siteView === '—' ? '<span class="empty-dash">—</span>' : esc(siteView)}</div></div>
-                <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
-              </td>
-            `;
-            table.classList.add('attrec-emp-like-table');
-          } else {
-            // Desktop standard layout
-            tr.innerHTML = `
-                <td data-label="社員番号" style="text-align:left;"><span>${esc(code)}</span></td>
-                <td data-label="氏名" style="font-weight: 600; color: #0f172a;"><span>${esc(name)}</span></td>
-              <td data-label="部署">${dept === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(dept)}</span>`}</td>
-              <td data-label="勤務区分">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(wtLabel)}</span>`}</td>
-              <td data-label="状態" style="text-align:left;"><span class="${stClass}">${esc(stLabel)}</span></td>
-              ${cinView === '—' ? emptyDash('出勤') : `<td data-label="出勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(cinView)}</span></td>`}
-              ${coutView === '—' ? emptyDash('退勤') : `<td data-label="退勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(coutView)}</span></td>`}
-              ${siteView === '—' ? emptyDash('現場') : `<td data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
-              ${workView === '—' ? emptyDash('作業内容') : `<td data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:none; overflow:visible;">${esc(workView)}</div></td>`}
-            `;
+          if (st === 'working' || st === 'holiday_working') {
+            headerBgColor = '#e0f2fe'; // Light blue for currently working
+            headerTextColor = '#1e40af';
+          } else if (st === 'checked_out') {
+            headerBgColor = '#dcfce7'; // Light green for checked out
+            headerTextColor = '#166534';
+          } else if (st === 'holiday_work') {
+            headerBgColor = '#fef3c7'; // Light yellow/orange for holiday work
+            headerTextColor = '#9a3412';
           }
+
+          const mobileHtml = `
+            <td class="m-code-cell mobile-only" style="box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
+              <div class="m-code-label" style="display: none !important;">社員番号</div>
+              <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important;">[${esc(code)}] ${esc(name)}</div>
+            </td>
+            <td class="m-main-cell mobile-only" style="flex-direction: column; width: 100%; box-sizing: border-box;">
+              <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">勤務区分</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : esc(wtLabel)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px; align-items: center;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">状態</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;"><span class="${stClass}">${esc(stLabel)}</span></div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">出勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${cinView === '—' ? '<span class="empty-dash">—</span>' : esc(cinView)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">退勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${coutView === '—' ? '<span class="empty-dash">—</span>' : esc(coutView)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">現場</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${siteView === '—' ? '<span class="empty-dash">—</span>' : esc(siteView)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
+            </td>
+          `;
+          
+          const desktopHtml = `
+              <td class="desktop-only" data-label="社員番号" style="text-align:left;"><span>${esc(code)}</span></td>
+              <td class="desktop-only" data-label="氏名" style="font-weight: 600; color: #0f172a;"><span>${esc(name)}</span></td>
+            <td class="desktop-only" data-label="部署">${dept === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(dept)}</span>`}</td>
+            <td class="desktop-only" data-label="勤務区分">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(wtLabel)}</span>`}</td>
+            <td class="desktop-only" data-label="状態" style="text-align:left;"><span class="${stClass}">${esc(stLabel)}</span></td>
+            ${cinView === '—' ? emptyDash('出勤').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="出勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(cinView)}</span></td>`}
+            ${coutView === '—' ? emptyDash('退勤').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="退勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(coutView)}</span></td>`}
+            ${siteView === '—' ? emptyDash('現場').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
+            ${workView === '—' ? emptyDash('作業内容').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:none; overflow:visible;">${esc(workView)}</div></td>`}
+          `;
+
+          tr.innerHTML = mobileHtml + desktopHtml;
+          table.classList.add('attrec-emp-like-table');
           
           tbody.appendChild(tr);
         }
