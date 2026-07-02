@@ -163,17 +163,25 @@
         }
       }
       const workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
+      
+      const locEl = tr.querySelector('input[data-field="location"]');
+      const memoEl = tr.querySelector('[data-field="memo"]');
+      const notesEl = tr.querySelector('input[data-field="notes"]');
+      const location = locEl && locEl.value != null ? locEl.value : '';
+      const memo = memoEl && memoEl.value != null ? memoEl.value : '';
+      const notes = notesEl && notesEl.value != null ? notesEl.value : '';
+
       if (idRaw) {
-        if (clearFlag || (!checkIn && !checkOut)) {
+        if (clearFlag || (!checkIn && !checkOut && !location && !memo && !notes)) {
           // Không xóa bản ghi nếu đang là ngày nghỉ
           if (!isHoliday) {
             updates.push({ id: parseInt(idRaw, 10), delete: true });
           }
-        } else if (checkIn) {
-          updates.push({ id: parseInt(idRaw, 10), checkIn, checkOut, workType });
+        } else if (checkIn || location || memo || notes) {
+          updates.push({ id: parseInt(idRaw, 10), checkIn: checkIn || null, checkOut: checkOut || null, workType, location, memo, notes });
         }
-      } else if (checkIn) {
-        updates.push({ clientId, checkIn, checkOut, workType });
+      } else if (checkIn || location || memo || notes) {
+        updates.push({ clientId, checkIn: checkIn || null, checkOut: checkOut || null, workType, location, memo, notes });
       } else if (includeAll && clearFlag) {
         updates.push({ clientId, delete: true });
       }

@@ -46,12 +46,13 @@ const showErr = (msg) => {
   err.textContent = msg || '';
 };
 
-const fmtTime = (dt) => {
-  if (!dt) return '—';
-  const s = String(dt);
-  if (s.length >= 16) return s.slice(11, 16);
-  return s;
-};
+const fmtTime = (t) => {
+    if (!t) return '';
+    const s = String(t).trim();
+    if (!s) return '';
+    if (s.length >= 16) return s.slice(11, 16);
+    return s;
+  };
 
 const statusLabel = (k) => {
   if (k === 'working') return '出勤中';
@@ -73,32 +74,64 @@ const render = (profile, summary, roster) => {
   const rosterItems = Array.isArray(roster?.items) ? roster.items : [];
   const plannedItems = Array.isArray(roster?.planned) ? roster.planned : [];
   const plannedMap = new Map(plannedItems.map(p => [String(p.userId), p]));
-  const combinedIds = new Set([...plannedMap.keys(), ...rosterItems.map(it => String(it.userId))]);
-  const combinedRows = [...combinedIds].map(id => {
-    const it = rosterItems.find(r => String(r.userId) === id) || null;
-    const plan = plannedMap.get(id) || null;
-    const code = (it?.employeeCode || plan?.employeeCode) || `EMP${String(id).padStart(3, '0')}`;
+  
+  // Create a list of all rows.
+  // First, all attendance records
+  const allRows = rosterItems.map(it => {
+    const id = String(it.userId);
+    return { id, it, plan: plannedMap.get(id) || null };
+  });
+
+  // Then add planned users who have NO attendance records
+  const rosterIds = new Set(rosterItems.map(it => String(it.userId)));
+  for (const p of plannedItems) {
+    const id = String(p.userId);
+    if (!rosterIds.has(id)) {
+      allRows.push({ id, it: null, plan: p });
+    }
+  }
+
+  const combinedRows = allRows.map(({ id, it, plan }, idx, arr) => {
+    const code = (it?.employeeCode || plan?.employeeCode) || `EMP${id.padStart(3, '0')}`;
     const name = (it?.username || plan?.username) || '';
     const dept = (it?.departmentName || plan?.departmentName) || '—';
     const shiftName = plan?.planned?.shift?.name || '—';
     const pStart = plan?.planned?.shift?.start_time || '—';
     const pEnd = plan?.planned?.shift?.end_time || '—';
-    const cin = fmtTime(it?.attendance?.checkIn);
-    const cout = fmtTime(it?.attendance?.checkOut);
+    const cin = fmtTime(it?.attendance?.checkIn) || '—';
+    const cout = fmtTime(it?.attendance?.checkOut) || '—';
+    const site = it?.attendance?.site || '—';
+    const work = it?.attendance?.work || '—';
     const isLeave = String(plan?.planned?.status || '') === 'leave';
     const st = isLeave ? 'leave' : (it?.status || 'not_checked_in');
     const stLabel = isLeave ? '休' : statusLabel(st);
+
+    // Row merging logic for multiple shifts on same day
+    const prev = idx > 0 ? arr[idx - 1] : null;
+    const isSameUser = prev && prev.id === id;
+
+    // If it's the same user, hide the borders of the repetitive info
+    const codeHtml = !isSameUser ? `<td rowspan="1">${code}</td>` : `<td style="border-top:none; color:transparent;">${code}</td>`;
+    const nameHtml = !isSameUser ? `<td rowspan="1">${name}</td>` : `<td style="border-top:none; color:transparent;">${name}</td>`;
+    const deptHtml = !isSameUser ? `<td rowspan="1">${dept}</td>` : `<td style="border-top:none; color:transparent;">${dept}</td>`;
+    const shiftHtml = !isSameUser ? `<td>${shiftName}</td>` : `<td style="border-top:none; color:transparent;">${shiftName}</td>`;
+    const pStartHtml = !isSameUser ? `<td class="text-center">${pStart}</td>` : `<td class="text-center" style="border-top:none; color:transparent;">${pStart}</td>`;
+    const pEndHtml = !isSameUser ? `<td class="text-center">${pEnd}</td>` : `<td class="text-center" style="border-top:none; color:transparent;">${pEnd}</td>`;
+    const statusHtml = !isSameUser ? `<td><span class="tw-pill ${st}">${stLabel}</span></td>` : `<td style="border-top:none;"></td>`;
+
     return `
       <tr>
-        <td>${code}</td>
-        <td>${name}</td>
-        <td>${dept}</td>
-        <td>${shiftName}</td>
-        <td class="text-center">${pStart}</td>
-        <td class="text-center">${pEnd}</td>
+        ${codeHtml}
+        ${nameHtml}
+        ${deptHtml}
+        ${shiftHtml}
+        ${pStartHtml}
+        ${pEndHtml}
         <td class="text-center">${cin}</td>
         <td class="text-center">${cout}</td>
-        <td><span class="tw-pill ${st}">${stLabel}</span></td>
+        <td>${site}</td>
+        <td>${work}</td>
+        ${statusHtml}
       </tr>
     `;
   }).join('');
@@ -110,7 +143,7 @@ const render = (profile, summary, roster) => {
         <div class="tw-table-wrap">
           <table class="tw-table">
             <thead>
-              <tr><th>社員番号</th><th>氏名</th><th>部署</th><th>シフト</th><th>予定開始</th><th>予定終了</th><th>出勤</th><th>退勤</th><th>状態</th></tr>
+              <tr><th>社員番号</th><th>氏名</th><th>部署</th><th>シフト</th><th>予定開始</th><th>予定終了</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th><th>状態</th></tr>
             </thead>
             <tbody>${combinedRows}</tbody>
           </table>

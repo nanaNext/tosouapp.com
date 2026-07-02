@@ -45,13 +45,13 @@
       <th>備考</th>
       <th>ステータス</th>
         <th>承認者</th>
-        <th style="width: 52px !important; min-width: 52px !important; max-width: 52px !important; text-align: center; box-sizing: border-box; padding-left: 0; padding-right: 0;">行クリア</th>
-        <th>履歴</th>
+      <th style="width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center; box-sizing: border-box; padding-left: 0; padding-right: 0;">行操作</th>
+      <th>履歴</th>
       </tr>
     </thead>
   `;
     const tbody = document.createElement('tbody');
-    const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow, shiftRequest) => {
+    const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow, shiftRequest, canAddMore) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
         // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
@@ -190,7 +190,7 @@
       if (!allowDailyAsActual) kubunInit = '';
       
       const isPlanned = !kubunInit && !hasActual && !kubunConfirmed;
-      const canEditWorkRow = !!state.editableMonth && (isWorkDay || hasActual) && !!kubunInit;
+      const canEditWorkRow = !!state.editableMonth && ((isWorkDay || hasActual) && !!kubunInit || !isEmployee);
       
       // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
       const isPlannedLikeWork = !hasActual && isWorkDay;
@@ -199,21 +199,25 @@
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay) HOẶC là ngày nghỉ nhưng có dữ liệu làm việc (hasActual). Ngày nghỉ không có lịch làm việc thì để trống.
-      const finalIn = (isWorkDay || hasActual) ? (inHm || shiftStart) : '';
-      const finalOut = (isWorkDay || hasActual) ? (outHm || shiftEnd) : '';
+      // ĐỐI VỚI CA PHỤ (!primary): Không tự động điền giờ dự kiến, để trống cho người dùng tự nhập.
+      const finalIn = (isWorkDay || hasActual) ? (inHm || (primary ? shiftStart : '')) : '';
+      const finalOut = (isWorkDay || hasActual) ? (outHm || (primary ? shiftEnd : '')) : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
       const isManualOut = !!outHm;
 
-      const autoIn = isWorkDay && !inHm && shiftStartOk;
-      const autoOut = isWorkDay && !outHm && shiftEndOk;
+      const autoIn = primary && isWorkDay && !inHm && shiftStartOk;
+      const autoOut = primary && isWorkDay && !outHm && shiftEndOk;
       
       // Field-level visual logic:
       const inAutoCls = autoIn ? 'is-auto' : '';
       const outAutoCls = autoOut ? 'is-auto' : '';
 
-      const canEditCheckTime = canEditWorkRow && !isEmployee;
+      // Cho phép sửa giờ checkIn/checkOut nếu:
+      // 1. Không phải employee (admin/manager) HOẶC
+      // 2. Là employee nhưng dòng này là dòng phụ (không phải primary) - tức là dòng mới thêm hoặc ca thứ 2, thứ 3
+      const canEditCheckTime = canEditWorkRow && (!isEmployee || !primary);
       const canEditBreakTime = canEditWorkRow;
 
       const shiftBrRaw = Number(shift?.break_minutes ?? 60);
@@ -310,7 +314,7 @@
       tr.dataset.date = dateStr;
       tr.dataset.baseOff = isOff ? '1' : '0';
       tr.dataset.id = seg?.id ? String(seg.id) : '';
-      tr.dataset.clientId = tr.dataset.id ? '' : makeClientId();
+      tr.dataset.clientId = tr.dataset.id ? '' : (seg?.clientId || makeClientId());
       tr.dataset.primary = primary ? '1' : '0';
       tr.dataset.kubunConfirmed = kubunConfirmed ? '1' : '';
       tr.dataset.shiftStart = shiftStartOk ? shiftStart : '08:00';
@@ -335,12 +339,16 @@
       const dMemo = String(daily?.memo || '');
       const dReason = String(daily?.reason || (shiftRequest && !isPartTime && shiftRequest.status === 'LEAVE' ? shiftRequest.reason : ''));
       const dNotes = String(daily?.notes || '');
+      // Đối với dòng phụ, `location`, `memo` (作業内容) và `notes` (備考) phải là dữ liệu của segment đó (nếu có), nếu không có thì để trống
+      // Tránh việc copy y nguyên dữ liệu của ngày (dLoc, dMemo, dNotes) xuống các dòng phụ
+      const segLoc = String(seg?.location || '');
+      const segMemo = String(seg?.memo || '');
+      const segNotes = String(seg?.notes || '');
       
-      // KHÔNG TRẢ VỀ RỖNG, LUÔN RENDER ĐÚNG GIÁ TRỊ, CHỈ DÙNG CSS HOẶC DISABLED ĐỂ LÀM MỜ.
-      // Nếu trả về rỗng, khi F5 lại trang, ô input sẽ bị rỗng thật sự, dẫn đến mất dữ liệu khi save.
-      const finalLoc = dLoc;
-      const finalMemo = dMemo;
-      const finalNotes = dNotes;
+      // Cho phép primary dòng sử dụng giá trị của segment nếu có (khi đã được lưu), nếu không thì fallback về daily
+      const finalLoc = primary ? (segLoc || dLoc) : segLoc;
+      const finalMemo = primary ? (segMemo || dMemo) : segMemo;
+      const finalNotes = primary ? (segNotes || dNotes) : segNotes;
       
       const isHolidayHide = isHolidayKubun || effectiveKubun === '欠勤';
       const hideStyle = isHolidayHide ? 'visibility: hidden;' : '';
@@ -404,32 +412,34 @@
 
       const kubunClass = kubunInit === '' ? 'is-planned' : (kubunInit === '休日' || kubunInit === '代替休日' ? 'is-holiday' : (kubunInit === '欠勤' ? 'is-absence' : ''));
 
+      const rowId = seg?.id ? `id${seg.id}` : (seg?.clientId || makeClientId());
+
       tr.innerHTML = `
       <td class="sticky-col-1">${showDateDow ? `<span style="font-weight:900; color:${esc(dowColor)};">${esc(dateMmdd)}(${esc(dow)})</span>` : ''}</td>
       <td>
-        <div class="se-kubun-wrap">
-          <select id="classification_${dateStr}" name="classification_${dateStr}" class="se-select se-kubun-select ${kubunClass}" data-field="classification" ${state.editableMonth ? '' : 'disabled'}>
+        <div class="se-kubun-wrap" style="${!showDateDow ? 'visibility:hidden;' : ''}">
+          <select id="classification_${dateStr}_${rowId}" name="classification_${dateStr}_${rowId}" class="se-select se-kubun-select ${kubunClass}" data-field="classification" ${state.editableMonth ? '' : 'disabled'}>
             ${kubunOptionsHtml}
           </select>
         </div>
       </td>
-      <td style="text-align:center;"><input id="ckOnsite_${dateStr}" name="ckOnsite_${dateStr}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input id="ckRemote_${dateStr}" name="ckRemote_${dateStr}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input id="ckSatellite_${dateStr}" name="ckSatellite_${dateStr}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><input id="location_${dateStr}" name="location_${dateStr}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><textarea id="memo_${dateStr}" name="memo_${dateStr}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px; ${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}>${esc(finalMemo)}</textarea></td>
+      <td style="text-align:center;"><input id="ckOnsite_${dateStr}_${rowId}" name="ckOnsite_${dateStr}_${rowId}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input id="ckRemote_${dateStr}_${rowId}" name="ckRemote_${dateStr}_${rowId}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="text-align:center;"><input id="ckSatellite_${dateStr}_${rowId}" name="ckSatellite_${dateStr}_${rowId}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input id="location_${dateStr}_${rowId}" name="location_${dateStr}_${rowId}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><textarea id="memo_${dateStr}_${rowId}" name="memo_${dateStr}_${rowId}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px; ${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}>${esc(finalMemo)}</textarea></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input id="checkIn_${dateStr}" name="checkIn_${dateStr}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditCheckTime ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}" data-actual="${esc(inHm)}">
+          <input id="checkIn_${dateStr}_${rowId}" name="checkIn_${dateStr}_${rowId}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditCheckTime ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}" data-actual="${esc(inHm)}">
         </div>
       </td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
-          <input id="checkOut_${dateStr}" name="checkOut_${dateStr}" class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!canEditCheckTime ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}" data-actual="${esc(outHm)}">
+          <input id="checkOut_${dateStr}_${rowId}" name="checkOut_${dateStr}_${rowId}" class="se-time ${outAutoCls}" data-field="checkOut" type="time" value="${esc(finalOut)}" ${!canEditCheckTime ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoOut ? '1' : ''}" data-auto-val="${esc(autoOut ? shiftEnd : '')}" data-manual="${isManualOut ? '1' : ''}" data-actual="${esc(outHm)}">
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}" name="break_${dateStr}" class="se-select" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
+        <select id="break_${dateStr}_${rowId}" name="break_${dateStr}_${rowId}" class="se-select" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
           <option value="3:00" ${brVal === '3:00' ? 'selected' : ''}>3:00</option>
           <option value="2:30" ${brVal === '2:30' ? 'selected' : ''}>2:30</option>
           <option value="2:00" ${brVal === '2:00' ? 'selected' : ''}>2:00</option>
@@ -441,7 +451,7 @@
         </select>
       </td>
       <td>
-        <select id="nightBreak_${dateStr}" name="nightBreak_${dateStr}" class="se-select" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
+        <select id="nightBreak_${dateStr}_${rowId}" name="nightBreak_${dateStr}_${rowId}" class="se-select" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
@@ -451,6 +461,9 @@
       <td data-field="excess" class="${otAutoCls}" style="text-align:center;color:#0f172a;font-weight:900; font-size:12px; letter-spacing:-0.5px;">${esc(otHm)}</td>
       <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => {
         if (!isWorkDay) return '—';
+        // Không tính đi muộn / về sớm cho các ca làm thêm (dòng phụ)
+        if (!primary) return '—';
+        
         const inM = parseHm(finalIn);
         const stM = parseHm(shiftStart);
         const outM = parseHm(finalOut);
@@ -480,33 +493,42 @@
         return txt;
       })()}</td>
       <td>
-        <select id="reason_${dateStr}" name="reason_${dateStr}" class="se-select" data-field="reason" ${state.editableMonth ? '' : 'disabled'} style="width:140px;${(effectiveKubun === '欠勤' || effectiveKubun === '遅刻' || effectiveKubun === '早退' || effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '代替休日') ? '' : 'visibility:hidden;'}">
-          <option value=""></option>
-          <option value="私用" ${dReason === '私用' || dReason === 'private' || dReason === '私用のため' ? 'selected' : ''}>私用</option>
-          <option value="私用（詳細）" ${dReason === '私用（詳細）' ? 'selected' : ''}>私用（詳細）</option>
-          <option value="体調不良" ${dReason === '体調不良' ? 'selected' : ''}>体調不良</option>
-          <option value="家庭の事情" ${dReason === '家庭の事情' ? 'selected' : ''}>家庭の事情</option>
-          <option value="定期健診" ${dReason === '定期健診' ? 'selected' : ''}>定期健診</option>
-          <option value="通院" ${dReason === '通院' ? 'selected' : ''}>通院</option>
-          <option value="交通機関の乱れ" ${dReason === '交通機関の乱れ' ? 'selected' : ''}>交通機関の乱れ</option>
-          <option value="悪天候" ${dReason === '悪天候' ? 'selected' : ''}>悪天候</option>
-          <option value="事故" ${dReason === '事故' ? 'selected' : ''}>事故</option>
-          <option value="忌引" ${dReason === '忌引' ? 'selected' : ''}>忌引</option>
-          <option value="その他" ${dReason === 'その他' || dReason === 'other' ? 'selected' : ''}>その他</option>
-        </select>
+        <div style="${!showDateDow ? 'visibility:hidden;' : ''}">
+          <select id="reason_${dateStr}_${rowId}" name="reason_${dateStr}_${rowId}" class="se-select" data-field="reason" ${state.editableMonth ? '' : 'disabled'} style="width:140px;${(effectiveKubun === '欠勤' || effectiveKubun === '遅刻' || effectiveKubun === '早退' || effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '代替休日') ? '' : 'visibility:hidden;'}">
+            <option value=""></option>
+            <option value="私用" ${dReason === '私用' || dReason === 'private' || dReason === '私用のため' ? 'selected' : ''}>私用</option>
+            <option value="私用（詳細）" ${dReason === '私用（詳細）' ? 'selected' : ''}>私用（詳細）</option>
+            <option value="体調不良" ${dReason === '体調不良' ? 'selected' : ''}>体調不良</option>
+            <option value="家庭の事情" ${dReason === '家庭の事情' ? 'selected' : ''}>家庭の事情</option>
+            <option value="定期健診" ${dReason === '定期健診' ? 'selected' : ''}>定期健診</option>
+            <option value="通院" ${dReason === '通院' ? 'selected' : ''}>通院</option>
+            <option value="交通機関の乱れ" ${dReason === '交通機関の乱れ' ? 'selected' : ''}>交通機関の乱れ</option>
+            <option value="悪天候" ${dReason === '悪天候' ? 'selected' : ''}>悪天候</option>
+            <option value="事故" ${dReason === '事故' ? 'selected' : ''}>事故</option>
+            <option value="忌引" ${dReason === '忌引' ? 'selected' : ''}>忌引</option>
+            <option value="その他" ${dReason === 'その他' || dReason === 'other' ? 'selected' : ''}>その他</option>
+          </select>
+        </div>
       </td>
       <td>
-        <input id="notes_${dateStr}" name="notes_${dateStr}" class="se-input" data-field="notes" type="text" value="${esc(finalNotes)}" ${!state.editableMonth ? 'disabled' : ''} style="width:100%; box-sizing:border-box;" placeholder="">
-        ${goOutHtml}
+        <div>
+          <input id="notes_${dateStr}_${rowId}" name="notes_${dateStr}_${rowId}" class="se-input" data-field="notes" type="text" value="${esc(finalNotes)}" ${!state.editableMonth ? 'disabled' : ''} style="width:100%; box-sizing:border-box;" placeholder="">
+          ${goOutHtml}
+        </div>
       </td>
       <td>
         <div class="se-status-wrap">
           <span class="se-status ${esc(st.cls)}">${esc(st.text)}</span>
         </div>
       </td>
-      <td style="text-align:center;color:#0f172a;font-weight:800;">${esc(st.approver)}</td>
-      <td style="text-align:center;"><button type="button" class="se-icon-btn secondary" data-action="clear" ${state.editableMonth ? '' : 'disabled'}>×</button></td>
-      <td style="text-align:center;"><button type="button" class="se-mini-btn" data-action="history">表示</button></td>
+      <td style="text-align:center;color:#0f172a;font-weight:800;">${showDateDow ? esc(st.approver) : '—'}</td>
+      <td style="text-align:center;">
+         <div style="display:flex; justify-content:center; gap:4px;">
+           ${showDateDow ? `<button type="button" class="se-icon-btn primary" data-action="add" ${(state.editableMonth && canAddMore) ? '' : 'disabled'} title="${canAddMore ? '行追加' : '1日は最大3件まで'}" style="font-weight:bold; font-size:14px; padding:0; width:22px; height:22px;">+</button>` : ''}
+           <button type="button" class="se-icon-btn secondary" data-action="clear" ${state.editableMonth ? '' : 'disabled'} title="行クリア" style="padding:0; width:22px; height:22px;">×</button>
+         </div>
+       </td>
+      <td style="text-align:center;">${showDateDow ? `<button type="button" class="se-mini-btn" data-action="history">表示</button>` : ''}</td>
     `;
       return tr;
     };
@@ -518,9 +540,22 @@
       const daily = d?.daily || null;
       const segs = Array.isArray(d?.segments) ? d.segments : [];
       const goOutRecords = Array.isArray(d?.goOutRecords) ? d.goOutRecords : [];
-      const list0 = segs.length ? [...segs].sort((a, b) => String(b?.checkIn || '').localeCompare(String(a?.checkIn || ''))) : [null];
-      const seg = list0.find(s => s && s.checkIn && !s.checkOut) || list0[0];
-      tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, goOutRecords, true, d.shiftRequest));
+      
+      // Lấy tất cả segments, sắp xếp theo giờ checkIn (tăng dần). Các dòng trống (chưa có checkIn) sẽ nằm ở cuối.
+      const list0 = segs.length ? [...segs].sort((a, b) => {
+        const timeA = String(a?.checkIn || '');
+        const timeB = String(b?.checkIn || '');
+        if (!timeA && timeB) return 1; // A trống thì A nằm sau
+        if (timeA && !timeB) return -1; // B trống thì B nằm sau
+        return timeA.localeCompare(timeB);
+      }) : [null];
+      const canAddMore = list0.length < 3;
+      
+      for (let i = 0; i < list0.length; i++) {
+        const seg = list0[i];
+        const isFirst = (i === 0);
+        tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, goOutRecords, isFirst, d.shiftRequest, canAddMore));
+      }
     }
     table.appendChild(tbody);
     // Use native sticky header via CSS; avoid cloning header to prevent drift
@@ -655,12 +690,17 @@
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;
-      const canEditWorkInputs = !!state.editableMonth && isWorkDay && !!cls;
+      const canEditWorkInputs = !!state.editableMonth && (isWorkDay && !!cls || !isEmployee);
       
       let currentRole = '';
       try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch (e) { /* silently ignored */ }
       const isEmployee = currentRole === 'employee';
-      const canEditCheckTime = canEditWorkInputs && !isEmployee;
+      const isPrimaryRow = String(rowEl.dataset.primary || '') === '1';
+      
+      // Cho phép sửa giờ checkIn/checkOut nếu:
+      // 1. Không phải employee (admin/manager) HOẶC
+      // 2. Là employee nhưng dòng này là dòng phụ (không phải primary)
+      const canEditCheckTime = canEditWorkInputs && (!isEmployee || !isPrimaryRow);
       const inValNow = String(inEl?.value || '').trim();
       const outValNow = String(outEl?.value || '').trim();
       const inAutoNow = String(inEl?.dataset?.auto || '') === '1';
@@ -971,22 +1011,25 @@
         }
       }
       if (lateEarly) {
-        const a = parseHm(inVal);
-        const b2 = parseHm(outVal);
         let text = '—';
-        if (isWorkDay && a != null && b2 != null) {
-          const baseStart = dayShiftInfo?.stM || (8 * 60);
-          const baseEnd = dayShiftInfo?.etM || (17 * 60);
-          const late = a > baseStart;
-          const early = b2 < baseEnd;
-          text = late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—';
-          
-          // Thêm cảnh báo nếu giờ quá bất thường (Ví dụ: Check-in trước 5h sáng hoặc check-out sau 2h sáng hôm sau)
-          if (a < 300 || (b2 > a && b2 > 1560) || (b2 < a && b2 > 120)) {
-             lateEarly.style.color = '#e11d48'; // Màu đỏ cảnh báo
-             text += ' (要確認)';
-          } else {
-             lateEarly.style.color = '#64748b';
+        // Chỉ tính toán đi muộn/về sớm cho dòng chính (primary row)
+        if (isPrimaryRow) {
+          const a = parseHm(inVal);
+          const b2 = parseHm(outVal);
+          if (isWorkDay && a != null && b2 != null) {
+            const baseStart = dayShiftInfo?.stM || (8 * 60);
+            const baseEnd = dayShiftInfo?.etM || (17 * 60);
+            const late = a > baseStart;
+            const early = b2 < baseEnd;
+            text = late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—';
+            
+            // Thêm cảnh báo nếu giờ quá bất thường
+            if (a < 300 || (b2 > a && b2 > 1560) || (b2 < a && b2 > 120)) {
+               lateEarly.style.color = '#e11d48'; // Màu đỏ cảnh báo
+               text += ' (要確認)';
+            } else {
+               lateEarly.style.color = '#64748b';
+            }
           }
         }
         if (lateEarly.textContent !== text) lateEarly.textContent = text;

@@ -541,10 +541,17 @@
           if (el.matches('select[data-field="break"], select[data-field="nightBreak"], select[data-field="breakMin"], select[data-field="nightBreakMin"]')) {
             el.removeAttribute('disabled');
             el.removeAttribute('data-fixed-disabled'); // Ensure break times are never locked
-          } else if (state.editableMonth && !el.hasAttribute('data-fixed-disabled')) {
-            // If employee, checkIn and checkOut are permanently locked by HTML attributes.
-            // Do NOT remove disabled from them if they have data-fixed-disabled="1"
-            el.removeAttribute('disabled');
+          } else if (state.editableMonth) {
+            // Mở khóa nếu không có data-fixed-disabled
+            if (!el.hasAttribute('data-fixed-disabled')) {
+              el.removeAttribute('disabled');
+            } else if (el.matches('input.se-time[data-field="checkIn"], input.se-time[data-field="checkOut"]')) {
+              // Ngoại lệ: Nếu là dòng phụ (không phải primary), thì checkIn và checkOut luôn được mở khóa
+              if (String(row.dataset.primary || '') !== '1') {
+                el.removeAttribute('disabled');
+                el.removeAttribute('data-fixed-disabled');
+              }
+            }
           }
         }
       }
@@ -913,7 +920,9 @@
           }
         }
         // Giảm chớp: Không gọi recomputeRow liên tục khi đang gõ text
-        const isTextInput = e.target?.matches?.('input[type="text"]');
+        const tag = (e.target?.tagName || '').toLowerCase();
+        const type = (e.target?.type || '').toLowerCase();
+        const isTextInput = tag === 'textarea' || (tag === 'input' && type === 'text');
         if (!isTextInput) {
           render.recomputeRow(row);
         }
@@ -996,8 +1005,15 @@
       if (!tr) return;
       const action = String(btn.dataset.action || '');
       const dateStr = String(tr.dataset.date || '');
+      if (action === 'add') {
+        e.preventDefault();
+        try { await controller.addSegmentRow(dateStr); } catch (e) { console.error(e); }
+        return;
+      }
       if (action === 'clear') {
-        if (confirm('この行の入力内容をクリアしますか？')) {
+        const idRaw = String(tr.dataset.id || '').trim();
+        const msg = idRaw ? 'この行を削除（またはクリア）しますか？' : 'この行の入力内容をクリアしますか？';
+        if (confirm(msg)) {
           // Reset manual flags when clearing
           tr.querySelectorAll('input.se-time').forEach(el => {
             el.dataset.manual = '';

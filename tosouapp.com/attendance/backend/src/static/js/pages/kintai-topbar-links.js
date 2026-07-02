@@ -197,7 +197,7 @@
           <div class="drawer-group">
             <button class="drawer-group-btn" type="button" data-group="att">勤怠入力 <span class="drawer-chev" aria-hidden="true">›</span></button>
             <div class="drawer-group-list" data-group-panel="att" hidden>
-              <a href="/ui/attendance">個人カレンダー登録画面</a>
+              <a href="/ui/attendance?back=1">個人カレンダー登録画面</a>
               <a href="/ui/attendance/monthly">月次勤怠入力へ</a>
               <a href="/ui/attendance/simple">簡易登録画面</a>
             </div>

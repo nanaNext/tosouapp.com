@@ -528,7 +528,9 @@ exports.todayRoster = async (req, res) => {
           id: r.attendanceId || null,
           shiftId: r.shiftId || null,
           checkIn: r.checkIn || null,
-          checkOut: r.checkOut || null
+          checkOut: r.checkOut || null,
+          site: r.site || null,
+          work: r.work || null
         },
         status
       };
@@ -601,6 +603,8 @@ async function resolveTargetUserId(req) {
   if (role === 'employee') return meId;
   if (role === 'manager' && String(targetId) !== String(meId)) {
     // Keep behavior aligned with manager user listing (company-wide by default).
+    // nghĩa là manager có thể xem tất cả các nhân viên trong công ty
+    // nhưng chỉ có thể xem thông tin của nhân viên trong cùng phòng ban
     // Enable strict department scoping only when explicitly configured.
     const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
     if (!strictDept) return targetId;
@@ -1129,7 +1133,7 @@ exports.putDay = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: cannot edit past months' });
     }
 
-    const { attendanceId, checkIn, checkOut } = req.body || {};
+    const { attendanceId, checkIn, checkOut, location, memo, notes } = req.body || {};
     if (!attendanceId) return res.status(400).json({ message: 'Missing attendanceId' });
     const row = await repo.getById(attendanceId);
     if (!row || String(row.userId) !== String(userId)) {
@@ -1148,6 +1152,20 @@ exports.putDay = async (req, res) => {
     }
 
     await repo.updateTimes(attendanceId, nextIn, nextOut);
+    
+    // Update location, memo, notes if provided
+    if (typeof location !== 'undefined' || typeof memo !== 'undefined' || typeof notes !== 'undefined') {
+       const db = require('../../core/database/mysql');
+       const updates = [];
+       const params = [];
+       if (typeof location !== 'undefined') { updates.push('location = ?'); params.push(location || null); }
+       if (typeof memo !== 'undefined') { updates.push('memo = ?'); params.push(memo || null); }
+       if (typeof notes !== 'undefined') { updates.push('notes = ?'); params.push(notes || null); }
+       if (updates.length > 0) {
+         params.push(attendanceId);
+         await db.query(`UPDATE attendance SET ${updates.join(', ')} WHERE id = ?`, params);
+       }
+    }
 
     try {
       const u = await userRepo.getUserById(userId);
@@ -1404,8 +1422,11 @@ exports.getMonthDetail = async (req, res) => {
         checkIn: inStr || null,
         checkOut: outStr || null,
         shiftId: r.shiftId || null,
-        workType: r.work_type || null,
-        labels: r.labels || null
+        workType: r.work_type || r.workType || null,
+        labels: r.labels || null,
+        location: r.location || null,
+        memo: r.memo || null,
+        notes: r.notes || null
       });
     }
     const reportMap = new Map();
@@ -1436,10 +1457,10 @@ exports.getMonthDetail = async (req, res) => {
       dailyMap.set(d, {
         kubun: r.kubun || null,
         kubunConfirmed: kc,
-        workType: r.work_type != null ? r.work_type : (report?.workType || null),
-        location: r.location != null ? r.location : (report?.location || null),
+        workType: (r.work_type != null && r.work_type !== '') ? r.work_type : (report?.workType || null),
+        location: (r.location != null && r.location !== '') ? r.location : (report?.location || null),
         reason: r.reason || null,
-        memo: r.memo != null ? r.memo : (report?.memo || null),
+        memo: (r.memo != null && r.memo !== '') ? r.memo : (report?.memo || null),
         notes: r.notes || null,
         late_minutes: r.late_minutes == null ? null : Number(r.late_minutes),
         early_minutes: r.early_minutes == null ? null : Number(r.early_minutes),
@@ -2831,8 +2852,11 @@ exports.exportMonthXlsx = async (req, res) => {
         checkIn: r.checkIn || null,
         checkOut: r.checkOut || null,
         shiftId: r.shiftId || null,
-        workType: r.work_type || null,
-        labels: r.labels || null
+        workType: r.work_type || r.workType || null,
+        labels: r.labels || null,
+        location: r.location || null,
+        memo: r.memo || null,
+        notes: r.notes || null
       });
     }
 
@@ -3048,9 +3072,28 @@ exports.exportMonthXlsx = async (req, res) => {
         if (early) return '早退';
         return '';
       })();
-      const workLocation = String(daily?.location || '').trim();
-      const workContent = String(daily?.memo || '').trim();
-      const notesText = String(daily?.notes || '').trim();
+
+      const workLocation = (() => {
+        const segLocs = segs0.map(s => String(s?.location || '').trim()).filter(Boolean);
+        const dLoc = String(daily?.location || '').trim();
+        const combined = Array.from(new Set([...segLocs, dLoc])).filter(Boolean).join(' / ');
+        return combined || '';
+      })();
+      
+      const workContent = (() => {
+        const segMemos = segs0.map(s => String(s?.memo || '').trim()).filter(Boolean);
+        const dMemo = String(daily?.memo || '').trim();
+        const combined = Array.from(new Set([...segMemos, dMemo])).filter(Boolean).join(' / ');
+        return combined || '';
+      })();
+      
+      const notesText = (() => {
+        const segNotes = segs0.map(s => String(s?.notes || '').trim()).filter(Boolean);
+        const dNotes = String(daily?.notes || '').trim();
+        const combined = Array.from(new Set([...segNotes, dNotes])).filter(Boolean).join(' / ');
+        return combined || '';
+      })();
+
       const inhouseWork = String(wd?.workContent || '').trim();
       const goOuts = await repo.getGoOutRecords(userId, ds).catch(() => []);
       

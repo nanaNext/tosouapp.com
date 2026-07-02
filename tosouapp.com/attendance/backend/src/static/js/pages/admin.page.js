@@ -266,7 +266,7 @@ async function bootLegacyAdminPage() {
           }),
           attendance: {
             async mount(ctx) {
-              const mod = await import(withAssetV('../admin/legacy/legacy-attendance.page.js'));
+              const mod = await import(withAssetV('../admin/legacy/legacy-attendance.page.js?v=4'));
               attendanceDyn = mod.attendancePage;
               return attendanceDyn.mount(ctx);
             },

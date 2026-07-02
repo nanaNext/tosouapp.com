@@ -266,7 +266,9 @@
       const cnt = counts.get(d) || 0;
       const btn = r.querySelector('button[data-action="add"]');
       if (!btn) continue;
-      btn.toggleAttribute('disabled', !state.editableMonth || cnt >= 3);
+      const canAddMore = cnt < 3;
+      btn.toggleAttribute('disabled', !state.editableMonth || !canAddMore);
+      btn.title = canAddMore ? '行追加' : '1日は最大3件まで';
     }
   };
 
@@ -1350,8 +1352,9 @@
       const memoRaw = String(tr.querySelector('[data-field="memo"]')?.value || '').trim();
       const notesRaw = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
       
-      const hasDailyInput = !!(v || wtRaw || locationRaw || reasonRaw || memoRaw);
-      const effectiveKubun = v || (hasDailyInput ? (rowBaseOff ? '休日出勤' : '出勤') : '');
+      const hasDailyInput = !!(v || wtRaw || reasonRaw); // Bỏ qua locationRaw và memoRaw để không tự nhảy 出勤 khi gõ text
+      const hasTimeInput = !!(rawIn || rawOut);
+      const effectiveKubun = v || ((hasTimeInput || hasDailyInput) ? (rowBaseOff ? '休日出勤' : '出勤') : '');
       const isHoliday = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '無給休暇' || effectiveKubun === '有給休暇' || effectiveKubun === '欠勤';
       
       // ĐẢM BẢO KHÔNG MẤT DỮ LIỆU KHI CHỌN 欠勤
@@ -1389,12 +1392,12 @@
             }
           }
         } else if (inDt) {
-          updates.push({ id: xid, checkIn: inDt, checkOut: outDt, workType: wt || null });
+          updates.push({ id: xid, checkIn: inDt, checkOut: outDt, workType: wt || null, location, memo, notes });
         } else {
           return;
         }
       } else if (inDt) {
-        updates.push({ clientId, checkIn: inDt, checkOut: outDt, workType: wt || null });
+        updates.push({ clientId, checkIn: inDt, checkOut: outDt, workType: wt || null, location, memo, notes });
       }
       
       try {
@@ -1491,11 +1494,28 @@
                 seg.checkIn = u.checkIn;
                 seg.checkOut = u.checkOut;
                 seg.workType = u.workType;
+                if (u.location !== undefined) seg.location = u.location;
+                if (u.memo !== undefined) seg.memo = u.memo;
+                if (u.notes !== undefined) seg.notes = u.notes;
               }
             } else {
-              // Thêm segment mới vào state
+              // Cập nhật segment rỗng bằng ID thật
               const c = created.find(x => x.clientId === clientId);
-              if (c) day.segments.push({ id: c.id, checkIn: c.checkIn, checkOut: c.checkOut, workType: wt });
+              if (c) {
+                const emptySeg = day.segments.find(s => s.clientId === clientId || (!s.id && !s.clientId));
+                if (emptySeg) {
+                  emptySeg.id = c.id;
+                  emptySeg.checkIn = c.checkIn;
+                  emptySeg.checkOut = c.checkOut;
+                  emptySeg.workType = wt;
+                  if (u.location !== undefined) emptySeg.location = u.location;
+                  if (u.memo !== undefined) emptySeg.memo = u.memo;
+                  if (u.notes !== undefined) emptySeg.notes = u.notes;
+                  emptySeg.clientId = undefined;
+                } else {
+                  day.segments.push({ id: c.id, checkIn: c.checkIn, checkOut: c.checkOut, workType: wt, location: u.location, memo: u.memo, notes: u.notes });
+                }
+              }
             }
           }
         }
@@ -1955,7 +1975,91 @@
     alert(lines.length ? lines.join('\n') : '履歴がありません');
   };
 
-  const clearRow = (tr) => {
+  const addSegmentRow = async (dateStr) => {
+    if (!state.editableMonth) return;
+    const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
+    const day = days.find(d => String(d?.date || '').slice(0, 10) === dateStr);
+    if (!day) return;
+    
+    day.segments = Array.isArray(day.segments) ? day.segments : [];
+    if (day.segments.length >= 3) {
+      if (root.Core?.showToast) root.Core.showToast('1日は最大3件まで追加できます。', 'error');
+      return;
+    }
+    
+    // Thêm segment trống
+    day.segments.push({
+      id: null,
+      clientId: root.Core?.makeClientId?.() || String(Date.now()),
+      checkIn: null,
+      checkOut: null,
+      workType: null
+    });
+    
+    // Đảm bảo không render lại nếu đang lưu (chờ xíu)
+    if (ctx.autoSaveInFlight) {
+      await new Promise(r => setTimeout(r, 300));
+    }
+    
+    // Re-render table
+    renderTable(ctx.tableHost, state.currentMonthDetail, ctx.profile);
+    
+    // Focus vào input checkIn của dòng mới
+    setTimeout(() => {
+      const rows = Array.from(ctx.tableHost.querySelectorAll(`[data-row="1"][data-date="${core.cssEscape(dateStr)}"]`));
+      const lastRow = rows[rows.length - 1];
+      if (lastRow) {
+        const inEl = lastRow.querySelector('input[data-field="checkIn"]');
+        if (inEl) {
+          inEl.focus();
+          try { lastRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e){}
+        }
+      }
+    }, 50);
+  };
+
+  const clearRow = async (tr) => {
+    if (!tr) return;
+    const dateStr = String(tr.dataset.date || '').slice(0, 10);
+    const idRaw = String(tr.dataset.id || '').trim();
+    
+    const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
+    const day = days.find(d => String(d?.date || '').slice(0, 10) === dateStr);
+    const segs = day ? (Array.isArray(day.segments) ? day.segments : []) : [];
+    
+    // Nếu là dòng thêm (dòng phụ thứ 2, thứ 3), tiến hành xóa luôn khỏi DOM và DB
+    if (segs.length > 1) {
+       if (idRaw) {
+         try {
+           const payload = {
+             year: parseInt(dateStr.slice(0,4), 10),
+             month: parseInt(dateStr.slice(5,7), 10),
+             userId: ctx.actingUserId || undefined,
+             updates: [{ id: parseInt(idRaw, 10), delete: true }],
+             dailyUpdates: []
+           };
+           await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: JSON.stringify(payload) });
+           day.segments = day.segments.filter(s => String(s.id) !== idRaw);
+         } catch (e) {
+           showErr(e?.message || '削除に失敗しました');
+           return;
+         }
+       } else {
+         // Xóa dòng chưa lưu
+         const clientId = String(tr.dataset.clientId || '').trim();
+         const emptyIdx = day.segments.findIndex(s => s.clientId === clientId || !s.id);
+         if (emptyIdx !== -1) {
+            day.segments.splice(emptyIdx, 1);
+         } else {
+            day.segments.pop();
+         }
+       }
+       renderTable(ctx.tableHost, state.currentMonthDetail, ctx.profile);
+       if (root.Core?.showToast) root.Core.showToast('行を削除しました', 'success');
+       return;
+    }
+
+    // Nếu là dòng duy nhất, chỉ xóa nội dung (Clear)
     try { tr.dataset.dirty = '1'; } catch (e) { /* silently ignored */ }
     try { tr.dataset.clear = '1'; } catch (e) { /* silently ignored */ }
     const ckOn = tr.querySelector('input[data-field="ckOnsite"]');
@@ -1980,6 +2084,9 @@
     const memo = tr.querySelector('[data-field="memo"]');
     if (memo) memo.value = '';
     try { root.Render?.recomputeRow?.(tr); } catch (e) { /* silently ignored */ }
+    
+    // Auto save to process clear on backend
+    await saveRowTimesNow(tr);
   };
 
   const checkImportFile = () => {
@@ -2057,6 +2164,7 @@
     applyEditability,
     refreshAddButtons,
     tableHistory,
+    addSegmentRow,
     clearRow,
     checkImportFile,
     setActingUserId

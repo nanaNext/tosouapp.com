@@ -37,6 +37,7 @@ async function mountAttendanceImpl({
   const fmtTime = (dt) => {
     if (!dt) return '';
     const s = String(dt);
+    if (s.includes('/')) return s; // Nếu đã gom nhóm nhiều ca, giữ nguyên
     return s.length >= 16 ? s.slice(11, 16) : s;
   };
   const isWeekend = (dateStr) => {

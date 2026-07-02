@@ -755,7 +755,21 @@ async function mountAttendanceImpl({
         const endIndex = Math.min(startIndex + pageSize, items.length);
         const pageItems = items.slice(startIndex, endIndex);
         
-        for (const it of pageItems) {
+        for (let idx = 0; idx < pageItems.length; idx++) {
+          const it = pageItems[idx];
+          const prev = idx > 0 ? pageItems[idx - 1] : null;
+          const isSameUser = prev && prev.userId === it.userId;
+
+          let rsHtml = '';
+          if (!isSameUser) {
+            let rs = 1;
+            for (let j = idx + 1; j < pageItems.length; j++) {
+              if (pageItems[j].userId === it.userId) rs++;
+              else break;
+            }
+            rsHtml = rs > 1 ? ` rowspan="${rs}"` : '';
+          }
+
           const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
           const name = it.username || '';
           const dept = it.departmentName || '—';
@@ -825,13 +839,19 @@ async function mountAttendanceImpl({
               : (st === 'holiday_work' || st === 'holiday_working' ? 'attrec-row working'
                 : (((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) ? 'attrec-row absent' : (st === 'off' ? 'attrec-row absent' : 'attrec-row absent'))));
           
+          const codeHtml = !isSameUser ? `<td data-label="社員番号" style="text-align:center; vertical-align:middle;"${rsHtml}>${esc(code)}</td>` : ``;
+          const nameHtml = !isSameUser ? `<td data-label="氏名" style="font-weight:600; white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(name)}</td>` : ``;
+          const deptHtml = !isSameUser ? `<td data-label="部署" style="white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(dept)}</td>` : ``;
+          const wtLabelHtml = !isSameUser ? `<td data-label="勤務区分" style="white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(wtLabel)}</td>` : ``;
+          const stHtml = !isSameUser ? `<td data-label="状態" style="text-align:center; white-space:nowrap; vertical-align:middle;"${rsHtml}><span class="${stClass}">${esc(stLabel)}</span></td>` : ``;
+
           // Use standard table cell creation instead of weird layout elements
           tr.innerHTML = `
-            <td data-label="社員番号" style="text-align:center;">${esc(code)}</td>
-            <td data-label="氏名" style="font-weight:600; white-space:nowrap;">${esc(name)}</td>
-            <td data-label="部署" style="white-space:nowrap;">${esc(dept)}</td>
-            <td data-label="勤務区分" style="white-space:nowrap;">${esc(wtLabel)}</td>
-            <td data-label="状態" style="text-align:center; white-space:nowrap;"><span class="${stClass}">${esc(stLabel)}</span></td>
+            ${codeHtml}
+            ${nameHtml}
+            ${deptHtml}
+            ${wtLabelHtml}
+            ${stHtml}
             <td data-label="出勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;">${esc(cinView)}</td>
             <td data-label="退勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;">${esc(coutView)}</td>
             <td data-label="現場"><div style="font-size:13px; color:#475569;">${esc(siteView)}</div></td>

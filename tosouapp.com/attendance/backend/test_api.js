@@ -1,1 +1,12 @@
-require('dotenv').config(); const db = require('./src/core/database/mysql'); const repo = require('./src/modules/attendance/attendance.repository'); async function run() { try { const id = await repo.createMissingCheckIn(1, '2026-06-24 11:30:00', null, null, 'missing_checkin'); console.log('Success:', id); } catch(e) { console.error('Error:', e); } process.exit(0); } run();
+const http = require('http');
+
+http.get('http://localhost:3000/api/attendance/today-roster?date=2026-07-01', {
+  headers: {
+    // Assuming the API requires auth, we might need a cookie. 
+    // Let's just bypass auth in a mock or we can see the controller.
+  }
+}, (res) => {
+  let data = '';
+  res.on('data', chunk => data += chunk);
+  res.on('end', () => console.log(data));
+}).on('error', err => console.log("Error:", err.message));
