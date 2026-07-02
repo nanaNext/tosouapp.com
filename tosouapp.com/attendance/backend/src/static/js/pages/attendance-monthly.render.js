@@ -199,16 +199,20 @@
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay) HOẶC là ngày nghỉ nhưng có dữ liệu làm việc (hasActual). Ngày nghỉ không có lịch làm việc thì để trống.
+      // Cho phép part-time chưa nộp lịch (ngày thường) cũng hiện giờ làm mặc định nhạt.
+      const isPartTimeNoPlanOnWorkDay = isPartTime && !offDay && !plannedKubun && !kubunInit;
+      const shouldShowDefaultShift = isWorkDay || hasActual || isPartTimeNoPlanOnWorkDay;
+
       // ĐỐI VỚI CA PHỤ (!primary): Không tự động điền giờ dự kiến, để trống cho người dùng tự nhập.
-      const finalIn = (isWorkDay || hasActual) ? (inHm || (primary ? shiftStart : '')) : '';
-      const finalOut = (isWorkDay || hasActual) ? (outHm || (primary ? shiftEnd : '')) : '';
+      const finalIn = shouldShowDefaultShift ? (inHm || (primary ? shiftStart : '')) : '';
+      const finalOut = shouldShowDefaultShift ? (outHm || (primary ? shiftEnd : '')) : '';
 
       // QUAN TRỌNG: Gán cờ manual cho ô nếu đã có dữ liệu thực tế (checkIn/checkOut không phải tự động)
       const isManualIn = !!inHm;
       const isManualOut = !!outHm;
 
-      const autoIn = primary && isWorkDay && !inHm && shiftStartOk;
-      const autoOut = primary && isWorkDay && !outHm && shiftEndOk;
+      const autoIn = primary && shouldShowDefaultShift && !inHm && shiftStartOk;
+      const autoOut = primary && shouldShowDefaultShift && !outHm && shiftEndOk;
       
       // Field-level visual logic:
       const inAutoCls = autoIn ? 'is-auto' : '';
@@ -234,13 +238,13 @@
         }
       }
 
-      const brMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.breakMinutes ?? defaultBr) : defaultBr) : 0;
-      const nbMin = (isWorkDay || hasActual) ? (primary ? Number(daily?.nightBreakMinutes ?? 0) : 0) : 0;
+      const brMin = shouldShowDefaultShift ? (primary ? Number(daily?.breakMinutes ?? defaultBr) : defaultBr) : 0;
+      const nbMin = shouldShowDefaultShift ? (primary ? Number(daily?.nightBreakMinutes ?? 0) : 0) : 0;
       const totalBmin = brMin + nbMin;
 
       // Show planned work hours (faded) only for work days
-      const workHm = ((isWorkDay || hasActual) && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
-      const isAutoWork = isWorkDay && (autoIn || autoOut) && !!workHm;
+      const workHm = (shouldShowDefaultShift && finalIn && finalOut) ? (fmtWorkHours(finalIn, finalOut, totalBmin) || '') : '';
+      const isAutoWork = shouldShowDefaultShift && (autoIn || autoOut) && !!workHm;
       const hasCompletedActual = hasActualIn && hasActualOut;
       const workAutoCls = (isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
 
@@ -439,7 +443,7 @@
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}_${rowId}" name="break_${dateStr}_${rowId}" class="se-select" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
+        <select id="break_${dateStr}_${rowId}" name="break_${dateStr}_${rowId}" class="se-select ${inAutoCls}" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
           <option value="3:00" ${brVal === '3:00' ? 'selected' : ''}>3:00</option>
           <option value="2:30" ${brVal === '2:30' ? 'selected' : ''}>2:30</option>
           <option value="2:00" ${brVal === '2:00' ? 'selected' : ''}>2:00</option>
@@ -451,7 +455,7 @@
         </select>
       </td>
       <td>
-        <select id="nightBreak_${dateStr}_${rowId}" name="nightBreak_${dateStr}_${rowId}" class="se-select" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
+        <select id="nightBreak_${dateStr}_${rowId}" name="nightBreak_${dateStr}_${rowId}" class="se-select ${inAutoCls}" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
