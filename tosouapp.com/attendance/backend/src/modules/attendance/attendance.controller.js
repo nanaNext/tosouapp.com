@@ -1827,7 +1827,8 @@ exports.postShiftAssignment = async (req, res) => {
 
 exports.postShiftsBulk = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = await resolveTargetUserId(req);
+    if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     const db = require('../../core/database/mysql');
@@ -2414,8 +2415,9 @@ exports.getUserShiftsForMonth = async (req, res) => {
 
 exports.getMyMonthlyShifts = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = await resolveTargetUserId(req);
     const { month } = req.params || {};
+    if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
     if (!month) return res.status(400).json({ message: 'Missing month' });
 
