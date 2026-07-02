@@ -366,7 +366,15 @@
         if (brMin === 45) return '0:45';
         if (brMin === 30) return '0:30';
         if (brMin === 0) return '0:00';
-        return '1:00'; // default
+        
+        // Return calculated default if it doesn't match standard dropdown values
+        if (brMin > 0) {
+          const h = Math.floor(brMin / 60);
+          const m = brMin % 60;
+          return `${h}:${String(m).padStart(2, '0')}`;
+        }
+        
+        return '1:00'; // fallback
       })();
       const nbVal = nbMin === 60 ? '1:00' : nbMin === 30 ? '0:30' : '0:00';
 
@@ -453,6 +461,7 @@
           <option value="0:45" ${brVal === '0:45' ? 'selected' : ''}>0:45</option>
           <option value="0:30" ${brVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="0:00" ${brVal === '0:00' ? 'selected' : ''}>0:00</option>
+          ${!['3:00','2:30','2:00','1:30','1:00','0:45','0:30','0:00'].includes(brVal) ? `<option value="${esc(brVal)}" selected>${esc(brVal)}</option>` : ''}
         </select>
       </td>
       <td>
