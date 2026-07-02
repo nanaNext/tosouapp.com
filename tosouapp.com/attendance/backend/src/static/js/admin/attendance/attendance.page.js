@@ -30,7 +30,7 @@ export async function mount({ content, p2 }) {
     return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
   }
   // Default: attendance records
-  const mod = await import('../legacy/legacy-attendance.page.js');
+  const mod = await import('../legacy/legacy-attendance.page.js?v=4');
   const cleanup = await mod.mountAttendance({
     content,
     listUsers,

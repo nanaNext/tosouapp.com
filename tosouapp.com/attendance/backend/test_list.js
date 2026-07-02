@@ -1,1 +1,15 @@
-require('dotenv').config(); const repo = require('./src/modules/attendance/attendance.repository'); async function run() { const id = await repo.createMissingCheckIn(27, '2026-06-24 11:30:00', null, null, 'missing_checkin'); const rows = await repo.listByUserBetween(27, '2026-06-01', '2026-06-30'); console.log(rows); await require('./src/core/database/mysql').query('DELETE FROM attendance WHERE id = ?', [id]); process.exit(0); } run();
+const jwt = require('jsonwebtoken');
+const token = jwt.sign({ userId: 1, role: 'admin' }, 'nana-secret-123456789', { expiresIn: '1d' });
+
+const http = require('http');
+
+http.get('http://localhost:3000/api/admin/work-reports/month/list?month=2026-07', {
+  headers: {
+    Authorization: 'Bearer ' + token,
+    cookie: 'access_token=' + token
+  }
+}, (res) => {
+  let data = '';
+  res.on('data', chunk => data += chunk);
+  res.on('end', () => console.log(data.slice(0, 1000)));
+}).on('error', err => console.log("Error:", err.message));

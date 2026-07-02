@@ -79,8 +79,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         a.checkOut AS checkOut,
         COALESCE(ad.work_type, wr.work_type, a.work_type) AS work_type,
         ad.kubun AS daily_kubun,
-        COALESCE(NULLIF(TRIM(ad.location), ''), NULLIF(TRIM(wr.site), '')) AS site,
-        COALESCE(NULLIF(TRIM(ad.memo), ''), NULLIF(TRIM(wr.work), '')) AS work,
+        COALESCE(NULLIF(TRIM(a.location), ''), NULLIF(TRIM(ad.location), ''), NULLIF(TRIM(wr.site), '')) AS site,
+        COALESCE(NULLIF(TRIM(a.memo), ''), NULLIF(TRIM(ad.memo), ''), NULLIF(TRIM(wr.work), '')) AS work,
         ad.late_minutes,
         ad.early_minutes,
         ad.reason,
@@ -91,18 +91,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       LEFT JOIN attendance_daily ad
         ON ad.userId = u.id
        AND ad.date = ?
-      LEFT JOIN (
-        SELECT t1.*
-        FROM attendance t1
-        INNER JOIN (
-          SELECT userId, MAX(COALESCE(checkIn, checkOut)) AS maxTime
-          FROM attendance
-          WHERE DATE(COALESCE(checkIn, checkOut)) = ?
-          GROUP BY userId
-        ) t2
-          ON t2.userId = t1.userId AND t2.maxTime = COALESCE(t1.checkIn, t1.checkOut)
-      ) a
-        ON a.userId = u.id
+      LEFT JOIN attendance a
+        ON a.userId = u.id AND DATE(COALESCE(a.checkIn, a.checkOut)) = ?
       LEFT JOIN work_reports wr
         ON wr.userId = u.id AND wr.date = ?
       WHERE u.employment_status = 'active'
@@ -110,7 +100,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       ORDER BY
         CASE WHEN a.checkIn IS NULL THEN 1 ELSE 0 END ASC,
         COALESCE(u.employee_code, '') ASC,
-        u.id ASC
+        u.id ASC,
+        a.checkIn ASC
     `, [date, date, date, date]);
 
     const items = (rows || []).map(r => {
@@ -337,6 +328,12 @@ router.get('/export.xlsx',
         ON t.userId = a.userId AND t.maxTime = COALESCE(a.checkIn, a.checkOut)
     `, [start, end]);
 
+    const [attFullRows] = await db.query(`
+      SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS date, location, memo
+      FROM attendance
+      WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?
+    `, [start, end]);
+
     const [repRows] = await db.query(`
       SELECT userId, date, site, work, work_type
       FROM work_reports
@@ -372,6 +369,19 @@ router.get('/export.xlsx',
     for (const a of (attRows || [])) {
       const d = String(a.date || a.checkIn || a.checkOut || '').slice(0, 10);
       attMap.set(`${a.userId}|${d}`, a);
+    }
+    const attConcatMap = new Map();
+    for (const a of (attFullRows || [])) {
+      const d = String(a.date || '').slice(0, 10);
+      const key = `${a.userId}|${d}`;
+      if (!attConcatMap.has(key)) {
+        attConcatMap.set(key, { location: [], memo: [] });
+      }
+      const mapObj = attConcatMap.get(key);
+      const loc = String(a.location || '').trim();
+      const mem = String(a.memo || '').trim();
+      if (loc) mapObj.location.push(loc);
+      if (mem) mapObj.memo.push(mem);
     }
     const repMap = new Map();
     for (const r of (repRows || [])) {
@@ -434,6 +444,7 @@ router.get('/export.xlsx',
       const dept = u.departmentName || '';
       const leave = isOnLeave(uid, d);
       const att = attMap.get(`${uid}|${d}`) || null;
+      const attConcat = attConcatMap.get(`${uid}|${d}`) || null;
       const rep = repMap.get(`${uid}|${d}`) || null;
       const daily = dailyMap.get(`${uid}|${d}`) || null;
       const wt = String(rep?.work_type || att?.work_type || '').trim();
@@ -494,8 +505,8 @@ router.get('/export.xlsx',
         status,
         cin,
         cout,
-        site: isOff && !att?.checkIn && !daily?.location && !rep?.site ? '' : String(daily?.location || rep?.site || ''),
-        work: isOff && !att?.checkIn && !daily?.memo && !rep?.work ? '' : String(daily?.memo || rep?.work || ''),
+        site: isOff && !att?.checkIn && !daily?.location && !rep?.site && (!attConcat || !attConcat.location.length) ? '' : (attConcat && attConcat.location.length > 0 ? attConcat.location.join(' / ') : String(daily?.location || att?.location || rep?.site || '')),
+        work: isOff && !att?.checkIn && !daily?.memo && !rep?.work && (!attConcat || !attConcat.memo.length) ? '' : (attConcat && attConcat.memo.length > 0 ? attConcat.memo.join(' / ') : String(daily?.memo || att?.memo || rep?.work || '')),
         lateMinutes: daily?.late_minutes || 0,
         earlyMinutes: daily?.early_minutes || 0,
         reason: daily?.reason || '',
@@ -1046,7 +1057,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
     let latestRows = [];
     try {
       const [x] = await db.query(`
-        SELECT a.id, a.userId, a.checkIn, a.checkOut
+        SELECT a.id, a.userId, a.checkIn, a.checkOut, a.location, a.memo, a.work_type
         FROM attendance a
         WHERE (
             (a.checkIn >= ? AND a.checkIn < DATE_ADD(?, INTERVAL 1 DAY))
@@ -1063,7 +1074,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
     } catch {
       try {
         const [attRows] = await db.query(`
-          SELECT id, userId, checkIn, checkOut
+          SELECT id, userId, checkIn, checkOut, location, memo, work_type
           FROM attendance
           WHERE (
               (checkIn >= ? AND checkIn < DATE_ADD(?, INTERVAL 1 DAY))
@@ -1099,6 +1110,21 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
       reportMap.set(`${r.userId}|${String(r.date).slice(0, 10)}`, r);
     }
 
+    const [attConcatRows] = await db.query(`
+      SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS date,
+             GROUP_CONCAT(COALESCE(DATE_FORMAT(checkIn, '%H:%i'), '—') ORDER BY checkIn ASC SEPARATOR ' / ') AS allCheckIns,
+             GROUP_CONCAT(COALESCE(DATE_FORMAT(checkOut, '%H:%i'), '—') ORDER BY checkIn ASC SEPARATOR ' / ') AS allCheckOuts,
+             GROUP_CONCAT(NULLIF(TRIM(location), '') ORDER BY checkIn ASC SEPARATOR ' / ') AS site,
+             GROUP_CONCAT(NULLIF(TRIM(memo), '') ORDER BY checkIn ASC SEPARATOR ' / ') AS work
+      FROM attendance
+      WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?
+      GROUP BY userId, DATE(COALESCE(checkIn, checkOut))
+    `, [start, end]);
+    const attConcatMap = new Map();
+    for (const r of (attConcatRows || [])) {
+      attConcatMap.set(`${r.userId}|${String(r.date).slice(0, 10)}`, r);
+    }
+
     const leaveByUser = new Map();
     for (const lr of (leaveRows || [])) {
       const uid = Number(lr.userId);
@@ -1120,26 +1146,52 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
     }
 
     const attLatest = new Map();
+    const userAttendanceMap = new Map();
     for (const a of (latestRows || [])) {
       const d = String(a.checkIn || a.checkOut || '').slice(0, 10);
       const key = `${a.userId}|${d}`;
+      
+      if (!userAttendanceMap.has(key)) userAttendanceMap.set(key, []);
+      userAttendanceMap.get(key).push(a);
+      
       const prev = attLatest.get(key);
       if (!prev) {
-        attLatest.set(key, a);
+        // Clone the object so we can modify it
+        const cloned = { ...a };
+        // Get the concatenated location and memo for this user/date
+        const concatData = attConcatMap.get(key);
+        if (concatData) {
+           cloned.location = concatData.site;
+           cloned.memo = concatData.work;
+        }
+        attLatest.set(key, cloned);
         continue;
       }
       const prevHasOut = !!prev.checkOut;
       const curHasOut = !!a.checkOut;
       if (!prevHasOut && curHasOut) {
-        attLatest.set(key, a);
+        const cloned = { ...a };
+        const concatData = attConcatMap.get(key);
+        if (concatData) { cloned.location = concatData.site; cloned.memo = concatData.work; }
+        attLatest.set(key, cloned);
         continue;
       }
       if (prevHasOut && curHasOut) {
-        if (String(a.checkOut) > String(prev.checkOut)) attLatest.set(key, a);
+        if (String(a.checkOut) > String(prev.checkOut)) {
+           const cloned = { ...a };
+           const concatData = attConcatMap.get(key);
+           if (concatData) { cloned.location = concatData.site; cloned.memo = concatData.work; }
+           attLatest.set(key, cloned);
+        }
         continue;
       }
       if (!prevHasOut && !curHasOut) {
-        if (String(a.checkIn) > String(prev.checkIn)) attLatest.set(key, a);
+        if (String(a.checkIn) > String(prev.checkIn)) {
+           const cloned = { ...a };
+           const concatData = attConcatMap.get(key);
+           if (concatData) { cloned.location = concatData.site; cloned.memo = concatData.work; }
+           attLatest.set(key, cloned);
+        }
         continue;
       }
     }
@@ -1179,8 +1231,23 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
         });
         const status = cls.status;
         const rep = reportMap.get(`${uid}|${d}`) || null;
-        const report = rep ? { site: rep.site, work: rep.work, updatedAt: rep.updated_at || rep.updatedAt || null } : null;
-        const entry = { status, report, kubun: cls.kubun || kubun || null, plan: status === 'planned' ? cls.plan : null };
+        const attConcat = attConcatMap.get(`${uid}|${d}`) || null;
+        const attLatestRow = attLatest.get(`${uid}|${d}`) || null;
+        
+        // combine work_reports and attendance notes
+        const combinedSite = attConcat?.site || attLatestRow?.location || rep?.site || null;
+        const combinedWork = attConcat?.work || attLatestRow?.memo || rep?.work || null;
+        
+        const report = (combinedSite || combinedWork) ? { site: combinedSite, work: combinedWork, updatedAt: rep?.updated_at || rep?.updatedAt || null } : null;
+        
+        // Use allCheckIns if available, else latestRow
+        const attendanceInfo = attLatestRow ? {
+          id: attLatestRow.id,
+          checkIn: attConcat?.allCheckIns || attLatestRow.checkIn,
+          checkOut: attConcat?.allCheckOuts || attLatestRow.checkOut
+        } : null;
+
+        const entry = { status, report, attendance: attendanceInfo, kubun: cls.kubun || kubun || null, plan: status === 'planned' ? cls.plan : null };
         if (req.query.debug === '1') entry.debug = { date: d, userId: uid, kubun, plan, isOffDate: isOffDate(d), hasAttendance: !!a, hasOut: !!a?.checkOut, status };
       perDay[d] = entry;
       if (status === 'checked_out') {
@@ -1219,22 +1286,50 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
            }
         }
         
-        items.push({
-          userId: uid,
-          employeeCode: u.employeeCode || null,
-          username: u.username || null,
-          departmentId: u.departmentId || null,
-          departmentName: u.departmentName || null,
-          date: d,
-          weekday: weekdayJa(d),
-          attendance: a ? { checkIn: a.checkIn, checkOut: a.checkOut } : { checkIn: null, checkOut: null },
-          kubun: entry.kubun || null,
-          workType: a?.work_type || null,
-          holiday: isOffDate(d) || entry.kubun === '休日' || entry.kubun === '所定休日',
-          site: entry.report?.site || null,
-          work: entry.report?.work || null,
-          status: effectiveStatusStr
-        });
+        const attConcat = attConcatMap.get(`${uid}|${d}`) || null;
+
+        // Fetch all individual rows instead of relying on attConcatMap to separate them out
+        const attRows = userAttendanceMap.get(`${uid}|${d}`) || [];
+        
+        if (attRows.length === 0) {
+           // Original fallback when no attendance but there is an entry
+           items.push({
+             userId: uid,
+             employeeCode: u.employeeCode || null,
+             username: u.username || null,
+             departmentId: u.departmentId || null,
+             departmentName: u.departmentName || null,
+             date: d,
+             weekday: weekdayJa(d),
+             attendance: { checkIn: null, checkOut: null },
+             kubun: entry.kubun || null,
+             workType: null,
+             holiday: isOffDate(d) || entry.kubun === '休日' || entry.kubun === '所定休日',
+             site: entry.report?.site || null,
+             work: entry.report?.work || null,
+             status: effectiveStatusStr
+           });
+        } else {
+           // For each attendance record on this day, add a separate row
+           for (const row of attRows) {
+             items.push({
+               userId: uid,
+               employeeCode: u.employeeCode || null,
+               username: u.username || null,
+               departmentId: u.departmentId || null,
+               departmentName: u.departmentName || null,
+               date: d,
+               weekday: weekdayJa(d),
+               attendance: { checkIn: row.checkIn, checkOut: row.checkOut },
+               kubun: entry.kubun || null,
+               workType: row.work_type || null,
+               holiday: isOffDate(d) || entry.kubun === '休日' || entry.kubun === '所定休日',
+               site: row.location || entry.report?.site || null,
+               work: row.memo || entry.report?.work || null,
+               status: effectiveStatusStr
+             });
+           }
+        }
       }
     }
   }
@@ -1289,8 +1384,8 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
     // Create a mock req with original query but debug off to ensure we get data
     const mockReq = { ...req, query: { ...req.query, debug: '0' }, user: req.user };
     
-    // Find the handler for /month
-    const monthHandler = router.stack.find(l => l.route && l.route.path === '/month')?.route?.stack[1]?.handle;
+    // Find the handler for /month/list instead of /month to get all shifts
+    const monthHandler = router.stack.find(l => l.route && l.route.path === '/month/list')?.route?.stack[1]?.handle;
     if (!monthHandler) throw new Error('Month handler not found');
     
     await monthHandler(mockReq, mockRes);
@@ -1385,37 +1480,38 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
       }
     } else {
        // Group mode
-        for (const g of items) {
+       const groups = new Map();
+       for (const it of items) {
+         const key = `${it.employeeCode || ''}|${it.username || ''}|${it.departmentName || ''}`;
+         if (!groups.has(key)) groups.set(key, { employeeCode: it.employeeCode, username: it.username, departmentName: it.departmentName, items: [] });
+         groups.get(key).items.push(it);
+       }
+       for (const g of Array.from(groups.values())) {
           rows.push({
             cells: [ { v: `${g.employeeCode || ''} ${g.username || ''}`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ]
           });
-          const days = g.days || {};
-          for (const d of responseData.days) {
-             const entry = days[d];
-             if (!entry || (entry.status !== 'checked_out' && entry.status !== 'working' && entry.status !== 'holiday_work' && entry.status !== 'holiday_working')) continue;
-             
-             // find the attendance data by recreating the attLatest map if we really needed to, 
-             // but since it's grouped, we can just export basic data
+          for (const it of g.items) {
+             const combinedReasonMemo = [it.attendance?.memo, it.attendance?.notes].filter(Boolean).join('\n');
              rows.push({
                cells: [
-                 d,
-                 weekdayJa(d),
+                 it.date,
+                 it.weekday || '',
                  g.employeeCode || '',
                  g.username || '',
                  g.departmentName || '',
-                 entry.kubun || '',
-                 '', // checkIn
-                 '', // checkOut
-                 '', // workType
-                 entry.report?.site || '',
-                 entry.report?.work || '',
-                 '', // late/early
-                 '', // notes
-                 statusMeta(entry.status)
+                 it.kubun || '',
+                 fmtHm(it.attendance?.checkIn),
+                 fmtHm(it.attendance?.checkOut),
+                 workTypeLabel(it.workType),
+                 it.site || '',
+                 it.work || '',
+                 getLateEarlyText(it),
+                 combinedReasonMemo || '',
+                 statusMeta(it.status)
                ]
              });
           }
-        }
+       }
     }
 
     const { buildXlsx } = require('../../utils/xlsx');
@@ -1635,9 +1731,11 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
     const [attRows] = await db.query(`
       SELECT a.userId,
              DATE(COALESCE(a.checkIn, a.checkOut)) AS date,
-             MIN(a.checkIn) AS firstCheckIn,
-             MAX(a.checkOut) AS lastCheckOut,
-             MAX(CASE WHEN a.work_type IS NOT NULL AND a.work_type <> '' THEN a.work_type ELSE NULL END) AS attendanceWorkType
+             a.checkIn AS firstCheckIn,
+             a.checkOut AS lastCheckOut,
+             a.work_type AS attendanceWorkType,
+             a.location AS site,
+             a.memo AS work
       FROM attendance a
       WHERE DATE(COALESCE(a.checkIn, a.checkOut)) >= ? AND DATE(COALESCE(a.checkIn, a.checkOut)) <= ?
         AND a.userId IN (
@@ -1646,8 +1744,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
             WHERE employment_status = 'active'
             ${String(req.user?.role || '').toLowerCase() === 'manager' ? "AND role = 'employee'" : "AND role IN ('employee','manager')"}
         )
-      GROUP BY a.userId, DATE(COALESCE(a.checkIn, a.checkOut))
-      ORDER BY DATE(COALESCE(a.checkIn, a.checkOut)) ASC, a.userId ASC
+      ORDER BY DATE(COALESCE(a.checkIn, a.checkOut)) ASC, a.userId ASC, a.checkIn ASC
     `, [start, end]);
 
     const [dailyRows] = await db.query(`
@@ -1721,8 +1818,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       keySet.add(key);
       const rep = reportMap.get(key) || null;
       const daily = dailyMap.get(key) || null;
-      const site = pickNonEmptyText(daily?.location, rep?.site);
-      const work = pickNonEmptyText(daily?.memo, rep?.work);
+      const site = pickNonEmptyText(a.site, daily?.location, rep?.site);
+      const work = pickNonEmptyText(a.work, daily?.memo, rep?.work);
       const fallbackOutHm = ''; // Do not fallback out time
       const workType = daily?.workType || rep?.work_type || a.attendanceWorkType || null;
       const hasReportContent = !!(site || work);
@@ -1777,6 +1874,11 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         status
       });
     }
+
+    // debug log
+    console.log("Work Reports Items Count:", items.length);
+    const u23 = items.filter(i => i.userId === 23);
+    console.log("EMP023 Items:", JSON.stringify(u23, null, 2));
 
     // Add rows that exist only in monthly input (attendance_daily / work_reports) without punch data.
     const extraKeys = new Set([

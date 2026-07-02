@@ -273,7 +273,11 @@ async function computeRecord(rec, ctx = null) {
     isAnomaly: metrics.isAnomaly,
     anomalyType: metrics.anomalyType,
     privateGoOutMinutes,
-    workGoOutMinutes
+    workGoOutMinutes,
+    workType: rec.work_type || rec.workType || null,
+    location: rec.location || null,
+    memo: rec.memo || null,
+    notes: rec.notes || null
   };
 }
 

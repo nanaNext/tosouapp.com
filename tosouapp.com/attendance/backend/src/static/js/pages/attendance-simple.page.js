@@ -413,14 +413,14 @@ async function ensureAuthProfile() {
   return profile || null;
 }
 
-const pickLatestSegment = (segments) => {
+const pickFirstSegment = (segments) => {
   const arr = Array.isArray(segments) ? segments : [];
   if (!arr.length) return null;
   let best = arr[0];
   for (const s of arr) {
     const a = String(s?.checkIn || s?.checkOut || '');
     const b = String(best?.checkIn || best?.checkOut || '');
-    if (a && a > b) best = s;
+    if (a && a < b) best = s;
   }
   return best;
 };
@@ -1167,7 +1167,7 @@ const load = async (date, opts = {}) => {
       return !isPlannedPlaceholderSegment(s, shiftStart, shiftEnd) &&
         !isTodayShiftGhostSegment(s, shiftStart, shiftEnd, date);
     });
-    let seg = pickLatestSegment(segments);
+    let seg = pickFirstSegment(segments);
     const openSeg = pickOpenSegment(segments);
     if (date === todayJST() && seg?.checkIn && seg?.checkOut) {
       try {
@@ -1342,19 +1342,9 @@ const load = async (date, opts = {}) => {
       const siteEl = $('#workSite');
       const workEl = $('#workContent');
       
-      let siteVal = '';
-      let workVal = '';
-      let hasData = false;
-
-      if (daily && (daily.location != null || daily.memo != null)) {
-        siteVal = daily.location || '';
-        workVal = daily.memo || '';
-        hasData = true;
-      } else if (rep && (rep.site || rep.work)) {
-        siteVal = rep.site || '';
-        workVal = rep.work || '';
-        hasData = true;
-      }
+      let siteVal = (daily && daily.location != null && daily.location !== '') ? daily.location : (rep ? rep.site || '' : '');
+      let workVal = (daily && daily.memo != null && daily.memo !== '') ? daily.memo : (rep ? rep.work || '' : '');
+      let hasData = !!(siteVal || workVal);
 
       siteVal = String(siteVal).trim();
       workVal = String(workVal).trim();
@@ -1577,7 +1567,7 @@ const tryCheckOut = async () => {
 
     const day = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`);
     const missingCheckInSeg = day?.segments?.find(s => s.is_anomaly === 1 && s.anomaly_type === 'missing_checkin');
-    let seg = pickLatestSegment(day?.segments);
+    let seg = pickFirstSegment(day?.segments);
     if (missingCheckInSeg) seg = missingCheckInSeg;
     const startTouched = String(stEl?.dataset?.touched || '') === '1' || (cin && !seg?.checkIn);
     const endTouched = String(etEl?.dataset?.touched || '') === '1' || (cout0 && !seg?.checkOut);
@@ -1586,21 +1576,23 @@ const tryCheckOut = async () => {
       const endVal = String(etEl?.value || '').trim();
       const hasOut = !!seg?.checkOut;
       
-      const body = { attendanceId: seg.id };
-      let shouldUpdate = false;
+      const body = { 
+        attendanceId: seg.id,
+        location: siteStr || (state.restHoliday ? null : ''),
+        memo: workStr || (state.restHoliday ? null : ''),
+        notes: notesStr
+      };
+      let shouldUpdate = true; // Always update to save location/memo/notes
       
       if (startTouched && cin) {
         body.checkIn = cin;
-        shouldUpdate = true;
       }
       
       if (endTouched && cout0) {
         body.checkOut = cout0;
-        shouldUpdate = true;
       } else if (hasOut && !endVal && endTouched) {
         // They cleared the end time
         body.checkOut = null;
-        shouldUpdate = true;
       }
       
       if (shouldUpdate) {

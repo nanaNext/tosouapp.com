@@ -488,6 +488,9 @@ export async function mount() {
 
       const rowClass = isOffRow ? 'wr-off-row' : (isSatRow ? 'wr-sat-row' : '');
       const textColorClass = isOffRow ? 'wr-sun-row' : (isSatRow ? 'wr-sat-row' : '');
+      
+      const displayLateEarly = !it.isSecondary ? lateEarlyHtml : dash;
+      const displayNotes = !it.isSecondary ? (combinedReasonMemo ? esc(combinedReasonMemo) : dash) : dash;
 
       return `
         <tr class="${rowClass}">
@@ -502,8 +505,8 @@ export async function mount() {
           <td data-label="勤務形態" style="white-space:nowrap;">${wType}</td>
           <td data-label="現場" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px;">${site}</td>
           <td data-label="作業内容" style="white-space:pre-wrap; word-break:break-word; min-width:200px; max-width:400px; color:#475569;">${work}</td>
-          <td data-label="遅刻・早退等" style="white-space:nowrap;">${lateEarlyHtml}</td>
-          <td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; color:#475569;">${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>
+          <td data-label="遅刻・早退等" style="white-space:nowrap;">${displayLateEarly}</td>
+          <td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; color:#475569;">${displayNotes}</td>
           <td data-label="状態"><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
         </tr>
       `;
@@ -752,7 +755,7 @@ export async function mount() {
           <span class="dash-pill" style="background:#fff1f1;color:#991b1b;border-color:#ffcccc;">未提出 ${g.missing}</span>
         </div>
       `;
-      const rows = g.items.map(it => {
+      const rows = g.items.map((it, idx) => {
         const dash = `<span style="color:#cbd5e1;">—</span>`;
         const stx = effectiveStatus(it);
         const meta = statusMeta(stx);
@@ -797,22 +800,52 @@ export async function mount() {
         const textColor = (dc === 'wr-dow-sun' || isHoliday) ? 'color:#ef4444;' : (dc === 'wr-dow-sat' ? 'color:#d97706;' : '');
         const trClass = (dc === 'wr-dow-sun' || isHoliday) ? 'wr-off-row' : (dc === 'wr-dow-sat' ? 'wr-sat-row' : '');
 
+        // Row merging logic for multiple shifts on same day
+        const prev = idx > 0 ? g.items[idx - 1] : null;
+        // Sửa lỗi: Cần kiểm tra kĩ userId và date của các record trước đó để gộp đúng người, đúng ngày
+        const isSameUserDate = prev && prev.date === it.date && prev.userId === it.userId;
+
+        let rsHtml = '';
+        if (!isSameUserDate) {
+          let rs = 1;
+          for (let j = idx + 1; j < g.items.length; j++) {
+            if (g.items[j].date === it.date && g.items[j].userId === it.userId) rs++;
+            else break;
+          }
+          rsHtml = rs > 1 ? ` rowspan="${rs}"` : '';
+        }
+
+        // Căn giữa ngang và dọc cho các ô đã merge
+        const cellStyle = 'vertical-align: middle;';
+
+        // If it's the same day, hide the borders of the repetitive info
+        const displayDateHtml = !isSameUserDate ? `<td data-label="日付" class="${dc}" style="text-align:center; font-weight:600; ${cellStyle} ${dowColor}"${rsHtml}>${esc(displayDate)}</td>` : ``;
+        const dowHtml = !isSameUserDate ? `<td data-label="曜" class="${dc}" style="text-align:center; font-weight:600; ${cellStyle} ${dowColor}"${rsHtml}>${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>` : ``;
+        const codeHtml = !isSameUserDate ? `<td data-label="社員番号" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${esc(code)}</td>` : ``;
+        const nameHtml = !isSameUserDate ? `<td data-label="氏名" class="group-hide" style="font-weight:500; white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${esc(it.username || '')}</td>` : ``;
+        const deptHtml = !isSameUserDate ? `<td data-label="部署" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${dept}</td>` : ``;
+        const kubunHtml = !isSameUserDate ? `<td data-label="勤務区分" style="${cellStyle} ${textColor}"${rsHtml}>${kubun}</td>` : ``;
+        const wTypeHtml = !isSameUserDate ? `<td data-label="勤務形態" style="${cellStyle} ${textColor}"${rsHtml}>${wType}</td>` : ``;
+        const lateEarlyHtmlCell = !isSameUserDate ? `<td data-label="遅刻・早退等" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${lateEarlyHtml}</td>` : ``;
+        const memoHtml = !isSameUserDate ? `<td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; ${cellStyle} ${textColor ? textColor : 'color:#475569;'}"${rsHtml}>${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>` : ``;
+        const statusHtml = !isSameUserDate ? `<td data-label="状態" style="${cellStyle}"${rsHtml}><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>` : ``;
+
         return `
         <tr class="${trClass}" style="${rowBg} ${textColor}">
-          <td data-label="日付" class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(displayDate)}</td>
-          <td data-label="曜" class="${dc}" style="text-align:center; font-weight:600; ${dowColor}">${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>
-          <td data-label="社員番号" class="group-hide" style="white-space:nowrap; ${textColor}">${esc(code)}</td>
-          <td data-label="氏名" class="group-hide" style="font-weight:500; white-space:nowrap; ${textColor}">${esc(it.username || '')}</td>
-          <td data-label="部署" class="group-hide" style="white-space:nowrap; ${textColor}">${dept}</td>
-          <td data-label="勤務区分" style="${textColor}">${kubun}</td>
+          ${displayDateHtml}
+          ${dowHtml}
+          ${codeHtml}
+          ${nameHtml}
+          ${deptHtml}
+          ${kubunHtml}
           <td data-label="出勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkIn}</td>
           <td data-label="退勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkOut}</td>
-          <td data-label="勤務形態" style="${textColor}">${wType}</td>
+          ${wTypeHtml}
           <td data-label="現場" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px; ${textColor}">${site}</td>
           <td data-label="作業内容" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
-          <td data-label="遅刻・早退等" style="white-space:nowrap; ${textColor}">${lateEarlyHtml}</td>
-          <td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; ${textColor ? textColor : 'color:#475569;'}">${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>
-          <td data-label="状態"><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
+          ${lateEarlyHtmlCell}
+          ${memoHtml}
+          ${statusHtml}
         </tr>
       `;
       }).join('');

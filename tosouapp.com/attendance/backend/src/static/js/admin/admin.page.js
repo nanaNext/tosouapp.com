@@ -803,7 +803,7 @@ const route = async () => {
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
-      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260423-attrecsync1');
+      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260423-attrecsync4');
       if (seq !== routeSeq) return;
       await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
       return;
@@ -817,7 +817,7 @@ const route = async () => {
     if (p2 === '/admin/work-reports') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=5');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/work-reports' });
-      const mod = await loadModule('./work-reports/work-reports.page.js?v=5');
+      const mod = await loadModule('./work-reports/work-reports.page.js?v=10');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;

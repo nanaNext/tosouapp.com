@@ -93,6 +93,9 @@ async function ensureAttendanceSchema() {
     if (!set.has('work_type')) alters.push(`ADD COLUMN work_type VARCHAR(24) NULL`);
     if (!set.has('is_anomaly')) alters.push(`ADD COLUMN is_anomaly TINYINT(1) NOT NULL DEFAULT 0`);
     if (!set.has('anomaly_type')) alters.push(`ADD COLUMN anomaly_type VARCHAR(64) NULL`);
+    if (!set.has('location')) alters.push(`ADD COLUMN location VARCHAR(255) NULL`);
+    if (!set.has('memo')) alters.push(`ADD COLUMN memo TEXT NULL`);
+    if (!set.has('notes')) alters.push(`ADD COLUMN notes TEXT NULL`);
     
     if (alters.length) {
       await db.query(`ALTER TABLE attendance ${alters.join(', ')}`);
@@ -1468,14 +1471,23 @@ module.exports = {
               }
             }
             const fields = ['checkIn = ?', 'checkOut = ?', 'work_type = ?'];
-            const vals = [u.checkIn||null, u.checkOut||null, u.workType||null, u.id, userId];
+            const vals = [u.checkIn||null, u.checkOut||null, u.workType||null];
+            
+            if (u.location !== undefined) { fields.push('location = ?'); vals.push(u.location || null); }
+            if (u.memo !== undefined) { fields.push('memo = ?'); vals.push(u.memo || null); }
+            if (u.notes !== undefined) { fields.push('notes = ?'); vals.push(u.notes || null); }
+            
+            vals.push(u.id, userId);
             await conn.query(`UPDATE attendance SET ${fields.join(', ')} WHERE id = ? AND userId = ?`, vals);
             segUpdated++;
           } else if (u.checkIn) {
+            const loc = u.location || null;
+            const mem = u.memo || null;
+            const not = u.notes || null;
             const [res] = await conn.query(
-              `INSERT INTO attendance (userId, checkIn, checkOut, work_type) VALUES (?, ?, ?, ?)
-               ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id),checkOut=VALUES(checkOut),work_type=VALUES(work_type)`,
-              [userId, u.checkIn, u.checkOut||null, u.workType||null]
+              `INSERT INTO attendance (userId, checkIn, checkOut, work_type, location, memo, notes) VALUES (?, ?, ?, ?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id),checkOut=VALUES(checkOut),work_type=VALUES(work_type),location=VALUES(location),memo=VALUES(memo),notes=VALUES(notes)`,
+              [userId, u.checkIn, u.checkOut||null, u.workType||null, loc, mem, not]
             );
             const newId = Number(res?.insertId||0)||null;
             const affected = Number(res?.affectedRows||0);
@@ -1647,6 +1659,8 @@ module.exports = {
         a.shiftId AS shiftId,
         a.checkIn AS checkIn,
         a.checkOut AS checkOut,
+        a.location AS site,
+        a.memo AS work,
         ad.kubun AS dailyKubun
       FROM users u
       LEFT JOIN departments d
@@ -1657,25 +1671,15 @@ module.exports = {
        AND ? BETWEEN lr.startDate AND lr.endDate
       LEFT JOIN attendance_daily ad
         ON ad.userId = u.id AND ad.date = ?
-      LEFT JOIN (
-        SELECT t1.*
-        FROM attendance t1
-        INNER JOIN (
-          SELECT userId, MAX(COALESCE(checkIn, checkOut)) AS maxTime
-          FROM attendance
-          WHERE DATE(checkIn) = ? OR (checkIn IS NULL AND DATE(checkOut) = ?)
-          GROUP BY userId
-        ) t2
-          ON t2.userId = t1.userId AND t2.maxTime = COALESCE(t1.checkIn, t1.checkOut)
-      ) a
-        ON a.userId = u.id
+      LEFT JOIN attendance a
+        ON a.userId = u.id AND (DATE(a.checkIn) = ? OR (a.checkIn IS NULL AND DATE(a.checkOut) = ?))
       WHERE u.employment_status = 'active'
         AND u.role IN ('employee','manager')
         AND lr.id IS NULL
       ORDER BY
-        CASE WHEN COALESCE(a.checkIn, a.checkOut) IS NULL THEN 1 ELSE 0 END ASC,
         COALESCE(u.employee_code, '') ASC,
-        u.id ASC
+        u.id ASC,
+        a.checkIn ASC
     `, [date, date, date, date]);
     return rows || [];
   },
