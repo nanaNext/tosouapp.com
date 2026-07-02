@@ -7,6 +7,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 let currentUser = null;
+let targetUserId = null;
 let currentMonth = new Date();
 
 let shiftData = {}; // key: YYYY-MM-DD, value: object
@@ -35,6 +36,9 @@ async function init() {
   const spinner = $('#pageSpinner');
   if (spinner) spinner.removeAttribute('hidden');
   
+  const params = new URLSearchParams(window.location.search);
+  targetUserId = params.get('userId');
+  
   try {
     const el = $('#userName');
     if (el) {
@@ -52,6 +56,17 @@ async function init() {
       return;
     }
     
+    // If targetUserId is specified, override currentUser with target user data
+    if (targetUserId && (currentUser.role === 'admin' || currentUser.role === 'manager')) {
+      const targetUser = await fetchJSONAuth(`/api/admin/employees/${targetUserId}`);
+      if (targetUser && !targetUser.error) {
+        currentUser = targetUser;
+      } else {
+        alert('指定されたユーザーが見つかりません。');
+        targetUserId = null;
+      }
+    }
+    
     // Also update header userName just in case it wasn't in storage
     const el = $('#userName');
     if (el && currentUser) {
@@ -59,17 +74,35 @@ async function init() {
       if (name) el.textContent = name;
     }
     
-    // Save updated user to storage
-    try {
-      sessionStorage.setItem('user', JSON.stringify(currentUser));
-      localStorage.setItem('user', JSON.stringify(currentUser));
-    } catch (e) { /* silently ignored */ }
+    // Save updated user to storage only if not overriding
+    if (!targetUserId) {
+      try {
+        sessionStorage.setItem('user', JSON.stringify(currentUser));
+        localStorage.setItem('user', JSON.stringify(currentUser));
+      } catch (e) { /* silently ignored */ }
+    }
     
     // Render user profile info inside the shifts-header box (Now fully handled by renderApp)
     const uiName = currentUser.username || currentUser.email || '未設定';
     const uiDept = currentUser.departmentName || '未設定';
     const isSeishain = currentUser.employment_type === 'full_time' || currentUser.employment_type === '正社員';
     const uiType = isSeishain ? '正社員' : 'アルバイト / パート';
+    
+    if (targetUserId) {
+      const headerBox = document.querySelector('.page-header');
+      if (headerBox) {
+        const banner = document.createElement('div');
+        banner.style.background = '#fef3c7';
+        banner.style.color = '#92400e';
+        banner.style.padding = '10px';
+        banner.style.textAlign = 'center';
+        banner.style.fontWeight = 'bold';
+        banner.style.marginBottom = '15px';
+        banner.style.borderRadius = '4px';
+        banner.textContent = `【代理編集モード】現在、「${uiName}」のシフトを編集しています。`;
+        headerBox.parentNode.insertBefore(banner, headerBox.nextSibling);
+      }
+    }
     
     await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
     renderApp();
@@ -146,7 +179,8 @@ async function loadMonthData(year, month) {
 
     // 1. Fetch server shift data first to check if there's already submitted/approved data
     try {
-      const serverRes = await fetchJSONAuth(`/api/attendance/shifts/monthly/${monthStr}?_t=${Date.now()}`); // Add timestamp to bypass cache
+      const q = targetUserId ? `&userId=${targetUserId}` : '';
+      const serverRes = await fetchJSONAuth(`/api/attendance/shifts/monthly/${monthStr}?_t=${Date.now()}${q}`); // Add timestamp to bypass cache
       if (serverRes && serverRes.success !== false) { // Assuming response is an array or object containing status
         // Handle array response (if it returns user shifts directly) or object response
         const data = serverRes.data || serverRes;
@@ -725,6 +759,9 @@ async function submitShifts() {
       };
     })
   };
+  if (targetUserId) {
+    payload.userId = targetUserId;
+  }
   
   if (!confirm(`${year}年${month}月のシフトを提出しますか？`)) {
     return;

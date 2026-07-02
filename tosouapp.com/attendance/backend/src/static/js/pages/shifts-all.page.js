@@ -235,7 +235,9 @@ function renderApp() {
       
       let rowHtml = `
         <tr>
-          <td style="position: sticky; left: 0; background: #fff; z-index: 5; font-weight: bold;">${esc(emp.username)}</td>
+          <td style="position: sticky; left: 0; background: #fff; z-index: 5; font-weight: bold;">
+            <a href="/ui/shifts?userId=${emp.id}" style="color: #2563eb; text-decoration: none;" title="この従業員のシフトを編集する">${esc(emp.username)}</a>
+          </td>
           <td>${esc(emp.departmentName || '')}</td>
           <td>${typeStr}</td>
       `;
@@ -387,7 +389,7 @@ function renderApp() {
         <div class="sac-card">
           <div class="sac-header">
             <div class="sac-name-wrap">
-              <span class="sac-name">${esc(emp.username)}</span>
+              <a href="/ui/shifts?userId=${emp.id}" style="color: #2563eb; text-decoration: none; font-weight: bold; font-size: 14px;">${esc(emp.username)}</a>
               <span class="${isSeishain ? 'badge-sei' : 'badge-bai'}">${typeStr}</span>
             </div>
           </div>
