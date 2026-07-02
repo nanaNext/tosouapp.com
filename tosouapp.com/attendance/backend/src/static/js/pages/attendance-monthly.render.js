@@ -357,6 +357,7 @@
       const isHolidayHide = isHolidayKubun || effectiveKubun === '欠勤';
       const hideStyle = isHolidayHide ? 'visibility: hidden;' : '';
       const brVal = (() => {
+        if (!shouldShowDefaultShift) return '0:00';
         if (brMin === 180) return '3:00';
         if (brMin === 150) return '2:30';
         if (brMin === 120) return '2:00';
@@ -443,7 +444,7 @@
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}_${rowId}" name="break_${dateStr}_${rowId}" class="se-select ${inAutoCls}" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
+        <select id="break_${dateStr}_${rowId}" name="break_${dateStr}_${rowId}" class="se-select ${autoIn ? 'is-auto' : ''}" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
           <option value="3:00" ${brVal === '3:00' ? 'selected' : ''}>3:00</option>
           <option value="2:30" ${brVal === '2:30' ? 'selected' : ''}>2:30</option>
           <option value="2:00" ${brVal === '2:00' ? 'selected' : ''}>2:00</option>
@@ -455,7 +456,7 @@
         </select>
       </td>
       <td>
-        <select id="nightBreak_${dateStr}_${rowId}" name="nightBreak_${dateStr}_${rowId}" class="se-select ${inAutoCls}" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
+        <select id="nightBreak_${dateStr}_${rowId}" name="nightBreak_${dateStr}_${rowId}" class="se-select ${autoIn ? 'is-auto' : ''}" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
