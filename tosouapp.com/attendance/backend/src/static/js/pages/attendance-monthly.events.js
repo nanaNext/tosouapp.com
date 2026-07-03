@@ -1194,6 +1194,16 @@
              isOnsite = '';
              isRemote = '';
              isTravel = '';
+          } else {
+             // Calculate work time from UI cells directly
+             const workedCell = tr.querySelector('td[data-field="worked"]');
+             const excessCell = tr.querySelector('td[data-field="excess"]');
+             if (workedCell && workedCell.textContent.trim()) {
+                 workedTime = workedCell.textContent.trim();
+             }
+             if (excessCell && excessCell.textContent.trim()) {
+                 excessTime = excessCell.textContent.trim();
+             }
           }
           
           // Đảm bảo xóa vòng tròn "Nơi làm việc" (出社/在宅/出張) nếu là các ngày nghỉ/phép
