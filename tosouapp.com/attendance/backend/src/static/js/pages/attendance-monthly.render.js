@@ -228,9 +228,9 @@
       const shiftBrMin = Number.isFinite(shiftBrRaw) && shiftBrRaw >= 0 ? shiftBrRaw : 60;
       
       let defaultBr = 60;
-      if (shift && shift.break_minutes !== undefined) {
+      if (shift && shift.break_minutes != null) {
         defaultBr = Number(shift.break_minutes);
-      } else if (String(profile?.employment_type || '').toLowerCase() === 'part_time') {
+      } else if (isPartTime) {
         const sM = parseHm(shiftStart);
         const eM = parseHm(shiftEnd);
         if (sM && eM && (eM.total - sM.total <= 5 * 60)) {
@@ -238,8 +238,10 @@
         }
       }
 
-      const brMin = shouldShowDefaultShift ? (primary ? Number(daily?.breakMinutes ?? defaultBr) : defaultBr) : 0;
-      const nbMin = shouldShowDefaultShift ? (primary ? Number(daily?.nightBreakMinutes ?? 0) : 0) : 0;
+      // Nếu dòng này là giờ tự động (chưa có check-in thực tế), ưu tiên dùng giờ nghỉ mặc định của ca (defaultBr)
+      // Điều này giúp tránh việc bị kẹt ở giá trị 0 do lỗi auto-save trước đây.
+      const brMin = shouldShowDefaultShift ? (primary ? (autoIn ? defaultBr : Number(daily?.breakMinutes ?? defaultBr)) : defaultBr) : 0;
+      const nbMin = shouldShowDefaultShift ? (primary ? (autoIn ? 0 : Number(daily?.nightBreakMinutes ?? 0)) : 0) : 0;
       const totalBmin = brMin + nbMin;
 
       // Show planned work hours (faded) only for work days
@@ -910,9 +912,9 @@
         }
         if (brSel && (!brSel.value || brSel.dataset.auto === '1') && brSel.dataset.manual !== '1') {
           let rawBr = 60;
-          if (dayShift && dayShift.break_minutes !== undefined) {
+          if (dayShift && dayShift.break_minutes != null) {
             rawBr = Number(dayShift.break_minutes);
-          } else if (String(state.currentMonthDetail?.employee?.employment_type || '').toLowerCase() === 'part_time') {
+          } else if (String(state.currentMonthDetail?.user?.employment_type || '').toLowerCase() === 'part_time') {
             const stM = parseHm(shiftStart);
             const etM = parseHm(shiftEnd);
             if (stM && etM && (etM.total - stM.total <= 5 * 60)) {
