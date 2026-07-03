@@ -3083,8 +3083,8 @@ exports.exportMonthXlsx = async (req, res) => {
       const wtRe = wt === 'remote' ? { v: '✓', s: 'checkOn' } : '';
       const wtSa = wt === 'satellite' ? { v: '✓', s: 'checkOn' } : '';
       const holidayLock = !isWorkKubun;
-      const brMin = holidayLock ? 0 : (autoIn ? defaultBr : (daily?.break_minutes == null ? defaultBr : Number(daily.break_minutes)));
-      const nbMin = holidayLock ? 0 : (autoIn ? 0 : (daily?.night_break_minutes == null ? 0 : Number(daily.night_break_minutes)));
+      const brMin = holidayLock ? 0 : (!hasTime && shouldShowDefaultShift ? defaultBr : (daily?.break_minutes == null ? defaultBr : Number(daily.break_minutes)));
+      const nbMin = holidayLock ? 0 : (!hasTime && shouldShowDefaultShift ? 0 : (daily?.night_break_minutes == null ? 0 : Number(daily.night_break_minutes)));
       const workedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - hmToMinutes(inHm) - brMin - nbMin);
       const otMin = holidayLock ? 0 : Math.max(0, workedMin - (8 * 60));
       const lateEarly = (() => {
