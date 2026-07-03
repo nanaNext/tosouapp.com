@@ -2883,6 +2883,12 @@ exports.exportMonthXlsx = async (req, res) => {
       const mm = Math.floor(m0 % 60);
       return `${h}:${String(mm).padStart(2, '0')}`;
     };
+    const hmToMinutes = (s) => {
+      const t = String(s || '').trim();
+      const m = t.match(/^(\d+):(\d{2})$/);
+      if (!m) return 0;
+      return (parseInt(m[1], 10) * 60) + parseInt(m[2], 10);
+    };
     const minutesBetween = (aStr, bStr) => {
       const a = String(aStr || '');
       const b = String(bStr || '');
@@ -2901,8 +2907,14 @@ exports.exportMonthXlsx = async (req, res) => {
       const bUtc = Date.UTC(by, (bm || 1) - 1, bd || 1, (bh || 0) - 9, bmn || 0, 0);
       return Math.max(0, Math.round((bUtc - aUtc) / 60000));
     };
-    const brLabel = (min) => min === 45 ? '0:45' : min === 30 ? '0:30' : min === 0 ? '0:00' : '1:00';
-    const nbLabel = (min) => min === 60 ? '1:00' : min === 30 ? '0:30' : '0:00';
+    const brLabel = (min) => {
+      if (min === 0) return '0:00';
+      return fmtHm(min);
+    };
+    const nbLabel = (min) => {
+      if (min === 0) return '0:00';
+      return fmtHm(min);
+    };
     const reasonLabel = (r) => {
       const s = String(r || '').trim();
       if (s === 'private') return '私用';
@@ -3018,17 +3030,32 @@ exports.exportMonthXlsx = async (req, res) => {
       const seg = segs[0] || null;
       const daily = dailyMap.get(ds) || null;
       const wd = resolveWorkDetail(ds);
-      const inHm = hm(seg?.checkIn);
-      const outHm = hm(seg?.checkOut);
+      
+      const isPartTime = String(user?.employment_type || '').toLowerCase() === 'part_time';
+      const shiftDef = shiftForDate(ds);
+      const shiftStart = shiftDef ? shiftDef.start_time : '09:00';
+      const shiftEnd = shiftDef ? shiftDef.end_time : '18:00';
+      
+      let defaultBr = 60;
+      if (shiftDef && shiftDef.break_minutes != null) {
+        defaultBr = Number(shiftDef.break_minutes);
+      } else if (isPartTime) {
+        const sM = hmToMinutes(shiftStart);
+        const eM = hmToMinutes(shiftEnd);
+        if (sM && eM && (eM - sM <= 5 * 60)) {
+          defaultBr = 0;
+        }
+      }
+
+      let inHm = hm(seg?.checkIn);
+      let outHm = hm(seg?.checkOut);
       const hasTime = !!inHm || !!outHm;
       const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
       const dailyKubun = String(daily?.kubun || '').trim();
       const plannedLabel = isOff ? '【予定休日】' : '【予定出勤】';
       const kubunInfo = (() => {
         if (isOff) {
-          // If the user explicitly set '出勤' on a holiday, preserve it instead of defaulting to '休日出勤'
           if (dailyKubun === '出勤') return { display: '出勤', effective: '出勤' };
-          
           if (dailyKubun === '休日' || dailyKubun === '休日出勤' || dailyKubun === '代替出勤') {
             return { display: dailyKubun, effective: dailyKubun };
           }
@@ -3041,15 +3068,24 @@ exports.exportMonthXlsx = async (req, res) => {
       })();
       const kubun = kubunInfo.display;
       const isWorkKubun = workKubunSet.has(kubunInfo.effective);
+      
+      // Auto-fill logic similar to frontend
+      const shouldShowDefaultShift = !isOff && (kubun === '' || kubun === '出勤' || kubun === '【予定出勤】' || kubun === '休日出勤' || kubun === '代替出勤');
+      const autoIn = !hasTime && shouldShowDefaultShift;
+      if (autoIn) {
+        inHm = shiftStart;
+        outHm = shiftEnd;
+      }
+      
       let wt = isWorkKubun ? String(seg?.workType || daily?.workType || '').trim() : '';
       if (isWorkKubun && !wt) wt = 'onsite';
       const wtOn = wt === 'onsite' ? { v: '✓', s: 'checkOn' } : '';
       const wtRe = wt === 'remote' ? { v: '✓', s: 'checkOn' } : '';
       const wtSa = wt === 'satellite' ? { v: '✓', s: 'checkOn' } : '';
       const holidayLock = !isWorkKubun;
-      const brMin = holidayLock ? 0 : (daily?.break_minutes == null ? 60 : Number(daily.break_minutes));
-      const nbMin = holidayLock ? 0 : (daily?.night_break_minutes == null ? 0 : Number(daily.night_break_minutes));
-      const workedMin = holidayLock ? 0 : Math.max(0, minutesBetween(seg?.checkIn, seg?.checkOut) - brMin);
+      const brMin = holidayLock ? 0 : (autoIn ? defaultBr : (daily?.break_minutes == null ? defaultBr : Number(daily.break_minutes)));
+      const nbMin = holidayLock ? 0 : (autoIn ? 0 : (daily?.night_break_minutes == null ? 0 : Number(daily.night_break_minutes)));
+      const workedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - hmToMinutes(inHm) - brMin - nbMin);
       const otMin = holidayLock ? 0 : Math.max(0, workedMin - (8 * 60));
       const lateEarly = (() => {
         if (holidayLock) return '';
@@ -3145,11 +3181,24 @@ exports.exportMonthXlsx = async (req, res) => {
 
       // Sheet 2: 予定
       const plan = planRows.find(p => String(p.date).slice(0, 10) === ds) || null;
-      const shiftDef = plan?.shiftId ? shiftById.get(String(plan.shiftId)) : (shiftForDate(ds) ? shiftById.get(String(shiftForDate(ds).id)) : null);
+      const planShiftDef = plan?.shiftId ? shiftById.get(String(plan.shiftId)) : shiftDef;
       const planKubun = isOff ? '休日' : '出勤';
-      const planStartTime = plan?.startTime || shiftDef?.start_time || '';
-      const planEndTime = plan?.endTime || shiftDef?.end_time || '';
-      const planBreak = plan?.breakMinutes != null ? plan.breakMinutes : (shiftDef?.break_minutes || 0);
+      const planStartTime = plan?.startTime || planShiftDef?.start_time || '';
+      const planEndTime = plan?.endTime || planShiftDef?.end_time || '';
+      
+      let planBreak = 60;
+      if (plan?.breakMinutes != null) {
+        planBreak = plan.breakMinutes;
+      } else if (planShiftDef && planShiftDef.break_minutes != null) {
+        planBreak = Number(planShiftDef.break_minutes);
+      } else if (isPartTime) {
+        const sM = hmToMinutes(planStartTime);
+        const eM = hmToMinutes(planEndTime);
+        if (sM && eM && (eM - sM <= 5 * 60)) {
+          planBreak = 0;
+        }
+      }
+      
       const planWorkType = plan?.work_type || (isOff ? '' : '契約なし');
       
       planSheetRows.push({
@@ -3204,12 +3253,6 @@ exports.exportMonthXlsx = async (req, res) => {
     const formulaCell = (ref, formula, value = '', style = 0) => {
       const v = String(value == null ? '' : value);
       return `<c r="${ref}" t="str" s="${style}"><f>${esc(formula)}</f><v>${esc(v)}</v></c>`;
-    };
-    const hmToMinutes = (s) => {
-      const t = String(s || '').trim();
-      const m = t.match(/^(\d+):(\d{2})$/);
-      if (!m) return 0;
-      return (parseInt(m[1], 10) * 60) + parseInt(m[2], 10);
     };
     const splitHmDisplay = (s, showColonOnly = true) => {
       const t = String(s || '').trim();
