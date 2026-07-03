@@ -2962,7 +2962,14 @@ exports.exportMonthXlsx = async (req, res) => {
       if (!/^\d{2}:\d{2}$/.test(st) || !/^\d{2}:\d{2}$/.test(et)) return null;
       const [sh, sm] = st.split(':').map(n => parseInt(n, 10));
       const [eh, em] = et.split(':').map(n => parseInt(n, 10));
-      return { startMin: (sh || 0) * 60 + (sm || 0), endMin: (eh || 0) * 60 + (em || 0) };
+      return { 
+        id: def.id,
+        start_time: def.start_time,
+        end_time: def.end_time,
+        break_minutes: def.break_minutes,
+        startMin: (sh || 0) * 60 + (sm || 0), 
+        endMin: (eh || 0) * 60 + (em || 0) 
+      };
     };
 
     const columns = [
