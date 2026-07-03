@@ -1131,8 +1131,24 @@
 
           let timeIn = inHm;
           let timeOut = outHm;
-          let breakNormal = tr.querySelector('select[data-field="breakMinutes"]')?.value || '0:00';
-          let breakNight = tr.querySelector('select[data-field="nightBreakMinutes"]')?.value || '0:00';
+          let breakNormal = '0:00';
+          const breakSel = tr.querySelector('select[data-field="break"]'); // Changed from breakMinutes to break CÁI NÀY LÀ DÙNG ĐỂ THAY ĐỔI FORM 
+          if (breakSel) {
+             const val = breakSel.value;
+             if (val === '60' || val === '1:00') breakNormal = '1:00';
+             else if (val === '45' || val === '0:45') breakNormal = '0:45';
+             else if (val === '30' || val === '0:30') breakNormal = '0:30';
+             else breakNormal = '0:00';
+          }
+          
+          let breakNight = '0:00';
+          const nightBreakSel = tr.querySelector('select[data-field="nightBreak"]'); // Changed from nightBreakMinutes to nightBreak
+          if (nightBreakSel) {
+             const val = nightBreakSel.value;
+             if (val === '60' || val === '1:00') breakNight = '1:00';
+             else if (val === '30' || val === '0:30') breakNight = '0:30';
+             else breakNight = '0:00';
+          }
           let workedTime = '0:00';
           let excessTime = '0:00';
           
@@ -1177,32 +1193,40 @@
           const isHolidayKubun = kubun === '休日' || kubun === '代替休日';
           const isLeaveKubun = kubun === '有給休暇' || kubun === '無給休暇' || kubun === '欠勤';
           
-          if (!hasActualIn && !hasActualOut) {
-             if (isFuture || isPlanned) {
-                if (!kubun || kubun === '出勤') kubun = '予定';
-             }
-             
-             // Xóa giờ giấc và các thông tin liên quan nếu chưa đi làm (chưa có dữ liệu thực tế)
-             timeIn = '';
-             timeOut = '';
+          // Xóa từng ô giờ nếu chưa có dữ liệu thực tế
+          if (!hasActualIn) timeIn = '';
+          if (!hasActualOut) timeOut = '';
+
+          // Nếu chưa hoàn thành ca (chưa in hoặc chưa out), xóa các giờ tính toán
+          if (!hasActualIn || !hasActualOut) {
              breakNormal = '';
              breakNight = '';
              workedTime = '';
              excessTime = '';
-             
+             dayWorkMins = 0;
+             dayOvertimeMins = 0;
+             dayNightMins = 0;
+          }
+
+          if (!hasActualIn && !hasActualOut) {
+             if (isFuture || isPlanned) {
+                if (!kubun || kubun === '出勤') kubun = '予定';
+             }
              // Xóa cả địa điểm nếu là ngày chưa làm
              isOnsite = '';
              isRemote = '';
              isTravel = '';
-          } else {
+          } else if (hasActualIn && hasActualOut) {
              // Calculate work time from UI cells directly
              const workedCell = tr.querySelector('td[data-field="worked"]');
              const excessCell = tr.querySelector('td[data-field="excess"]');
-             if (workedCell && workedCell.textContent.trim()) {
+             if (workedCell) {
                  workedTime = workedCell.textContent.trim();
+                 dayWorkMins = parseHmToMin(workedTime);
              }
-             if (excessCell && excessCell.textContent.trim()) {
+             if (excessCell) {
                  excessTime = excessCell.textContent.trim();
+                 dayOvertimeMins = parseHmToMin(excessTime);
              }
           }
           
