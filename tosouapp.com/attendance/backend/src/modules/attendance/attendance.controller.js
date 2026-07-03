@@ -2908,10 +2908,12 @@ exports.exportMonthXlsx = async (req, res) => {
       return Math.max(0, Math.round((bUtc - aUtc) / 60000));
     };
     const brLabel = (min) => {
+      if (min === '') return '';
       if (min === 0) return '0:00';
       return fmtHm(min);
     };
     const nbLabel = (min) => {
+      if (min === '') return '';
       if (min === 0) return '0:00';
       return fmtHm(min);
     };
@@ -3076,35 +3078,43 @@ exports.exportMonthXlsx = async (req, res) => {
       const kubun = kubunInfo.display;
       const isWorkKubun = workKubunSet.has(kubunInfo.effective);
       
-      // Auto-fill logic similar to frontend
+      // We only export ACTUAL data, not the faded placeholder data from the UI.
       const shouldShowDefaultShift = !isOff && (kubun === '' || kubun === '出勤' || kubun === '【予定出勤】' || kubun === '休日出勤' || kubun === '代替出勤');
-      const autoIn = !hasTime && shouldShowDefaultShift;
-      if (autoIn) {
-        inHm = shiftStart;
-        outHm = shiftEnd;
-      }
       
       let wt = isWorkKubun ? String(seg?.workType || daily?.workType || '').trim() : '';
       if (isWorkKubun && !wt) wt = 'onsite';
       const wtOn = wt === 'onsite' ? { v: '✓', s: 'checkOn' } : '';
       const wtRe = wt === 'remote' ? { v: '✓', s: 'checkOn' } : '';
       const wtSa = wt === 'satellite' ? { v: '✓', s: 'checkOn' } : '';
+      
       const holidayLock = !isWorkKubun;
-      const brMin = holidayLock ? 0 : (!hasTime && shouldShowDefaultShift ? defaultBr : (daily?.break_minutes == null ? defaultBr : Number(daily.break_minutes)));
-      const nbMin = holidayLock ? 0 : (!hasTime && shouldShowDefaultShift ? 0 : (daily?.night_break_minutes == null ? 0 : Number(daily.night_break_minutes)));
-      const workedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - hmToMinutes(inHm) - brMin - nbMin);
-      const otMin = holidayLock ? 0 : Math.max(0, workedMin - (8 * 60));
+      
+      let exportInHm = '';
+      let exportOutHm = '';
+      let exportBrMin = '';
+      let exportNbMin = '';
+      let exportWorkedMin = '';
+      let exportOtMin = '';
+
+      if (hasTime) {
+        exportInHm = inHm;
+        exportOutHm = outHm;
+        exportBrMin = holidayLock ? 0 : (daily?.break_minutes == null ? defaultBr : Number(daily.break_minutes));
+        exportNbMin = holidayLock ? 0 : (daily?.night_break_minutes == null ? 0 : Number(daily.night_break_minutes));
+        exportWorkedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - hmToMinutes(inHm) - exportBrMin - exportNbMin);
+        exportOtMin = holidayLock ? 0 : Math.max(0, exportWorkedMin - (8 * 60));
+      }
       const lateEarly = (() => {
         if (holidayLock) return '';
-        if (!inHm && !outHm) return '';
+        if (!exportInHm && !exportOutHm) return '';
         const parse = (t) => {
           const s = String(t || '');
           if (!/^\d{2}:\d{2}$/.test(s)) return null;
           const [h, mi] = s.split(':').map(n => parseInt(n, 10));
           return (h || 0) * 60 + (mi || 0);
         };
-        const a = parse(inHm);
-        const b = parse(outHm);
+        const a = parse(exportInHm);
+        const b = parse(exportOutHm);
         if (a == null || b == null) return '';
         const se = shiftForDate(ds);
         const startBase = se?.startMin ?? (8 * 60);
@@ -3170,12 +3180,12 @@ exports.exportMonthXlsx = async (req, res) => {
           wtOn,
           wtRe,
           wtSa,
-          inHm,
-          outHm,
-          brLabel(brMin),
-          nbLabel(nbMin),
-          fmtHm(workedMin),
-          fmtHm(otMin),
+          exportInHm,
+          exportOutHm,
+          brLabel(exportBrMin),
+          nbLabel(exportNbMin),
+          exportWorkedMin !== '' ? fmtHm(exportWorkedMin) : '',
+          exportOtMin !== '' ? fmtHm(exportOtMin) : '',
           lateEarly,
           reasonLabel(daily?.reason || ''),
           workContent,
