@@ -1114,8 +1114,9 @@
           
           const inEl = tr.querySelector('input[data-field="checkIn"]');
           const outEl = tr.querySelector('input[data-field="checkOut"]');
-          const hasActualIn = inEl && inEl.dataset.actual;
-          const hasActualOut = outEl && outEl.dataset.actual;
+          // Update the detection logic to check for the 'is-auto' class since dataset.actual is not reliable here
+          const hasActualIn = inEl && inEl.value && !inEl.classList.contains('is-auto');
+          const hasActualOut = outEl && outEl.value && !outEl.classList.contains('is-auto');
           let inHm = inEl ? inEl.value : '';
           let outHm = outEl ? outEl.value : '';
           
@@ -1130,8 +1131,8 @@
 
           let timeIn = inHm;
           let timeOut = outHm;
-          let breakNormal = tr.querySelector('input[data-field="breakMinutes"]')?.value || '0:00';
-          let breakNight = '0:00';
+          let breakNormal = tr.querySelector('select[data-field="breakMinutes"]')?.value || '0:00';
+          let breakNight = tr.querySelector('select[data-field="nightBreakMinutes"]')?.value || '0:00';
           let workedTime = '0:00';
           let excessTime = '0:00';
           
