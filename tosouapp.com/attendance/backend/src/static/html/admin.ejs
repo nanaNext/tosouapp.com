@@ -7,8 +7,11 @@
   <title>管理ポータル</title>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
   <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260610-ui1">
-  <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260610-ui1">
-  <meta name="asset-v" content="navy-20260629-ui7">
+  <link rel="stylesheet" href="/static/css/admin.css?v=navy-20260706-ui33">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta name="asset-v" content="navy-20260704-ui32">
   <style></style>
   <script>
     if (window.location.search.includes('standalone=1') || window.location.search.includes('standalone=true')) {
@@ -17,7 +20,7 @@
   </script>
   
   <script src="/static/js/pages/session-idle.js?v=navy-20260411-patch2" defer></script>
-  <script type="module" src="/static/js/admin/admin.page.js?v=18"></script>
+  <script type="module" src="/static/js/admin/admin.page.js?v=40"></script>
   <link rel="icon" href="data:,">
 </head>
 
@@ -25,33 +28,11 @@
   <div id="adminChrome">
   <%- include('_partials/admin-topbar.ejs') %>
   <%- include('_partials/admin-mobile-drawer.ejs') %>
-  <div class="subbar">
-    <div class="subnav">
-      <a href="/admin/dashboard">ホーム</a>
-      <div class="menu">
-        <button class="menu-btn" type="button">社員管理</button>
-        <div class="submenu" role="menu">
-          <a href="/admin/employees" role="menuitem">社員一覧</a>
-          <a href="/admin/employees/add" role="menuitem">社員追加</a>
-          <a href="/admin/employees/monthly-summary" role="menuitem">月次集計</a>
-        </div>
-      </div>
-      <a href="/admin/attendance?standalone=1" target="_blank" rel="noopener noreferrer">勤怠管理</a>
-      <a href="/admin/leave/requests">休暇管理</a>
-      <a href="/admin/payroll/salary">給与管理</a>
-      <a href="/admin/expenses?standalone=1" target="_blank" rel="noopener noreferrer">交通費</a>
-      <a href="/admin/departments">組織</a>
-      <div class="menu">
-        <button class="menu-btn" type="button">システム</button>
-        <div class="submenu" role="menu">
-          <a href="/admin/notices" role="menuitem">お知らせ</a>
-          <a href="/admin/system/settings" role="menuitem">設定</a>
-          <a href="/admin/system/audit-logs" role="menuitem">監査ログ</a>
-        </div>
-      </div>
-      <a href="/admin/faq">FAQ管理</a>
+  <aside class="sidebar">
+    <div class="sidebar-nav">
+      <!-- Sidebar content will be injected by JS or rendered here -->
     </div>
-  </div>
+  </aside>
   </div>
   <main class="content">
     <div id="status" class="status" style="display:none;"></div>

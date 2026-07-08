@@ -557,7 +557,7 @@ function renderTable() {
     </style>
     <div class="sap-card">
       <div class="adj-month-nav">
-        <h2 style="margin:0; font-size:16px; font-weight:700; color:#1e293b;">調整申請一覧</h2>
+        <h2 style="margin:0; font-size:16px; font-weight:700; color:#1e293b; display:none;">調整申請一覧</h2>
         <div class="adj-month-nav-right">
           <button id="btnMonthPrev" class="adj-month-btn" title="前月">&#8249;</button>
           <span class="adj-month-label">
@@ -569,7 +569,7 @@ function renderTable() {
       </div>
       <div class="adj-table-card">
         ${pagedRows.length === 0 ? `
-          <div style="padding:48px 24px;text-align:center;color:#6a6d70;font-size:14px;background:#ffffff;">この月の申請はありません</div>
+          <div style="padding:48px 24px;text-align:center;color:#6a6d70;font-size:14px;background:#ffffff;">該当する申請データがありません。</div>
         ` : `
           <table class="adj-table">
             <thead style="position:sticky;top:0;z-index:10;">

@@ -71,8 +71,7 @@ const listYMBack = (ym, n) => {
   return out;
 };
 
-const render = async () => {
-  const host = $('#adminContent');
+const render = async (host) => {
   if (!host) return;
   let pollTimer = 0;
   const globalStatus = document.getElementById('status');
@@ -859,6 +858,51 @@ const render = async () => {
           .exp-admin-page .exp-dash-deptwrap { grid-template-columns: 1fr; justify-items:center; }
           .exp-admin-page .exp-dash-legend { width: 100%; }
           .exp-admin-page .exp-dash-content { padding: 12px; }
+          .exp-admin-page .exp-admin-table-wrap {
+            overflow: visible !important;
+            -webkit-overflow-scrolling: touch;
+          }
+          .exp-admin-page .exp-admin-table {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          .exp-admin-page .exp-admin-table thead {
+            display: none !important;
+          }
+          .exp-admin-page .exp-admin-table tbody {
+            display: block !important;
+            width: 100% !important;
+          }
+          .exp-admin-page .exp-admin-table tbody tr {
+            display: block !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 8px !important;
+            margin-bottom: 10px !important;
+            padding: 10px 12px !important;
+            background: #fff !important;
+          }
+          .exp-admin-page .exp-admin-table tbody td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 6px 0 !important;
+            border: none !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            font-size: 13px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+          }
+          .exp-admin-page .exp-admin-table tbody td:last-child {
+            border-bottom: none !important;
+          }
+          .exp-admin-page .exp-admin-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #475569;
+            font-size: 12px;
+            min-width: 70px;
+            flex-shrink: 0;
+          }
           .exp-admin-page .exp-dash-drawer {
             position: fixed;
             top: 0;
@@ -887,11 +931,11 @@ const render = async () => {
       <section id="expDashRoot" class="exp-dash-root">
         <aside class="exp-dash-side">
           <div class="exp-dash-brand">
-            <div class="mark">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="16" rx="2" ry="2"></rect><path d="M4 11h16"></path><path d="M12 3v8"></path><path d="M8 19l-2 3"></path><path d="M18 22l-2-3"></path><path d="M8 15h.01"></path><path d="M16 15h.01"></path></svg>
+            <div class="mark" style="margin-left: 12px; margin-top: 4px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="16" rx="2" ry="2"></rect><path d="M4 11h16"></path><path d="M12 3v8"></path><path d="M8 19l-2 3"></path><path d="M18 22l-2-3"></path><path d="M8 15h.01"></path><path d="M16 15h.01"></path></svg>
             </div>
             <div class="name">
-              <div>交通費管理システム</div>
+              <div style="font-size: 16px; font-weight: 700;">交通費</div>
             </div>
           </div>
           <div class="exp-dash-side-nav-wrapper">
@@ -1317,14 +1361,14 @@ const render = async () => {
     const deltaText = delta == null ? '' : `${delta >= 0 ? '+' : '-'}${fmtJPY(Math.abs(delta))}`;
     const avg = Number(dash?.avgPerUser || 0);
     const cards = [
-      { title: '今月の交通費総額（申請中+承認済）', value: fmtJPY(m.totalAmount || 0), sub: deltaText ? `前月比 ${deltaText}` : ' ' , cls:'c1', ico: '¥' },
-      { title: '承認待ち件数', value: `${Number(m.appliedCount || 0).toLocaleString('ja-JP')}件`, sub: fmtJPY(m.appliedAmount || 0), cls:'c2', ico: '⏳' },
-      { title: '差戻し件数', value: `${Number(m.rejectedCount || 0).toLocaleString('ja-JP')}件`, sub: fmtJPY(m.rejectedAmount || 0), cls:'c3', ico: '↩' },
-      { title: '今月申請人数', value: `${Number(m.applicantUsers || 0).toLocaleString('ja-JP')}人`, sub: ' ', cls:'c4', ico: '👥' },
-      { title: '平均交通費（1人あたり）', value: fmtJPY(avg), sub: ' ', cls:'c5', ico: '∅' }
+      { title: '今月の交通費総額（申請中+承認済）', value: fmtJPY(m.totalAmount || 0), sub: deltaText ? `前月比 ${deltaText}` : ' ' , cls:'c1', ico: '¥', nav: 'all' },
+      { title: '承認待ち件数', value: `${Number(m.appliedCount || 0).toLocaleString('ja-JP')}件`, sub: fmtJPY(m.appliedAmount || 0), cls:'c2', ico: '⏳', nav: 'pending' },
+      { title: '差戻し件数', value: `${Number(m.rejectedCount || 0).toLocaleString('ja-JP')}件`, sub: fmtJPY(m.rejectedAmount || 0), cls:'c3', ico: '↩', nav: 'rejected' },
+      { title: '今月申請人数', value: `${Number(m.applicantUsers || 0).toLocaleString('ja-JP')}人`, sub: ' ', cls:'c4', ico: '👥', nav: 'all' },
+      { title: '平均交通費（1人あたり）', value: fmtJPY(avg), sub: ' ', cls:'c5', ico: '∅', nav: 'all' }
     ];
     hostKpi.innerHTML = cards.map((c) => `
-      <div class="exp-dash-kpi-card ${c.cls}">
+      <div class="exp-dash-kpi-card ${c.cls}" data-nav="${c.nav}" style="cursor:pointer;">
         <div class="head">
           <div class="icon">${esc(c.ico)}</div>
           <div class="t" style="font-size:14px; font-weight:normal;">${esc(c.title)}</div>
@@ -1333,6 +1377,14 @@ const render = async () => {
         <div class="s">${esc(c.sub)}</div>
       </div>
     `).join('');
+    hostKpi.querySelectorAll('[data-nav]').forEach(el => {
+      el.addEventListener('click', () => {
+        const nav = el.dataset.nav;
+        const status = nav === 'pending' ? 'applied' : nav === 'rejected' ? 'rejected' : '';
+        const sidebarBtn = document.querySelector(`.exp-dash-nav[data-status="${status}"]`);
+        if (sidebarBtn) { sidebarBtn.click(); return; }
+      });
+    });
   };
 
   const renderTrend = (dash) => {
@@ -1641,18 +1693,18 @@ const render = async () => {
       }
 
       return `<tr class="exp-dash-row">
-        ${state.status === 'approved' ? '' : `<td class="center" style="width:40px;">
+        ${state.status === 'approved' ? '' : `<td data-label="" class="center" style="width:40px;">
           <input type="checkbox" class="${state.status === 'monthly_approval' ? 'exp-dash-bulk-cb-monthly' : 'exp-dash-bulk-group'}" data-uid="${esc(r.userId)}" data-month="${esc(r.month)}" style="cursor:pointer;" />
         </td>`}
-        <td>
+        <td data-label="社員名">
           <div style="font-weight: 800; color: #0f172a;">${esc(r.userName)}</div>
           ${r.userCode ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${esc(r.userCode)}</div>` : ''}
         </td>
-        <td>${esc(d)}</td>
-        <td class="center">${esc(fmtMonthLabel(r.month))}</td>
-        <td class="money">¥${Number(r.amount).toLocaleString('ja-JP')}</td>
-        <td class="center">${esc(r.count)}件</td>
-        <td style="padding-left:12px;">
+        <td data-label="部署">${esc(d)}</td>
+        <td data-label="対象月" class="center">${esc(fmtMonthLabel(r.month))}</td>
+        <td data-label="合計" class="money">¥${Number(r.amount).toLocaleString('ja-JP')}</td>
+        <td data-label="件数" class="center">${esc(r.count)}件</td>
+        <td data-label="操作" style="padding-left:12px;">
           <div style="display:flex;gap:8px;align-items:center;justify-content:flex-start;">
             ${actionHtml}
           </div>
@@ -3669,9 +3721,6 @@ const render = async () => {
     viewState.page = 1;
     await reload();
   });
-
-
-
   const toggleHistoryBtn = $('#expToggleHistory');
   toggleHistoryBtn?.addEventListener('click', async () => {
     viewState.showHistory = !viewState.showHistory;
@@ -3743,11 +3792,11 @@ const render = async () => {
     try { document.body.style.overflow = ''; } catch (e) { /* silently ignored */ }
   };
 };
-
-export async function mount() {
+export async function mount(options = {}) {
+  const root = options.content || document.querySelector('#adminContent');
   const profile = await requireAdmin();
   if (!profile) return;
   try { window.ADMIN_ID = profile.id; } catch (e) { /* silently ignored */ }
   try { window.ADMIN_PROFILE = profile; } catch (e) { /* silently ignored */ }
-  return await render();
+  return await render(root);
 }

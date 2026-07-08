@@ -165,8 +165,6 @@ router.get('/ui/employees/', (req, res) => sendAdminPageNoCache(req, res, 'admin
 
 router.get('/admin/attendance/monthly', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-monthly.html'));
 router.get('/admin/attendance/monthly/', (req, res) => sendAdminPageNoCache(req, res, 'admin-attendance-monthly.html'));
-router.get('/admin/employees/monthly-summary', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
-router.get('/admin/employees/monthly-summary/', (req, res) => sendAdminPageNoCache(req, res, 'admin-employees-monthly-summary.html'));
 
 router.get(/^\/admin(?:\/.*)?$/, (req, res) => {
   const role = roleOf(req.user?.role);

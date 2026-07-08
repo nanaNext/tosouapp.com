@@ -178,6 +178,21 @@ ${appUrl}ui/manual
             }
 
             try {
+                // Kiểm tra đã có thông báo cho user này trong tháng này chưa (tránh duplicate)
+                const [existing] = await db.query(
+                    `SELECT id FROM notices 
+                     WHERE target_user_id = ? 
+                       AND target_month = ?
+                       AND kind = 'system'
+                       AND title = 'シフト提出リマインド'
+                     LIMIT 1`,
+                    [user.id, targetMonthStr]
+                );
+                if (existing && existing.length > 0) {
+                    console.log(`[ShiftReminderCron] Đã có thông báo cho user ${user.id} tháng ${targetMonthStr}. Bỏ qua.`);
+                    continue;
+                }
+
                 // Tạo thông báo trong app (Cái chuông)
                 await noticesRepo.createNotice({
                     targetUserId: user.id,

@@ -23,3 +23,7 @@ attendance/backend/src/uploads/
 # Docker artifacts
 **/.dockerignore
 
+
+# Test and debug scripts
+test_*.js
+debug_*.js

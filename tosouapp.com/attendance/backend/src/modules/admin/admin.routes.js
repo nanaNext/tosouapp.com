@@ -53,8 +53,8 @@ async function ensureEmployeeProfilePhotosSchema() {
 // Admin tổng hợp
 router.use(authenticate);
 // Users
-router.get('/users', authorize('admin'), userCtrl.list);
-router.get('/users/:id', authorize('admin'), async (req, res) => {
+router.get('/users', authorize('admin','manager'), userCtrl.list);
+router.get('/users/:id', authorize('admin','manager'), async (req, res) => {
   try {
     const id = req.params.id;
     const row = await userRepo.getUserById(id);
@@ -1016,7 +1016,7 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
   }
 });
 // Persistent admin notification feed (DB-backed)
-router.get('/notifications/feed', authorize('admin','manager'), async (req, res) => {
+router.get('/notifications/feed', authorize('admin','manager','employee'), async (req, res) => {
   try {
     const limit = req.query?.limit;
     const data = await noticesRepo.listAdminFeed({
@@ -1092,7 +1092,6 @@ router.patch('/attendance/:id', authorize('admin','manager'), async (req, res) =
     res.status(500).json({ message: err.message });
   }
 });
-module.exports = router;
 router.get('/payslip', authorize('admin'), async (req, res) => {
   try {
     const { userIds, month } = req.query;

@@ -25,13 +25,17 @@ const normalizePath = (p) => {
   return s.length > 1 ? s.replace(/\/+$/, '') : s;
 };
 
-export async function mount() {
+export async function mount(options = {}) {
+  const content = options.content || document.querySelector('#adminContent');
+  if (!content) return;
+  content.className = 'card';
+  
   const p = normalizePath(window.location.pathname);
   if (p === '/admin/payroll/payslips') {
-    return await bootLegacyTab({ tab: 'salary_send', hash: '' });
+    return await bootLegacyTab({ tab: 'salary_send', hash: '', host: content });
   }
   if (p === '/admin/payroll/salary') {
-    return await bootLegacyTab({ tab: 'payroll_editor', hash: '' });
+    return await bootLegacyTab({ tab: 'payroll_editor', hash: '', host: content });
   }
-  return await bootLegacyTab({ tab: 'payroll_editor', hash: '' });
+  return await bootLegacyTab({ tab: 'payroll_editor', hash: '', host: content });
 }

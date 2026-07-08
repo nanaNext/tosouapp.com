@@ -456,6 +456,15 @@ export function wireMobileDrawer() {
     try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
     try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
     const open = () => {
+      // Ensure drawer has menu content (re-sync from sidebar if empty)
+      try {
+        if (mount && (!mount.innerHTML || mount.innerHTML.trim().length < 10)) {
+          const src = document.querySelector('.sidebar .sidebar-nav');
+          if (src && src.innerHTML) {
+            mount.innerHTML = '<nav class="drawer-nav">' + src.innerHTML + '</nav>';
+          }
+        }
+      } catch (e) { /* silently ignored */ }
       try { drawer.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
       try { backdrop.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
       // Recover from transient reset state that can force inline hide.
@@ -536,7 +545,10 @@ export function wireMobileDrawer() {
       const href = String(link.getAttribute('href') || '').trim();
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
       if (String(link.getAttribute('target') || '').toLowerCase() === '_blank') {
+        e.preventDefault();
+        const openUrl = link.getAttribute('href') || '';
         close();
+        window.open(openUrl, '_blank', 'noopener,noreferrer');
         return;
       }
       const isMobile = (() => {

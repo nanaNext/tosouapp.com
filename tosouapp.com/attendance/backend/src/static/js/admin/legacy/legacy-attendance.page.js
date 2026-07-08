@@ -74,16 +74,12 @@ async function mountAttendanceImpl({
   const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
 
   const rosterWrap = document.createElement('div');
-  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; height: auto; display: flex; flex-direction: column; overflow: visible;`;
+  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column;`;
   // Add mobile/desktop styles properly
   rosterWrap.innerHTML = `
     <style>
-      body, html {
-          margin: 0; padding: 0; min-height: 100vh; overflow: visible !important;
-        }
-        .content {
-          min-height: 100vh; overflow: visible !important;
-        }
+      
+        
       .attrec-fiori-override {
         height: auto !important;
         overflow: visible !important;
@@ -96,11 +92,12 @@ async function mountAttendanceImpl({
         margin: 0 !important;
       }
       .attrec-fiori-override.dash-card {
-        background: transparent !important;
+        background: #ffffff !important;
         border: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
-        padding: 24px 16px !important;
+        padding: 16px 24px !important;
+        margin: 0 !important;
         box-sizing: border-box;
       }
       .attrec-fiori-override .attrec-head {
@@ -148,7 +145,7 @@ async function mountAttendanceImpl({
       .attrec-fiori-override .attrec-pill {
         font-size: 14px !important;
         padding: 4px 10px !important;
-        border-radius: 4px !important;
+        border-radius: 0 !important;
       }
       .attrec-fiori-override .attrec-summary {
         gap: 6px !important;
@@ -232,6 +229,9 @@ async function mountAttendanceImpl({
       
       /* Mobile responsive styles for legacy attendance page */
       @media (max-width: 768px) {
+        .attrec-fiori-override.dash-card {
+          padding: 8px 4px !important;
+        }
         .desktop-only {
           display: none !important;
         }
@@ -256,7 +256,7 @@ async function mountAttendanceImpl({
           right: 0 !important;
           background: #ffffff !important;
           padding: 12px 16px !important;
-          box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+          box-shadow: none !important;
           z-index: 100 !important;
           border-top: 1px solid #e2e8f0 !important;
           margin-top: 0 !important;
@@ -477,6 +477,23 @@ async function mountAttendanceImpl({
           border-radius: 4px !important;
         }
       }
+     
+      /* Overrided by AI for professional look */
+      .attrec-fiori-override .attrec-dash-table th {
+        padding: 12px 16px !important;
+        font-size: 13px !important;
+        background: #f8fafc !important;
+        color: #334155 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        font-weight: 700 !important;
+      }
+      .attrec-fiori-override .attrec-dash-table td {
+        padding: 10px 16px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        color: #0f172a !important;
+      }
     </style>
     <div class="dash-card attrec-fiori-override" style="height: auto; display: flex; flex-direction: column; overflow: visible !important;">
       <div class="attrec-controls" style="margin-bottom: 12px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: none !important;">
@@ -484,7 +501,7 @@ async function mountAttendanceImpl({
       <div class="attrec-head" style="flex-shrink: 0; padding-top: 0px;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: flex; gap: 12px; margin-bottom: 8px;"></div>
       </div>
-      <div id="rosterTable" class="attrec-table" style="height: auto; overflow-y: visible; overflow-x: visible; max-height: none !important;"></div>
+      <div id="rosterTable" class="attrec-table" style="height: auto; overflow: visible; max-height: none !important; max-width: 100%;"></div>
     </div>
   `;
   content.appendChild(rosterWrap);
@@ -583,14 +600,14 @@ async function mountAttendanceImpl({
         table.style.width = '100%';
         table.style.minWidth = '1200px'; 
         table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid #d1d5db';
+        table.style.border = 'none';
         table.style.borderRadius = '0';
         table.style.overflow = 'visible';
         
         table.innerHTML = `
           <style>
             .beautiful-table {
-              box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+              box-shadow: none;
             }
             .beautiful-table thead {
               background-color: #e6f0fa;
@@ -619,7 +636,7 @@ async function mountAttendanceImpl({
               align-items: center;
               justify-content: center;
               padding: 6px 12px;
-              border-radius: 6px;
+              border-radius: 0;
               font-size: 14px;
               font-weight: 600;
               background-color: #f1f5f9;
@@ -655,7 +672,7 @@ async function mountAttendanceImpl({
                 border: 1px solid #e2e8f0;
                 border-radius: 0;
                 padding: 0;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                box-shadow: none;
                 position: relative;
               }
               
@@ -729,7 +746,7 @@ async function mountAttendanceImpl({
               padding: 6px 12px;
               background: #f8fafc;
               border: 1px solid #cbd5e1;
-              border-radius: 4px;
+              border-radius: 0;
               cursor: pointer;
               color: #334155;
               font-size: 13px;
@@ -825,14 +842,14 @@ async function mountAttendanceImpl({
           const work = (it.report && it.report.work) ? it.report.work : '';
           const dashOr = (v) => {
             const s = String(v || '').trim();
-            return s ? s : '—';
+            return s ? s : '-';
           };
           const cinView = dashOr(cin);
           const coutView = dashOr(cout);
           const siteView = dashOr(site);
           const workView = dashOr(work);
           const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
-          const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : (st === 'off' ? '休日' : '—'));
+          const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : (st === 'off' ? '休日' : ''));
           const tr = document.createElement('tr');
           tr.className = st === 'checked_out' ? 'attrec-row checkedout'
             : (st === 'working' ? 'attrec-row working'
@@ -843,7 +860,7 @@ async function mountAttendanceImpl({
           const nameHtml = !isSameUser ? `<td data-label="氏名" style="font-weight:600; white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(name)}</td>` : ``;
           const deptHtml = !isSameUser ? `<td data-label="部署" style="white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(dept)}</td>` : ``;
           const wtLabelHtml = !isSameUser ? `<td data-label="勤務区分" style="white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(wtLabel)}</td>` : ``;
-          const stHtml = !isSameUser ? `<td data-label="状態" style="text-align:center; white-space:nowrap; vertical-align:middle;"${rsHtml}><span class="${stClass}">${esc(stLabel)}</span></td>` : ``;
+          const stHtml = !isSameUser ? `<td data-label="状態" style="text-align:center; white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(stLabel)}</td>` : ``;
 
           // Use standard table cell creation instead of weird layout elements
           tr.innerHTML = `
@@ -865,10 +882,7 @@ async function mountAttendanceImpl({
         const tableWrap = document.createElement('div');
         tableWrap.id = 'attrecTableWrap';
         tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
-        tableWrap.style.overflowX = 'auto';
-        tableWrap.style.overflowY = 'auto';
-        tableWrap.style.maxHeight = 'calc(100vh - 200px)';
-        tableWrap.style.marginBottom = '20px';
+        tableWrap.style.cssText = 'overflow-x:scroll !important; width:0; min-width:100%; margin-bottom:20px; position:relative;';
         tableWrap.appendChild(table);
         host.appendChild(tableWrap);
 

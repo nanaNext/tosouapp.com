@@ -653,25 +653,25 @@ function renderSummarySection(title, prefix, fields) {
 
 function renderScaffold(root) {
   const allFields = [
-      { id: 'PlannedDays', label: '所定日数', type: 'number', step: '1' },
-      { id: 'AttendDays', label: '出勤日数', type: 'number', step: '1' },
-      { id: 'HolidayWorkDays', label: '代出休出', type: 'number', step: '1' },
-      { id: 'StandbyDays', label: '待機日数', type: 'number', step: '1' },
-      { id: 'TotalWork', label: '総労働時間', placeholder: '0:00' },
-      { id: 'Night', label: '深夜時間', placeholder: '0:00' },
-      { id: 'Overtime', label: '総残業時間', placeholder: '0:00' },
-      { id: 'LegalOvertime', label: '法定外時間', placeholder: '0:00' },
-      { id: 'PaidDays', label: '有休日数', type: 'number', step: '0.1' },
-      { id: 'SubstituteDays', label: '代休日数', type: 'number', step: '1' },
-      { id: 'UnpaidDays', label: '無給休暇', type: 'number', step: '1' },
-      { id: 'AbsentDays', label: '欠勤日数', type: 'number', step: '1' },
-      { id: 'Deduction', label: '控除時間', placeholder: '0:00' },
-      { id: 'WorkGoOut', label: '業務外出', placeholder: '0:00' },
-      { id: 'PrivateGoOut', label: '私用外出', placeholder: '0:00' },
-      { id: 'OnsiteDays', label: '出社日数', type: 'number', step: '1' },
-      { id: 'RemoteDays', label: '在宅日数', type: 'number', step: '1' },
-      { id: 'SatelliteDays', label: '現場・出張', type: 'number', step: '1' }
-    ];
+    { id: 'PlannedDays', label: '所定日数', type: 'number', step: '1' },
+    { id: 'AttendDays', label: '出勤日数', type: 'number', step: '1' },
+    { id: 'HolidayWorkDays', label: '代出休出', type: 'number', step: '1' },
+    { id: 'StandbyDays', label: '待機日数', type: 'number', step: '1' },
+    { id: 'TotalWork', label: '総労働時間', placeholder: '0:00' },
+    { id: 'Night', label: '深夜時間', placeholder: '0:00' },
+    { id: 'Overtime', label: '総残業時間', placeholder: '0:00' },
+    { id: 'LegalOvertime', label: '法定外時間', placeholder: '0:00' },
+    { id: 'PaidDays', label: '有休日数', type: 'number', step: '0.1' },
+    { id: 'SubstituteDays', label: '代休日数', type: 'number', step: '1' },
+    { id: 'UnpaidDays', label: '無給休暇', type: 'number', step: '1' },
+    { id: 'AbsentDays', label: '欠勤日数', type: 'number', step: '1' },
+    { id: 'Deduction', label: '控除時間', placeholder: '0:00' },
+    { id: 'WorkGoOut', label: '業務外出', placeholder: '0:00' },
+    { id: 'PrivateGoOut', label: '私用外出', placeholder: '0:00' },
+    { id: 'OnsiteDays', label: '出社日数', type: 'number', step: '1' },
+    { id: 'RemoteDays', label: '在宅日数', type: 'number', step: '1' },
+    { id: 'SatelliteDays', label: '現場・出張', type: 'number', step: '1' }
+  ];
   const inhouseFields = [
     { id: 'PlannedDays', label: '所定日数', type: 'number', step: '1' },
     { id: 'AttendDays', label: '出勤日数', type: 'number', step: '1' },
@@ -686,89 +686,92 @@ function renderScaffold(root) {
     { id: 'UnpaidDays', label: '無給休暇', type: 'number', step: '1' },
     { id: 'AbsentDays', label: '欠勤日数', type: 'number', step: '1' }
   ];
+
   root.innerHTML = `
     <div class="admin-ms-shell">
-      <section class="admin-ms-toolbar">
-        <label class="admin-ms-toolbar-field admin-ms-employee">
-          <span class="admin-ms-toolbar-label">社員</span>
-          <select id="msEmpSelect" class="admin-ms-select">
-            <option value="">読み込み中…</option>
-          </select>
-        </label>
-        <div class="admin-ms-toolbar-group">
-          <label class="admin-ms-toolbar-field">
-            <span class="admin-ms-toolbar-label">対象年月</span>
-            <input id="sumMonth" type="month" class="admin-ms-input admin-ms-month">
-          </label>
-          <div class="admin-ms-actions">
-            <button type="button" class="admin-ms-btn" id="btnSumLoad">読込</button>
+      <section class="admin-ms-toolbar" style="padding: 8px 24px !important;">
+        <div style="display: flex; align-items: center; gap: 16px; width: 100%; flex-wrap: nowrap; overflow-x: auto;">
+          <div class="admin-ms-toolbar-field" style="display: flex; align-items: center; gap: 8px;">
+            <span class="admin-ms-toolbar-label">社員</span>
+            <select id="msEmpSelect" class="admin-ms-select" style="width: 180px;">
+              <option value="">読み込み中…</option>
+            </select>
           </div>
-        </div>
-      </section>
-      <section class="admin-ms-summary">
-        <div class="admin-ms-summary-head">
-          <h2>月次サマリ（管理者入力）</h2>
-        </div>
-        <div class="admin-ms-sections admin-ms-sections-split">
-          ${renderSummarySection('全体', 'sumAll', allFields)}
-          ${renderSummarySection('社内勤務', 'sumIh', inhouseFields)}
-        </div>
-      </section>
-      <section class="admin-ms-summary" style="margin-top:12px;">
-        <div class="admin-ms-summary-head">
-          <h2>シフト割当（管理者入力）</h2>
-        </div>
-        <div class="admin-ms-sections">
-          <div class="admin-ms-grid-shift">
-            <label class="admin-ms-field">
-              <span class="admin-ms-field-label">シフト</span>
-              <select id="saShift" class="admin-ms-select"><option value="">シフト</option></select>
-            </label>
-            <label class="admin-ms-field">
-              <span class="admin-ms-field-label">適用開始日</span>
-              <input id="saStart" type="date" class="admin-ms-input">
-            </label>
-            <label class="admin-ms-field">
-              <span class="admin-ms-field-label">適用終了日</span>
-              <input id="saEnd" type="date" class="admin-ms-input">
-            </label>
+          <div class="admin-ms-toolbar-field" style="display: flex; align-items: center; gap: 8px;">
+            <span class="admin-ms-toolbar-label">年月</span>
+            <input id="sumMonth" type="month" class="admin-ms-input" style="width: 130px;">
           </div>
-          <div class="admin-ms-actions" style="margin-top:8px;">
-            <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnSaAdd">追加</button>
-            <button type="button" class="admin-ms-btn" id="btnSaReload">再読込</button>
-            <span id="saStatus" class="admin-ms-status"></span>
-          </div>
-          <div id="saTable" class="admin-ms-table-wrap" style="margin-top:8px;"></div>
-        </div>
-      </section>
-      <section class="admin-ms-summary" style="margin-top:12px;">
-        <div class="admin-ms-summary-head">
-          <h2>契約先一覧 / 契約内容・業務内容（管理者入力）</h2>
-        </div>
-        <div class="admin-ms-sections">
-          <div class="admin-ms-grid-two">
-            <label class="admin-ms-field"><span class="admin-ms-field-label">適用開始日</span><input id="wdStart" type="date" class="admin-ms-input"></label>
-            <label class="admin-ms-field"><span class="admin-ms-field-label">適用終了日</span><input id="wdEnd" type="date" class="admin-ms-input"></label>
-            <label class="admin-ms-field"><span class="admin-ms-field-label">企業名</span><input id="wdCompany" class="admin-ms-input"></label>
-            <label class="admin-ms-field"><span class="admin-ms-field-label">就業先住所</span><input id="wdAddr" class="admin-ms-input"></label>
-            <label class="admin-ms-field"><span class="admin-ms-field-label">業務内容</span><input id="wdWork" class="admin-ms-input"></label>
-            <label class="admin-ms-field"><span class="admin-ms-field-label">役職</span><input id="wdRole" class="admin-ms-input"></label>
-            <label class="admin-ms-field"><span class="admin-ms-field-label">責任の程度</span><input id="wdResp" class="admin-ms-input"></label>
-          </div>
-          <div class="admin-ms-actions" style="margin-top:8px;">
-            <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnWdAdd">追加</button>
-            <button type="button" class="admin-ms-btn" id="btnWdReload">再読込</button>
-            <span id="wdStatus" class="admin-ms-status"></span>
-          </div>
-          <div id="wdTable" class="admin-ms-table-wrap" style="margin-top:8px;"></div>
+          <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnSumLoad" style="height: 32px;">表示</button>
+          <div id="sumStatus" style="font-size: 13px; font-weight: 600; margin-left: 8px;"></div>
         </div>
       </section>
 
-      <div class="form-actions" style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; z-index: 9999; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
-        <div id="sumStatus" style="color: #ef4444; font-weight: 600; font-size: 14px; flex: 1; text-align: left; display: none;"></div>
-        <button type="button" id="btnSumSave" style="background: transparent; color: #2b6cb0; border: none; min-width: 100px; height: 40px; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; cursor: pointer;">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-          <span>保存</span>
+      <div class="admin-ms-main-content">
+        <div class="admin-ms-summary">
+          <div class="admin-ms-summary-head">
+            <h2>月次サマリ（管理者入力）</h2>
+          </div>
+          <div class="admin-ms-sections-split">
+            ${renderSummarySection('全体', 'sumAll', allFields)}
+            ${renderSummarySection('社内勤務', 'sumIh', inhouseFields)}
+          </div>
+        </div>
+
+        <div class="admin-ms-summary">
+          <div class="admin-ms-summary-head">
+            <h2>シフト割当</h2>
+          </div>
+          <div class="admin-ms-sections">
+            <div class="admin-ms-grid-shift">
+              <label class="admin-ms-field">
+                <span class="admin-ms-field-label">シフト</span>
+                <select id="saShift" class="admin-ms-select"></select>
+              </label>
+              <label class="admin-ms-field">
+                <span class="admin-ms-field-label">開始日</span>
+                <input id="saStart" type="date" class="admin-ms-input">
+              </label>
+              <label class="admin-ms-field">
+                <span class="admin-ms-field-label">終了日</span>
+                <input id="saEnd" type="date" class="admin-ms-input">
+              </label>
+              <div style="display:flex; align-items:flex-end; gap:8px;">
+                <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnSaAdd">追加</button>
+                <button type="button" class="admin-ms-btn" id="btnSaReload">再読込</button>
+              </div>
+            </div>
+            <div id="saStatus" style="padding:0 16px; font-size:12px;"></div>
+            <div id="saTable" class="admin-ms-table-wrap"></div>
+          </div>
+        </div>
+
+        <div class="admin-ms-summary">
+          <div class="admin-ms-summary-head">
+            <h2>契約内容・業務内容</h2>
+          </div>
+          <div class="admin-ms-sections">
+            <div class="admin-ms-grid-two">
+              <label class="admin-ms-field"><span class="admin-ms-field-label">開始日</span><input id="wdStart" type="date" class="admin-ms-input"></label>
+              <label class="admin-ms-field"><span class="admin-ms-field-label">終了日</span><input id="wdEnd" type="date" class="admin-ms-input"></label>
+              <label class="admin-ms-field"><span class="admin-ms-field-label">企業名</span><input id="wdCompany" class="admin-ms-input" placeholder="企業名"></label>
+              <label class="admin-ms-field"><span class="admin-ms-field-label">就業先住所</span><input id="wdAddr" class="admin-ms-input" placeholder="住所"></label>
+              <label class="admin-ms-field"><span class="admin-ms-field-label">業務内容</span><input id="wdWork" class="admin-ms-input" placeholder="業務内容"></label>
+              <label class="admin-ms-field"><span class="admin-ms-field-label">役職</span><input id="wdRole" class="admin-ms-input" placeholder="役職"></label>
+              <label class="admin-ms-field"><span class="admin-ms-field-label">責任程度</span><input id="wdResp" class="admin-ms-input" placeholder="責任程度"></label>
+              <div style="display:flex; align-items:flex-end; gap:8px;">
+                <button type="button" class="admin-ms-btn admin-ms-btn-primary" id="btnWdAdd">保存</button>
+                <button type="button" class="admin-ms-btn" id="btnWdReload">再読込</button>
+              </div>
+            </div>
+            <div id="wdStatus" style="padding:0 16px; font-size:12px;"></div>
+            <div id="wdTable" class="admin-ms-table-wrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="btnSumSave" class="admin-ms-btn admin-ms-btn-primary" style="height: 40px; padding: 0 40px; font-size: 15px;">
+          保存
         </button>
       </div>
     </div>
@@ -781,72 +784,67 @@ function ensureEditorLayoutStyle() {
     const st = document.createElement('style');
     st.id = 'adminMsExtraLayoutStyle';
     st.textContent = `
-      #adminContent { max-width: none !important; margin-left: 24px !important; margin-right: auto !important; }
-      .admin-ms-page-head { margin-left: 24px !important; text-align: left !important; }
-      .admin-ms-page-title { text-align: left !important; }
-      .admin-ms-shell table { margin-left: 0 !important; }
-
-      .admin-ms-grid-shift{display:grid;grid-template-columns:minmax(280px,2fr) repeat(2,minmax(180px,1fr));gap:10px;align-items:end;}
-      .admin-ms-grid-two{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:10px;}
-      .admin-ms-sections-split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-      .admin-ms-sections-split .admin-ms-section + .admin-ms-section { border-top: none !important; margin-top: 0 !important; padding-top: 0 !important; }
-      .admin-ms-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #dbe4f0; border-radius: 4px; overflow: hidden; background: #fff; }
-      .admin-ms-summary-item { display: flex; align-items: stretch; border-bottom: 1px solid #dbe4f0; border-right: 1px solid #dbe4f0; }
-      .admin-ms-summary-item:nth-child(4n) { border-right: none; }
-      .admin-ms-summary-item:nth-last-child(-n+4) { border-bottom: none; }
-      .admin-ms-summary-item .label { flex: 0 0 90px; background: #f8fbff; font-weight: 500; font-size: 12px; color: #475569; padding: 6px 8px; border-right: 1px solid #dbe4f0; display: flex; align-items: center; }
-      .admin-ms-summary-item .value { flex: 1; padding: 2px; display: flex; align-items: center; }
-      .admin-ms-summary-item .value input { width: 100%; border: none; outline: none; background: transparent; box-shadow: none; padding: 4px 6px; font-size: 13px; }
+      .admin-ms-shell { padding: 0; max-width: none; margin: 0; box-sizing: border-box; background: #f1f5f9; min-height: 100%; display: flex; flex-direction: column; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      .admin-ms-toolbar { display: flex; align-items: center; padding: 12px 24px; background: #ffffff; border-bottom: 1px solid #e2e8f0; position: static; margin: 0; }
+      .admin-ms-toolbar-field { display: flex; align-items: center; gap: 12px; }
+      .admin-ms-toolbar-label { font-size: 13px; font-weight: 600; color: #475569; white-space: nowrap; }
       
-      .admin-ms-table-wrap{overflow:auto;max-width:100vw;}
-      #saTable .excel-table,#wdTable .excel-table{width:100%;min-width:980px;table-layout:fixed;border-collapse:collapse;}
-      #saTable .excel-table th,#saTable .excel-table td,#wdTable .excel-table th,#wdTable .excel-table td{border:1px solid #dbe4f0;padding:8px 10px;vertical-align:middle;}
-      #saTable .excel-table th,#wdTable .excel-table th{white-space:nowrap;background:#f8fbff;}
-      #wdTable .excel-table td:nth-child(3),#wdTable .excel-table td:nth-child(4){white-space:normal;word-break:break-word;}
-      #saTable .admin-ms-btn,#wdTable .admin-ms-btn{height:30px;padding:0 10px;min-width:auto;}
-      .admin-ms-op{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;}
-      @media (max-width: 980px){
-        .admin-ms-sections-split { grid-template-columns: 1fr; gap: 12px; }
-        .admin-ms-sections-split .admin-ms-section + .admin-ms-section { border-top: 1px solid #dbe5f0 !important; margin-top: 8px !important; padding-top: 10px !important; }
-        .admin-ms-grid-shift,.admin-ms-grid-two{grid-template-columns:1fr;}
-        .admin-ms-summary-grid { grid-template-columns: repeat(2, 1fr); }
-        .admin-ms-summary-item:nth-child(4n) { border-right: 1px solid #dbe4f0; }
-        .admin-ms-summary-item:nth-child(2n) { border-right: none; }
-        .admin-ms-summary-item:nth-last-child(-n+4) { border-bottom: 1px solid #dbe4f0; }
-        .admin-ms-summary-item:nth-last-child(-n+2) { border-bottom: none; }
-      }
-      @media (max-width: 640px){
-        .admin-ms-toolbar { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 12px !important; padding: 12px !important; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; margin-bottom: 16px !important; }
-        .admin-ms-toolbar-group { display: flex !important; flex-direction: row !important; align-items: flex-end !important; gap: 8px !important; width: 100% !important; }
-        .admin-ms-toolbar-field { width: 100% !important; margin: 0 !important; }
-        .admin-ms-employee { width: 100% !important; margin: 0 !important; }
-        .admin-ms-month { width: 100% !important; padding: 0 10px !important; font-size: 14px !important; height: 42px !important; margin: 0 !important; box-sizing: border-box !important; border-radius: 6px !important; border: 1px solid #cbd5e1 !important; }
-        .admin-ms-select { width: 100% !important; padding: 0 10px !important; font-size: 14px !important; height: 42px !important; margin: 0 !important; box-sizing: border-box !important; border-radius: 6px !important; border: 1px solid #cbd5e1 !important; background: #fff !important; }
-        .admin-ms-actions { display: flex !important; flex: 0 0 auto; margin: 0 !important; }
-        .admin-ms-btn { min-width: 80px !important; padding: 0 16px !important; font-size: 14px !important; height: 42px !important; margin: 0 !important; white-space: nowrap; box-sizing: border-box !important; border-radius: 6px !important; background: #2b6cb0 !important; color: #fff !important; border: none !important; font-weight: 600 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important; }
-        .admin-ms-toolbar-label { display: block !important; margin-bottom: 6px !important; font-size: 12px !important; color: #475569 !important; font-weight: 600 !important; }
+      .admin-ms-input, .admin-ms-select { height: 32px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 13px; background: #ffffff; color: #1e293b; transition: all 0.2s; }
+      .admin-ms-input:focus, .admin-ms-select:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+      
+      .admin-ms-btn { height: 32px; padding: 0 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+      .admin-ms-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+      .admin-ms-btn-primary { background: #0f172a !important; color: #ffffff !important; border-color: #0f172a !important; }
+      .admin-ms-btn-primary:hover { background: #1e293b !important; }
 
-        #adminContent { margin-left: 0 !important; padding-left: 6px; padding-right: 6px; width: 100% !important; max-width: 100vw !important; box-sizing: border-box; overflow-x: hidden; }
-        .admin-ms-page-head { margin-left: 0 !important; margin-bottom: 6px !important; }
-        .admin-ms-shell { padding: 4px 0 80px; width: 100%; max-width: 100vw; overflow-x: hidden; box-sizing: border-box; }
-        .admin-ms-sections { width: 100%; max-width: 100%; overflow-x: hidden; box-sizing: border-box; }
-        .admin-ms-table-wrap { width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        #saTable .excel-table, #wdTable .excel-table { min-width: 0 !important; width: 100% !important; display: block; overflow-x: auto; white-space: nowrap; }
-        #saTable .excel-table th, #saTable .excel-table td, #wdTable .excel-table th, #wdTable .excel-table td { white-space: nowrap !important; word-break: keep-all !important; }
-        
-        .admin-ms-grid-shift { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; align-items: start !important; }
-        .admin-ms-grid-shift > :nth-child(1) { grid-column: 1 / -1; }
-        .admin-ms-grid-two { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; align-items: start !important; }
-        .admin-ms-grid-two > :nth-child(3), .admin-ms-grid-two > :nth-child(4), .admin-ms-grid-two > :nth-child(5) { grid-column: 1 / -1; }
-        .admin-ms-grid-two > :nth-child(6), .admin-ms-grid-two > :nth-child(7) { grid-column: 1 / -1; }
+      .admin-ms-main-content { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+      .admin-ms-summary { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0; overflow: visible; }
+      @media (max-width: 768px) {
+        .admin-ms-summary { border: none !important; }
+        .admin-ms-main-content { padding: 8px !important; }
       }
-      @media (max-width: 480px){
-        .admin-ms-summary-item .label { flex: 0 0 75px; padding: 6px 4px; font-size: 11px; }
-        .admin-ms-summary-item .value input { padding: 4px; font-size: 12px; }
+      .admin-ms-summary-head { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; display: flex; align-items: center; justify-content: space-between; }
+      .admin-ms-summary-head h2 { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
+      
+      .admin-ms-sections { padding: 0; }
+      .admin-ms-sections-split { display: flex; flex-direction: column; border-bottom: 1px solid #e2e8f0; }
+      .admin-ms-sections-split > section:first-child { border-bottom: 1px solid #e2e8f0; }
+      .admin-ms-sections-split > section { }
+      
+      .admin-ms-section-head { padding: 8px 16px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; }
+      .admin-ms-section-head h3 { font-size: 12px; font-weight: 700; color: #475569; margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+      
+      .admin-ms-summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; }
+      @media (max-width: 768px) {
+        .admin-ms-summary-grid { grid-template-columns: 1fr 1fr !important; }
+        .admin-ms-summary-item { flex-direction: row !important; }
+        .admin-ms-summary-item .label { flex: 0 0 90px !important; font-size: 11px !important; }
+        .admin-ms-summary-item .value { flex: 1 !important; }
+        .admin-ms-summary-item .value input { width: 100% !important; font-size: 13px !important; }
       }
+      .admin-ms-summary-item { display: flex; align-items: stretch; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
+      .admin-ms-summary-item .label { flex: 0 0 110px; background: #f8fafc; font-weight: 500; font-size: 12px; color: #64748b; padding: 8px 12px; border-right: 1px solid #f1f5f9; display: flex; align-items: center; }
+      .admin-ms-summary-item .value { flex: 1; padding: 0; display: flex; align-items: center; }
+      .admin-ms-summary-item .value input { width: 100%; border: none; outline: none; background: transparent; padding: 8px 12px; font-size: 13px; font-family: "JetBrains Mono", "Roboto Mono", monospace; color: #0f172a; text-align: right; }
+      .admin-ms-summary-item .value input:focus { background: #f0f9ff; }
+      
+      .admin-ms-grid-shift, .admin-ms-grid-two { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; padding: 16px; }
+      .admin-ms-field { display: flex; flex-direction: column; gap: 6px; }
+      .admin-ms-field-label { font-size: 12px; font-weight: 600; color: #64748b; }
+      
+      .admin-ms-table-wrap { border-top: 1px solid #e2e8f0; overflow-x: auto; }
+      .excel-table { width: 100%; border-collapse: collapse; background: #ffffff; }
+      .excel-table th { background: #f8fafc; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #475569; text-align: left; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; }
+      .excel-table td { padding: 10px 16px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #f1f5f9; }
+      .excel-table tr:hover td { background: #f8fafc; }
+      
+      .admin-ms-op { display: flex; gap: 8px; }
+      .admin-ms-op .admin-ms-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+
+      .form-actions { position: static; background: #ffffff; padding: 12px 24px; display: flex; justify-content: flex-end; border-top: 1px solid #e2e8f0; }
     `;
     document.head.appendChild(st);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { console.error(e); }
 }
 
 function setSummaryValues(root, prefix, obj) {
@@ -911,11 +909,11 @@ function getSummaryValues(root, prefix) {
   return base;
 }
 
-export async function mount() {
-  const root = document.querySelector('#adminContent');
+export async function mount(opt) {
+  const root = (opt && opt.content) || document.querySelector('#adminContent');
   if (!root) return;
-  try { wireAdminShell({ logoutRedirect: '/ui/login' }); } catch (e) { /* silently ignored */ }
-  try { wireTopbarMenus(); } catch (e) { /* silently ignored */ }
+  // try { wireAdminShell({ logoutRedirect: '/ui/login' }); } catch (e) { /* silently ignored */ }
+  // try { wireTopbarMenus(); } catch (e) { /* silently ignored */ }
   try { delete root.dataset.monthlySummaryMounted; } catch (e) { /* silently ignored */ }
   try {
     const status = document.querySelector('#status');
