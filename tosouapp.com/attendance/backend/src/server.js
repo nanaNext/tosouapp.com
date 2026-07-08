@@ -1,6 +1,10 @@
 // File khởi chạy máy chủ (Server Entry Point)
 // Chứa cấu hình Port và các tính năng chạy ngầm (Cron Jobs)
 
+// Initialize error monitoring
+const errorReporter = require('./core/errorReporter');
+errorReporter.init();
+
 // Auto Database Backup Cron - Tự động sao lưu dữ liệu MySQL
 const { initBackupCronJob } = require('./cron/dbBackupCron');
 

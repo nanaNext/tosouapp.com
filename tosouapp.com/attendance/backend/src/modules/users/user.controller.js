@@ -34,6 +34,7 @@ exports.list = async (req, res) => {
 };
 const authRepo = require('../auth/auth.repository');
 const refreshRepo = require('../auth/refresh.repository');
+const { validatePassword } = require('../../core/middleware/passwordPolicy');
 // API: Tạo mới một tài khoản nhân viên
 exports.create = async (req, res) => {
   try {
@@ -41,6 +42,9 @@ exports.create = async (req, res) => {
     if (!username || !email || !password || !(role || departmentId !== undefined)) {
       return res.status(400).json({ message: 'Missing username/email/password' });
     }
+    // Enforce password policy
+    const { valid, message } = validatePassword(password);
+    if (!valid) return res.status(400).json({ message });
     const existing = await authRepo.findUserByEmail(email);
     if (existing) {
       return res.status(409).json({ message: 'Email đã tồn tại!' });
@@ -153,6 +157,11 @@ exports.setPassword = async (req, res) => {
     const { password } = req.body || {};
     if (!id || !password) return res.status(400).json({ message: 'Missing id/password' });
     const isHash = typeof password === 'string' && /^\$2[aby]\$\d+\$/.test(password);
+    // Validate password policy (skip if already hashed)
+    if (!isHash) {
+      const { valid, message } = validatePassword(password);
+      if (!valid) return res.status(400).json({ message });
+    }
     const hashed = isHash ? password : bcrypt.hashSync(password, bcryptRounds);
     await repo.setPassword(id, hashed);
     await refreshRepo.deleteUserTokens(id);

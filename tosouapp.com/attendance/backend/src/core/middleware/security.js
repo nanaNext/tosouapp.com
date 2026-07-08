@@ -1,13 +1,10 @@
 module.exports = (app) => {
   const crypto = require('crypto');
-  // Lấy biến môi trường allowes_origins, tách thành mảng dựa trên dấu phẩy, trim khoảng trắng, loại bỏ chuỗi rỗng
-  // Kết quả là bạn có danh sách domain được phép gửi request đến API
+
   const allowedOrigins = String(process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
-    // Kiểm tra user-agent có phải browser hay ko, nếu ua rỗng ko phải browser, nếu chứa postman , curl, insomnia ko phải browser, nếu chứa mozilla, chrome, safari, edge là browser
-    // Mục đích chặn request từ script/tool ko phải trình duyệt
 
   const isBrowserUA = (ua) => {
     const s = String(ua || '').toLowerCase();
@@ -15,8 +12,6 @@ module.exports = (app) => {
     if (/(postman|insomnia|curl|httpie)/i.test(s)) return false;
     return /(mozilla|applewebkit|chrome|safari|android|iphone|ipad|edg|edge)/i.test(s);
   };
-  // Kiểm tra Origin có hợp lệ không, nếu request ko có origin, cho phép thường là mobile app hoặc curl, nếu origin nằm trong danh sách cho phép thì ok , nếu origin có cùng host với server thì ok nếu parse URL lỗi thì từ chối
-  // Mục đích chống fake origin header
 
   const isAllowedOrigin = (req, origin) => {
     if (!origin) return true;
@@ -27,9 +22,40 @@ module.exports = (app) => {
       return host && u.host.toLowerCase() === host;
     } catch { return false; }
   };
-  // Tắt header"X-Powered-By"
-  // Ý nghĩa ko để lộ server dùng Express để tăng bảo mật
+
+  // --- SECURITY HEADERS ---
   app.disable('x-powered-by');
+
+  app.use((req, res, next) => {
+    // Prevent clickjacking
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    // Prevent MIME type sniffing
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // XSS protection (legacy browsers)
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    // Referrer policy
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // Permissions policy (disable unnecessary features)
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=()');
+    // HSTS (if enabled)
+    if (String(process.env.ENABLE_HSTS || '').toLowerCase() === 'true') {
+      const hstsValue = process.env.HSTS_VALUE || 'max-age=31536000; includeSubDomains';
+      res.setHeader('Strict-Transport-Security', hstsValue);
+    }
+    // Content Security Policy (relaxed for inline scripts/styles in admin SPA)
+    res.setHeader('Content-Security-Policy', [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self' https://api.resend.com",
+      "frame-ancestors 'self'"
+    ].join('; '));
+    next();
+  });
+
+  // --- CSRF TOKEN ---
   app.use((req, res, next) => {
     if (req.method === 'GET') {
       const has = req.cookies && req.cookies.csrfToken;
