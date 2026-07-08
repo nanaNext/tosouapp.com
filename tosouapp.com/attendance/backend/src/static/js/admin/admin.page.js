@@ -1,12 +1,13 @@
-import { logout } from '../api/auth.api.js';
 import { listUsers } from '../api/users.api.js';
 import { getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL } from '../api/attendance.api.js';
 import { wireAdminShell } from '../shell/admin-shell.js?v=navy-20260612-fixspa2';
+import { normalizePath, markActiveNav, expandActiveSidebarSection, wireSidebarAccordion } from './admin-nav.utils.js';
+import { wireExpandingSearch, setTopbarHeightVar } from './admin-ui.utils.js';
+import { mapLegacyAdminToNewPath, isSameOrigin, isAdminPath } from './admin-path.utils.js';
+import { createLoader } from './admin-loader.utils.js';
 
-const normalizePath = (p) => {
-  const s = String(p || '');
-  return s.length > 1 ? s.replace(/\/+$/, '') : s;
-};
+// Tạo loadModule gắn với import.meta.url của file này để resolve relative paths đúng
+const loadModule = createLoader(import.meta.url);
 
 let lastRenderErr = null;
 let globalErrShown = false;
@@ -40,434 +41,17 @@ try {
   });
 } catch (e) { /* silently ignored */ }
 
-const toLegacyState = (path) => {
-  const p = normalizePath(path);
-  if (p === '/admin' || p === '/admin/dashboard') return { tab: null, hash: '' };
 
-  if (p === '/admin/employees') return { tab: 'employees', hash: '#list' };
-  if (p === '/admin/employees/add') return { tab: 'employees', hash: '#add' };
-  if (p === '/admin/employees/change-requests') return { tab: 'approvals', hash: '' };
 
-  if (p === '/admin/attendance/monthly') return { redirect: '/ui/attendance/monthly' };
 
-  if (p === '/admin/leave/requests') return { tab: 'approvals', hash: '' };
-  if (p === '/admin/leave/grants') return { tab: 'leave_grant', hash: '' };
-  if (p === '/admin/leave/balance') return { tab: 'leave_balance', hash: '' };
 
-  if (p === '/admin/payroll/salary') return { tab: 'salary_list', hash: '' };
-  if (p === '/admin/payroll/payslips') return { tab: 'salary_send', hash: '' };
 
-  if (p === '/admin/departments' || p === '/admin/organization/departments') return { tab: 'departments', hash: '' };
-  if (p === '/admin/chatbot/categories') return { redirect: '/ui/chatbot' };
-  if (p === '/admin/chatbot/user-questions') return { redirect: '/ui/chatbot' };
-  if (p === '/admin/faq') return { redirect: '/admin/chatbot/faq' };
-  if (p === '/admin/system/settings') return { tab: 'settings', hash: '' };
-  if (p === '/admin/system/audit-logs') return { tab: 'audit', hash: '' };
 
-  return null;
-};
 
-const syncUrlState = () => {
-  const state = toLegacyState(window.location.pathname);
-  if (!state) return;
-  if (state.redirect) {
-    try { window.location.assign(state.redirect); } catch { window.location.href = state.redirect; }
-    return;
-  }
 
-  const url = new URL(window.location.href);
-  if (state.tab) url.searchParams.set('tab', state.tab);
-  else url.searchParams.delete('tab');
-  url.hash = state.hash || '';
-  try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { /* silently ignored */ }
-};
 
-const markActiveNav = () => {
-  try {
-    const p = normalizePath(window.location.pathname);
-    const links = [
-      ...Array.from(document.querySelectorAll('.sidebar .sidebar-nav a[href]')),
-      ...Array.from(document.querySelectorAll('.subbar .subnav a[href]')),
-    ];
-    let best = null;
-    let bestLen = -1;
-    for (const a of links) {
-      const href = normalizePath(a.getAttribute('href'));
-      if (!href || href === '/') continue;
-      if (p === href) {
-        const len = href.length + 10000;
-        if (len > bestLen) { best = a; bestLen = len; }
-        continue;
-      } else if (href !== '/admin/dashboard' && p.startsWith(href + '/')) {
-        const len = href.length;
-        if (len > bestLen) { best = a; bestLen = len; }
-      }
-    }
-    for (const a of links) {
-      a.classList.toggle('active', a === best);
-      try {
-        if (a === best) a.setAttribute('aria-current', 'page');
-        else a.removeAttribute('aria-current');
-      } catch (e) { /* silently ignored */ }
-    }
 
-    // Also highlight top-level menu buttons when any of their submenu links match current path
-    try {
-      const menus = Array.from(document.querySelectorAll('.subbar .menu'));
-      let bestMenu = null;
-      let bestMenuLen = -1;
-      for (const m of menus) {
-        const btn = m.querySelector('.menu-btn');
-        const as = Array.from(m.querySelectorAll('.submenu a[href]'));
-        for (const a of as) {
-          const href = normalizePath(a.getAttribute('href') || '');
-          if (!href || href === '/') continue;
-          if (p === href || p.startsWith(href + '/')) {
-            const len = href.length + (p === href ? 10000 : 0);
-            if (len > bestMenuLen) { bestMenu = btn; bestMenuLen = len; }
-          }
-        }
-      }
-      for (const m of menus) {
-        const btn = m.querySelector('.menu-btn');
-        if (!btn) continue;
-        btn.classList.toggle('active', btn === bestMenu);
-        try {
-          if (btn === bestMenu) btn.setAttribute('aria-current', 'page');
-          else btn.removeAttribute('aria-current');
-        } catch (e) { /* silently ignored */ }
-      }
-    } catch (e) { /* silently ignored */ }
 
-    try {
-      const nav = document.querySelector('.sidebar .sidebar-nav');
-      if (nav && !nav.querySelector('.selected')) {
-        if (best) best.classList.add('selected');
-      }
-    } catch (e) { /* silently ignored */ }
-  } catch (e) { /* silently ignored */ }
-};
-
-const SIDEBAR_OPEN_KEY = 'admin.sidebar.open';
-const readOpenSections = () => {
-  return new Set();
-};
-const writeOpenSections = (set) => {
-  // no-op for accordion mode
-};
-
-const expandActiveSidebarSection = () => {
-  try {
-    const nav = document.querySelector('.sidebar .sidebar-nav');
-    if (!nav) return;
-    const details = Array.from(nav.querySelectorAll('details'));
-    for (const d of details) {
-      d.classList.remove('active-section');
-      d.open = false; // default close all
-    }
-    const active = nav.querySelector('a.active');
-    const parent = (active && active.closest) ? active.closest('details') : null;
-    if (parent) {
-      parent.open = true;
-      parent.classList.add('active-section');
-    }
-  } catch (e) { /* silently ignored */ }
-};
-
-const showNavSpinner = () => {
-  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
-};
-
-const wireSidebarAccordion = () => {
-  try {
-    const nav = document.querySelector('.sidebar .sidebar-nav');
-    if (!nav || nav.dataset.bound === '1') return;
-    nav.dataset.bound = '1';
-    nav.addEventListener('click', (e) => {
-      const t = e && e.target;
-      const summary = (t && t.closest) ? t.closest('summary') : null;
-      if (!summary) return;
-      const details = summary.closest('details');
-      if (!details) return;
-      e.preventDefault();
-      
-      const isOpening = !details.open;
-      
-      if (isOpening) {
-        // Close all other details
-        const allDetails = nav.querySelectorAll('details');
-        for (const d of allDetails) {
-          if (d !== details) d.open = false;
-        }
-      }
-      
-      details.open = isOpening;
-    });
-  } catch (e) { /* silently ignored */ }
-};
-
-const wireUserMenu = () => {
-  try {
-    const btn = document.querySelector('.user-btn');
-    const dd = document.querySelector('#userDropdown');
-    if (!btn || !dd) return;
-    if (btn.dataset.bound === '1') return;
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const hidden = dd.hasAttribute('hidden');
-      if (hidden) dd.removeAttribute('hidden');
-      else dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', hidden ? 'true' : 'false'); } catch (e) { /* silently ignored */ }
-    });
-    document.addEventListener('click', (e) => {
-      const t = e && e.target;
-      if (t && t.closest && t.closest('.user-menu')) return;
-      dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
-    });
-  } catch (e) { /* silently ignored */ }
-  try {
-    const btnLogout = document.querySelector('#btnLogout');
-    if (!btnLogout || btnLogout.dataset.bound === '1') return;
-    btnLogout.dataset.bound = '1';
-    btnLogout.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { /* silently ignored */ }
-      try {
-        sessionStorage.removeItem('accessToken');
-        sessionStorage.removeItem('user');
-        sessionStorage.removeItem('refreshToken');
-      } catch (e) { /* silently ignored */ }
-      try {
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
-      try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
-    });
-  } catch (e) { /* silently ignored */ }
-};
-
-const wireExpandingSearch = () => {
-  try {
-    const box = document.querySelector('.topbar-inner .search');
-    if (!box) return;
-    if (box.dataset.bound === '1') return;
-    box.dataset.bound = '1';
-    const input = box.querySelector('input[type="search"]');
-    const closeBtn = box.querySelector('.search-close');
-    const hint = box.querySelector('.search-hint');
-    const prefixTxt = box.querySelector('.search-prefix .txt');
-    const originalPlaceholder = input ? String(input.getAttribute('placeholder') || '') : '';
-    const open = () => {
-      try {
-        const inner = box.closest('.topbar-inner');
-        const brand = inner ? inner.querySelector('.brand, a.brand') : null;
-        const actions = inner ? inner.querySelector('.topbar-actions') : null;
-        const user = inner ? inner.querySelector('.user') : null;
-        if (inner && !inner.dataset.searchLocked) {
-          const bw = brand ? Math.round(brand.getBoundingClientRect().width) : 0;
-          const aw = actions ? Math.round(actions.getBoundingClientRect().width) : 0;
-          const uw = user ? Math.round(user.getBoundingClientRect().width) : 0;
-          inner.style.gridTemplateColumns = `${bw || 'auto'} 1fr ${aw || 'auto'} ${uw || 'auto'}`;
-          inner.dataset.searchLocked = '1';
-        }
-      } catch (e) { /* silently ignored */ }
-      box.classList.add('active');
-      try {
-        if (input) {
-          input.setAttribute('placeholder', 'Search your workspace for a project, resource, environment...');
-          input.focus(); input.select();
-        }
-        if (prefixTxt) prefixTxt.textContent = 'Search';
-      } catch (e) { /* silently ignored */ }
-    };
-    const close = () => {
-      box.classList.remove('active');
-      try {
-        const inner = box.closest('.topbar-inner');
-        if (inner && inner.dataset.searchLocked === '1') {
-          inner.style.gridTemplateColumns = '';
-          delete inner.dataset.searchLocked;
-        }
-      } catch (e) { /* silently ignored */ }
-      try {
-        if (input) {
-          if (originalPlaceholder) input.setAttribute('placeholder', originalPlaceholder);
-          input.blur();
-        }
-        if (prefixTxt) prefixTxt.textContent = 'Projects';
-      } catch (e) { /* silently ignored */ }
-    };
-    input.addEventListener('focus', open);
-    if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
-    if (closeBtn) {
-      closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
-      closeBtn.addEventListener('mousedown', (e) => { e.preventDefault(); close(); }, true);
-    }
-    document.addEventListener('click', (e) => {
-      const t = e && e.target;
-      if (t && t.closest && t.closest('.search-close')) { e.preventDefault(); close(); return; }
-    }, true);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { close(); return; }
-      const isCtrlK = (e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey);
-      const isPlainK = (e.key === 'k' || e.key === 'K') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey;
-      if (isCtrlK || isPlainK) {
-        const t = e.target;
-        const tag = (t && t.tagName) ? t.tagName.toLowerCase() : '';
-        const editable = (t && (t.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'));
-        if (editable && !isCtrlK) return;
-        e.preventDefault();
-        open();
-      }
-    });
-    document.addEventListener('click', (e) => {
-      if (!box.classList.contains('active')) return;
-      const t = e && e.target;
-      if (t && t.closest && t.closest('.topbar-inner .search')) return;
-      close();
-    });
-  } catch (e) { /* silently ignored */ }
-};
-
-const wireMobileDrawer = () => {
-  try {
-    const btn = document.querySelector('#mobileMenuBtn');
-    const drawer = document.querySelector('#mobileDrawer');
-    const backdrop = document.querySelector('#drawerBackdrop');
-    const closeBtn = document.querySelector('#mobileClose');
-    if (!btn || !drawer || !backdrop) return;
-    if (btn.dataset.bound === '1') return;
-    btn.dataset.bound = '1';
-
-    let closeTimer;
-
-    const open = () => {
-      if (closeTimer) clearTimeout(closeTimer);
-      try { drawer.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
-      try { backdrop.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
-      // Recover from forced inline hide set by transient reset logic.
-      try { drawer.style.display = ''; } catch (e) { /* silently ignored */ }
-      try { drawer.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
-      try { drawer.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
-      try { backdrop.style.display = ''; } catch (e) { /* silently ignored */ }
-      try { backdrop.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
-      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
-      try { document.body.classList.add('drawer-open'); } catch (e) { /* silently ignored */ }
-      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
-    };
-    const close = () => {
-      try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
-      closeTimer = setTimeout(() => {
-        try { drawer.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-        try { drawer.style.display = 'none'; } catch (e) { /* silently ignored */ }
-        try { drawer.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-        try { backdrop.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-        try { backdrop.style.display = 'none'; } catch (e) { /* silently ignored */ }
-        try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-      }, 200); // Wait for the 0.18s CSS transform transition to finish
-    };
-    const toggle = () => {
-      const isOpen = document.body.classList.contains('drawer-open');
-      if (isOpen) close();
-      else open();
-    };
-
-    btn.addEventListener('click', (e) => { e.preventDefault(); toggle(); });
-    if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
-    backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-  } catch (e) { /* silently ignored */ }
-};
-
-const setTopbarHeightVar = () => {
-  try {
-    if (document.body.classList.contains('drawer-open')) return;
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 480px)').matches) return;
-    const topbar = document.querySelector('.topbar');
-    if (!topbar) return;
-    const h = Math.round(topbar.getBoundingClientRect().height);
-    if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-  } catch (e) { /* silently ignored */ }
-};
-
-const mapLegacyAdminToNewPath = (href) => {
-  try {
-    const u = new URL(href, window.location.origin);
-    if (normalizePath(u.pathname) !== '/ui/admin') return null;
-    const tab = (u.searchParams.get('tab') || '').trim();
-    if (!tab) return '/admin/dashboard';
-    if (tab === 'employees') return '/admin/employees';
-    if (tab === 'attendance') return '/admin/attendance';
-    if (tab === 'shifts') return '/admin/attendance/shifts';
-    if (tab === 'calendar') return '/admin/attendance/holidays';
-    if (tab === 'leave_grant') return '/admin/leave/grants';
-    if (tab === 'leave_balance') return '/admin/leave/balance';
-    if (tab === 'approvals') return '/admin/leave/requests';
-    if (tab === 'salary_list') return '/admin/payroll/salary';
-    if (tab === 'salary_send') return '/admin/payroll/payslips';
-    if (tab === 'departments') return '/admin/departments';
-    if (tab === 'audit') return '/admin/system/audit-logs';
-    if (tab === 'settings') return '/admin/system/settings';
-    return '/admin/dashboard';
-  } catch (e) { /* silently ignored */ }
-  return null;
-};
-
-const isSameOrigin = (href) => {
-  try {
-    const u = new URL(href, window.location.origin);
-    return u.origin === window.location.origin;
-  } catch {
-    return false;
-  }
-};
-
-const isAdminPath = (pathname) => {
-  const p = normalizePath(pathname);
-  return p === '/admin' || p.startsWith('/admin/');
-};
-
-const assetV = (() => {
-  try {
-    const meta = document.querySelector('meta[name="asset-v"]');
-    const v = meta ? (meta.getAttribute('content') || '') : '';
-    if (v) return String(v);
-  } catch (e) { /* silently ignored */ }
-  try {
-    const v2 = window.__assetV;
-    return v2 ? String(v2) : '';
-  } catch (e) { /* silently ignored */ }
-  return '';
-})();
-
-const withAssetV = (path) => {
-  const p = String(path || '');
-  if (!assetV) return p;
-  if (!p) return p;
-  if (p.includes('v=')) return p;
-  return p + (p.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(assetV);
-};
-
-const moduleCache = new Map();
-const loadModule = async (path) => {
-  const spec = withAssetV(path);
-  let url = '';
-  try { url = new URL(spec, import.meta.url).href; } catch { url = String(spec || ''); }
-  const key = String(url || '');
-  if (moduleCache.has(key)) return moduleCache.get(key);
-  const p = (async () => {
-    try {
-      return await import(url);
-    } catch (e) {
-      const msg = String((e && e.message) ? e.message : (e || 'unknown'));
-      throw new Error(`Module load failed: ${url || spec}\n${msg}`);
-    }
-  })();
-  moduleCache.set(key, p);
-  return p;
-};
 
 const resetTransientUiState = () => {
   try {
@@ -603,7 +187,14 @@ const route = async () => {
       if (window.location.pathname.includes('/admin/attendance') || 
           window.location.pathname.includes('/admin/work-reports') ||
           window.location.pathname.includes('/admin/payroll/salary') ||
-          window.location.pathname.includes('/admin/payroll/payslips')) {
+          window.location.pathname.includes('/admin/payroll/payslips') ||
+          window.location.pathname.includes('/admin/leave') ||
+          window.location.pathname.includes('/admin/employees') ||
+          window.location.pathname.includes('/admin/expenses') ||
+          window.location.pathname.includes('/admin/departments') ||
+          window.location.pathname.includes('/admin/notices') ||
+          window.location.pathname.includes('/admin/faq') ||
+          window.location.pathname.includes('/admin/system')) {
         host.className = '';
         host.style.padding = '0';
         host.style.margin = '0';
@@ -611,7 +202,8 @@ const route = async () => {
         host.style.boxShadow = 'none';
         host.style.background = 'transparent';
       } else {
-        host.className = 'card';
+        host.className = '';
+        host.style.background = 'transparent';
       }
       
       host.style.visibility = 'hidden';
@@ -858,7 +450,7 @@ const route = async () => {
       }
       if (p2 === '/admin/departments' || p2 === '/admin/organization/departments' || p2 === '/admin/organization') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
-        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/organization' });
+        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/departments' });
         const mod = await loadModule('./organization/organization.page.js');
         if (seq !== routeSeq) return;
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -884,9 +476,11 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/faq' || p2.indexOf('/admin/chatbot/faq') === 0) {
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
       const mod = await loadModule('./faq/faq.page.js');
       if (seq !== routeSeq) return;
-      await mountModule(mod);
+      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
     }
     // Do not fallback to legacy admin bootstrap; it causes mixed old/new
@@ -1085,6 +679,8 @@ const wireNavSelection = () => {
 };
 
 const boot = async () => {
+  // Cleanup stale sidebar state
+  try { localStorage.removeItem('sidebar.collapsed'); document.body.classList.remove('sidebar-collapsed'); } catch (e) {}
   try {
     const globalTableStyle = document.createElement('style');
     globalTableStyle.textContent = `
@@ -1092,11 +688,11 @@ const boot = async () => {
       @media (min-width: 769px) {
         .admin table { border-collapse: collapse !important; width: 100% !important; }
         .admin table th {
-          background-color: #e6f2ff !important; /* Light blue header */
+          background-color: #e6f2ff !important;
           color: #0f172a !important; 
           font-weight: 600 !important;
           border: 1px solid #cbd5e1 !important; 
-          padding: 6px 8px !important; /* Khăng khít */
+          padding: 6px 8px !important;
           font-size: 13px !important; 
           text-align: center !important; 
           white-space: nowrap !important;
@@ -1112,15 +708,16 @@ const boot = async () => {
         
         /* Dark mode support */
         :root[data-theme='dark'] .admin table th {
-          background-color: #1e3a8a !important; /* Dark blue for dark mode */
-          color: #f1f5f9 !important;
+          background-color: #1e293b !important;
+          color: #e0d4fc !important;
           border-color: #334155 !important;
         }
         :root[data-theme='dark'] .admin table td {
           border-color: #334155 !important;
+          color: #e0d4fc !important;
         }
         :root[data-theme='dark'] .admin table tbody tr:hover td {
-          background-color: #0f172a !important;
+          background-color: #1e293b !important;
         }
       }
     `;

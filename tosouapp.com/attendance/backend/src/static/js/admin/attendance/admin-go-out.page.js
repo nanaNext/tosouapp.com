@@ -5,7 +5,7 @@ export async function mountGoOut({ content }) {
   const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
 
   content.className = (content.className || '') + ' go-out-page-content';
-  content.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; background: #FFFFFF; flex: 1; min-width: 0;`;
+  content.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; flex: 1; min-width: 0;`;
   content.innerHTML = `
     <style>
       .go-out-page-content { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -19,6 +19,20 @@ export async function mountGoOut({ content }) {
       .go-out-table th { padding: 6px 12px; font-size: 12px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
       .go-out-table td { border: 1px solid #e2e8f0; padding: 6px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
       .go-out-table tbody tr:hover td { background-color: #f1f5f9; }
+
+      /* Dark mode */
+      :root[data-theme='dark'] .go-out-page-content { background: #0f172a !important; }
+      :root[data-theme='dark'] .go-out-table th { background: #1e293b !important; color: #fbbf24 !important; border-color: #334155 !important; }
+      :root[data-theme='dark'] .go-out-table td { background: #111827 !important; color: #c4b5fd !important; border-color: #334155 !important; }
+      :root[data-theme='dark'] .go-out-table tbody tr:hover td { background: #1e293b !important; }
+      :root[data-theme='dark'] .go-out-table tbody tr:nth-child(even) td { background: #0f172a !important; }
+      :root[data-theme='dark'] .pagination-container { color: #94a3b8 !important; }
+      :root[data-theme='dark'] .pagination-container select,
+      :root[data-theme='dark'] .pagination-container button { background: #1e293b !important; border-color: #475569 !important; color: #e2e8f0 !important; }
+      :root[data-theme='dark'] .pagination-container button:disabled { background: #0f172a !important; color: #475569 !important; }
+      :root[data-theme='dark'] .go-out-root-container { background: #0f172a !important; }
+      :root[data-theme='dark'] .go-out-table-wrapper { background: #111827 !important; }
+      :root[data-theme='dark'] .page-header-container { background: transparent !important; }
       
       @media (max-width: 768px) {
         .go-out-table th, .go-out-table td { font-size: 11px; padding: 4px; }
@@ -104,7 +118,7 @@ export async function mountGoOut({ content }) {
       .btn-force-end:hover { background-color: #fef2f2 !important; }
       .btn-edit:hover { background-color: #eff6ff !important; }
     </style>
-    <div class="go-out-root-container" style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0;">
+    <div class="go-out-root-container" style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0;">
       <div class="page-header-container" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 0px; padding: 16px 24px 8px 24px; flex-shrink: 0;">
         <h2 class="page-header-title" style="display: none;">外出管理</h2>
         
@@ -114,7 +128,7 @@ export async function mountGoOut({ content }) {
       </div>
 
       <!-- Table -->
-      <div class="go-out-table-wrapper" style="border-top: none; border-bottom: none; box-shadow: none; background: white; padding: 16px 24px 24px 24px;">
+      <div class="go-out-table-wrapper" style="border-top: none; border-bottom: none; box-shadow: none; padding: 16px 24px 24px 24px;">
           <table class="go-out-table" style="width: 100%; border-collapse: collapse;">
             <thead style="position: sticky; top: 0; z-index: 10;">
               <tr style="background: #e6f2ff; color: #0f172a; text-align: center; height: 30px;">
@@ -129,7 +143,7 @@ export async function mountGoOut({ content }) {
                 <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">アクション</th>
               </tr>
             </thead>
-          <tbody id="goOutAdminTableBody" style="background: white;">
+          <tbody id="goOutAdminTableBody">
             <tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">読み込み中...</td></tr>
           </tbody>
         </table>
@@ -147,9 +161,9 @@ export async function mountGoOut({ content }) {
           <span id="goOutAdminItemCount">全 0 件</span>
         </div>
         <div class="pagination-actions" style="display: flex; gap: 8px; align-items: center;">
-          <button id="goOutAdminPrevPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; background: white; border-radius: 4px; cursor: pointer;" disabled>前へ</button>
+          <button id="goOutAdminPrevPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;" disabled>前へ</button>
           <span id="goOutAdminPageInfo">ページ 1 / 1</span>
-          <button id="goOutAdminNextPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; background: white; border-radius: 4px; cursor: pointer;" disabled>次へ</button>
+          <button id="goOutAdminNextPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;" disabled>次へ</button>
         </div>
       </div>
     </div>
