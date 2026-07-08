@@ -54,7 +54,7 @@ function mountStyle() {
   st.textContent = `
     .pe-wrap{width:100%;max-width:1400px;margin:0 auto !important;padding:20px 24px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;overflow-y:auto !important;overflow-x:hidden;}
     .pe-wrap *{box-sizing:border-box;font-family:inherit;font-weight:400}
-    .pe-card{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:16px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);min-width:0}
+    .pe-card{background:transparent;border:none;border-radius:0;padding:16px 0;margin-bottom:24px;box-shadow:none;min-width:0;border-bottom:1px solid #e2e8f0}
     .pe-title{font-size:16px;line-height:1.4;font-weight:600;color:#0f172a;margin:0 0 16px 0;border-bottom:2px solid #cbd5e1;padding-bottom:8px;display:flex;align-items:center;gap:8px}
     .pe-sub-title{font-size:14px;font-weight:600;color:#475569;margin:20px 0 10px;display:flex;align-items:center;gap:6px}
     .pe-sub-title::before{content:'';display:block;width:4px;height:14px;background:#3b82f6;border-radius:2px}
@@ -127,11 +127,12 @@ function mountStyle() {
     .pe-btn-add{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px dashed #cbd5e1;border-radius:4px;background:#fff;color:#3b82f6;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;width:100%;justify-content:center;margin-top:4px}
     .pe-btn-add:hover{border-color:#3b82f6;background:#eff6ff}
 
-    .pe-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0;padding:0;justify-content:flex-start;align-items:center;position:relative;z-index:10;background:#fff;padding:12px 16px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
-    .pe-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;color:#475569;font-weight:600;font-size:13px;transition:all .2s}
-    .pe-actions button:hover{background:#f8fafc;color:#0f172a;border-color:#cbd5e1}
+    .pe-actions{display:flex;gap:0;flex-wrap:wrap;margin:0;padding:0;justify-content:flex-start;align-items:stretch;position:relative;z-index:10;background:transparent;border:none;border-bottom:2px solid #cbd5e1;border-radius:0;margin-bottom:24px;box-shadow:none;}
+    .pe-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 16px;border:none;border-right:1px solid #cbd5e1;border-radius:0;background:transparent;cursor:pointer;color:#475569;font-weight:600;font-size:13px;transition:all .2s}
+    .pe-actions button:last-child{border-right:none}
+    .pe-actions button:hover{background:#f1f5f9;color:#0f172a}
     .pe-actions button.pe-primary{color:#fff;background:#3b82f6;border-color:#3b82f6}
-    .pe-actions button.pe-primary:hover{background:#2563eb;color:#fff;border-color:#2563eb}
+    .pe-actions button.pe-primary:hover{background:#2563eb;color:#fff}
     #btnSavePayroll{color:#059669;border-color:#059669;background:#fff}
     #btnSavePayroll:hover{background:#ecfdf5;color:#047857;border-color:#047857}
     #btnPublishPayroll{color:#fff;background:#7c3aed;border-color:#7c3aed;font-weight:700}
@@ -153,6 +154,33 @@ function mountStyle() {
     .pe-preview-table td:first-child{color:#475569;width:55%}
     .pe-preview-table td:last-child{text-align:right;color:#0f172a;font-weight:500}
     .pe-msg{margin-top:10px;font-weight:400}
+
+    /* Dark mode for payroll editor */
+    :root[data-theme='dark'] .pe-wrap{background:#0f172a !important;color:#e0d4fc !important}
+    :root[data-theme='dark'] .pe-card{background:transparent !important;border:none !important;border-bottom:1px solid #334155 !important;color:#e0d4fc !important}
+    :root[data-theme='dark'] .pe-title{color:#e0d4fc !important;border-bottom-color:#475569 !important}
+    :root[data-theme='dark'] .pe-sub-title{color:#94a3b8 !important}
+    :root[data-theme='dark'] .pe-field>span,:root[data-theme='dark'] .pe-lbl{color:#94a3b8 !important}
+    :root[data-theme='dark'] .pe-field input,:root[data-theme='dark'] .pe-field select,:root[data-theme='dark'] .pe-item input,:root[data-theme='dark'] .pe-money input,:root[data-theme='dark'] .pe-paygrid input,:root[data-theme='dark'] .pe-paygrid select{background:#0f172a !important;border-color:#475569 !important;color:#e0d4fc !important}
+    :root[data-theme='dark'] .pe-field input:disabled,:root[data-theme='dark'] .pe-field select:disabled{background:#111827 !important;color:#64748b !important}
+    :root[data-theme='dark'] .pe-field input::placeholder,:root[data-theme='dark'] .pe-item input::placeholder{color:#64748b !important}
+    :root[data-theme='dark'] .pe-money span,:root[data-theme='dark'] .pe-item .pe-money-item span{color:#94a3b8 !important}
+    :root[data-theme='dark'] .pe-actions{background:transparent !important;border:none !important;border-bottom:2px solid #475569 !important;box-shadow:none !important;padding:0 !important}
+    :root[data-theme='dark'] .pe-actions button{background:transparent !important;border:none !important;border-right:1px solid #475569 !important;color:#e0d4fc !important;border-radius:0 !important}
+    :root[data-theme='dark'] .pe-actions button:last-child{border-right:none !important}
+    :root[data-theme='dark'] .pe-actions button:hover{background:#313244 !important;color:#ffffff !important}
+    :root[data-theme='dark'] .pe-actions button.pe-primary{background:#3b82f6 !important;border-color:#3b82f6 !important;color:#fff !important}
+    :root[data-theme='dark'] #btnSavePayroll{background:#0f172a !important;color:#10b981 !important;border-color:#10b981 !important}
+    :root[data-theme='dark'] #btnPublishPayroll{background:#7c3aed !important;border-color:#7c3aed !important;color:#fff !important}
+    :root[data-theme='dark'] .pe-btn-add{background:#0f172a !important;border-color:#475569 !important;color:#93c5fd !important}
+    :root[data-theme='dark'] .pe-previewCard{background:#1e293b !important;border-color:#334155 !important}
+    :root[data-theme='dark'] .pe-table td{border-color:#334155 !important;color:#e0d4fc !important}
+    :root[data-theme='dark'] .pe-table td:first-child{color:#94a3b8 !important}
+    :root[data-theme='dark'] .pe-preview-table td{border-color:#334155 !important;color:#e0d4fc !important}
+    :root[data-theme='dark'] .pe-preview-table td:first-child{color:#94a3b8 !important}
+    :root[data-theme='dark'] .pe-tab-btn{color:#94a3b8 !important;border-bottom-color:transparent !important}
+    :root[data-theme='dark'] .pe-tab-btn.active{color:#e0d4fc !important;border-bottom-color:#3b82f6 !important}
+    :root[data-theme='dark'] .pe-item button:hover{background:#3b1111 !important;color:#fca5a5 !important}
   `;
   document.head.appendChild(st);
 }
@@ -337,19 +365,19 @@ export async function mount(options = {}) {
     <div class="pe-title">控除</div>
     <div class="pe-sub-title" style="margin-top:0;">社会保険</div>
     <div class="pe-items">
-      <div class="pe-item"><div class="pe-lbl">健康保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedHealth" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item"><div class="pe-lbl">介護保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedCare" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item"><div class="pe-lbl">厚生年金保険</div><div class="pe-money-item"><input class="pe-amt" id="ovDedPension" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item"><div class="pe-lbl">雇用保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedEmployment" type="number" step="1" placeholder="0"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">健康保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedHealth" type="number" step="1" placeholder="0" aria-label="健康保険料"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">介護保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedCare" type="number" step="1" placeholder="0" aria-label="介護保険料"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">厚生年金保険</div><div class="pe-money-item"><input class="pe-amt" id="ovDedPension" type="number" step="1" placeholder="0" aria-label="厚生年金保険"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">雇用保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedEmployment" type="number" step="1" placeholder="0" aria-label="雇用保険料"><span>円</span></div></div>
     </div>
     <div class="pe-sub-title">税金</div>
     <div class="pe-items">
-      <div class="pe-item"><div class="pe-lbl">所得税</div><div class="pe-money-item"><input class="pe-amt" id="ovDedIncome" type="number" step="1" placeholder="0"><span>円</span></div></div>
-      <div class="pe-item"><div class="pe-lbl">住民税</div><div class="pe-money-item"><input class="pe-amt" id="ovDedResident" type="number" step="1" placeholder="0"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">所得税</div><div class="pe-money-item"><input class="pe-amt" id="ovDedIncome" type="number" step="1" placeholder="0" aria-label="所得税"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">住民税</div><div class="pe-money-item"><input class="pe-amt" id="ovDedResident" type="number" step="1" placeholder="0" aria-label="住民税"><span>円</span></div></div>
     </div>
     <div class="pe-sub-title">その他</div>
     <div class="pe-items">
-      <div class="pe-item"><div class="pe-lbl">立替家賃（控除）</div><div class="pe-money-item"><input class="pe-amt" id="payrollRent" type="text" inputmode="numeric" placeholder="0"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">立替家賃（控除）</div><div class="pe-money-item"><input class="pe-amt" id="payrollRent" type="text" inputmode="numeric" placeholder="0" aria-label="立替家賃（控除）"><span>円</span></div></div>
     </div>
     <div class="pe-sub-title">追加控除</div>
     <div id="payrollDeductions" class="pe-items"></div>

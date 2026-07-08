@@ -1,17 +1,17 @@
 // FAQ Admin Management Page
 import { FaqAdminComponent } from '../faq-admin-component.js?v=navy-20260427-faqfix1';
 
-export async function mount() {
+export async function mount(options = {}) {
   console.log('🎯 Mounting FAQ Admin Page');
   
-  const host = document.querySelector('#adminContent');
+  const host = (options && options.content) || document.querySelector('#adminContent');
   if (!host) {
     console.error('❌ Admin content host not found');
     return;
   }
 
   // Create main container
-  host.className = 'card';
+  host.className = '';
   host.innerHTML = `
     <div style="padding: 20px;">
       <div id="faqAdminContainer"></div>

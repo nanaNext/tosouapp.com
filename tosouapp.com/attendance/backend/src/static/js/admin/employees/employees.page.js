@@ -3,168 +3,9 @@ import { listEmployees, getEmployee, createEmployee, updateEmployee, deleteEmplo
 import { listDepartments } from '../../api/departments.api.js';
 import { listUsers, deleteUser as deleteUserHard } from '../../api/users.api.js';
 import { fetchJSONAuth } from '../../api/http.api.js';
-
-const $ = (sel) => document.querySelector(sel);
-
-function ensureEmployeePillStyle() {
-  try {
-    if (!document.querySelector('#empPillStyle')) {
-      const style = document.createElement('style');
-      style.id = 'empPillStyle';
-      style.textContent = `
-        .admin .card { --emp-pill-width: max-content; }
-        .admin .card table#list { width: 100%; }
-        .admin.employees-wide .card table#list:not(.emp-del-list) thead { position: static; }
-        .admin:not(.employees-wide) .card table#list:not(.emp-del-list) thead { position: static; }
-        .admin.employees-wide .card table#list:not(.emp-del-list) thead th { position: static; background: #f3f4f6; box-shadow: 0 1px 0 rgba(16,24,40,.06); }
-        .admin:not(.employees-wide) .card table#list:not(.emp-del-list) thead th { position: static; background: #f3f4f6; box-shadow: 0 1px 0 rgba(16,24,40,.06); }
-        .admin .card table#list.emp-del-list thead th { position: static; background: #f3f4f6; box-shadow: 0 1px 0 rgba(16,24,40,.06); }
-        .admin .card table#list tbody td .text-pill,
-        .admin .card table#list tbody td .status-pill,
-        .admin .card table#list tbody td .role-pill,
-        .admin .card table#list tbody td .type-pill { width: var(--emp-pill-width); box-sizing: border-box; }
-        .admin .card table#list tbody td.col-code .text-pill { width: max-content; }
-        .admin .card table#list tbody td .status-pill { min-height: 32px; padding: 4px 14px; line-height: 1.2; }
-        .admin .card table#list tbody td .role-pill { min-height: 32px; padding: 4px 14px; line-height: 1.2; }
-        .admin .card table#list tbody td .type-pill { min-height: 32px; padding: 4px 14px; line-height: 1.2; }
-        .admin .card table#list tbody tr.emp-row.inactive td { background: #fff7ed; }
-        .admin .card table#list tbody tr.emp-row.inactive td { color: #7c2d12; }
-        .admin .card table#list tbody tr.emp-row.inactive td { border-top-color: #fdba74; border-bottom-color: #fdba74; }
-        .admin .card table#list tbody tr.emp-row.inactive td:first-child { border-left-color: #fb923c; }
-        .admin .card table#list tbody tr.emp-row.inactive td:last-child { border-right-color: #fb923c; }
-        .admin .card table#list tbody tr.emp-row.inactive td .text-pill { background: transparent; border-color: transparent; color: #7c2d12; }
-        .admin .card table#list tbody tr.emp-row.inactive td .text-pill a { color: inherit; }
-        .admin .card table#list tbody tr.emp-row.retired td { background: #f8fafc; color: #475569; }
-        @media (max-width: 640px) {
-          .admin.employees-wide .card table#list:not(.emp-del-list) thead,
-          .admin:not(.employees-wide) .card table#list:not(.emp-del-list) thead,
-          .admin.employees-wide .card table#list:not(.emp-del-list) thead th,
-          .admin:not(.employees-wide) .card table#list:not(.emp-del-list) thead th {
-            top: auto !important;
-            position: static !important;
-          }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  } catch (e) { /* silently ignored */ }
-}
-
-const showNavSpinner = () => {
-  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
-};
-
-const hideNavSpinner = () => {
-  try {
-    const c = document.querySelector('#adminContent');
-    if (c) c.style.visibility = '';
-  } catch (e) { /* silently ignored */ }
-};
+import { $, ensureEmployeePillStyle, showNavSpinner, hideNavSpinner, getTopbarSearchParts, bindTopbarSearchClear, syncTopbarSearchKeyword, clearTopbarNoResultState, setTopbarNoResultState, getEmployeesMode, isEmployeesPath } from './employees.helpers.js';
 
 let employeesRenderSeq = 0;
-
-const getTopbarSearchParts = () => {
-  try {
-    const searchBox = document.querySelector('.topbar .search');
-    if (!searchBox) return null;
-    const input = searchBox.querySelector('input[type="search"]');
-    const hint = searchBox.querySelector('.search-hint');
-    const meta = searchBox.querySelector('.search-meta');
-    const closeBtn = searchBox.querySelector('.search-close');
-    return { searchBox, input, hint, meta, closeBtn };
-  } catch {
-    return null;
-  }
-};
-
-const bindTopbarSearchClear = () => {
-  try {
-    const parts = getTopbarSearchParts();
-    const closeBtn = parts && parts.closeBtn;
-    if (!closeBtn) return;
-    if (closeBtn.dataset.empClearBound === '1') return;
-    closeBtn.dataset.empClearBound = '1';
-    const clearAndBack = (e) => {
-      try { e.preventDefault(); } catch (e) { /* silently ignored */ }
-      try { e.stopPropagation(); } catch (e) { /* silently ignored */ }
-      try { window.location.assign('/admin/employees#list'); } catch { window.location.href = '/admin/employees#list'; }
-    };
-    closeBtn.addEventListener('pointerdown', clearAndBack, true);
-    closeBtn.addEventListener('click', clearAndBack, true);
-  } catch (e) { /* silently ignored */ }
-};
-
-const syncTopbarSearchKeyword = (keyword) => {
-  try {
-    bindTopbarSearchClear();
-    const parts = getTopbarSearchParts();
-    if (!parts) return;
-    const { searchBox, input, meta } = parts;
-    const q = String(keyword || '').trim();
-    if (input) input.value = q;
-    if (q) {
-      searchBox.classList.add('emp-query-active');
-      if (meta) meta.removeAttribute('aria-hidden');
-      return;
-    }
-    searchBox.classList.remove('emp-query-active');
-  } catch (e) { /* silently ignored */ }
-};
-
-const clearTopbarNoResultState = () => {
-  try {
-    const parts = getTopbarSearchParts();
-    const searchBox = parts && parts.searchBox;
-    if (!searchBox) return;
-    searchBox.classList.remove('emp-no-result');
-    const hint = parts.hint;
-    if (!hint) return;
-    const def = String(hint.dataset.defaultText || '').trim();
-    hint.textContent = def || 'Ctrl+K';
-    hint.removeAttribute('title');
-    hint.style.display = '';
-  } catch (e) { /* silently ignored */ }
-};
-
-const setTopbarNoResultState = (searchedText) => {
-  try {
-    const searchBox = document.querySelector('.topbar .search');
-    if (!searchBox) return;
-    const hint = searchBox.querySelector('.search-hint');
-    if (!hint) return;
-    if (!hint.dataset.defaultText) {
-      hint.dataset.defaultText = String(hint.textContent || 'Ctrl+K');
-    }
-    const q = String(searchedText || '').trim();
-    if (!q) {
-      clearTopbarNoResultState();
-      return;
-    }
-    const msg = `「${q}」に一致する社員が見つかりません`;
-    searchBox.classList.add('emp-no-result');
-    hint.textContent = msg;
-    hint.title = msg;
-    hint.style.display = 'inline-flex';
-  } catch (e) { /* silently ignored */ }
-};
-
-function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFlag) {
-  if (editId) return 'edit';
-  if (summaryId) return 'summary';
-  if (detailId) return 'detail';
-  if (createFlag) return 'add';
-  if (pathname === '/admin/employees/add') return 'add';
-  if (pathname === '/admin/employees/delete') return 'delete';
-  if (hash === '#add') return 'add';
-  if (hash === '#delete') return 'delete';
-  if (hash === '#edit') return 'edit';
-  if (hash === '#summary') return 'summary';
-  return 'list';
-}
-const isEmployeesPath = (pathname) => {
-  const p = String(pathname || '');
-  return p === '/admin/employees' || p === '/admin/employees/' || p.startsWith('/admin/employees/');
-};
 
 async function renderEmployees(profile, c) {
   clearTopbarNoResultState();
@@ -1400,6 +1241,18 @@ async function renderEmployees(profile, c) {
         .emp-add-form .field-value input, .emp-add-form .field-value select { width:100%; height:34px; border:1px solid #d1d5db; padding:0 10px; font-size:14px; box-sizing:border-box; background:#fff; color:#0f172a; }
         .emp-add-form .field-value select { cursor:pointer; }
         .emp-add-form tr:last-child .field-label, .emp-add-form tr:last-child .field-value { border-bottom:none; }
+
+        /* Dark mode */
+        :root[data-theme='dark'] .emp-add-form { border-color:#334155 !important; background:#111827 !important; }
+        :root[data-theme='dark'] .emp-add-form .section-header { background:#1e293b !important; color:#93c5fd !important; border-color:#334155 !important; font-size:15px !important; }
+        :root[data-theme='dark'] .emp-add-form .field-label { background:#111827 !important; color:#ffffff !important; border-color:#1e293b !important; font-weight:600 !important; }
+        :root[data-theme='dark'] .emp-add-form .field-value { border-color:#1e293b !important; background:#111827 !important; }
+        :root[data-theme='dark'] .emp-add-form .field-value input,
+        :root[data-theme='dark'] .emp-add-form .field-value select { background:#1e293b !important; color:#f1f5f9 !important; border-color:#475569 !important; border-radius:6px !important; }
+        :root[data-theme='dark'] .emp-add-form .field-value input:focus,
+        :root[data-theme='dark'] .emp-add-form .field-value select:focus { border-color:#3b82f6 !important; box-shadow:0 0 0 2px rgba(59,130,246,.2) !important; }
+        :root[data-theme='dark'] .emp-add-form .field-value input::placeholder { color:#64748b !important; }
+        :root[data-theme='dark'] .emp-add-form div[style*="border-right"] { border-color:#334155 !important; }
       </style>
       <div style="margin-bottom:20px;"><a id="addBack" class="btn" href="#list" style="color:#475569;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:4px;">← 社員一覧へ戻る</a></div>
       <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin:0 0 24px;letter-spacing:-0.3px;">新規社員登録</h2>

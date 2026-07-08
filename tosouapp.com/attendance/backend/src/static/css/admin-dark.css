@@ -1,0 +1,771 @@
+/* ============================================================
+   ADMIN DARK MODE — Single Source of Truth
+   Font: Noto Sans JP / Hiragino Kaku Gothic ProN / Meiryo
+   Palette: 
+     bg-base:    #16161e (nền chính)
+     bg-surface: #1e1e2e (sidebar, cards)
+     bg-raised:  #262636 (table header, inputs)
+     border:     #2e2e44
+     text:       #c8ccd4 (body)
+     text-muted: #6e7180 (placeholder, secondary)
+     text-bright:#ffffff (headings, active)
+     accent-1:   #a78bfa (tím — links, table header text)
+     accent-2:   #fb923c (cam — labels, field names)
+     accent-3:   #f472b6 (hồng — buttons, actions)
+     accent-4:   #fbbf24 (vàng — active sidebar, highlights)
+   ============================================================ */
+
+:root[data-theme='dark'] .admin {
+  --dark-bg-base: #16161e;
+  --dark-bg-surface: #1e1e2e;
+  --dark-bg-raised: #262636;
+  --dark-border: #2e2e44;
+  --dark-text: #c8ccd4;
+  --dark-text-muted: #6e7180;
+  --dark-text-bright: #ffffff;
+  --dark-accent-purple: #a78bfa;
+  --dark-accent-orange: #fb923c;
+  --dark-accent-pink: #f472b6;
+  --dark-accent-yellow: #fbbf24;
+  --admin-content-bg: #16161e;
+  --admin-sidebar-bg: #1e1e2e;
+  --admin-border: #2e2e44;
+}
+
+/* --- FONT --- */
+:root[data-theme='dark'] .admin,
+:root[data-theme='dark'] .admin * {
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", "Yu Gothic UI", system-ui, sans-serif;
+}
+
+/* --- BASE BACKGROUNDS --- */
+:root[data-theme='dark'] body.admin,
+:root[data-theme='dark'] body.admin.has-sidebar {
+  background: var(--dark-bg-base) !important;
+  color: var(--dark-text) !important;
+}
+
+:root[data-theme='dark'] .admin .content,
+:root[data-theme='dark'] .admin main.content,
+:root[data-theme='dark'] .admin #adminContent {
+  background: var(--dark-bg-base) !important;
+  color: var(--dark-text) !important;
+}
+
+:root[data-theme='dark'] .admin .sidebar {
+  background: var(--dark-bg-surface) !important;
+  border-right-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .topbar {
+  background: var(--dark-bg-surface) !important;
+  border-bottom-color: var(--dark-border) !important;
+}
+
+/* --- TEXT HIERARCHY --- */
+:root[data-theme='dark'] .admin h1,
+:root[data-theme='dark'] .admin h2,
+:root[data-theme='dark'] .admin h3,
+:root[data-theme='dark'] .admin h4,
+:root[data-theme='dark'] .admin h5 {
+  color: var(--dark-text-bright) !important;
+}
+
+:root[data-theme='dark'] .admin p,
+:root[data-theme='dark'] .admin span,
+:root[data-theme='dark'] .admin div,
+:root[data-theme='dark'] .admin li,
+:root[data-theme='dark'] .admin td,
+:root[data-theme='dark'] .admin th {
+  color: var(--dark-text) !important;
+}
+
+:root[data-theme='dark'] .admin label,
+:root[data-theme='dark'] .admin .fi-label,
+:root[data-theme='dark'] .admin .pe-lbl,
+:root[data-theme='dark'] .admin .pe-field > span,
+:root[data-theme='dark'] .admin .pe-sub-title,
+:root[data-theme='dark'] .admin .section-title,
+:root[data-theme='dark'] .admin .attrec-label,
+:root[data-theme='dark'] .admin .dept-label,
+:root[data-theme='dark'] .admin .adm-label {
+  color: var(--dark-accent-orange) !important;
+}
+
+/* --- SIDEBAR --- */
+:root[data-theme='dark'] .admin .sidebar a,
+:root[data-theme='dark'] .admin .sidebar summary {
+  color: var(--dark-text) !important;
+}
+
+:root[data-theme='dark'] .admin .sidebar a:hover,
+:root[data-theme='dark'] .admin .sidebar summary:hover {
+  color: var(--dark-text-bright) !important;
+  background: var(--dark-bg-raised) !important;
+}
+
+:root[data-theme='dark'] .admin .sidebar a.active,
+:root[data-theme='dark'] .admin .sidebar details.active-section > summary {
+  color: var(--dark-accent-yellow) !important;
+  background: var(--dark-bg-raised) !important;
+}
+
+/* --- TABLES --- */
+:root[data-theme='dark'] .admin table {
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin table thead th {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-purple) !important;
+  border-color: var(--dark-border) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='dark'] .admin table tbody td {
+  background: var(--dark-bg-base) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin table tbody tr:nth-child(even) td {
+  background: var(--dark-bg-surface) !important;
+}
+
+:root[data-theme='dark'] .admin table tbody tr:hover td {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text-bright) !important;
+}
+
+/* --- INPUTS / SELECTS / TEXTAREA --- */
+:root[data-theme='dark'] .admin input,
+:root[data-theme='dark'] .admin select,
+:root[data-theme='dark'] .admin textarea {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: 4px !important;
+}
+
+:root[data-theme='dark'] .admin input:focus,
+:root[data-theme='dark'] .admin select:focus,
+:root[data-theme='dark'] .admin textarea:focus {
+  border-color: var(--dark-accent-purple) !important;
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.15) !important;
+}
+
+:root[data-theme='dark'] .admin input::placeholder,
+:root[data-theme='dark'] .admin textarea::placeholder {
+  color: var(--dark-text-muted) !important;
+}
+
+/* --- BUTTONS --- */
+:root[data-theme='dark'] .admin button,
+:root[data-theme='dark'] .admin .btn,
+:root[data-theme='dark'] .admin .adm-btn,
+:root[data-theme='dark'] .admin .dept-btn,
+:root[data-theme='dark'] .admin .attrec-btn {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-pink) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: 4px !important;
+}
+
+:root[data-theme='dark'] .admin button:hover,
+:root[data-theme='dark'] .admin .btn:hover {
+  background: #2e2e50 !important;
+  border-color: var(--dark-accent-pink) !important;
+}
+
+/* --- LINKS --- */
+:root[data-theme='dark'] .admin a {
+  color: var(--dark-accent-purple) !important;
+}
+
+:root[data-theme='dark'] .admin a:hover {
+  color: var(--dark-accent-pink) !important;
+}
+
+/* --- CARDS / PANELS --- */
+:root[data-theme='dark'] .admin .card,
+:root[data-theme='dark'] .admin .kpi-card,
+:root[data-theme='dark'] .admin .dash-card,
+:root[data-theme='dark'] .admin .pe-card,
+:root[data-theme='dark'] .admin .exp-admin-section,
+:root[data-theme='dark'] .admin .adm-table-wrap,
+:root[data-theme='dark'] .admin .dept-table-wrap,
+:root[data-theme='dark'] .admin .attrec-table {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+  color: var(--dark-text) !important;
+}
+
+/* --- PILLS / BADGES --- */
+:root[data-theme='dark'] .admin .pill,
+:root[data-theme='dark'] .admin .status-pill,
+:root[data-theme='dark'] .admin .role-pill,
+:root[data-theme='dark'] .admin .type-pill,
+:root[data-theme='dark'] .admin .text-pill,
+:root[data-theme='dark'] .admin .adm-badge,
+:root[data-theme='dark'] .admin .attrec-pill,
+:root[data-theme='dark'] .admin .dash-pill {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* --- MOBILE DRAWER --- */
+:root[data-theme='dark'] .admin .mobile-drawer,
+:root[data-theme='dark'] .admin .mobile-drawer .drawer-header,
+:root[data-theme='dark'] .admin .mobile-drawer .drawer-body {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin #drawerNavMount a,
+:root[data-theme='dark'] .admin #drawerNavMount summary {
+  color: var(--dark-text) !important;
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin #drawerNavMount a:hover,
+:root[data-theme='dark'] .admin #drawerNavMount summary:hover {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text-bright) !important;
+}
+
+/* --- SUBBAR --- */
+:root[data-theme='dark'] .admin .subbar {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .subbar a,
+:root[data-theme='dark'] .admin .subbar .menu-btn {
+  color: var(--dark-text) !important;
+}
+
+/* --- SCROLLBAR --- */
+:root[data-theme='dark'] .admin ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+:root[data-theme='dark'] .admin ::-webkit-scrollbar-track {
+  background: var(--dark-bg-base);
+}
+
+:root[data-theme='dark'] .admin ::-webkit-scrollbar-thumb {
+  background: #3a3a55;
+  border-radius: 4px;
+}
+
+/* --- PAGINATION --- */
+:root[data-theme='dark'] .admin .pagination-container,
+:root[data-theme='dark'] .admin .pagination,
+:root[data-theme='dark'] .admin .pager {
+  color: var(--dark-text-muted) !important;
+}
+
+/* --- INLINE WHITE BACKGROUNDS (catch-all) --- */
+:root[data-theme='dark'] .admin [style*="background: #fff"],
+:root[data-theme='dark'] .admin [style*="background:#fff"],
+:root[data-theme='dark'] .admin [style*="background: white"],
+:root[data-theme='dark'] .admin [style*="background:white"],
+:root[data-theme='dark'] .admin [style*="background: #ffffff"],
+:root[data-theme='dark'] .admin [style*="background:#ffffff"],
+:root[data-theme='dark'] .admin [style*="background: #FFFFFF"],
+:root[data-theme='dark'] .admin [style*="background:#FFFFFF"],
+:root[data-theme='dark'] .admin [style*="background: #f8fafc"],
+:root[data-theme='dark'] .admin [style*="background:#f8fafc"],
+:root[data-theme='dark'] .admin [style*="background: #f1f5f9"],
+:root[data-theme='dark'] .admin [style*="background:#f1f5f9"] {
+  background: var(--dark-bg-surface) !important;
+}
+
+/* --- INLINE DARK TEXT (catch-all) --- */
+:root[data-theme='dark'] .admin [style*="color: #0f172a"],
+:root[data-theme='dark'] .admin [style*="color:#0f172a"],
+:root[data-theme='dark'] .admin [style*="color: #1e293b"],
+:root[data-theme='dark'] .admin [style*="color:#1e293b"],
+:root[data-theme='dark'] .admin [style*="color: #334155"],
+:root[data-theme='dark'] .admin [style*="color:#334155"],
+:root[data-theme='dark'] .admin [style*="color: #475569"],
+:root[data-theme='dark'] .admin [style*="color:#475569"] {
+  color: var(--dark-text) !important;
+}
+
+/* --- INLINE BORDERS --- */
+:root[data-theme='dark'] .admin [style*="border: 1px solid #e2e8f0"],
+:root[data-theme='dark'] .admin [style*="border:1px solid #e2e8f0"],
+:root[data-theme='dark'] .admin [style*="border: 1px solid #cbd5e1"],
+:root[data-theme='dark'] .admin [style*="border:1px solid #cbd5e1"],
+:root[data-theme='dark'] .admin [style*="border: 1px solid #d1d5db"],
+:root[data-theme='dark'] .admin [style*="border:1px solid #d1d5db"] {
+  border-color: var(--dark-border) !important;
+}
+
+/* --- SPECIFIC PAGE FIXES --- */
+/* Shift table */
+:root[data-theme='dark'] .shift-container,
+:root[data-theme='dark'] .shift-table-wrapper,
+:root[data-theme='dark'] .go-out-page-content,
+:root[data-theme='dark'] .go-out-root-container,
+:root[data-theme='dark'] .go-out-table-wrapper,
+:root[data-theme='dark'] .adjust-page-content {
+  background: var(--dark-bg-base) !important;
+}
+
+:root[data-theme='dark'] .sap-dense-table th {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-purple) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .sap-dense-table td {
+  background: var(--dark-bg-base) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* Payroll editor */
+:root[data-theme='dark'] .pe-wrap {
+  background: var(--dark-bg-base) !important;
+  color: var(--dark-text) !important;
+}
+
+:root[data-theme='dark'] .pe-title {
+  color: var(--dark-text-bright) !important;
+  border-bottom-color: var(--dark-border) !important;
+}
+
+/* Employee add form */
+:root[data-theme='dark'] .emp-add-form {
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .emp-add-form .section-header {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-orange) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .emp-add-form .field-label {
+  background: var(--dark-bg-surface) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .emp-add-form .field-value {
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .emp-add-form .field-value input,
+:root[data-theme='dark'] .emp-add-form .field-value select {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* Modal dialogs */
+:root[data-theme='dark'] .reason-modal-content,
+:root[data-theme='dark'] .reason-modal-header {
+  background: var(--dark-bg-surface) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* Filter bar */
+:root[data-theme='dark'] .admin .filter-bar {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .filter-bar input,
+:root[data-theme='dark'] .admin .filter-bar select {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .filter-bar .btn {
+  background: var(--dark-accent-purple) !important;
+  color: var(--dark-text-bright) !important;
+  border-color: var(--dark-accent-purple) !important;
+}
+
+
+/* --- LEAVE BALANCE CARDS --- */
+:root[data-theme='dark'] .admin .leave-balance-card,
+:root[data-theme='dark'] .leave-balance-card {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+  color: var(--dark-text) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='dark'] .admin .leave-balance-card:hover {
+  box-shadow: 0 0 0 1px var(--dark-accent-purple) !important;
+}
+
+:root[data-theme='dark'] .admin .leave-balance-card *,
+:root[data-theme='dark'] .leave-balance-card * {
+  color: var(--dark-text) !important;
+}
+
+/* --- GENERAL: Any remaining white cards in admin --- */
+:root[data-theme='dark'] .admin [class*="card"],
+:root[data-theme='dark'] .admin [class*="Card"] {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+  color: var(--dark-text) !important;
+}
+
+/* --- Legacy leave tabs --- */
+:root[data-theme='dark'] .admin .leave-tab,
+:root[data-theme='dark'] .admin .leave-tabs {
+  background: var(--dark-bg-base) !important;
+  border-color: var(--dark-border) !important;
+  color: var(--dark-text) !important;
+}
+
+:root[data-theme='dark'] .admin .leave-tab.active {
+  color: var(--dark-accent-yellow) !important;
+  border-bottom-color: var(--dark-accent-yellow) !important;
+}
+
+
+/* --- PAGINATION (ALL PAGES) --- */
+:root[data-theme='dark'] .admin .pagination-container button,
+:root[data-theme='dark'] .admin .pagination-actions button,
+:root[data-theme='dark'] .admin .pager button,
+:root[data-theme='dark'] .admin [id*="Prev"],
+:root[data-theme='dark'] .admin [id*="Next"],
+:root[data-theme='dark'] .admin [id*="prev"],
+:root[data-theme='dark'] .admin [id*="next"] {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .pagination-container button:disabled,
+:root[data-theme='dark'] .admin .pagination-actions button:disabled {
+  color: var(--dark-text-muted) !important;
+  opacity: 0.5 !important;
+}
+
+:root[data-theme='dark'] .admin .pagination-container select,
+:root[data-theme='dark'] .admin .pagination-info,
+:root[data-theme='dark'] .admin .pagination-actions span {
+  color: var(--dark-text-muted) !important;
+}
+
+/* --- FILTER BAR (ALL PAGES) --- */
+:root[data-theme='dark'] .admin .attrec-controls,
+:root[data-theme='dark'] .admin .attrec-head,
+:root[data-theme='dark'] .admin .adm-toolbar,
+:root[data-theme='dark'] .admin .exp-admin-toolbar-row,
+:root[data-theme='dark'] .admin .page-header-container {
+  background: transparent !important;
+}
+
+:root[data-theme='dark'] .admin .attrec-input,
+:root[data-theme='dark'] .admin .adm-input,
+:root[data-theme='dark'] .admin .adm-select,
+:root[data-theme='dark'] .admin .exp-admin-input,
+:root[data-theme='dark'] .admin .exp-admin-select {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* --- WARNING / STATUS TEXT --- */
+:root[data-theme='dark'] .admin .attrec-pill.warn,
+:root[data-theme='dark'] .admin td[style*="color: #dc2626"],
+:root[data-theme='dark'] .admin [style*="打刻なし"] {
+  color: #fca5a5 !important;
+}
+
+:root[data-theme='dark'] .admin .attrec-pill.ok {
+  color: #86efac !important;
+  background: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+:root[data-theme='dark'] .admin .attrec-pill.danger {
+  color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+:root[data-theme='dark'] .admin .attrec-pill.warn {
+  color: #fde68a !important;
+  background: rgba(251, 191, 36, 0.1) !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+/* --- KPI CARDS (DASHBOARD) --- */
+:root[data-theme='dark'] .admin .kpi-title {
+  color: var(--dark-text-muted) !important;
+}
+
+:root[data-theme='dark'] .admin .kpi-value {
+  color: var(--dark-text-bright) !important;
+}
+
+:root[data-theme='dark'] .admin .kpi-sub {
+  color: var(--dark-text-muted) !important;
+}
+
+/* --- SUMMARY ROW (出勤 25 提出 9 未提出 4) --- */
+:root[data-theme='dark'] .admin .attrec-summary,
+:root[data-theme='dark'] .admin .attrec-summary * {
+  color: var(--dark-text) !important;
+}
+
+/* --- EXCEL EXPORT / ACTION BUTTONS --- */
+:root[data-theme='dark'] .admin .attrec-btn,
+:root[data-theme='dark'] .admin .adm-btn {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-pink) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .attrec-btn:hover,
+:root[data-theme='dark'] .admin .adm-btn:hover {
+  border-color: var(--dark-accent-pink) !important;
+  background: #2e2e50 !important;
+}
+
+/* --- TOPBAR BUTTONS --- */
+:root[data-theme='dark'] .admin .topbar .icon-btn,
+:root[data-theme='dark'] .admin .topbar-actions .icon-btn {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .admin .topbar .icon-btn:hover {
+  background: rgba(255,255,255,0.15) !important;
+}
+
+/* --- TABLE WITHIN CARD --- */
+:root[data-theme='dark'] .admin .card table,
+:root[data-theme='dark'] .admin .card table thead th {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-purple) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .card table tbody td {
+  background: var(--dark-bg-base) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* --- HOLIDAY/WEEKEND ROW --- */
+:root[data-theme='dark'] .admin .cal-row.off td,
+:root[data-theme='dark'] .admin .cal-row.weekend td {
+  background: #1a1a30 !important;
+}
+
+/* --- EMPTY STATE --- */
+:root[data-theme='dark'] .admin .empty-state {
+  color: var(--dark-text-muted) !important;
+  background: transparent !important;
+}
+
+/* --- GLOBAL BORDER FIX --- */
+:root[data-theme='dark'] .admin *:not(svg):not(path):not(img) {
+  border-color: var(--dark-border) !important;
+}
+
+/* --- TABLE .content background leak fix --- */
+:root[data-theme='dark'] .admin .card {
+  background: var(--dark-bg-base) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+
+/* --- FAQ ADMIN PAGE STAT CARDS --- */
+:root[data-theme='dark'] .admin #faqAdminContainer [style*="border"],
+:root[data-theme='dark'] .admin #faqAdminContainer div[style*="background"] {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+  color: var(--dark-text) !important;
+}
+
+:root[data-theme='dark'] .admin #faqAdminContainer [style*="font-size: 32px"],
+:root[data-theme='dark'] .admin #faqAdminContainer [style*="font-size:32px"],
+:root[data-theme='dark'] .admin #faqAdminContainer [style*="font-size: 28px"] {
+  color: var(--dark-text-bright) !important;
+}
+
+/* --- FAQ TABS --- */
+:root[data-theme='dark'] .admin .faq-tab-btn,
+:root[data-theme='dark'] .admin [class*="faq-tab"],
+:root[data-theme='dark'] .admin [data-category] {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-pink) !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin .faq-tab-btn.active,
+:root[data-theme='dark'] .admin [class*="faq-tab"].active {
+  background: var(--dark-accent-pink) !important;
+  color: var(--dark-text-bright) !important;
+}
+
+/* --- LEAVE APPROVAL: pagination buttons less flashy --- */
+:root[data-theme='dark'] .admin .pagination-container button:not(:disabled),
+:root[data-theme='dark'] .admin .pager button:not(:disabled) {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-purple) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* --- APPROVAL STATUS PILLS --- */
+:root[data-theme='dark'] .admin [style*="承認待ち"],
+:root[data-theme='dark'] .admin [style*="background: #fff7ed"],
+:root[data-theme='dark'] .admin [style*="background:#fff7ed"] {
+  background: rgba(251, 191, 36, 0.12) !important;
+  color: #fde68a !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+/* --- GO-OUT PAGE: pagination row --- */
+:root[data-theme='dark'] .admin .pagination-container {
+  background: transparent !important;
+}
+
+:root[data-theme='dark'] .admin .pagination-container * {
+  color: var(--dark-text-muted) !important;
+}
+
+:root[data-theme='dark'] .admin .pagination-container button {
+  color: var(--dark-text) !important;
+}
+
+/* --- GENERIC: any div/section with inline border + white bg --- */
+:root[data-theme='dark'] .admin section[style*="background"],
+:root[data-theme='dark'] .admin div[style*="border"][style*="background"] {
+  background: var(--dark-bg-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* --- TEXT READABILITY: ensure "-" and data in cells is visible --- */
+:root[data-theme='dark'] .admin table td {
+  color: var(--dark-text) !important;
+}
+
+/* --- ACTIVE SIDEBAR ITEM: ensure yellow is visible --- */
+:root[data-theme='dark'] .admin .sidebar a.active,
+:root[data-theme='dark'] .admin .sidebar .active-section > summary {
+  color: var(--dark-accent-yellow) !important;
+  background: var(--dark-bg-raised) !important;
+}
+
+
+/* --- FORM CARD WRAPPER (有給付与, etc.) --- */
+:root[data-theme='dark'] .admin .card,
+:root[data-theme='dark'] .admin #adminContent.card,
+:root[data-theme='dark'] .admin section.card {
+  background: var(--dark-bg-base) !important;
+  border: 1px solid var(--dark-border) !important;
+  box-shadow: none !important;
+}
+
+/* --- MONTHLY SUMMARY INPUT CELLS (月次集計) --- */
+:root[data-theme='dark'] .admin table input,
+:root[data-theme='dark'] .admin table select,
+:root[data-theme='dark'] .admin td input,
+:root[data-theme='dark'] .admin td select {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* --- SECTION HEADERS in monthly summary (合計, 社内勤務, シフト) --- */
+:root[data-theme='dark'] .admin [style*="border-top"],
+:root[data-theme='dark'] .admin [style*="border-bottom"] {
+  border-color: var(--dark-border) !important;
+}
+
+/* --- THICK WHITE BORDERS on forms --- */
+:root[data-theme='dark'] .admin [style*="border: 2px"],
+:root[data-theme='dark'] .admin [style*="border: 3px"],
+:root[data-theme='dark'] .admin [style*="border-top: 2px"],
+:root[data-theme='dark'] .admin [style*="border-bottom: 2px"] {
+  border-color: var(--dark-border) !important;
+}
+
+/* --- LEAVE GRANT FORM (有給付与) card --- */
+:root[data-theme='dark'] .admin form,
+:root[data-theme='dark'] .admin fieldset {
+  background: transparent !important;
+  border-color: var(--dark-border) !important;
+}
+
+:root[data-theme='dark'] .admin form table,
+:root[data-theme='dark'] .admin form table td,
+:root[data-theme='dark'] .admin form table th {
+  background: transparent !important;
+  border-color: var(--dark-border) !important;
+  color: var(--dark-text) !important;
+}
+
+/* --- PAGINATION buttons: muted, not flashy --- */
+:root[data-theme='dark'] .admin button[style*="background: #f59e0b"],
+:root[data-theme='dark'] .admin button[style*="background:#f59e0b"],
+:root[data-theme='dark'] .admin button[style*="background: #10b981"],
+:root[data-theme='dark'] .admin button[style*="background:#10b981"] {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-pink) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* --- Section title backgrounds (合計, 社内勤務...) --- */
+:root[data-theme='dark'] .admin [style*="background: #e6f2ff"],
+:root[data-theme='dark'] .admin [style*="background:#e6f2ff"],
+:root[data-theme='dark'] .admin [style*="background: #eef2ff"],
+:root[data-theme='dark'] .admin [style*="background:#eef2ff"],
+:root[data-theme='dark'] .admin [style*="background: #e0f2fe"],
+:root[data-theme='dark'] .admin [style*="background:#e0f2fe"] {
+  background: var(--dark-bg-raised) !important;
+  color: var(--dark-accent-orange) !important;
+}
+
+
+/* --- NUCLEAR: Force ALL borders in admin to dark --- */
+:root[data-theme='dark'] .admin *,
+:root[data-theme='dark'] .admin *::before,
+:root[data-theme='dark'] .admin *::after {
+  border-color: var(--dark-border) !important;
+}
+
+/* --- Monthly summary section wrappers --- */
+:root[data-theme='dark'] .admin #adminContent > div,
+:root[data-theme='dark'] .admin #adminContent > section,
+:root[data-theme='dark'] .admin #adminContent > div > div {
+  border-color: var(--dark-border) !important;
+}
+
+/* --- Table cells with dark input fields: lighter bg --- */
+:root[data-theme='dark'] .admin table td[style*="background"],
+:root[data-theme='dark'] .admin table td input[style*="background"] {
+  background: var(--dark-bg-raised) !important;
+}
+
+
+/* --- LEAVE CONTENT AREA --- */
+:root[data-theme='dark'] .admin .leave-content-area,
+:root[data-theme='dark'] .admin #leave-content-area,
+:root[data-theme='dark'] .leave-content-area,
+:root[data-theme='dark'] #leave-content-area {
+  background: var(--dark-bg-base) !important;
+  background-color: var(--dark-bg-base) !important;
+  color: var(--dark-text) !important;
+}

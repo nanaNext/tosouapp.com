@@ -462,6 +462,19 @@ export function wireMobileDrawer() {
           const src = document.querySelector('.sidebar .sidebar-nav');
           if (src && src.innerHTML) {
             mount.innerHTML = '<nav class="drawer-nav">' + src.innerHTML + '</nav>';
+          } else {
+            // Fallback: sidebar trống (trang FAQ, notices, etc.) → inject nav mặc định
+            mount.innerHTML = '<nav class="drawer-nav">' +
+              '<a href="/admin/dashboard">ダッシュボード</a>' +
+              '<a href="/admin/attendance">勤怠管理</a>' +
+              '<a href="/admin/employees">社員管理</a>' +
+              '<a href="/admin/leave">休暇管理</a>' +
+              '<a href="/admin/expenses">交通費</a>' +
+              '<a href="/admin/payroll/salary">給与管理</a>' +
+              '<a href="/admin/notices">お知らせ</a>' +
+              '<a href="/admin/chatbot/faq">FAQ管理</a>' +
+              '<a href="/admin/system/settings">システム</a>' +
+              '</nav>';
           }
         }
       } catch (e) { /* silently ignored */ }
@@ -621,6 +634,31 @@ export function wireMobileDrawer() {
           }
         }
         if (filled) mount.dataset.filled = '1';
+        // Fallback cuối cùng: nếu không có sidebar và subbar (trang FAQ, notices, etc.)
+        if (!filled) {
+          const nav = document.createElement('nav');
+          nav.className = 'drawer-nav';
+          const links = [
+            ['/admin/dashboard', 'ダッシュボード'],
+            ['/admin/attendance', '勤怠管理'],
+            ['/admin/employees', '社員管理'],
+            ['/admin/leave', '休暇管理'],
+            ['/admin/expenses', '交通費'],
+            ['/admin/payroll/salary', '給与管理'],
+            ['/admin/work-reports', '作業日報'],
+            ['/admin/notices', 'お知らせ'],
+            ['/admin/chatbot/faq', 'FAQ管理'],
+            ['/admin/system/settings', 'システム'],
+          ];
+          for (const [href, label] of links) {
+            const a = document.createElement('a');
+            a.href = href;
+            a.textContent = label;
+            nav.appendChild(a);
+          }
+          mount.appendChild(nav);
+          mount.dataset.filled = '1';
+        }
       }
     } catch (e) { /* silently ignored */ }
   } catch (e) { /* silently ignored */ }

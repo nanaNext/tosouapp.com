@@ -10,8 +10,8 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   left: 0 !important;
   width: 180px !important;
   z-index: 1000 !important;
-  background: #ffffff !important;
-  border-right: 1px solid #e2e8f0 !important;
+  background: var(--admin-sidebar-bg, #ffffff) !important;
+  border-right: 1px solid var(--admin-border, #e2e8f0) !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
@@ -23,6 +23,14 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
 .admin.has-sidebar .sidebar::-webkit-scrollbar {
   display: none !important; /* Chrome/Safari/Edge */
 }
+
+
+
+
+
+
+
+/* Dark mode toggle */
 
 .admin.has-sidebar .sidebar .sidebar-nav {
   flex: 1 !important;
@@ -37,7 +45,7 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   max-width: calc(100% - 180px) !important;
   padding-top: 48px !important;
   min-height: 100vh !important;
-  background: #ffffff !important;
+  background: var(--admin-content-bg, #ffffff) !important;
   display: block !important;
   box-sizing: border-box !important;
   transition: none !important; /* Prevent shifts */
@@ -50,7 +58,7 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   padding: 8px 16px 80px 16px !important;
   border: none !important;
   box-shadow: none !important;
-  background: #ffffff !important;
+  background: var(--admin-content-bg, #ffffff) !important;
   max-width: none !important;
 }
 
@@ -131,6 +139,10 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   position: relative;
   z-index: 2147483600 !important;
   pointer-events: auto !important;
+  margin: 0 8px 0 0 !important;
+  padding: 0 !important;
+  left: 0 !important;
+  flex-shrink: 0 !important;
 }
 
 /* Hard guard: hidden drawer/backdrop must never intercept taps */
@@ -141,7 +153,6 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
 }
 
 /* Admin SPA: never show legacy nav spinner overlay */
-
 
 /* Hide fixed sidebar when mobile drawer is open to free screen space */
 body.drawer-open.admin.has-sidebar .sidebar {
@@ -300,14 +311,14 @@ body.drawer-open.admin.has-sidebar .content {
 .admin.has-sidebar .sidebar .sidebar-nav summary {
   list-style: none;
   cursor: pointer;
-  padding: 10px 12px 10px 12px;
-  border-radius: 8px;
-  margin: 2px 8px;
-  font-weight: 500;
-  color: #334155;
+  padding: 6px 10px 6px 12px;
+  border-radius: 6px;
+  margin: 1px 4px;
+  font-weight: 600;
+  color: #0f172a;
   font-size: 14px;
   line-height: 1.4;
-  min-height: 38px;
+  min-height: 32px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -392,18 +403,18 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav a {
-  padding: 10px 12px 10px 12px;
-  margin: 2px 8px;
+  padding: 5px 10px 5px 12px;
+  margin: 1px 4px;
   font-size: 14px;
-  font-weight: 400;
-  color: #334155;
+  font-weight: 500;
+  color: #1e293b;
   line-height: 1.4;
-  min-height: 38px;
+  min-height: 32px;
   box-sizing: border-box;
   border: none;
   background: transparent;
   outline: none;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: background-color .14s ease, color .14s ease;
   font-family: Inter, "Noto Sans JP", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
   display: block;
@@ -415,7 +426,7 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details a {
-  padding-left: 40px;
+  padding-left: 32px;
   font-size: 13px;
   font-weight: 400;
   position: relative;
@@ -428,10 +439,6 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details a::before {
-  content: none;
-}
-
-.admin.has-sidebar .sidebar .sidebar-nav details a.active::before {
   content: none;
 }
 
@@ -454,22 +461,63 @@ body.drawer-open.admin.has-sidebar .content {
   color: #7c3aed !important;
   font-weight: 600;
   border-radius: 8px;
-  border-left: 3px solid #7c3aed !important;
+  border-left: none !important;
   box-shadow: none;
   position: relative;
 }
 
+.admin.has-sidebar .sidebar .sidebar-nav a.active::before {
+  content: none;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav a.active::after {
+  content: none;
+}
+
 /* Khôi phục lại ô vuông nhỏ khi active cho các menu đơn cấp */
+.admin.has-sidebar .sidebar .sidebar-nav a.standalone-link {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+  min-height: 38px;
+  color: #334155;
+  border: none;
+  background: transparent;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav a.standalone-link:hover {
+  background: #f1f5f9;
+  border-color: transparent;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav a.standalone-link.active {
+  border: none;
+  background: #f8fafc;
+}
+
 .admin.has-sidebar .sidebar .sidebar-nav a.standalone-link.active::before {
   content: none;
 }
 
+.admin.has-sidebar .sidebar .sidebar-nav a.standalone-link.active::after {
+  content: none;
+}
+
 .admin.has-sidebar .sidebar .sidebar-nav details a.active {
-  background: #e0f2fe;
-  color: #0284c7;
+  background: #f3e8ff;
+  color: #7c3aed;
   font-weight: 700;
   border-radius: 6px;
   box-shadow: none;
+  position: relative;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav details a.active::before {
+  content: none;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav details a.active::after {
+  content: none;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav a[data-admin-link="dashboard"].active {
@@ -621,216 +669,90 @@ body.drawer-open.admin.has-sidebar .content {
 /* Removed conflicting grid layout to honor 200px sidebar width */
 
 /* Dark theme overrides */
-:root[data-theme='dark'] .admin.has-sidebar {
-  background: #0b0f19;
-}
 
-:root[data-theme='dark'] .admin .kpi-card,
-:root[data-theme='dark'] .admin .dash-card,
-:root[data-theme='dark'] .admin .card {
-  background: #111827;
-  border: 1px solid #334155;
-  color: #e5e7eb;
-  box-shadow: none;
-}
+/* Dark: topbar */
 
-:root[data-theme='dark'] .admin .dash-card:hover {
-  border-color: #475569;
-  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
-}
+/* Dark: content area */
 
-:root[data-theme='dark'] .admin .dash-card-title {
-  color: #e5e7eb;
-}
+/* Dark: tables */
 
-:root[data-theme='dark'] .admin .sidebar {
-  background: #0b0f19;
-  border-right: 1px solid #1f2937;
-}
+/* Dark: buttons */
 
-:root[data-theme='dark'] .admin .sidebar .sidebar-nav details {
-  background: #0b0f19;
-  border-color: #1f2937;
-}
+/* Dark: inputs & selects */
 
-:root[data-theme='dark'] .admin .sidebar .sidebar-nav details[open] {
-  background: #0b0f19;
-  border-color: #1f2937;
-}
+/* Dark: status pills */
 
-:root[data-theme='dark'] .admin .sidebar .sidebar-brand {
-  color: #e5e7eb;
-}
+/* Dark: scrollbar */
 
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav summary {
-  color: #e2e8f0;
-}
+/* Dark: mobile drawer */
 
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav summary:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
+/* Dark: subbar */
 
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav a {
-  color: #cbd5e1;
-}
+/* Dark: filter toolbar */
 
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav a:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  font-weight: 500;
-}
+/* Dark: pagination */
 
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav a.active,
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav details a.active {
-  background: #1e40af;
-  color: #ffffff;
-}
+/* Dark: pagination container and labels */
 
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav details a::before {
-  border-color: #64748b;
-}
+/* Dark: table full override */
 
-:root[data-theme='dark'] .admin.has-sidebar .sidebar .sidebar-nav details a.active::before {
-  background: #ffffff;
-  border-color: #ffffff;
-}
+/* Dark: any white card-like background */
 
-:root[data-theme='dark'] .admin .kpi-grid .kpi-value,
-:root[data-theme='dark'] .admin .kpi-grid .kpi-title {
-  color: #e5e7eb;
-}
+/* Dark: filter selects and text near tables */
 
-:root[data-theme='dark'] .admin .dash-card li {
-  border-bottom: 1px dashed #334155;
-}
+/* Dark: date picker and month display */
 
-:root[data-theme='dark'] .admin table {
-  color: #e5e7eb;
-}
+/* Dark: status text */
 
-:root[data-theme='dark'] .admin table th {
-  color: #e5e7eb;
-}
+/* Dark: header row text above table */
 
-:root[data-theme='dark'] .admin .subbar .subnav a {
-  color: #f3f4f6;
-}
+/* Dark: general text and span colors */
+
+/* Dark: filter bar inputs */
+
+/* Dark: body and html when admin */
+
+/* Dark: pagination-container (go-out, adjust, etc.) */
+
+/* Dark: override ALL inline white backgrounds globally */
+
+/* Dark: override inline light gray backgrounds */
+
+/* Dark: inline color overrides for dark text */
+
+/* Dark: inline border overrides */
+
+/* Dark: shift table specifics */
+
+/* Dark: modal dialogs */
+
+/* Dark: shift cell colors */
+
+/* Dark: links */
+
+/* Dark: payroll editor (.pe-*) */
+
+/* Dark: general deep overrides for inline-styled inputs */
+
+/* Dark: action buttons in topbar */
+
+/* Dark: summary stats cards at top */
+
+/* Dark: general text color fixes */
 
 /* Dark theme: readable excel-style tables */
-:root[data-theme='dark'] .admin .card .excel-table {
-  background: #0f172a;
-  border-color: #334155 !important;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table thead th {
-  background: #141a2a !important;
-  color: #f7fafc !important;
-  border-bottom-color: #334155 !important;
-  border-right-color: #334155 !important;
-  text-shadow: none !important;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table tbody td {
-  background: #0e1626 !important;
-  color: #e5e7eb !important;
-  border-bottom-color: #1f2937 !important;
-  border-right-color: #1f2937 !important;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table tbody tr:hover td {
-  background: #101827 !important;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table input,
-:root[data-theme='dark'] .admin .card .excel-table select {
-  background: #0f172a !important;
-  color: #e5e7eb !important;
-  border-color: #334155 !important;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table input::placeholder {
-  color: #94a3b8;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table .emp-action-group .emp-action {
-  background: #111827 !important;
-  color: #e5e7eb !important;
-  border-color: #334155 !important;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table .emp-action-group .emp-action:hover {
-  background: #1f2937 !important;
-  border-color: #475569 !important;
-}
 
 /* Dark theme: attendance dash table */
-:root[data-theme='dark'] .admin .attrec-dash-table th {
-  background: #141a2a !important;
-  color: #f7fafc !important;
-}
-
-:root[data-theme='dark'] .admin .attrec-dash-table td {
-  background: #0e1626 !important;
-  color: #e5e7eb !important;
-  border-color: #1f2937 !important;
-}
-
-:root[data-theme='dark'] .admin .attrec-row:hover td {
-  background: #101827 !important;
-}
 
 /* Dark theme: force ALL text inside admin tables to be white and visible */
-:root[data-theme='dark'] .admin table,
-:root[data-theme='dark'] .admin table * {
-  color: #f3f4f6 !important;
-  text-shadow: none !important;
-  opacity: 1 !important;
-}
-
-:root[data-theme='dark'] .admin table thead th {
-  background: #141a2a !important;
-  border-bottom-color: #334155 !important;
-}
-
-:root[data-theme='dark'] .admin table tbody td {
-  background: #0e1626 !important;
-  border-color: #1f2937 !important;
-}
-
-:root[data-theme='dark'] .admin table tbody tr:hover td {
-  background: #101827 !important;
-}
 
 /* Dark theme: form/filter labels and section headings are white */
-:root[data-theme='dark'] .admin .adm-label,
-:root[data-theme='dark'] .admin .dept-label,
-:root[data-theme='dark'] .admin .attrec-label,
-:root[data-theme='dark'] .admin .card .filters label,
-:root[data-theme='dark'] .admin.employees-wide .emp-filters label,
-:root[data-theme='dark'] .admin .excel-header,
-:root[data-theme='dark'] .admin .section-title,
-:root[data-theme='dark'] .admin h2.section-title,
-:root[data-theme='dark'] .admin h3.section-title {
-  color: #f3f4f6 !important;
-}
-
-:root[data-theme='dark'] .admin input::placeholder,
-:root[data-theme='dark'] .admin textarea::placeholder {
-  color: #cbd5e1 !important;
-}
 
 /* Uniform text color inside admin tables (light & dark) */
 .admin table,
 .admin table th,
 .admin table td {
   color: #0f172a;
-}
-
-:root[data-theme='dark'] .admin table,
-:root[data-theme='dark'] .admin table th,
-:root[data-theme='dark'] .admin table td {
-  color: #f3f4f6;
 }
 
 /* Make all text inside pills/links in tables inherit the table color */
@@ -870,11 +792,6 @@ body.drawer-open.admin.has-sidebar .content {
   color: #0f172a !important;
 }
 
-:root[data-theme='dark'] .admin .card .excel-table thead th,
-:root[data-theme='dark'] .admin table thead th {
-  color: #f3f4f6 !important;
-}
-
 /* Buttons in table action column: make text inherit (remove blue/indigo) */
 .admin .card .excel-table .emp-action-group .emp-action,
 .admin .card .excel-table .emp-action-group .emp-action:hover,
@@ -897,11 +814,6 @@ body.drawer-open.admin.has-sidebar .content {
 
 .admin .card .excel-table thead th,
 .admin table thead th {
-  font-weight: 400 !important;
-}
-
-:root[data-theme='dark'] .admin .card .excel-table thead th,
-:root[data-theme='dark'] .admin table thead th {
   font-weight: 400 !important;
 }
 
@@ -965,13 +877,6 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 /* Final dark-mode override to keep table headers readable */
-:root[data-theme='dark'] .admin .card .excel-table thead th {
-  background: #141a2a !important;
-  color: #f7fafc !important;
-  border-bottom-color: #334155 !important;
-  border-right-color: #334155 !important;
-  text-shadow: none !important;
-}
 
 .admin .topbar-inner>* {
   padding: 0 10px;
@@ -2330,7 +2235,6 @@ body.drawer-open.admin.has-sidebar .content {
     padding-top: var(--topbar-height, 48px) !important;
   }
 
-
   /* Mobile topbar like reference: â˜° + IIZUKA + Sign In + Get Started */
   .admin {
     --topbar-height: 46px;
@@ -3269,7 +3173,6 @@ body.drawer-open.admin.has-sidebar .content {
     --pin-col-2: 92px;
   }
 
-
   .admin .emp-list-scroll-wrap #list {
     border-collapse: separate !important;
     border-spacing: 0 !important;
@@ -4034,263 +3937,54 @@ body.drawer-open.admin.has-sidebar .content {
 
 /* Employees mobile: true dark palette (avoid light/dark mixed rendering) */
 @media (max-width: 576px) {
-  :root[data-theme='dark'] .admin .filter-bar .fi input,
-  :root[data-theme='dark'] .admin .filter-bar .fi select {
-    background: #303134 !important;
-    color: #e8eaed !important;
-    border-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .filter-bar .fi-action .btn {
-    background: #303134 !important;
-    color: #e8eaed !important;
-    border-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr {
-    background: #262a2f !important;
-    border-color: #3c4043 !important;
-    box-shadow: none !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td {
-    background: #262a2f !important;
-    color: #e8eaed !important;
-    border-bottom-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td::before {
-    color: #9aa0a6 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td .cell-value,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td .cell-value.cell-strong,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td .emp-name-link,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td .text-pill,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td .text-pill.neutral,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list td .text-pill a {
-    color: #e8eaed !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat td {
-    background: #262a2f !important;
-    color: #e8eaed !important;
-    border-bottom-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat td.m-code-cell {
-    border-right-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat .m-code-label,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat .m-k {
-    color: #9aa0a6 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat .m-code-value,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat .m-v,
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat .m-v a {
-    color: #e8eaed !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat .m-actions .emp-action {
-    background: #303134 !important;
-    color: #e8eaed !important;
-    border-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .emp-list-scroll-wrap #list tr.mobile-flat .m-actions .emp-action.danger {
-    background: #3f1d2e !important;
-    border-color: #7f1d3a !important;
-    color: #ffd1dc !important;
-  }
+  
 }
 
 /* Soft dark mode: Chrome-like dark gray palette */
-:root[data-theme='dark'] .admin,
-:root[data-theme='dark'] .admin.has-sidebar,
-:root[data-theme='dark'] .admin .content,
-:root[data-theme='dark'] body.admin {
-  background: #202124 !important;
-  color: #e8eaed !important;
-}
-
-:root[data-theme='dark'] .admin .topbar,
-:root[data-theme='dark'] .admin .subbar,
-:root[data-theme='dark'] .admin .sidebar,
-:root[data-theme='dark'] .admin .mobile-drawer {
-  background: #202124 !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin .card,
-:root[data-theme='dark'] .admin .kpi-card,
-:root[data-theme='dark'] .admin .dash-card,
-:root[data-theme='dark'] .admin .attrec-table,
-:root[data-theme='dark'] .admin .dept-table-wrap,
-:root[data-theme='dark'] .admin .adm-table-wrap,
-:root[data-theme='dark'] .admin .empty-state {
-  background: #262a2f !important;
-  border-color: #3c4043 !important;
-  color: #e8eaed !important;
-}
-
-:root[data-theme='dark'] .admin table thead th {
-  background: #2b2f34 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin table tbody td {
-  background: #202124 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin table tbody tr:hover td {
-  background: #2a2f35 !important;
-}
-
-:root[data-theme='dark'] .admin input,
-:root[data-theme='dark'] .admin select,
-:root[data-theme='dark'] .admin textarea {
-  background: #303134 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin input::placeholder,
-:root[data-theme='dark'] .admin textarea::placeholder {
-  color: #9aa0a6 !important;
-}
-
-:root[data-theme='dark'] .admin .btn,
-:root[data-theme='dark'] .admin button,
-:root[data-theme='dark'] .admin .attrec-btn,
-:root[data-theme='dark'] .admin .dept-btn,
-:root[data-theme='dark'] .admin .adm-btn {
-  background: #303134 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin .btn:hover,
-:root[data-theme='dark'] .admin button:hover,
-:root[data-theme='dark'] .admin .attrec-btn:hover,
-:root[data-theme='dark'] .admin .dept-btn:hover,
-:root[data-theme='dark'] .admin .adm-btn:hover {
-  background: #3a3f45 !important;
-}
-
-:root[data-theme='dark'] .admin a,
-:root[data-theme='dark'] .admin .section-title,
-:root[data-theme='dark'] .admin h2,
-:root[data-theme='dark'] .admin h3,
-:root[data-theme='dark'] .admin label {
-  color: #e8eaed !important;
-}
 
 @media (max-width: 768px) {
-  :root[data-theme='dark'] .admin .drawer-backdrop {
-    background: rgba(32, 33, 36, .72) !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .mobile-drawer,
-  :root[data-theme='dark'] .admin .mobile-drawer .drawer-header,
-  :root[data-theme='dark'] .admin .mobile-drawer .drawer-body {
-    background: #202124 !important;
-    border-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .mobile-drawer .drawer-header::before {
-    color: #9aa0a6 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin .mobile-drawer .mobile-close {
-    background: #303134 !important;
-    color: #e8eaed !important;
-    border-color: #3c4043 !important;
-    box-shadow: none !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav>a,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>summary {
-    background: #202124 !important;
-    color: #e8eaed !important;
-    border-top-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav>a::after,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>summary .chev::before {
-    color: #9aa0a6 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>a {
-    background: #262a2f !important;
-    color: #e8eaed !important;
-    border-top-color: #3c4043 !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav>a:link,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav>a:visited,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav>a:hover,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav>a:active,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>summary:link,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>summary:visited,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>a:link,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>a:visited,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>a:hover,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>a:active {
-    color: #e8eaed !important;
-    text-decoration: none !important;
-  }
+  
 
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav>a:hover,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>summary:hover,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>a:hover,
-  :root[data-theme='dark'] .admin #drawerNavMount .drawer-nav details>a:focus-visible {
-    background: #3a3f45 !important;
-    color: #fff !important;
-    border-top-color: #5f6368 !important;
-  }
+  
 }
 
 /* Dark theme final tune: remove leftover blue tint, keep strong cyan-blue accents */
-:root[data-theme='dark'] .admin {
-  --admin-dark-accent: #4ea1ff;
-}
-
-:root[data-theme='dark'] .admin table thead th,
-:root[data-theme='dark'] .admin .dash-table th,
-:root[data-theme='dark'] .admin .attrec-dash-table th,
-:root[data-theme='dark'] .admin .dept-table th {
-  background: #2b2f34 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin .dash-card-title,
-:root[data-theme='dark'] .admin .section-title,
-:root[data-theme='dark'] .admin h2.section-title,
-:root[data-theme='dark'] .admin h3.section-title,
-:root[data-theme='dark'] .admin .excel-header,
-:root[data-theme='dark'] .admin .filter-bar .fi-label,
-:root[data-theme='dark'] .admin .attrec-label,
-:root[data-theme='dark'] .admin .dept-label {
-  color: var(--admin-dark-accent) !important;
-}
-
-:root[data-theme='dark'] .admin .kpi-title,
-:root[data-theme='dark'] .admin .kpi-value,
-:root[data-theme='dark'] .admin .kpi-sub,
-:root[data-theme='dark'] .admin .dash-card li,
-:root[data-theme='dark'] .admin .empty-state,
-:root[data-theme='dark'] .admin .card label,
-:root[data-theme='dark'] .admin .card p,
-:root[data-theme='dark'] .admin .card span {
-  color: #e8eaed !important;
-}
-
 
 /* ============================================================
    EMPLOYEES PAGE — UI CLEANUP (tối ưu bảng & filter bar)
@@ -4313,7 +4007,7 @@ body.drawer-open.admin.has-sidebar .content {
 .admin .card .excel-table tbody td,
 .admin table#list tbody td {
   font-size: 13px !important;
-  padding: 9px 12px !important;
+  padding: 4px 8px !important;
   color: #1e293b !important;
   vertical-align: middle !important;
   border-bottom: 1px solid #e9eef5 !important;
@@ -4411,20 +4105,6 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 /* Dark mode scrollbar styling */
-:root[data-theme='dark'] body.admin {
-  scrollbar-color: #475569 #1e293b;
-}
-:root[data-theme='dark'] body.admin::-webkit-scrollbar {
-  width: 10px;
-  background: #1e293b;
-}
-:root[data-theme='dark'] body.admin::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 5px;
-}
-:root[data-theme='dark'] body.admin::-webkit-scrollbar-track {
-  background: #1e293b;
-}
 
 /* Remove form-card wrapper styling in admin */
 .admin .form-card {
@@ -4439,192 +4119,30 @@ body.drawer-open.admin.has-sidebar .content {
 /* ===== COMPREHENSIVE DARK MODE FIX ===== */
 
 /* Content area & adminContent */
-:root[data-theme='dark'] .admin .content,
-:root[data-theme='dark'] #adminContent,
-:root[data-theme='dark'] .admin .shift-page-content {
-  background: #202124 !important;
-  color: #e8eaed !important;
-}
 
 /* Form cards, panels */
-:root[data-theme='dark'] .admin .form-card,
-:root[data-theme='dark'] .admin .detail-card,
-:root[data-theme='dark'] .admin .card {
-  background: #262a2f !important;
-  border-color: #3c4043 !important;
-  color: #e8eaed !important;
-}
 
 /* Work-reports layout */
-:root[data-theme='dark'] .wr-layout,
-:root[data-theme='dark'] .wr-table-wrap,
-:root[data-theme='dark'] .wr-table-container {
-  background: transparent !important;
-}
-
-:root[data-theme='dark'] .wr-table th {
-  background: #2b2f34 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .wr-table td {
-  background: #202124 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .wr-table tbody tr:hover td {
-  background: #2a2f35 !important;
-}
 
 /* Beautiful table (勤怠記録) */
-:root[data-theme='dark'] .beautiful-table thead {
-  background-color: #2b2f34 !important;
-}
-
-:root[data-theme='dark'] .beautiful-table th {
-  background: #2b2f34 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .beautiful-table td {
-  background: #202124 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .beautiful-table tbody tr:hover td {
-  background: #2a2f35 !important;
-}
 
 /* attrec-pill dark mode - keep pill colors readable */
-:root[data-theme='dark'] .admin .attrec-pill.ok {
-  background: #064e3b !important;
-  color: #6ee7b7 !important;
-  border-color: #065f46 !important;
-}
-
-:root[data-theme='dark'] .admin .attrec-pill.warn {
-  background: #78350f !important;
-  color: #fde68a !important;
-  border-color: #92400e !important;
-}
-
-:root[data-theme='dark'] .admin .attrec-pill.danger {
-  background: #7f1d1d !important;
-  color: #fecaca !important;
-  border-color: #991b1b !important;
-}
-
-:root[data-theme='dark'] .admin .attrec-pill.neutral {
-  background: #374151 !important;
-  color: #d1d5db !important;
-  border-color: #4b5563 !important;
-}
 
 /* Excel table dark */
-:root[data-theme='dark'] .admin .excel-table,
-:root[data-theme='dark'] .admin .excel-table thead th,
-:root[data-theme='dark'] .admin .excel-table tbody td {
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin .excel-table thead th {
-  background: #2b2f34 !important;
-  color: #e8eaed !important;
-}
-
-:root[data-theme='dark'] .admin .excel-table tbody td {
-  background: #202124 !important;
-  color: #e8eaed !important;
-}
 
 /* Toolbar, summary, pagination */
-:root[data-theme='dark'] .admin .attrec-summary,
-:root[data-theme='dark'] .admin .wr-toolbar,
-:root[data-theme='dark'] .admin .filter-bar {
-  background: transparent !important;
-  color: #e8eaed !important;
-}
 
 /* Sidebar dark */
-:root[data-theme='dark'] .admin .sidebar {
-  background: #202124 !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin .sidebar .sidebar-nav a,
-:root[data-theme='dark'] .admin .sidebar .sidebar-nav summary {
-  color: #bdc1c6 !important;
-}
-
-:root[data-theme='dark'] .admin .sidebar .sidebar-nav a:hover,
-:root[data-theme='dark'] .admin .sidebar .sidebar-nav summary:hover,
-:root[data-theme='dark'] .admin .sidebar .sidebar-nav a.active {
-  background: #303134 !important;
-  color: #8ab4f8 !important;
-}
 
 /* Scrollbar dark */
-:root[data-theme='dark'] .admin ::-webkit-scrollbar {
-  background: #202124;
-}
-
-:root[data-theme='dark'] .admin ::-webkit-scrollbar-thumb {
-  background: #5f6368;
-  border-radius: 4px;
-}
-
-:root[data-theme='dark'] .admin ::-webkit-scrollbar-track {
-  background: #303134;
-}
 
 /* Status/role/type pills dark */
-:root[data-theme='dark'] .admin .status-pill,
-:root[data-theme='dark'] .admin .role-pill,
-:root[data-theme='dark'] .admin .type-pill,
-:root[data-theme='dark'] .admin .text-pill {
-  background: #303134 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
 
 /* Links */
-:root[data-theme='dark'] .admin a:not(.btn):not(.attrec-btn) {
-  color: #8ab4f8 !important;
-}
 
 /* Dept table */
-:root[data-theme='dark'] .admin .dept-table-wrap,
-:root[data-theme='dark'] .admin .dept-table {
-  background: #202124 !important;
-  border-color: #3c4043 !important;
-}
-
-:root[data-theme='dark'] .admin .dept-table th {
-  background: #2b2f34 !important;
-  color: #e8eaed !important;
-}
-
-:root[data-theme='dark'] .admin .dept-table td {
-  color: #e8eaed !important;
-}
-
-:root[data-theme='dark'] .admin .dept-input {
-  background: #303134 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-}
 
 /* Dark mode: work-reports status pills (.dash-pill) */
-:root[data-theme='dark'] .wr-table .dash-pill {
-  background: #303134 !important;
-  color: #e8eaed !important;
-  border-color: #3c4043 !important;
-  border: 1px solid #3c4043 !important;
-}
 
 /* Employee list table: scroll ngang */
 .admin .emp-list-scroll-wrap {
@@ -4863,3 +4381,39 @@ body.drawer-open.admin.has-sidebar .content {
 #emergencyUserBtn {
   display: none !important;
 }
+
+/* ===== PROFESSIONAL DARK MODE ===== */
+/* Font: Noto Sans JP (chuẩn app Nhật) */
+/* Accent: hồng #f472b6 | vàng #fbbf24 | tím #a78bfa | cam #fb923c */
+/* Nguyên tắc: nền tối đồng nhất, accent chỉ dùng cho điểm nhấn */
+
+/* === NỀN === */
+
+/* === TEXT MẶC ĐỊNH — trắng xám nhẹ === */
+
+/* === HEADINGS — trắng sáng, bold === */
+
+/* === LABELS — cam (nổi bật vừa đủ) === */
+
+/* === TABLE HEADER — tím accent === */
+
+/* === TABLE BODY — text sáng, zebra nhẹ === */
+
+/* === INPUTS — gọn, cam text khi nhập === */
+
+/* === BUTTONS — compact, hồng accent === */
+
+/* === LINKS — tím === */
+
+/* === SIDEBAR — gọn, chuyên nghiệp === */
+
+/* === BORDERS đồng nhất === */
+
+/* === PAGINATION — nhỏ gọn === */
+
+/* === PILLS/BADGES — tím nhẹ === */
+
+/* === DELETE/DANGER — hồng === */
+
+/* Force dark on elements with inline white/light background */
+
