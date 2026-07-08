@@ -940,10 +940,6 @@ module.exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
       DATE_FORMAT(ec.date, '%Y-%m') AS month,
       COALESCE(SUM(CASE WHEN ec.status = 'applied' THEN ec.amount ELSE 0 END), 0) AS applied_amount,
       COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
-      COALESCE(SUM(CASE WHEN ec.status = 'paid' THEN ec.amount ELSE 0 END), 0) AS paid_amount,
-      COALESCE(SUM(CASE WHEN ec.status = 'rejected' THEN ec.amount ELSE 0 END), 0) AS rejected_amount
-    FROM expense_claims ec
-      COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
       COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved') THEN ec.amount ELSE 0 END), 0) AS total_amount,
       COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,
       COALESCE(SUM(ec.status = 'approved'), 0) AS approved_count,

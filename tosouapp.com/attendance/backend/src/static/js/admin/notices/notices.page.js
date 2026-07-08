@@ -420,8 +420,6 @@ export async function mount() {
 
       <div class="notice-page">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <h3 style="margin:0;">お知らせ</h3>
-        <div style="font-size:12px;font-weight:800;color:#334155;">全社員に表示されます</div>
       </div>
 
       <div style="margin-top:12px;display:grid;grid-template-columns:1fr;gap:10px;">

@@ -179,6 +179,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
     const required = requiredItems.length;
     const submitted = requiredItems.filter(i => !!i.report).length;
     const missing = requiredItems.filter(i => !i.report).length;
+    
     res.status(200).json({ date, summary: { submitted, required, missing }, items });
   } catch (err) {
     res.status(500).json({ message: err.message });

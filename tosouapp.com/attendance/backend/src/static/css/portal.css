@@ -432,7 +432,7 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 }
 
 .admin .brand .icon {
-  height: 36px;
+  height: 44px;
   width: auto;
 }
 
@@ -444,17 +444,17 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 .search input {
   width: 100%;
   padding: 4px 16px 4px calc(var(--search-icon-left) + var(--search-icon-size) + 20px);
-  border: 1px solid #cfd6df;
-  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  border-radius: 0;
   min-width: 0;
   max-width: 560px;
   font-size: 13px;
   background: #ffffff;
-  color: #0d2c5b;
+  color: #0f172a;
   outline: none;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.03) inset;
-  height: 34px;
-  line-height: 34px;
+  box-shadow: none;
+  height: 32px;
+  line-height: 32px;
   box-sizing: border-box;
   background-image: url('/static/images/thanhtimkiem.png');
   background-repeat: no-repeat;
@@ -1058,20 +1058,24 @@ body:not(.admin) .topbar-inner .user #userName {
 }
 
 .admin .user .user-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  background: transparent;
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   padding: 0;
-  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .admin .user .caret,
 .admin .user #userName { display: none !important; }
 .admin .user .user-icon { display: none !important; }
 .ud-avatar.sm {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  border-radius: 0;
   background: #d1fae5;
   color: #065f46;
   font-weight: 700;
@@ -2402,7 +2406,8 @@ body:not(.admin) .topbar-inner .user #userName {
     margin-bottom: 0;
   }
   .brand .logo {
-    display: none;
+    display: block;
+    font-size: 20px;
   }
   .search input {
     width: 100%;

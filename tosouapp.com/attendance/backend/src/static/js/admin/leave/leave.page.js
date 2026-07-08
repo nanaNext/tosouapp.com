@@ -5,12 +5,28 @@ const normalizePath = (p) => {
   return s.length > 1 ? s.replace(/\/+$/, '') : s;
 };
 
-export async function mount() {
-  const content = document.querySelector('#adminContent');
+export async function mount(options = {}) {
+  const content = options.content || document.querySelector('#adminContent');
   if (!content) return;
   content.className = 'card';
   const p = normalizePath(window.location.pathname);
-  const mod = await import('../legacy/legacy-leave.page.js');
+  const mod = await import('../legacy/legacy-leave.page.js?v=9');
+
+  if (content.querySelector('.leave-page-layout')) {
+    // Already mounted! Just switch tab.
+    let target = 'tab-approvals';
+    if (p.includes('grants')) target = 'tab-grant';
+    else if (p.includes('balance')) target = 'tab-balances';
+    
+    const tabBtn = content.querySelector(`.leave-tab[data-target="${target}"]`);
+    if (tabBtn) tabBtn.click();
+    
+    return () => {
+      if (!window.location.pathname.startsWith('/admin/leave')) {
+        try { content.innerHTML = ''; } catch (e) {}
+      }
+    };
+  }
 
   const mountApprovals = async (host = content, opts = {}) => {
     return mod.mountApprovals({
@@ -52,5 +68,9 @@ export async function mount() {
 
   void p;
   await mountLeaveUnified(content);
-  return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
+  return () => {
+    if (!window.location.pathname.startsWith('/admin/leave')) {
+      try { content.innerHTML = ''; } catch (e) {}
+    }
+  };
 }

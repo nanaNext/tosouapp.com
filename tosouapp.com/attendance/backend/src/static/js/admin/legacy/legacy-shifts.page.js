@@ -363,7 +363,7 @@ export async function mountShifts({ content }) {
         color: #111827 !important;
         letter-spacing: -0.01em;
         margin: 0 !important;
-        padding: 16px 24px 16px 24px !important;
+        padding: 4px 24px 8px 24px !important;
         border-bottom: none !important;
       }
       .shift-fiori-override .form-card {
@@ -500,7 +500,7 @@ export async function mountShifts({ content }) {
         border-color: #f87171 !important;
       }
       .shift-fiori-override .form-actions {
-        padding: 16px 24px !important;
+        padding: 0 24px 16px 24px !important;
         background: #f8fafc;
         border-top: 1px solid #e2e8f0;
         display: flex;

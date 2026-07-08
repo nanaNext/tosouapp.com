@@ -12,23 +12,19 @@ function ensureLeaveUiStyles() {
       background: transparent !important; 
       border: none !important; 
       box-shadow: none !important; 
-      padding: 0 !important; 
+      padding: 16px !important; 
       margin: 0 !important;
-      width: 100%;
+      width: auto;
       max-width: 100%;
-      overflow-x: hidden;
+      overflow-x: auto;
       box-sizing: border-box;
     }
     .leave-page-layout {
-      display: flex;
-      gap: 0;
+      display: block;
       margin-top: 0;
       padding: 0;
-      align-items: stretch;
       width: 100%;
       max-width: 100%;
-      height: calc(100vh - 96px); /* Fallback height */
-      overflow: hidden; /* Prevent whole page from scrolling */
       box-sizing: border-box;
     }
     
@@ -48,14 +44,7 @@ function ensureLeaveUiStyles() {
       background: #a8a8a8;
     }
     .leave-sidebar {
-      width: 240px;
-      flex-shrink: 0;
-      background: #F9FAFB;
-      border-right: 1px solid #E5E7EB;
-      padding: 16px; /* Reduced top padding to make items closer to header */
-      height: 100%;
-      overflow-y: auto;
-      box-sizing: border-box;
+      display: none;
     }
     .leave-tabs-vertical {
       display: flex;
@@ -108,9 +97,9 @@ function ensureLeaveUiStyles() {
       flex: 1;
       min-width: 0;
       background: #FFFFFF;
-      padding: 16px 40px 32px 40px; /* Reduced top padding */
-      height: 100%;
-      overflow-y: auto; /* Enable independent scrolling here */
+      padding: 16px 24px 32px 24px;
+      overflow-x: auto;
+      overflow-y: auto;
       box-sizing: border-box;
     }
     .leave-tab-content {
@@ -364,6 +353,62 @@ function ensureLeaveUiStyles() {
     .pto-grant-row input { padding: 4px 8px; border: 1px solid #89919A; border-radius: 2px; font-size: 14px; width: 100%; box-sizing: border-box; min-height: 32px; }
     .pto-grant-row input:focus { border-color: #0854A0; box-shadow: inset 0 0 0 1px #0854A0; outline: none; }
     .pto-grant-label { font-size: 12px; font-weight: normal; color: #6A6D70; margin-bottom: 4px; display: block; }
+
+    /* Mobile responsive for leave tables */
+    @media (max-width: 768px) {
+      .leave-table { font-size: 13px !important; width: 100% !important; }
+      .leave-table thead { display: none !important; }
+      .leave-table tbody { display: block !important; width: 100% !important; }
+      .leave-table tbody tr {
+        display: block !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 8px !important;
+        margin-bottom: 12px !important;
+        padding: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .leave-table tbody td {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0 !important;
+        border: none !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+      }
+      .leave-table tbody td:last-child {
+        border-bottom: none !important;
+      }
+      .leave-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #475569;
+        font-size: 12px;
+        min-width: 80px;
+        flex-shrink: 0;
+      }
+      .leave-toolbar {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        width: 100% !important;
+      }
+      .leave-table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+      }
+      .leave-pager {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
+      }
+    }
   `;
   document.head.appendChild(s);
 }
@@ -424,7 +469,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
   const table = document.createElement('table');
   table.className = 'leave-table leave-table-approvals';
   const hasActions = selectedStatus === 'pending';
-  table.innerHTML = `<thead><tr><th>ID</th><th>社員番号・氏名</th><th>期間</th><th>種類</th><th>状態</th><th>残数</th>${hasActions ? '<th>操作</th>' : ''}</tr></thead>`;
+  table.innerHTML = `<thead><tr><th>社員番号・氏名</th><th>期間</th><th>種類</th><th>状態</th><th>残数</th>${hasActions ? '<th>操作</th>' : ''}</tr></thead>`;
   const tbody = document.createElement('tbody');
   const pager = document.createElement('div');
   pager.className = 'leave-pager';
@@ -461,13 +506,12 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
       else if (typeJa === 'unpaid') typeJa = '欠勤';
       
       tr.innerHTML = `
-        <td>${r.id}</td>
-        <td>${userLabel}</td>
-        <td>${r.startDate}〜${r.endDate}</td>
-        <td>${typeJa}</td>
-        <td><span class="leave-badge ${statusClass}">${statusJa}</span></td>
-        <td><button type="button" class="leave-btn leave-btn-subtle" data-action="balance" data-user="${r.userId}">照会</button></td>
-        ${hasActions ? `<td>
+        <td data-label="社員番号・氏名">${userLabel}</td>
+        <td data-label="期間">${r.startDate}〜${r.endDate}</td>
+        <td data-label="種類">${typeJa}</td>
+        <td data-label="状態"><span class="leave-badge ${statusClass}">${statusJa}</span></td>
+        <td data-label="残数"><button type="button" class="leave-btn leave-btn-subtle" data-action="balance" data-user="${r.userId}">照会</button></td>
+        ${hasActions ? `<td data-label="操作">
           <button type="button" class="leave-btn leave-btn-primary" data-action="approve" data-app="${r.id}">承認</button>
           <button type="button" class="leave-btn leave-btn-danger" data-action="reject" data-app="${r.id}">却下</button>
         </td>` : ''}`;
@@ -475,7 +519,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
     }
     if (!pageRows.length) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="7" style="text-align:center;color:#64748b;padding:20px 8px;">${usingLegacyPending ? '承認待ちの休暇申請はありません' : (selectedStatus ? 'この状態の休暇申請はありません' : '休暇申請はありません')}</td>`;
+      tr.innerHTML = `<td colspan="6" style="text-align:center;color:#64748b;padding:20px 8px;">${usingLegacyPending ? '承認待ちの休暇申請はありません' : (selectedStatus ? 'この状態の休暇申請はありません' : '休暇申請はありません')}</td>`;
       tbody.appendChild(tr);
     }
     pager.innerHTML = `
@@ -1334,44 +1378,53 @@ export async function mountLeaveUnified({
   style.id = 'leave-dynamic-height';
   style.textContent = `
     .leave-page-layout {
-      height: calc(100vh - var(--topbar-height, 48px)) !important;
       width: 100%;
-      max-width: 100vw;
-      overflow-x: hidden;
+      max-width: 100%;
     }
     .leave-sidebar {
-      height: calc(100vh - var(--topbar-height, 48px)) !important;
-      border-right: 1px solid #E5E7EB !important;
+      display: none !important;
     }
     .leave-content-area {
-      overflow-x: hidden !important;
-      max-width: calc(100vw - 240px); /* Strictly prevent horizontal overflow */
+      overflow-x: auto !important;
+      max-width: 100%;
     }
     body.admin.has-sidebar .content {
-      padding-top: var(--topbar-height, 48px) !important; /* Only use topbar height, not subbar */
-      padding-left: 0 !important;
-      padding-right: 0 !important;
+      padding-top: var(--topbar-height, 48px) !important;
+      padding-left: 16px !important;
+      padding-right: 16px !important;
       padding-bottom: 0 !important;
       margin: 0 !important;
-      height: 100vh !important;
-      width: 100vw !important;
-      max-width: 100% !important;
-      overflow: hidden !important;
-      background: #FFFFFF !important; /* Fix background issue to hide any gaps */
+      margin-left: 180px !important;
+      width: calc(100% - 180px) !important;
+      max-width: calc(100% - 180px) !important;
+      overflow-y: auto !important;
+      background: #FFFFFF !important;
       border: none !important;
       box-shadow: none !important;
       box-sizing: border-box !important;
     }
     body.admin.has-sidebar #adminContent {
-      padding: 0 !important;
+      padding: 16px !important;
       margin: 0 !important;
       width: 100% !important;
       max-width: 100% !important;
-      overflow: hidden !important;
-      background: #FFFFFF !important; /* Force content area background */
+      overflow: visible !important;
+      background: #FFFFFF !important;
       border: none !important;
       box-shadow: none !important;
       margin-top: -1px !important; /* Force pull up to close any 1px gap */
+    }
+    @media (max-width: 768px) {
+      body.admin.has-sidebar .content {
+        margin-left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+      }
+      body.admin.has-sidebar #adminContent {
+        padding: 8px !important;
+      }
     }
     /* Hide the status and error bars if they are empty so they don't take up space */
     body.admin.has-sidebar .status:empty, 
@@ -1532,6 +1585,69 @@ export async function mountLeaveUnified({
       const targetId = e.currentTarget.getAttribute('data-target');
       e.currentTarget.classList.add('active');
       content.querySelector(`#${targetId}`).classList.add('active');
+
+      // Update URL history to reflect the current tab
+      if (targetId === 'tab-approvals') {
+        history.replaceState(null, '', '/admin/leave/requests');
+      } else if (targetId === 'tab-grant') {
+        history.replaceState(null, '', '/admin/leave/grants');
+      } else if (targetId === 'tab-balances') {
+        history.replaceState(null, '', '/admin/leave/balance');
+      }
+      
+      // Update sidebar active status to sync with internal tabs
+      const sidebarEl = document.querySelector('.att-hub-sidebar');
+      if (sidebarEl) {
+         sidebarEl.querySelectorAll('.att-sidebar-item').forEach(item => {
+            item.classList.remove('active');
+            item.style.borderLeftColor = 'transparent';
+            item.style.color = '#b0c4de';
+            item.style.background = 'transparent';
+            item.style.fontWeight = '400';
+            const svg = item.querySelector('svg');
+            if (svg) svg.style.opacity = '0.7';
+         });
+         const activePath = window.location.pathname;
+         const activeEl = sidebarEl.querySelector(`a[href="${activePath}"]`);
+         if (activeEl) {
+            activeEl.classList.add('active');
+            activeEl.style.color = '#ffffff';
+            activeEl.style.fontWeight = '600';
+            const parentEl = sidebarEl.querySelector(`a[href^="/admin/leave"]`);
+            if (parentEl) {
+               parentEl.classList.add('active');
+               parentEl.style.borderLeftColor = '#4ade80';
+               parentEl.style.color = '#ffffff';
+               parentEl.style.background = 'rgba(255,255,255,.06)';
+               parentEl.style.fontWeight = '600';
+               const pSvg = parentEl.querySelector('svg');
+               if (pSvg) pSvg.style.opacity = '1';
+            }
+         }
+      }
     });
   });
+
+  // Set initial active tab based on current URL
+  const currentPath = window.location.pathname;
+  content.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
+  content.querySelectorAll('.leave-tab-content').forEach(c => c.classList.remove('active'));
+
+  if (currentPath === '/admin/leave/grants') {
+    const tab = content.querySelector('.leave-tab[data-target="tab-grant"]');
+    if (tab) tab.classList.add('active');
+    const contentTab = content.querySelector('#tab-grant');
+    if (contentTab) contentTab.classList.add('active');
+  } else if (currentPath === '/admin/leave/balance') {
+    const tab = content.querySelector('.leave-tab[data-target="tab-balances"]');
+    if (tab) tab.classList.add('active');
+    const contentTab = content.querySelector('#tab-balances');
+    if (contentTab) contentTab.classList.add('active');
+  } else {
+    // Default to requests
+    const tab = content.querySelector('.leave-tab[data-target="tab-approvals"]');
+    if (tab) tab.classList.add('active');
+    const contentTab = content.querySelector('#tab-approvals');
+    if (contentTab) contentTab.classList.add('active');
+  }
 }

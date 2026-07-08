@@ -166,7 +166,7 @@ const isEmployeesPath = (pathname) => {
   return p === '/admin/employees' || p === '/admin/employees/' || p.startsWith('/admin/employees/');
 };
 
-async function renderEmployees(profile) {
+async function renderEmployees(profile, c) {
   clearTopbarNoResultState();
   try {
     const currentPath = String(location.pathname || '');
@@ -184,7 +184,7 @@ async function renderEmployees(profile) {
   } catch (e) { /* silently ignored */ }
 
   const seq = ++employeesRenderSeq;
-  const content = $('#adminContent');
+  const content = c || $('#adminContent');
   if (!content) return;
   ensureEmployeePillStyle();
 
@@ -386,7 +386,7 @@ async function renderEmployees(profile) {
       for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
       const qsKeep = keep.toString();
       const backHref = `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`;
-      const summaryHref = `/admin/employees?summary=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
+      const summaryHref = `/admin/employees/monthly-summary?userId=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
       const editHref = `/admin/employees?edit=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
       const btnSummary = panel.querySelector('#btnDetailSummary');
       if (btnSummary) btnSummary.setAttribute('href', summaryHref);
@@ -402,7 +402,9 @@ async function renderEmployees(profile) {
   if (mode === 'summary' && summaryId) {
     try {
       const month = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
-      window.location.replace(`/admin/employees/monthly-summary?userId=${encodeURIComponent(summaryId)}&month=${encodeURIComponent(month)}`);
+      // Let SPA routing handle it by replacing the state and triggering route update
+      history.replaceState(null, '', `/admin/employees/monthly-summary?userId=${encodeURIComponent(summaryId)}&month=${encodeURIComponent(month)}`);
+      window.dispatchEvent(new Event('popstate'));
       return;
     } catch (e) { /* silently ignored */ }
     const u = await getEmployee(summaryId);
@@ -1099,7 +1101,7 @@ async function renderEmployees(profile) {
         </div>
       </div>
 
-      <div class="form-actions" style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; z-index: 9999; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
+      <div class="form-actions" style="margin-top: 24px; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
         <div id="empEditMsg" style="color: #f87171; font-weight: 600; font-size: 14px; flex: 1; text-align: left; display: none;"></div>
         <a id="btnCancelEdit" href="#list" style="background: transparent; color: #64748b; border: none; font-weight: bold; min-width: 80px; height: 40px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;">キャンセル</a>
         <button type="submit" style="background: transparent; color: #2b6cb0; border: none; min-width: 100px; height: 40px; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; cursor: pointer;">
@@ -1389,89 +1391,58 @@ async function renderEmployees(profile) {
     if (seq !== employeesRenderSeq) return;
     const managerOptions = (role2 !== 'manager' ? managers.filter(m => String(m.role) === 'manager') : []).map(m => `<option value="${m.id}">${m.username || m.email}</option>`).join('');
     form.innerHTML = `
-      <div style="margin-bottom:8px;"><a id="addBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
-      <div class="form-title">【新規社員】</div>
+      <style>
+        .emp-add-form td input, .emp-add-form td select { transition: border-color .15s, box-shadow .15s; outline:none; }
+        .emp-add-form td input:focus, .emp-add-form td select:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.12); }
+        .emp-add-form .section-header { background:#f1f5f9; padding:12px 20px; font-weight:700; font-size:14px; color:#0f172a; border-bottom:1px solid #d1d5db; letter-spacing:0.3px; }
+        .emp-add-form .field-label { width:130px; padding:12px 20px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:500; color:#374151; background:#f8fafc; vertical-align:middle; }
+        .emp-add-form .field-value { padding:10px 16px; border-bottom:1px solid #e5e7eb; vertical-align:middle; }
+        .emp-add-form .field-value input, .emp-add-form .field-value select { width:100%; height:34px; border:1px solid #d1d5db; padding:0 10px; font-size:14px; box-sizing:border-box; background:#fff; color:#0f172a; }
+        .emp-add-form .field-value select { cursor:pointer; }
+        .emp-add-form tr:last-child .field-label, .emp-add-form tr:last-child .field-value { border-bottom:none; }
+      </style>
+      <div style="margin-bottom:20px;"><a id="addBack" class="btn" href="#list" style="color:#475569;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:4px;">← 社員一覧へ戻る</a></div>
+      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin:0 0 24px;letter-spacing:-0.3px;">新規社員登録</h2>
       
-      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin-bottom: 24px;">
-        <!-- Cột 1: 基本情報 -->
-        <div style="flex: 1 1 300px;">
-          <table class="excel-table" style="width: 100%;">
-            <thead><tr><th colspan="2">基本情報</th></tr></thead>
-            <tbody>
-              <tr><td style="width:140px;">社員番号 <span style="color:#ef4444">*</span></td><td><input id="empCode" style="width:100%"></td></tr>
-              <tr><td>氏名 <span style="color:#ef4444">*</span></td><td><input id="empName" style="width:100%"></td></tr>
-              <tr><td>メール <span style="color:#ef4444">*</span></td><td><input id="empEmail" style="width:100%"></td></tr>
-              <tr><td>パスワード <span style="color:#ef4444">*</span></td><td><input id="empPass" type="password" style="width:100%"></td></tr>
-              <tr><td>生年月日</td><td><input id="empBirth" type="date" style="width:100%"></td></tr>
-              <tr><td>性別</td><td>
-                <select id="empGender" style="width:100%">
-                  <option value="">未選択</option>
-                  <option value="male">男性</option>
-                  <option value="female">女性</option>
-                  <option value="other">その他</option>
-                </select>
-              </td></tr>
-              <tr><td>電話番号</td><td><input id="empPhone" style="width:100%"></td></tr>
-              <tr><td>住所</td><td><input id="empAddr" style="width:100%"></td></tr>
-            </tbody>
+      <div class="emp-add-form" style="display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid #cbd5e1; margin-bottom:28px; box-shadow:0 1px 3px rgba(0,0,0,.04);">
+        <!-- 基本情報 -->
+        <div style="border-right:1px solid #cbd5e1;">
+          <div class="section-header">基本情報</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td class="field-label">社員番号 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empCode" placeholder="例: EMP001"></td></tr>
+            <tr><td class="field-label">氏名 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empName" placeholder="山田 太郎"></td></tr>
+            <tr><td class="field-label">メール <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empEmail" type="email" placeholder="example@company.com"></td></tr>
+            <tr><td class="field-label">パスワード <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empPass" type="password" placeholder="6文字以上"></td></tr>
+            <tr><td class="field-label">生年月日</td><td class="field-value"><input id="empBirth" type="date"></td></tr>
+            <tr><td class="field-label">性別</td><td class="field-value"><select id="empGender"><option value="">未選択</option><option value="male">男性</option><option value="female">女性</option><option value="other">その他</option></select></td></tr>
+            <tr><td class="field-label">電話番号</td><td class="field-value"><input id="empPhone" placeholder="090-xxxx-xxxx"></td></tr>
+            <tr><td class="field-label">住所</td><td class="field-value"><input id="empAddr" placeholder="東京都..."></td></tr>
           </table>
         </div>
-
-        <!-- Cột 2: 職務情報 -->
-        <div style="flex: 1 1 300px;">
-          <table class="excel-table" style="width: 100%;">
-            <thead><tr><th colspan="2">職務情報</th></tr></thead>
-            <tbody>
-              <tr><td style="width:140px;">部署</td><td><select id="empDept" style="width:100%"><option value="">部署</option>${depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></td></tr>
-              <tr><td>役割 <span style="color:#ef4444">*</span></td><td>
-                <select id="empRole" style="width:100%">
-                  <option value="employee">従業員</option>
-                  <option value="manager">マネージャー</option>
-                  <option value="admin">管理者</option>
-                </select>
-              </td></tr>
-              <tr><td>直属マネージャー</td><td><select id="empManager" style="width:100%"><option value="">未設定</option>${managerOptions}</select></td></tr>
-              <tr><td>レベル</td><td><input id="empLevel" style="width:100%" placeholder="例: L1/L2/Senior"></td></tr>
-              <tr><td>雇用形態 <span style="color:#ef4444">*</span></td><td>
-                <select id="empType" style="width:100%">
-                  <option value="full_time">正社員</option>
-                  <option value="part_time">パート・アルバイト</option>
-                  <option value="contract">契約社員</option>
-                </select>
-              </td></tr>
-              <tr><td>入社日</td><td><input id="empJoinDate" type="date" style="width:100%"></td></tr>
-              <tr><td>試用開始</td><td><input id="empProbDate" type="date" style="width:100%"></td></tr>
-              <tr><td>正社員化</td><td><input id="empOfficialDate" type="date" style="width:100%"></td></tr>
-              <tr><td>契約終了日</td><td><input id="empContractEnd" type="date" style="width:100%"></td></tr>
-              <tr><td>基本給</td><td><input id="empBaseSalary" type="number" step="0.01" style="width:100%" placeholder="円"></td></tr>
-              <tr><td>状態 <span style="color:#ef4444">*</span></td><td>
-                <select id="empStatus" style="width:100%">
-                  <option value="active">在職</option>
-                  <option value="inactive">休職/無効</option>
-                  <option value="retired">退職</option>
-                </select>
-              </td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Cột 3: その他 -->
-        <div style="flex: 1;">
-          <table class="excel-table" style="width: 100%;">
-            <thead><tr><th colspan="2">その他</th></tr></thead>
-            <tbody>
-              <tr><td style="width:140px;">個人書類画像URL</td><td><input id="empAvatarUrl" style="width:100%" placeholder="https://..."></td></tr>
-              <tr><td>画像をアップロード</td><td><input id="empAvatarFile" type="file" accept="image/*" multiple style="width:100%; padding:4px;"></td></tr>
-            </tbody>
+        <!-- 職務情報 -->
+        <div>
+          <div class="section-header">職務情報</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td class="field-label">部署</td><td class="field-value"><select id="empDept"><option value="">未設定</option>${depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></td></tr>
+            <tr><td class="field-label">役割 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empRole"><option value="employee">従業員</option><option value="manager">マネージャー</option><option value="admin">管理者</option></select></td></tr>
+            <tr><td class="field-label">マネージャー</td><td class="field-value"><select id="empManager"><option value="">未設定</option>${managerOptions}</select></td></tr>
+            <tr><td class="field-label">レベル</td><td class="field-value"><input id="empLevel" placeholder="例: L1/L2/Senior"></td></tr>
+            <tr><td class="field-label">雇用形態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empType"><option value="full_time">正社員</option><option value="part_time">パート・アルバイト</option><option value="contract">契約社員</option></select></td></tr>
+            <tr><td class="field-label">入社日</td><td class="field-value"><input id="empJoinDate" type="date"></td></tr>
+            <tr><td class="field-label">試用開始</td><td class="field-value"><input id="empProbDate" type="date"></td></tr>
+            <tr><td class="field-label">正社員化</td><td class="field-value"><input id="empOfficialDate" type="date"></td></tr>
+            <tr><td class="field-label">契約終了日</td><td class="field-value"><input id="empContractEnd" type="date"></td></tr>
+            <tr><td class="field-label">基本給</td><td class="field-value"><input id="empBaseSalary" type="number" step="0.01" placeholder="円"></td></tr>
+            <tr><td class="field-label">状態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empStatus"><option value="active">在職</option><option value="inactive">休職/無効</option><option value="retired">退職</option></select></td></tr>
+            <tr><td class="field-label">画像</td><td class="field-value"><input id="empAvatarUrl" placeholder="画像URL (任意)"><input id="empAvatarFile" type="file" accept="image/*" multiple style="margin-top:8px;font-size:12px;"></td></tr>
           </table>
         </div>
       </div>
-
-      <div class="form-actions" style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; z-index: 9999; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
-        <div id="empCreateMsg" style="color: #f87171; font-weight: 600; font-size: 14px; flex: 1; text-align: left; display: none;"></div>
-        <button type="submit" style="background: transparent; color: #2b6cb0; border: none; min-width: 100px; height: 40px; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; cursor: pointer;">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-          <span>作成</span>
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:16px 0;">
+        <div id="empCreateMsg" style="color:#ef4444;font-weight:500;font-size:14px;flex:1;text-align:left;display:none;"></div>
+        <button type="submit" style="height:40px;padding:0 28px;background:#0f172a;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;letter-spacing:0.3px;transition:opacity .15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          社員を作成
         </button>
       </div>
 `;
@@ -1623,31 +1594,6 @@ async function renderEmployees(profile) {
       <div class="fi">
         <div class="fi-label">キーワード</div>
         <input id="empSearchKeyword" class="fi-name" placeholder="氏名・メール">
-      </div>
-      <div class="fi">
-        <div class="fi-label">部署</div>
-        <select id="empFilterDept" class="fi-dept">
-          <option value="">すべて</option>
-          ${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="fi">
-        <div class="fi-label">雇用形態</div>
-        <select id="empFilterType" class="fi-role">
-          <option value="">すべて</option>
-          <option value="full_time">正社員</option>
-          <option value="contract">契約社員</option>
-          <option value="part_time">パート・アルバイト</option>
-        </select>
-      </div>
-      <div class="fi">
-        <div class="fi-label">状態</div>
-        <select id="empFilterStatus" class="fi-status">
-          <option value="">すべて</option>
-          <option value="active">在職</option>
-          <option value="inactive">無効/休職</option>
-          <option value="retired">退職</option>
-        </select>
       </div>
       <div class="fi fi-action">
         <button type="button" id="btnEmpSearch" class="btn">検索</button>
@@ -1866,10 +1812,7 @@ async function renderEmployees(profile) {
       filterWrap.appendChild(toolbar);
     }
   } else {
-    listHeader = document.createElement('div');
-    listHeader.className = 'form-title';
-    listHeader.textContent = '【社員一覧】';
-    content.appendChild(listHeader);
+    // Tiêu đề đã được hiển thị trên Sidebar/Header, ẩn đi cho đỡ rườm rà
     content.appendChild(tableScrollWrap);
     content.appendChild(pager);
   }
@@ -2431,7 +2374,7 @@ async function renderEmployees(profile) {
 
 let cachedProfile = null;
 
-export async function mount() {
+export async function mount(opt) { const c = opt && opt.content;
   if (!cachedProfile) {
     cachedProfile = await requireAdmin();
   }
@@ -2445,15 +2388,15 @@ export async function mount() {
   const status = $('#status');
   if (status) status.textContent = '';
 
-  const content = $('#adminContent');
-  if (content) content.className = 'card wide';
+  const content = c || $('#adminContent');
+  if (content && !c) content.className = 'card wide';
 
-  await renderEmployees(profile);
+  await renderEmployees(profile, content);
 
   const onRouteUpdate = () => {
     try {
       if (!isEmployeesPath(location.pathname)) return;
-      renderEmployees(profile);
+      renderEmployees(profile, content);
     } catch (e) { /* silently ignored */ }
   };
   window.addEventListener('hashchange', onRouteUpdate);

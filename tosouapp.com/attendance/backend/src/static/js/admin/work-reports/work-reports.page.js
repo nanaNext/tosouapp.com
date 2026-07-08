@@ -109,6 +109,9 @@ export async function mount() {
 
   const PAGE_CSS = `
       .wr-input { height: 30px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 13px; color: #0f172a; outline: none; background: #fff; box-sizing: border-box; }
+      :root[data-theme='dark'] .wr-input { color: #e8eaed !important; background: #303134 !important; border-color: #3c4043 !important; }
+      :root[data-theme='dark'] .wr-select { color: #e8eaed !important; background: #303134 !important; border-color: #3c4043 !important; }
+      :root[data-theme='dark'] .attrec-btn { color: #e8eaed !important; background: #303134 !important; border-color: #3c4043 !important; }
       .wr-select { padding-right: 30px; min-width: 120px; cursor: pointer; text-overflow: ellipsis; }
       .wr-input:focus { border-color: #3b82f6; }
       .wr-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; flex-shrink: 0; }
@@ -116,7 +119,7 @@ export async function mount() {
       .wr-btn { height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; outline: none; transition: all .15s; }
       .wr-btn-dl { background: #10b981; color: #fff; gap: 6px; }
       .wr-btn-dl:hover { background: #059669; }
-      .wr-table { width: 100%; border-collapse: collapse; min-width: 1000px; font-size: 13px; table-layout: auto; }
+      .wr-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
       .wr-table th { padding: 6px 12px; font-size: 12px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 10; font-weight: 500; text-align: left; white-space: nowrap; }
       .wr-table td { padding: 6px 12px; vertical-align: middle; border: none; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
       .wr-table tbody tr:hover td { background: #f8fafc; }
@@ -128,12 +131,14 @@ export async function mount() {
       .attrec-btn { height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #cbd5e1; outline: none; transition: all .15s; background: #fff; color: #475569; }
       .attrec-btn:hover { background: #f8fafc; border-color: #94a3b8; }
 
-      .wr-layout { height: calc(${vhExpr} - 32px); overflow: hidden; display: flex; flex-direction: column; }
-      .wr-table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; position: relative; z-index: 1; }
+      .wr-layout { min-height: calc(${vhExpr} - 32px); display: flex; flex-direction: column; }
+      .wr-table-wrap { flex: 1 1 auto; position: relative; z-index: 1; min-width: 0; }
+      .wr-table-container { width: 100%; overflow: auto; max-height: calc(100vh - 160px); }
 
       @media (max-width: 768px) {
-        .wr-layout { flex: 1 1 0% !important; min-height: 0 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
-        .wr-table-wrap { flex: 1 1 0% !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden !important; -webkit-overflow-scrolling: touch !important; }
+        .wr-layout { flex: 1 1 0% !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; }
+        .wr-table-wrap { flex: 1 1 auto !important; min-height: 0 !important; }
+        .wr-table-container { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
         
         .wr-table tbody td.group-hide, .wr-table th.group-hide, .wr-table col.group-hide { display: none !important; }
         .wr-toolbar { display: flex !important; flex-direction: column !important; gap: 12px !important; padding: 16px !important; background: #f8fafc !important; border-radius: 8px !important; border: 1px solid #e2e8f0 !important; margin: 0 0 16px 0 !important; }
@@ -172,7 +177,7 @@ export async function mount() {
         
         /* Hide Excel button on mobile toolbar area, maybe move it elsewhere or keep hidden if requested, but user didn't specify. Assuming we hide it or put it at the very bottom/top. Let's put it top right if needed, but per design left side is preferred. Let's hide the old month picker and excel button row and re-layout. */
         
-        .wr-table { display: block !important; width: 100% !important; min-width: 0 !important; border: none !important; border-collapse: separate !important; }
+        .wr-table { display: block !important; width: 100% !important; min-width: 0 !important; border: none !important; border-collapse: separate !important; overflow-x: visible !important; }
         .wr-table thead, .wr-table colgroup { display: none !important; }
         .wr-table tbody { display: flex !important; flex-direction: column !important; gap: 12px !important; padding: 12px 0 !important; width: 100% !important; background: transparent !important; }
         
@@ -275,7 +280,7 @@ export async function mount() {
         .wr-table tbody tr.wr-sat-row td:nth-child(1) { background: #eff6ff !important; border-right-color: #bfdbfe !important; color: #2563eb !important; }
         
         /* Mobile List Table Fixes */
-        .wr-table-container { border: none !important; box-shadow: none !important; background: transparent !important; padding-bottom: 60px !important; overflow-x: hidden !important; padding: 0 !important; }
+        .wr-table-container { border: none !important; box-shadow: none !important; background: transparent !important; padding-bottom: 60px !important; overflow-x: auto !important; padding: 0 !important; }
         .wr-summary-container { padding: 0 12px !important; }
         
         /* Sticky Pagination for Mobile */
@@ -524,7 +529,7 @@ export async function mount() {
       const paginationClass = isMobile ? 'wr-mobile-pagination' : '';
 
       paginationHtml = `
-        <div class="${paginationClass}" style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+        <div class="${paginationClass}" style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding:8px 4px 0; clear:both;">
           <div style="color:#64748b; font-size:14px;">
             全 <span style="font-weight:700; color:#0f172a;">${items.length}</span> 件中 <span style="font-weight:700; color:#0f172a;">${startIndex + 1}</span> - <span style="font-weight:700; color:#0f172a;">${endIndex}</span> 件を表示
           </div>
@@ -537,24 +542,8 @@ export async function mount() {
     }
 
     tableHost.innerHTML = `
-      <div class="wr-table-container" style="overflow-x:auto;border-top:none;border-bottom:none;background:#fff;padding-bottom:12px;">
-        <table class="wr-table" style="min-width:1400px; width:100%; table-layout:fixed; border-collapse: collapse;">
-            <colgroup>
-                <col style="width:110px;">
-                <col style="width:50px;">
-                <col style="width:110px;">
-                <col style="width:120px;">
-                <col style="width:140px;">
-                <col style="width:100px;">
-                <col style="width:70px;">
-                <col style="width:70px;">
-                <col style="width:110px;">
-                <col style="width:200px;">
-                <col style="width:300px;">
-                <col style="width:180px;">
-                <col style="width:200px;">
-                <col style="width:180px;">
-              </colgroup>
+      <div class="wr-table-container" id="wrTableContainer" style="overflow:auto;max-height:calc(100vh - 160px);border-top:none;border-bottom:none;background:transparent;padding-bottom:0;width:100%;">
+        <table class="wr-table" style="width:100%; table-layout:auto; border-collapse: collapse;">
               <thead style="position:sticky; top:0; z-index:10;">
                 <tr style="background:#e6f2ff; color:#0f172a; height:30px;">
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">日付</th>
@@ -580,6 +569,8 @@ export async function mount() {
       </div>
       ${paginationHtml}
     `;
+
+    // Scroll container handled by CSS (width:0; min-width:100% trick)
 
     if (items.length > 0) {
       const btnPrev = document.getElementById('btnWrPrev');

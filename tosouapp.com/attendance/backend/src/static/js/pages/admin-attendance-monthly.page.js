@@ -241,8 +241,8 @@ async function boot(root, { standalone = false } = {}) {
   loadFrame();
 }
 
-export async function mount() {
-  const root = document.querySelector('#adminContent');
+export async function mount(opt) {
+  const root = (opt && opt.content) || document.querySelector('#adminContent');
   if (!root) return;
   renderScaffold(root);
   await boot(root, { standalone: false });

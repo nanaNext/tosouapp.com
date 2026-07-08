@@ -312,3 +312,4 @@ const errorHandler = require('./core/middleware/errorHandler');
 app.use(errorHandler);
 
 module.exports = app;
+

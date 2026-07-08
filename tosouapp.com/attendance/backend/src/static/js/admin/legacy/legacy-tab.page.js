@@ -1,4 +1,4 @@
-export async function bootLegacyTab({ tab, hash }) {
+export async function bootLegacyTab({ tab, hash, host }) {
   try {
     const url = new URL(window.location.href);
     if (tab) url.searchParams.set('tab', tab);
@@ -16,6 +16,9 @@ export async function bootLegacyTab({ tab, hash }) {
     } catch (e) { /* silently ignored */ }
     const spec = v ? `../payroll/editor.page.js?v=${encodeURIComponent(v)}` : '../payroll/editor.page.js';
     const mod = await import(spec);
+    if (mod.mount && host) {
+       return await mod.mount({ content: host });
+    }
     return await mod.mount();
   }
 // cái này dùng để render legacy tab

@@ -163,7 +163,7 @@ const tabHref = (tab) => {
   return `${base}?tab=${encodeURIComponent(String(tab || ''))}`;
 };
 // hàm này để mo
-export async function mount() {
+export async function mount(options = {}) {
   if (aborter) aborter.abort();
   aborter = new AbortController();
   const { signal } = aborter;
@@ -172,18 +172,18 @@ export async function mount() {
 
   mountStyle();
 
-  const content = document.querySelector('#adminContent');
+  const content = options.content || document.querySelector('#adminContent');
   if (!content) return;
   content.innerHTML = '';
   
   // Xóa mọi CSS rác từ #adminContent
-  content.style.cssText = 'width: 100%; margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; max-width: none; float: none; text-align: left;';
+  content.style.cssText = 'width: 100%; margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; max-width: none; float: none; text-align: left; overflow-y: auto !important; height: 100%;';
 
   // Thẻ div to nhất bọc toàn bộ nội dung (nằm dưới menu chính) - Yêu cầu của User
   const wrap = document.createElement('div');
   wrap.className = 'max-w-[1400px] mx-auto px-6 w-full';
   // Đảm bảo CSS inline luôn thắng mọi CSS legacy
-  wrap.style.cssText = 'max-width: 1400px; margin-left: auto !important; margin-right: auto !important; padding-left: 24px; padding-right: 24px; width: 100%; box-sizing: border-box; display: block; clear: both;';
+  wrap.style.cssText = 'max-width: 1400px; margin-left: auto !important; margin-right: auto !important; padding-left: 24px; padding-right: 24px; width: 100%; box-sizing: border-box; display: block; clear: both; min-height: min-content; padding-bottom: 60px;';
   content.appendChild(wrap);
 
   // Toolbar (Phần trên cùng)
