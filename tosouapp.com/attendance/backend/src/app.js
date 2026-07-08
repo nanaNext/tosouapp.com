@@ -39,6 +39,10 @@ app.use(cookieParser());
 app.use(cors());
 security(app);
 
+// Global rate limiting — 200 requests per minute per IP for API, 600 for static
+const { rateLimit } = require('./core/middleware/rateLimit');
+app.use('/api', rateLimit({ windowMs: 60_000, max: 200, keyBy: 'ip' }));
+
 // Phản hồi ảnh favicon mặc định (hoặc icon SVG tự sinh) để tránh lỗi 404
 app.get('/favicon.ico', (req, res) => {
   res.type('image/svg+xml');
@@ -90,18 +94,21 @@ app.use((req, res, next) => {
   res.setHeader('X-Build-Id', BUILD_ID);
   res.setHeader('X-Started-At', String(STARTED_AT));
   res.setHeader('X-Process-Id', String(process.pid));
-  res.locals.appVersion = BUILD_ID; // Inject version for EJS cache busting
+  res.locals.appVersion = BUILD_ID;
   next();
 });
+
+// Structured logger middleware
+const log = require('./core/logger');
+app.use(log.middleware());
+
 app.use((req, res, next) => {
   const start = process.hrtime.bigint();
   res.on('finish', () => {
     const end = process.hrtime.bigint();
     const ms = Number(end - start) / 1e6;
     if (ms > 500) {
-      try {
-        console.warn(JSON.stringify({ level: 'warn', type: 'slow_request', request_id: req.id, method: req.method, path: req.path, duration_ms: Math.round(ms) }));
-      } catch (e) { /* silently ignored */ }
+      log.warn('Slow request', { request_id: req.id, method: req.method, path: req.path, duration_ms: Math.round(ms), status: res.statusCode });
     }
   });
   next();

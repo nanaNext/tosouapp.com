@@ -20,11 +20,14 @@ router.patch('/me',
   controller.updateMe
 );
 
+const { enforcePasswordPolicy } = require('../../core/middleware/passwordPolicy');
+
 router.put('/change-password',
   authenticate,
   authorize('employee','manager','admin'),
   body('currentPassword').isLength({ min: 6 }),
   body('newPassword').isLength({ min: 8 }),
+  enforcePasswordPolicy('newPassword'),
   async (req, res) => {
     try {
       const userId = req.user?.id;
