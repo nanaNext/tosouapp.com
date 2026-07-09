@@ -1,4 +1,5 @@
 services:
+  # === PRODUCTION ===
   - type: web
     name: iizuka-attendance
     env: node
@@ -8,11 +9,12 @@ services:
       npm install --omit=dev
     startCommand: |
       npm start
-    repoPath: .
     healthCheckPath: /ping
     autoDeploy: true
     envVars:
       - key: NODE_ENV
+        value: production
+      - key: APP_ENV
         value: production
       - key: TRUST_PROXY_HOPS
         value: "2"
@@ -28,16 +30,12 @@ services:
         value: "1500"
       - key: REFRESH_TOKEN_EXPIRES_DAYS
         value: "7"
-      # CORS: thêm origin tĩnh nếu bạn chạy frontend ngoài Render
-      # Ví dụ: https://nananext.github.io
       - key: ALLOWED_ORIGINS
         sync: false
-      # JWT secrets
       - key: JWT_SECRET_CURRENT
         sync: false
       - key: JWT_SECRET_PREVIOUS
         sync: false
-      # MySQL connection (khuyến nghị dùng Railway MySQL và điền biến dưới)
       - key: DB_HOST
         sync: false
       - key: DB_PORT
@@ -58,3 +56,58 @@ services:
       name: uploads
       mountPath: /opt/render/project/src/attendance/backend/src/uploads
       sizeGB: 1
+
+  # === STAGING ===
+  - type: web
+    name: iizuka-attendance-staging
+    env: node
+    plan: free
+    region: singapore
+    branch: staging
+    buildCommand: |
+      npm install --omit=dev
+    startCommand: |
+      npm start
+    healthCheckPath: /ping
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: staging
+      - key: TRUST_PROXY_HOPS
+        value: "2"
+      - key: ENFORCE_CSRF
+        value: "false"
+      - key: ENABLE_HSTS
+        value: "false"
+      - key: DISABLE_SCHEDULERS
+        value: "true"
+      - key: COMPANY_NAME
+        value: "[STAGING] Iizuka Token"
+      - key: ACCESS_TOKEN_EXPIRES
+        value: "3600"
+      - key: IDLE_TIMEOUT_SECONDS
+        value: "7200"
+      - key: REFRESH_TOKEN_EXPIRES_DAYS
+        value: "30"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: JWT_SECRET_CURRENT
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false
+      - key: SUPER_ADMIN_NAME
+        value: Super Admin
