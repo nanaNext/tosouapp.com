@@ -18,7 +18,7 @@ async function ensureTable() {
 }
 
 async function listUserPasskeys(userId) {
-  const [rows] = await db.query(`SELECT id, credential_id, public_key, counter, transports, aaguid FROM user_passkeys WHERE user_id = ?`, [userId]);
+  const [rows] = await db.query(`SELECT id, credential_id, public_key, counter, transports, aaguid, created_at FROM user_passkeys WHERE user_id = ?`, [userId]);
   return rows || [];
 }
 

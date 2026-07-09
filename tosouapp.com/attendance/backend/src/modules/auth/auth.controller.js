@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const userRepo = require('../users/user.repository');
 const auditRepo = require('../audit/audit.repository');
 const { sendPasswordResetEmail, canSendMail } = require('../../core/notifications/email.service');
+const { check2FARequired } = require('../../core/middleware/require2FA');
 // Controller xác thực: đăng ký và đăng nhập
 
 function isHttpsRequest(req) {
@@ -159,13 +160,21 @@ exports.login = async (req, res) => {
     });
     setSessionCookie(req, res, token);
     const nextPath = (role === 'admin' || role === 'manager') ? '/admin/dashboard' : '/ui/portal';
+
+    // Check if 2FA is required for this user
+    let requires2FA = false;
+    try {
+      requires2FA = await check2FARequired(user.id, role);
+    } catch (e) { /* fail open */ }
+
     res.status(200).json({
       id: user.id,
       username: user.username,
       email: user.email,
       role,
       accessToken: token,
-      nextPath
+      nextPath,
+      requires2FA
     });
     try {
       await auditRepo.writeLog({
