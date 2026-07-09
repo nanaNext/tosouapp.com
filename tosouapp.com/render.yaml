@@ -6,7 +6,9 @@ services:
     plan: starter
     region: singapore
     buildCommand: |
-      npm install --omit=dev
+      npm install
+      npx esbuild --version || true
+      npm run build:minify || true
     startCommand: |
       npm start
     healthCheckPath: /ping
