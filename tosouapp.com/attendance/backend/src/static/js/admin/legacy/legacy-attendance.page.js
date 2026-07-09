@@ -613,7 +613,7 @@ async function mountAttendanceImpl({
               background-color: #e6f0fa;
             }
             .beautiful-table th {
-              padding: 12px 8px;
+              padding: 6px 8px;
               font-weight: 700;
               color: #1e293b;
               font-size: 13px;
@@ -622,7 +622,7 @@ async function mountAttendanceImpl({
               border-bottom: 2px solid #cbd5e1;
             }
             .beautiful-table td {
-              padding: 12px 8px;
+              padding: 4px 8px;
               font-size: 13px;
               color: #334155;
               border: 1px solid #d1d5db;
@@ -635,9 +635,9 @@ async function mountAttendanceImpl({
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 6px 12px;
+              padding: 2px 8px;
               border-radius: 0;
-              font-size: 14px;
+              font-size: 12px;
               font-weight: 600;
               background-color: #f1f5f9;
               color: #475569;
@@ -762,7 +762,7 @@ async function mountAttendanceImpl({
               cursor: not-allowed;
             }
           </style>
-          <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>
+          <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>支店</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>
         `;
         const tbody = document.createElement('tbody');
         const selectedDateIsOff = isWeekend(date);
@@ -804,35 +804,44 @@ async function mountAttendanceImpl({
         
           let stLabel = '';
           let stClass = '';
+          let stInline = '';
           
           if (st === 'checked_out') {
             stLabel = '退勤済';
             stClass = 'attrec-pill ok';
+            stInline = 'background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;';
           } else if (st === 'working' || st === 'holiday_working') {
             if (isPastDate) {
               stLabel = '退勤忘れ';
               stClass = 'attrec-pill danger';
+              stInline = 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;';
             } else {
               stLabel = st === 'working' ? '出勤中' : '休日出勤中';
               stClass = 'attrec-pill warn';
+              stInline = 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;';
             }
           } else if (st === 'holiday_work') {
             stLabel = '休日出勤';
             stClass = 'attrec-pill warn';
+            stInline = 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;';
           } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
             stLabel = kubun || '休日';
             stClass = 'attrec-pill neutral';
+            stInline = 'background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;';
           } else if (st === 'off') {
             stLabel = '休日';
             stClass = 'attrec-pill neutral';
+            stInline = 'background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;';
           } else {
             // not_checked_in or empty
             if (isPastDate) {
               stLabel = '打刻なし';
               stClass = 'attrec-pill danger';
+              stInline = 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;';
             } else {
               stLabel = '未出勤';
               stClass = 'attrec-pill neutral';
+              stInline = 'background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;';
             }
           }
 
@@ -859,18 +868,21 @@ async function mountAttendanceImpl({
           const codeHtml = !isSameUser ? `<td data-label="社員番号" style="text-align:center; vertical-align:middle;"${rsHtml}>${esc(code)}</td>` : ``;
           const nameHtml = !isSameUser ? `<td data-label="氏名" style="font-weight:600; white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(name)}</td>` : ``;
           const deptHtml = !isSameUser ? `<td data-label="部署" style="white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(dept)}</td>` : ``;
+          const branchName = it.branchName || '—';
+          const branchHtml = !isSameUser ? `<td data-label="支店" style="white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(branchName)}</td>` : ``;
           const wtLabelHtml = !isSameUser ? `<td data-label="勤務区分" style="white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(wtLabel)}</td>` : ``;
-          const stHtml = !isSameUser ? `<td data-label="状態" style="text-align:center; white-space:nowrap; vertical-align:middle;"${rsHtml}>${esc(stLabel)}</td>` : ``;
+          const stHtml = !isSameUser ? `<td data-label="状態" style="text-align:center; white-space:nowrap; vertical-align:middle;"${rsHtml}><span class="${stClass}" style="display:inline-block;padding:2px 8px;font-size:12px;font-weight:700;${stInline}">${esc(stLabel)}</span></td>` : ``;
 
           // Use standard table cell creation instead of weird layout elements
           tr.innerHTML = `
             ${codeHtml}
             ${nameHtml}
             ${deptHtml}
+            ${branchHtml}
             ${wtLabelHtml}
             ${stHtml}
-            <td data-label="出勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;">${esc(cinView)}</td>
-            <td data-label="退勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;">${esc(coutView)}</td>
+            <td data-label="出勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;${cinView !== '-' ? ' color:#166534; font-weight:600;' : ''}">${esc(cinView)}</td>
+            <td data-label="退勤" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;${coutView !== '-' ? ' color:#0b2c66; font-weight:600;' : ''}">${esc(coutView)}</td>
             <td data-label="現場"><div style="font-size:13px; color:#475569;">${esc(siteView)}</div></td>
             <td data-label="作業内容"><div style="font-size:13px; color:#475569; word-break:break-all; white-space:pre-wrap;">${esc(workView)}</div></td>
           `;

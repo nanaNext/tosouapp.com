@@ -49,7 +49,7 @@ const { validatePassword } = require('../../core/middleware/passwordPolicy');
 // API: Tạo mới một tài khoản nhân viên
 exports.create = async (req, res) => {
   try {
-    const { employeeCode, username, email, password, role, departmentId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId } = req.body || {};
+    const { employeeCode, username, email, password, role, departmentId, branchId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId } = req.body || {};
     if (!username || !email || !password || !(role || departmentId !== undefined)) {
       return res.status(400).json({ message: 'Missing username/email/password' });
     }
@@ -61,7 +61,7 @@ exports.create = async (req, res) => {
       return res.status(409).json({ message: 'Email đã tồn tại!' });
     }
     const hashed = bcrypt.hashSync(password, bcryptRounds);
-    const id = await repo.createUser({ employeeCode, username, email, password: hashed, role, departmentId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId });
+    const id = await repo.createUser({ employeeCode, username, email, password: hashed, role, departmentId, branchId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId });
     res.status(201).json({ id });
   } catch (err) {
     if (err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062)) {
@@ -95,6 +95,7 @@ exports.update = async (req, res) => {
       username: body.username,
       email: body.email,
       role: body.role,
+      branchId: body.branchId,
       departmentId: body.departmentId,
       level: body.level,
       managerId: body.managerId,

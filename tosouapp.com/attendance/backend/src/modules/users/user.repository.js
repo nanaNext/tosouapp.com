@@ -43,7 +43,7 @@ module.exports = {
     const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [id]);
     return rows[0];
   },
-  async createUser({ employeeCode = null, username, email, password, role = 'employee', departmentId = null, employmentType = 'full_time', hireDate = null, level = null, managerId = null, phone = null, birthDate = null, gender = null, avatarUrl = null, probationDate = null, officialDate = null, contractEnd = null, baseSalary = null, shiftId = null, employmentStatus = null, joinDate = null }) {
+  async createUser({ employeeCode = null, username, email, password, role = 'employee', departmentId = null, branchId = null, employmentType = 'full_time', hireDate = null, level = null, managerId = null, phone = null, birthDate = null, gender = null, avatarUrl = null, probationDate = null, officialDate = null, contractEnd = null, baseSalary = null, shiftId = null, employmentStatus = null, joinDate = null }) {
     const today = new Date().toISOString().slice(0, 10);
     const cols = [
       'employee_code',
@@ -52,6 +52,7 @@ module.exports = {
       'email_lower',
       'password',
       'role',
+      'branch_id',
       'departmentId',
       'level',
       'manager_id',
@@ -76,6 +77,7 @@ module.exports = {
       email,
       password,
       role,
+      branchId,
       departmentId,
       level,
       managerId,
@@ -103,13 +105,14 @@ module.exports = {
     }
     return id;
   },
-  async updateUser(id, { employeeCode, username, email, role, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin }) {
+  async updateUser(id, { employeeCode, username, email, role, branchId, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin }) {
     const sql = `
       UPDATE users
       SET username = COALESCE(?, username),
           email = COALESCE(?, email),
           email_lower = COALESCE(LOWER(?), email_lower),
           role = COALESCE(?, role),
+          branch_id = COALESCE(?, branch_id),
           departmentId = COALESCE(?, departmentId),
           level = COALESCE(?, level),
           manager_id = COALESCE(?, manager_id),
@@ -144,6 +147,7 @@ module.exports = {
       email || null,
       email || null,
       role || null,
+      branchId !== undefined ? branchId : null,
       departmentId || null,
       level || null,
       managerId || null,

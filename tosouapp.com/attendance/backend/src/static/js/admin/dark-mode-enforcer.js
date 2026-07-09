@@ -93,6 +93,22 @@
   const themeObserver = new MutationObserver(() => {
     if (document.documentElement.getAttribute('data-theme') === 'dark') {
       setTimeout(enforce, 100);
+    } else {
+      // Revert all inline dark styles
+      document.body.style.removeProperty('background-color');
+      const mainContent = document.querySelector('main.content');
+      if (mainContent) mainContent.style.removeProperty('background-color');
+      const adminContent = document.querySelector('#adminContent');
+      if (adminContent) adminContent.style.removeProperty('background-color');
+      const admin = document.querySelector('.admin') || document.body;
+      if (admin) {
+        const els = admin.querySelectorAll('*');
+        for (const el of els) {
+          el.style.removeProperty('background-color');
+          el.style.removeProperty('color');
+          el.style.removeProperty('border-color');
+        }
+      }
     }
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
