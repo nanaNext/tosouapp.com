@@ -82,4 +82,18 @@ pool.getConnection = async function() {
   return conn;
 };
 
+/**
+ * Get pool stats for monitoring
+ */
+pool.getPoolStats = () => {
+  const p = pool.pool;
+  return {
+    totalConnections: p?._allConnections?.length || 0,
+    freeConnections: p?._freeConnections?.length || 0,
+    activeConnections: (p?._allConnections?.length || 0) - (p?._freeConnections?.length || 0),
+    queuedRequests: p?._connectionQueue?.length || 0,
+    connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '200', 10)
+  };
+};
+
 module.exports = pool;
