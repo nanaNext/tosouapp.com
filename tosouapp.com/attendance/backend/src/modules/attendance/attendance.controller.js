@@ -347,6 +347,13 @@ exports.timesheet = async (req, res) => {
     if (req.user?.role === 'employee' && String(userId) !== String(requesterId)) {
       return res.status(403).json({ message: 'Forbidden: employees can only view their own timesheet' });
     }
+    // Manager: can only view timesheet of employees in same department
+    if (req.user?.role === 'manager' && String(userId) !== String(requesterId)) {
+      const targetUser = await require('../users/user.repository').getUserById(userId);
+      if (targetUser && req.user.departmentId && String(targetUser.departmentId) !== String(req.user.departmentId)) {
+        return res.status(403).json({ message: 'Forbidden: can only view employees in your department' });
+      }
+    }
     const result = await service.timesheet(userId, fromDate, toDate);
     res.status(200).json(result);
   } catch (err) {
