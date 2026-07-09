@@ -669,6 +669,35 @@ router.get('/audit', authorize('admin'), async (req, res) => {
   }
 });
 
+// Export: attendance report as Excel/PDF
+router.get('/export/attendance', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const { generateAttendanceExcel, generateAttendancePDF } = require('../../core/services/export.service');
+    const { month = '', format = 'excel' } = req.query;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month (YYYY-MM)' });
+
+    const db = require('../../core/database/mysql');
+    const [users] = await db.query(`SELECT u.id, u.employee_code, u.username, d.name as departmentName FROM users u LEFT JOIN departments d ON u.departmentId = d.id WHERE u.employment_status = 'active' ORDER BY u.employee_code`);
+    const [records] = await db.query(`SELECT userId, date, check_in, check_out, status FROM attendance WHERE date LIKE ? ORDER BY date`, [month + '%']);
+
+    const companyName = process.env.COMPANY_NAME || '飯塚塗研株式会社';
+
+    if (format === 'pdf') {
+      const buffer = await generateAttendancePDF({ month, users, records, companyName });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="attendance_${month}.pdf"`);
+      return res.send(buffer);
+    }
+
+    const buffer = await generateAttendanceExcel({ month, users, records, companyName });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance_${month}.xlsx"`);
+    res.send(buffer);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // DB check: thống kê nhanh và kiểm tra collation
 router.get('/db/check', authorize('admin'), async (req, res) => {
   try {

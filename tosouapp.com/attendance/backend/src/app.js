@@ -225,6 +225,22 @@ app.get('/version', (req, res) => {
 app.get('/ping', (req, res) => {
   res.status(200).json({ ok: true });
 });
+
+// Database pool monitoring endpoint (admin only in production)
+app.get('/health/db', (req, res) => {
+  try {
+    const db = require('./core/database/mysql');
+    const stats = db.getPoolStats();
+    const healthy = stats.queuedRequests < 10 && stats.activeConnections < stats.connectionLimit * 0.8;
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'healthy' : 'warning',
+      ...stats,
+      utilization: Math.round((stats.activeConnections / stats.connectionLimit) * 100) + '%'
+    });
+  } catch (e) {
+    res.status(500).json({ status: 'error', message: e.message });
+  }
+});
 // Log mounted routes at startup to verify availability
 try {
   const stack = (app._router?.stack || []);
