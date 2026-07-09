@@ -63,6 +63,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         u.username AS username,
         u.departmentId AS departmentId,
         d.name AS departmentName,
+        u.branch_id AS branchId,
+        br.name AS branchName,
         u.role AS role,
         u.employment_type AS employment_type,
         CASE
@@ -88,6 +90,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       FROM users u
       LEFT JOIN departments d
         ON d.id = u.departmentId
+      LEFT JOIN branches br
+        ON br.id = u.branch_id
       LEFT JOIN attendance_daily ad
         ON ad.userId = u.id
        AND ad.date = ?
@@ -153,6 +157,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         username: r.username || null,
         departmentId: r.departmentId || null,
         departmentName: r.departmentName || null,
+        branchId: r.branchId || null,
+        branchName: r.branchName || null,
         role: r.role || null,
         employment_type: r.employment_type || null,
         attendance: {
@@ -999,9 +1005,11 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
     const [users] = await db.query(`
       SELECT u.id AS userId, u.employee_code AS employeeCode, u.username AS username,
              u.departmentId AS departmentId, d.name AS departmentName,
+             u.branch_id AS branchId, br.name AS branchName,
              u.role AS role, u.employment_type AS employment_type
       FROM users u
       LEFT JOIN departments d ON d.id = u.departmentId
+      LEFT JOIN branches br ON br.id = u.branch_id
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
@@ -1266,6 +1274,8 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
         username: u.username || null,
         departmentId: u.departmentId || null,
         departmentName: u.departmentName || null,
+        branchId: u.branchId || null,
+        branchName: u.branchName || null,
         days: perDay
       });
     } else {
@@ -1300,6 +1310,8 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
              username: u.username || null,
              departmentId: u.departmentId || null,
              departmentName: u.departmentName || null,
+             branchId: u.branchId || null,
+             branchName: u.branchName || null,
              date: d,
              weekday: weekdayJa(d),
              attendance: { checkIn: null, checkOut: null },
@@ -1319,6 +1331,8 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
                username: u.username || null,
                departmentId: u.departmentId || null,
                departmentName: u.departmentName || null,
+               branchId: u.branchId || null,
+               branchName: u.branchName || null,
                date: d,
                weekday: weekdayJa(d),
                attendance: { checkIn: row.checkIn, checkOut: row.checkOut },

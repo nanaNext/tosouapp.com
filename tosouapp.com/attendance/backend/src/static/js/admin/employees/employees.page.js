@@ -76,6 +76,8 @@ async function renderEmployees(profile, c) {
     let depts2 = [];
     try { depts2 = role2 === 'manager' ? await fetchJSONAuth('/api/manager/departments') : await listDepartments(); } catch { depts2 = []; }
     if (seq !== employeesRenderSeq) return;
+    let branches = [];
+    try { branches = (await fetchJSONAuth('/api/branches'))?.data || []; } catch { branches = []; }
 
     const deptName2 = (id) => {
       const d = depts2.find(x => String(x.id) === String(id));
@@ -133,6 +135,7 @@ async function renderEmployees(profile, c) {
       <div class="detail-row"><div class="label">Email</div><div class="value">${u.email || ''}</div></div>
       <div class="detail-row"><div class="label">電話番号</div><div class="value">${u.phone || ''}</div></div>
       <div class="detail-row"><div class="label">生年月日</div><div class="value">${fmtDate2(u.birth_date)}</div></div>
+      <div class="detail-row"><div class="label">支店</div><div class="value">${(branches.find(br => String(br.id) === String(u.branch_id)) || {}).name || '未設定'}</div></div>
       <div class="detail-row"><div class="label">部署</div><div class="value">${deptName2(u.departmentId)}</div></div>
       <div class="detail-row" id="rowShift"><div class="label">シフト</div><div class="value">—</div></div>
       <div class="detail-row"><div class="label">直属マネージャー</div><div class="value">${mgrName3}</div></div>
@@ -831,6 +834,9 @@ async function renderEmployees(profile, c) {
     if (!isForbiddenErr(e3)) errMsgs.push(`部署: ${(e3 && e3.message) ? e3.message : 'unknown'}`);
     try { depts = role2 === 'manager' ? await listDepartments() : await fetchJSONAuth('/api/manager/departments'); } catch (e4) { if (!isForbiddenErr(e4)) errMsgs.push(`部署(予備): ${(e4 && e4.message) ? e4.message : 'unknown'}`); depts = []; }
   }
+  // Load branches for dropdown
+  let branches = [];
+  try { branches = (await fetchJSONAuth('/api/branches'))?.data || []; } catch { branches = []; }
   if (seq !== employeesRenderSeq) return;
   if (role2 === 'manager' && (!users || users.length === 0)) {
     try {
@@ -882,6 +888,7 @@ async function renderEmployees(profile, c) {
           <table class="excel-table" style="width: 100%;">
             <thead><tr><th colspan="2">職務情報</th></tr></thead>
             <tbody>
+              <tr><td style="width:140px;">支店</td><td><select id="empBranch" style="width:100%"><option value="">未設定</option></select></td></tr>
               <tr><td style="width:140px;">部署</td><td><select id="empDept" style="width:100%"><option value="">未設定</option>${depts.map(d=>`<option value="${d.id}" ${String(u.departmentId||'')===String(d.id)?'selected':''}>${d.name}</option>`).join('')}</select></td></tr>
               <tr><td>役割 <span style="color:#ef4444">*</span></td><td>
                 <select id="empRole" style="width:100%">
@@ -962,6 +969,13 @@ async function renderEmployees(profile, c) {
       if (backA) backA.setAttribute('href', backHref);
       if (cancelA) cancelA.setAttribute('href', backHref);
     } catch (e) { /* silently ignored */ }
+    // Populate branch dropdown
+    try {
+      const brSel = formEdit.querySelector('#empBranch');
+      if (brSel && branches.length) {
+        brSel.innerHTML = '<option value="">未設定</option>' + branches.map(br => `<option value="${br.id}" ${String(u.branch_id||u.branchId||'')===String(br.id)?'selected':''}>${br.name}</option>`).join('');
+      }
+    } catch (e) { /* silently ignored */ }
     formEdit.addEventListener('submit', async (e) => {
       e.preventDefault();
       const submitBtn = formEdit.querySelector('button[type="submit"]');
@@ -974,6 +988,7 @@ async function renderEmployees(profile, c) {
           username: document.querySelector('#empName').value.trim(),
           email: document.querySelector('#empEmail').value.trim(),
           role: document.querySelector('#empRole').value,
+          branchId: document.querySelector('#empBranch').value ? parseInt(document.querySelector('#empBranch').value,10) : null,
           departmentId: document.querySelector('#empDept').value ? parseInt(document.querySelector('#empDept').value,10) : null,
           level: (document.querySelector('#empLevel').value || '').trim() || null,
           managerId: document.querySelector('#empManager').value ? parseInt(document.querySelector('#empManager').value,10) : null,
@@ -1276,6 +1291,7 @@ async function renderEmployees(profile, c) {
         <div>
           <div class="section-header">職務情報</div>
           <table style="width:100%;border-collapse:collapse;">
+            <tr><td class="field-label">支店</td><td class="field-value"><select id="empBranch"><option value="">未設定</option></select></td></tr>
             <tr><td class="field-label">部署</td><td class="field-value"><select id="empDept"><option value="">未設定</option>${depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></td></tr>
             <tr><td class="field-label">役割 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empRole"><option value="employee">従業員</option><option value="manager">マネージャー</option><option value="admin">管理者</option></select></td></tr>
             <tr><td class="field-label">マネージャー</td><td class="field-value"><select id="empManager"><option value="">未設定</option>${managerOptions}</select></td></tr>
@@ -1311,6 +1327,14 @@ async function renderEmployees(profile, c) {
       await renderEmployees(profile);
     });
 
+    // Populate branch dropdown for create form
+    try {
+      const brSelCreate = form.querySelector('#empBranch');
+      if (brSelCreate && branches.length) {
+        brSelCreate.innerHTML = '<option value="">未設定</option>' + branches.map(br => `<option value="${br.id}">${br.name}</option>`).join('');
+      }
+    } catch (e) { /* silently ignored */ }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const msgEl = form.querySelector('#empCreateMsg');
@@ -1321,6 +1345,7 @@ async function renderEmployees(profile, c) {
         email: document.querySelector('#empEmail').value.trim(),
         password: document.querySelector('#empPass').value,
         role: document.querySelector('#empRole').value,
+        branchId: document.querySelector('#empBranch').value ? parseInt(document.querySelector('#empBranch').value,10) : null,
         departmentId: document.querySelector('#empDept').value ? parseInt(document.querySelector('#empDept').value,10) : null,
         level: (document.querySelector('#empLevel').value || '').trim() || null,
         managerId: document.querySelector('#empManager').value ? parseInt(document.querySelector('#empManager').value,10) : null,
@@ -1448,6 +1473,10 @@ async function renderEmployees(profile, c) {
         <div class="fi-label">キーワード</div>
         <input id="empSearchKeyword" class="fi-name" placeholder="氏名・メール">
       </div>
+      <div class="fi">
+        <div class="fi-label">支店</div>
+        <select id="empFilterBranch" class="fi-select"><option value="">全支店</option>${branches.map(br => `<option value="${br.id}">${br.name}</option>`).join('')}</select>
+      </div>
       <div class="fi fi-action">
         <button type="button" id="btnEmpSearch" class="btn">検索</button>
       </div>
@@ -1501,13 +1530,14 @@ async function renderEmployees(profile, c) {
     } catch (e) { /* silently ignored */ }
   }
 
-  const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', employmentType: '', status: '', sortKey: 'id', sortDir: 'asc', page: 1, pageSize: 10 };
+  const state = { showAll: false, searchVisible: false, code: '', q: '', branch: '', dept: '', employmentType: '', status: '', sortKey: 'id', sortDir: 'asc', page: 1, pageSize: 10 };
   let noResultBackTimer = null;
   try {
     state.showAll = ((params.get('showAll') || '') === '1' || (params.get('showAll') || '').toLowerCase() === 'true');
     state.searchVisible = ((params.get('search') || '') === '1' || (params.get('search') || '').toLowerCase() === 'true');
     state.code = (params.get('code') || '').trim().toLowerCase();
     state.q = (params.get('q') || '').trim().toLowerCase();
+    state.branch = (params.get('branch') || '').trim();
     state.dept = (params.get('dept') || '').trim();
     state.employmentType = (params.get('employmentType') || params.get('type') || '').trim().toLowerCase();
     state.status = (params.get('status') || '').trim().toLowerCase();
@@ -1561,6 +1591,7 @@ async function renderEmployees(profile, c) {
         <th data-sort="id">社員番号</th>
         <th data-sort="username">氏名</th>
         <th data-sort="email">メール</th>
+        <th data-sort="branch">支店</th>
         <th data-sort="department">部署</th>
         <th data-sort="role">役割</th>
         <th data-sort="employment_type">雇用形態</th>
@@ -1766,6 +1797,9 @@ async function renderEmployees(profile, c) {
   };
   const applyFilterSort = () => {
     let arr = users.slice();
+    if (state.branch) {
+      arr = arr.filter(u => String(u.branch_id || '') === String(state.branch));
+    }
     if (state.dept) {
       arr = arr.filter(u => String(u.departmentId || '') === String(state.dept));
     }
@@ -1889,6 +1923,7 @@ async function renderEmployees(profile, c) {
         <td class="col-code" data-label="社員番号"><div class="cell-value cell-strong">${u.employee_code || fmtEmpNo(u.id)}</div></td>
         <td class="col-name" data-label="氏名"><div class="cell-value cell-strong"><a class="emp-name-link" href="/admin/employees?detail=${u.id}">${u.username||''}</a></div></td>
         <td class="col-email" data-label="メール"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}><div class="cell-value"><span class="text-pill neutral">${dispOrUnreg(emailVal)}</span></div></td>
+        <td class="col-branch" data-label="支店"><div class="cell-value"><span class="text-pill neutral">${(branches.find(br => String(br.id) === String(u.branch_id)) || {}).name || '—'}</span></div></td>
         <td class="col-dept" data-label="部署"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}><div class="cell-value"><span class="text-pill neutral">${dispOrUnreg(deptVal)}</span></div></td>
         <td data-label="役割"><div class="cell-value">${rolePill(u.role)}</div></td>
         <td data-label="雇用形態"><div class="cell-value">${typePill(u.employment_type)}</div></td>
@@ -2009,16 +2044,18 @@ async function renderEmployees(profile, c) {
   filterWrap.querySelector('#btnEmpSearch').addEventListener('click', () => {
     const codeEl2 = filterWrap.querySelector('#empSearchCode');
     const keywordEl2 = filterWrap.querySelector('#empSearchKeyword') || filterWrap.querySelector('#empSearchName');
+    const branchEl2 = filterWrap.querySelector('#empFilterBranch');
     const deptEl2 = filterWrap.querySelector('#empFilterDept');
     const typeEl2 = filterWrap.querySelector('#empFilterType');
     const statusEl2 = filterWrap.querySelector('#empFilterStatus');
     state.code = String((codeEl2 && codeEl2.value != null) ? codeEl2.value : '').trim().toLowerCase();
     state.q = String((keywordEl2 && keywordEl2.value != null) ? keywordEl2.value : '').trim().toLowerCase();
+    state.branch = String((branchEl2 && branchEl2.value != null) ? branchEl2.value : '').trim();
     state.dept = String((deptEl2 && deptEl2.value != null) ? deptEl2.value : '').trim();
     state.employmentType = String((typeEl2 && typeEl2.value != null) ? typeEl2.value : '').trim().toLowerCase();
     state.status = String((statusEl2 && statusEl2.value != null) ? statusEl2.value : '').trim().toLowerCase();
     state.page = 1;
-    const hasAny = !!(state.code || state.q || state.dept || state.employmentType || state.status);
+    const hasAny = !!(state.code || state.q || state.branch || state.dept || state.employmentType || state.status);
     if (!hasAny && !(mode === 'delete' && state.showAll)) {
       syncTopbarSearchKeyword('');
       clearTopbarNoResultState();

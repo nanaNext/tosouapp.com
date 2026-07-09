@@ -331,15 +331,15 @@ const route = async () => {
     const host = document.querySelector('#adminContent');
 
     if (p2 === '/admin' || p2 === '/admin/dashboard') {
-        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
-      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260704-attrecsync6');
+      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260707-branch2');
       if (seq !== routeSeq) return;
       await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
       return;
     }
     if (p2 === '/admin/employees/monthly-summary' || p2 === '/admin/employees/monthly-summary/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/employees/monthly-summary', profile: profile });
       const mod = await loadModule('../pages/admin-employees-monthly-summary.page.js?v=navy-20260704-ms5');
       if (seq !== routeSeq) return;
@@ -347,15 +347,15 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/employees' || p2.startsWith('/admin/employees/')) {
-        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
         const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
-        const mod = await loadModule('./employees/employees.page.js?v=navy-20260704-empcenter7');
+        const mod = await loadModule('./employees/employees.page.js?v=navy-20260707-branch1');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : { mount: async () => { hubContent.innerHTML = ''; if (mod.default) await mod.default(hubContent); else Object.assign(hubContent, await mod); } });
       return;
     }
     if (p2 === '/admin/attendance/monthly' || p2 === '/admin/attendance/monthly/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/monthly' });
       const mod = await loadModule('../pages/admin-attendance-monthly.page.js?v=1');
       if (seq !== routeSeq) return;
@@ -363,7 +363,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance/shifts-approvals' || p2 === '/admin/attendance/shifts-approvals/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts-approvals' });
       const mod = await loadModule('./attendance/admin-shifts-approvals.page.js?v=5');
       if (seq !== routeSeq) return;
@@ -371,7 +371,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance/adjust-requests' || p2 === '/admin/attendance/adjust-requests/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/adjust-requests' });
       const mod = await loadModule('./attendance/admin-attendance-adjust-requests.page.js?v=5');
       if (seq !== routeSeq) return;
@@ -379,7 +379,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance/go-out' || p2 === '/admin/attendance/go-out/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/go-out' });
       const mod = await loadModule('./attendance/admin-go-out.page.js?v=5');
       if (seq !== routeSeq) return;
@@ -387,7 +387,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance/shifts' || p2 === '/admin/attendance/shifts/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts' });
       const mod = await loadModule('./legacy/legacy-shifts.page.js?v=6');
       if (seq !== routeSeq) return;
@@ -395,7 +395,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance/holidays' || p2 === '/admin/attendance/holidays/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/holidays' });
       const mod = await loadModule('./legacy/legacy-calendar.page.js?v=5');
       if (seq !== routeSeq) return;
@@ -403,7 +403,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
       const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260423-attrecsync4');
       if (seq !== routeSeq) return;
@@ -411,7 +411,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/leave' || p2.startsWith('/admin/leave/')) {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
       const mod = await loadModule('./leave/leave.page.js?v=8');
       if (seq !== routeSeq) return;
@@ -419,15 +419,15 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/work-reports') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/work-reports' });
-      const mod = await loadModule('./work-reports/work-reports.page.js?v=10');
+      const mod = await loadModule('./work-reports/work-reports.page.js?v=20260707-branch2-' + Date.now());
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
     }
     if (p2 === '/admin/payroll' || p2.startsWith('/admin/payroll/')) {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
       const mod = await loadModule('./payroll/payroll.page.js?v=2');
       if (seq !== routeSeq) return;
@@ -441,7 +441,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/expenses') {
-        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
         const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/expenses' });
         const mod = await loadModule('./expenses/expenses.page.js');
         if (seq !== routeSeq) return;
@@ -449,7 +449,7 @@ const route = async () => {
         return;
       }
       if (p2 === '/admin/departments' || p2 === '/admin/organization/departments' || p2 === '/admin/organization') {
-        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
         const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/departments' });
         const mod = await loadModule('./organization/organization.page.js');
         if (seq !== routeSeq) return;
@@ -457,15 +457,15 @@ const route = async () => {
         return;
       }
       if (p2 === '/admin/branches') {
-        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
         const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/branches' });
-        const mod = await loadModule('./organization/branches.page.js');
+        const mod = await loadModule('./organization/branches.page.js?v=navy-20260707-fix4');
         if (seq !== routeSeq) return;
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
         return;
       }
       if (p2 === '/admin/system/settings' || p2 === '/admin/system/audit-logs' || p2 === '/admin/system') {
-        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
         const hubContent = await hubMod.mount({ content: host, initialPath: p2 });
         let modulePath = './system/system.page.js?v=navy-20260421-systemplaceholder1';
         if (p2 === '/admin/system/settings') modulePath = './system/settings.page.js';
@@ -476,7 +476,7 @@ const route = async () => {
         return;
       }
     if (p2 === '/admin/notices') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
       const mod = await loadModule('./notices/notices.page.js?v=navy-20260423-noticemobile5');
       if (seq !== routeSeq) return;
@@ -484,7 +484,7 @@ const route = async () => {
       return;
     }
     if (p2 === '/admin/faq' || p2.indexOf('/admin/chatbot/faq') === 0) {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
       const mod = await loadModule('./faq/faq.page.js');
       if (seq !== routeSeq) return;

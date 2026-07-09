@@ -363,6 +363,7 @@ export async function mount() {
             <th style="width:100px;">社員番号</th>
             <th style="width:120px;">氏名</th>
             <th style="width:100px;">部署</th>
+            <th style="width:100px;">支店</th>
             <th style="width:100px;">勤務区分</th>
             <th style="width:80px;">出勤</th>
             <th style="width:80px;">退勤</th>
@@ -450,6 +451,7 @@ export async function mount() {
       const rawWork = String(it.work || '').trim();
       const work = rawWork ? esc(rawWork) : dash;
       const dept = String(it.departmentName || '').trim() ? esc(String(it.departmentName).trim()) : dash;
+      const branch = String(it.branchName || '').trim() ? esc(String(it.branchName).trim()) : dash;
       const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
       const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
       const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
@@ -504,6 +506,7 @@ export async function mount() {
           <td data-label="社員番号" style="white-space:nowrap;">${esc(code)}</td>
           <td data-label="氏名" style="font-weight:500; white-space:nowrap;">${esc(it.username || '')}</td>
           <td data-label="部署" style="white-space:nowrap;">${dept}</td>
+          <td data-label="支店" style="white-space:nowrap;">${branch}</td>
           <td data-label="勤務区分" style="white-space:nowrap;">${kubun}</td>
           <td data-label="出勤" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${checkIn}</td>
           <td data-label="退勤" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${checkOut}</td>
@@ -551,6 +554,7 @@ export async function mount() {
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">社員番号</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">氏名</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">部署</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">支店</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務区分</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">出勤</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">退勤</th>
@@ -772,6 +776,7 @@ export async function mount() {
         const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
         const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
         const dept = String(it.departmentName || '').trim() ? esc(String(it.departmentName).trim()) : dash;
+        const branch = String(it.branchName || '').trim() ? esc(String(it.branchName).trim()) : dash;
 
         const dc = dowClass(it.weekday);
         const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
@@ -815,6 +820,7 @@ export async function mount() {
         const codeHtml = !isSameUserDate ? `<td data-label="社員番号" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${esc(code)}</td>` : ``;
         const nameHtml = !isSameUserDate ? `<td data-label="氏名" class="group-hide" style="font-weight:500; white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${esc(it.username || '')}</td>` : ``;
         const deptHtml = !isSameUserDate ? `<td data-label="部署" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${dept}</td>` : ``;
+        const branchHtml = !isSameUserDate ? `<td data-label="支店" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${branch}</td>` : ``;
         const kubunHtml = !isSameUserDate ? `<td data-label="勤務区分" style="${cellStyle} ${textColor}"${rsHtml}>${kubun}</td>` : ``;
         const wTypeHtml = !isSameUserDate ? `<td data-label="勤務形態" style="${cellStyle} ${textColor}"${rsHtml}>${wType}</td>` : ``;
         const lateEarlyHtmlCell = !isSameUserDate ? `<td data-label="遅刻・早退等" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${lateEarlyHtml}</td>` : ``;
@@ -828,6 +834,7 @@ export async function mount() {
           ${codeHtml}
           ${nameHtml}
           ${deptHtml}
+          ${branchHtml}
           ${kubunHtml}
           <td data-label="出勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkIn}</td>
           <td data-label="退勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkOut}</td>
@@ -858,6 +865,7 @@ export async function mount() {
                 <col class="group-hide" style="width:110px;">
                 <col class="group-hide" style="width:120px;">
                 <col class="group-hide" style="width:140px;">
+                <col class="group-hide" style="width:100px;">
                 <col style="width:100px;">
                 <col style="width:70px;">
                 <col style="width:70px;">
@@ -875,6 +883,7 @@ export async function mount() {
                   <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">社員番号</th>
                   <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">氏名</th>
                   <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">部署</th>
+                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">支店</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務区分</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">出勤</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">退勤</th>

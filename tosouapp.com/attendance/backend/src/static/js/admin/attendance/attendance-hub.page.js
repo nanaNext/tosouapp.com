@@ -73,7 +73,7 @@ export async function mount({ content, initialPath, profile }) {
         // Single-level menu
         const targetAttr = item.newTab ? ' target="_blank" rel="noopener noreferrer"' : '';
         return `
-          <a href="${item.href}${qs}" class="standalone-link ${isActive ? 'selected active' : ''}"${targetAttr} style="display:flex; align-items:center; gap:8px; padding: 10px 12px; margin: 4px 10px; border-radius: 8px; text-decoration: none;">
+          <a href="${item.href}${qs}" class="standalone-link ${isActive ? 'selected active' : ''}"${targetAttr} style="display:flex; align-items:center; gap:8px; padding: 3px 12px; margin: 0 4px; border-radius: 0; text-decoration: none;">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${item.icon}"></path></svg>
             ${item.label}
           </a>
@@ -87,7 +87,26 @@ export async function mount({ content, initialPath, profile }) {
   // Inject into Global Sidebar
   const sidebarNav = document.querySelector('.sidebar .sidebar-nav');
   if (sidebarNav) {
-    sidebarNav.innerHTML = menuHtml;
+    const displayName = (profile && (profile.username || profile.email)) || '';
+    sidebarNav.innerHTML = menuHtml + `
+      <div class="sidebar-footer" style="margin-top:auto;padding:8px 10px;border-top:1px solid #f0f0f0;font-size:11px;color:#0b2c66;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;flex:1;min-width:0;">${displayName}</span>
+          <a href="#" id="sidebarLogout" style="color:#ef4444;font-size:10px;white-space:nowrap;text-decoration:none;">ログアウト</a>
+        </div>
+      </div>
+    `;
+    // Logout handler
+    const logoutBtn = sidebarNav.querySelector('#sidebarLogout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+          await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        } catch (e) { /* silently ignored */ }
+        window.location.href = '/login';
+      });
+    }
   }
 
   // Inject into Mobile Drawer

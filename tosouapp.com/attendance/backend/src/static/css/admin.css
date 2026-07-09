@@ -11,7 +11,7 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   width: 180px !important;
   z-index: 1000 !important;
   background: var(--admin-sidebar-bg, #ffffff) !important;
-  border-right: 1px solid var(--admin-border, #e2e8f0) !important;
+  border-right: 1px solid var(--admin-border, #f0f0f0) !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
@@ -37,6 +37,12 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   min-height: 0 !important;
   overflow-y: auto !important;
   padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav .sidebar-footer {
+  margin-top: auto !important;
 }
 
 .admin.has-sidebar .content {
@@ -281,7 +287,7 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details {
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   border: none;
   padding-bottom: 4px;
   border-radius: 0;
@@ -311,14 +317,14 @@ body.drawer-open.admin.has-sidebar .content {
 .admin.has-sidebar .sidebar .sidebar-nav summary {
   list-style: none;
   cursor: pointer;
-  padding: 6px 10px 6px 12px;
+  padding: 3px 10px 3px 12px;
   border-radius: 6px;
-  margin: 1px 4px;
+  margin: 0 4px;
   font-weight: 600;
-  color: #0f172a;
+  color: #0b2c66;
   font-size: 14px;
   line-height: 1.4;
-  min-height: 32px;
+  min-height: 26px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -328,8 +334,8 @@ body.drawer-open.admin.has-sidebar .content {
   background: transparent;
   outline: none;
   font-family: Inter, "Noto Sans JP", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
-  box-sizing: border-box;
   width: auto;
+  transition: background-color .15s ease, color .15s ease;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav summary::-webkit-details-marker {
@@ -341,8 +347,12 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav summary:hover {
-  background: #f1f5f9;
+  background: #f7f3ff;
   color: #0f172a;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav summary:hover .chev::before {
+  color: #7c3aed;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav summary:focus-visible {
@@ -359,6 +369,20 @@ body.drawer-open.admin.has-sidebar .content {
   background: #f3e8ff;
   color: #7c3aed;
   font-weight: 600;
+  border-left: none;
+  border-radius: 0;
+  position: relative;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav details.active-section>summary::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: #7c3aed;
+  border-radius: 0 3px 3px 0;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details[open]>a {
@@ -385,17 +409,23 @@ body.drawer-open.admin.has-sidebar .content {
   display: grid;
   place-items: center;
   border-radius: 8px;
+  margin-left: auto;
+  transition: transform .15s ease;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav summary .chev::before {
   content: "\25B6";
   font-size: 10px;
-  color: #64748b;
+  color: #94a3b8;
   opacity: 1;
 }
 
+.admin.has-sidebar .sidebar .sidebar-nav details[open]>summary .chev {
+  transform: rotate(90deg);
+}
+
 .admin.has-sidebar .sidebar .sidebar-nav details[open]>summary .chev::before {
-  content: "\25BC";
+  content: "\25B6";
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav summary .chev:hover {
@@ -428,14 +458,19 @@ body.drawer-open.admin.has-sidebar .content {
 .admin.has-sidebar .sidebar .sidebar-nav details a {
   padding-left: 32px;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 600;
   position: relative;
   display: block;
-  color: #64748b;
-  min-height: 34px;
-  line-height: 34px;
+  color: #0b2c66;
+  min-height: 26px;
+  line-height: 26px;
   padding-top: 0;
   padding-bottom: 0;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.admin.has-sidebar .sidebar .sidebar-nav details a:first-of-type {
+  margin-top: 6px;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details a::before {
@@ -443,8 +478,8 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav a:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: #f7f3ff;
+  color: #1e293b;
   font-weight: 500;
   border-color: transparent;
 }
@@ -460,27 +495,30 @@ body.drawer-open.admin.has-sidebar .content {
   background: #f3e8ff !important;
   color: #7c3aed !important;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 0;
   border-left: none !important;
   box-shadow: none;
   position: relative;
 }
 
-.admin.has-sidebar .sidebar .sidebar-nav a.active::before {
-  content: none;
-}
-
 .admin.has-sidebar .sidebar .sidebar-nav a.active::after {
-  content: none;
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: #7c3aed;
+  border-radius: 0 3px 3px 0;
 }
 
 /* Khôi phục lại ô vuông nhỏ khi active cho các menu đơn cấp */
 .admin.has-sidebar .sidebar .sidebar-nav a.standalone-link {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
   line-height: 1.4;
-  min-height: 38px;
-  color: #334155;
+  min-height: 26px;
+  color: #0b2c66;
   border: none;
   background: transparent;
 }
@@ -492,7 +530,10 @@ body.drawer-open.admin.has-sidebar .content {
 
 .admin.has-sidebar .sidebar .sidebar-nav a.standalone-link.active {
   border: none;
-  background: #f8fafc;
+  background: #f3e8ff !important;
+  color: #7c3aed !important;
+  font-weight: 600;
+  position: relative;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav a.standalone-link.active::before {
@@ -500,20 +541,38 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav a.standalone-link.active::after {
-  content: none;
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: #7c3aed;
+  border-radius: 0 3px 3px 0;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details a.active {
-  background: #f3e8ff;
+  background: #faf5ff;
   color: #7c3aed;
-  font-weight: 700;
-  border-radius: 6px;
+  font-weight: 600;
+  border-radius: 0;
+  border-left: none;
   box-shadow: none;
   position: relative;
+  padding-left: 32px;
+  margin-right: 10px;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details a.active::before {
-  content: none;
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: #7c3aed;
+  border-radius: 1px;
 }
 
 .admin.has-sidebar .sidebar .sidebar-nav details a.active::after {
