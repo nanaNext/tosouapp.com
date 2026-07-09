@@ -27,21 +27,25 @@ function departmentScope() {
       isAdmin: role === 'admin',
       isManager: role === 'manager',
       isEmployee: role === 'employee',
-      departmentId: null,  // null = no restriction
-      userId: null,        // null = no user-level restriction
+      departmentId: null,
+      branchId: null,
+      userId: null,
       role
     };
 
     if (role === 'admin') {
-      // Admin sees everything — no scope restriction
+      // Admin sees everything
       req.scope.departmentId = null;
+      req.scope.branchId = null;
       req.scope.userId = null;
     } else if (role === 'manager') {
-      // Manager sees only their department
+      // Manager sees only their branch (or department if no branch)
+      req.scope.branchId = req.user?.branchId || null;
       req.scope.departmentId = departmentId;
       req.scope.userId = null;
     } else {
       // Employee sees only themselves
+      req.scope.branchId = req.user?.branchId || null;
       req.scope.departmentId = departmentId;
       req.scope.userId = userId;
     }
