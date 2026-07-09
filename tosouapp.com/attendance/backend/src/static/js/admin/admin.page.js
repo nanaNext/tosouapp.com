@@ -456,6 +456,14 @@ const route = async () => {
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
         return;
       }
+      if (p2 === '/admin/branches') {
+        const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
+        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/branches' });
+        const mod = await loadModule('./organization/branches.page.js');
+        if (seq !== routeSeq) return;
+        await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
+        return;
+      }
       if (p2 === '/admin/system/settings' || p2 === '/admin/system/audit-logs' || p2 === '/admin/system') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547856');
         const hubContent = await hubMod.mount({ content: host, initialPath: p2 });
