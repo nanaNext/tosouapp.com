@@ -27,6 +27,7 @@
     "db:seed": "knex seed:run --knexfile attendance/backend/knexfile.js",
     "db:migrate:make": "knex migrate:make --knexfile attendance/backend/knexfile.js",
     "db:backup": "node attendance/backend/scripts/db-backup.js",
+    "db:restore-test": "node attendance/backend/scripts/db-restore-test.js",
     "db:notices:backfill:dry": "node attendance/backend/scripts/backfill-notice-kinds.js",
     "db:notices:backfill:apply": "node attendance/backend/scripts/backfill-notice-kinds.js --apply",
     "preflight:prod": "node attendance/backend/scripts/preflight-prod.js",

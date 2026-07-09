@@ -37,6 +37,11 @@ app.set('trust proxy', parseInt(process.env.TRUST_PROXY_HOPS || '1', 10));
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
+
+// Input sanitization — strip XSS from all request bodies/queries
+const { sanitizeInput } = require('./core/middleware/sanitize');
+app.use(sanitizeInput());
+
 security(app);
 
 // Global rate limiting — 200 requests per minute per IP for API, 600 for static
@@ -170,6 +175,10 @@ const swaggerDefinition = {
   },
   servers: [
     {
+      url: 'https://tosouapp.com',
+      description: 'Production server',
+    },
+    {
       url: 'http://localhost:3000',
       description: 'Development server',
     },
@@ -178,7 +187,7 @@ const swaggerDefinition = {
 
 const options = {
   swaggerDefinition,
-  apis: ['./src/routes/*.js', './src/modules/**/*.js'],
+  apis: ['./src/swagger-docs.js', './src/routes/*.js', './src/modules/**/*.routes.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
