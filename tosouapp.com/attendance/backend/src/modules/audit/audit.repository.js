@@ -60,3 +60,19 @@ module.exports = {
     return { data: rows, page: p, pageSize: ps, total, pages: Math.ceil(total / ps) };
   }
 };
+
+
+/**
+ * Delete audit logs older than given days
+ * Run periodically (e.g., monthly cron) to prevent table growing indefinitely.
+ * Default: keep 90 days
+ */
+async function pruneOldLogs(retentionDays = 90) {
+  const [result] = await db.query(
+    `DELETE FROM audit_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+    [retentionDays]
+  );
+  return result.affectedRows || 0;
+}
+
+module.exports.pruneOldLogs = pruneOldLogs;

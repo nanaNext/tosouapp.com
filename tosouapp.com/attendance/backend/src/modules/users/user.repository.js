@@ -189,6 +189,9 @@ module.exports = {
     const sql = `UPDATE users SET password = ? WHERE id = ?`;
     await db.query(sql, [hashedPassword, id]);
   },
+  async incrementTokenVersion(id) {
+    await db.query(`UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?`, [id]);
+  },
   async getAllDepartments() {
     const sql = `SELECT * FROM departments ORDER BY name ASC`;
     const [rows] = await db.query(sql);

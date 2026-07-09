@@ -277,10 +277,12 @@ app.use('/static', express.static(path.join(__dirname, 'static'), {
     const ext = String(p || '').toLowerCase();
     const isScriptOrStyle = ext.endsWith('.js') || ext.endsWith('.css');
     const isImageAsset = ext.endsWith('.png') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.gif') || ext.endsWith('.webp') || ext.endsWith('.svg') || ext.endsWith('.ico');
+    const isFont = ext.endsWith('.woff') || ext.endsWith('.woff2') || ext.endsWith('.ttf');
     if (isScriptOrStyle) {
-      // Avoid stale frontend bundles after hotfix deploys.
-      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-    } else if (isImageAsset) {
+      // Files use ?v= versioning, safe to cache with revalidation
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    } else if (isImageAsset || isFont) {
+      // Images/fonts rarely change — cache 1 year
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     } else {
       res.setHeader('Cache-Control', 'no-store');
