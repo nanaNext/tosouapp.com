@@ -648,6 +648,20 @@ router.patch('/users/:id/unlock', authorize('admin'), async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// Revoke all sessions for a user (force logout everywhere)
+router.post('/users/:id/revoke-sessions', authorize('admin'), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const refreshRepo = require('../auth/refresh.repository');
+    await refreshRepo.deleteUserTokens(id);
+    // Increment token_version to invalidate existing JWTs
+    await userRepo.incrementTokenVersion(id);
+    try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_revoke_sessions', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ targetUserId: id }) }); } catch (e) { /* silently ignored */ }
+    res.status(200).json({ id, sessionsRevoked: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 // Departments
 router.use('/departments', deptRoutes);
 // Settings
