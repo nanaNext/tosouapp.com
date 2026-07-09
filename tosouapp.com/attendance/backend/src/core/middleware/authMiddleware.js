@@ -61,7 +61,8 @@ async function getCachedUser(id) {
       role: user.role,
       token_version: user.token_version,
       email: user.email,
-      username: user.username
+      username: user.username,
+      departmentId: user.departmentId || null
     };
 
     if (redisClient && redisClient.status === 'ready') {
@@ -117,7 +118,8 @@ async function authenticateToken(token) {
     role: normalizeRole(user.role || decoded.role),
     v: dbVersion,
     email: user.email,
-    username: user.username
+    username: user.username,
+    departmentId: user.departmentId || null
   };
 }
 
