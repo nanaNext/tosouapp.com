@@ -42,7 +42,7 @@ exports.registerOptions = async (req, res) => {
   const options = await generateRegistrationOptions({
     rpName: process.env.COMPANY_NAME || 'Attendance',
     rpID: rpId,
-    userID: String(user.id),
+    userID: new Uint8Array(Buffer.from(String(user.id))),
     userName: user.email,
     excludeCredentials: existing.map(p => ({ id: Buffer.from(p.credential_id, 'base64url'), type: 'public-key' })),
     authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' }
@@ -52,6 +52,7 @@ exports.registerOptions = async (req, res) => {
 };
 
 exports.registerVerify = async (req, res) => {
+  try {
   const email = String((req.body || {}).email || '').trim();
   const attResp = (req.body || {}).response;
   if (!email || !attResp) return res.status(400).json({ message: 'Missing email/response' });
@@ -60,28 +61,37 @@ exports.registerVerify = async (req, res) => {
     return res.status(403).json({ message: 'Forbidden: email mismatch' });
   }
   const expectedChallenge = challengeStore.get(`reg:${email}`);
-  if (!expectedChallenge) return res.status(400).json({ message: 'Challenge missing' });
+  if (!expectedChallenge) return res.status(400).json({ message: 'Challenge missing or expired. Please try again.' });
   const rpId = rpIdFromReq(req);
   const origin = originFromReq(req);
+  console.log('[WebAuthn] Verify attempt:', { email, rpId, origin, hasChallenge: !!expectedChallenge });
   const verification = await verifyRegistrationResponse({
     response: attResp,
     expectedChallenge,
     expectedOrigin: origin,
-    expectedRPID: rpId
+    expectedRPID: rpId,
+    requireUserVerification: false
   });
   if (!verification.verified) return res.status(401).json({ message: 'Verification failed' });
   const { registrationInfo } = verification;
   const user = await authRepository.findUserByEmail(email);
+  const credId = registrationInfo.credential?.id || registrationInfo.credentialID;
+  const pubKey = registrationInfo.credential?.publicKey || registrationInfo.credentialPublicKey;
+  const counter = registrationInfo.credential?.counter ?? registrationInfo.counter ?? 0;
   await passkeyRepo.createPasskey({
     userId: user.id,
-    credentialId: Buffer.from(registrationInfo.credentialID).toString('base64url'),
-    publicKey: Buffer.from(registrationInfo.credentialPublicKey).toString('base64url'),
-    counter: registrationInfo.counter || 0,
-    transports: Array.isArray(attResp.response.transports) ? attResp.response.transports.join(',') : null,
-    aaguid: registrationInfo.aaguid ? registrationInfo.aaguid : null
+    credentialId: typeof credId === 'string' ? credId : Buffer.from(credId).toString('base64url'),
+    publicKey: typeof pubKey === 'string' ? pubKey : Buffer.from(pubKey).toString('base64url'),
+    counter: counter,
+    transports: Array.isArray(attResp.response?.transports) ? attResp.response.transports.join(',') : null,
+    aaguid: registrationInfo.aaguid || registrationInfo.credential?.aaguid || null
   });
   challengeStore.delete(`reg:${email}`);
   res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('[WebAuthn registerVerify ERROR]', e.message, e.stack?.slice(0, 500));
+    res.status(500).json({ message: e.message || 'Internal Server Error', detail: String(e.stack || '').slice(0, 200) });
+  }
 };
 
 exports.loginOptions = async (req, res) => {
