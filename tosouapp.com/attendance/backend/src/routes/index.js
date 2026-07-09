@@ -101,6 +101,10 @@ module.exports = function(app) {
   app.use('/api/requests', requestsRoutes); // Quản lý các loại yêu cầu
   app.use('/api/faq', faqRoutes); // Hỏi đáp (FAQ)
 
+  // Branches (支店)
+  const branchRoutes = require('../modules/branches/branch.routes');
+  app.use('/api/branches', branchRoutes);
+
   // TEMP TEST ROUTE FOR EMAIL
   app.get('/api/test-mail', async (req, res) => {
     try {

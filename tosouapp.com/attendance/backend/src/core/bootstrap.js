@@ -198,6 +198,8 @@ async function ensureModuleTables() {
   await expenseTypesRepo.ensureTable();
   await stationsRepo.ensureTable();  await webauthnRepo.ensureTable();
   await requestsRepo.ensureTable();  await faqRepo.ensureTable();
+  const branchRepo = require('../modules/branches/branch.repository');
+  await branchRepo.ensureTable();
   try {
     await faqRepo.seedIfEmpty();
   } catch (e) { /* silently ignored */ }
