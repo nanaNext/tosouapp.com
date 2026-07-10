@@ -638,7 +638,7 @@ async function mountAttendanceImpl({
               padding: 2px 8px;
               border-radius: 0;
               font-size: 12px;
-              font-weight: 600;
+              font-weight: 500;
               background-color: #f1f5f9;
               color: #475569;
               border: 1px solid #e2e8f0;
@@ -809,21 +809,21 @@ async function mountAttendanceImpl({
           if (st === 'checked_out') {
             stLabel = '退勤済';
             stClass = 'attrec-pill ok';
-            stInline = 'background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;';
+            stInline = 'background:#dcfce7;color:#166534;border:1px solid #86efac;';
           } else if (st === 'working' || st === 'holiday_working') {
             if (isPastDate) {
               stLabel = '退勤忘れ';
               stClass = 'attrec-pill danger';
-              stInline = 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;';
+              stInline = 'background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;';
             } else {
               stLabel = st === 'working' ? '出勤中' : '休日出勤中';
               stClass = 'attrec-pill warn';
-              stInline = 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;';
+              stInline = 'background:#fef9c3;color:#854d0e;border:1px solid #fde047;';
             }
           } else if (st === 'holiday_work') {
             stLabel = '休日出勤';
             stClass = 'attrec-pill warn';
-            stInline = 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;';
+            stInline = 'background:#fef9c3;color:#854d0e;border:1px solid #fde047;';
           } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
             stLabel = kubun || '休日';
             stClass = 'attrec-pill neutral';
@@ -837,11 +837,11 @@ async function mountAttendanceImpl({
             if (isPastDate) {
               stLabel = '打刻なし';
               stClass = 'attrec-pill danger';
-              stInline = 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;';
+              stInline = 'background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;';
             } else {
               stLabel = '未出勤';
               stClass = 'attrec-pill neutral';
-              stInline = 'background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;';
+              stInline = 'background:#f0f9ff;color:#0369a1;border:1px solid #7dd3fc;';
             }
           }
 

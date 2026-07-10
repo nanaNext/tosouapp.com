@@ -405,7 +405,7 @@ const route = async () => {
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
-      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260423-attrecsync4');
+      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260707-branch2');
       if (seq !== routeSeq) return;
       await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
       return;
