@@ -4,11 +4,25 @@ const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
 const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 const env = require('../../config/env');
+const metrics = require('../../core/metrics');
 
 const LEAVE_GRANT_MODES = new Set(['AUTO', 'MANUAL', 'HYBRID']);
 function getLeaveGrantMode() {
   const m = String(env.leaveGrantMode || 'HYBRID').toUpperCase();
   return LEAVE_GRANT_MODES.has(m) ? m : 'HYBRID';
+}
+
+function recordEndpointPerf(endpoint, startedAt, meta = {}) {
+  const durationMs = Date.now() - startedAt;
+  try {
+    metrics.observe(`${endpoint}_duration_ms`, durationMs);
+    if (durationMs >= 100) metrics.inc(`${endpoint}_slow_count`, 1);
+  } catch (e) { /* silently ignored */ }
+  if (durationMs >= 100) {
+    try {
+      console.warn(JSON.stringify({ level: 'warn', type: 'slow_endpoint', endpoint, duration_ms: durationMs, ...meta }));
+    } catch (e) { /* silently ignored */ }
+  }
 }
 
 function addMonths(d, m) {
@@ -546,6 +560,9 @@ exports.balance = async (req, res) => {
 // Mục đích của hàm này là tính toán tổng số ngày nghỉ đã được cấp cho mỗi người dùng và thông tin khác 
 
 exports.summary = async (req, res) => {
+  const startedAt = Date.now();
+  let processedUsers = 0;
+  let resultCount = 0;
   try {
     await tryReconcileAttendance();
     const list = await userRepo.listUsers();
@@ -553,6 +570,7 @@ exports.summary = async (req, res) => {
     for (const u of list) {
       const role = String(u?.role || '').toLowerCase();
       if (role === 'admin' || role === 'manager') continue;
+      processedUsers += 1;
       const b = await computeUserBalance(u.id);
       const grants = b.grants || [];
       const today = new Date();
@@ -573,9 +591,16 @@ exports.summary = async (req, res) => {
         obligationRemaining: Math.max(0, b?.obligation?.remaining || 0)
       });
     }
+    resultCount = out.length;
     res.status(200).json(out);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  } finally {
+    recordEndpointPerf('leave_summary', startedAt, {
+      userId: req.user?.id || null,
+      processedUsers,
+      rows: resultCount
+    });
   }
 };
 // Cái hàm này dùng để cấp nagfy nghỉ cho tất cả người dùng

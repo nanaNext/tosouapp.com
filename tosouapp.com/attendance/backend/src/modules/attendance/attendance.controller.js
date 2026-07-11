@@ -11,6 +11,7 @@ const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
 const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 const leaveRepo = require('../leave/leave.repository');
 const noticesRepo = require('../notices/notices.repository');
+const metrics = require('../../core/metrics');
 
 // ------------------------------------------------------------------------
 // CONTROLLER: Xử lý các yêu cầu liên quan đến Chấm Công (Giao tiếp với Frontend)
@@ -43,6 +44,19 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
     }
     await leaveRepo.cancelOwnPaidByDate(userId, ds);
   } catch (e) { /* silently ignored */ }
+}
+
+function recordEndpointPerf(endpoint, startedAt, meta = {}) {
+  const durationMs = Date.now() - startedAt;
+  try {
+    metrics.observe(`${endpoint}_duration_ms`, durationMs);
+    if (durationMs >= 100) metrics.inc(`${endpoint}_slow_count`, 1);
+  } catch (e) { /* silently ignored */ }
+  if (durationMs >= 100) {
+    try {
+      console.warn(JSON.stringify({ level: 'warn', type: 'slow_endpoint', endpoint, duration_ms: durationMs, ...meta }));
+    } catch (e) { /* silently ignored */ }
+  }
 }
 
 // API: Nhân viên ấn nút Check-in (Đi làm)
@@ -509,6 +523,9 @@ exports.todaySummary = async (req, res) => {
 
 // API: Lấy danh sách điểm danh (roster) của tất cả nhân viên trong ngày
 exports.todayRoster = async (req, res) => {
+  const startedAt = Date.now();
+  let itemsCount = 0;
+  let plannedCount = 0;
   try {
     const role = String(req.user?.role || '').toLowerCase();
     if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
@@ -542,6 +559,7 @@ exports.todayRoster = async (req, res) => {
         status
       };
     });
+    itemsCount = items.length;
 
     const plannedBase = await attendanceRepo.getTodayPlannedItems(date);
     const planned = [];
@@ -579,9 +597,16 @@ exports.todayRoster = async (req, res) => {
         }
       });
     }
+    plannedCount = planned.length;
     res.status(200).json({ date, items, planned });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  } finally {
+    recordEndpointPerf('attendance_today_roster', startedAt, {
+      userId: req.user?.id || null,
+      items: itemsCount,
+      planned: plannedCount
+    });
   }
 };
 
