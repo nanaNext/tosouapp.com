@@ -2939,7 +2939,9 @@ const render = async (host) => {
       viewState.page = Math.max(1, Number(rowsPayload?.page || viewState.page || 1));
       viewState.pageSize = Math.max(1, Number(rowsPayload?.limit || viewState.pageSize || 20));
 
-      const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
+      const users = usersRes.status === 'fulfilled'
+        ? (Array.isArray(usersRes.value) ? usersRes.value : (Array.isArray(usersRes.value?.rows) ? usersRes.value.rows : []))
+        : [];
       const boardPayload = boardRes.status === 'fulfilled' ? boardRes.value : { rows: [] };
       const boardRows = Array.isArray(boardPayload) ? boardPayload : (Array.isArray(boardPayload?.rows) ? boardPayload.rows : []);
       const departments = deptRes.status === 'fulfilled' && Array.isArray(deptRes.value) ? deptRes.value : [];

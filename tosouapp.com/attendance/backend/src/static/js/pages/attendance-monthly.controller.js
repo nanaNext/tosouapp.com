@@ -1697,8 +1697,8 @@
       const nameOf = (u) => String(u.username || u.email || '').trim();
       
       const isEmployee = (u) => {
-        const r = String(u.role || '').toLowerCase();
-        return r === 'employee' || r === 'staff' || r === 'user' || r === '';
+        // Show all users regardless of role
+        return true;
       };
       
       const users = usersAll

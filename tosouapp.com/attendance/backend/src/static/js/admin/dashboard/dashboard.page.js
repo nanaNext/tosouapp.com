@@ -91,7 +91,9 @@ const renderDashboard = async (profile) => {
   if (!isAlive()) return;
 
   const stats = statsRes.status === 'fulfilled' && statsRes.value ? statsRes.value : { todayCheckin: 0, lateCount: 0, leaveCount: 0, pendingCount: 0 };
-  const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
+  const users = usersRes.status === 'fulfilled'
+    ? (Array.isArray(usersRes.value) ? usersRes.value : (Array.isArray(usersRes.value?.rows) ? usersRes.value.rows : []))
+    : [];
   const pendingLeave = pendingLeaveRes.status === 'fulfilled' && Array.isArray(pendingLeaveRes.value) ? pendingLeaveRes.value : [];
   const pendingProfile = pendingProfileRes.status === 'fulfilled' && Array.isArray(pendingProfileRes.value) ? pendingProfileRes.value : [];
   const workReports = workReportsRes.status === 'fulfilled' && workReportsRes.value ? workReportsRes.value : null;

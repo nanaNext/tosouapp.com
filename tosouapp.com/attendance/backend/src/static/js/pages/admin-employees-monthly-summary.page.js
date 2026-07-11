@@ -111,8 +111,6 @@ async function fetchEmployees() {
     rows = Array.isArray(r) ? r : ((r && Array.isArray(r.rows)) ? r.rows : []);
   }
   return (Array.isArray(rows) ? rows : [])
-    .filter(u => statusOf(u) !== 'inactive' && statusOf(u) !== 'retired')
-    .filter(u => role !== 'admin' ? roleOf(u) === 'employee' : (roleOf(u) === 'employee' || !!u.employee_code || !!u.employeeCode))
     .sort((a, b) => codeOf(a).localeCompare(codeOf(b)) || nameOf(a).localeCompare(nameOf(b)));
 }
 

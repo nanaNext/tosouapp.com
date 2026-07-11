@@ -125,7 +125,7 @@ const render = async () => {
       fetchJSONAuth('/api/admin/users'),
       fetchJSONAuth(`/api/expenses/admin/list?month=${encodeURIComponent(month)}&userId=${encodeURIComponent(userId)}&page=1&limit=1000&sortBy=date&sortDir=desc`)
     ]);
-    const users = Array.isArray(usersRes) ? usersRes : [];
+    const users = Array.isArray(usersRes) ? usersRes : (Array.isArray(usersRes?.rows) ? usersRes.rows : []);
     const rows = Array.isArray(rowsRes) ? rowsRes : (Array.isArray(rowsRes?.rows) ? rowsRes.rows : []);
     const nameMap = new Map(users.map((u) => [String(u.id), (u.username || u.email || String(u.id))]));
     const selectedName = nameMap.get(String(userId)) || String(userId || '全員');

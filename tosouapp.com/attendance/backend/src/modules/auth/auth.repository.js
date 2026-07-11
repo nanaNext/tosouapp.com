@@ -57,15 +57,24 @@ module.exports = {
     return result.insertId;
   },
   async incrementFail(email) {
-    await db.query(`UPDATE users SET login_fail_count = COALESCE(login_fail_count, 0) + 1 WHERE email = ?`, [email]);
-    const [rows] = await db.query(`SELECT login_fail_count FROM users WHERE email = ?`, [email]);
+    const e = String(email || '').trim();
+    await db.query(`UPDATE users SET login_fail_count = COALESCE(login_fail_count, 0) + 1 WHERE email_lower = LOWER(?) OR TRIM(email) = ?`, [e, e]);
+    const [rows] = await db.query(`SELECT login_fail_count FROM users WHERE email_lower = LOWER(?) OR TRIM(email) = ? LIMIT 1`, [e, e]);
     return rows[0]?.login_fail_count || 0;
   },
   async lockUser(email, minutes = 15) {
-    const until = new Date(Date.now() + minutes * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
-    await db.query(`UPDATE users SET locked_until = ? WHERE email = ?`, [until, email]);
+    const e = String(email || '').trim();
+    await db.query(`UPDATE users SET locked_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE) WHERE email_lower = LOWER(?) OR TRIM(email) = ?`, [minutes, e, e]);
   },
   async resetLock(email) {
-    await db.query(`UPDATE users SET login_fail_count = 0, locked_until = NULL WHERE email = ?`, [email]);
+    const e = String(email || '').trim();
+    await db.query(`UPDATE users SET login_fail_count = 0, locked_until = NULL WHERE email_lower = LOWER(?) OR TRIM(email) = ?`, [e, e]);
+  },
+  async isLocked(userId) {
+    const [[row] = []] = await db.query(
+      `SELECT locked_until IS NOT NULL AND locked_until > UTC_TIMESTAMP() AS is_locked FROM users WHERE id = ? LIMIT 1`,
+      [userId]
+    );
+    return !!row?.is_locked;
   }
 };

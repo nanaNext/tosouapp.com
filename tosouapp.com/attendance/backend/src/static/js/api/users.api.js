@@ -2,17 +2,20 @@ import { fetchJSONAuth } from './http.api.js';
 
 const BASE = '/api/admin/users';
 
+export function extractUserRows(payload) {
+  return Array.isArray(payload) ? payload : ((payload && payload.rows) || []);
+}
+
 export async function listUsers(options) {
   // Use manager endpoint which returns all company employees without dept scoping.
   // It accepts both admin and manager roles (authorize('manager','admin')).
   try {
     const r = await fetchJSONAuth('/api/manager/users', options);
-    // If response is a paged object, extract rows
-    return (r && r.rows) || r;
+    return extractUserRows(r);
   } catch (e) {
     // Fallback to admin endpoint for any edge case
     const r = await fetchJSONAuth(`${BASE}`, options);
-    return (r && r.rows) || r;
+    return extractUserRows(r);
   }
 }
 
