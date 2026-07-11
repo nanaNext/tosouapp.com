@@ -418,10 +418,10 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
       }
     </style>
     <div class="dash-card attrec-fiori-override" style="height: auto; display: flex; flex-direction: column; overflow: visible !important;">
-      <div class="attrec-controls" style="margin-bottom: 12px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: none !important;">
+      <div class="attrec-controls" style="margin-bottom: 8px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: none !important;">
       </div>
-      <div class="attrec-head" style="flex-shrink: 0; padding-top: 0px;">
-        <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: flex; gap: 12px; margin-bottom: 8px;"></div>
+      <div class="attrec-head" style="display: none !important;">
+        <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: flex; gap: 8px; margin-bottom: 0; align-items: center; flex-wrap: wrap;"></div>
       </div>
       <div id="rosterTable" class="attrec-table" style="height: auto; overflow: visible; max-height: none !important; max-width: 100%;"></div>
     </div>
@@ -431,16 +431,17 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
       </div>
     `);const kt=`
         <div class="attrec-control hidden-on-mobile" style="display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100%; padding: 0 !important; gap: 12px; background: transparent !important; border: none !important; overflow: visible !important;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <input id="rosterDate" class="attrec-input" type="date" value="${b(T)}" style="width: 140px; border: 1px solid #cbd5e1; height: 34px; box-sizing: border-box;" />
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <input id="rosterDate" class="attrec-input" type="date" value="${b(T)}" style="width: 140px; border: 1px solid #cbd5e1; height: 34px; box-sizing: border-box; border-radius: 0;" />
+            <div id="rosterSummaryInline" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"></div>
           </div>
           <div id="topRightFormContainer" style="display: flex; align-items: center; gap: 8px;"></div>
         </div>
-  `,I=y.querySelector(".attrec-controls");I&&(I.innerHTML=kt),window.addEventListener("resize",()=>{const o=window.innerWidth<=768;I&&(I.style.display=o?"none":"block")}),I&&(I.style.display=window.innerWidth<=768?"none":"block");const at=o=>{const t=o&&typeof o=="object"?o:{},n=Number(t.required==null?0:t.required),i=Number(t.submitted==null?0:t.submitted),e=Number(t.missing==null?0:t.missing),a=y.querySelector("#rosterSummary");if(!a)return;const l=e>0?"attrec-pill danger":"attrec-pill ok";a.innerHTML=`
+  `,I=y.querySelector(".attrec-controls");I&&(I.innerHTML=kt),window.addEventListener("resize",()=>{const o=window.innerWidth<=768;I&&(I.style.display=o?"none":"block")}),I&&(I.style.display=window.innerWidth<=768?"none":"block");const at=o=>{const t=o&&typeof o=="object"?o:{},n=Number(t.required==null?0:t.required),i=Number(t.submitted==null?0:t.submitted),e=Number(t.missing==null?0:t.missing),a=y.querySelector("#rosterSummary"),r=y.querySelector("#rosterSummaryInline");if(!a&&!r)return;const l=e>0?"attrec-pill danger":"attrec-pill ok";const pillsHtml=`
       <span class="attrec-pill neutral">\u5FC5\u8981(\u9000\u52E4\u6E08): ${b(n)}</span>
       <span class="attrec-pill ok">\u63D0\u51FA: ${b(i)}</span>
       <span class="${l}">\u672A\u63D0\u51FA: ${b(e)}</span>
-    `},lt=async o=>{const t=y.querySelector("#rosterTable");t&&(t.innerHTML=`
+    `;if(a)a.innerHTML=pillsHtml;if(r)r.innerHTML=pillsHtml;},lt=async o=>{const t=y.querySelector("#rosterTable");t&&(t.innerHTML=`
         <div class="empty-state">
           <div style="font-size:28px;">\u23F3</div>
           <div>\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>
