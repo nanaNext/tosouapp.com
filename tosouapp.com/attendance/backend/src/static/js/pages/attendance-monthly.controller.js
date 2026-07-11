@@ -1681,10 +1681,11 @@
         if (!role) {
           try { role = String(state?.profile?.role || '').toLowerCase(); } catch (e) { /* silently ignored */ }
         }
-        if (role === 'admin' || role === 'manager') {
+        if (role === 'admin') {
           return fetchJSONAuth('/api/admin/users').catch(() => fetchJSONAuth('/api/manager/users'));
         }
-        return fetchJSONAuth('/api/manager/users');
+        // Manager uses dedicated endpoint that returns all company employees (no dept scope)
+        return fetchJSONAuth('/api/manager/users').catch(() => fetchJSONAuth('/api/admin/users'));
       };
 
       const allUsers = await fetchUsers().catch((e) => { console.error('fetchUsers error', e); return []; });
