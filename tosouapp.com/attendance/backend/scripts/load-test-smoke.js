@@ -98,12 +98,20 @@ async function resolveUserId(token) {
   if (!token) return null;
   const usersRes = await requestJson('/api/admin/users?limit=50&offset=0', { token });
   const rows = Array.isArray(usersRes.body) ? usersRes.body : ((usersRes.body && usersRes.body.rows) || []);
-  const first = Array.isArray(rows) ? rows.find((row) => Number(row?.id || 0) > 0) : null;
-  return first ? Number(first.id) : null;
+  if (!Array.isArray(rows)) return null;
+  const preferred = rows.find((row) => {
+    const id = Number(row?.id || 0);
+    const role = String(row?.role || '').toLowerCase();
+    const status = String(row?.employment_status || row?.employmentStatus || '').toLowerCase();
+    return id > 0 && role === 'employee' && (!status || status === 'active');
+  });
+  const fallback = rows.find((row) => Number(row?.id || 0) > 0);
+  return Number((preferred || fallback || {}).id || 0) || null;
 }
 
 function buildScenarios(context) {
   const month = getTargetMonth();
+  const monthValue = `${month.year}-${String(month.month).padStart(2, '0')}`;
   const userIdQuery = context.userId ? `&userId=${encodeURIComponent(String(context.userId))}` : '';
   return [
     {
@@ -153,6 +161,26 @@ function buildScenarios(context) {
       auth: true,
       acceptedStatuses: [200],
       path: () => `/api/attendance/month/detail?year=${month.year}&month=${month.month}${userIdQuery}`
+    },
+    {
+      name: 'expenses_admin_list',
+      auth: true,
+      acceptedStatuses: [200],
+      path: () => `/api/expenses/admin/list?month=${encodeURIComponent(monthValue)}&page=1&limit=100`
+    },
+    {
+      name: 'expenses_admin_dashboard',
+      auth: true,
+      acceptedStatuses: [200],
+      path: () => `/api/expenses/admin/dashboard?month=${encodeURIComponent(monthValue)}&months=6`
+    },
+    {
+      name: 'admin_salary_preview',
+      auth: true,
+      acceptedStatuses: [200],
+      path: () => context.userId
+        ? `/api/admin/salary/preview?userId=${encodeURIComponent(String(context.userId))}&month=${encodeURIComponent(monthValue)}`
+        : null
     }
   ];
 }

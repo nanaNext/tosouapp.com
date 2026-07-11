@@ -7,6 +7,21 @@ const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
 const expenseTypesRepo = require('./expenseTypes.repository');
 const s3Service = require('../../core/services/s3.service');
+const metrics = require('../../core/metrics');
+
+function recordEndpointPerf(endpoint, startedAt, meta = {}) {
+  const durationMs = Date.now() - startedAt;
+  try {
+    metrics.observe(`${endpoint}_duration_ms`, durationMs);
+    if (durationMs >= 100) metrics.inc(`${endpoint}_slow_count`, 1);
+  } catch (e) { /* silently ignored */ }
+  if (durationMs >= 100) {
+    try {
+      console.warn(JSON.stringify({ level: 'warn', type: 'slow_endpoint', endpoint, duration_ms: durationMs, ...meta }));
+    } catch (e) { /* silently ignored */ }
+  }
+}
+
 router.use(authenticate);
 router.get('/types',
   rateLimitNamed('expenses_types', { windowMs: 60_000, max: 30 }),
@@ -131,6 +146,9 @@ router.get('/admin/list',
   rateLimitNamed('expenses_admin_list', { windowMs: 60_000, max: 30 }),
   authorize('manager','admin'),
   async (req, res) => {
+    const startedAt = Date.now();
+    let rowsCount = 0;
+    let total = 0;
     try {
       const month = String(req.query.month || '').slice(0, 7);
       const result = await repo.listAllPaged({
@@ -148,9 +166,20 @@ router.get('/admin/list',
         sortBy: req.query.sortBy,
         sortDir: req.query.sortDir
       });
+      rowsCount = Array.isArray(result?.rows) ? result.rows.length : 0;
+      total = Number(result?.total || 0);
       res.status(200).json(result);
     } catch (err) {
       res.status(500).json({ message: err.message });
+    } finally {
+      recordEndpointPerf('expenses_admin_list', startedAt, {
+        userId: req.user?.id || null,
+        month: String(req.query.month || '').slice(0, 7) || null,
+        page: Number.parseInt(String(req.query.page || '1'), 10) || 1,
+        limit: Number.parseInt(String(req.query.limit || '20'), 10) || 20,
+        rows: rowsCount,
+        total
+      });
     }
   }
 );
@@ -158,13 +187,26 @@ router.get('/admin/dashboard',
   rateLimitNamed('expenses_admin_dashboard', { windowMs: 60_000, max: 30 }),
   authorize('manager','admin'),
   async (req, res) => {
+    const startedAt = Date.now();
+    let trendPoints = 0;
+    let departmentCount = 0;
     try {
       const month = String(req.query.month || '').slice(0, 7);
       const months = req.query.months;
       const result = await repo.getAdminDashboard({ month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, months });
+      trendPoints = Array.isArray(result?.trend) ? result.trend.length : 0;
+      departmentCount = Array.isArray(result?.departmentShares) ? result.departmentShares.length : 0;
       res.status(200).json(result);
     } catch (err) {
       res.status(500).json({ message: err.message });
+    } finally {
+      recordEndpointPerf('expenses_admin_dashboard', startedAt, {
+        userId: req.user?.id || null,
+        month: String(req.query.month || '').slice(0, 7) || null,
+        months: Number.parseInt(String(req.query.months || '6'), 10) || 6,
+        trend_points: trendPoints,
+        department_count: departmentCount
+      });
     }
   }
 );

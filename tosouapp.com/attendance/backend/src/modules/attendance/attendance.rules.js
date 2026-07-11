@@ -305,24 +305,32 @@ async function computeRange(rows) {
     }
   }
   
-  for (const y of years) {
-    if (!y || isNaN(y)) continue;
-    const cal = await calendarRepo.computeYear(y).catch(() => null);
-    if (cal && cal.off_days) {
-      for (const d of cal.off_days) {
-        offDayCache[d] = true;
-      }
-    }
-  }
+  await Promise.all(
+    Array.from(years)
+      .filter((y) => y && !isNaN(y))
+      .map(async (y) => {
+        const cal = await calendarRepo.computeYear(y).catch(() => null);
+        if (cal && cal.off_days) {
+          for (const d of cal.off_days) {
+            offDayCache[d] = true;
+          }
+        }
+      })
+  );
 
   const userIds = Array.from(new Set(rows.map(r => r.userId)));
-  await Promise.all(userIds.map(async uid => {
-    const u = await userRepo.getUserById(uid).catch(() => null);
+  const users = await Promise.all(userIds.map((uid) => userRepo.getUserById(uid).catch(() => null)));
+  const departmentIds = new Set();
+  users.forEach((u, index) => {
+    const uid = userIds[index];
     userCache[uid] = u;
-    if (u?.departmentId && !deptCache[u.departmentId]) {
-      deptCache[u.departmentId] = await userRepo.getDepartmentById(u.departmentId).catch(() => null);
-    }
-  }));
+    if (u?.departmentId) departmentIds.add(u.departmentId);
+  });
+  await Promise.all(
+    Array.from(departmentIds).map(async (departmentId) => {
+      deptCache[departmentId] = await userRepo.getDepartmentById(departmentId).catch(() => null);
+    })
+  );
 
   const shiftIds = Array.from(new Set(rows.map(r => r.shiftId).filter(Boolean)));
   await Promise.all(shiftIds.map(async sid => {
@@ -335,34 +343,40 @@ async function computeRange(rows) {
     const uniqueDates = Array.from(new Set(rows.map(r => getJSTDateStr(r.checkIn))));
     const minDate = uniqueDates.reduce((a, b) => a < b ? a : b);
     const maxDate = uniqueDates.reduce((a, b) => a > b ? a : b);
-    const ymMaps = new Set(uniqueDates.map(d => d.slice(0, 7)));
-    for (const uid of userIds) {
+    const ymList = Array.from(new Set(uniqueDates.map(d => d.slice(0, 7))));
+    await Promise.all(userIds.map(async (uid) => {
       goOutCache[uid] = {};
       dailyCache[uid] = {};
-      for (const ym of ymMaps) {
-        const [yy, mm] = ym.split('-');
-        const goOuts = await attendanceRepo.getGoOutRecordsByMonth(uid, yy, mm).catch(() => []);
+      const goOutResults = await Promise.all(
+        ymList.map(async (ym) => {
+          const [yy, mm] = ym.split('-');
+          return attendanceRepo.getGoOutRecordsByMonth(uid, yy, mm).catch(() => []);
+        })
+      );
+      for (const goOuts of goOutResults) {
         for (const g of goOuts) {
           if (!goOutCache[uid][g.date]) goOutCache[uid][g.date] = [];
           goOutCache[uid][g.date].push(g);
         }
       }
-      
+
       const dailies = await attendanceRepo.listDailyBetween(uid, minDate, maxDate).catch(() => []);
       for (const d of dailies) {
         if (d.date) {
-           const dStr = getJSTDateStr(d.date);
-           dailyCache[uid][dStr] = d;
+          const dStr = getJSTDateStr(d.date);
+          dailyCache[uid][dStr] = d;
         }
       }
-    }
+    }));
   }
 
   const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache, dailyCache };
-
-  for (const r of rows) {
-    if (!r.checkOut) continue;
-    const x = await computeRecord(r, ctx);
+  const computedItems = await Promise.all(
+    rows
+      .filter((r) => r.checkOut)
+      .map((r) => computeRecord(r, ctx))
+  );
+  for (const x of computedItems) {
     if (x?.template) continue;
     items.push(x);
   }

@@ -1,5 +1,6 @@
 const userRepo = require('../users/user.repository');
-const attendanceService = require('../attendance/attendance.service');
+const attendanceRules = require('../attendance/attendance.rules');
+const attendanceRepo = require('../attendance/attendance.repository');
 const leaveRepo = require('../leave/leave.repository');
 const env = require('../../config/env');
 const salaryRepo = require('./salary.repository');
@@ -82,38 +83,26 @@ function overlapDaysUTC(aFrom, aTo, bFrom, bTo) {
   return daysBetweenInclusiveUTC(start.toISOString().slice(0, 10), end.toISOString().slice(0, 10));
 }
 
-async function computePaidLeaveDays(userId, fromDate, toDate) {
-  try {
-    const list = await leaveRepo.listByUser(userId);
-    let paidDays = 0;
-    for (const r of (list || [])) {
-      if (String(r?.status || '') !== 'approved') continue;
-      const t = String(r?.type || '').toLowerCase();
-      if (t !== 'paid') continue;
-      paidDays += overlapDaysUTC(r.startDate, r.endDate, fromDate, toDate);
+function summarizeApprovedLeaveDays(list, fromDate, toDate) {
+  let paidDays = 0;
+  let unpaidDays = 0;
+  for (const r of (list || [])) {
+    const overlapDays = overlapDaysUTC(r.startDate, r.endDate, fromDate, toDate);
+    if (!overlapDays) continue;
+    const t = String(r?.type || '').toLowerCase();
+    if (t === 'paid') {
+      paidDays += overlapDays;
+      continue;
     }
-    return paidDays;
-  } catch {
-    return 0;
+    if (t.includes('unpaid') || t.includes('nopay') || t.includes('no_pay')) {
+      unpaidDays += overlapDays;
+    }
   }
+  return { paidDays, unpaidDays };
 }
 // Hàm này là dùng để tính số ngày không có lương trong khoảng thời gian từ 
 // fromDate đến toDate  
-async function computeUnpaidLeaveDays(userId, fromDate, toDate) {
-  try {   
-    const list = await leaveRepo.listByUser(userId);
-    let unpaidDays = 0;
-    for (const r of (list || [])) {
-      if (String(r?.status || '') !== 'approved') continue;
-      const t = String(r?.type || '').toLowerCase();
-      if (!(t.includes('unpaid') || t.includes('nopay') || t.includes('no_pay'))) continue;
-      unpaidDays += overlapDaysUTC(r.startDate, r.endDate, fromDate, toDate);
-    }
-    return unpaidDays;
-  } catch {
-    return 0;
-  }
-}
+ 
 // Hàm này là dùng để tính lương cho người dùng trong tháng month
 async function computePayslipForUser(userId, month, options = null) {
   const pad = n => String(n).padStart(2, '0');
@@ -123,13 +112,16 @@ async function computePayslipForUser(userId, month, options = null) {
   const from = `${y}-${pad(m)}-01`;
   const to = `${y}-${pad(m)}-${pad(lastDay)}`;
 
-  const user = await userRepo.getUserById(userId);
+  const year = y;
+  const [user, dailyRows, attendanceRows, approvedLeaveRows, conf, userComp] = await Promise.all([
+    userRepo.getUserById(userId),
+    attendanceRepo.listDailyBetween(userId, from, to).catch(() => []),
+    attendanceRepo.listByUserBetween(userId, from, to).catch(() => []),
+    leaveRepo.listApprovedByUserOverlap(userId, from, to).catch(() => []),
+    salaryRepo.getConfigByYear(year),
+    salaryRepo.getUserCompensation(userId)
+  ]);
   const dept = user?.departmentId ? await userRepo.getDepartmentById(user.departmentId).catch(() => null) : null;
-  
-  // Improved calculation from both attendance and daily status
-  const attendanceRepo = require('../attendance/attendance.repository');
-  const dailyRows = await attendanceRepo.listDailyBetween(userId, from, to).catch(() => []);
-  const attendanceRows = await attendanceRepo.listByUserBetween(userId, from, to).catch(() => []);
   
   const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
   const workDaysSet = new Set();
@@ -158,19 +150,18 @@ async function computePayslipForUser(userId, month, options = null) {
     if (date) workDaysSet.add(date);
   }
 
-  const ts = await attendanceService.timesheet(userId, from, to);
+  const ts = await attendanceRules.computeRange(attendanceRows);
   const workDays = workDaysSet.size;
   
   // Use either leave requests or manual daily entry for paid leave
-  const paidLeaveDaysFromRequests = await computePaidLeaveDays(userId, from, to);
+  const leaveSummary = summarizeApprovedLeaveDays(approvedLeaveRows, from, to);
+  const paidLeaveDaysFromRequests = leaveSummary.paidDays;
   const paidLeaveDays = Math.max(paidLeaveDaysFromDaily, paidLeaveDaysFromRequests);
-  const unpaidLeaveDaysFromRequests = await computeUnpaidLeaveDays(userId, from, to);
+  const unpaidLeaveDaysFromRequests = leaveSummary.unpaidDays;
   const unpaidLeaveDays = Math.max(unpaidLeaveDaysFromDaily, unpaidLeaveDaysFromRequests);
   
   const paidLeaveEntitlement = calculatePaidLeaveEntitlement(resolveEmploymentStartDate(user));
 
-  const year = y;
-  const conf = await salaryRepo.getConfigByYear(year);
   const rStep = conf?.rounding_minutes ?? env.salaryRoundingMinutes;
   const rMode = conf?.rounding_mode ?? env.salaryRoundingMode;
   const regularMin = roundToStep(ts.total.regularMinutes || 0, rStep, rMode);
@@ -212,7 +203,6 @@ async function computePayslipForUser(userId, month, options = null) {
   let monthlyOver60Min = empType === 'full_time' ? Math.max(0, legalOverTotal - (60 * 60)) : 0;
   let overtimeMin = roundToStep(legalOverTotal, rStep, rMode);
 
-  const userComp = await salaryRepo.getUserCompensation(userId);
   const opts = options && typeof options === 'object' ? options : {};
   let baseMonthly = Object.prototype.hasOwnProperty.call(opts, 'baseMonthly')
     ? yen(opts.baseMonthly)
