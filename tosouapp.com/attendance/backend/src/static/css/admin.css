@@ -4554,3 +4554,24 @@ body.drawer-open.admin.has-sidebar .content {
   background: #eff6ff !important;
   color: #1e3a5f !important;
 }
+
+/* ─── Flatten all border-radius in admin (square corners everywhere) ─── */
+.admin *,
+.admin *::before,
+.admin *::after {
+  border-radius: 0 !important;
+}
+
+/* ─── Attendance toolbar summary inline pills alignment ─── */
+.admin #rosterSummaryInline {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+}
+
+@media (max-width: 768px) {
+  .admin #rosterSummaryInline {
+    display: none !important;
+  }
+}
