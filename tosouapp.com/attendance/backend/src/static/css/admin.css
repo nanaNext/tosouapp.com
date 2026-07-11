@@ -4457,3 +4457,100 @@ body.drawer-open.admin.has-sidebar .content {
 
 /* Force dark on elements with inline white/light background */
 
+
+/* ─── Attendance toolbar: colored buttons & inputs ─────────────────────── */
+
+/* Excel export button → green */
+.admin #tsExportXlsx,
+.admin #rosterExportXlsx,
+.admin #rosterExportMonthXlsx,
+.admin button[id*="ExportXlsx"],
+.admin button[id*="xlsx"],
+.admin .wr-btn-dl {
+  background: #16a34a !important;
+  color: #ffffff !important;
+  border-color: #15803d !important;
+  font-weight: 700 !important;
+}
+.admin #tsExportXlsx:hover,
+.admin #rosterExportXlsx:hover,
+.admin #rosterExportMonthXlsx:hover,
+.admin button[id*="ExportXlsx"]:hover,
+.admin .wr-btn-dl:hover {
+  background: #15803d !important;
+}
+
+/* CSV export button → blue */
+.admin #tsExport,
+.admin button[id*="ExportCsv"],
+.admin button[id*="export-csv"],
+.admin .attrec-btn-csv {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+  font-weight: 700 !important;
+}
+.admin #tsExport:hover,
+.admin .attrec-btn-csv:hover {
+  background: #1d4ed8 !important;
+}
+
+/* 表示 / submit button → navy */
+.admin form button[type="submit"],
+.admin .attrec-btn-submit {
+  background: #1e3a5f !important;
+  color: #ffffff !important;
+  border-color: #15305a !important;
+  font-weight: 700 !important;
+}
+.admin form button[type="submit"]:hover {
+  background: #15305a !important;
+}
+
+/* Date / From / To text inputs in toolbar → subtle blue tint border */
+.admin #tsFrom,
+.admin #tsTo,
+.admin input[placeholder*="YYYY-MM-DD"],
+.admin input[placeholder*="From"],
+.admin input[placeholder*="To"] {
+  border: 1px solid #93c5fd !important;
+  border-radius: 6px !important;
+  background: #f0f9ff !important;
+  color: #1e3a5f !important;
+}
+.admin #tsFrom:focus,
+.admin #tsTo:focus,
+.admin input[placeholder*="YYYY-MM-DD"]:focus {
+  outline: none !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15) !important;
+}
+
+/* Year input → light purple tint */
+.admin #tsYear,
+.admin input[placeholder*="Year"],
+.admin input[placeholder*="YYYY"]:not([type="month"]) {
+  border: 1px solid #c4b5fd !important;
+  border-radius: 6px !important;
+  background: #faf5ff !important;
+  color: #4c1d95 !important;
+}
+
+/* Employee / count select dropdown → light teal tint */
+.admin #tsUser,
+.admin select#rosterPerPage,
+.admin .attrec-filter select {
+  border: 1px solid #5eead4 !important;
+  border-radius: 6px !important;
+  background: #f0fdfa !important;
+  color: #134e4a !important;
+}
+
+/* Generic date input (type=date) in toolbar */
+.admin input[type="date"].attrec-date,
+.admin .attrec-toolbar input[type="date"] {
+  border: 1px solid #93c5fd !important;
+  border-radius: 6px !important;
+  background: #eff6ff !important;
+  color: #1e3a5f !important;
+}
