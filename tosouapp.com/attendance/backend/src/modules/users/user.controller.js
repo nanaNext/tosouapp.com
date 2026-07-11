@@ -12,16 +12,9 @@ exports.list = async (req, res) => {
     let departmentId = req.query.departmentId != null ? String(req.query.departmentId || '').trim() : null;
     const employmentStatus = req.query.employmentStatus != null ? String(req.query.employmentStatus || '').trim() : null;
 
-    // Branch/Department scope: manager can only see their own branch or department
+    // Branch/Department scope: manager can see all employees
     const userRole = String(req.user?.role || '').toLowerCase();
-    if (userRole === 'manager') {
-      if (req.user?.branchId) {
-        // Has branch → scope by branch (see all depts in branch)
-        // Will be handled in query via branch_id
-      } else if (req.user?.departmentId) {
-        departmentId = String(req.user.departmentId);
-      }
-    }
+    // Removed department/branch scope for managers to show all employees
     const usePaged = q || limit != null || offset != null || role || departmentId || employmentStatus;
     const superEmail = (process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
     const meRole = String(req.user?.role || '').toLowerCase();

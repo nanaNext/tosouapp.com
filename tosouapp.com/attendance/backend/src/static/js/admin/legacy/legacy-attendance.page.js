@@ -437,11 +437,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
           </div>
           <div id="topRightFormContainer" style="display: flex; align-items: center; gap: 8px;"></div>
         </div>
-  `,I=y.querySelector(".attrec-controls");I&&(I.innerHTML=kt),window.addEventListener("resize",()=>{const o=window.innerWidth<=768;I&&(I.style.display=o?"none":"block")}),I&&(I.style.display=window.innerWidth<=768?"none":"block");const at=o=>{const t=o&&typeof o=="object"?o:{},n=Number(t.required==null?0:t.required),i=Number(t.submitted==null?0:t.submitted),e=Number(t.missing==null?0:t.missing),a=y.querySelector("#rosterSummary"),r=y.querySelector("#rosterSummaryInline");if(!a&&!r)return;const l=e>0?"attrec-pill danger":"attrec-pill ok";const pillsHtml=`
-      <span class="attrec-pill neutral">\u5FC5\u8981(\u9000\u52E4\u6E08): ${b(n)}</span>
-      <span class="attrec-pill ok">\u63D0\u51FA: ${b(i)}</span>
-      <span class="${l}">\u672A\u63D0\u51FA: ${b(e)}</span>
-    `;if(a)a.innerHTML=pillsHtml;if(r)r.innerHTML=pillsHtml;},lt=async o=>{const t=y.querySelector("#rosterTable");t&&(t.innerHTML=`
+  `,I=y.querySelector(".attrec-controls");I&&(I.innerHTML=kt),window.addEventListener("resize",()=>{const o=window.innerWidth<=768;I&&(I.style.display=o?"none":"block")}),I&&(I.style.display=window.innerWidth<=768?"none":"block");const at=o=>{},lt=async o=>{const t=y.querySelector("#rosterTable");t&&(t.innerHTML=`
         <div class="empty-state">
           <div style="font-size:28px;">\u23F3</div>
           <div>\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>

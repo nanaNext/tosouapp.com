@@ -36,15 +36,22 @@ exports.assignShift = async (req, res) => {
   }
 };
 
-// Liệt kê toàn bộ nhân viên (manager xem toàn công ty)
+// Liß╗çt k├¬ to├án bß╗Ö nh├ón vi├¬n (manager xem to├án c├┤ng ty)
 exports.listMyDepartment = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
     const limit = req.query.limit;
     const offset = req.query.offset;
-    const employmentStatus = req.query.employmentStatus != null ? String(req.query.employmentStatus || '').trim() : 'active';
-    const r = await userRepo.listUsersPaged({ q, role: 'employee', departmentId: null, employmentStatus: employmentStatus || null, limit, offset });
-    res.status(200).json(r);
+    const role = req.query.role != null ? String(req.query.role || '').trim() : null;
+    const employmentStatus = req.query.employmentStatus != null ? String(req.query.employmentStatus || '').trim() : null;
+    const usePaged = q || limit != null || offset != null || role || employmentStatus;
+    if (usePaged) {
+      const r = await userRepo.listUsersPaged({ q, role: role, departmentId: null, employmentStatus: employmentStatus, limit, offset });
+      res.status(200).json(r);
+    } else {
+      let rows = await userRepo.listUsers();
+      res.status(200).json(rows);
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
