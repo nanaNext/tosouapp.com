@@ -1035,9 +1035,13 @@ async function showEditPtoModal(userId, userName, onSaved) {
           btn.disabled = true;
           try {
             await api.post('/api/leave/grant', { userId: Number(userId), days, grantDate, expiryDate });
+            if (onSaved) onSaved();
+            if (days <= 0) {
+              await loadGrants();
+              return;
+            }
             btn.textContent = '保存済';
             setTimeout(() => { btn.textContent = '保存'; btn.disabled = false; }, 2000);
-            if (onSaved) onSaved();
           } catch (err) {
             alert('保存に失敗しました: ' + err.message);
             btn.textContent = '保存';
@@ -1058,7 +1062,7 @@ async function showEditPtoModal(userId, userName, onSaved) {
           btn.textContent = '...';
           btn.disabled = true;
           try {
-            // Delete by setting days to 0
+            // Backend treats 0 days as a real delete for this grant date.
             await api.post('/api/leave/grant', { userId: Number(userId), days: 0, grantDate, expiryDate: daysInput.dataset.expiry });
             if (onSaved) onSaved();
             await loadGrants(); // reload list to remove row
