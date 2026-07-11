@@ -186,6 +186,8 @@ function renderTable() {
     .cell-afternoon { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-weight: bold; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border-radius: 3px; font-size: 11px; }
     .cell-night { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-weight: bold; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border-radius: 3px; font-size: 11px; }
     .cell-leave { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: bold; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border-radius: 3px; font-size: 11px; }
+    .cell-leave-paid { background: #fef9c3; color: #92400e; border: 1px solid #fde68a; font-weight: bold; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border-radius: 3px; font-size: 11px; }
+    .cell-leave-special { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; font-weight: bold; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border-radius: 3px; font-size: 11px; }
     .cell-off { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border-radius: 3px; font-size: 11px; }
     .cell-empty { color: #94a3b8; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin: 0 auto; font-size: 11px; border: 1px dashed transparent; }
 
@@ -319,16 +321,23 @@ function renderTable() {
             case 'CA_CHIEU': cellContent = `<div class="cell-afternoon">午</div>`; break;
             case 'CA_DEM': cellContent = `<div class="cell-night">夜</div>`; break;
             case '09:00-14:00': cellContent = `<div class="cell-work" style="font-size:8px; line-height:1; flex-direction:column;"><span>09:00</span><br><span>-14:00</span></div>`; break;
-            case 'LEAVE': 
-              const lTxt = dayData.leaveType === 'unpaid' ? '欠' : '休';
+            case 'LEAVE': {
+              const leaveTypeMap = { paid: '有休', unpaid: '欠', special: '特休' };
+              const lTxt = leaveTypeMap[dayData.leaveType] || '休';
+              const leaveTypeLabel = { paid: '有給休暇', unpaid: '欠勤 / 無給休暇', special: '特別休暇' }[dayData.leaveType] || '';
               const isSystemHoliday = !dayData.leaveType;
-              const reasonText = dayData.reason || dayData.detail || '理由なし';
+              const reasonText = dayData.reason || dayData.detail || '';
+              const modalContent = [leaveTypeLabel, reasonText].filter(Boolean).join('\n') || '理由なし';
+              const cellClass = dayData.leaveType === 'paid' ? 'cell-leave-paid'
+                : dayData.leaveType === 'special' ? 'cell-leave-special'
+                : 'cell-leave';
               if (isSystemHoliday) {
-                cellContent = `<div class="cell-leave" title="休日">${lTxt}</div>`; 
+                cellContent = `<div class="${cellClass}" title="休日">${lTxt}</div>`;
               } else {
-                cellContent = `<div class="cell-leave clickable-leave" style="cursor:pointer;" data-reason="${esc(reasonText)}" title="${esc(reasonText)}">${lTxt}</div>`; 
+                cellContent = `<div class="${cellClass} clickable-leave" style="cursor:pointer;" data-leave-label="${esc(leaveTypeLabel)}" data-reason="${esc(reasonText)}" title="${esc(modalContent)}">${lTxt}</div>`;
               }
               break;
+            }
             case 'OFF': cellContent = `<div class="cell-off">休</div>`; break;
           }
         } else if (!isSeishain) {
@@ -364,11 +373,18 @@ function renderTable() {
             case 'CA_CHIEU': cellContent = `<div class="cell-afternoon">午</div>`; break;
             case 'CA_DEM': cellContent = `<div class="cell-night">夜</div>`; break;
             case '09:00-14:00': cellContent = `<div class="cell-work" style="font-size:8px; line-height:1; flex-direction:column;"><span>09:00</span><br><span>-14:00</span></div>`; break;
-            case 'LEAVE': 
-              const lTxt = dayData.leaveType === 'unpaid' ? '欠' : '休';
-              if (!dayData.leaveType) cellContent = `<div class="cell-leave">${lTxt}</div>`; 
-              else cellContent = `<div class="cell-leave clickable-leave" style="cursor:pointer;" data-reason="${esc(dayData.reason || dayData.detail || '理由なし')}">${lTxt}</div>`; 
+            case 'LEAVE': {
+              const leaveTypeMap = { paid: '有休', unpaid: '欠', special: '特休' };
+              const lTxt = leaveTypeMap[dayData.leaveType] || '休';
+              const leaveTypeLabel = { paid: '有給休暇', unpaid: '欠勤 / 無給休暇', special: '特別休暇' }[dayData.leaveType] || '';
+              const reasonText = dayData.reason || dayData.detail || '';
+              const cellClass = dayData.leaveType === 'paid' ? 'cell-leave-paid'
+                : dayData.leaveType === 'special' ? 'cell-leave-special'
+                : 'cell-leave';
+              if (!dayData.leaveType) cellContent = `<div class="${cellClass}">${lTxt}</div>`;
+              else cellContent = `<div class="${cellClass} clickable-leave" style="cursor:pointer;" data-leave-label="${esc(leaveTypeLabel)}" data-reason="${esc(reasonText)}">${lTxt}</div>`;
               break;
+            }
             case 'OFF': cellContent = `<div class="cell-off">休</div>`; break;
           }
         } else if (!isSeishain) {
@@ -419,7 +435,7 @@ function renderTable() {
     <!-- Custom Modal HTML -->
      <div id="reasonModal" class="reason-modal-overlay">
        <div class="reason-modal-content">
-         <div class="reason-modal-header">休みの理由</div>
+         <div id="reasonModalHeader" class="reason-modal-header">休みの理由</div>
          <div id="reasonModalText" class="reason-modal-body"></div>
          <div class="reason-modal-footer">
            <button id="closeReasonModalBtn" class="reason-modal-btn">閉じる</button>
@@ -508,8 +524,19 @@ function renderTable() {
 
   localHost.querySelectorAll('.clickable-leave').forEach(cell => {
     cell.addEventListener('click', (e) => {
+      const target = e.currentTarget;
+      const leaveLabel = target.getAttribute('data-leave-label') || '';
+      const reason = target.getAttribute('data-reason') || '';
+      const modalHeader = localHost.querySelector('#reasonModalHeader');
+      if (modalHeader) {
+        modalHeader.textContent = leaveLabel || '休みの理由';
+      }
       if (modalText && modal) {
-        modalText.textContent = e.target.getAttribute('data-reason') || '理由なし';
+        if (reason) {
+          modalText.textContent = reason;
+        } else {
+          modalText.innerHTML = '<span style="color:#94a3b8;">理由の記載なし</span>';
+        }
         modal.classList.add('show');
       }
     });
