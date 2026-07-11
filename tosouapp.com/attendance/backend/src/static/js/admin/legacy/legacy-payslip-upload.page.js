@@ -2,7 +2,8 @@ import { listUsers } from '../../api/users.api.js';
 
 export async function mountPayslipUpload({ content }) {
   content.innerHTML = '<h3>給与アップロード</h3>';
-  const users = await listUsers();
+  const usersPayload = await listUsers();
+  const users = Array.isArray(usersPayload) ? usersPayload : ((usersPayload && Array.isArray(usersPayload.rows)) ? usersPayload.rows : []);
   const form = document.createElement('form');
   form.enctype = 'multipart/form-data';
   form.innerHTML = `
