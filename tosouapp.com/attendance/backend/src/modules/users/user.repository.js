@@ -20,8 +20,15 @@ module.exports = {
       params.push(String(departmentId));
     }
     if (employmentStatus != null && String(employmentStatus || '').trim()) {
-      where.push('LOWER(employment_status) = ?');
-      params.push(String(employmentStatus).toLowerCase());
+      const esVal = String(employmentStatus).toLowerCase().trim();
+      // Treat NULL employment_status as 'active' (legacy rows before status column was added)
+      if (esVal === 'active') {
+        where.push('(LOWER(employment_status) = ? OR employment_status IS NULL)');
+        params.push('active');
+      } else {
+        where.push('LOWER(employment_status) = ?');
+        params.push(esVal);
+      }
     }
     if (qq) {
       where.push(`LOWER(CONCAT_WS(' ', employee_code, username, email, id)) LIKE ?`);
