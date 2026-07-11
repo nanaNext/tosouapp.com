@@ -846,34 +846,15 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 /* Override header th color in all admin tables */
-.admin .card .excel-table thead th,
-.admin table thead th {
-  color: #0f172a !important;
+/* Header th: màu trắng chỉ cho excel-table (navy header) */
+.admin .card .excel-table thead th {
+  color: #ffffff !important;
+  font-weight: 600 !important;
 }
 
-/* Buttons in table action column: make text inherit (remove blue/indigo) */
-.admin .card .excel-table .emp-action-group .emp-action,
-.admin .card .excel-table .emp-action-group .emp-action:hover,
-.admin .card .excel-table .emp-action-group .emp-action.danger,
-.admin .card .excel-table .emp-action-group .emp-action.danger:hover {
-  color: inherit !important;
-}
-
-.admin .topbar-inner>* {
-  padding: 0 10px;
-}
-
-/* Remove bold weight in table buttons and headers */
-.admin .card .excel-table .emp-action-group .emp-action,
-.admin .card .excel-table .emp-action-group .emp-action:hover,
-.admin .card .excel-table .emp-action-group .emp-action.danger,
-.admin .card .excel-table .emp-action-group .emp-action.danger:hover {
-  font-weight: 400 !important;
-}
-
-.admin .card .excel-table thead th,
-.admin table thead th {
-  font-weight: 400 !important;
+/* emp-act buttons: không override màu để giữ danger red */
+.admin .card .excel-table .emp-act {
+  font-weight: 500 !important;
 }
 
 .admin .topbar-inner>* {
