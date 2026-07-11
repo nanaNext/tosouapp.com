@@ -53,15 +53,11 @@ function ymToYLabel(ym) {
 async function fetchEmployees(role) {
   const base = role === 'admin' ? '/api/admin/users' : '/api/manager/users';
   const url = new URL(base, window.location.origin);
-  url.searchParams.set('role', 'employee');
-  url.searchParams.set('employmentStatus', 'active');
   url.searchParams.set('limit', '2000');
   url.searchParams.set('offset', '0');
   const r = await fetchJSONAuth(url.pathname + url.search).catch(() => null);
   const rows = Array.isArray(r) ? r : ((r && Array.isArray(r.rows)) ? r.rows : []);
   return rows
-    .filter(u => roleOf(u) === 'employee')
-    .filter(u => statusOf(u) !== 'inactive' && statusOf(u) !== 'retired')
     .sort((a, b) => {
       const c = codeOf(a).localeCompare(codeOf(b));
       if (c) return c;

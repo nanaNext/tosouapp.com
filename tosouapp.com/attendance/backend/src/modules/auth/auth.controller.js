@@ -94,6 +94,10 @@ exports.signup = async (req, res) => {
 // Đăng nhập
 exports.login = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     const { email, password } = req.body;
     try {
       const flags = await require('../settings/settings.service').getFlags();
@@ -113,7 +117,7 @@ exports.login = async (req, res) => {
       try { await auditRepo.writeLog({ userId: user.id, action: 'login_block_inactive', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ employment_status: user.employment_status }) }); } catch (e) { /* silently ignored */ }
       return res.status(403).json({ message: 'Account inactive' });
     }
-    if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
+    if (await authRepository.isLocked(user.id)) {
       return res.status(423).json({ message: 'Account locked. Try later.' });
     }
     const passwordIsValid = bcrypt.compareSync(password, user.password);
@@ -390,11 +394,15 @@ exports.superBootstrap = async (req, res) => {
 // Refresh access token (và rotate refresh token)
 exports.refresh = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     const bodyRt = (req.body || {}).refreshToken;
     const cookieRt = req.cookies?.refreshToken;
     const refreshToken = bodyRt || cookieRt;
     if (!refreshToken) {
-      return res.status(400).json({ message: 'Missing refreshToken' });
+      return res.status(401).json({ message: 'Missing refreshToken' });
     }
     if (cookieRt) {
       try {
@@ -465,6 +473,10 @@ exports.refresh = async (req, res) => {
 // Logout: revoke refresh token hiện tại
 exports.logout = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     const bodyRt = (req.body || {}).refreshToken;
     const cookieRt = req.cookies?.refreshToken;
     const refreshToken = bodyRt || cookieRt;

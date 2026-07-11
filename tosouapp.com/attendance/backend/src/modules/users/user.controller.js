@@ -1,6 +1,18 @@
 const repo = require('./user.repository');
 const bcrypt = require('bcrypt');
 const { bcryptRounds } = require('../../config/env');
+
+function normalizeUserListResult(rows, limit, offset) {
+  const normalizedRows = Array.isArray(rows) ? rows : [];
+  const parsedLimit = Number.parseInt(String(limit ?? normalizedRows.length ?? 0), 10);
+  const parsedOffset = Number.parseInt(String(offset ?? 0), 10);
+  return {
+    rows: normalizedRows,
+    total: normalizedRows.length,
+    limit: Number.isFinite(parsedLimit) ? Math.max(0, parsedLimit) : normalizedRows.length,
+    offset: Number.isFinite(parsedOffset) ? Math.max(0, parsedOffset) : 0
+  };
+}
 // Controller quản trị người dùng
 // API: Lấy danh sách tất cả nhân viên
 exports.list = async (req, res) => {
@@ -31,7 +43,7 @@ exports.list = async (req, res) => {
     }
     let rows = await repo.listUsers();
     if (!isSuper && superEmail) rows = (rows || []).filter(u => String(u.email || '').trim().toLowerCase() !== superEmail);
-    return res.status(200).json(rows);
+    return res.status(200).json(normalizeUserListResult(rows, limit, offset));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

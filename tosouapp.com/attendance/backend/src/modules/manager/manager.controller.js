@@ -3,6 +3,18 @@ const userRepo = require('../users/user.repository');
 const salaryService = require('../salary/salary.service');
 const refreshRepo = require('../auth/refresh.repository');
 const db = require('../../core/database/mysql');
+
+function normalizeUserListResult(rows, limit, offset) {
+  const normalizedRows = Array.isArray(rows) ? rows : [];
+  const parsedLimit = Number.parseInt(String(limit ?? normalizedRows.length ?? 0), 10);
+  const parsedOffset = Number.parseInt(String(offset ?? 0), 10);
+  return {
+    rows: normalizedRows,
+    total: normalizedRows.length,
+    limit: Number.isFinite(parsedLimit) ? Math.max(0, parsedLimit) : normalizedRows.length,
+    offset: Number.isFinite(parsedOffset) ? Math.max(0, parsedOffset) : 0
+  };
+}
 // Controller quản lý: báo cáo nhóm, quản lý ca làm
 exports.groupReport = async (req, res) => {
   try {
@@ -49,8 +61,8 @@ exports.listMyDepartment = async (req, res) => {
       const r = await userRepo.listUsersPaged({ q, role: role, departmentId: null, employmentStatus: employmentStatus, limit, offset });
       res.status(200).json(r);
     } else {
-      let rows = await userRepo.listUsers();
-      res.status(200).json(rows);
+      const rows = await userRepo.listUsers();
+      res.status(200).json(normalizeUserListResult(rows, limit, offset));
     }
   } catch (err) {
     res.status(500).json({ message: err.message });
