@@ -372,20 +372,25 @@ exports.grant = async (req, res) => {
       et.setUTCDate(et.getUTCDate() - 1);
       eDate = fmt(et);
     }
-    await repo.upsertGrant({ userId, type: 'paid', grantDate: gDate, daysGranted: parsedDays, expiryDate: eDate });
+    const isDelete = parsedDays <= 0;
+    if (isDelete) {
+      await repo.deleteGrant({ userId, type: 'paid', grantDate: gDate });
+    } else {
+      await repo.upsertGrant({ userId, type: 'paid', grantDate: gDate, daysGranted: parsedDays, expiryDate: eDate });
+    }
     try {
       await auditRepo.writeLog({
         userId: req.user?.id,
-        action: 'leave_grant_manual',
+        action: isDelete ? 'leave_grant_delete' : 'leave_grant_manual',
         path: req.path,
         method: req.method,
         ip: req.ip,
         userAgent: req.headers['user-agent'],
         beforeData: null,
-        afterData: JSON.stringify({ targetUserId: Number(userId), days: parsedDays, grantDate: gDate, expiryDate: eDate })
+        afterData: JSON.stringify({ targetUserId: Number(userId), days: parsedDays, grantDate: gDate, expiryDate: eDate, deleted: isDelete })
       });
     } catch (e) { /* silently ignored */ }
-    res.status(201).json({ ok: true });
+    res.status(201).json({ ok: true, deleted: isDelete });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

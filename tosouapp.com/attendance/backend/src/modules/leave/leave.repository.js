@@ -123,6 +123,17 @@ async function ensureSchema() {
   } catch (e) { /* silently ignored */ }
 }
 
+async function resolveGrantsTable() {
+  const [[row]] = await db.query(`
+    SELECT table_name AS name
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name IN ('paid_leave_grants','leave_grants')
+    ORDER BY CASE table_name WHEN 'paid_leave_grants' THEN 0 ELSE 1 END
+    LIMIT 1
+  `);
+  return row ? String(row.name) : 'paid_leave_grants';
+}
+
 module.exports = {
   ensureSchema,
   async create({ userId, startDate, endDate, type, reason }) {
@@ -377,14 +388,7 @@ module.exports = {
     }
   },
   async upsertGrant({ userId, type = 'paid', grantDate, daysGranted, expiryDate }) {
-    const [[row]] = await db.query(`
-      SELECT table_name AS name
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE() AND table_name IN ('paid_leave_grants','leave_grants')
-      ORDER BY CASE table_name WHEN 'paid_leave_grants' THEN 0 ELSE 1 END
-      LIMIT 1
-    `);
-    const table = row ? String(row.name) : 'paid_leave_grants';
+    const table = await resolveGrantsTable();
     const sql = `
       INSERT INTO ${table} (userId, type, grantDate, daysGranted, expiryDate)
       VALUES (?, ?, ?, ?, ?)
@@ -392,18 +396,20 @@ module.exports = {
     `;
     await db.query(sql, [userId, type, grantDate, daysGranted, expiryDate]);
   },
+  async deleteGrant({ userId, type = 'paid', grantDate }) {
+    const table = await resolveGrantsTable();
+    const [res] = await db.query(`
+      DELETE FROM ${table}
+      WHERE userId = ? AND type = ? AND grantDate = ?
+    `, [userId, type, grantDate]);
+    return Number(res?.affectedRows || 0);
+  },
   async listGrants(userId, type = 'paid') {
-    const [[row]] = await db.query(`
-      SELECT table_name AS name
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE() AND table_name IN ('paid_leave_grants','leave_grants')
-      ORDER BY CASE table_name WHEN 'paid_leave_grants' THEN 0 ELSE 1 END
-      LIMIT 1
-    `);
-    const table = row ? String(row.name) : 'paid_leave_grants';
+    const table = await resolveGrantsTable();
     const [rows] = await db.query(`
       SELECT * FROM ${table}
       WHERE userId = ? AND type = ?
+        AND COALESCE(daysGranted, 0) > 0
       ORDER BY grantDate ASC
     `, [userId, type]);
     return rows;
