@@ -47,6 +47,12 @@ const isAbortLike = (err) => {
   return msg.includes('aborterror') || msg.includes('signal is aborted') || msg.includes('aborted without reason');
 };
 
+const normalizeUsers = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.rows)) return payload.rows;
+  return [];
+};
+
 function mountStyle() {
   if (document.getElementById('payrollEditorStyle')) return;
   const st = document.createElement('style');
@@ -651,7 +657,7 @@ export async function mount(options = {}) {
     return true;
   };
 
-  const users = await listUsers().catch(() => []);
+  const users = normalizeUsers(await listUsers().catch(() => []));
   const sel = basicCard.querySelector('#payrollUserId');
   const historySel = document.getElementById('historyFilterUserId');
   

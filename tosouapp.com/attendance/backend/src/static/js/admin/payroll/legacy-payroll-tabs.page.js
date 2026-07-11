@@ -2,6 +2,12 @@ import { delegate } from '../_shared/dom.js';
 import { api, downloadWithAuth } from '../../shared/api/client.js';
 // cái này dùng để ensure payroll nav style được tạo ra trước khi mount payroll tabs
 
+function normalizeUsers(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.rows)) return payload.rows;
+  return [];
+}
+
 function ensurePayrollNavStyle() {
   try {
     if (document.getElementById('payrollNavStyle')) return;
@@ -83,7 +89,7 @@ export async function mountSalaryCalc({ content, listUsers }) {
   ensurePayrollNavStyle();
   content.appendChild(mountNav('salary_calc'));
 
-  const users = await listUsers();
+  const users = normalizeUsers(await listUsers());
   const sel = document.createElement('select');
   sel.id = 'salaryUserIds';
   sel.multiple = true;

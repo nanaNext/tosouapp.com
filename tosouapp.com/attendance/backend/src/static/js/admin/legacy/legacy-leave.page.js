@@ -1,6 +1,12 @@
 import { delegate } from '../_shared/dom.js';
 import { api } from '../../shared/api/client.js';
 
+function normalizeUsers(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.rows)) return payload.rows;
+  return [];
+}
+
 function ensureLeaveUiStyles() {
   if (document.getElementById('leave-unified-style')) return;
   const s = document.createElement('style');
@@ -843,7 +849,7 @@ export async function mountLeaveGrant({
     }
   });
 
-  const users = await listUsers();
+  const users = normalizeUsers(await listUsers());
   const form = document.createElement('form');
   const today = new Date();
   const fmt = d => d.toISOString().slice(0, 10);
