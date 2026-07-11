@@ -44,6 +44,12 @@ async function ensureSchema() {
     if (!idxSet.has('idx_status_period')) {
       try { await db.query(`ALTER TABLE leave_requests ADD INDEX idx_status_period (status, startDate, endDate)`); } catch (e) { /* silently ignored */ }
     }
+    if (!idxSet.has('idx_leave_user_type_status_period')) {
+      try { await db.query(`ALTER TABLE leave_requests ADD INDEX idx_leave_user_type_status_period (userId, type, status, startDate, endDate)`); } catch (e) { /* silently ignored */ }
+    }
+    if (!idxSet.has('idx_leave_status_created')) {
+      try { await db.query(`ALTER TABLE leave_requests ADD INDEX idx_leave_status_created (status, created_at, id)`); } catch (e) { /* silently ignored */ }
+    }
   } catch (e) { /* silently ignored */ }
   try {
     const [tbls] = await db.query(`

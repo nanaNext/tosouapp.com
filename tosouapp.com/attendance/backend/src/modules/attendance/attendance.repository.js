@@ -217,6 +217,26 @@ async function ensureAttendanceDailySchema() {
         }
       } catch {}
     }
+    try {
+      const [idx] = await db.query(`
+        SELECT index_name
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'attendance_daily'
+      `);
+      const idxSet = new Set((idx || []).map((i) => String(i.index_name)));
+      if (!idxSet.has('idx_user_date')) {
+        try { await db.query(`ALTER TABLE attendance_daily ADD INDEX idx_user_date (userId, date)`); } catch {}
+      }
+      if (!idxSet.has('idx_attendance_daily_date_user')) {
+        try { await db.query(`ALTER TABLE attendance_daily ADD INDEX idx_attendance_daily_date_user (date, userId)`); } catch {}
+      }
+      if (!idxSet.has('idx_attendance_daily_user_status_date')) {
+        try { await db.query(`ALTER TABLE attendance_daily ADD INDEX idx_attendance_daily_user_status_date (userId, status, date)`); } catch {}
+      }
+      if (!idxSet.has('idx_attendance_daily_date_kubun')) {
+        try { await db.query(`ALTER TABLE attendance_daily ADD INDEX idx_attendance_daily_date_kubun (date, kubun)`); } catch {}
+      }
+    } catch {}
   } catch {}
 }
 
