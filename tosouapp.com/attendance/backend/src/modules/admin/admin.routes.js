@@ -22,8 +22,23 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const s3Service = require('../../core/services/s3.service');
+const metrics = require('../../core/metrics');
 const { buildPayslipPdf } = require('../salary/payslipPdf');
 const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process.env.ENABLE_DEBUG_ROUTES || '').toLowerCase() === 'true';
+
+function recordEndpointPerf(endpoint, startedAt, meta = {}) {
+  const durationMs = Date.now() - startedAt;
+  try {
+    metrics.observe(`${endpoint}_duration_ms`, durationMs);
+    if (durationMs >= 100) metrics.inc(`${endpoint}_slow_count`, 1);
+  } catch (e) { /* silently ignored */ }
+  if (durationMs >= 100) {
+    try {
+      console.warn(JSON.stringify({ level: 'warn', type: 'slow_endpoint', endpoint, duration_ms: durationMs, ...meta }));
+    } catch (e) { /* silently ignored */ }
+  }
+}
+
 const uploadEmployeePhotos = (req, res, next) => {
   upload.array('files', 12)(req, res, (err) => {
     if (!err) return next();
@@ -1323,11 +1338,16 @@ router.put('/salary/input', async (req, res) => {
 });
 
 router.get('/salary/preview', async (req, res) => {
+  const startedAt = Date.now();
+  let targetUserId = null;
+  let targetMonth = null;
   try {
     const role = String(req.user?.role || '').toLowerCase();
     if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
     const userId = parseInt(String(req.query?.userId || ''), 10);
     const month = String(req.query?.month || '').slice(0, 7);
+    targetUserId = userId || null;
+    targetMonth = month || null;
     if (!userId || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Missing userId/month' });
     if (!(await ensureSameDepartmentIfManager(req, userId))) {
       return res.status(403).json({ message: 'Forbidden: cross-department access' });
@@ -1339,6 +1359,12 @@ router.get('/salary/preview', async (req, res) => {
     res.status(200).json(emp);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  } finally {
+    recordEndpointPerf('admin_salary_preview', startedAt, {
+      userId: req.user?.id || null,
+      targetUserId,
+      month: targetMonth
+    });
   }
 });
 
