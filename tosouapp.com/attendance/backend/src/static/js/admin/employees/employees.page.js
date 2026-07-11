@@ -116,7 +116,8 @@ async function renderEmployees(profile, c) {
     const ini3 = name3 ? name3[0].toUpperCase() : '?';
     let mgrName3 = '';
     try {
-      const allUsers3 = role2 === 'manager' ? await fetchJSONAuth('/api/manager/users') : await listUsers();
+      let allUsers3 = role2 === 'manager' ? await fetchJSONAuth('/api/manager/users') : await listUsers();
+      allUsers3 = (allUsers3 && allUsers3.rows) || allUsers3;
       const mgr3 = allUsers3.find(x => String(x.id) === String(u.manager_id));
       mgrName3 = mgr3 ? (mgr3.username || mgr3.email) : '';
     } catch (e) { /* silently ignored */ }
@@ -798,11 +799,7 @@ async function renderEmployees(profile, c) {
   let errMsgs = [];
   const isForbiddenErr = (e) => /forbidden|access denied|insufficient permission/i.test(String((e && e.message) || ''));
   const isCountedUser = (u) => {
-    const role = String((u && u.role) ? u.role : '').toLowerCase();
-    const st = String((u && u.employment_status) ? u.employment_status : 'active').toLowerCase();
-    if (st === 'inactive' || st === 'retired') return false;
-    if (role2 === 'manager') return role === 'employee';
-    return role === 'employee' || role === 'manager' || role === 'admin';
+    return true;
   };
   try {
     if (role2 === 'manager') {
@@ -1212,10 +1209,11 @@ async function renderEmployees(profile, c) {
       } else {
         try {
           showNavSpinner();
-          const list = await Promise.race([
+          let list = await Promise.race([
             fetchJSONAuth(role2 === 'manager' ? '/api/manager/users' : '/api/admin/employees'),
             new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
           ]);
+          list = (list && list.rows) || list;
           const f = list.find(u => {
             const code = String(u.employee_code || '').toUpperCase();
             const gen = ('EMP' + String(u.id).padStart(3,'0')).toUpperCase();
@@ -1587,17 +1585,17 @@ async function renderEmployees(profile, c) {
   table.innerHTML = `
     <thead>
       <tr>
-        ${mode==='delete' ? '<th class="sel-col">選択</th>' : ''}
-        <th data-sort="id">社員番号</th>
-        <th data-sort="username">氏名</th>
-        <th data-sort="email">メール</th>
-        <th data-sort="branch">支店</th>
-        <th data-sort="department">部署</th>
-        <th data-sort="role">役割</th>
-        <th data-sort="employment_type">雇用形態</th>
-        <th data-sort="employment_status">状態</th>
-        <th data-sort="hire_date">入社日</th>
-        <th>操作</th>
+        ${mode==='delete' ? '<th class="sel-col" style="min-width:40px;">選択</th>' : ''}
+        <th data-sort="id" style="min-width:90px;">社員番号</th>
+        <th data-sort="username" style="min-width:80px;">氏名</th>
+        <th data-sort="email" style="min-width:180px;">メール</th>
+        <th data-sort="branch" style="min-width:80px;">支店</th>
+        <th data-sort="department" style="min-width:80px;">部署</th>
+        <th data-sort="role" style="min-width:80px;">役割</th>
+        <th data-sort="employment_type" style="min-width:100px;">雇用形態</th>
+        <th data-sort="employment_status" style="min-width:60px;">状態</th>
+        <th data-sort="hire_date" style="min-width:90px;">入社日</th>
+        <th style="min-width:180px;">操作</th>
       </tr>
     </thead>
   `;
@@ -1677,6 +1675,15 @@ async function renderEmployees(profile, c) {
       <button type="button" id="empPrev">前へ</button>
       <span id="empPageInfo" style="margin:0 8px;"></span>
       <button type="button" id="empNext">次へ</button>
+    </div>
+    <div class="pager-right">
+      <label for="empPageSize">表示件数:</label>
+      <select id="empPageSize">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
     </div>
   `;
 
@@ -1890,15 +1897,16 @@ async function renderEmployees(profile, c) {
       tr.className = `emp-row ${rowStatus || 'active'}`;
       const emailVal = normText(u.email);
       const deptVal = normText(deptName(u.departmentId));
-      const detailBtn = `<a class="emp-action" href="/admin/employees?detail=${u.id}">👁 詳細</a>`;
-      const summaryBtn = `<a class="emp-action" href="/admin/employees?summary=${u.id}">📊 月次</a>`;
-      const editBtn = `<a class="emp-action" href="/admin/employees?edit=${u.id}">✏️ 編集</a>`;
       const canManageThis = role2 === 'admin';
-      const disableBtn = canManageThis ? `<button type="button" class="emp-action danger" data-delete="${u.id}">🚫 無効化</button>` : ``;
-      const hardDeleteBtn = canManageThis ? `<button type="button" class="emp-action danger" data-hard-delete="${u.id}">🗑️ 削除</button>` : ``;
+
+      const detailBtn   = `<a class="emp-act" href="/admin/employees?detail=${u.id}">👁 詳細</a>`;
+      const summaryBtn  = `<a class="emp-act" href="/admin/employees?summary=${u.id}">📊 月次</a>`;
+      const editBtn     = `<a class="emp-act" href="/admin/employees?edit=${u.id}">✏️ 編集</a>`;
+      const disableBtn  = canManageThis ? `<button type="button" class="emp-act danger" data-delete="${u.id}">🚫 無効化</button>` : '';
+      const hardDeleteBtn = canManageThis ? `<button type="button" class="emp-act danger" data-hard-delete="${u.id}">🗑️ 削除</button>` : '';
       const mainOps = mode === 'delete' ? `${detailBtn}${summaryBtn}` : `${detailBtn}${summaryBtn}${editBtn}`;
-      const dangerOps = `${disableBtn}${hardDeleteBtn}`;
-      const ops = `<div class="emp-action-main">${mainOps}</div>${dangerOps ? `<div class="emp-action-danger">${dangerOps}</div>` : ''}`;
+      const dangerOps   = `${disableBtn}${hardDeleteBtn}`;
+      const ops = `<div class="emp-act-row">${mainOps}${dangerOps}</div>`;
       if (isNarrowMobile && mode !== 'delete') {
         tr.classList.add('mobile-flat');
         tr.innerHTML = `
@@ -1920,38 +1928,45 @@ async function renderEmployees(profile, c) {
       } else {
         tr.innerHTML = `
         ${mode==='delete' ? `<td class="sel-col" data-label="選択"><input type="checkbox" class="empSel" value="${u.id}"></td>` : ''}
-        <td class="col-code" data-label="社員番号"><div class="cell-value cell-strong">${u.employee_code || fmtEmpNo(u.id)}</div></td>
-        <td class="col-name" data-label="氏名"><div class="cell-value cell-strong"><a class="emp-name-link" href="/admin/employees?detail=${u.id}">${u.username||''}</a></div></td>
-        <td class="col-email" data-label="メール"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}><div class="cell-value"><span class="text-pill neutral">${dispOrUnreg(emailVal)}</span></div></td>
-        <td class="col-branch" data-label="支店"><div class="cell-value"><span class="text-pill neutral">${(branches.find(br => String(br.id) === String(u.branch_id)) || {}).name || '—'}</span></div></td>
-        <td class="col-dept" data-label="部署"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}><div class="cell-value"><span class="text-pill neutral">${dispOrUnreg(deptVal)}</span></div></td>
-        <td data-label="役割"><div class="cell-value">${rolePill(u.role)}</div></td>
-        <td data-label="雇用形態"><div class="cell-value">${typePill(u.employment_type)}</div></td>
-        <td data-label="状態"><div class="cell-value">${statusPill(u.employment_status)}</div></td>
-        <td data-label="入社日"><div class="cell-value">${fmtDate(u.hire_date)}</div></td>
-        <td data-label="操作"><div class="cell-value"><div class="emp-action-group">${ops}</div></div></td>
+        <td class="col-code" data-label="社員番号" style="font-weight:600;">${u.employee_code || fmtEmpNo(u.id)}</td>
+        <td class="col-name" data-label="氏名"><a class="emp-name-link" href="/admin/employees?detail=${u.id}">${u.username||''}</a></td>
+        <td class="col-email" data-label="メール"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}>${dispOrUnreg(emailVal)}</td>
+        <td class="col-branch" data-label="支店">${(branches.find(br => String(br.id) === String(u.branch_id)) || {}).name || '—'}</td>
+        <td class="col-dept" data-label="部署"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}>${dispOrUnreg(deptVal)}</td>
+        <td data-label="役割">${rolePill(u.role)}</td>
+        <td data-label="雇用形態">${typePill(u.employment_type)}</td>
+        <td data-label="状態">${statusPill(u.employment_status)}</td>
+        <td data-label="入社日">${fmtDate(u.hire_date)}</td>
+        <td data-label="操作" class="col-ops">${ops}</td>
       `;
       }
       tbody.appendChild(tr);
     }
+
     const from = total ? Math.min(total, start + 1) : 0;
     const to = Math.min(total, start + pageItems.length);
     const pageInfo = content.querySelector('#empPageInfo');
+    const prevEl = content.querySelector('#empPrev');
+    const nextEl = content.querySelector('#empNext');
     if (pageInfo) {
       const maxPage = Math.max(1, Math.ceil(total / state.pageSize));
-      pageInfo.textContent = `${from}-${to} / ${total}`;
-      if (maxPage <= 1) {
+      pageInfo.textContent = `${from}-${to} / ${total} (${maxPage}ページ)`;
+      
+      // Update button states
+      if (prevEl) {
+        prevEl.disabled = state.page <= 1;
+        prevEl.style.display = '';
+      }
+      if (nextEl) {
+        nextEl.disabled = state.page >= maxPage;
+        nextEl.style.display = '';
+      }
+      
+      // Show/hide page info
+      if (total === 0) {
         pageInfo.style.display = 'none';
-        const prevEl = content.querySelector('#empPrev');
-        const nextEl = content.querySelector('#empNext');
-        if (prevEl) prevEl.style.display = 'none';
-        if (nextEl) nextEl.style.display = 'none';
       } else {
         pageInfo.style.display = '';
-        const prevEl = content.querySelector('#empPrev');
-        const nextEl = content.querySelector('#empNext');
-        if (prevEl) prevEl.style.display = '';
-        if (nextEl) nextEl.style.display = '';
       }
     }
     if (!isNarrowMobile) {
@@ -2128,6 +2143,19 @@ async function renderEmployees(profile, c) {
 
   const prev = pager.querySelector('#empPrev');
   const next = pager.querySelector('#empNext');
+  const pageSizeSelect = pager.querySelector('#empPageSize');
+  
+  // Initialize page size select
+  if (pageSizeSelect) {
+    pageSizeSelect.value = state.pageSize;
+    pageSizeSelect.addEventListener('change', (e) => {
+      state.pageSize = parseInt(e.target.value, 10);
+      state.page = 1; // Reset to first page when changing page size
+      renderRows();
+      updateUrl(mode === 'delete' ? '#delete' : '#list');
+    });
+  }
+  
   prev.addEventListener('click', () => {
     if (state.page > 1) {
       state.page -= 1;
@@ -2135,6 +2163,7 @@ async function renderEmployees(profile, c) {
       updateUrl(mode === 'delete' ? '#delete' : '#list');
     }
   });
+  
   next.addEventListener('click', () => {
     const total = applyFilterSort().length;
     const maxPage = Math.max(1, Math.ceil(total / state.pageSize));
@@ -2150,7 +2179,7 @@ async function renderEmployees(profile, c) {
       const t = e && e.target;
       const td = (t && t.closest) ? t.closest('td') : null;
       if (!td) return;
-      if (t && t.closest && t.closest('.emp-action-group')) return;
+      if (t && t.closest && t.closest('.emp-ops-wrap')) return;
       if (t && t.closest && t.closest('a')) return;
       if (t && t.matches && t.matches('input, button, select, label')) return;
       const tr = td.closest('tr');

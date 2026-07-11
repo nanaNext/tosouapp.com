@@ -206,7 +206,8 @@ async function mountEmployeesImpl({
     const ini3 = name3 ? name3[0].toUpperCase() : '?';
     let mgrName3 = '';
     try {
-      const allUsers3 = role2 === 'manager' ? await api.get('/api/manager/users', { signal }) : await listUsers({ signal });
+      let allUsers3 = role2 === 'manager' ? await api.get('/api/manager/users', { signal }) : await listUsers({ signal });
+      allUsers3 = (allUsers3 && allUsers3.rows) || allUsers3;
       const mgr3 = allUsers3.find(x => String(x.id) === String(u.manager_id));
       mgrName3 = mgr3 ? (mgr3.username || mgr3.email) : '';
     } catch (e) { if (e && e.name === 'AbortError') return done; }
@@ -262,7 +263,8 @@ async function mountEmployeesImpl({
   let depts = [];
   let errMsgs = [];
   try {
-    users = role2 === 'manager' ? await api.get('/api/manager/users', { signal }) : await listEmployees({ signal });
+    let usersRes = role2 === 'manager' ? await api.get('/api/manager/users', { signal }) : await listEmployees({ signal });
+    users = Array.isArray(usersRes) ? usersRes : (usersRes && Array.isArray(usersRes.rows) ? usersRes.rows : []);
   } catch (e1) {
     if (e1 && e1.name === 'AbortError') return done;
     errMsgs.push(`一覧: ${(e1 && e1.message) ? e1.message : 'unknown'}`);
@@ -480,10 +482,11 @@ async function mountEmployeesImpl({
       } else {
         try {
           showNavSpinner();
-          const list = await Promise.race([
+          let list = await Promise.race([
               api.get(role2 === 'manager' ? '/api/manager/users' : '/api/admin/employees', { signal }),
             new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
           ]);
+          list = (list && list.rows) || list;
           const f = list.find(u => {
             const code = String(u.employee_code || '').toUpperCase();
             const gen = ('EMP' + String(u.id).padStart(3, '0')).toUpperCase();
