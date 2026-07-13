@@ -125,9 +125,24 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   box-sizing: border-box !important;
 }
 
-.admin .topbar .brand img.icon {
+.admin .topbar .brand .logo-mark {
+  width: 28px !important;
   height: 28px !important;
-  width: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  flex: 0 0 28px !important;
+  background: transparent !important;
+}
+
+.admin .topbar .brand img.icon {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  clip-path: none !important;
 }
 
 .admin .topbar .brand .logo {
@@ -271,18 +286,21 @@ body.drawer-open.admin.has-sidebar .content {
   height: 32px;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.3);
-  background: rgba(255,255,255,0.15);
+  border: none !important;
+  background: transparent !important;
   box-sizing: border-box;
   color: #ffffff;
   font-weight: 600;
   font-size: 13px;
+  box-shadow: none !important;
 }
 
 .admin .topbar .user .ud-avatar.sm {
   width: 32px !important;
   height: 32px !important;
   min-width: 32px !important;
+  border-radius: 999px !important;
+  border-radius: 50% !important;
   border-radius: 50% !important;
 }
 
@@ -2456,13 +2474,24 @@ body.drawer-open.admin.has-sidebar .content {
   }
 
   .admin .topbar .brand .icon {
-    height: 24px;
-    width: auto !important;
+    height: 100% !important;
+    width: 100% !important;
     display: inline-block !important;
     max-width: none !important;
     flex: 0 0 auto;
     margin-right: 0;
     transform: translateY(0);
+    object-fit: cover !important;
+    object-position: center !important;
+    clip-path: none !important;
+  }
+
+  .admin .topbar .brand .logo-mark {
+    width: 24px !important;
+    height: 24px !important;
+    flex: 0 0 24px !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
   }
 
   .admin .topbar .brand .logo {
