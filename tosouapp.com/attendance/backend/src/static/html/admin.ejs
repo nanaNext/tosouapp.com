@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <meta name="asset-v" content="navy-20260704-ui32">
+  <meta name="asset-v" content="<%= appVersion %>">
   <style></style>
   <script>
     if (window.location.search.includes('standalone=1') || window.location.search.includes('standalone=true')) {
@@ -22,7 +22,7 @@
   
   <script src="/static/js/pages/session-idle.js?v=navy-20260411-patch2" defer></script>
   <script src="/static/js/admin/dark-mode-enforcer.js?v=4" defer></script>
-  <script type="module" src="/static/js/admin/admin.page.js?v=47"></script>
+  <script type="module" src="/static/js/admin/admin.page.js?v=<%= appVersion %>"></script>
   <link rel="icon" href="data:,">
 </head>
 
