@@ -137,7 +137,18 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   background: transparent !important;
 }
 
-.admin .topbar .brand img.icon {
+.admin .topbar .brand > img.icon {
+  width: 28px !important;
+  height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  clip-path: none !important;
+}
+
+.admin .topbar .brand .logo-mark > img.icon {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
