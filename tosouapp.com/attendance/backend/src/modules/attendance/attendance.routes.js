@@ -637,27 +637,34 @@ router.get('/annual-summary', authenticate, authorize('employee','manager','admi
           remaining: Math.max(0, totalGranted - usedDays)
         };
       } else {
-        // No grants — try counting from attendance_daily kubun with hire_date as reference
+        // No grants — check if employee is eligible (6 months after hire per Japanese labor law)
         const userRepo = require('../users/user.repository');
         const u = await userRepo.getUserById(userId);
         const hireDate = u?.hire_date ? String(u.hire_date).slice(0, 10) : null;
         if (hireDate) {
-          const [kubunRows] = await db.query(`
-            SELECT COUNT(*) as cnt
-            FROM attendance_daily
-            WHERE userId = ? AND kubun = '有給休暇' AND date >= ?
-          `, [userId, hireDate]);
-          const usedDays = Number(kubunRows?.[0]?.cnt || 0);
-          // Default 10 days for first year (6 months after hire per Japanese labor law)
-          const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
-          let entitled = 10;
-          try { entitled = calculatePaidLeaveEntitlement(hireDate) || 10; } catch (e) { /* fallback */ }
-          paidLeaveInfo = {
-            grantDate: hireDate,
-            totalGranted: entitled,
-            usedSinceGrant: usedDays,
-            remaining: Math.max(0, entitled - usedDays)
-          };
+          const hireMs = new Date(hireDate + 'T00:00:00Z').getTime();
+          const nowMs = Date.now();
+          const monthsSinceHire = (nowMs - hireMs) / (30.44 * 24 * 60 * 60 * 1000);
+          
+          if (monthsSinceHire >= 6) {
+            // Eligible — calculate entitlement
+            const [kubunRows] = await db.query(`
+              SELECT COUNT(*) as cnt
+              FROM attendance_daily
+              WHERE userId = ? AND kubun = '有給休暇' AND date >= ?
+            `, [userId, hireDate]);
+            const usedDays = Number(kubunRows?.[0]?.cnt || 0);
+            const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
+            let entitled = 10;
+            try { entitled = calculatePaidLeaveEntitlement(hireDate) || 10; } catch (e) { /* fallback */ }
+            paidLeaveInfo = {
+              grantDate: hireDate,
+              totalGranted: entitled,
+              usedSinceGrant: usedDays,
+              remaining: Math.max(0, entitled - usedDays)
+            };
+          }
+          // else: not yet eligible, leave paidLeaveInfo as zeros
         }
       }
     } catch (e) {
