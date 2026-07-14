@@ -435,7 +435,7 @@ router.post('/shifts/backfill', authenticate, authorize('admin'), async (req, re
 });
 
 router.post('/shifts/bulk', authenticate, authorize('employee','manager','admin'), controller.postShiftsBulk);
-router.post('/shifts/bulk-test', controller.postShiftsBulk);
+// Removed insecure /shifts/bulk-test route (was public, no auth)
 router.get('/shifts/submissions', authenticate, authorize('manager','admin'), controller.getShiftApprovals);
 router.get('/shifts/matrix', authenticate, authorize('manager','admin'), controller.getShiftMatrix);
 router.get('/shifts/all-employees', authenticate, authorize('employee','manager','admin'), controller.getAllEmployeeShifts);

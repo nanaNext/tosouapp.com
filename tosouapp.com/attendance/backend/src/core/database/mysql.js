@@ -11,7 +11,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   port: parseInt(process.env.DB_PORT || '3306', 10),
   waitForConnections: true,
-  connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '200', 10),
+  connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '20', 10),
   queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '0', 10),
   dateStrings: true,
   charset: 'utf8mb4',
@@ -92,7 +92,7 @@ pool.getPoolStats = () => {
     freeConnections: p?._freeConnections?.length || 0,
     activeConnections: (p?._allConnections?.length || 0) - (p?._freeConnections?.length || 0),
     queuedRequests: p?._connectionQueue?.length || 0,
-    connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '200', 10)
+    connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '20', 10)
   };
 };
 

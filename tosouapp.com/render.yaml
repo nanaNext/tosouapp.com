@@ -113,3 +113,44 @@ services:
         sync: false
       - key: SUPER_ADMIN_NAME
         value: Super Admin
+
+  # === BACKGROUND WORKER (BullMQ) ===
+  # Uncomment below when you need email queue processing on production.
+  # Requires a Redis instance (see below).
+  #
+  # - type: worker
+  #   name: iizuka-attendance-worker
+  #   env: node
+  #   plan: starter
+  #   region: singapore
+  #   buildCommand: npm install
+  #   startCommand: npm run workers:start
+  #   autoDeploy: true
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: REDIS_URL
+  #       fromService:
+  #         name: iizuka-redis
+  #         type: redis
+  #         property: connectionString
+  #     - key: DB_HOST
+  #       sync: false
+  #     - key: DB_PORT
+  #       value: "3306"
+  #     - key: DB_NAME
+  #       sync: false
+  #     - key: DB_USER
+  #       sync: false
+  #     - key: DB_PASS
+  #       sync: false
+
+  # === REDIS (for rate limiting, caching, BullMQ) ===
+  # Uncomment to provision a managed Redis instance on Render.
+  #
+  # - type: redis
+  #   name: iizuka-redis
+  #   plan: free
+  #   region: singapore
+  #   maxmemoryPolicy: allkeys-lru
+  #   ipAllowList: []   # Allow only internal Render services

@@ -85,6 +85,64 @@ async function runMigrations() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
         }
+      },
+      {
+        id: '20260714_01_shift_requests_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS shift_requests (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              userId BIGINT UNSIGNED NOT NULL,
+              date DATE NOT NULL,
+              status VARCHAR(32) NOT NULL,
+              leaveType VARCHAR(32) NULL,
+              reason VARCHAR(255) NULL,
+              detail TEXT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uniq_user_date (userId, date),
+              INDEX idx_date (date),
+              CONSTRAINT fk_shift_req_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
+      },
+      {
+        id: '20260714_02_shift_month_status_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS shift_month_status (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              userId BIGINT UNSIGNED NOT NULL,
+              month VARCHAR(7) NOT NULL,
+              status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uniq_user_month (userId, month),
+              CONSTRAINT fk_sms_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
+      },
+      {
+        id: '20260714_03_user_change_requests_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS user_change_requests (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              user_id BIGINT UNSIGNED NOT NULL,
+              field_name VARCHAR(64) NOT NULL,
+              old_value TEXT NULL,
+              new_value TEXT NULL,
+              status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              reviewed_at TIMESTAMP NULL,
+              reviewed_by BIGINT UNSIGNED NULL,
+              INDEX idx_user_id (user_id),
+              INDEX idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
       }
     ];
     for (const m of migrations) {

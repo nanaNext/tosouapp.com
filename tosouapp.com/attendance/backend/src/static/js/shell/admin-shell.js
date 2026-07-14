@@ -521,12 +521,12 @@ export function wireMobileDrawer() {
       const now = Date.now();
       // Prevent double-toggle caused by pointerdown + click/touchstart firing together.
       if (now - lastMenuToggleAt < 260) {
-        try { e.preventDefault(); } catch (e) { /* silently ignored */ }
+        try { if (e.cancelable) e.preventDefault(); } catch (e) { /* silently ignored */ }
         try { e.stopPropagation(); } catch (e) { /* silently ignored */ }
         return;
       }
       lastMenuToggleAt = now;
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
       e.stopPropagation();
       toggle();
     };

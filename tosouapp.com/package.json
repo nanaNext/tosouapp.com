@@ -34,8 +34,7 @@
     "load:test:smoke": "node attendance/backend/scripts/load-test-smoke.js",
     "db:notices:backfill:dry": "node attendance/backend/scripts/backfill-notice-kinds.js",
     "db:notices:backfill:apply": "node attendance/backend/scripts/backfill-notice-kinds.js --apply",
-    "preflight:prod": "node attendance/backend/scripts/preflight-prod.js",
-    "git:push": "git --no-pager add . && git --no-pager commit -m \"fix: PDF logic (v8)\" && git --no-pager push origin main"
+    "preflight:prod": "node attendance/backend/scripts/preflight-prod.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1058.0",

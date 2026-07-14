@@ -144,7 +144,12 @@ exports.resignEmployee = async (req, res) => {
 };
 
 // === Phê duyệt yêu cầu cập nhật hồ sơ của nhân viên ===
+// Table user_change_requests is created by bootstrap migration 20260714_03
+let _profileTableEnsured = false;
 async function ensureProfileChangeTable() {
+  if (_profileTableEnsured) return;
+  _profileTableEnsured = true;
+  // Safety fallback — bootstrap should have created this table already
   await db.query(`
     CREATE TABLE IF NOT EXISTS user_change_requests (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
