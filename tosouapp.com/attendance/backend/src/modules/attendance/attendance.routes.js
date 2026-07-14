@@ -444,4 +444,271 @@ router.post('/shifts/submissions/approve', authenticate, authorize('manager','ad
 router.get('/shifts/user-month', authenticate, authorize('manager','admin'), controller.getUserShiftsForMonth);
 router.get('/shifts/monthly/:month', authenticate, authorize('employee','manager','admin'), controller.getMyMonthlyShifts);
 
+// ============================================================
+// 年間サマリ API — 36協定 compliance tracking
+// Returns: annual OT hours, months exceeding 45h, rolling averages,
+//          paid leave balance (有給休暇情報)
+// ============================================================
+router.get('/annual-summary', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    let userId = req.user?.id;
+    if (req.query.userId && (role === 'admin' || role === 'manager')) {
+      userId = parseInt(req.query.userId, 10) || userId;
+    }
+    const year = parseInt(req.query.year || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 4), 10);
+    if (!userId || !year) return res.status(400).json({ message: 'Missing userId or year' });
+
+    const db = require('../../core/database/mysql');
+    const leaveRepo = require('../leave/leave.repository');
+
+    // 1. Get all attendance records for the year and calculate OT
+    //    attendance table: userId, checkIn, checkOut
+    //    attendance_daily table: userId, date, break_minutes, night_break_minutes
+    //    Standard work day = 8 hours (480 minutes). OT = actual work - 480 (if > 0)
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+
+    const [rows] = await db.query(`
+      SELECT 
+        DATE(a.checkIn) as work_date,
+        a.checkIn, a.checkOut,
+        COALESCE(d.break_minutes, 60) as break_minutes
+      FROM attendance a
+      LEFT JOIN attendance_daily d ON d.userId = a.userId AND d.date = DATE(a.checkIn)
+      WHERE a.userId = ? 
+        AND DATE(a.checkIn) BETWEEN ? AND ?
+        AND a.checkOut IS NOT NULL
+      ORDER BY a.checkIn ASC
+    `, [userId, startDate, endDate]);
+
+    // 2. Calculate monthly overtime
+    //    Standard: 8h/day (480min). OT per day = max(0, worked - 480)
+    const STANDARD_DAY_MIN = 480;
+    const monthlyOT = {}; // { '2026-01': totalOTMinutes, ... }
+    for (let m = 1; m <= 12; m++) {
+      monthlyOT[`${year}-${String(m).padStart(2, '0')}`] = 0;
+    }
+
+    for (const row of (rows || [])) {
+      const monthKey = String(row.work_date || '').slice(0, 7);
+      if (!monthKey || !monthlyOT.hasOwnProperty(monthKey)) continue;
+      
+      const cin = new Date(row.checkIn);
+      const cout = new Date(row.checkOut);
+      if (isNaN(cin.getTime()) || isNaN(cout.getTime())) continue;
+      
+      const workedMin = Math.max(0, (cout - cin) / 60000);
+      const breakMin = Number(row.break_minutes || 60);
+      const netWorked = Math.max(0, workedMin - breakMin);
+      const otMin = Math.max(0, netWorked - STANDARD_DAY_MIN);
+      monthlyOT[monthKey] += otMin;
+    }
+
+    // 3. Annual totals
+    const annualOTMinutes = Object.values(monthlyOT).reduce((s, v) => s + v, 0);
+    const annualLimitMinutes = 720 * 60; // 720時間 = 43200分
+
+    // 4. Count months exceeding 45h (2700 minutes)
+    const threshold45h = 45 * 60;
+    const monthsOver45 = Object.values(monthlyOT).filter(v => v > threshold45h).length;
+    const maxMonthsOver45 = 6; // 36協定 allows max 6 months/year over 45h
+
+    // 5. Rolling averages for recent months (直近複数月平均)
+    //    Calculate 2-month, 3-month, 4-month, 5-month, 6-month rolling averages
+    const now = new Date(Date.now() + 9 * 3600 * 1000);
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Get last 6 months of OT data (may span previous year)
+    const recentMonths = [];
+    let d = new Date(now.getFullYear(), now.getMonth(), 1);
+    for (let i = 0; i < 6; i++) {
+      const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      recentMonths.unshift(mk);
+      d.setMonth(d.getMonth() - 1);
+    }
+
+    // Fetch previous year data if needed
+    const prevYear = year - 1;
+    let prevYearOT = {};
+    const needsPrevYear = recentMonths.some(m => m.startsWith(String(prevYear)));
+    if (needsPrevYear) {
+      const [prevRows] = await db.query(`
+        SELECT 
+          DATE(a.checkIn) as work_date,
+          a.checkIn, a.checkOut,
+          COALESCE(d.break_minutes, 60) as break_minutes
+        FROM attendance a
+        LEFT JOIN attendance_daily d ON d.userId = a.userId AND d.date = DATE(a.checkIn)
+        WHERE a.userId = ? 
+          AND DATE(a.checkIn) BETWEEN ? AND ?
+          AND a.checkOut IS NOT NULL
+      `, [userId, `${prevYear}-01-01`, `${prevYear}-12-31`]);
+      for (const row of (prevRows || [])) {
+        const mk = String(row.work_date || '').slice(0, 7);
+        if (!mk) continue;
+        const cin = new Date(row.checkIn);
+        const cout = new Date(row.checkOut);
+        if (isNaN(cin.getTime()) || isNaN(cout.getTime())) continue;
+        const workedMin = Math.max(0, (cout - cin) / 60000);
+        const breakMin = Number(row.break_minutes || 60);
+        const netWorked = Math.max(0, workedMin - breakMin);
+        const otMin = Math.max(0, netWorked - STANDARD_DAY_MIN);
+        prevYearOT[mk] = (prevYearOT[mk] || 0) + otMin;
+      }
+    }
+
+    const getOTForMonth = (mk) => {
+      if (monthlyOT.hasOwnProperty(mk)) return monthlyOT[mk];
+      if (prevYearOT.hasOwnProperty(mk)) return prevYearOT[mk];
+      return 0;
+    };
+
+    // Individual month OT for display
+    const recentMonthlyOT = recentMonths.map(mk => ({
+      month: mk,
+      minutes: getOTForMonth(mk)
+    }));
+
+    // Rolling averages (2~6 months)
+    const rollingAverages = {};
+    for (let n = 2; n <= 6; n++) {
+      const slice = recentMonths.slice(recentMonths.length - n);
+      const total = slice.reduce((s, mk) => s + getOTForMonth(mk), 0);
+      const avg = Math.round(total / n);
+      rollingAverages[`${n}months`] = {
+        totalMinutes: total,
+        averageMinutes: avg,
+        exceeds80h: avg > (80 * 60) // 80h limit for rolling average
+      };
+    }
+
+    // 6. Single month max check (100h limit)
+    const maxSingleMonthOT = Math.max(...Object.values(monthlyOT), 0);
+    const exceeds100h = maxSingleMonthOT > (100 * 60);
+
+    // 7. 有給休暇 (Paid Leave) info
+    //    In HYBRID/MANUAL mode, leave_grants may be empty.
+    //    Use computeUserBalance from leave controller which handles all modes correctly.
+    let paidLeaveInfo = { grantDate: null, usedSinceGrant: 0, remaining: 0, totalGranted: 0 };
+    try {
+      const leaveController = require('../leave/leave.controller');
+      const balance = await leaveController.ensureUserGrants(userId);
+      
+      // If grants exist after ensure, use them
+      if (balance && balance.length > 0) {
+        const latest = balance[balance.length - 1];
+        const grantDate = latest.grantDate ? String(latest.grantDate).slice(0, 10) : null;
+        const totalGranted = Number(latest.daysGranted || 0);
+
+        // Count used days from attendance_daily kubun
+        let usedDays = 0;
+        if (grantDate) {
+          const [kubunRows] = await db.query(`
+            SELECT COUNT(*) as cnt
+            FROM attendance_daily
+            WHERE userId = ? AND kubun = '有給休暇' AND date >= ?
+          `, [userId, grantDate]);
+          usedDays = Number(kubunRows?.[0]?.cnt || 0);
+        }
+
+        // Also check approved leave_requests
+        if (grantDate) {
+          const [approvedRows] = await db.query(`
+            SELECT startDate, endDate
+            FROM leave_requests
+            WHERE userId = ? AND type = 'paid' AND status = 'approved' AND startDate >= ?
+          `, [userId, grantDate]);
+          let approvedDays = 0;
+          for (const r of (approvedRows || [])) {
+            const s = new Date(String(r.startDate).slice(0, 10));
+            const e = new Date(String(r.endDate).slice(0, 10));
+            if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+              approvedDays += Math.max(1, Math.round((e - s) / 86400000) + 1);
+            }
+          }
+          usedDays = Math.max(usedDays, approvedDays);
+        }
+
+        paidLeaveInfo = {
+          grantDate,
+          totalGranted,
+          usedSinceGrant: usedDays,
+          remaining: Math.max(0, totalGranted - usedDays)
+        };
+      } else {
+        // No grants — try counting from attendance_daily kubun with hire_date as reference
+        const userRepo = require('../users/user.repository');
+        const u = await userRepo.getUserById(userId);
+        const hireDate = u?.hire_date ? String(u.hire_date).slice(0, 10) : null;
+        if (hireDate) {
+          const [kubunRows] = await db.query(`
+            SELECT COUNT(*) as cnt
+            FROM attendance_daily
+            WHERE userId = ? AND kubun = '有給休暇' AND date >= ?
+          `, [userId, hireDate]);
+          const usedDays = Number(kubunRows?.[0]?.cnt || 0);
+          // Default 10 days for first year (6 months after hire per Japanese labor law)
+          const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
+          let entitled = 10;
+          try { entitled = calculatePaidLeaveEntitlement(hireDate) || 10; } catch (e) { /* fallback */ }
+          paidLeaveInfo = {
+            grantDate: hireDate,
+            totalGranted: entitled,
+            usedSinceGrant: usedDays,
+            remaining: Math.max(0, entitled - usedDays)
+          };
+        }
+      }
+    } catch (e) {
+      // leave system error — show what we can
+      console.error('[annual-summary] leave error:', e.message);
+    }
+
+    // 8. Build response
+    const fmtHm = (min) => {
+      const h = Math.floor(Math.abs(min) / 60);
+      const m = Math.abs(min) % 60;
+      return `${h}:${String(m).padStart(2, '0')}`;
+    };
+
+    res.json({
+      year,
+      userId,
+      // 年間超過時間
+      annualOvertime: {
+        totalMinutes: annualOTMinutes,
+        totalFormatted: fmtHm(annualOTMinutes),
+        limitMinutes: annualLimitMinutes,
+        limitFormatted: '720:00',
+        exceeds: annualOTMinutes > annualLimitMinutes
+      },
+      // 45時間超過回数
+      monthsOver45h: {
+        count: monthsOver45,
+        limit: maxMonthsOver45,
+        exceeds: monthsOver45 > maxMonthsOver45
+      },
+      // 単月100時間チェック
+      singleMonthMax: {
+        maxMinutes: maxSingleMonthOT,
+        maxFormatted: fmtHm(maxSingleMonthOT),
+        exceeds100h
+      },
+      // 直近複数月平均法定外労働時間
+      recentMonths: recentMonthlyOT.map(r => ({
+        month: r.month,
+        minutes: r.minutes,
+        formatted: fmtHm(r.minutes)
+      })),
+      rollingAverages,
+      // 有給休暇
+      paidLeave: paidLeaveInfo
+    });
+  } catch (err) {
+    console.error('[annual-summary]', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

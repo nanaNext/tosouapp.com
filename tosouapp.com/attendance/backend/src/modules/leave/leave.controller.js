@@ -248,6 +248,46 @@ exports.listMine = async (req, res) => {
   try {
     const userId = req.user?.id;
     const rows = await repo.listMine(userId);
+    
+    // Also include 有給休暇 days from attendance_daily that may not have an approved leave_request
+    const db = require('../../core/database/mysql');
+    try {
+      const [kubunDays] = await db.query(`
+        SELECT date FROM attendance_daily 
+        WHERE userId = ? AND kubun = '有給休暇'
+        ORDER BY date ASC
+      `, [userId]);
+      
+      // For each kubun day, check if there's already an approved request covering it
+      const existingApproved = new Set();
+      for (const r of (rows || [])) {
+        if (String(r?.status || '').toLowerCase() === 'approved' && String(r?.type || '').toLowerCase() === 'paid') {
+          const s = new Date(String(r.startDate || '').slice(0, 10));
+          const e = new Date(String(r.endDate || '').slice(0, 10));
+          for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+            existingApproved.add(d.toISOString().slice(0, 10));
+          }
+        }
+      }
+      
+      // Add synthetic "approved" entries for kubun days not yet covered
+      for (const day of (kubunDays || [])) {
+        const dateStr = String(day.date || '').slice(0, 10);
+        if (!dateStr || existingApproved.has(dateStr)) continue;
+        rows.push({
+          id: null,
+          userId,
+          startDate: dateStr,
+          endDate: dateStr,
+          type: 'paid',
+          status: 'approved',
+          reason: '勤務区分入力',
+          created_at: null,
+          _synthetic: true
+        });
+      }
+    } catch (e) { /* attendance_daily may not exist */ }
+    
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
