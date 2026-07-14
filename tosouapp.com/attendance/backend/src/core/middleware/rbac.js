@@ -99,11 +99,9 @@ function permit(moduleKey, action) {
         return res.status(500).json({ message: 'RBAC: unknown module' });
       }
       const allowed = mod[role] || new Set();
+      // Strict hierarchy: mỗi role chỉ pass nếu action nằm trong permission set
+      // KHÔNG cho manager inherit quyền admin
       if (!allowed.has(action) && !allowed.has('full')) {
-        const adminAllowed = mod['admin'] || new Set();
-        if (role === 'manager' && (adminAllowed.has(action) || adminAllowed.has('full'))) {
-          return next();
-        }
         return res.status(403).json({ message: 'Forbidden: insufficient permission' });
       }
       next();

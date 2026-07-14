@@ -361,11 +361,18 @@ exports.timesheet = async (req, res) => {
     if (req.user?.role === 'employee' && String(userId) !== String(requesterId)) {
       return res.status(403).json({ message: 'Forbidden: employees can only view their own timesheet' });
     }
-    // Manager: can only view timesheet of employees in same department
+    // RBAC: Manager chỉ xem được timesheet của employee (role=3)
     if (req.user?.role === 'manager' && String(userId) !== String(requesterId)) {
       const targetUser = await require('../users/user.repository').getUserById(userId);
-      if (targetUser && req.user.departmentId && String(targetUser.departmentId) !== String(req.user.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: can only view employees in your department' });
+      if (!targetUser) return res.status(404).json({ message: 'User not found' });
+      if (String(targetUser.role || '').toLowerCase() !== 'employee') {
+        return res.status(403).json({ message: 'Forbidden: managers can only view employee timesheets' });
+      }
+      if (req.user.departmentId && String(targetUser.departmentId) !== String(req.user.departmentId)) {
+        const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
+        if (strictDept) {
+          return res.status(403).json({ message: 'Forbidden: can only view employees in your department' });
+        }
       }
     }
     const result = await service.timesheet(userId, fromDate, toDate);
@@ -533,7 +540,7 @@ exports.todayRoster = async (req, res) => {
     const date = qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const rows = await attendanceRepo.getTodayRosterItems(date);
 
-    const items = (rows || []).map(r => {
+    let items = (rows || []).map(r => {
       const hasIn = !!r.checkIn;
       const hasOut = !!r.checkOut;
       const status = hasIn ? (hasOut ? 'checked_out' : 'working') : 'not_checked_in';
@@ -556,6 +563,11 @@ exports.todayRoster = async (req, res) => {
         status
       };
     });
+
+    // RBAC: Manager chỉ thấy employee, Admin thấy tất cả
+    if (role === 'manager') {
+      items = items.filter(i => String(i.role || '').toLowerCase() === 'employee');
+    }
     itemsCount = items.length;
 
     const plannedBase = await attendanceRepo.getTodayPlannedItems(date);
@@ -595,7 +607,13 @@ exports.todayRoster = async (req, res) => {
       });
     }
     plannedCount = planned.length;
-    res.status(200).json({ date, items, planned });
+    // RBAC: Manager chỉ thấy planned của employee
+    let filteredPlanned = planned;
+    if (role === 'manager') {
+      filteredPlanned = planned.filter(p => String(p.role || '').toLowerCase() === 'employee');
+      plannedCount = filteredPlanned.length;
+    }
+    res.status(200).json({ date, items, planned: filteredPlanned });
   } catch (err) {
     res.status(500).json({ message: err.message });
   } finally {
@@ -631,18 +649,19 @@ async function resolveTargetUserId(req) {
   if (!meId || !targetId) return null;
   if (role === 'employee') return meId;
   if (role === 'manager' && String(targetId) !== String(meId)) {
-    // Keep behavior aligned with manager user listing (company-wide by default).
-    // nghĩa là manager có thể xem tất cả các nhân viên trong công ty
-    // nhưng chỉ có thể xem thông tin của nhân viên trong cùng phòng ban
-    // Enable strict department scoping only when explicitly configured.
-    const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
-    if (!strictDept) return targetId;
-    const me = await userRepo.getUserById(meId);
+    // RBAC: Manager chỉ được xem dữ liệu của employee (role=3)
     const target = await userRepo.getUserById(targetId);
     if (!target) return null;
-    // In strict mode, deny when department is missing or mismatched.
-    if (!me?.departmentId || !target?.departmentId || String(me.departmentId) !== String(target.departmentId)) {
+    if (String(target.role || '').toLowerCase() !== 'employee') {
       return '__forbidden__';
+    }
+    // Enable strict department scoping only when explicitly configured.
+    const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
+    if (strictDept) {
+      const me = await userRepo.getUserById(meId);
+      if (!me?.departmentId || !target?.departmentId || String(me.departmentId) !== String(target.departmentId)) {
+        return '__forbidden__';
+      }
     }
   }
   return targetId;

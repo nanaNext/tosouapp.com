@@ -24,16 +24,20 @@ exports.list = async (req, res) => {
     let departmentId = req.query.departmentId != null ? String(req.query.departmentId || '').trim() : null;
     const employmentStatus = req.query.employmentStatus != null ? String(req.query.employmentStatus || '').trim() : null;
 
-    // Branch/Department scope: manager can see all employees
+    // RBAC hierarchy: Manager can only see employees (role=3), not admin/manager
     const userRole = String(req.user?.role || '').toLowerCase();
-    // Removed department/branch scope for managers to show all employees
-    const usePaged = q || limit != null || offset != null || role || departmentId || employmentStatus;
+    let roleFilter = role;
+    if (userRole === 'manager') {
+      // Manager chỉ được phép xem employee — bất kể client gửi filter gì
+      roleFilter = 'employee';
+    }
+    const usePaged = q || limit != null || offset != null || roleFilter || departmentId || employmentStatus;
     const superEmail = (process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
     const meRole = String(req.user?.role || '').toLowerCase();
     const meEmail = String(req.user?.email || '').trim().toLowerCase();
     const isSuper = (superEmail && meEmail === superEmail) || meRole === 'super_admin' || meRole === 'super';
     if (usePaged) {
-      const r = await repo.listUsersPaged({ q, role: role || null, departmentId: departmentId || null, employmentStatus: employmentStatus || null, limit, offset });
+      const r = await repo.listUsersPaged({ q, role: roleFilter || null, departmentId: departmentId || null, employmentStatus: employmentStatus || null, limit, offset });
       if (!isSuper && superEmail) {
         const rows2 = (r.rows || []).filter(u => String(u.email || '').trim().toLowerCase() !== superEmail);
         const delta = (r.rows || []).length - rows2.length;
@@ -43,6 +47,10 @@ exports.list = async (req, res) => {
     }
     let rows = await repo.listUsers();
     if (!isSuper && superEmail) rows = (rows || []).filter(u => String(u.email || '').trim().toLowerCase() !== superEmail);
+    // RBAC: Manager chỉ thấy employee
+    if (userRole === 'manager') {
+      rows = (rows || []).filter(u => String(u.role || '').toLowerCase() === 'employee');
+    }
     return res.status(200).json(normalizeUserListResult(rows, limit, offset));
   } catch (err) {
     res.status(500).json({ message: err.message });
