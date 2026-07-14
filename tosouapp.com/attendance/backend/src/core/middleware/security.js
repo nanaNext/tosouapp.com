@@ -24,36 +24,9 @@ module.exports = (app) => {
   };
 
   // --- SECURITY HEADERS ---
+  // Note: Main security headers (X-Frame-Options, CSP, HSTS, etc.) are set in app.js
+  // with env-configurable values. Only x-powered-by is disabled here.
   app.disable('x-powered-by');
-
-  app.use((req, res, next) => {
-    // Prevent clickjacking
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    // Prevent MIME type sniffing
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    // XSS protection (legacy browsers)
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    // Referrer policy
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    // Permissions policy (disable unnecessary features)
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=()');
-    // HSTS (if enabled)
-    if (String(process.env.ENABLE_HSTS || '').toLowerCase() === 'true') {
-      const hstsValue = process.env.HSTS_VALUE || 'max-age=31536000; includeSubDomains';
-      res.setHeader('Strict-Transport-Security', hstsValue);
-    }
-    // Content Security Policy (relaxed for inline scripts/styles in admin SPA)
-    res.setHeader('Content-Security-Policy', [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://api.resend.com",
-      "frame-ancestors 'self'"
-    ].join('; '));
-    next();
-  });
 
   // --- CSRF TOKEN ---
   app.use((req, res, next) => {

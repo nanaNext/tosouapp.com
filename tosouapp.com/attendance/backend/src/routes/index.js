@@ -105,14 +105,14 @@ module.exports = function(app) {
   const branchRoutes = require('../modules/branches/branch.routes');
   app.use('/api/branches', branchRoutes);
 
-  // TEMP TEST ROUTE FOR EMAIL
-  app.get('/api/test-mail', async (req, res) => {
+  // Test mail route — admin only, never expose in production without auth
+  app.get('/api/test-mail', authenticate, authorize('admin'), async (req, res) => {
     try {
       const emailService = require('../core/notifications/email.service');
-      const { mailFrom, mailProvider, smtpHost, smtpUser } = require('../config/env');
+      const { mailFrom, mailProvider } = require('../config/env');
       await emailService.sendViaResend({
         from: mailFrom,
-        to: req.query.email || 'nana123thanhcong@gmail.com',
+        to: req.query.email || req.user.email,
         subject: 'TEST EMAIL SYSTEM',
         text: 'This is a test email sent from /api/test-mail',
         html: '<p>This is a test email sent from /api/test-mail</p>'
@@ -122,9 +122,6 @@ module.exports = function(app) {
         message: 'Mail sent successfully',
         debug: {
           mailProvider,
-          mailFrom,
-          smtpHost,
-          smtpUser: smtpUser ? '***' + smtpUser.slice(3) : null,
           canSend: emailService.canSendMail()
         }
       });

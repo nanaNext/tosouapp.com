@@ -26,7 +26,7 @@ const parseNum = (raw, label, { allowEmpty = false } = {}) => {
 
 const isMoneyKey = (k) => {
   const s = String(k || '');
-  return s.includes('円') || s.includes('額') || s.includes('手当') || s.includes('保険') || s.includes('税') || s.includes('控除') || s.includes('合計') || s.includes('給') || s.includes('振込') || s.includes('現金') || s.includes('現物');
+  return s.includes('円') || s.includes('額') || s.includes('手当') || s.includes('保険') || s.includes('税') || s.includes('控除') || s.includes('合計') || s.includes('給') || s.includes('振込') || s.includes('現金') || s.includes('現物') || s.includes('家賃') || s.includes('費');
 };
 
 const hmFromMin = (min) => {

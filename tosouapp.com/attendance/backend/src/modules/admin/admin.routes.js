@@ -1469,7 +1469,12 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }
   if (s3Service.isR2Configured()) {
     const success = await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
     if (!success) {
-      throw new Error('Failed to upload PDF to R2 Storage');
+      // Fallback to local disk if R2 upload fails
+      console.error('[Payslip] R2 upload failed, falling back to local storage');
+      const dir = path.join(__dirname, '../../', 'uploads', 'payslips');
+      fs.mkdirSync(dir, { recursive: true });
+      const filePath = path.join(dir, filename);
+      fs.writeFileSync(filePath, outBuf);
     }
   } else {
     // Fallback to local fs if R2 not configured

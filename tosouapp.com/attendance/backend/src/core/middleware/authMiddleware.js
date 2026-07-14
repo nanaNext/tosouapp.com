@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const userRepo = require('../../modules/users/user.repository');
 const redisClient = require('../database/redis');
+const { normalizeRole } = require('../../utils/normalizeRole');
 // Middleware xác thực và phân quyền dựa trên JWT
 
 const tokenVersionCache = new Map();
@@ -8,14 +9,6 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút
 
 const lastActiveTouch = new Map();
 const touchMinMs = Math.max(5_000, Number.parseInt(process.env.LAST_ACTIVE_TOUCH_MIN_MS || '60000', 10) || 60_000);
-const normalizeRole = (v) => {
-  const r = String(v || '').trim().toLowerCase();
-  if (r === 'admin' || r === 'manager' || r === 'employee' || r === 'payroll') return r;
-  if (r === '管理者' || r === 'administrator' || r === 'quanly' || r === 'quản lý') return 'admin';
-  if (r === 'マネージャー' || r === 'supervisor' || r === 'lead') return 'manager';
-  if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
-  return r;
-};
 
 function nextUrl(req) {
   try {

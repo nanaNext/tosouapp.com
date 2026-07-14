@@ -1,0 +1,35 @@
+<project version="4">
+  <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsGulpfileManager">
+    <detection-done>true</detection-done>
+    <sorting>DEFINITION_ORDER</sorting>
+  </component>
+  <component name="NodeModulesDirectoryManager">
+    <directories>
+      <directory path="$PROJECT_DIR$/node_modules" />
+    </directories>
+  </component>
+  <component name="NodePackageJsonFileManager">
+    <packageJsonPaths>
+      <path value="$PROJECT_DIR$/package.json" />
+    </packageJsonPaths>
+  </component>
+  <component name="ProcessedFilesStorage">
+    <timestamps>
+      <entry key="32d3bc0ae5ab4fe494cf042a99a957b4" value="1783995334860" />
+      <entry key="3676fdf399ae0c25265e7a3195d1f014" value="1783995262397" />
+      <entry key="644046683bf7f18e5ed17f603640fc4a" value="1783995355833" />
+      <entry key="67138e2b69410bb60a5035e100e8f73a" value="1783995265640" />
+      <entry key="7f053822ec347fbeeea4febea9edf5cc" value="1783995262408" />
+      <entry key="ba99ba9d1673a8340822c9eaeaf75f2d" value="1783995262398" />
+      <entry key="d769298cf9f76f9afb76fd0d7afb452e" value="1783995262398" />
+    </timestamps>
+  </component>
+  <component name="RestoreUpdateTree"><![CDATA[{}]]></component>
+  <component name="TypeScriptExternalDefinitions">
+    <packages>
+      <package name="@types/express" version="5.0.6" />
+    </packages>
+  </component>
+</project>

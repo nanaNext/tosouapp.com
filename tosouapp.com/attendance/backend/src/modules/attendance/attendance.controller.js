@@ -12,6 +12,9 @@ const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 const leaveRepo = require('../leave/leave.repository');
 const noticesRepo = require('../notices/notices.repository');
 const metrics = require('../../core/metrics');
+const db = require('../../core/database/mysql');
+const calendarRepo = require('../calendar/calendar.repository');
+const shiftReminderService = require('../../services/shiftReminder.service');
 
 // ------------------------------------------------------------------------
 // CONTROLLER: Xử lý các yêu cầu liên quan đến Chấm Công (Giao tiếp với Frontend)
@@ -90,7 +93,6 @@ exports.checkIn = async (req, res) => {
     // Auto-update attendance_daily kubun to '出勤' upon check-in
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-      const db = require('../../core/database/mysql');
       const dailyRec = await repo.getDaily(userId, dtStr);
       const dailies = dailyRec ? [dailyRec] : [];
       if (!dailies.length || !dailies[0].kubun || dailies[0].kubun !== '出勤') {
@@ -203,7 +205,6 @@ exports.checkOut = async (req, res) => {
         // Fetch break_minutes from daily
         let breakMin = 60;
         try {
-          const db = require('../../core/database/mysql');
           const dailyRec = await repo.getDaily(userId, dtStr);
           const dailies = dailyRec ? [dailyRec] : [];
           if (dailies.length > 0) {
@@ -216,7 +217,7 @@ exports.checkOut = async (req, res) => {
         if (totalMinutes < 0) totalMinutes = 0;
         const totalHoursStr = `${Math.floor(totalMinutes / 60)}時間${String(totalMinutes % 60).padStart(2, '0')}分`;
         
-        require('../../services/shiftReminder.service').sendDailySummaryEmail(u, dtStr, result.checkIn, result.checkOut, totalHoursStr).catch(e => console.error(e));
+        shiftReminderService.sendDailySummaryEmail(u, dtStr, result.checkIn, result.checkOut, totalHoursStr).catch(e => console.error(e));
       }
     } catch (e) {
       console.error('Failed to notify admin on checkout:', e);
@@ -296,7 +297,6 @@ exports.userProfileForMonthly = async (req, res) => {
     const user = await userRepo.getUserById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
     const dept = user?.departmentId ? (await userRepo.getDepartmentById(user.departmentId)) : null;
-    const db = require('../../core/database/mysql');
     try {
       await require('./attendance.repository').ensureWorkDetailsSchemaPublic();
     } catch (e) { /* silently ignored */ }
@@ -483,7 +483,6 @@ exports.todaySummary = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-    const db = require('../../core/database/mysql');
     const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
     const stats = await require('./attendance.repository').getTodaySummaryStats(today);
@@ -529,9 +528,7 @@ exports.todayRoster = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
     if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
-    const db = require('../../core/database/mysql');
     const attendanceRepo = require('./attendance.repository');
-    const calendarRepo = require('../calendar/calendar.repository');
     const qDate = String(req.query?.date || '').slice(0, 10);
     const date = qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const rows = await attendanceRepo.getTodayRosterItems(date);
@@ -729,7 +726,6 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
 }
 
 async function getUserOffDaySet(year, userId) {
-  const calendarRepo = require('../calendar/calendar.repository');
   const cal = await calendarRepo.computeYear(year).catch(() => null);
   const useKoujiPolicy = await isKoujiUser(userId);
   const off = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
@@ -1187,7 +1183,6 @@ exports.putDay = async (req, res) => {
     
     // Update location, memo, notes if provided
     if (typeof location !== 'undefined' || typeof memo !== 'undefined' || typeof notes !== 'undefined') {
-       const db = require('../../core/database/mysql');
        const updates = [];
        const params = [];
        if (typeof location !== 'undefined') { updates.push('location = ?'); params.push(location || null); }
@@ -1397,7 +1392,6 @@ exports.getMonthDetail = async (req, res) => {
     const planRows = await repo.listPlanBetween(userId, from, to).catch(() => []);
     
     // Lấy dữ liệu shift_requests (đăng ký ca)
-    const db = require('../../core/database/mysql');
     const shiftReqRows = await db.query('SELECT date, status, leaveType, reason FROM shift_requests WHERE userId = ? AND date BETWEEN ? AND ?', [userId, from, to]).then(r => r[0]).catch(() => []);
     const shiftReqMap = new Map();
     for (const r of shiftReqRows || []) {
@@ -1863,38 +1857,7 @@ exports.postShiftsBulk = async (req, res) => {
     if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const db = require('../../core/database/mysql');
-    
-    // Ensure shift_requests table exists
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS shift_requests (
-        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        userId BIGINT UNSIGNED NOT NULL,
-        date DATE NOT NULL,
-        status VARCHAR(32) NOT NULL,
-        leaveType VARCHAR(32) NULL,
-        reason VARCHAR(255) NULL,
-        detail TEXT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_user_date (userId, date),
-        INDEX idx_date (date),
-        CONSTRAINT fk_shift_req_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-    
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS shift_month_status (
-        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        userId BIGINT UNSIGNED NOT NULL,
-        month VARCHAR(7) NOT NULL,
-        status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_user_month (userId, month),
-        CONSTRAINT fk_sms_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
+    // Tables shift_requests and shift_month_status are created by bootstrap migrations
 
     const { month, shifts } = req.body || {};
     if (!month || !Array.isArray(shifts)) {
@@ -1957,21 +1920,7 @@ exports.getShiftApprovals = async (req, res) => {
     const { month } = req.query || {};
     if (!month) return res.status(400).json({ message: 'Missing month' });
     
-    const db = require('../../core/database/mysql');
-    
-    // Ensure table exists just in case
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS shift_month_status (
-        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        userId BIGINT UNSIGNED NOT NULL,
-        month VARCHAR(7) NOT NULL,
-        status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_user_month (userId, month),
-        CONSTRAINT fk_sms_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
+    // Tables created by bootstrap migrations
 
     const [rows] = await db.query(`
       SELECT s.id, s.userId, s.month, s.status, s.updated_at,
@@ -1997,39 +1946,7 @@ exports.getShiftMatrix = async (req, res) => {
     const { month } = req.query || {};
     if (!month) return res.status(400).json({ message: 'Missing month' });
     
-    const db = require('../../core/database/mysql');
-    
-    // Ensure table exists just in case
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS shift_month_status (
-        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        userId BIGINT UNSIGNED NOT NULL,
-        month VARCHAR(7) NOT NULL,
-        status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_user_month (userId, month),
-        CONSTRAINT fk_sms_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    // Ensure table exists just in case
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS shift_requests (
-        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        userId BIGINT UNSIGNED NOT NULL,
-        date DATE NOT NULL,
-        status VARCHAR(32) NOT NULL,
-        leaveType VARCHAR(32) NULL,
-        reason VARCHAR(255) NULL,
-        detail TEXT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_user_date (userId, date),
-        INDEX idx_date (date),
-        CONSTRAINT fk_shift_req_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
+    // Tables created by bootstrap migrations
 
     // Get all users
     const [users] = await db.query(`
@@ -2094,8 +2011,6 @@ exports.getAllEmployeeShifts = async (req, res) => {
     const { month } = req.query || {};
     if (!month) return res.status(400).json({ message: 'Missing month' });
 
-    const db = require('../../core/database/mysql');
-    
     // Fetch all active users who are NOT admin or manager
     const [users] = await db.query(`
       SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName
@@ -2146,9 +2061,7 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
     const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
 
-    const db = require('../../core/database/mysql');
-    
-    // Fetch all active users who are NOT admin or manager
+        // Fetch all active users who are NOT admin or manager
     const [users] = await db.query(`
       SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName
       FROM users u
@@ -2412,7 +2325,6 @@ exports.approveShiftMonth = async (req, res) => {
     const { userId, month, status } = req.body || {};
     if (!userId || !month || !status) return res.status(400).json({ message: 'Missing fields' });
     
-    const db = require('../../core/database/mysql');
     await db.query(`
       UPDATE shift_month_status 
       SET status = ? 
@@ -2432,7 +2344,6 @@ exports.getUserShiftsForMonth = async (req, res) => {
     const { userId, month } = req.query || {};
     if (!userId || !month) return res.status(400).json({ message: 'Missing fields' });
     
-    const db = require('../../core/database/mysql');
     const [rows] = await db.query(`
       SELECT date, status, leaveType, reason, detail 
       FROM shift_requests 
@@ -2453,8 +2364,6 @@ exports.getMyMonthlyShifts = async (req, res) => {
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
     if (!month) return res.status(400).json({ message: 'Missing month' });
 
-    const db = require('../../core/database/mysql');
-    
     // Get status
     let submission_status = 'draft';
     try {

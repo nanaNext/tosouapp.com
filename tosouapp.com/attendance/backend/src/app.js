@@ -105,13 +105,14 @@ app.use((req, res, next) => {
 
 // Structured logger middleware
 const log = require('./core/logger');
+const { trackRequest, trackError } = require('./core/alerting');
 app.use(log.middleware());
 
 app.use((req, res, next) => {
-  const start = process.hrtime.bigint();
+  const start = Date.now();
   res.on('finish', () => {
-    const end = process.hrtime.bigint();
-    const ms = Number(end - start) / 1e6;
+    const ms = Date.now() - start;
+    trackRequest(req, res, start);
     if (ms > 500) {
       log.warn('Slow request', { request_id: req.id, method: req.method, path: req.path, duration_ms: Math.round(ms), status: res.statusCode });
     }
@@ -119,8 +120,10 @@ app.use((req, res, next) => {
   next();
 });
 app.use((req, res, next) => {
+  // Security headers (single source of truth — security.js only handles CSRF)
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   if (String(req.path || '').startsWith('/api/')) {
@@ -215,6 +218,10 @@ const routes = require('./routes');
 routes(app);
 const uiRoutes = require('./routes/ui.routes');
 app.use('/', uiRoutes);
+const { registerHealthRoutes } = require('./core/health');
+const db = require('./core/database/mysql');
+const redis = require('./core/database/redis');
+registerHealthRoutes(app, { db, redis });
 const { authenticate, authorize } = require('./core/middleware/authMiddleware');
 app.get('/api/version', (req, res) => {
   res.status(200).json({ buildId: BUILD_ID, startedAt: STARTED_AT, pid: process.pid });

@@ -9,6 +9,7 @@ const userRepo = require('../users/user.repository');
 const auditRepo = require('../audit/audit.repository');
 const { sendPasswordResetEmail, canSendMail } = require('../../core/notifications/email.service');
 const { check2FARequired } = require('../../core/middleware/require2FA');
+const { normalizeRole } = require('../../utils/normalizeRole');
 // Controller xác thực: đăng ký và đăng nhập
 
 function isHttpsRequest(req) {
@@ -21,7 +22,8 @@ function setSessionCookie(req, res, token) {
     httpOnly: true,
     secure: isHttpsRequest(req),
     sameSite: 'lax',
-    path: '/'
+    path: '/',
+    maxAge: accessTokenExpires * 1000
   });
 }
 
@@ -50,14 +52,7 @@ function normalizeEmployeeCodeLike(input) {
   return stripped;
 }
 
-function normalizeRole(input) {
-  const r = String(input || '').trim().toLowerCase();
-  if (r === 'admin' || r === 'manager' || r === 'employee' || r === 'payroll') return r;
-  if (r === '管理者' || r === 'administrator' || r === 'quanly' || r === 'quản lý') return 'admin';
-  if (r === 'マネージャー' || r === 'supervisor' || r === 'lead') return 'manager';
-  if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
-  return r || 'employee';
-}
+// normalizeRole is imported from ../../utils/normalizeRole
 
 function buildResetUrl(req, token) {
   const base = String(appBaseUrl || '').trim()
@@ -103,12 +98,10 @@ exports.login = async (req, res) => {
       const flags = await require('../settings/settings.service').getFlags();
       const lockLogin = !!flags.lockLoginExceptSuper;
       const superEmail = process.env.SUPER_ADMIN_EMAIL;
-      if (lockLogin && String(email) === String(superEmail)) {
-        // allow SUPER_ADMIN even if lock is on
-      } else {
-        // ignore lock to ensure users can sign in
+      if (lockLogin && String(email).toLowerCase() !== String(superEmail).toLowerCase()) {
+        return res.status(423).json({ message: 'Login is temporarily locked by administrator' });
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* silently ignored — if settings service fails, allow login */ }
     const user = await authRepository.findUserByEmail(email);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
