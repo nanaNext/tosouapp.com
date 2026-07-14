@@ -171,7 +171,9 @@ function authorize(...allowedRoles) {
     const allowed = new Set((allowedRoles || []).map(r => normalizeRole(r)));
     return (req, res, next) => {
         const role = normalizeRole(req.user?.role);
-        const ok = role && (allowed.has(role) || (role === 'manager' && allowed.has('admin')));
+        // Strict hierarchy: mỗi role chỉ pass nếu nằm trong danh sách cho phép.
+        // KHÔNG cho manager tự động inherit quyền admin.
+        const ok = role && allowed.has(role);
         if (!ok) {
             return res.status(403).json({ message: 'Forbidden: Access denied' });
         }

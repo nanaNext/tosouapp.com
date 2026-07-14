@@ -74,6 +74,11 @@ router.get('/users/:id', authorize('admin','manager'), async (req, res) => {
     const id = req.params.id;
     const row = await userRepo.getUserById(id);
     if (!row) return res.status(404).json({ message: 'User not found' });
+    // RBAC: Manager chỉ xem được thông tin employee
+    const requesterRole = String(req.user?.role || '').toLowerCase();
+    if (requesterRole === 'manager' && String(row.role || '').toLowerCase() !== 'employee') {
+      return res.status(403).json({ message: 'Forbidden: managers can only view employees' });
+    }
     res.status(200).json(row);
   } catch (err) {
     res.status(500).json({ message: err.message });

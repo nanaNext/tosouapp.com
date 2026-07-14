@@ -48,20 +48,22 @@ exports.assignShift = async (req, res) => {
   }
 };
 
-// Liß╗çt k├¬ to├án bß╗Ö nh├ón vi├¬n (manager xem to├án c├┤ng ty)
+// Liệt kê toàn bộ nhân viên (manager chỉ xem được employee)
 exports.listMyDepartment = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
     const limit = req.query.limit;
     const offset = req.query.offset;
-    const role = req.query.role != null ? String(req.query.role || '').trim() : null;
+    // RBAC: Manager chỉ được phép thấy employee (role=3)
+    const role = 'employee';
     const employmentStatus = req.query.employmentStatus != null ? String(req.query.employmentStatus || '').trim() : null;
     const usePaged = q || limit != null || offset != null || role || employmentStatus;
     if (usePaged) {
       const r = await userRepo.listUsersPaged({ q, role: role, departmentId: null, employmentStatus: employmentStatus, limit, offset });
       res.status(200).json(r);
     } else {
-      const rows = await userRepo.listUsers();
+      let rows = await userRepo.listUsers();
+      rows = (rows || []).filter(u => String(u.role || '').toLowerCase() === 'employee');
       res.status(200).json(normalizeUserListResult(rows, limit, offset));
     }
   } catch (err) {
