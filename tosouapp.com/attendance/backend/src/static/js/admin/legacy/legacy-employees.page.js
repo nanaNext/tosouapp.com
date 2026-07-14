@@ -546,7 +546,7 @@ async function mountEmployeesImpl({
             <div class="emp-form-group"><label>社員番号</label><input id="empCode"></div>
             <div class="emp-form-group"><label>氏名</label><input id="empName"></div>
             <div class="emp-form-group"><label>メール</label><input id="empEmail"></div>
-            <div class="emp-form-group"><label>パスワード</label><input id="empPass" type="password"></div>
+            <div class="emp-form-group"><label>パスワード</label><input id="empPass" type="password" autocomplete="new-password"></div>
             <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD"></div>
             <div class="emp-form-group"><label>性別</label>
               <select id="empGender">

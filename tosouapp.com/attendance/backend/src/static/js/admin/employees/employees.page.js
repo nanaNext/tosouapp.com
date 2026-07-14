@@ -7,6 +7,12 @@ import { $, ensureEmployeePillStyle, showNavSpinner, hideNavSpinner, getTopbarSe
 
 let employeesRenderSeq = 0;
 
+function extractRows(result) {
+  if (Array.isArray(result)) return result;
+  if (result && Array.isArray(result.rows)) return result.rows;
+  return [];
+}
+
 async function renderEmployees(profile, c) {
   clearTopbarNoResultState();
   try {
@@ -804,22 +810,22 @@ async function renderEmployees(profile, c) {
   try {
     if (role2 === 'manager') {
       const res = await fetchJSONAuth('/api/manager/users');
-      users = Array.isArray(res) ? res : (res && Array.isArray(res.rows) ? res.rows : []);
+      users = extractRows(res);
     } else {
-      users = await listEmployees();
+      users = extractRows(await listEmployees());
     }
   } catch (e1) {
     if (!isForbiddenErr(e1)) errMsgs.push(`一覧: ${(e1 && e1.message) ? e1.message : 'unknown'}`);
     if (role2 !== 'manager') {
       try {
         const res2 = await fetchJSONAuth('/api/manager/users');
-        users = Array.isArray(res2) ? res2 : (res2 && Array.isArray(res2.rows) ? res2.rows : []);
+        users = extractRows(res2);
       } catch (eMid) {
         if (!isForbiddenErr(eMid)) errMsgs.push(`一覧(管理者予備): ${(eMid && eMid.message) ? eMid.message : 'unknown'}`);
-        try { users = await listUsers(); } catch (e2) { if (!isForbiddenErr(e2)) errMsgs.push(`一覧(予備): ${(e2 && e2.message) ? e2.message : 'unknown'}`); users = []; }
+        try { users = extractRows(await listUsers()); } catch (e2) { if (!isForbiddenErr(e2)) errMsgs.push(`一覧(予備): ${(e2 && e2.message) ? e2.message : 'unknown'}`); users = []; }
       }
     } else {
-      try { users = await listEmployees(); } catch (e2) { if (!isForbiddenErr(e2)) errMsgs.push(`一覧(予備): ${(e2 && e2.message) ? e2.message : 'unknown'}`); users = []; }
+      try { users = extractRows(await listEmployees()); } catch (e2) { if (!isForbiddenErr(e2)) errMsgs.push(`一覧(予備): ${(e2 && e2.message) ? e2.message : 'unknown'}`); users = []; }
     }
   }
   if (seq !== employeesRenderSeq) return;
@@ -1240,7 +1246,7 @@ async function renderEmployees(profile, c) {
     form.id = 'add';
     let managers = [];
     if (role2 !== 'manager') {
-      try { managers = await listUsers(); } catch { managers = []; }
+      try { managers = extractRows(await listUsers()); } catch { managers = []; }
     }
     if (seq !== employeesRenderSeq) return;
     const managerOptions = (role2 !== 'manager' ? managers.filter(m => String(m.role) === 'manager') : []).map(m => `<option value="${m.id}">${m.username || m.email}</option>`).join('');
@@ -1278,7 +1284,7 @@ async function renderEmployees(profile, c) {
             <tr><td class="field-label">社員番号 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empCode" placeholder="例: EMP001"></td></tr>
             <tr><td class="field-label">氏名 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empName" placeholder="山田 太郎"></td></tr>
             <tr><td class="field-label">メール <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empEmail" type="email" placeholder="example@company.com"></td></tr>
-            <tr><td class="field-label">パスワード <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empPass" type="password" placeholder="6文字以上"></td></tr>
+            <tr><td class="field-label">パスワード <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empPass" type="password" placeholder="6文字以上" autocomplete="new-password"></td></tr>
             <tr><td class="field-label">生年月日</td><td class="field-value"><input id="empBirth" type="date"></td></tr>
             <tr><td class="field-label">性別</td><td class="field-value"><select id="empGender"><option value="">未選択</option><option value="male">男性</option><option value="female">女性</option><option value="other">その他</option></select></td></tr>
             <tr><td class="field-label">電話番号</td><td class="field-value"><input id="empPhone" placeholder="090-xxxx-xxxx"></td></tr>
