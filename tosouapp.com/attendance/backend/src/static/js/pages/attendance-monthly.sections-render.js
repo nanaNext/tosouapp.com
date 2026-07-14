@@ -1143,7 +1143,108 @@
     });
   };
 
-  const mod = { renderContract, renderWorkDetail, renderSummary, renderPlan };
+  // ============================================================
+  // 年間サマリ (Annual Summary) — 36協定 Compliance Display
+  // ============================================================
+  const renderYearSummary = async (host, options = {}) => {
+    if (!host) return;
+    const userId = options.userId || state.currentViewingUserId || null;
+    const month = options.month || '';
+    const year = month ? parseInt(String(month).slice(0, 4), 10) : new Date(Date.now() + 9 * 3600 * 1000).getFullYear();
+
+    host.innerHTML = '<div style="text-align:center;padding:16px;color:#64748b;">読込中...</div>';
+
+    try {
+      const uidQ = userId ? `&userId=${encodeURIComponent(userId)}` : '';
+      const data = await fetchJSONAuth(`/api/attendance/annual-summary?year=${year}${uidQ}`);
+      if (!data) {
+        host.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;">データなし</div>';
+        return;
+      }
+
+      const ot = data.annualOvertime || {};
+      const m45 = data.monthsOver45h || {};
+      const recent = Array.isArray(data.recentMonths) ? data.recentMonths : [];
+      const leave = data.paidLeave || {};
+      const singleMax = data.singleMonthMax || {};
+
+      // Warning colors
+      const warnColor = '#dc2626';
+      const okColor = '#1e293b';
+      const otColor = ot.exceeds ? warnColor : okColor;
+      const m45Color = m45.exceeds ? warnColor : okColor;
+      const singleColor = singleMax.exceeds100h ? warnColor : okColor;
+
+      // Format month label: "2026/07~"
+      const fmtMonthLabel = (mk) => {
+        if (!mk) return '';
+        return mk.replace('-', '/') + '～';
+      };
+
+      // Recent months columns (reverse order: newest first)
+      const recentReversed = [...recent].reverse();
+      const recentHeaders = recentReversed.map(r => `<th style="padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #dbe4f0;background:#f1f5f9;">${fmtMonthLabel(r.month)}</th>`).join('');
+      const recentValues = recentReversed.map(r => `<td style="padding:6px 10px;text-align:center;font-weight:700;font-size:13px;border:1px solid #dbe4f0;">${r.formatted || '0:00'}</td>`).join('');
+
+      // Paid leave display
+      const grantDateStr = leave.grantDate ? `最終付与日：${leave.grantDate}` : '最終付与日：.....';
+
+      host.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;border:1px solid #dbe4f0;font-size:13px;background:#fff;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th colspan="2" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">年間超過時間</th>
+                <th style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">45時間超過回数</th>
+                <th colspan="${recentReversed.length}" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">直近複数月平均法定外労働時間</th>
+                <th colspan="3" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">有給休暇</th>
+              </tr>
+              <tr style="background:#f1f5f9;">
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">実績/上限</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">単月最大</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">回数/上限</th>
+                ${recentHeaders}
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;white-space:nowrap;">(${grantDateStr})</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">最終付与からの取得</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">残日数</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${otColor};">
+                  ${ot.totalFormatted || '0:00'}/${ot.limitFormatted || '720:00'}
+                </td>
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${singleColor};">
+                  ${singleMax.maxFormatted || '0:00'}
+                </td>
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${m45Color};">
+                  ${m45.count || 0}回/${m45.limit || 6}回
+                </td>
+                ${recentValues}
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;">
+                  ${leave.totalGranted != null ? Number(leave.totalGranted).toFixed(1) + '日' : '—'}
+                </td>
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;">
+                  ${leave.usedSinceGrant != null ? Number(leave.usedSinceGrant).toFixed(1) + '日' : '0.0日'}
+                </td>
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;">
+                  ${leave.remaining != null ? Number(leave.remaining).toFixed(0) + '日' : '0日'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:#64748b;">
+          ※ 36協定上限: 年間720時間 / 月45時間超過は年6回まで / 単月100時間未満 / 複数月平均80時間以内
+        </div>
+      `;
+    } catch (e) {
+      host.innerHTML = `<div style="text-align:center;padding:16px;color:#ef4444;">年間サマリの読込に失敗しました (${e?.message || e})</div>`;
+      console.error('[年間サマリ]', e);
+    }
+  };
+
+  const mod = { renderContract, renderWorkDetail, renderSummary, renderPlan, renderYearSummary };
   root.SectionsRender = mod;
   globalThis.AttendanceMonthly = root;
   globalThis.MonthlyMonthlySectionsRender = mod;

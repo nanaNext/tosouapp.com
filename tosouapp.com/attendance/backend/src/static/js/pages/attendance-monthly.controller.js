@@ -10,7 +10,7 @@
   const { $, showSpinner, hideSpinner, fetchJSONAuth, downloadWithAuth, ensureAuthProfile, showErr, setDirty, clearDirty, monthJST, addMonths, cssEscape, fromDateTime, workTypeLabel } = core;
   const { renderTable, markRowSaved, recomputeRow } = render;
   const { loadMonth, collectUpdates } = api;
-  const { renderContract, renderWorkDetail, renderSummary } = sectionsRender;
+  const { renderContract, renderWorkDetail, renderSummary, renderYearSummary } = sectionsRender;
 
   const ctx = {
     profile: null,
@@ -764,6 +764,11 @@
         renderContract(ctx.contractHost, instant.detail);
         renderWorkDetail(ctx.workDetailHost, instant.detail, ctx.profile);
         renderSummary(ctx.summaryHost, instant.detail, instant.timesheet || null);
+        // 年間サマリ (instant)
+        try {
+          const yearHost = document.querySelector('#yearSummaryTable');
+          if (yearHost) renderYearSummary(yearHost, { userId: state.currentViewingUserId, month: ym });
+        } catch (e) { /* silently ignored */ }
         state.editableMonth = canEditForMonth(ym, ctx.profile);
         renderTable(ctx.tableHost, instant.detail, ctx.profile);
         applyPinMonthHead();
@@ -804,6 +809,12 @@
       renderContract(ctx.contractHost, detail);
       renderWorkDetail(ctx.workDetailHost, detail, ctx.profile);
       renderSummary(ctx.summaryHost, detail, null);
+      
+      // 年間サマリ
+      try {
+        const yearHost = document.querySelector('#yearSummaryTable');
+        if (yearHost) renderYearSummary(yearHost, { userId: state.currentViewingUserId, month: ym });
+      } catch (e) { /* silently ignored */ }
       
       // Update editability BEFORE rendering table to ensure correct lock state
       state.editableMonth = canEditForMonth(ym, ctx.profile);

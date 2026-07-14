@@ -1606,6 +1606,15 @@ exports.getMonthDetail = async (req, res) => {
           else if (t.includes('unpaid') || t.includes('nopay') || t.includes('no_pay')) unpaidDays += ov;
           else if (t.includes('standby') || t.includes('wait') || t.includes('taiki')) standbyDays += ov;
         }
+        // Also count from attendance_daily kubun (may not have approved leave_request)
+        try {
+          const [kubunRows] = await db.query(`
+            SELECT COUNT(*) as cnt FROM attendance_daily
+            WHERE userId = ? AND date BETWEEN ? AND ? AND kubun = '有給休暇'
+          `, [userId, from, to]);
+          const kubunPaid = Number(kubunRows?.[0]?.cnt || 0);
+          if (kubunPaid > paidDays) paidDays = kubunPaid;
+        } catch (e) { /* silently ignored */ }
         for (const g of (grants || [])) {
           grantedDaysTotal += Number(g?.daysGranted || 0);
           const gd = String(g?.grantDate || '').slice(0, 10);
