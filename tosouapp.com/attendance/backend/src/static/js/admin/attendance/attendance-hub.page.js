@@ -39,6 +39,22 @@ export async function mount({ content, initialPath, profile }) {
     ];
   }
 
+  // RBAC: Manager không thấy menu admin-only (支店管理, 組織, 給与管理, システム)
+  if (profile && String(profile.role || '').toLowerCase() === 'manager') {
+    const adminOnlyIds = new Set([
+      'global-branches',   // 支店管理
+      'global-org',        // 組織
+      'global-payroll',    // 給与管理
+      'global-system',     // システム
+      'sys-notices',       // お知らせ
+      'sys-settings',      // 設定
+      'sys-audit',         // 監査ログ
+      'emp-add',           // 社員追加
+      'att-holidays',      // 休日設定
+    ]);
+    menuItems = menuItems.filter(item => !adminOnlyIds.has(item.id));
+  }
+
   const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
   const qs = isStandalone ? '?standalone=1' : '';
 
