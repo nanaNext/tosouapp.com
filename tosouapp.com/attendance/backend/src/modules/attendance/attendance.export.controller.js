@@ -16,7 +16,7 @@ const { nowJSTMySQL } = require('../../utils/dateTime');
 async function getUserOffDaySet(year, userId) {
   const cal = await calendarRepo.computeYear(year).catch(() => null);
   const useKoujiPolicy = await isKoujiUser(userId);
-  const off = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
+  const { off } = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
   if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
     for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
   }
