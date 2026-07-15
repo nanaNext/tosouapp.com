@@ -349,14 +349,14 @@ const route = async () => {
     if (p2 === '/admin/employees' || p2.startsWith('/admin/employees/')) {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
         const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
-        const mod = await loadModule('./employees/employees.page.js?v=navy-20260707-branch1');
+        const mod = await loadModule('./employees/employees.page.js?v=navy-20260710-fix2');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : { mount: async () => { hubContent.innerHTML = ''; if (mod.default) await mod.default(hubContent); else Object.assign(hubContent, await mod); } });
       return;
     }
     if (p2 === '/admin/attendance/monthly' || p2 === '/admin/attendance/monthly/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/monthly' });
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/monthly', profile: profile });
       const mod = await loadModule('../pages/admin-attendance-monthly.page.js?v=1');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -364,7 +364,7 @@ const route = async () => {
     }
     if (p2 === '/admin/attendance/shifts-approvals' || p2 === '/admin/attendance/shifts-approvals/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts-approvals' });
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts-approvals', profile: profile });
       const mod = await loadModule('./attendance/admin-shifts-approvals.page.js?v=5');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -372,7 +372,7 @@ const route = async () => {
     }
     if (p2 === '/admin/attendance/adjust-requests' || p2 === '/admin/attendance/adjust-requests/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/adjust-requests' });
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/adjust-requests', profile: profile });
       const mod = await loadModule('./attendance/admin-attendance-adjust-requests.page.js?v=5');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -380,7 +380,7 @@ const route = async () => {
     }
     if (p2 === '/admin/attendance/go-out' || p2 === '/admin/attendance/go-out/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/go-out' });
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/go-out', profile: profile });
       const mod = await loadModule('./attendance/admin-go-out.page.js?v=5');
       if (seq !== routeSeq) return;
       await mountModule(mod.mountGoOut ? { mount: () => mod.mountGoOut({ content: hubContent }) } : mod);
@@ -388,7 +388,7 @@ const route = async () => {
     }
     if (p2 === '/admin/attendance/shifts' || p2 === '/admin/attendance/shifts/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts' });
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts', profile: profile });
       const mod = await loadModule('./legacy/legacy-shifts.page.js?v=6');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -396,7 +396,7 @@ const route = async () => {
     }
     if (p2 === '/admin/attendance/holidays' || p2 === '/admin/attendance/holidays/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/holidays' });
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/holidays', profile: profile });
       const mod = await loadModule('./legacy/legacy-calendar.page.js?v=5');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -420,7 +420,7 @@ const route = async () => {
     }
     if (p2 === '/admin/work-reports') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/work-reports' });
+      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/work-reports', profile: profile });
       const mod = await loadModule('./work-reports/work-reports.page.js?v=20260707-branch2-' + Date.now());
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -442,7 +442,7 @@ const route = async () => {
     }
     if (p2 === '/admin/expenses') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/expenses' });
+        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/expenses', profile: profile });
         const mod = await loadModule('./expenses/expenses.page.js');
         if (seq !== routeSeq) return;
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -450,7 +450,7 @@ const route = async () => {
       }
       if (p2 === '/admin/departments' || p2 === '/admin/organization/departments' || p2 === '/admin/organization') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/departments' });
+        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/departments', profile: profile });
         const mod = await loadModule('./organization/organization.page.js');
         if (seq !== routeSeq) return;
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -458,7 +458,7 @@ const route = async () => {
       }
       if (p2 === '/admin/branches') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/branches' });
+        const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/branches', profile: profile });
         const mod = await loadModule('./organization/branches.page.js?v=navy-20260707-fix4');
         if (seq !== routeSeq) return;
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
@@ -466,7 +466,7 @@ const route = async () => {
       }
       if (p2 === '/admin/system/settings' || p2 === '/admin/system/audit-logs' || p2 === '/admin/system') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
-        const hubContent = await hubMod.mount({ content: host, initialPath: p2 });
+        const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
         let modulePath = './system/system.page.js?v=navy-20260421-systemplaceholder1';
         if (p2 === '/admin/system/settings') modulePath = './system/settings.page.js';
         if (p2 === '/admin/system/audit-logs') modulePath = './system/audit-logs.page.js';
