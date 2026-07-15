@@ -80,9 +80,14 @@ describe('user list response shape', () => {
     expect(res.json).toHaveBeenCalledWith(payload);
   });
 
-  it('returns paged shape for /api/manager/users without filters', async () => {
-    const rows = [{ id: 11, username: 'Manager View' }];
-    userRepo.listUsers.mockResolvedValue(rows);
+  it('returns paged shape for /api/manager/users without filters (forced role=employee)', async () => {
+    const payload = {
+      rows: [{ id: 11, username: 'Manager View', role: 'employee' }],
+      total: 1,
+      limit: 100,
+      offset: 0
+    };
+    userRepo.listUsersPaged.mockResolvedValue(payload);
     const req = {
       query: {},
       user: { role: 'manager', email: 'manager@test.local' }
@@ -91,14 +96,13 @@ describe('user list response shape', () => {
 
     await managerController.listMyDepartment(req, res);
 
-    expect(userRepo.listUsers).toHaveBeenCalledTimes(1);
+    // RBAC: Manager always filters by role='employee', so listUsersPaged is used
+    expect(userRepo.listUsersPaged).toHaveBeenCalledTimes(1);
+    expect(userRepo.listUsersPaged).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'employee' })
+    );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      rows,
-      total: 1,
-      limit: 1,
-      offset: 0
-    });
+    expect(res.json).toHaveBeenCalledWith(payload);
   });
 
   it('keeps paged shape for /api/manager/users with filters', async () => {

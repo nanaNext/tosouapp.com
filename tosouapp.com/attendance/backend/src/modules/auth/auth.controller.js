@@ -9,6 +9,7 @@ const userRepo = require('../users/user.repository');
 const auditRepo = require('../audit/audit.repository');
 const { sendPasswordResetEmail, canSendMail } = require('../../core/notifications/email.service');
 const { check2FARequired } = require('../../core/middleware/require2FA');
+const log = require('../../core/logger');
 const { normalizeRole } = require('../../utils/normalizeRole');
 // Controller xác thực: đăng ký và đăng nhập
 
@@ -107,7 +108,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     if (String(user.employment_status || 'active') !== 'active') {
-      try { await auditRepo.writeLog({ userId: user.id, action: 'login_block_inactive', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ employment_status: user.employment_status }) }); } catch (e) { /* silently ignored */ }
+      try { await auditRepo.writeLog({ userId: user.id, action: 'login_block_inactive', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ employment_status: user.employment_status }) }); } catch (e) { log.warn('audit_write_failed', { action: 'login_block_inactive', userId: user.id, error_message: e.message }); }
       return res.status(403).json({ message: 'Account inactive' });
     }
     if (await authRepository.isLocked(user.id)) {
@@ -121,7 +122,7 @@ exports.login = async (req, res) => {
       }
       // Chống brute-force timing attack bằng cách phản hồi với độ trễ ngẫu nhiên
       await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
-      try { require('../../core/metrics').inc('login_fail', 1); } catch (e) { /* silently ignored */ }
+      try { require('../../core/metrics').inc('login_fail', 1); } catch (e) { log.warn('metrics_error', { action: 'login_fail', error_message: e.message }); }
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     await authRepository.resetLock(email);
@@ -137,8 +138,8 @@ exports.login = async (req, res) => {
     const rt = crypto.randomBytes(48).toString('base64url');
     const expires = new Date(Date.now() + refreshTokenExpiresDays * 24 * 60 * 60 * 1000);
     await refreshRepo.createToken({ userId: user.id, token: rt, expiresAt: expires.toISOString().slice(0,19).replace('T',' '), userAgent: req.headers['user-agent'], ip: req.ip });
-    try { await userRepo.updateUser(user.id, { lastLogin: new Date().toISOString().slice(0,19).replace('T',' ') }); } catch (e) { /* silently ignored */ }
-    try { await userRepo.touchLastActive(user.id); } catch (e) { /* silently ignored */ }
+    try { await userRepo.updateUser(user.id, { lastLogin: new Date().toISOString().slice(0,19).replace('T',' ') }); } catch (e) { log.warn('update_last_login_failed', { userId: user.id, error_message: e.message }); }
+    try { await userRepo.touchLastActive(user.id); } catch (e) { log.warn('touch_last_active_failed', { userId: user.id, error_message: e.message }); }
     const isHttps = isHttpsRequest(req);
     res.cookie('refreshToken', rt, {
       httpOnly: true,
@@ -184,8 +185,8 @@ exports.login = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ role })
       });
-    } catch (e) { /* silently ignored */ }
-    try { require('../../core/metrics').inc('login_success', 1); } catch (e) { /* silently ignored */ }
+    } catch (e) { log.warn('audit_write_failed', { action: 'login_success', error_message: e.message }); }
+    try { require('../../core/metrics').inc('login_success', 1); } catch (e) { log.warn('metrics_error', { action: 'login_success', error_message: e.message }); }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
