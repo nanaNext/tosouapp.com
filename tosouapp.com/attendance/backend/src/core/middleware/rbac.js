@@ -31,7 +31,7 @@ const PERMS = {
   },
   leaveAdmin: {
     admin: new Set(['full', 'view']),
-    manager: new Set(['view']),
+    manager: new Set(['full', 'view']),
     employee: new Set([])
   },
   leave: {
