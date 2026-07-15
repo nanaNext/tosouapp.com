@@ -1,10 +1,63 @@
+/**
+ * @module user.repository
+ * Data access layer for the users table.
+ */
+'use strict';
+
 const db = require('../../core/database/mysql');
 
+/**
+ * @typedef {Object} User
+ * @property {number} id
+ * @property {string|null} employee_code
+ * @property {string} username
+ * @property {string} email
+ * @property {string} role - 'admin' | 'manager' | 'employee' | 'payroll'
+ * @property {number|null} departmentId
+ * @property {string|null} branch_id
+ * @property {string} employment_type - 'full_time' | 'part_time' | 'contract'
+ * @property {string|null} hire_date - YYYY-MM-DD
+ * @property {string} employment_status - 'active' | 'inactive'
+ * @property {string|null} birth_date
+ * @property {string|null} gender
+ * @property {string|null} phone
+ * @property {number|null} shift_id
+ * @property {number|null} manager_id
+ * @property {string|null} level
+ * @property {number|null} base_salary
+ * @property {number} token_version
+ * @property {string|null} last_login
+ * @property {string} created_at
+ */
+
+/**
+ * @typedef {Object} PagedResult
+ * @property {User[]} rows
+ * @property {number} total
+ * @property {number} limit
+ * @property {number} offset
+ */
+
 module.exports = {
+  /**
+   * List all users (unpaged, ordered by hire_date).
+   * @returns {Promise<User[]>}
+   */
   async listUsers() {
     const [rows] = await db.query(`SELECT * FROM users ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC`);
     return rows;
   },
+  /**
+   * List users with pagination, filtering by role/department/status/search.
+   * @param {Object} options
+   * @param {string} [options.q] - Search query (matches employee_code, username, email, id)
+   * @param {string|null} [options.role] - Filter by role ('admin', 'manager', 'employee')
+   * @param {string|null} [options.departmentId] - Filter by department ID
+   * @param {string|null} [options.employmentStatus] - Filter by status ('active', 'inactive')
+   * @param {number} [options.limit=100]
+   * @param {number} [options.offset=0]
+   * @returns {Promise<PagedResult>}
+   */
   async listUsersPaged({ q = '', role = null, departmentId = null, employmentStatus = null, limit = 100, offset = 0 } = {}) {
     const qq = String(q || '').trim().toLowerCase();
     const lim = Math.min(5000, Math.max(1, Number.parseInt(String(limit || '100'), 10) || 100));
@@ -46,6 +99,11 @@ module.exports = {
     const total = Number(cntRows?.[0]?.total || 0);
     return { rows, total, limit: lim, offset: off };
   },
+  /**
+   * Get a single user by ID.
+   * @param {number|string} id
+   * @returns {Promise<User|undefined>}
+   */
   async getUserById(id) {
     const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [id]);
     return rows[0];

@@ -1,8 +1,60 @@
+/**
+ * @module attendance.service
+ * Core attendance business logic — checkIn, checkOut, timesheet.
+ * This layer is role-agnostic; RBAC is enforced at the controller level.
+ */
+'use strict';
+
 const repo = require('./attendance.repository');
 const settingsService = require('../settings/settings.service');
 const { nowUTCMySQL, formatInputToMySQLUTC, nowJSTMySQL, formatInputToMySQLJST, parseMySQLUTCToDate, parseMySQLJSTToDate } = require('../../utils/dateTime');
 const rules = require('./attendance.rules');
 
+/**
+ * @typedef {Object} GeoLocation
+ * @property {number|null} latitude
+ * @property {number|null} longitude
+ * @property {number|null} accuracy - GPS accuracy in meters
+ * @property {string|null} locationSource - 'gps' | 'ip' | 'manual'
+ * @property {string|null} countryCode - ISO 3166-1 alpha-2
+ * @property {string|null} note
+ * @property {string|null} deviceId
+ * @property {number|null} tzOffset - Timezone offset in minutes
+ */
+
+/**
+ * @typedef {Object} CheckInResult
+ * @property {number} id - Attendance record ID
+ * @property {number} userId
+ * @property {string} checkIn - JST timestamp (YYYY-MM-DD HH:mm:ss)
+ * @property {string[]} labels - Anomaly labels (e.g. 'low_accuracy', 'out_of_jp')
+ * @property {string|null} workType - 'onsite' | 'remote' | 'satellite' | null
+ */
+
+/**
+ * @typedef {Object} CheckOutResult
+ * @property {number} id - Attendance record ID
+ * @property {number} userId
+ * @property {string|null} checkIn - JST timestamp or null (if missing_checkin)
+ * @property {string} checkOut - JST timestamp
+ * @property {string[]} labels - Anomaly labels
+ * @property {string} [anomaly_type] - 'missing_checkin' if auto-created
+ */
+
+/**
+ * @typedef {Object} TimesheetResult
+ * @property {Object[]} days - Array of daily attendance records with computed metrics
+ * @property {Object} total - Aggregated totals (regularMinutes, overtimeMinutes, nightMinutes)
+ */
+
+/**
+ * Calculate the great-circle distance between two coordinates using Haversine formula.
+ * @param {number} lat1
+ * @param {number} lon1
+ * @param {number} lat2
+ * @param {number} lon2
+ * @returns {number} Distance in kilometers
+ */
 function haversineKm(lat1, lon1, lat2, lon2) {
   const toRad = (v) => (v * Math.PI) / 180;
   const R = 6371;
@@ -15,6 +67,12 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+/**
+ * Compute anomaly labels for a check-in event based on location flags.
+ * @param {Object} flags - System settings (minAccuracyMeters, countryWhitelist)
+ * @param {GeoLocation} loc
+ * @returns {string[]} Array of anomaly labels
+ */
 function computeLabelsForCheckIn(flags, loc) {
   const labels = [];
   if (loc?.accuracy != null && Number(loc.accuracy) > Number(flags.minAccuracyMeters || 100)) labels.push('low_accuracy');
@@ -25,6 +83,13 @@ function computeLabelsForCheckIn(flags, loc) {
   return labels;
 }
 
+/**
+ * Compute anomaly labels for a check-out event (travel speed checks).
+ * @param {Object} open - The open attendance record (with checkIn, in_latitude, in_longitude)
+ * @param {string} tsJST - Check-out timestamp in JST
+ * @param {GeoLocation} loc
+ * @returns {string[]} Array of anomaly labels
+ */
 function computeLabelsForCheckOut(open, tsJST, loc) {
   const labels = [];
   const inDate = parseMySQLJSTToDate(open.checkIn);
@@ -36,19 +101,34 @@ function computeLabelsForCheckOut(open, tsJST, loc) {
   return labels;
 }
 
-async function checkIn(userId, time, loc) {
+/**
+ * Record employee check-in.
+ * @param {number} userId
+ * @param {string|number|null} time - ISO timestamp or epoch ms (null = now)
+ * @param {GeoLocation} loc - Geolocation data
+ * @param {string} [workType] - 'onsite' | 'remote' | 'satellite'
+ * @returns {Promise<CheckInResult|null>} null if already checked in (duplicate)
+ */
+async function checkIn(userId, time, loc, workType) {
   const flags = await settingsService.getFlags();
   const ts = time ? formatInputToMySQLJST(time) : nowJSTMySQL();
   const labels = computeLabelsForCheckIn(flags, loc);
-  const wt = String(arguments[3] || '').trim();
-  const workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
-  const id = await repo.createCheckInTx(userId, ts, loc, labels.join(','), workType);
+  const wt = String(workType || '').trim();
+  const resolvedWorkType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
+  const id = await repo.createCheckInTx(userId, ts, loc, labels.join(','), resolvedWorkType);
   if (!id) {
     return null;
   }
-  return { id, userId, checkIn: ts, labels, workType };
+  return { id, userId, checkIn: ts, labels, workType: resolvedWorkType };
 }
 
+/**
+ * Record employee check-out. If no open check-in exists, creates a missing_checkin record.
+ * @param {number} userId
+ * @param {string|number|null} time - ISO timestamp or epoch ms (null = now)
+ * @param {GeoLocation} loc - Geolocation data
+ * @returns {Promise<CheckOutResult>}
+ */
 async function checkOut(userId, time, loc) {
   const open = await repo.getOpenAttendanceForUser(userId);
   const ts = time ? formatInputToMySQLJST(time) : nowJSTMySQL();
@@ -63,10 +143,17 @@ async function checkOut(userId, time, loc) {
   return { id: open.id, userId, checkIn: open.checkIn, checkOut: ts, labels };
 }
 
-module.exports = { checkIn, checkOut };
+/**
+ * Get attendance timesheet for a user within a date range.
+ * @param {number} userId
+ * @param {string} fromDate - YYYY-MM-DD
+ * @param {string} toDate - YYYY-MM-DD
+ * @returns {Promise<TimesheetResult>}
+ */
 async function timesheet(userId, fromDate, toDate) {
   const rows = await repo.listByUserBetween(userId, fromDate, toDate);
   const res = await rules.computeRange(rows);
   return res;
 }
-module.exports.timesheet = timesheet;
+
+module.exports = { checkIn, checkOut, timesheet };

@@ -1618,6 +1618,65 @@ module.exports = {
     const [rows] = await db.query('SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions WHERE name = ? LIMIT 1', [name]);
     return rows && rows[0] ? rows[0] : null;
   },
+
+  // ─── Batch methods (performance optimization) ────────────────────────────────
+
+  /**
+   * Batch-load active shift assignments for multiple users on a given date.
+   * Eliminates N+1 query pattern in todayRoster.
+   * @param {number[]} userIds
+   * @param {string} dateStr - YYYY-MM-DD
+   * @returns {Promise<Map<number, Object>>} Map of userId -> assignment
+   */
+  async batchGetActiveAssignments(userIds, dateStr) {
+    const result = new Map();
+    if (!userIds || !userIds.length) return result;
+    const set = await getUSAColumnSet();
+    const startCol = getUSAStartCol(set);
+    const hasEnd = set.has('end_date');
+    const placeholders = userIds.map(() => '?').join(',');
+    const whereEnd = hasEnd ? `AND (a.end_date IS NULL OR a.end_date >= ?)` : '';
+    const sql = `
+      SELECT a.*
+      FROM user_shift_assignments a
+      INNER JOIN (
+        SELECT userId, MAX(${startCol}) AS max_start
+        FROM user_shift_assignments
+        WHERE userId IN (${placeholders}) AND ${startCol} <= ?
+        ${hasEnd ? 'AND (end_date IS NULL OR end_date >= ?)' : ''}
+        GROUP BY userId
+      ) latest ON latest.userId = a.userId AND a.${startCol} = latest.max_start
+      WHERE a.userId IN (${placeholders})
+      ORDER BY a.userId
+    `;
+    const params = hasEnd
+      ? [...userIds, dateStr, dateStr, ...userIds]
+      : [...userIds, dateStr, ...userIds];
+    try {
+      const [rows] = await db.query(sql, params);
+      for (const row of (rows || [])) {
+        if (!result.has(row.userId)) result.set(row.userId, row);
+      }
+    } catch (e) {
+      // Fallback: if the batch query fails (schema mismatch), return empty map
+      // The caller will use individual queries
+    }
+    return result;
+  },
+
+  /**
+   * Batch-load all shift definitions (cached in memory since they rarely change).
+   * @returns {Promise<Map<number, Object>>} Map of shiftId -> definition
+   */
+  async batchGetAllShiftDefinitions() {
+    const [rows] = await db.query('SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions');
+    const map = new Map();
+    for (const r of (rows || [])) {
+      map.set(r.id, r);
+    }
+    return map;
+  },
+
   async getUserWorkDetails(userId, limit = 10) {
     const [rows] = await db.query(`
       SELECT id, start_date, end_date, company_name, work_place_address, work_content, role_title, responsibility_level

@@ -15,6 +15,7 @@ const metrics = require('../../core/metrics');
 const db = require('../../core/database/mysql');
 const calendarRepo = require('../calendar/calendar.repository');
 const shiftReminderService = require('../../services/shiftReminder.service');
+const log = require('../../core/logger');
 
 // ------------------------------------------------------------------------
 // CONTROLLER: Xử lý các yêu cầu liên quan đến Chấm Công (Giao tiếp với Frontend)
@@ -33,7 +34,7 @@ async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attend
     });
     if (existed) return;
     await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid', reason });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* leave sync: non-critical */ }
 }
 
 async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendance') {
@@ -46,7 +47,7 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
       return;
     }
     await leaveRepo.cancelOwnPaidByDate(userId, ds);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* leave sync: non-critical */ }
 }
 
 function recordEndpointPerf(endpoint, startedAt, meta = {}) {
@@ -54,11 +55,9 @@ function recordEndpointPerf(endpoint, startedAt, meta = {}) {
   try {
     metrics.observe(`${endpoint}_duration_ms`, durationMs);
     if (durationMs >= 100) metrics.inc(`${endpoint}_slow_count`, 1);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { log.warn('metrics_error', { endpoint, error_message: e.message }); }
   if (durationMs >= 100) {
-    try {
-      console.warn(JSON.stringify({ level: 'warn', type: 'slow_endpoint', endpoint, duration_ms: durationMs, ...meta }));
-    } catch (e) { /* silently ignored */ }
+    log.warn('slow_endpoint', { endpoint, duration_ms: durationMs, ...meta });
   }
 }
 
@@ -113,14 +112,14 @@ exports.checkIn = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ ...loc, workType, result })
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { log.warn('audit_write_failed', { action: 'checkin', userId, error_message: e.message }); }
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const y = parseInt(dtStr.slice(0, 4), 10);
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { log.warn('month_status_update_failed', { userId, error_message: e.message }); }
     try {
       const u = await userRepo.getUserById(userId);
       const name = u ? (u.username || u.email || '従業員') : '従業員';
@@ -175,7 +174,7 @@ exports.checkOut = async (req, res) => {
         beforeData: null,
         afterData: JSON.stringify({ ...loc, result })
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { log.warn('audit_write_failed', { action: 'checkout', userId, error_message: e.message }); }
     try {
       const dtStr = String(result?.checkOut || result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const y = parseInt(dtStr.slice(0, 4), 10);
@@ -574,23 +573,39 @@ exports.todayRoster = async (req, res) => {
     const planned = [];
     let dayIsOff = false;
     try { dayIsOff = await calendarRepo.isOff(date); } catch { dayIsOff = false; }
+
+    // Batch-load shift assignments and definitions to avoid N+1 queries
+    const plannedUserIds = (plannedBase || []).map(r => r.userId).filter(Boolean);
+    let assignmentMap = new Map();
+    let shiftDefMap = new Map();
+    try {
+      [assignmentMap, shiftDefMap] = await Promise.all([
+        attendanceRepo.batchGetActiveAssignments(plannedUserIds, date),
+        attendanceRepo.batchGetAllShiftDefinitions()
+      ]);
+    } catch (e) { /* fallback to empty maps — individual lookups below */ }
+
     for (const r of plannedBase || []) {
       let shift = null;
       try {
-        const assign = await attendanceRepo.getActiveAssignment(r.userId, date);
-        if (assign?.shiftId) {
+        const assign = assignmentMap.get(r.userId) || null;
+        if (assign?.shiftId && shiftDefMap.has(assign.shiftId)) {
+          const def = shiftDefMap.get(assign.shiftId);
+          shift = { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes };
+        } else if (assign?.shiftId) {
           const def = await attendanceRepo.getShiftById(assign.shiftId);
           shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes } : null;
         } else if (Object.prototype.hasOwnProperty.call(assign || {}, 'shift') && assign.shift) {
           const shiftDef3 = await attendanceRepo.getShiftByName(assign.shift);
-          const defs = shiftDef3 ? [shiftDef3] : [];
-          const def = defs && defs[0] ? defs[0] : null;
-          shift = def ? { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes } : null;
+          shift = shiftDef3 ? { id: shiftDef3.id, name: shiftDef3.name, start_time: shiftDef3.start_time, end_time: shiftDef3.end_time, break_minutes: shiftDef3.break_minutes } : null;
+        } else if (r.shiftId && shiftDefMap.has(r.shiftId)) {
+          const def = shiftDefMap.get(r.shiftId);
+          shift = { id: def.id, name: def.name, start_time: def.start_time, end_time: def.end_time, break_minutes: def.break_minutes };
         } else if (r.shiftId) {
           const def2 = await attendanceRepo.getShiftById(r.shiftId).catch(() => null);
           shift = def2 ? { id: def2.id, name: def2.name, start_time: def2.start_time, end_time: def2.end_time, break_minutes: def2.break_minutes } : null;
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* shift lookup fallback — non-critical */ }
       const status = Number(r.isLeave || 0) ? 'leave' : (dayIsOff ? 'off' : 'work');
       planned.push({
         userId: r.userId,
