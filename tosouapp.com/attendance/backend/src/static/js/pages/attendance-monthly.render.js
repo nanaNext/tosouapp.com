@@ -80,9 +80,9 @@
         }
       } else {
         if (offDay) {
-          kubunOptions = ['休日', '休日出勤', '代替出勤'];
+          kubunOptions = ['休日', '休日出勤', '代替出勤', '振替出勤'];
         } else {
-          kubunOptions = ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤'];
+          kubunOptions = ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'];
           if (!isEmployee) {
             kubunOptions.unshift('休日');
           }

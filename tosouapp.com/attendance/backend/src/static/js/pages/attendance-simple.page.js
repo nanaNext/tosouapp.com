@@ -218,8 +218,8 @@ const restoreFastSnapshot = (date, stateRef) => {
     const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
 
     const kubunOptions = stateRef.isOff
-      ? ['休日', '休日出勤', '代替出勤']
-      : (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤']);
+      ? ['休日', '休日出勤', '代替出勤', '振替出勤']
+      : (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日']);
     
     let kubunGroupLabel = stateRef.isOff ? '【予定休日】' : '【予定出勤】';
     let defaultKubun = stateRef.isOff ? '休日' : '出勤';
@@ -1084,8 +1084,8 @@ const load = async (date, opts = {}) => {
     const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
 
     const kubunOptions = isOff
-      ? ['休日', '休日出勤', '代替出勤']
-      : (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤']);
+      ? ['休日', '休日出勤', '代替出勤', '振替出勤']
+      : (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日']);
     
     let kubunGroupLabel = isOff ? '【予定休日】' : '【予定出勤】';
     let localDefaultKubun = isOff ? '休日' : '出勤';
