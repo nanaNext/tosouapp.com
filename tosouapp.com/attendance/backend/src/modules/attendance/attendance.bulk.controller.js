@@ -229,7 +229,7 @@ exports.syncSalary = async (req, res) => {
     const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
     const attendanceRows = await repo.listByUserBetween(userId, from, to).catch(() => []);
     
-    const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+    const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
     const workDaysSet = new Set();
     let paidLeaveDays = 0;
 
@@ -241,6 +241,9 @@ exports.syncSalary = async (req, res) => {
       }
       if (kubun === '有給休暇') {
         paidLeaveDays++;
+      }
+      if (kubun === '半休(有給)') {
+        paidLeaveDays += 0.5;
       }
     }
     for (const r of attendanceRows) {

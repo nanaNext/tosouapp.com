@@ -123,7 +123,7 @@
       const plannedKubun = baseOff ? '休日' : '出勤';
       const effectiveKubun = kubunVal || plannedKubun;
       
-      const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+      const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       // IMPORTANT: classify by effective kubun (fallback to planned default),
       // otherwise planned workdays with empty kubun can be skipped from updates.
       const isWorkKubun = workKubunSet.has(effectiveKubun);

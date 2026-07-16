@@ -373,7 +373,7 @@ module.exports = {
 
     // Helper: derive status from kubun + whether checkIn exists + whether late
     const deriveStatus = (kubun, checkInTime, shiftStart) => {
-      const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+      const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const nonWorkKubunSet = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
       const k = String(kubun || '').trim();
 

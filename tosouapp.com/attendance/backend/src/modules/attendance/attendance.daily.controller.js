@@ -608,6 +608,7 @@ exports.getMonthDetail = async (req, res) => {
           if (ov <= 0) continue;
           const t = String(r?.type || '').toLowerCase();
           if (t === 'paid') paidDays += ov;
+          else if (t === 'paid_half') paidDays += 0.5;
           else if (t.includes('sub') || t.includes('daikyu') || t.includes('comp')) substituteDays += ov;
           else if (t.includes('unpaid') || t.includes('nopay') || t.includes('no_pay')) unpaidDays += ov;
           else if (t.includes('standby') || t.includes('wait') || t.includes('taiki')) standbyDays += ov;
@@ -618,7 +619,11 @@ exports.getMonthDetail = async (req, res) => {
             SELECT COUNT(*) as cnt FROM attendance_daily
             WHERE userId = ? AND date BETWEEN ? AND ? AND kubun = '有給休暇'
           `, [userId, from, to]);
-          const kubunPaid = Number(kubunRows?.[0]?.cnt || 0);
+          const [kubunHalfRows] = await db.query(`
+            SELECT COUNT(*) as cnt FROM attendance_daily
+            WHERE userId = ? AND date BETWEEN ? AND ? AND kubun = '半休(有給)'
+          `, [userId, from, to]);
+          const kubunPaid = Number(kubunRows?.[0]?.cnt || 0) + Number(kubunHalfRows?.[0]?.cnt || 0) * 0.5;
           if (kubunPaid > paidDays) paidDays = kubunPaid;
         } catch (e) { /* silently ignored */ }
         for (const g of (grants || [])) {

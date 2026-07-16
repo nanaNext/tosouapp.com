@@ -69,6 +69,16 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
       await ensurePaidLeaveRequestForDate(userId, ds, reason);
       return;
     }
+    if (k === '半休(有給)') {
+      // Half-day paid leave: create request with type 'paid_half' (0.5 day deduction)
+      const existed = await leaveRepo.findExactRequest({
+        userId, startDate: ds, endDate: ds, type: 'paid_half', statuses: ['pending', 'approved']
+      });
+      if (!existed) {
+        await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid_half', reason: reason || 'half_day_paid' });
+      }
+      return;
+    }
     await leaveRepo.cancelOwnPaidByDate(userId, ds);
   } catch (e) {
     log.warn('sync_paid_leave_error', { userId, date, kubun, error_message: e.message });
