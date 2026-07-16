@@ -844,7 +844,7 @@ exports.exportMonthXlsx = async (req, res) => {
     push1(1, [cell('A1', '月次勤怠インポートテンプレート', 1)], 22);
     push1(2, [cell('A2', '編集可能セルのみ入力してください（行/列の追加・削除・移動は不可）。', 2)], 20);
     push1(3, [cell('A3', '承認済み・承認依頼中の行は取り込み対象外です。', 2)], 18);
-    push1(4, [cell('A4', '社員番号：', 1), cell('C4', employeeCode || '', 4), cell('F4', '氏名：', 1), cell('H4', employeeName || '', 4)], 22);
+    push1(4, [cell('A4', `社員番号: ${employeeCode || ''}　　氏名: ${employeeName || ''}`, 1)], 22);
     push1(5, [cell('A5', '日次実績', 1)], 22);
     push1(6, [
       cell('A6', '日付', 3),
@@ -869,6 +869,21 @@ exports.exportMonthXlsx = async (req, res) => {
       const src = Array.isArray(r?.cells) ? r.cells : [];
       const rowDow = String(src[3] || '').trim();
       const isSunday = rowDow === '日';
+      // Determine row color style based on kubun and attendance status
+      const rowKubun = String(src[4] || '').trim();
+      const rowHasTime = !!(src[9] || src[10]); // has 開始 or 終了
+      const rowIsOff = r?.isOff;
+      // Style IDs: 21=blue(worked), 22=gray(not worked), 23=yellow(paid leave), 24=red(absent), 25=green(half), 26=pink(holiday)
+      const rowStyle = (() => {
+        if (rowKubun === '有給休暇') return 23; // yellow
+        if (rowKubun === '欠勤') return 24; // red
+        if (rowKubun === '半休') return 25; // light green
+        if (rowKubun === '休日' || rowKubun === '【予定休日】' || rowIsOff) return 26; // pink (holiday/off)
+        if (rowHasTime) return 21; // blue (has actual attendance)
+        if (rowKubun.includes('予定')) return 12; // white (planned, no data yet)
+        if (rowKubun === '出勤' || rowKubun === '休日出勤' || rowKubun === '代替出勤') return 22; // gray (work day but no time yet)
+        return 12; // default
+      })();
       const dayText = (() => {
         const ds = String(src[2] || '');
         const dow = String(src[3] || '');
@@ -898,9 +913,9 @@ exports.exportMonthXlsx = async (req, res) => {
         const ref = `${colRef(ci + 1)}${rowNum}`;
         const isTimeCell = (ci >= 5 && ci <= 10);
         const isTextWide = ci === 12 || ci === 13;
-        const style = isTextWide ? 13 : 12;
+        const baseStyle = rowStyle;
         // Highlight only the date cell (日付) for Sundays.
-        let styleWithDay = (isSunday && ci === 0) ? 16 : style;
+        let styleWithDay = (isSunday && ci === 0) ? 16 : baseStyle;
         
         let cellValue = String(v || '');
         if ((ci === 2 || ci === 3 || ci === 4) && cellValue === '✓') {
@@ -944,7 +959,7 @@ exports.exportMonthXlsx = async (req, res) => {
     ].join('');
     const sheet1Merges = [
       'A1:J1', 'A2:J2', 'A3:J3',
-      'A4:B4', 'C4:E4', 'F4:G4', 'H4:J4',
+      'A4:J4',
       'A5:P5'
     ].map(r => `<mergeCell ref="${r}"/>`).join('');
     const lastSheet1Row = 6 + Math.max(1, sheetRows.length);
@@ -1006,7 +1021,7 @@ exports.exportMonthXlsx = async (req, res) => {
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Meiryo"/></font>
     <font><sz val="11"/><color rgb="FFC62828"/><name val="Meiryo"/></font>
   </fonts>
-  <fills count="13">
+  <fills count="18">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
@@ -1020,13 +1035,18 @@ exports.exportMonthXlsx = async (req, res) => {
     <fill><patternFill patternType="solid"><fgColor rgb="FFEAF4FF"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFF4E5"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF4472C4"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFDBEAFE"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFDE7"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFEE2E2"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFD1FAE5"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border><left style="thin"><color rgb="FFD0D7DE"/></left><right style="thin"><color rgb="FFD0D7DE"/></right><top style="thin"><color rgb="FFD0D7DE"/></top><bottom style="thin"><color rgb="FFD0D7DE"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="21">
+  <cellXfs count="26">
     <xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
@@ -1048,6 +1068,11 @@ exports.exportMonthXlsx = async (req, res) => {
     <xf numFmtId="0" fontId="3" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="2" fillId="12" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="13" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="14" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="15" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="16" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="17" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
