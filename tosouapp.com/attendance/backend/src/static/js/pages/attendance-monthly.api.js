@@ -112,7 +112,8 @@
             breakMinutes,
             nightBreakMinutes,
             shiftStart,
-            checkInTime: checkInRaw || null
+            checkInTime: checkInRaw || null,
+            furikaeHolidayDate: String(tr.querySelector('input[data-field="furikaeHolidayDate"]')?.value || '').trim() || null
           });
         }
       }
