@@ -42,7 +42,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
         height: 30px !important;
         font-size: 13px !important;
         padding: 0 10px !important;
-        border-radius: 4px !important;
+        border-radius: 0 !important;
       }
       .attrec-fiori-override .attrec-table {
         margin: 0 !important;
@@ -92,7 +92,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
         box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
         height: 34px !important;
         padding: 0 12px !important;
-        border-radius: 6px !important;
+        border-radius: 0 !important;
         font-size: 13px !important;
         font-weight: 500 !important;
       }
@@ -113,7 +113,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
         min-width: 160px;
         box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.1);
         z-index: 9999 !important; /* Ensure it is always on top */
-        border-radius: 6px;
+        border-radius: 0;
         border: 1px solid #e2e8f0;
         overflow: visible !important; /* Fix cutoff issue */
         margin-top: 4px;

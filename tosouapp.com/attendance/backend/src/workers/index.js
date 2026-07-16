@@ -1,12 +1,26 @@
 // Khởi chạy toàn bộ Worker của hệ thống
-// Khi deploy lên Production, file này có thể được chạy như một Process độc lập 
+// Khi deploy lên Production, file này có thể được chạy như một Process độc lập
 // (Ví dụ: `node attendance/backend/src/workers/index.js`) để tách biệt hoàn toàn khỏi Web API.
 
-require('../config/loadEnv'); // Nạp biến môi trường
+require('../config/loadEnv');
 
-console.log('🚀 Khởi động hệ thống Background Workers...');
+const { isQueueAvailable } = require('../core/database/queue');
 
-// Nạp các Worker
-require('./email.worker');
+function startWorkers() {
+  console.log('🚀 Khởi động hệ thống Background Workers...');
 
-console.log('✅ Hệ thống Worker đã sẵn sàng nhận việc từ Redis!');
+  if (!isQueueAvailable()) {
+    console.warn('⚠️ [Worker Bootstrap] Redis chưa sẵn sàng hoặc queue chưa khả dụng, worker sẽ dừng ngay.');
+    return false;
+  }
+
+  require('./email.worker');
+  console.log('✅ Hệ thống Worker đã sẵn sàng nhận việc từ Redis!');
+  return true;
+}
+
+if (require.main === module) {
+  startWorkers();
+}
+
+module.exports = { startWorkers };

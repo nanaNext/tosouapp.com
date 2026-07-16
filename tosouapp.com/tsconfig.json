@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "allowJs": true,
     "noEmit": true,
-    "types": ["node", "jest"]
+    "types": []
   },
   "include": [
     "attendance/backend/src/**/*",

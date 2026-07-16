@@ -31,10 +31,13 @@ const cronQueue = redisClient && redisClient.status === 'ready'
 async function enqueueJob(queue, jobName, data, options = {}) {
   if (!queue) {
     console.warn(`[Queue] Fallback: Không có Redis, chạy ngay task ${jobName} trên main thread`);
-    // Nếu không có Redis, chúng ta sẽ viết logic chạy trực tiếp ở đây sau
     return null;
   }
   return await queue.add(jobName, data, options);
+}
+
+function isQueueAvailable() {
+  return Boolean(redisClient && redisClient.status === 'ready');
 }
 
 module.exports = {
@@ -42,5 +45,6 @@ module.exports = {
   reportQueue,
   cronQueue,
   enqueueJob,
-  queueConfig
+  queueConfig,
+  isQueueAvailable
 };

@@ -14,6 +14,7 @@
  */
 
 const log = require('./logger');
+const { trackError } = require('./alerting');
 
 const WEBHOOK_URL = process.env.ERROR_WEBHOOK_URL || '';
 const APP_NAME = process.env.COMPANY_NAME || 'tosouapp';
@@ -82,6 +83,12 @@ function report(err, meta = {}) {
     stack: err?.stack,
     ...meta
   };
+
+  try {
+    trackError(meta.type || 'error_reporter', err || errorMeta);
+  } catch (e) {
+    // swallow
+  }
 
   log.error('REPORTED: ' + (err?.message || String(err)), errorMeta);
 
