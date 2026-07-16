@@ -727,6 +727,7 @@
       } catch (e) { /* silently ignored */ }
     }
     const instant = cached || persisted || latestFast;
+    console.log('[monthly] setMonth cache check:', { cacheKey, hasCached: !!cached, hasPersisted: !!persisted, hasLatestFast: !!latestFast, hasInstant: !!instant?.detail });
     if (!instant?.detail) {
       try { renderInstantRightSkeleton(ym); } catch (e) { /* silently ignored */ }
     }

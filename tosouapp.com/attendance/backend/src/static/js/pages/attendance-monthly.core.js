@@ -458,7 +458,7 @@
     return s.length >= 16 ? s.slice(11, 16) : '';
   };
 
-  const workTypeLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場・出張' : '';
+  const workTypeLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場' : '';
 
   const computeStatus = (kubun, isOff, seg, planned = false) => {
     const k = String(kubun || '').trim();

@@ -342,8 +342,8 @@ body.embed .kintai-main {
 }
 
 .se-avatar {
-  width: 48px;
-  height: 48px;
+  width: 24px;
+  height: 24px;
   border-radius: 0;
   background: transparent;
   display: flex;
@@ -382,27 +382,27 @@ body.embed .kintai-main {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   color: #0f172a;
 }
 
 .se-employee-k {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   min-width: 0;
   white-space: nowrap;
 }
 .se-employee-v {
   color: #0b2c66;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
 }
 
 .se-employee-v {
   color: #0f172a;
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -3676,4 +3676,49 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
 }
 .enm-table.right-align td {
   text-align: right;
+}
+
+/* Fix: 出社/在宅/現場 columns equal width (56px) */
+#monthTableReal th:nth-child(3),
+#monthTableReal td:nth-child(3),
+#monthTableReal th:nth-child(4),
+#monthTableReal td:nth-child(4),
+#monthTableReal th:nth-child(5),
+#monthTableReal td:nth-child(5) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* Skeleton loading animation */
+.se-skeleton {
+  padding: 8px 0;
+}
+.se-skeleton-header {
+  height: 36px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: se-skeleton-shimmer 1.2s ease-in-out infinite;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.se-skeleton-row {
+  height: 32px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #f8fafc 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: se-skeleton-shimmer 1.2s ease-in-out infinite;
+  border-radius: 3px;
+  margin-bottom: 4px;
+}
+.se-skeleton-row:nth-child(even) {
+  animation-delay: 0.15s;
+}
+.se-skeleton-row:nth-child(3n) {
+  animation-delay: 0.3s;
+}
+@keyframes se-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

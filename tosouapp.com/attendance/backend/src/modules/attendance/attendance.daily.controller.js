@@ -375,37 +375,48 @@ exports.getMonthDetail = async (req, res) => {
     const monthStatusObj = await repo.getMonthStatus(userId, y, m);
     const monthStatus = monthStatusObj?.status || 'draft';
     const approverName = monthStatusObj?.approved_by_name || null;
-    let rows = [];
     let todayStr = null;
     try { todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); } catch (e) { /* silently ignored */ }
-    if (role !== 'payroll' && monthStatus !== 'approved' && todayStr && todayStr < from) {
-      rows = [];
-    } else {
-      rows = await repo.listByUserBetween(userId, from, to);
-    }
-    const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
-    const planRows = await repo.listPlanBetween(userId, from, to).catch(() => []);
+    const skipRows = role !== 'payroll' && monthStatus !== 'approved' && todayStr && todayStr < from;
+
+    // Run all independent queries in PARALLEL for speed
+    const [
+      rows,
+      dailyRows,
+      planRows,
+      shiftReqRows,
+      workReportRows,
+      off,
+      shiftDefs,
+      assigns,
+      workDetailsRows,
+      monthSummaryRow,
+      goOutRecordsRows
+    ] = await Promise.all([
+      skipRows ? [] : repo.listByUserBetween(userId, from, to),
+      repo.listDailyBetween(userId, from, to).catch(() => []),
+      repo.listPlanBetween(userId, from, to).catch(() => []),
+      db.query('SELECT date, status, leaveType, reason FROM shift_requests WHERE userId = ? AND date BETWEEN ? AND ?', [userId, from, to]).then(r => r[0]).catch(() => []),
+      workReportRepo.listByUserMonth(userId, `${y}-${pad(m)}`).catch(() => []),
+      getUserOffDaySet(y, userId),
+      repo.listShiftDefinitions().catch(() => []),
+      repo.listShiftAssignmentsBetween(userId, from, to).catch(() => []),
+      repo.listWorkDetailsBetween(userId, from, to).catch(() => []),
+      repo.getMonthSummary(userId, y, m).catch(() => null),
+      repo.getGoOutRecordsByMonth(userId, y, m).catch(() => [])
+    ]);
     
-    // Lấy dữ liệu shift_requests (đăng ký ca)
-    const shiftReqRows = await db.query('SELECT date, status, leaveType, reason FROM shift_requests WHERE userId = ? AND date BETWEEN ? AND ?', [userId, from, to]).then(r => r[0]).catch(() => []);
     const shiftReqMap = new Map();
     for (const r of shiftReqRows || []) {
       const dStr = String(r.date || '');
-      // Handle Date object
       const d = dStr.includes('T') ? dStr.slice(0, 10) : (r.date instanceof Date ? r.date.toISOString().slice(0, 10) : dStr.slice(0, 10));
-      // Chỉ lấy những ngày có status rõ ràng là WORKING hoặc OFF. 
-      // Nếu là NONE, ta không đưa vào map để nó rơi vào trường hợp "không có lịch"
       if (d && (r.status === 'WORKING' || r.status === 'OFF')) {
         shiftReqMap.set(d, { status: r.status, leaveType: r.leaveType, reason: r.reason });
       }
     }
 
-    const workReportRows = await workReportRepo.listByUserMonth(userId, `${y}-${pad(m)}`).catch(() => []);
-    const off = await getUserOffDaySet(y, userId);
-    const shiftDefs = await repo.listShiftDefinitions().catch(() => []);
     const shiftById = new Map((shiftDefs || []).map(s => [String(s.id), s]));
     const shiftByName = new Map((shiftDefs || []).map(s => [String(s.name), s]));
-    const assigns = await repo.listShiftAssignmentsBetween(userId, from, to).catch(() => []);
     const resolveDefForAssign = (a) => {
       let def = null;
       const sid = a?.shiftId != null ? String(a.shiftId) : '';
@@ -542,7 +553,6 @@ exports.getMonthDetail = async (req, res) => {
         } : null
       };
     });
-    const workDetailsRows = await repo.listWorkDetailsBetween(userId, from, to).catch(() => []);
     const workDetails = (workDetailsRows || []).map(r => ({
       id: r.id,
       startDate: String(r.start_date || '').slice(0, 10) || null,
@@ -553,7 +563,6 @@ exports.getMonthDetail = async (req, res) => {
       roleTitle: r.role_title || null,
       responsibilityLevel: r.responsibility_level || null
     }));
-    const monthSummaryRow = await repo.getMonthSummary(userId, y, m).catch(() => null);
     const monthSummary = (() => {
       if (!monthSummaryRow) return null;
       const safeParse = (s) => {
@@ -581,8 +590,10 @@ exports.getMonthDetail = async (req, res) => {
       };
       try {
         const leaveRepo = require('../leave/leave.repository');
-        const all = await leaveRepo.listApprovedByUserOverlap(userId, from, to).catch(() => []);
-        const grants = await leaveRepo.listGrants(userId, 'paid').catch(() => []);
+        const [all, grants] = await Promise.all([
+          leaveRepo.listApprovedByUserOverlap(userId, from, to).catch(() => []),
+          leaveRepo.listGrants(userId, 'paid').catch(() => [])
+        ]);
         let paidDays = 0;
         let substituteDays = 0;
         let unpaidDays = 0;
@@ -623,7 +634,6 @@ exports.getMonthDetail = async (req, res) => {
         return { paidDays: 0, substituteDays: 0, unpaidDays: 0, standbyDays: 0, grantedDays: 0, grantedDaysTotal: 0 };
       }
     })();
-    const goOutRecordsRows = await repo.getGoOutRecordsByMonth(userId, y, m).catch(() => []);
     const goOutMap = new Map();
     for (const r of goOutRecordsRows) {
       const d = String(r.date).slice(0, 10);

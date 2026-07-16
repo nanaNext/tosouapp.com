@@ -87,6 +87,7 @@
                 <div class="se-target-month">
                   <div class="se-target-label">対象年月</div>
                   <input id="monthPicker" class="se-target-input" type="month">
+                  <script>try{var _p=document.getElementById('monthPicker');var _u=new URLSearchParams(location.search);var _m=(_u.get('month')||'').slice(0,7);if(!/^\d{4}-\d{2}$/.test(_m)){var _d=new Date(Date.now()+9*3600*1000);_m=_d.toISOString().slice(0,7);}_p.value=_m;}catch(e){}</script>
                   <select id="targetDateSelect" class="se-target-select" style="width:120px;"></select>
                 </div>
               </div>
@@ -119,6 +120,7 @@
                 <div class="se-target-month se-target-month-sample" aria-label="対象年月">
                   <div class="se-target-label-sample">対象年月</div>
                   <input id="monthPicker2" class="se-target-input-sample" type="month">
+                  <script>try{var _p2=document.getElementById('monthPicker2');if(_p2&&_m)_p2.value=_m;}catch(e){}</script>
                 </div>
               </div>
             </div>
@@ -188,7 +190,22 @@
                       <a class="se-btn primary se-btn-wide" href="/ui/attendance?back=1" style="text-decoration:none;">個人カレンダー登録画面へ</a>
                     </div>
                   </div>
-                  <div id="monthTable" class="se-table"></div>
+                  <div id="monthTable" class="se-table">
+                    <!-- Skeleton loading: hiện ngay khi mở trang, biến mất khi data load xong -->
+                    <div class="se-skeleton" id="tableSkeleton">
+                      <div class="se-skeleton-header"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                      <div class="se-skeleton-row"></div>
+                    </div>
+                  </div>
                   <div id="goOutHistoryTable" class="se-table" style="display: none; margin-top: 12px;"></div>
                   
                 </div>
@@ -307,7 +324,7 @@
                 <tr>
                   <th>出社</th>
                   <th>在宅</th>
-                  <th>出張</th>
+                  <th>現場</th>
                   <th>開始</th>
                   <th>終了</th>
                   <th>普通</th>

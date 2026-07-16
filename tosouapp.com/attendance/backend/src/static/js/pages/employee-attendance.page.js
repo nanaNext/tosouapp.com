@@ -1134,7 +1134,7 @@ async function mountAttendanceImpl({
           const siteView = dashOr(site);
           const workView = dashOr(work);
           const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
-          const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : (st === 'off' ? '休日' : '—'));
+          const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場' : (st === 'off' ? '休日' : '—'));
           const tr = document.createElement('tr');
           tr.className = st === 'checked_out' ? 'attrec-row checkedout'
             : (st === 'working' ? 'attrec-row working'

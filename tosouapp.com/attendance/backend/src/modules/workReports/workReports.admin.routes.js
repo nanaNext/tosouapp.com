@@ -435,7 +435,7 @@ router.get('/export.xlsx',
         return '';
       }
     };
-    const wtLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場・出張' : '';
+    const wtLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場' : '';
     const leaveLabel = (t) => {
       const s = String(t || '').toLowerCase();
       if (s === 'paid') return '有給';
@@ -562,7 +562,7 @@ router.get('/export.xlsx',
         { header: '勤務区分', width: 12 },
         { header: '出社', width: 8 },
         { header: '在宅', width: 8 },
-        { header: '現場・出張', width: 10 },
+        { header: '現場', width: 10 },
         { header: '現場（任意）', width: 18 },
         { header: '作業内容', width: 52 }
       ];
@@ -875,7 +875,7 @@ router.get('/export.xlsx',
         { header: '勤務区分', width: 12 },
         { header: '出社', width: 8 },
         { header: '在宅', width: 8 },
-        { header: '現場・出張', width: 10 },
+        { header: '現場', width: 10 },
         { header: '現場（任意）', width: 18 },
         { header: '作業内容', width: 52 },
         { header: '遅刻', width: 8 },
@@ -1433,7 +1433,7 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
     const workTypeLabel = (value) => {
       if (value === 'onsite') return '出社';
       if (value === 'remote') return '在宅';
-      if (value === 'satellite') return '現場・出張';
+      if (value === 'satellite') return '現場';
       return '—';
     };
 
@@ -1443,6 +1443,7 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
       { header: '社員番号', width: 12 },
       { header: '氏名', width: 14 },
       { header: '部署', width: 22 },
+      { header: '支店', width: 22 },
       { header: '勤務区分', width: 12 },
       { header: '出勤', width: 8 },
       { header: '退勤', width: 8 },
@@ -1481,6 +1482,7 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
             it.employeeCode || '',
             it.username || '',
             it.departmentName || '',
+            it.branchName || '',
             it.kubun || '',
             fmtHm(it.attendance?.checkIn),
             fmtHm(it.attendance?.checkOut),
@@ -1497,13 +1499,13 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
        // Group mode
        const groups = new Map();
        for (const it of items) {
-         const key = `${it.employeeCode || ''}|${it.username || ''}|${it.departmentName || ''}`;
-         if (!groups.has(key)) groups.set(key, { employeeCode: it.employeeCode, username: it.username, departmentName: it.departmentName, items: [] });
+         const key = `${it.employeeCode || ''}|${it.username || ''}|${it.departmentName || ''}|${it.branchName || ''}`;
+         if (!groups.has(key)) groups.set(key, { employeeCode: it.employeeCode, username: it.username, departmentName: it.departmentName, branchName: it.branchName, items: [] });
          groups.get(key).items.push(it);
        }
        for (const g of Array.from(groups.values())) {
           rows.push({
-            cells: [ { v: `${g.employeeCode || ''} ${g.username || ''}`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ]
+            cells: [ { v: `${g.employeeCode || ''} ${g.username || ''}`, s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' }, { v: '', s: 'headerGrey' } ]
           });
           for (const it of g.items) {
              const combinedReasonMemo = [it.attendance?.memo, it.attendance?.notes].filter(Boolean).join('\n');
@@ -1514,6 +1516,7 @@ router.get('/month/export-table', authorize('admin', 'manager'), async (req, res
                  g.employeeCode || '',
                  g.username || '',
                  g.departmentName || '',
+                 g.branchName || '',
                  it.kubun || '',
                  fmtHm(it.attendance?.checkIn),
                  fmtHm(it.attendance?.checkOut),
@@ -1674,10 +1677,13 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
              u.shift_id AS shiftId,
              u.departmentId AS departmentId,
              d.name AS departmentName,
+             u.branch_id AS branchId,
+             br.name AS branchName,
              u.role AS role,
              u.employment_type AS employment_type
       FROM users u
       LEFT JOIN departments d ON d.id = u.departmentId
+      LEFT JOIN branches br ON br.id = u.branch_id
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
@@ -1868,6 +1874,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         username: user.username || null,
         departmentId: user.departmentId || null,
         departmentName: user.departmentName || null,
+        branchId: user.branchId || null,
+        branchName: user.branchName || null,
         role: user.role || null,
         employment_type: user.employment_type || null,
         date,
@@ -1951,6 +1959,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
         username: user.username || null,
         departmentId: user.departmentId || null,
         departmentName: user.departmentName || null,
+        branchId: user.branchId || null,
+        branchName: user.branchName || null,
         role: user.role || null,
         employment_type: user.employment_type || null,
         date: String(date).slice(0, 10),
@@ -1978,6 +1988,9 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       return Number(a.userId || 0) - Number(b.userId || 0);
     });
 
+    console.log("Returning items with branches!");
+    const itemsWith111 = items.filter(i => i.userId === 111);
+    console.log("User 111 items:", JSON.stringify(itemsWith111, null, 2));
     res.status(200).json({
       month,
       range: { start, end },

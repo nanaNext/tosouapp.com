@@ -318,7 +318,7 @@ const renderAttendance = async () => {
     const st = last?.checkIn ? (last?.checkOut ? '退勤済' : '出勤中') : '未出勤';
     const canIn = !last?.checkIn;
     const canOut = !!last?.checkIn && !last?.checkOut;
-    const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場/出張' : '出社';
+    const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場' : '出社';
     const kubunOptions = isOff
       ? ['休日', '休日出勤', '代替出勤']
       : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];

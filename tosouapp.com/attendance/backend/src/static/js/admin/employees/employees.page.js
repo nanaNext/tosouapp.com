@@ -304,7 +304,7 @@ async function renderEmployees(profile, c) {
                 <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">控除時間</span><input id="sumAllDeduction" placeholder="0:00" style="width:90px"></label>
                 <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">出社日数</span><input id="sumAllOnsiteDays" type="number" step="1" style="width:90px"></label>
                 <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">在宅日数</span><input id="sumAllRemoteDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">現場・出張</span><input id="sumAllSatelliteDays" type="number" step="1" style="width:90px"></label>
+                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">現場</span><input id="sumAllSatelliteDays" type="number" step="1" style="width:90px"></label>
               </div>
             </td>
           </tr>
