@@ -394,11 +394,6 @@
       <option value="" ${disablePlanned ? 'disabled' : ''} ${kubunInit === '' ? 'selected' : ''}>${esc(plannedLabel)}</option>
       ${kubunOptions.map((k) => {
         let disabledOpt = '';
-        if (!isAdminView && isFuture) {
-          if (['出勤', '休日出勤', '代替出勤', '半休'].includes(k)) {
-            disabledOpt = 'disabled';
-          }
-        }
         let optStyle = '';
         if (k === '休日' || k === '代替休日') optStyle = 'color:#e11d48; font-weight:bold;';
         else if (k === '欠勤') optStyle = 'color:#ea580c; font-weight:bold;';
