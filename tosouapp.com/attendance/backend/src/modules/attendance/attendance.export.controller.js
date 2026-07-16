@@ -950,7 +950,7 @@ exports.exportMonthXlsx = async (req, res) => {
       xmlCells.push(numberCell(`Q${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
       push1(rowNum, xmlCells);
     }
-    const sheet1VisibleCols = [12, 14, 5, 5, 12, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
+    const sheet1VisibleCols = [12, 14, 5, 5, 5, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
     const sheet1Cols = [
       ...sheet1VisibleCols.map((w, i) => {
         return `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`;
