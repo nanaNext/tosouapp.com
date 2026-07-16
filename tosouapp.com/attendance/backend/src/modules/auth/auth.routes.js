@@ -62,7 +62,7 @@ const { authenticate } = require('../../core/middleware/authMiddleware');
 const enableSuperAdminRecovery = String(process.env.ENABLE_SUPER_ADMIN_RECOVERY || '').toLowerCase() === 'true';
 
 router.post('/login',
-  rateLimit({ windowMs: 60_000, max: 10 }),
+  rateLimit({ windowMs: 60_000, max: 20 }),
   body('email').isEmail(),
   body('password').isLength({ min: 6 }),
   authController.login
