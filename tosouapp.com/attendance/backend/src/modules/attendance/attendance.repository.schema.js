@@ -157,6 +157,7 @@ async function ensureAttendanceDailySchema() {
     if (!set.has('break_minutes')) alters.push(`ADD COLUMN break_minutes INT NULL`);
     if (!set.has('night_break_minutes')) alters.push(`ADD COLUMN night_break_minutes INT NULL`);
     if (!set.has('status')) alters.push(`ADD COLUMN status ENUM('未入力','未承認','遅刻','承認待ち','承認済み') NULL DEFAULT '未入力'`);
+    if (!set.has('furikae_holiday_date')) alters.push(`ADD COLUMN furikae_holiday_date DATE NULL`);
     if (!set.has('created_at')) alters.push(`ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     if (!set.has('updated_at')) alters.push(`ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
     if (alters.length) {

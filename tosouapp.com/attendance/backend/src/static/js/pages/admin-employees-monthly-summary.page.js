@@ -208,10 +208,10 @@ function computeRowDisplay(d) {
   const shift = d?.shift || null;
   const seg = pickDisplaySeg(d);
   const kubunInitRaw = String(daily?.kubun || '').trim();
-  const kubunOptions = offDay ? ['休日', '休日出勤', '代替出勤'] : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+  const kubunOptions = offDay ? ['休日', '休日出勤', '代替出勤'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤'];
   let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
   const plannedKubun = offDay ? '休日' : '出勤';
-  const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+  const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
   const hasActual = !!(seg?.id || seg?.checkIn || seg?.checkOut);
   if (offDay && !kubunInit && hasActual) kubunInit = '休日出勤';
   const effectiveKubun = kubunInit || plannedKubun;

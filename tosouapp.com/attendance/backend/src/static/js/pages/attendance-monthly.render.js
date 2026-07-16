@@ -82,7 +82,7 @@
         if (offDay) {
           kubunOptions = ['休日', '休日出勤', '代替出勤'];
         } else {
-          kubunOptions = ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+          kubunOptions = ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤'];
           if (!isEmployee) {
             kubunOptions.unshift('休日');
           }
@@ -171,7 +171,7 @@
         }
       }
 
-      const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+      const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
@@ -701,7 +701,7 @@
 
       const cls = String(clsSel?.value || '').trim();
       const offDay = baseOff;
-      const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+      const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const effectiveKubun = cls || (offDay ? '休日' : '出勤');
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
       const isWorkDay = workKubunSet.has(effectiveKubun);

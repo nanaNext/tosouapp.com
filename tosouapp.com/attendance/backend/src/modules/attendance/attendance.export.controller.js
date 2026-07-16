@@ -585,7 +585,7 @@ exports.exportMonthXlsx = async (req, res) => {
       let inHm = hm(seg?.checkIn);
       let outHm = hm(seg?.checkOut);
       const hasTime = !!inHm || !!outHm;
-      const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+      const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const dailyKubun = String(daily?.kubun || '').trim();
       const plannedLabel = isOff ? '【予定休日】' : '【予定出勤】';
       const kubunInfo = (() => {
@@ -597,7 +597,7 @@ exports.exportMonthXlsx = async (req, res) => {
           if (hasTime) return { display: '休日出勤', effective: '休日出勤' };
           return { display: plannedLabel, effective: '休日' };
         }
-        const allowed = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休日']);
+        const allowed = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休日']);
         if (allowed.has(dailyKubun) && dailyKubun) return { display: dailyKubun, effective: dailyKubun };
         return { display: plannedLabel, effective: '出勤' };
       })();
@@ -877,7 +877,7 @@ exports.exportMonthXlsx = async (req, res) => {
       const rowStyle = (() => {
         if (rowKubun === '有給休暇') return 23; // yellow
         if (rowKubun === '欠勤') return 24; // red
-        if (rowKubun === '半休') return 25; // light green
+        if (rowKubun === '半休' || rowKubun === '半休(有給)') return 25; // light green
         if (rowKubun === '休日' || rowKubun === '【予定休日】' || rowIsOff) return 26; // pink (holiday/off)
         if (rowHasTime) return 21; // blue (has actual attendance)
         if (rowKubun.includes('予定')) return 12; // white (planned, no data yet)

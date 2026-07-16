@@ -123,7 +123,7 @@ async function computePayslipForUser(userId, month, options = null) {
   ]);
   const dept = user?.departmentId ? await userRepo.getDepartmentById(user.departmentId).catch(() => null) : null;
   
-  const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+  const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
   const workDaysSet = new Set();
   let paidLeaveDaysFromDaily = 0;
   let absentDaysFromDaily = 0;
@@ -137,6 +137,9 @@ async function computePayslipForUser(userId, month, options = null) {
     }
     if (kubun === '有給休暇') {
       paidLeaveDaysFromDaily++;
+    }
+    if (kubun === '半休(有給)') {
+      paidLeaveDaysFromDaily += 0.5;
     }
     if (kubun === '欠勤') {
       absentDaysFromDaily++;

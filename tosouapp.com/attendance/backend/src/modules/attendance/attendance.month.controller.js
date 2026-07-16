@@ -42,14 +42,14 @@ async function computeMonthMissing(userId, y, m) {
     if (!segByDate.has(ds)) segByDate.set(ds, []);
     segByDate.get(ds).push(r);
   }
-  const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+  const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
   const missing = [];
   for (let day = 1; day <= lastDay; day++) {
     const ds = `${y}-${pad(m)}-${pad(day)}`;
     const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
     const isOff = off.has(ds);
     const k0 = dailyKubun.get(ds) || '';
-    const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み', '休日']);
+    const allowedNormal = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休み', '休日']);
     const allowedOff = new Set(['休日', '休日出勤', '代替出勤', '休み']);
     const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
     const segs = segByDate.get(ds) || [];
@@ -125,7 +125,7 @@ exports.getMonthStatusBulk = async (req, res) => {
     const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
     const from = `${y}-${pad(m)}-01`;
     const to = `${y}-${pad(m)}-${pad(lastDay)}`;
-    const workKubunSet = new Set(['出勤', '半休', '休日出勤', '代替出勤']);
+    const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
     const enrich = async (uid) => {
       try {
         const off = await getUserOffDaySet(y, uid);
@@ -145,7 +145,7 @@ exports.getMonthStatusBulk = async (req, res) => {
           const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
           const isOff = off.has(ds);
           const k0 = dailyKubun.get(ds) || '';
-          const allowedNormal = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休み', '休日']);
+          const allowedNormal = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休み', '休日']);
           const allowedOff = new Set(['休日', '休日出勤', '代替出勤', '休み']);
           const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
           const segs = segByDate.get(ds) || [];

@@ -321,7 +321,7 @@ const renderAttendance = async () => {
     const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場' : '出社';
     const kubunOptions = isOff
       ? ['休日', '休日出勤', '代替出勤']
-      : ['出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+      : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤'];
     const kubunGroupLabel = isOff ? '[予定休日]' : '[予定出勤]';
     const kubunOptionsHtml = `
       <option value="" disabled>${esc(kubunGroupLabel)}</option>

@@ -217,7 +217,7 @@ module.exports = {
     let kubun = existing?.kubun ?? null;
     if (Object.prototype.hasOwnProperty.call(incoming, 'kubun')) {
       const k = String(incoming.kubun || '').trim();
-      const allowed = new Set(['', '出勤', '半休', '欠勤', '有給休暇', '無給休暇', '代替休日', '休日', '休日出勤', '代替出勤']);
+      const allowed = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休日', '休日出勤', '代替出勤']);
       kubun = allowed.has(k) ? (k || null) : kubun;
     }
 
@@ -281,6 +281,16 @@ module.exports = {
     } else if (Object.prototype.hasOwnProperty.call(incoming, 'nightBreakMinutes')) {
       nightBreakMin = incoming.nightBreakMinutes == null ? null : Number(incoming.nightBreakMinutes);
     }
+
+    let furikaeHolidayDate = existing?.furikae_holiday_date ?? null;
+    if (Object.prototype.hasOwnProperty.call(incoming, 'furikae_holiday_date')) {
+      const fv = String(incoming.furikae_holiday_date || '').slice(0, 10);
+      furikaeHolidayDate = /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null;
+    } else if (Object.prototype.hasOwnProperty.call(incoming, 'furikaeHolidayDate')) {
+      const fv = String(incoming.furikaeHolidayDate || '').slice(0, 10);
+      furikaeHolidayDate = /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null;
+    }
+
     const sameValue = (a, b) => {
       if (a == null && b == null) return true;
       return String(a ?? '') === String(b ?? '');
@@ -302,8 +312,8 @@ module.exports = {
     }
     const [res] = await db.query(
       `
-        INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, furikae_holiday_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           kubun = VALUES(kubun),
           kubun_confirmed = VALUES(kubun_confirmed),
@@ -315,7 +325,8 @@ module.exports = {
           late_minutes = VALUES(late_minutes),
           early_minutes = VALUES(early_minutes),
           break_minutes = VALUES(break_minutes),
-          night_break_minutes = VALUES(night_break_minutes)
+          night_break_minutes = VALUES(night_break_minutes),
+          furikae_holiday_date = VALUES(furikae_holiday_date)
       `,
       [
         userId,
@@ -330,7 +341,8 @@ module.exports = {
         late_minutes,
         early_minutes,
         Number.isFinite(breakMin) ? breakMin : null,
-        Number.isFinite(nightBreakMin) ? nightBreakMin : null
+        Number.isFinite(nightBreakMin) ? nightBreakMin : null,
+        furikaeHolidayDate
       ]
     );
     return { ok: true, affectedRows: Number(res?.affectedRows || 0) };
