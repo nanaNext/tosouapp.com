@@ -1470,7 +1470,7 @@ export async function mount(options = {}) {
           const dow = new Date(String(d?.date || '') + 'T00:00:00').getDay();
           const offDay = Number(d?.is_off || 0) === 1 || dow === 0 || dow === 6;
           const kubunInitRaw = String(daily?.kubun || '').trim();
-          const kubunOptions = offDay ? ['休日', '休日出勤', '代替出勤'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤'];
+          const kubunOptions = offDay ? ['休日', '休日出勤', '代替出勤', '振替出勤'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'];
           let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : '';
           const plannedKubun = offDay ? '休日' : '出勤';
           const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
