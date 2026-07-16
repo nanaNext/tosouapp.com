@@ -436,6 +436,7 @@
           <select id="classification_${dateStr}_${rowId}" name="classification_${dateStr}_${rowId}" class="se-select se-kubun-select ${kubunClass}" data-field="classification" ${state.editableMonth ? '' : 'disabled'}>
             ${kubunOptionsHtml}
           </select>
+          <input id="furikaeDate_${dateStr}_${rowId}" name="furikaeDate_${dateStr}_${rowId}" class="se-input se-furikae-date" data-field="furikaeHolidayDate" type="date" value="${esc(daily?.furikae_holiday_date ? String(daily.furikae_holiday_date).slice(0, 10) : '')}" title="振替休日の日付" placeholder="振替休日" style="width:110px;font-size:11px;margin-top:2px;${kubunInit === '振替出勤' ? '' : 'display:none;'}" ${state.editableMonth ? '' : 'disabled'}>
         </div>
       </td>
       <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckOnsite_${dateStr}_${rowId}" name="ckOnsite_${dateStr}_${rowId}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
@@ -703,6 +704,12 @@
       const offDay = baseOff;
       const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const effectiveKubun = cls || (offDay ? '休日' : '出勤');
+
+      // Show/hide furikae date picker based on kubun
+      const furikaeDateEl = rowEl.querySelector('input[data-field="furikaeHolidayDate"]');
+      if (furikaeDateEl) {
+        furikaeDateEl.style.display = cls === '振替出勤' ? '' : 'none';
+      }
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;

@@ -155,6 +155,28 @@ async function computePayslipForUser(userId, month, options = null) {
 
   const ts = await attendanceRules.computeRange(attendanceRows);
   const workDays = workDaysSet.size;
+
+  // Calculate holiday work premium minutes (休日出勤 days get ×1.25)
+  let holidayWorkMinutes = 0;
+  for (const r of dailyRows) {
+    const date = String(r.date || '').slice(0, 10);
+    const kubun = String(r.kubun || '').trim();
+    if (kubun === '休日出勤') {
+      // Find attendance records for this date and sum worked minutes
+      const dayAttendance = attendanceRows.filter(a => String(a.checkIn || '').slice(0, 10) === date || String(a.checkOut || '').slice(0, 10) === date);
+      for (const a of dayAttendance) {
+        if (a.checkIn && a.checkOut) {
+          const inMs = new Date(a.checkIn).getTime();
+          const outMs = new Date(a.checkOut).getTime();
+          if (!isNaN(inMs) && !isNaN(outMs)) {
+            const breakMin = Number(r.break_minutes || 60);
+            const worked = Math.max(0, Math.floor((outMs - inMs) / 60000) - breakMin);
+            holidayWorkMinutes += worked;
+          }
+        }
+      }
+    }
+  }
   
   // Use either leave requests or manual daily entry for paid leave
   const leaveSummary = summarizeApprovedLeaveDays(approvedLeaveRows, from, to);
@@ -169,7 +191,7 @@ async function computePayslipForUser(userId, month, options = null) {
   const rMode = conf?.rounding_mode ?? env.salaryRoundingMode;
   const regularMin = roundToStep(ts.total.regularMinutes || 0, rStep, rMode);
   let nightMin = roundToStep(ts.total.nightMinutes || 0, rStep, rMode);
-  const holidayMin = 0;
+  const holidayMin = roundToStep(holidayWorkMinutes, rStep, rMode); // 休日出勤 minutes (×1.25 premium)
   function isoWeekStartStr(s) {
     const d = new Date(s + 'T00:00:00Z');
     const dow = d.getUTCDay();

@@ -509,8 +509,8 @@ module.exports = {
 
           await conn.query(
             `
-            INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, status, furikae_holiday_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
               kubun = VALUES(kubun),
               kubun_confirmed = VALUES(kubun_confirmed),
@@ -523,7 +523,8 @@ module.exports = {
               early_minutes = VALUES(early_minutes),
               break_minutes = VALUES(break_minutes),
               night_break_minutes = VALUES(night_break_minutes),
-              status = VALUES(status)
+              status = VALUES(status),
+              furikae_holiday_date = VALUES(furikae_holiday_date)
           `,
             [
               userId,
@@ -539,7 +540,8 @@ module.exports = {
               d.earlyMinutes != null ? d.earlyMinutes : null,
               d.breakMinutes !== null && d.breakMinutes !== undefined ? d.breakMinutes : null,
               d.nightBreakMinutes !== null && d.nightBreakMinutes !== undefined ? d.nightBreakMinutes : null,
-              status
+              status,
+              (() => { const fv = String(d.furikaeHolidayDate || d.furikae_holiday_date || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null; })()
             ]
           );
           dailySaved++;
