@@ -31,7 +31,7 @@
         <th>勤務区分</th>
         <th style="width: 56px !important; min-width: 56px !important; max-width: 56px !important; text-align: center; box-sizing: border-box;">出社</th>
         <th style="width: 56px !important; min-width: 56px !important; max-width: 56px !important; text-align: center; box-sizing: border-box;">在宅</th>
-        <th style="width: 56px !important; min-width: 56px !important; max-width: 56px !important; text-align: center; font-size: 10px; line-height: 1.1; padding: 2px; box-sizing: border-box;">現場/<br>出張</th>
+        <th style="width: 56px !important; min-width: 56px !important; max-width: 56px !important; text-align: center; box-sizing: border-box;">現場</th>
         <th>現場（任意）</th>
         <th>作業内容</th>
         <th style="width: 40px !important; min-width: 40px !important; max-width: 40px !important; text-align: center; box-sizing: border-box; padding: 0 !important; letter-spacing: -1px; font-size: 10px;">開始時間</th>
@@ -438,9 +438,9 @@
           </select>
         </div>
       </td>
-      <td style="text-align:center;"><input id="ckOnsite_${dateStr}_${rowId}" name="ckOnsite_${dateStr}_${rowId}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input id="ckRemote_${dateStr}_${rowId}" name="ckRemote_${dateStr}_${rowId}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="text-align:center;"><input id="ckSatellite_${dateStr}_${rowId}" name="ckSatellite_${dateStr}_${rowId}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckOnsite_${dateStr}_${rowId}" name="ckOnsite_${dateStr}_${rowId}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckRemote_${dateStr}_${rowId}" name="ckRemote_${dateStr}_${rowId}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckSatellite_${dateStr}_${rowId}" name="ckSatellite_${dateStr}_${rowId}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td><input id="location_${dateStr}_${rowId}" name="location_${dateStr}_${rowId}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td><textarea id="memo_${dateStr}_${rowId}" name="memo_${dateStr}_${rowId}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px; ${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}>${esc(finalMemo)}</textarea></td>
       <td class="se-time-cell">
@@ -604,7 +604,7 @@
         }
         
         const defaultWidths = [
-          75, 95, 45, 45, 80, 120, 150, 80, 80, 75, 75, 70, 70, 80, 100, 150, 90, 80, 50, 50
+          75, 95, 45, 45, 45, 120, 150, 80, 80, 75, 75, 70, 70, 80, 100, 150, 90, 80, 50, 50
         ]; // 20 columns
         
         const cg = document.createElement('colgroup');

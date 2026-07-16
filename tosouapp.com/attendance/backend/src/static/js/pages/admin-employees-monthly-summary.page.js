@@ -668,7 +668,7 @@ function renderScaffold(root) {
     { id: 'PrivateGoOut', label: '私用外出', placeholder: '0:00' },
     { id: 'OnsiteDays', label: '出社日数', type: 'number', step: '1' },
     { id: 'RemoteDays', label: '在宅日数', type: 'number', step: '1' },
-    { id: 'SatelliteDays', label: '現場・出張', type: 'number', step: '1' }
+    { id: 'SatelliteDays', label: '現場', type: 'number', step: '1' }
   ];
   const inhouseFields = [
     { id: 'PlannedDays', label: '所定日数', type: 'number', step: '1' },

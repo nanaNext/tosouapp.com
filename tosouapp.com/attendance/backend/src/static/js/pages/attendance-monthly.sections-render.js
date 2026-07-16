@@ -944,7 +944,7 @@
       planned: '所定日数', attend: '出勤日数', holiday: '休日出勤日数', standby: '待機日数',
       total: '総労働時間', night: '深夜時間', overtime: '総残業時間', legal: '法定外時間',
       paid: '有休日数', entitlement: '有給付与', substitute: '代休日数', unpaid: '無給休暇',
-      absent: '欠勤日数', deduction: '控除時間', onsite: '出社日数', remote: '在宅日数', satellite: '現場・出張日数',
+      absent: '欠勤日数', deduction: '控除時間', onsite: '出社日数', remote: '在宅日数', satellite: '現場日数',
       workGoOut: '業務外出', privateGoOut: '私用外出'
     };
     if (mode === 'sumAll') {

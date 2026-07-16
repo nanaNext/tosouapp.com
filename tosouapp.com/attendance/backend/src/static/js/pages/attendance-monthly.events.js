@@ -178,7 +178,7 @@
           btn.disabled = false;
           btn.dataset.saving = '0';
           core.hideSpinner();
-        }, 1500);
+        }, 600);
 
       } catch (err) {
         btn.innerHTML = originalText;
@@ -280,7 +280,7 @@
           btn.disabled = false;
           btn.dataset.saving = '0';
           core.hideSpinner();
-        }, 1500);
+        }, 600);
       } catch (err) {
         btn.innerHTML = originalText;
         btn.disabled = false;

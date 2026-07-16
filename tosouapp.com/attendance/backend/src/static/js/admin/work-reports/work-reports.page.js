@@ -29,7 +29,7 @@ const statusMeta = (status) => {
 const workTypeLabel = (value) => {
   if (value === 'onsite') return '出社';
   if (value === 'remote') return '在宅';
-  if (value === 'satellite') return '現場・出張';
+  if (value === 'satellite') return '現場';
   return '—';
 };
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);

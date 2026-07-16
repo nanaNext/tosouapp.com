@@ -509,7 +509,7 @@ exports.exportMonthXlsx = async (req, res) => {
       { header: '現場（任意）', width: 28 },
       { header: '出社', width: 6 },
       { header: '在宅', width: 6 },
-      { header: '現場・出張', width: 14 },
+      { header: '現場', width: 14 },
       { header: '開始時刻', width: 10 },
       { header: '終了時刻', width: 10 },
       { header: '休憩時間', width: 10 },
@@ -608,10 +608,10 @@ exports.exportMonthXlsx = async (req, res) => {
       const shouldShowDefaultShift = !isOff && (kubun === '' || kubun === '出勤' || kubun === '【予定出勤】' || kubun === '休日出勤' || kubun === '代替出勤');
       
       let wt = isWorkKubun ? String(seg?.workType || daily?.workType || '').trim() : '';
-      if (isWorkKubun && !wt) wt = 'onsite';
-      const wtOn = wt === 'onsite' ? { v: '✓', s: 'checkOn' } : '';
-      const wtRe = wt === 'remote' ? { v: '✓', s: 'checkOn' } : '';
-      const wtSa = wt === 'satellite' ? { v: '✓', s: 'checkOn' } : '';
+      if (isWorkKubun && !wt && hasTime) wt = 'onsite';
+      const wtOn = (wt === 'onsite' && hasTime) ? { v: '✓', s: 'checkOn' } : '';
+      const wtRe = (wt === 'remote' && hasTime) ? { v: '✓', s: 'checkOn' } : '';
+      const wtSa = (wt === 'satellite' && hasTime) ? { v: '✓', s: 'checkOn' } : '';
       
       const holidayLock = !isWorkKubun;
       
@@ -655,24 +655,21 @@ exports.exportMonthXlsx = async (req, res) => {
       })();
 
       const workLocation = (() => {
-        const segLocs = segs0.map(s => String(s?.location || '').trim()).filter(Boolean);
+        const segLoc = seg ? String(seg?.location || '').trim() : '';
         const dLoc = String(daily?.location || '').trim();
-        const combined = Array.from(new Set([...segLocs, dLoc])).filter(Boolean).join(' / ');
-        return combined || '';
+        return segLoc || dLoc || '';
       })();
       
       const workContent = (() => {
-        const segMemos = segs0.map(s => String(s?.memo || '').trim()).filter(Boolean);
+        const segMemo = seg ? String(seg?.memo || '').trim() : '';
         const dMemo = String(daily?.memo || '').trim();
-        const combined = Array.from(new Set([...segMemos, dMemo])).filter(Boolean).join(' / ');
-        return combined || '';
+        return segMemo || dMemo || '';
       })();
       
       const notesText = (() => {
-        const segNotes = segs0.map(s => String(s?.notes || '').trim()).filter(Boolean);
+        const segNotes = seg ? String(seg?.notes || '').trim() : '';
         const dNotes = String(daily?.notes || '').trim();
-        const combined = Array.from(new Set([...segNotes, dNotes])).filter(Boolean).join(' / ');
-        return combined || '';
+        return segNotes || dNotes || '';
       })();
 
       const inhouseWork = String(wd?.workContent || '').trim();
@@ -722,6 +719,42 @@ exports.exportMonthXlsx = async (req, res) => {
         ]
       });
 
+      // Export thêm rows cho segments 2+ trong cùng ngày
+      for (let si = 1; si < segs.length; si++) {
+        const extraSeg = segs[si];
+        const extraIn = hm(extraSeg?.checkIn);
+        const extraOut = hm(extraSeg?.checkOut);
+        if (!extraIn && !extraOut) continue;
+        const extraWt = String(extraSeg?.workType || '').trim();
+        const extraWtOn = extraWt === 'onsite' ? { v: '✓', s: 'checkOn' } : '';
+        const extraWtRe = extraWt === 'remote' ? { v: '✓', s: 'checkOn' } : '';
+        const extraWtSa = extraWt === 'satellite' ? { v: '✓', s: 'checkOn' } : '';
+        const extraLoc = String(extraSeg?.location || '').trim();
+        const extraMemo = String(extraSeg?.memo || '').trim();
+        const extraNotes = String(extraSeg?.notes || '').trim();
+        const extraBr = holidayLock ? 0 : defaultBr;
+        const extraWorked = holidayLock ? 0 : Math.max(0, hmToMinutes(extraOut) - hmToMinutes(extraIn) - extraBr);
+        const extraOt = holidayLock ? 0 : Math.max(0, extraWorked - (8 * 60));
+        sheetRows.push({
+          isOff,
+          cells: [
+            '', '', ds, dow, '',
+            extraLoc,
+            extraWtOn, extraWtRe, extraWtSa,
+            extraIn,
+            extraOut,
+            brLabel(extraBr),
+            '0:00',
+            fmtHm(extraWorked),
+            fmtHm(extraOt),
+            '', '',
+            extraMemo,
+            extraNotes,
+            '', '', ''
+          ]
+        });
+      }
+
       // Sheet 2: 予定
       const plan = planRows.find(p => String(p.date).slice(0, 10) === ds) || null;
       const planShiftDef = plan?.shiftId ? shiftById.get(String(plan.shiftId)) : shiftDef;
@@ -765,7 +798,9 @@ exports.exportMonthXlsx = async (req, res) => {
     }
 
     const safeFile = (s) => String(s || '').replace(/[\\\/:*?"<>|]/g, '_');
-    const fileName = safeFile(`attendance_month_${from.slice(0, 7)}_${userId}.xlsx`);
+    const fileNameRaw = safeFile(`${employeeName}_${employeeCode}_${y}年${String(m).padStart(2,'0')}月.xlsx`);
+    const fileNameAscii = `attendance_${employeeCode || userId}_${y}-${String(m).padStart(2,'0')}.xlsx`;
+    const fileNameEncoded = encodeURIComponent(fileNameRaw);
     const { buildXlsxArchive } = require('../../utils/xlsx');
     const esc = (s) => String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -816,20 +851,18 @@ exports.exportMonthXlsx = async (req, res) => {
       cell('B6', '勤務区分', 3),
       cell('C6', '出社', 3),
       cell('D6', '在宅', 3),
-      cell('E6', '現場・出張', 3),
-      cell('F6', '現場（任意）', 3),
-      cell('G6', '作業内容', 3),
-      cell('H6', '開始時刻', 3),
-      cell('I6', '終了時刻', 3),
-      cell('J6', '休憩時間', 3),
-      cell('K6', '深夜休憩', 3),
-      cell('L6', '勤務時間', 3),
-      cell('M6', '超過時間', 3),
-      cell('N6', '遅刻/早退', 3),
-      cell('O6', '理由', 3),
-      cell('P6', '備考', 3),
-      cell('Q6', '承認ステータス', 14),
-      cell('R6', '承認者', 14)
+      cell('E6', '現場', 3),
+      cell('F6', '開始時刻', 3),
+      cell('G6', '終了時刻', 3),
+      cell('H6', '休憩時間', 3),
+      cell('I6', '深夜休憩', 3),
+      cell('J6', '勤務時間', 3),
+      cell('K6', '超過時間', 3),
+      cell('L6', '遅刻/早退', 3),
+      cell('M6', '理由', 3),
+      cell('N6', '備考', 3),
+      cell('O6', '承認ステータス', 14),
+      cell('P6', '承認者', 14)
     ], 22);
     for (let i = 0; i < sheetRows.length; i++) {
       const r = sheetRows[i];
@@ -848,8 +881,6 @@ exports.exportMonthXlsx = async (req, res) => {
         (src[6] && typeof src[6] === 'object' ? src[6].v : '') || '',
         (src[7] && typeof src[7] === 'object' ? src[7].v : '') || '',
         (src[8] && typeof src[8] === 'object' ? src[8].v : '') || '',
-        src[5] || '',
-        src[17] || '',
         src[9] || '',
         src[10] || '',
         src[11] || '0:00',
@@ -865,8 +896,8 @@ exports.exportMonthXlsx = async (req, res) => {
       const rowNum = 7 + i;
       const xmlCells = vals.map((v, ci) => {
         const ref = `${colRef(ci + 1)}${rowNum}`;
-        const isTimeCell = (ci >= 7 && ci <= 12);
-        const isTextWide = ci === 5 || ci === 6 || ci === 14 || ci === 15;
+        const isTimeCell = (ci >= 5 && ci <= 10);
+        const isTextWide = ci === 12 || ci === 13;
         const style = isTextWide ? 13 : 12;
         // Highlight only the date cell (日付) for Sundays.
         let styleWithDay = (isSunday && ci === 0) ? 16 : style;
@@ -877,42 +908,44 @@ exports.exportMonthXlsx = async (req, res) => {
         }
 
         if (ci === 1) {
-          if (cellValue === '休日出勤' && !vals[7] && !vals[8] && !vals[10] && !vals[11]) {
+          if (cellValue === '休日出勤' && !vals[5] && !vals[6] && !vals[8] && !vals[9]) {
             const ds = String(vals[2] || '');
             const daily = ds ? dailyMap.get(ds) : null;
             if (daily?.kubun !== '休日出勤') cellValue = '休日';
           }
         }
         if (ci === 2) {
-          if (cellValue === '休日出勤' && !vals[7] && !vals[8] && !vals[10] && !vals[11]) {
+          if (cellValue === '休日出勤' && !vals[5] && !vals[6] && !vals[8] && !vals[9]) {
             const ds = String(vals[2] || '');
             const daily = ds ? dailyMap.get(ds) : null;
             if (daily?.kubun !== '休日出勤') cellValue = '休日';
           }
         }
 
-        if (ci === 11) {
-          const f = `ROUNDDOWN(S${rowNum}/60,0)&":"&TEXT(MOD(S${rowNum},60),"00")`;
+        if (ci === 9) {
+          const f = `ROUNDDOWN(Q${rowNum}/60,0)&":"&TEXT(MOD(Q${rowNum},60),"00")`;
           return formulaCell(ref, f, cellValue || '0:00', styleWithDay);
         }
-        if (ci === 12) {
-          const f = `IF(S${rowNum}>480,ROUNDDOWN((S${rowNum}-480)/60,0)&":"&TEXT(MOD((S${rowNum}-480),60),"00"),"0:00")`;
+        if (ci === 10) {
+          const f = `IF(Q${rowNum}>480,ROUNDDOWN((Q${rowNum}-480)/60,0)&":"&TEXT(MOD((Q${rowNum}-480),60),"00"),"0:00")`;
           return formulaCell(ref, f, cellValue || '0:00', styleWithDay);
         }
         return cell(ref, cellValue, styleWithDay);
       });
-      xmlCells.push(numberCell(`S${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
+      xmlCells.push(numberCell(`Q${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
       push1(rowNum, xmlCells);
     }
-    const sheet1VisibleCols = [12, 14, 5, 5, 12, 25, 25, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
+    const sheet1VisibleCols = [12, 14, 5, 5, 12, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
     const sheet1Cols = [
-      ...sheet1VisibleCols.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`),
-      `<col min="19" max="19" width="2" hidden="1" customWidth="1"/>`
+      ...sheet1VisibleCols.map((w, i) => {
+        return `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`;
+      }),
+      `<col min="17" max="17" width="2" hidden="1" customWidth="1"/>`
     ].join('');
     const sheet1Merges = [
-      'A1:L1', 'A2:L2', 'A3:L3',
+      'A1:J1', 'A2:J2', 'A3:J3',
       'A4:B4', 'C4:E4', 'F4:G4', 'H4:J4',
-      'A5:R5'
+      'A5:P5'
     ].map(r => `<mergeCell ref="${r}"/>`).join('');
     const lastSheet1Row = 6 + Math.max(1, sheetRows.length);
     const sheet1Validations = [
@@ -1018,12 +1051,35 @@ exports.exportMonthXlsx = async (req, res) => {
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
+    // Sheet 3: 現場・作業内容
+    const sheet3Rows = [];
+    const push3 = (r, list, ht = null) => { sheet3Rows.push(rowXml(r, list, ht)); };
+    push3(1, [cell('A1', '日付', 3), cell('B1', '現場（任意）', 3), cell('C1', '作業内容', 3)], 22);
+    let sheet3Row = 2;
+    for (const sr of sheetRows) {
+      const cells = sr?.cells || [];
+      const dateVal = cells[2] || '';
+      const locVal = cells[5] || '';
+      const memoVal = cells[17] || '';
+      if (!locVal && !memoVal) { sheet3Row++; continue; }
+      push3(sheet3Row, [cell(`A${sheet3Row}`, dateVal, 10), cell(`B${sheet3Row}`, locVal, 11), cell(`C${sheet3Row}`, memoVal, 11)]);
+      sheet3Row++;
+    }
+    const sheet3Cols = `<col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="30" customWidth="1"/><col min="3" max="3" width="50" customWidth="1"/>`;
+    const sheet3Xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <sheetFormatPr defaultRowHeight="18"/>
+  <cols>${sheet3Cols}</cols>
+  <sheetData>${sheet3Rows.join('')}</sheetData>
+</worksheet>`;
+
     const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="入力用勤怠表" sheetId="1" r:id="rId1"/><sheet name="予定" sheetId="2" r:id="rId2"/></sheets><calcPr calcId="171027" fullCalcOnLoad="1"/></workbook>`;
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="入力用勤怠表" sheetId="1" r:id="rId1"/><sheet name="予定" sheetId="2" r:id="rId2"/><sheet name="現場・作業内容" sheetId="3" r:id="rId4"/></sheets><calcPr calcId="171027" fullCalcOnLoad="1"/></workbook>`;
     const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/></Relationships>`;
     const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
     const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
     const buf = buildXlsxArchive([
@@ -1033,21 +1089,22 @@ exports.exportMonthXlsx = async (req, res) => {
       { name: 'xl/_rels/workbook.xml.rels', data: workbookRels },
       { name: 'xl/styles.xml', data: stylesXml },
       { name: 'xl/worksheets/sheet1.xml', data: sheet1Xml },
-      { name: 'xl/worksheets/sheet2.xml', data: sheet2Xml }
+      { name: 'xl/worksheets/sheet2.xml', data: sheet2Xml },
+      { name: 'xl/worksheets/sheet3.xml', data: sheet3Xml }
     ]);
 
     // Auto-save export to R2
     const s3Service = require('../../core/services/s3.service');
     if (s3Service.isR2Configured()) {
       const ts = new Date().toISOString().replace(/[:.]/g, '-');
-      const r2Key = `exports/excel/attendance_month/${ts}_${fileName}`;
+      const r2Key = `exports/excel/attendance_month/${ts}_${fileNameAscii}`;
       s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').catch(e => {
         console.error('Failed to auto-save export to R2:', e);
       });
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileNameAscii}"; filename*=UTF-8''${fileNameEncoded}`);
     res.status(200).send(buf);
   } catch (err) {
     res.status(500).json({ message: err.message });

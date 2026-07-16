@@ -241,7 +241,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       if (s === 'employee') return '従業員';
       return r || '';
     };
-    const wtLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場/出張' : '';
+    const wtLabel = (wt) => wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場' : '';
     const empTypeLabel = (t) => {
       const s = String(t || '').toLowerCase();
       if (s === 'full_time') return '正社員';
