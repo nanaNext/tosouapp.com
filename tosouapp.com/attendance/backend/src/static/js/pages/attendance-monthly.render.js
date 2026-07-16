@@ -1013,7 +1013,7 @@
         const text = !isWorkDay ? '' : ((inVal && outVal) ? whStr : (isAutoWork ? whStr : ''));
         if (worked.textContent !== text) worked.textContent = text;
         const hasCompletedActualNow = hasActualInNow && hasActualOutNow;
-        const shouldWorkAuto = isAutoWork && !hasCompletedActualNow;
+        const shouldWorkAuto = isWorkDay && isAutoWork && !hasCompletedActualNow;
         if (worked.classList.contains('is-auto') !== shouldWorkAuto) {
           worked.classList.toggle('is-auto', shouldWorkAuto);
         }
