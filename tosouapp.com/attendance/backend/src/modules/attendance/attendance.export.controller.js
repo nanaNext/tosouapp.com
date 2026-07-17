@@ -199,17 +199,15 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
          
          // Đồng bộ logic ngày nghỉ như frontend (Không gọi được calendar API ở đây nên dùng logic chuẩn)
          let isWeekendOrHoliday = false;
-         if (isKoujibu) {
-           // Nếu là Koujibu, tạm coi T7 CN là nghỉ trong Excel nếu không có lịch (hoặc tuỳ DB, ở đây dùng mặc định)
-           isWeekendOrHoliday = (dow === 0 || dow === 6);
+         if (isKoujibu && isSeishain) {
+           // 工事部 chính thức: Chỉ nghỉ CN + Thứ 7 tuần 4. Thứ 7 tuần 1,2,3,5 đi làm bình thường
+           isWeekendOrHoliday = dow === 0 || is4thSaturday;
+         } else if (isSeishain) {
+           // 総務 chính thức: Nghỉ T7 + CN
+           isWeekendOrHoliday = dow === 0 || dow === 6;
          } else {
-           if (isSeishain) {
-             // Chính thức: Nghỉ CN và Thứ 7 tuần 4
-             isWeekendOrHoliday = dow === 0 || is4thSaturday;
-           } else {
-             // Part-time: Nghỉ T7, CN
-             isWeekendOrHoliday = dow === 0 || dow === 6;
-           }
+           // Part-time: Không có ngày nghỉ cố định (dựa vào shift đăng ký)
+           isWeekendOrHoliday = false;
          }
          
          if (shift && shift.status === 'LEAVE') {
@@ -235,8 +233,16 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
             statusClass = 'working';
           }
         } else {
-          cellText = '休';
-          statusClass = isSeishain ? 'empty' : 'holiday'; // Part-time: ngày không đăng ký = nghỉ (đỏ)
+          // Không có shift đăng ký và không phải ngày nghỉ cố định
+          if (!isSeishain) {
+            // Part-time: ngày không đăng ký = nghỉ (hiển thị đỏ)
+            cellText = '休';
+            statusClass = 'holiday';
+          } else {
+            // Chính thức: ngày thường chưa có data
+            cellText = '出';
+            statusClass = 'working';
+          }
         }
         
         rowData.push({ text: cellText, type: statusClass });
