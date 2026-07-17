@@ -1077,7 +1077,7 @@ async function mountAttendanceImpl({
           const dept = it.departmentName || '—';
           const st = it.status || '';
           const kubunRaw = String(it.dailyKubun || '').trim();
-          const kubun = kubunRaw || ((selectedDateIsOff && (st === 'leave' || st === 'not_checked_in')) ? '休日' : '');
+          const kubun = kubunRaw || ((selectedDateIsOff && (st === 'leave' || st === 'off')) ? '休日' : '');
           const leaveSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇']);
           const holidaySet = new Set(['休日', '代替休日']);
           const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
@@ -1093,6 +1093,9 @@ async function mountAttendanceImpl({
           if (st === 'checked_out') {
             stLabel = '退勤済';
             stClass = 'attrec-pill ok';
+          } else if (st === 'checkout_missing') {
+            stLabel = '退勤忘れ';
+            stClass = 'attrec-pill danger';
           } else if (st === 'working' || st === 'holiday_working') {
             if (isPastDate) {
               stLabel = '退勤忘れ';
@@ -1108,12 +1111,18 @@ async function mountAttendanceImpl({
             stLabel = kubun || '休日';
             stClass = 'attrec-pill neutral';
           } else if (st === 'off') {
-            stLabel = '休日';
+            stLabel = kubun || '休日';
             stClass = 'attrec-pill neutral';
+          } else if (st === 'unregistered') {
+            stLabel = '未登録';
+            stClass = 'attrec-pill neutral';
+          } else if (st === 'not_punched') {
+            stLabel = '未打刻';
+            stClass = 'attrec-pill danger';
           } else {
             // not_checked_in or empty
             if (isPastDate) {
-              stLabel = '打刻なし';
+              stLabel = '未打刻';
               stClass = 'attrec-pill danger';
             } else {
               stLabel = '未出勤';
