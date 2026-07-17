@@ -63,48 +63,75 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     const daysInMonth = new Date(y, m, 0).getDate();
     const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
     
-    // Create Title Row
-    sheet.addRow([`全員のシフト状況 - ${year}年${month}月`]);
+    // Group users by department for summary
+    const deptCounts = {};
+    users.forEach(u => {
+      const dept = u.departmentName || '未配属';
+      deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+    });
+    const deptSummary = Object.entries(deptCounts).map(([k, v]) => `${k}: ${v}名`).join('　');
     
-    // Create header rows
+    // Row 1: Company Name
+    sheet.addRow([`飯塚塗研株式会社`]);
+    // Row 2: Title + Month
+    sheet.addRow([`全員のシフト状況 - ${year}年${month}月`]);
+    // Row 3: Branch + Employee Count
+    sheet.addRow([`総人数: ${users.length}名　　${deptSummary}`]);
+    // Row 4: Empty spacer
+    sheet.addRow([]);
+    
+    // Create header rows (Row 5 & 6)
     const headerRow1 = ['従業員名', '部署', '雇用形態'];
-    const headerRow2 = ['', '', '']; // Empty spaces under the first 3 columns
-    const headerRow3 = ['', '', '']; // Row for lunar dates (if any)
+    const headerRow2 = ['', '', ''];
     
     for (let i = 1; i <= daysInMonth; i++) {
       headerRow1.push(`${i}`);
       const dateObj = new Date(y, m - 1, i);
       const dow = daysOfWeek[dateObj.getDay()];
       headerRow2.push(dow);
-      headerRow3.push(''); // Leave empty for lunar or extra info, or omit
     }
     
     sheet.addRow(headerRow1);
     sheet.addRow(headerRow2);
     
-    // Merge title row across all columns
+    // Merge header rows across all columns
     const lastColLetter = sheet.getColumn(daysInMonth + 3).letter;
     sheet.mergeCells(`A1:${lastColLetter}1`);
+    sheet.mergeCells(`A2:${lastColLetter}2`);
+    sheet.mergeCells(`A3:${lastColLetter}3`);
     
-    const titleRowObj = sheet.getRow(1);
-    titleRowObj.height = 30;
-    titleRowObj.font = { size: 16, bold: true, color: { argb: 'FF0F172A' } };
-    titleRowObj.alignment = { horizontal: 'center', vertical: 'middle' };
+    // Style Row 1: Company Name
+    const companyRow = sheet.getRow(1);
+    companyRow.height = 28;
+    companyRow.font = { size: 14, bold: true, color: { argb: 'FF1E3A5F' } };
+    companyRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Merge the first 3 columns headers
-    sheet.mergeCells('A2:A3');
-    sheet.mergeCells('B2:B3');
-    sheet.mergeCells('C2:C3');
+    // Style Row 2: Title
+    const titleRowObj = sheet.getRow(2);
+    titleRowObj.height = 26;
+    titleRowObj.font = { size: 13, bold: true, color: { argb: 'FF0F172A' } };
+    titleRowObj.alignment = { horizontal: 'center', vertical: 'middle' };
+    
+    // Style Row 3: Summary
+    const summaryRow = sheet.getRow(3);
+    summaryRow.height = 20;
+    summaryRow.font = { size: 11, color: { argb: 'FF475569' } };
+    summaryRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Merge the first 3 columns headers (rows 5-6)
+    sheet.mergeCells('A5:A6');
+    sheet.mergeCells('B5:B6');
+    sheet.mergeCells('C5:C6');
     
     // Freeze panes for easy scrolling
     sheet.views = [
-      { state: 'frozen', xSplit: 3, ySplit: 3 }
+      { state: 'frozen', xSplit: 3, ySplit: 6 }
     ];
     
-    // Style headers
-    const titleRows = [sheet.getRow(2), sheet.getRow(3)];
+    // Style headers (rows 5 & 6)
+    const titleRows = [sheet.getRow(5), sheet.getRow(6)];
     titleRows.forEach(row => {
-      row.height = 20; // Set a specific height
+      row.height = 20;
       row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       row.eachCell((cell, colNumber) => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
@@ -116,11 +143,11 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
           right: {style:'thin', color: {argb:'FFD1D5DB'}}
         };
         
-        // Color weekends in the second header row
-        if (row.number === 3 && colNumber > 3) {
+        // Color weekends in the day-of-week row (row 6)
+        if (row.number === 6 && colNumber > 3) {
           const text = cell.value;
-          if (text === '日') cell.font = { bold: true, color: { argb: 'FFFCA5A5' } }; // Light Red for Sunday
-          else if (text === '土') cell.font = { bold: true, color: { argb: 'FF93C5FD' } }; // Light Blue for Saturday
+          if (text === '日') cell.font = { bold: true, color: { argb: 'FFFCA5A5' } };
+          else if (text === '土') cell.font = { bold: true, color: { argb: 'FF93C5FD' } };
         }
       });
     });
@@ -262,6 +289,48 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
         }
       });
     });
+    
+    // ─── Color Legend Section ─────────────────────────────────────────────
+    // Add 2 empty rows as spacer
+    sheet.addRow([]);
+    sheet.addRow([]);
+    
+    // Legend title
+    const legendTitleRow = sheet.addRow(['【凡例】色の説明']);
+    legendTitleRow.font = { bold: true, size: 11, color: { argb: 'FF0F172A' } };
+    
+    // Legend entries
+    const legends = [
+      { text: '出　（出勤日・通常勤務）', fontColor: 'FF16A34A', bgColor: null, desc: '緑文字' },
+      { text: '休　（休日・会社カレンダー休日）', fontColor: 'FFDC2626', bgColor: 'FFFEF2F2', desc: '赤文字・薄赤背景' },
+      { text: '有休（有給休暇）', fontColor: 'FFD97706', bgColor: 'FFFFFBEB', desc: '橙文字・薄黄背景' },
+      { text: '欠　（欠勤・無給）', fontColor: 'FF9333EA', bgColor: 'FFF3E8FF', desc: '紫文字・薄紫背景' },
+      { text: '出　（休日出勤）', fontColor: 'FF0284C7', bgColor: 'FFF0F9FF', desc: '青文字・薄青背景' },
+    ];
+    
+    legends.forEach(legend => {
+      const row = sheet.addRow(['', legend.text, '', legend.desc]);
+      // Style the sample cell (column A) with the actual color
+      const sampleCell = row.getCell(1);
+      sampleCell.value = '■';
+      sampleCell.font = { bold: true, color: { argb: legend.fontColor } };
+      if (legend.bgColor) {
+        sampleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: legend.bgColor } };
+      }
+      sampleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      
+      // Style explanation text
+      const textCell = row.getCell(2);
+      textCell.font = { size: 10, color: { argb: 'FF334155' } };
+      
+      const descCell = row.getCell(4);
+      descCell.font = { size: 10, color: { argb: 'FF64748B' }, italic: true };
+    });
+    
+    // Add note about part-time
+    sheet.addRow([]);
+    const noteRow = sheet.addRow(['※ パート社員は固定休日なし。登録した日のみ「出勤」扱い。']);
+    noteRow.font = { size: 10, color: { argb: 'FF64748B' } };
     
     // Set response headers
     const fileName = encodeURIComponent(`シフト_${year}年${month}月.xlsx`);
