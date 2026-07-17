@@ -5,6 +5,7 @@ let allRows = [];
 let localHost = null;
 let searchQuery = '';
 let statusFilter = 'ALL';
+let departmentFilter = '';
 
 // Handle resize to show/hide mobile date picker dynamically
 window.addEventListener('resize', () => {
@@ -84,7 +85,7 @@ async function renderList() {
   try {
     const [year, monthStr] = currentMonth.split('-');
     const monthNum = parseInt(monthStr, 10);
-    const res = await fetchJSONAuth(`/api/attendance/shifts/matrix?month=${currentMonth}`);
+    const res = await fetchJSONAuth(`/api/attendance/shifts/matrix?month=${currentMonth}${departmentFilter ? '&department=' + encodeURIComponent(departmentFilter) : ''}`);
     allRows = Array.isArray(res) ? res : [];
     renderTable();
   } catch (e) {
@@ -251,6 +252,9 @@ function renderTable() {
             <option value="PENDING" ${statusFilter === 'PENDING' ? 'selected' : ''}>未承認 (Chờ duyệt)</option>
             <option value="APPROVED" ${statusFilter === 'APPROVED' ? 'selected' : ''}>承認済 (Đã duyệt)</option>
             <option value="UNSUBMITTED" ${statusFilter === 'UNSUBMITTED' ? 'selected' : ''}>未提出 (Chưa nộp)</option>
+          </select>
+          <select id="deptFilter" style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; background: white; cursor: pointer;">
+            <option value="" ${!departmentFilter ? 'selected' : ''}>全部署</option>
           </select>
           <input type="month" id="monthFilter" value="${currentMonth}" style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 140px; color: #1f2937; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;" />
         </div>
@@ -476,6 +480,23 @@ function renderTable() {
     statusFilterEl.addEventListener('change', (e) => {
       statusFilter = e.target.value;
       renderTable();
+    });
+  }
+
+  // Department filter — populate from loaded data + wire change event
+  const deptFilterEl = localHost.querySelector('#deptFilter');
+  if (deptFilterEl) {
+    const depts = [...new Set(allRows.map(r => r.departmentName).filter(Boolean))].sort();
+    depts.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      if (d === departmentFilter) opt.selected = true;
+      deptFilterEl.appendChild(opt);
+    });
+    deptFilterEl.addEventListener('change', (e) => {
+      departmentFilter = e.target.value;
+      renderList(); // Re-fetch from server with department filter
     });
   }
 

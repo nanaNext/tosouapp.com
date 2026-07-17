@@ -1,5 +1,11 @@
 const express = require('express');
 const router = express.Router();
+// NOTE: This file is 2356 lines. Planned split (future refactor):
+//   - admin.users.routes.js (lines 70-170) — CRUD users, employee photos
+//   - admin.salary.routes.js (lines 1170-1800) — salary calc, payslip, PDF
+//   - admin.calendar.routes.js (lines 1800-2100) — calendar export CSV/iCal/XML
+//   - admin.debug.routes.js (lines 2100+) — debug/backfill endpoints
+// Current approach: keep as-is for stability (700 users in production).
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { permit } = require('../../core/middleware/rbac');
 const userCtrl = require('../users/user.controller');

@@ -8,6 +8,9 @@ errorReporter.init();
 // Auto Database Backup Cron - Tự động sao lưu dữ liệu MySQL
 const { initBackupCronJob } = require('./cron/dbBackupCron');
 
+// Health Monitor - Built-in uptime check + Discord/Slack alert
+const { initHealthMonitor } = require('./cron/healthMonitorCron');
+
 const app = require('./app');
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -74,6 +77,9 @@ async function start() {
     if (process.env.NODE_ENV === 'production') {
         initBackupCronJob();
     }
+
+    // Initialize health monitor (all environments except test)
+    initHealthMonitor();
 
     // Graceful shutdown — finish in-flight requests before stopping
     const shutdown = (signal) => {

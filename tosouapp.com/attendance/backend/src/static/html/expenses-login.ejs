@@ -10,7 +10,7 @@
   <style>
     .topbar,.subbar,.subnav,#mobileDrawer,#drawerBackdrop{display:none!important;}
   </style>
-  <script>
+  <script nonce="<%= cspNonce %>">
     window.LOGIN_NEXT = '/ui/expenses';
   </script>
   <script type="module" src="/static/js/pages/login.page.js?v=<%= appVersion %>"></script>

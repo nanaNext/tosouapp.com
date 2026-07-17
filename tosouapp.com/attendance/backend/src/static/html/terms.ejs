@@ -104,7 +104,7 @@
       <a id="policyBackToLogin" class="policy-btn" href="/ui/login" onclick="window.location.assign('/ui/login'); return false;">ログインへ戻る</a>
     </div>
   </main>
-  <script>
+  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
     (function () {
       try {
         var el = document.querySelector('[data-updated-at]');

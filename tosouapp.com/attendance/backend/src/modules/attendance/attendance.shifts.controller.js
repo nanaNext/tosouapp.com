@@ -215,14 +215,14 @@ exports.getShiftMatrix = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
     if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
-    const { month } = req.query || {};
+    const { month, department, limit, offset } = req.query || {};
     if (!month) return res.status(400).json({ message: 'Missing month' });
     
     // Branch-scoped access: manager sees own branch only, admin sees all
     const userBranchId = req.user?.branchId || null;
     const branchFilter = (role === 'manager' && userBranchId) ? userBranchId : null;
 
-    // Get users (branch-filtered for managers)
+    // Get users (branch-filtered for managers, department filter, pagination)
     let userQuery = `
       SELECT u.id, u.username, u.email, u.employee_code, u.employment_type,
              d.name as departmentName, s.status as submission_status
@@ -236,7 +236,17 @@ exports.getShiftMatrix = async (req, res) => {
       userQuery += ` AND u.branch_id = ?`;
       userParams.push(branchFilter);
     }
+    if (department) {
+      userQuery += ` AND d.name = ?`;
+      userParams.push(String(department));
+    }
     userQuery += ` ORDER BY CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END, d.name, u.employment_type, u.id`;
+    if (limit) {
+      const lim = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+      const off = Math.max(parseInt(offset, 10) || 0, 0);
+      userQuery += ` LIMIT ? OFFSET ?`;
+      userParams.push(lim, off);
+    }
     const [users] = await db.query(userQuery, userParams);
 
     // Get shifts for the month (only for filtered users)

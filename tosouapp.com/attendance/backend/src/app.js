@@ -95,6 +95,8 @@ app.set('views', path.join(__dirname, 'static', 'html'));
 
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
+  // Generate CSP nonce for inline scripts
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
   res.setHeader('X-Request-ID', req.id);
   res.setHeader('X-Build-Id', BUILD_ID);
   res.setHeader('X-Started-At', String(STARTED_AT));
@@ -142,11 +144,12 @@ app.use((req, res, next) => {
     }
   }
   // Cấu hình CSP để cho phép CDN bên ngoài (ví dụ lunar.js)
+  const nonce = res.locals.cspNonce || '';
   const cspItems = [
     process.env.CSP_DEFAULT_SRC || "default-src 'self'",
     process.env.CSP_IMG_SRC || "img-src 'self' data: https:",
     process.env.CSP_STYLE_SRC || "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    process.env.CSP_SCRIPT_SRC || "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+    process.env.CSP_SCRIPT_SRC || `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' https://cdn.jsdelivr.net`,
     process.env.CSP_FONT_SRC || "font-src 'self' https://fonts.gstatic.com data:",
     process.env.CSP_OBJECT_SRC || "object-src 'none'",
     process.env.CSP_FRAME_ANCESTORS || "frame-ancestors 'self'",
