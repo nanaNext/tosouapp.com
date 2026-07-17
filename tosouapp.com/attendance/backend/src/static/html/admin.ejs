@@ -14,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <meta name="asset-v" content="<%= appVersion %>">
   <style></style>
-  <script nonce="<%= cspNonce %>">
+  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
     if (window.location.search.includes('standalone=1') || window.location.search.includes('standalone=true')) {
       document.write('<style>#adminChrome { display: none !important; } body.has-sidebar { padding: 0 !important; margin: 0 !important; overflow: hidden !important; height: 100% !important; } main.content { padding: 0 !important; margin: 0 !important; margin-top: 0 !important; } #adminContent { margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important; }</style>');
     }
