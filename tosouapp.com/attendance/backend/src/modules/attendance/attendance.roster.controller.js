@@ -269,7 +269,18 @@ exports.todayRoster = async (req, res) => {
     let items = (rows || []).map(r => {
       const hasIn = !!r.checkIn;
       const hasOut = !!r.checkOut;
-      const status = hasIn ? (hasOut ? 'checked_out' : 'working') : 'not_checked_in';
+      const kubun = String(r.dailyKubun || '').trim();
+      const holidayKubuns = new Set(['休日', '代替休日', '休み']);
+      const leaveKubuns = new Set(['有給休暇', '無給休暇', '欠勤']);
+      
+      let status;
+      if (holidayKubuns.has(kubun)) {
+        status = 'off';
+      } else if (leaveKubuns.has(kubun)) {
+        status = 'leave';
+      } else {
+        status = hasIn ? (hasOut ? 'checked_out' : 'working') : 'not_checked_in';
+      }
       return {
         userId: r.userId,
         employeeCode: r.employeeCode || null,
