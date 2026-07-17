@@ -18,7 +18,7 @@
           <button class="user-btn" aria-haspopup="true" aria-expanded="false">
             <img src="/static/images/use.png?v=<%= appVersion %>" alt="user" class="user-icon" width="30" height="30" style="width: 30px; height: 30px; display: block; object-fit: cover;">
             <span id="userName" style="display: inline-block; min-width: 50px; text-align: left;"><%= typeof user !== 'undefined' && user ? (user.username || user.email || '') : '' %></span>
-            <script>
+            <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
               try {
                 var rawUser = sessionStorage.getItem('user') || localStorage.getItem('user');
                 if (rawUser) {
@@ -62,7 +62,7 @@
       <a href="/ui/contact">お問い合わせ先</a>
     </nav>
   </div>
-  <script nonce="<%= cspNonce %>">
+  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
     (function(){
       try {
         var path = window.location.pathname;
