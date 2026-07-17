@@ -272,9 +272,9 @@ function renderTable() {
     filteredRows.forEach(emp => {
       const isSeishain = emp.employment_type === 'full_time';
       let statusHtml = getStatusLabel(emp.submission_status || 'UNSUBMITTED');
-      let actionHtml = '';
+      let actionHtml = `<button class="btn-xs btn-proxy" data-id="${emp.id}" data-name="${esc(emp.username)}" style="background:#2563eb;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">代理入力</button>`;
       if (emp.submission_status === 'PENDING') {
-        actionHtml = `<button class="btn-xs btn-ok btn-approve" data-id="${emp.id}">承認</button>`;
+        actionHtml += ` <button class="btn-xs btn-ok btn-approve" data-id="${emp.id}">承認</button>`;
       }
       
       html += `
@@ -288,7 +288,7 @@ function renderTable() {
             <div class="emp-info-row">
               <div class="emp-total">計: <span style="font-weight:normal; color:#0284c7;">${emp._workCount}</span></div>
               <div class="emp-status">${statusHtml}</div>
-              ${actionHtml ? `<div class="emp-action">${actionHtml}</div>` : ''}
+              <div class="emp-action">${actionHtml}</div>
             </div>
           </div>
         </th>
@@ -555,6 +555,15 @@ function renderTable() {
       if (confirm('このシフトを差戻しますか？')) updateStatus(userId, 'REJECTED');
     });
   });
+
+  // 代理入力 (Proxy Input) button handler
+  localHost.querySelectorAll('.btn-proxy').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const userId = e.target.getAttribute('data-id');
+      const empName = e.target.getAttribute('data-name') || '';
+      await openProxyModal(userId, empName);
+    });
+  });
 }
 
 async function updateStatus(userId, status) {
@@ -573,3 +582,169 @@ async function updateStatus(userId, status) {
   }
 }
 
+
+
+// ─── 代理入力 Modal ──────────────────────────────────────────────────────────
+
+async function openProxyModal(userId, empName) {
+  const [year, monthStr] = currentMonth.split('-');
+  const monthNum = parseInt(monthStr, 10);
+  const daysInMonth = new Date(year, monthNum, 0).getDate();
+  const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
+
+  // Load current shifts for this employee
+  let existingShifts = [];
+  try {
+    const res = await fetchJSONAuth(`/api/attendance/shifts/user-month?userId=${userId}&month=${currentMonth}`);
+    existingShifts = Array.isArray(res) ? res : [];
+  } catch (e) { /* silently ignored */ }
+
+  // Determine if full-time or part-time
+  const emp = allRows.find(r => String(r.id) === String(userId));
+  const isPartTime = emp && emp.employment_type !== 'full_time';
+
+  const scheduleMap = {};
+  existingShifts.forEach(s => {
+    const d = String(s.date).slice(0, 10);
+    scheduleMap[d] = { status: s.status || 'OFF', leaveType: s.leaveType || null };
+  });
+
+  // Build modal HTML
+  let daysHtml = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const date = new Date(year, monthNum - 1, d);
+    const dow = daysOfWeek[date.getDay()];
+    const isSun = date.getDay() === 0;
+    const isSat = date.getDay() === 6;
+    const dayColor = isSun ? 'color:#dc2626;' : (isSat ? 'color:#2563eb;' : '');
+    const current = scheduleMap[dateStr] || {};
+    const curStatus = current.status || '';
+    const curLeave = current.leaveType || '';
+
+    // Determine if this day is an off-day (company holiday)
+    const isKouji = emp && String(emp.departmentName || '').includes('工事部');
+    const is4thSat = isSat && Math.ceil(d / 7) === 4;
+    const isOffDay = isSun || (isKouji ? is4thSat : isSat);
+
+    // Determine selected value
+    let selected = '';
+    if (curStatus === 'WORKING') selected = 'WORKING';
+    else if (curStatus === 'LEAVE' && curLeave === 'paid') selected = 'PAID';
+    else if (curStatus === 'LEAVE' && curLeave === 'unpaid') selected = 'ABSENT';
+    else if (curStatus === 'OFF') selected = 'OFF';
+
+    let optionsHtml = '';
+    if (isPartTime) {
+      optionsHtml = `
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="WORKING" ${selected === 'WORKING' ? 'checked' : ''}> 出勤</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="OFF" ${selected === 'OFF' ? 'checked' : ''}> 休日</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="" ${!selected ? 'checked' : ''}> 未設定</label>
+      `;
+    } else if (isOffDay) {
+      // 正社員 + ngày nghỉ → options ngày nghỉ
+      optionsHtml = `
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="FURIKAE" ${curStatus === 'WORKING' ? 'checked' : ''}> 振替出勤</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="HOLIDAY_WORK" ${selected === 'HOLIDAY_WORK' ? 'checked' : ''}> 休日出勤</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="OFF" ${selected === 'OFF' || !selected ? 'checked' : ''}> 休日</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="" ${false ? 'checked' : ''}> 未設定</label>
+      `;
+    } else {
+      // 正社員 + ngày thường
+      optionsHtml = `
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="WORKING" ${selected === 'WORKING' ? 'checked' : ''}> 出勤</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="OFF" ${selected === 'OFF' ? 'checked' : ''}> 休日</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="PAID" ${selected === 'PAID' ? 'checked' : ''}> 有休</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="ABSENT" ${selected === 'ABSENT' ? 'checked' : ''}> 欠勤</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="" ${!selected ? 'checked' : ''}> 未設定</label>
+      `;
+    }
+
+    daysHtml += `
+      <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f1f5f9;${isOffDay ? 'background:#fef2f2;' : ''}">
+        <span style="width:65px;font-size:11px;font-weight:600;${dayColor}">${monthNum}/${d}(${dow})</span>
+        ${optionsHtml}
+      </div>
+    `;
+  }
+
+  const modalHtml = `
+    <div id="proxyModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:8px;width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;font-size:15px;font-weight:700;">代理入力: ${esc(empName)}</h3>
+          <button id="closeProxyModal" style="border:none;background:none;font-size:20px;cursor:pointer;color:#64748b;">✕</button>
+        </div>
+        <div style="padding:16px 20px;overflow-y:auto;flex:1;">
+          <div style="margin-bottom:8px;font-size:11px;color:#64748b;">対象月: ${year}年${monthStr}月 ・ 各日の出勤/休みを選択してください</div>
+          <div id="proxyDaysList">${daysHtml}</div>
+        </div>
+        <div style="padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end;">
+          <button id="cancelProxy" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;">キャンセル</button>
+          <button id="saveProxy" style="padding:8px 16px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">保存</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Insert modal into page
+  const existing = document.getElementById('proxyModal');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  const modal = document.getElementById('proxyModal');
+  const closeBtn = document.getElementById('closeProxyModal');
+  const cancelBtn = document.getElementById('cancelProxy');
+  const saveBtn = document.getElementById('saveProxy');
+
+  const closeModal = () => { if (modal) modal.remove(); };
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
+
+    // Collect all day selections
+    const shifts = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const radios = document.querySelectorAll(`input[name="day_${dateStr}"]`);
+      let selected = '';
+      radios.forEach(r => { if (r.checked) selected = r.value; });
+      if (selected) {
+        if (selected === 'PAID') {
+          shifts.push({ date: dateStr, status: 'LEAVE', leaveType: 'paid' });
+        } else if (selected === 'ABSENT') {
+          shifts.push({ date: dateStr, status: 'LEAVE', leaveType: 'unpaid' });
+        } else if (selected === 'FURIKAE') {
+          shifts.push({ date: dateStr, status: 'WORKING', detail: '振替出勤' });
+        } else if (selected === 'HOLIDAY_WORK') {
+          shifts.push({ date: dateStr, status: 'WORKING', detail: '休日出勤' });
+        } else {
+          shifts.push({ date: dateStr, status: selected });
+        }
+      }
+    }
+
+    try {
+      const res = await fetchJSONAuth('/api/attendance/shifts/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ userId, month: currentMonth, shifts })
+      });
+      if (res.success) {
+        closeModal();
+        await renderList(); // Reload matrix
+      } else {
+        alert('保存失敗: ' + (res.message || ''));
+        saveBtn.disabled = false;
+        saveBtn.textContent = '保存';
+      }
+    } catch (e) {
+      alert('エラー: ' + e.message);
+      saveBtn.disabled = false;
+      saveBtn.textContent = '保存';
+    }
+  });
+}

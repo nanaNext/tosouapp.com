@@ -161,8 +161,21 @@
                 if (daily) daily.reason = shiftRequest.reason;
              }
           } else if (shiftRequest.status === 'WORKING') {
-            plannedLabel = (hasActualIn || hasActualOut) ? '出勤' : '【出勤予定】';
-            plannedKubun = '出勤';
+            // Check detail for off-day work type (振替出勤 or 休日出勤)
+            const detail = String(shiftRequest.detail || shiftRequest.reason || '').trim();
+            if (offDay && detail === '休日出勤') {
+              plannedLabel = (hasActualIn || hasActualOut) ? '休日出勤' : '【休日出勤】';
+              plannedKubun = '休日出勤';
+            } else if (offDay && detail === '振替出勤') {
+              plannedLabel = (hasActualIn || hasActualOut) ? '振替出勤' : '【振替出勤】';
+              plannedKubun = '振替出勤';
+            } else if (offDay) {
+              plannedLabel = (hasActualIn || hasActualOut) ? '休日出勤' : '【休日出勤】';
+              plannedKubun = '休日出勤';
+            } else {
+              plannedLabel = (hasActualIn || hasActualOut) ? '出勤' : '【出勤予定】';
+              plannedKubun = '出勤';
+            }
           } else if (shiftRequest.status === 'OFF') {
             plannedLabel = (hasActualIn || hasActualOut) ? '休日' : '【休日予定】';
             plannedKubun = '休日';
