@@ -266,6 +266,12 @@ exports.todayRoster = async (req, res) => {
     const date = qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const rows = await attendanceRepo.getTodayRosterItems(date);
 
+    // Determine day-of-week for off-day logic
+    const [dY, dM, dD] = date.split('-').map(n => parseInt(n, 10));
+    const dateObj = new Date(Date.UTC(dY, dM - 1, dD));
+    const dow = dateObj.getUTCDay(); // 0=Sun, 6=Sat
+    const is4thSaturday = dow === 6 && Math.ceil(dD / 7) === 4;
+
     // Today's date in JST for detecting past days (退勤忘れ, 欠勤)
     const todayJST = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const isPastDay = date < todayJST;
@@ -328,13 +334,29 @@ exports.todayRoster = async (req, res) => {
         }
       }
       // ═══════════════════════════════════════════════════════════════
-      // Priority 4: Không có dữ liệu gì
+      // Priority 4: Không có dữ liệu gì — check calendar off-day per user
       // ═══════════════════════════════════════════════════════════════
       else {
+        // Determine if this day is an off-day for this specific user
+        const isKoujibu = String(r.departmentName || '').includes('工事');
+        let isOffDayForUser;
+        if (isPartTime) {
+          isOffDayForUser = true; // Part-time without shift = off
+        } else if (isKoujibu) {
+          // 工事部: Only Sunday + 4th Saturday are off
+          isOffDayForUser = dow === 0 || is4thSaturday;
+        } else {
+          // 総務 etc: Saturday + Sunday are off
+          isOffDayForUser = dow === 0 || dow === 6;
+        }
+
         if (isPartTime) {
           status = 'unregistered'; // Part-time chưa đăng ký lịch → 未登録
+        } else if (isOffDayForUser) {
+          status = 'off'; // Ngày nghỉ theo calendar → 休日
+          displayKubun = displayKubun || '休日';
         } else {
-          // Full-time ngày thường
+          // Full-time ngày thường, lẽ ra phải đi làm
           if (isPastDay) {
             status = 'not_punched'; // 未打刻 (đã qua ngày, không có gì)
           } else {
