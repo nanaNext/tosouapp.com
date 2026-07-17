@@ -746,7 +746,7 @@ const applyHolidayRestMode = () => {
     el.style.display = hidden ? 'none' : '';
   };
 
-  const nonWorking = restHoliday || ['欠勤', '有給休暇', '半休', '無給休暇'].includes(kubun);
+  const nonWorking = restHoliday || ['欠勤', '有給休暇', '半休', '無給休暇', '代替休日'].includes(kubun);
   toggle(document.querySelector('.simple-stamp-stack'), nonWorking);
   toggle(document.querySelector('.simple-grid2'), nonWorking);
   toggle($('#workMinutes')?.closest('.simple-row'), nonWorking);

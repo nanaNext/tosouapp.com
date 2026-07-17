@@ -128,6 +128,9 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         status = 'leave';
       } else if (isAbsence) {
         status = 'absence';
+      } else if (offKubun.has(kubun)) {
+        // Kubun explicitly set to holiday (代替休日, 休日) — treat as leave regardless of punch data
+        status = 'leave';
       } else if (hasIn || hasOut) {
         status = hasOut ? (dayIsOff ? 'holiday_work' : 'checked_out') : (dayIsOff ? 'holiday_working' : 'working');
       } else if (dayIsOff && !forceLeave && kubun === '休日' && r.employment_type === 'part_time') {
