@@ -597,6 +597,15 @@ function attachEvents() {
       const year = currentMonth.getFullYear();
       const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
 
+      // Calculate department summary for print header
+      const deptCounts = {};
+      allEmployeesShifts.forEach(emp => {
+        const dept = emp.departmentName || '未配属';
+        deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+      });
+      const deptSummaryStr = Object.entries(deptCounts).map(([k, v]) => `${k}: ${v}名`).join('　');
+      const allEmployees = allEmployeesShifts;
+
       // Mở một cửa sổ mới để in, tránh bị xung đột CSS với trang hiện tại
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
@@ -702,8 +711,22 @@ function attachEvents() {
           </head>
           <body>
             <div class="print-container">
-              <h2>全員のシフト状況 - ${year}年${month}月</h2>
+              <h2 style="margin-bottom:4px;">飯塚塗研株式会社</h2>
+              <h3 style="text-align:center;margin:0 0 4px 0;font-size:16px;color:#334155;">全員のシフト状況 - ${year}年${month}月</h3>
+              <p style="text-align:center;margin:0 0 12px 0;font-size:11px;color:#64748b;">総人数: ${allEmployees.length}名　　${deptSummaryStr}</p>
               ${tableHtml}
+              <div style="margin-top:16px;padding:8px 0;border-top:1px solid #e2e8f0;">
+                <p style="font-weight:bold;font-size:11px;margin:0 0 6px 0;">【凡例】色の説明</p>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:10px;">
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#22c55e;border-radius:2px;vertical-align:middle;"></span> 出勤（通常勤務）</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#f97316;border-radius:2px;vertical-align:middle;"></span> 休日（会社カレンダー休日）</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#eab308;border-radius:2px;vertical-align:middle;"></span> 有休（有給休暇）</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#a855f7;border-radius:2px;vertical-align:middle;"></span> 欠勤（無給）</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#06b6d4;border-radius:2px;vertical-align:middle;"></span> 休日出勤</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#cbd5e1;border-radius:2px;vertical-align:middle;"></span> 未登録</span>
+                </div>
+                <p style="font-size:9px;color:#64748b;margin:6px 0 0 0;">※ パート社員は固定休日なし。登録した日のみ「出勤」扱い。</p>
+              </div>
             </div>
             <script>
               window.onload = () => {
