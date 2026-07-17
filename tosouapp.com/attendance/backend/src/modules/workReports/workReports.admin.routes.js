@@ -55,7 +55,23 @@ router.use(authenticate);
 router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
   try {
     const date = isISODate(req.query?.date) ? String(req.query.date) : todayJST();
-    const isOff = await calendarRepo.isOff(date).catch(() => false);
+    const isOffGlobal = await calendarRepo.isOff(date).catch(() => false);
+    
+    // Per-user off-day logic (工事部 vs 総務)
+    const [dY, dM, dD] = date.split('-').map(n => parseInt(n, 10));
+    const dateObj = new Date(Date.UTC(dY, dM - 1, dD));
+    const dow = dateObj.getUTCDay(); // 0=Sun, 6=Sat
+    const is4thSat = dow === 6 && Math.ceil(dD / 7) === 4;
+    
+    const isOffForUser = (deptName) => {
+      if (isOffGlobal) return true; // Calendar holiday (祝日) applies to all
+      const isKouji = String(deptName || '').includes('工事');
+      if (isKouji) {
+        return dow === 0 || is4thSat; // 工事部: only Sun + 4th Sat
+      }
+      return dow === 0 || dow === 6; // 総務: Sat + Sun
+    };
+    
     const [rows] = await db.query(`
       SELECT
         u.id AS userId,
@@ -116,6 +132,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       const offKubun = new Set(['休日', '代替休日']);
       const leaveKubun = new Set(['有給休暇', '無給休暇', '欠勤']);
       const workKubun = new Set(['出勤', '休日出勤', '代替出勤', '半休']);
+      const isOff = isOffForUser(r.departmentName);
       const dayIsOff = offKubun.has(kubun) || (!workKubun.has(kubun) && isOff);
       const forceLeave = leaveKubun.has(kubun) || Number(r.has_approved_leave || 0) === 1;
       const isAbsence = kubun === '欠勤';
