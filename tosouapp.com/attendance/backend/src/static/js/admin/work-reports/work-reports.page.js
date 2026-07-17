@@ -17,7 +17,7 @@ const statusMeta = (status) => {
   if (status === 'checkout_missing_submitted') return { label: '退勤漏れ(入力済)', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'missing') return { label: '未提出', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'not_checked_in') return { label: '未出勤', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  if (status === 'not_punched') return { label: '打刻なし', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
+  if (status === 'not_punched') return { label: '未打刻', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'absence') return { label: '欠勤', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'monthly_input_only') return { label: '月次入力済み（打刻なし）', style: 'background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;' };
   if (status === 'off') return { label: '休日', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
