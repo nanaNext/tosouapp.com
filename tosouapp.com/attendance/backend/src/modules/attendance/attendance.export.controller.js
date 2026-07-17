@@ -229,17 +229,21 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
             cellText = '出';
             statusClass = 'holiday-work';
           } else {
-            cellText = '出'; // Excel cũng có thể dùng '出' cho gọn
+            cellText = '出';
             statusClass = 'working';
           }
+        } else if (shift && shift.status === 'OFF') {
+          // Đăng ký nghỉ rõ ràng → hiển thị đỏ (休日)
+          cellText = '休';
+          statusClass = 'holiday';
         } else {
-          // Không có shift đăng ký và không phải ngày nghỉ cố định
+          // Không có shift đăng ký
           if (!isSeishain) {
-            // Part-time: ngày không đăng ký = nghỉ (hiển thị đỏ)
-            cellText = '休';
-            statusClass = 'holiday';
+            // Part-time chưa đăng ký → xám (未登録)
+            cellText = '-';
+            statusClass = 'empty';
           } else {
-            // Chính thức: ngày thường chưa có data
+            // Chính thức: ngày thường mặc định đi làm
             cellText = '出';
             statusClass = 'working';
           }
