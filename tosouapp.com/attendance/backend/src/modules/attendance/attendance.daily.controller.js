@@ -396,7 +396,7 @@ exports.getMonthDetail = async (req, res) => {
       skipRows ? [] : repo.listByUserBetween(userId, from, to),
       repo.listDailyBetween(userId, from, to).catch(() => []),
       repo.listPlanBetween(userId, from, to).catch(() => []),
-      db.query('SELECT date, status, leaveType, reason FROM shift_requests WHERE userId = ? AND date BETWEEN ? AND ?', [userId, from, to]).then(r => r[0]).catch(() => []),
+      db.query('SELECT date, status, leaveType, reason, detail FROM shift_requests WHERE userId = ? AND date BETWEEN ? AND ?', [userId, from, to]).then(r => r[0]).catch(() => []),
       workReportRepo.listByUserMonth(userId, `${y}-${pad(m)}`).catch(() => []),
       getUserOffDaySet(y, userId),
       repo.listShiftDefinitions().catch(() => []),
@@ -410,8 +410,8 @@ exports.getMonthDetail = async (req, res) => {
     for (const r of shiftReqRows || []) {
       const dStr = String(r.date || '');
       const d = dStr.includes('T') ? dStr.slice(0, 10) : (r.date instanceof Date ? r.date.toISOString().slice(0, 10) : dStr.slice(0, 10));
-      if (d && (r.status === 'WORKING' || r.status === 'OFF')) {
-        shiftReqMap.set(d, { status: r.status, leaveType: r.leaveType, reason: r.reason });
+      if (d && (r.status === 'WORKING' || r.status === 'OFF' || r.status === 'LEAVE')) {
+        shiftReqMap.set(d, { status: r.status, leaveType: r.leaveType, reason: r.reason, detail: r.detail || null });
       }
     }
 
