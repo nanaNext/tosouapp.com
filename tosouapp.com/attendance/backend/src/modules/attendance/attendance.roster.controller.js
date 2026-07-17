@@ -270,30 +270,62 @@ exports.todayRoster = async (req, res) => {
       const hasIn = !!r.checkIn;
       const hasOut = !!r.checkOut;
       const kubun = String(r.dailyKubun || '').trim();
+      const isPartTime = String(r.employmentType || '').toLowerCase() === 'part_time';
+      const shiftStatus = String(r.shiftStatus || '').trim();
+      const shiftLeaveType = String(r.shiftLeaveType || '').trim();
+      
       const holidayKubuns = new Set(['休日', '代替休日', '休み']);
       const leaveKubuns = new Set(['有給休暇', '無給休暇', '欠勤']);
+      const workKubuns = new Set(['出勤', '半休', '半休(有給)', '休日出勤', '代替出勤', '振替出勤']);
       
       let status;
+      let displayKubun = kubun;
+      
+      // Priority 1: Daily kubun (user already set for this day)
       if (holidayKubuns.has(kubun)) {
         status = 'off';
       } else if (leaveKubuns.has(kubun)) {
         status = 'leave';
-      } else {
+      } else if (workKubuns.has(kubun) || hasIn) {
+        // Has kubun that means working, or has actual checkIn
         status = hasIn ? (hasOut ? 'checked_out' : 'working') : 'not_checked_in';
       }
+      // Priority 2: Shift registration (シフト登録)
+      else if (shiftStatus === 'OFF') {
+        status = 'off';
+        displayKubun = displayKubun || '休日';
+      } else if (shiftStatus === 'LEAVE') {
+        status = 'leave';
+        if (shiftLeaveType === 'paid') displayKubun = displayKubun || '有給休暇';
+        else if (shiftLeaveType === 'unpaid') displayKubun = displayKubun || '欠勤';
+        else displayKubun = displayKubun || '休暇';
+      } else if (shiftStatus === 'WORKING') {
+        status = hasIn ? (hasOut ? 'checked_out' : 'working') : 'not_checked_in';
+      }
+      // Priority 3: No data at all
+      else {
+        if (isPartTime) {
+          status = 'unregistered'; // Part-time chưa đăng ký lịch
+        } else {
+          status = 'not_checked_in'; // Full-time ngày thường mặc định chờ checkIn
+        }
+      }
+      
       return {
         userId: r.userId,
         employeeCode: r.employeeCode || null,
         username: r.username || null,
+        employmentType: r.employmentType || null,
         departmentId: r.departmentId || null,
         departmentName: r.departmentName || null,
         role: r.role || null,
-        dailyKubun: r.dailyKubun || null,
+        dailyKubun: displayKubun || null,
+        shiftStatus: shiftStatus || null,
         attendance: {
           id: r.attendanceId || null,
           shiftId: r.shiftId || null,
-          checkIn: r.checkIn || null,
-          checkOut: r.checkOut || null,
+          checkIn: (holidayKubuns.has(kubun) || leaveKubuns.has(kubun) || shiftStatus === 'OFF' || (shiftStatus === 'LEAVE' && !hasIn)) ? null : (r.checkIn || null),
+          checkOut: (holidayKubuns.has(kubun) || leaveKubuns.has(kubun) || shiftStatus === 'OFF' || (shiftStatus === 'LEAVE' && !hasOut)) ? null : (r.checkOut || null),
           site: r.site || null,
           work: r.work || null
         },

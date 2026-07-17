@@ -57,6 +57,7 @@ module.exports = {
         u.employee_code AS employeeCode,
         u.username AS username,
         u.role AS role,
+        u.employment_type AS employmentType,
         u.departmentId AS departmentId,
         d.name AS departmentName,
         a.id AS attendanceId,
@@ -65,7 +66,9 @@ module.exports = {
         a.checkOut AS checkOut,
         a.location AS site,
         a.memo AS work,
-        ad.kubun AS dailyKubun
+        ad.kubun AS dailyKubun,
+        sr.status AS shiftStatus,
+        sr.leaveType AS shiftLeaveType
       FROM users u
       LEFT JOIN departments d
         ON d.id = u.departmentId
@@ -75,6 +78,8 @@ module.exports = {
        AND ? BETWEEN lr.startDate AND lr.endDate
       LEFT JOIN attendance_daily ad
         ON ad.userId = u.id AND ad.date = ?
+      LEFT JOIN shift_requests sr
+        ON sr.userId = u.id AND sr.date = ?
       LEFT JOIN attendance a
         ON a.userId = u.id AND (DATE(a.checkIn) = ? OR (a.checkIn IS NULL AND DATE(a.checkOut) = ?))
       WHERE u.employment_status = 'active'
@@ -84,7 +89,7 @@ module.exports = {
         COALESCE(u.employee_code, '') ASC,
         u.id ASC,
         a.checkIn ASC
-    `, [date, date, date, date]);
+    `, [date, date, date, date, date]);
     return rows || [];
   },
   async getTodayPlannedItems(date) {

@@ -21,6 +21,7 @@ const statusMeta = (status) => {
   if (status === 'absence') return { label: '欠勤', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
   if (status === 'monthly_input_only') return { label: '月次入力済み（打刻なし）', style: 'background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;' };
   if (status === 'off') return { label: '休日', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
+  if (status === 'unregistered') return { label: '未登録', style: 'background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;' };
   if (status === 'paid_leave') return { label: '有給休暇', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
   if (status === 'unpaid_leave') return { label: '無給休暇', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
   if (status === 'working') return { label: '勤務中', style: 'background:#f0fdf4;color:#166534;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
