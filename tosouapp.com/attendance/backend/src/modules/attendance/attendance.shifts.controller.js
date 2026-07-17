@@ -218,40 +218,49 @@ exports.getShiftMatrix = async (req, res) => {
     const { month } = req.query || {};
     if (!month) return res.status(400).json({ message: 'Missing month' });
     
-    // Tables created by bootstrap migrations
+    // Branch-scoped access: manager sees own branch only, admin sees all
+    const userBranchId = req.user?.branchId || null;
+    const branchFilter = (role === 'manager' && userBranchId) ? userBranchId : null;
 
-    // Get all users
-    const [users] = await db.query(`
+    // Get users (branch-filtered for managers)
+    let userQuery = `
       SELECT u.id, u.username, u.email, u.employee_code, u.employment_type,
              d.name as departmentName, s.status as submission_status
       FROM users u
       LEFT JOIN departments d ON u.departmentId = d.id
       LEFT JOIN shift_month_status s ON u.id = s.userId AND s.month = ?
       WHERE u.role NOT IN ('admin', 'manager') AND u.employment_status = 'active'
-      ORDER BY 
-        CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END,
-        d.name, u.employment_type, u.id
-    `, [month]);
+    `;
+    const userParams = [month];
+    if (branchFilter) {
+      userQuery += ` AND u.branch_id = ?`;
+      userParams.push(branchFilter);
+    }
+    userQuery += ` ORDER BY CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END, d.name, u.employment_type, u.id`;
+    const [users] = await db.query(userQuery, userParams);
 
-    // Get all shifts for the month
+    // Get shifts for the month (only for filtered users)
     let shifts = [];
-    try {
-      const [rows1] = await db.query(`
-        SELECT userId, date, status, leaveType, reason, detail
-        FROM shift_requests
-        WHERE date LIKE ?
-      `, [`${month}-%`]);
-      shifts = rows1.map(r => ({ ...r, date: String(r.date).slice(0, 10) }));
-    } catch (e1) {
+    if (users.length > 0) {
+      const userIds = users.map(u => u.id);
       try {
-        const [rows2] = await db.query(`
-          SELECT user_id as userId, start_date as date, 'WORKING' as status
-          FROM user_shift_assignments 
-          WHERE start_date LIKE ?
-        `, [`${month}-%`]);
-        shifts = rows2.map(r => ({ ...r, date: String(r.date).slice(0, 10) }));
-      } catch (e2) {
-        console.warn('Fallback query failed too:', e2.message);
+        const [rows1] = await db.query(`
+          SELECT userId, date, status, leaveType, reason, detail
+          FROM shift_requests
+          WHERE userId IN (?) AND date LIKE ?
+        `, [userIds, `${month}-%`]);
+        shifts = rows1.map(r => ({ ...r, date: String(r.date).slice(0, 10) }));
+      } catch (e1) {
+        try {
+          const [rows2] = await db.query(`
+            SELECT user_id as userId, start_date as date, 'WORKING' as status
+            FROM user_shift_assignments 
+            WHERE user_id IN (?) AND start_date LIKE ?
+          `, [userIds, `${month}-%`]);
+          shifts = rows2.map(r => ({ ...r, date: String(r.date).slice(0, 10) }));
+        } catch (e2) {
+          console.warn('Fallback query failed too:', e2.message);
+        }
       }
     }
 
