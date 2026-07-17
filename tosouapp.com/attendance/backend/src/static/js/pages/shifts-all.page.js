@@ -316,8 +316,13 @@ function renderApp() {
             cellTextColor = '#16a34a'; // Green
           }
           workCount++;
+        } else if (shift && shift.status === 'OFF') {
+          // Part-time đăng ký nghỉ rõ ràng → hiển thị đỏ (休日), không phải xám
+          cellText = '休';
+          cellClass = 'status-holiday';
+          cellTextColor = '#dc2626'; // Red
         } else {
-          cellText = '休'; // Đồng bộ part-time và seishain đều dùng '休' nếu không có lịch
+          cellText = '-'; // Chưa đăng ký gì
           cellClass = 'status-empty';
           cellTextColor = '#94a3b8'; // Gray
         }
