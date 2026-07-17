@@ -365,7 +365,7 @@ const route = async () => {
     if (p2 === '/admin/attendance/shifts-approvals' || p2 === '/admin/attendance/shifts-approvals/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/shifts-approvals', profile: profile });
-      const mod = await loadModule('./attendance/admin-shifts-approvals.page.js?v=5');
+      const mod = await loadModule('./attendance/admin-shifts-approvals.page.js?v=6');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
