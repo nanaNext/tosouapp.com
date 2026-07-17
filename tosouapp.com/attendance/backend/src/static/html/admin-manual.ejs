@@ -265,7 +265,7 @@
     </section>
   </main>
   <script src="/static/js/admin/admin.page.js?v=7" type="module"></script>
-  <script>
+  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
     function scrollToSection(sectionId) {
       const element = document.getElementById('section-' + sectionId);
       if (element) {

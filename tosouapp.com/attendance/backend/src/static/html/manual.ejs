@@ -360,7 +360,7 @@
     </section>
   </main>
 
-  <script>
+  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
     function scrollToSection(sectionId) {
       const element = document.getElementById('section-' + sectionId);
       if (element) {
