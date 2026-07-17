@@ -213,7 +213,8 @@
       // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay) HOẶC là ngày nghỉ nhưng có dữ liệu làm việc (hasActual). Ngày nghỉ không có lịch làm việc thì để trống.
       // Cho phép part-time chưa nộp lịch (ngày thường) cũng hiện giờ làm mặc định nhạt.
       const isPartTimeNoPlanOnWorkDay = isPartTime && !offDay && !plannedKubun && !kubunInit;
-      const shouldShowDefaultShift = isWorkDay || hasActual || isPartTimeNoPlanOnWorkDay;
+      // CHỐT: Nếu kubun là ngày nghỉ (代替休日, 休日, 休み), LUÔN ẩn giờ dù có actual data
+      const shouldShowDefaultShift = isHolidayKubun ? false : (isWorkDay || hasActual || isPartTimeNoPlanOnWorkDay);
 
       // ĐỐI VỚI CA PHỤ (!primary): Không tự động điền giờ dự kiến, để trống cho người dùng tự nhập.
       const finalIn = shouldShowDefaultShift ? (inHm || (primary ? shiftStart : '')) : '';
