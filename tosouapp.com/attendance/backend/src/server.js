@@ -60,7 +60,7 @@ function initShiftReminders() {
 async function start() {
   try {
     await require('./core/bootstrap').init();
-    app.listen(PORT, HOST, () => {
+    const server = app.listen(PORT, HOST, () => {
       const shownHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
       console.log(`Server is running at http://${shownHost}:${PORT} (bind ${HOST})`);
     });
@@ -74,6 +74,27 @@ async function start() {
     if (process.env.NODE_ENV === 'production') {
         initBackupCronJob();
     }
+
+    // Graceful shutdown — finish in-flight requests before stopping
+    const shutdown = (signal) => {
+      console.log(`${signal} received. Shutting down gracefully...`);
+      server.close(async () => {
+        console.log('HTTP server closed.');
+        try {
+          const db = require('./core/database/mysql');
+          await db.end();
+          console.log('DB pool closed.');
+        } catch (e) { /* silently ignored */ }
+        process.exit(0);
+      });
+      // Force exit after 10s if connections won't close
+      setTimeout(() => {
+        console.error('Forced shutdown after timeout.');
+        process.exit(1);
+      }, 10000);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (e) {
     try { console.error('bootstrap_error', e && e.message ? e.message : e); } catch (e) { /* silently ignored */ }
     process.exit(1);

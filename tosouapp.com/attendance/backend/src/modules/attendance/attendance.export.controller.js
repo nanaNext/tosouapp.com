@@ -31,27 +31,37 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
     const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
 
-        // Fetch all active users who are NOT admin or manager
-    const [users] = await db.query(`
+    // Branch-scoped access: manager sees own branch only, admin sees all
+    const role = String(req.user?.role || '').toLowerCase();
+    const userBranchId = req.user?.branchId || null;
+    const branchFilter = (role === 'manager' && userBranchId) ? userBranchId : null;
+
+    // Fetch active users (branch-filtered for managers)
+    let userQuery = `
       SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName
       FROM users u
       LEFT JOIN departments d ON u.departmentId = d.id
       WHERE u.employment_status = 'active' AND u.role NOT IN ('admin', 'manager')
-      ORDER BY 
-        CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END,
-        u.employee_code ASC, u.id ASC
-    `);
+    `;
+    const userParams = [];
+    if (branchFilter) {
+      userQuery += ` AND u.branch_id = ?`;
+      userParams.push(branchFilter);
+    }
+    userQuery += ` ORDER BY CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END, u.employee_code ASC, u.id ASC`;
+    const [users] = await db.query(userQuery, userParams);
 
     if (!users || users.length === 0) {
       return res.status(404).json({ message: 'No data found' });
     }
 
     // Fetch shift requests for these users for the given month
+    const userIds = users.map(u => u.id);
     const [shifts] = await db.query(`
       SELECT userId, date, status, leaveType
       FROM shift_requests
-      WHERE date LIKE ?
-    `, [`${targetMonth}-%`]);
+      WHERE userId IN (?) AND date LIKE ?
+    `, [userIds, `${targetMonth}-%`]);
 
     const ExcelJS = require('exceljs');
     const workbook = new ExcelJS.Workbook();
@@ -345,22 +355,25 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     // Set response headers
     const fileName = encodeURIComponent(`シフト_${year}年${month}月.xlsx`);
     
-    const buf = await workbook.xlsx.writeBuffer();
-    
-    // Auto-save export to R2
-    const s3Service = require('../../core/services/s3.service');
-    if (s3Service.isR2Configured()) {
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
-      const r2Key = `exports/excel/shifts/${ts}_${fileName}`;
-      s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').catch(e => {
-        console.error('Failed to auto-save export to R2:', e);
-      });
-    }
-
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${fileName}`);
     
-    res.status(200).send(buf);
+    // Stream directly to response — avoids holding entire file in RAM
+    await workbook.xlsx.write(res);
+    res.end();
+    
+    // Auto-save export to R2 (background, non-blocking)
+    try {
+      const s3Service = require('../../core/services/s3.service');
+      if (s3Service.isR2Configured()) {
+        const buf = await workbook.xlsx.writeBuffer();
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        const r2Key = `exports/excel/shifts/${ts}_${fileName}`;
+        s3Service.uploadToR2(r2Key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').catch(e => {
+          console.error('Failed to auto-save export to R2:', e);
+        });
+      }
+    } catch (e) { /* R2 upload failure should not affect user */ }
   } catch (err) {
     console.error('Excel Export Error:', err);
     res.status(500).json({ message: err.message });

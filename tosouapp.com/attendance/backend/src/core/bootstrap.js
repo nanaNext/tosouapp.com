@@ -143,6 +143,21 @@ async function runMigrations() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
         }
+      },
+      {
+        id: '20260717_01_performance_indexes',
+        up: async () => {
+          // attendance_daily: speed up monthly queries by user+date
+          try { await conn.query(`CREATE INDEX idx_attendance_daily_user_date ON attendance_daily(userId, date)`); } catch (e) { /* already exists */ }
+          // shift_requests: speed up bulk month queries
+          try { await conn.query(`CREATE INDEX idx_shift_requests_user_date ON shift_requests(userId, date)`); } catch (e) { /* already exists */ }
+          // users: speed up branch-based filtering
+          try { await conn.query(`CREATE INDEX idx_users_branch_status ON users(branch_id, employment_status)`); } catch (e) { /* already exists */ }
+          // users: speed up department-based listing
+          try { await conn.query(`CREATE INDEX idx_users_dept_status ON users(departmentId, employment_status)`); } catch (e) { /* already exists */ }
+          // attendance records: speed up user+date range queries
+          try { await conn.query(`CREATE INDEX idx_attendance_records_user_checkin ON attendance_records(userId, checkIn)`); } catch (e) { /* already exists */ }
+        }
       }
     ];
     for (const m of migrations) {

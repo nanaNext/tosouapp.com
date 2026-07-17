@@ -19,14 +19,15 @@ const assetV = (() => {
 })();
 
 /**
- * Thêm ?v=xxx vào path nếu chưa có — tránh cache cũ trên production
+ * Thêm ?v=xxx vào path — luôn dùng BUILD_ID từ server, strip version cũ nếu có
  */
 export const withAssetV = (path) => {
   const p = String(path || '');
   if (!assetV) return p;
   if (!p) return p;
-  if (p.includes('v=')) return p;
-  return p + (p.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(assetV);
+  // Strip existing ?v=... or &v=... to always use latest BUILD_ID
+  const stripped = p.replace(/([?&])v=[^&]*/g, '$1').replace(/[?&]$/, '').replace(/\?&/, '?');
+  return stripped + (stripped.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(assetV);
 };
 
 const moduleCache = new Map();
