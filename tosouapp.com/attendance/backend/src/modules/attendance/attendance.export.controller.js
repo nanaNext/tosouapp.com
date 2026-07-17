@@ -235,8 +235,8 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
             statusClass = 'working';
           }
         } else {
-          cellText = '休'; // Đồng bộ part-time
-          statusClass = 'empty';
+          cellText = '休';
+          statusClass = isSeishain ? 'empty' : 'holiday'; // Part-time: ngày không đăng ký = nghỉ (đỏ)
         }
         
         rowData.push({ text: cellText, type: statusClass });
