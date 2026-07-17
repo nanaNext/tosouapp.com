@@ -266,6 +266,10 @@ exports.todayRoster = async (req, res) => {
     const date = qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const rows = await attendanceRepo.getTodayRosterItems(date);
 
+    // Today's date in JST for detecting past days (退勤忘れ, 欠勤)
+    const todayJST = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+    const isPastDay = date < todayJST;
+
     let items = (rows || []).map(r => {
       const hasIn = !!r.checkIn;
       const hasOut = !!r.checkOut;
@@ -281,16 +285,32 @@ exports.todayRoster = async (req, res) => {
       let status;
       let displayKubun = kubun;
       
-      // Priority 1: Daily kubun (user already set for this day)
-      if (holidayKubuns.has(kubun)) {
+      // ═══════════════════════════════════════════════════════════════
+      // Priority 1: 実際の打刻データ (Actual punch data overrides all)
+      // ═══════════════════════════════════════════════════════════════
+      if (hasIn && hasOut) {
+        status = 'checked_out'; // 退勤済
+      } else if (hasIn && !hasOut) {
+        // Có checkIn nhưng chưa checkOut
+        if (isPastDay) {
+          status = 'checkout_missing'; // 退勤忘れ (past day, forgot to clock out)
+        } else {
+          status = 'working'; // 出勤中 (still working today)
+        }
+      }
+      // ═══════════════════════════════════════════════════════════════
+      // Priority 2: Kubun nghỉ được set (approved leave/holiday)
+      // ═══════════════════════════════════════════════════════════════
+      else if (holidayKubuns.has(kubun)) {
         status = 'off';
+        displayKubun = kubun; // Hiện chính xác: 休日, 代替休日
       } else if (leaveKubuns.has(kubun)) {
         status = 'leave';
-      } else if (workKubuns.has(kubun) || hasIn) {
-        // Has kubun that means working, or has actual checkIn
-        status = hasIn ? (hasOut ? 'checked_out' : 'working') : 'not_checked_in';
+        displayKubun = kubun; // Hiện chính xác: 有給休暇, 欠勤, 無給休暇
       }
-      // Priority 2: Shift registration (シフト登録)
+      // ═══════════════════════════════════════════════════════════════
+      // Priority 3: Lịch đăng ký (Shift registration)
+      // ═══════════════════════════════════════════════════════════════
       else if (shiftStatus === 'OFF') {
         status = 'off';
         displayKubun = displayKubun || '休日';
@@ -299,17 +319,32 @@ exports.todayRoster = async (req, res) => {
         if (shiftLeaveType === 'paid') displayKubun = displayKubun || '有給休暇';
         else if (shiftLeaveType === 'unpaid') displayKubun = displayKubun || '欠勤';
         else displayKubun = displayKubun || '休暇';
-      } else if (shiftStatus === 'WORKING') {
-        status = hasIn ? (hasOut ? 'checked_out' : 'working') : 'not_checked_in';
-      }
-      // Priority 3: No data at all
-      else {
-        if (isPartTime) {
-          status = 'unregistered'; // Part-time chưa đăng ký lịch
+      } else if (shiftStatus === 'WORKING' || workKubuns.has(kubun)) {
+        // Có lịch đi làm nhưng chưa checkIn
+        if (isPastDay) {
+          status = 'not_punched'; // Cuối ngày rồi mà không checkIn → 未打刻
         } else {
-          status = 'not_checked_in'; // Full-time ngày thường mặc định chờ checkIn
+          status = 'not_checked_in'; // 未出勤 (chưa đến, còn trong ngày)
         }
       }
+      // ═══════════════════════════════════════════════════════════════
+      // Priority 4: Không có dữ liệu gì
+      // ═══════════════════════════════════════════════════════════════
+      else {
+        if (isPartTime) {
+          status = 'unregistered'; // Part-time chưa đăng ký lịch → 未登録
+        } else {
+          // Full-time ngày thường
+          if (isPastDay) {
+            status = 'not_punched'; // 未打刻 (đã qua ngày, không có gì)
+          } else {
+            status = 'not_checked_in'; // 未出勤 (hôm nay, chờ checkIn)
+          }
+        }
+      }
+      
+      // Quyết định hiển thị checkIn/checkOut: ẩn nếu status là nghỉ
+      const hideTime = (status === 'off' || status === 'leave' || status === 'unregistered');
       
       return {
         userId: r.userId,
@@ -324,8 +359,8 @@ exports.todayRoster = async (req, res) => {
         attendance: {
           id: r.attendanceId || null,
           shiftId: r.shiftId || null,
-          checkIn: (holidayKubuns.has(kubun) || leaveKubuns.has(kubun) || shiftStatus === 'OFF' || (shiftStatus === 'LEAVE' && !hasIn)) ? null : (r.checkIn || null),
-          checkOut: (holidayKubuns.has(kubun) || leaveKubuns.has(kubun) || shiftStatus === 'OFF' || (shiftStatus === 'LEAVE' && !hasOut)) ? null : (r.checkOut || null),
+          checkIn: hideTime ? null : (r.checkIn || null),
+          checkOut: hideTime ? null : (r.checkOut || null),
           site: r.site || null,
           work: r.work || null
         },
