@@ -123,7 +123,7 @@ async function mountAttendanceImpl({
         /* Keep controls visible */
         .attrec-controls, .attrec-head {
           display: flex !important;
-          margin-bottom: 12px !important;
+          margin-bottom: 4px !important;
         }
         .attrec-card h2 { display: none !important; }
         .attrec-controls { }
@@ -162,8 +162,8 @@ async function mountAttendanceImpl({
         box-sizing: border-box;
       }
       .attrec-fiori-override .attrec-head {
-        border-bottom: 1px solid #e2e8f0 !important;
-        min-height: 40px !important;
+        border-bottom: none !important;
+        min-height: 36px !important;
         display: flex !important;
         padding-bottom: 12px !important;
       }
@@ -202,9 +202,31 @@ async function mountAttendanceImpl({
         border-bottom: 1px solid #f1f5f9 !important;
       }
       .attrec-fiori-override .attrec-pill {
-        font-size: 14px !important;
-        padding: 4px 10px !important;
-        border-radius: 4px !important;
+        font-size: 11px !important;
+        padding: 3px 8px !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.2px;
+      }
+      .attrec-pill.ok {
+        background: #dcfce7 !important;
+        color: #166534 !important;
+        border: none !important;
+      }
+      .attrec-pill.warn {
+        background: #fef3c7 !important;
+        color: #92400e !important;
+        border: none !important;
+      }
+      .attrec-pill.danger {
+        background: #fee2e2 !important;
+        color: #991b1b !important;
+        border: none !important;
+      }
+      .attrec-pill.neutral {
+        background: #f1f5f9 !important;
+        color: #475569 !important;
+        border: none !important;
       }
       .attrec-fiori-override .attrec-summary {
         gap: 6px !important;
@@ -532,10 +554,10 @@ async function mountAttendanceImpl({
         }
       }
     </style>
-    <div class="dash-card attrec-fiori-override" style="background: transparent !important; box-shadow: none !important; border: none !important;">
-      <div class="attrec-controls" style="margin-bottom: 16px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: flex !important;">
+    <div class="dash-card attrec-fiori-override" style="background: transparent !important; box-shadow: none !important; border: none !important; padding: 8px 16px 0 16px !important;">
+      <div class="attrec-controls" style="margin-bottom: 4px; flex-shrink: 0; padding: 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: flex !important;">
       </div>
-      <div class="attrec-head" style="flex-shrink: 0; display: flex !important; margin-bottom: 12px !important; min-height: 40px !important;">
+      <div class="attrec-head" style="flex-shrink: 0; display: flex !important; margin-bottom: 4px !important; min-height: 0 !important;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: flex; gap: 12px; margin-bottom: 0px;"></div>
       </div>
       <div id="rosterTable" class="attrec-table"></div>
@@ -677,40 +699,48 @@ async function mountAttendanceImpl({
             /* Standard Professional Grid Table Style */
             .beautiful-table {
               background-color: #ffffff;
-              border: 1px solid #cbd5e1 !important;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
-              border-radius: 0;
+              border: 1px solid #e2e8f0 !important;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+              border-radius: 8px;
+              overflow: hidden;
             }
             .beautiful-table thead {
-              background-color: #f8fafc;
+              background-color: #1e293b;
             }
             .beautiful-table th {
-              padding: 12px 16px;
+              padding: 10px 14px;
               text-align: left;
-              font-weight: 700;
-              color: #0f172a;
-              font-size: 14px;
-              border-bottom: 1px solid #cbd5e1;
-              border-right: 1px solid #cbd5e1;
+              font-weight: 600;
+              color: #ffffff;
+              font-size: 12px;
+              letter-spacing: 0.3px;
+              border-bottom: none;
+              border-right: 1px solid #334155;
               white-space: nowrap;
               position: sticky;
               top: 0;
               z-index: 10;
-              background-color: #f8fafc;
+              background-color: #1e293b;
             }
             .beautiful-table th:last-child {
               border-right: none;
             }
             .beautiful-table td {
-              padding: 12px 16px;
-              border-bottom: 1px solid #e2e8f0;
-              border-right: 1px solid #e2e8f0;
-              color: #0f172a;
-              font-size: 14px;
+              padding: 8px 14px;
+              border-bottom: 1px solid #f1f5f9;
+              border-right: none;
+              color: #334155;
+              font-size: 13px;
               vertical-align: middle;
               word-break: break-word;
               white-space: normal;
               height: auto;
+            }
+            .beautiful-table tbody tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+            .beautiful-table tbody tr:hover {
+              background-color: #eff6ff;
             }
             .beautiful-table td:last-child {
               border-right: none;
