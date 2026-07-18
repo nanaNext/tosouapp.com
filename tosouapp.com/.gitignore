@@ -27,3 +27,6 @@ attendance/backend/src/uploads/
 # Test and debug scripts
 test_*.js
 debug_*.js
+
+# npm cache (local only)
+.npm-cache/
