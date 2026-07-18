@@ -107,7 +107,7 @@ async function renderEmployees(profile, c) {
       return raw;
     };
 
-    content.innerHTML = '<h3 class="excel-header">社員詳細</h3>';
+    content.innerHTML = '';
     const panel = document.createElement('div');
     panel.className = 'card detail-card';
     const roleV = String(u.role || '').toLowerCase();
@@ -127,39 +127,96 @@ async function renderEmployees(profile, c) {
       const mgr3 = allUsers3.find(x => String(x.id) === String(u.manager_id));
       mgrName3 = mgr3 ? (mgr3.username || mgr3.email) : '';
     } catch (e) { /* silently ignored */ }
-    const avatarBlock3 = `<div class="avatar">${ini3}</div>`;
+    const avatarBlock3 = `<div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;color:#475569;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;border:1px solid #cbd5e1;">${ini3}</div>`;
+    const branchName3 = (branches.find(br => String(br.id) === String(u.branch_id)) || {}).name || '';
+    panel.style.cssText = 'border:1px solid #d0d7de;border-radius:0;background:#fff;box-shadow:none;overflow:hidden;max-width:100%;';
     panel.innerHTML = `
-      <div class="head">
+      <style>
+        .sap-obj-header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid #d0d7de; background:#f6f8fa; }
+        .sap-obj-header .sap-name { font-size:14px; font-weight:700; color:#1c2025; }
+        .sap-obj-header .sap-meta { font-size:12px; color:#5a6872; }
+        .sap-obj-badges { display:flex; gap:6px; margin-left:auto; }
+        .sap-badge { padding:2px 8px; font-size:11px; font-weight:600; border-radius:3px; border:1px solid; }
+        .sap-badge-role { background:#ebf5ff; color:#0854a0; border-color:#b0d4f1; }
+        .sap-badge-status { background:#f1fdf4; color:#256f3a; border-color:#b0e2c2; }
+        .sap-section { border-bottom:1px solid #d0d7de; }
+        .sap-section-title { font-size:12px; font-weight:700; color:#32363a; padding:8px 16px; background:#f6f8fa; border-bottom:1px solid #d0d7de; }
+        .sap-table { width:100%; border-collapse:collapse; table-layout:fixed; word-break:break-word; border:1px solid #d0d7de; }
+        .sap-table td { padding:6px 12px; border:1px solid #edeff0; font-size:13px; vertical-align:top; }
+        .sap-table td.lbl { width:110px; color:#6a6d70; background:#fafbfc; font-weight:500; white-space:nowrap; }
+        .sap-table td.val { color:#32363a; }
+        .sap-table td.val.empty { color:#bcc3ca; }
+        .sap-two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:8px 16px; }
+        .sap-two-col > div { }
+        .sap-actions { padding:10px 16px; border-top:1px solid #d0d7de; display:flex; gap:8px; background:#f6f8fa; }
+        .sap-btn { padding:6px 14px; font-size:12px; font-weight:600; border-radius:3px; text-decoration:none; cursor:pointer; border:1px solid #0854a0; }
+        .sap-btn-primary { background:#0854a0; color:#fff; }
+        .sap-btn-ghost { background:transparent; color:#0854a0; }
+        @media (max-width:768px) { .sap-two-col { grid-template-columns:1fr; } }
+      </style>
+      <div class="sap-obj-header">
         ${avatarBlock3}
-        <div class="info">
-          <div class="title">${u.username || ''}</div>
-          <div class="subtitle">${u.email || ''}</div>
+        <div>
+          <div class="sap-name">${u.username || ''}</div>
+          <div class="sap-meta">${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))} ・ ${u.email || ''}</div>
         </div>
-        <span class="status-pill ${statusCls3}">${statusJa2(u.employment_status)}</span>
+        <div class="sap-obj-badges">
+          <span class="sap-badge sap-badge-role">${roleJa3}</span>
+          <span class="sap-badge sap-badge-status">${statusJa2(u.employment_status)}</span>
+        </div>
       </div>
-      <div class="detail-row"><div class="label">社員番号</div><div class="value">${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))}</div></div>
-      <div class="detail-row"><div class="label">氏名</div><div class="value">${u.username || ''}</div></div>
-      <div class="detail-row"><div class="label">Email</div><div class="value">${u.email || ''}</div></div>
-      <div class="detail-row"><div class="label">電話番号</div><div class="value">${u.phone || ''}</div></div>
-      <div class="detail-row"><div class="label">生年月日</div><div class="value">${fmtDate2(u.birth_date)}</div></div>
-      <div class="detail-row"><div class="label">支店</div><div class="value">${(branches.find(br => String(br.id) === String(u.branch_id)) || {}).name || '未設定'}</div></div>
-      <div class="detail-row"><div class="label">部署</div><div class="value">${deptName2(u.departmentId)}</div></div>
-      <div class="detail-row" id="rowShift"><div class="label">シフト</div><div class="value">—</div></div>
-      <div class="detail-row"><div class="label">直属マネージャー</div><div class="value">${mgrName3}</div></div>
-      <div class="detail-row"><div class="label">レベル</div><div class="value">${u.level || ''}</div></div>
-      <div class="detail-row"><div class="label">役割</div><div class="value"><span class="role-pill ${roleCls3}">${roleJa3}</span></div></div>
-      <div class="detail-row"><div class="label">雇用形態</div><div class="value"><span class="type-pill ${typeCls3}">${typeJa3}</span></div></div>
-      <div class="detail-row"><div class="label">入社日</div><div class="value">${fmtDate2(u.hire_date)}</div></div>
-      <div class="detail-row"><div class="label">試用開始</div><div class="value">${fmtDate2(u.probation_date)}</div></div>
-      <div class="detail-row"><div class="label">正社員化</div><div class="value">${fmtDate2(u.official_date)}</div></div>
-      <div class="detail-row"><div class="label">契約終了</div><div class="value">${fmtDate2(u.contract_end)}</div></div>
-      <div class="detail-row"><div class="label">基本給</div><div class="value">${u.base_salary == null ? '' : u.base_salary}</div></div>
-      <div class="detail-row"><div class="label">状態</div><div class="value"><span class="status-pill ${statusCls3}">${statusJa2(u.employment_status)}</span></div></div>
-      <div class="detail-row"><div class="label">個人書類画像</div><div class="value"><div id="detailAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;"><span style="color:#64748b;">読み込み中...</span></div></div></div>
-      <div class="detail-actions form-actions">
-        <a class="btn" id="btnDetailSummary" href="/admin/employees?summary=${u.id}">月次サマリ</a>
-        <a class="btn" id="btnDetailEdit" href="/admin/employees?edit=${u.id}">編集</a>
-        <a class="btn" id="btnDetailBack" href="/admin/employees#list">一覧へ</a>
+      <div class="sap-section">
+        <div class="sap-section-title">基本情報</div>
+        <div class="sap-two-col">
+          <div>
+            <table class="sap-table">
+              <tr><td class="lbl">社員番号</td><td class="val">${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))}</td></tr>
+              <tr><td class="lbl">氏名</td><td class="val">${u.username || ''}</td></tr>
+              <tr><td class="lbl">メール</td><td class="val">${u.email || ''}</td></tr>
+              <tr><td class="lbl">電話番号</td><td class="val ${u.phone ? '' : 'empty'}">${u.phone || '—'}</td></tr>
+            </table>
+          </div>
+          <div>
+            <table class="sap-table">
+              <tr><td class="lbl">生年月日</td><td class="val">${fmtDate2(u.birth_date)}</td></tr>
+              <tr><td class="lbl">性別</td><td class="val">${u.gender === 'male' ? '男性' : u.gender === 'female' ? '女性' : u.gender === 'other' ? 'その他' : '—'}</td></tr>
+              <tr><td class="lbl">住所</td><td class="val ${u.address ? '' : 'empty'}">${u.address || '—'}</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="sap-section">
+        <div class="sap-section-title">職務情報</div>
+        <div class="sap-two-col">
+          <div>
+            <table class="sap-table">
+              <tr><td class="lbl">支店</td><td class="val">${branchName3 || '未設定'}</td></tr>
+              <tr><td class="lbl">部署</td><td class="val">${deptName2(u.departmentId) || '未設定'}</td></tr>
+              <tr><td class="lbl">シフト</td><td class="val" id="shiftValue">—</td></tr>
+              <tr><td class="lbl">マネージャー</td><td class="val">${mgrName3 || '—'}</td></tr>
+              <tr><td class="lbl">雇用形態</td><td class="val">${typeJa3}</td></tr>
+              <tr><td class="lbl">レベル</td><td class="val ${u.level ? '' : 'empty'}">${u.level || '—'}</td></tr>
+            </table>
+          </div>
+          <div>
+            <table class="sap-table">
+              <tr><td class="lbl">入社日</td><td class="val">${fmtDate2(u.hire_date)}</td></tr>
+              <tr><td class="lbl">試用開始</td><td class="val">${fmtDate2(u.probation_date)}</td></tr>
+              <tr><td class="lbl">正社員化</td><td class="val">${fmtDate2(u.official_date)}</td></tr>
+              <tr><td class="lbl">契約終了</td><td class="val">${fmtDate2(u.contract_end)}</td></tr>
+              <tr><td class="lbl">基本給</td><td class="val">${u.base_salary == null ? '—' : String.fromCharCode(165) + Number(u.base_salary).toLocaleString()}</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="sap-section">
+        <div class="sap-section-title">書類</div>
+        <div style="padding:8px 16px;"><div id="detailAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;min-height:32px;"><span style="color:#6a6d70;font-size:12px;">読み込み中...</span></div></div>
+      </div>
+      <div class="sap-actions">
+        <a class="sap-btn sap-btn-primary" id="btnDetailEdit" href="/admin/employees?edit=${u.id}">編集</a>
+        <a class="sap-btn sap-btn-ghost" id="btnDetailSummary" href="/admin/employees?summary=${u.id}">月次サマリ</a>
+        <a class="sap-btn sap-btn-ghost" id="btnDetailBack" href="/admin/employees#list">一覧へ</a>
       </div>
     `;
     content.appendChild(panel);
@@ -198,7 +255,7 @@ async function renderEmployees(profile, c) {
           et = def ? String(def.end_time || '—') : '—';
         }
       }
-      const rowShift = panel.querySelector('#rowShift .value');
+      const rowShift = panel.querySelector('#shiftValue');
       if (rowShift) {
         const nm = name && name !== '—' ? name : '—';
         const time = (st && st !== '—' && et && et !== '—') ? `${st}-${et}` : '—';
@@ -1274,49 +1331,70 @@ async function renderEmployees(profile, c) {
         :root[data-theme='dark'] .emp-add-form div[style*="border-right"] { border-color:#334155 !important; }
       </style>
       <div style="margin-bottom:20px;"><a id="addBack" class="btn" href="#list" style="color:#475569;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:4px;">← 社員一覧へ戻る</a></div>
-      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin:0 0 24px;letter-spacing:-0.3px;">新規社員登録</h2>
       
-      <div class="emp-add-form" style="display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid #cbd5e1; margin-bottom:28px; box-shadow:0 1px 3px rgba(0,0,0,.04);">
-        <!-- 基本情報 -->
-        <div style="border-right:1px solid #cbd5e1;">
-          <div class="section-header">基本情報</div>
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td class="field-label">社員番号 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empCode" placeholder="例: EMP001"></td></tr>
-            <tr><td class="field-label">氏名 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empName" placeholder="山田 太郎"></td></tr>
-            <tr><td class="field-label">メール <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empEmail" type="email" placeholder="example@company.com"></td></tr>
-            <tr><td class="field-label">パスワード <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empPass" type="password" placeholder="6文字以上" autocomplete="new-password"></td></tr>
-            <tr><td class="field-label">生年月日</td><td class="field-value"><input id="empBirth" type="date"></td></tr>
-            <tr><td class="field-label">性別</td><td class="field-value"><select id="empGender"><option value="">未選択</option><option value="male">男性</option><option value="female">女性</option><option value="other">その他</option></select></td></tr>
-            <tr><td class="field-label">電話番号</td><td class="field-value"><input id="empPhone" placeholder="090-xxxx-xxxx"></td></tr>
-            <tr><td class="field-label">住所</td><td class="field-value"><input id="empAddr" placeholder="東京都..."></td></tr>
-          </table>
+      <!-- Step Indicator -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+        <div id="stepInd1" style="display:flex;align-items:center;gap:6px;">
+          <span style="width:28px;height:28px;border-radius:50%;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">1</span>
+          <span style="font-size:13px;font-weight:600;color:#0f172a;">基本情報</span>
         </div>
-        <!-- 職務情報 -->
-        <div>
-          <div class="section-header">職務情報</div>
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td class="field-label">支店</td><td class="field-value"><select id="empBranch"><option value="">未設定</option></select></td></tr>
-            <tr><td class="field-label">部署</td><td class="field-value"><select id="empDept"><option value="">未設定</option>${depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></td></tr>
-            <tr><td class="field-label">役割 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empRole"><option value="employee">従業員</option><option value="manager">マネージャー</option><option value="admin">管理者</option></select></td></tr>
-            <tr><td class="field-label">マネージャー</td><td class="field-value"><select id="empManager"><option value="">未設定</option>${managerOptions}</select></td></tr>
-            <tr><td class="field-label">レベル</td><td class="field-value"><input id="empLevel" placeholder="例: L1/L2/Senior"></td></tr>
-            <tr><td class="field-label">雇用形態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empType"><option value="full_time">正社員</option><option value="part_time">パート・アルバイト</option><option value="contract">契約社員</option></select></td></tr>
-            <tr><td class="field-label">入社日</td><td class="field-value"><input id="empJoinDate" type="date"></td></tr>
-            <tr><td class="field-label">試用開始</td><td class="field-value"><input id="empProbDate" type="date"></td></tr>
-            <tr><td class="field-label">正社員化</td><td class="field-value"><input id="empOfficialDate" type="date"></td></tr>
-            <tr><td class="field-label">契約終了日</td><td class="field-value"><input id="empContractEnd" type="date"></td></tr>
-            <tr><td class="field-label">基本給</td><td class="field-value"><input id="empBaseSalary" type="number" step="0.01" placeholder="円"></td></tr>
-            <tr><td class="field-label">状態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empStatus"><option value="active">在職</option><option value="inactive">休職/無効</option><option value="retired">退職</option></select></td></tr>
-            <tr><td class="field-label">画像</td><td class="field-value"><input id="empAvatarUrl" placeholder="画像URL (任意)"><input id="empAvatarFile" type="file" accept="image/*" multiple style="margin-top:8px;font-size:12px;"></td></tr>
-          </table>
+        <div style="flex:0 0 40px;height:2px;background:#cbd5e1;"></div>
+        <div id="stepInd2" style="display:flex;align-items:center;gap:6px;opacity:0.4;">
+          <span style="width:28px;height:28px;border-radius:50%;background:#94a3b8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
+          <span style="font-size:13px;font-weight:600;color:#64748b;">職務情報</span>
         </div>
       </div>
-      <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:16px 0;">
-        <div id="empCreateMsg" style="color:#ef4444;font-weight:500;font-size:14px;flex:1;text-align:left;display:none;"></div>
-        <button type="submit" style="height:40px;padding:0 28px;background:#0f172a;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;letter-spacing:0.3px;transition:opacity .15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-          社員を作成
-        </button>
+
+      <!-- Step 1: 基本情報 -->
+      <div id="step1" class="emp-add-form" style="border:1px solid #cbd5e1; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.04);">
+        <div class="section-header">基本情報</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td class="field-label">社員番号 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empCode" placeholder="例: EMP001"></td></tr>
+          <tr><td class="field-label">氏名 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empName" placeholder="山田 太郎"></td></tr>
+          <tr><td class="field-label">メール <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empEmail" type="email" placeholder="example@company.com"></td></tr>
+          <tr><td class="field-label">パスワード <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empPass" type="password" placeholder="6文字以上" autocomplete="new-password"></td></tr>
+          <tr><td class="field-label">生年月日</td><td class="field-value"><input id="empBirth" type="date"></td></tr>
+          <tr><td class="field-label">性別</td><td class="field-value"><select id="empGender"><option value="">未選択</option><option value="male">男性</option><option value="female">女性</option><option value="other">その他</option></select></td></tr>
+          <tr><td class="field-label">電話番号</td><td class="field-value"><input id="empPhone" placeholder="080-1234-5678"></td></tr>
+          <tr><td class="field-label">住所</td><td class="field-value"><input id="empAddr" placeholder="東京都..."></td></tr>
+        </table>
+        <div style="display:flex;justify-content:flex-end;padding:16px 20px;border-top:1px solid #e2e8f0;">
+          <button type="button" id="btnNext" style="height:38px;padding:0 24px;background:#0f172a;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+            次へ →
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: 職務情報 -->
+      <div id="step2" class="emp-add-form" style="border:1px solid #cbd5e1; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); display:none;">
+        <div class="section-header">職務情報</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td class="field-label">支店</td><td class="field-value"><select id="empBranch"><option value="">未設定</option></select></td></tr>
+          <tr><td class="field-label">部署</td><td class="field-value"><select id="empDept"><option value="">未設定</option>${depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></td></tr>
+          <tr><td class="field-label">役割 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empRole"><option value="employee">従業員</option><option value="manager">マネージャー</option><option value="admin">管理者</option></select></td></tr>
+          <tr><td class="field-label">マネージャー</td><td class="field-value"><select id="empManager"><option value="">未設定</option>${managerOptions}</select></td></tr>
+          <tr><td class="field-label">レベル</td><td class="field-value"><input id="empLevel" placeholder="例: L1/L2/Senior"></td></tr>
+          <tr><td class="field-label">雇用形態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empType"><option value="full_time">正社員</option><option value="part_time">パート・アルバイト</option><option value="contract">契約社員</option></select></td></tr>
+          <tr><td class="field-label">入社日</td><td class="field-value"><input id="empJoinDate" type="date"></td></tr>
+          <tr><td class="field-label">試用開始</td><td class="field-value"><input id="empProbDate" type="date"></td></tr>
+          <tr><td class="field-label">正社員化</td><td class="field-value"><input id="empOfficialDate" type="date"></td></tr>
+          <tr><td class="field-label">契約終了日</td><td class="field-value"><input id="empContractEnd" type="date"></td></tr>
+          <tr><td class="field-label">基本給</td><td class="field-value"><input id="empBaseSalary" type="number" step="0.01" placeholder="円"></td></tr>
+          <tr><td class="field-label">状態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empStatus"><option value="active">在職</option><option value="inactive">休職/無効</option><option value="retired">退職</option></select></td></tr>
+          <tr><td class="field-label">画像</td><td class="field-value"><input id="empAvatarUrl" placeholder="画像URL (任意)"><input id="empAvatarFile" type="file" accept="image/*" multiple style="margin-top:8px;font-size:12px;"></td></tr>
+        </table>
+        <div style="display:flex;justify-content:space-between;padding:16px 20px;border-top:1px solid #e2e8f0;">
+          <button type="button" id="btnPrev" style="height:38px;padding:0 24px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+            ← 戻る
+          </button>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="empCreateMsg" style="color:#ef4444;font-weight:500;font-size:13px;display:none;"></div>
+            <button type="submit" style="height:38px;padding:0 24px;background:#0f172a;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              社員を作成
+            </button>
+          </div>
+        </div>
       </div>
 `;
     form.querySelector('#addBack').addEventListener('click', async (e) => {
@@ -1338,6 +1416,44 @@ async function renderEmployees(profile, c) {
         brSelCreate.innerHTML = '<option value="">未設定</option>' + branches.map(br => `<option value="${br.id}">${br.name}</option>`).join('');
       }
     } catch (e) { /* silently ignored */ }
+
+    // Step navigation logic
+    const step1 = form.querySelector('#step1');
+    const step2 = form.querySelector('#step2');
+    const stepInd1 = form.querySelector('#stepInd1');
+    const stepInd2 = form.querySelector('#stepInd2');
+    const btnNext = form.querySelector('#btnNext');
+    const btnPrev = form.querySelector('#btnPrev');
+
+    const goToStep2 = () => {
+      // Validate step 1 required fields
+      const name = form.querySelector('#empName')?.value?.trim();
+      const email = form.querySelector('#empEmail')?.value?.trim();
+      const pass = form.querySelector('#empPass')?.value;
+      if (!name || !email || !pass) {
+        const msgEl = form.querySelector('#empCreateMsg');
+        if (!msgEl) {
+          alert('氏名・メール・パスワードは必須です。');
+        }
+        return;
+      }
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+      stepInd1.style.opacity = '0.4';
+      stepInd1.querySelector('span').style.background = '#94a3b8';
+      stepInd2.style.opacity = '1';
+      stepInd2.querySelector('span').style.background = '#0f172a';
+    };
+    const goToStep1 = () => {
+      step2.style.display = 'none';
+      step1.style.display = 'block';
+      stepInd2.style.opacity = '0.4';
+      stepInd2.querySelector('span').style.background = '#94a3b8';
+      stepInd1.style.opacity = '1';
+      stepInd1.querySelector('span').style.background = '#0f172a';
+    };
+    if (btnNext) btnNext.addEventListener('click', goToStep2);
+    if (btnPrev) btnPrev.addEventListener('click', goToStep1);
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1601,6 +1717,7 @@ async function renderEmployees(profile, c) {
         <th data-sort="employment_type" style="min-width:100px;">雇用形態</th>
         <th data-sort="employment_status" style="min-width:60px;">状態</th>
         <th data-sort="hire_date" style="min-width:90px;">入社日</th>
+        <th data-sort="created_at" style="min-width:90px;">作成日</th>
         <th style="min-width:180px;">操作</th>
       </tr>
     </thead>
@@ -1943,6 +2060,7 @@ async function renderEmployees(profile, c) {
         <td data-label="雇用形態">${typePill(u.employment_type)}</td>
         <td data-label="状態">${statusPill(u.employment_status)}</td>
         <td data-label="入社日">${fmtDate(u.hire_date)}</td>
+        <td data-label="作成日">${fmtDate(u.created_at)}</td>
         <td data-label="操作" class="col-ops">${ops}</td>
       `;
       }
