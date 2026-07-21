@@ -1541,7 +1541,11 @@
         tr.dataset.kubunBase = effectiveKubun || '';
         if (sel && effectiveKubun && String(sel.value || '').trim() !== effectiveKubun) sel.value = effectiveKubun;
       } catch (e) { /* silently ignored */ }
+      // Preserve scroll position to prevent page jumping after save
+      const _scrollHost = document.querySelector('.kintai-main');
+      const _savedST = _scrollHost ? _scrollHost.scrollTop : 0;
       if (root.Render?.recomputeRow) root.Render.recomputeRow(tr);
+      if (_scrollHost && _scrollHost.scrollTop !== _savedST) _scrollHost.scrollTop = _savedST;
       
     } catch (e) {
       console.error('Save failed:', e);

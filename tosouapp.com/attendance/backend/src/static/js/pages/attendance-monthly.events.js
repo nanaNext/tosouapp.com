@@ -727,8 +727,11 @@
 
     const applyHolidayLockAll = () => {
       try {
+        const _sh = document.querySelector('.kintai-main');
+        const _st = _sh ? _sh.scrollTop : 0;
         const rows = Array.from(tableHost.querySelectorAll('[data-row="1"][data-date]'));
         for (const r of rows) applyHolidayLock(r);
+        if (_sh && _sh.scrollTop !== _st) _sh.scrollTop = _st;
       } catch (e) { /* silently ignored */ }
     };
 
@@ -758,6 +761,16 @@
       const row = e.target?.closest?.('[data-row="1"][data-date]');
       if (row) { 
         if (!state.editableMonth) return;
+        // Preserve scroll position to prevent page jumping during DOM mutations
+        const scrollHost = document.querySelector('.kintai-main');
+        const savedScrollTop = scrollHost ? scrollHost.scrollTop : 0;
+        const savedScrollLeft = scrollHost ? scrollHost.scrollLeft : 0;
+        const restoreScroll = () => {
+          if (scrollHost) {
+            if (scrollHost.scrollTop !== savedScrollTop) scrollHost.scrollTop = savedScrollTop;
+            if (scrollHost.scrollLeft !== savedScrollLeft) scrollHost.scrollLeft = savedScrollLeft;
+          }
+        };
         try { row.dataset.dirty = '1'; } catch (e) { /* silently ignored */ } 
         
         const kubunSel = e.target?.closest?.('select[data-field="classification"]');
@@ -851,6 +864,7 @@
             const v = String(kubunSel.value || '').trim();
             row.dataset.kubunConfirmed = v ? '1' : '';
             applyHolidayLock(row);
+            restoreScroll();
             if (v === '有給休暇') {
               const dateStr = String(row.dataset.date || '').slice(0, 10);
               if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -875,6 +889,7 @@
           // QUAN TRỌNG: Lưu ngay lập tức khi người dùng thay đổi bất kỳ giá trị nào (Kubun, Giờ, Ghi chú...)
           try { 
             await controller.saveRowTimesNow(row); 
+            restoreScroll();
             if (timeEl) timeEl.dataset.prev = timeEl.value;
             
             // Update dataset so it reflects the saved values
@@ -886,6 +901,7 @@
             console.warn('Save failed:', err);
           }
           render.recomputeRow(row);
+          restoreScroll();
         }
       }
       try { draft?.schedule?.(controller.ctx, controller.ctx?.picker?.value || controller.ctx?.initialYM); } catch (e) { /* silently ignored */ }
