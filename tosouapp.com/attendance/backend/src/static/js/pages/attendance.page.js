@@ -468,10 +468,13 @@ const renderAttendance = async () => {
     // Allow checkout even if no check-in
     const canOut = !last?.checkOut;
     const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場' : '出社';
+    // Detect part-time from stored user profile
+    const _ptProfile = (() => { try { const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || ''; return raw ? JSON.parse(raw) : null; } catch (e) { return null; } })();
+    const isPartTime = String(_ptProfile?.employment_type || '').toLowerCase() === 'part_time';
     const kubunOptions = isOff
-      ? ['休日', '休日出勤', '代替出勤', '振替出勤']
-      : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-    const kubunGroupLabel = isOff ? '[予定休日]' : '[予定出勤]';
+      ? (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['休日', '休日出勤', '代替出勤', '振替出勤'])
+      : (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日']);
+    const kubunGroupLabel = isOff ? '[予定休日]' : (isPartTime ? '[予定なし]' : '[予定出勤]');
     const kubunOptionsHtml = `
       <option value="" disabled>${esc(kubunGroupLabel)}</option>
       ${kubunOptions.map(k => `<option value="${esc(k)}" ${kubunInit === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}

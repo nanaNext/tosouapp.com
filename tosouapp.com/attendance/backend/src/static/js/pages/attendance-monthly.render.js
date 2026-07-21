@@ -75,8 +75,8 @@
       if (isPartTime) {
         // Part-time: cùng 1 list cho mọi ngày, không phân biệt offDay
         // Không hiện 振替出勤, 休日出勤, 代替出勤 (không áp dụng cho Part-time)
-        kubunOptions = ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'];
-        if (offDay) kubunOptions.unshift('休日');
+        // Luôn có 休日 để part-time có thể chọn ngày nghỉ ngay cả ngày thường
+        kubunOptions = ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'];
       } else {
         if (offDay) {
           kubunOptions = ['休日', '休日出勤', '代替出勤', '振替出勤'];
