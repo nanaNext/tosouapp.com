@@ -605,8 +605,8 @@
   };
 
   const scheduleAutoSave = () => {
-    if (!state.editableMonth) return;
-    if (!ctx.tableHost) return;
+    // Disabled: save only on manual 保存 button press
+    return;
     const ym = ctx.picker?.value || '';
     if (!/^\d{4}-\d{2}$/.test(ym)) return;
     try { clearTimeout(ctx.autoSaveTimer); } catch (e) { /* silently ignored */ }

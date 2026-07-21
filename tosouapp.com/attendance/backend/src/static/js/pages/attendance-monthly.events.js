@@ -785,22 +785,14 @@
         e.target.dataset.manual = '1';
         e.target.dataset.auto = '0';
         
-        // Update immediately
+        // Update UI immediately (no auto-save)
         if (typeof _origRecomputeRow === 'function') {
           _origRecomputeRow(row);
         } else if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
           globalThis.MonthlyMonthlyRender.recomputeRow(row);
         }
-        
-        try { 
-          await controller.saveRowTimesNow(row); 
-          // Make sure dataset actual is updated
-          if (brInput) brInput.dataset.actual = brInput.value || '';
-          if (nbInput) nbInput.dataset.actual = nbInput.value || '';
-        } catch (err) {
-          console.warn('Save failed:', err);
-        }
-        return; // Skip the rest of the auto-logic
+        restoreScroll();
+        return; // Skip the rest of the logic
       }
 
         if (kubunSel || timeEl || otherEl) {
@@ -886,26 +878,12 @@
             }
           }
           
-          // QUAN TRỌNG: Lưu ngay lập tức khi người dùng thay đổi bất kỳ giá trị nào (Kubun, Giờ, Ghi chú...)
-          try { 
-            await controller.saveRowTimesNow(row); 
-            restoreScroll();
-            if (timeEl) timeEl.dataset.prev = timeEl.value;
-            
-            // Update dataset so it reflects the saved values
-            const brSel = row.querySelector('select[data-field="break"]');
-            const nbrSel = row.querySelector('select[data-field="nightBreak"]');
-            if (brSel) brSel.dataset.actual = brSel.value || '';
-            if (nbrSel) nbrSel.dataset.actual = nbrSel.value || '';
-          } catch (err) {
-            console.warn('Save failed:', err);
-          }
+          // Không tự động lưu - người dùng sẽ bấm nút 保存 để lưu
           render.recomputeRow(row);
           restoreScroll();
         }
       }
       try { draft?.schedule?.(controller.ctx, controller.ctx?.picker?.value || controller.ctx?.initialYM); } catch (e) { /* silently ignored */ }
-      try { controller.scheduleAutoSave(); } catch (e) { /* silently ignored */ }
     });
     
     tableHost.addEventListener('input', (e) => {
