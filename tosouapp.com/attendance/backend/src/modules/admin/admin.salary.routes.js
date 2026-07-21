@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const { authorize } = require('../../core/middleware/authMiddleware');
-const { rateLimitNamed } = require('../../core/middleware/rateLimit');
+const { rateLimitNamed, rateLimit } = require('../../core/middleware/rateLimit');
 const userRepo = require('../users/user.repository');
 const salaryService = require('../salary/salary.service');
 const salaryInputRepo = require('../salary/salaryInput.repository');
