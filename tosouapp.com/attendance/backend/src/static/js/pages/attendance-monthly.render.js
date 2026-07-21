@@ -720,6 +720,7 @@
         furikaeDateEl.style.display = cls === '振替出勤' ? '' : 'none';
       }
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
+      const isHankyuu = effectiveKubun === '半休' || effectiveKubun === '半休(有給)';
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;
       const canEditWorkInputs = !!state.editableMonth && (isWorkDay && !!cls || !isEmployee);
@@ -905,6 +906,24 @@
         if (ckRe && ckRe.checked) ckRe.checked = false;
         if (ckSa && ckSa.checked) ckSa.checked = false;
       } else if (isWorkDay) {
+        // 半休: giờ trống, nghỉ trưa 0:00, không auto-fill
+        if (isHankyuu) {
+          if (inEl && !inManual) {
+            inEl.value = '';
+            inEl.dataset.auto = '';
+            inEl.dataset.autoVal = '';
+          }
+          if (outEl && !outManual) {
+            outEl.value = '';
+            outEl.dataset.auto = '';
+            outEl.dataset.autoVal = '';
+          }
+          if (brSel && brSel.dataset.manual !== '1') {
+            brSel.value = '0:00';
+            brSel.dataset.auto = '1';
+          }
+          if (nbSel) nbSel.value = '0:00';
+        } else {
         // Áp dụng giờ mặc định cho ngày đi làm
         const dayShift = (() => {
           try {
@@ -943,6 +962,7 @@
             brSel.dataset.auto = '1';
           }
         }
+        } // end else (non-半休 workday)
       } else {
         if (ckOn) ckOn.checked = false;
         if (ckRe) ckRe.checked = false;
