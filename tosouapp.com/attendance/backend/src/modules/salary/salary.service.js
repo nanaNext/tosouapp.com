@@ -128,6 +128,7 @@ async function computePayslipForUser(userId, month, options = null) {
   let paidLeaveDaysFromDaily = 0;
   let absentDaysFromDaily = 0;
   let unpaidLeaveDaysFromDaily = 0;
+  let hankyuuDays = 0; // 半休 (unpaid half-day): deduct 0.5 day salary
 
   for (const r of dailyRows) {
     const date = String(r.date || '').slice(0, 10);
@@ -139,7 +140,12 @@ async function computePayslipForUser(userId, month, options = null) {
       paidLeaveDaysFromDaily++;
     }
     if (kubun === '半休(有給)') {
+      // 半休(有給): 0.5 day paid leave used, no salary deduction (有給 covers it)
       paidLeaveDaysFromDaily += 0.5;
+    }
+    if (kubun === '半休') {
+      // 半休 (unpaid): deduct 0.5 day salary per Japanese labor law
+      hankyuuDays += 0.5;
     }
     if (kubun === '欠勤') {
       absentDaysFromDaily++;
@@ -350,12 +356,12 @@ async function computePayslipForUser(userId, month, options = null) {
   }
 
   if (
-    (kAbsentDays + kUnpaidLeaveDays) > 0
+    (kAbsentDays + kUnpaidLeaveDays + hankyuuDays) > 0
     && scheduledWorkDays > 0
     && !hasAbsentDeductionOverride
   ) {
     const perDay = baseMonthly / scheduledWorkDays;
-    const absentDeduction = yen(perDay * (kAbsentDays + kUnpaidLeaveDays));
+    const absentDeduction = yen(perDay * (kAbsentDays + kUnpaidLeaveDays + hankyuuDays));
     if (absentDeduction) {
       支給['欠勤控除'] = -Math.abs(absentDeduction);
     }
