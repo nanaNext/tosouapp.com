@@ -6,6 +6,11 @@
   overflow: visible; /* Cho phép sticky hoạt động */
 }
 
+/* Prevent initial layout shift: apply fixed table layout via CSS before JS runs */
+#monthTableReal {
+  table-layout: fixed;
+}
+
 /* Page-level override: do not reserve a persistent scrollbar gutter on this screen */
 html,
 body,

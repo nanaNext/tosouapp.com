@@ -603,6 +603,7 @@
     }
 
     // Sync column widths to avoid drift across environments
+    // Apply immediately (not in requestAnimationFrame) to prevent initial layout shift
     const syncCols = (attempt = 0) => {
       try {
         const active = document.activeElement;
@@ -627,7 +628,7 @@
         table.style.tableLayout = 'fixed';
       } catch (e) { /* silently ignored */ }
     };
-    requestAnimationFrame(syncCols);
+    syncCols(); // Apply immediately to prevent initial layout shift
     try {
       const key = '__seMonthlyColSync';
       const w = window;
