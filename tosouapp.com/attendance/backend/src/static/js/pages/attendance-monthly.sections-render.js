@@ -630,6 +630,10 @@
       return loc.includes('社内') || loc.includes('内勤') || loc.includes('inhouse');
     };
     const hasAttend = (d) => (d?.segments || []).some(s => !!s?.checkIn);
+    const isHankyuu = (d) => {
+      const k = String(d?.daily?.kubun || '').trim();
+      return k === '半休' || k === '半休(有給)';
+    };
     const workTypeOf = (d) => {
       const dwt = String(d?.daily?.workType || '').trim();
       if (dwt) return dwt;
@@ -644,7 +648,9 @@
 
     const off = scope.filter(d => Number(d?.is_off || 0) === 1).length;
     const working = scope.length ? (scope.length - off) : 0;
-    const attendDays = scope.filter(hasAttend).length;
+    // 半休/半休(有給) counts as 0.5 attendance day
+    const hankyuuOnlyDays = scope.filter(d => !hasAttend(d) && isHankyuu(d)).length;
+    const attendDays = scope.filter(hasAttend).length + (hankyuuOnlyDays * 0.5);
     const holidayWorkDays = scope.filter(d => Number(d?.is_off || 0) === 1 && hasAttend(d)).length;
     const absent = Math.max(0, working - (attendDays - holidayWorkDays));
 
@@ -849,9 +855,11 @@
           const hasManualTime = (!!inV && !inAuto) || (!!outV && !outAuto);
           const hasEntry = row.classList.contains('has-entry') || !!String(row.dataset.id || '').trim();
           const isHolidayWorkKubun = kubunVal === '休日出勤';
-          const isAttendKubun = kubunVal === '出勤' || kubunVal === '半休' || kubunVal === '代替出勤';
+          const isHankyuuKubun = kubunVal === '半休' || kubunVal === '半休(有給)';
+          const isAttendKubun = kubunVal === '出勤' || kubunVal === '代替出勤';
           if (!kubunVal) continue; // chỉ đếm theo kubun đã chọn
           if (isHolidayWorkKubun) frontendHolidayWorkDays++;
+          else if (isHankyuuKubun) frontendAttendDays += 0.5; // 半休 = 0.5 day attendance
           else if (isAttendKubun) frontendAttendDays++;
           else continue;
             
@@ -886,11 +894,17 @@
         // If the table has explicitly selected '欠勤', count it. If not, only count if it's a past working day without attendance.
         // A safer way: Just count how many rows have kubun === '欠勤'.
         let explicitAbsent = 0;
+        let frontendPaidLeaveDays = 0;
         for (const row of tableRows) {
            const clsSel = row.querySelector('select[data-field="classification"]');
-           if (clsSel && clsSel.value === '欠勤') explicitAbsent++;
+           const kv = clsSel ? String(clsSel.value || '').trim() : '';
+           if (kv === '欠勤') explicitAbsent++;
+           if (kv === '有給休暇') frontendPaidLeaveDays++;
+           if (kv === '半休(有給)') frontendPaidLeaveDays += 0.5;
         }
-        absent2 = explicitAbsent > 0 ? explicitAbsent : 0; // If explicit exists, use it. Otherwise 0 until admin sets it or end of month calculation.
+        absent2 = explicitAbsent > 0 ? explicitAbsent : 0;
+        // Use frontend-counted paid leave if higher than backend leaveSummary
+        if (frontendPaidLeaveDays > paidDays) paidDays = frontendPaidLeaveDays;
         
         onsiteDays2 = frontendOnsite;
         remoteDays2 = frontendRemote;
