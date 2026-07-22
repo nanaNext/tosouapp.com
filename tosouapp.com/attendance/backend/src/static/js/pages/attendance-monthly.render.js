@@ -214,8 +214,10 @@
       // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay) HOẶC là ngày nghỉ nhưng có dữ liệu làm việc (hasActual). Ngày nghỉ không có lịch làm việc thì để trống.
       // Cho phép part-time chưa nộp lịch (ngày thường) cũng hiện giờ làm mặc định nhạt.
       const isPartTimeNoPlanOnWorkDay = isPartTime && !offDay && !plannedKubun && !kubunInit;
-      // CHỐT: Nếu kubun là ngày nghỉ (代替休日, 休日, 休み), LUÔN ẩn giờ dù có actual data
-      const shouldShowDefaultShift = isHolidayKubun ? false : (isWorkDay || hasActual || isPartTimeNoPlanOnWorkDay);
+      // CHỐT: Nếu kubun là ngày nghỉ (代替休日, 休日, 休み), hoặc nghỉ phép (有給, 無給, 欠勤), LUÔN ẩn giờ dù có actual data
+      // 半休: chỉ hiện giờ nếu có actual data (không auto-fill giờ mặc định)
+      const isLeaveKubun = effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '欠勤';
+      const shouldShowDefaultShift = (isHolidayKubun || isLeaveKubun) ? false : (isHankyuu ? hasActual : (isWorkDay || hasActual || isPartTimeNoPlanOnWorkDay));
 
       // ĐỐI VỚI CA PHỤ (!primary): Không tự động điền giờ dự kiến, để trống cho người dùng tự nhập.
       const finalIn = shouldShowDefaultShift ? (inHm || (primary ? shiftStart : '')) : '';
@@ -378,7 +380,7 @@
       const finalMemo = primary ? (segMemo || dMemo) : segMemo;
       const finalNotes = primary ? (segNotes || dNotes) : segNotes;
       
-      const isHolidayHide = isHolidayKubun || effectiveKubun === '欠勤' || isHankyuu;
+      const isHolidayHide = isHolidayKubun || isLeaveKubun || isHankyuu;
       const hideStyle = isHolidayHide ? 'visibility: hidden;' : '';
       const brVal = (() => {
         if (!shouldShowDefaultShift) return '0:00';
@@ -730,6 +732,7 @@
       }
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日';
       const isHankyuu = effectiveKubun === '半休' || effectiveKubun === '半休(有給)';
+      const isLeaveKubun = effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '欠勤';
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;
       const canEditWorkInputs = !!state.editableMonth && (isWorkDay && !!cls || !isEmployee);
@@ -779,7 +782,7 @@
           }
         } else {
           el.setAttribute('disabled', '');
-          if (isHolidayKubun || effectiveKubun === '欠勤' || isHankyuu) {
+          if (isHolidayKubun || isLeaveKubun || isHankyuu) {
             el.style.visibility = 'hidden';
           }
         }
@@ -792,7 +795,7 @@
           el.style.visibility = 'visible';
         } else {
           el.setAttribute('disabled', '');
-          if (isHolidayKubun || effectiveKubun === '欠勤') {
+          if (isHolidayKubun || isLeaveKubun) {
             el.style.visibility = 'hidden';
           }
         }
