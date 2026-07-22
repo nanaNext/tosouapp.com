@@ -186,6 +186,7 @@
       const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
+      const isHankyuu = effectiveKubun === '半休' || effectiveKubun === '半休(有給)';
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
 
       // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
@@ -241,7 +242,9 @@
       const shiftBrMin = Number.isFinite(shiftBrRaw) && shiftBrRaw >= 0 ? shiftBrRaw : 60;
       
       let defaultBr = 60;
-      if (shift && shift.break_minutes != null) {
+      if (isHankyuu) {
+        defaultBr = 0;
+      } else if (shift && shift.break_minutes != null) {
         defaultBr = Number(shift.break_minutes);
       } else if (isPartTime) {
         const sM = parseHm(shiftStart);
@@ -252,9 +255,10 @@
       }
 
       // Nếu dòng này là giờ tự động (chưa có check-in thực tế), ưu tiên dùng giờ nghỉ mặc định của ca (defaultBr)
-      // Điều này giúp tránh việc bị kẹt ở giá trị 0 do lỗi auto-save trước đây.
-      const brMin = shouldShowDefaultShift ? (primary ? (autoIn ? defaultBr : Number(daily?.breakMinutes ?? defaultBr)) : defaultBr) : 0;
-      const nbMin = shouldShowDefaultShift ? (primary ? (autoIn ? 0 : Number(daily?.nightBreakMinutes ?? 0)) : 0) : 0;
+      // Nhưng nếu user đã lưu breakMinutes thủ công, dùng giá trị đã lưu.
+      // 半休: break luôn = 0 (làm nửa ngày không cần nghỉ trưa)
+      const brMin = isHankyuu ? 0 : (shouldShowDefaultShift ? (primary ? (autoIn ? (daily && daily.breakMinutes !== null && daily.breakMinutes !== undefined ? Number(daily.breakMinutes) : defaultBr) : Number(daily?.breakMinutes ?? defaultBr)) : defaultBr) : 0);
+      const nbMin = isHankyuu ? 0 : (shouldShowDefaultShift ? (primary ? (autoIn ? (daily && daily.nightBreakMinutes !== null && daily.nightBreakMinutes !== undefined ? Number(daily.nightBreakMinutes) : 0) : Number(daily?.nightBreakMinutes ?? 0)) : 0) : 0);
       const totalBmin = brMin + nbMin;
 
       // Show planned work hours (faded) only for work days
@@ -274,13 +278,18 @@
         const outM = parseHm(finalOut);
         const stM = parseHm(shiftStart);
         const etM = parseHm(shiftEnd);
-        if (outM != null && stM != null && etM != null) {
-          const overnight = etM < stM;
+        if (outM != null && etM != null) {
+          const overnight = (stM != null && etM < stM);
           const endAbs = overnight ? (etM + 24 * 60) : etM;
-          const outAbs = overnight && outM < stM ? (outM + 24 * 60) : outM;
+          const outAbs = (overnight && stM != null && outM < stM) ? (outM + 24 * 60) : outM;
           return Math.max(0, outAbs - endAbs);
         }
-        return Math.max(0, whMin - (8 * 60));
+        // Fallback: nếu không có shift info, giả định ca kết thúc 17:00
+        if (outM != null) {
+          const defaultEnd = 17 * 60;
+          return Math.max(0, outM - defaultEnd);
+        }
+        return 0;
       })();
       const otHm = (hasActual && otMin > 0 && finalIn && finalOut) ? fmtHm(otMin) : '';
       const otAutoCls = (otMin > 0 && isAutoWork && !hasCompletedActual) ? 'is-auto' : '';
@@ -369,7 +378,7 @@
       const finalMemo = primary ? (segMemo || dMemo) : segMemo;
       const finalNotes = primary ? (segNotes || dNotes) : segNotes;
       
-      const isHolidayHide = isHolidayKubun || effectiveKubun === '欠勤';
+      const isHolidayHide = isHolidayKubun || effectiveKubun === '欠勤' || isHankyuu;
       const hideStyle = isHolidayHide ? 'visibility: hidden;' : '';
       const brVal = (() => {
         if (!shouldShowDefaultShift) return '0:00';
@@ -463,7 +472,7 @@
         </div>
       </td>
       <td>
-        <select id="break_${dateStr}_${rowId}" name="break_${dateStr}_${rowId}" class="se-select ${autoIn ? 'is-auto' : ''}" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
+        <select id="break_${dateStr}_${rowId}" name="break_${dateStr}_${rowId}" class="se-select" data-field="break" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(brVal)}" ${!isHankyuu && daily && (daily.breakMinutes !== null && daily.breakMinutes !== undefined) ? 'data-manual="1"' : ''} data-auto="0" style="${hideStyle}">
           <option value="3:00" ${brVal === '3:00' ? 'selected' : ''}>3:00</option>
           <option value="2:30" ${brVal === '2:30' ? 'selected' : ''}>2:30</option>
           <option value="2:00" ${brVal === '2:00' ? 'selected' : ''}>2:00</option>
@@ -476,7 +485,7 @@
         </select>
       </td>
       <td>
-        <select id="nightBreak_${dateStr}_${rowId}" name="nightBreak_${dateStr}_${rowId}" class="se-select ${autoIn ? 'is-auto' : ''}" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" style="${hideStyle}">
+        <select id="nightBreak_${dateStr}_${rowId}" name="nightBreak_${dateStr}_${rowId}" class="se-select" data-field="nightBreak" ${!canEditBreakTime ? 'disabled data-fixed-disabled="1"' : ''} data-actual="${esc(nbVal)}" data-auto="0" ${daily && (daily.nightBreakMinutes !== null && daily.nightBreakMinutes !== undefined) ? 'data-manual="1"' : ''} style="${hideStyle}">
           <option value="0:00" ${nbVal === '0:00' ? 'selected' : ''}>0:00</option>
           <option value="0:30" ${nbVal === '0:30' ? 'selected' : ''}>0:30</option>
           <option value="1:00" ${nbVal === '1:00' ? 'selected' : ''}>1:00</option>
@@ -761,11 +770,16 @@
       [brSel, nbSel, ckOn, ckRe, ckSa].forEach((el) => {
         if (!el) return;
         if (canEditWorkInputs) {
-          el.removeAttribute('disabled');
-          el.style.visibility = 'visible';
+          // 半休: ẩn break/nightBreak vì làm nửa ngày không cần nghỉ trưa
+          if (isHankyuu && (el === brSel || el === nbSel)) {
+            el.style.visibility = 'hidden';
+          } else {
+            el.removeAttribute('disabled');
+            el.style.visibility = 'visible';
+          }
         } else {
           el.setAttribute('disabled', '');
-          if (isHolidayKubun || effectiveKubun === '欠勤') {
+          if (isHolidayKubun || effectiveKubun === '欠勤' || isHankyuu) {
             el.style.visibility = 'hidden';
           }
         }
@@ -1000,10 +1014,25 @@
           outEl.classList.toggle('is-auto', finalAuto);
         }
       }
+      // Break / NightBreak: luôn hiển thị đậm (không bao giờ nhạt)
+      if (brSel && brSel.classList.contains('is-auto')) {
+        brSel.classList.remove('is-auto');
+      }
+      if (nbSel && nbSel.classList.contains('is-auto')) {
+        nbSel.classList.remove('is-auto');
+      }
       const b = String(brSel?.value || '0:00');
-      const bmin = b === '0:45' ? 45 : b === '0:30' ? 30 : b === '0:00' ? 0 : 60;
+      const bmin = (() => {
+        const pts = b.split(':');
+        if (pts.length === 2) return (parseInt(pts[0], 10) || 0) * 60 + (parseInt(pts[1], 10) || 0);
+        return 60;
+      })();
       const nb = String(nbSel?.value || '0:00');
-      const nbmin = nb === '1:00' ? 60 : nb === '0:30' ? 30 : 0;
+      const nbmin = (() => {
+        const pts = nb.split(':');
+        if (pts.length === 2) return (parseInt(pts[0], 10) || 0) * 60 + (parseInt(pts[1], 10) || 0);
+        return 0;
+      })();
       const totalBmin = bmin + nbmin;
 
       const dayShiftInfo = (() => {
@@ -1032,13 +1061,18 @@
         const outM = parseHm(outVal);
         const stM = dayShiftInfo?.stM;
         const etM = dayShiftInfo?.etM;
-        if (outM != null && stM != null && etM != null) {
-          const overnight = etM < stM;
+        if (outM != null && etM != null) {
+          const overnight = (stM != null && etM < stM);
           const endAbs = overnight ? (etM + 24 * 60) : etM;
-          const outAbs = overnight && outM < stM ? (outM + 24 * 60) : outM;
+          const outAbs = (overnight && stM != null && outM < stM) ? (outM + 24 * 60) : outM;
           return Math.max(0, outAbs - endAbs);
         }
-        return Math.max(0, whMin - (8 * 60));
+        // Fallback: nếu không có shift info, giả định ca kết thúc 17:00
+        if (outM != null) {
+          const defaultEnd = 17 * 60; // 17:00
+          return Math.max(0, outM - defaultEnd);
+        }
+        return 0;
       })();
 
       const whStr = !isWorkDay ? '' : (fmtWorkHours(inVal, outVal, totalBmin) || '');
