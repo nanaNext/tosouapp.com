@@ -72,7 +72,32 @@ function applyStyle(cell, styleKey) {
       cell.alignment = alignLeft;
       break;
     case 'paidLeave': // 12
-      cell.border = {}; // no border
+      cell.font = { name: 'Meiryo', size: 11, color: { argb: 'FF9333EA' } }; // purple
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
+      break;
+    case 'halfDay': // half-day leave
+      cell.font = { name: 'Meiryo', size: 11, color: { argb: 'FF0891B2' } }; // teal/cyan
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFEFF' } };
+      break;
+    case 'halfDayPaid': // half-day paid leave
+      cell.font = { name: 'Meiryo', size: 11, color: { argb: 'FF7C3AED' } }; // violet
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } };
+      break;
+    case 'holidayWork': // holiday work
+      cell.font = { name: 'Meiryo', size: 11, color: { argb: 'FFEA580C' } }; // orange
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7ED' } };
+      break;
+    case 'absent': // 欠勤
+      cell.font = { name: 'Meiryo', size: 11, bold: true, color: { argb: 'FFDC2626' } }; // red bold
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+      break;
+    case 'substituteHoliday': // 代替休日
+      cell.font = { name: 'Meiryo', size: 11, color: { argb: 'FF2563EB' } }; // blue
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+      break;
+    case 'unpaidLeave': // 無給休暇
+      cell.font = { name: 'Meiryo', size: 11, color: { argb: 'FF6B7280' } }; // gray
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
       break;
     case 'legendHeader': // 13
       cell.font = fontNormal;

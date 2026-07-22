@@ -630,12 +630,12 @@ router.get('/export.xlsx',
         [{ v: '出勤', s: 'present' }, { v: '定時出勤', s: 'legend' }],
         [{ v: '有給', s: 'paidLeave' }, { v: '休暇取得', s: 'legend' }],
         [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'legend' }],
-        [{ v: '半休', s: 'present' }, { v: '半日出勤', s: 'legend' }],
-        [{ v: '半休(有給)', s: 'paidLeave' }, { v: '半日有給', s: 'legend' }],
-        [{ v: '休日出勤', s: 'present' }, { v: '休日に出勤', s: 'legend' }],
-        [{ v: '欠勤', s: 'absentText' }, { v: '無断欠勤', s: 'legend' }],
-        [{ v: '代替休日', s: 'weekend' }, { v: '振替休日', s: 'legend' }],
-        [{ v: '無給休暇', s: 'weekend' }, { v: '無給の休暇', s: 'legend' }]
+        [{ v: '半休', s: 'halfDay' }, { v: '半日出勤', s: 'legend' }],
+        [{ v: '半休(有給)', s: 'halfDayPaid' }, { v: '半日有給', s: 'legend' }],
+        [{ v: '休日出勤', s: 'holidayWork' }, { v: '休日に出勤', s: 'legend' }],
+        [{ v: '欠勤', s: 'absent' }, { v: '無断欠勤', s: 'legend' }],
+        [{ v: '代替休日', s: 'substituteHoliday' }, { v: '振替休日', s: 'legend' }],
+        [{ v: '無給休暇', s: 'unpaidLeave' }, { v: '無給の休暇', s: 'legend' }]
       ];
 
       const maxRows = Math.max(userRows_all.length, legendData.length);
