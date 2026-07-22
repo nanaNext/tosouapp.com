@@ -540,19 +540,59 @@ router.get('/export.xlsx',
           let isLate = 0;
           let h = 0;
 
-          if (r.status === '出勤' || r.status === '休日出勤' || r.status === '欠勤') {
+          if (r.status === '出勤' || r.status === '休日出勤' || r.status === '欠勤' || r.status === '半休' || r.status === '半休(有給)' || r.status === '振替出勤' || r.status === '代替出勤') {
             const cin = r.cin || '';
             const cout = r.cout || '';
             
             if (r.status === '欠勤') {
               cellValue = '欠勤';
-              cellStyle = 'absentText'; // Usually red or blue
+              cellStyle = 'absent';
+            } else if (r.status === '半休') {
+              cellValue = '半休';
+              cellStyle = 'halfDay';
+              if (cin && cout) {
+                const [h1, m1] = cin.split(':').map(Number);
+                const [h2, m2] = cout.split(':').map(Number);
+                h = (h2 + m2/60) - (h1 + m1/60);
+                if (h > 0) totalHours += h;
+              }
+              workedDays += 0.5;
+              dailyPresentCount_all[di]++;
+              if (isPartTime) dailyPresentCount_part[di]++;
+              else dailyPresentCount_full[di]++;
+            } else if (r.status === '半休(有給)') {
+              cellValue = '半休(有給)';
+              cellStyle = 'halfDayPaid';
+              if (cin && cout) {
+                const [h1, m1] = cin.split(':').map(Number);
+                const [h2, m2] = cout.split(':').map(Number);
+                h = (h2 + m2/60) - (h1 + m1/60);
+                if (h > 0) totalHours += h;
+              }
+              workedDays += 0.5;
+              dailyPresentCount_all[di]++;
+              if (isPartTime) dailyPresentCount_part[di]++;
+              else dailyPresentCount_full[di]++;
+            } else if (r.status === '休日出勤') {
+              cellValue = '休日出勤';
+              cellStyle = 'holidayWork';
+              if (cin && cout) {
+                const [h1, m1] = cin.split(':').map(Number);
+                const [h2, m2] = cout.split(':').map(Number);
+                h = (h2 + m2/60) - (h1 + m1/60);
+                if (h >= 6) h -= 1;
+                if (h > 0) totalHours += h;
+              }
+              workedDays++;
+              dailyPresentCount_all[di]++;
+              if (isPartTime) dailyPresentCount_part[di]++;
+              else dailyPresentCount_full[di]++;
             } else if (!cin && !cout && r.status === '出勤') {
               cellValue = '未';
               cellStyle = 'absentText'; // Blue text
             } else {
-              cellValue = '出勤';
-              cellStyle = 'present'; // Green text, white bg
+              cellValue = r.status === '振替出勤' ? '振替出勤' : (r.status === '代替出勤' ? '代替出勤' : '出勤');
+              cellStyle = 'present'; // Green text
               
               if (cin && cout) {
                 const [h1, m1] = cin.split(':').map(Number);
@@ -577,7 +617,13 @@ router.get('/export.xlsx',
             }
           } else if (r.status === '有給' || r.status === '休暇' || r.status === '病欠') {
             cellValue = r.status;
-            cellStyle = 'paidLeave'; // Green text, White background
+            cellStyle = 'paidLeave';
+          } else if (r.status === '無給休暇') {
+            cellValue = '無給休暇';
+            cellStyle = 'unpaidLeave';
+          } else if (r.status === '代替休日') {
+            cellValue = '代替休日';
+            cellStyle = 'substituteHoliday';
           } else if (r.status === '休日') {
             cellValue = '休日';
             cellStyle = 'weekend'; // Red text
