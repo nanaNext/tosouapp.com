@@ -667,6 +667,120 @@ exports.exportMonthXlsx = async (req, res) => {
       xmlCells.push(numberCell(`Q${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
       push1(rowNum, xmlCells);
     }
+
+    // ─── 当月サマリ (Monthly Summary) ──────────────────────────────────────────
+    const summaryStartRow = 7 + sheetRows.length + 2; // 2 rows gap
+    const totalWorkingDays = lastDay - [...off].filter(d => d >= from && d <= to).length;
+    let sumAttendDays = 0;
+    let sumHolidayWorkDays = 0;
+    let sumTotalWorkedMin = 0;
+    let sumOvertimeMin = 0;
+    let sumPaidDays = 0;
+    let sumHalfPaidDays = 0;
+    let sumSubstituteDays = 0;
+    let sumUnpaidDays = 0;
+    let sumAbsentDays = 0;
+
+    for (let day = 1; day <= lastDay; day++) {
+      const ds = `${y}-${pad(m)}-${pad(day)}`;
+      const isOffDay = off.has(ds);
+      const daily = dailyMap.get(ds) || null;
+      const segs0 = segMap.get(ds) || [];
+      const hasActual = segs0.some(s => !!s?.checkIn || !!s?.checkOut);
+      const kubun = String(daily?.kubun || '').trim();
+
+      if (hasActual) {
+        if (isOffDay) sumHolidayWorkDays++;
+        else sumAttendDays++;
+      } else if (kubun === '半休' || kubun === '半休(有給)') {
+        sumAttendDays += 0.5;
+      }
+
+      if (kubun === '有給休暇') sumPaidDays++;
+      if (kubun === '半休(有給)') sumHalfPaidDays += 0.5;
+      if (kubun === '代替休日') sumSubstituteDays++;
+      if (kubun === '無給休暇') sumUnpaidDays++;
+      if (kubun === '欠勤') sumAbsentDays++;
+
+      // Tính giờ làm và overtime cho ngày có actual
+      if (hasActual) {
+        for (const s of segs0) {
+          const sIn = hm(s?.checkIn);
+          const sOut = hm(s?.checkOut);
+          if (!sIn || !sOut) continue;
+          const raw = hmToMinutes(sOut) - hmToMinutes(sIn);
+          if (raw > 0) sumTotalWorkedMin += raw;
+        }
+        // Overtime
+        const seg = segs0[0];
+        const outHmS = hm(seg?.checkOut);
+        if (outHmS) {
+          const shiftDefS = shiftForDate(ds);
+          const shiftEndMinS = shiftDefS ? shiftDefS.endMin : (17 * 60);
+          const outMinS = hmToMinutes(outHmS);
+          if (outMinS > shiftEndMinS) sumOvertimeMin += (outMinS - shiftEndMinS);
+        }
+      }
+    }
+
+    // Trừ break từ tổng giờ làm
+    let sumBreakMin = 0;
+    for (let day = 1; day <= lastDay; day++) {
+      const ds = `${y}-${pad(m)}-${pad(day)}`;
+      const daily = dailyMap.get(ds) || null;
+      const segs0 = segMap.get(ds) || [];
+      const hasActual = segs0.some(s => !!s?.checkIn || !!s?.checkOut);
+      if (!hasActual) continue;
+      const kubun = String(daily?.kubun || '').trim();
+      const isHankyuuS = kubun === '半休' || kubun === '半休(有給)';
+      if (isHankyuuS) continue;
+      const shiftDefS = shiftForDate(ds);
+      const defBr = (shiftDefS && shiftDefS.break_minutes != null) ? Number(shiftDefS.break_minutes) : 60;
+      const br = daily?.breakMinutes != null ? Number(daily.breakMinutes) : defBr;
+      const nb = daily?.nightBreakMinutes != null ? Number(daily.nightBreakMinutes) : 0;
+      sumBreakMin += br + nb;
+    }
+    const sumNetWorkedMin = Math.max(0, sumTotalWorkedMin - sumBreakMin);
+
+    const totalPaidLeave = sumPaidDays + sumHalfPaidDays;
+    // Entitlement
+    let entitlementDays = '—';
+    try {
+      const empStart = await resolveEmploymentStartDate(userId);
+      if (empStart) {
+        const ent = calculatePaidLeaveEntitlement(empStart, `${y}-${pad(m)}-01`);
+        entitlementDays = String(ent?.remaining ?? ent?.total ?? '—');
+      }
+    } catch (e) { /* silently ignored */ }
+
+    // Push summary rows
+    push1(summaryStartRow, [cell('A' + summaryStartRow, '当月サマリ', 1)], 22);
+    const sRow1 = summaryStartRow + 1;
+    push1(sRow1, [
+      cell('A' + sRow1, '所定日数', 3), cell('B' + sRow1, '出勤日数', 3), cell('C' + sRow1, '休日出勤日数', 3),
+      cell('D' + sRow1, '総労働時間', 3), cell('E' + sRow1, '深夜時間', 3), cell('F' + sRow1, '総残業時間', 3),
+      cell('G' + sRow1, '法定外時間', 3), cell('H' + sRow1, '有休日数', 3), cell('I' + sRow1, '有給付与', 3),
+      cell('J' + sRow1, '代休日数', 3), cell('K' + sRow1, '無給休暇', 3), cell('L' + sRow1, '欠勤日数', 3),
+      cell('M' + sRow1, '控除時間', 3)
+    ], 20);
+    const sRow2 = summaryStartRow + 2;
+    const legalOt = Math.max(0, sumNetWorkedMin - (totalWorkingDays * 8 * 60));
+    push1(sRow2, [
+      cell('A' + sRow2, `${totalWorkingDays}日`),
+      cell('B' + sRow2, `${sumAttendDays}日`),
+      cell('C' + sRow2, `${sumHolidayWorkDays}日`),
+      cell('D' + sRow2, fmtHm(sumNetWorkedMin)),
+      cell('E' + sRow2, '0:00'),
+      cell('F' + sRow2, fmtHm(sumOvertimeMin)),
+      cell('G' + sRow2, fmtHm(legalOt)),
+      cell('H' + sRow2, `${totalPaidLeave}日`),
+      cell('I' + sRow2, `${entitlementDays}日`),
+      cell('J' + sRow2, `${sumSubstituteDays}日`),
+      cell('K' + sRow2, `${sumUnpaidDays}日`),
+      cell('L' + sRow2, `${sumAbsentDays}日`),
+      cell('M' + sRow2, '0:00')
+    ]);
+
     const sheet1VisibleCols = [12, 14, 5, 5, 5, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
     const sheet1Cols = [
       ...sheet1VisibleCols.map((w, i) => {
