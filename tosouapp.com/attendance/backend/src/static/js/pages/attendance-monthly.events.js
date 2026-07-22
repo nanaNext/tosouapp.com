@@ -765,11 +765,14 @@
         const scrollHost = document.querySelector('.kintai-main');
         const savedScrollTop = scrollHost ? scrollHost.scrollTop : 0;
         const savedScrollLeft = scrollHost ? scrollHost.scrollLeft : 0;
+        const savedWinY = window.scrollY;
+        const savedWinX = window.scrollX;
         const restoreScroll = () => {
           if (scrollHost) {
             if (scrollHost.scrollTop !== savedScrollTop) scrollHost.scrollTop = savedScrollTop;
             if (scrollHost.scrollLeft !== savedScrollLeft) scrollHost.scrollLeft = savedScrollLeft;
           }
+          if (window.scrollY !== savedWinY) window.scrollTo(savedWinX, savedWinY);
         };
         try { row.dataset.dirty = '1'; } catch (e) { /* silently ignored */ } 
         
@@ -784,14 +787,21 @@
       if (e.target === brInput || e.target === nbInput) {
         e.target.dataset.manual = '1';
         e.target.dataset.auto = '0';
+        e.target.classList.remove('is-auto');
         
-        // Update UI immediately (no auto-save)
+        // Update UI immediately but prevent scroll jump
+        const scrollHostBr = document.querySelector('.kintai-main');
+        const stBr = scrollHostBr ? scrollHostBr.scrollTop : 0;
+        const slBr = scrollHostBr ? scrollHostBr.scrollLeft : 0;
         if (typeof _origRecomputeRow === 'function') {
           _origRecomputeRow(row);
         } else if (globalThis.MonthlyMonthlyRender && typeof globalThis.MonthlyMonthlyRender.recomputeRow === 'function') {
           globalThis.MonthlyMonthlyRender.recomputeRow(row);
         }
-        restoreScroll();
+        if (scrollHostBr) {
+          scrollHostBr.scrollTop = stBr;
+          scrollHostBr.scrollLeft = slBr;
+        }
         return; // Skip the rest of the logic
       }
 
@@ -896,6 +906,7 @@
         if (e.target.matches('select[data-field="break"], select[data-field="nightBreak"]')) {
           e.target.dataset.manual = '1';
           e.target.dataset.auto = '0';
+          e.target.classList.remove('is-auto');
         }
 
         // Khi người dùng đang nhập, xóa ngay trạng thái tự động để đổi màu sắc (UX)
@@ -917,7 +928,8 @@
         const tag = (e.target?.tagName || '').toLowerCase();
         const type = (e.target?.type || '').toLowerCase();
         const isTextInput = tag === 'textarea' || (tag === 'input' && type === 'text');
-        if (!isTextInput) {
+        const isSelect = tag === 'select';
+        if (!isTextInput && !isSelect) {
           render.recomputeRow(row);
         }
       }
@@ -933,6 +945,19 @@
     tableHost.addEventListener('focusin', (e) => {
       const el = e.target?.closest?.('input.se-time[data-field="checkIn"], input.se-time[data-field="checkOut"]');
       if (!el) return;
+    });
+    // Prevent scroll jump when clicking on select dropdowns
+    tableHost.addEventListener('mousedown', (e) => {
+      const sel = e.target?.closest?.('select');
+      if (!sel) return;
+      const sh = document.querySelector('.kintai-main');
+      if (!sh) return;
+      const st = sh.scrollTop;
+      const sl = sh.scrollLeft;
+      requestAnimationFrame(() => {
+        if (sh.scrollTop !== st) sh.scrollTop = st;
+        if (sh.scrollLeft !== sl) sh.scrollLeft = sl;
+      });
     });
     tableHost.addEventListener('click', async (e) => {
       const dateCell = e.target?.closest?.('td.sticky-col-1');

@@ -1151,8 +1151,8 @@
                 day.daily.reason = String(reason || '').trim();
                 const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
                 const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
-                day.daily.breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
-                day.daily.nightBreakMinutes = nb === '1:00' ? 60 : nb === '0:30' ? 30 : 0;
+                day.daily.breakMinutes = (() => { const p = br.split(':'); return p.length === 2 ? (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) : 60; })();
+                day.daily.nightBreakMinutes = (() => { const p = nb.split(':'); return p.length === 2 ? (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) : 0; })();
                 try {
                   tr.dataset.kubunBase = v || '';
                   tr.dataset.workTypeBase = wt || '';
@@ -1248,8 +1248,8 @@
       const notes = String(tr.querySelector('input[data-field="notes"]')?.value || '').trim();
       const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
       const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
-      const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
-      const nightBreakMinutes = nb === '1:00' ? 60 : nb === '0:30' ? 30 : 0;
+      const breakMinutes = (() => { const p = br.split(':'); return p.length === 2 ? (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) : 60; })();
+      const nightBreakMinutes = (() => { const p = nb.split(':'); return p.length === 2 ? (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) : 0; })();
       const payload = {
         year: y, month: m, userId: ctx.actingUserId || undefined,
         updates: [],
@@ -1379,8 +1379,8 @@
       
       const br = String(tr.querySelector('select[data-field="break"]')?.value || '1:00');
       const nb = String(tr.querySelector('select[data-field="nightBreak"]')?.value || '0:00');
-      const breakMinutes = br === '0:45' ? 45 : br === '0:30' ? 30 : br === '0:00' ? 0 : 60;
-      const nightBreakMinutes = nb === '1:00' ? 60 : nb === '0:30' ? 30 : 0;
+      const breakMinutes = (() => { const p = br.split(':'); return p.length === 2 ? (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) : 60; })();
+      const nightBreakMinutes = (() => { const p = nb.split(':'); return p.length === 2 ? (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) : 0; })();
       
       const idRaw = String(tr.dataset.id || '').trim();
       let clientId = String(tr.dataset.clientId || '').trim();
