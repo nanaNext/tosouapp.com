@@ -382,6 +382,8 @@
       
       const isHolidayHide = isHolidayKubun || isLeaveKubun || isHankyuu;
       const hideStyle = isHolidayHide ? 'visibility: hidden;' : '';
+      // 半休: chỉ ẩn break, không ẩn checkboxes (出社/在宅/現場)
+      const hideCheckboxStyle = (isHolidayKubun || isLeaveKubun) ? 'visibility: hidden;' : '';
       const brVal = (() => {
         if (!shouldShowDefaultShift) return '0:00';
         if (brMin === 180) return '3:00';
@@ -458,11 +460,11 @@
           <input id="furikaeDate_${dateStr}_${rowId}" name="furikaeDate_${dateStr}_${rowId}" class="se-input se-furikae-date" data-field="furikaeHolidayDate" type="date" value="${esc(daily?.furikae_holiday_date ? String(daily.furikae_holiday_date).slice(0, 10) : '')}" title="振替休日の日付" placeholder="振替休日" style="width:110px;font-size:11px;margin-top:2px;${kubunInit === '振替出勤' ? '' : 'display:none;'}" ${state.editableMonth ? '' : 'disabled'}>
         </div>
       </td>
-      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckOnsite_${dateStr}_${rowId}" name="ckOnsite_${dateStr}_${rowId}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckRemote_${dateStr}_${rowId}" name="ckRemote_${dateStr}_${rowId}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckSatellite_${dateStr}_${rowId}" name="ckSatellite_${dateStr}_${rowId}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><input id="location_${dateStr}_${rowId}" name="location_${dateStr}_${rowId}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><textarea id="memo_${dateStr}_${rowId}" name="memo_${dateStr}_${rowId}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px; ${hideStyle}" ${!canEditWorkRow ? 'disabled' : ''}>${esc(finalMemo)}</textarea></td>
+      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckOnsite_${dateStr}_${rowId}" name="ckOnsite_${dateStr}_${rowId}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckRemote_${dateStr}_${rowId}" name="ckRemote_${dateStr}_${rowId}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckSatellite_${dateStr}_${rowId}" name="ckSatellite_${dateStr}_${rowId}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input id="location_${dateStr}_${rowId}" name="location_${dateStr}_${rowId}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><textarea id="memo_${dateStr}_${rowId}" name="memo_${dateStr}_${rowId}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px; ${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}>${esc(finalMemo)}</textarea></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
           <input id="checkIn_${dateStr}_${rowId}" name="checkIn_${dateStr}_${rowId}" class="se-time ${inAutoCls}" data-field="checkIn" type="time" value="${esc(finalIn)}" ${!canEditCheckTime ? 'disabled data-fixed-disabled="1"' : ''} data-auto="${autoIn ? '1' : ''}" data-auto-val="${esc(autoIn ? shiftStart : '')}" data-manual="${isManualIn ? '1' : ''}" data-actual="${esc(inHm)}">
@@ -782,7 +784,9 @@
           }
         } else {
           el.setAttribute('disabled', '');
-          if (isHolidayKubun || isLeaveKubun || isHankyuu) {
+          if (isHolidayKubun || isLeaveKubun) {
+            el.style.visibility = 'hidden';
+          } else if (isHankyuu && (el === brSel || el === nbSel)) {
             el.style.visibility = 'hidden';
           }
         }
