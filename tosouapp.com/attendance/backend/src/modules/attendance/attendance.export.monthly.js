@@ -180,6 +180,7 @@ exports.exportMonthXlsx = async (req, res) => {
     };
 
     const assigns = await repo.listShiftAssignmentsBetween(userId, from, to).catch(() => []);
+    const shiftByName = new Map((shiftDefs || []).map(s => [String(s.name), s]));
     const shiftForDate = (ds) => {
       let best = null;
       for (const a of assigns || []) {
@@ -190,8 +191,13 @@ exports.exportMonthXlsx = async (req, res) => {
         best = a;
       }
       if (!best) return null;
+      let def = null;
       const sid = best?.shiftId != null ? String(best.shiftId) : '';
-      const def = sid ? (shiftById.get(sid) || null) : null;
+      if (sid) def = shiftById.get(sid) || null;
+      if (!def) {
+        const nm = best?.shift != null ? String(best.shift) : '';
+        if (nm) def = shiftByName.get(nm) || null;
+      }
       if (!def) return null;
       const st = String(def.start_time || '').trim();
       const et = String(def.end_time || '').trim();
@@ -446,7 +452,8 @@ exports.exportMonthXlsx = async (req, res) => {
         const extraNotes = String(extraSeg?.notes || '').trim();
         const extraBr = holidayLock ? 0 : defaultBr;
         const extraWorked = holidayLock ? 0 : Math.max(0, hmToMinutes(extraOut) - hmToMinutes(extraIn) - extraBr);
-        const extraOt = holidayLock ? 0 : Math.max(0, extraWorked - (8 * 60));
+        const extraShiftEndMin = shiftDef ? shiftDef.endMin : (17 * 60);
+        const extraOt = holidayLock ? 0 : Math.max(0, hmToMinutes(extraOut) - extraShiftEndMin);
         sheetRows.push({
           isOff,
           cells: [
