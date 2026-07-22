@@ -16,6 +16,13 @@ const s3Service = require('../../core/services/s3.service');
 
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+
+const roleScopeSql = (req, alias = 'u') => {
+  const role = String(req.user?.role || '').toLowerCase();
+  if (role === 'manager') return ` AND ${alias}.role = 'employee'`;
+  return '';
+};
+
 const weekdayJa = (dateStr) => {
   const s = String(dateStr || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
