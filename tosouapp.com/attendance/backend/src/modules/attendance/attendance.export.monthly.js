@@ -11,7 +11,8 @@ const {
   calendarRepo, shiftReminderService, log,
   recordEndpointPerf, ensurePaidLeaveRequestForDate, syncPaidLeaveByKubun,
   resolveTargetUserId, parseMonth, isEditableMonth, getMonthStatusValue,
-  assertMonthWritable, HOLIDAY_TYPES, isKoujiUser, buildOffSetFromCalendarDetail
+  assertMonthWritable, HOLIDAY_TYPES, isKoujiUser, buildOffSetFromCalendarDetail,
+  getUserOffDaySet
 } = require('./attendance._helpers');
 const { timesheetMaxDays } = require('../../config/env');
 const { nowJSTMySQL } = require('../../utils/dateTime');

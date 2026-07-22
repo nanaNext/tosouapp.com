@@ -208,6 +208,16 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
   return { byDate, off };
 }
 
+async function getUserOffDaySet(year, userId) {
+  const cal = await calendarRepo.computeYear(year).catch(() => null);
+  const useKoujiPolicy = await isKoujiUser(userId);
+  const { off } = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
+  if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
+    for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
+  }
+  return off;
+}
+
 module.exports = {
   // Dependencies (re-exported for sub-controllers)
   service, auditRepo, rules, repo, formatInputToMySQLJST, userRepo,
@@ -225,5 +235,6 @@ module.exports = {
   assertMonthWritable,
   HOLIDAY_TYPES,
   isKoujiUser,
-  buildOffSetFromCalendarDetail
+  buildOffSetFromCalendarDetail,
+  getUserOffDaySet
 };
