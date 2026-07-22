@@ -657,12 +657,10 @@ exports.exportMonthXlsx = async (req, res) => {
         }
 
         if (ci === 9) {
-          const f = `ROUNDDOWN(Q${rowNum}/60,0)&":"&TEXT(MOD(Q${rowNum},60),"00")`;
-          return formulaCell(ref, f, cellValue || '0:00', styleWithDay);
+          return cell(ref, cellValue || '0:00', styleWithDay);
         }
         if (ci === 10) {
-          const f = `IF(Q${rowNum}>480,ROUNDDOWN((Q${rowNum}-480)/60,0)&":"&TEXT(MOD((Q${rowNum}-480),60),"00"),"0:00")`;
-          return formulaCell(ref, f, cellValue || '0:00', styleWithDay);
+          return cell(ref, cellValue || '0:00', styleWithDay);
         }
         return cell(ref, cellValue, styleWithDay);
       });
