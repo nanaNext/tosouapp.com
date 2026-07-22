@@ -333,10 +333,14 @@ exports.exportMonthXlsx = async (req, res) => {
       if (hasTime) {
         exportInHm = inHm;
         exportOutHm = outHm;
-        exportBrMin = holidayLock ? 0 : (daily?.break_minutes == null ? defaultBr : Number(daily.break_minutes));
-        exportNbMin = holidayLock ? 0 : (daily?.night_break_minutes == null ? 0 : Number(daily.night_break_minutes));
+        const isHankyuu = kubunInfo.effective === '半休' || kubunInfo.effective === '半休(有給)';
+        exportBrMin = (holidayLock || isHankyuu) ? 0 : (daily?.breakMinutes == null ? defaultBr : Number(daily.breakMinutes));
+        exportNbMin = (holidayLock || isHankyuu) ? 0 : (daily?.nightBreakMinutes == null ? 0 : Number(daily.nightBreakMinutes));
         exportWorkedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - hmToMinutes(inHm) - exportBrMin - exportNbMin);
-        exportOtMin = holidayLock ? 0 : Math.max(0, exportWorkedMin - (8 * 60));
+        // 超過時間 = checkout - shift_end (thời gian sau giờ kết thúc ca)
+        const shiftEndMin = shiftDef ? shiftDef.endMin : (17 * 60);
+        const outMin = hmToMinutes(outHm);
+        exportOtMin = holidayLock ? 0 : Math.max(0, outMin - shiftEndMin);
       }
       const lateEarly = (() => {
         if (holidayLock) return '';
