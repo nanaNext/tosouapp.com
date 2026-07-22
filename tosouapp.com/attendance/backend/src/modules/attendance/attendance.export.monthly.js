@@ -680,6 +680,10 @@ exports.exportMonthXlsx = async (req, res) => {
     let sumSubstituteDays = 0;
     let sumUnpaidDays = 0;
     let sumAbsentDays = 0;
+    let sumOnsiteDays = 0;
+    let sumRemoteDays = 0;
+    let sumSatelliteDays = 0;
+    let sumStandbyDays = 0;
 
     for (let day = 1; day <= lastDay; day++) {
       const ds = `${y}-${pad(m)}-${pad(day)}`;
@@ -692,6 +696,12 @@ exports.exportMonthXlsx = async (req, res) => {
       if (hasActual) {
         if (isOffDay) sumHolidayWorkDays++;
         else sumAttendDays++;
+        // Work type counting
+        const wt = String(segs0[0]?.workType || daily?.workType || '').trim();
+        if (wt === 'onsite') sumOnsiteDays++;
+        else if (wt === 'remote') sumRemoteDays++;
+        else if (wt === 'satellite') sumSatelliteDays++;
+        else if (hasActual && !isOffDay) sumOnsiteDays++; // default to onsite if has attendance
       } else if (kubun === '半休' || kubun === '半休(有給)') {
         sumAttendDays += 0.5;
       }
@@ -758,10 +768,11 @@ exports.exportMonthXlsx = async (req, res) => {
     const sRow1 = summaryStartRow + 1;
     push1(sRow1, [
       cell('A' + sRow1, '所定日数', 3), cell('B' + sRow1, '出勤日数', 3), cell('C' + sRow1, '休日出勤日数', 3),
-      cell('D' + sRow1, '総労働時間', 3), cell('E' + sRow1, '深夜時間', 3), cell('F' + sRow1, '総残業時間', 3),
-      cell('G' + sRow1, '法定外時間', 3), cell('H' + sRow1, '有休日数', 3), cell('I' + sRow1, '有給付与', 3),
-      cell('J' + sRow1, '代休日数', 3), cell('K' + sRow1, '無給休暇', 3), cell('L' + sRow1, '欠勤日数', 3),
-      cell('M' + sRow1, '控除時間', 3)
+      cell('D' + sRow1, '待機日数', 3), cell('E' + sRow1, '総労働時間', 3), cell('F' + sRow1, '深夜時間', 3),
+      cell('G' + sRow1, '総残業時間', 3), cell('H' + sRow1, '法定外時間', 3), cell('I' + sRow1, '有休日数', 3),
+      cell('J' + sRow1, '有給付与', 3), cell('K' + sRow1, '代休日数', 3), cell('L' + sRow1, '無給休暇', 3),
+      cell('M' + sRow1, '欠勤日数', 3), cell('N' + sRow1, '控除時間', 3),
+      cell('O' + sRow1, '出社日数', 3), cell('P' + sRow1, '在宅日数', 3)
     ], 20);
     const sRow2 = summaryStartRow + 2;
     const legalOt = Math.max(0, sumNetWorkedMin - (totalWorkingDays * 8 * 60));
@@ -769,16 +780,19 @@ exports.exportMonthXlsx = async (req, res) => {
       cell('A' + sRow2, `${totalWorkingDays}日`),
       cell('B' + sRow2, `${sumAttendDays}日`),
       cell('C' + sRow2, `${sumHolidayWorkDays}日`),
-      cell('D' + sRow2, fmtHm(sumNetWorkedMin)),
-      cell('E' + sRow2, '0:00'),
-      cell('F' + sRow2, fmtHm(sumOvertimeMin)),
-      cell('G' + sRow2, fmtHm(legalOt)),
-      cell('H' + sRow2, `${totalPaidLeave}日`),
-      cell('I' + sRow2, `${entitlementDays}日`),
-      cell('J' + sRow2, `${sumSubstituteDays}日`),
-      cell('K' + sRow2, `${sumUnpaidDays}日`),
-      cell('L' + sRow2, `${sumAbsentDays}日`),
-      cell('M' + sRow2, '0:00')
+      cell('D' + sRow2, `${sumStandbyDays}日`),
+      cell('E' + sRow2, fmtHm(sumNetWorkedMin)),
+      cell('F' + sRow2, '0:00'),
+      cell('G' + sRow2, fmtHm(sumOvertimeMin)),
+      cell('H' + sRow2, fmtHm(legalOt)),
+      cell('I' + sRow2, `${totalPaidLeave}日`),
+      cell('J' + sRow2, `${entitlementDays}日`),
+      cell('K' + sRow2, `${sumSubstituteDays}日`),
+      cell('L' + sRow2, `${sumUnpaidDays}日`),
+      cell('M' + sRow2, `${sumAbsentDays}日`),
+      cell('N' + sRow2, '0:00'),
+      cell('O' + sRow2, `${sumOnsiteDays}日`),
+      cell('P' + sRow2, `${sumRemoteDays}日`)
     ]);
 
     const sheet1VisibleCols = [12, 14, 5, 5, 5, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
