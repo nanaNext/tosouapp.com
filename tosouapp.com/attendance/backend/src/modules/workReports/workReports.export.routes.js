@@ -303,6 +303,21 @@ router.get('/export.xlsx',
       } else if (daily?.kubun === '欠勤') {
         status = '欠勤';
         isOff = true; // Mark as "off" in row structure so it gets red text color
+      } else if (daily?.kubun === '半休' || daily?.kubun === '半休(有給)') {
+        status = daily.kubun;
+        cin = fmtHm(att?.checkIn);
+        cout = fmtHm(att?.checkOut);
+      } else if (daily?.kubun === '有給休暇') {
+        status = '有給';
+      } else if (daily?.kubun === '無給休暇') {
+        status = '無給休暇';
+      } else if (daily?.kubun === '代替休日') {
+        status = '代替休日';
+        isOff = true;
+      } else if (daily?.kubun === '振替出勤' || daily?.kubun === '代替出勤') {
+        status = daily.kubun;
+        cin = fmtHm(att?.checkIn);
+        cout = fmtHm(att?.checkOut);
       } else if (!att?.checkIn && isOff && (!isPartTime || (daily?.kubun === '休日' || daily?.kubun === '所定休日' || daily?.kubun === '休み'))) {
         status = '休日';
       } else if (!att?.checkIn && isPartTime && d > today && !daily?.kubun) {
@@ -318,7 +333,7 @@ router.get('/export.xlsx',
         cin = fmtHm(att.checkIn);
         cout = fmtHm(att.checkOut);
       } else if (!isOff) {
-        status = '出勤'; // Should not hit here if att?.checkIn is handled, but keep logic safe
+        status = '出勤';
       }
       return {
         uid,
@@ -614,7 +629,13 @@ router.get('/export.xlsx',
         [{ v: '休日', s: 'weekend' }, { v: '所定休日', s: 'legend' }],
         [{ v: '出勤', s: 'present' }, { v: '定時出勤', s: 'legend' }],
         [{ v: '有給', s: 'paidLeave' }, { v: '休暇取得', s: 'legend' }],
-        [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'legend' }]
+        [{ v: '出勤', s: 'late' }, { v: '遅刻', s: 'legend' }],
+        [{ v: '半休', s: 'present' }, { v: '半日出勤', s: 'legend' }],
+        [{ v: '半休(有給)', s: 'paidLeave' }, { v: '半日有給', s: 'legend' }],
+        [{ v: '休日出勤', s: 'present' }, { v: '休日に出勤', s: 'legend' }],
+        [{ v: '欠勤', s: 'absentText' }, { v: '無断欠勤', s: 'legend' }],
+        [{ v: '代替休日', s: 'weekend' }, { v: '振替休日', s: 'legend' }],
+        [{ v: '無給休暇', s: 'weekend' }, { v: '無給の休暇', s: 'legend' }]
       ];
 
       const maxRows = Math.max(userRows_all.length, legendData.length);
