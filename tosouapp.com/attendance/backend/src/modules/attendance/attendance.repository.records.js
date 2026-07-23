@@ -18,46 +18,60 @@ const todayJST = () => {
   }
 };
 
+// ─── Column cache (avoids hitting information_schema on every request) ─────────
+let _attendanceColCache = null;
+let _attendanceColCacheTs = 0;
+const COL_CACHE_TTL = 600000; // 10 minutes
+
 async function getAttendanceColumnSet() {
+  const now = Date.now();
+  if (_attendanceColCache && (now - _attendanceColCacheTs) < COL_CACHE_TTL) {
+    return _attendanceColCache;
+  }
   try {
     const [cols] = await db.query(`
       SELECT COLUMN_NAME AS name 
       FROM information_schema.columns 
       WHERE table_schema = DATABASE() AND table_name = 'attendance'
     `);
-    return new Set((cols || []).map(c => String(c.name)));
+    _attendanceColCache = new Set((cols || []).map(c => String(c.name)));
+    _attendanceColCacheTs = now;
+    return _attendanceColCache;
   } catch {
-    return new Set();
+    return _attendanceColCache || new Set();
   }
 }
 
 async function listColumns() {
-  try {
-    const [cols] = await db.query(`
-      SELECT COLUMN_NAME AS name 
-      FROM information_schema.columns 
-      WHERE table_schema = DATABASE() AND table_name = 'attendance'
-    `);
-    return (cols || []).map(c => String(c.name));
-  } catch {
-    return [];
-  }
+  const set = await getAttendanceColumnSet();
+  return Array.from(set);
 }
 
+let _usaColCache = null;
+let _usaColCacheTs = 0;
+
 async function getUSAColumnSet() {
+  const now = Date.now();
+  if (_usaColCache && (now - _usaColCacheTs) < COL_CACHE_TTL) {
+    return _usaColCache;
+  }
   try {
     const [cols] = await db.query(`
       SELECT COLUMN_NAME AS name 
       FROM information_schema.columns 
       WHERE table_schema = DATABASE() AND table_name = 'user_shift_assignments'
     `);
-    return new Set((cols || []).map(c => String(c.name)));
+    _usaColCache = new Set((cols || []).map(c => String(c.name)));
+    _usaColCacheTs = now;
+    return _usaColCache;
   } catch {
     try {
       const [cols2] = await db.query(`SHOW COLUMNS FROM user_shift_assignments`);
-      return new Set((cols2 || []).map(c => String(c.Field)));
+      _usaColCache = new Set((cols2 || []).map(c => String(c.Field)));
+      _usaColCacheTs = now;
+      return _usaColCache;
     } catch {
-      return new Set();
+      return _usaColCache || new Set();
     }
   }
 }
@@ -348,12 +362,7 @@ module.exports = {
     }
     
     // Check if table has is_anomaly and anomaly_type columns
-    const [cols] = await db.query(`
-      SELECT COLUMN_NAME AS name 
-      FROM information_schema.columns 
-      WHERE table_schema = DATABASE() AND table_name = 'attendance'
-    `);
-    const set = new Set((cols || []).map(c => String(c.name)));
+    const set = await getAttendanceColumnSet();
     
     if (set.has('is_anomaly') && set.has('anomaly_type')) {
       const sql = `
@@ -436,6 +445,20 @@ module.exports = {
 
       // 1. Process segments FIRST so that status calculation sees final state
       if (Array.isArray(updates)) {
+        // Batch-fetch all existing records that will be updated (avoid N individual SELECTs)
+        const idsToUpdate = updates.filter(u => u.id && u.delete !== true).map(u => u.id);
+        const currentMap = new Map();
+        if (idsToUpdate.length) {
+          const placeholders = idsToUpdate.map(() => '?').join(',');
+          const [currentRows] = await conn.query(
+            `SELECT id, checkIn, checkOut, work_type, labels, shiftId FROM attendance WHERE id IN (${placeholders}) AND userId = ?`,
+            [...idsToUpdate, userId]
+          );
+          for (const row of (currentRows || [])) {
+            currentMap.set(Number(row.id), row);
+          }
+        }
+
         for (const u of updates) {
           if (u.id) {
             if (u.delete === true) {
@@ -443,14 +466,11 @@ module.exports = {
               segUpdated++;
               continue;
             }
-            const [currentRows] = await conn.query(
-              `SELECT id, checkIn, checkOut, work_type, labels, shiftId FROM attendance WHERE id = ? AND userId = ? LIMIT 1`,
-              [u.id, userId]
-            );
-            const current = currentRows && currentRows[0] ? currentRows[0] : null;
+            const current = currentMap.get(Number(u.id));
             if (!current) continue;
             const nextCheckIn = u.checkIn ? String(u.checkIn) : null;
-            if (nextCheckIn) {
+            // Only check for duplicates if checkIn is actually changing
+            if (nextCheckIn && nextCheckIn !== String(current.checkIn || '')) {
               const [dupRows] = await conn.query(
                 `SELECT id, checkOut, work_type, labels, shiftId FROM attendance WHERE userId = ? AND checkIn = ? AND id <> ? ORDER BY id ASC LIMIT 1`,
                 [userId, nextCheckIn, u.id]

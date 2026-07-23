@@ -1,20 +1,35 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
+// ─── Column cache ─────────
+let _usaColCache = null;
+let _usaColCacheTs = 0;
+let _attColCache = null;
+let _attColCacheTs = 0;
+const COL_CACHE_TTL = 600000; // 10 minutes
+
 async function getUSAColumnSet() {
+  const now = Date.now();
+  if (_usaColCache && (now - _usaColCacheTs) < COL_CACHE_TTL) {
+    return _usaColCache;
+  }
   try {
     const [cols] = await db.query(`
       SELECT COLUMN_NAME AS name 
       FROM information_schema.columns 
       WHERE table_schema = DATABASE() AND table_name = 'user_shift_assignments'
     `);
-    return new Set((cols || []).map(c => String(c.name)));
+    _usaColCache = new Set((cols || []).map(c => String(c.name)));
+    _usaColCacheTs = now;
+    return _usaColCache;
   } catch {
     try {
       const [cols2] = await db.query(`SHOW COLUMNS FROM user_shift_assignments`);
-      return new Set((cols2 || []).map(c => String(c.Field)));
+      _usaColCache = new Set((cols2 || []).map(c => String(c.Field)));
+      _usaColCacheTs = now;
+      return _usaColCache;
     } catch {
-      return new Set();
+      return _usaColCache || new Set();
     }
   }
 }
@@ -26,15 +41,21 @@ function getUSAStartCol(set) {
 }
 
 async function getAttendanceColumnSet() {
+  const now = Date.now();
+  if (_attColCache && (now - _attColCacheTs) < COL_CACHE_TTL) {
+    return _attColCache;
+  }
   try {
     const [cols] = await db.query(`
       SELECT COLUMN_NAME AS name 
       FROM information_schema.columns 
       WHERE table_schema = DATABASE() AND table_name = 'attendance'
     `);
-    return new Set((cols || []).map(c => String(c.name)));
+    _attColCache = new Set((cols || []).map(c => String(c.name)));
+    _attColCacheTs = now;
+    return _attColCache;
   } catch {
-    return new Set();
+    return _attColCache || new Set();
   }
 }
 

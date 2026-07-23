@@ -1,33 +1,51 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
+// ─── Column cache (avoid information_schema on every request) ─────────
+let _attendanceColCache = null;
+let _attendanceColCacheTs = 0;
+const COL_CACHE_TTL = 600000; // 10 minutes
+
 async function getAttendanceColumnSet() {
+  const now = Date.now();
+  if (_attendanceColCache && (now - _attendanceColCacheTs) < COL_CACHE_TTL) {
+    return _attendanceColCache;
+  }
   try {
     const [cols] = await db.query(`
       SELECT COLUMN_NAME AS name 
       FROM information_schema.columns 
       WHERE table_schema = DATABASE() AND table_name = 'attendance'
     `);
-    return new Set((cols || []).map(c => String(c.name)));
+    _attendanceColCache = new Set((cols || []).map(c => String(c.name)));
+    _attendanceColCacheTs = now;
+    return _attendanceColCache;
   } catch {
-    return new Set();
+    return _attendanceColCache || new Set();
   }
 }
 
 async function listColumns() {
+  const set = await getAttendanceColumnSet();
+  return Array.from(set);
+}
+
+let _dailySchemaEnsured = false;
+let _dailySchemaPromise = null;
+
+async function ensureAttendanceDailySchema() {
+  if (_dailySchemaEnsured) return;
+  if (_dailySchemaPromise) return _dailySchemaPromise;
+  _dailySchemaPromise = _doEnsureAttendanceDailySchema();
   try {
-    const [cols] = await db.query(`
-      SELECT COLUMN_NAME AS name 
-      FROM information_schema.columns 
-      WHERE table_schema = DATABASE() AND table_name = 'attendance'
-    `);
-    return (cols || []).map(c => String(c.name));
-  } catch {
-    return [];
+    await _dailySchemaPromise;
+    _dailySchemaEnsured = true;
+  } finally {
+    _dailySchemaPromise = null;
   }
 }
 
-async function ensureAttendanceDailySchema() {
+async function _doEnsureAttendanceDailySchema() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS attendance_daily (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
