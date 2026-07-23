@@ -88,7 +88,7 @@ exports.putMonthBulk = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
     if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
-    const { year, month, updates, dailyUpdates } = req.body || {}; console.log('dailyUpdates:', dailyUpdates);
+    const { year, month, updates, dailyUpdates } = req.body || {};
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month || !Array.isArray(updates)) return res.status(400).json({ message: 'Missing fields' });
     const y = parseInt(year,10), m = parseInt(month,10);
@@ -136,16 +136,27 @@ exports.putMonthBulk = async (req, res) => {
     } catch (e) { /* silently ignored */ }
 
     // Normalize: if segment already exists (same checkIn), convert "create" into "update" to avoid unique error.
+    // BATCH lookup instead of sequential per-record queries.
     try {
-      for (const u of normalizedUpdates) {
+      const timesToLookup = [];
+      const lookupIndices = [];
+      for (let i = 0; i < normalizedUpdates.length; i++) {
+        const u = normalizedUpdates[i];
         if (!u || u.delete === true) continue;
         if (u.id) continue;
         const inV = String(u.checkIn || '').trim();
         if (!inV) continue;
-        const existing = await repo.findCheckInByTime(userId, inV).catch(() => null);
-        if (existing?.id) {
-          u.id = Number(existing.id);
-          delete u.clientId;
+        timesToLookup.push(inV);
+        lookupIndices.push(i);
+      }
+      if (timesToLookup.length) {
+        const existingMap = await repo.findCheckInsByTimes(userId, timesToLookup).catch(() => new Map());
+        for (let j = 0; j < timesToLookup.length; j++) {
+          const existing = existingMap.get(timesToLookup[j]);
+          if (existing?.id) {
+            normalizedUpdates[lookupIndices[j]].id = Number(existing.id);
+            delete normalizedUpdates[lookupIndices[j]].clientId;
+          }
         }
       }
     } catch (e) { /* silently ignored */ }
@@ -157,15 +168,25 @@ exports.putMonthBulk = async (req, res) => {
       result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates });
     } catch (err) {
       if (String(err?.code || '') === 'ER_DUP_ENTRY') {
+        // Batch re-lookup on duplicate entry
         try {
+          const timesToLookup = [];
+          const lookupItems = [];
           for (const u of cleanedUpdates) {
             if (u?.id || u?.delete === true) continue;
             const inV = String(u.checkIn || '').trim();
             if (!inV) continue;
-            const existing = await repo.findCheckInByTime(userId, inV).catch(() => null);
-            if (existing?.id) {
-              u.id = Number(existing.id);
-              delete u.clientId;
+            timesToLookup.push(inV);
+            lookupItems.push(u);
+          }
+          if (timesToLookup.length) {
+            const existingMap = await repo.findCheckInsByTimes(userId, timesToLookup).catch(() => new Map());
+            for (let j = 0; j < timesToLookup.length; j++) {
+              const existing = existingMap.get(timesToLookup[j]);
+              if (existing?.id) {
+                lookupItems[j].id = Number(existing.id);
+                delete lookupItems[j].clientId;
+              }
             }
           }
         } catch (e) { /* silently ignored */ }

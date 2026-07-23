@@ -271,6 +271,23 @@ module.exports = {
     const [rows] = await db.query(sql, [userId, time]);
     return rows[0];
   },
+  /**
+   * Batch version: find multiple checkIns in one query.
+   * Returns a Map<checkInTime, { id }>.
+   */
+  async findCheckInsByTimes(userId, times) {
+    const result = new Map();
+    if (!Array.isArray(times) || !times.length) return result;
+    const placeholders = times.map(() => '?').join(',');
+    const [rows] = await db.query(
+      `SELECT id, checkIn FROM attendance WHERE userId = ? AND checkIn IN (${placeholders})`,
+      [userId, ...times]
+    );
+    for (const r of (rows || [])) {
+      result.set(String(r.checkIn), { id: r.id });
+    }
+    return result;
+  },
   async findCheckOutByTime(userId, time) {
     const sql = `SELECT id FROM attendance WHERE userId = ? AND checkOut = ? LIMIT 1`;
     const [rows] = await db.query(sql, [userId, time]);
@@ -483,25 +500,43 @@ module.exports = {
 
       // 2. Process dailyUpdates — now segments are already committed in same transaction
       if (Array.isArray(dailyUpdates)) {
+        // Batch-fetch checkIn times for dates not already in the payload map
+        const datesToLookup = [];
+        for (const d of dailyUpdates) {
+          const date = String(d?.date || '').slice(0, 10);
+          if (!date) continue;
+          if (checkInByDate.has(date)) continue;
+          if (d.checkInTime) continue;
+          datesToLookup.push(date);
+        }
+        const dbCheckInByDate = new Map();
+        if (datesToLookup.length) {
+          try {
+            const placeholders = datesToLookup.map(() => '?').join(',');
+            const [attRows] = await conn.query(
+              `SELECT DATE(checkIn) AS d, checkIn FROM attendance WHERE userId = ? AND DATE(checkIn) IN (${placeholders}) ORDER BY checkIn ASC`,
+              [userId, ...datesToLookup]
+            );
+            for (const row of (attRows || [])) {
+              const ds = String(row.d || '').slice(0, 10);
+              if (ds && !dbCheckInByDate.has(ds)) {
+                dbCheckInByDate.set(ds, String(row.checkIn).slice(11, 16));
+              }
+            }
+          } catch (e) { /* silently ignored — fallback to individual queries not needed */ }
+        }
+
         for (const d of dailyUpdates) {
           const date = String(d?.date || '').slice(0, 10);
           if (!date) continue;
 
-          // Use checkIn from request payload; fall back to DB only if not in payload
+          // Use checkIn from request payload; fall back to batch DB result
           let checkInTime = checkInByDate.get(date) || null;
           if (!checkInTime && d.checkInTime) {
             checkInTime = String(d.checkInTime).slice(0, 5); // "HH:MM"
           }
           if (!checkInTime) {
-            // Fall back: query DB for existing attendance
-            const [attRows] = await conn.query(
-              `SELECT checkIn FROM attendance WHERE userId = ? AND DATE(checkIn) = ? LIMIT 1`,
-              [userId, date]
-            );
-            if (attRows?.[0]?.checkIn) {
-              const ci = String(attRows[0].checkIn);
-              checkInTime = ci.slice(11, 16); // "HH:MM"
-            }
+            checkInTime = dbCheckInByDate.get(date) || null;
           }
 
           const shiftStart = String(d.shiftStart || '08:00').trim();

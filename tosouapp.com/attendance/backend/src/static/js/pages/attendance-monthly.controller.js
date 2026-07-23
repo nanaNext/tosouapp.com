@@ -624,7 +624,7 @@
       if (!body || body === ctx.lastAutoSavePayload) return;
       ctx.autoSaveInFlight = true;
       try {
-        const r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body });
+        const r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body }, 120000);
         try {
           const created = Array.isArray(r?.created) ? r.created : [];
           for (const c of created) {
@@ -990,7 +990,7 @@
       } catch (e) { /* silently ignored */ }
       let r = null;
       try {
-        r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body });
+        r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body }, 120000);
       } catch (e) {
         const msg = String(e?.message || '');
         if (msg.includes('Duplicate entry') && msg.includes('unique_user_checkin')) {
@@ -1029,7 +1029,7 @@
                 }
               } catch (e) { /* silently ignored */ }
               const body2 = JSON.stringify(payload);
-              r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: body2 });
+              r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: body2 }, 120000);
               if (r && r.ok === false) throw new Error(String(r?.message || '保存に失敗しました'));
               showErr('');
             } catch (e) {
@@ -1266,7 +1266,7 @@
           nightBreakMinutes
         }]
       };
-      const r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: JSON.stringify(payload) });
+      const r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: JSON.stringify(payload) }, 120000);
       if (r && r.ok === false) {
         const msg = String(r?.message || '保存に失敗しました');
         throw new Error(msg);
@@ -1456,7 +1456,7 @@
           }
         ] 
       };
-      const r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: JSON.stringify(payload) });
+      const r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: JSON.stringify(payload) }, 120000);
       
       console.log('API Response:', r);
 
