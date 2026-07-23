@@ -376,12 +376,16 @@ async function computePayslipForUser(userId, month, options = null) {
   for (const it of otherItems) {
     if (it.label === '差額計算') {
       支給['差額計算'] = (支給['差額計算'] || 0) + yen(it.amount);
+      その他[it.label] = (その他[it.label] || 0) + yen(it.amount);
     } else if (it.label === '追加検診費' || it.label === '追加診療費') {
       additionalMedicalFee += yen(it.amount);
+      その他['追加診療費'] = (その他['追加診療費'] || 0) + yen(it.amount);
     } else if (it.label === '年末調整徴収') {
       yecFee += yen(it.amount);
+      その他[it.label] = (その他[it.label] || 0) + yen(it.amount);
     } else if (it.label === '年末調整還付') {
       yerFee += yen(it.amount);
+      その他[it.label] = (その他[it.label] || 0) + yen(it.amount);
     } else {
       その他[it.label] = (その他[it.label] || 0) + yen(it.amount);
     }
