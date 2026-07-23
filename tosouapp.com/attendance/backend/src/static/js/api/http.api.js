@@ -1,5 +1,5 @@
 import { refresh } from '/static/js/api/auth.api.js';
-const REQUEST_TIMEOUT_MS = 15000;
+const REQUEST_TIMEOUT_MS = 30000;
 
 try {
   if (typeof window !== 'undefined') {
@@ -129,7 +129,7 @@ function redirectToLoginOnce() {
   } catch (e) { /* silently ignored */ }
 }
 
-async function doFetchAuth(url, options, accessToken) {
+async function doFetchAuth(url, options, accessToken, timeoutMs) {
   const csrf = getCookie('csrfToken');
   const opt = options || {};
   const baseHeaders = {
@@ -146,10 +146,10 @@ async function doFetchAuth(url, options, accessToken) {
     cache: 'no-store',
     ...opt,
     headers: mergedHeaders
-  }, REQUEST_TIMEOUT_MS);
+  }, timeoutMs || REQUEST_TIMEOUT_MS);
 }
 
-async function fetchAuthResponse(url, options) {
+async function fetchAuthResponse(url, options, timeoutMs) {
   let tok = sessionStorage.getItem('accessToken') || '';
   if (!tok) {
     try {
@@ -160,7 +160,7 @@ async function fetchAuthResponse(url, options) {
       }
     } catch (e) { /* silently ignored */ }
   }
-  let res = await doFetchAuth(url, options, tok);
+  let res = await doFetchAuth(url, options, tok, timeoutMs);
   if (!res.ok && (res.status === 401 || res.status === 403)) {
     let authExpiredLike = res.status === 401;
     try {
@@ -171,21 +171,19 @@ async function fetchAuthResponse(url, options) {
         authExpiredLike = true;
       }
       if (j.notPublished || (j.message && j.message.includes('公開されていません'))) {
-        // It's a specific business error, not an auth error, so don't try to refresh/login
         throw new Error(j.message || 'Not published');
       }
     } catch (e) {
       if (e.message && e.message.includes('公開されていません')) {
-        throw e; // Pass it down to be caught below
+        throw e;
       }
-      // If not JSON or not our specific error, proceed with refresh logic
     }
 
     if (authExpiredLike) {
       try {
         const r = await refreshCached();
         sessionStorage.setItem('accessToken', r.accessToken);
-        res = await doFetchAuth(url, options, r.accessToken);
+        res = await doFetchAuth(url, options, r.accessToken, timeoutMs);
       } catch {
         redirectToLoginOnce();
       }
@@ -204,23 +202,22 @@ async function fetchAuthResponse(url, options) {
     if (res.status === 401) {
       redirectToLoginOnce();
     } else if (res.status === 403) {
-      // Don't redirect on 403 (Forbidden), just throw the error so the UI can handle it (e.g. role restriction)
     }
     throw new Error(msg);
   }
   return res;
 }
 
-export async function fetchJSONAuth(url, options) {
-  const res = await fetchAuthResponse(url, options);
+export async function fetchJSONAuth(url, options, timeoutMs) {
+  const res = await fetchAuthResponse(url, options, timeoutMs);
   try { return await res.json(); } catch { return null; }
 }
 
-export async function fetchBlobAuth(url, options) {
-  const res = await fetchAuthResponse(url, options);
+export async function fetchBlobAuth(url, options, timeoutMs) {
+  const res = await fetchAuthResponse(url, options, timeoutMs);
   return res.blob();
 }
 
-export async function fetchResponseAuth(url, options) {
-  return fetchAuthResponse(url, options);
+export async function fetchResponseAuth(url, options, timeoutMs) {
+  return fetchAuthResponse(url, options, timeoutMs);
 }
