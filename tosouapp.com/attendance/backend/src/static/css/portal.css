@@ -373,10 +373,17 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 }
 .mobile-drawer .drawer-item {
   display: block;
-  padding: 12px 16px;
-  color: #124;
+  padding: 14px 16px;
   text-decoration: none;
+  color: #0d2c5b;
   border-top: 1px solid #cfe0f5;
+  min-height: 44px;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: rgba(0,0,0,0.05);
+  touch-action: manipulation;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .mobile-drawer .drawer-item:hover {
   background: #dff1ff;

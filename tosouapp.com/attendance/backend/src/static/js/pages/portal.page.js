@@ -1229,12 +1229,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
     if (mobileBackdrop) mobileBackdrop.addEventListener('click', () => toggleDrawer(false));
     mobileDrawer.addEventListener('click', (e) => {
-      const link = e.target?.closest?.('a[href]');
+      const link = e.target?.closest?.('a[href]') || e.target?.closest?.('button');
       if (!link) return;
       const href = String(link.getAttribute('href') || '').trim();
-      if (!href) return;
-      if (!isMobileViewport()) return;
+      if (!href && link.id !== 'drawerLogout') return;
       e.preventDefault();
+      e.stopPropagation();
       toggleDrawer(false);
       let to = null;
       try { to = new URL(href, window.location.href); } catch (e) { to = null; }
