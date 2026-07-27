@@ -2601,49 +2601,32 @@ body:not(.admin) .topbar-inner .user #userName {
     --topbar-height: 64px;
   }
   body:not(.admin) .topbar {
-    padding: 8px 10px !important;
+    padding: 8px 12px !important;
     min-height: var(--topbar-height);
     align-items: center;
-    gap: 8px !important;
   }
   body:not(.admin) .topbar-inner {
-    gap: 8px;
+    gap: 10px;
     align-items: center;
-    flex: 1;
-    min-width: 0;
-  }
-  body:not(.admin) .topbar-inner .user {
-    padding-right: 0 !important;
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-    transform: none !important;
-    flex-shrink: 0;
-  }
-  body:not(.admin) .topbar-inner .search {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: none !important;
-    margin: 0 !important;
   }
   body:not(.admin) .mobile-btn {
     display: block;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px;
-    line-height: 36px !important;
-    margin: 0 4px 0 0 !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px;
+    line-height: 32px !important;
+    margin: 0 !important;
     padding: 0 !important;
     border-radius: 8px !important;
     border: 1px solid rgba(255, 255, 255, 0.35) !important;
     background: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
-    font-size: 16px !important;
+    font-size: 15px !important;
     position: relative;
     z-index: 9999 !important;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     cursor: pointer;
-    flex-shrink: 0;
   }
   body:not(.admin) .topbar .search {
     flex: 1 1 auto;
