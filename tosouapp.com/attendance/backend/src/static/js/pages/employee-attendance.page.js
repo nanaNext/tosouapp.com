@@ -190,14 +190,14 @@ async function mountAttendanceImpl({
         }
       .attrec-fiori-override .attrec-dash-table th {
         padding: 6px 12px !important;
-        font-size: 12px !important;
+        font-size: 15px !important;
         background: #f8fafc !important;
         color: #475569 !important;
         border-bottom: 1px solid #e2e8f0 !important;
       }
       .attrec-fiori-override .attrec-dash-table td {
         padding: 6px 12px !important;
-        font-size: 13px !important;
+        font-size: 16px !important;
         vertical-align: middle !important;
         border-bottom: 1px solid #f1f5f9 !important;
       }
