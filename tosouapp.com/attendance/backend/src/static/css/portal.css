@@ -2601,13 +2601,29 @@ body:not(.admin) .topbar-inner .user #userName {
     --topbar-height: 64px;
   }
   body:not(.admin) .topbar {
-    padding: 8px 12px !important;
+    padding: 8px 10px !important;
     min-height: var(--topbar-height);
     align-items: center;
+    gap: 8px !important;
   }
   body:not(.admin) .topbar-inner {
-    gap: 10px;
+    gap: 8px;
     align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+  body:not(.admin) .topbar-inner .user {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    transform: none !important;
+    flex-shrink: 0;
+  }
+  body:not(.admin) .topbar-inner .search {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none !important;
+    margin: 0 !important;
   }
   body:not(.admin) .mobile-btn {
     display: block;
