@@ -2611,22 +2611,23 @@ body:not(.admin) .topbar-inner .user #userName {
   }
   body:not(.admin) .mobile-btn {
     display: block;
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px;
-    line-height: 44px !important;
-    margin: 0 !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px;
+    line-height: 36px !important;
+    margin: 0 4px 0 0 !important;
     padding: 0 !important;
     border-radius: 8px !important;
     border: 1px solid rgba(255, 255, 255, 0.35) !important;
     background: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
-    font-size: 18px !important;
+    font-size: 16px !important;
     position: relative;
     z-index: 9999 !important;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     cursor: pointer;
+    flex-shrink: 0;
   }
   body:not(.admin) .topbar .search {
     flex: 1 1 auto;
