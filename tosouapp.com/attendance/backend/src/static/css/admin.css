@@ -933,16 +933,16 @@ body.drawer-open.admin.has-sidebar .content {
 .admin table thead th,
 .admin table tbody td,
 .admin table tbody td * {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 .admin .card .excel-table .emp-action-group .emp-action {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 .admin .card .excel-table input,
 .admin .card .excel-table select {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 /* Final dark-mode override to keep table headers readable */
@@ -1597,16 +1597,16 @@ body.drawer-open.admin.has-sidebar .content {
     background: #eaf2ff;
     color: #0d2c5b;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 15px;
     padding: 8px 10px;
     border-bottom: 1px solid #dbe7f6;
   }
 
   .admin .attrec-list-scroll-wrap .attrec-dash-table tbody td {
-    font-size: 12px;
+    font-size: 16px;
     color: #0f172a;
     line-height: 1.35;
-    padding: 7px 10px;
+    padding: 8px 10px;
     border-bottom: 1px solid #edf2f8;
     white-space: nowrap;
     vertical-align: middle;
@@ -3142,14 +3142,14 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 .admin .attrec-dash-table th {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #0b2c66;
   background: #f1f5f9;
 }
 
 .admin .attrec-dash-table td {
-  font-size: 14px;
+  font-size: 16px;
   color: #1e293b;
 }
 
@@ -4076,7 +4076,7 @@ body.drawer-open.admin.has-sidebar .content {
   background: #1e3a5f !important;
   color: #ffffff !important;
   font-weight: 600 !important;
-  font-size: 13px !important;
+  font-size: 15px !important;
   padding: 10px 12px !important;
   white-space: nowrap !important;
   border-bottom: 2px solid #15305a !important;
@@ -4086,8 +4086,8 @@ body.drawer-open.admin.has-sidebar .content {
 /* 2. Body rows — dễ đọc, hover rõ */
 .admin .card .excel-table tbody td,
 .admin table#list tbody td {
-  font-size: 13px !important;
-  padding: 4px 8px !important;
+  font-size: 16px !important;
+  padding: 8px 12px !important;
   color: #1e293b !important;
   vertical-align: middle !important;
   border-bottom: 1px solid #e9eef5 !important;

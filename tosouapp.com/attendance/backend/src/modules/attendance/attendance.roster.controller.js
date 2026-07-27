@@ -272,6 +272,10 @@ exports.todayRoster = async (req, res) => {
     const dow = dateObj.getUTCDay(); // 0=Sun, 6=Sat
     const is4thSaturday = dow === 6 && Math.ceil(dD / 7) === 4;
 
+    // Check company calendar holidays (お盆、祝日 etc.)
+    let isCompanyHoliday = false;
+    try { isCompanyHoliday = await calendarRepo.isOff(date); } catch { isCompanyHoliday = false; }
+
     // Today's date in JST for detecting past days (退勤忘れ, 欠勤)
     const todayJST = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const isPastDay = date < todayJST;
@@ -343,18 +347,23 @@ exports.todayRoster = async (req, res) => {
         if (isPartTime) {
           isOffDayForUser = true; // Part-time without shift = off
         } else if (isKoujibu) {
-          // 工事部: Only Sunday + 4th Saturday are off
-          isOffDayForUser = dow === 0 || is4thSaturday;
+          // 工事部: Only Sunday + 4th Saturday are off (but company holidays still apply)
+          isOffDayForUser = dow === 0 || is4thSaturday || isCompanyHoliday;
         } else {
-          // 総務 etc: Saturday + Sunday are off
-          isOffDayForUser = dow === 0 || dow === 6;
+          // 総務 etc: Saturday + Sunday + company holidays are off
+          isOffDayForUser = dow === 0 || dow === 6 || isCompanyHoliday;
         }
 
         if (isPartTime) {
           status = 'unregistered'; // Part-time chưa đăng ký lịch → 未登録
         } else if (isOffDayForUser) {
-          status = 'off'; // Ngày nghỉ theo calendar → 休日
-          displayKubun = displayKubun || '休日';
+          if (isPastDay) {
+            status = 'off'; // Ngày nghỉ đã qua → 休日
+            displayKubun = displayKubun || '休日';
+          } else {
+            status = 'off'; // Ngày nghỉ hôm nay/tương lai → 休日予定
+            displayKubun = displayKubun || '休日予定';
+          }
         } else {
           // Full-time ngày thường, lẽ ra phải đi làm
           if (isPastDay) {
