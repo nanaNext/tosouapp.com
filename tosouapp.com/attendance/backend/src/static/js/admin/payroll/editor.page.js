@@ -26,7 +26,7 @@ const parseNum = (raw, label, { allowEmpty = false } = {}) => {
 
 const isMoneyKey = (k) => {
   const s = String(k || '');
-  return s.includes('円') || s.includes('額') || s.includes('手当') || s.includes('保険') || s.includes('税') || s.includes('控除') || s.includes('合計') || s.includes('給') || s.includes('振込') || s.includes('現金') || s.includes('現物') || s.includes('家賃') || s.includes('費');
+  return s.includes('円') || s.includes('額') || s.includes('手当') || s.includes('保険') || s.includes('税') || s.includes('控除') || s.includes('合計') || s.includes('給') || s.includes('振込') || s.includes('現金') || s.includes('現物') || s.includes('家賃') || s.includes('費') || s.includes('徴収') || s.includes('還付') || s.includes('計算') || s.includes('診療');
 };
 
 const hmFromMin = (min) => {
@@ -375,6 +375,7 @@ export async function mount(options = {}) {
       <div class="pe-item"><div class="pe-lbl">介護保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedCare" type="number" step="1" placeholder="0" aria-label="介護保険料"><span>円</span></div></div>
       <div class="pe-item"><div class="pe-lbl">厚生年金保険</div><div class="pe-money-item"><input class="pe-amt" id="ovDedPension" type="number" step="1" placeholder="0" aria-label="厚生年金保険"><span>円</span></div></div>
       <div class="pe-item"><div class="pe-lbl">雇用保険料</div><div class="pe-money-item"><input class="pe-amt" id="ovDedEmployment" type="number" step="1" placeholder="0" aria-label="雇用保険料"><span>円</span></div></div>
+      <div class="pe-item"><div class="pe-lbl">子育支援金</div><div class="pe-money-item"><input class="pe-amt" id="ovDedChildcare" type="number" step="1" placeholder="0" aria-label="子育支援金"><span>円</span></div></div>
     </div>
     <div class="pe-sub-title">税金</div>
     <div class="pe-items">
@@ -986,11 +987,11 @@ export async function mount(options = {}) {
         </div>
         <div>
           <div class="pe-title" style="margin:0 0 8px 0; font-size: 14px;">支給</div>
-          ${renderKv(earn || {}, { money: true })}
+          ${renderKv(earn || {}, { money: true, hide: ['差額計算', '年末調整還付'] })}
         </div>
         <div>
           <div class="pe-title" style="margin:0 0 8px 0; font-size: 14px;">控除</div>
-          ${renderKv(ded || {}, { money: true, hide: ['社保合計額', '課税対象額'] })}
+          ${renderKv(ded || {}, { money: true, hide: ['社保合計額', '課税対象額', '追加診療費', '年末調整徴収'] })}
         </div>
         <div>
           <div class="pe-title" style="margin:0 0 8px 0; font-size: 14px;">その他</div>
