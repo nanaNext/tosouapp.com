@@ -1184,38 +1184,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let drawerScrollY = 0;
     const lockViewport = () => {
       try {
-        drawerScrollY = window.scrollY || window.pageYOffset || 0;
         document.documentElement.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${drawerScrollY}px`;
-        document.body.style.left = '0';
-        document.body.style.right = '0';
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
       } catch (e) { /* silently ignored */ }
     };
     const unlockViewport = () => {
       try {
         document.documentElement.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, Math.max(0, Number(drawerScrollY) || 0));
       } catch (e) { /* silently ignored */ }
     };
-    const swallowWhenDrawerOpen = (e) => {
-      try {
-        if (!document.body.classList.contains('drawer-open')) return;
-        const inDrawer = e.target && e.target.closest && e.target.closest('#mobileDrawer');
-        if (inDrawer) return;
-        e.preventDefault();
-      } catch (e) { /* silently ignored */ }
-    };
-    document.addEventListener('touchmove', swallowWhenDrawerOpen, { passive: false });
-    document.addEventListener('wheel', swallowWhenDrawerOpen, { passive: false });
     const toggleDrawer = (open) => {
       if (!isMobileViewport()) {
         try {
