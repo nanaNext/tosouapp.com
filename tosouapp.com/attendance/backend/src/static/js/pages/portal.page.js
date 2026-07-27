@@ -1251,6 +1251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       toggleDrawer();
     });
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
+    if (mobileBackdrop) mobileBackdrop.addEventListener('click', () => toggleDrawer(false));
     mobileDrawer.addEventListener('click', (e) => {
       const link = e.target?.closest?.('a[href]');
       if (!link) return;
