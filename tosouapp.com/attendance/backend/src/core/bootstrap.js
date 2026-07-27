@@ -261,6 +261,15 @@ async function ensureModuleTables() {
   await workReportsRepo.ensureSchema();
   await workReportsRepo.ensureMonthClosureSchema();
   await calendarRepo.ensureTable();
+  // Auto-seed: Obon 2026 company holidays + 8/10 override
+  try {
+    await calendarRepo.upsertFixed([
+      { date: '2026-08-10', name: '山の日 振替休日 / Substitute Holiday (Mountain Day)', type: 'jp_substitute', is_off: 0 },
+      { date: '2026-08-12', name: 'お盆休み / Obon Holiday', type: 'fixed', is_off: 1 },
+      { date: '2026-08-13', name: 'お盆休み / Obon Holiday', type: 'fixed', is_off: 1 },
+      { date: '2026-08-14', name: 'お盆休み / Obon Holiday', type: 'fixed', is_off: 1 },
+    ]);
+  } catch (e) { /* silently ignored — already exists */ }
   await settingsRepo.ensureFlagsSchema();
   await salaryInputRepo.ensureTable();
   await payslipDeliveryRepo.ensureTable();
