@@ -2622,11 +2622,12 @@ body:not(.admin) .topbar-inner .user #userName {
     background: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
     font-size: 15px !important;
-    position: relative;
+    position: static !important;
     z-index: 9999 !important;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     cursor: pointer;
+    flex-shrink: 0;
   }
   body:not(.admin) .topbar .search {
     flex: 1 1 auto;
