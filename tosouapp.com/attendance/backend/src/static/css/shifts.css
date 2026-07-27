@@ -490,7 +490,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
+  padding: 60px 16px 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .modal-overlay[hidden] {
@@ -503,7 +506,10 @@
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  margin: auto;
 }
 
 .modal-content h3 {

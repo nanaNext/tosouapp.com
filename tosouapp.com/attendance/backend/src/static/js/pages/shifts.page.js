@@ -16,7 +16,10 @@ let calendarDataMap = {}; // Global calendar data map
 
 const SEISHAIN_LEAVE_TYPES = [
   { value: 'paid', label: '有給休暇' },
+  { value: 'paid_half', label: '半休(有給)' },
+  { value: 'half', label: '半休' },
   { value: 'unpaid', label: '欠勤 / 無給休暇' },
+  { value: 'substitute', label: '代替休日' },
   { value: 'special', label: '特別休暇' }
 ];
 
@@ -433,10 +436,20 @@ function renderApp() {
           <label for="modalDetail">詳細 (必須):</label>
           <textarea id="modalDetail" class="form-control" rows="3" placeholder="例: 歯医者、帰省..."></textarea>
         </div>
+        <!-- 振替出勤 swap section -->
+        <div id="modalSwapSection" style="display:none; margin-top:12px; padding:12px; border:1px solid #e2e8f0; background:#f8fafc;">
+          <label for="modalSwapDate" style="font-weight:600; font-size:13px; color:#0b2c66; margin-bottom:6px; display:block;">振替休日（代替休日）の日付を選択:</label>
+          <select id="modalSwapDate" class="form-control" style="width:100%; height:36px; font-size:14px;"></select>
+          <p style="font-size:11px; color:#64748b; margin:6px 0 0;">※ 選択した日が代替休日になります</p>
+        </div>
         <div class="modal-actions">
           <button id="btnModalCancel" class="btn-cancel">キャンセル</button>
           <button id="btnModalSave" class="btn-save">保存</button>
           <button id="btnModalClear" class="btn-clear">出勤に変更 (休暇取消)</button>
+          <button id="btnModalFurikae" class="btn-furikae" style="display:none; width:100%; margin-top:8px; padding:10px; border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; font-weight:600; cursor:pointer;">振替出勤（代替休日を指定）</button>
+          <button id="btnModalSaveSwap" class="btn-save" style="display:none; width:100%; margin-top:8px; padding:10px;">振替を確定</button>
+          <button id="btnModalRevert" class="btn-revert" style="display:none; width:100%; margin-top:8px; padding:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0b2c66; font-weight:600; cursor:pointer;">休日に戻す</button>
+          <button id="btnModalCancelSwap" class="btn-cancel" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid #fca5a5; background:#fef2f2; color:#991b1b; font-weight:600; cursor:pointer;">振替を取消</button>
         </div>
       </div>
     </div>
@@ -505,6 +518,13 @@ function renderDayCell(date, isSeishain) {
   if (isSeishain) {
     if (data.status === 'WORKING') {
       contentHtml = `<div class="status-working" style="${serverStatus === null || serverStatus === 'RETURNED' ? 'color:#64748b;' : ''}">出勤</div>`;
+    } else if (data.status === 'FURIKAE_WORK') {
+      // 振替出勤: working on a holiday with a linked comp-off day
+      contentHtml = `<div class="status-working" style="color:#1d4ed8; font-weight:700;">振出</div>`;
+    } else if (data.status === 'FURIKAE_OFF') {
+      // 代替休日: comp-off day linked to a swap-work day
+      contentHtml = `<div class="status-leave" style="color:#7c3aed; font-weight:700;">代休</div>`;
+      dayClass += ' is-leave';
     } else {
       if (!data.leaveType) {
         // System default holiday
@@ -618,6 +638,80 @@ function attachEvents(isSeishain) {
       closeLeaveModal();
       renderApp();
     });
+    $('#btnModalRevert').addEventListener('click', () => {
+      const dateStr = $('#modalDateVal').value;
+      // Revert to default holiday (no leaveType = system holiday)
+      shiftData[dateStr] = { status: 'LEAVE' };
+      closeLeaveModal();
+      renderApp();
+    });
+    // 振替出勤 button: show swap date picker
+    $('#btnModalFurikae').addEventListener('click', () => {
+      const swapSection = $('#modalSwapSection');
+      const swapSelect = $('#modalSwapDate');
+      const saveSwapBtn = $('#btnModalSaveSwap');
+      // Populate dropdown with workdays in the month that are not already off/swapped
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const daysInMonth = getDaysInMonth(year, month);
+      const currentDateStr = $('#modalDateVal').value;
+      let options = '<option value="">-- 日付を選択 --</option>';
+      daysInMonth.forEach(d => {
+        const ds = formatDate(d);
+        if (ds === currentDateStr) return; // skip self
+        const dayData = shiftData[ds];
+        const dow = d.getDay();
+        const isOff = calendarDataMap[ds] === true || dow === 0 || dow === 6;
+        // Only show workdays that are currently WORKING (not already swapped/leave)
+        if (dayData && dayData.status === 'WORKING' && !isOff) {
+          const dowLabel = ['日','月','火','水','木','金','土'][dow];
+          options += `<option value="${esc(ds)}">${esc(ds)} (${dowLabel})</option>`;
+        }
+      });
+      swapSelect.innerHTML = options;
+      swapSection.style.display = 'block';
+      saveSwapBtn.style.display = 'block';
+      // Hide other action buttons while selecting
+      $('#btnModalFurikae').style.display = 'none';
+      $('#btnModalClear').style.display = 'none';
+      $('#btnModalSave').style.display = 'none';
+    });
+    // Save swap pair
+    $('#btnModalSaveSwap').addEventListener('click', () => {
+      const holidayDate = $('#modalDateVal').value;
+      const compOffDate = $('#modalSwapDate').value;
+      if (!compOffDate) {
+        alert('代替休日の日付を選択してください。');
+        return;
+      }
+      // Set the holiday as 振替出勤
+      shiftData[holidayDate] = { status: 'FURIKAE_WORK', swapDate: compOffDate };
+      // Set the workday as 代替休日
+      shiftData[compOffDate] = { status: 'FURIKAE_OFF', swapDate: holidayDate };
+      closeLeaveModal();
+      renderApp();
+    });
+    // Cancel swap (when viewing a day that already has furikae)
+    $('#btnModalCancelSwap').addEventListener('click', () => {
+      const dateStr = $('#modalDateVal').value;
+      const data = shiftData[dateStr];
+      const pairDate = data?.swapDate;
+      if (data.status === 'FURIKAE_WORK') {
+        // This is a holiday that was marked as swap-work → revert to LEAVE
+        if (pairDate && shiftData[pairDate]) {
+          shiftData[pairDate] = { status: 'WORKING' }; // Revert comp-off back to working
+        }
+        shiftData[dateStr] = { status: 'LEAVE' }; // Revert to holiday
+      } else if (data.status === 'FURIKAE_OFF') {
+        // This is a workday that became comp-off → revert to WORKING
+        if (pairDate && shiftData[pairDate]) {
+          shiftData[pairDate] = { status: 'LEAVE' }; // Revert swap-work back to holiday
+        }
+        shiftData[dateStr] = { status: 'WORKING' }; // Revert to working
+      }
+      closeLeaveModal();
+      renderApp();
+    });
   } else {
     $$('.baito-shift-select').forEach(sel => {
       sel.addEventListener('change', (e) => {
@@ -669,7 +763,92 @@ function openLeaveModal(dateStr) {
   }
   $('#modalDateVal').value = dateStr;
   const data = shiftData[dateStr];
-  
+
+  // Determine if this day is a system holiday (calendar off-day with no user-requested leave)
+  const isCalendarHoliday = calendarDataMap[dateStr] === true;
+  const dow = new Date(dateStr + 'T00:00:00').getDay();
+  const isWeekend = dow === 0 || dow === 6;
+  const isSystemHoliday = (isCalendarHoliday || isWeekend) && !data.leaveType && data.status !== 'FURIKAE_OFF';
+  // isSystemHoliday = true for:
+  //   1. Day is still showing as 休 (status = LEAVE, no leaveType)
+  //   2. Day was changed to 出勤 (WORKING) but is still a calendar holiday
+  //   3. Day is 振替出勤 (FURIKAE_WORK) — still a calendar holiday being worked
+
+  // Get form elements
+  const formLeaveType = $('#modalLeaveType').closest('.form-group');
+  const formReason = $('#modalReason').closest('.form-group');
+  const formDetail = $('#modalDetailGroup');
+  const btnSave = $('#btnModalSave');
+
+  if (isSystemHoliday) {
+    // System holiday: hide leave form, only show「出勤に変更」and「振替出勤」
+    if (formLeaveType) formLeaveType.style.display = 'none';
+    if (formReason) formReason.style.display = 'none';
+    if (formDetail) formDetail.style.display = 'none';
+    btnSave.style.display = 'none';
+    // Show furikae button for holidays not yet changed
+    const furikaeBtn = $('#btnModalFurikae');
+    if (furikaeBtn) {
+      if (data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK') {
+        furikaeBtn.style.display = 'block';
+      } else {
+        furikaeBtn.style.display = 'none';
+      }
+    }
+  } else {
+    // Normal day or user-requested leave: show form
+    if (formLeaveType) formLeaveType.style.display = '';
+    if (formReason) formReason.style.display = '';
+    // formDetail visibility handled by reason change event
+    btnSave.style.display = 'inline-block';
+    const furikaeBtn = $('#btnModalFurikae');
+    if (furikaeBtn) furikaeBtn.style.display = 'none';
+  }
+
+  // Hide swap section by default
+  $('#modalSwapSection').style.display = 'none';
+  $('#btnModalSaveSwap').style.display = 'none';
+
+  // If this day is FURIKAE_OFF (代替休日), hide form, only show cancel
+  if (data.status === 'FURIKAE_OFF') {
+    if (formLeaveType) formLeaveType.style.display = 'none';
+    if (formReason) formReason.style.display = 'none';
+    if (formDetail) formDetail.style.display = 'none';
+    btnSave.style.display = 'none';
+    $('#btnModalClear').style.display = 'none';
+    const furikaeBtn = $('#btnModalFurikae');
+    if (furikaeBtn) furikaeBtn.style.display = 'none';
+    const revertBtn2 = $('#btnModalRevert');
+    if (revertBtn2) revertBtn2.style.display = 'none';
+  }
+  // If this day is FURIKAE_WORK (振替出勤), hide form, only show cancel
+  if (data.status === 'FURIKAE_WORK') {
+    if (formLeaveType) formLeaveType.style.display = 'none';
+    if (formReason) formReason.style.display = 'none';
+    if (formDetail) formDetail.style.display = 'none';
+    btnSave.style.display = 'none';
+    $('#btnModalClear').style.display = 'none';
+    const furikaeBtn = $('#btnModalFurikae');
+    if (furikaeBtn) furikaeBtn.style.display = 'none';
+    const revertBtn2 = $('#btnModalRevert');
+    if (revertBtn2) revertBtn2.style.display = 'none';
+  }
+
+  // Show cancel-swap button if this day is part of a furikae pair
+  const cancelSwapBtn = $('#btnModalCancelSwap');
+  if (cancelSwapBtn) {
+    if (data.status === 'FURIKAE_WORK' || data.status === 'FURIKAE_OFF') {
+      cancelSwapBtn.style.display = 'block';
+      // Show info about the pair
+      const pairLabel = data.status === 'FURIKAE_WORK'
+        ? `振替出勤 → 代替休日: ${data.swapDate || ''}`
+        : `代替休日 ← 振替出勤: ${data.swapDate || ''}`;
+      modalDateTitle.textContent = `${dateStr}\n${pairLabel}`;
+    } else {
+      cancelSwapBtn.style.display = 'none';
+    }
+  }
+
   if (data.status !== 'WORKING') {
     $('#modalLeaveType').value = data.leaveType || 'paid';
     $('#modalReason').value = data.reason || '私用のため';
@@ -692,27 +871,37 @@ function openLeaveModal(dateStr) {
     $('#modalLeaveType').disabled = true;
     $('#modalReason').disabled = true;
     $('#modalDetail').disabled = true;
-    $('#btnModalSave').style.display = 'none';
+    btnSave.style.display = 'none';
     $('#btnModalClear').style.display = 'none';
     $('#btnModalCancel').textContent = '閉じる';
   } else {
     $('#modalLeaveType').disabled = false;
     $('#modalReason').disabled = false;
     $('#modalDetail').disabled = false;
-    $('#btnModalSave').style.display = 'inline-block';
     $('#btnModalCancel').textContent = 'キャンセル';
     
     // Update the clear button text depending on current status
-    if (!data.leaveType && data.status !== 'WORKING') {
+    if (!data.leaveType && data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK' && data.status !== 'FURIKAE_OFF') {
       $('#btnModalClear').textContent = '出勤に変更'; // Default holiday -> Change to Work
     } else if (data.leaveType && data.status !== 'WORKING') {
       $('#btnModalClear').textContent = '出勤に変更 (休暇取消)'; // Leave -> Change to Work (Cancel leave)
     } else {
       $('#btnModalClear').textContent = '出勤'; // Already working
-      $('#btnModalClear').style.display = 'none'; // Hide if already working
+      $('#btnModalClear').style.display = 'none'; // Hide if already working or furikae
     }
-    if (data.status !== 'WORKING') {
+    if (data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK' && data.status !== 'FURIKAE_OFF') {
       $('#btnModalClear').style.display = 'inline-block';
+    }
+
+    // Show「休日に戻す」button if this is a calendar holiday and user changed it to WORKING (not furikae)
+    const isCalendarHoliday = calendarDataMap[dateStr] === true;
+    const revertBtn = $('#btnModalRevert');
+    if (revertBtn) {
+      if (isCalendarHoliday && data.status === 'WORKING') {
+        revertBtn.style.display = 'block';
+      } else {
+        revertBtn.style.display = 'none';
+      }
     }
   }
   
