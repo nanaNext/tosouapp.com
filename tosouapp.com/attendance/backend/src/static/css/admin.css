@@ -4405,7 +4405,7 @@ body.drawer-open.admin.has-sidebar .content {
     pointer-events: auto !important;
   }
 
-  body.drawer-open #drawerBackdrop {
+  body.drawer-open.admin #drawerBackdrop {
     display: block !important;
     visibility: visible !important;
     pointer-events: auto !important;
