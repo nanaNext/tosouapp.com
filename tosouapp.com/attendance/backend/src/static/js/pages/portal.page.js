@@ -1179,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mobileBtn.dataset.bound === '1') return;
     mobileBtn.dataset.bound = '1';
     const isMobileViewport = () => {
-      try { return (window.innerWidth || 0) <= 480; } catch (e) { return false; }
+      try { return (window.innerWidth || 0) <= 768; } catch (e) { return false; }
     };
     let drawerScrollY = 0;
     const lockViewport = () => {
@@ -1248,7 +1248,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
     mobileBtn.addEventListener('click', () => {
-      if (!isMobileViewport()) return;
       toggleDrawer();
     });
     if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
