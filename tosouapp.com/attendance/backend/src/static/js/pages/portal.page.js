@@ -1193,16 +1193,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) { /* silently ignored */ }
     };
     const toggleDrawer = (open) => {
-      if (!isMobileViewport()) {
-        try {
-          mobileDrawer.setAttribute('hidden', '');
-          mobileBtn.setAttribute('aria-expanded', 'false');
-          document.body.classList.remove('drawer-open', 'mobile-drawer-open');
-          unlockViewport();
-          if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
-        } catch (e) { /* silently ignored */ }
-        return;
-      }
       const isHidden = mobileDrawer.hasAttribute('hidden');
       const shouldOpen = typeof open === 'boolean' ? open : isHidden;
       if (shouldOpen) {
@@ -1214,13 +1204,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.body.classList.add('drawer-open');
           lockViewport();
         } catch (e) { /* silently ignored */ }
-        if (mobileBackdrop) { mobileBackdrop.removeAttribute('hidden'); }
       } else {
         mobileDrawer.setAttribute('hidden', '');
         mobileBtn.setAttribute('aria-expanded', 'false');
         document.body.classList.remove('drawer-open', 'mobile-drawer-open');
         unlockViewport();
-        if (mobileBackdrop) { mobileBackdrop.setAttribute('hidden', ''); }
       }
     };
     mobileBtn.addEventListener('click', () => {
@@ -1249,10 +1237,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       window.location.href = to.pathname + to.search + to.hash;
     });
-    window.addEventListener('resize', () => {
-      if (!isMobileViewport()) toggleDrawer(false);
-    }, { passive: true });
-    if (!isMobileViewport()) toggleDrawer(false);
     /* backdrop không đóng, chỉ nút X mới đóng */
   }
   try { wireExpandingSearch(); } catch (e) { /* silently ignored */ }
