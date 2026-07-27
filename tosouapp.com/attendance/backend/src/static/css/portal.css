@@ -356,13 +356,15 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 .drawer-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.2);
+    background: rgba(0,0,0,.35);
     z-index: 1250;
     pointer-events: auto;
     opacity: 0;
     transition: opacity 0.18s ease;
+    display: none;
   }
   body.drawer-open .drawer-backdrop {
+    display: block;
     opacity: 1;
   }
 .mobile-drawer .drawer-header {
