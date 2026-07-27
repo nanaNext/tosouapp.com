@@ -422,6 +422,7 @@ async function computePayslipForUser(userId, month, options = null) {
     介護保険料: care,
     厚生年金保険: pension,
     雇用保険料: employmentIns,
+    子育支援金: 0,
     社保合計額: 0,
     課税対象額: 0,
     所得税: 0,
@@ -459,6 +460,7 @@ async function computePayslipForUser(userId, month, options = null) {
     + yen(控除['介護保険料'] || 0)
     + yen(控除['厚生年金保険'] || 0)
     + yen(控除['雇用保険料'] || 0)
+    + yen(控除['子育支援金'] || 0)
   );
   // 年末調整還付 (Tax refund) is non-taxable, so we exclude it from the taxable income base
   const 課税対象額 = Math.max(0, yen(支給合計 - (支給['年末調整還付'] || 0) - 社保合計額));

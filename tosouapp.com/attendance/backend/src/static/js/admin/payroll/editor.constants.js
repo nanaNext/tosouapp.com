@@ -23,6 +23,7 @@ export const OVERRIDE_DED_FIELDS = [
   { id: '#ovDedCare', label: '介護保険料' },
   { id: '#ovDedPension', label: '厚生年金保険' },
   { id: '#ovDedEmployment', label: '雇用保険料' },
+  { id: '#ovDedChildcare', label: '子育支援金' },
   { id: '#ovDedIncome', label: '所得税' },
   { id: '#ovDedResident', label: '住民税' }
 ];
