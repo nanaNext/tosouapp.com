@@ -52,14 +52,10 @@
     </section>
   </main>
   <script type="module">
-    const fetchAPI = async (url, opts = {}) => {
-      const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken') || '';
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      const res = await fetch(url, { credentials: 'include', headers, ...opts });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    };
+    import { fetchJSONAuth } from '/static/js/api/http.api.js';
+    // Wait for page to be fully ready
+    await new Promise(r => setTimeout(r, 500));
+    const fetchAPI = fetchJSONAuth;
     (async () => {
       const host = document.getElementById('noticesHost');
       try {
