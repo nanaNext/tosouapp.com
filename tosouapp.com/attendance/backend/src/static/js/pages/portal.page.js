@@ -581,7 +581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const CHATBOT_PATH = '/ui/faq';
     const ATT_RECORDS_PATH = '/ui/attendance-records';
     const SHIFTS_PATH = '/ui/shifts';
-    const SOFT_PATHS = new Set([CONTACT_PATH, HOME_PATH, REQ_PATH, EXP_PATH, CHATBOT_PATH, ATT_RECORDS_PATH, SHIFTS_PATH]);
+    const SOFT_PATHS = new Set([CONTACT_PATH, HOME_PATH, REQ_PATH, CHATBOT_PATH, ATT_RECORDS_PATH, SHIFTS_PATH]);
     let pjaxNavInFlight = false;
     const main = document.querySelector('main.content');
     if (!main) return;
