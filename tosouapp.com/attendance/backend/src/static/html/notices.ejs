@@ -56,30 +56,37 @@
   </main>
   <script>
     (async function() {
-      // Get auth token
+      // Get auth token - wait for portal.page.js module to set it
       const getToken = () => {
         try {
           const raw = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
           if (raw) return raw;
-          const session = sessionStorage.getItem('session') || localStorage.getItem('session');
-          if (session) { try { return JSON.parse(session).accessToken; } catch(e){} }
         } catch(e) {}
         return null;
       };
 
+      // Wait for token to be available (portal.page.js module sets it via refresh())
+      let token = null;
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 300));
+        token = getToken();
+        if (token) break;
+      }
+
+      if (!token) {
+        // Last resort: try cookie-based auth
+      }
+
       const fetchAPI = async (url, opts) => {
-        const token = getToken();
+        const t = getToken();
         const headers = { 'Content-Type': 'application/json', ...(opts?.headers || {}) };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
+        if (t) headers['Authorization'] = 'Bearer ' + t;
         const res = await fetch(url, { ...opts, headers, credentials: 'include' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       };
 
       const linkify = (text) => String(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-
-      // Wait a bit for auth to be ready
-      await new Promise(r => setTimeout(r, 600));
 
       const host = document.getElementById('noticesHost');
       let allItems = [];
