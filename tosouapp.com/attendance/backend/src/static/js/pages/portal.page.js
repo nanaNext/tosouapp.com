@@ -968,12 +968,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           </a>
         </div>
         <div class="emp-tiles-2">
-          <a class="tile emp-wide" href="/ui/notices" id="tileNotice" style="position:relative;">
-            <div class="icon">🔔</div>
-            <div class="title">お知らせ</div>
-            <span id="tileNoticeBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; font-size:11px; font-weight:800; min-width:18px; height:18px; line-height:18px; text-align:center; border-radius:99px; padding:0 5px;"></span>
-            <div class="arrow">›</div>
-          </a>
           <a class="tile emp-wide" href="/ui/faq">
             <div class="icon">💬</div>
             <div class="title">エンジニア<br>サポートセンター</div>
@@ -986,18 +980,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           </a>
         </div>
       `;
-      // Fetch unread notification count and show badge
-      try {
-        fetchJSONAuth('/api/notices?all=1&limit=50').then(res => {
-          const items = Array.isArray(res?.notices) ? res.notices : [];
-          const unread = items.filter(it => !it.read_at).length;
-          const badge = document.getElementById('tileNoticeBadge');
-          if (badge && unread > 0) {
-            badge.textContent = unread > 9 ? '9+' : String(unread);
-            badge.style.display = 'inline-block';
-          }
-        }).catch(() => {});
-      } catch (e) { /* silently ignored */ }
       return;
     }
     const cfg = [
