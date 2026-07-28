@@ -43,9 +43,6 @@
     .notice-detail-card .notice-detail-msg { font-size: 15px; line-height: 1.8; color: #1e293b; white-space: pre-wrap; word-break: break-all; }
     .notice-detail-card .notice-detail-msg a { color: #2563eb; text-decoration: underline; word-break: break-all; }
     .notice-detail-card .notice-detail-meta { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
-    .notice-detail-card .notice-ack { margin-top: 16px; }
-    .notice-detail-card .notice-ack button { font-size: 13px; padding: 8px 18px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
-    .notice-detail-card .notice-ack button:hover { background: #1d4ed8; }
   </style>
 </head>
 <body>
@@ -136,9 +133,6 @@
               <span class="notice-scope ${scope}">${scopeLabel}</span>
               <span class="notice-time">${date}</span>
             </div>
-            <div class="notice-ack">
-              <button class="ack-btn" id="detailAckBtn">確認しました</button>
-            </div>
           </div>
         `;
 
@@ -150,17 +144,6 @@
           detailView.classList.remove('active');
           detailView.innerHTML = '';
           listView.style.display = '';
-        });
-
-        // Ack button
-        document.getElementById('detailAckBtn')?.addEventListener('click', async () => {
-          const btn = document.getElementById('detailAckBtn');
-          if (btn) { btn.textContent = '確認済み ✓'; btn.disabled = true; btn.style.background = '#94a3b8'; }
-          // Mark as read
-          if (item.id && !item.read_at) {
-            await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [item.id] }) }).catch(() => {});
-            item.read_at = new Date().toISOString();
-          }
         });
 
         // Mark as read when viewing detail
