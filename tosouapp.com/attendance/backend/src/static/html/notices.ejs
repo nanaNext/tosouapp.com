@@ -54,7 +54,7 @@
       </div>
     </section>
   </main>
-  <script>
+  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
     (async function() {
       // Get auth token - wait for portal.page.js module to set it
       const getToken = () => {
