@@ -1770,6 +1770,72 @@
         padding-top: 64px !important;
       }
 
+      /* ─── Hide stepper (too cramped on mobile) ─── */
+      #progStep1, #progStep2, #progStep3 {
+        display: none !important;
+      }
+      #progStep1 + div, #progStep2 + div {
+        display: none !important;
+      }
+
+      /* ─── Hide table on mobile ─── */
+      #step1Input table {
+        display: none !important;
+      }
+
+      /* ─── Add button: full width ─── */
+      #exAppAddItemBtn {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 14px 20px !important;
+        font-size: 15px !important;
+        border-radius: 10px !important;
+        background: #2563eb !important;
+        color: #fff !important;
+        border: none !important;
+      }
+      #exAppAddItemBtn svg { stroke: #fff !important; }
+
+      /* ─── Bottom buttons ─── */
+      #exAppCancelBtn {
+        flex: 1 !important;
+        height: 46px !important;
+        border-radius: 10px !important;
+      }
+      #exAppToConfirmBtn {
+        flex: 2 !important;
+        height: 46px !important;
+        border-radius: 10px !important;
+      }
+
+      /* ─── Step 2 confirm: card layout ─── */
+      #step2Confirm table thead {
+        display: none !important;
+      }
+      #step2Confirm table tbody tr {
+        display: block !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        margin-bottom: 10px !important;
+        padding: 12px !important;
+        background: #fff !important;
+      }
+      #step2Confirm table tbody tr td {
+        display: block !important;
+        padding: 3px 0 !important;
+        border: none !important;
+      }
+      #exAppBackToInputBtn {
+        flex: 1 !important;
+        height: 46px !important;
+        border-radius: 10px !important;
+      }
+      #exAppConfirmBtn {
+        flex: 2 !important;
+        height: 46px !important;
+        border-radius: 10px !important;
+      }
+
       /* Dark backdrop on right side when sidebar open */
       body:not(.admin) .expense-layout.sidebar-collapsed .drawer-backdrop {
         display: block !important;
@@ -1988,59 +2054,6 @@
     }
 
     @media (max-width: 480px) {
-
-      /* ─── Hide stepper on mobile (too cramped) ─── */
-      #progStep1, #progStep2, #progStep3 {
-        display: none !important;
-      }
-      /* Hide stepper connector lines */
-      #progStep1 + div, #progStep2 + div {
-        display: none !important;
-      }
-
-      /* ─── Hide table completely (empty state handled by #exAppItemsEmpty) ─── */
-      #step1Input table {
-        display: none !important;
-      }
-
-      /* ─── Center the main card content ─── */
-      #step1Input h3 {
-        text-align: center !important;
-      }
-
-      /* ─── Clean add button ─── */
-      #exAppAddItemBtn {
-        width: 100% !important;
-        justify-content: center !important;
-        padding: 14px 20px !important;
-        font-size: 15px !important;
-        border-radius: 10px !important;
-        background: #2563eb !important;
-        color: #fff !important;
-        border: none !important;
-      }
-      #exAppAddItemBtn svg { stroke: #fff !important; }
-
-      /* ─── Total amount: centered ─── */
-      #step1Input > div:nth-last-child(2) {
-        justify-content: center !important;
-        text-align: center !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 4px !important;
-      }
-
-      /* ─── Clean bottom buttons ─── */
-      #exAppCancelBtn {
-        flex: 1 !important;
-        height: 46px !important;
-        border-radius: 10px !important;
-      }
-      #exAppToConfirmBtn {
-        flex: 2 !important;
-        height: 46px !important;
-        border-radius: 10px !important;
-      }
 
       html,
       body {
