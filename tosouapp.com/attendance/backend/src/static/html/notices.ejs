@@ -27,19 +27,25 @@
     .notice-item:not(.unread) .notice-msg { color: #334155; }
     .notice-body { flex: 1; min-width: 0; }
     .notice-msg { font-size: 14px; color: #1e293b; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .notice-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; white-space: pre-wrap; word-break: break-all; font-size: 14px; line-height: 1.7; color: #1e293b; }
-    .notice-detail a { color: #2563eb; text-decoration: underline; word-break: break-all; }
-    .notice-detail.open { display: block; }
-    .notice-ack { margin-top: 10px; }
-    .notice-ack button { font-size: 12px; padding: 6px 14px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
-    .notice-ack button:hover { background: #1d4ed8; }
-    .notice-item.expanded .notice-msg { white-space: normal; overflow: visible; text-overflow: clip; }
     .notice-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
     .notice-scope { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
     .notice-scope.personal { background: #eff6ff; color: #1d4ed8; }
     .notice-scope.global { background: #ecfdf5; color: #166534; }
     .notice-time { font-size: 11px; color: #94a3b8; }
     .notice-empty { text-align: center; padding: 48px 20px; color: #94a3b8; font-size: 14px; }
+    .notice-item .notice-arrow { margin-left: auto; color: #94a3b8; font-size: 18px; font-weight: bold; }
+    /* Detail view */
+    .notice-detail-view { display: none; }
+    .notice-detail-view.active { display: block; }
+    .notice-back-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #2563eb; background: none; border: none; cursor: pointer; font-weight: 600; padding: 8px 0; margin-bottom: 16px; }
+    .notice-back-btn:hover { color: #1d4ed8; }
+    .notice-detail-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; }
+    .notice-detail-card .notice-detail-msg { font-size: 15px; line-height: 1.8; color: #1e293b; white-space: pre-wrap; word-break: break-all; }
+    .notice-detail-card .notice-detail-msg a { color: #2563eb; text-decoration: underline; word-break: break-all; }
+    .notice-detail-card .notice-detail-meta { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+    .notice-detail-card .notice-ack { margin-top: 16px; }
+    .notice-detail-card .notice-ack button { font-size: 13px; padding: 8px 18px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    .notice-detail-card .notice-ack button:hover { background: #1d4ed8; }
   </style>
 </head>
 <body>
@@ -56,26 +62,32 @@
     // Wait for page to be fully ready
     await new Promise(r => setTimeout(r, 500));
     const fetchAPI = fetchJSONAuth;
+    const linkify = (text) => String(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+
     (async () => {
       const host = document.getElementById('noticesHost');
+      let allItems = [];
       try {
         const res = await fetchAPI('/api/notices?all=1&limit=50');
-        const items = Array.isArray(res?.notices) ? res.notices : [];
-        // Don't auto-mark as read - let user click to mark
-        const unreadCount = items.filter(it => !it.read_at).length;
+        allItems = Array.isArray(res?.notices) ? res.notices : [];
+      } catch (e) {
+        host.innerHTML = '<div class="notice-empty">読み込みに失敗しました。</div>';
+        return;
+      }
 
-        let html = '<div class="notices-header"><div class="notices-header-left"><h1>お知らせ</h1>';
+      const renderList = () => {
+        const unreadCount = allItems.filter(it => !it.read_at).length;
+        let html = '<div id="noticeListView"><div class="notices-header"><div class="notices-header-left"><h1>お知らせ</h1>';
         if (unreadCount > 0) html += '<span class="notices-count">' + unreadCount + '件未読</span>';
         html += '</div>';
         if (unreadCount > 0) html += '<button id="markAllRead" style="font-size:12px;padding:6px 12px;border:1px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;color:#2563eb;font-weight:600;">すべて既読にする</button>';
         html += '</div>';
 
-        if (!items.length) {
+        if (!allItems.length) {
           html += '<div class="notice-empty">新しいお知らせはありません。</div>';
         } else {
           const SHOW_LIMIT = 20;
-          const visible = items.slice(0, SHOW_LIMIT);
-          const hasMore = items.length > SHOW_LIMIT;
+          const visible = allItems.slice(0, SHOW_LIMIT);
           html += '<div class="notice-list" id="noticeList">';
           html += visible.map(it => {
             const isUnread = !it.read_at;
@@ -83,34 +95,91 @@
             const scopeLabel = scope === 'global' ? '全体' : '個人';
             const date = String(it.created_at || '').slice(0, 16).replace('T', ' ');
             const msg = String(it.message || it.title || '');
-            // Make URLs clickable
-            const linkify = (text) => text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
             const shortMsg = msg.length > 50 ? msg.slice(0, 50) + '...' : msg;
             return '<div class="notice-item ' + (isUnread ? 'unread' : '') + '" data-id="' + (it.id || '') + '">' +
               '<div class="notice-body">' +
-                '<div class="notice-msg">' + linkify(shortMsg) + '</div>' +
-                '<div class="notice-detail">' + linkify(msg) +
-                  '<div class="notice-ack"><button class="ack-btn">確認しました</button></div>' +
-                '</div>' +
+                '<div class="notice-msg">' + shortMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
                 '<div class="notice-meta">' +
                   '<span class="notice-scope ' + scope + '">' + scopeLabel + '</span>' +
                   '<span class="notice-time">' + date + '</span>' +
                 '</div>' +
               '</div>' +
+              '<span class="notice-arrow">›</span>' +
             '</div>';
           }).join('');
           html += '</div>';
-          if (hasMore) {
-            html += '<div style="text-align:center;margin-top:16px;"><button id="loadMoreNotices" style="padding:10px 24px;border:1px solid #e2e8f0;background:#fff;border-radius:8px;color:#475569;font-size:13px;font-weight:600;cursor:pointer;">もっと見る（残り' + (items.length - SHOW_LIMIT) + '件）</button></div>';
+          if (allItems.length > SHOW_LIMIT) {
+            html += '<div style="text-align:center;margin-top:16px;"><button id="loadMoreNotices" style="padding:10px 24px;border:1px solid #e2e8f0;background:#fff;border-radius:8px;color:#475569;font-size:13px;font-weight:600;cursor:pointer;">もっと見る（残り' + (allItems.length - SHOW_LIMIT) + '件）</button></div>';
           }
         }
+        html += '</div>';
+        html += '<div id="noticeDetailView" class="notice-detail-view"></div>';
         host.innerHTML = html;
+        bindListEvents();
+      };
 
+      const renderDetail = (item) => {
+        const listView = document.getElementById('noticeListView');
+        const detailView = document.getElementById('noticeDetailView');
+        if (!listView || !detailView) return;
+
+        const scope = item.audience === 'all' ? 'global' : 'personal';
+        const scopeLabel = scope === 'global' ? '全体' : '個人';
+        const date = String(item.created_at || '').slice(0, 16).replace('T', ' ');
+        const msg = String(item.message || item.title || '');
+
+        detailView.innerHTML = `
+          <button class="notice-back-btn" id="noticeBackBtn">← お知らせ一覧に戻る</button>
+          <div class="notice-detail-card">
+            <div class="notice-detail-msg">${linkify(msg)}</div>
+            <div class="notice-detail-meta">
+              <span class="notice-scope ${scope}">${scopeLabel}</span>
+              <span class="notice-time">${date}</span>
+            </div>
+            <div class="notice-ack">
+              <button class="ack-btn" id="detailAckBtn">確認しました</button>
+            </div>
+          </div>
+        `;
+
+        listView.style.display = 'none';
+        detailView.classList.add('active');
+
+        // Back button
+        document.getElementById('noticeBackBtn')?.addEventListener('click', () => {
+          detailView.classList.remove('active');
+          detailView.innerHTML = '';
+          listView.style.display = '';
+        });
+
+        // Ack button
+        document.getElementById('detailAckBtn')?.addEventListener('click', async () => {
+          const btn = document.getElementById('detailAckBtn');
+          if (btn) { btn.textContent = '確認済み ✓'; btn.disabled = true; btn.style.background = '#94a3b8'; }
+          // Mark as read
+          if (item.id && !item.read_at) {
+            await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [item.id] }) }).catch(() => {});
+            item.read_at = new Date().toISOString();
+          }
+        });
+
+        // Mark as read when viewing detail
+        if (item.id && !item.read_at) {
+          fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [item.id] }) }).catch(() => {});
+          item.read_at = new Date().toISOString();
+          // Update the list item style
+          const listItem = document.querySelector(`.notice-item[data-id="${item.id}"]`);
+          if (listItem) listItem.classList.remove('unread');
+        }
+      };
+
+      const bindListEvents = () => {
         // Mark all read button
         document.getElementById('markAllRead')?.addEventListener('click', async () => {
-          const ids = items.filter(it => !it.read_at).map(it => it.id).filter(Boolean);
+          const ids = allItems.filter(it => !it.read_at).map(it => it.id).filter(Boolean);
           if (ids.length) {
             await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
+            allItems.forEach(it => { it.read_at = it.read_at || new Date().toISOString(); });
             document.querySelectorAll('.notice-item.unread').forEach(el => el.classList.remove('unread'));
             const badge = document.querySelector('.notices-count');
             if (badge) badge.style.display = 'none';
@@ -119,44 +188,18 @@
           }
         });
 
-        // Click individual item to expand and mark as read
+        // Click item to go to detail view
         document.querySelectorAll('.notice-item').forEach(el => {
-          el.style.cursor = 'pointer';
-          el.addEventListener('click', async (e) => {
-            // Don't toggle if clicking a link or button
-            if (e.target.closest('a') || e.target.closest('button')) return;
-            const detail = el.querySelector('.notice-detail');
-            if (detail) {
-              detail.classList.toggle('open');
-              el.classList.toggle('expanded');
-            }
-            // Mark as read
-            if (el.classList.contains('unread')) {
-              const id = el.dataset.id;
-              if (id) {
-                await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }).catch(() => {});
-              }
-              el.classList.remove('unread');
-            }
+          el.addEventListener('click', (e) => {
+            if (e.target.closest('a')) return;
+            const id = el.dataset.id;
+            const item = allItems.find(it => String(it.id) === String(id));
+            if (item) renderDetail(item);
           });
         });
+      };
 
-        // Ack button - close the detail and mark as acknowledged
-        document.querySelectorAll('.ack-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const item = btn.closest('.notice-item');
-            const detail = item?.querySelector('.notice-detail');
-            if (detail) detail.classList.remove('open');
-            if (item) item.classList.remove('expanded', 'unread');
-            btn.textContent = '確認済み ✓';
-            btn.disabled = true;
-            btn.style.background = '#94a3b8';
-          });
-        });
-      } catch (e) {
-        host.innerHTML = '<div class="notice-empty">読み込みに失敗しました。</div>';
-      }
+      renderList();
     })();
   </script>
 </body>
