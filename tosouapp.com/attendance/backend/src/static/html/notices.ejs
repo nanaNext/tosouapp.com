@@ -54,14 +54,33 @@
       </div>
     </section>
   </main>
-  <script type="module">
-    import { fetchJSONAuth } from '/static/js/api/http.api.js';
-    // Wait for page to be fully ready
-    await new Promise(r => setTimeout(r, 500));
-    const fetchAPI = fetchJSONAuth;
-    const linkify = (text) => String(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  <script>
+    (async function() {
+      // Get auth token
+      const getToken = () => {
+        try {
+          const raw = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+          if (raw) return raw;
+          const session = sessionStorage.getItem('session') || localStorage.getItem('session');
+          if (session) { try { return JSON.parse(session).accessToken; } catch(e){} }
+        } catch(e) {}
+        return null;
+      };
 
-    (async () => {
+      const fetchAPI = async (url, opts) => {
+        const token = getToken();
+        const headers = { 'Content-Type': 'application/json', ...(opts?.headers || {}) };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch(url, { ...opts, headers, credentials: 'include' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      };
+
+      const linkify = (text) => String(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+
+      // Wait a bit for auth to be ready
+      await new Promise(r => setTimeout(r, 600));
+
       const host = document.getElementById('noticesHost');
       let allItems = [];
       try {
@@ -86,7 +105,7 @@
           const SHOW_LIMIT = 20;
           const visible = allItems.slice(0, SHOW_LIMIT);
           html += '<div class="notice-list" id="noticeList">';
-          html += visible.map(it => {
+          html += visible.map(function(it) {
             const isUnread = !it.read_at;
             const scope = it.audience === 'all' ? 'global' : 'personal';
             const scopeLabel = scope === 'global' ? '全体' : '個人';
@@ -125,22 +144,21 @@
         const date = String(item.created_at || '').slice(0, 16).replace('T', ' ');
         const msg = String(item.message || item.title || '');
 
-        detailView.innerHTML = `
-          <button class="notice-back-btn" id="noticeBackBtn">← お知らせ一覧に戻る</button>
-          <div class="notice-detail-card">
-            <div class="notice-detail-msg">${linkify(msg)}</div>
-            <div class="notice-detail-meta">
-              <span class="notice-scope ${scope}">${scopeLabel}</span>
-              <span class="notice-time">${date}</span>
-            </div>
-          </div>
-        `;
+        detailView.innerHTML =
+          '<button class="notice-back-btn" id="noticeBackBtn">← お知らせ一覧に戻る</button>' +
+          '<div class="notice-detail-card">' +
+            '<div class="notice-detail-msg">' + linkify(msg) + '</div>' +
+            '<div class="notice-detail-meta">' +
+              '<span class="notice-scope ' + scope + '">' + scopeLabel + '</span>' +
+              '<span class="notice-time">' + date + '</span>' +
+            '</div>' +
+          '</div>';
 
         listView.style.display = 'none';
         detailView.classList.add('active');
 
         // Back button
-        document.getElementById('noticeBackBtn')?.addEventListener('click', () => {
+        document.getElementById('noticeBackBtn').addEventListener('click', function() {
           detailView.classList.remove('active');
           detailView.innerHTML = '';
           listView.style.display = '';
@@ -148,32 +166,33 @@
 
         // Mark as read when viewing detail
         if (item.id && !item.read_at) {
-          fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [item.id] }) }).catch(() => {});
+          fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [item.id] }) }).catch(function(){});
           item.read_at = new Date().toISOString();
-          // Update the list item style
-          const listItem = document.querySelector(`.notice-item[data-id="${item.id}"]`);
+          var listItem = document.querySelector('.notice-item[data-id="' + item.id + '"]');
           if (listItem) listItem.classList.remove('unread');
         }
       };
 
       const bindListEvents = () => {
         // Mark all read button
-        document.getElementById('markAllRead')?.addEventListener('click', async () => {
-          const ids = allItems.filter(it => !it.read_at).map(it => it.id).filter(Boolean);
-          if (ids.length) {
-            await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
-            allItems.forEach(it => { it.read_at = it.read_at || new Date().toISOString(); });
-            document.querySelectorAll('.notice-item.unread').forEach(el => el.classList.remove('unread'));
-            const badge = document.querySelector('.notices-count');
-            if (badge) badge.style.display = 'none';
-            const btn = document.getElementById('markAllRead');
-            if (btn) btn.style.display = 'none';
-          }
-        });
+        var markBtn = document.getElementById('markAllRead');
+        if (markBtn) {
+          markBtn.addEventListener('click', async function() {
+            const ids = allItems.filter(it => !it.read_at).map(it => it.id).filter(Boolean);
+            if (ids.length) {
+              await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(function(){});
+              allItems.forEach(it => { it.read_at = it.read_at || new Date().toISOString(); });
+              document.querySelectorAll('.notice-item.unread').forEach(el => el.classList.remove('unread'));
+              var badge = document.querySelector('.notices-count');
+              if (badge) badge.style.display = 'none';
+              markBtn.style.display = 'none';
+            }
+          });
+        }
 
         // Click item to go to detail view
-        document.querySelectorAll('.notice-item').forEach(el => {
-          el.addEventListener('click', (e) => {
+        document.querySelectorAll('.notice-item').forEach(function(el) {
+          el.addEventListener('click', function(e) {
             if (e.target.closest('a')) return;
             const id = el.dataset.id;
             const item = allItems.find(it => String(it.id) === String(id));
