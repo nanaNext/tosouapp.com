@@ -354,11 +354,15 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 }
 .drawer-backdrop[hidden] { display: none !important; pointer-events: none !important; }
 .drawer-backdrop {
-    display: none !important;
-    pointer-events: none !important;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1250;
+    pointer-events: auto;
+    display: none;
   }
   body.drawer-open .drawer-backdrop {
-    display: none !important;
+    display: block !important;
   }
 .mobile-drawer .drawer-header {
   display: flex;
