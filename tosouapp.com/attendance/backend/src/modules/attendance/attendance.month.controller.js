@@ -212,6 +212,25 @@ exports.submitMonth = async (req, res) => {
     } catch (e) { /* silently ignored */ }
 
     await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
+
+    // Send notification to admin/manager
+    try {
+      const noticesRepo = require('../notices/notices.repository');
+      const userRepo = require('../users/user.repository');
+      const u = await userRepo.getUserById(userId).catch(() => null);
+      const userName = u ? (u.username || u.email || '従業員') : '従業員';
+      const pad = n => String(n).padStart(2, '0');
+      await noticesRepo.createAdminNotification({
+        kind: 'month_submit',
+        title: '勤怠月次提出',
+        message: `${userName} さんが${y}年${pad(m)}月の勤怠を提出しました`,
+        linkUrl: '/admin/attendance',
+        payload: { source: 'monthly', userId, year: y, month: m },
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch (e) { /* silently ignored */ }
+
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'submitted' });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
