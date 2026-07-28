@@ -490,7 +490,7 @@ const renderForm = async () => {
   const setCurrent = (seg) => {
     const el = els.current;
     if (!el) return;
-    if (!seg) { el.textContent = '対象日の勤怠が見つかりません'; return; }
+    if (!seg) { el.textContent = '打刻記録なし（修正時刻を入力して申請できます）'; return; }
     const cin = String(seg.checkIn || '').slice(0, 16).replace('T', ' ');
     const cout = String(seg.checkOut || '').slice(0, 16).replace('T', ' ');
     el.innerHTML = `出勤: ${cin || '—'}<br>退勤: ${cout || '—'}`;
@@ -605,11 +605,8 @@ const renderForm = async () => {
     const editId = parseInt(String(els.submit?.dataset?.editId || 0), 10) || null;
 
     if (!attendanceId && !editId) {
-      if (els.status) els.status.textContent = '';
-      els.submit.disabled = false;
-      els.submit.innerHTML = originalIcon;
-      showErr('対象日の勤怠が見つかりません');
-      return;
+      // Allow submission even without existing attendance record
+      // (employee forgot to clock in/out entirely)
     }
     if (!inV && !outV) {
       if (els.status) els.status.textContent = '';
