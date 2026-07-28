@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>お知らせ</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
+  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260501-flickerfix1">
+  <link rel="icon" href="data:,">
+  <script src="/static/js/pages/session-idle.js?v=navy-20260403-1" defer></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=navy-20260508-pjaxexp7"></script>
+  <style>
+    .notices-wrap { max-width: 100%; margin: 0; padding: 8px 24px; box-sizing: border-box; }
+    /* Fix topbar user section overflow */
+    .topbar { overflow: hidden !important; }
+    .topbar .user { margin-right: 0 !important; transform: none !important; max-width: 150px; overflow: hidden; }
+    .topbar .user #userName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
+    .notices-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .notices-header-left { display: flex; align-items: center; gap: 10px; }
+    .notices-header-left h1 { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
+    .notices-header-left .notices-count { background: #2563eb; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+    .notices-header button { font-size: 12px; padding: 6px 12px; border: 1px solid #e2e8f0; background: #fff; border-radius: 6px; cursor: pointer; color: #64748b; }
+    .notice-list { display: flex; flex-direction: column; gap: 2px; }
+    .notice-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #fff; border: 1px solid #f1f5f9; transition: background 0.1s; }
+    .notice-item:hover { background: #f8fafc; }
+    .notice-item.unread { background: #eff6ff; border-color: #bfdbfe; border-left: 4px solid #2563eb; }
+    .notice-item.unread .notice-msg { font-weight: 700; color: #0f172a; }
+    .notice-item:not(.unread) .notice-msg { color: #64748b; }
+    .notice-body { flex: 1; min-width: 0; }
+    .notice-msg { font-size: 14px; color: #1e293b; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notice-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .notice-scope { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+    .notice-scope.personal { background: #eff6ff; color: #1d4ed8; }
+    .notice-scope.global { background: #ecfdf5; color: #166534; }
+    .notice-time { font-size: 11px; color: #94a3b8; }
+    .notice-empty { text-align: center; padding: 48px 20px; color: #94a3b8; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <%- include('_partials/employee-header.ejs') %>
+  <main class="content">
+    <section class="notices-wrap">
+      <div id="noticesHost">
+        <div class="notice-empty">読み込み中...</div>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import { fetchJSONAuth } from '/static/js/api/http.api.js';
+    (async () => {
+      const host = document.getElementById('noticesHost');
+      try {
+        const res = await fetchJSONAuth('/api/notices?all=1&limit=50');
+        const items = Array.isArray(res?.notices) ? res.notices : [];
+        // Don't auto-mark as read - let user click to mark
+        const unreadCount = items.filter(it => !it.read_at).length;
+
+        let html = '<div class="notices-header"><div class="notices-header-left"><h1>お知らせ</h1>';
+        if (unreadCount > 0) html += '<span class="notices-count">' + unreadCount + '件未読</span>';
+        html += '</div>';
+        if (unreadCount > 0) html += '<button id="markAllRead" style="font-size:12px;padding:6px 12px;border:1px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;color:#2563eb;font-weight:600;">すべて既読にする</button>';
+        html += '</div>';
+
+        if (!items.length) {
+          html += '<div class="notice-empty">新しいお知らせはありません。</div>';
+        } else {
+          const SHOW_LIMIT = 20;
+          const visible = items.slice(0, SHOW_LIMIT);
+          const hasMore = items.length > SHOW_LIMIT;
+          html += '<div class="notice-list" id="noticeList">';
+          html += visible.map(it => {
+            const isUnread = !it.read_at;
+            const scope = it.audience === 'all' ? 'global' : 'personal';
+            const scopeLabel = scope === 'global' ? '全体' : '個人';
+            const date = String(it.created_at || '').slice(0, 16).replace('T', ' ');
+            const msg = String(it.message || it.title || '');
+            return '<div class="notice-item ' + (isUnread ? 'unread' : '') + '" data-id="' + (it.id || '') + '">' +
+              '<div class="notice-body">' +
+                '<div class="notice-msg">' + msg + '</div>' +
+                '<div class="notice-meta">' +
+                  '<span class="notice-scope ' + scope + '">' + scopeLabel + '</span>' +
+                  '<span class="notice-time">' + date + '</span>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+          html += '</div>';
+          if (hasMore) {
+            html += '<div style="text-align:center;margin-top:16px;"><button id="loadMoreNotices" style="padding:10px 24px;border:1px solid #e2e8f0;background:#fff;border-radius:8px;color:#475569;font-size:13px;font-weight:600;cursor:pointer;">もっと見る（残り' + (items.length - SHOW_LIMIT) + '件）</button></div>';
+          }
+        }
+        host.innerHTML = html;
+
+        // Mark all read button
+        document.getElementById('markAllRead')?.addEventListener('click', async () => {
+          const ids = items.filter(it => !it.read_at).map(it => it.id).filter(Boolean);
+          if (ids.length) {
+            await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
+            document.querySelectorAll('.notice-item.unread').forEach(el => el.classList.remove('unread'));
+            const badge = document.querySelector('.notices-count');
+            if (badge) badge.style.display = 'none';
+            const btn = document.getElementById('markAllRead');
+            if (btn) btn.style.display = 'none';
+          }
+        });
+
+        // Click individual item to mark as read
+        document.querySelectorAll('.notice-item.unread').forEach(el => {
+          el.style.cursor = 'pointer';
+          el.addEventListener('click', async () => {
+            const id = el.dataset.id;
+            if (id) {
+              await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }).catch(() => {});
+            }
+            el.classList.remove('unread');
+          });
+        });
+      } catch (e) {
+        host.innerHTML = '<div class="notice-empty">読み込みに失敗しました。</div>';
+      }
+    })();
+  </script>
+</body>
+</html>

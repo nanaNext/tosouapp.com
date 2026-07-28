@@ -189,6 +189,7 @@ router.get('/ui/admin-manual', authenticateFromCookie, authorizePage('admin', 'm
 router.get('/ui/faq', sendPageNoCache('faq.html'));
 router.get('/ui/contact', sendPage('contact.html'));
 router.get('/contact', sendPage('contact.html'));
+router.get('/ui/notices', sendPage('notices.html'));
 router.get('/faq-test', authenticateFromCookie, authorizePage('admin', 'manager'), sendPage('faq-test.html'));
 // Removed abandoned React SPA entry
 
