@@ -52,11 +52,18 @@
     </section>
   </main>
   <script type="module">
-    import { fetchJSONAuth } from '/static/js/api/http.api.js';
+    const fetchAPI = async (url, opts = {}) => {
+      const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken') || '';
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(url, { credentials: 'include', headers, ...opts });
+      if (!res.ok) throw new Error(res.statusText);
+      return res.json();
+    };
     (async () => {
       const host = document.getElementById('noticesHost');
       try {
-        const res = await fetchJSONAuth('/api/notices?all=1&limit=50');
+        const res = await fetchAPI('/api/notices?all=1&limit=50');
         const items = Array.isArray(res?.notices) ? res.notices : [];
         // Don't auto-mark as read - let user click to mark
         const unreadCount = items.filter(it => !it.read_at).length;
@@ -107,7 +114,7 @@
         document.getElementById('markAllRead')?.addEventListener('click', async () => {
           const ids = items.filter(it => !it.read_at).map(it => it.id).filter(Boolean);
           if (ids.length) {
-            await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
+            await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
             document.querySelectorAll('.notice-item.unread').forEach(el => el.classList.remove('unread'));
             const badge = document.querySelector('.notices-count');
             if (badge) badge.style.display = 'none';
@@ -131,7 +138,7 @@
             if (el.classList.contains('unread')) {
               const id = el.dataset.id;
               if (id) {
-                await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }).catch(() => {});
+                await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }).catch(() => {});
               }
               el.classList.remove('unread');
             }
