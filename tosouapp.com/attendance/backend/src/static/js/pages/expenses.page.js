@@ -635,7 +635,10 @@ const renderList = async () => {
       if (selectedGlobalYear) {
         msg = `${selectedGlobalYear}年の交通費申請履歴はありません。`;
       }
-      boardHost.innerHTML = `<div style="padding: 40px; text-align: center; color: #64748b; background: #fff; border-radius: 12px; border: 1px solid var(--border); font-weight: 700;">${msg}</div>`;
+      boardHost.innerHTML = `<div style="padding: 40px 20px; text-align: center; color: #64748b; background: #fff; border-radius: 12px; border: 1px solid var(--border); font-weight: 700;">
+        <div style="margin-bottom: 16px;">${msg}</div>
+        <button type="button" onclick="document.getElementById('expNavNew')?.click()" style="background: #2563eb; color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;">＋ 新規作成</button>
+      </div>`;
       return allMonths;
     }
 
@@ -2129,17 +2132,15 @@ export async function bootExpensesPage() {
   };
   const recomputeAmountPreview = () => {
     const type = typeSel?.value || '';
-    let base = parseAmount(amtEl?.value || '0');
-    const t = tripSel?.value || 'one_way';
-    const cnt = Math.max(1, Number(tripCountEl?.value || '1') || 1);
     if (type === 'car') {
       const dist = Number(kmEl?.value || '0') || 0;
       const unit = Number(unitEl?.value || '0') || 0;
-      if (dist > 0 && unit > 0) base = Math.round(dist * unit);
+      if (dist > 0 && unit > 0) {
+        const base = Math.round(dist * unit);
+        if (amtEl) amtEl.value = base ? base.toLocaleString('ja-JP') : '';
+      }
     }
-    if (t === 'round_trip') base = base * 2;
-    else if (t === 'multi') base = base * cnt;
-    if (amtEl) amtEl.value = base ? base.toLocaleString('ja-JP') : '';
+    // No auto-multiplication for round_trip or multi - employee enters total amount manually
   };
   typeSel?.addEventListener('change', () => { toggleCarFields(); recomputeAmountPreview(); });
   kmEl?.addEventListener('input', recomputeAmountPreview);
@@ -2596,10 +2597,20 @@ export async function bootExpensesPage() {
       });
     }
 
+  const closeSidebarOnMobile = () => {
+    if (window.innerWidth <= 768) {
+      const layoutEl = document.querySelector('.expense-layout');
+      if (layoutEl) layoutEl.classList.remove('sidebar-collapsed');
+      document.body.classList.remove('exp-drawer-open');
+    }
+  };
   const bindTabClick = (els, handler) => {
     els.forEach((el) => {
       if (!el) return;
-      el.addEventListener('click', handler);
+      el.addEventListener('click', (e) => {
+        closeSidebarOnMobile();
+        handler(e);
+      });
     });
   };
   bindTabClick(navNewBtns, async (e) => {
