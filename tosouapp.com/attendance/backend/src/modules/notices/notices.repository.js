@@ -460,7 +460,7 @@ module.exports = {
     const [rows] = await db.query(
       `
         SELECT n.id, n.target_user_id, n.target_date, n.target_month, n.message, n.created_by, n.created_at, n.link_url,
-               r.read_at
+               n.audience, r.read_at
         FROM notices n
         LEFT JOIN notice_reads r
           ON r.notice_id = n.id AND r.user_id = ?
@@ -491,7 +491,7 @@ module.exports = {
     const [rows] = await db.query(
       `
         SELECT n.id, n.target_user_id, n.target_date, n.target_month, n.message, n.created_by, n.created_at,
-               r.read_at
+               n.audience, r.read_at
         FROM notices n
         LEFT JOIN notice_reads r
           ON r.notice_id = n.id AND r.user_id = ?
