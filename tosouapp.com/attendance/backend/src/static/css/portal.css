@@ -2198,8 +2198,8 @@ body:not(.admin) .topbar-inner .user #userName {
   gap: 14px;
 }
 .tiles.employee-portal .tile.emp-wide {
-  width: 220px;
-  height: 60px;
+  width: 180px;
+  height: 48px;
   flex-direction: row;
   justify-content: flex-start;
   gap: 8px;
