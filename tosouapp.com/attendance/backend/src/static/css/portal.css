@@ -2601,6 +2601,7 @@ body:not(.admin) .topbar-inner .user #userName {
 
 /* Mobile header refinement: improve breathing room, visual balance, and contrast */
 @media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
   :root {
     --topbar-height: 64px;
   }
