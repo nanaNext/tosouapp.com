@@ -613,6 +613,8 @@ module.exports = {
     const args = [];
     if (f) { where.push(`n.created_at >= ?`); args.push(`${f} 00:00:00`); }
     if (t) { where.push(`n.created_at <= ?`); args.push(`${t} 23:59:59`); }
+    // Exclude auto-generated system notifications (shift reminders) from admin view
+    where.push(`(n.kind IS NULL OR n.kind != 'system')`);
     const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const [rows] = await db.query(
       `

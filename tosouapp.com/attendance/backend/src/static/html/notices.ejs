@@ -27,6 +27,13 @@
     .notice-item:not(.unread) .notice-msg { color: #334155; }
     .notice-body { flex: 1; min-width: 0; }
     .notice-msg { font-size: 14px; color: #1e293b; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notice-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; white-space: pre-wrap; word-break: break-all; font-size: 14px; line-height: 1.7; color: #1e293b; }
+    .notice-detail a { color: #2563eb; text-decoration: underline; word-break: break-all; }
+    .notice-detail.open { display: block; }
+    .notice-ack { margin-top: 10px; }
+    .notice-ack button { font-size: 12px; padding: 6px 14px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .notice-ack button:hover { background: #1d4ed8; }
+    .notice-item.expanded .notice-msg { white-space: normal; overflow: visible; text-overflow: clip; }
     .notice-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
     .notice-scope { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
     .notice-scope.personal { background: #eff6ff; color: #1d4ed8; }
@@ -73,9 +80,15 @@
             const scopeLabel = scope === 'global' ? '全体' : '個人';
             const date = String(it.created_at || '').slice(0, 16).replace('T', ' ');
             const msg = String(it.message || it.title || '');
+            // Make URLs clickable
+            const linkify = (text) => text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+            const shortMsg = msg.length > 50 ? msg.slice(0, 50) + '...' : msg;
             return '<div class="notice-item ' + (isUnread ? 'unread' : '') + '" data-id="' + (it.id || '') + '">' +
               '<div class="notice-body">' +
-                '<div class="notice-msg">' + msg + '</div>' +
+                '<div class="notice-msg">' + linkify(shortMsg) + '</div>' +
+                '<div class="notice-detail">' + linkify(msg) +
+                  '<div class="notice-ack"><button class="ack-btn">確認しました</button></div>' +
+                '</div>' +
                 '<div class="notice-meta">' +
                   '<span class="notice-scope ' + scope + '">' + scopeLabel + '</span>' +
                   '<span class="notice-time">' + date + '</span>' +
@@ -103,15 +116,39 @@
           }
         });
 
-        // Click individual item to mark as read
-        document.querySelectorAll('.notice-item.unread').forEach(el => {
+        // Click individual item to expand and mark as read
+        document.querySelectorAll('.notice-item').forEach(el => {
           el.style.cursor = 'pointer';
-          el.addEventListener('click', async () => {
-            const id = el.dataset.id;
-            if (id) {
-              await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }).catch(() => {});
+          el.addEventListener('click', async (e) => {
+            // Don't toggle if clicking a link or button
+            if (e.target.closest('a') || e.target.closest('button')) return;
+            const detail = el.querySelector('.notice-detail');
+            if (detail) {
+              detail.classList.toggle('open');
+              el.classList.toggle('expanded');
             }
-            el.classList.remove('unread');
+            // Mark as read
+            if (el.classList.contains('unread')) {
+              const id = el.dataset.id;
+              if (id) {
+                await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }).catch(() => {});
+              }
+              el.classList.remove('unread');
+            }
+          });
+        });
+
+        // Ack button - close the detail and mark as acknowledged
+        document.querySelectorAll('.ack-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const item = btn.closest('.notice-item');
+            const detail = item?.querySelector('.notice-detail');
+            if (detail) detail.classList.remove('open');
+            if (item) item.classList.remove('expanded', 'unread');
+            btn.textContent = '確認済み ✓';
+            btn.disabled = true;
+            btn.style.background = '#94a3b8';
           });
         });
       } catch (e) {
