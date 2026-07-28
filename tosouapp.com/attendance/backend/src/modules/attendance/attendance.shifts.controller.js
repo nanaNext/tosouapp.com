@@ -173,6 +173,23 @@ exports.postShiftsBulk = async (req, res) => {
       
       // Also fetch and return the newly saved data so UI can update immediately if needed
       res.status(200).json({ success: true, message: 'Shifts saved successfully', data: { submission_status: 'PENDING' } });
+
+      // Send notification to admin/manager
+      try {
+        const noticesRepo = require('../notices/notices.repository');
+        const userRepo = require('../users/user.repository');
+        const u = await userRepo.getUserById(userId).catch(() => null);
+        const userName = u ? (u.username || u.email || '従業員') : '従業員';
+        await noticesRepo.createAdminNotification({
+          kind: 'shift_submit',
+          title: 'シフト提出',
+          message: `${userName} さんが${month}のシフトを提出しました`,
+          linkUrl: '/admin/attendance/shifts-approvals',
+          payload: { source: 'shift', userId, month },
+          createdBy: userId,
+          audience: 'admin_manager'
+        });
+      } catch (e) { /* silently ignored */ }
     } catch (e) {
       await conn.rollback();
       throw e;
