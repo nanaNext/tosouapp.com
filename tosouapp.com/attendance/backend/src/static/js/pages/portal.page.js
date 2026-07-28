@@ -1197,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const shouldOpen = typeof open === 'boolean' ? open : isHidden;
       if (shouldOpen) {
         mobileDrawer.removeAttribute('hidden');
+        if (mobileBackdrop) mobileBackdrop.removeAttribute('hidden');
         mobileBtn.setAttribute('aria-expanded', 'true');
         try {
           const w = Math.round(mobileDrawer.getBoundingClientRect().width || 280);
@@ -1206,6 +1207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { /* silently ignored */ }
       } else {
         mobileDrawer.setAttribute('hidden', '');
+        if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
         mobileBtn.setAttribute('aria-expanded', 'false');
         document.body.classList.remove('drawer-open', 'mobile-drawer-open');
         unlockViewport();
