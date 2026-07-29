@@ -562,6 +562,27 @@ function renderApp() {
   
   app.innerHTML = html;
   
+  // Mobile pagination for shift cards
+  const mobileList = app.querySelector('.shift-mobile-list');
+  if (mobileList) {
+    const cards = Array.from(mobileList.querySelectorAll('.sac-card'));
+    const MOBILE_PAGE_SIZE = 20;
+    if (cards.length > MOBILE_PAGE_SIZE) {
+      let mobilePage = 1;
+      const totalMobilePages = Math.ceil(cards.length / MOBILE_PAGE_SIZE);
+      const pagDiv = document.createElement('div');
+      pagDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;font-size:13px;color:#475569;font-weight:600;';
+      mobileList.parentNode.insertBefore(pagDiv, mobileList.nextSibling);
+      const showPage = () => {
+        cards.forEach((c, i) => { c.style.display = (i >= (mobilePage-1)*MOBILE_PAGE_SIZE && i < mobilePage*MOBILE_PAGE_SIZE) ? '' : 'none'; });
+        pagDiv.innerHTML = `ページ ${mobilePage} / ${totalMobilePages} (${cards.length}名)　<button id="shiftMobilePrev" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${mobilePage<=1?'disabled':''}>◀</button> <button id="shiftMobileNext" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${mobilePage>=totalMobilePages?'disabled':''}>▶</button>`;
+        pagDiv.querySelector('#shiftMobilePrev')?.addEventListener('click', () => { if(mobilePage>1){mobilePage--;showPage();window.scrollTo({top:0,behavior:'instant'});} });
+        pagDiv.querySelector('#shiftMobileNext')?.addEventListener('click', () => { if(mobilePage<totalMobilePages){mobilePage++;showPage();window.scrollTo({top:0,behavior:'instant'});} });
+      };
+      showPage();
+    }
+  }
+
   // Attach styling for table cells dynamically
   $$('.shifts-desktop-table td, .shifts-desktop-table th', app).forEach(cell => {
     cell.style.border = '1px solid #e2e8f0';
