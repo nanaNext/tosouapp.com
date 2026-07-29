@@ -594,7 +594,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           pad = pathName === '/ui/portal' ? 'calc(var(--topbar-height) + 32px)' : 'calc(var(--topbar-height) + 2px)';
           main.style.setProperty('margin-top', '0px', 'important');
         } else {
-          pad = 'calc(var(--topbar-height) + var(--subbar-height) + 24px)';
+          if (pathName === ATT_RECORDS_PATH) {
+            pad = 'calc(var(--topbar-height) + var(--subbar-height))';
+          } else {
+            pad = 'calc(var(--topbar-height) + var(--subbar-height) + 24px)';
+          }
           main.style.removeProperty('margin-top');
         }
 
