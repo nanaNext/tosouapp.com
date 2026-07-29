@@ -565,18 +565,22 @@ async function mountAttendanceImpl({
   `;
   content.appendChild(rosterWrap);
   
-  // Inject mobile header controls
+  // Inject mobile header controls - show date picker on mobile
   const mobileActions = document.getElementById('attHubMobileActions');
   if (window.innerWidth <= 768 && mobileActions) {
     mobileActions.innerHTML = `
-    <div style="display:none; flex-direction:column; gap:8px; padding: 0 12px; background: #fff; margin: 0;">
-      <div style="display:flex; gap:8px; justify-content:space-between; margin: 0;">
-        <input type="date" id="rosterDateMobile" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="flex:1; height:34px; padding:0 12px; font-size:14px; box-sizing:border-box; margin: 0; display: none;">
-      </div>
+    <div style="display:flex; align-items:center; justify-content:center; padding: 8px 12px; background: #fff; margin: 0; border-bottom: 1px solid #e5e7eb;">
+      <input type="date" id="rosterDateMobile" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">
     </div>
     `;
-    
-    // Removed mobile dropdown logic
+  }
+
+  // Also inject date picker at top of rosterWrap for mobile if no mobileActions slot
+  if (window.innerWidth <= 768 && !mobileActions) {
+    const mobileDateDiv = document.createElement('div');
+    mobileDateDiv.style.cssText = 'display:flex; align-items:center; justify-content:center; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb;';
+    mobileDateDiv.innerHTML = `<input type="date" id="rosterDateMobile" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">`;
+    rosterWrap.insertBefore(mobileDateDiv, rosterWrap.firstChild);
   }
 
   // Restore Desktop controls - move date picker to subbar
