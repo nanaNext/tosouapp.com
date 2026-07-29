@@ -350,7 +350,7 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
   background: #eaf6ff;
   border-right: 1px solid #d7eaff;
   z-index: 1300;
-  padding-top: 8px;
+  padding-top: 0;
 }
 .drawer-backdrop[hidden] { display: none !important; pointer-events: none !important; }
 .drawer-backdrop {
@@ -368,9 +368,11 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 4px 8px;
-  min-height: var(--topbar-height, 56px);
+  padding: 0 12px;
+  height: var(--topbar-height, 64px);
+  min-height: var(--topbar-height, 64px);
   box-sizing: border-box;
+  border-bottom: 1px solid #d7eaff;
 }
 .mobile-drawer .mobile-close {
   background: transparent;
