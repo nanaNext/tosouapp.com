@@ -239,11 +239,11 @@ export async function mount() {
           border-radius: 12px;
           background: #fff;
           overflow: auto;
+          max-width: 100%;
         }
         .notice-table {
           width: 100%;
           border-collapse: collapse;
-          table-layout: fixed;
           border: 1px solid #e5e7eb;
         }
         .notice-table th {
@@ -266,8 +266,8 @@ export async function mount() {
         .notice-table tr:nth-child(even) td { background: #fbfdff; }
         .notice-table tr:hover td { background: #f1f5f9; }
         .notice-target { font-weight: 900; color: #0b2c66; white-space: nowrap; }
-        .notice-message { font-weight: 700; color: #0f172a; white-space: pre-wrap; word-break: break-word; }
-        .notice-created { font-weight: 700; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .notice-message { font-weight: 700; color: #0f172a; white-space: pre-wrap; word-break: break-all; max-width: 400px; }
+        .notice-created { font-weight: 700; color: #475569; white-space: nowrap; }
         .notice-actions { text-align: right; white-space: nowrap; }
         .notice-empty { padding: 12px; color: #64748b; font-weight: 800; }
         .notice-listbar {
