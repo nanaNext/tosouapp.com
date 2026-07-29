@@ -66,11 +66,22 @@ function renderRows(rows) {
     body.innerHTML = '';
     if (table) table.hidden = true;
     if (empty) empty.hidden = false;
+    // Remove pagination if exists
+    const oldPag = document.getElementById('reqPagination');
+    if (oldPag) oldPag.remove();
     return;
   }
   if (table) table.hidden = false;
   if (empty) empty.hidden = true;
-  body.innerHTML = list.map((r) => {
+
+  const PAGE_SIZE = 20;
+  let currentPage = window._reqCurrentPage || 1;
+  const totalPages = Math.ceil(list.length / PAGE_SIZE);
+  if (currentPage > totalPages) currentPage = 1;
+  window._reqCurrentPage = currentPage;
+
+  const pageItems = list.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  body.innerHTML = pageItems.map((r) => {
     const no = r.request_no || r.requestNo || '';
     const status = r.status || '';
     const type = r.record_type || r.recordType || '';
@@ -89,6 +100,22 @@ function renderRows(rows) {
       </tr>
     `;
   }).join('');
+
+  // Pagination controls
+  let pagDiv = document.getElementById('reqPagination');
+  if (list.length > PAGE_SIZE) {
+    if (!pagDiv) {
+      pagDiv = document.createElement('div');
+      pagDiv.id = 'reqPagination';
+      pagDiv.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 12px;font-size:13px;color:#475569;font-weight:600;';
+      table.parentNode.insertBefore(pagDiv, table.nextSibling);
+    }
+    pagDiv.innerHTML = `ページ ${currentPage} / ${totalPages} (${list.length}件)　<button id="reqPrevPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${currentPage <= 1 ? 'disabled' : ''}>◀</button> <button id="reqNextPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${currentPage >= totalPages ? 'disabled' : ''}>▶</button>`;
+    pagDiv.querySelector('#reqPrevPage')?.addEventListener('click', () => { if (currentPage > 1) { window._reqCurrentPage = currentPage - 1; renderRows(rows); } });
+    pagDiv.querySelector('#reqNextPage')?.addEventListener('click', () => { if (currentPage < totalPages) { window._reqCurrentPage = currentPage + 1; renderRows(rows); } });
+  } else if (pagDiv) {
+    pagDiv.remove();
+  }
 }
 
 let requestSeq = 0;
