@@ -10,19 +10,19 @@
   <script src="/static/js/pages/session-idle.js?v=navy-20260403-1" defer></script>
   <script type="module" src="/static/js/pages/portal.page.js?v=20260729-notices1"></script>
   <style>
-    .notices-wrap { max-width: 100%; margin: 0; padding: 8px 24px; box-sizing: border-box; }
+    .notices-wrap { max-width: 100%; margin: 0; padding: 8px 0; box-sizing: border-box; }
     /* Fix topbar user section not overflowing */
     .topbar .user { margin-right: 0 !important; transform: none !important; }
     .topbar .user #userName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
-    .notices-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .notices-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 16px; }
     .notices-header-left { display: flex; align-items: center; gap: 10px; }
     .notices-header-left h1 { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
     .notices-header-left .notices-count { background: #2563eb; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
     .notices-header button { font-size: 12px; padding: 6px 12px; border: 1px solid #e2e8f0; background: #fff; border-radius: 6px; cursor: pointer; color: #64748b; }
-    .notice-list { display: flex; flex-direction: column; gap: 2px; }
-    .notice-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #fff; border: 1px solid #e2e8f0; transition: all 0.15s; cursor: pointer; }
+    .notice-list { display: flex; flex-direction: column; gap: 0; }
+    .notice-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #fff; border-bottom: 1px solid #e2e8f0; transition: all 0.15s; cursor: pointer; }
     .notice-item:hover { background: #f8fafc; }
-    .notice-item.unread { background: #eff6ff; border-color: #93c5fd; border-left: 4px solid #2563eb; }
+    .notice-item.unread { background: #eff6ff; border-left: 4px solid #2563eb; }
     .notice-item.unread .notice-msg { font-weight: 700; color: #0f172a; }
     .notice-item:not(.unread) .notice-msg { color: #334155; }
     .notice-body { flex: 1; min-width: 0; }
@@ -100,11 +100,13 @@
 
       const renderList = () => {
         const unreadCount = allItems.filter(it => !it.read_at).length;
-        let html = '<div id="noticeListView"><div class="notices-header"><div class="notices-header-left"><h1>お知らせ</h1>';
-        if (unreadCount > 0) html += '<span class="notices-count">' + unreadCount + '件未読</span>';
-        html += '</div>';
-        if (unreadCount > 0) html += '<button id="markAllRead" style="font-size:12px;padding:6px 12px;border:1px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;color:#2563eb;font-weight:600;">すべて既読にする</button>';
-        html += '</div>';
+        let html = '<div id="noticeListView">';
+        if (unreadCount > 0) {
+          html += '<div class="notices-header">';
+          html += '<span class="notices-count">' + unreadCount + '件未読</span>';
+          html += '<button id="markAllRead" style="font-size:12px;padding:6px 12px;border:1px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;color:#2563eb;font-weight:600;">すべて既読にする</button>';
+          html += '</div>';
+        }
 
         if (!allItems.length) {
           html += '<div class="notice-empty">新しいお知らせはありません。</div>';
