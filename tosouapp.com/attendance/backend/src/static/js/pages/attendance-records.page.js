@@ -546,11 +546,11 @@ export async function bootAttendanceRecordsPage() {
         style.textContent = `
           /* Reset padding cho trang attendance records */
           main.content {
-            padding-top: calc(var(--topbar-height) + var(--subbar-height) + 24px) !important;
+            padding-top: calc(var(--topbar-height) + var(--subbar-height) + 4px) !important;
           }
           @media (max-width: 768px) {
             main.content {
-              padding-top: calc(var(--topbar-height) + var(--subbar-height) + 16px) !important;
+              padding-top: calc(var(--topbar-height) + 4px) !important;
             }
           }
         `;
