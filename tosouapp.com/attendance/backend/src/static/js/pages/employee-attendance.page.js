@@ -579,16 +579,28 @@ async function mountAttendanceImpl({
     // Removed mobile dropdown logic
   }
 
-  // Restore Desktop controls
+  // Restore Desktop controls - move date picker to subbar
   const desktopControlsHtml = `
     <div style="display:flex; gap:16px; align-items:center; justify-content:flex-end; width:100%;">
       <div id="rosterSummary" style="display:flex; gap:8px;"></div>
-      <input type="date" id="rosterDate" class="attrec-fiori-override attrec-input" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; max-width:140px; min-width:140px; box-sizing:border-box;">
     </div>
   `;
   const controlsDiv = rosterWrap.querySelector('.attrec-controls');
   if (controlsDiv) {
     controlsDiv.innerHTML = desktopControlsHtml;
+    controlsDiv.style.display = 'none';
+  }
+
+  // Mount date picker into subbar slot
+  const subbarSlot = document.getElementById('subbarDateSlot');
+  if (subbarSlot) {
+    subbarSlot.innerHTML = `<input type="date" id="rosterDate" value="${esc(today)}" style="height:28px; padding:0 8px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#0f172a; font-weight:600;">`;
+  } else {
+    // Fallback: render in controls if slot not found
+    if (controlsDiv) {
+      controlsDiv.innerHTML = `<div style="display:flex;align-items:center;justify-content:flex-end;width:100%;"><input type="date" id="rosterDate" value="${esc(today)}" style="height:34px;padding:0 12px;font-size:14px;max-width:140px;min-width:140px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;"></div>`;
+      controlsDiv.style.display = 'block';
+    }
   }
   
   // Resize listener to manage mobile header vs desktop header visibility
