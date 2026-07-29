@@ -316,6 +316,8 @@ exports.getShiftMatrix = async (req, res) => {
 
 exports.getAllEmployeeShifts = async (req, res) => {
   try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
     const { month } = req.query || {};
     if (!month) return res.status(400).json({ message: 'Missing month' });
 
@@ -369,6 +371,8 @@ exports.approveShiftMonth = async (req, res) => {
     if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
     const { userId, month, status } = req.body || {};
     if (!userId || !month || !status) return res.status(400).json({ message: 'Missing fields' });
+    const validStatuses = ['APPROVED', 'REJECTED', 'PENDING', 'draft'];
+    if (!validStatuses.includes(status)) return res.status(400).json({ message: 'Invalid status' });
     
     await db.query(`
       UPDATE shift_month_status 
