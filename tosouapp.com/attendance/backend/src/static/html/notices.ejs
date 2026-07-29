@@ -192,7 +192,10 @@
 
         // Mark as read when viewing detail
         if (item.id && !item.read_at) {
-          fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [String(item.id)] }) }).catch(function(){});
+          var noticeId = parseInt(String(item.id), 10);
+          if (noticeId) {
+            fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [noticeId] }) }).catch(function(e){ console.error('mark read failed:', e); });
+          }
           item.read_at = new Date().toISOString();
           var listItem = document.querySelector('.notice-item[data-id="' + item.id + '"]');
           if (listItem) listItem.classList.remove('unread');
@@ -204,9 +207,9 @@
         var markBtn = document.getElementById('markAllRead');
         if (markBtn) {
           markBtn.addEventListener('click', async function() {
-            const ids = allItems.filter(it => !it.read_at).map(it => it.id).filter(Boolean);
+            const ids = allItems.filter(it => !it.read_at).map(it => parseInt(String(it.id), 10)).filter(Boolean);
             if (ids.length) {
-              await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(function(){});
+              await fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(function(e){ console.error('mark all read failed:', e); });
               allItems.forEach(it => { it.read_at = it.read_at || new Date().toISOString(); });
               document.querySelectorAll('.notice-item.unread').forEach(el => el.classList.remove('unread'));
               var badge = document.querySelector('.notices-count');
