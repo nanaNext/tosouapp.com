@@ -144,8 +144,13 @@ export async function mount() {
                 <th style="text-align:right;">操作</th>
               </tr>
         `;
-    const tableRows = rows.length
-      ? rows.map((r) => (
+    const PAGE_SIZE = 20;
+    let currentPage = 1;
+    const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+    const getPageRows = () => rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const buildTableRows = (pageRows) => pageRows.length
+      ? pageRows.map((r) => (
         isMobileView
           ? `
                     <tr>
@@ -168,6 +173,7 @@ export async function mount() {
                   `
       )).join('')
       : `<tr><td colspan="${isMobileView ? 3 : 6}" class="notice-empty">まだお知らせがありません</td></tr>`;
+    const tableRows = buildTableRows(getPageRows());
 
     host.innerHTML = `
       <style>
@@ -467,15 +473,43 @@ export async function mount() {
             <thead>
               ${tableHead}
             </thead>
-            <tbody>
+            <tbody id="noticeTableBody">
               ${tableRows}
             </tbody>
           </table>
+        </div>
+        <div id="noticePagination" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;padding:4px 12px;font-size:13px;color:#475569;font-weight:600;">
+          ${rows.length > PAGE_SIZE ? `ページ ${currentPage} / ${totalPages} (${rows.length}件)　<button id="noticePrevPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">◀</button> <button id="noticeNextPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">▶</button>` : `${rows.length}件`}
         </div>
         </div>
       </div>
       </div>
     `;
+
+    // Pagination handlers
+    const updatePagination = () => {
+      const tbody = host.querySelector('#noticeTableBody');
+      const pagDiv = host.querySelector('#noticePagination');
+      if (tbody) tbody.innerHTML = buildTableRows(getPageRows());
+      if (pagDiv && rows.length > PAGE_SIZE) {
+        pagDiv.innerHTML = `ページ ${currentPage} / ${totalPages} (${rows.length}件)　<button id="noticePrevPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${currentPage <= 1 ? 'disabled' : ''}>◀</button> <button id="noticeNextPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${currentPage >= totalPages ? 'disabled' : ''}>▶</button>`;
+        pagDiv.querySelector('#noticePrevPage')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
+        pagDiv.querySelector('#noticeNextPage')?.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; updatePagination(); } });
+      }
+      // Re-bind delete buttons
+      host.querySelectorAll('[data-notice-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const nid = btn.dataset.noticeDel;
+          if (!nid || !confirm('この通知を削除しますか？')) return;
+          try {
+            await fetchJSONAuth(`/api/notices/admin/${nid}`, { method: 'DELETE' });
+            await render();
+          } catch (e) { /* silently ignored */ }
+        });
+      });
+    };
+    host.querySelector('#noticePrevPage')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
+    host.querySelector('#noticeNextPage')?.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; updatePagination(); } });
 
     const showErr = (msg) => {
       const el = host.querySelector('#noticeError');
