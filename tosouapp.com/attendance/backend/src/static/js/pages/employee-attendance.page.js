@@ -578,7 +578,7 @@ async function mountAttendanceImpl({
   // Also inject date picker at top of rosterWrap for mobile if no mobileActions slot
   if (window.innerWidth <= 768 && !mobileActions) {
     const mobileDateDiv = document.createElement('div');
-    mobileDateDiv.style.cssText = 'display:flex; align-items:center; justify-content:center; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb;';
+    mobileDateDiv.style.cssText = 'display:flex; align-items:center; justify-content:center; padding:4px 12px; background:#fff; border-bottom:1px solid #e5e7eb;';
     mobileDateDiv.innerHTML = `<input type="date" id="rosterDateMobile" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">`;
     rosterWrap.insertBefore(mobileDateDiv, rosterWrap.firstChild);
   }

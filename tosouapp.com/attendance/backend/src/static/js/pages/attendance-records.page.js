@@ -547,7 +547,7 @@ export async function bootAttendanceRecordsPage() {
           /* Table flush with subbar */
           @media (max-width: 768px) {
             main.content {
-              padding-top: var(--topbar-height) !important;
+              padding-top: calc(var(--topbar-height) - 4px) !important;
             }
             /* Remove empty search/filter containers that show as empty boxes */
             .attrec-controls:empty,
