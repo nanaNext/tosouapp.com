@@ -76,8 +76,10 @@
 
       const fetchAPI = async (url, opts) => {
         const t = getToken();
+        const csrfToken = (function(){ try { var m = document.cookie.match(/csrfToken=([^;]+)/); return m ? m[1] : ''; } catch(e){ return ''; } })();
         const headers = { 'Content-Type': 'application/json', ...(opts?.headers || {}) };
         if (t) headers['Authorization'] = 'Bearer ' + t;
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
         const res = await fetch(url, { ...opts, headers, credentials: 'include' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
