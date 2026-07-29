@@ -153,6 +153,17 @@
         const date = String(item.created_at || '').slice(0, 16).replace('T', ' ');
         const msg = String(item.message || item.title || '');
 
+        // Determine action link based on notice content
+        var actionLink = '';
+        var actionLabel = '';
+        if (/時間修正/.test(msg)) { actionLink = '/ui/adjust'; actionLabel = '時間修正申請を確認する →'; }
+        else if (/交通費/.test(msg)) { actionLink = '/ui/expenses'; actionLabel = '交通費申請を確認する →'; }
+        else if (/有休|休暇/.test(msg)) { actionLink = '/ui/requests'; actionLabel = '休暇申請を確認する →'; }
+        else if (/シフト/.test(msg)) { actionLink = '/ui/shifts'; actionLabel = 'シフトを確認する →'; }
+        else if (/給与/.test(msg)) { actionLink = '/ui/salary'; actionLabel = '給与明細を確認する →'; }
+
+        var actionHtml = actionLink ? '<div style="margin-top:16px;"><a href="' + actionLink + '" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">' + actionLabel + '</a></div>' : '';
+
         detailView.innerHTML =
           '<button class="notice-back-btn" id="noticeBackBtn">← お知らせ一覧に戻る</button>' +
           '<div class="notice-detail-card">' +
@@ -161,6 +172,7 @@
               '<span class="notice-scope ' + scope + '">' + scopeLabel + '</span>' +
               '<span class="notice-time">' + date + '</span>' +
             '</div>' +
+            actionHtml +
           '</div>';
 
         listView.style.display = 'none';
