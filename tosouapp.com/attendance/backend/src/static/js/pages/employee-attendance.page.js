@@ -599,6 +599,7 @@ async function mountAttendanceImpl({
   const subbarSlot = document.getElementById('subbarDateSlot');
   if (subbarSlot) {
     subbarSlot.innerHTML = `<input type="date" id="rosterDate" value="${esc(today)}" style="height:28px; padding:0 8px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#0f172a; font-weight:600;">`;
+    subbarSlot.style.display = '';
   } else {
     // Fallback: render in controls if slot not found
     if (controlsDiv) {
