@@ -183,11 +183,20 @@
           detailView.classList.remove('active');
           detailView.innerHTML = '';
           listView.style.display = '';
+          // Update unread count badge
+          var unreadNow = allItems.filter(function(x) { return !x.read_at; }).length;
+          var countBadge = document.querySelector('.notices-count');
+          if (countBadge) {
+            if (unreadNow > 0) { countBadge.textContent = unreadNow + '件未読'; }
+            else { countBadge.style.display = 'none'; }
+          }
+          var markAllBtn = document.getElementById('markAllRead');
+          if (markAllBtn && unreadNow === 0) markAllBtn.style.display = 'none';
         });
 
         // Mark as read when viewing detail
         if (item.id && !item.read_at) {
-          fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [item.id] }) }).catch(function(){});
+          fetchAPI('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [String(item.id)] }) }).catch(function(){});
           item.read_at = new Date().toISOString();
           var listItem = document.querySelector('.notice-item[data-id="' + item.id + '"]');
           if (listItem) listItem.classList.remove('unread');
