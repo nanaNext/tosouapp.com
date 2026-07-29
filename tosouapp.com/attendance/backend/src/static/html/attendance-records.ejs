@@ -16,15 +16,14 @@
   
   <%- include('_partials/employee-header.ejs') %>
 
-  <main class="content attendance-records-content" style="padding-top: calc(var(--topbar-height, 56px) + var(--subbar-height, 40px));">
+  <main class="content attendance-records-content" style="padding-top: calc(var(--topbar-height, 56px) + var(--subbar-height, 40px)); margin: 0;">
     <style>
+      .attendance-records-content { margin: 0 !important; }
       @media (max-width: 768px) {
-        .attendance-records-content { padding-top: var(--topbar-height, 56px) !important; margin-top: 0 !important; }
+        .attendance-records-content { padding-top: var(--topbar-height, 56px) !important; }
       }
     </style>
-    <div style="max-width: 100%; margin: 0 auto; width: 100%; min-height: 80vh; padding: 0;">
-      <div id="attendanceRecordsHost" style="width: 100%;"></div>
-    </div>
+    <div id="attendanceRecordsHost" style="width: 100%; margin: 0; padding: 0;"></div>
   </main>
   <div id="error" style="display:none;color:#b00020;font-weight:600;text-align:center;margin-top:20px;"></div>
 </body>
