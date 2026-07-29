@@ -544,13 +544,10 @@ export async function bootAttendanceRecordsPage() {
         
         const style = document.createElement('style');
         style.textContent = `
-          /* Reset padding cho trang attendance records */
-          main.content {
-            padding-top: calc(var(--topbar-height) + var(--subbar-height)) !important;
-          }
+          /* Table flush with subbar */
           @media (max-width: 768px) {
             main.content {
-              padding-top: calc(var(--topbar-height)) !important;
+              padding-top: var(--topbar-height) !important;
             }
           }
         `;
