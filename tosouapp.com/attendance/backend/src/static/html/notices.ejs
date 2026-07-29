@@ -114,7 +114,8 @@
           html += '<div class="notice-list" id="noticeList">';
           html += visible.map(function(it) {
             const isUnread = !it.read_at;
-            const scope = it.audience === 'all' ? 'global' : 'personal';
+            const isPersonal = it.target_user_id || (it.audience && it.audience !== 'all');
+            const scope = isPersonal ? 'personal' : 'global';
             const scopeLabel = scope === 'global' ? '全体' : '個人';
             const date = String(it.created_at || '').slice(0, 16).replace('T', ' ');
             const msg = String(it.message || it.title || '');
@@ -146,7 +147,8 @@
         const detailView = document.getElementById('noticeDetailView');
         if (!listView || !detailView) return;
 
-        const scope = item.audience === 'all' ? 'global' : 'personal';
+        const isPersonal = item.target_user_id || (item.audience && item.audience !== 'all');
+        const scope = isPersonal ? 'personal' : 'global';
         const scopeLabel = scope === 'global' ? '全体' : '個人';
         const date = String(item.created_at || '').slice(0, 16).replace('T', ' ');
         const msg = String(item.message || item.title || '');
