@@ -5,15 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>お知らせ</title>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260314">
-  <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260501-flickerfix1">
+  <link rel="stylesheet" href="/static/css/portal.css?v=20260729-2">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260403-1" defer></script>
-  <script type="module" src="/static/js/pages/portal.page.js?v=20260729-notices1"></script>
+  <script type="module" src="/static/js/pages/portal.page.js?v=20260729-2"></script>
   <style>
     .notices-wrap { max-width: 100%; margin: 0; padding: 8px 0; box-sizing: border-box; min-height: calc(100vh - var(--topbar-height) - var(--subbar-height)); }
-    /* Fix topbar user section not overflowing */
-    .topbar .user { margin-right: 0 !important; transform: none !important; }
-    .topbar .user #userName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
     .notices-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 16px; }
     .notices-header-left { display: flex; align-items: center; gap: 10px; }
     .notices-header-left h1 { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
