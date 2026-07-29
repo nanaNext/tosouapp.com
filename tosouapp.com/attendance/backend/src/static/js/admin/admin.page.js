@@ -478,7 +478,7 @@ const route = async () => {
     if (p2 === '/admin/notices') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
-      const mod = await loadModule('./notices/notices.page.js?v=navy-20260423-noticemobile5');
+      const mod = await loadModule('./notices/notices.page.js?v=20260729-pagination1');
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
