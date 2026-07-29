@@ -549,6 +549,7 @@ export async function bootAttendanceRecordsPage() {
             main.content {
               padding-top: var(--topbar-height) !important;
             }
+            .topbar .search { display: none !important; }
           }
         `;
         document.head.appendChild(style);
