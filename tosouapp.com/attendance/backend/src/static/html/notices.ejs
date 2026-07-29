@@ -111,10 +111,8 @@
         if (!allItems.length) {
           html += '<div class="notice-empty">新しいお知らせはありません。</div>';
         } else {
-          const SHOW_LIMIT = 20;
-          const visible = allItems.slice(0, SHOW_LIMIT);
           html += '<div class="notice-list" id="noticeList">';
-          html += visible.map(function(it) {
+          html += allItems.map(function(it) {
             const isUnread = !it.read_at;
             const isPersonal = it.target_user_id || (it.audience && it.audience !== 'all');
             const scope = isPersonal ? 'personal' : 'global';
@@ -134,9 +132,6 @@
             '</div>';
           }).join('');
           html += '</div>';
-          if (allItems.length > SHOW_LIMIT) {
-            html += '<div style="text-align:center;margin-top:16px;"><button id="loadMoreNotices" style="padding:10px 24px;border:1px solid #e2e8f0;background:#fff;border-radius:8px;color:#475569;font-size:13px;font-weight:600;cursor:pointer;">もっと見る（残り' + (allItems.length - SHOW_LIMIT) + '件）</button></div>';
-          }
         }
         html += '</div>';
         html += '<div id="noticeDetailView" class="notice-detail-view"></div>';
