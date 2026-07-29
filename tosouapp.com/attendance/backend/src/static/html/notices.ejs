@@ -162,7 +162,7 @@
         else if (/シフト/.test(msg)) { actionLink = '/ui/shifts'; actionLabel = 'シフトを確認する →'; }
         else if (/給与/.test(msg)) { actionLink = '/ui/salary'; actionLabel = '給与明細を確認する →'; }
 
-        var actionHtml = actionLink ? '<div style="margin-top:16px;"><a href="' + actionLink + '" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">' + actionLabel + '</a></div>' : '';
+        var actionHtml = actionLink ? '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9;"><a href="' + actionLink + '" style="display:inline-flex;align-items:center;gap:6px;color:#2563eb;font-size:13px;font-weight:500;text-decoration:none;">' + actionLabel + '</a></div>' : '';
 
         detailView.innerHTML =
           '<button class="notice-back-btn" id="noticeBackBtn">← お知らせ一覧に戻る</button>' +
