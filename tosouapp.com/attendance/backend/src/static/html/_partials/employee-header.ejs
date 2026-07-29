@@ -51,7 +51,7 @@
     <a href="/ui/portal" class="drawer-item">ホーム</a>
     <a href="/ui/attendance-records" class="drawer-item">勤怠記録</a>
     <a href="/ui/shifts" class="drawer-item">シフト登録</a>
-    <a href="/ui/notices" class="drawer-item">お知らせ</a>
+    <a href="/ui/notices" class="drawer-item" id="drawerNoticeLink" style="position:relative;">お知らせ<span id="drawerNoticeBadge" style="display:none;position:absolute;right:16px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:99px;padding:0 5px;"></span></a>
     <a href="/ui/contact" class="drawer-item">お問い合わせ先</a>
     <a href="/ui/logout" id="drawerLogout" class="drawer-item">ログアウト</a>
   </div>
@@ -73,6 +73,27 @@
           if(href === path || (href !== '/' && path.indexOf(href) === 0)) {
             links[i].setAttribute('aria-current', 'page');
           }
+        }
+      } catch(e) {}
+    })();
+  </script>
+  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
+    // Fetch unread notice count for mobile drawer badge
+    (async function() {
+      try {
+        await new Promise(function(r) { setTimeout(r, 1500); });
+        var token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+        if (!token) { for (var i = 0; i < 10; i++) { await new Promise(function(r){setTimeout(r,300);}); token = sessionStorage.getItem('accessToken'); if (token) break; } }
+        if (!token) return;
+        var res = await fetch('/api/notices?all=1&limit=50', { headers: { 'Authorization': 'Bearer ' + token }, credentials: 'include' });
+        if (!res.ok) return;
+        var data = await res.json();
+        var items = Array.isArray(data && data.notices) ? data.notices : [];
+        var unread = items.filter(function(it) { return !it.read_at; }).length;
+        var badge = document.getElementById('drawerNoticeBadge');
+        if (badge && unread > 0) {
+          badge.textContent = unread > 9 ? '9+' : String(unread);
+          badge.style.display = 'inline-block';
         }
       } catch(e) {}
     })();
