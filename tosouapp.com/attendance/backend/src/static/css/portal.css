@@ -367,7 +367,10 @@ body:not(.admin) .subbar .subnav > a[aria-current="page"] {
 .mobile-drawer .drawer-header {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   padding: 4px 8px;
+  min-height: var(--topbar-height, 56px);
+  box-sizing: border-box;
 }
 .mobile-drawer .mobile-close {
   background: transparent;
