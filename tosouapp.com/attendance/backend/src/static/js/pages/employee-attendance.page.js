@@ -560,7 +560,7 @@ async function mountAttendanceImpl({
       <div class="attrec-head" style="display:none !important; margin:0; padding:0; height:0; overflow:hidden;">
         <div id="rosterSummary" class="attrec-summary" aria-live="polite" style="display: flex; gap: 12px; margin-bottom: 0px;"></div>
       </div>
-      <div id="rosterTable" class="attrec-table"></div>
+      <div id="rosterTable" class="attrec-table" style="margin:0; padding:0;"></div>
     </div>
   `;
   content.appendChild(rosterWrap);
