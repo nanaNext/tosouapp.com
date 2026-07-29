@@ -695,7 +695,7 @@ async function mountAttendanceImpl({
       }
       let currentPage = 1;
       const isMobile = window.innerWidth <= 768;
-      const pageSize = isMobile ? 1000 : 10;
+      const pageSize = isMobile ? 20 : 10;
       const renderTablePage = () => {
         if (!host) return;
         host.innerHTML = '';
@@ -1262,10 +1262,10 @@ async function mountAttendanceImpl({
         host.appendChild(tableWrap);
 
         // Pagination controls
-        if (items.length > 0 && !isMobile) {
+        if (items.length > pageSize) {
           const totalPages = Math.ceil(items.length / pageSize);
           const paginationDiv = document.createElement('div');
-          paginationDiv.className = 'pagination-controls desktop-only'; // Added desktop-only class
+          paginationDiv.className = 'pagination-controls';
           paginationDiv.style.display = 'flex';
           paginationDiv.style.alignItems = 'center';
           paginationDiv.style.justifyContent = 'flex-end'; /* Fiori aligns to the right */
