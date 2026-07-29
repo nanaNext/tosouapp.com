@@ -549,6 +549,11 @@ export async function bootAttendanceRecordsPage() {
             main.content {
               padding-top: var(--topbar-height) !important;
             }
+            /* Remove empty search/filter containers that show as empty boxes */
+            .attrec-controls:empty,
+            .attrec-head:empty { display: none !important; }
+            #attendanceRecordsHost > div > .dash-card > .attrec-controls { display: none !important; }
+            #attendanceRecordsHost > div > .dash-card > .attrec-head { display: none !important; }
           }
         `;
         document.head.appendChild(style);
