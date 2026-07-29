@@ -554,7 +554,7 @@ async function mountAttendanceImpl({
         }
       }
     </style>
-    <div class="dash-card attrec-fiori-override" style="background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 16px !important;">
+    <div class="dash-card attrec-fiori-override" style="background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 !important;">
       <div class="attrec-controls" style="margin-bottom: 0; flex-shrink: 0; padding: 4px 0 !important; background: transparent !important; border: none !important; overflow: visible !important; display: flex !important;">
       </div>
       <div class="attrec-head" style="flex-shrink: 0; display: none !important; margin-bottom: 0 !important; min-height: 0 !important;">
