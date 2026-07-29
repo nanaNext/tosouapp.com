@@ -549,8 +549,6 @@ export async function bootAttendanceRecordsPage() {
             main.content {
               padding-top: var(--topbar-height) !important;
             }
-            /* Hide search input on mobile - it shows as empty useless box */
-            .topbar-inner .search { display: none !important; }
           }
         `;
         document.head.appendChild(style);
