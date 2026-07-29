@@ -16,10 +16,10 @@
   
   <%- include('_partials/employee-header.ejs') %>
 
-  <main class="content attendance-records-content" style="padding-top: 100px;">
+  <main class="content attendance-records-content" style="padding-top: calc(var(--topbar-height, 56px) + var(--subbar-height, 40px));">
     <style>
       @media (max-width: 768px) {
-        .attendance-records-content { padding-top: 0 !important; margin-top: -16px !important; }
+        .attendance-records-content { padding-top: var(--topbar-height, 56px) !important; margin-top: 0 !important; }
       }
     </style>
     <div style="max-width: 100%; margin: 0 auto; width: 100%; min-height: 80vh; padding: 0;">
