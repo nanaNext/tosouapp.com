@@ -290,6 +290,8 @@ export async function mount() {
           width: 38px;
           height: 20px;
           flex: 0 0 auto;
+          border-radius: 999px;
+          overflow: hidden;
         }
         .notice-switch input {
           opacity: 0;
