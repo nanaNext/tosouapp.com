@@ -611,11 +611,11 @@ body {
   background: #ffffff;
   pointer-events: none;
 }
-/* Trạng thái đang làm việc: text xanh đậm, subtle */
+/* Trạng thái đang làm việc: text xanh da trời, subtle */
 .simple-stamp-time.is-working {
-  color: #059669 !important;
+  color: #1d4ed8 !important;
   font-weight: 700 !important;
-  background: #f0fdf4 !important;
+  background: #eff6ff !important;
   border-color: #93c5fd !important;
 }
 .simple-stamp-stack {
