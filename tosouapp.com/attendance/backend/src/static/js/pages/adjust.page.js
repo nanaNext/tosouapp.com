@@ -582,11 +582,6 @@ const renderForm = async () => {
 
   els.date?.addEventListener('change', loadDay);
 
-  // Month filter change → re-render list
-  document.getElementById('adjustMonthFilter')?.addEventListener('change', () => {
-    renderList();
-  });
-
   await loadDay();
 
   const handleApply = async () => {
@@ -1175,7 +1170,7 @@ const renderList = async () => {
           }
         </style>
 
-        <div id="sapHistoryBlock" class="sap-history-block" style="display: none;">
+        <div id="sapHistoryBlock" class="sap-history-block" style="display: ${document.getElementById('tabHistory')?.classList?.contains('active') ? 'block' : 'none'};">
             <div class="sap-history-body">
               <div class="sap-table-wrap">
               <table class="sap-compact-table">
@@ -1381,4 +1376,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   await renderForm();
   await renderList();
+
+  // Month filter change → re-render list (must be after renderList creates the element)
+  document.getElementById('adjustMonthFilter')?.addEventListener('change', () => {
+    renderList();
+  });
 });
