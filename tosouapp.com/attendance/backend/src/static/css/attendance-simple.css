@@ -946,8 +946,8 @@ body {
   .simple-actuals-right { display: none; }
   .simple-row { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
   .simple-time { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
-  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) 90px auto; gap: 10px; }
-  .simple-stamp-btn { font-size: 14px; padding: 8px 10px; min-width: 0; white-space: nowrap; }
+  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) 90px 1fr; gap: 10px; }
+  .simple-stamp-btn { font-size: 14px; padding: 8px 10px; min-width: 0; white-space: nowrap; justify-self: end; }
   .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
   .simple-grid2 .simple-time { display: contents; }
   .simple-grid2 .simple-label {
@@ -1115,7 +1115,7 @@ body {
   .simple-stamp-btn {
     width: auto;
     max-width: none;
-    justify-self: start;
+    justify-self: end;
     justify-content: center;
     text-align: center;
     font-size: 13px;
@@ -1168,7 +1168,7 @@ body {
     grid-column: auto;
     width: auto;
     max-width: none;
-    justify-self: start;
+    justify-self: end;
     justify-content: center;
     text-align: center;
     font-size: 12px;
