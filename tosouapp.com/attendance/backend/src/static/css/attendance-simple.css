@@ -946,8 +946,8 @@ body {
   .simple-actuals-right { display: none; }
   .simple-row { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
   .simple-time { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
-  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) 90px 1fr; gap: 10px; }
-  .simple-stamp-btn { font-size: 14px; padding: 8px 10px; min-width: 0; white-space: nowrap; justify-self: end; }
+  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) 90px 130px; gap: 10px; }
+  .simple-stamp-btn { font-size: 14px; padding: 8px 10px; min-width: 0; white-space: nowrap; justify-self: end; width: 100%; text-align: center; }
   .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
   .simple-grid2 .simple-time { display: contents; }
   .simple-grid2 .simple-label {
@@ -1097,7 +1097,7 @@ body {
 /* Extra-compact phones: prevent time box and stamp button overlap */
 @media (max-width: 414px) {
   .simple-stamp-row {
-    grid-template-columns: minmax(84px, 96px) 80px auto;
+    grid-template-columns: minmax(84px, 96px) 80px 110px;
     gap: 6px;
   }
   .simple-stamp-time,
@@ -1113,13 +1113,13 @@ body {
     padding: 8px 0;
   }
   .simple-stamp-btn {
-    width: auto;
+    width: 100%;
     max-width: none;
-    justify-self: end;
+    justify-self: stretch;
     justify-content: center;
     text-align: center;
     font-size: 13px;
-    padding: 8px 12px;
+    padding: 8px 6px;
     min-width: 0;
   }
 }
@@ -1161,18 +1161,18 @@ body {
     height: 44px !important;
   }
   .simple-stamp-row {
-    grid-template-columns: 72px 76px auto;
+    grid-template-columns: 72px 76px 100px;
     gap: 4px;
   }
   .simple-stamp-btn {
     grid-column: auto;
-    width: auto;
+    width: 100%;
     max-width: none;
-    justify-self: end;
+    justify-self: stretch;
     justify-content: center;
     text-align: center;
     font-size: 12px;
-    padding: 8px 8px;
+    padding: 8px 4px;
     box-sizing: border-box;
     min-width: 0;
     white-space: nowrap;
