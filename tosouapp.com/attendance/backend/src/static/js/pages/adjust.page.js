@@ -868,6 +868,9 @@ const renderList = async () => {
     const tr = pagedRows.map((r) => {
       const cin  = String(r.requestedCheckIn  || '').slice(0, 16).replace('T', ' ');
       const cout = String(r.requestedCheckOut || '').slice(0, 16).replace('T', ' ');
+      const cinTime = String(r.requestedCheckIn || '').slice(11, 16) || '—';
+      const coutTime = String(r.requestedCheckOut || '').slice(11, 16) || '—';
+      const targetDate = r.requestedCheckIn ? String(r.requestedCheckIn).slice(0, 10) : '—';
       const st = String(r.status || 'pending');
       let stLabel, stClass;
       if (st === 'approved') { stLabel = '承認済み'; stClass = 'adj-status-approved'; }
@@ -876,7 +879,11 @@ const renderList = async () => {
       const created = r.created_at ? String(r.created_at).slice(0, 16).replace('T', ' ') : '—';
       const appNo = `R-${String(r.id).padStart(7, '0')}`;
       const detail = `
-        <div style="white-space:pre-wrap;word-break:break-word;">${esc(r.reason || '')}</div>
+        <div style="font-size:12px;line-height:1.6;">
+          <div><strong>出勤:</strong> ${cinTime}</div>
+          <div><strong>退勤:</strong> ${coutTime}</div>
+          ${r.reason ? `<div style="margin-top:4px;"><strong>理由:</strong> ${esc(r.reason)}</div>` : ''}
+        </div>
         ${r.admin_note ? `<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;"><strong>差戻し理由:</strong> ${esc(r.admin_note)}</div>` : ''}
       `;
       const type = '打刻修正（申請）';
@@ -892,6 +899,7 @@ const renderList = async () => {
         <td data-label="申請番号"><div class="mobile-td-content"><a href="#" data-jump="${r.id}" style="color:#005eb8; text-decoration:none; font-weight:600;">${appNo}</a></div></td>
         <td data-label="ステータス"><div class="mobile-td-content"><span class="sap-badge ${stClass}">${esc(stLabel)}</span></div></td>
         <td data-label="レコードタイプ"><div class="mobile-td-content">${type}</div></td>
+        <td data-label="対象日"><div class="mobile-td-content">${targetDate}</div></td>
         <td data-label="申請詳細"><div class="mobile-td-content">${detail}</div></td>
         <td data-label="作成日時"><div class="mobile-td-content">${created}</div></td>
         <td data-label="アクション"><div class="mobile-td-content">${actions}</div></td>
@@ -1002,15 +1010,16 @@ const renderList = async () => {
           .sap-compact-table th, .sap-compact-table td { border: 1px solid #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .sap-compact-table th { background: #e0f2fe; padding: 6px 8px; font-size: 11px; font-weight: 700; color: #1e293b; text-align: center; white-space: nowrap; }
           .sap-compact-table td { padding: 6px 8px; font-size: 12px; color: #1e293b; vertical-align: middle; text-align: center; }
-          .sap-compact-table td:nth-child(4) { text-align: left; } /* 申請詳細 align left */
+          .sap-compact-table td:nth-child(5) { text-align: left; } /* 申請詳細 align left */
           
           /* Điều chỉnh độ rộng các cột cố định */
           .sap-compact-table th:nth-child(1) { width: 100px; } /* 申請番号 */
           .sap-compact-table th:nth-child(2) { width: 90px; }  /* ステータス */
           .sap-compact-table th:nth-child(3) { width: 130px; } /* レコードタイプ */
-          .sap-compact-table th:nth-child(4) { width: 150px; } /* 申請詳細 */
-          .sap-compact-table th:nth-child(5) { width: 130px; } /* 作成日時 */
-          .sap-compact-table th:nth-child(6) { width: 100px; } /* アクション */
+          .sap-compact-table th:nth-child(4) { width: 100px; } /* 対象日 */
+          .sap-compact-table th:nth-child(5) { width: 150px; } /* 申請詳細 */
+          .sap-compact-table th:nth-child(6) { width: 130px; } /* 作成日時 */
+          .sap-compact-table th:nth-child(7) { width: 100px; } /* アクション */
 
           .sap-compact-table tr:hover { background: #f1f5f9; }
           .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; white-space: nowrap; }
@@ -1169,6 +1178,7 @@ const renderList = async () => {
                     <th>申請番号</th>
                     <th>ステータス</th>
                     <th>レコードタイプ</th>
+                    <th>対象日</th>
                     <th>申請詳細</th>
                     <th>作成日時</th>
                     <th>アクション</th>
