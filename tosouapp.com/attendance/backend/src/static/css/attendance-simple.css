@@ -946,7 +946,7 @@ body {
   .simple-actuals-right { display: none; }
   .simple-row { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
   .simple-time { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
-  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) 1fr auto; gap: 10px; }
+  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) 90px auto; gap: 10px; }
   .simple-stamp-btn { font-size: 14px; padding: 8px 10px; min-width: 0; white-space: nowrap; }
   .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
   .simple-grid2 .simple-time { display: contents; }
@@ -1097,7 +1097,7 @@ body {
 /* Extra-compact phones: prevent time box and stamp button overlap */
 @media (max-width: 414px) {
   .simple-stamp-row {
-    grid-template-columns: minmax(84px, 96px) 1fr 1fr;
+    grid-template-columns: minmax(84px, 96px) 80px 1fr;
     gap: 6px;
   }
   .simple-stamp-time,
@@ -1161,7 +1161,7 @@ body {
     height: 44px !important;
   }
   .simple-stamp-row {
-    grid-template-columns: 72px 1fr 1fr;
+    grid-template-columns: 72px 76px 1fr;
     gap: 4px;
   }
   .simple-stamp-btn {
