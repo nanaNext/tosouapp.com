@@ -946,9 +946,8 @@ body {
   .simple-actuals-right { display: none; }
   .simple-row { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
   .simple-time { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 10px; }
-  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) minmax(0, 1fr); gap: 6px 10px; }
-  .simple-stamp-row .simple-label { grid-row: 1; align-self: center; height: 44px !important; }
-  .simple-stamp-btn { grid-column: 2; font-size: 13px; padding: 6px 10px; min-width: 0; white-space: nowrap; justify-self: end; }
+  .simple-stamp-row { grid-template-columns: minmax(120px, 140px) 1fr auto; gap: 10px; }
+  .simple-stamp-btn { font-size: 14px; padding: 8px 10px; min-width: 0; white-space: nowrap; }
   .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
   .simple-grid2 .simple-time { display: contents; }
   .simple-grid2 .simple-label {
