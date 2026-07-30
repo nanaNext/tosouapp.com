@@ -611,6 +611,13 @@ body {
   background: #ffffff;
   pointer-events: none;
 }
+/* Trạng thái đang làm việc: ô thời gian sáng xanh */
+.simple-stamp-time.is-working {
+  background: #dcfce7 !important;
+  border-color: #22c55e !important;
+  color: #166534 !important;
+  font-weight: 600 !important;
+}
 .simple-stamp-stack {
   display: grid;
   grid-template-columns: 1fr;
