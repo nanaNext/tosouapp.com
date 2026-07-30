@@ -241,7 +241,7 @@ body {
   padding: 8px 12px;
   border-top: 0;
   position: sticky;
-  top: calc(59px + env(safe-area-inset-top, 0px)); /* Nhích lên 1px để đè lên khe hở */
+  top: calc(60px + env(safe-area-inset-top, 0px));
   margin-top: -1px;
   z-index: 2400;
   box-shadow: 0 2px 0 #1f3553, 0 -2px 0 #1f3553;
@@ -618,7 +618,7 @@ body {
 }
 .simple-stamp-row {
   display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(120px, 1fr) minmax(140px, 220px);
+  grid-template-columns: minmax(160px, 220px) 1fr auto;
   gap: 14px;
   align-items: stretch;
   min-width: 0;
@@ -1095,8 +1095,8 @@ body {
 /* Extra-compact phones: prevent time box and stamp button overlap */
 @media (max-width: 430px) {
   .simple-stamp-row {
-    grid-template-columns: minmax(84px, 96px) minmax(76px, 90px) 1fr;
-    gap: 8px;
+    grid-template-columns: minmax(84px, 96px) 1fr 1fr;
+    gap: 6px;
   }
   .simple-stamp-time,
   .simple-time-input,
@@ -1112,8 +1112,8 @@ body {
   }
   .simple-stamp-btn {
     width: 100%;
-    max-width: 120px;
-    justify-self: flex-end;
+    max-width: none;
+    justify-self: stretch;
     justify-content: center;
     text-align: center;
     font-size: 12px;
@@ -1122,74 +1122,75 @@ body {
   }
 }
 
-/* Galaxy Fold folded-width tuning: apply only to very narrow Android-like widths */
-@media (min-width: 341px) and (max-width: 360px) {
-  .simple-top { height: 44px; padding: 0 8px; }
-  .simple-nav-btn { width: 32px; height: 32px; font-size: 20px; }
-  .simple-date { font-size: 19px; }
+/* Compact phones (320px–374px): Galaxy S9+, SE, small Androids — giữ 2 cột nhưng thu gọn */
+@media (max-width: 374px) {
+  .simple-top { height: 46px; padding: 0 6px; }
+  .simple-nav-btn { width: 30px; height: 30px; font-size: 18px; }
+  .simple-date { font-size: 18px; }
   .simple-sub { font-size: 12px; gap: 4px; }
-  .simple-panel-head { padding: 7px 8px; gap: 8px; }
-  .simple-panel-title { font-size: 15px; }
-  .simple-head-right { font-size: 15px; }
+  .simple-panel-head { padding: 7px 8px; gap: 6px; }
+  .simple-panel-title { font-size: 14px; }
+  .simple-head-right { font-size: 13px; }
   .simple-panel-body { padding: 8px; }
   .simple-actuals-left { padding: 8px; }
   .simple-form { gap: 8px; }
   .simple-row,
-  .simple-time { grid-template-columns: minmax(104px, 116px) minmax(0, 1fr); gap: 8px; }
-  .simple-label { font-size: 15px; padding: 8px 8px; }
+  .simple-time { grid-template-columns: 90px minmax(0, 1fr); gap: 6px; }
+  .simple-label { font-size: 14px; padding: 6px 6px; white-space: nowrap; }
+  .simple-row .simple-label,
+  .simple-time .simple-label,
+  .simple-stamp-row .simple-label { font-size: 13px; padding: 0 6px; height: 40px !important; }
   .simple-select,
   .simple-input,
   .simple-number,
   .simple-stamp-time { font-size: 15px; }
-  .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+  .simple-grid2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; align-items: stretch; }
   .simple-grid2 .simple-time { display: contents; }
   .simple-grid2 .simple-label {
-    font-size: 14px;
-    padding: 6px 6px;
+    font-size: 13px;
+    padding: 6px 4px;
     justify-content: flex-start;
     white-space: nowrap;
   }
   .simple-grid2 .simple-select {
     font-size: 14px;
-    padding: 8px 22px 8px 8px;
+    padding: 8px 20px 8px 6px;
     min-height: 44px !important;
     height: 44px !important;
   }
   .simple-stamp-row {
-    grid-template-columns: minmax(84px, 96px) minmax(72px, 86px) minmax(108px, 1fr);
-    gap: 6px;
+    grid-template-columns: 72px 1fr 1fr;
+    gap: 4px;
   }
   .simple-stamp-btn {
     grid-column: auto;
     width: 100%;
-    max-width: 110px;
-    justify-self: flex-end;
+    max-width: none;
+    justify-self: stretch;
     justify-content: center;
     text-align: center;
-    font-size: 11px;
+    font-size: 12px;
     padding: 8px 4px;
     box-sizing: border-box;
     min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .simple-stamp-time {
     max-width: none;
     justify-self: stretch;
+    font-size: 15px;
   }
-  .simple-bottom { gap: 8px; padding: 8px; }
+  .simple-bottom { gap: 6px; padding: 8px; }
   .simple-monthly-link,
-  .simple-bottom .simple-btn { height: 42px !important; font-size: 14px; padding: 8px 10px; box-sizing: border-box; }
-  .simple-monthly-link { gap: 6px; }
-  .simple-icon-pc { width: 26px; height: 18px; }
-}
-
-/* Fallback cho màn hình rất hẹp: xếp dọc để luôn hiển thị đủ chữ */
-@media (max-width: 330px) {
-  .simple-row,
-  .simple-time { grid-template-columns: 1fr; }
-  .simple-row label,
-  .simple-time label { height: 28px !important; font-size: 14px; padding: 6px; }
-  .simple-stamp-row { grid-template-columns: 1fr; }
-  .simple-stamp-time,
-  .simple-time-input,
-  .simple-stamp-btn { width: 100%; min-width: 0; }
+  .simple-bottom .simple-btn { height: 42px !important; font-size: 13px; padding: 8px 8px; box-sizing: border-box; }
+  .simple-monthly-link { gap: 4px; }
+  .simple-icon-pc { width: 24px; height: 16px; }
+  .simple-worktype-buttons { gap: 6px; }
+  .simple-wt-btn { padding: 8px 4px; }
+  .simple-wt-btn .simple-wt-title { font-size: 14px; }
+  .simple-shift-info { margin: 8px; padding: 6px 10px; font-size: 13px; }
+  .simple-tab { font-size: 13px; padding: 5px 8px; }
+  .simple-tabs { gap: 6px; padding: 6px 8px; top: calc(46px + env(safe-area-inset-top, 0px)); }
 }
