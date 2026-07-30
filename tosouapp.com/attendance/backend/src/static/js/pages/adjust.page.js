@@ -848,10 +848,10 @@ const renderList = async () => {
       currentPage = 1;
     }
 
-    // Lọc dữ liệu theo tháng được chọn
+    // Lọc dữ liệu theo tháng được chọn (dùng 対象日 = requestedCheckIn)
     const filteredRows = rows.filter(r => {
-      const created = r.created_at ? String(r.created_at).slice(0, 7) : '';
-      return created === selectedMonth;
+      const target = r.requestedCheckIn ? String(r.requestedCheckIn).slice(0, 7) : (r.created_at ? String(r.created_at).slice(0, 7) : '');
+      return target === selectedMonth;
     });
 
     const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
