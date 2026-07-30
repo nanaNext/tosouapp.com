@@ -676,6 +676,16 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
         btnOut.disabled = true;
       } else btnOut.textContent = '終了打刻';
     }
+
+    // Highlight thời gian khi đang làm việc (đã check-in, chưa check-out)
+    const stEl = $('#startTime');
+    if (stEl) {
+      if (hasStarted && !hasEnded && canStamp) {
+        stEl.classList.add('is-working');
+      } else {
+        stEl.classList.remove('is-working');
+      }
+    }
   } catch (e) { /* silently ignored */ }
 };
 
