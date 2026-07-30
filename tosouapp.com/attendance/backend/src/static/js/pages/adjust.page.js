@@ -581,6 +581,12 @@ const renderForm = async () => {
   }
 
   els.date?.addEventListener('change', loadDay);
+
+  // Month filter change → re-render list
+  document.getElementById('adjustMonthFilter')?.addEventListener('change', () => {
+    renderList();
+  });
+
   await loadDay();
 
   const handleApply = async () => {
