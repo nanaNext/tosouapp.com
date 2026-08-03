@@ -223,6 +223,61 @@ module.exports = function(app) {
     }
   });
 
+  // Send shift reminder to specific users by userIds
+  // POST /api/admin/shift-reminder/send  body: { month, userIds: [1,2,3] }
+  app.post('/api/admin/shift-reminder/send', authenticate, authorize('admin'), async (req, res) => {
+    try {
+      const emailService = require('../core/notifications/email.service');
+      if (!emailService.canSendMail()) {
+        return res.status(400).json({ ok: false, error: 'Email service not configured' });
+      }
+
+      const { month, userIds } = req.body || {};
+      console.log('[shift-reminder/send] body:', JSON.stringify(req.body));
+      if (!month || !Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ ok: false, error: 'month and userIds[] are required', received: { month, userIdsType: typeof userIds, isArray: Array.isArray(userIds), length: Array.isArray(userIds) ? userIds.length : null } });
+      }
+
+      const targetMonthStr = String(month).trim();
+      const idList = userIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+      if (idList.length === 0) return res.status(400).json({ ok: false, error: 'No valid userIds' });
+
+      const placeholders = idList.map(() => '?').join(',');
+      const [users] = await db.query(
+        `SELECT u.id, u.email, u.username, u.employment_type FROM users u
+         WHERE u.id IN (${placeholders}) AND u.employment_status = 'active' AND u.role = 'employee'`,
+        idList
+      );
+
+      const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
+      const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+      const results = [];
+
+      for (const user of users) {
+        if (!user.email) {
+          results.push({ userId: user.id, username: user.username, status: 'skipped', reason: 'no_email' });
+          continue;
+        }
+        const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
+        const subject = `[飯塚塗研株式会社] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
+        const text = `${user.username} 様\n\nお疲れ様です。\n来月（${targetMonthStr}）のシフト提出のお願いです。\n\n▼ シフト提出はこちらから\n${appUrl}ui/shifts`;
+        const html = `<p>${user.username} 様</p><p>お疲れ様です。<br>来月（<strong>${targetMonthStr}</strong>）のシフト提出のお願いです。</p><p><a href="${appUrl}ui/shifts">${appUrl}ui/shifts</a></p><hr><p style="font-size:12px;color:#666;">このメッセージはシステムにより自動送信されております。</p>`;
+        try {
+          await emailService.sendViaResend({ from: senderFrom, to: user.email, subject, html, text });
+          results.push({ userId: user.id, username: user.username, email: user.email, status: 'sent' });
+        } catch (err) {
+          results.push({ userId: user.id, username: user.username, email: user.email, status: 'error', error: err.message });
+        }
+      }
+
+      const sent = results.filter(r => r.status === 'sent').length;
+      const errors = results.filter(r => r.status === 'error').length;
+      return res.json({ ok: true, targetMonth: targetMonthStr, sent, errors, results });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   if (allowDebugRoutes) {
     app.get('/api/debug/version', authenticate, authorize('employee','manager','admin','payroll'), (req, res) => {
       res.status(200).json({ buildId: BUILD_ID, startedAt: STARTED_AT, pid: process.pid });
