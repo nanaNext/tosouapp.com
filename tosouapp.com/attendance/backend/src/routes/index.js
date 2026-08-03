@@ -106,25 +106,118 @@ module.exports = function(app) {
   app.use('/api/branches', branchRoutes);
 
   // Test mail route — admin only, never expose in production without auth
+  // GET /api/test-mail?email=someone@example.com
   app.get('/api/test-mail', authenticate, authorize('admin'), async (req, res) => {
     try {
       const emailService = require('../core/notifications/email.service');
-      const { mailFrom, mailProvider } = require('../config/env');
+      const { mailFrom, mailProvider, smtpHost, smtpPort, smtpUser } = require('../config/env');
+      const canSend = emailService.canSendMail();
+      if (!canSend) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Email service not configured (canSendMail = false)',
+          debug: {
+            mailProvider: mailProvider || '(not set)',
+            mailFrom: mailFrom || '(not set)',
+            smtpHost: smtpHost || '(not set)',
+            smtpPort: smtpPort || '(not set)',
+            smtpUser: smtpUser || '(not set)',
+            smtpPass: process.env.SMTP_PASS ? '(set)' : '(not set)'
+          }
+        });
+      }
+      const targetEmail = req.query.email || req.user.email;
       await emailService.sendViaResend({
         from: mailFrom,
-        to: req.query.email || req.user.email,
-        subject: 'TEST EMAIL SYSTEM',
-        text: 'This is a test email sent from /api/test-mail',
-        html: '<p>This is a test email sent from /api/test-mail</p>'
+        to: targetEmail,
+        subject: '[TEST] メールシステムテスト送信',
+        text: 'これはテスト送信メールです。\nEmail system is working correctly.',
+        html: '<p>これはテスト送信メールです。</p><p><strong>Email system is working correctly.</strong></p><p style="color:#888;font-size:12px;">Sent via /api/test-mail</p>'
       });
       res.json({ 
         ok: true, 
-        message: 'Mail sent successfully',
+        message: `Mail sent successfully to: ${targetEmail}`,
         debug: {
           mailProvider,
-          canSend: emailService.canSendMail()
+          mailFrom,
+          smtpHost: smtpHost || '(not set)',
+          smtpPort: smtpPort || '(not set)',
+          smtpUser: smtpUser || '(not set)',
+          smtpPass: process.env.SMTP_PASS ? '(set)' : '(not set)',
+          canSend
         }
       });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // Trigger shift submission reminder manually (bypass day-of-month check)
+  app.post('/api/admin/test/shift-reminder', authenticate, authorize('admin'), async (req, res) => {
+    try {
+      const emailService = require('../core/notifications/email.service');
+      if (!emailService.canSendMail()) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Email service not configured',
+          hint: 'Check MAIL_PROVIDER, MAIL_FROM, SMTP_HOST/SMTP_USER/SMTP_PASS in .env'
+        });
+      }
+
+      // Tháng mục tiêu: lấy từ query ?month=2026-09 hoặc tự tính tháng sau
+      let targetMonthStr = req.query.month;
+      if (!targetMonthStr) {
+        const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
+        let y = nowJST.getUTCFullYear();
+        let m = nowJST.getUTCMonth() + 2;
+        if (m > 12) { m = 1; y += 1; }
+        targetMonthStr = `${y}-${String(m).padStart(2, '0')}`;
+      }
+
+      const [users] = await db.query(`
+        SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName
+        FROM users u
+        LEFT JOIN departments d ON u.departmentId = d.id
+        WHERE u.employment_status = 'active' AND u.role = 'employee'
+      `);
+
+      if (!users || users.length === 0) {
+        return res.json({ ok: true, sent: 0, skipped: 0, targetMonth: targetMonthStr, note: 'No active employees found' });
+      }
+
+      // Nếu có query ?dry_run=true thì chỉ trả về danh sách, không gửi thật
+      const isDryRun = String(req.query.dry_run || '').toLowerCase() === 'true';
+
+      const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
+      const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+      const results = [];
+
+      for (const user of users) {
+        if (!user.email) {
+          results.push({ userId: user.id, username: user.username, status: 'skipped', reason: 'no_email' });
+          continue;
+        }
+
+        const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
+        const subject = `[TEST] [飯塚塗研株式会社] 来月（${targetMonthStr}）のシフト提出のお願い`;
+        const text = `[TEST EMAIL]\n\n${user.username} 様\n\nこれはシフト提出リマインダーのテスト送信です。\n対象月: ${targetMonthStr}\n\n▼ シフト提出はこちらから\n${appUrl}ui/shifts`;
+        const html = `<p><strong>[TEST EMAIL]</strong></p><p>${user.username} 様</p><p>これはシフト提出リマインダーのテスト送信です。</p><p>対象月: <strong>${targetMonthStr}</strong></p><p><a href="${appUrl}ui/shifts">${appUrl}ui/shifts</a></p>`;
+
+        if (isDryRun) {
+          results.push({ userId: user.id, username: user.username, email: user.email, type: isSeishain ? '正社員' : 'バイト', status: 'dry_run' });
+        } else {
+          try {
+            await emailService.sendViaResend({ from: senderFrom, to: user.email, subject, html, text });
+            results.push({ userId: user.id, username: user.username, email: user.email, status: 'sent' });
+          } catch (err) {
+            results.push({ userId: user.id, username: user.username, email: user.email, status: 'error', error: err.message });
+          }
+        }
+      }
+
+      const sent = results.filter(r => r.status === 'sent').length;
+      const errors = results.filter(r => r.status === 'error').length;
+      return res.json({ ok: true, targetMonth: targetMonthStr, isDryRun, sent, errors, results });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
