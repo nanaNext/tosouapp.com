@@ -47,24 +47,46 @@ export async function mount(options = {}) {
 
       <!-- Shift Reminder Test Section -->
       <div class="settings-section" style="margin-bottom:32px;border:1px solid #e2e8f0;border-radius:8px;padding:20px;">
-        <h3 style="margin:0 0 12px;font-size:15px;font-weight:700;">📅 シフト提出リマインダー テスト</h3>
+        <h3 style="margin:0 0 12px;font-size:15px;font-weight:700;">📅 シフト提出リマインダー</h3>
         <p style="margin:0 0 16px;font-size:13px;color:#475569;line-height:1.6;">
-          全アクティブ従業員にシフト提出リマインダーメールを手動送信します。<br>
-          本番では毎月<strong>15日・25日・月末</strong>の15:00 (JST) に自動送信されます。
+          本番では毎月<strong>15日・25日・月末</strong>の15:00 (JST) に自動送信されます。<br>
+          手動送信する場合は、対象月を選んで「対象者を読み込む」を押してから送信対象を選んでください。
         </p>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
           <label style="font-size:13px;color:#374151;">対象月:</label>
           <input id="reminderMonth" type="month" style="height:34px;padding:0 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" />
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <button id="btnDryRun" type="button" style="height:36px;padding:0 20px;background:#64748b;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
-            対象者確認 (送信なし)
-          </button>
-          <button id="btnSendReminder" type="button" style="height:36px;padding:0 20px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
-            実際に送信する
+          <button id="btnLoadEmployees" type="button" style="height:36px;padding:0 18px;background:#64748b;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+            対象者を読み込む
           </button>
         </div>
-        <div id="reminderResult" style="margin-top:14px;font-size:13px;"></div>
+        <div id="reminderEmployeeList" style="display:none;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <label style="font-size:13px;font-weight:600;color:#374151;" id="reminderCountLabel"></label>
+            <label style="font-size:12px;color:#64748b;cursor:pointer;">
+              <input type="checkbox" id="chkSelectAll" style="margin-right:4px;">全選択 / 全解除
+            </label>
+          </div>
+          <div style="max-height:300px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;">
+            <table id="reminderTable" style="font-size:12px;border-collapse:collapse;width:100%;">
+              <thead>
+                <tr style="background:#f8fafc;position:sticky;top:0;">
+                  <th style="padding:6px 8px;text-align:center;width:36px;border-bottom:1px solid #e2e8f0;"></th>
+                  <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0;">氏名</th>
+                  <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0;">メール</th>
+                  <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0;">種別</th>
+                </tr>
+              </thead>
+              <tbody id="reminderTableBody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button id="btnSendSelected" type="button" style="height:36px;padding:0 20px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+              選択した人に送信
+            </button>
+            <span id="reminderSendStatus" style="font-size:13px;"></span>
+          </div>
+        </div>
+        <div id="reminderResult" style="margin-top:8px;font-size:13px;"></div>
       </div>
 
       <!-- Other Settings -->
@@ -194,66 +216,130 @@ export async function mount(options = {}) {
     monthInput.value = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`;
   }
 
-  function renderReminderResult(data, isDryRun) {
-    const el = document.getElementById('reminderResult');
-    if (!data || !el) return;
-    if (!data.ok) {
-      el.innerHTML = `<span style="color:#dc2626;">❌ エラー: ${data.error || JSON.stringify(data)}</span>`;
-      return;
-    }
-    const rows = (data.results || []).map(r => {
-      const icon = r.status === 'sent' ? '✅' : r.status === 'dry_run' ? '🔍' : r.status === 'skipped' ? '⚠️' : '❌';
-      const detail = r.error ? ` (${r.error})` : r.reason ? ` (${r.reason})` : r.type ? ` [${r.type}]` : '';
-      return `<tr>
-        <td style="padding:4px 8px;">${icon}</td>
-        <td style="padding:4px 8px;">${r.username || '-'}</td>
-        <td style="padding:4px 8px;color:#64748b;">${r.email || '-'}</td>
-        <td style="padding:4px 8px;">${r.status}${detail}</td>
-      </tr>`;
-    }).join('');
-    el.innerHTML = `
-      <div style="margin-bottom:8px;font-weight:600;color:${isDryRun ? '#475569' : '#16a34a'};">
-        ${isDryRun ? `🔍 ドライラン完了 — 対象: ${data.results?.length || 0}名` : `✅ 送信完了 — 成功: ${data.sent}件 / エラー: ${data.errors}件`}
-        &nbsp;<span style="color:#94a3b8;font-weight:400;">対象月: ${data.targetMonth}</span>
-      </div>
-      ${rows ? `<div style="max-height:320px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;"><table style="font-size:12px;border-collapse:collapse;width:100%;">${rows}</table></div>` : '<span style="color:#64748b;">対象者なし</span>'}
-    `;
+  // Store loaded employees
+  let loadedEmployees = [];
+
+  function updateCountLabel() {
+    const checked = document.querySelectorAll('.reminder-chk:checked').length;
+    const total = loadedEmployees.length;
+    const el = document.getElementById('reminderCountLabel');
+    if (el) el.textContent = `${total}名中 ${checked}名 選択中`;
   }
 
-  document.getElementById('btnDryRun')?.addEventListener('click', async () => {
-    const btn = document.getElementById('btnDryRun');
+  function renderEmployeeTable(employees) {
+    const tbody = document.getElementById('reminderTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = employees.map(u => {
+      const type = (u.employment_type === 'full_time' || u.employment_type === '正社員') ? '正社員' : 'バイト';
+      const uid = u.userId ?? u.id;  // dry_run returns userId, fallback to id
+      return `<tr style="border-bottom:1px solid #f1f5f9;">
+        <td style="padding:5px 8px;text-align:center;">
+          <input type="checkbox" class="reminder-chk" data-id="${uid}" checked style="cursor:pointer;width:14px;height:14px;">
+        </td>
+        <td style="padding:5px 8px;">${u.username || '-'}</td>
+        <td style="padding:5px 8px;color:#64748b;">${u.email || '-'}</td>
+        <td style="padding:5px 8px;">${type}</td>
+      </tr>`;
+    }).join('');
+
+    // Attach change listeners for count update
+    document.querySelectorAll('.reminder-chk').forEach(cb => {
+      cb.addEventListener('change', updateCountLabel);
+    });
+    updateCountLabel();
+  }
+
+  // Load employees (dry run)
+  document.getElementById('btnLoadEmployees')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnLoadEmployees');
     const month = document.getElementById('reminderMonth')?.value;
     if (!month) { alert('対象月を選択してください'); return; }
     btn.disabled = true;
-    btn.textContent = '確認中...';
+    btn.textContent = '読み込み中...';
     document.getElementById('reminderResult').innerHTML = '';
     try {
       const res = await fetchJSONAuth(`/api/admin/test/shift-reminder?dry_run=true&month=${encodeURIComponent(month)}`, { method: 'POST' });
-      renderReminderResult(res, true);
+      if (!res.ok) throw new Error(res.error || 'Failed');
+      loadedEmployees = (res.results || []).filter(r => r.email);
+      if (loadedEmployees.length === 0) {
+        document.getElementById('reminderResult').innerHTML = '<span style="color:#64748b;">対象者なし（全員提出済みか従業員がいません）</span>';
+        document.getElementById('reminderEmployeeList').style.display = 'none';
+      } else {
+        renderEmployeeTable(loadedEmployees);
+        document.getElementById('reminderEmployeeList').style.display = 'block';
+        document.getElementById('chkSelectAll').checked = true;
+      }
     } catch (e) {
       document.getElementById('reminderResult').innerHTML = `<span style="color:#dc2626;">❌ ${e.message}</span>`;
     } finally {
       btn.disabled = false;
-      btn.textContent = '対象者確認 (送信なし)';
+      btn.textContent = '対象者を読み込む';
     }
   });
 
-  document.getElementById('btnSendReminder')?.addEventListener('click', async () => {
+  // Select all / deselect all
+  document.getElementById('chkSelectAll')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.reminder-chk').forEach(cb => { cb.checked = e.target.checked; });
+    updateCountLabel();
+  });
+
+  // Send to selected
+  document.getElementById('btnSendSelected')?.addEventListener('click', async () => {
     const month = document.getElementById('reminderMonth')?.value;
     if (!month) { alert('対象月を選択してください'); return; }
-    if (!confirm(`本当に全従業員に${month}のシフト提出リマインダーを送信しますか？`)) return;
-    const btn = document.getElementById('btnSendReminder');
+    const selected = [...document.querySelectorAll('.reminder-chk:checked')].map(cb => Number(cb.dataset.id));
+    if (selected.length === 0) { alert('送信する対象者を選択してください'); return; }
+    if (!confirm(`${selected.length}名に${month}のシフト提出リマインダーを送信しますか？`)) return;
+
+    const btn = document.getElementById('btnSendSelected');
+    const statusEl = document.getElementById('reminderSendStatus');
     btn.disabled = true;
     btn.textContent = '送信中...';
+    statusEl.textContent = '';
     document.getElementById('reminderResult').innerHTML = '';
     try {
-      const res = await fetchJSONAuth(`/api/admin/test/shift-reminder?month=${encodeURIComponent(month)}`, { method: 'POST' });
-      renderReminderResult(res, false);
+      // Use raw fetch to capture error body from 4xx responses
+      const tok = sessionStorage.getItem('accessToken') || '';
+      const csrf = document.cookie.match(/(^| )csrfToken=([^;]+)/)?.[2] || '';
+      const rawRes = await fetch('/api/admin/shift-reminder/send', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': tok ? `Bearer ${tok}` : '',
+          'X-CSRF-Token': csrf
+        },
+        body: JSON.stringify({ month, userIds: selected })
+      });
+      const res = await rawRes.json().catch(() => ({}));
+      if (rawRes.ok && res.ok) {
+        // Update row status in table
+        (res.results || []).forEach(r => {
+          const cb = document.querySelector(`.reminder-chk[data-id="${r.userId}"]`);
+          if (cb) {
+            const row = cb.closest('tr');
+            if (row) {
+              row.style.background = r.status === 'sent' ? '#f0fdf4' : '#fef2f2';
+              const lastTd = row.querySelectorAll('td');
+              if (lastTd[3]) lastTd[3].innerHTML = r.status === 'sent'
+                ? `<span style="color:#16a34a;font-weight:600;">✅ 送信済</span>`
+                : `<span style="color:#dc2626;">❌ エラー</span>`;
+              cb.disabled = true;
+            }
+          }
+        });
+        statusEl.textContent = `✅ 完了 — 成功: ${res.sent}件 / エラー: ${res.errors}件`;
+        statusEl.style.color = res.errors > 0 ? '#d97706' : '#16a34a';
+      } else {
+        const errMsg = res.error || res.message || `HTTP ${rawRes.status}`;
+        const debugInfo = res.received ? ` (received: month=${res.received.month}, userIdsType=${res.received.userIdsType}, isArray=${res.received.isArray}, length=${res.received.length})` : '';
+        throw new Error(errMsg + debugInfo);
+      }
     } catch (e) {
       document.getElementById('reminderResult').innerHTML = `<span style="color:#dc2626;">❌ ${e.message}</span>`;
     } finally {
       btn.disabled = false;
-      btn.textContent = '実際に送信する';
+      btn.textContent = '選択した人に送信';
     }
   });
 

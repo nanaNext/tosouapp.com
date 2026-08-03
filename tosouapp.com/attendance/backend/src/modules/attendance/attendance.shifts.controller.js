@@ -317,7 +317,6 @@ exports.getShiftMatrix = async (req, res) => {
 exports.getAllEmployeeShifts = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
-    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
     const { month } = req.query || {};
     if (!month) return res.status(400).json({ message: 'Missing month' });
 
