@@ -216,7 +216,7 @@ export async function mount(options = {}) {
         ${isDryRun ? `🔍 ドライラン完了 — 対象: ${data.results?.length || 0}名` : `✅ 送信完了 — 成功: ${data.sent}件 / エラー: ${data.errors}件`}
         &nbsp;<span style="color:#94a3b8;font-weight:400;">対象月: ${data.targetMonth}</span>
       </div>
-      ${rows ? `<table style="font-size:12px;border-collapse:collapse;width:100%;max-width:600px;">${rows}</table>` : '<span style="color:#64748b;">対象者なし</span>'}
+      ${rows ? `<div style="max-height:320px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;"><table style="font-size:12px;border-collapse:collapse;width:100%;">${rows}</table></div>` : '<span style="color:#64748b;">対象者なし</span>'}
     `;
   }
 
