@@ -1657,6 +1657,14 @@
       wrap.style.paddingRight = '16px';
       wrap.style.marginTop = '12px';
 
+      // Add 実績表PDF button before 対象社員 label
+      const btnReportMatrix = document.createElement('button');
+      btnReportMatrix.type = 'button';
+      btnReportMatrix.id = 'btnReportMatrix';
+      btnReportMatrix.textContent = '実績表PDF';
+      btnReportMatrix.style.cssText = 'height:24px;padding:0 12px;background:#059669;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;';
+      wrap.appendChild(btnReportMatrix);
+
       const lbl = document.createElement('div');
       lbl.textContent = '対象社員';
       lbl.style.fontWeight = '900';

@@ -1599,6 +1599,210 @@
     }
   };
 
+  // ─── 実績表 Report Matrix ───────────────────────────────────────────────────
+  const bindReportMatrix = () => {
+    const btn = document.getElementById('btnReportMatrix');
+    const modal = document.getElementById('reportMatrixModal');
+    if (!btn || !modal) return;
+
+    const backdrop = document.getElementById('rmBackdrop');
+    const closeBtn = document.getElementById('rmClose');
+    const closeBottom = document.getElementById('rmCloseBottom');
+    const printBtn = document.getElementById('rmPrint');
+    const content = document.getElementById('rmContent');
+    const tabs = modal.querySelectorAll('[data-rm-tab]');
+    let currentMode = 'time';
+    let matrixData = null;
+
+    const closeModal = () => modal.setAttribute('hidden', '');
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (closeBottom) closeBottom.addEventListener('click', closeModal);
+
+    const getDow = (y, m, d) => ['日','月','火','水','木','金','土'][new Date(y, m - 1, d).getDay()];
+
+    const renderMatrix = () => {
+      if (!matrixData || !content) return;
+      const { year, lastDay, employees, month } = matrixData;
+      const [, mon] = month.split('-').map(Number);
+      const title = `${year}年${mon}月 飯塚塗研株式会社 実績表`;
+      const modeLabel = currentMode === 'time' ? '出退勤時間' : currentMode === 'round' ? '出退勤時間(丸め)' : '勤務時間';
+      const modeLabelColor = currentMode === 'round' ? '#2563eb' : currentMode === 'hours' ? '#059669' : '#dc2626';
+
+      let html = `<div style="text-align:center;font-size:15px;font-weight:700;margin:0 0 12px;">${title}</div>`;
+      html += `<div style="text-align:right;font-size:10px;color:${modeLabelColor};font-weight:600;margin-bottom:8px;">表示形式: ${modeLabel}</div>`;
+      html += `<table style="border-collapse:collapse;width:100%;font-size:9px;table-layout:fixed;"><thead><tr>`;
+      html += `<th style="border:1px solid #ccc;padding:3px 2px;background:#fff;text-align:left;width:70px;font-size:8px;overflow:hidden;"></th>`;
+      for (let d = 1; d <= lastDay; d++) {
+        const dow = getDow(year, mon, d);
+        const color = dow === '日' ? '#dc2626' : dow === '土' ? '#2563eb' : '#333';
+        html += `<th style="border:1px solid #ccc;padding:1px;text-align:center;font-weight:400;font-size:8px;"><div style="font-weight:700;">${d}</div><div style="font-size:7px;color:${color};">(${dow})</div></th>`;
+      }
+      html += `<th style="border:1px solid #ccc;padding:1px;text-align:center;font-weight:700;font-size:8px;width:32px;">計</th></tr></thead><tbody>`;
+
+      for (const emp of employees) {
+        html += `<tr><td style="border:1px solid #ccc;padding:1px 2px;white-space:nowrap;font-weight:700;font-size:8px;overflow:hidden;text-overflow:ellipsis;">${emp.username || emp.employeeCode}</td>`;
+        let totalMin = 0;
+        for (let d = 1; d <= lastDay; d++) {
+          const cell = emp.days[d];
+          let cellText = '';
+          if (cell) {
+            if (currentMode === 'time') {
+              if (cell.checkIn && cell.checkOut) cellText = `${cell.checkIn}<br>${cell.checkOut}`;
+              else if (cell.checkIn) cellText = cell.checkIn;
+            } else if (currentMode === 'round') {
+              if (cell.roundedIn && cell.roundedOut) cellText = `${cell.roundedIn}<br>${cell.roundedOut}`;
+            } else {
+              cellText = cell.worked != null && cell.worked > 0 ? cell.worked.toFixed(2) : '';
+            }
+            if (cell.workedMin > 0) totalMin += (currentMode === 'round' ? (cell.roundedWorkedMin || 0) : cell.workedMin);
+          }
+          html += `<td style="border:1px solid #ddd;padding:0 1px;text-align:center;font-size:7px;line-height:1.1;overflow:hidden;">${cellText}</td>`;
+        }
+        const totalH = (totalMin / 60).toFixed(2);
+        html += `<td style="border:1px solid #ccc;padding:2px 4px;text-align:center;font-weight:700;font-size:9px;">${totalMin > 0 ? totalH : ''}</td></tr>`;
+      }
+
+      // Summary rows
+      html += `<tr style="font-weight:700;font-size:9px;"><td style="border:1px solid #ccc;padding:2px 4px;">出勤人数</td>`;
+      let totalAttend = 0;
+      for (let d = 1; d <= lastDay; d++) {
+        const s = matrixData.dailySummary[d];
+        const cnt = s?.attendCount || 0;
+        totalAttend += cnt;
+        html += `<td style="border:1px solid #ddd;text-align:center;">${cnt || '-'}</td>`;
+      }
+      html += `<td style="border:1px solid #ccc;text-align:center;">${totalAttend}</td></tr>`;
+
+      html += `<tr style="font-weight:700;font-size:9px;"><td style="border:1px solid #ccc;padding:2px 4px;">勤務時間(h)</td>`;
+      let grandTotalH = 0;
+      for (let d = 1; d <= lastDay; d++) {
+        const s = matrixData.dailySummary[d];
+        const h = s?.totalWorkedHours || 0;
+        grandTotalH += h;
+        html += `<td style="border:1px solid #ddd;text-align:center;">${h > 0 ? h.toFixed(2) : '-'}</td>`;
+      }
+      html += `<td style="border:1px solid #ccc;text-align:center;">${grandTotalH.toFixed(2)}</td></tr>`;
+
+      html += `</tbody></table>`;
+      content.innerHTML = html;
+    };
+
+    // Tab switching
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        currentMode = tab.dataset.rmTab;
+        tabs.forEach(t => {
+          t.style.background = t === tab ? '#1e40af' : '#fff';
+          t.style.color = t === tab ? '#fff' : '#334155';
+        });
+        renderMatrix();
+      });
+    });
+
+    // Print
+    if (printBtn) {
+      printBtn.addEventListener('click', () => {
+        const printContent = document.getElementById('rmPrintArea')?.innerHTML || '';
+        const w = window.open('', '_blank', 'width=1200,height=800');
+        w.document.write(`<html><head><title>実績表</title><style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; padding: 15px; }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #ccc; padding: 2px 3px; font-size: 9px; }
+          @media print { 
+            body { padding: 5px; }
+            @page { size: landscape; margin: 5mm; } 
+          }
+        </style></head><body>${printContent}</body></html>`);
+        w.document.close();
+        setTimeout(() => { w.print(); }, 300);
+      });
+    }
+
+    // Open in new full-screen window (not modal)
+    btn.addEventListener('click', async () => {
+      const monthPicker = document.getElementById('monthPicker');
+      const ym = monthPicker?.value || '';
+      if (!ym) { alert('対象年月を選択してください'); return; }
+      try {
+        const { fetchJSONAuth } = core;
+        matrixData = await fetchJSONAuth(`/api/attendance/month/report-matrix?month=${encodeURIComponent(ym)}`);
+        // Open new window - render entirely inside the new window
+        const w = window.open('', '_blank');
+        if (!w) { alert('ポップアップがブロックされました。許可してください。'); return; }
+        const tabsHtml = `<div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;">
+          <button onclick="switchMode('time')" id="t_time" style="padding:6px 16px;border:1px solid #ccc;border-radius:4px;background:#1e40af;color:#fff;font-weight:700;cursor:pointer;">出退勤時間</button>
+          <button onclick="switchMode('round')" id="t_round" style="padding:6px 16px;border:1px solid #ccc;border-radius:4px;background:#fff;color:#333;cursor:pointer;">出退勤時間(丸め)</button>
+          <button onclick="switchMode('hours')" id="t_hours" style="padding:6px 16px;border:1px solid #ccc;border-radius:4px;background:#fff;color:#333;cursor:pointer;">勤務時間</button>
+        </div>`;
+        w.document.write(`<html><head><title>実績表</title><style>
+          * { box-sizing:border-box; margin:0; padding:0; }
+          body { font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif; padding:20px; }
+          table { border-collapse:collapse; width:100%; }
+          th,td { border:1px solid #ccc; padding:2px 3px; font-size:9px; }
+          thead { display:table-header-group; }
+          tbody tr { page-break-inside:avoid; }
+          .print-btn { position:fixed; top:10px; right:20px; padding:8px 20px; background:#1e40af; color:#fff; border:none; border-radius:6px; font-size:13px; cursor:pointer; z-index:999; }
+          @media print { .no-print { display:none !important; } thead { display:table-header-group; } @page { size:landscape; margin:5mm; } }
+        </style></head><body>
+          <button class="print-btn no-print" onclick="window.print()">印刷 / PDF保存</button>
+          <div class="no-print">${tabsHtml}</div>
+          <div id="matrixContent"></div>
+          <script>
+            const data = ${JSON.stringify(matrixData)};
+            let mode = 'time';
+            function getDow(y,m,d){return['日','月','火','水','木','金','土'][new Date(y,m-1,d).getDay()];}
+            function switchMode(m){
+              mode=m;
+              document.querySelectorAll('[id^="t_"]').forEach(b=>{b.style.background=b.id==='t_'+m?'#1e40af':'#fff';b.style.color=b.id==='t_'+m?'#fff':'#333';});
+              render();
+            }
+            function render(){
+              const{year,lastDay,employees,month,dailySummary}=data;
+              const[,mon]=month.split('-').map(Number);
+              const title=year+'年'+mon+'月 飯塚塗研株式会社 実績表';
+              const modeLabel=mode==='time'?'出退勤時間':mode==='round'?'出退勤時間(丸め)':'勤務時間';
+              const modeLabelColor=mode==='round'?'#2563eb':mode==='hours'?'#059669':'#dc2626';
+              let h='<div style="text-align:center;font-size:16px;font-weight:700;margin:0 0 10px;">'+title+'</div>';
+              h+='<div style="text-align:right;font-size:10px;color:'+modeLabelColor+';font-weight:600;margin-bottom:8px;">表示形式: '+modeLabel+'</div>';
+              h+='<table style="table-layout:fixed;"><thead><tr><th style="width:80px;text-align:left;font-size:10px;"></th>';
+              for(let d=1;d<=lastDay;d++){const dow=getDow(year,mon,d);const c=dow==='日'?'#dc2626':dow==='土'?'#2563eb':'#333';h+='<th style="text-align:center;font-size:9px;"><div style="font-weight:700;">'+d+'</div><div style="font-size:8px;color:'+c+';">('+dow+')</div></th>';}
+              h+='<th style="width:40px;text-align:center;font-weight:700;font-size:10px;">計</th></tr></thead><tbody>';
+              for(const emp of employees){
+                h+='<tr><td style="font-weight:700;font-size:10px;white-space:nowrap;overflow:hidden;">'+( emp.username||emp.employeeCode)+'</td>';
+                let totalMin=0;
+                for(let d=1;d<=lastDay;d++){
+                  const cell=emp.days[d];let t='';
+                  if(cell){
+                    if(mode==='time'){if(cell.checkIn&&cell.checkOut)t=cell.checkIn+'<br>'+cell.checkOut;else if(cell.checkIn)t=cell.checkIn;}
+                    else if(mode==='round'){if(cell.roundedIn&&cell.roundedOut)t=cell.roundedIn+'<br>'+cell.roundedOut;}
+                    else{t=cell.worked!=null&&cell.worked>0?cell.worked.toFixed(2):'';}
+                    if(cell.workedMin>0)totalMin+=(mode==='round'?(cell.roundedWorkedMin||0):cell.workedMin);
+                  }
+                  h+='<td style="text-align:center;font-size:9px;line-height:1.2;">'+t+'</td>';
+                }
+                h+='<td style="text-align:center;font-weight:700;font-size:10px;">'+(totalMin>0?(totalMin/60).toFixed(2):'')+'</td></tr>';
+              }
+              h+='<tr style="font-weight:700;font-size:10px;"><td>出勤人数</td>';
+              for(let d=1;d<=lastDay;d++){const s=dailySummary[d];h+='<td style="text-align:center;">'+(s&&s.attendCount?s.attendCount:'-')+'</td>';}
+              h+='<td style="text-align:center;">'+employees.filter(e=>e.totalHours>0).length+'</td></tr>';
+              h+='<tr style="font-weight:700;font-size:10px;"><td>勤務時間(h)</td>';
+              let gt=0;for(let d=1;d<=lastDay;d++){const s=dailySummary[d];const hh=s?s.totalWorkedHours:0;gt+=hh;h+='<td style="text-align:center;">'+(hh>0?hh.toFixed(2):'-')+'</td>';}
+              h+='<td style="text-align:center;">'+gt.toFixed(2)+'</td></tr>';
+              h+='</tbody></table>';
+              document.getElementById('matrixContent').innerHTML=h;
+            }
+            render(); // Auto-render on page load
+          </script>
+        </body></html>`);
+        w.document.close();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      }
+    });
+  };
+
   const bind = () => {
     bindDirtyOnBlur();
     bindWindowResize();
@@ -1614,6 +1818,7 @@
     bindSummaryEditor();
     bindTableHost();
     bindPdfModal();
+    bindReportMatrix();
     try { wireUserMenu(); } catch (e) { /* silently ignored */ }
   };
 

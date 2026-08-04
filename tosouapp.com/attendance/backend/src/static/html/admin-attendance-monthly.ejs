@@ -304,6 +304,30 @@
         </div>
       </div>
     </div>
+
+    <!-- 実績表 Report Matrix Modal -->
+    <div id="reportMatrixModal" class="enm-modal" hidden>
+      <div class="enm-backdrop" id="rmBackdrop"></div>
+      <div class="enm-content" style="max-width:95vw;width:95vw;">
+        <div class="enm-header">
+          <h3>実績表</h3>
+          <div style="display:flex;gap:6px;align-items:center;margin-left:auto;margin-right:16px;">
+            <button type="button" class="se-tab active" data-rm-tab="time" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;border-radius:4px;background:#1e40af;color:#fff;cursor:pointer;">出退勤時間</button>
+            <button type="button" class="se-tab" data-rm-tab="round" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#334155;cursor:pointer;">出退勤時間(丸め)</button>
+            <button type="button" class="se-tab" data-rm-tab="hours" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#334155;cursor:pointer;">勤務時間</button>
+          </div>
+          <button type="button" class="enm-close" id="rmClose" aria-label="閉じる">×</button>
+        </div>
+        <div class="enm-body" id="rmPrintArea" style="overflow:auto;max-height:75vh;">
+          <div id="rmContent" style="font-size:11px;padding:12px;"></div>
+        </div>
+        <div class="enm-footer" style="padding:12px 20px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e2e8f0;">
+          <button type="button" class="se-btn" id="rmCloseBottom">閉じる</button>
+          <button type="button" class="se-btn primary" id="rmPrint">印刷 / PDF保存</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 </body>
 </html>

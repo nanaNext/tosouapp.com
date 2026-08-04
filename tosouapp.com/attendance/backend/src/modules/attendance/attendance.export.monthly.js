@@ -226,9 +226,12 @@ exports.exportMonthXlsx = async (req, res) => {
       { header: '現場', width: 14 },
       { header: '開始時刻', width: 10 },
       { header: '終了時刻', width: 10 },
+      { header: '開始(丸め)', width: 10 },
+      { header: '終了(丸め)', width: 10 },
       { header: '休憩時間', width: 10 },
       { header: '深夜休憩', width: 10 },
       { header: '勤務時間', width: 10 },
+      { header: '勤務時間(丸め)', width: 12 },
       { header: '超過時間', width: 10 },
       { header: '遅刻/早退', width: 10 },
       { header: '理由', width: 12 },
@@ -348,6 +351,31 @@ exports.exportMonthXlsx = async (req, res) => {
         const outMin = hmToMinutes(outHm);
         exportOtMin = holidayLock ? 0 : Math.max(0, outMin - shiftEndMin);
       }
+
+      // ─── 丸め (Rounded values) ───
+      let roundedIn = '';
+      let roundedOut = '';
+      let roundedWorkedMin = '';
+      if (hasTime && exportInHm && exportOutHm) {
+        const rStep = 30;
+        const shiftStartMin = shiftDef ? shiftDef.startMin : (8 * 60);
+        const shiftEndMin2 = shiftDef ? shiftDef.endMin : (17 * 60);
+        const inMin = hmToMinutes(exportInHm);
+        const outMinR = hmToMinutes(exportOutHm);
+        // Clock-in: before shift → shift start, otherwise keep actual
+        const rInMin = inMin < shiftStartMin ? shiftStartMin : inMin;
+        // Clock-out: round DOWN OT after shift end
+        let rOutMin = outMinR;
+        if (outMinR > shiftEndMin2) {
+          const otRaw = outMinR - shiftEndMin2;
+          const otRounded = Math.floor(otRaw / rStep) * rStep;
+          rOutMin = shiftEndMin2 + otRounded;
+        }
+        roundedIn = fmtHm(rInMin);
+        roundedOut = fmtHm(rOutMin);
+        const brVal = exportBrMin || 0;
+        roundedWorkedMin = holidayLock ? 0 : Math.max(0, rOutMin - rInMin - brVal);
+      }
       const lateEarly = (() => {
         if (holidayLock) return '';
         if (!exportInHm && !exportOutHm) return '';
@@ -423,9 +451,12 @@ exports.exportMonthXlsx = async (req, res) => {
           wtSa,
           exportInHm,
           exportOutHm,
+          roundedIn,
+          roundedOut,
           brLabel(exportBrMin),
           nbLabel(exportNbMin),
           exportWorkedMin !== '' ? fmtHm(exportWorkedMin) : '',
+          roundedWorkedMin !== '' ? fmtHm(roundedWorkedMin) : '',
           exportOtMin !== '' ? fmtHm(exportOtMin) : '',
           lateEarly,
           reasonLabel(daily?.reason || ''),
@@ -462,9 +493,11 @@ exports.exportMonthXlsx = async (req, res) => {
             extraWtOn, extraWtRe, extraWtSa,
             extraIn,
             extraOut,
+            '', '',
             brLabel(extraBr),
             '0:00',
             fmtHm(extraWorked),
+            '',
             fmtHm(extraOt),
             '', '',
             extraMemo,

@@ -100,6 +100,168 @@ router.delete('/segment/:id', authenticate, authorize('employee','manager'), con
 router.post('/date/:date/submit', authenticate, authorize('employee','manager'), controller.submitDay);
 router.get('/month', authenticate, authorize('employee','manager','admin','payroll'), controller.getMonth);
 router.get('/month/detail', authenticate, authorize('employee','manager','admin','payroll'), controller.getMonthDetail);
+
+// ─── 実績表 Report Matrix (all employees × days) ──────────────────────────────
+router.get('/month/report-matrix', authenticate, authorize('manager','admin'), async (req, res) => {
+  try {
+    const db = require('../../core/database/mysql');
+    const { month } = req.query;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Missing month (YYYY-MM)' });
+    const [y, m] = month.split('-').map(Number);
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const from = `${month}-01`;
+    const to = `${month}-${String(lastDay).padStart(2, '0')}`;
+
+    // Get all active employees (not admin/manager)
+    const [users] = await db.query(`
+      SELECT u.id, u.username, u.employee_code, u.employment_type, d.name AS departmentName
+      FROM users u
+      LEFT JOIN departments d ON u.departmentId = d.id
+      WHERE u.employment_status = 'active' AND u.role NOT IN ('admin','manager')
+      ORDER BY CASE WHEN d.name LIKE '%工事%' THEN 1 ELSE 2 END, u.employee_code ASC, u.id ASC
+    `);
+
+    // Get all attendance records for the month
+    const [records] = await db.query(`
+      SELECT userId, checkIn, checkOut
+      FROM attendance
+      WHERE (DATE(checkIn) BETWEEN ? AND ?) OR (checkIn IS NULL AND DATE(checkOut) BETWEEN ? AND ?)
+    `, [from, to, from, to]);
+
+    // Get daily records (break_minutes, kubun)
+    const [dailyRows] = await db.query(`
+      SELECT userId, date, break_minutes, kubun
+      FROM attendance_daily
+      WHERE date BETWEEN ? AND ?
+    `, [from, to]);
+
+    // Build maps
+    const attendanceMap = {}; // { `${userId}_${date}`: [{checkIn, checkOut}] }
+    for (const r of records) {
+      const dateStr = String(r.checkIn || r.checkOut || '').slice(0, 10);
+      const key = `${r.userId}_${dateStr}`;
+      if (!attendanceMap[key]) attendanceMap[key] = [];
+      attendanceMap[key].push({ checkIn: r.checkIn, checkOut: r.checkOut });
+    }
+
+    const dailyMap = {}; // { `${userId}_${date}`: {break_minutes, kubun} }
+    for (const r of dailyRows) {
+      const dateStr = String(r.date).slice(0, 10);
+      dailyMap[`${r.userId}_${dateStr}`] = r;
+    }
+
+    // Shift config (default 8:00-17:00)
+    const shiftStart = '08:00';
+    const shiftEnd = '17:00';
+    const rStep = 30; // rounding step minutes
+
+    const toMin = (hm) => {
+      if (!hm) return -1;
+      const p = String(hm).split(':');
+      return p.length === 2 ? parseInt(p[0], 10) * 60 + parseInt(p[1], 10) : -1;
+    };
+    const fromMin = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    const extractHm = (dt) => dt ? String(dt).slice(11, 16) : null;
+    const shiftStartMin = toMin(shiftStart);
+    const shiftEndMin = toMin(shiftEnd);
+
+    // Build matrix
+    const days = [];
+    for (let d = 1; d <= lastDay; d++) days.push(d);
+
+    const matrix = users.map(u => {
+      const row = {
+        userId: u.id,
+        username: u.username,
+        employeeCode: u.employee_code,
+        employmentType: u.employment_type,
+        departmentName: u.departmentName,
+        days: {},
+        totalHours: 0
+      };
+
+      for (const d of days) {
+        const dateStr = `${month}-${String(d).padStart(2, '0')}`;
+        const key = `${u.id}_${dateStr}`;
+        const atts = attendanceMap[key] || [];
+        const daily = dailyMap[key] || null;
+
+        if (atts.length === 0) {
+          row.days[d] = null;
+          continue;
+        }
+
+        // Use first segment (primary)
+        const att = atts[0];
+        const inHm = extractHm(att.checkIn);
+        const outHm = extractHm(att.checkOut);
+
+        if (!inHm || !outHm) {
+          row.days[d] = { checkIn: inHm, checkOut: outHm, worked: null, roundedIn: null, roundedOut: null, roundedWorked: null };
+          continue;
+        }
+
+        const inMin = toMin(inHm);
+        const outMin = toMin(outHm);
+        const breakMin = daily?.break_minutes != null ? Number(daily.break_minutes) : 60;
+        const worked = Math.max(0, outMin - inMin - breakMin);
+
+        // Rounded values
+        const rIn = inMin < shiftStartMin ? shiftStartMin : inMin; // keep actual if late
+        let rOut = outMin;
+        if (outMin > shiftEndMin) {
+          const otRaw = outMin - shiftEndMin;
+          const otRounded = Math.floor(otRaw / rStep) * rStep;
+          rOut = shiftEndMin + otRounded;
+        }
+        const roundedWorked = Math.max(0, rOut - rIn - breakMin);
+
+        row.days[d] = {
+          checkIn: inHm,
+          checkOut: outHm,
+          worked: worked / 60, // hours decimal
+          workedMin: worked,
+          roundedIn: fromMin(rIn),
+          roundedOut: fromMin(rOut),
+          roundedWorked: roundedWorked / 60,
+          roundedWorkedMin: roundedWorked
+        };
+        row.totalHours += worked / 60;
+      }
+
+      return row;
+    });
+
+    // Summary per day
+    const dailySummary = {};
+    for (const d of days) {
+      let attendCount = 0;
+      let totalWorkedMin = 0;
+      for (const row of matrix) {
+        if (row.days[d] && row.days[d].workedMin > 0) {
+          attendCount++;
+          totalWorkedMin += row.days[d].workedMin;
+        }
+      }
+      dailySummary[d] = { attendCount, totalWorkedHours: totalWorkedMin / 60 };
+    }
+
+    res.status(200).json({
+      month,
+      year: y,
+      lastDay,
+      days,
+      shiftStart,
+      shiftEnd,
+      roundingStep: rStep,
+      employees: matrix,
+      dailySummary
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get('/month/status', authenticate, authorize('employee','manager','admin','payroll'), controller.getMonthStatus);
 router.get('/month/status-bulk', authenticate, authorize('manager','admin'), controller.getMonthStatusBulk);
 router.post('/month/submit', authenticate, authorize('employee','manager','admin'), controller.submitMonth);
