@@ -205,7 +205,6 @@
     const ensurePanelLinks = () => {
       const defaults = {
         att: [
-          { href: '/ui/attendance', label: '個人カレンダー登録画面' },
           { href: '/ui/attendance/monthly', label: '月次勤怠入力へ' },
           { href: '/ui/attendance/simple', label: '簡易登録画面' }
         ],

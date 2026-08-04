@@ -73,10 +73,8 @@
     
       let kubunOptions = [];
       if (isPartTime) {
-        // Part-time: cùng 1 list cho mọi ngày, không phân biệt offDay
-        // Không hiện 振替出勤, 休日出勤, 代替出勤 (không áp dụng cho Part-time)
-        // Luôn có 休日 để part-time có thể chọn ngày nghỉ ngay cả ngày thường
-        kubunOptions = ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'];
+        // Part-time: chỉ 5 lựa chọn cần thiết, không có 半休/代替休日/振替出勤/休日出勤
+        kubunOptions = ['出勤', '休日', '欠勤', '有給休暇', '無給休暇'];
       } else {
         if (offDay) {
           kubunOptions = ['休日', '休日出勤', '代替出勤', '振替出勤'];
@@ -190,8 +188,9 @@
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
 
       // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
+      // Part-time: off-day work is paid the same rate, so treat as 出勤 (not 休日出勤)
       if (offDay && !kubunInit) {
-        if (hasActual) kubunInit = '休日出勤';
+        if (hasActual) kubunInit = isPartTime ? '出勤' : '休日出勤';
       }
       // Consider row "actual" only when visible (non-placeholder) punch times exist.
       // For working-day classifications, only real punches can make row "actual".
@@ -463,7 +462,7 @@
       <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckOnsite_${dateStr}_${rowId}" name="ckOnsite_${dateStr}_${rowId}" class="se-check" data-field="ckOnsite" type="checkbox" ${wtVal === 'onsite' ? 'checked' : ''} style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckRemote_${dateStr}_${rowId}" name="ckRemote_${dateStr}_${rowId}" class="se-check" data-field="ckRemote" type="checkbox" ${wtVal === 'remote' ? 'checked' : ''} style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td style="width:56px;min-width:56px;max-width:56px;text-align:center;box-sizing:border-box;"><input id="ckSatellite_${dateStr}_${rowId}" name="ckSatellite_${dateStr}_${rowId}" class="se-check" data-field="ckSatellite" type="checkbox" ${wtVal === 'satellite' ? 'checked' : ''} style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
-      <td><input id="location_${dateStr}_${rowId}" name="location_${dateStr}_${rowId}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}></td>
+      <td><input id="location_${dateStr}_${rowId}" name="location_${dateStr}_${rowId}" class="se-input" data-field="location" type="text" value="${esc(finalLoc)}" style="${hideCheckboxStyle}${wtVal !== 'satellite' ? 'visibility:hidden;' : ''}" ${!canEditWorkRow ? 'disabled' : ''}></td>
       <td><textarea id="memo_${dateStr}_${rowId}" name="memo_${dateStr}_${rowId}" class="se-input" data-field="memo" rows="1" style="resize:vertical; min-height:28px; ${hideCheckboxStyle}" ${!canEditWorkRow ? 'disabled' : ''}>${esc(finalMemo)}</textarea></td>
       <td class="se-time-cell">
         <div class="se-time-wrap">
@@ -796,11 +795,20 @@
         if (!el) return;
         if (canEditWorkInputs) {
           el.removeAttribute('disabled');
-          el.style.visibility = 'visible';
+          // 現場(任意): only show when 現場 checkbox is checked
+          if (el === locEl) {
+            const isSatellite = ckSa && ckSa.checked;
+            el.style.visibility = isSatellite ? 'visible' : 'hidden';
+          } else {
+            el.style.visibility = 'visible';
+          }
         } else {
           el.setAttribute('disabled', '');
           if (isHolidayKubun || isLeaveKubun) {
             el.style.visibility = 'hidden';
+          } else if (el === locEl) {
+            const isSatellite = ckSa && ckSa.checked;
+            el.style.visibility = isSatellite ? 'visible' : 'hidden';
           }
         }
       });

@@ -127,6 +127,7 @@
           if (t.hasAttribute('disabled')) return;
           if (t.dataset.tab === 'plan') {
             document.body.classList.add('view-plan');
+            document.body.classList.remove('view-round');
             const table = document.getElementById('monthTableReal');
             if (table) {
               const cg = table.querySelector('colgroup');
@@ -135,7 +136,36 @@
               table.style.width = '';
             }
           } else if (t.dataset.tab === 'actual') {
+            // Only restore if coming from round mode
+            if (document.body.classList.contains('view-round')) {
+              document.body.classList.remove('view-round');
+              // Restore original values from row dataset
+              const allRows = document.querySelectorAll('#monthTableReal [data-row="1"]');
+              for (const row of allRows) {
+                if (!row.dataset.origIn) continue;
+                const inEl = row.querySelector('input[data-field="checkIn"]');
+                const outEl = row.querySelector('input[data-field="checkOut"]');
+                const workedEl = row.querySelector('[data-field="worked"]');
+                const excessEl = row.querySelector('[data-field="excess"]');
+                if (inEl) inEl.value = row.dataset.origIn;
+                if (outEl) outEl.value = row.dataset.origOut;
+                if (workedEl) workedEl.textContent = row.dataset.origWorked;
+                if (excessEl) excessEl.textContent = row.dataset.origExcess;
+                delete row.dataset.blockRecalc;
+              }
+              // Restore 当月サマリ
+              try {
+                const sumRow = document.querySelector('#monthSummaryTable table tbody tr, #monthSummary table tbody tr');
+                if (sumRow && sumRow.dataset.origSummary) {
+                  const originals = JSON.parse(sumRow.dataset.origSummary);
+                  const cells = sumRow.querySelectorAll('td');
+                  originals.forEach((text, i) => { if (cells[i]) cells[i].textContent = text; });
+                  delete sumRow.dataset.origSummary;
+                }
+              } catch (e) { /* silently ignored */ }
+            }
             document.body.classList.remove('view-plan');
+            document.body.classList.remove('view-round');
             const table = document.getElementById('monthTableReal');
             if (table) {
               const cg = table.querySelector('colgroup');
@@ -143,6 +173,110 @@
               table.style.tableLayout = 'fixed';
               table.style.width = '';
             }
+          } else if (t.dataset.tab === 'round') {
+            document.body.classList.remove('view-plan');
+            document.body.classList.add('view-round');
+            // Apply rounding to existing table values
+            const rStep = 30; // 30 minute rounding
+            const toMin = (hm) => {
+              if (!hm || hm === '--:--') return -1;
+              const parts = String(hm).split(':');
+              if (parts.length !== 2) return -1;
+              const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+              return (isNaN(h) || isNaN(m)) ? -1 : h * 60 + m;
+            };
+            const fromMin = (m) => {
+              if (m < 0) return '';
+              return `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+            };
+            const fmtMin = (m) => m > 0 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : '';
+            const allRows = document.querySelectorAll('#monthTableReal [data-row="1"]');
+            for (const row of allRows) {
+              row.dataset.blockRecalc = '1';
+              const inEl = row.querySelector('input[data-field="checkIn"]');
+              const outEl = row.querySelector('input[data-field="checkOut"]');
+              const workedEl = row.querySelector('[data-field="worked"]');
+              const excessEl = row.querySelector('[data-field="excess"]');
+              // Save originals into row dataset (always update to capture latest edits)
+              row.dataset.origIn = inEl ? inEl.value : '';
+              row.dataset.origOut = outEl ? outEl.value : '';
+              row.dataset.origWorked = workedEl ? workedEl.textContent : '';
+              row.dataset.origExcess = excessEl ? excessEl.textContent : '';
+              const brSel = row.querySelector('select[data-field="break"]');
+              // Skip rows without actual data
+              const hasActualIn = !!(row.dataset.actualIn || (inEl && !inEl.classList.contains('is-auto') && inEl.value && inEl.value !== '--:--'));
+              const hasActualOut = !!(row.dataset.actualOut || (outEl && !outEl.classList.contains('is-auto') && outEl.value && outEl.value !== '--:--'));
+              if (!hasActualIn && !hasActualOut) continue;
+              const shiftStart = row.dataset.shiftStart || '08:00';
+              const shiftEnd = row.dataset.shiftEnd || '17:00';
+              const shiftStartMin = toMin(shiftStart);
+              const shiftEndMin = toMin(shiftEnd);
+              const rawIn = row.dataset.origIn || (inEl ? inEl.value : '');
+              const rawOut = row.dataset.origOut || (outEl ? outEl.value : '');
+              // Clock-in: keep actual time (Japanese labor law requires 1-minute precision)
+              // If before shift start → use shift start (no pay before shift)
+              let rIn = '';
+              const rawInMin = toMin(rawIn);
+              if (rawInMin >= 0) {
+                rIn = rawInMin < shiftStartMin ? shiftStart : rawIn;
+              }
+              // Clock-out: round DOWN OT portion after shift end
+              let rOut = '';
+              const rawOutMin = toMin(rawOut);
+              if (rawOutMin >= 0) {
+                if (rawOutMin <= shiftEndMin) {
+                  rOut = rawOut;
+                } else {
+                  const otRaw = rawOutMin - shiftEndMin;
+                  const otRounded = Math.floor(otRaw / rStep) * rStep;
+                  rOut = fromMin(shiftEndMin + otRounded);
+                }
+              }
+              if (inEl) inEl.value = rIn;
+              if (outEl) outEl.value = rOut;
+              // Recalculate worked/excess
+              if (rIn && rOut) {
+                const brRaw = brSel ? String(brSel.value || '0:00').trim() : '0:00';
+                const brVal = toMin(brRaw) >= 0 ? toMin(brRaw) : 60;
+                const totalWorked = Math.max(0, (toMin(rOut) - toMin(rIn)) - brVal);
+                if (workedEl) workedEl.textContent = fmtMin(totalWorked);
+                const scheduled = Math.max(0, shiftEndMin - shiftStartMin - brVal);
+                const excess = Math.max(0, totalWorked - scheduled);
+                if (excessEl) excessEl.textContent = fmtMin(excess);
+              }
+              row.classList.add('is-rounded');
+            }
+            // Update 当月サマリ with rounded totals
+            try {
+              let totalWorkMin = 0, totalOtMin = 0, attendDays = 0;
+              const roundedRows = document.querySelectorAll('#monthTableReal [data-row="1"].is-rounded');
+              for (const rr of roundedRows) {
+                // Only count rows with BOTH checkIn AND checkOut (completed shifts)
+                // AND not auto/planned rows
+                const rrIn = rr.querySelector('input[data-field="checkIn"]');
+                const rrOut = rr.querySelector('input[data-field="checkOut"]');
+                if (!rrIn?.value || !rrOut?.value || rrIn.value === '--:--' || rrOut.value === '--:--') continue;
+                if (rrIn.classList.contains('is-auto') || rrOut.classList.contains('is-auto')) continue;
+                const w = rr.querySelector('[data-field="worked"]');
+                const e = rr.querySelector('[data-field="excess"]');
+                const wText = w ? w.textContent.trim() : '';
+                const eText = e ? e.textContent.trim() : '';
+                const wMin = toMin(wText) > 0 ? toMin(wText) : 0;
+                const eMin = toMin(eText) > 0 ? toMin(eText) : 0;
+                if (wMin > 0) { totalWorkMin += wMin; attendDays++; }
+                if (eMin > 0) totalOtMin += eMin;
+              }
+              const sumRow = document.querySelector('#monthSummaryTable table tbody tr, #monthSummary table tbody tr');
+              if (sumRow) {
+                const cells = sumRow.querySelectorAll('td');
+                if (!sumRow.dataset.origSummary) {
+                  sumRow.dataset.origSummary = JSON.stringify([...cells].map(c => c.textContent));
+                }
+                if (cells[4]) cells[4].textContent = fmtMin(totalWorkMin);
+                if (cells[6]) cells[6].textContent = fmtMin(totalOtMin);
+                if (cells[7]) cells[7].textContent = fmtMin(totalOtMin);
+              }
+            } catch (e) { /* silently ignored */ }
           }
           for (const x of tabs) {
             x.classList.toggle('active', x === t);
@@ -1007,6 +1141,13 @@
           if (field !== 'ckRemote' && ckRe) ckRe.checked = false;
           if (field !== 'ckSatellite' && ckSa) ckSa.checked = false;
         }
+        // Hide/show 現場(任意) field: only visible when 現場 is checked
+        const locInput = tr.querySelector('input[data-field="location"]');
+        if (locInput) {
+          const isSatellite = ckSa && ckSa.checked;
+          locInput.style.visibility = isSatellite ? 'visible' : 'hidden';
+          if (!isSatellite) locInput.value = '';
+        }
           if (e.target.dataset.field === 'classification') {
             const val = e.target.value;
             e.target.classList.toggle('is-holiday', val === '休日' || val === '代替休日');
@@ -1139,6 +1280,28 @@
           let inHm = inEl ? inEl.value : '';
           let outHm = outEl ? outEl.value : '';
           
+          // Apply rounding if 丸め mode selected
+          const enmMode = document.querySelector('#enmRoundMode')?.value || 'actual';
+          if (enmMode === 'round' && hasActualIn && hasActualOut && inHm && outHm) {
+            const rStep = 30;
+            const shiftStartStr = tr.dataset.shiftStart || '08:00';
+            const shiftEndStr = tr.dataset.shiftEnd || '17:00';
+            const hmToMin = (hm) => { const p = String(hm||'').split(':'); return parseInt(p[0],10)*60+parseInt(p[1],10); };
+            const minToHm = (m) => `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+            const shiftStartMin = hmToMin(shiftStartStr);
+            const shiftEndMin = hmToMin(shiftEndStr);
+            // Clock-in: before shift → shift start, otherwise keep actual
+            const rawInMin = hmToMin(inHm);
+            inHm = rawInMin < shiftStartMin ? shiftStartStr : inHm;
+            // Clock-out: round DOWN OT after shift end
+            const rawOutMin = hmToMin(outHm);
+            if (rawOutMin > shiftEndMin) {
+              const otRaw = rawOutMin - shiftEndMin;
+              const otRounded = Math.floor(otRaw / rStep) * rStep;
+              outHm = minToHm(shiftEndMin + otRounded);
+            }
+          }
+
           const formatHm = (min) => {
             if (min == null) return '0:00';
             const m = Math.max(0, Number(min || 0));
@@ -1151,13 +1314,9 @@
           let timeIn = inHm;
           let timeOut = outHm;
           let breakNormal = '0:00';
-          const breakSel = tr.querySelector('select[data-field="break"]'); // Changed from breakMinutes to break CÁI NÀY LÀ DÙNG ĐỂ THAY ĐỔI FORM 
+          const breakSel = tr.querySelector('select[data-field="break"]');
           if (breakSel) {
-             const val = breakSel.value;
-             if (val === '60' || val === '1:00') breakNormal = '1:00';
-             else if (val === '45' || val === '0:45') breakNormal = '0:45';
-             else if (val === '30' || val === '0:30') breakNormal = '0:30';
-             else breakNormal = '0:00';
+             breakNormal = breakSel.value || '0:00';
           }
           
           let breakNight = '0:00';
@@ -1236,16 +1395,33 @@
              isRemote = '';
              isTravel = '';
           } else if (hasActualIn && hasActualOut) {
-             // Calculate work time from UI cells directly
-             const workedCell = tr.querySelector('td[data-field="worked"]');
-             const excessCell = tr.querySelector('td[data-field="excess"]');
-             if (workedCell) {
-                 workedTime = workedCell.textContent.trim();
-                 dayWorkMins = parseHmToMin(workedTime);
-             }
-             if (excessCell) {
-                 excessTime = excessCell.textContent.trim();
-                 dayOvertimeMins = parseHmToMin(excessTime);
+             // Calculate work time
+             if (enmMode === 'round') {
+               // Use rounded times to calculate
+               const hmToMin2 = (hm) => { const p = String(hm||'').split(':'); return parseInt(p[0],10)*60+parseInt(p[1],10); };
+               const brMin = parseHmToMin(breakNormal);
+               let startM = hmToMin2(inHm);
+               let endM = hmToMin2(outHm);
+               if (endM < startM) endM += 24 * 60;
+               const totalMins = Math.max(0, (endM - startM) - brMin);
+               workedTime = formatHm(totalMins);
+               dayWorkMins = totalMins;
+               const shiftStartStr = tr.dataset.shiftStart || '08:00';
+               const shiftEndStr = tr.dataset.shiftEnd || '17:00';
+               const scheduled = Math.max(0, hmToMin2(shiftEndStr) - hmToMin2(shiftStartStr) - brMin);
+               dayOvertimeMins = Math.max(0, totalMins - scheduled);
+               excessTime = formatHm(dayOvertimeMins);
+             } else {
+               const workedCell = tr.querySelector('td[data-field="worked"]');
+               const excessCell = tr.querySelector('td[data-field="excess"]');
+               if (workedCell) {
+                   workedTime = workedCell.textContent.trim();
+                   dayWorkMins = parseHmToMin(workedTime);
+               }
+               if (excessCell) {
+                   excessTime = excessCell.textContent.trim();
+                   dayOvertimeMins = parseHmToMin(excessTime);
+               }
              }
           }
           
@@ -1329,6 +1505,12 @@
       e.preventDefault();
       openModal();
     });
+
+    // Re-render when switching 実績/丸め in modal
+    const enmRoundSel = document.querySelector('#enmRoundMode');
+    if (enmRoundSel) {
+      enmRoundSel.addEventListener('change', () => { openModal(); });
+    }
 
     if (btnClose) btnClose.addEventListener('click', closeModal);
     if (btnCloseBottom) btnCloseBottom.addEventListener('click', closeModal);

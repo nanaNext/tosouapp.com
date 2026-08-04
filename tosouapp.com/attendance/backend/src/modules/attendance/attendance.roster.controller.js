@@ -355,7 +355,8 @@ exports.todayRoster = async (req, res) => {
         }
 
         if (isPartTime) {
-          status = 'unregistered'; // Part-time chưa đăng ký lịch → 未登録
+          status = 'off'; // Part-time chưa đăng ký lịch → 休日
+          displayKubun = displayKubun || '休日';
         } else if (isOffDayForUser) {
           if (isPastDay) {
             status = 'off'; // Ngày nghỉ đã qua → 休日

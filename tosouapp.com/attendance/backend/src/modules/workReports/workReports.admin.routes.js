@@ -157,20 +157,28 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       } else if (isPlannedToWork && r.employment_type === 'full_time') {
         // Seishain expected to work but didn't punch in
         status = 'not_checked_in';
+      } else if (r.employment_type === 'part_time') {
+        // Part-time without shift registration and no checkin → treat as off day
+        console.log('[DEBUG-PT] user', r.employeeCode, 'part_time → status=leave');
+        status = 'leave';
       } else {
-        // Fallback for Baito or others
+        // Fallback for others
         status = 'not_checked_in';
       }
       // Normalize display kubun for off-days even when daily record is empty.
       let effectiveKubun = kubun || (forceLeave ? '有給休暇' : (dayIsOff && r.employment_type !== 'part_time' ? '休日' : ''));
       if (r.employment_type === 'part_time' && kubun === '休日') effectiveKubun = '休日';
       if (kubun === '欠勤') effectiveKubun = '欠勤';
-      if (r.employment_type === 'part_time' && !kubun) effectiveKubun = '';
+      if (r.employment_type === 'part_time' && !kubun) effectiveKubun = '休日';
+      // Part-time: off-day work is same rate as weekday — show 出勤 not 休日出勤
+      if (r.employment_type === 'part_time' && effectiveKubun === '休日出勤') effectiveKubun = '出勤';
       if (effectiveKubun === '休日出勤' && !hasIn && !hasOut) effectiveKubun = '休日';
       const hasReport = !!(r.site || r.work);
       const wt = r.work_type || null;
       let kubunOut = effectiveKubun;
       if (kubunOut === '休日出勤' && !hasIn && !hasOut && !hasReport) kubunOut = '休日';
+      // Part-time: if no kubun saved and has checkin, show 出勤
+      if (r.employment_type === 'part_time' && !kubunOut && (hasIn || hasOut)) kubunOut = '出勤';
       return {
         userId: r.userId,
         employeeCode: r.employeeCode || null,

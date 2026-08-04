@@ -145,6 +145,7 @@
                   <div class="se-daily-actions" style="display: flex; gap: 4px; margin-left: auto; align-items: center;">
                       <div class="se-tabs se-tabs-seg" role="tablist" aria-label="表示モード">
                         <button type="button" class="se-tab active" data-tab="actual">実績</button>
+                        <button type="button" class="se-tab" data-tab="round">丸め</button>
                         <button type="button" class="se-tab" data-tab="plan">予定</button>
                       </div>
                     </div>
@@ -155,7 +156,6 @@
                       <button type="button" class="se-btn primary se-btn-wide lastMonthBtn" id="btnPrevMonth">≪ 前月</button>
                       <button type="button" class="se-btn primary se-btn-wide nextMonthBtn" id="btnNextMonth">翌月 ≫</button>
                       <button type="button" class="se-btn primary se-btn-wide" id="btnExportWeek" disabled>就業状況通知書出力</button>
-                      <a class="se-btn primary se-btn-wide" href="/ui/attendance?back=1" style="text-decoration:none;">個人カレンダー登録画面へ</a>
                     </div>
                   </div>
                   <div id="monthTable" class="se-table"></div>
@@ -210,6 +210,13 @@
       <div class="enm-content">
         <div class="enm-header">
           <h3>就業状況通知書</h3>
+          <div style="display:flex;gap:8px;align-items:center;margin-left:auto;margin-right:16px;">
+            <label style="font-size:12px;color:#475569;">表示モード:</label>
+            <select id="enmRoundMode" style="font-size:12px;padding:2px 8px;border:1px solid #cbd5e1;border-radius:4px;">
+              <option value="actual">実績</option>
+              <option value="round">丸め</option>
+            </select>
+          </div>
           <button type="button" class="enm-close" id="btnEnmClose" aria-label="閉じる">×</button>
         </div>
         <div class="enm-body" id="enmPrintArea">

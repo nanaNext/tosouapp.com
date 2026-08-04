@@ -41,7 +41,6 @@
             勤怠入力 <span class="kintai-caret">▾</span>
           </button>
           <div class="kintai-dd" data-dd-panel="att" hidden>
-            <a href="/ui/attendance?back=1">個人カレンダー登録画面</a>
             <a href="/ui/attendance/monthly">月次勤怠入力へ</a>
             <a href="/ui/attendance/simple">簡易登録画面</a>
           </div>
@@ -176,6 +175,7 @@
                   <div class="se-daily-actions" style="display: flex; gap: 4px; margin-left: auto; align-items: center;">
                       <div class="se-tabs se-tabs-seg" role="tablist" aria-label="表示モード">
                         <button type="button" class="se-tab active" data-tab="actual">実績</button>
+                        <button type="button" class="se-tab" data-tab="round">丸め</button>
                         <button type="button" class="se-tab" data-tab="plan">予定</button>
                       </div>
                     </div>
@@ -187,7 +187,6 @@
                       <button type="button" class="se-btn primary se-btn-wide nextMonthBtn" id="btnNextMonth">翌月 ≫</button>
                       <button type="button" class="se-btn primary se-btn-wide" id="btnExportWeek" disabled>就業状況通知書出力</button>
                       <button type="button" class="se-btn primary se-btn-wide" id="btnToggleGoOutHistory" style="background: #10b981; border-color: #10b981; margin-right: auto;" data-mode="daily">外出履歴を表示</button>
-                      <a class="se-btn primary se-btn-wide" href="/ui/attendance?back=1" style="text-decoration:none;">個人カレンダー登録画面へ</a>
                     </div>
                   </div>
                   <div id="monthTable" class="se-table">

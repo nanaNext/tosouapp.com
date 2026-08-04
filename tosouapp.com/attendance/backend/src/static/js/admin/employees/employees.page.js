@@ -301,7 +301,13 @@ async function renderEmployees(profile, c) {
       const btnEdit = panel.querySelector('#btnDetailEdit');
       if (btnEdit) btnEdit.setAttribute('href', editHref);
       const btnBack = panel.querySelector('#btnDetailBack');
-      if (btnBack) btnBack.setAttribute('href', backHref);
+      if (btnBack) {
+        btnBack.setAttribute('href', backHref);
+        btnBack.addEventListener('click', (e) => {
+          e.preventDefault();
+          window.location.href = '/admin/employees';
+        });
+      }
     } catch (e) { /* silently ignored */ }
     hideNavSpinner();
     return;
