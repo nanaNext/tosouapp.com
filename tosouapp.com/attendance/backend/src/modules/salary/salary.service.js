@@ -123,6 +123,15 @@ async function computePayslipForUser(userId, month, options = null) {
   ]);
   const dept = user?.departmentId ? await userRepo.getDepartmentById(user.departmentId).catch(() => null) : null;
   
+  // Load flex config for this department
+  const db = require('../../core/database/mysql');
+  let flexConfig = null;
+  if (user?.departmentId) {
+    const [flexRows] = await db.query('SELECT * FROM flex_config WHERE department_id = ? AND flex_enabled = 1', [user.departmentId]).catch(() => [[]]);
+    if (flexRows && flexRows.length > 0) flexConfig = flexRows[0];
+  }
+  const isFlexDept = !!flexConfig;
+
   const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
   const workDaysSet = new Set();
   let paidLeaveDaysFromDaily = 0;
@@ -236,6 +245,61 @@ async function computePayslipForUser(userId, month, options = null) {
   let legalOverTotal = dailyOverTotal + weeklyAdditional;
   let monthlyOver60Min = empType === 'full_time' ? Math.max(0, legalOverTotal - (60 * 60)) : 0;
   let overtimeMin = roundToStep(legalOverTotal, rStep, rMode);
+
+  // ─── Flex time override for 工事部 ─────────────────────────────────────────
+  // Flex: OT = tổng giờ tháng - 所定労働時間/月. Không tính OT theo ngày.
+  let flexMonthlyRequiredMin = 0;
+  let flexTotalWorkedMin = 0;
+  let flexDiffMin = 0;
+  if (isFlexDept && empType === 'full_time') {
+    const workHoursPerDay = Number(flexConfig.work_hours_per_day || 7.5);
+    const breakMin = Number(flexConfig.break_minutes || 90);
+    // Calculate 稼働日 for this month (working days based on saturday_rule)
+    const calendarRepo = require('../calendar/calendar.repository');
+    let flexWorkingDays = 0;
+    for (let d = 1; d <= lastDay; d++) {
+      const dateStr = `${y}-${pad(m)}-${pad(d)}`;
+      const dateObj = new Date(Date.UTC(y, m - 1, d));
+      const dow = dateObj.getUTCDay(); // 0=Sun, 6=Sat
+      const is4thSat = dow === 6 && Math.ceil(d / 7) === 4;
+      let isOff = false;
+      // Sunday always off
+      if (dow === 0) isOff = true;
+      // Saturday rule
+      else if (dow === 6) {
+        if (flexConfig.saturday_rule === '4th_off') isOff = is4thSat;
+        else if (flexConfig.saturday_rule === 'all_off') isOff = true;
+        // 'all_work' → not off
+      }
+      // Check company calendar (holidays, obon, etc.)
+      if (!isOff) {
+        try { isOff = await calendarRepo.isOff(dateStr); } catch { isOff = false; }
+      }
+      if (!isOff) flexWorkingDays++;
+    }
+    flexMonthlyRequiredMin = Math.round(flexWorkingDays * workHoursPerDay * 60);
+    // Calculate actual total worked minutes for the month
+    flexTotalWorkedMin = 0;
+    for (const r of attendanceRows) {
+      if (r.checkIn && r.checkOut) {
+        const inMs = new Date(r.checkIn).getTime();
+        const outMs = new Date(r.checkOut).getTime();
+        if (!isNaN(inMs) && !isNaN(outMs)) {
+          const rawMin = Math.floor((outMs - inMs) / 60000);
+          const worked = Math.max(0, rawMin - breakMin);
+          flexTotalWorkedMin += worked;
+        }
+      }
+    }
+    flexDiffMin = flexTotalWorkedMin - flexMonthlyRequiredMin;
+    // Override OT: only count if total > required (positive diff)
+    overtimeMin = flexDiffMin > 0 ? roundToStep(flexDiffMin, rStep, rMode) : 0;
+    legalOverTotal = overtimeMin;
+    dailyOverTotal = 0;
+    weeklyOver40Min = 0;
+    weeklyAdditional = 0;
+    monthlyOver60Min = 0;
+  }
 
   const opts = options && typeof options === 'object' ? options : {};
   let baseMonthly = Object.prototype.hasOwnProperty.call(opts, 'baseMonthly')
