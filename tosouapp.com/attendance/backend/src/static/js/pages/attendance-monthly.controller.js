@@ -1713,8 +1713,9 @@
       const nameOf = (u) => String(u.username || u.email || '').trim();
       
       const isEmployee = (u) => {
-        // Show all users regardless of role
-        return true;
+        // Only show employees (not admin/manager) in the picker
+        const r = String(u.role || '').toLowerCase();
+        return r === 'employee';
       };
       
       const users = usersAll

@@ -32,7 +32,8 @@
   <header class="simple-top">
     <button id="btnPrev" class="simple-nav-btn" type="button" aria-label="prev">‹</button>
     <div class="simple-top-mid">
-      <div id="topDate" class="simple-date"></div>
+      <div id="topDate" class="simple-date" style="cursor:pointer;" title="クリックして日付を選択"></div>
+      <input id="datePickerInput" type="date" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;left:50%;transform:translateX(-50%);" aria-hidden="true">
       <div class="simple-sub">
         <span>ステータス：</span><span id="topStatus" class="simple-status"></span>
       </div>

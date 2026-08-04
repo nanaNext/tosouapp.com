@@ -1821,6 +1821,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     await load(state.date);
   });
 
+  // --- Date picker: click on topDate to jump to any date ---
+  const datePickerInput = document.getElementById('datePickerInput');
+  $('#topDate')?.addEventListener('click', () => {
+    if (!datePickerInput) return;
+    datePickerInput.value = state.date;
+    try { datePickerInput.showPicker(); } catch (e) {
+      datePickerInput.focus();
+      datePickerInput.click();
+    }
+  });
+  datePickerInput?.addEventListener('change', async () => {
+    const val = datePickerInput.value;
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val)) return;
+    state.date = val;
+    setUrlDate(state.date);
+    await load(state.date);
+  });
+
   $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
   $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
   $('#breakMin')?.addEventListener('change', renderWorkMinutes);
