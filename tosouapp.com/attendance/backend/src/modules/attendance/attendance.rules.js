@@ -157,7 +157,7 @@ async function computeRecord(rec, ctx = null) {
       const isConstruction = ['工事', 'kouji', 'koji', 'construction', 'engineering'].some(k => deptNameRaw.includes(k));
       const isAccounting = ['経理', 'keiri', 'accounting', 'finance'].some(k => deptNameRaw.includes(k));
       if (isConstruction) {
-        shift = { name: 'day_8_17', start: jst(8, 0), end: jst(17, 0), breakMinutes: 60 };
+        shift = { name: 'day_8_17', start: jst(8, 0), end: jst(17, 0), breakMinutes: 90, flexMode: true };
       } else if (isAccounting) {
         shift = { name: 'day_9_17', start: jst(9, 0), end: jst(17, 0), breakMinutes: 60 };
       } else if (cfg?.workStart && cfg?.workEnd) {
@@ -254,7 +254,8 @@ async function computeRecord(rec, ctx = null) {
   }
   const scheduled = isOff ? 0 : Math.max(0, minutesBetween(shift.start, shift.end) - breakMin);
   const regular = Math.min(worked, scheduled);
-  const overtime = Math.max(0, worked - scheduled);
+  // Flex mode (工事部): no daily OT — OT calculated monthly in salary service
+  const overtime = shift.flexMode ? 0 : Math.max(0, worked - scheduled);
 
   // Dùng CoreRules để lấy thêm thông tin Anomaly
   const metrics = CoreRules.calculateWorkMetrics(rec.checkIn, rec.checkOut, shift, isOff);
