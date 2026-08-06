@@ -397,7 +397,7 @@ const route = async () => {
     if (p2 === '/admin/attendance/holidays' || p2 === '/admin/attendance/holidays/') {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=1783307547862');
       const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/attendance/holidays', profile: profile });
-      const mod = await loadModule('./legacy/legacy-calendar.page.js?v=5');
+      const mod = await import('/static/js/admin/holidays/holidays.page.js?v=' + Date.now());
       if (seq !== routeSeq) return;
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;

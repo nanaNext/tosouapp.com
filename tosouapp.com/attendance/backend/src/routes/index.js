@@ -105,6 +105,10 @@ module.exports = function(app) {
   const branchRoutes = require('../modules/branches/branch.routes');
   app.use('/api/branches', branchRoutes);
 
+  // Holidays per department (休日設定)
+  const holidaysRoutes = require('../modules/holidays/holidays.routes');
+  app.use('/api/holidays', holidaysRoutes);
+
   // Test mail route — admin only, never expose in production without auth
   // GET /api/test-mail?email=someone@example.com
   app.get('/api/test-mail', authenticate, authorize('admin'), async (req, res) => {
