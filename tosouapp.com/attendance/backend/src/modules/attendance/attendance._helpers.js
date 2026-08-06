@@ -109,8 +109,9 @@ async function resolveTargetUserId(req) {
       return '__forbidden__';
     }
     // Manager can only access employees in the same department
+    // Only enforce when BOTH manager and target have a department assigned
     const me = await userRepo.getUserById(meId);
-    if (!me?.departmentId || !target?.departmentId || String(me.departmentId) !== String(target.departmentId)) {
+    if (me?.departmentId && target?.departmentId && String(me.departmentId) !== String(target.departmentId)) {
       return '__forbidden__';
     }
   }
