@@ -62,7 +62,6 @@ exports.jpHolidays = async (req, res) => {
 // POST /api/holidays/company — 全社休日を追加 (company_holidays テーブル)
 exports.createCompanyHoliday = async (req, res) => {
   try {
-    console.log('[holidays/company] POST received:', JSON.stringify(req.body));
     const { date, name, type, is_off } = req.body || {};
     if (!date) return res.status(400).json({ message: '日付は必須です (date required)' });
     await calendarRepo.ensureTable();
@@ -72,10 +71,8 @@ exports.createCompanyHoliday = async (req, res) => {
       type: type || 'fixed',
       is_off: is_off !== undefined ? (is_off ? 1 : 0) : 1
     }]);
-    console.log('[holidays/company] SUCCESS: saved', date);
     res.status(201).json({ message: '全社休日を登録しました' });
   } catch (err) {
-    console.error('[holidays/company] ERROR:', err.message);
     res.status(500).json({ message: err.message });
   }
 };
@@ -120,7 +117,6 @@ exports.getOne = async (req, res) => {
 // Body: { department_id, date, name, type, is_off }
 exports.create = async (req, res) => {
   try {
-    console.log('[holidays] POST received:', JSON.stringify(req.body));
     const { department_id, date, name, type, is_off } = req.body || {};
     if (!department_id) return res.status(400).json({ message: '部署IDは必須です (department_id required)' });
     if (!date) return res.status(400).json({ message: '日付は必須です (date required)' });
@@ -136,10 +132,8 @@ exports.create = async (req, res) => {
       type: type || 'custom',
       isOff: is_off !== undefined ? is_off : true
     });
-    console.log('[holidays] SUCCESS: created id=', id);
     res.status(201).json({ id, message: '登録しました' });
   } catch (err) {
-    console.error('[holidays] ERROR:', err.message);
     res.status(500).json({ message: err.message });
   }
 };

@@ -12,7 +12,10 @@ const {
 // API: Nhân viên ấn nút Check-in (Đi làm)
 exports.checkIn = async (req, res) => {
   try {
-    const userId = req.user?.id || req.body.userId;
+    // Security: employee can only check-in for themselves. Admin/manager can override via body.
+    const role = String(req.user?.role || '').toLowerCase();
+    const canOverride = role === 'admin' || role === 'manager';
+    const userId = (canOverride && req.body.userId) ? req.body.userId : req.user?.id;
     if (!userId) {
       return res.status(400).json({ message: 'Missing userId' });
     }
@@ -90,7 +93,10 @@ exports.checkIn = async (req, res) => {
 // API: Nhân viên ấn nút Check-out (Tan làm)
 exports.checkOut = async (req, res) => {
   try {
-    const userId = req.user?.id || req.body.userId;
+    // Security: employee can only check-out for themselves. Admin/manager can override via body.
+    const role = String(req.user?.role || '').toLowerCase();
+    const canOverride = role === 'admin' || role === 'manager';
+    const userId = (canOverride && req.body.userId) ? req.body.userId : req.user?.id;
     if (!userId) {
       return res.status(400).json({ message: 'Missing userId' });
     }
@@ -174,7 +180,9 @@ exports.checkOut = async (req, res) => {
 // API: Nhân viên ấn nút Ra ngoài (外出)
 exports.recordGoOut = async (req, res) => {
   try {
-    const userId = req.user?.id || req.body.userId;
+    const role = String(req.user?.role || '').toLowerCase();
+    const canOverride = role === 'admin' || role === 'manager';
+    const userId = (canOverride && req.body.userId) ? req.body.userId : req.user?.id;
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
     const { time, type, reason } = req.body || {};
     if (!type) return res.status(400).json({ message: 'Missing type (業務 or 私用)' });
@@ -192,7 +200,9 @@ exports.recordGoOut = async (req, res) => {
 // API: Nhân viên ấn nút Quay lại (戻り)
 exports.recordReturn = async (req, res) => {
   try {
-    const userId = req.user?.id || req.body.userId;
+    const role = String(req.user?.role || '').toLowerCase();
+    const canOverride = role === 'admin' || role === 'manager';
+    const userId = (canOverride && req.body.userId) ? req.body.userId : req.user?.id;
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
     const { time } = req.body || {};
 

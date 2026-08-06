@@ -5,7 +5,10 @@ const db = require('../../core/database/mysql');
  * Tách biệt với company_holidays (lịch nghỉ chung toàn công ty).
  */
 
+let _tableEnsured = false;
+
 async function ensureTable() {
+  if (_tableEnsured) return;
   await db.query(`
     CREATE TABLE IF NOT EXISTS department_holidays (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -22,6 +25,7 @@ async function ensureTable() {
       INDEX idx_year_dept (department_id, date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  _tableEnsured = true;
 }
 
 module.exports = {

@@ -274,9 +274,22 @@ exports.approveReadyMonth = async (req, res) => {
     const { month, departmentId } = req.body || {};
     const ym = String(month || '').slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ message: 'Missing month (YYYY-MM)' });
+
+    // Manager can only bulk-approve their own department
+    let effectiveDeptId = departmentId || null;
+    if (role === 'manager') {
+      const me = await userRepo.getUserById(req.user.id);
+      if (!me?.departmentId) return res.status(403).json({ message: 'Forbidden: manager has no department assigned' });
+      // Force to manager's own department (ignore body.departmentId if different)
+      if (effectiveDeptId && String(effectiveDeptId) !== String(me.departmentId)) {
+        return res.status(403).json({ message: 'Forbidden: cannot approve other departments' });
+      }
+      effectiveDeptId = me.departmentId;
+    }
+
     const y = parseInt(ym.slice(0, 4), 10);
     const m = parseInt(ym.slice(5, 7), 10);
-    const rows = await repo.getActiveUserIds(departmentId);
+    const rows = await repo.getActiveUserIds(effectiveDeptId);
     let approved = 0, submitted = 0, skipped = 0;
     const results = [];
     for (const r of (rows || [])) {

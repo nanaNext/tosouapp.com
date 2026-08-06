@@ -300,13 +300,38 @@ exports.resetPassword = async (req, res) => {
 };
 
 // Đặt lại mật khẩu cho SUPER_ADMIN qua Postman (bảo vệ bằng code)
+// Security: progressive lockout — block after repeated invalid code attempts
+const _superResetFails = new Map(); // ip -> { count, lockedUntil }
+const SUPER_RESET_MAX_FAILS = 5;
+const SUPER_RESET_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
 exports.superReset = async (req, res) => {
   try {
+    const clientIp = String(req.ip || req.headers['x-forwarded-for'] || 'unknown');
+    const lockInfo = _superResetFails.get(clientIp);
+    if (lockInfo && lockInfo.lockedUntil && Date.now() < lockInfo.lockedUntil) {
+      return res.status(423).json({ message: 'Too many failed attempts. Locked for 15 minutes.' });
+    }
+
     const { email, password, code } = req.body || {};
     const superEmail = process.env.SUPER_ADMIN_EMAIL;
     const resetCode = process.env.SUPER_ADMIN_RESET_CODE;
     if (!password || !code) return res.status(400).json({ message: 'Missing password/code' });
-    if (!resetCode || code !== resetCode) return res.status(403).json({ message: 'Forbidden' });
+    if (!resetCode || code !== resetCode) {
+      // Track failed attempts
+      const info = _superResetFails.get(clientIp) || { count: 0, lockedUntil: null };
+      info.count++;
+      if (info.count >= SUPER_RESET_MAX_FAILS) {
+        info.lockedUntil = Date.now() + SUPER_RESET_LOCKOUT_MS;
+        log.warn('super_reset_locked', { ip: clientIp, attempts: info.count });
+      }
+      _superResetFails.set(clientIp, info);
+      await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000)); // timing attack mitigation
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    // Reset fail counter on success
+    _superResetFails.delete(clientIp);
+
     let targetEmail = String(email || '').trim();
     if (superEmail) {
       if (!targetEmail) targetEmail = superEmail;
@@ -338,11 +363,29 @@ exports.superReset = async (req, res) => {
 // Tạo SUPER ADMIN qua Postman khi chưa có, bảo vệ bằng code
 exports.superBootstrap = async (req, res) => {
   try {
+    const clientIp = String(req.ip || req.headers['x-forwarded-for'] || 'unknown');
+    const lockInfo = _superResetFails.get(clientIp);
+    if (lockInfo && lockInfo.lockedUntil && Date.now() < lockInfo.lockedUntil) {
+      return res.status(423).json({ message: 'Too many failed attempts. Locked for 15 minutes.' });
+    }
+
     const { email, password, code, name } = req.body || {};
     const superEmail = process.env.SUPER_ADMIN_EMAIL;
     const resetCode = process.env.SUPER_ADMIN_RESET_CODE;
     if (!password || !code) return res.status(400).json({ message: 'Missing password/code' });
-    if (!resetCode || code !== resetCode) return res.status(403).json({ message: 'Forbidden' });
+    if (!resetCode || code !== resetCode) {
+      const info = _superResetFails.get(clientIp) || { count: 0, lockedUntil: null };
+      info.count++;
+      if (info.count >= SUPER_RESET_MAX_FAILS) {
+        info.lockedUntil = Date.now() + SUPER_RESET_LOCKOUT_MS;
+        log.warn('super_bootstrap_locked', { ip: clientIp, attempts: info.count });
+      }
+      _superResetFails.set(clientIp, info);
+      await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    _superResetFails.delete(clientIp);
+
     const targetEmail = String(email || '').trim();
     if (superEmail && targetEmail !== superEmail) return res.status(403).json({ message: 'Forbidden' });
     if (!superEmail) {
