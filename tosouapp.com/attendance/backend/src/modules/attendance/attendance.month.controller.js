@@ -18,6 +18,18 @@ async function getUserOffDaySet(year, userId) {
   if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
     for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
   }
+  // Thêm ngày nghỉ riêng theo bộ phận (department_holidays)
+  try {
+    const user = await userRepo.getUserById(userId).catch(() => null);
+    const deptId = user?.departmentId || user?.department_id;
+    if (deptId) {
+      const deptHolidayRepo = require('../holidays/holidays.repository');
+      const deptHolidays = await deptHolidayRepo.listByDepartmentAndYear(deptId, year);
+      for (const h of (deptHolidays || [])) {
+        if (h.is_off) off.add(String(h.date).slice(0, 10));
+      }
+    }
+  } catch (e) { /* department holidays not available, skip */ }
   return off;
 }
 
@@ -27,8 +39,8 @@ async function computeMonthMissing(userId, y, m) {
   const from = `${y}-${pad(m)}-01`;
   const to = `${y}-${pad(m)}-${pad(lastDay)}`;
   
-  const userRepo = require('../users/user.repository');
-  const user = await userRepo.getUserById(userId).catch(() => null);
+  const _uRepo = require('../users/user.repository');
+  const user = await _uRepo.getUserById(userId).catch(() => null);
   const isPartTime = user?.employment_type === 'part_time';
 
   const off = await getUserOffDaySet(y, userId);

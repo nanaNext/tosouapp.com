@@ -237,13 +237,21 @@ module.exports = {
     }
     const jpBridge = [];
     {
+      // 国民の休日: ngày kẹp giữa 2 ngày lễ quốc gia (祝日/振替休日), KHÔNG tính weekend
+      const jpHolidayDates = new Set();
+      for (const f of jp) jpHolidayDates.add(String(f.date));
+      for (const f of jpSubstitute) jpHolidayDates.add(String(f.date));
+      // Also include fixed company holidays that are already in `all`
+      for (const f of fixed) { if (f.is_off) jpHolidayDates.add(String(f.date)); }
+
       let cur = new Date(start);
       while (cur.getTime() <= end.getTime()) {
         const ds = ymd(cur);
         if (!all.has(ds)) {
           const prev = addDaysUTC(ds, -1);
           const next = addDaysUTC(ds, 1);
-          if (all.has(prev) && all.has(next)) {
+          // Chỉ bridge nếu cả prev và next đều là ngày lễ (không phải chỉ weekend)
+          if (jpHolidayDates.has(prev) && jpHolidayDates.has(next)) {
             jpBridge.push({ date: ds, name: '国民の休日', name_en: nameEnFromJa('国民の休日'), type: 'jp_bridge', is_off: 1 });
             all.add(ds);
           }
