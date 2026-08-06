@@ -275,16 +275,18 @@ exports.approveReadyMonth = async (req, res) => {
     const ym = String(month || '').slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ message: 'Missing month (YYYY-MM)' });
 
-    // Manager can only bulk-approve their own department
+    // Department check is opt-in via MANAGER_STRICT_DEPT env var
     let effectiveDeptId = departmentId || null;
     if (role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      // Only enforce if manager has a department assigned
-      if (me?.departmentId) {
-        if (effectiveDeptId && String(effectiveDeptId) !== String(me.departmentId)) {
-          return res.status(403).json({ message: 'Forbidden: cannot approve other departments' });
+      const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
+      if (strictDept) {
+        const me = await userRepo.getUserById(req.user.id);
+        if (me?.departmentId) {
+          if (effectiveDeptId && String(effectiveDeptId) !== String(me.departmentId)) {
+            return res.status(403).json({ message: 'Forbidden: cannot approve other departments' });
+          }
+          effectiveDeptId = me.departmentId;
         }
-        effectiveDeptId = me.departmentId;
       }
     }
 
