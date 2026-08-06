@@ -108,12 +108,10 @@ async function resolveTargetUserId(req) {
     if (String(target.role || '').toLowerCase() !== 'employee') {
       return '__forbidden__';
     }
-    const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
-    if (strictDept) {
-      const me = await userRepo.getUserById(meId);
-      if (!me?.departmentId || !target?.departmentId || String(me.departmentId) !== String(target.departmentId)) {
-        return '__forbidden__';
-      }
+    // Manager can only access employees in the same department
+    const me = await userRepo.getUserById(meId);
+    if (!me?.departmentId || !target?.departmentId || String(me.departmentId) !== String(target.departmentId)) {
+      return '__forbidden__';
     }
   }
   return targetId;

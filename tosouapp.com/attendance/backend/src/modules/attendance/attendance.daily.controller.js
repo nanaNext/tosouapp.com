@@ -253,8 +253,13 @@ exports.addSegment = async (req, res) => {
     if (!checkIn && checkOut) {
        id = await repo.createMissingCheckIn(userId, checkOut, null, null, 'missing_checkin');
     } else {
-       id = await repo.createCheckIn(userId, checkIn, null, null);
-       if (checkOut) {
+       id = await repo.createCheckInTx(userId, checkIn, null, null);
+       if (!id) {
+         // Already checked in for this day — get existing record
+         const existing = await repo.getOpenAttendanceForUser(userId, date);
+         id = existing?.id;
+       }
+       if (id && checkOut) {
          await repo.setCheckOut(id, checkOut, null, null);
        }
     }
