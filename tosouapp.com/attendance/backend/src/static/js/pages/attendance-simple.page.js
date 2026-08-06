@@ -208,6 +208,12 @@ const restoreFastSnapshot = (date, stateRef) => {
     try { sessionStorage.setItem(sessionKey, raw); } catch (e) { /* silently ignored */ }
 
     stateRef.isOff = !!snap.isOff;
+    // Force off for weekends (failsafe)
+    try {
+      const [yy, mm, dd] = date.split('-').map(x => parseInt(x, 10));
+      const dow = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+      if (dow === 0 || dow === 6) stateRef.isOff = true;
+    } catch (e) { /* silently ignored */ }
     stateRef.currentMonthStatus = String(snap.currentMonthStatus || '');
     stateRef.shiftStart = String(snap.shiftStart || FIXED_START);
     stateRef.shiftEnd = String(snap.shiftEnd || FIXED_END);
@@ -218,8 +224,8 @@ const restoreFastSnapshot = (date, stateRef) => {
     const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
 
     const kubunOptions = stateRef.isOff
-      ? (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['休日', '休日出勤', '代替出勤', '振替出勤'])
-      : (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日']);
+      ? (isPartTime ? ['休日', '出勤', '欠勤', '有給休暇'] : ['休日', '休日出勤', '代替出勤', '振替出勤'])
+      : (isPartTime ? ['出勤', '休日', '欠勤', '有給休暇'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日']);
     
     let kubunGroupLabel = stateRef.isOff ? '【予定休日】' : '【予定出勤】';
     let defaultKubun = stateRef.isOff ? '休日' : '出勤';
@@ -933,6 +939,7 @@ const renderGoOutBanner = (currentGoOut) => {
 const getCalendarOff = async (date) => {
   // Ưu tiên trạng thái nghỉ từ API vì đã áp dụng policy theo phòng ban (ví dụ: 工事部).
   const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
+  console.log('[getCalendarOff]', date, 'API response:', cal);
   if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
     return Number(cal?.is_off || 0) === 1;
   }
@@ -1094,8 +1101,8 @@ const load = async (date, opts = {}) => {
     const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
 
     const kubunOptions = isOff
-      ? (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['休日', '休日出勤', '代替出勤', '振替出勤'])
-      : (isPartTime ? ['休日', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日']);
+      ? (isPartTime ? ['休日', '出勤', '欠勤', '有給休暇'] : ['休日', '休日出勤', '代替出勤', '振替出勤'])
+      : (isPartTime ? ['出勤', '休日', '欠勤', '有給休暇'] : ['出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日']);
     
     let kubunGroupLabel = isOff ? '【予定休日】' : '【予定出勤】';
     let localDefaultKubun = isOff ? '休日' : '出勤';
@@ -1123,6 +1130,7 @@ const load = async (date, opts = {}) => {
           return `<option value="${k}" ${disabledOpt}>${k}</option>`;
         }).join('')}`;
         selK.value = kubunOptions.includes(fallbackKubun) ? fallbackKubun : localDefaultKubun;
+        console.log('[loadDay kubun set]', 'isOff:', isOff, 'kubunSaved:', kubunSaved, 'defaultKubun:', defaultKubun, 'fallbackKubun:', fallbackKubun, 'final:', selK.value);
         selK.classList.toggle('is-planned', !kubunSaved);
         setupSimpleCombo(selK);
         
@@ -1668,6 +1676,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   simpleUserId = String(profile?.id || '');
+  // Store profile globally so kubun logic can access employment_type
+  window.appConfig = window.appConfig || {};
+  window.appConfig.profile = profile;
   try {
     const panels = [
       { key: 'attendanceSimple.notice.open', toggleId: 'toggleNotice', bodyId: 'noticeBox', def: true },

@@ -74,7 +74,7 @@
       let kubunOptions = [];
       if (isPartTime) {
         // Part-time: chỉ 5 lựa chọn cần thiết, không có 半休/代替休日/振替出勤/休日出勤
-        kubunOptions = ['出勤', '休日', '欠勤', '有給休暇', '無給休暇'];
+        kubunOptions = ['出勤', '休日', '欠勤', '有給休暇'];
       } else {
         if (offDay) {
           kubunOptions = ['休日', '休日出勤', '代替出勤', '振替出勤'];
@@ -531,7 +531,7 @@
       })()}</td>
       <td>
         <div style="${!showDateDow ? 'visibility:hidden;' : ''}">
-          <select id="reason_${dateStr}_${rowId}" name="reason_${dateStr}_${rowId}" class="se-select" data-field="reason" ${state.editableMonth ? '' : 'disabled'} style="width:140px;${(effectiveKubun === '欠勤' || effectiveKubun === '遅刻' || effectiveKubun === '早退' || effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '代替休日') ? '' : 'visibility:hidden;'}">
+          <select id="reason_${dateStr}_${rowId}" name="reason_${dateStr}_${rowId}" class="se-select" data-field="reason" ${state.editableMonth ? '' : 'disabled'} style="width:140px;${(effectiveKubun === '欠勤' || effectiveKubun === '遅刻' || effectiveKubun === '早退' || effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '代替休日' || Number(daily?.lateMinutes || daily?.late_minutes || 0) > 0 || Number(daily?.earlyMinutes || daily?.early_minutes || 0) > 0 || (isWorkDay && finalIn && shiftStartOk && parseHm(finalIn) != null && parseHm(shiftStart) != null && parseHm(finalIn) > parseHm(shiftStart))) ? '' : 'visibility:hidden;'}">
             <option value=""></option>
             <option value="私用" ${dReason === '私用' || dReason === 'private' || dReason === '私用のため' ? 'selected' : ''}>私用</option>
             <option value="私用（詳細）" ${dReason === '私用（詳細）' ? 'selected' : ''}>私用（詳細）</option>
@@ -736,12 +736,13 @@
       const isLeaveKubun = effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '欠勤';
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isPlanned = !cls && !idVal && !confirmed;
-      const canEditWorkInputs = !!state.editableMonth && (isWorkDay && !!cls || !isEmployee);
       
       let currentRole = '';
       try { currentRole = String(state?.profile?.role || '').toLowerCase(); } catch (e) { /* silently ignored */ }
       const isEmployee = currentRole === 'employee';
       const isPrimaryRow = String(rowEl.dataset.primary || '') === '1';
+      
+      const canEditWorkInputs = !!state.editableMonth && (isWorkDay && !!cls || !isEmployee);
       
       // Cho phép sửa giờ checkIn/checkOut nếu:
       // 1. Không phải employee (admin/manager) HOẶC
@@ -1139,7 +1140,8 @@
       // Update reason visibility/disability based on kubun and updated lateEarlyText
       if (reasonSel) {
         const lateEarlyText = lateEarly ? lateEarly.textContent : '—';
-        if (effectiveKubun === '欠勤' || (lateEarlyText && lateEarlyText !== '—')) {
+        const showReason = effectiveKubun === '欠勤' || effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '代替休日' || (lateEarlyText && lateEarlyText !== '—');
+        if (showReason) {
           reasonSel.style.visibility = 'visible';
           reasonSel.disabled = !state.editableMonth;
         } else {
