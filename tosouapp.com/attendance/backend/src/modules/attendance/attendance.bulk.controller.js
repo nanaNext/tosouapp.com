@@ -93,6 +93,24 @@ exports.putMonthBulk = async (req, res) => {
     if (!year || !month || !Array.isArray(updates)) return res.status(400).json({ message: 'Missing fields' });
     const y = parseInt(year,10), m = parseInt(month,10);
     await assertMonthWritable(req, userId, y, m);
+
+    // Capture before-state for audit
+    let beforeSnap = null;
+    try {
+      const pad = n => String(n).padStart(2, '0');
+      const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      const from = `${y}-${pad(m)}-01`;
+      const to = `${y}-${pad(m)}-${pad(lastDay)}`;
+      const [rows] = await db.query(
+        'SELECT id, checkIn, checkOut, work_type FROM attendance WHERE userId = ? AND (DATE(checkIn) BETWEEN ? AND ? OR (checkIn IS NULL AND DATE(checkOut) BETWEEN ? AND ?))',
+        [userId, from, to, from, to]
+      );
+      const [dailyRows] = await db.query(
+        'SELECT date, kubun, break_minutes, work_type, location, memo, notes FROM attendance_daily WHERE userId = ? AND date BETWEEN ? AND ?',
+        [userId, from, to]
+      );
+      beforeSnap = { attendance: rows || [], daily: dailyRows || [] };
+    } catch (e) { /* silently ignored */ }
     if (req.user.role === 'employee' && !isEditableMonth(y,m)) {
       return res.status(403).json({ message: 'Forbidden: cannot edit past months' });
     }
@@ -204,7 +222,7 @@ exports.putMonthBulk = async (req, res) => {
         method: req.method,
         ip: req.ip,
         userAgent: req.headers['user-agent'],
-        beforeData: null,
+        beforeData: JSON.stringify(beforeSnap || null),
         afterData: JSON.stringify({ targetUserId: userId, year: y, month: m, saved: result.saved })
       });
     } catch (e) { /* silently ignored */ }

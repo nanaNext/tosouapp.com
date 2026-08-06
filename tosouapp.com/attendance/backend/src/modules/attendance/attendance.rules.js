@@ -369,7 +369,7 @@ async function computeRange(rows) {
       }
     }));
   }
-
+// 
   const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache, dailyCache };
   const computedItems = await Promise.all(
     rows

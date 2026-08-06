@@ -650,14 +650,13 @@ exports.exportMonthXlsx = async (req, res) => {
         (src[8] && typeof src[8] === 'object' ? src[8].v : '') || '',
         src[9] || '',
         src[10] || '',
-        src[11] || '0:00',
-        src[12] || '0:00',
         src[13] || '0:00',
         src[14] || '0:00',
-        src[15] || '',
-        src[16] || '',
+        src[15] || '0:00',
+        src[17] || '0:00',
         src[18] || '',
         src[19] || '',
+        src[20] || '',
         monthApproverName
       ];
       const rowNum = 7 + i;
@@ -963,7 +962,7 @@ exports.exportMonthXlsx = async (req, res) => {
       const cells = sr?.cells || [];
       const dateVal = cells[2] || '';
       const locVal = cells[5] || '';
-      const memoVal = cells[17] || '';
+      const memoVal = cells[20] || '';
       if (!locVal && !memoVal) { sheet3Row++; continue; }
       push3(sheet3Row, [cell(`A${sheet3Row}`, dateVal, 10), cell(`B${sheet3Row}`, locVal, 11), cell(`C${sheet3Row}`, memoVal, 11)]);
       sheet3Row++;

@@ -966,13 +966,13 @@
       <thead>
         <tr>
           <th>${esc(L.planned)}</th>
-          <th>${esc(L.attend)}</th>
+          <th style="background:#1d4ed8;color:#fff;">${esc(L.attend)}</th>
           <th>${esc(L.holiday)}</th>
           <th>${esc(L.standby)}</th>
-          <th>${esc(L.total)}</th>
+          <th style="background:#1e40af;color:#fff;">${esc(L.total)}</th>
           <th>${esc(L.night)}</th>
-          <th>${esc(L.overtime)}</th>
-          <th>${esc(L.legal)}</th>
+          <th style="background:#ea580c;color:#fff;">${esc(L.overtime)}</th>
+          <th style="background:#dc2626;color:#fff;">${esc(L.legal)}</th>
           <th>${esc(L.paid)}</th>
           <th>${esc(L.entitlement)}</th>
           <th>${esc(L.substitute)}</th>
@@ -989,13 +989,13 @@
       <tbody>
         <tr>
           <td>${esc(plannedDays)}日</td>
-          <td>${esc(attendDays2)}日</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1d4ed8;">${esc(attendDays2)}日</td>
           <td>${esc(holidayWorkDays2)}日</td>
           <td>${esc(standbyDays)}日</td>
-          <td>${esc(fmtHm(totalWork))}</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1e40af;">${esc(fmtHm(totalWork))}</td>
           <td>${esc(fmtHm(totals.night))}</td>
-          <td>${esc(fmtHm(totals.overtime))}</td>
-          <td>${esc(fmtHm(legalOvertimeMin))}</td>
+          <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${esc(fmtHm(totals.overtime))}</td>
+          <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${esc(fmtHm(legalOvertimeMin))}</td>
           <td>${esc(paidText)}日</td>
           <td>${esc(entitlementText)}日</td>
           <td>${esc(substituteDays)}日</td>
@@ -1015,13 +1015,13 @@
       <thead>
         <tr>
           <th>${esc(L.planned)}</th>
-          <th>${esc(L.attend)}</th>
+          <th style="background:#1d4ed8;color:#fff;">${esc(L.attend)}</th>
           <th>${esc(L.holiday)}</th>
           <th>${esc(L.standby)}</th>
-          <th>${esc(L.total)}</th>
+          <th style="background:#1e40af;color:#fff;">${esc(L.total)}</th>
           <th>${esc(L.night)}</th>
-          <th>${esc(L.overtime)}</th>
-          <th>${esc(L.legal)}</th>
+          <th style="background:#ea580c;color:#fff;">${esc(L.overtime)}</th>
+          <th style="background:#dc2626;color:#fff;">${esc(L.legal)}</th>
           <th>${esc(L.paid)}</th>
           <th>${esc(L.substitute)}</th>
           <th>${esc(L.unpaid)}</th>
@@ -1031,13 +1031,13 @@
       <tbody>
         <tr>
           <td>${esc(plannedDays)}日</td>
-          <td>${esc(attendDays2)}日</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1d4ed8;">${esc(attendDays2)}日</td>
           <td>${esc(holidayWorkDays2)}日</td>
           <td>${esc(standbyDays)}日</td>
-          <td>${esc(fmtHm(totalWork))}</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1e40af;">${esc(fmtHm(totalWork))}</td>
           <td>${esc(fmtHm(totals.night))}</td>
-          <td>${esc(fmtHm(totals.overtime))}</td>
-          <td>${esc(fmtHm(legalOvertimeMin))}</td>
+          <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${esc(fmtHm(totals.overtime))}</td>
+          <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${esc(fmtHm(legalOvertimeMin))}</td>
           <td>${esc(paidText)}日</td>
           <td>${esc(substituteDays)}日</td>
           <td>${esc(unpaidDays)}日</td>
