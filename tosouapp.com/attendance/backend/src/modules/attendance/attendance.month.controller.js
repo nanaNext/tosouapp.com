@@ -279,12 +279,13 @@ exports.approveReadyMonth = async (req, res) => {
     let effectiveDeptId = departmentId || null;
     if (role === 'manager') {
       const me = await userRepo.getUserById(req.user.id);
-      if (!me?.departmentId) return res.status(403).json({ message: 'Forbidden: manager has no department assigned' });
-      // Force to manager's own department (ignore body.departmentId if different)
-      if (effectiveDeptId && String(effectiveDeptId) !== String(me.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: cannot approve other departments' });
+      // Only enforce if manager has a department assigned
+      if (me?.departmentId) {
+        if (effectiveDeptId && String(effectiveDeptId) !== String(me.departmentId)) {
+          return res.status(403).json({ message: 'Forbidden: cannot approve other departments' });
+        }
+        effectiveDeptId = me.departmentId;
       }
-      effectiveDeptId = me.departmentId;
     }
 
     const y = parseInt(ym.slice(0, 4), 10);
