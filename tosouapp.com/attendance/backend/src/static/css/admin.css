@@ -90,17 +90,26 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
 }
 
 /* --- TOPBAR & BRAND --- */
+/* Tenant brand color variables — set by admin-brand.ejs script */
+:root {
+  --tenant-primary: #0b2c66;
+  --tenant-primary-dark: #072149;
+  --tenant-primary-border: #051a38;
+  --tenant-text: #ffffff;
+}
+
 .admin .topbar {
   z-index: 2147483000 !important;
   pointer-events: auto !important;
   height: 48px !important;
-  background: #0b2c66 !important;
-  border-bottom: 1px solid #072149 !important;
+  background: var(--tenant-primary, #0b2c66) !important;
+  border-bottom: 1px solid var(--tenant-primary-border, #072149) !important;
   position: fixed !important;
   top: 0;
   left: 0;
   right: 0;
   width: 100%;
+  transition: background 0.3s ease;
 }
 
 .admin .topbar-inner {
@@ -131,8 +140,8 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  overflow: hidden !important;
-  border-radius: 999px !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
   flex: 0 0 28px !important;
   background: transparent !important;
 }
@@ -160,7 +169,7 @@ body.admin { --topbar-height: 48px !important; overflow-x: hidden !important; }
   font-family: Inter, sans-serif !important;
   font-size: 20px !important;
   font-weight: 800 !important;
-  color: #ffffff !important;
+  color: var(--tenant-text, #ffffff) !important;
   letter-spacing: -0.5px !important;
   line-height: 1 !important;
   text-transform: uppercase;

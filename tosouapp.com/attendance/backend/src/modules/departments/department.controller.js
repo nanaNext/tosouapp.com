@@ -1,8 +1,9 @@
 const repo = require('./department.repository');
+
 // Controller quản trị phòng ban
 exports.list = async (req, res) => {
   try {
-    const rows = await repo.getAllDepartments();
+    const rows = await repo.getAllDepartments(req.tenantId || null);
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -12,7 +13,7 @@ exports.create = async (req, res) => {
   try {
     const { name, code } = req.body || {};
     if (!name) return res.status(400).json({ message: 'Missing name' });
-    const id = await repo.createDepartment(name, code || null);
+    const id = await repo.createDepartment(name, code || null, req.tenantId || null);
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -46,7 +47,7 @@ exports.createBulk = async (req, res) => {
     if (!Array.isArray(names) || names.length === 0) {
       return res.status(400).json({ message: 'Missing names[]' });
     }
-    const ids = await repo.createMany(names);
+    const ids = await repo.createMany(names, req.tenantId || null);
     res.status(201).json({ ids });
   } catch (err) {
     res.status(500).json({ message: err.message });

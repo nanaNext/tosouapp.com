@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>会社選択 | スマートE勤怠</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=<%= appVersion %>">
+  <link rel="icon" href="/static/images/logo1.png?v=<%= appVersion %>" type="image/png">
+  <script type="module" src="/static/js/pages/select-company.page.js?v=<%= appVersion %>-mt2"></script>
+  <style>
+    /* ── Layout ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+      background: linear-gradient(135deg, #cfe9ff 0%, #bde6ff 100%);
+      background-attachment: fixed;
+    }
+
+    .sc-wrapper {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    /* ── Card ── */
+    .sc-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      padding: 40px 36px 32px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .sc-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .sc-system-logo {
+      height: 48px;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+
+    .sc-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 4px;
+    }
+
+    .sc-greeting {
+      font-size: 14px;
+      color: #64748b;
+      margin: 0;
+    }
+
+    /* ── Company Grid ── */
+    .sc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .sc-company-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: border-color .18s, box-shadow .18s, transform .18s, background .18s;
+      text-align: center;
+      width: 100%;
+      position: relative;
+      outline: none;
+    }
+
+    .sc-company-btn:hover, .sc-company-btn:focus-visible {
+      border-color: #1976d2;
+      background: #eff8ff;
+      box-shadow: 0 4px 16px rgba(25,118,210,.15);
+      transform: translateY(-2px);
+    }
+
+    .sc-company-btn:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .sc-company-btn.loading {
+      pointer-events: none;
+      opacity: .7;
+    }
+
+    .sc-logo-wrap {
+      width: 96px;
+      height: 96px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+      flex-shrink: 0;
+    }
+
+    .sc-logo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .sc-logo-placeholder {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1976d2, #0d47a1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -1px;
+    }
+
+    .sc-company-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .sc-company-role {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: -6px;
+    }
+
+    /* ── Spinner inside button ── */
+    .sc-btn-spinner {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: rgba(255,255,255,.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .sc-company-btn.loading .sc-btn-spinner { display: flex; }
+
+    .sc-btn-spinner::after {
+      content: '';
+      width: 28px; height: 28px;
+      border: 3px solid #1976d2;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: sc-spin .7s linear infinite;
+    }
+    @keyframes sc-spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ── */
+    .sc-footer {
+      text-align: center;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .sc-logout-link {
+      color: #64748b;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 13px;
+      padding: 0;
+    }
+    .sc-logout-link:hover { color: #1976d2; }
+
+    /* ── Error ── */
+    #sc-error {
+      display: none;
+      color: #b00020;
+      background: #fff0f0;
+      border: 1px solid #fecdd3;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* ── Page loading overlay ── */
+    #sc-page-spinner {
+      position: fixed; inset: 0; background: rgba(255,255,255,.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+    #sc-page-spinner[hidden] { display: none; }
+    #sc-page-spinner::after {
+      content: '';
+      width: 44px; height: 44px;
+      border: 4px solid #1976d2;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: sc-spin .8s linear infinite;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 480px) {
+      .sc-card { padding: 28px 16px 24px; border-radius: 12px; }
+      .sc-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .sc-title { font-size: 18px; }
+    }
+
+    @media (max-width: 320px) {
+      .sc-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sc-page-spinner" hidden></div>
+
+  <div class="sc-wrapper">
+    <div class="sc-card">
+      <div class="sc-header">
+        <img src="/static/images/logo1.png?v=<%= appVersion %>" alt="スマートE勤怠" class="sc-system-logo">
+        <h1 class="sc-title">ログインする会社を選択してください</h1>
+        <p class="sc-greeting" id="sc-greeting"></p>
+      </div>
+
+      <div id="sc-error" role="alert"></div>
+
+      <div class="sc-grid" id="sc-grid">
+        <!-- Populated by select-company.page.js -->
+        <div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:24px 0;font-size:14px;">
+          読み込み中...
+        </div>
+      </div>
+
+      <div class="sc-footer">
+        <button class="sc-logout-link" id="sc-logout-btn" type="button">別のアカウントでログイン</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

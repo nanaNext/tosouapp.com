@@ -252,6 +252,27 @@ function ensureLeaveUiStyles() {
     .leave-page .leave-table tbody tr:hover td:last-child {
       background: #F4F4F4 !important;
     }
+    .leave-page .leave-table .leave-group-header td {
+      background: #1F3A68 !important;
+      color: #FFFFFF !important;
+      font-weight: 700 !important;
+      padding: 10px 16px;
+      border-bottom: 1px solid #1F3A68 !important;
+      font-size: 13px;
+    }
+    .leave-page .leave-table .leave-group-header:hover td {
+      background: #1F3A68 !important;
+    }
+    .leave-page .leave-table .leave-group-company {
+      font-size: 14px;
+    }
+    .leave-page .leave-table .leave-group-branch {
+      font-weight: 600 !important;
+      opacity: 0.85;
+      margin-left: 8px;
+      padding-left: 8px;
+      border-left: 2px solid rgba(255,255,255,0.4);
+    }
     .leave-page .leave-table .num { text-align: right; font-variant-numeric: tabular-nums; }
     .leave-badge { 
       display: inline-flex; 
@@ -493,9 +514,33 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
     if (page > totalPages) page = totalPages;
     const start = (page - 1) * pageSize;
     const pageRows = matched.slice(start, start + pageSize);
+    const colCount = hasActions ? 6 : 5;
 
     tbody.innerHTML = '';
+    let lastTenantKey = '';
+    let lastBranchKey = '';
     for (const r of pageRows) {
+      const tId = String(r?.tenant_id ?? '0');
+      const bId = String(r?.branch_id ?? '0');
+      const tName = String(r?.tenant_name || '未設定').trim() || '未設定';
+      const bName = String(r?.branch_name || '').trim();
+      const tenantKey = tId;
+      const branchKey = `${tId}__${bId}`;
+      if (tenantKey !== lastTenantKey) {
+        const gtr = document.createElement('tr');
+        gtr.className = 'leave-group-header';
+        const branchHtml = bName ? `<span class="leave-group-branch">${bName}</span>` : '';
+        gtr.innerHTML = `<td colspan="${colCount}"><span class="leave-group-company">🏢 ${tName}</span>${branchHtml}</td>`;
+        tbody.appendChild(gtr);
+        lastTenantKey = tenantKey;
+        lastBranchKey = branchKey;
+      } else if (bName && branchKey !== lastBranchKey) {
+        const gtr = document.createElement('tr');
+        gtr.className = 'leave-group-header';
+        gtr.innerHTML = `<td colspan="${colCount}"><span class="leave-group-company">🏢 ${tName}</span><span class="leave-group-branch">${bName}</span></td>`;
+        tbody.appendChild(gtr);
+        lastBranchKey = branchKey;
+      }
       const canReview = String(r?.status || '') === 'pending';
       const empCode = r.employee_code || ('EMP' + String(r.userId).padStart(3, '0'));
       const userLabel = `${empCode} ${r?.username || ''}`.trim();
@@ -525,7 +570,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
     }
     if (!pageRows.length) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="6" style="text-align:center;color:#64748b;padding:20px 8px;">${usingLegacyPending ? '承認待ちの休暇申請はありません' : (selectedStatus ? 'この状態の休暇申請はありません' : '休暇申請はありません')}</td>`;
+      tr.innerHTML = `<td colspan="${colCount}" style="text-align:center;color:#64748b;padding:20px 8px;">${usingLegacyPending ? '承認待ちの休暇申請はありません' : (selectedStatus ? 'この状態の休暇申請はありません' : '休暇申請はありません')}</td>`;
       tbody.appendChild(tr);
     }
     pager.innerHTML = `

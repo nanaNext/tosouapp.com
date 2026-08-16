@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { rateLimitNamed } = require('../../core/middleware/rateLimit');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const repo = require('./expenses.repository');
 const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
@@ -23,6 +24,7 @@ function recordEndpointPerf(endpoint, startedAt, meta = {}) {
 }
 
 router.use(authenticate);
+router.use(resolveTenant);
 router.get('/types',
   rateLimitNamed('expenses_types', { windowMs: 60_000, max: 30 }),
   authorize('employee','manager','admin'),

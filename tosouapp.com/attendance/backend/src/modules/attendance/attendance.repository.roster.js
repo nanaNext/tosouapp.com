@@ -12,7 +12,7 @@ module.exports = {
     `, [userId, limit]);
     return rows || [];
   },
-  async getTodaySummaryStats(dateStr) {
+  async getTodaySummaryStats(dateStr, tenantId = null) {
     const [[{ c_checkin } = { c_checkin: 0 }]] = await db.query(`
       SELECT COUNT(DISTINCT userId) AS c_checkin
       FROM attendance
@@ -23,12 +23,15 @@ module.exports = {
       FROM attendance
       WHERE DATE(checkIn) = ? AND checkOut IS NULL
     `, [dateStr]);
+    const tidClause = tenantId ? 'AND tenant_id = ?' : '';
+    const tidParam = tenantId ? [parseInt(String(tenantId), 10)] : [];
     const [[{ c_active } = { c_active: 0 }]] = await db.query(`
       SELECT COUNT(*) AS c_active
       FROM users
       WHERE employment_status = 'active'
         AND role IN ('employee','manager')
-    `);
+        ${tidClause}
+    `, tidParam);
     const [[{ c_leave_users } = { c_leave_users: 0 }]] = await db.query(`
       SELECT COUNT(DISTINCT userId) AS c_leave_users
       FROM leave_requests
@@ -50,7 +53,9 @@ module.exports = {
     `, [userId, dateStr, dateStr]);
     return rows || [];
   },
-  async getTodayRosterItems(date) {
+  async getTodayRosterItems(date, tenantId = null) {
+    const tidClause = tenantId ? 'AND u.tenant_id = ?' : '';
+    const tidParam = tenantId ? [parseInt(String(tenantId), 10)] : [];
     const [rows] = await db.query(`
       SELECT
         u.id AS userId,
@@ -85,11 +90,12 @@ module.exports = {
       WHERE u.employment_status = 'active'
         AND u.role IN ('employee','manager')
         AND lr.id IS NULL
+        ${tidClause}
       ORDER BY
         COALESCE(u.employee_code, '') ASC,
         u.id ASC,
         a.checkIn ASC
-    `, [date, date, date, date, date]);
+    `, [date, date, date, date, date, ...tidParam]);
     return rows || [];
   },
   async getTodayPlannedItems(date) {

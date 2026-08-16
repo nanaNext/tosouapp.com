@@ -687,6 +687,51 @@ const wireNavSelection = () => {
 };
 
 const boot = async () => {
+  // Verify tenant context — force reload if tenant changed
+  try {
+    const tok = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken') || '';
+    if (tok) {
+      const parts = tok.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+        console.log('[boot] JWT tid=', payload.tid, 'role=', payload.role, 'id=', payload.id);
+
+        if (!payload.tid) {
+          const sc = sessionStorage.getItem('sc_tenants') || localStorage.getItem('sc_tenants');
+          if (sc) { window.location.replace('/ui/select-company'); return; }
+        }
+
+        const lastTid = sessionStorage.getItem('admin.last_tid');
+        const currentTid = String(payload.tid || '');
+        if (lastTid && lastTid !== currentTid) {
+          // Tenant changed — must do a hard reload to clear all in-memory module state
+          sessionStorage.removeItem('admin.last_tid');
+          sessionStorage.removeItem('admin.nav.selected');
+          // Clear ALL cached data
+          const toRemove = [];
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const k = sessionStorage.key(i);
+            if (k && (k.startsWith('monthly.') || k.startsWith('admin.'))) toRemove.push(k);
+          }
+          toRemove.forEach(k => sessionStorage.removeItem(k));
+          try {
+            const lrm = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith('monthly.') || k.startsWith('admin.'))) lrm.push(k);
+            }
+            lrm.forEach(k => localStorage.removeItem(k));
+          } catch(e) { /* silently ignored */ }
+          sessionStorage.setItem('admin.last_tid', currentTid);
+          // Force hard reload to flush all JS module caches
+          window.location.reload(true);
+          return;
+        }
+        sessionStorage.setItem('admin.last_tid', currentTid);
+      }
+    }
+  } catch (e) { /* silently ignored */ }
+
   // Cleanup stale sidebar state
   try { localStorage.removeItem('sidebar.collapsed'); document.body.classList.remove('sidebar-collapsed'); } catch (e) {}
   try {

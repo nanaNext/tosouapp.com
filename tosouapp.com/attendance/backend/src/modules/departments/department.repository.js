@@ -12,10 +12,14 @@ async function ensureDepartmentsTable() {
 }
 
 module.exports = {
-  async getAllDepartments() {
+  async getAllDepartments(tenantId = null) {
     await ensureDepartmentsTable();
-    const sql = `SELECT id, name, code FROM departments ORDER BY name ASC`;
-    const [rows] = await db.query(sql);
+    const tid = tenantId ? parseInt(String(tenantId), 10) : null;
+    const sql = tid
+      ? `SELECT id, name, code FROM departments WHERE tenant_id = ? ORDER BY name ASC`
+      : `SELECT id, name, code FROM departments ORDER BY name ASC`;
+    const params = tid ? [tid] : [];
+    const [rows] = await db.query(sql, params);
     return rows;
   },
 
@@ -26,10 +30,11 @@ module.exports = {
     return rows[0];
   },
 
-  async createDepartment(name, code = null) {
+  async createDepartment(name, code = null, tenantId = null) {
     await ensureDepartmentsTable();
-    const sql = `INSERT INTO departments (name, code) VALUES (?, ?)`;
-    const [result] = await db.query(sql, [name, code]);
+    const tid = tenantId ? parseInt(String(tenantId), 10) : null;
+    const sql = `INSERT INTO departments (name, code, tenant_id) VALUES (?, ?, ?)`;
+    const [result] = await db.query(sql, [name, code, tid]);
     return result.insertId;
   },
 
@@ -45,17 +50,26 @@ module.exports = {
     await db.query(sql, [id]);
   },
 
-  async createMany(names) {
+  async createMany(names, tenantId = null) {
     await ensureDepartmentsTable();
+    const tid = tenantId ? parseInt(String(tenantId), 10) : null;
     const createdIds = [];
     for (const n of (names || [])) {
       if (!n || !String(n).trim()) continue;
-      const [rows] = await db.query(`SELECT id FROM departments WHERE name = ? LIMIT 1`, [n]);
+      const tidClause = tid ? 'AND tenant_id = ?' : '';
+      const tidParam = tid ? [tid] : [];
+      const [rows] = await db.query(
+        `SELECT id FROM departments WHERE name = ? ${tidClause} LIMIT 1`,
+        [n, ...tidParam]
+      );
       if (Array.isArray(rows) && rows.length) {
         createdIds.push(rows[0].id);
         continue;
       }
-      const [result] = await db.query(`INSERT INTO departments (name) VALUES (?)`, [n]);
+      const [result] = await db.query(
+        `INSERT INTO departments (name, tenant_id) VALUES (?, ?)`,
+        [n, tid]
+      );
       createdIds.push(result.insertId);
     }
     return createdIds;

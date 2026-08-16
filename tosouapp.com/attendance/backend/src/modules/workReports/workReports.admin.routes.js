@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const repo = require('./workReports.repository');
 const attendanceRepo = require('../attendance/attendance.repository');
 const calendarRepo = require('../calendar/calendar.repository');
@@ -51,6 +52,7 @@ const canManagerAccessUser = async (req, userId) => {
 };
 
 router.use(authenticate);
+router.use(resolveTenant);
 
 router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
   try {
@@ -117,6 +119,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         ON wr.userId = u.id AND wr.date = ?
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
+        ${req.tenantId ? `AND u.tenant_id = ${parseInt(String(req.tenantId), 10)}` : ''}
       ORDER BY
         CASE WHEN a.checkIn IS NULL THEN 1 ELSE 0 END ASC,
         COALESCE(u.employee_code, '') ASC,
@@ -350,6 +353,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
       LEFT JOIN branches br ON br.id = u.branch_id
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
+        ${req.tenantId ? `AND u.tenant_id = ${parseInt(String(req.tenantId), 10)}` : ''}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
     `);
 
@@ -1024,6 +1028,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       LEFT JOIN branches br ON br.id = u.branch_id
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
+        ${req.tenantId ? `AND u.tenant_id = ${parseInt(String(req.tenantId), 10)}` : ''}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
     `);
     const userMap = new Map((users || []).map(u => [Number(u.userId), u]));

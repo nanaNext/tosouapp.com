@@ -24,21 +24,19 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ESCAPE_MAP[c] || c);
 }
 
+const xss = require('xss');
+
+const myXss = new xss.FilterXSS({
+  whiteList: xss.getDefaultWhiteList(), // Cho phép các thẻ HTML an toàn cơ bản
+  stripIgnoreTag: true, // Xóa luôn các thẻ không nằm trong whitelist thay vì escape
+  stripIgnoreTagBody: ['script', 'style', 'iframe', 'object', 'embed'] // Xóa toàn bộ nội dung của các thẻ nguy hiểm
+});
+
 /**
  * Strip script tags and event handlers (aggressive)
  */
 function stripDangerous(str) {
-  let s = String(str);
-  // Remove <script>...</script> tags
-  s = s.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  // Remove on* event handlers in tags
-  s = s.replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '');
-  s = s.replace(/\bon\w+\s*=\s*[^\s>]*/gi, '');
-  // Remove javascript: protocol
-  s = s.replace(/javascript\s*:/gi, '');
-  // Remove data: protocol in links (potential XSS)
-  s = s.replace(/data\s*:\s*text\/html/gi, '');
-  return s;
+  return myXss.process(String(str));
 }
 
 /**

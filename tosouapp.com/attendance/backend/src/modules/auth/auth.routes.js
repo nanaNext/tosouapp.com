@@ -72,6 +72,7 @@ router.get('/me',
   authController.me
 );
 router.post('/signup',
+  rateLimit({ windowMs: 60_000 * 60, max: 5 }),  // 5 signups per hour per IP
   body('username').isLength({ min: 2 }),
   body('email').isEmail(),
   body('password').isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 0 }),
@@ -118,6 +119,21 @@ router.post('/logout',
 router.post('/revoke-all',
   authenticate,
   authController.revokeAll
+);
+
+// ─── Multi-tenant: select company after login ─────────────────────────────────
+// Requires a valid access token (from login step 1).
+// Returns a new access token with tenant_id embedded.
+router.post('/select-tenant',
+  rateLimit({ windowMs: 60_000, max: 20 }),
+  authenticate,
+  authController.selectTenant
+);
+
+// Returns tenants for the current user (used when navigating directly to select-company)
+router.get('/my-tenants',
+  authenticate,
+  authController.myTenants
 );
 
 module.exports = router;

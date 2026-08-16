@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { permit } = require('../../core/middleware/rbac');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const controller = require('./leave.controller');
+
+// Apply resolveTenant to ALL leave routes for tenant isolation
+router.use(authenticate, resolveTenant);
 
 router.post('/', authenticate, authorize('employee','manager','admin'), controller.create);
 router.post('/paid', authenticate, authorize('employee','manager','admin'), controller.createPaid);
