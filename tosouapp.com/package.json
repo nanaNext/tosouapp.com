@@ -60,7 +60,8 @@
     "pg": "^8.21.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "xss": "^1.0.15"
+    "xss": "^1.0.15",
+    "knex": "^3.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.43.0",
@@ -68,7 +69,6 @@
     "@types/node": "^20.19.43",
     "esbuild": "^0.28.2",
     "jest": "^29.7.0",
-    "knex": "^3.1.0",
     "supertest": "^7.0.0",
     "typescript": "^5.4.0"
   },
