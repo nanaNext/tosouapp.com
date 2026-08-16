@@ -1,7 +1,7 @@
 // File đăng ký (mount) tất cả các đường dẫn API của hệ thống
 const express = require('express');
 const router = express.Router();
-
+// chỗ này dùng để nhập đưa vào các file chứa đường dẫn API của từng tính năng 
 // Nhập (import) các file chứa đường dẫn API của từng tính năng
 const authRoutes = require('../modules/auth/auth.routes');
 const attendanceRoutes = require('../modules/attendance/attendance.routes');
@@ -26,7 +26,9 @@ const faqRoutes = require('../modules/faq/faq.routes');
 
 const BUILD_ID = process.env.BUILD_ID || 'navy-20260331-1';
 const STARTED_AT = Date.now();
-const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process.env.ENABLE_DEBUG_ROUTES || '').toLowerCase() === 'true';
+// SECURITY: debug routes are only available outside production.
+// ENABLE_DEBUG_ROUTES is intentionally ignored to prevent accidental exposure.
+const allowDebugRoutes = process.env.NODE_ENV !== 'production';
 
 module.exports = function(app) {
   console.log('Mounting API routes...');
@@ -75,6 +77,9 @@ module.exports = function(app) {
   // ĐĂNG KÝ CÁC ĐƯỜNG DẪN API CHO TỪNG MODULE
   // ------------------------------------------------------------------------
   app.use('/api/auth', authRoutes); // Đăng nhập, đăng xuất
+  // Platform API — sysadmin only
+  const platformRoutes = require('../modules/platform/platform.routes');
+  app.use('/api/platform', platformRoutes);
   app.use('/api/attendance', attendanceRoutes); // Chấm công
   try {
     const attendanceController = require('../modules/attendance/attendance.controller');

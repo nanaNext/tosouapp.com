@@ -2,11 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const controller = require('./attendance.controller');
 const attendanceRepo = require('./attendance.repository');
 const calendarRepo = require('../calendar/calendar.repository');
 const userRepo = require('../users/user.repository');
-const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process.env.ENABLE_DEBUG_ROUTES || '').toLowerCase() === 'true';
+// SECURITY: debug routes are only available outside production.
+// ENABLE_DEBUG_ROUTES is intentionally ignored to prevent accidental exposure.
+const allowDebugRoutes = process.env.NODE_ENV !== 'production';
 
 const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
 
@@ -53,17 +56,17 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
 }
 
 router.post('/checkin',
-  authenticate,
+  authenticate, resolveTenant,
   authorize('employee','manager','admin'),
   rateLimitNamed('attendance_checkin', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
   controller.checkIn);
 router.post('/checkout',
-  authenticate,
+  authenticate, resolveTenant,
   authorize('employee','manager','admin'),
   rateLimitNamed('attendance_checkout', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
   controller.checkOut);
 router.post('/go-out',
-  authenticate,
+  authenticate, resolveTenant,
   authorize('employee','manager','admin'),
   rateLimitNamed('attendance_go_out', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
   controller.recordGoOut);
@@ -88,8 +91,8 @@ router.post('/sync',
   rateLimitNamed('attendance_sync', { windowMs: 60_000, max: 200 }),
   authenticate, authorize('employee','manager'), controller.syncOffline);
 router.get('/status', authenticate, authorize('employee','manager','admin'), controller.statusToday);
-router.get('/today-summary', authenticate, authorize('manager','admin'), controller.todaySummary);
-router.get('/today-roster', authenticate, authorize('admin','manager'), controller.todayRoster);
+router.get('/today-summary', authenticate, resolveTenant, authorize('manager','admin'), controller.todaySummary);
+router.get('/today-roster', authenticate, resolveTenant, authorize('admin','manager'), controller.todayRoster);
 router.get('/date/:date', authenticate, authorize('employee','manager','admin'), controller.getDay);
 router.get('/date/:date/daily', authenticate, authorize('employee','manager','admin'), controller.getDaily);
 router.get('/date/:date/go-out', authenticate, authorize('employee','manager','admin'), controller.getGoOutHistory);
@@ -879,5 +882,5 @@ router.get('/annual-summary', authenticate, authorize('employee','manager','admi
     res.status(500).json({ message: err.message });
   }
 });
-
+       // modules exports
 module.exports = router;

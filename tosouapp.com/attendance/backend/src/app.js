@@ -44,9 +44,15 @@ app.use(sanitizeInput());
 
 security(app);
 
-// Global rate limiting — 200 requests per minute per IP for API, 600 for static
+// Global rate limiting — 100 requests per minute per IP for API
+// Individual endpoints have stricter limits (login: 20/min, forgot-password: 10/min)
 const { rateLimit } = require('./core/middleware/rateLimit');
-app.use('/api', rateLimit({ windowMs: 60_000, max: 200, keyBy: 'ip' }));
+app.use('/api', rateLimit({ 
+  windowMs: 60_000, 
+  max: 100, 
+  keyBy: 'ip',
+  message: 'Quá nhiều request, vui lòng thử lại sau.' 
+}));
 
 // Phản hồi ảnh favicon mặc định (hoặc icon SVG tự sinh) để tránh lỗi 404
 app.get('/favicon.ico', (req, res) => {
@@ -92,6 +98,11 @@ app.use((req, res, next) => {
 });
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'static', 'html'));
+
+// Inject tenant info into every page render (logo, name, color)
+// Falls back to 飯塚塗研 defaults when ENABLE_MULTI_TENANT=false
+const { injectTenantLocals } = require('./core/middleware/tenantMiddleware');
+app.use(injectTenantLocals);
 
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
@@ -149,7 +160,10 @@ app.use((req, res, next) => {
     process.env.CSP_DEFAULT_SRC || "default-src 'self'",
     process.env.CSP_IMG_SRC || "img-src 'self' data: https:",
     process.env.CSP_STYLE_SRC || "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    process.env.CSP_SCRIPT_SRC || `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' https://cdn.jsdelivr.net`,
+    // SECURITY: 'unsafe-eval' removed — it weakens CSP XSS protection.
+    // If a library requires eval(), use a nonce or hash, or replace the library.
+    // Set CSP_SCRIPT_SRC env variable to override if absolutely needed.
+    process.env.CSP_SCRIPT_SRC || `script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`,
     process.env.CSP_FONT_SRC || "font-src 'self' https://fonts.gstatic.com data:",
     process.env.CSP_OBJECT_SRC || "object-src 'none'",
     process.env.CSP_FRAME_ANCESTORS || "frame-ancestors 'self'",
@@ -164,8 +178,10 @@ app.use((req, res, next) => {
     : 'Content-Security-Policy';
   res.setHeader(cspHeader, csp);
   const isHttps = req.secure || (req.headers['x-forwarded-proto'] || '').includes('https');
-  const enableHsts = String(process.env.ENABLE_HSTS || '').toLowerCase() === 'true';
-  if (isHttps && enableHsts) {
+  // SECURITY: HSTS is ON by default when the connection is HTTPS.
+  // Set DISABLE_HSTS=true to opt out (e.g. for local dev behind HTTP proxy).
+  const disableHsts = String(process.env.DISABLE_HSTS || '').toLowerCase() === 'true';
+  if (isHttps && !disableHsts) {
     res.setHeader('Strict-Transport-Security', process.env.HSTS_VALUE || 'max-age=31536000; includeSubDomains');
   }
   next();
@@ -226,18 +242,20 @@ const db = require('./core/database/mysql');
 const redis = require('./core/database/redis');
 registerHealthRoutes(app, { db, redis });
 const { authenticate, authorize } = require('./core/middleware/authMiddleware');
-app.get('/api/version', (req, res) => {
+
+// SECURITY: version info (buildId, pid) is restricted to authenticated admins only.
+app.get('/api/version', authenticate, authorize('admin'), (req, res) => {
   res.status(200).json({ buildId: BUILD_ID, startedAt: STARTED_AT, pid: process.pid });
 });
-app.get('/version', (req, res) => {
+app.get('/version', authenticate, authorize('admin'), (req, res) => {
   res.status(200).json({ buildId: BUILD_ID, startedAt: STARTED_AT, pid: process.pid });
 });
 app.get('/ping', (req, res) => {
   res.status(200).json({ ok: true });
 });
 
-// Database pool monitoring endpoint (admin only in production)
-app.get('/health/db', (req, res) => {
+// SECURITY: DB pool stats expose internal metrics — admin only.
+app.get('/health/db', authenticate, authorize('admin'), (req, res) => {
   try {
     const db = require('./core/database/mysql');
     const stats = db.getPoolStats();
