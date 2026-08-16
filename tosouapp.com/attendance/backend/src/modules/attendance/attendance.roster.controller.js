@@ -218,7 +218,7 @@ exports.todaySummary = async (req, res) => {
     const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const attendanceRepo = require('./attendance.repository');
 
-    const stats = await attendanceRepo.getTodaySummaryStats(today);
+    const stats = await attendanceRepo.getTodaySummaryStats(today, req.tenantId || null);
     const c_checkin = stats.c_checkin;
     const c_open = stats.c_open;
     const c_active = stats.c_active;
@@ -264,7 +264,7 @@ exports.todayRoster = async (req, res) => {
     const attendanceRepo = require('./attendance.repository');
     const qDate = String(req.query?.date || '').slice(0, 10);
     const date = qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-    const rows = await attendanceRepo.getTodayRosterItems(date);
+    const rows = await attendanceRepo.getTodayRosterItems(date, req.tenantId || null);
 
     // Determine day-of-week for off-day logic
     const [dY, dM, dD] = date.split('-').map(n => parseInt(n, 10));

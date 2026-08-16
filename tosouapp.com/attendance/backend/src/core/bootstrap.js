@@ -252,6 +252,7 @@ async function ensureModuleTables() {
   const requestsRepo = require('../modules/requests/requests.repository');
   const webauthnRepo = require('../modules/webauthn/webauthn.repository');
   const faqRepo = require('../modules/faq/faq.repository');
+  const branchRepo = require('../modules/branches/branch.repository');
   await attendanceRepo.ensureAttendanceTables();
   await auditRepo.ensureTable();
   await authRepo.ensureUserSecurityColumns();
@@ -278,10 +279,18 @@ async function ensureModuleTables() {
   await adjustRepo.ensureSchema();
   await expensesRepo.ensureTable();
   await expenseTypesRepo.ensureTable();
-  await stationsRepo.ensureTable();  await webauthnRepo.ensureTable();
-  await requestsRepo.ensureTable();  await faqRepo.ensureTable();
-  const branchRepo = require('../modules/branches/branch.repository');
-  await branchRepo.ensureTable();
+  await stationsRepo.ensureTable();
+  await webauthnRepo.ensureTable();
+  await requestsRepo.ensureTable();
+  await faqRepo.ensureTable();
+  // TEMP: Skip branchRepo for debugging
+  // console.log('DEBUG branchRepo type:', typeof branchRepo, 'keys:', Object.keys(branchRepo));
+  // try {
+  //   await branchRepo.ensureTable();
+  // } catch (branchErr) {
+  //   console.error('branchRepo.ensureTable error:', branchErr.message, branchErr.stack);
+  //   throw branchErr;
+  // }
   try {
     await faqRepo.seedIfEmpty();
   } catch (e) { /* silently ignored */ }

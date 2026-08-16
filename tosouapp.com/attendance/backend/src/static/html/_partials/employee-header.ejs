@@ -2,8 +2,8 @@
     <button id="mobileMenuBtn" class="mobile-btn" aria-label="menu" aria-expanded="false" aria-controls="mobileDrawer">☰</button>
     <div class="topbar-inner">
       <a href="/ui/portal" class="brand" style="text-decoration: none;">
-        <img src="/static/images/logo1.png?v=<%= appVersion %>" alt="logo" class="icon">
-        <span class="logo">IIZUKA</span>
+        <img src="<%= (typeof tenant !== 'undefined' && tenant && tenant.logoUrl) ? tenant.logoUrl : '/static/images/logo1.png' %>?v=<%= appVersion %>" alt="logo" class="icon">
+        <span class="logo"><%= (typeof tenant !== 'undefined' && tenant && tenant.logoName) ? tenant.logoName : 'IIZUKA' %></span>
       </a>
       <div class="search" style="max-width: 400px; margin: 0 auto;">
       <input type="search" id="globalSearchInputEmp" name="q" placeholder="Search..." aria-label="Search">

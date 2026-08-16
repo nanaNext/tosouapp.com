@@ -8,7 +8,10 @@ export async function requireAdmin() {
   const role = String(profile && profile.role ? profile.role : '').toLowerCase();
   const path = window.location.pathname;
   const isAllowedEmployeePath = path === '/admin/attendance';
-  if (!profile || (role !== 'admin' && role !== 'manager' && !(role === 'employee' && isAllowedEmployeePath))) {
+  // Allow: admin, manager, owner, sysadmin (and employee on specific path)
+  const isAllowed = role === 'admin' || role === 'manager' || role === 'owner' || role === 'sysadmin'
+    || (role === 'employee' && isAllowedEmployeePath);
+  if (!profile || !isAllowed) {
     try {
       const err = document.querySelector('#error');
       if (err) {

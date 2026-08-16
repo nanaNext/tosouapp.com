@@ -204,23 +204,34 @@ module.exports = {
     const [rows] = await db.query(sql, [userId, fromDate, toDate]);
     return rows;
   },
-  async listAllPending() {
+  async listAllPending(tenantId = null) {
+    const hasTid = tenantId != null && Number.isFinite(Number(tenantId));
+    const params = [];
+    const where = ['lr.status = \'pending\''];
+    if (hasTid) { where.push('u.tenant_id = ?'); params.push(parseInt(String(tenantId), 10)); }
     const sql = `
       SELECT
         lr.*,
         u.username,
-        u.employee_code
+        u.employee_code,
+        COALESCE(t.id, 0) AS tenant_id,
+        COALESCE(t.name, '未設定') AS tenant_name,
+        COALESCE(b.id, 0) AS branch_id,
+        COALESCE(b.name, '') AS branch_name
       FROM leave_requests lr
       LEFT JOIN users u ON u.id = lr.userId
-      WHERE lr.status = 'pending'
-      ORDER BY lr.created_at DESC, lr.id DESC
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN branches b ON b.id = u.branch_id
+      WHERE ${where.join('\n      AND ')}
+      ORDER BY COALESCE(t.id, 0) ASC, COALESCE(b.id, 0) ASC, lr.created_at DESC, lr.id DESC
     `;
-    const [rows] = await db.query(sql);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
-  async listAllRequests({ status = null, limit = 1000 } = {}) {
+  async listAllRequests({ status = null, limit = 1000, tenantId = null } = {}) {
     const lim = Math.max(1, Math.min(5000, Number(limit || 1000)));
     const hasStatus = ['pending', 'approved', 'rejected'].includes(String(status || '').toLowerCase());
+    const hasTid = tenantId != null && Number.isFinite(Number(tenantId));
     const params = [];
     const conditions = [];
     if (hasStatus) {
@@ -252,14 +263,24 @@ module.exports = {
       )
     `);
     conditions.push(`u.role NOT IN ('admin', 'manager')`);
+    if (hasTid) {
+      conditions.push('u.tenant_id = ?');
+      params.push(parseInt(String(tenantId), 10));
+    }
     params.push(lim);
     const sql = `
       SELECT
         lr.*,
         u.username,
-        u.employee_code
+        u.employee_code,
+        COALESCE(t.id, 0) AS tenant_id,
+        COALESCE(t.name, '未設定') AS tenant_name,
+        COALESCE(b.id, 0) AS branch_id,
+        COALESCE(b.name, '') AS branch_name
       FROM leave_requests lr
       LEFT JOIN users u ON u.id = lr.userId
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN branches b ON b.id = u.branch_id
       LEFT JOIN attendance_daily ad
         ON ad.userId = lr.userId
        AND ad.date = lr.startDate
@@ -272,51 +293,111 @@ module.exports = {
         ON aw.userId = lr.userId
        AND aw.d = lr.startDate
       WHERE ${conditions.join('\n      AND ')}
-      ORDER BY lr.created_at DESC, lr.id DESC
+      ORDER BY COALESCE(t.id, 0) ASC, COALESCE(b.id, 0) ASC, lr.created_at DESC, lr.id DESC
       LIMIT ?
     `;
     try {
       const [rows] = await db.query(sql, params);
       return rows;
     } catch {
-      // Hard fallback: never break admin screen on filter "all".
-      const where = hasStatus ? "WHERE lr.status = ? AND u.role NOT IN ('admin', 'manager')" : "WHERE u.role NOT IN ('admin', 'manager')";
-      const fallbackParams = hasStatus ? [String(status).toLowerCase(), lim] : [lim];
+      const whereParts = [];
+      const fbParams = [];
+      if (hasStatus) { whereParts.push('lr.status = ?'); fbParams.push(String(status).toLowerCase()); }
+      whereParts.push(`u.role NOT IN ('admin', 'manager')`);
+      if (hasTid) { whereParts.push('u.tenant_id = ?'); fbParams.push(parseInt(String(tenantId), 10)); }
+      fbParams.push(lim);
       const fallbackSql = `
         SELECT
           lr.*,
           u.username,
-          u.employee_code
+          u.employee_code,
+          COALESCE(t.id, 0) AS tenant_id,
+          COALESCE(t.name, '未設定') AS tenant_name,
+          COALESCE(b.id, 0) AS branch_id,
+          COALESCE(b.name, '') AS branch_name
         FROM leave_requests lr
         LEFT JOIN users u ON u.id = lr.userId
-        ${where}
-        ORDER BY lr.created_at DESC, lr.id DESC
+        LEFT JOIN tenants t ON t.id = u.tenant_id
+        LEFT JOIN branches b ON b.id = u.branch_id
+        ${whereParts.length ? 'WHERE ' + whereParts.join('\n        AND ') : ''}
+        ORDER BY COALESCE(t.id, 0) ASC, COALESCE(b.id, 0) ASC, lr.created_at DESC, lr.id DESC
         LIMIT ?
       `;
-      const [rows] = await db.query(fallbackSql, fallbackParams);
+      const [rows] = await db.query(fallbackSql, fbParams);
       return rows;
     }
   },
-  async listAllRequestsSimple({ status = null, limit = 1000 } = {}) {
+  async listAllRequestsSimple({ status = null, limit = 1000, tenantId = null } = {}) {
     const lim = Math.max(1, Math.min(5000, Number(limit || 1000)));
     const hasStatus = ['pending', 'approved', 'rejected'].includes(String(status || '').toLowerCase());
-    const where = hasStatus ? "WHERE lr.status = ? AND u.role NOT IN ('admin', 'manager')" : "WHERE u.role NOT IN ('admin', 'manager')";
-    const params = hasStatus ? [String(status).toLowerCase(), lim] : [lim];
+    const hasTid = tenantId != null && Number.isFinite(Number(tenantId));
+    const whereParts = [`u.role NOT IN ('admin', 'manager')`];
+    const params = [];
+    if (hasStatus) { whereParts.push('lr.status = ?'); params.push(String(status).toLowerCase()); }
+    if (hasTid) { whereParts.push('u.tenant_id = ?'); params.push(parseInt(String(tenantId), 10)); }
+    params.push(lim);
     const sql = `
       SELECT
         lr.*,
         u.username,
-        u.employee_code
+        u.employee_code,
+        COALESCE(t.id, 0) AS tenant_id,
+        COALESCE(t.name, '未設定') AS tenant_name,
+        COALESCE(b.id, 0) AS branch_id,
+        COALESCE(b.name, '') AS branch_name
       FROM leave_requests lr
       LEFT JOIN users u ON u.id = lr.userId
-      ${where}
-      ORDER BY lr.created_at DESC, lr.id DESC
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN branches b ON b.id = u.branch_id
+      WHERE ${whereParts.join('\n      AND ')}
+      ORDER BY COALESCE(t.id, 0) ASC, COALESCE(b.id, 0) ASC, lr.created_at DESC, lr.id DESC
       LIMIT ?
     `;
     const [rows] = await db.query(sql, params);
     return rows;
   },
-  async updateStatus(id, status) {
+  async getById(id, tenantId = null) {
+    const hasTid = tenantId != null && Number.isFinite(Number(tenantId));
+    const params = [id];
+    const where = ['lr.id = ?'];
+    if (hasTid) { where.push('u.tenant_id = ?'); params.push(parseInt(String(tenantId), 10)); }
+    const [rows] = await db.query(`
+      SELECT lr.*
+      FROM leave_requests lr
+      LEFT JOIN users u ON u.id = lr.userId
+      WHERE ${where.join(' AND ')}
+      LIMIT 1
+    `, params);
+    return rows && rows[0] ? rows[0] : null;
+  },
+  async listByUser(userId, tenantId = null) {
+    const hasTid = tenantId != null && Number.isFinite(Number(tenantId));
+    const params = [userId];
+    const where = ['lr.userId = ?'];
+    if (hasTid) { where.push('u.tenant_id = ?'); params.push(parseInt(String(tenantId), 10)); }
+    const sql = `
+      SELECT lr.*
+      FROM leave_requests lr
+      LEFT JOIN users u ON u.id = lr.userId
+      WHERE ${where.join(' AND ')}
+      ORDER BY lr.created_at DESC
+    `;
+    const [rows] = await db.query(sql, params);
+    return rows;
+  },
+  async updateStatus(id, status, tenantId = null) {
+    if (tenantId != null && Number.isFinite(Number(tenantId))) {
+      const tid = parseInt(String(tenantId), 10);
+      const sql = `
+        UPDATE leave_requests lr
+        INNER JOIN users u ON u.id = lr.userId
+        SET lr.status = ?
+        WHERE lr.id = ? AND u.tenant_id = ?
+        LIMIT 1
+      `;
+      await db.query(sql, [status, id, tid]);
+      return;
+    }
     const sql = `
       UPDATE leave_requests
       SET status = ?

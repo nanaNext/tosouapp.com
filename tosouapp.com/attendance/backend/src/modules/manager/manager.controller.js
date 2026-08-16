@@ -59,10 +59,13 @@ exports.listMyDepartment = async (req, res) => {
     const employmentStatus = req.query.employmentStatus != null ? String(req.query.employmentStatus || '').trim() : null;
     const usePaged = q || limit != null || offset != null || role || employmentStatus;
     if (usePaged) {
-      const r = await userRepo.listUsersPaged({ q, role: role, departmentId: null, employmentStatus: employmentStatus, limit, offset });
+      const r = await userRepo.listUsersPaged({ q, role: role, departmentId: null, employmentStatus: employmentStatus, limit, offset, tenantId: req.tenantId || null });
       res.status(200).json(r);
     } else {
-      let rows = await userRepo.listUsers();
+      // Always filter by tenantId to prevent cross-tenant data leakage
+      let rows = req.tenantId
+        ? await userRepo.listUsersByTenant(req.tenantId)
+        : [];
       rows = (rows || []).filter(u => String(u.role || '').toLowerCase() === 'employee');
       res.status(200).json(normalizeUserListResult(rows, limit, offset));
     }
@@ -74,7 +77,7 @@ exports.listMyDepartment = async (req, res) => {
 // Danh sách phòng ban (cho manager)
 exports.listDepartments = async (req, res) => {
   try {
-    const rows = await userRepo.getAllDepartments();
+    const rows = await userRepo.getAllDepartments(req.tenantId || null);
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -118,7 +121,10 @@ exports.salaryPreviewDepartment = async (req, res) => {
   try {
     const month = String(req.query.month || '').trim();
     if (!month) return res.status(400).json({ message: 'Missing month' });
-    const all = await userRepo.listUsers();
+    // Always filter by tenantId to prevent cross-tenant salary data leakage
+    const all = req.tenantId
+      ? await userRepo.listUsersByTenant(req.tenantId)
+      : [];
     const ids = all.filter(u => String(u.role).toLowerCase() === 'employee').map(u => u.id);
     const { employees } = await salaryService.computePayslips(ids, month);
     res.status(200).json({ month, employees });

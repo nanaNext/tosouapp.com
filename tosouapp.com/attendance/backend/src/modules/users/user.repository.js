@@ -5,6 +5,7 @@
 'use strict';
 
 const db = require('../../core/database/mysql');
+const { tenantScope } = require('../../core/database/tenantDb');
 
 /**
  * @typedef {Object} User
@@ -47,6 +48,14 @@ module.exports = {
     const [rows] = await db.query(`SELECT * FROM users ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC`);
     return rows;
   },
+
+  async listUsersByTenant(tenantId) {
+    const [rows] = await db.query(
+      `SELECT * FROM users WHERE tenant_id = ? ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code,'') ASC, id ASC`,
+      [tenantId]
+    );
+    return rows;
+  },
   /**
    * List users with pagination, filtering by role/department/status/search.
    * @param {Object} options
@@ -58,12 +67,18 @@ module.exports = {
    * @param {number} [options.offset=0]
    * @returns {Promise<PagedResult>}
    */
-  async listUsersPaged({ q = '', role = null, departmentId = null, employmentStatus = null, limit = 100, offset = 0 } = {}) {
+  async listUsersPaged({ q = '', role = null, departmentId = null, employmentStatus = null, limit = 100, offset = 0, tenantId = null } = {}) {
     const qq = String(q || '').trim().toLowerCase();
     const lim = Math.min(5000, Math.max(1, Number.parseInt(String(limit || '100'), 10) || 100));
     const off = Math.max(0, Number.parseInt(String(offset || '0'), 10) || 0);
     const where = [];
     const params = [];
+    // ── Tenant isolation ──────────────────────────────────────────────────
+    if (tenantId) {
+      where.push('tenant_id = ?');
+      params.push(parseInt(String(tenantId), 10));
+    }
+    // ─────────────────────────────────────────────────────────────────────
     if (role != null && String(role || '').trim()) {
       where.push('LOWER(role) = ?');
       params.push(String(role).toLowerCase());

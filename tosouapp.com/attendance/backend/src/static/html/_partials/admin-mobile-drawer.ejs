@@ -2,9 +2,9 @@
 <div id="mobileDrawer" class="mobile-drawer" hidden>
   <div class="drawer-header">
     <button id="mobileClose" class="mobile-close" aria-label="close">✕</button>
-    <a href="/admin/dashboard" class="drawer-brand" aria-label="IIZUKA Home">
-      <img src="/static/images/logo1.png?v=<%= appVersion %>" alt="logo" class="drawer-brand-icon">
-      <span class="drawer-brand-text">IIZUKA</span>
+    <a href="/admin/dashboard" class="drawer-brand" aria-label="<%= (typeof tenant !== 'undefined' && tenant && tenant.logoName) ? tenant.logoName : 'IIZUKA' %> Home">
+      <img src="<%= (typeof tenant !== 'undefined' && tenant && tenant.logoUrl) ? tenant.logoUrl : '/static/images/logo1.png' %>?v=<%= appVersion %>" alt="logo" class="drawer-brand-icon">
+      <span class="drawer-brand-text"><%= (typeof tenant !== 'undefined' && tenant && tenant.logoName) ? tenant.logoName : 'IIZUKA' %></span>
     </a>
     <div class="drawer-header-actions" aria-hidden="true">
       <button type="button" class="drawer-head-btn">Sign In</button>

@@ -38,12 +38,22 @@ function setError(msg) {
 }
 
 
-function saveAuth({ accessToken, username, email, role }) {
+function saveAuth({ accessToken, username, email, role, tenants }) {
   sessionStorage.setItem('accessToken', accessToken);
+  // Backup to localStorage so select-company page survives Chrome password popup
+  try { localStorage.setItem('accessToken', accessToken); } catch (e) { /* silently ignored */ }
   sessionStorage.setItem('user', JSON.stringify({ username, email, role }));
   try {
     localStorage.setItem('user', JSON.stringify({ username, email, role }));
   } catch (e) { /* silently ignored */ }
+  // Save tenant list for select-company page
+  if (Array.isArray(tenants) && tenants.length > 0) {
+    try { sessionStorage.setItem('sc_tenants', JSON.stringify(tenants)); } catch (e) { /* silently ignored */ }
+    try { localStorage.setItem('sc_tenants', JSON.stringify(tenants)); } catch (e) { /* silently ignored */ }
+  } else {
+    try { sessionStorage.removeItem('sc_tenants'); } catch (e) { /* silently ignored */ }
+    try { localStorage.removeItem('sc_tenants'); } catch (e) { /* silently ignored */ }
+  }
 }
 
 async function tryRefresh() {
@@ -59,18 +69,18 @@ function getCookie(name) { return null; }
 function roleRedirect(role, nextPath) {
   try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
   showPageSpinner();
-  const r = String(role || '').toLowerCase();
   const suggested = String(nextPath || '').trim();
-  const safeSuggested = (suggested.startsWith('/') && !suggested.startsWith('//')) ? suggested : '';
-  const fallback = (r === 'admin' || r === 'manager')
+
+  // Always trust nextPath from server — it knows the role and tenant context
+  if (suggested && suggested.startsWith('/') && !suggested.startsWith('//')) {
+    try { window.location.href = suggested; return; } catch (e) { /* silently ignored */ }
+  }
+
+  // Fallback (should rarely happen) — use role to decide
+  const r = String(role || '').toLowerCase();
+  const fallback = (r === 'admin' || r === 'manager' || r === 'sysadmin' || r === 'owner')
     ? `/admin/dashboard?boot=${Date.now()}`
     : '/ui/portal';
-  
-  if (safeSuggested && safeSuggested !== fallback) {
-    try { window.history.pushState(null, '', fallback); } catch (e) { /* silently ignored */ }
-    try { window.location.href = safeSuggested; return; } catch (e) { /* silently ignored */ }
-  }
-  
   try { window.location.href = fallback; } catch (e) { /* silently ignored */ }
 }
 
@@ -145,6 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('user');
+    // Also clear localStorage tokens on login page load
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('sc_tenants');
   } catch (e) { /* silently ignored */ }
   try {
     localStorage.removeItem('refreshToken');

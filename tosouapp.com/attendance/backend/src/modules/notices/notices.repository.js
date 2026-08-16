@@ -193,13 +193,15 @@ module.exports = {
       return { id: Number(res2?.insertId || 0) };
     }
   },
-  async listAdminFeed({ userId, role, limit = 50 }) {
+  async listAdminFeed({ userId, role, limit = 50, tenantId = null }) {
     await ensureNoticesSchema();
     await ensureNoticeReadsSchema();
     await ensureNoticeHidesSchema();
     const uid = parseInt(String(userId || 0), 10) || 0;
     const r = String(role || '').toLowerCase();
     const lim = Math.min(200, Math.max(1, parseInt(String(limit || 50), 10) || 50));
+    const tid = tenantId ? parseInt(String(tenantId), 10) : null;
+    const tenantClause = tid ? `AND n.tenant_id = ${tid}` : '';
     const audienceSql = r === 'admin'
       ? `(n.audience IS NULL OR n.audience = '' OR n.audience IN ('all','admin','admin_manager'))`
       : `(n.audience IS NULL OR n.audience = '' OR n.audience IN ('all','manager','admin_manager'))`;
@@ -222,6 +224,7 @@ module.exports = {
         LEFT JOIN notice_reads nr ON nr.notice_id = n.id AND nr.user_id = ?
         WHERE n.target_user_id IS NULL
           AND ${audienceSql}
+          ${tenantClause}
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
         `,
@@ -278,6 +281,7 @@ module.exports = {
     }
     if (!items.length) {
       // Compatibility path: return legacy notice history even when audience metadata is missing/broken.
+      const legacyTenantClause = tid ? `AND n.tenant_id = ${tid}` : '';
       const [legacyRows] = await db.query(
         `
         SELECT
@@ -289,6 +293,7 @@ module.exports = {
         FROM notices n
         LEFT JOIN notice_reads nr ON nr.notice_id = n.id AND nr.user_id = ?
         WHERE n.target_user_id IS NULL
+          ${legacyTenantClause}
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
         `,
@@ -311,6 +316,8 @@ module.exports = {
     if (!items.length) {
       // Last fallback: synthesize feed from real request tables so admin can still see history when notices table is empty.
       const whereRole = r === 'manager' ? ` AND u.role = 'employee'` : ``;
+      const whereTenant = tid ? ` AND u.tenant_id = ${tid}` : ``;
+      const whereAll = `${whereRole}${whereTenant}`;
       const [leaveItems] = await db.query(
         `
         SELECT
@@ -321,7 +328,7 @@ module.exports = {
           lr.endDate AS endDate
         FROM leave_requests lr
         INNER JOIN users u ON u.id = lr.userId
-        WHERE 1=1 ${whereRole}
+        WHERE 1=1 ${whereAll}
         ORDER BY lr.created_at DESC
         LIMIT 20
         `
@@ -334,7 +341,7 @@ module.exports = {
           COALESCE(u.username, u.email, CONCAT('user#', ar.userId)) AS username
         FROM time_adjust_requests ar
         INNER JOIN users u ON u.id = ar.userId
-        WHERE 1=1 ${whereRole}
+        WHERE 1=1 ${whereAll}
         ORDER BY ar.created_at DESC
         LIMIT 20
         `
@@ -348,7 +355,7 @@ module.exports = {
           ec.amount AS amount
         FROM expense_claims ec
         INNER JOIN users u ON u.id = ec.userId
-        WHERE 1=1 ${whereRole}
+        WHERE 1=1 ${whereAll}
         ORDER BY COALESCE(ec.applied_at, ec.updated_at, ec.created_at) DESC
         LIMIT 20
         `
@@ -364,7 +371,7 @@ module.exports = {
             fq.question AS question
           FROM faq_user_questions fq
           INNER JOIN users u ON u.id = fq.user_id
-          WHERE 1=1 ${whereRole}
+          WHERE 1=1 ${whereAll}
           ORDER BY fq.created_at DESC
           LIMIT 20
           `
@@ -449,7 +456,7 @@ module.exports = {
     const unread = items.reduce((s, it) => s + (it.isRead ? 0 : 1), 0);
     return { unread, total: items.length, items };
   },
-  async listForDate({ date, month, limit, userId }) {
+  async listForDate({ date, month, limit, userId, tenantId = null }) {
     await ensureNoticesSchema();
     await ensureNoticeReadsSchema();
     await ensureNoticeHidesSchema();
@@ -457,6 +464,9 @@ module.exports = {
     const m = isYM(month) ? String(month) : (d ? String(d).slice(0, 7) : null);
     const lim = Math.min(50, Math.max(1, parseInt(String(limit || 10), 10) || 10));
     const uid = parseInt(String(userId || 0), 10) || 0;
+    const tid = tenantId ? parseInt(String(tenantId), 10) : null;
+    const tenantClause = tid ? 'AND n.tenant_id = ?' : '';
+    const tenantParams = tid ? [tid] : [];
     const [rows] = await db.query(
       `
         SELECT n.id, n.target_user_id, n.target_date, n.target_month, n.message, n.created_by, n.created_at, n.link_url,
@@ -469,6 +479,7 @@ module.exports = {
         WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
           AND (n.kind IS NULL OR n.kind != 'attendance_punch')
+          ${tenantClause}
           AND (
             (n.target_date IS NULL AND n.target_month IS NULL)
             OR (n.target_date IS NOT NULL AND n.target_date = ?)
@@ -477,17 +488,20 @@ module.exports = {
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
       `,
-      [uid, uid, uid, d, m, lim]
+      [uid, uid, uid, ...tenantParams, d, m, lim]
     );
     return (rows || [])
       .filter((r) => !isSelfSubmitNotice(r, uid));
   },
-  async listForUserFeed({ limit, userId }) {
+  async listForUserFeed({ limit, userId, tenantId = null }) {
     await ensureNoticesSchema();
     await ensureNoticeReadsSchema();
     await ensureNoticeHidesSchema();
     const lim = Math.min(200, Math.max(1, parseInt(String(limit || 30), 10) || 30));
     const uid = parseInt(String(userId || 0), 10) || 0;
+    const tid = tenantId ? parseInt(String(tenantId), 10) : null;
+    const tenantClause = tid ? 'AND n.tenant_id = ?' : '';
+    const tenantParams = tid ? [tid] : [];
     const [rows] = await db.query(
       `
         SELECT n.id, n.target_user_id, n.target_date, n.target_month, n.message, n.created_by, n.created_at,
@@ -500,10 +514,11 @@ module.exports = {
         WHERE (n.target_user_id = ? OR (n.target_user_id IS NULL AND (n.audience IS NULL OR n.audience = '' OR n.audience = 'all')))
           AND h.notice_id IS NULL
           AND (n.kind IS NULL OR n.kind != 'attendance_punch')
+          ${tenantClause}
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
       `,
-      [uid, uid, uid, lim]
+      [uid, uid, uid, ...tenantParams, lim]
     );
     const baseRows = rows || [];
     if (baseRows.length) {
@@ -603,7 +618,7 @@ module.exports = {
     }
     return items;
   },
-  async listAdmin({ from, to, limit }) {
+  async listAdmin({ from, to, limit, tenantId = null }) {
     await ensureNoticesSchema();
     await ensureNoticeReadsSchema();
     const f = isISODate(from) ? String(from) : null;
@@ -613,8 +628,11 @@ module.exports = {
     const args = [];
     if (f) { where.push(`n.created_at >= ?`); args.push(`${f} 00:00:00`); }
     if (t) { where.push(`n.created_at <= ?`); args.push(`${t} 23:59:59`); }
-    // Exclude auto-generated system notifications (shift reminders) from admin view
     where.push(`(n.kind IS NULL OR n.kind != 'system')`);
+    if (tenantId) {
+      where.push(`(n.tenant_id IS NULL OR n.tenant_id = ?)`);
+      args.push(parseInt(String(tenantId), 10));
+    }
     const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const [rows] = await db.query(
       `

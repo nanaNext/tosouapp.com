@@ -10,16 +10,16 @@ exports.listForMe = async (req, res) => {
     const date = String(req.query.date || '').slice(0, 10);
     const month = String(req.query.month || '').slice(0, 7);
     const limit = req.query.limit;
+    const tenantId = req.tenantId || null;
     if (all) {
-      const rowsAll = await repo.listForUserFeed({ limit, userId: req.user?.id || null });
+      const rowsAll = await repo.listForUserFeed({ limit, userId: req.user?.id || null, tenantId });
       return res.status(200).json({ date: null, month: null, notices: rowsAll });
     }
     const d = isISODate(date) ? date : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const m = isYM(month) ? month : String(d).slice(0, 7);
-    const rows = await repo.listForDate({ date: d, month: m, limit, userId: req.user?.id || null });
+    const rows = await repo.listForDate({ date: d, month: m, limit, userId: req.user?.id || null, tenantId });
     res.status(200).json({ date: d, month: m, notices: rows });
   } catch (err) {
-    // Keep attendance screens stable even when notice storage is temporarily unavailable.
     res.status(200).json({ date: null, month: null, notices: [] });
   }
 };
@@ -29,7 +29,8 @@ exports.listAdmin = async (req, res) => {
     const from = req.query.from ? String(req.query.from).slice(0, 10) : null;
     const to = req.query.to ? String(req.query.to).slice(0, 10) : null;
     const limit = req.query.limit;
-    const rows = await repo.listAdmin({ from, to, limit });
+    const tenantId = req.tenantId || null;
+    const rows = await repo.listAdmin({ from, to, limit, tenantId });
     res.status(200).json({ rows });
   } catch (err) {
     res.status(500).json({ message: err.message });

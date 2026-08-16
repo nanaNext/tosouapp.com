@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Platform Dashboard | スマートE勤怠</title>
+  <link rel="stylesheet" href="/static/css/base.css?v=<%= appVersion %>">
+  <link rel="icon" href="/static/images/logo1.png?v=<%= appVersion %>" type="image/png">
+  <script type="module" src="/static/js/pages/platform-dashboard.page.js?v=<%= appVersion %>-3"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+      background: #f1f5f9; color: #0f172a; font-size: 14px; }
+
+    /* ── Topbar ── */
+    .pd-topbar {
+      background: #0f172a; color: #fff;
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 20px; height: 52px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+    .pd-topbar-logo { font-size: 18px; font-weight: 800; letter-spacing: 1px; color: #60a5fa; }
+    .pd-topbar-badge {
+      background: #ef4444; color: #fff; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 99px; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .pd-topbar-spacer { flex: 1; }
+    .pd-topbar-user { font-size: 13px; color: #94a3b8; }
+    .pd-topbar-logout {
+      background: none; border: 1px solid #334155; color: #94a3b8;
+      padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+    .pd-topbar-logout:hover { border-color: #ef4444; color: #ef4444; }
+
+    /* ── Layout ── */
+    .pd-layout { display: flex; min-height: calc(100vh - 52px); }
+
+    /* ── Sidebar ── */
+    .pd-sidebar {
+      width: 200px; flex-shrink: 0;
+      background: #1e293b; padding: 16px 0;
+      position: sticky; top: 52px; height: calc(100vh - 52px); overflow-y: auto;
+    }
+    .pd-nav-item {
+      display: block; padding: 10px 20px; color: #94a3b8;
+      text-decoration: none; font-size: 13px; font-weight: 500;
+      transition: background .15s, color .15s; cursor: pointer;
+      border: none; background: none; width: 100%; text-align: left;
+    }
+    .pd-nav-item:hover, .pd-nav-item.active { background: #0f172a; color: #fff; }
+    .pd-nav-item.active { border-left: 3px solid #60a5fa; }
+    .pd-nav-section {
+      font-size: 10px; color: #475569; text-transform: uppercase;
+      letter-spacing: 1px; padding: 16px 20px 6px; font-weight: 700;
+    }
+
+    /* ── Main content ── */
+    .pd-main { flex: 1; padding: 24px; overflow-y: auto; }
+
+    /* ── Stats row ── */
+    .pd-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .pd-stat-card {
+      background: #fff; border-radius: 10px; padding: 18px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+    }
+    .pd-stat-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+    .pd-stat-value { font-size: 28px; font-weight: 800; color: #0f172a; line-height: 1; }
+    .pd-stat-sub { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+
+    /* ── Section header ── */
+    .pd-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .pd-section-title { font-size: 16px; font-weight: 700; }
+    .pd-btn {
+      padding: 7px 16px; border-radius: 7px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 600; transition: opacity .15s;
+    }
+    .pd-btn:hover { opacity: .85; }
+    .pd-btn-primary { background: #1976d2; color: #fff; }
+    .pd-btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 5px; }
+    .pd-btn-danger { background: #fee2e2; color: #dc2626; }
+    .pd-btn-ghost { background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; }
+    .pd-btn-enter { background: #dcfce7; color: #16a34a; }
+
+    /* ── Tenant table ── */
+    .pd-table-wrap { background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.07); overflow: hidden; }
+    table.pd-table { width: 100%; border-collapse: collapse; }
+    .pd-table th { background: #f8fafc; font-size: 12px; color: #64748b; font-weight: 600;
+      text-align: left; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; }
+    .pd-table td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .pd-table tr:last-child td { border-bottom: none; }
+    .pd-table tr:hover td { background: #f8fafc; }
+
+    /* ── Status badge ── */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+    .badge-active { background: #dcfce7; color: #16a34a; }
+    .badge-suspended { background: #fee2e2; color: #dc2626; }
+    .badge-trial { background: #fef9c3; color: #ca8a04; }
+    .badge-basic { background: #eff6ff; color: #1d4ed8; }
+    .badge-pro { background: #faf5ff; color: #7c3aed; }
+
+    /* ── Tenant logo ── */
+    .td-logo { display: flex; align-items: center; gap: 12px; }
+    .td-logo img {
+      width: 48px; height: 48px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #fff;
+      padding: 4px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      flex-shrink: 0;
+      display: block;
+    }
+    .td-logo-placeholder {
+      width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0;
+      background: linear-gradient(135deg, #1976d2, #0d47a1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; color: #fff;
+      border: 1px solid #e2e8f0;
+    }
+    .td-name { font-weight: 600; font-size: 13px; }
+    .td-slug { font-size: 11px; color: #94a3b8; }
+    .td-address { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .td-phone { font-size: 11px; color: #64748b; }
+    .td-license { font-size: 11px; color: #64748b; }
+
+    /* ── Modal ── */
+    .pd-modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 16px;
+    }
+    .pd-modal-backdrop[hidden] { display: none; }
+    .pd-modal {
+      background: #fff; border-radius: 12px; padding: 28px;
+      width: 100%; max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .pd-modal-title { font-size: 17px; font-weight: 700; margin: 0 0 20px; }
+    .pd-form-row { margin-bottom: 14px; }
+    .pd-form-row label { display: block; font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 5px; }
+    .pd-form-row input, .pd-form-row select {
+      width: 100%; padding: 8px 11px; border: 1px solid #e2e8f0;
+      border-radius: 7px; font-size: 13px; background: #f8fafc;
+    }
+    .pd-form-row input:focus, .pd-form-row select:focus {
+      outline: none; border-color: #1976d2; background: #fff;
+      box-shadow: 0 0 0 2px rgba(25,118,210,.15);
+    }
+    .pd-modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ── Error / loading ── */
+    #pd-error { display:none; color: #dc2626; background: #fff0f0; border: 1px solid #fecdd3;
+      border-radius: 7px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; }
+    .pd-loading { text-align: center; padding: 40px; color: #94a3b8; font-size: 14px; }
+
+    /* ── Search bar ── */
+    .pd-search-bar {
+      display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .pd-search-bar input[type="search"] {
+      flex: 1; min-width: 200px; padding: 8px 12px;
+      border: 1px solid #e2e8f0; border-radius: 7px;
+      font-size: 13px; background: #fff;
+    }
+    .pd-search-bar select {
+      padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 7px;
+      font-size: 13px; background: #fff; min-width: 140px;
+    }
+    .pd-search-bar input:focus, .pd-search-bar select:focus {
+      outline: none; border-color: #1976d2;
+    }
+
+    /* ── Assign modal user search ── */
+    .pd-assign-results {
+      border: 1px solid #e2e8f0; border-radius: 7px;
+      background: #fff; max-height: 180px; overflow-y: auto;
+      margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      position: relative; z-index: 10;
+    }
+    .pd-assign-result-item {
+      padding: 9px 12px; cursor: pointer; font-size: 13px;
+      display: flex; flex-direction: column; gap: 2px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .pd-assign-result-item:last-child { border-bottom: none; }
+    .pd-assign-result-item:hover { background: #eff8ff; }
+    .pd-assign-result-name { font-weight: 600; color: #0f172a; }
+    .pd-assign-result-email { font-size: 11px; color: #64748b; }
+    .pd-selected-user {
+      padding: 8px 12px; background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 7px; margin-top: 4px; font-size: 13px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .pd-selected-user button {
+      background: none; border: none; cursor: pointer;
+      color: #64748b; font-size: 16px; padding: 0 4px; line-height: 1;
+    }
+
+    /* ── Tenant tags in user table ── */
+    .pd-tenant-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #eff6ff; color: #1d4ed8; border-radius: 5px;
+      padding: 2px 7px; font-size: 11px; font-weight: 600;
+      margin: 2px; white-space: nowrap;
+    }
+    .pd-tenant-tag .role-label {
+      background: #dbeafe; border-radius: 3px; padding: 1px 5px;
+      font-size: 10px; color: #1e40af;
+    }
+    .pd-tenant-tag button {
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: 13px; padding: 0; line-height: 1;
+    }
+    .pd-tenant-tag button:hover { color: #dc2626; }
+
+    /* ── Tabs ── */
+    .pd-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; }
+    .pd-tab {
+      padding: 9px 18px; font-size: 13px; font-weight: 600; color: #64748b;
+      border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .pd-tab.active { color: #1976d2; border-bottom-color: #1976d2; }
+
+    /* ── Section panels ── */
+    .pd-panel { display: none; }
+    .pd-panel.active { display: block; }
+
+    @media (max-width: 640px) {
+      .pd-sidebar { display: none; }
+      .pd-stats { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Topbar -->
+  <header class="pd-topbar">
+    <span class="pd-topbar-logo">⚙ PLATFORM</span>
+    <span class="pd-topbar-badge">NTN</span>
+    <span class="pd-topbar-spacer"></span>
+    <span class="pd-topbar-user" id="pd-user-name">読み込み中...</span>
+    <button class="pd-topbar-logout" id="pd-logout-btn" type="button">ログアウト</button>
+  </header>
+
+  <div class="pd-layout">
+    <!-- Sidebar -->
+    <nav class="pd-sidebar">
+      <div class="pd-nav-section">Platform</div>
+      <button class="pd-nav-item active" data-panel="tenants">🏢 テナント管理</button>
+      <button class="pd-nav-item" data-panel="users">👥 全ユーザー</button>
+      <div class="pd-nav-section">System</div>
+      <button class="pd-nav-item" data-panel="audit">📋 監査ログ</button>
+    </nav>
+
+    <!-- Main -->
+    <main class="pd-main">
+      <div id="pd-error"></div>
+
+      <!-- Stats -->
+      <div class="pd-stats" id="pd-stats">
+        <div class="pd-stat-card">
+          <div class="pd-stat-label">アクティブテナント</div>
+          <div class="pd-stat-value" id="stat-tenants">—</div>
+          <div class="pd-stat-sub">会社数</div>
+        </div>
+        <div class="pd-stat-card">
+          <div class="pd-stat-label">全ユーザー</div>
+          <div class="pd-stat-value" id="stat-users">—</div>
+          <div class="pd-stat-sub">アクティブ</div>
+        </div>
+        <div class="pd-stat-card">
+          <div class="pd-stat-label">本日の打刻</div>
+          <div class="pd-stat-value" id="stat-checkins">—</div>
+          <div class="pd-stat-sub">チェックイン</div>
+        </div>
+      </div>
+
+      <!-- Tenants panel -->
+      <div class="pd-panel active" id="panel-tenants">
+        <div class="pd-section-header">
+          <span class="pd-section-title">テナント一覧</span>
+          <button class="pd-btn pd-btn-primary" id="pd-add-tenant-btn" type="button">+ 新規テナント</button>
+        </div>
+        <div class="pd-table-wrap">
+          <div class="pd-loading" id="pd-tenants-loading">読み込み中...</div>
+          <table class="pd-table" id="pd-tenants-table" style="display:none">
+            <thead>
+              <tr>
+                <th>会社名</th>
+                <th>プラン</th>
+                <th>状態</th>
+                <th>ユーザー数</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="pd-tenants-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Users panel -->
+      <div class="pd-panel" id="panel-users">
+        <div class="pd-section-header">
+          <span class="pd-section-title">ユーザー管理</span>
+          <button class="pd-btn pd-btn-primary" id="pd-assign-user-btn" type="button">+ ユーザーをテナントに割り当て</button>
+        </div>
+        <!-- Search + Filter bar -->
+        <div class="pd-search-bar">
+          <input type="search" id="pd-users-search" placeholder="名前・メールで検索..." autocomplete="off">
+          <select id="pd-users-tenant-filter">
+            <option value="">全テナント</option>
+          </select>
+          <select id="pd-users-role-filter">
+            <option value="">全ロール</option>
+            <option value="admin">管理者</option>
+            <option value="manager">マネージャー</option>
+            <option value="employee">従業員</option>
+            <option value="hr">人事</option>
+            <option value="payroll">給与</option>
+          </select>
+        </div>
+        <div class="pd-table-wrap">
+          <div class="pd-loading" id="pd-users-loading">読み込み中...</div>
+          <table class="pd-table" id="pd-users-table" style="display:none">
+            <thead>
+              <tr>
+                <th>名前</th>
+                <th>メール</th>
+                <th>DB ロール</th>
+                <th>所属テナント / ロール</th>
+                <th>状態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="pd-users-tbody"></tbody>
+          </table>
+          <div id="pd-users-empty" style="display:none;text-align:center;padding:32px;color:#94a3b8;font-size:14px;">
+            該当するユーザーが見つかりません
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit panel -->
+      <div class="pd-panel" id="panel-audit">
+        <div class="pd-section-header">
+          <span class="pd-section-title">監査ログ (準備中)</span>
+        </div>
+        <div class="pd-table-wrap">
+          <div class="pd-loading">この機能は近日公開予定です</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Assign User to Tenant -->
+  <div class="pd-modal-backdrop" id="pd-assign-modal" hidden>
+    <div class="pd-modal">
+      <h2 class="pd-modal-title">ユーザーをテナントに割り当て</h2>
+      <form id="pd-assign-form" novalidate>
+        <input type="hidden" id="pd-assign-existing-tenant-id">
+        <input type="hidden" id="pd-assign-user-id-hidden">
+        <div class="pd-form-row">
+          <label>ユーザー検索 *</label>
+          <input type="search" id="pd-assign-user-search" placeholder="名前またはメールを入力..." autocomplete="off">
+          <div id="pd-assign-user-results" class="pd-assign-results" style="display:none"></div>
+          <div id="pd-assign-selected-user" class="pd-selected-user" style="display:none"></div>
+        </div>
+        <div class="pd-form-row">
+          <label>テナント（会社）*</label>
+          <select id="pd-assign-tenant-select" required>
+            <option value="">選択してください</option>
+          </select>
+        </div>
+        <div class="pd-form-row">
+          <label>ロール *</label>
+          <select id="pd-assign-role-select" required>
+            <option value="employee">従業員 (employee)</option>
+            <option value="manager">マネージャー (manager)</option>
+            <option value="admin">管理者 (admin)</option>
+            <option value="hr">人事 (hr)</option>
+            <option value="payroll">給与担当 (payroll)</option>
+          </select>
+        </div>
+        <div id="pd-assign-error" style="color:#dc2626;font-size:12px;margin-bottom:8px;display:none"></div>
+        <div class="pd-modal-footer">
+          <button type="button" class="pd-btn pd-btn-ghost" id="pd-assign-cancel">キャンセル</button>
+          <button type="submit" class="pd-btn pd-btn-primary" id="pd-assign-submit">割り当て</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Create / Edit Tenant -->
+  <div class="pd-modal-backdrop" id="pd-tenant-modal" hidden>
+    <div class="pd-modal">
+      <h2 class="pd-modal-title" id="pd-modal-title">新規テナント</h2>
+      <form id="pd-tenant-form" novalidate>
+        <input type="hidden" id="pd-tenant-id">
+        <div class="pd-form-row">
+          <label>会社名 *</label>
+          <input type="text" id="pd-f-name" placeholder="飯塚塗研株式会社" required>
+        </div>
+        <div class="pd-form-row">
+          <label>スラッグ * (英数字・ハイフン)</label>
+          <input type="text" id="pd-f-slug" placeholder="iizuka" pattern="[a-z0-9\-]+" required>
+        </div>
+        <div class="pd-form-row">
+          <label>ロゴ名 (ナビバーに表示)</label>
+          <input type="text" id="pd-f-logo-name" placeholder="IIZUKA">
+        </div>
+        <div class="pd-form-row">
+          <label>ロゴ URL</label>
+          <input type="text" id="pd-f-logo-url" placeholder="/static/images/logo1.png">
+        </div>
+        <div class="pd-form-row">
+          <label>プラン</label>
+          <select id="pd-f-plan">
+            <option value="trial">Trial</option>
+            <option value="basic" selected>Basic</option>
+            <option value="pro">Pro</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+        </div>
+        <div class="pd-form-row">
+          <label>状態</label>
+          <select id="pd-f-status">
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div id="pd-form-error" style="color:#dc2626;font-size:12px;margin-bottom:8px;display:none"></div>
+        <div class="pd-modal-footer">
+          <button type="button" class="pd-btn pd-btn-ghost" id="pd-modal-cancel">キャンセル</button>
+          <button type="submit" class="pd-btn pd-btn-primary" id="pd-modal-submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
