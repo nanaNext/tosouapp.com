@@ -82,6 +82,27 @@ async function getCachedUser(id) {
   return user;
 }
 
+/**
+ * Immediately invalidates the cached user entry so the next request re-reads
+ * from DB. Call this whenever token_version is bumped (password change, admin
+ * revoke, role change) so the revocation takes effect without waiting for TTL.
+ * @param {number|string} id
+ */
+async function invalidateUserCache(id) {
+  if (!id) return;
+  const uid = String(id);
+  // Clear in-memory fallback
+  tokenVersionCache.delete(uid);
+  // Clear Redis cache
+  if (redisClient && redisClient.status === 'ready') {
+    try {
+      await redisClient.del(`auth:user:${uid}`);
+    } catch (err) {
+      console.error('[AuthCache] Failed to invalidate Redis cache for user', uid, err.message);
+    }
+  }
+}
+
 async function authenticateToken(token) {
   const secrets = [
     process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET,
@@ -109,12 +130,16 @@ async function authenticateToken(token) {
   }
   return {
     id: user.id,
-    role: normalizeRole(user.role || decoded.role),
+    // When JWT has tid (after select-tenant), use role from JWT.
+    // This allows owner to act as admin within a specific tenant.
+    // When no tid, fall back to DB role (normal login flow).
+    role: normalizeRole(decoded?.tid ? (decoded.role || user.role) : (user.role || decoded.role)),
     v: dbVersion,
     email: user.email,
     username: user.username,
     departmentId: user.departmentId || null,
-    branchId: user.branchId || user.branch_id || null
+    branchId: user.branchId || user.branch_id || null,
+    tid: decoded?.tid ? parseInt(String(decoded.tid), 10) : null,
   };
 }
 
@@ -168,12 +193,17 @@ async function authenticateFromCookie(req, res, next) {
 
 // Phân quyền theo role
 function authorize(...allowedRoles) {
-    const allowed = new Set((allowedRoles || []).map(r => normalizeRole(r)));
+    const { normalizeRole, roleLevel } = require('../../utils/normalizeRole');
+    const allowedNorm = (allowedRoles || []).map(r => normalizeRole(r));
+    const allowed = new Set(allowedNorm);
+    // Minimum level required = lowest level among allowed roles
+    const minRequired = Math.min(...allowedNorm.map(r => roleLevel(r)));
     return (req, res, next) => {
         const role = normalizeRole(req.user?.role);
-        // Strict hierarchy: mỗi role chỉ pass nếu nằm trong danh sách cho phép.
-        // KHÔNG cho manager tự động inherit quyền admin.
-        const ok = role && allowed.has(role);
+        const level = roleLevel(role);
+        // sysadmin (level 100) and owner (level 80) pass everything
+        // For other roles: must be explicitly in the allowed set
+        const ok = level >= 80 || (role && allowed.has(role));
         if (!ok) {
             return res.status(403).json({ message: 'Forbidden: Access denied' });
         }
@@ -181,4 +211,4 @@ function authorize(...allowedRoles) {
     };
 }
 
-module.exports = { authenticate, authenticateFromCookie, authorize };
+module.exports = { authenticate, authenticateFromCookie, authorize, invalidateUserCache };

@@ -297,7 +297,7 @@ exports.listUser = async (req, res) => {
   try {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
-    const rows = await repo.listByUser(userId);
+    const rows = await repo.listByUser(userId, req.tenantId);
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -306,7 +306,7 @@ exports.listUser = async (req, res) => {
 // API: Quản lý/Admin lấy danh sách yêu cầu nghỉ phép đang chờ duyệt
 exports.listPending = async (req, res) => {
   try {
-    const rows = await repo.listAllPending();
+    const rows = await repo.listAllPending(req.tenantId);
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -319,7 +319,7 @@ exports.listAdminRequests = async (req, res) => {
     const statusRaw = String(req.query?.status || '').trim().toLowerCase();
     const status = ['pending', 'approved', 'rejected'].includes(statusRaw) ? statusRaw : null;
     // Stable path: always use simple query so FE never falls back to legacy pending.
-    const rows = await repo.listAllRequestsSimple({ status, limit: 2000 });
+    const rows = await repo.listAllRequestsSimple({ status, limit: 2000, tenantId: req.tenantId });
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -333,9 +333,9 @@ exports.updateStatus = async (req, res) => {
     if (!id || !status || !['approved','rejected','pending'].includes(status)) {
       return res.status(400).json({ message: 'Missing id/status' });
     }
-    await repo.updateStatus(id, status);
+    await repo.updateStatus(id, status, req.tenantId);
     try {
-      const row = await repo.getById(id);
+      const row = await repo.getById(id, req.tenantId);
       if (row && row.userId && status !== 'pending') {
         const statusLabel = status === 'approved' ? '承認' : (status === 'rejected' ? '差戻し' : status);
         await noticesRepo.createNotice({
@@ -453,7 +453,11 @@ exports.grant = async (req, res) => {
 exports.eligibleList = async (req, res) => {
   try {
     const todayStr = fmt(new Date());
-    const users = await userRepo.listUsers();
+    // Tenant isolation: chỉ lấy users thuộc tenant của người gọi
+    const tenantId = req.tenantId || null;
+    const users = tenantId
+      ? await userRepo.listUsersByTenant(tenantId)
+      : await userRepo.listUsers();
     const out = [];
     for (const u of (users || [])) {
       const role = String(u?.role || '').toLowerCase();
@@ -605,7 +609,12 @@ exports.summary = async (req, res) => {
   let resultCount = 0;
   try {
     await tryReconcileAttendance();
-    const list = await userRepo.listUsers();
+    // Tenant isolation: chỉ lấy users thuộc tenant của admin đang đăng nhập.
+    // req.tenantId được set bởi resolveTenant middleware từ JWT field tid.
+    const tenantId = req.tenantId || null;
+    const list = tenantId
+      ? await userRepo.listUsersByTenant(tenantId)
+      : await userRepo.listUsers();
     const out = [];
     for (const u of list) {
       const role = String(u?.role || '').toLowerCase();
@@ -654,7 +663,11 @@ exports.autoGrantNow = async (req, res) => {
         mode
       });
     }
-    const list = await userRepo.listUsers();
+    // Tenant isolation: chỉ cấp phép cho users thuộc tenant của admin đang gọi.
+    const tenantId = req.tenantId || null;
+    const list = tenantId
+      ? await userRepo.listUsersByTenant(tenantId)
+      : await userRepo.listUsers();
     let ok = 0;
     for (const u of list) {
       try {

@@ -1,6 +1,7 @@
 const repo = require('./user.repository');
 const bcrypt = require('bcrypt');
 const { bcryptRounds } = require('../../config/env');
+const { invalidateUserCache } = require('../../core/middleware/authMiddleware');
 
 function normalizeUserListResult(rows, limit, offset) {
   const normalizedRows = Array.isArray(rows) ? rows : [];
@@ -24,20 +25,24 @@ exports.list = async (req, res) => {
     let departmentId = req.query.departmentId != null ? String(req.query.departmentId || '').trim() : null;
     const employmentStatus = req.query.employmentStatus != null ? String(req.query.employmentStatus || '').trim() : null;
 
+    // ── Tenant isolation ──────────────────────────────────────────────────
+    // req.tenantId is set by tenantMiddleware when ENABLE_MULTI_TENANT=true
+    const tenantId = req.tenantId || null;
+    // ─────────────────────────────────────────────────────────────────────
+
     // RBAC hierarchy: Manager can only see employees (role=3), not admin/manager
     const userRole = String(req.user?.role || '').toLowerCase();
     let roleFilter = role;
     if (userRole === 'manager') {
-      // Manager chỉ được phép xem employee — bất kể client gửi filter gì
       roleFilter = 'employee';
     }
-    const usePaged = q || limit != null || offset != null || roleFilter || departmentId || employmentStatus;
+    const usePaged = q || limit != null || offset != null || roleFilter || departmentId || employmentStatus || tenantId;
     const superEmail = (process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
     const meRole = String(req.user?.role || '').toLowerCase();
     const meEmail = String(req.user?.email || '').trim().toLowerCase();
     const isSuper = (superEmail && meEmail === superEmail) || meRole === 'super_admin' || meRole === 'super';
     if (usePaged) {
-      const r = await repo.listUsersPaged({ q, role: roleFilter || null, departmentId: departmentId || null, employmentStatus: employmentStatus || null, limit, offset });
+      const r = await repo.listUsersPaged({ q, role: roleFilter || null, departmentId: departmentId || null, employmentStatus: employmentStatus || null, limit, offset, tenantId });
       if (!isSuper && superEmail) {
         const rows2 = (r.rows || []).filter(u => String(u.email || '').trim().toLowerCase() !== superEmail);
         const delta = (r.rows || []).length - rows2.length;
@@ -45,9 +50,11 @@ exports.list = async (req, res) => {
       }
       return res.status(200).json(r);
     }
-    let rows = await repo.listUsers();
+    // Always filter by tenantId - never return unfiltered list
+    const rows = tenantId
+      ? await repo.listUsersByTenant(tenantId)
+      : [];  // Return empty instead of ALL users from ALL tenants
     if (!isSuper && superEmail) rows = (rows || []).filter(u => String(u.email || '').trim().toLowerCase() !== superEmail);
-    // RBAC: Manager chỉ thấy employee
     if (userRole === 'manager') {
       rows = (rows || []).filter(u => String(u.role || '').toLowerCase() === 'employee');
     }
@@ -74,7 +81,7 @@ exports.create = async (req, res) => {
       return res.status(409).json({ message: 'Email đã tồn tại!' });
     }
     const hashed = bcrypt.hashSync(password, bcryptRounds);
-    const id = await repo.createUser({ employeeCode, username, email, password: hashed, role, departmentId, branchId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId });
+    const id = await repo.createUser({ employeeCode, username, email, password: hashed, role, departmentId, branchId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId, tenantId: req.tenantId || null });
     res.status(201).json({ id });
   } catch (err) {
     if (err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062)) {
@@ -190,6 +197,7 @@ exports.setPassword = async (req, res) => {
     const hashed = isHash ? password : bcrypt.hashSync(password, bcryptRounds);
     await repo.setPassword(id, hashed);
     await refreshRepo.deleteUserTokens(id);
+    await invalidateUserCache(id);
     res.status(200).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });

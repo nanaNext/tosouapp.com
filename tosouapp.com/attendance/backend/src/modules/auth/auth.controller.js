@@ -11,6 +11,7 @@ const { sendPasswordResetEmail, canSendMail } = require('../../core/notification
 const { check2FARequired } = require('../../core/middleware/require2FA');
 const log = require('../../core/logger');
 const { normalizeRole } = require('../../utils/normalizeRole');
+const tenantRepo = require('../tenants/tenant.repository');
 // Controller xác thực: đăng ký và đăng nhập
 
 function isHttpsRequest(req) {
@@ -157,13 +158,38 @@ exports.login = async (req, res) => {
       path: '/'
     });
     setSessionCookie(req, res, token);
-    const nextPath = (role === 'admin' || role === 'manager') ? '/admin/dashboard' : '/ui/portal';
 
     // Check if 2FA is required for this user
     let requires2FA = false;
     try {
       requires2FA = await check2FARequired(user.id, role);
     } catch (e) { /* fail open */ }
+
+    // Load tenants this user has access to
+    // If multi-tenant is not yet enabled, fall back to legacy nextPath
+    let tenants = [];
+    const multiTenantEnabled = String(process.env.ENABLE_MULTI_TENANT || '').toLowerCase() === 'true';
+    const isSuperRole = role === 'sysadmin'; // sysadmin bypasses tenant selection
+    if (multiTenantEnabled && !isSuperRole) {
+      try {
+        tenants = await tenantRepo.getTenantsForUser(user.id);
+      } catch (e) {
+        log.warn('tenant_load_failed_on_login', { userId: user.id, error_message: e.message });
+      }
+    }
+
+    // nextPath logic:
+    // - sysadmin → always /platform/dashboard (platform management)
+    // - multi-tenant enabled + has tenants → /ui/select-company
+    // - otherwise → legacy path
+    const legacyNextPath = (role === 'admin' || role === 'manager' || role === 'owner')
+      ? '/admin/dashboard'
+      : '/ui/portal';
+    const nextPath = isSuperRole
+      ? '/platform/dashboard'
+      : (multiTenantEnabled && !isSuperRole && tenants.length > 0)
+        ? '/ui/select-company'
+        : legacyNextPath;
 
     res.status(200).json({
       id: user.id,
@@ -172,7 +198,8 @@ exports.login = async (req, res) => {
       role,
       accessToken: token,
       nextPath,
-      requires2FA
+      requires2FA,
+      tenants: multiTenantEnabled ? tenants : undefined,
     });
     try {
       await auditRepo.writeLog({
@@ -199,7 +226,12 @@ exports.me = async (req, res) => {
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
     const user = await userRepo.getUserById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    
+
+    // Use role from JWT (req.user.role) rather than DB role.
+    // After select-tenant, JWT has role=admin even if DB has role=owner.
+    // This ensures requireAdmin() on admin pages passes correctly.
+    const roleFromJWT = req.user?.role || user.role;
+
     // Attach department name if departmentId exists
     if (user.departmentId) {
       try {
@@ -207,8 +239,8 @@ exports.me = async (req, res) => {
         if (dept) user.departmentName = dept.name;
       } catch (e) { /* silently ignored */ }
     }
-    
-    res.status(200).json(user);
+
+    res.status(200).json({ ...user, role: roleFromJWT });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -253,8 +285,9 @@ exports.forgotPassword = async (req, res) => {
         expiresMinutes: resetTokenExpiresMinutes || 30
       });
       if (!sent) {
-        console.warn('[forgot-password] mail provider not configured; reset link generated but not emailed');
-        console.warn('[forgot-password] reset link for user', user.id, resetUrl);
+        // SECURITY: do NOT log the reset URL or token — it contains a sensitive credential.
+        // If mail is not configured, the user will not receive the link. Configure MAIL_PROVIDER.
+        console.warn('[forgot-password] mail provider not configured; reset link could not be delivered. userId=' + user.id);
       }
     } catch (mailErr) {
       console.error('[forgot-password] email send failed:', mailErr && mailErr.message ? mailErr.message : mailErr);
@@ -471,7 +504,7 @@ exports.refresh = async (req, res) => {
     }
     // cấp access token mới
     const u = await userRepo.getUserById(row.userId);
-    const role2 = u?.role || 'employee';
+    const role2 = normalizeRole(u?.role || 'employee');
     const tokenVersion2 = u?.token_version || 1;
     const idleSecs = Math.max(0, Number(idleTimeoutSeconds || 0));
     try {
@@ -485,7 +518,36 @@ exports.refresh = async (req, res) => {
         }
       }
     } catch (e) { /* silently ignored */ }
-    const token = jwt.sign({ id: row.userId, role: role2, v: tokenVersion2 }, jwtSecretCurrent, { expiresIn: accessTokenExpires });
+
+    // Preserve tid and role from the current session_token cookie
+    // so impersonation/tenant sessions keep their context after refresh
+    let preservedTid = null;
+    let preservedRole = null;
+    try {
+      const sessionToken = req.cookies?.session_token || '';
+      if (sessionToken) {
+        const secrets = [jwtSecretCurrent, process.env.JWT_SECRET_PREVIOUS].filter(Boolean);
+        for (const s of secrets) {
+          try {
+            const decoded = jwt.verify(sessionToken, s);
+            if (decoded?.tid) {
+              preservedTid = decoded.tid;
+              // Only preserve role if it came from a select-tenant flow (has tid)
+              // e.g. owner acting as admin in a specific tenant
+              if (decoded?.role && decoded.role !== (u?.role || 'employee')) {
+                preservedRole = decoded.role;
+              }
+            }
+            break;
+          } catch (e) { /* silently ignored */ }
+        }
+      }
+    } catch (e) { /* silently ignored */ }
+
+    const effectiveRole = preservedTid && preservedRole ? preservedRole : role2;
+    const tokenPayload = { id: row.userId, role: effectiveRole, v: tokenVersion2 };
+    if (preservedTid) tokenPayload.tid = preservedTid;
+    const token = jwt.sign(tokenPayload, jwtSecretCurrent, { expiresIn: accessTokenExpires });
     // rotate refresh token
     const newRt = crypto.randomBytes(48).toString('base64url');
     const expires = new Date(Date.now() + refreshTokenExpiresDays * 24 * 60 * 60 * 1000);
@@ -552,6 +614,88 @@ exports.revokeAll = async (req, res) => {
     res.clearCookie('refreshToken', { path: '/api/auth' });
     clearSessionCookie(res);
     res.status(200).json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── Select Tenant ───────────────────────────────────────────────────────────
+// After login, user picks which company to enter.
+// Issues a new access token with tenant_id embedded.
+exports.selectTenant = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const tenantId = parseInt(String(req.body?.tenant_id || ''), 10);
+    if (!tenantId) return res.status(400).json({ message: 'Missing tenant_id' });
+
+    // Verify user actually has access to this tenant — cannot spoof
+    const access = await tenantRepo.getUserTenantAccess(userId, tenantId);
+    if (!access) {
+      return res.status(403).json({ message: 'Forbidden: no access to this tenant' });
+    }
+
+    // Issue new access token with tenant_id embedded
+    const user = await userRepo.getUserById(userId);
+    const role = normalizeRole(access.role_in_tenant || user?.role || 'employee');
+    const tokenVersion = user?.token_version || 1;
+
+    const tenantToken = jwt.sign(
+      { id: userId, role, v: tokenVersion, tid: tenantId },
+      jwtSecretCurrent,
+      { expiresIn: accessTokenExpires }
+    );
+
+    setSessionCookie(req, res, tenantToken);
+
+    // Decide where to send user after selecting tenant
+    const nextPath = (role === 'admin' || role === 'manager') ? '/admin/dashboard' : '/ui/portal';
+
+    // Load tenant info for frontend (logo, name, color)
+    const tenant = await tenantRepo.getTenantById(tenantId);
+
+    try {
+      await auditRepo.writeLog({
+        userId,
+        action: 'select_tenant',
+        path: req.path,
+        method: req.method,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        beforeData: null,
+        afterData: JSON.stringify({ tenantId, role }),
+      });
+    } catch (e) { /* silently ignored */ }
+
+    res.status(200).json({
+      accessToken: tenantToken,
+      tenantId,
+      tenantName: tenant?.name || '',
+      tenantLogo: tenant?.logo_url || '',
+      tenantLogoName: tenant?.logo_name || '',
+      tenantColor: tenant?.primary_color || '#0b2c66',
+      role,
+      nextPath,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── My Tenants ───────────────────────────────────────────────────────────────
+// Returns the list of tenants the current user has access to.
+// Used when user navigates directly to /ui/select-company.
+exports.myTenants = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const user = await userRepo.getUserById(userId);
+    const tenants = await tenantRepo.getTenantsForUser(userId);
+    res.status(200).json({
+      tenants,
+      username: user?.username || user?.email || '',
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

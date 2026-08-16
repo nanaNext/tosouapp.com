@@ -50,7 +50,7 @@ module.exports = (app) => {
   });
   app.use((req, res, next) => {
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-      const enforceCsrf = String(process.env.ENFORCE_CSRF || '').toLowerCase() === 'true';
+      const enforceCsrf = String(process.env.DISABLE_CSRF || '').toLowerCase() !== 'true';
       const origin = req.headers.origin || '';
       const path = String(req.path || '');
       const original = String(req.originalUrl || req.url || '');
@@ -67,6 +67,7 @@ module.exports = (app) => {
       }
       
       // Strict CSRF check: Enforce token validation regardless of sameHost
+      // Default ON — set DISABLE_CSRF=true to opt out (e.g. for API-only deployments)
       if (enforceCsrf && !skipCsrf) {
         const csrfHeader = req.headers['x-csrf-token'];
         const csrfCookie = req.cookies?.csrfToken;

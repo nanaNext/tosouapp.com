@@ -6,8 +6,9 @@ const router = express.Router();
 //   - admin.calendar.routes.js (lines 1800-2100) — calendar export CSV/iCal/XML
 //   - admin.debug.routes.js (lines 2100+) — debug/backfill endpoints
 // Current approach: keep as-is for stability (700 users in production).
-const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
+const { authenticate, authorize, invalidateUserCache } = require('../../core/middleware/authMiddleware');
 const { permit } = require('../../core/middleware/rbac');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const userCtrl = require('../users/user.controller');
 const deptRoutes = require('../departments/department.routes');
 const settingsRoutes = require('../settings/settings.routes');
@@ -30,7 +31,9 @@ const crypto = require('crypto');
 const s3Service = require('../../core/services/s3.service');
 const metrics = require('../../core/metrics');
 const { buildPayslipPdf } = require('../salary/payslipPdf');
-const allowDebugRoutes = process.env.NODE_ENV !== 'production' || String(process.env.ENABLE_DEBUG_ROUTES || '').toLowerCase() === 'true';
+// SECURITY: debug routes are only available outside production.
+// ENABLE_DEBUG_ROUTES is intentionally ignored to prevent accidental exposure.
+const allowDebugRoutes = process.env.NODE_ENV !== 'production';
 
 function recordEndpointPerf(endpoint, startedAt, meta = {}) {
   const durationMs = Date.now() - startedAt;
@@ -43,6 +46,19 @@ function recordEndpointPerf(endpoint, startedAt, meta = {}) {
       console.warn(JSON.stringify({ level: 'warn', type: 'slow_endpoint', endpoint, duration_ms: durationMs, ...meta }));
     } catch (e) { /* silently ignored */ }
   }
+}
+
+/**
+ * Returns SQL fragment + params to filter by tenant_id when multi-tenant is enabled.
+ * Usage: const { clause, params } = tenantClause(req, 'u');
+ *        WHERE ...other conditions... ${clause}
+ *        params: [...otherParams, ...params]
+ */
+function tenantClause(req, alias = '') {
+  const tid = req.tenantId ? parseInt(String(req.tenantId), 10) : null;
+  if (!tid) return { clause: '', params: [] };
+  const col = alias ? `${alias}.tenant_id` : 'tenant_id';
+  return { clause: `AND ${col} = ?`, params: [tid] };
 }
 
 const uploadEmployeePhotos = (req, res, next) => {
@@ -72,13 +88,14 @@ async function ensureEmployeeProfilePhotosSchema() {
   } catch (e) { /* silently ignored */ }
 }
 // Admin tổng hợp
-router.use(authenticate);
+router.use(authenticate, resolveTenant);
 // Users
 router.get('/users', authorize('admin','manager'), userCtrl.list);
 router.get('/users/:id', authorize('admin','manager'), async (req, res) => {
   try {
     const id = req.params.id;
-    const row = await userRepo.getUserById(id);
+    // Verify user belongs to current tenant
+    const row = await userRepo.getUserById(id, req.tenantId || null);
     if (!row) return res.status(404).json({ message: 'User not found' });
     // RBAC: Manager chỉ xem được thông tin employee
     const requesterRole = String(req.user?.role || '').toLowerCase();
@@ -119,8 +136,9 @@ router.get('/employees', authorize('admin'), userCtrl.list);
 router.get('/employees/:id', permit('employees','view'), async (req, res) => {
   try {
     const id = req.params.id;
-    const row = await userRepo.getUserById(id);
-    if (!row) return res.status(404).json({ message: 'User not found' });
+    // Verify employee belongs to current tenant
+    const row = await userRepo.getUserById(id, req.tenantId || null);
+    if (!row) return res.status(404).json({ message: 'Employee not found' });
     res.status(200).json(row);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -130,12 +148,13 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
   try {
     const id = parseInt(String(req.params.id || ''), 10);
     if (!id) return res.status(400).json({ message: 'Missing id' });
-    const target = await userRepo.getUserById(id);
-    if (!target) return res.status(404).json({ message: 'User not found' });
+    // Verify employee belongs to current tenant
+    const target = await userRepo.getUserById(id, req.tenantId || null);
+    if (!target) return res.status(404).json({ message: 'Employee not found' });
 
     if (String(req.user?.role).toLowerCase() === 'manager'
         && String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true') {
-      const me = await userRepo.getUserById(req.user.id);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
       const myDept = me?.departmentId;
       if (!myDept || String(target.departmentId) !== String(myDept)) {
         return res.status(403).json({ message: 'Managers can only view employees in their own department' });
@@ -154,42 +173,42 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
         m.username AS managerName,
         m.employee_code AS managerEmployeeCode
       FROM users u
-      LEFT JOIN departments d ON d.id = u.departmentId
-      LEFT JOIN users m ON m.id = u.manager_id
-      WHERE u.id = ?
+      LEFT JOIN departments d ON d.id = u.departmentId AND d.tenant_id = u.tenant_id
+      LEFT JOIN users m ON m.id = u.manager_id AND m.tenant_id = u.tenant_id
+      WHERE u.id = ? AND u.tenant_id = ?
       LIMIT 1
     `, [id]);
 
     const [attRows] = await db.query(`
       SELECT id, checkIn, checkOut, work_type, labels, shiftId
       FROM attendance
-      WHERE userId = ?
+      WHERE userId = ? AND tenant_id = ?
         AND DATE(checkIn) >= ? AND DATE(checkIn) <= ?
       ORDER BY checkIn ASC
-    `, [id, start, end]);
+    `, [id, req.tenantId, start, end]);
 
     const [repRows] = await db.query(`
       SELECT date, work_type, site, work, updated_at
       FROM work_reports
-      WHERE userId = ?
+      WHERE userId = ? AND tenant_id = ?
         AND date >= ? AND date <= ?
       ORDER BY date ASC
-    `, [id, start, end]);
+    `, [id, req.tenantId, start, end]);
 
     const [leaveRows] = await db.query(`
       SELECT type, status, startDate, endDate, reason, created_at
       FROM leave_requests
-      WHERE userId = ?
+      WHERE userId = ? AND tenant_id = ?
         AND endDate >= ? AND startDate <= ?
       ORDER BY startDate ASC, created_at ASC
-    `, [id, start, end]);
+    `, [id, req.tenantId, start, end]);
 // cái hàm này dùng để lấy dữ liệu ngày nghỉ của người dùng trong năm đó (khi không có năm thì lấy năm hiện tại)
     const [dailyRows] = await db.query(`
       SELECT date, kubun, location, memo
       FROM attendance_daily
-      WHERE userId = ?
+      WHERE userId = ? AND tenant_id = ?
         AND date >= ? AND date <= ?
-    `, [id, start, end]);
+    `, [id, req.tenantId, start, end]);
 
     const cal = await calendarRepo.computeYear(year).catch(() => null);
     const isKouji = String(target.departmentName || '').includes('工事部');
@@ -682,6 +701,8 @@ router.post('/users/:id/revoke-sessions', authorize('admin'), async (req, res) =
     await refreshRepo.deleteUserTokens(id);
     // Increment token_version to invalidate existing JWTs
     await userRepo.incrementTokenVersion(id);
+    // Immediately purge cached user data so the next request is blocked at once
+    await invalidateUserCache(id);
     try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_revoke_sessions', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ targetUserId: id }) }); } catch (e) { /* silently ignored */ }
     res.status(200).json({ id, sessionsRevoked: true });
   } catch (err) {
@@ -944,25 +965,30 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
 router.get('/home/stats', authorize('admin'), async (req, res) => {
   try {
     const db = require('../../core/database/mysql');
+    const { clause: tc, params: tp } = tenantClause(req, '');
+    const { clause: tcu, params: tpu } = tenantClause(req, 'u');
     const [[{ c_checkin } = { c_checkin: 0 }]] = await db.query(`
       SELECT COUNT(DISTINCT userId) AS c_checkin
       FROM attendance
-      WHERE DATE(COALESCE(checkIn, checkOut)) = CURDATE()
-    `);
+      WHERE DATE(COALESCE(checkIn, checkOut)) = CURDATE() ${tc}
+    `, tp);
     const [[{ c_pending } = { c_pending: 0 }]] = await db.query(`
       SELECT COUNT(*) AS c_pending
-      FROM leave_requests
-      WHERE status = 'pending'
-    `);
+      FROM leave_requests lr
+      INNER JOIN users u ON u.id = lr.userId
+      WHERE lr.status = 'pending' ${tcu}
+    `, tpu);
     const [[{ c_leave } = { c_leave: 0 }]] = await db.query(`
       SELECT COUNT(*) AS c_leave
-      FROM leave_requests
-      WHERE status = 'approved'
-        AND CURDATE() BETWEEN startDate AND endDate
-    `);
+      FROM leave_requests lr
+      INNER JOIN users u ON u.id = lr.userId
+      WHERE lr.status = 'approved'
+        AND CURDATE() BETWEEN lr.startDate AND lr.endDate ${tcu}
+    `, tpu);
     const [[{ c_late } = { c_late: 0 }]] = await db.query(`
       SELECT COUNT(*) AS c_late
       FROM attendance a
+      INNER JOIN users u ON u.id = a.userId
       LEFT JOIN user_shift_assignments s
         ON s.userId = a.userId
        AND s.start_date <= DATE(COALESCE(a.checkIn, a.checkOut))
@@ -970,8 +996,8 @@ router.get('/home/stats', authorize('admin'), async (req, res) => {
       LEFT JOIN shift_definitions d
         ON d.id = s.shiftId
       WHERE DATE(COALESCE(a.checkIn, a.checkOut)) = CURDATE()
-        AND TIME(a.checkIn) > COALESCE(d.start_time, '09:00')
-    `);
+        AND TIME(a.checkIn) > COALESCE(d.start_time, '09:00') ${tcu}
+    `, tpu);
     res.status(200).json({
       todayCheckin: Number(c_checkin || 0),
       lateCount: Number(c_late || 0),
@@ -989,35 +1015,37 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
     const managerOnlyEmployee = role === 'manager';
     try { await auditRepo.ensureTable(); } catch (e) { /* silently ignored */ }
 
+    const { clause: tcu, params: tpu } = tenantClause(req, 'u');
     const whereRole = managerOnlyEmployee ? ` AND u.role = 'employee'` : ``;
+    const whereAll = `${whereRole} ${tcu}`;
 
     const [[leaveRow]] = await db.query(`
       SELECT COUNT(*) AS c
       FROM leave_requests lr
       INNER JOIN users u ON u.id = lr.userId
-      WHERE lr.status = 'pending' ${whereRole}
-    `);
+      WHERE lr.status = 'pending' ${whereAll}
+    `, tpu);
 
     const [[adjustRow]] = await db.query(`
       SELECT COUNT(*) AS c
       FROM time_adjust_requests ar
       INNER JOIN users u ON u.id = ar.userId
-      WHERE ar.status = 'pending' ${whereRole}
-    `);
+      WHERE ar.status = 'pending' ${whereAll}
+    `, tpu);
 
     const [[expenseRow]] = await db.query(`
       SELECT COUNT(*) AS c
       FROM expense_claims ec
       INNER JOIN users u ON u.id = ec.userId
-      WHERE ec.status = 'applied' ${whereRole}
-    `);
+      WHERE ec.status = 'applied' ${whereAll}
+    `, tpu);
     const [[activityRow]] = await db.query(`
       SELECT COUNT(*) AS c
       FROM audit_logs al
       INNER JOIN users u ON u.id = al.userId
       WHERE u.role = 'employee'
-        AND al.created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
-    `);
+        AND al.created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) ${tcu}
+    `, tpu);
 
     const [leaveItems] = await db.query(`
       SELECT 'leave' AS type, lr.id AS id, lr.created_at AS createdAt,
@@ -1025,10 +1053,10 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
              lr.startDate AS startDate, lr.endDate AS endDate
       FROM leave_requests lr
       INNER JOIN users u ON u.id = lr.userId
-      WHERE lr.status = 'pending' ${whereRole}
+      WHERE lr.status = 'pending' ${whereAll}
       ORDER BY lr.created_at DESC
       LIMIT 5
-    `);
+    `, tpu);
 
     const [adjustItems] = await db.query(`
       SELECT 'adjust' AS type, ar.id AS id, ar.created_at AS createdAt,
@@ -1036,10 +1064,10 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
              ar.requestedCheckIn AS requestedCheckIn, ar.requestedCheckOut AS requestedCheckOut
       FROM time_adjust_requests ar
       INNER JOIN users u ON u.id = ar.userId
-      WHERE ar.status = 'pending' ${whereRole}
+      WHERE ar.status = 'pending' ${whereAll}
       ORDER BY ar.created_at DESC
       LIMIT 5
-    `);
+    `, tpu);
 
     const [expenseItems] = await db.query(`
       SELECT 'expense' AS type, ec.id AS id, COALESCE(ec.applied_at, ec.updated_at, ec.created_at) AS createdAt,
@@ -1047,10 +1075,10 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
              ec.amount AS amount, ec.date AS expenseDate
       FROM expense_claims ec
       INNER JOIN users u ON u.id = ec.userId
-      WHERE ec.status = 'applied' ${whereRole}
+      WHERE ec.status = 'applied' ${whereAll}
       ORDER BY COALESCE(ec.applied_at, ec.updated_at, ec.created_at) DESC
       LIMIT 5
-    `);
+    `, tpu);
     const [activityItems] = await db.query(`
       SELECT 'activity' AS type, al.id AS id, al.created_at AS createdAt,
              COALESCE(u.username, u.email, CONCAT('user#', al.userId)) AS username,
@@ -1058,10 +1086,10 @@ router.get('/notifications/summary', authorize('admin','manager'), async (req, r
       FROM audit_logs al
       INNER JOIN users u ON u.id = al.userId
       WHERE u.role = 'employee'
-        AND al.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        AND al.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ${tcu}
       ORDER BY al.created_at DESC
       LIMIT 15
-    `);
+    `, tpu);
 
     const items = [...(leaveItems || []), ...(adjustItems || []), ...(expenseItems || []), ...(activityItems || [])]
       .sort((a, b) => {
@@ -1091,7 +1119,8 @@ router.get('/notifications/feed', authorize('admin','manager','employee'), async
     const data = await noticesRepo.listAdminFeed({
       userId: req.user?.id || null,
       role: req.user?.role || '',
-      limit
+      limit,
+      tenantId: req.tenantId || null
     });
     res.status(200).json(data);
   } catch (err) {

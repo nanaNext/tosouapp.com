@@ -27,7 +27,8 @@ const setNoStore = (res) => {
     res.set(
       'Content-Security-Policy',
       "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; " +
+      // SECURITY: 'unsafe-eval' removed — weakens CSP XSS protection.
+      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
       "font-src 'self' https://fonts.gstatic.com data:; " +
       "img-src 'self' data: https:; " +
@@ -68,6 +69,11 @@ const authorizePage = (...roles) => (req, res, next) => {
 router.get('/ui/login', sendPageNoCache('login.html'));
 router.get('/login', sendPageNoCache('login.html'));
 router.get('/login.html', sendPageNoCache('login.html'));
+// Multi-tenant: company selection page (after login, before entering app)
+router.get('/ui/select-company', sendPageNoCache('select-company.html'));
+// Sysadmin platform panel
+router.get('/platform/dashboard', sendPageNoCache('platform-dashboard.html'));
+router.get('/platform', (req, res) => res.redirect(302, '/platform/dashboard'));
 router.get('/ui/forgot-password', sendPage('forgot-password.html'));
 router.get('/forgot-password', sendPage('forgot-password.html'));
 router.get('/ui/reset-password', sendPage('reset-password.html'));
