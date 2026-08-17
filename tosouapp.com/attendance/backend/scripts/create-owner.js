@@ -10,8 +10,8 @@ const PASSWORD    = 'OwnerPass@2026!';  // Mật khẩu
 const TENANT_ID   = 2;                  // 1=飯塚, 2=山口, 3=星野, 4=MakeALife
 
 // ─── Không cần sửa bên dưới ───────────────────────────────────────────────
-require('./attendance/backend/src/config/loadEnv');
-const db     = require('./attendance/backend/src/core/database/mysql');
+require('../src/config/loadEnv');
+const db     = require('../src/core/database/mysql');
 const bcrypt = require('bcrypt');
 
 async function run() {
