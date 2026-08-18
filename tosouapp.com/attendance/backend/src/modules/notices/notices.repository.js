@@ -147,7 +147,7 @@ module.exports = {
   ensureNoticesSchema,
   ensureNoticeReadsSchema,
   ensureNoticeHidesSchema,
-  async createNotice({ targetUserId, targetDate, targetMonth, message, createdBy, kind = null, title = null, audience = 'all' }) {
+  async createNotice({ targetUserId, targetDate, targetMonth, message, createdBy, kind = null, title = null, audience = 'all', tenantId = null }) {
     await ensureNoticesSchema();
     const tu = Number.isFinite(parseInt(String(targetUserId || ''), 10)) ? parseInt(String(targetUserId), 10) : null;
     const date = isISODate(targetDate) ? String(targetDate) : null;
@@ -157,9 +157,10 @@ module.exports = {
     const k = String(kind || '').trim().slice(0, 64) || null;
     const t = String(title || '').trim().slice(0, 255) || null;
     const aud = ['all', 'admin', 'manager', 'admin_manager'].includes(String(audience)) ? String(audience) : 'all';
+    const tid = tenantId ? parseInt(String(tenantId), 10) : null;
     const [res] = await db.query(
-      `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by, kind, title, audience) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tu, date, month, msg, createdBy || null, k, t, aud]
+      `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by, kind, title, audience, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tu, date, month, msg, createdBy || null, k, t, aud, tid]
     );
     const id = Number(res?.insertId || 0);
     const [rows] = await db.query(`SELECT * FROM notices WHERE id = ? LIMIT 1`, [id]);
@@ -465,7 +466,7 @@ module.exports = {
     const lim = Math.min(50, Math.max(1, parseInt(String(limit || 10), 10) || 10));
     const uid = parseInt(String(userId || 0), 10) || 0;
     const tid = tenantId ? parseInt(String(tenantId), 10) : null;
-    const tenantClause = tid ? 'AND n.tenant_id = ?' : '';
+    const tenantClause = tid ? 'AND (n.tenant_id = ? OR n.tenant_id IS NULL)' : '';
     const tenantParams = tid ? [tid] : [];
     const [rows] = await db.query(
       `
@@ -500,7 +501,7 @@ module.exports = {
     const lim = Math.min(200, Math.max(1, parseInt(String(limit || 30), 10) || 30));
     const uid = parseInt(String(userId || 0), 10) || 0;
     const tid = tenantId ? parseInt(String(tenantId), 10) : null;
-    const tenantClause = tid ? 'AND n.tenant_id = ?' : '';
+    const tenantClause = tid ? 'AND (n.tenant_id = ? OR n.tenant_id IS NULL)' : '';
     const tenantParams = tid ? [tid] : [];
     const [rows] = await db.query(
       `
