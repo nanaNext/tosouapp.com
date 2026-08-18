@@ -62,6 +62,7 @@ exports.createQuestion = async (req, res) => {
     }
 
     const userId = req.user?.id;
+    const tid = req.tenantId || null;
     console.log('🔍 createQuestion - req.user:', req.user);
     console.log('🔍 createQuestion - userId:', userId);
     
@@ -72,7 +73,7 @@ exports.createQuestion = async (req, res) => {
 
     const { question, detail, category } = req.body;
     console.log('💾 Saving question:', { userId, question, detail, category });
-    const result = await repo.createQuestion({ userId, question, detail, category });
+    const result = await repo.createQuestion({ userId, question, detail, category, tenantId: tid });
     try {
       const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
       await noticesRepo.createAdminNotification({
@@ -107,6 +108,7 @@ exports.createQuestion = async (req, res) => {
 exports.getMyQuestions = async (req, res) => {
   try {
     const userId = req.user?.id;
+    const tid = req.tenantId || null;
     console.log('🔍 getMyQuestions - req.user:', req.user);
     console.log('🔍 getMyQuestions - userId:', userId);
     
@@ -117,7 +119,7 @@ exports.getMyQuestions = async (req, res) => {
 
     const { limit = 50, offset = 0 } = req.query;
     console.log('📥 Fetching questions for userId:', userId);
-    const questions = await repo.getUserQuestions(userId, { limit, offset });
+    const questions = await repo.getUserQuestions(userId, { limit, offset, tenantId: tid });
 
     console.log(`✅ Found ${questions.length} questions for user ${userId}`);
     res.status(200).json({ data: questions });
@@ -130,14 +132,13 @@ exports.getMyQuestions = async (req, res) => {
 // Admin: Get all questions
 exports.getAllQuestions = async (req, res) => {
   try {
-    // Check if user is admin
     const isAdmin = req.user?.role === 'admin' || req.user?.role === 'manager';
     if (!isAdmin) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
     const { status, limit = 50, offset = 0 } = req.query;
-    const questions = await repo.getAllUserQuestions({ status, limit, offset });
+    const questions = await repo.getAllUserQuestions({ status, limit, offset, tenantId: req.tenantId || null });
 
     res.status(200).json({ data: questions });
   } catch (e) {
@@ -154,7 +155,6 @@ exports.answerQuestion = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Check if user is admin
     const isAdmin = req.user?.role === 'admin' || req.user?.role === 'manager';
     if (!isAdmin) {
       return res.status(403).json({ message: 'Forbidden' });
@@ -164,7 +164,7 @@ exports.answerQuestion = async (req, res) => {
     const { answer } = req.body;
     const adminId = req.user?.id;
 
-    await repo.updateAnswer({ questionId, answer, adminId });
+    await repo.updateAnswer({ questionId, answer, adminId, tenantId: req.tenantId || null });
 
     res.status(200).json({ message: '回答を保存しました' });
   } catch (e) {

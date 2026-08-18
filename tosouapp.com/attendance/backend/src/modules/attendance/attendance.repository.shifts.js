@@ -1,6 +1,10 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 // ─── Column cache ─────────
 let _usaColCache = null;
 let _usaColCacheTs = 0;
@@ -60,43 +64,67 @@ async function getAttendanceColumnSet() {
 }
 
 module.exports = {
-  async upsertShiftDefinition({ name, start_time, end_time, break_minutes, working_days }) {
+  async upsertShiftDefinition({ name, start_time, end_time, break_minutes, working_days, tenantId }) {
+    const tid = _tid(tenantId);
     const s = String(start_time || '').split(':').map(Number);
     const e = String(end_time || '').split(':').map(Number);
     const std = Math.max(0, (e[0]*60+e[1]) - (s[0]*60+s[1]) - (break_minutes || 0));
     await db.query(`
-      INSERT INTO shift_definitions (name, start_time, end_time, break_minutes, standard_minutes, working_days)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO shift_definitions (name, start_time, end_time, break_minutes, standard_minutes, working_days, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), end_time = VALUES(end_time), break_minutes = VALUES(break_minutes), standard_minutes = VALUES(standard_minutes), working_days = VALUES(working_days)
-    `, [name, start_time, end_time, break_minutes || 0, std, working_days || null]);
-    const [rows] = await db.query(`SELECT * FROM shift_definitions WHERE name = ? LIMIT 1`, [name]);
+    `, [name, start_time, end_time, break_minutes || 0, std, working_days || null, tid]);
+    const where = ['name = ?'];
+    const params = [name];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(`SELECT * FROM shift_definitions WHERE ${where.join(' AND ')} LIMIT 1`, params);
     return rows[0];
   },
-  async listShiftDefinitions() {
-    const [rows] = await db.query(`SELECT * FROM shift_definitions ORDER BY id ASC`);
+  async listShiftDefinitions({ tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = [];
+    const params = [];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const wsql = where.length ? ('WHERE ' + where.join(' AND ')) : '';
+    const [rows] = await db.query(`SELECT * FROM shift_definitions ${wsql} ORDER BY id ASC`, params);
     return rows;
   },
-  async getShiftById(id) {
-    const [rows] = await db.query(`SELECT * FROM shift_definitions WHERE id = ? LIMIT 1`, [id]);
+  async getShiftById(id, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [id];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(`SELECT * FROM shift_definitions WHERE ${where.join(' AND ')} LIMIT 1`, params);
     return rows[0];
   },
-  async getShiftByName(name) {
-    const [rows] = await db.query('SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions WHERE name = ? LIMIT 1', [name]);
+  async getShiftByName(name, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['name = ?'];
+    const params = [name];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query('SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions WHERE ' + where.join(' AND ') + ' LIMIT 1', params);
     return rows && rows[0] ? rows[0] : null;
   },
-  async deleteShiftDefinitionById(id) {
+  async deleteShiftDefinitionById(id, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const xid = Number(id);
     if (!xid) return { deleted: 0, notFound: true };
-    const def = await this.getShiftById(xid);
+    const def = await this.getShiftById(xid, { tenantId: tid });
     if (!def) return { deleted: 0, notFound: true };
     let assignedCount = 0;
     try {
       const set = await getUSAColumnSet();
       if (set.has('shiftId')) {
-        const [rows] = await db.query(`SELECT COUNT(*) AS c FROM user_shift_assignments WHERE shiftId = ?`, [xid]);
+        const whereUSA = ['shiftId = ?'];
+        const paramsUSA = [xid];
+        if (tid != null) { whereUSA.push('tenant_id = ?'); paramsUSA.push(tid); }
+        const [rows] = await db.query(`SELECT COUNT(*) AS c FROM user_shift_assignments WHERE ${whereUSA.join(' AND ')}`, paramsUSA);
         assignedCount = rows && rows[0] ? Number(rows[0].c || 0) : 0;
       } else if (set.has('shift')) {
-        const [rows] = await db.query(`SELECT COUNT(*) AS c FROM user_shift_assignments WHERE shift = ?`, [String(def.name || '')]);
+        const whereUSA = ['shift = ?'];
+        const paramsUSA = [String(def.name || '')];
+        if (tid != null) { whereUSA.push('tenant_id = ?'); paramsUSA.push(tid); }
+        const [rows] = await db.query(`SELECT COUNT(*) AS c FROM user_shift_assignments WHERE ${whereUSA.join(' AND ')}`, paramsUSA);
         assignedCount = rows && rows[0] ? Number(rows[0].c || 0) : 0;
       }
     } catch {}
@@ -104,7 +132,10 @@ module.exports = {
       return { deleted: 0, inUse: true, assignedCount };
     }
     try {
-      const [res] = await db.query(`DELETE FROM shift_definitions WHERE id = ?`, [xid]);
+      const whereDel = ['id = ?'];
+      const paramsDel = [xid];
+      if (tid != null) { whereDel.push('tenant_id = ?'); paramsDel.push(tid); }
+      const [res] = await db.query(`DELETE FROM shift_definitions WHERE ${whereDel.join(' AND ')}`, paramsDel);
       return { deleted: Number(res?.affectedRows || 0) };
     } catch (err) {
       const msg = String(err?.message || '');
@@ -114,7 +145,8 @@ module.exports = {
       throw err;
     }
   },
-  async assignShiftToUser(userId, shiftId, startDate, endDate) {
+  async assignShiftToUser(userId, shiftId, startDate, endDate, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const set = await getUSAColumnSet();
     const hasShiftId = set.has('shiftId');
     const hasShiftName = set.has('shift');
@@ -122,10 +154,11 @@ module.exports = {
     const hasDateCol = set.has('date');
     const hasStartDateCol = set.has('start_date');
     const hasEndDateCol = set.has('end_date');
+    const hasTenantCol = set.has('tenant_id');
 
     let shiftName = null;
     try {
-      const def = await this.getShiftById(shiftId);
+      const def = await this.getShiftById(shiftId, { tenantId: tid });
       shiftName = def?.name ? String(def.name) : null;
     } catch {}
 
@@ -155,6 +188,10 @@ module.exports = {
     if (hasShiftName) {
       cols.push('shift');
       vals.push(shiftName || null);
+    }
+    if (hasTenantCol && tid != null) {
+      cols.push('tenant_id');
+      vals.push(tid);
     }
 
     const placeholders = cols.map(() => '?').join(', ');
@@ -192,7 +229,8 @@ module.exports = {
     }
     return { ok: true };
   },
-  async updateShiftAssignment(id, userId, patch) {
+  async updateShiftAssignment(id, userId, patch, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const xid = parseInt(String(id), 10);
     const uid = parseInt(String(userId), 10);
     if (!xid || !uid) return { ok: false, updated: 0 };
@@ -222,43 +260,55 @@ module.exports = {
     }
     if (!fields.length) return { ok: false, updated: 0 };
     vals.push(xid, uid);
+    const where = ['id = ?', 'userId = ?'];
+    if (tid != null) { where.push('tenant_id = ?'); vals.splice(vals.length - 2, 0, tid); }
     const [res] = await db.query(
-      `UPDATE user_shift_assignments SET ${fields.join(', ')} WHERE id = ? AND userId = ?`,
+      `UPDATE user_shift_assignments SET ${fields.join(', ')} WHERE ${where.join(' AND ')}`,
       vals
     );
     return { ok: true, updated: Number(res?.affectedRows || 0) };
   },
-  async deleteShiftAssignment(id, userId) {
+  async deleteShiftAssignment(id, userId, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const xid = parseInt(String(id), 10);
     const uid = parseInt(String(userId), 10);
     if (!xid || !uid) return { ok: false, deleted: 0 };
-    const [res] = await db.query(`DELETE FROM user_shift_assignments WHERE id = ? AND userId = ?`, [xid, uid]);
+    const where = ['id = ?', 'userId = ?'];
+    const params = [xid, uid];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [res] = await db.query(`DELETE FROM user_shift_assignments WHERE ${where.join(' AND ')}`, params);
     return { ok: true, deleted: Number(res?.affectedRows || 0) };
   },
-  async getActiveAssignment(userId, dateStr) {
+  async getActiveAssignment(userId, dateStr, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const set = await getUSAColumnSet();
     const startCol = getUSAStartCol(set);
     const hasEnd = set.has('end_date');
     const whereEnd = hasEnd ? 'AND (a.end_date IS NULL OR a.end_date >= ?)' : '';
     const orderCol = startCol;
+    const whereTid = tid != null ? 'AND a.tenant_id = ?' : '';
     const sql = `
       SELECT a.*
       FROM user_shift_assignments a
-      WHERE a.userId = ? AND a.${startCol} <= ? ${whereEnd}
+      WHERE a.userId = ? AND a.${startCol} <= ? ${whereEnd} ${whereTid}
       ORDER BY a.${orderCol} DESC
       LIMIT 1
     `;
-    const params = hasEnd ? [userId, dateStr, dateStr] : [userId, dateStr];
+    const params = [userId, dateStr];
+    if (hasEnd) params.push(dateStr);
+    if (tid != null) params.push(tid);
     const [rows] = await db.query(sql, params);
     return rows[0];
   },
-  async listShiftAssignmentsBetween(userId, fromDate, toDate) {
+  async listShiftAssignmentsBetween(userId, fromDate, toDate, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const set = await getUSAColumnSet();
     const startCol = getUSAStartCol(set);
     const hasEnd = set.has('end_date');
     const hasShiftId = set.has('shiftId');
     const hasShiftName = set.has('shift');
     const whereEnd = hasEnd ? 'AND (a.end_date IS NULL OR a.end_date >= ?)' : '';
+    const whereTid = tid != null ? 'AND a.tenant_id = ?' : '';
     const sql = `
       SELECT
         a.id,
@@ -271,13 +321,17 @@ module.exports = {
       WHERE a.userId = ?
         AND a.${startCol} <= ?
         ${whereEnd}
+        ${whereTid}
       ORDER BY a.${startCol} ASC, a.id ASC
     `;
-    const params = hasEnd ? [userId, String(toDate).slice(0, 10), String(fromDate).slice(0, 10)] : [userId, String(toDate).slice(0, 10)];
+    const params = [userId, String(toDate).slice(0, 10)];
+    if (hasEnd) params.push(String(fromDate).slice(0, 10));
+    if (tid != null) params.push(tid);
     const [rows] = await db.query(sql, params);
     return rows || [];
   },
-  async backfillShiftIdForUserRange(userId, fromDate, toDate) {
+  async backfillShiftIdForUserRange(userId, fromDate, toDate, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const set = await getUSAColumnSet();
     const startCol = getUSAStartCol(set);
     const hasEnd = set.has('end_date');
@@ -285,29 +339,34 @@ module.exports = {
     const hasShiftName = set.has('shift');
     const joinDef = hasShiftName ? 'LEFT JOIN shift_definitions d ON d.name = s.shift' : '';
     const setExpr = hasShiftName ? 'COALESCE(s.shiftId, d.id)' : 's.shiftId';
+    const whereTid = tid != null ? 'AND s.tenant_id = ?' : '';
     const sql = `
       UPDATE attendance a
       JOIN user_shift_assignments s
         ON s.userId = a.userId
        AND DATE(COALESCE(a.checkIn, a.checkOut)) >= s.${startCol}
        ${endCond}
+       ${whereTid}
       ${joinDef}
       SET a.shiftId = ${setExpr}
       WHERE a.userId = ?
         AND DATE(COALESCE(a.checkIn, a.checkOut)) >= ?
         AND DATE(COALESCE(a.checkIn, a.checkOut)) <= ?
     `;
-    await db.query(sql, [userId, fromDate, toDate]);
+    const params = tid != null ? [tid, userId, fromDate, toDate] : [userId, fromDate, toDate];
+    await db.query(sql, params);
     return { ok: true };
   },
-  async batchGetActiveAssignments(userIds, dateStr) {
+  async batchGetActiveAssignments(userIds, dateStr, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const result = new Map();
     if (!userIds || !userIds.length) return result;
     const set = await getUSAColumnSet();
     const startCol = getUSAStartCol(set);
     const hasEnd = set.has('end_date');
     const placeholders = userIds.map(() => '?').join(',');
-    const whereEnd = hasEnd ? `AND (a.end_date IS NULL OR a.end_date >= ?)` : '';
+    const whereEnd = hasEnd ? `AND (end_date IS NULL OR end_date >= ?)` : '';
+    const whereTid = tid != null ? `AND tenant_id = ?` : '';
     const sql = `
       SELECT a.*
       FROM user_shift_assignments a
@@ -316,14 +375,16 @@ module.exports = {
         FROM user_shift_assignments
         WHERE userId IN (${placeholders}) AND ${startCol} <= ?
         ${hasEnd ? 'AND (end_date IS NULL OR end_date >= ?)' : ''}
+        ${whereTid}
         GROUP BY userId
       ) latest ON latest.userId = a.userId AND a.${startCol} = latest.max_start
       WHERE a.userId IN (${placeholders})
       ORDER BY a.userId
     `;
-    const params = hasEnd
-      ? [...userIds, dateStr, dateStr, ...userIds]
-      : [...userIds, dateStr, ...userIds];
+    const params = [...userIds, dateStr];
+    if (hasEnd) params.push(dateStr);
+    if (tid != null) params.push(tid);
+    params.push(...userIds);
     try {
       const [rows] = await db.query(sql, params);
       for (const row of (rows || [])) {
@@ -335,8 +396,13 @@ module.exports = {
     }
     return result;
   },
-  async batchGetAllShiftDefinitions() {
-    const [rows] = await db.query('SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions');
+  async batchGetAllShiftDefinitions({ tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = [];
+    const params = [];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const wsql = where.length ? ('WHERE ' + where.join(' AND ')) : '';
+    const [rows] = await db.query(`SELECT id, name, start_time, end_time, break_minutes FROM shift_definitions ${wsql}`, params);
     const map = new Map();
     for (const r of (rows || [])) {
       map.set(r.id, r);

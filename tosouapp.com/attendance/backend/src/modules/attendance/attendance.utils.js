@@ -1,27 +1,16 @@
 /**
- * Shared helpers used across all attendance sub-controllers.
- * Extracted from attendance.controller.js for maintainability.
- * @module attendance._helpers
+ * @module attendance.utils
+ * Pure shared helpers used across attendance sub-controllers.
+ * No HTTP request/response logic here — only reusable business utilities.
  */
 'use strict';
 
-const service = require('./attendance.service');
-const auditRepo = require('../audit/audit.repository');
-const rules = require('./attendance.rules');
-const repo = require('./attendance.repository');
-const { formatInputToMySQLJST } = require('../../utils/dateTime');
-const userRepo = require('../users/user.repository');
-const workReportRepo = require('../workReports/workReports.repository');
-const salaryInputRepo = require('../salary/salaryInput.repository');
-const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
-const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
-const leaveRepo = require('../leave/leave.repository');
-const noticesRepo = require('../notices/notices.repository');
 const metrics = require('../../core/metrics');
-const db = require('../../core/database/mysql');
-const calendarRepo = require('../calendar/calendar.repository');
-const shiftReminderService = require('../../services/shiftReminder.service');
 const log = require('../../core/logger');
+const repo = require('./attendance.repository');
+const leaveRepo = require('../leave/leave.repository');
+const userRepo = require('../users/user.repository');
+const calendarRepo = require('../calendar/calendar.repository');
 
 // ─── Performance tracking ─────────────────────────────────────────────────────
 
@@ -70,7 +59,6 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
       return;
     }
     if (k === '半休(有給)') {
-      // Half-day paid leave: create request with type 'paid_half' (0.5 day deduction)
       const existed = await leaveRepo.findExactRequest({
         userId, startDate: ds, endDate: ds, type: 'paid_half', statuses: ['pending', 'approved']
       });
@@ -108,7 +96,6 @@ async function resolveTargetUserId(req) {
     if (String(target.role || '').toLowerCase() !== 'employee') {
       return '__forbidden__';
     }
-    // Department check is opt-in via MANAGER_STRICT_DEPT env var
     const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
     if (strictDept) {
       const me = await userRepo.getUserById(meId);
@@ -209,6 +196,14 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
   return { byDate, off };
 }
 
+/**
+ * Build the set of off-days for a given year + userId,
+ * respecting Kouji department policy and department-specific holidays.
+ * Single source of truth — replaces the 3 duplicate copies in daily/month/export controllers.
+ * @param {number} year
+ * @param {number} userId
+ * @returns {Promise<Set<string>>}
+ */
 async function getUserOffDaySet(year, userId) {
   const cal = await calendarRepo.computeYear(year).catch(() => null);
   const useKoujiPolicy = await isKoujiUser(userId);
@@ -216,8 +211,6 @@ async function getUserOffDaySet(year, userId) {
   if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
     for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
   }
-
-  // Thêm ngày nghỉ riêng theo bộ phận (department_holidays)
   try {
     const user = await userRepo.getUserById(userId).catch(() => null);
     const deptId = user?.departmentId || user?.department_id;
@@ -225,23 +218,14 @@ async function getUserOffDaySet(year, userId) {
       const deptHolidayRepo = require('../holidays/holidays.repository');
       const deptHolidays = await deptHolidayRepo.listByDepartmentAndYear(deptId, year);
       for (const h of (deptHolidays || [])) {
-        if (h.is_off) {
-          off.add(String(h.date).slice(0, 10));
-        }
+        if (h.is_off) off.add(String(h.date).slice(0, 10));
       }
     }
   } catch (e) { /* department holidays not available, skip */ }
-
   return off;
 }
 
 module.exports = {
-  // Dependencies (re-exported for sub-controllers)
-  service, auditRepo, rules, repo, formatInputToMySQLJST, userRepo,
-  workReportRepo, salaryInputRepo, calculatePaidLeaveEntitlement,
-  resolveEmploymentStartDate, leaveRepo, noticesRepo, metrics, db,
-  calendarRepo, shiftReminderService, log,
-  // Helpers
   recordEndpointPerf,
   ensurePaidLeaveRequestForDate,
   syncPaidLeaveByKubun,
@@ -253,5 +237,5 @@ module.exports = {
   HOLIDAY_TYPES,
   isKoujiUser,
   buildOffSetFromCalendarDetail,
-  getUserOffDaySet
+  getUserOffDaySet,
 };

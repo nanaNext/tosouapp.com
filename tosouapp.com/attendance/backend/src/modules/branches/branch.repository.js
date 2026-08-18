@@ -1,14 +1,13 @@
 /**
  * Branch (支店) Repository
  * Manages company branches/offices.
- * 
- * Schema:
- *   branches: id, name, code, address, phone, created_at
- *   departments: + branch_id (FK to branches)
- *   users: + branch_id (FK to branches)
  */
 
 const db = require('../../core/database/mysql');
+
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
 
 async function ensureTable() {
   await db.query(`
@@ -24,17 +23,21 @@ async function ensureTable() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
-  // Add branch_id to departments if not exists
+  try {
+    await db.query(`ALTER TABLE branches ADD COLUMN tenant_id BIGINT UNSIGNED NULL`);
+  } catch (e) { /* column may exist */ }
+  try {
+    await db.query(`ALTER TABLE branches ADD INDEX idx_branches_tid (tenant_id)`);
+  } catch (e) { /* index may exist */ }
+
   try {
     await db.query(`ALTER TABLE departments ADD COLUMN branch_id BIGINT UNSIGNED NULL`);
   } catch (e) { /* column already exists */ }
 
-  // Add branch_id to users if not exists
   try {
     await db.query(`ALTER TABLE users ADD COLUMN branch_id BIGINT UNSIGNED NULL`);
   } catch (e) { /* column already exists */ }
 
-  // Add index
   try {
     await db.query(`CREATE INDEX idx_users_branch ON users (branch_id)`);
   } catch (e) { /* index already exists */ }
@@ -44,31 +47,43 @@ async function ensureTable() {
   } catch (e) { /* index already exists */ }
 }
 
-async function listBranches() {
+async function listBranches(tenantId = null) {
+  const tid = _tid(tenantId);
+  const where = [];
+  const params = [];
+  if (tid != null) { where.push('b.tenant_id = ?'); params.push(tid); }
+  const wsql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const [rows] = await db.query(`
     SELECT b.*, 
            (SELECT COUNT(*) FROM users u WHERE u.branch_id = b.id AND u.employment_status = 'active') as employeeCount,
            (SELECT username FROM users u2 WHERE u2.id = b.manager_user_id LIMIT 1) as managerName
     FROM branches b 
+    ${wsql}
     ORDER BY b.name
-  `);
+  `, params);
   return rows || [];
 }
 
-async function getBranchById(id) {
-  const [[row]] = await db.query(`SELECT * FROM branches WHERE id = ?`, [id]);
+async function getBranchById(id, tenantId = null) {
+  const tid = _tid(tenantId);
+  const where = ['id = ?'];
+  const params = [id];
+  if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+  const [[row]] = await db.query(`SELECT * FROM branches WHERE ${where.join(' AND ')}`, params);
   return row || null;
 }
 
-async function createBranch({ name, code, address, phone, managerUserId }) {
+async function createBranch({ name, code, address, phone, managerUserId, tenantId }) {
+  const tid = _tid(tenantId);
   const [result] = await db.query(
-    `INSERT INTO branches (name, code, address, phone, manager_user_id) VALUES (?, ?, ?, ?, ?)`,
-    [name, code || null, address || null, phone || null, managerUserId || null]
+    `INSERT INTO branches (name, code, address, phone, manager_user_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?)`,
+    [name, code || null, address || null, phone || null, managerUserId || null, tid]
   );
   return result.insertId;
 }
 
-async function updateBranch(id, { name, code, address, phone, managerUserId }) {
+async function updateBranch(id, { name, code, address, phone, managerUserId, tenantId }) {
+  const tid = _tid(tenantId);
   const fields = [];
   const params = [];
   if (name !== undefined) { fields.push('name = ?'); params.push(name); }
@@ -78,29 +93,68 @@ async function updateBranch(id, { name, code, address, phone, managerUserId }) {
   if (managerUserId !== undefined) { fields.push('manager_user_id = ?'); params.push(managerUserId || null); }
   if (fields.length === 0) return;
   params.push(id);
-  await db.query(`UPDATE branches SET ${fields.join(', ')} WHERE id = ?`, params);
+  const where = ['id = ?'];
+  if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+  await db.query(`UPDATE branches SET ${fields.join(', ')} WHERE ${where.join(' AND ')}`, params);
 }
 
-async function deleteBranch(id) {
-  // Unset branch_id from users and departments first
-  await db.query(`UPDATE users SET branch_id = NULL WHERE branch_id = ?`, [id]);
-  await db.query(`UPDATE departments SET branch_id = NULL WHERE branch_id = ?`, [id]);
-  await db.query(`DELETE FROM branches WHERE id = ?`, [id]);
+async function deleteBranch(id, tenantId = null) {
+  const tid = _tid(tenantId);
+  const where = ['branch_id = ?'];
+  const params = [id];
+  if (tid != null) {
+    where.push('tenant_id = ?');
+    params.push(tid);
+  }
+  await db.query(`UPDATE users SET branch_id = NULL WHERE ${where.join(' AND ')}`, params);
+  const deptWhere = ['branch_id = ?'];
+  const deptParams = [id];
+  if (tid != null) {
+    deptWhere.push('tenant_id = ?');
+    deptParams.push(tid);
+  }
+  await db.query(`UPDATE departments SET branch_id = NULL WHERE ${deptWhere.join(' AND ')}`, deptParams);
+  const delWhere = ['id = ?'];
+  const delParams = [id];
+  if (tid != null) { delWhere.push('tenant_id = ?'); delParams.push(tid); }
+  await db.query(`DELETE FROM branches WHERE ${delWhere.join(' AND ')}`, delParams);
 }
 
-async function assignUserToBranch(userId, branchId) {
-  await db.query(`UPDATE users SET branch_id = ? WHERE id = ?`, [branchId, userId]);
+async function assignUserToBranch(userId, branchId, tenantId = null) {
+  const tid = _tid(tenantId);
+  const where = ['id = ?'];
+  const params = [branchId];
+  if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+  const [branches] = await db.query(`SELECT id FROM branches WHERE ${where.join(' AND ')} LIMIT 1`, params);
+  if (!branches || !branches.length) return;
+  const userWhere = ['id = ?'];
+  const userParams = [userId];
+  if (tid != null) { userWhere.push('tenant_id = ?'); userParams.push(tid); }
+  await db.query(`UPDATE users SET branch_id = ? WHERE ${userWhere.join(' AND ')}`, [branchId, ...userParams]);
 }
 
-async function assignDepartmentToBranch(departmentId, branchId) {
-  await db.query(`UPDATE departments SET branch_id = ? WHERE id = ?`, [branchId, departmentId]);
+async function assignDepartmentToBranch(departmentId, branchId, tenantId = null) {
+  const tid = _tid(tenantId);
+  const bWhere = ['id = ?'];
+  const bParams = [branchId];
+  if (tid != null) { bWhere.push('tenant_id = ?'); bParams.push(tid); }
+  const [branches] = await db.query(`SELECT id FROM branches WHERE ${bWhere.join(' AND ')} LIMIT 1`, bParams);
+  if (!branches || !branches.length) return;
+  const dWhere = ['id = ?'];
+  const dParams = [departmentId];
+  if (tid != null) { dWhere.push('tenant_id = ?'); dParams.push(tid); }
+  await db.query(`UPDATE departments SET branch_id = ? WHERE ${dWhere.join(' AND ')}`, [branchId, ...dParams]);
 }
 
-async function listBranchUsers(branchId) {
+async function listBranchUsers(branchId, tenantId = null) {
+  const tid = _tid(tenantId);
+  const where = ['branch_id = ?', "employment_status = 'active'"];
+  const params = [branchId];
+  if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
   const [rows] = await db.query(
     `SELECT id, employee_code, username, email, role, departmentId, employment_status 
-     FROM users WHERE branch_id = ? AND employment_status = 'active' ORDER BY username`,
-    [branchId]
+     FROM users WHERE ${where.join(' AND ')} ORDER BY username`,
+    params
   );
   return rows || [];
 }

@@ -206,7 +206,7 @@ const route = async () => {
         host.style.background = 'transparent';
       }
       
-      host.style.visibility = 'hidden';
+      host.style.visibility = '';
       prevHost.replaceWith(host);
 
       // Make sure the parent container (main.content) has no leftover inline styles from legacy pages
@@ -588,11 +588,7 @@ const wireSpaNav = () => {
 
       const u = new URL(href, window.location.origin);
       if (!isAdminPath(u.pathname)) return;
-      if (u.pathname === '/admin/attendance/monthly' || u.pathname === '/admin/attendance/monthly/') {
-        e.preventDefault();
-        window.location.href = u.href;
-        return;
-      }
+      if (u.pathname === '/admin/attendance/monthly' || u.pathname === '/admin/attendance/monthly/') return;
       e.preventDefault();
       navigate(u.pathname + u.search + u.hash);
     });
@@ -638,6 +634,15 @@ const wireTopbarMenus = () => {
     }
     document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
+
+    // 新規作成 ボタン → 社員追加ページへ移動
+    const btnNew = document.getElementById('btnAdminNew');
+    if (btnNew && !btnNew.dataset.bound) {
+      btnNew.dataset.bound = '1';
+      btnNew.addEventListener('click', () => {
+        window.location.href = '/admin/employees/add';
+      });
+    }
   } catch (e) { /* silently ignored */ }
 };
 
@@ -777,8 +782,9 @@ const boot = async () => {
     document.head.appendChild(globalTableStyle);
   } catch (e) { /* silently ignored */ }
 
-  try { document.documentElement.classList.add('admin-preboot'); } catch (e) { /* silently ignored */ }
-  try { document.body.classList.add('booting'); } catch (e) { /* silently ignored */ }
+  // Bỏ preboot: không ẩn body — hiển thị ngay lập tức, tránh chớp trắng
+  // try { document.documentElement.classList.add('admin-preboot'); } catch (e) { /* silently ignored */ }
+  // try { document.body.classList.add('booting'); } catch (e) { /* silently ignored */ }
   const isStandaloneApp = (() => {
     try {
       const sp = new URLSearchParams(window.location.search || '');

@@ -105,11 +105,12 @@ export async function mount({ content, initialPath, profile }) {
   if (sidebarNav) {
     const displayName = (profile && (profile.username || profile.email)) || '';
     sidebarNav.innerHTML = menuHtml + `
-      <div class="sidebar-footer" style="margin-top:auto;padding:8px 10px;border-top:1px solid #f0f0f0;font-size:11px;color:#0b2c66;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;flex:1;min-width:0;">${displayName}</span>
-          <a href="#" id="sidebarLogout" style="color:#ef4444;font-size:10px;white-space:nowrap;text-decoration:none;">ログアウト</a>
-        </div>
+      <div class="sidebar-footer" style="margin-top:auto;padding:12px 10px;border-top:1px solid #e2e8f0;">
+        <div style="font-size:12px;color:#0b2c66;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:8px;">${displayName}</div>
+        <a href="#" id="sidebarLogout" style="display:flex;align-items:center;gap:6px;color:#ef4444;font-size:13px;font-weight:500;text-decoration:none;padding:8px 10px;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          ログアウト
+        </a>
       </div>
     `;
     // Logout handler
@@ -123,6 +124,36 @@ export async function mount({ content, initialPath, profile }) {
         window.location.href = '/login';
       });
     }
+
+    // Leave tab switching: khi đang ở trang leave, nhấn sub-link chỉ chuyển tab nội bộ (không chớp)
+    sidebarNav.addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('a[href]');
+      if (!a) return;
+      const href = a.getAttribute('href') || '';
+      const leaveTabMap = {
+        '/admin/leave/requests': 'tab-approvals',
+        '/admin/leave/grants': 'tab-grant',
+        '/admin/leave/balance': 'tab-balances',
+      };
+      const targetTab = leaveTabMap[href.split('?')[0]];
+      if (!targetTab) return;
+      // Chỉ xử lý nếu đang ở trang leave (tab container đã mount)
+      const tabContent = document.querySelector(`#${targetTab}`);
+      if (!tabContent) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Chuyển tab nội bộ
+      document.querySelectorAll('.leave-tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
+      tabContent.classList.add('active');
+      const tabBtn = document.querySelector(`.leave-tab[data-target="${targetTab}"]`);
+      if (tabBtn) tabBtn.classList.add('active');
+      // Cập nhật URL không reload
+      try { history.pushState(null, '', href); } catch (err) { /* bỏ qua */ }
+      // Cập nhật sidebar active state
+      sidebarNav.querySelectorAll('a').forEach(l => l.classList.remove('active'));
+      a.classList.add('active');
+    });
   }
 
   // Inject into Mobile Drawer

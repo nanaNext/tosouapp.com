@@ -269,9 +269,11 @@ async function ensureAttendanceGoOutSchema() {
       return_time DATETIME NULL,
       type VARCHAR(24) NOT NULL,
       reason VARCHAR(255) NULL,
+      tenant_id BIGINT UNSIGNED NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_user_date (userId, date),
+      INDEX idx_ago_tid (tenant_id),
       CONSTRAINT fk_attendance_go_out_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
@@ -285,6 +287,12 @@ async function ensureAttendanceGoOutSchema() {
   } catch (e) {
     // ignore duplicate column error
   }
+  try {
+    await db.query(`ALTER TABLE attendance_go_out ADD COLUMN tenant_id BIGINT UNSIGNED NULL`);
+  } catch (e) { /* column may exist */ }
+  try {
+    await db.query(`ALTER TABLE attendance_go_out ADD INDEX idx_ago_tid (tenant_id)`);
+  } catch (e) { /* index may exist */ }
 }
 
 async function ensureShiftTables() {
@@ -297,7 +305,9 @@ async function ensureShiftTables() {
       break_minutes INT NOT NULL DEFAULT 0,
       standard_minutes INT NOT NULL,
       working_days VARCHAR(255) NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      tenant_id BIGINT UNSIGNED NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_sd_tid (tenant_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
   
@@ -308,7 +318,13 @@ async function ensureShiftTables() {
     if (!set.has('working_days')) {
       await db.query(`ALTER TABLE shift_definitions ADD COLUMN working_days VARCHAR(255) NULL`);
     }
+    if (!set.has('tenant_id')) {
+      try { await db.query(`ALTER TABLE shift_definitions ADD COLUMN tenant_id BIGINT UNSIGNED NULL`); } catch {}
+    }
   } catch {}
+  try {
+    await db.query(`ALTER TABLE shift_definitions ADD INDEX idx_sd_tid (tenant_id)`);
+  } catch (e) { /* index may exist */ }
   await db.query(`
     CREATE TABLE IF NOT EXISTS user_shift_assignments (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -316,9 +332,11 @@ async function ensureShiftTables() {
       shiftId BIGINT UNSIGNED NOT NULL,
       start_date DATE NOT NULL,
       end_date DATE NULL,
+      tenant_id BIGINT UNSIGNED NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_user_date (userId, start_date, end_date),
       INDEX idx_shift (shiftId),
+      INDEX idx_usa_tid (tenant_id),
       CONSTRAINT fk_usa_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
       CONSTRAINT fk_usa_shift FOREIGN KEY (shiftId) REFERENCES shift_definitions(id) ON DELETE RESTRICT
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -335,6 +353,7 @@ async function ensureShiftTables() {
     if (!set.has('shiftId')) alters.push(`ADD COLUMN shiftId BIGINT UNSIGNED NOT NULL`);
     if (!set.has('start_date') && !set.has('date')) alters.push(`ADD COLUMN start_date DATE NOT NULL`);
     if (!set.has('end_date')) alters.push(`ADD COLUMN end_date DATE NULL`);
+    if (!set.has('tenant_id')) alters.push(`ADD COLUMN tenant_id BIGINT UNSIGNED NULL`);
     if (alters.length) {
       await db.query(`ALTER TABLE user_shift_assignments ${alters.join(', ')}`);
     }
@@ -350,6 +369,9 @@ async function ensureShiftTables() {
     }
     if (!idxSet.has('idx_shift')) {
       try { await db.query(`ALTER TABLE user_shift_assignments ADD INDEX idx_shift (shiftId)`); } catch {}
+    }
+    if (!idxSet.has('idx_usa_tid')) {
+      try { await db.query(`ALTER TABLE user_shift_assignments ADD INDEX idx_usa_tid (tenant_id)`); } catch {}
     }
     try {
       const [fkUser] = await db.query(`

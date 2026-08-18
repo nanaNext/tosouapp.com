@@ -722,7 +722,8 @@ router.get('/audit', authorize('admin'), async (req, res) => {
       from: req.query.from,
       to: req.query.to,
       page: req.query.page,
-      pageSize: req.query.pageSize
+      pageSize: req.query.pageSize,
+      tenantId: req.tenantId || null
     });
     res.status(200).json(result);
   } catch (err) {
@@ -738,8 +739,24 @@ router.get('/export/attendance', authorize('admin', 'manager'), async (req, res)
     if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month (YYYY-MM)' });
 
     const db = require('../../core/database/mysql');
-    const [users] = await db.query(`SELECT u.id, u.employee_code, u.username, d.name as departmentName FROM users u LEFT JOIN departments d ON u.departmentId = d.id WHERE u.employment_status = 'active' ORDER BY u.employee_code`);
-    const [records] = await db.query(`SELECT userId, date, check_in, check_out, status FROM attendance WHERE date LIKE ? ORDER BY date`, [month + '%']);
+    const tid = req.tenantId != null ? parseInt(String(req.tenantId), 10) : null;
+    const tidWhere = tid != null ? 'AND u.tenant_id = ?' : '';
+    const tidParams = tid != null ? [tid] : [];
+    const [users] = await db.query(
+      `SELECT u.id, u.employee_code, u.username, d.name as departmentName FROM users u LEFT JOIN departments d ON u.departmentId = d.id WHERE u.employment_status = 'active' ${tidWhere} ORDER BY u.employee_code`,
+      tidParams
+    );
+    const userIds = users.map(u => u.id);
+    let records = [];
+    if (userIds.length > 0) {
+      const placeholders = userIds.map(() => '?').join(',');
+      [records] = await db.query(
+        `SELECT userId, date, check_in, check_out, status FROM attendance WHERE userId IN (${placeholders}) AND date LIKE ? ORDER BY date`,
+        [...userIds, month + '%']
+      );
+    } else {
+      records = [];
+    }
 
     const companyName = process.env.COMPANY_NAME || '飯塚塗研株式会社';
 
@@ -764,14 +781,25 @@ router.get('/db/check', authorize('admin'), async (req, res) => {
   try {
     const [verRows] = await db.query('SELECT DATABASE() AS db, VERSION() AS version');
     const meta = verRows && verRows[0] ? verRows[0] : {};
-    const [usersCountRows] = await db.query('SELECT COUNT(*) AS total, SUM(employment_status="active") AS active, SUM(employment_status="inactive") AS inactive, SUM(employment_status="retired") AS retired, SUM(hire_date IS NULL) AS hire_null, SUM(hire_date IS NOT NULL) AS hire_set FROM users');
+    const tid = req.tenantId != null ? parseInt(String(req.tenantId), 10) : null;
+    const tidWhere = tid != null ? 'WHERE tenant_id = ?' : '';
+    const tidParams = tid != null ? [tid] : [];
+    const [usersCountRows] = await db.query(
+      `SELECT COUNT(*) AS total, SUM(employment_status="active") AS active, SUM(employment_status="inactive") AS inactive, SUM(employment_status="retired") AS retired, SUM(hire_date IS NULL) AS hire_null, SUM(hire_date IS NOT NULL) AS hire_set FROM users ${tidWhere}`,
+      tidParams
+    );
     const usersCount = usersCountRows && usersCountRows[0] ? usersCountRows[0] : {};
     let departmentsCount = { total: 0 };
     try {
-      const [deptRows] = await db.query('SELECT COUNT(*) AS total FROM departments');
+      const deptTidWhere = tid != null ? 'WHERE tenant_id = ?' : '';
+      const [deptRows] = await db.query(`SELECT COUNT(*) AS total FROM departments ${deptTidWhere}`, tidParams.slice());
       departmentsCount = deptRows && deptRows[0] ? deptRows[0] : { total: 0 };
     } catch (e) { /* silently ignored */ }
-    const [sampleUsers] = await db.query('SELECT id, employee_code, username, email, departmentId, employment_status, hire_date FROM users ORDER BY id DESC LIMIT 5');
+    const sampleTidWhere = tid != null ? 'WHERE tenant_id = ?' : '';
+    const [sampleUsers] = await db.query(
+      `SELECT id, employee_code, username, email, departmentId, employment_status, hire_date FROM users ${sampleTidWhere} ORDER BY id DESC LIMIT 5`,
+      tidParams.slice()
+    );
     const [collRows] = await db.query(`
       SELECT TABLE_NAME AS table, TABLE_COLLATION AS collation
       FROM information_schema.TABLES

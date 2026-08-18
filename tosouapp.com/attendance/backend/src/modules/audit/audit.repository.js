@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 module.exports = {
   async ensureTable() {
     await db.query(`
@@ -36,37 +40,41 @@ module.exports = {
       data.afterData
     ]);
   },
-  async listLogs({ userId, action, from, to, page = 1, pageSize = 50 }) {
+  async listLogs({ userId, action, from, to, page = 1, pageSize = 50, tenantId = null }) {
+    const tid = _tid(tenantId);
     const where = [];
     const params = [];
-    if (userId) { where.push('userId = ?'); params.push(userId); }
-    if (action) { where.push('action = ?'); params.push(action); }
-    if (from) { where.push('created_at >= ?'); params.push(from + ' 00:00:00'); }
-    if (to) { where.push('created_at <= ?'); params.push(to + ' 23:59:59'); }
+    if (userId) { where.push('a.userId = ?'); params.push(userId); }
+    if (action) { where.push('a.action = ?'); params.push(action); }
+    if (from) { where.push('a.created_at >= ?'); params.push(from + ' 00:00:00'); }
+    if (to) { where.push('a.created_at <= ?'); params.push(to + ' 23:59:59'); }
+    if (tid != null) { where.push('u.tenant_id = ?'); params.push(tid); }
     const p = Math.max(1, parseInt(page, 10) || 1);
     const ps = Math.max(1, parseInt(pageSize, 10) || 50);
     const offset = (p - 1) * ps;
+    const joinSql = tid != null ? `INNER JOIN users u ON u.id = a.userId` : '';
+    const wsql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const sql = `
-      SELECT id, userId, action, path, method, ip, userAgent, created_at
-      FROM audit_logs
-      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-      ORDER BY id DESC
+      SELECT a.id, a.userId, a.action, a.path, a.method, a.ip, a.userAgent, a.created_at
+      FROM audit_logs a
+      ${joinSql}
+      ${wsql}
+      ORDER BY a.id DESC
       LIMIT ? OFFSET ?
     `;
     const [rows] = await db.query(sql, [...params, ps, offset]);
+    const countWhere = where.slice();
+    const countParams = params.slice();
+    const countJoinSql = joinSql;
+    const countWsql = countWhere.length ? 'WHERE ' + countWhere.join(' AND ') : '';
     const [[{ total } = { total: 0 }]] = await db.query(`
-      SELECT COUNT(*) AS total FROM audit_logs ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-    `, params);
+      SELECT COUNT(*) AS total FROM audit_logs a ${countJoinSql} ${countWsql}
+    `, countParams);
     return { data: rows, page: p, pageSize: ps, total, pages: Math.ceil(total / ps) };
   }
 };
 
 
-/**
- * Delete audit logs older than given days
- * Run periodically (e.g., monthly cron) to prevent table growing indefinitely.
- * Default: keep 90 days
- */
 async function pruneOldLogs(retentionDays = 90) {
   const [result] = await db.query(
     `DELETE FROM audit_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,

@@ -275,15 +275,15 @@ export async function mount(options = {}) {
 
   const summaryCard = document.createElement('div');
   summaryCard.className = 'pe-card';
+  summaryCard.style.cssText = 'padding:12px 16px; margin-bottom:12px;';
   summaryCard.innerHTML = `
-    <div class="pe-title" style="margin-top:0;">総計（リアルタイム）</div>
-    <div class="pe-kpi">
-      <div class="pe-kpi-net"><div class="k" style="color:#065f46">差引支払額（手取り）</div><div class="v v-net" id="kpiNet">-</div></div>
-      <div><div class="k">支払内訳合計（総支給額）</div><div class="v" id="kpiGross">-</div></div>
-      <div><div class="k">控除合計（総控除額）</div><div class="v" id="kpiDeduct">-</div></div>
-      <div><div class="k">支払方法合計（振込+現金+現物）</div><div class="v" id="kpiPaySum">-</div></div>
+    <div class="pe-kpi" style="display:flex; align-items:center; gap:24px; flex-wrap:wrap; margin:0;">
+      <div class="pe-kpi-net" style="margin:0; padding:8px 16px; border-radius:8px;"><div class="k" style="color:#065f46;font-size:11px;margin-bottom:2px;">差引支払額（手取り）</div><div class="v v-net" id="kpiNet" style="font-size:20px;">-</div></div>
+      <div style="margin:0;"><div class="k" style="font-size:11px;color:#64748b;">支給合計</div><div class="v" id="kpiGross" style="font-size:15px;font-weight:600;">-</div></div>
+      <div style="margin:0;"><div class="k" style="font-size:11px;color:#64748b;">控除合計</div><div class="v" id="kpiDeduct" style="font-size:15px;font-weight:600;">-</div></div>
+      <div style="margin:0;"><div class="k" style="font-size:11px;color:#64748b;">支払方法合計</div><div class="v" id="kpiPaySum" style="font-size:15px;font-weight:600;">-</div></div>
     </div>
-    <div id="kpiHint" style="margin-top:12px;color:#64748b;font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px"></div>
+    <div id="kpiHint" style="margin-top:6px;color:#64748b;font-weight:500;font-size:12px;display:flex;align-items:center;gap:6px"></div>
   `;
   editorViewDiv.appendChild(summaryCard);
 

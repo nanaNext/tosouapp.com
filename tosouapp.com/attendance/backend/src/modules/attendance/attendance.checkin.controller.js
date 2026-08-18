@@ -4,10 +4,15 @@
  */
 'use strict';
 
-const {
-  service, auditRepo, repo, formatInputToMySQLJST, userRepo,
-  noticesRepo, shiftReminderService, log, getMonthStatusValue
-} = require('./attendance._helpers');
+const service = require('./attendance.service');
+const auditRepo = require('../audit/audit.repository');
+const repo = require('./attendance.repository');
+const { formatInputToMySQLJST } = require('../../utils/dateTime');
+const userRepo = require('../users/user.repository');
+const noticesRepo = require('../notices/notices.repository');
+const shiftReminderService = require('../../services/shiftReminder.service');
+const log = require('../../core/logger');
+const { getMonthStatusValue } = require('./attendance.utils');
 
 // API: Nhân viên ấn nút Check-in (Đi làm)
 exports.checkIn = async (req, res) => {
@@ -186,11 +191,12 @@ exports.recordGoOut = async (req, res) => {
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
     const { time, type, reason } = req.body || {};
     if (!type) return res.status(400).json({ message: 'Missing type (業務 or 私用)' });
+    const tid = req.tenantId || null;
 
     const ts = time ? formatInputToMySQLJST(time) : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
     const dateStr = ts.slice(0, 10);
 
-    const insertId = await repo.recordGoOut(userId, dateStr, ts, type, reason);
+    const insertId = await repo.recordGoOut(userId, dateStr, ts, type, reason, { tenantId: tid });
     res.status(201).json({ id: insertId, userId, date: dateStr, go_out_time: ts, type, reason });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -205,11 +211,12 @@ exports.recordReturn = async (req, res) => {
     const userId = (canOverride && req.body.userId) ? req.body.userId : req.user?.id;
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
     const { time } = req.body || {};
+    const tid = req.tenantId || null;
 
     const ts = time ? formatInputToMySQLJST(time) : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
     const dateStr = ts.slice(0, 10);
 
-    const affected = await repo.recordReturn(userId, dateStr, ts);
+    const affected = await repo.recordReturn(userId, dateStr, ts, { tenantId: tid });
     if (affected === 0) {
       return res.status(404).json({ message: 'No open go-out record found' });
     }

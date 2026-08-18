@@ -1,46 +1,27 @@
 'use strict';
+
+const repo = require('./attendance.repository');
+const userRepo = require('../users/user.repository');
+const noticesRepo = require('../notices/notices.repository');
+const log = require('../../core/logger');
 const {
-  service, auditRepo, rules, repo, formatInputToMySQLJST, userRepo,
-  workReportRepo, salaryInputRepo, calculatePaidLeaveEntitlement,
-  resolveEmploymentStartDate, leaveRepo, noticesRepo, metrics, db,
-  calendarRepo, shiftReminderService, log,
-  recordEndpointPerf, ensurePaidLeaveRequestForDate, syncPaidLeaveByKubun,
-  resolveTargetUserId, parseMonth, isEditableMonth, getMonthStatusValue,
-  assertMonthWritable, HOLIDAY_TYPES, isKoujiUser, buildOffSetFromCalendarDetail
-} = require('./attendance._helpers');
+  resolveTargetUserId,
+  isEditableMonth,
+  getMonthStatusValue,
+  isKoujiUser,
+  buildOffSetFromCalendarDetail,
+  getUserOffDaySet,
+} = require('./attendance.utils');
 
-// ─── Local helpers (used only in this module) ─────────────────────────────────
-
-async function getUserOffDaySet(year, userId) {
-  const cal = await calendarRepo.computeYear(year).catch(() => null);
-  const useKoujiPolicy = await isKoujiUser(userId);
-  const { off } = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
-  if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
-    for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
-  }
-  // Thêm ngày nghỉ riêng theo bộ phận (department_holidays)
-  try {
-    const user = await userRepo.getUserById(userId).catch(() => null);
-    const deptId = user?.departmentId || user?.department_id;
-    if (deptId) {
-      const deptHolidayRepo = require('../holidays/holidays.repository');
-      const deptHolidays = await deptHolidayRepo.listByDepartmentAndYear(deptId, year);
-      for (const h of (deptHolidays || [])) {
-        if (h.is_off) off.add(String(h.date).slice(0, 10));
-      }
-    }
-  } catch (e) { /* department holidays not available, skip */ }
-  return off;
-}
+// ─── Local helpers ────────────────────────────────────────────────────────────
 
 async function computeMonthMissing(userId, y, m) {
   const pad = (n) => String(n).padStart(2, '0');
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const from = `${y}-${pad(m)}-01`;
   const to = `${y}-${pad(m)}-${pad(lastDay)}`;
-  
-  const _uRepo = require('../users/user.repository');
-  const user = await _uRepo.getUserById(userId).catch(() => null);
+
+  const user = await userRepo.getUserById(userId).catch(() => null);
   const isPartTime = user?.employment_type === 'part_time';
 
   const off = await getUserOffDaySet(y, userId);
@@ -58,7 +39,6 @@ async function computeMonthMissing(userId, y, m) {
   const missing = [];
   for (let day = 1; day <= lastDay; day++) {
     const ds = `${y}-${pad(m)}-${pad(day)}`;
-    const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
     const isOff = off.has(ds);
     const k0 = dailyKubun.get(ds) || '';
     const allowedNormal = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休み', '休日']);
@@ -67,38 +47,27 @@ async function computeMonthMissing(userId, y, m) {
     const segs = segByDate.get(ds) || [];
     const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
     const isWork = workKubunSet.has(kubun);
-    
-    // Đối với part-time, chỉ báo lỗi nếu họ đã tự chọn là đi làm (isWork) nhưng lại quên check-in/out
-    // Không báo lỗi ngày trống (vì họ có thể nghỉ ngày đó)
-    if (isPartTime) {
-      if (isWork && !hasComplete) {
-        missing.push(ds);
-      }
-      continue;
-    }
 
-    if (!isOff && !kubun) {
-      // Treat complete attendance times as valid even when kubun is still empty.
-      // This avoids false "missing day" errors during approval when rows were saved by times first.
-      if (!hasComplete) {
-        missing.push(ds);
-      }
+    if (isPartTime) {
+      if (isWork && !hasComplete) missing.push(ds);
       continue;
     }
-    if (isWork && !hasComplete) {
-      missing.push(ds);
+    if (!isOff && !kubun) {
+      if (!hasComplete) missing.push(ds);
+      continue;
     }
+    if (isWork && !hasComplete) missing.push(ds);
   }
   return missing;
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
-// API: Lấy trạng thái nộp bảng chấm công của một tháng (Đã nộp, Chờ duyệt, v.v.)
+// API: Lấy trạng thái nộp bảng chấm công của một tháng
 exports.getMonthStatus = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
-    if (userId === '__forbidden__') { console.log('403 because userId is __forbidden__'); return res.status(403).json({ message: 'Forbidden' }); }
+    if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     const { year, month } = req.query || {};
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
@@ -154,7 +123,6 @@ exports.getMonthStatusBulk = async (req, res) => {
         let missing = 0;
         for (let day = 1; day <= lastDay; day++) {
           const ds = `${y}-${pad(m)}-${pad(day)}`;
-          const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(Date.UTC(y, m - 1, day, 0, 0, 0)).getUTCDay()];
           const isOff = off.has(ds);
           const k0 = dailyKubun.get(ds) || '';
           const allowedNormal = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休み', '休日']);
@@ -164,7 +132,6 @@ exports.getMonthStatusBulk = async (req, res) => {
           const hasComplete = segs.some(s => !!s?.checkIn && !!s?.checkOut);
           const isWork = workKubunSet.has(kubun);
           if (!isOff && !kubun) {
-            // Keep status as "ready" when complete in/out exists, even if kubun is blank.
             if (!hasComplete) missing++;
             continue;
           }
@@ -182,16 +149,10 @@ exports.getMonthStatusBulk = async (req, res) => {
     res.status(200).json(rows.map(r => {
       const extra = readyMap.get(String(r.userId)) || { ready: false, missingCount: null };
       return {
-        userId: r.userId,
-        year: r.year,
-        month: r.month,
-        status: r.status,
-        ready: !!extra.ready,
-        missing_count: extra.missingCount,
-        submitted_at: r.submitted_at || null,
-        submitted_by: r.submitted_by || null,
-        approved_at: r.approved_at || null,
-        approved_by: r.approved_by || null,
+        userId: r.userId, year: r.year, month: r.month, status: r.status,
+        ready: !!extra.ready, missing_count: extra.missingCount,
+        submitted_at: r.submitted_at || null, submitted_by: r.submitted_by || null,
+        approved_at: r.approved_at || null, approved_by: r.approved_by || null,
         approved_by_name: r.approved_by_name || null
       };
     }));
@@ -218,17 +179,12 @@ exports.submitMonth = async (req, res) => {
 
     try {
       const missing = await computeMonthMissing(userId, y, m);
-      if (missing.length) {
-        return res.status(400).json({ message: `入力が未完了です`, missing });
-      }
+      if (missing.length) return res.status(400).json({ message: `入力が未完了です`, missing });
     } catch (e) { /* silently ignored */ }
 
     await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
 
-    // Send notification to admin/manager
     try {
-      const noticesRepo = require('../notices/notices.repository');
-      const userRepo = require('../users/user.repository');
       const u = await userRepo.getUserById(userId).catch(() => null);
       const userName = u ? (u.username || u.email || '従業員') : '従業員';
       const pad = n => String(n).padStart(2, '0');
@@ -252,8 +208,7 @@ exports.submitMonth = async (req, res) => {
 exports.getMonthMissing = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
-    const allow = role === 'admin' || role === 'manager';
-    if (!allow) return res.status(403).json({ message: 'Forbidden' });
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
     const { userId, year, month } = req.query || {};
     const uid = parseInt(String(userId), 10);
     const y = parseInt(String(year), 10);
@@ -269,13 +224,11 @@ exports.getMonthMissing = async (req, res) => {
 exports.approveReadyMonth = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
-    const allow = role === 'admin' || role === 'manager';
-    if (!allow) return res.status(403).json({ message: 'Forbidden' });
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
     const { month, departmentId } = req.body || {};
     const ym = String(month || '').slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ message: 'Missing month (YYYY-MM)' });
 
-    // Department check is opt-in via MANAGER_STRICT_DEPT env var
     let effectiveDeptId = departmentId || null;
     if (role === 'manager') {
       const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
@@ -335,9 +288,7 @@ exports.approveMonth = async (req, res) => {
     }
     try {
       const missing = await computeMonthMissing(userId, y, m);
-      if (missing.length) {
-        return res.status(400).json({ message: `未承認: 勤務未入力の日があります`, missing });
-      }
+      if (missing.length) return res.status(400).json({ message: `未承認: 勤務未入力の日があります`, missing });
     } catch (e) { /* silently ignored */ }
     await repo.setMonthStatus(userId, y, m, 'approved', req.user?.id);
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'approved' });
@@ -346,7 +297,7 @@ exports.approveMonth = async (req, res) => {
   }
 };
 
-// API: Mở khóa (Unlock) bảng chấm công của tháng để nhân viên có thể sửa lại
+// API: Mở khóa (Unlock) bảng chấm công để nhân viên có thể sửa lại
 exports.unlockMonth = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
@@ -374,9 +325,7 @@ exports.getMonthSummary = async (req, res) => {
     const row = await repo.getMonthSummary(userId, y, m);
     const safeParse = (s) => { try { return s ? JSON.parse(String(s)) : null; } catch { return null; } };
     res.status(200).json({
-      userId,
-      year: y,
-      month: m,
+      userId, year: y, month: m,
       all: row ? safeParse(row.summary_all) : null,
       inhouse: row ? safeParse(row.summary_inhouse) : null,
       updatedBy: row ? (row.updated_by || null) : null,
