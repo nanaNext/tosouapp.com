@@ -202,7 +202,7 @@ module.exports = {
     const r = String(role || '').toLowerCase();
     const lim = Math.min(200, Math.max(1, parseInt(String(limit || 50), 10) || 50));
     const tid = tenantId ? parseInt(String(tenantId), 10) : null;
-    const tenantClause = tid ? `AND n.tenant_id = ${tid}` : '';
+    const tenantClause = tid ? `AND (n.tenant_id = ${tid} OR n.tenant_id IS NULL)` : '';
     const audienceSql = r === 'admin'
       ? `(n.audience IS NULL OR n.audience = '' OR n.audience IN ('all','admin','admin_manager'))`
       : `(n.audience IS NULL OR n.audience = '' OR n.audience IN ('all','manager','admin_manager'))`;
@@ -282,7 +282,7 @@ module.exports = {
     }
     if (!items.length) {
       // Compatibility path: return legacy notice history even when audience metadata is missing/broken.
-      const legacyTenantClause = tid ? `AND n.tenant_id = ${tid}` : '';
+      const legacyTenantClause = tid ? `AND (n.tenant_id = ${tid} OR n.tenant_id IS NULL)` : '';
       const [legacyRows] = await db.query(
         `
         SELECT
