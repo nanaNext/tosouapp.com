@@ -78,7 +78,7 @@ jest.mock('../../src/core/logger', () => ({
 
 // ─── Import after mocking ─────────────────────────────────────────────────────
 
-const { resolveTargetUserId } = require('../../src/modules/attendance/attendance._helpers');
+const { resolveTargetUserId } = require('../../src/modules/attendance/attendance.utils');
 const { normalizeRole } = require('../../src/utils/normalizeRole');
 
 // ─── authorize() middleware tests ─────────────────────────────────────────────

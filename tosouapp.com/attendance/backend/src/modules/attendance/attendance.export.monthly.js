@@ -4,16 +4,26 @@
  * Monthly attendance Excel export (exportMonthXlsx).
  * Split from attendance.export.controller.js for maintainability.
  */
+const service = require('./attendance.service');
+const auditRepo = require('../audit/audit.repository');
+const rules = require('./attendance.rules');
+const repo = require('./attendance.repository');
+const { formatInputToMySQLJST } = require('../../utils/dateTime');
+const userRepo = require('../users/user.repository');
+const workReportRepo = require('../workReports/workReports.repository');
+const salaryInputRepo = require('../salary/salaryInput.repository');
+const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
+const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
+const leaveRepo = require('../leave/leave.repository');
+const noticesRepo = require('../notices/notices.repository');
+const db = require('../../core/database/mysql');
+const calendarRepo = require('../calendar/calendar.repository');
+const log = require('../../core/logger');
 const {
-  service, auditRepo, rules, repo, formatInputToMySQLJST, userRepo,
-  workReportRepo, salaryInputRepo, calculatePaidLeaveEntitlement,
-  resolveEmploymentStartDate, leaveRepo, noticesRepo, metrics, db,
-  calendarRepo, shiftReminderService, log,
-  recordEndpointPerf, ensurePaidLeaveRequestForDate, syncPaidLeaveByKubun,
   resolveTargetUserId, parseMonth, isEditableMonth, getMonthStatusValue,
   assertMonthWritable, HOLIDAY_TYPES, isKoujiUser, buildOffSetFromCalendarDetail,
   getUserOffDaySet
-} = require('./attendance._helpers');
+} = require('./attendance.utils');
 const { timesheetMaxDays } = require('../../config/env');
 const { nowJSTMySQL } = require('../../utils/dateTime');
 

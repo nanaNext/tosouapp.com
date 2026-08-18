@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 module.exports = {
   // Ensure tables exist and fix schema if needed
   async ensureTable() {
@@ -87,6 +91,12 @@ module.exports = {
         console.warn('⚠️  Could not auto-fix schema:', schemaErr.message.substring(0, 100));
       }
     }
+    try {
+      await db.query(`ALTER TABLE faq_user_questions ADD COLUMN tenant_id BIGINT UNSIGNED NULL`);
+    } catch (e) { /* column may exist */ }
+    try {
+      await db.query(`ALTER TABLE faq_user_questions ADD INDEX idx_faq_uq_tid (tenant_id)`);
+    } catch (e) { /* index may exist */ }
   },
 
   // FAQ Items (Public)
@@ -121,47 +131,59 @@ module.exports = {
     return rows.map(r => r.category) || [];
   },
   // User Questions
-  async createQuestion({ userId, question, detail, category }) {
+  async createQuestion({ userId, question, detail, category, tenantId }) {
     if (!userId) {
       throw new Error('userId is required');
     }
+    const tid = _tid(tenantId);
     
     const sql = `
-      INSERT INTO faq_user_questions (user_id, question, detail, category, status)
-      VALUES (?, ?, ?, ?, '未回答')
+      INSERT INTO faq_user_questions (user_id, question, detail, category, status, tenant_id)
+      VALUES (?, ?, ?, ?, '未回答', ?)
     `;
     console.log('💾 Inserting question:', { userId, question, detail, category });
-    const [res] = await db.query(sql, [userId, question, detail || null, category || null]);
+    const [res] = await db.query(sql, [userId, question, detail || null, category || null, tid]);
     console.log('✅ Insert result:', { insertId: res.insertId, affectedRows: res.affectedRows });
     return { id: res.insertId };
   },
 
-  async getUserQuestions(userId, { limit = 50, offset = 0 } = {}) {
+  async getUserQuestions(userId, { limit = 50, offset = 0, tenantId = null } = {}) {
     if (!userId) {
       console.warn('⚠️ getUserQuestions called without userId');
       return [];
     }
+    const tid = _tid(tenantId);
     
     const lim = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
     const off = Math.max(0, parseInt(offset, 10) || 0);
     
+    const where = ['user_id = ?'];
+    const params = [userId];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    
     console.log('📥 Querying questions for user:', { userId, limit: lim, offset: off });
-      const [rows] = await db.query(
+    const [rows] = await db.query(
       `SELECT id, question, detail, category, status, admin_answer, answered_at, created_at
        FROM faq_user_questions
-       WHERE user_id = ?
+       WHERE ${where.join(' AND ')}
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`,
-      [userId, lim, off]
+      [...params, lim, off]
     );
     
     console.log(`✅ Query result: ${rows.length} questions found for user ${userId}`);
     return rows || [];
-  },  // Get all user questions (for admin)
-  async getAllUserQuestions({ status = null, limit = 50, offset = 0 } = {}) {
+  },
+  // Get all user questions (for admin)
+  async getAllUserQuestions({ status = null, limit = 50, offset = 0, tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const where = [];
     const params = [];
 
+    if (tid != null) {
+      where.push('q.tenant_id = ?');
+      params.push(tid);
+    }
     if (status) {
       where.push('q.status = ?');
       params.push(status);
@@ -178,7 +200,6 @@ module.exports = {
       [...params, limit, offset]
     );
     
-    // Fetch user names separately to avoid JOIN issues
     const enrichedRows = await Promise.all(rows.map(async (q) => {
       try {
         const [users] = await db.query(
@@ -197,13 +218,20 @@ module.exports = {
     return enrichedRows || [];
   },
 
-  async updateAnswer({ questionId, answer, adminId }) {
+  async updateAnswer({ questionId, answer, adminId, tenantId }) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [answer, adminId, questionId];
+    if (tid != null) {
+      where.unshift('tenant_id = ?');
+      params.splice(2, 0, tid);
+    }
     const sql = `
       UPDATE faq_user_questions
       SET status = '回答済み', admin_answer = ?, admin_answer_by = ?, answered_at = NOW()
-      WHERE id = ?
+      WHERE ${where.join(' AND ')}
     `;
-    await db.query(sql, [answer, adminId, questionId]);
+    await db.query(sql, params);
   },
 
   // Seed initial FAQ data if table is empty

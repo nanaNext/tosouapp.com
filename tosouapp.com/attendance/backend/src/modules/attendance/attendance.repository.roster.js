@@ -1,6 +1,10 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 module.exports = {
   async getUserWorkDetails(userId, limit = 10) {
     const [rows] = await db.query(`
@@ -137,49 +141,63 @@ module.exports = {
     const [rows] = await db.query(sql, params);
     return rows || [];
   },
-  async recordGoOut(userId, dateStr, time, type, reason) {
+  async recordGoOut(userId, dateStr, time, type, reason, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const sql = `
-      INSERT INTO attendance_go_out (userId, date, go_out_time, type, reason)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO attendance_go_out (userId, date, go_out_time, type, reason, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
-    const [result] = await db.query(sql, [userId, dateStr, time, type, reason || null]);
+    const [result] = await db.query(sql, [userId, dateStr, time, type, reason || null, tid]);
     return result.insertId;
   },
-  async recordReturn(userId, dateStr, time) {
+  async recordReturn(userId, dateStr, time, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'date = ?', 'return_time IS NULL'];
+    const params = [time, userId, dateStr];
+    if (tid != null) { where.push('tenant_id = ?'); params.splice(1, 0, tid); }
     const sql = `
       UPDATE attendance_go_out
       SET return_time = ?, status = '完了'
-      WHERE userId = ? AND date = ? AND return_time IS NULL
+      WHERE ${where.join(' AND ')}
       ORDER BY go_out_time DESC LIMIT 1
     `;
-    const [result] = await db.query(sql, [time, userId, dateStr]);
+    const [result] = await db.query(sql, params);
     return result.affectedRows;
   },
-  async getGoOutRecords(userId, dateStr) {
+  async getGoOutRecords(userId, dateStr, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'date = ?'];
+    const params = [userId, dateStr];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const sql = `
       SELECT id, go_out_time, return_time, type, reason, status, admin_note
       FROM attendance_go_out
-      WHERE userId = ? AND date = ?
+      WHERE ${where.join(' AND ')}
       ORDER BY go_out_time ASC
     `;
-    const [rows] = await db.query(sql, [userId, dateStr]);
+    const [rows] = await db.query(sql, params);
     return rows || [];
   },
-  async getGoOutRecordsByMonth(userId, year, month) {
+  async getGoOutRecordsByMonth(userId, year, month, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const y = parseInt(year, 10);
     const m = parseInt(month, 10);
     const mStr = String(m).padStart(2, '0');
     const prefix = `${y}-${mStr}-`;
+    const where = ['userId = ?', 'date LIKE ?'];
+    const params = [userId, `${prefix}%`];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const sql = `
       SELECT id, date, go_out_time, return_time, type, reason, status, admin_note
       FROM attendance_go_out
-      WHERE userId = ? AND date LIKE ?
+      WHERE ${where.join(' AND ')}
       ORDER BY date ASC, go_out_time ASC
     `;
-    const [rows] = await db.query(sql, [userId, `${prefix}%`]);
+    const [rows] = await db.query(sql, params);
     return rows || [];
   },
   async adminListGoOutRecords(filters) {
+    const tid = _tid(filters.tenantId);
     let sql = `
       SELECT g.id, g.userId, u.username as employeeName, u.employee_code as employeeCode,
              g.date, g.go_out_time, g.return_time, g.type, g.reason, g.status, g.admin_note
@@ -188,6 +206,10 @@ module.exports = {
       WHERE 1=1
     `;
     const params = [];
+    if (tid != null) {
+      sql += ' AND g.tenant_id = ?';
+      params.push(tid);
+    }
     if (filters.userId) {
       sql += ' AND g.userId = ?';
       params.push(filters.userId);
@@ -212,27 +234,39 @@ module.exports = {
     const [rows] = await db.query(sql, params);
     return rows || [];
   },
-  async adminForceEndGoOut(id, returnTime, status, adminNote) {
+  async adminForceEndGoOut(id, returnTime, status, adminNote, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [returnTime, status, adminNote, id];
+    if (tid != null) { where.unshift('tenant_id = ?'); params.splice(3, 0, tid); }
     const sql = `
       UPDATE attendance_go_out
       SET return_time = ?, status = ?, admin_note = ?
-      WHERE id = ?
+      WHERE ${where.join(' AND ')}
     `;
-    const [result] = await db.query(sql, [returnTime, status, adminNote, id]);
+    const [result] = await db.query(sql, params);
     return result.affectedRows;
   },
-  async adminUpdateGoOut(id, goOutTime, returnTime, type, reason, adminNote) {
+  async adminUpdateGoOut(id, goOutTime, returnTime, type, reason, adminNote, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [goOutTime, returnTime, type, reason, adminNote, id];
+    if (tid != null) { where.unshift('tenant_id = ?'); params.splice(5, 0, tid); }
     const sql = `
       UPDATE attendance_go_out
       SET go_out_time = ?, return_time = ?, type = ?, reason = ?, status = '修正済み', admin_note = ?
-      WHERE id = ?
+      WHERE ${where.join(' AND ')}
     `;
-    const [result] = await db.query(sql, [goOutTime, returnTime, type, reason, adminNote, id]);
+    const [result] = await db.query(sql, params);
     return result.affectedRows;
   },
-  async adminDeleteGoOut(id) {
-    const sql = `DELETE FROM attendance_go_out WHERE id = ?`;
-    const [result] = await db.query(sql, [id]);
+  async adminDeleteGoOut(id, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [id];
+    if (tid != null) { where.unshift('tenant_id = ?'); params.unshift(tid); }
+    const sql = `DELETE FROM attendance_go_out WHERE ${where.join(' AND ')}`;
+    const [result] = await db.query(sql, params);
     return result.affectedRows;
   },
   async listWorkDetailsBetween(userId, fromDate, toDate) {

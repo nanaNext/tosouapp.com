@@ -1,108 +1,168 @@
 const db = require('../../core/database/mysql');
-// Repository yêu cầu sửa giờ
+
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 module.exports = {
-  async create({ userId, attendanceId, requestedCheckIn, requestedCheckOut, reason }) {
+  async create({ userId, attendanceId, requestedCheckIn, requestedCheckOut, reason, tenantId }) {
+    const tid = _tid(tenantId);
     const sql = `
-      INSERT INTO time_adjust_requests (userId, attendanceId, requestedCheckIn, requestedCheckOut, reason)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO time_adjust_requests (userId, attendanceId, requestedCheckIn, requestedCheckOut, reason, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
-    const [res] = await db.query(sql, [userId, attendanceId || null, requestedCheckIn || null, requestedCheckOut || null, reason || null]);
+    const [res] = await db.query(sql, [userId, attendanceId || null, requestedCheckIn || null, requestedCheckOut || null, reason || null, tid]);
     return res.insertId;
   },
-  async listMine(userId) {
+  async listMine(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?'];
+    const params = [userId];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const sql = `
       SELECT * FROM time_adjust_requests
-      WHERE userId = ?
+      WHERE ${where.join(' AND ')}
       ORDER BY created_at DESC
     `;
-    const [rows] = await db.query(sql, [userId]);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
-  async listByUser(userId) {
+  async listByUser(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?'];
+    const params = [userId];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const sql = `
       SELECT * FROM time_adjust_requests
-      WHERE userId = ?
+      WHERE ${where.join(' AND ')}
       ORDER BY created_at DESC
     `;
-    const [rows] = await db.query(sql, [userId]);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
-  async updateStatus(id, status, adminNote = null) {
+  async updateStatus(id, status, adminNote = null, tenantId = null) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [status, status, adminNote || null, id];
+    if (tid != null) {
+      where.unshift('tenant_id = ?');
+      params.splice(3, 0, tid);
+    }
     const sql = `
       UPDATE time_adjust_requests
       SET status = ?, admin_note = CASE WHEN ? = 'rejected' THEN ? ELSE NULL END
-      WHERE id = ?
+      WHERE ${where.join(' AND ')}
     `;
-    await db.query(sql, [status, status, adminNote || null, id]);
+    await db.query(sql, params);
   },
-  // Lấy detail adjust request
-  async getById(id) {
-    const sql = `SELECT * FROM time_adjust_requests WHERE id = ?`;
-    const [rows] = await db.query(sql, [id]);
+  async getById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [id];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const sql = `SELECT * FROM time_adjust_requests WHERE ${where.join(' AND ')}`;
+    const [rows] = await db.query(sql, params);
     return rows[0];
-  }
-  // Xóa adjust request theo id
-  ,
-  async deleteById(id) {
-    const sql = `DELETE FROM time_adjust_requests WHERE id = ?`;
-    const [res] = await db.query(sql, [id]);
+  },
+  async deleteById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [id];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const sql = `DELETE FROM time_adjust_requests WHERE ${where.join(' AND ')}`;
+    const [res] = await db.query(sql, params);
     return Number(res?.affectedRows || 0);
-  }
-  ,
-  async updateFields(id, { requestedCheckIn, requestedCheckOut, reason }) {
+  },
+  async updateFields(id, { requestedCheckIn, requestedCheckOut, reason, tenantId }) {
+    const tid = _tid(tenantId);
+    const fields = [];
+    const params = [];
+    fields.push('requestedCheckIn = ?'); params.push(requestedCheckIn || null);
+    fields.push('requestedCheckOut = ?'); params.push(requestedCheckOut || null);
+    fields.push('reason = ?'); params.push(reason || null);
+    params.push(id);
+    const where = ['id = ?'];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const sql = `
       UPDATE time_adjust_requests
-      SET requestedCheckIn = ?, requestedCheckOut = ?, reason = ?
-      WHERE id = ?
+      SET ${fields.join(', ')}
+      WHERE ${where.join(' AND ')}
     `;
-    const [res] = await db.query(sql, [
-      requestedCheckIn || null,
-      requestedCheckOut || null,
-      reason || null,
-      id
-    ]);
+    const [res] = await db.query(sql, params);
     return Number(res?.affectedRows || 0);
   },
-  async addMessage({ requestId, userId, message }) {
+  async addMessage({ requestId, userId, message, tenantId }) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [check] = await db.query(
+        `SELECT id FROM time_adjust_requests WHERE id = ? AND tenant_id = ?`,
+        [requestId, tid]
+      );
+      if (!check || !check.length) return 0;
+    }
     const [res] = await db.query(
       `INSERT INTO time_adjust_messages (adjust_request_id, sender_user_id, message) VALUES (?, ?, ?)`,
       [requestId, userId, String(message)]
     );
     return res.insertId || 0;
   },
-  async listMessages(requestId) {
+  async listMessages(requestId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const where = ['tm.adjust_request_id = ?'];
+    const params = [requestId];
+    if (tid != null) {
+      where.push('r.tenant_id = ?');
+      params.push(tid);
+    }
     const [rows] = await db.query(
       `SELECT tm.id, tm.adjust_request_id, tm.sender_user_id, tm.message, tm.created_at,
               (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = tm.sender_user_id) AS sender_name
        FROM time_adjust_messages tm
-       WHERE tm.adjust_request_id = ?
+       INNER JOIN time_adjust_requests r ON r.id = tm.adjust_request_id
+       WHERE ${where.join(' AND ')}
        ORDER BY tm.created_at ASC, tm.id ASC`,
-      [requestId]
+      params
     );
     return rows || [];
   }
 };
-// Lấy tất cả adjust requests cho admin
-module.exports.listAll = async function() {
+
+module.exports.listAll = async function(tenantId = null) {
+  const tid = _tid(tenantId);
+  const where = [];
+  const params = [];
+  if (tid != null) {
+    where.push('r.tenant_id = ?');
+    params.push(tid);
+  }
+  const wsql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const sql = `
     SELECT r.*, u.username, u.email
     FROM time_adjust_requests r
     LEFT JOIN users u ON r.userId = u.id
+    ${wsql}
     ORDER BY r.created_at DESC
   `;
-  const [rows] = await db.query(sql);
+  const [rows] = await db.query(sql, params);
   return rows;
 };
 
-module.exports.listForManager = async function() {
+module.exports.listForManager = async function(tenantId = null) {
+  const tid = _tid(tenantId);
+  const where = ['u.role = \'employee\''];
+  const params = [];
+  if (tid != null) {
+    where.push('r.tenant_id = ?');
+    params.push(tid);
+  }
   const sql = `
     SELECT r.*, u.username, u.email
     FROM time_adjust_requests r
     INNER JOIN users u ON r.userId = u.id
-    WHERE u.role = 'employee'
+    WHERE ${where.join(' AND ')}
     ORDER BY r.created_at DESC
   `;
-  const [rows] = await db.query(sql);
+  const [rows] = await db.query(sql, params);
   return rows;
 };
 
@@ -130,6 +190,12 @@ module.exports.ensureSchema = async function() {
     const msg = String(e?.message || '').toLowerCase();
     if (!msg.includes('duplicate column')) throw e;
   }
+  try {
+    await db.query(`ALTER TABLE time_adjust_requests ADD COLUMN tenant_id BIGINT UNSIGNED NULL`);
+  } catch (e) { /* column may exist */ }
+  try {
+    await db.query(`ALTER TABLE time_adjust_requests ADD INDEX idx_tar_tid (tenant_id)`);
+  } catch (e) { /* index may exist */ }
   await db.query(`
     CREATE TABLE IF NOT EXISTS time_adjust_messages (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -144,7 +210,6 @@ module.exports.ensureSchema = async function() {
   `);
 };
 
-// Xóa tất cả requests của admin (cleanup test data)
 module.exports.deleteAdminRequests = async function() {
   const sql = `
     DELETE r FROM time_adjust_requests r

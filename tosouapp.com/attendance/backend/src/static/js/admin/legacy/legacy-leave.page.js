@@ -113,11 +113,6 @@ function ensureLeaveUiStyles() {
     }
     .leave-tab-content.active {
       display: block;
-      animation: fioriFadeIn 0.3s ease-out forwards;
-    }
-    @keyframes fioriFadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
     }
       
     .leave-page #tab-balances .leave-toolbar {
@@ -334,6 +329,53 @@ function ensureLeaveUiStyles() {
     .leave-form-card {
       margin-top: 0; border-top: none; border-radius: 0; padding: 0; background: transparent;
     }
+    .leave-form-modern {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 480px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    .leave-form-modern label {
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      color: #374151 !important;
+      margin-bottom: 6px !important;
+      display: block !important;
+      text-align: left !important;
+    }
+    .leave-form-modern input,
+    .leave-form-modern select {
+      width: 100% !important;
+      padding: 10px 12px !important;
+      border: 1px solid #d1d5db !important;
+      border-radius: 8px !important;
+      font-size: 14px !important;
+      background: #f9fafb !important;
+      box-sizing: border-box !important;
+      max-width: none !important;
+    }
+    .leave-form-modern input:focus,
+    .leave-form-modern select:focus {
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+      outline: none !important;
+    }
+    .leave-form-modern button[type="submit"] {
+      padding: 10px 32px !important;
+      background: #1e40af !important;
+      color: #fff !important;
+      border: none !important;
+      border-radius: 8px !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1) !important;
+    }
+    .leave-form-modern button[type="submit"]:hover {
+      background: #1d4ed8 !important;
+    }
     .leave-form-card h4 { margin: 0 0 12px; font-size: 16px; color: #32363A; font-weight: normal; font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif; }
     .leave-form-card p.sub-desc { margin: 0 0 24px; font-size: 14px; color: #6B7280; }
     .leave-mini-note { color: #6B7280; font-size: 13px; margin-top: 12px; }
@@ -475,6 +517,11 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
   if (statusEl) statusEl.value = selectedStatus;
   const monthEl = filter.querySelector('#leaveReqMonthFilter');
 
+  // Hiển thị bảng skeleton ngay lập tức để user thấy trang đã sẵn sàng
+  const loadingPlaceholder = document.createElement('div');
+  loadingPlaceholder.innerHTML = '<div style="padding:16px;color:#64748b;text-align:center;">読み込み中...</div>';
+  c.appendChild(loadingPlaceholder);
+
   const q = statusEl && statusEl.value ? `?status=${encodeURIComponent(statusEl.value)}` : '';
   let rows = [];
   let usingLegacyPending = false;
@@ -491,6 +538,8 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
       if (stale()) return;
     }
   }
+  // Xóa loading text, tiếp tục render dữ liệu thật
+  loadingPlaceholder.remove();
   const tableWrap = document.createElement('div');
   tableWrap.className = 'leave-table-wrap';
   const table = document.createElement('table');
@@ -902,26 +951,26 @@ export async function mountLeaveGrant({
     Date.UTC(today.getUTCFullYear() + 2, today.getUTCMonth(), today.getUTCDate() - 1),
   );
 
-  form.className = 'leave-form-grid';
+  form.className = 'leave-form-modern';
   form.innerHTML = `
-    <div>
+    <div style="margin-bottom:16px;">
       <label class="leave-label">ユーザー</label>
-      <select id="grantUser" class="leave-select"></select>
+      <select id="grantUser"></select>
     </div>
-    <div>
+    <div style="margin-bottom:16px;">
       <label class="leave-label">日数</label>
-      <input id="grantDays" class="leave-input" type="number" min="1" value="10">
+      <input id="grantDays" type="number" min="1" value="10">
     </div>
-    <div>
+    <div style="margin-bottom:16px;">
       <label class="leave-label">付与日</label>
-      <input id="grantDate" class="leave-input" type="date" value="${fmt(today)}">
+      <input id="grantDate" type="date" value="${fmt(today)}">
     </div>
-    <div>
+    <div style="margin-bottom:16px;">
       <label class="leave-label">有効期限</label>
-      <input id="expireDate" class="leave-input" type="date" value="${fmt(exp)}">
+      <input id="expireDate" type="date" value="${fmt(exp)}">
     </div>
-    <div>
-      <button type="submit" class="leave-btn leave-btn-primary" style="min-width:120px;">付与</button>
+    <div style="margin-top:20px;">
+      <button type="submit">付与</button>
     </div>
   `;
 
