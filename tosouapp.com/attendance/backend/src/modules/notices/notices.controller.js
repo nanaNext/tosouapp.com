@@ -89,7 +89,8 @@ exports.create = async (req, res) => {
       createdBy: req.user?.id || null,
       kind: 'system_announcement',
       title: 'お知らせ',
-      audience: 'all'
+      audience: 'all',
+      tenantId: req.tenantId || null
     });
     res.status(201).json({ notice: r });
   } catch (err) {
