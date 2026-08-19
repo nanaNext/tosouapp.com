@@ -248,13 +248,25 @@ async function computeRecord(rec, ctx = null) {
   // Trừ đi thời gian đi việc riêng và thời gian nghỉ
   worked = Math.max(0, worked - privateGoOutMinutes - breakMin);
 
+  // ─── 丸目 (làm tròn) ───────────────────────────────────────────────────────
+  // 1. Giờ vào trước ca → chỉ tính từ giờ ca bắt đầu
+  // 2. OT → làm tròn xuống bước 30 phút
+  const ROUND_STEP = 30; // phút
+  if (inJ && shift.start && inJ < shift.start) {
+    // Trừ đi phút đến sớm (đã tính vào worked nhưng không nên)
+    const earlyMinutes = minutesBetween(inJ, shift.start);
+    worked = Math.max(0, worked - earlyMinutes);
+  }
+
   let isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
   if (dailyRec && dailyRec.kubun) {
     isOff = ['休日', '法定休日', '欠勤'].includes(dailyRec.kubun);
   }
   const scheduled = isOff ? 0 : Math.max(0, minutesBetween(shift.start, shift.end) - breakMin);
   const regular = Math.min(worked, scheduled);
-  const overtime = Math.max(0, worked - scheduled);
+  // OT làm tròn xuống bước 30 phút
+  const rawOvertime = Math.max(0, worked - scheduled);
+  const overtime = Math.floor(rawOvertime / ROUND_STEP) * ROUND_STEP;
 
   // Dùng CoreRules để lấy thêm thông tin Anomaly
   const metrics = CoreRules.calculateWorkMetrics(rec.checkIn, rec.checkOut, shift, isOff);
