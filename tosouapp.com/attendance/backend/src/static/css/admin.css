@@ -4629,12 +4629,7 @@ body.drawer-open.admin.has-sidebar .content {
   }
 }
 
-/* ─── Ẩn avatar initials trên sidebar cho màn admin (sysadmin không cần) ─── */
-.admin .sidebar .ud-avatar,
-.admin .sidebar #userBtnInitial,
-.admin .topbar .user .user-btn .ud-avatar.sm {
-  display: none !important;
-}
+/* ─── Avatar initials trên topbar — hiển thị bình thường ─── */
 
 /* ─── Ẩn nút "◎ Platform" trên trang admin (gây logout khi nhấn) ─── */
 .admin .brand + a[href="/platform/dashboard"],
