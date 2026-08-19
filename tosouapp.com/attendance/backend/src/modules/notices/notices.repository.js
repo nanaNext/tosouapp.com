@@ -87,6 +87,8 @@ async function ensureNoticesSchema() {
       try { await db.query(`ALTER TABLE notices ${alters.join(', ')}`); } catch (e) { /* silently ignored */ }
     }
   } catch (e) { /* silently ignored */ }
+  // Migration: gán tenant_id = 1 cho thông báo cũ không có tenant_id (飯塚塗研 default)
+  try { await db.query(`UPDATE notices SET tenant_id = 1 WHERE tenant_id IS NULL`); } catch (e) { /* silently ignored */ }
 }
 
 function buildSyntheticNoticeId(kind, sourceId) {
