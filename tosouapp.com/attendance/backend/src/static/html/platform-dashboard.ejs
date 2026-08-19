@@ -255,6 +255,7 @@
       <button class="pd-nav-item" data-panel="users">👥 全ユーザー</button>
       <div class="pd-nav-section">System</div>
       <button class="pd-nav-item" data-panel="audit">📋 監査ログ</button>
+      <button class="pd-nav-item" data-panel="settings">⚙ 設定</button>
     </nav>
 
     <!-- Main -->
@@ -393,6 +394,33 @@
           <div id="audit-loading" class="pd-loading">読み込み中...</div>
           <div id="audit-empty" class="pd-loading" style="display:none;">ログがありません</div>
           <div id="audit-pager" style="display:flex;justify-content:center;align-items:center;gap:12px;padding:12px 0;font-size:13px;"></div>
+        </div>
+      </div>
+
+      <!-- Settings panel -->
+      <div class="pd-panel" id="panel-settings">
+        <div class="pd-section-header">
+          <span class="pd-section-title">システム設定</span>
+        </div>
+        <div style="max-width:600px;">
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;">
+            <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">🔐 パスワードポリシー</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 12px;">最小文字数、複雑さの要件</p>
+            <div style="font-size:13px;color:#475569;">現在: 6文字以上（デフォルト）</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;">
+            <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">📧 メール設定</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 12px;">SMTP/メールプロバイダー設定</p>
+            <button type="button" id="pd-test-mail" class="pd-btn pd-btn-sm pd-btn-primary">テストメールを送信</button>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;">
+            <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">🔑 二要素認証 (2FA)</h4>
+            <p style="font-size:13px;color:#64748b;margin:0;">パスキー/WebAuthn設定はテナント管理者の設定ページで管理</p>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">⏰ シフトリマインダー</h4>
+            <p style="font-size:13px;color:#64748b;margin:0;">毎日23:00 JST（打刻リマインダー）、15:00 JST（シフト提出リマインダー: 15日/25日/月末）</p>
+          </div>
         </div>
       </div>
     </main>
