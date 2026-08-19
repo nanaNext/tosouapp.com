@@ -123,9 +123,14 @@ async function handleSubmit(e) {
   try {
     const data = await login(email, password);
     saveAuth(data);
+    // Hide entire page immediately to prevent logo flash during navigation
     try {
-      const grp = document.querySelector('.input-group');
-      if (grp) grp.classList.add('success');
+      document.body.style.opacity = '0';
+      document.body.style.transition = 'none';
+      const wrapper = document.querySelector('.wrapper');
+      if (wrapper) wrapper.style.display = 'none';
+      const hero = document.querySelector('.hero');
+      if (hero) hero.style.display = 'none';
     } catch (e) { /* silently ignored */ }
     navigated = true;
     roleRedirect(data.role, data.nextPath);
