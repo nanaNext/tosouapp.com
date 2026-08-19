@@ -82,6 +82,54 @@ async function loadStats() {
     sv('#stat-checkins', data.total_checkins_today);
   } catch (e) { /* silently ignored */ }
 
+  // 全ユーザー card click → 一覧表示
+  const cardUsers = $('#card-users');
+  if (cardUsers && !cardUsers.dataset.bound) {
+    cardUsers.dataset.bound = '1';
+    cardUsers.addEventListener('click', async () => {
+      try {
+        const users = allUsersCache || [];
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        const modal = document.createElement('div');
+        modal.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+        modal.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:18px;color:#0f172a;">全ユーザー一覧</h3>
+            <button type="button" id="closeUsersModal" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748b;">&times;</button>
+          </div>
+          <div style="font-size:13px;color:#64748b;margin-bottom:12px;">合計: ${users.length}名</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="background:#f1f5f9;">
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">ID</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">社員番号</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">氏名</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">会社</th>
+            </tr></thead>
+            <tbody>${users.map(u => {
+              const tenantNames = Object.entries(u.tenantRoles || {}).map(([tid]) => {
+                const t = tenantsCache.find(x => x.id === parseInt(tid, 10));
+                return t?.name || '';
+              }).filter(Boolean).join(', ');
+              return `<tr>
+                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">${u.id}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">${u.employee_code || '—'}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-weight:600;">${u.username || u.email || '—'}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;color:#64748b;">${tenantNames || '未割り当て'}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        `;
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        modal.querySelector('#closeUsersModal')?.addEventListener('click', () => overlay.remove());
+      } catch (e) {
+        alert('エラー: ' + (e.message || ''));
+      }
+    });
+  }
+
   // 本日の打刻 card click → 一覧表示
   const cardCheckins = $('#card-checkins');
   if (cardCheckins && !cardCheckins.dataset.bound) {
@@ -814,4 +862,66 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadStats();
   await loadTenants();
   await loadAllUsers();
+
+  // ── Audit Log ─────────────────────────────────────────────────────────────
+  let auditPage = 1;
+  async function loadAuditLogs() {
+    const action = $('#audit-filter-action')?.value || '';
+    const from = $('#audit-filter-from')?.value || '';
+    const to = $('#audit-filter-to')?.value || '';
+    const loading = $('#audit-loading');
+    const tableEl = $('#audit-table');
+    const tbody = $('#audit-tbody');
+    const emptyEl = $('#audit-empty');
+    const pager = $('#audit-pager');
+    if (loading) loading.style.display = 'block';
+    if (tableEl) tableEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'none';
+    try {
+      const params = new URLSearchParams({ page: auditPage, pageSize: 30 });
+      if (action) params.set('action', action);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      const res = await apiFetch(`/api/platform/audit-logs?${params.toString()}`);
+      const rows = res?.data || [];
+      if (loading) loading.style.display = 'none';
+      if (!rows.length) { if (emptyEl) emptyEl.style.display = 'block'; if (pager) pager.innerHTML = ''; return; }
+      if (tableEl) tableEl.style.display = '';
+      const fmtDt = s => s ? String(s).replace('T', ' ').slice(0, 19) : '—';
+      tbody.innerHTML = rows.map(r => `<tr>
+        <td style="white-space:nowrap;font-size:12px;">${fmtDt(r.created_at)}</td>
+        <td>${r.userId || '—'}</td>
+        <td><span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${r.action || '—'}</span></td>
+        <td style="font-size:12px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.path || '—'}</td>
+        <td>${r.method || '—'}</td>
+        <td style="font-size:11px;color:#64748b;">${r.ip || '—'}</td>
+      </tr>`).join('');
+      // Pager
+      const totalPages = res.pages || 1;
+      if (pager) {
+        pager.innerHTML = totalPages > 1 ? `
+          <button type="button" class="pd-btn pd-btn-sm" id="audit-prev" ${auditPage <= 1 ? 'disabled style="opacity:.4"' : ''}>前へ</button>
+          <span>${auditPage} / ${totalPages}（全${res.total}件）</span>
+          <button type="button" class="pd-btn pd-btn-sm" id="audit-next" ${auditPage >= totalPages ? 'disabled style="opacity:.4"' : ''}>次へ</button>
+        ` : `<span style="color:#64748b;">全${res.total}件</span>`;
+        pager.querySelector('#audit-prev')?.addEventListener('click', () => { auditPage = Math.max(1, auditPage - 1); loadAuditLogs(); });
+        pager.querySelector('#audit-next')?.addEventListener('click', () => { auditPage = Math.min(totalPages, auditPage + 1); loadAuditLogs(); });
+      }
+    } catch (e) {
+      if (loading) loading.style.display = 'none';
+      if (emptyEl) { emptyEl.textContent = 'エラー: ' + (e.message || ''); emptyEl.style.display = 'block'; }
+    }
+  }
+  $('#audit-filter-btn')?.addEventListener('click', () => { auditPage = 1; loadAuditLogs(); });
+  // Auto-load when panel becomes visible
+  const auditPanel = $('#panel-audit');
+  if (auditPanel) {
+    const observer = new MutationObserver(() => {
+      if (auditPanel.classList.contains('active') && !auditPanel.dataset.loaded) {
+        auditPanel.dataset.loaded = '1';
+        loadAuditLogs();
+      }
+    });
+    observer.observe(auditPanel, { attributes: true, attributeFilter: ['class'] });
+  }
 });

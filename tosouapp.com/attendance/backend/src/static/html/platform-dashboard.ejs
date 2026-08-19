@@ -268,7 +268,7 @@
           <div class="pd-stat-value" id="stat-tenants">—</div>
           <div class="pd-stat-sub">会社数</div>
         </div>
-        <div class="pd-stat-card">
+        <div class="pd-stat-card" id="card-users" style="cursor:pointer;" title="クリックで一覧を表示">
           <div class="pd-stat-label">全ユーザー</div>
           <div class="pd-stat-value" id="stat-users">—</div>
           <div class="pd-stat-sub">アクティブ</div>
@@ -348,10 +348,51 @@
       <!-- Audit panel -->
       <div class="pd-panel" id="panel-audit">
         <div class="pd-section-header">
-          <span class="pd-section-title">監査ログ (準備中)</span>
+          <span class="pd-section-title">監査ログ</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end;">
+          <label style="font-size:12px;color:#475569;">
+            アクション
+            <select id="audit-filter-action" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+              <option value="">すべて</option>
+              <option value="login_success">ログイン</option>
+              <option value="logout">ログアウト</option>
+              <option value="checkin">チェックイン</option>
+              <option value="checkout">チェックアウト</option>
+              <option value="attendance_month_bulk">勤怠月次保存</option>
+              <option value="platform_impersonate">Impersonate</option>
+              <option value="platform_create_tenant">テナント作成</option>
+              <option value="admin_attendance_update">勤怠修正</option>
+              <option value="password_change">パスワード変更</option>
+            </select>
+          </label>
+          <label style="font-size:12px;color:#475569;">
+            From
+            <input type="date" id="audit-filter-from" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+          </label>
+          <label style="font-size:12px;color:#475569;">
+            To
+            <input type="date" id="audit-filter-to" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+          </label>
+          <button type="button" id="audit-filter-btn" class="pd-btn pd-btn-sm pd-btn-primary" style="height:34px;">検索</button>
         </div>
         <div class="pd-table-wrap">
-          <div class="pd-loading">この機能は近日公開予定です</div>
+          <table class="pd-table" id="audit-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>ユーザーID</th>
+                <th>アクション</th>
+                <th>パス</th>
+                <th>メソッド</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+          <div id="audit-loading" class="pd-loading">読み込み中...</div>
+          <div id="audit-empty" class="pd-loading" style="display:none;">ログがありません</div>
+          <div id="audit-pager" style="display:flex;justify-content:center;align-items:center;gap:12px;padding:12px 0;font-size:13px;"></div>
         </div>
       </div>
     </main>
