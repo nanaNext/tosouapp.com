@@ -81,6 +81,53 @@ async function loadStats() {
     sv('#stat-users', data.total_users);
     sv('#stat-checkins', data.total_checkins_today);
   } catch (e) { /* silently ignored */ }
+
+  // 本日の打刻 card click → 一覧表示
+  const cardCheckins = $('#card-checkins');
+  if (cardCheckins && !cardCheckins.dataset.bound) {
+    cardCheckins.dataset.bound = '1';
+    cardCheckins.addEventListener('click', async () => {
+      try {
+        const data = await apiFetch('/api/platform/today-checkins');
+        const items = data?.items || [];
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        const modal = document.createElement('div');
+        modal.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+        const fmtTime = t => t ? String(t).slice(11, 16) : '—';
+        modal.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:18px;color:#0f172a;">本日の打刻一覧（${data.date}）</h3>
+            <button type="button" id="closeCheckinModal" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748b;">&times;</button>
+          </div>
+          <div style="font-size:13px;color:#64748b;margin-bottom:12px;">合計: ${items.length}名</div>
+          ${items.length === 0 ? '<p style="text-align:center;color:#64748b;">本日の打刻はありません</p>' : `
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="background:#f1f5f9;">
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">氏名</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">会社</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">部署</th>
+              <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">出勤</th>
+              <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">退勤</th>
+            </tr></thead>
+            <tbody>${items.map(r => `<tr>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${r.username || r.email || '—'}</td>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${r.tenantName || '—'}</td>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${r.departmentName || '—'}</td>
+              <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#059669;font-weight:600;">${fmtTime(r.checkIn)}</td>
+              <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#dc2626;">${r.checkOut ? fmtTime(r.checkOut) : '勤務中'}</td>
+            </tr>`).join('')}</tbody>
+          </table>`}
+        `;
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        modal.querySelector('#closeCheckinModal')?.addEventListener('click', () => overlay.remove());
+      } catch (e) {
+        alert('データの取得に失敗しました: ' + (e.message || ''));
+      }
+    });
+  }
 }
 
 // ── Tenants ───────────────────────────────────────────────────────────────────
@@ -280,14 +327,55 @@ function renderUsersTable() {
   if (filtered.length === 0) {
     if (table) table.style.display = 'none';
     if (empty) empty.style.display = 'block';
+    // Remove pagination
+    const existingPager = document.querySelector('#pd-users-pager');
+    if (existingPager) existingPager.remove();
     return;
   }
 
   if (table) table.style.display = '';
   if (empty) empty.style.display = 'none';
 
-  tbody.innerHTML = filtered.map(u => `
-    <tr>
+  // Phân loại theo role group
+  const roleOrder = ['sysadmin', 'owner', 'admin', 'manager', 'employee'];
+  const roleLabel = { sysadmin: 'システム管理者', owner: 'オーナー', admin: '管理者', manager: 'マネージャー', employee: '従業員' };
+  const grouped = {};
+  for (const r of roleOrder) grouped[r] = [];
+  for (const u of filtered) {
+    const r = String(u.role || 'employee').toLowerCase();
+    if (grouped[r]) grouped[r].push(u);
+    else grouped['employee'].push(u);
+  }
+
+  // Pagination: 20 users per page (flat across all groups)
+  const PAGE_SIZE = 20;
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (!usersFilterState.page || usersFilterState.page > totalPages) usersFilterState.page = 1;
+  const page = usersFilterState.page;
+  const start = (page - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  // Re-group page items
+  const pageGrouped = {};
+  for (const r of roleOrder) pageGrouped[r] = [];
+  for (const u of pageItems) {
+    const r = String(u.role || 'employee').toLowerCase();
+    if (pageGrouped[r]) pageGrouped[r].push(u);
+    else pageGrouped['employee'].push(u);
+  }
+
+  let html = '';
+  for (const r of roleOrder) {
+    const list = pageGrouped[r];
+    if (!list.length) continue;
+    const sectionId = `pd-role-section-${r}`;
+    html += `<tr class="pd-role-header" data-section="${sectionId}" style="cursor:pointer;user-select:none;">
+      <td colspan="6" style="background:#f1f5f9;padding:10px 12px;font-weight:700;font-size:12px;color:#334155;letter-spacing:.5px;border-top:2px solid #e2e8f0;">
+        <span class="pd-role-chevron" style="display:inline-block;transition:transform .15s;margin-right:6px;">▶</span>${roleLabel[r] || r}（${grouped[r].length}名）
+      </td>
+    </tr>`;
+    for (const u of list) {
+      html += `<tr class="pd-role-row ${sectionId}">
       <td><div style="font-weight:600;font-size:13px">${u.username || '—'}</div></td>
       <td style="color:#64748b;font-size:12px">${u.email || '—'}</td>
       <td><span class="badge badge-basic">${roleLabelJa(u.role)}</span></td>
@@ -300,7 +388,40 @@ function renderUsersTable() {
           data-user-id="${u.id}" data-username="${u.username || u.email}"
           type="button" title="テナントに追加">+ 割り当て</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+    }
+  }
+  tbody.innerHTML = html;
+
+  // Accordion: click header → toggle rows
+  tbody.querySelectorAll('.pd-role-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const sectionId = header.dataset.section;
+      const rows = tbody.querySelectorAll(`.${sectionId}`);
+      const chevron = header.querySelector('.pd-role-chevron');
+      const isHidden = rows[0]?.style.display === 'none';
+      rows.forEach(row => { row.style.display = isHidden ? '' : 'none'; });
+      if (chevron) chevron.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+    // Default: expand all
+    const chevron = header.querySelector('.pd-role-chevron');
+    if (chevron) chevron.style.transform = 'rotate(90deg)';
+  });
+  // Pagination UI
+  let pager = document.querySelector('#pd-users-pager');
+  if (!pager) {
+    pager = document.createElement('div');
+    pager.id = 'pd-users-pager';
+    pager.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;font-size:13px;';
+    table.parentElement.appendChild(pager);
+  }
+  pager.innerHTML = totalPages > 1 ? `
+    <button type="button" class="pd-btn pd-btn-sm" id="pd-pager-prev" ${page <= 1 ? 'disabled style="opacity:.4;cursor:not-allowed;"' : ''}>前へ</button>
+    <span style="color:#475569;">${page} / ${totalPages} ページ（全${filtered.length}件）</span>
+    <button type="button" class="pd-btn pd-btn-sm" id="pd-pager-next" ${page >= totalPages ? 'disabled style="opacity:.4;cursor:not-allowed;"' : ''}>次へ</button>
+  ` : `<span style="color:#64748b;">全${filtered.length}件</span>`;
+  pager.querySelector('#pd-pager-prev')?.addEventListener('click', () => { usersFilterState.page = Math.max(1, page - 1); renderUsersTable(); });
+  pager.querySelector('#pd-pager-next')?.addEventListener('click', () => { usersFilterState.page = Math.min(totalPages, page + 1); renderUsersTable(); });
 
   // Wire: role change inline
   tbody.querySelectorAll('.pd-role-inline').forEach(sel => {
@@ -672,14 +793,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Wire search/filter in users panel
   $('#pd-users-search')?.addEventListener('input', (e) => {
     usersFilterState.q = e.target.value.trim();
+    usersFilterState.page = 1;
     renderUsersTable();
   });
   $('#pd-users-tenant-filter')?.addEventListener('change', (e) => {
     usersFilterState.tenantId = e.target.value;
+    usersFilterState.page = 1;
     renderUsersTable();
   });
   $('#pd-users-role-filter')?.addEventListener('change', (e) => {
     usersFilterState.role = e.target.value;
+    usersFilterState.page = 1;
     renderUsersTable();
   });
 
