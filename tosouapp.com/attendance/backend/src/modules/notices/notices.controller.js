@@ -10,7 +10,9 @@ exports.listForMe = async (req, res) => {
     const date = String(req.query.date || '').slice(0, 10);
     const month = String(req.query.month || '').slice(0, 7);
     const limit = req.query.limit;
-    const tenantId = req.tenantId || null;
+    // Sysadmin thấy tất cả thông báo, không filter tenant
+    const isSysadmin = req.user?._impersonate || String(req.user?.role || '').toLowerCase() === 'sysadmin';
+    const tenantId = isSysadmin ? null : (req.tenantId || null);
     if (all) {
       const rowsAll = await repo.listForUserFeed({ limit, userId: req.user?.id || null, tenantId });
       return res.status(200).json({ date: null, month: null, notices: rowsAll });
