@@ -149,13 +149,14 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
   try {
     const id = parseInt(String(req.params.id || ''), 10);
     if (!id) return res.status(400).json({ message: 'Missing id' });
+    const tenantId = req.tenantId || 1; // fallback cho legacy single-tenant
     // Verify employee belongs to current tenant
-    const target = await userRepo.getUserById(id, req.tenantId || null);
+    const target = await userRepo.getUserById(id, tenantId);
     if (!target) return res.status(404).json({ message: 'Employee not found' });
 
     if (String(req.user?.role).toLowerCase() === 'manager'
         && String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true') {
-      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const me = await userRepo.getUserById(req.user.id, tenantId);
       const myDept = me?.departmentId;
       if (!myDept || String(target.departmentId) !== String(myDept)) {
         return res.status(403).json({ message: 'Managers can only view employees in their own department' });
@@ -178,7 +179,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       LEFT JOIN users m ON m.id = u.manager_id AND m.tenant_id = u.tenant_id
       WHERE u.id = ? AND u.tenant_id = ?
       LIMIT 1
-    `, [id]);
+    `, [id, tenantId]);
 
     const [attRows] = await db.query(`
       SELECT id, checkIn, checkOut, work_type, labels, shiftId
@@ -186,7 +187,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       WHERE userId = ? AND tenant_id = ?
         AND DATE(checkIn) >= ? AND DATE(checkIn) <= ?
       ORDER BY checkIn ASC
-    `, [id, req.tenantId, start, end]);
+    `, [id, tenantId, start, end]);
 
     const [repRows] = await db.query(`
       SELECT date, work_type, site, work, updated_at
@@ -194,7 +195,7 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       WHERE userId = ? AND tenant_id = ?
         AND date >= ? AND date <= ?
       ORDER BY date ASC
-    `, [id, req.tenantId, start, end]);
+    `, [id, tenantId, start, end]);
 
     const [leaveRows] = await db.query(`
       SELECT type, status, startDate, endDate, reason, created_at
@@ -202,14 +203,14 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
       WHERE userId = ? AND tenant_id = ?
         AND endDate >= ? AND startDate <= ?
       ORDER BY startDate ASC, created_at ASC
-    `, [id, req.tenantId, start, end]);
+    `, [id, tenantId, start, end]);
 // cái hàm này dùng để lấy dữ liệu ngày nghỉ của người dùng trong năm đó (khi không có năm thì lấy năm hiện tại)
     const [dailyRows] = await db.query(`
       SELECT date, kubun, location, memo
       FROM attendance_daily
       WHERE userId = ? AND tenant_id = ?
         AND date >= ? AND date <= ?
-    `, [id, req.tenantId, start, end]);
+    `, [id, tenantId, start, end]);
 
     const cal = await calendarRepo.computeYear(year).catch(() => null);
     const isKouji = String(target.departmentName || '').includes('工事部');

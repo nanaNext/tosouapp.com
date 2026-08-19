@@ -483,13 +483,13 @@ module.exports = {
           ${tenantClause}
           AND (
             (n.target_date IS NULL AND n.target_month IS NULL)
-            OR (n.target_date IS NOT NULL AND n.target_date = ?)
-            OR (n.target_month IS NOT NULL AND n.target_month = ?)
+            OR (n.target_date IS NOT NULL AND ? IS NOT NULL AND n.target_date = ?)
+            OR (n.target_month IS NOT NULL AND ? IS NOT NULL AND n.target_month = ?)
           )
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ?
       `,
-      [uid, uid, uid, ...tenantParams, d, m, lim]
+      [uid, uid, uid, ...tenantParams, d, d, m, m, lim]
     );
     return (rows || [])
       .filter((r) => !isSelfSubmitNotice(r, uid));
