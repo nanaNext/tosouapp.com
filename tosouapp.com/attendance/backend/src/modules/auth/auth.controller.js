@@ -180,26 +180,51 @@ exports.login = async (req, res) => {
 
     // nextPath logic:
     // - sysadmin → always /platform/dashboard (platform management)
+    // - employee with exactly 1 tenant → auto-select, skip select-company
     // - multi-tenant enabled + has tenants → /ui/select-company
     // - otherwise → legacy path
     const legacyNextPath = (role === 'admin' || role === 'manager' || role === 'owner')
       ? '/admin/dashboard'
       : '/ui/portal';
-    const nextPath = isSuperRole
-      ? '/platform/dashboard'
-      : (multiTenantEnabled && !isSuperRole && tenants.length > 0)
-        ? '/ui/select-company'
-        : legacyNextPath;
+
+    let finalToken = token;
+    let finalNextPath;
+    let autoSelectedTenant = null;
+
+    if (isSuperRole) {
+      finalNextPath = '/platform/dashboard';
+    } else if (multiTenantEnabled && tenants.length === 1 && (role === 'employee' || role === 'staff')) {
+      // Auto-select the single tenant for employees — skip select-company entirely
+      try {
+        const tenantId = tenants[0].id;
+        const tenantRole = tenants[0].role || role;
+        const tokenPayload = { id: user.id, email: user.email, role: tenantRole, tenant_id: tenantId };
+        const jwt = require('jsonwebtoken');
+        const secret = process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET || 'fallback';
+        finalToken = jwt.sign(tokenPayload, secret, { expiresIn: '24h' });
+        autoSelectedTenant = tenants[0];
+        finalNextPath = (tenantRole === 'admin' || tenantRole === 'manager') ? '/admin/dashboard' : '/ui/portal';
+      } catch (e) {
+        log.warn('auto_select_tenant_failed', { userId: user.id, error_message: e.message });
+        finalNextPath = '/ui/select-company';
+      }
+    } else if (multiTenantEnabled && !isSuperRole && tenants.length > 0) {
+      finalNextPath = '/ui/select-company';
+    } else {
+      finalNextPath = legacyNextPath;
+    }
 
     res.status(200).json({
       id: user.id,
       username: user.username,
       email: user.email,
-      role,
-      accessToken: token,
-      nextPath,
+      role: autoSelectedTenant ? (autoSelectedTenant.role || role) : role,
+      accessToken: finalToken,
+      nextPath: finalNextPath,
       requires2FA,
       tenants: multiTenantEnabled ? tenants : undefined,
+      tenantId: autoSelectedTenant ? autoSelectedTenant.id : undefined,
+      tenantName: autoSelectedTenant ? autoSelectedTenant.name : undefined,
     });
     try {
       await auditRepo.writeLog({

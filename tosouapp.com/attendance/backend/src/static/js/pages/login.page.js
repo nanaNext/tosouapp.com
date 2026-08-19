@@ -38,13 +38,15 @@ function setError(msg) {
 }
 
 
-function saveAuth({ accessToken, username, email, role, tenants }) {
+function saveAuth({ accessToken, username, email, role, tenants, tenantId, tenantName }) {
   sessionStorage.setItem('accessToken', accessToken);
   // Backup to localStorage so select-company page survives Chrome password popup
   try { localStorage.setItem('accessToken', accessToken); } catch (e) { /* silently ignored */ }
-  sessionStorage.setItem('user', JSON.stringify({ username, email, role }));
+  const userObj = { username, email, role };
+  if (tenantId) { userObj.tenantId = tenantId; userObj.tenantName = tenantName; }
+  sessionStorage.setItem('user', JSON.stringify(userObj));
   try {
-    localStorage.setItem('user', JSON.stringify({ username, email, role }));
+    localStorage.setItem('user', JSON.stringify(userObj));
   } catch (e) { /* silently ignored */ }
   // Save tenant list for select-company page
   if (Array.isArray(tenants) && tenants.length > 0) {
