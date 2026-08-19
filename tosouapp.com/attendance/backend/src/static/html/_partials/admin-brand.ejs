@@ -11,7 +11,7 @@
     // Priority: sessionStorage (after select-tenant) > EJS server-side tenant
     var serverColor = '<%= (typeof tenant !== "undefined" && tenant && tenant.primaryColor) ? tenant.primaryColor : "#0b2c66" %>';
     var u = JSON.parse(sessionStorage.getItem('user') || '{}');
-    var color = u.tenantColor || serverColor || '#0b2c66';
+    var color = '#0b2c66'; // Topbar luôn navy đậm — không đổi theo tenant
 
     // Apply to topbar
     function applyBrandColor(color) {
