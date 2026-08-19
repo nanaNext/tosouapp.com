@@ -232,6 +232,7 @@ router.get('/users', async (req, res) => {
     const q = String(req.query.q || '').trim().toLowerCase();
     const [rows] = await db.query(
       `SELECT u.id, u.username, u.email, u.role, u.employment_status,
+              u.employee_code,
               u.tenant_id,
               GROUP_CONCAT(DISTINCT tu.tenant_id ORDER BY tu.tenant_id SEPARATOR ',') AS tenant_ids,
               GROUP_CONCAT(DISTINCT t.name ORDER BY tu.tenant_id SEPARATOR '||') AS tenant_names
