@@ -225,6 +225,58 @@ async function handleLogout() {
   window.location.href = '/ui/login';
 }
 
+// ── Direct select (no UI rendering) ───────────────────────────────────────────
+
+async function handleSelectTenant_direct(tenant) {
+  if (!tenant || !tenant.id) {
+    window.location.href = '/ui/portal';
+    return;
+  }
+  try {
+    const accessToken = getToken();
+    const csrf = getCookie('csrfToken');
+    const res = await fetch('/api/auth/select-tenant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': accessToken ? `Bearer ${accessToken}` : '',
+        'X-CSRF-Token': csrf || '',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ tenant_id: tenant.id }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+
+    sessionStorage.setItem('accessToken', data.accessToken);
+    try { localStorage.setItem('accessToken', data.accessToken); } catch (e) {}
+    try {
+      const { setTabContext } = await import('/static/js/api/tab-context.js');
+      setTabContext({ tenantId: data.tenantId, tenantName: data.tenantName, role: data.role, userId: data.userId || null });
+    } catch (e) {}
+    try {
+      const existingUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+      const newUser = JSON.stringify({
+        ...existingUser,
+        role: data.role,
+        tenantId: data.tenantId,
+        tenantName: data.tenantName,
+        tenantLogo: data.tenantLogo,
+        tenantLogoName: data.tenantLogoName,
+        tenantColor: data.tenantColor,
+      });
+      sessionStorage.setItem('user', newUser);
+      localStorage.setItem('user', newUser);
+    } catch (e) {}
+
+    const next = data.nextPath || '/ui/portal';
+    window.location.href = next;
+  } catch (e) {
+    // Fallback: go to portal anyway
+    window.location.href = '/ui/portal';
+  }
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -267,14 +319,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Auto-select if user is an employee or has only 1 tenant
+  // Skip rendering entirely — go straight through
   if (tenants.length === 1 || userRole === 'employee') {
     showPageSpinner();
-    renderGrid(tenants, username);
-    const firstBtn = document.querySelector('.sc-company-btn');
-    if (firstBtn) {
-      firstBtn.click();
-      return;
-    }
+    // Hide the entire page content to prevent logo flash
+    const container = $('#sc-container') || document.querySelector('.sc-container');
+    if (container) container.style.display = 'none';
+    document.body.style.background = '#f8fafc';
+    // Directly call select-tenant API without rendering cards
+    handleSelectTenant_direct(tenants[0]);
+    return;
   }
 
   hidePageSpinner();
@@ -317,12 +371,10 @@ async function fetchTenantsFromAPI() {
     
     if (tenants.length === 1 || userRole === 'employee') {
       showPageSpinner();
-      renderGrid(tenants, username);
-      const firstBtn = document.querySelector('.sc-company-btn');
-      if (firstBtn) {
-        firstBtn.click();
-        return;
-      }
+      const container = $('#sc-container') || document.querySelector('.sc-container');
+      if (container) container.style.display = 'none';
+      handleSelectTenant_direct(tenants[0]);
+      return;
     }
 
     hidePageSpinner();
