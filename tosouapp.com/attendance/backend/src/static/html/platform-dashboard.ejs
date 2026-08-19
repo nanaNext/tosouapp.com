@@ -402,26 +402,167 @@
         <div class="pd-section-header">
           <span class="pd-section-title">システム設定</span>
         </div>
-        <div style="max-width:600px;">
-          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;">
-            <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">🔐 パスワードポリシー</h4>
-            <p style="font-size:13px;color:#64748b;margin:0 0 12px;">最小文字数、複雑さの要件</p>
-            <div style="font-size:13px;color:#475569;">現在: 6文字以上（デフォルト）</div>
+        <div style="max-width:720px;display:flex;flex-direction:column;gap:16px;" id="pd-settings-container">
+
+          <!-- パスワードポリシー -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h4 style="margin:0 0 12px;font-size:15px;color:#0f172a;display:flex;align-items:center;gap:8px;">🔐 パスワードポリシー</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 14px;">全ユーザーに適用されるパスワード要件を設定します。</p>
+            <form id="pd-form-pw-policy" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:#374151;min-width:100px;">最小文字数</label>
+                <input id="pd-pw-min" type="number" min="4" max="128" value="8" style="width:80px;height:32px;padding:0 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" />
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:13px;font-weight:600;color:#374151;">複雑さ要件</label>
+                <div style="display:flex;flex-wrap:wrap;gap:8px 16px;padding-left:4px;">
+                  <label style="font-size:13px;color:#475569;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pd-pw-upper" checked style="accent-color:#2563eb;"> 大文字 (A-Z)</label>
+                  <label style="font-size:13px;color:#475569;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pd-pw-lower" checked style="accent-color:#2563eb;"> 小文字 (a-z)</label>
+                  <label style="font-size:13px;color:#475569;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pd-pw-digit" checked style="accent-color:#2563eb;"> 数字 (0-9)</label>
+                  <label style="font-size:13px;color:#475569;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pd-pw-symbol" style="accent-color:#2563eb;"> 記号 (!@#$)</label>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:#374151;min-width:100px;">有効期限（日）</label>
+                <input id="pd-pw-expiry" type="number" min="0" max="365" value="0" style="width:80px;height:32px;padding:0 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" />
+                <span style="font-size:11px;color:#94a3b8;">0=無期限</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                <button type="submit" class="pd-btn pd-btn-sm pd-btn-primary">保存</button>
+                <span id="pd-pw-result" style="font-size:13px;"></span>
+              </div>
+            </form>
           </div>
-          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;">
-            <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">📧 メール設定</h4>
-            <p style="font-size:13px;color:#64748b;margin:0 0 12px;">SMTP/メールプロバイダー設定</p>
-            <button type="button" id="pd-test-mail" class="pd-btn pd-btn-sm pd-btn-primary">テストメールを送信</button>
+
+          <!-- 2FA トグル -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h4 style="margin:0 0 12px;font-size:15px;color:#0f172a;display:flex;align-items:center;gap:8px;">🔑 二要素認証 (2FA)</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 14px;">全ユーザーに2FA（パスキー認証）を強制するかどうかを設定します。</p>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <label style="font-size:13px;font-weight:500;color:#374151;flex:1;">全ユーザーに2FAを強制する</label>
+              <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                <input type="checkbox" id="pd-toggle-2fa" style="opacity:0;width:0;height:0;">
+                <span id="pd-toggle-2fa-slider"></span>
+              </label>
+              <span id="pd-2fa-status" style="font-size:12px;font-weight:700;color:#94a3b8;min-width:30px;">OFF</span>
+            </div>
+            <style>
+              #pd-toggle-2fa-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#cbd5e1; border-radius:24px; transition:background .25s; }
+              #pd-toggle-2fa-slider::before { content:''; position:absolute; width:18px; height:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:transform .25s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+              #pd-toggle-2fa:checked + #pd-toggle-2fa-slider { background: #2563eb; }
+              #pd-toggle-2fa:checked + #pd-toggle-2fa-slider::before { transform: translateX(20px); }
+            </style>
           </div>
-          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;">
-            <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">🔑 二要素認証 (2FA)</h4>
-            <p style="font-size:13px;color:#64748b;margin:0;">パスキー/WebAuthn設定はテナント管理者の設定ページで管理</p>
+
+          <!-- メール送信テスト -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h4 style="margin:0 0 12px;font-size:15px;color:#0f172a;display:flex;align-items:center;gap:8px;">📧 メール送信テスト</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 14px;">メール設定が正しく動作しているか確認します。自分のアドレスにテストメールを送信します。</p>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <button type="button" id="pd-test-mail" class="pd-btn pd-btn-sm pd-btn-primary">テストメールを送信</button>
+              <span id="pd-test-mail-result" style="font-size:13px;"></span>
+            </div>
           </div>
+
+          <!-- メンテナンスモード -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:12px;padding:20px;">
+            <h4 style="margin:0 0 12px;font-size:15px;color:#0f172a;display:flex;align-items:center;gap:8px;">🚧 メンテナンスモード</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 14px;">ONにすると給与明細アップロード/ダウンロード等が一時停止します。</p>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <label style="font-size:13px;font-weight:500;color:#374151;flex:1;">メンテナンスモード</label>
+                <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                  <input type="checkbox" id="pd-toggle-maintenance" style="opacity:0;width:0;height:0;">
+                  <span class="pd-toggle-slider"></span>
+                </label>
+                <span id="pd-maintenance-status" style="font-size:12px;font-weight:700;color:#94a3b8;min-width:30px;">OFF</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <label style="font-size:13px;font-weight:500;color:#374151;flex:1;">スーパー管理者以外ログイン禁止</label>
+                <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                  <input type="checkbox" id="pd-toggle-lock-login" style="opacity:0;width:0;height:0;">
+                  <span class="pd-toggle-slider"></span>
+                </label>
+                <span id="pd-lock-login-status" style="font-size:12px;font-weight:700;color:#94a3b8;min-width:30px;">OFF</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- GPS要件 -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h4 style="margin:0 0 12px;font-size:15px;color:#0f172a;display:flex;align-items:center;gap:8px;">📍 GPS要件</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 14px;">出退勤時にGPS位置情報の取得を必須にするかどうかを設定します。<br><span style="font-size:12px;">※ どこからでも打刻可能です。位置情報は記録用であり、場所の制限ではありません。</span></p>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <label style="font-size:13px;font-weight:500;color:#374151;flex:1;">GPS位置情報を必須にする</label>
+                <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                  <input type="checkbox" id="pd-toggle-gps" checked style="opacity:0;width:0;height:0;">
+                  <span class="pd-toggle-slider"></span>
+                </label>
+                <span id="pd-gps-status" style="font-size:12px;font-weight:700;color:#16a34a;min-width:30px;">ON</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:#374151;min-width:160px;">GPS精度の許容範囲（m）</label>
+                <input id="pd-gps-accuracy" type="number" min="10" max="5000" value="500" style="width:90px;height:32px;padding:0 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" />
+                <span style="font-size:11px;color:#94a3b8;">値が大きいほど緩い（通常50m以下）</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:#374151;min-width:160px;">許可国コード</label>
+                <input id="pd-gps-countries" type="text" placeholder="空欄＝制限なし" style="width:200px;height:32px;padding:0 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" />
+                <span style="font-size:11px;color:#94a3b8;">例: JP,VN</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- リモートポリシー -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h4 style="margin:0 0 12px;font-size:15px;color:#0f172a;display:flex;align-items:center;gap:8px;">🏠 リモートワークポリシー</h4>
+            <p style="font-size:13px;color:#64748b;margin:0 0 14px;">在宅勤務・リモート打刻のルールを設定します。</p>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:#374151;min-width:120px;">ポリシー</label>
+                <select id="pd-remote-policy" style="height:32px;padding:0 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;min-width:180px;">
+                  <option value="anywhere">どこからでも (anywhere)</option>
+                  <option value="office_only">オフィスのみ (office_only)</option>
+                  <option value="hybrid">ハイブリッド (hybrid)</option>
+                </select>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <label style="font-size:13px;font-weight:500;color:#374151;flex:1;">リモート打刻時にメモ必須</label>
+                <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                  <input type="checkbox" id="pd-toggle-note-remote" style="opacity:0;width:0;height:0;">
+                  <span class="pd-toggle-slider"></span>
+                </label>
+                <span id="pd-note-remote-status" style="font-size:12px;font-weight:700;color:#94a3b8;min-width:30px;">OFF</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:13px;font-weight:600;color:#374151;min-width:120px;">最大デバイス数</label>
+                <input id="pd-max-devices" type="number" min="1" max="20" value="5" style="width:70px;height:32px;padding:0 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" />
+              </div>
+            </div>
+          </div>
+
+          <!-- フラグ保存 -->
+          <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:16px 20px;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <button type="button" id="pd-save-flags" class="pd-btn pd-btn-primary">フラグ設定を保存</button>
+              <span id="pd-flags-result" style="font-size:13px;"></span>
+            </div>
+            <p style="margin:6px 0 0;font-size:12px;color:#64748b;">メンテナンスモード・GPS要件・リモートポリシーの変更を一括保存します。</p>
+          </div>
+
+          <!-- シフトリマインダー -->
           <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
             <h4 style="margin:0 0 8px;font-size:15px;color:#0f172a;">⏰ シフトリマインダー</h4>
             <p style="font-size:13px;color:#64748b;margin:0;">毎日23:00 JST（打刻リマインダー）、15:00 JST（シフト提出リマインダー: 15日/25日/月末）</p>
           </div>
         </div>
+        <style>
+          .pd-toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#cbd5e1; border-radius:24px; transition:background .25s; }
+          .pd-toggle-slider::before { content:''; position:absolute; width:18px; height:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:transform .25s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+          input[type="checkbox"]:checked + .pd-toggle-slider { background: #2563eb !important; }
+          input[type="checkbox"]:checked + .pd-toggle-slider::before { transform: translateX(20px); }
+        </style>
       </div>
     </main>
   </div>

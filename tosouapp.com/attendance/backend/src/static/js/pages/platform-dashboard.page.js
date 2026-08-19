@@ -93,40 +93,97 @@ async function loadStats() {
       try {
         const users = allUsersCache || [];
         const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease;';
         const modal = document.createElement('div');
-        modal.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+        modal.style.cssText = 'background:#fff;border-radius:16px;padding:0;max-width:780px;width:92%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .2s ease;overflow:hidden;';
+
+        // Search state
+        let searchQuery = '';
+
+        const renderTable = (filtered) => {
+          return filtered.map(u => {
+            const tenantNames = Object.entries(u.tenantRoles || {}).map(([tid]) => {
+              const t = tenantsCache.find(x => x.id === parseInt(tid, 10));
+              return t?.name || '';
+            }).filter(Boolean).join(', ');
+            const initials = (u.username || u.email || '?').slice(0, 1).toUpperCase();
+            const colors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2'];
+            const bgColor = colors[u.id % colors.length];
+            return `<tr style="transition:background .1s;">
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${bgColor};color:#fff;font-size:12px;font-weight:700;">${initials}</span>
+              </td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b;">${u.username || u.email || '—'}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${u.employee_code || '—'}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${tenantNames || '<span style="color:#94a3b8;">未割り当て</span>'}</td>
+            </tr>`;
+          }).join('');
+        };
+
         modal.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3 style="margin:0;font-size:18px;color:#0f172a;">全ユーザー一覧</h3>
-            <button type="button" id="closeUsersModal" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748b;">&times;</button>
+          <style>
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+            .users-modal-search:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+            .users-modal-table tr:hover { background: #f8fafc; }
+          </style>
+          <div style="padding:20px 24px 16px;border-bottom:1px solid #e2e8f0;flex-shrink:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div>
+                <h3 style="margin:0;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-.3px;">全ユーザー一覧</h3>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">登録ユーザー <strong style="color:#2563eb;">${users.length}</strong> 名</p>
+              </div>
+              <button type="button" id="closeUsersModal" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border:none;border-radius:8px;font-size:18px;cursor:pointer;color:#64748b;transition:background .15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">&times;</button>
+            </div>
+            <div style="position:relative;">
+              <input type="text" id="usersModalSearch" class="users-modal-search" placeholder="氏名・メール・社員番号で検索..." style="width:100%;height:38px;padding:0 12px 0 36px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#1e293b;background:#f8fafc;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;" />
+              <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#94a3b8;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
           </div>
-          <div style="font-size:13px;color:#64748b;margin-bottom:12px;">合計: ${users.length}名</div>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            <thead><tr style="background:#f1f5f9;">
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">ID</th>
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">社員番号</th>
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">氏名</th>
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">会社</th>
-            </tr></thead>
-            <tbody>${users.map(u => {
-              const tenantNames = Object.entries(u.tenantRoles || {}).map(([tid]) => {
-                const t = tenantsCache.find(x => x.id === parseInt(tid, 10));
-                return t?.name || '';
-              }).filter(Boolean).join(', ');
-              return `<tr>
-                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">${u.id}</td>
-                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">${u.employee_code || '—'}</td>
-                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-weight:600;">${u.username || u.email || '—'}</td>
-                <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;color:#64748b;">${tenantNames || '未割り当て'}</td>
-              </tr>`;
-            }).join('')}</tbody>
-          </table>
+          <div style="flex:1;overflow-y:auto;padding:0;">
+            <table class="users-modal-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="background:#f8fafc;position:sticky;top:0;z-index:1;">
+                <th style="padding:10px 12px;text-align:center;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;width:56px;"></th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">氏名</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">社員番号</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">会社</th>
+              </tr></thead>
+              <tbody id="usersModalBody">${renderTable(users)}</tbody>
+            </table>
+          </div>
+          <div style="padding:12px 24px;border-top:1px solid #e2e8f0;flex-shrink:0;display:flex;justify-content:space-between;align-items:center;">
+            <span id="usersModalCount" style="font-size:12px;color:#64748b;">${users.length}件表示</span>
+            <button type="button" id="closeUsersModalBtn" style="height:32px;padding:0 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:600;color:#475569;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">閉じる</button>
+          </div>
         `;
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-        modal.querySelector('#closeUsersModal')?.addEventListener('click', () => overlay.remove());
+
+        // Search handler
+        const searchInput = modal.querySelector('#usersModalSearch');
+        const tbody = modal.querySelector('#usersModalBody');
+        const countEl = modal.querySelector('#usersModalCount');
+        searchInput?.addEventListener('input', () => {
+          const q = searchInput.value.trim().toLowerCase();
+          const filtered = users.filter(u =>
+            !q ||
+            String(u.username || '').toLowerCase().includes(q) ||
+            String(u.email || '').toLowerCase().includes(q) ||
+            String(u.employee_code || '').toLowerCase().includes(q)
+          );
+          tbody.innerHTML = renderTable(filtered);
+          countEl.textContent = `${filtered.length}件表示`;
+        });
+        searchInput?.focus();
+
+        // Close handlers
+        const closeModal = () => { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 100); };
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+        modal.querySelector('#closeUsersModal')?.addEventListener('click', closeModal);
+        modal.querySelector('#closeUsersModalBtn')?.addEventListener('click', closeModal);
+        // ESC key
+        const escHandler = (e) => { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', escHandler); } };
+        document.addEventListener('keydown', escHandler);
       } catch (e) {
         alert('エラー: ' + (e.message || ''));
       }
@@ -926,5 +983,192 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
     observer.observe(auditPanel, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  // ── Settings Panel ────────────────────────────────────────────────────────
+  const settingsPanel = $('#panel-settings');
+
+  // Toggle helper - also updates track background color via JS
+  function pdSyncToggle(checkboxId, statusId) {
+    const cb = document.getElementById(checkboxId);
+    const st = document.getElementById(statusId);
+    if (!cb || !st) return;
+    const slider = cb.nextElementSibling;
+    const update = () => {
+      st.textContent = cb.checked ? 'ON' : 'OFF';
+      st.style.color = cb.checked ? '#16a34a' : '#94a3b8';
+      if (slider) {
+        slider.style.background = cb.checked ? '#2563eb' : '#cbd5e1';
+      }
+    };
+    update();
+    cb.addEventListener('change', update);
+  }
+  pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status');
+  pdSyncToggle('pd-toggle-maintenance', 'pd-maintenance-status');
+  pdSyncToggle('pd-toggle-lock-login', 'pd-lock-login-status');
+  pdSyncToggle('pd-toggle-gps', 'pd-gps-status');
+  pdSyncToggle('pd-toggle-note-remote', 'pd-note-remote-status');
+
+  // Load flags
+  async function pdLoadFlags() {
+    try {
+      const flags = await apiFetch('/api/admin/system/flags');
+      if (flags) {
+        const el = (id) => document.getElementById(id);
+        if (el('pd-toggle-maintenance')) el('pd-toggle-maintenance').checked = !!flags.maintenanceMode;
+        if (el('pd-toggle-lock-login')) el('pd-toggle-lock-login').checked = !!flags.lockLoginExceptSuper;
+        if (el('pd-toggle-gps')) el('pd-toggle-gps').checked = flags.requireGPS !== false;
+        if (el('pd-gps-accuracy')) el('pd-gps-accuracy').value = flags.minAccuracyMeters || 100;
+        if (el('pd-gps-countries')) el('pd-gps-countries').value = flags.countryWhitelist || '';
+        if (el('pd-remote-policy')) el('pd-remote-policy').value = flags.remotePolicy || 'anywhere';
+        if (el('pd-toggle-note-remote')) el('pd-toggle-note-remote').checked = !!flags.requireNoteOnRemote;
+        if (el('pd-max-devices')) el('pd-max-devices').value = flags.maxDevicesPerUser || 5;
+        // Re-sync status
+        pdSyncToggle('pd-toggle-maintenance', 'pd-maintenance-status');
+        pdSyncToggle('pd-toggle-lock-login', 'pd-lock-login-status');
+        pdSyncToggle('pd-toggle-gps', 'pd-gps-status');
+        pdSyncToggle('pd-toggle-note-remote', 'pd-note-remote-status');
+      }
+    } catch (e) { /* use defaults */ }
+  }
+
+  // Load password policy
+  async function pdLoadPasswordPolicy() {
+    try {
+      const res = await apiFetch('/api/admin/settings/password-policy');
+      if (res) {
+        const el = (id) => document.getElementById(id);
+        if (res.minLength && el('pd-pw-min')) el('pd-pw-min').value = res.minLength;
+        if (res.requireUpper != null && el('pd-pw-upper')) el('pd-pw-upper').checked = !!res.requireUpper;
+        if (res.requireLower != null && el('pd-pw-lower')) el('pd-pw-lower').checked = !!res.requireLower;
+        if (res.requireDigit != null && el('pd-pw-digit')) el('pd-pw-digit').checked = !!res.requireDigit;
+        if (res.requireSymbol != null && el('pd-pw-symbol')) el('pd-pw-symbol').checked = !!res.requireSymbol;
+        if (res.expiryDays != null && el('pd-pw-expiry')) el('pd-pw-expiry').value = res.expiryDays;
+      }
+    } catch (e) { /* defaults */ }
+  }
+
+  // Load 2FA policy
+  async function pdLoad2FA() {
+    try {
+      const res = await apiFetch('/api/admin/settings/2fa-policy');
+      if (res) {
+        const cb = document.getElementById('pd-toggle-2fa');
+        if (cb) { cb.checked = !!res.enforced; pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status'); }
+      }
+    } catch (e) { /* default off */ }
+  }
+
+  // Save password policy
+  $('#pd-form-pw-policy')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const resultEl = document.getElementById('pd-pw-result');
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = '保存中...';
+    if (resultEl) { resultEl.textContent = ''; resultEl.style.color = ''; }
+    try {
+      const payload = {
+        minLength: Number(document.getElementById('pd-pw-min')?.value) || 8,
+        requireUpper: document.getElementById('pd-pw-upper')?.checked || false,
+        requireLower: document.getElementById('pd-pw-lower')?.checked || false,
+        requireDigit: document.getElementById('pd-pw-digit')?.checked || false,
+        requireSymbol: document.getElementById('pd-pw-symbol')?.checked || false,
+        expiryDays: Number(document.getElementById('pd-pw-expiry')?.value) || 0,
+      };
+      const res = await apiFetch('/api/admin/settings/password-policy', { method: 'POST', body: JSON.stringify(payload) });
+      if (res && (res.ok || res.success)) {
+        if (resultEl) { resultEl.textContent = '✅ 保存しました'; resultEl.style.color = '#16a34a'; }
+      } else {
+        throw new Error(res?.error || res?.message || '保存に失敗しました');
+      }
+    } catch (err) {
+      if (resultEl) { resultEl.textContent = '❌ ' + (err.message || ''); resultEl.style.color = '#dc2626'; }
+    } finally {
+      btn.disabled = false; btn.textContent = '保存';
+    }
+  });
+
+  // 2FA toggle
+  document.getElementById('pd-toggle-2fa')?.addEventListener('change', async (e) => {
+    const on = e.target.checked;
+    pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status');
+    try {
+      await apiFetch('/api/admin/settings/2fa-policy', { method: 'POST', body: JSON.stringify({ enforced: on }) });
+    } catch (err) {
+      e.target.checked = !on;
+      pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status');
+      alert('2FA設定の更新に失敗しました: ' + (err.message || ''));
+    }
+  });
+
+  // Test mail button
+  $('#pd-test-mail')?.addEventListener('click', async () => {
+    const btn = document.getElementById('pd-test-mail');
+    const resultEl = document.getElementById('pd-test-mail-result');
+    btn.disabled = true; btn.textContent = '送信中...';
+    if (resultEl) { resultEl.textContent = ''; resultEl.style.color = ''; }
+    try {
+      const res = await apiFetch('/api/test-mail');
+      if (res && res.ok) {
+        if (resultEl) { resultEl.textContent = '✅ 送信成功！'; resultEl.style.color = '#16a34a'; }
+      } else {
+        throw new Error(res?.error || '送信に失敗しました');
+      }
+    } catch (err) {
+      if (resultEl) { resultEl.textContent = '❌ ' + (err.message || '送信失敗'); resultEl.style.color = '#dc2626'; }
+    } finally {
+      btn.disabled = false; btn.textContent = 'テストメールを送信';
+    }
+  });
+
+  // Save flags (maintenance, GPS, remote policy)
+  $('#pd-save-flags')?.addEventListener('click', async () => {
+    const btn = document.getElementById('pd-save-flags');
+    const resultEl = document.getElementById('pd-flags-result');
+    btn.disabled = true; btn.textContent = '保存中...';
+    if (resultEl) { resultEl.textContent = ''; resultEl.style.color = ''; }
+    try {
+      const payload = {
+        maintenanceMode: String(document.getElementById('pd-toggle-maintenance')?.checked || false),
+        lockLoginExceptSuper: String(document.getElementById('pd-toggle-lock-login')?.checked || false),
+        requireGPS: String(document.getElementById('pd-toggle-gps')?.checked || false),
+        minAccuracyMeters: Number(document.getElementById('pd-gps-accuracy')?.value) || 100,
+        remotePolicy: document.getElementById('pd-remote-policy')?.value || 'anywhere',
+        requireNoteOnRemote: String(document.getElementById('pd-toggle-note-remote')?.checked || false),
+        countryWhitelist: document.getElementById('pd-gps-countries')?.value?.trim() || '',
+        maxDevicesPerUser: Number(document.getElementById('pd-max-devices')?.value) || 5,
+      };
+      const res = await apiFetch('/api/admin/system/flags', { method: 'POST', body: JSON.stringify(payload) });
+      if (res && res.ok) {
+        if (resultEl) { resultEl.textContent = '✅ 保存しました'; resultEl.style.color = '#16a34a'; }
+      } else {
+        throw new Error(res?.error || '保存に失敗しました');
+      }
+    } catch (err) {
+      if (resultEl) { resultEl.textContent = '❌ ' + (err.message || ''); resultEl.style.color = '#dc2626'; }
+    } finally {
+      btn.disabled = false; btn.textContent = 'フラグ設定を保存';
+    }
+  });
+
+  // Load settings data when panel becomes visible
+  if (settingsPanel) {
+    const settingsObserver = new MutationObserver(() => {
+      if (settingsPanel.classList.contains('active') && !settingsPanel.dataset.loaded) {
+        settingsPanel.dataset.loaded = '1';
+        pdLoadFlags();
+        pdLoadPasswordPolicy();
+        pdLoad2FA();
+      }
+    });
+    settingsObserver.observe(settingsPanel, { attributes: true, attributeFilter: ['class'] });
+    // Also load if already active
+    if (settingsPanel.classList.contains('active')) {
+      settingsPanel.dataset.loaded = '1';
+      pdLoadFlags();
+      pdLoadPasswordPolicy();
+      pdLoad2FA();
+    }
   }
 });
