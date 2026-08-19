@@ -132,9 +132,29 @@ function redirectToLoginOnce() {
 async function doFetchAuth(url, options, accessToken, timeoutMs) {
   const csrf = getCookie('csrfToken');
   const opt = options || {};
+  // Tab-scoped tenant context: đọc tenantId từ sessionStorage của tab hiện tại
+  let tabTenantId = '';
+  try {
+    const raw = sessionStorage.getItem('_tabCtx');
+    if (raw) {
+      const ctx = JSON.parse(raw);
+      tabTenantId = ctx?.tenantId ? String(ctx.tenantId) : '';
+    } else {
+      // Auto-init: nếu tab mới chưa có _tabCtx nhưng user object có tenantId → copy vào
+      const userRaw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+      if (userRaw) {
+        const u = JSON.parse(userRaw);
+        if (u?.tenantId) {
+          tabTenantId = String(u.tenantId);
+          sessionStorage.setItem('_tabCtx', JSON.stringify({ tenantId: u.tenantId, tenantName: u.tenantName || '', role: u.role || '' }));
+        }
+      }
+    }
+  } catch { /* bỏ qua */ }
   const baseHeaders = {
     'Authorization': accessToken ? `Bearer ${accessToken}` : '',
-    'X-CSRF-Token': csrf || ''
+    'X-CSRF-Token': csrf || '',
+    'X-Tenant-Id': tabTenantId,
   };
   const hasFormData = typeof FormData !== 'undefined' && opt.body instanceof FormData;
   if (!hasFormData) {

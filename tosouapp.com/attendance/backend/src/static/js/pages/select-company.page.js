@@ -150,6 +150,11 @@ async function handleSelectTenant(btn) {
     // Save tenant-scoped token and tenant info
     sessionStorage.setItem('accessToken', data.accessToken);
     try { localStorage.setItem('accessToken', data.accessToken); } catch (e) { /* silently ignored */ }
+    // Tab-scoped context: lưu tenantId riêng cho tab này
+    try {
+      const { setTabContext } = await import('/static/js/api/tab-context.js');
+      setTabContext({ tenantId: data.tenantId, tenantName: data.tenantName, role: data.role, userId: data.userId || null });
+    } catch (e) { /* tab-context không khả dụng — bỏ qua */ }
     try {
       const existingUser = JSON.parse(sessionStorage.getItem('user') || '{}');
       const newUser = JSON.stringify({

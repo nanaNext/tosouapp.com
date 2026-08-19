@@ -302,6 +302,47 @@ exports.approveShiftMonth = async (req, res) => {
     const validStatuses = ['APPROVED', 'REJECTED', 'PENDING', 'draft'];
     if (!validStatuses.includes(status)) return res.status(400).json({ message: 'Invalid status' });
     await db.query(`UPDATE shift_month_status SET status = ? WHERE userId = ? AND month = ?`, [status, userId, month]);
+
+    // Khi APPROVED: tự động lưu kubun '休日' cho ngày OFF và gửi thông báo cho nhân viên
+    if (status === 'APPROVED') {
+      try {
+        const [shifts] = await db.query(
+          `SELECT date, status, leaveType FROM shift_requests WHERE userId = ? AND date LIKE ?`,
+          [userId, `${month}-%`]
+        );
+        const offDates = [];
+        for (const s of (shifts || [])) {
+          if (s.status === 'OFF') {
+            const d = String(s.date).slice(0, 10);
+            offDates.push(d);
+            // Upsert kubun = '休日' cho ngày OFF
+            await repo.upsertDaily(userId, d, { kubun: '休日' });
+          }
+        }
+        // Gửi thông báo cho nhân viên nếu có ngày OFF
+        if (offDates.length > 0) {
+          const u = await userRepo.getUserById(userId).catch(() => null);
+          const userName = u ? (u.username || u.email || '従業員') : '従業員';
+          const datesStr = offDates.length <= 3
+            ? offDates.map(d => d.slice(5).replace('-', '/')).join(', ')
+            : offDates.slice(0, 3).map(d => d.slice(5).replace('-', '/')).join(', ') + ` 他${offDates.length - 3}日`;
+          await noticesRepo.createNotice({
+            targetUserId: userId,
+            targetDate: null,
+            targetMonth: month,
+            message: `${month.replace('-', '年')}月のシフトが承認されました。休日: ${datesStr}`,
+            createdBy: req.user?.id || null,
+            kind: 'shift_approved',
+            title: 'シフト承認',
+            audience: 'all',
+            tenantId: req.tenantId || null,
+          });
+        }
+      } catch (e) {
+        log.warn('shift_approve_auto_kubun_failed', { userId, month, error_message: e.message });
+      }
+    }
+
     res.status(200).json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });

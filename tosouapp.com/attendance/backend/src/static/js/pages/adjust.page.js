@@ -417,7 +417,7 @@ const renderForm = async () => {
       }
     </style>
 
-    <div class="sap-tabs-container" style="justify-content: flex-start; align-items: center; display: flex !important; position: relative; z-index: 50; margin-top: 0 !important; visibility: visible !important; opacity: 1 !important;">
+    <div class="sap-tabs-container" style="display: flex !important; align-items: center; justify-content: flex-start; position: relative; z-index: 50; margin-top: 0 !important; visibility: visible !important; opacity: 1 !important; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; gap: 8px;">
         <div class="sap-tabs-wrapper" style="display: flex !important; gap: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; width: 100%; opacity: 1 !important; visibility: visible !important;">
           <div class="sap-tab active" id="tabNew" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -433,10 +433,10 @@ const renderForm = async () => {
           <span>申請履歴</span>
         </div>
       </div>
-      <div id="adjustMonthFilterContainer" style="display: none; padding-bottom: 8px;">
-        <input type="month" id="adjustMonthFilter" class="sap-table-input" value="${new Date().toISOString().slice(0, 7)}">
-      </div>
       <div id="actionRequiredHost" style="display: none;"></div>
+    </div>
+    <div id="adjustMonthFilterContainer" style="display: none; padding: 8px 0;">
+      <input type="month" id="adjustMonthFilter" class="sap-table-input" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-weight: 500; color: #0f172a;" value="${new Date().toISOString().slice(0, 7)}">
     </div>
 
     <div id="newAdjustFormCard" class="sap-compact-card" style="margin-top: 0; display: block;">
@@ -555,7 +555,7 @@ const renderForm = async () => {
       if (historyBlock) historyBlock.style.display = 'block';
     }
     
-    // Toggle month filter display
+    // Toggle month filter display — chỉ hiện khi ở tab 申請履歴
     const monthFilterContainer = document.getElementById('adjustMonthFilterContainer');
     if (monthFilterContainer) {
       monthFilterContainer.style.display = tabId === 'tabHistory' ? 'block' : 'none';
