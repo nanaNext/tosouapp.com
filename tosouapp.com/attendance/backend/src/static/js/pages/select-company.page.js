@@ -332,6 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   hidePageSpinner();
+  // Show the wrapper only when user needs to choose a company
+  const scWrapper = document.querySelector('.sc-wrapper');
+  if (scWrapper) scWrapper.style.visibility = 'visible';
   renderGrid(tenants, username);
 
   // Wire logout button
@@ -378,6 +381,8 @@ async function fetchTenantsFromAPI() {
     }
 
     hidePageSpinner();
+    const scWrapper2 = document.querySelector('.sc-wrapper');
+    if (scWrapper2) scWrapper2.style.visibility = 'visible';
     renderGrid(tenants, username);
     const logoutBtn = $('#sc-logout-btn');
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
