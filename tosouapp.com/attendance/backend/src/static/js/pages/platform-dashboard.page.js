@@ -59,6 +59,9 @@ function switchPanel(name) {
   const panel = $(`#panel-${name}`);
   if (panel) panel.classList.add('active');
   document.querySelectorAll(`[data-panel="${name}"]`).forEach(b => b.classList.add('active'));
+  // Stats cards chỉ hiện ở tab tenants/users
+  const stats = $('#pd-stats');
+  if (stats) stats.style.display = (name === 'tenants' || name === 'users') ? '' : 'none';
 
   if (name === 'tenants') loadTenants();
   if (name === 'users') {
