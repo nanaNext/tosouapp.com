@@ -41,7 +41,7 @@ const pickNonEmptyText = (...vals) => {
 const roleScopeSql = (req, alias = 'u') => {
   const role = String(req.user?.role || '').toLowerCase();
   if (role === 'manager') return ` AND ${alias}.role = 'employee'`;
-  return ` AND ${alias}.role IN ('employee','manager')`;
+  return ` AND ${alias}.role NOT IN ('admin','manager','sysadmin','owner')`;
 };
 
 const canManagerAccessUser = async (req, userId) => {
