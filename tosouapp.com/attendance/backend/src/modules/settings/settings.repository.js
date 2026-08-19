@@ -150,5 +150,108 @@ module.exports = {
           REMOTE_POLICY = ?, REQUIRE_GPS = ?, MIN_ACCURACY_METERS = ?, REQUIRE_NOTE_ON_REMOTE = ?, COUNTRY_WHITELIST = ?, MAX_DEVICES_PER_USER = ?
       WHERE ${where}
     `, [m, u, d, l, rp, rg, acc, rn, cw, md, ...params]);
+  },
+
+  // ─── Password Policy ────────────────────────────────────────────────────────
+  async ensurePasswordPolicySchema() {
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS password_policy (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          tenant_id BIGINT UNSIGNED NULL UNIQUE,
+          min_length INT DEFAULT 8,
+          require_upper TINYINT(1) DEFAULT 1,
+          require_lower TINYINT(1) DEFAULT 1,
+          require_digit TINYINT(1) DEFAULT 1,
+          require_symbol TINYINT(1) DEFAULT 0,
+          expiry_days INT DEFAULT 0,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_pp_tid (tenant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+    } catch (e) { /* table exists */ }
+  },
+
+  async getPasswordPolicy(tenantId = null) {
+    const tid = _tid(tenantId);
+    try {
+      await this.ensurePasswordPolicySchema();
+    } catch (e) { /* ignore */ }
+    const where = tid != null ? `WHERE tenant_id = ?` : `WHERE tenant_id IS NULL OR id = 1`;
+    const params = tid != null ? [tid] : [];
+    const [rows] = await db.query(`SELECT * FROM password_policy ${where} LIMIT 1`, params);
+    if (rows && rows.length) {
+      const r = rows[0];
+      return {
+        minLength: Number(r.min_length || 8),
+        requireUpper: !!Number(r.require_upper),
+        requireLower: !!Number(r.require_lower),
+        requireDigit: !!Number(r.require_digit),
+        requireSymbol: !!Number(r.require_symbol),
+        expiryDays: Number(r.expiry_days || 0)
+      };
+    }
+    return null;
+  },
+
+  async updatePasswordPolicy(data, tenantId = null) {
+    const tid = _tid(tenantId);
+    try {
+      await this.ensurePasswordPolicySchema();
+    } catch (e) { /* ignore */ }
+    const tidVal = tid != null ? tid : null;
+    await db.query(`
+      INSERT INTO password_policy (tenant_id, min_length, require_upper, require_lower, require_digit, require_symbol, expiry_days)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        min_length = VALUES(min_length),
+        require_upper = VALUES(require_upper),
+        require_lower = VALUES(require_lower),
+        require_digit = VALUES(require_digit),
+        require_symbol = VALUES(require_symbol),
+        expiry_days = VALUES(expiry_days)
+    `, [tidVal, data.minLength, data.requireUpper ? 1 : 0, data.requireLower ? 1 : 0, data.requireDigit ? 1 : 0, data.requireSymbol ? 1 : 0, data.expiryDays]);
+  },
+
+  // ─── 2FA Policy ─────────────────────────────────────────────────────────────
+  async ensure2FAPolicySchema() {
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS twofa_policy (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          tenant_id BIGINT UNSIGNED NULL UNIQUE,
+          enforced TINYINT(1) DEFAULT 0,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_2fa_tid (tenant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+    } catch (e) { /* table exists */ }
+  },
+
+  async get2FAPolicy(tenantId = null) {
+    const tid = _tid(tenantId);
+    try {
+      await this.ensure2FAPolicySchema();
+    } catch (e) { /* ignore */ }
+    const where = tid != null ? `WHERE tenant_id = ?` : `WHERE tenant_id IS NULL OR id = 1`;
+    const params = tid != null ? [tid] : [];
+    const [rows] = await db.query(`SELECT * FROM twofa_policy ${where} LIMIT 1`, params);
+    if (rows && rows.length) {
+      return { enforced: !!Number(rows[0].enforced) };
+    }
+    return null;
+  },
+
+  async update2FAPolicy(data, tenantId = null) {
+    const tid = _tid(tenantId);
+    try {
+      await this.ensure2FAPolicySchema();
+    } catch (e) { /* ignore */ }
+    const tidVal = tid != null ? tid : null;
+    await db.query(`
+      INSERT INTO twofa_policy (tenant_id, enforced)
+      VALUES (?, ?)
+      ON DUPLICATE KEY UPDATE enforced = VALUES(enforced)
+    `, [tidVal, data.enforced ? 1 : 0]);
   }
 };
