@@ -95,12 +95,16 @@ async function loadStats() {
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease;';
         const modal = document.createElement('div');
-        modal.style.cssText = 'background:#fff;border-radius:16px;padding:0;max-width:780px;width:92%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .2s ease;overflow:hidden;';
+        modal.style.cssText = 'background:#fff;border-radius:16px;padding:0;max-width:900px;width:94%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .2s ease;overflow:hidden;';
 
         // Search state
         let searchQuery = '';
 
         const renderTable = (filtered) => {
+          const roleLabel = (r) => {
+            const map = { admin:'管理者', manager:'マネージャー', employee:'従業員', hr:'人事', payroll:'給与担当', sysadmin:'Sysadmin', owner:'取締役' };
+            return map[String(r||'').toLowerCase()] || r || '—';
+          };
           return filtered.map(u => {
             const tenantNames = Object.entries(u.tenantRoles || {}).map(([tid]) => {
               const t = tenantsCache.find(x => x.id === parseInt(tid, 10));
@@ -109,12 +113,16 @@ async function loadStats() {
             const initials = (u.username || u.email || '?').slice(0, 1).toUpperCase();
             const colors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2'];
             const bgColor = colors[u.id % colors.length];
+            const roleCls = { admin:'#dc2626', manager:'#7c3aed', employee:'#2563eb', hr:'#059669', payroll:'#d97706' };
+            const rColor = roleCls[String(u.role||'').toLowerCase()] || '#64748b';
             return `<tr style="transition:background .1s;">
               <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">
                 <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${bgColor};color:#fff;font-size:12px;font-weight:700;">${initials}</span>
               </td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#94a3b8;font-size:11px;font-weight:600;">${u.id}</td>
               <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b;">${u.username || u.email || '—'}</td>
               <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${u.employee_code || '—'}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${rColor}15;color:${rColor};">${roleLabel(u.role)}</span></td>
               <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${tenantNames || '<span style="color:#94a3b8;">未割り当て</span>'}</td>
             </tr>`;
           }).join('');
@@ -144,8 +152,10 @@ async function loadStats() {
             <table class="users-modal-table" style="width:100%;border-collapse:collapse;font-size:13px;">
               <thead><tr style="background:#f8fafc;position:sticky;top:0;z-index:1;">
                 <th style="padding:10px 12px;text-align:center;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;width:56px;"></th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;width:40px;">ID</th>
                 <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">氏名</th>
                 <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">社員番号</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">ロール</th>
                 <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">会社</th>
               </tr></thead>
               <tbody id="usersModalBody">${renderTable(users)}</tbody>
