@@ -294,4 +294,32 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// ── GET /api/platform/today-checkins ──────────────────────────────────────────
+// 本日の打刻一覧: 今日チェックインした全ユーザーの名前・時刻を返す
+router.get('/today-checkins', async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT
+        u.id AS userId,
+        u.username AS username,
+        u.email AS email,
+        u.employee_code AS employeeCode,
+        d.name AS departmentName,
+        t.name AS tenantName,
+        a.checkIn AS checkIn,
+        a.checkOut AS checkOut
+      FROM attendance a
+      INNER JOIN users u ON u.id = a.userId
+      LEFT JOIN departments d ON d.id = u.departmentId
+      LEFT JOIN tenant_users tu ON tu.user_id = u.id
+      LEFT JOIN tenants t ON t.id = tu.tenant_id
+      WHERE DATE(a.checkIn) = CURDATE()
+      ORDER BY a.checkIn DESC
+    `);
+    res.status(200).json({ date: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10), count: (rows || []).length, items: rows || [] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
