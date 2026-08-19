@@ -14,6 +14,7 @@ const deptRoutes = require('../departments/department.routes');
 const settingsRoutes = require('../settings/settings.routes');
 const auditRepo = require('../audit/audit.repository');
 const attendanceService = require('../attendance/attendance.service');
+const attendanceRepo = require('../attendance/attendance.repository');
 const userRepo = require('../users/user.repository');
 const authRepo = require('../auth/auth.repository');
 const calendarRepo = require('../calendar/calendar.repository');

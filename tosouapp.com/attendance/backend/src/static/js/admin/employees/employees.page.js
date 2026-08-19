@@ -1364,8 +1364,9 @@ async function renderEmployees(profile, c) {
           <tr><td class="field-label">電話番号</td><td class="field-value"><input id="empPhone" placeholder="080-1234-5678"></td></tr>
           <tr><td class="field-label">住所</td><td class="field-value"><input id="empAddr" placeholder="東京都..."></td></tr>
         </table>
-        <div style="display:flex;justify-content:flex-end;padding:16px 20px;border-top:1px solid #e2e8f0;">
-          <button type="button" id="btnNext" style="height:38px;padding:0 24px;background:#0f172a;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+        <div style="display:flex;justify-content:flex-end;padding:16px 20px;border-top:1px solid #e2e8f0;align-items:center;gap:12px;">
+          <div id="empStepMsg" style="color:#ef4444;font-weight:500;font-size:13px;display:none;flex:1;"></div>
+          <button type="button" id="btnNext" style="height:38px;padding:0 24px;background:#0f172a;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;transition:background .15s ease, box-shadow .15s ease;" onmouseover="this.style.background='#1e3a5f';this.style.boxShadow='0 2px 8px rgba(15,23,42,.2)'" onmouseout="this.style.background='#0f172a';this.style.boxShadow=''">
             次へ →
           </button>
         </div>
@@ -1433,16 +1434,29 @@ async function renderEmployees(profile, c) {
 
     const goToStep2 = () => {
       // Validate step 1 required fields
+      const code = form.querySelector('#empCode')?.value?.trim();
       const name = form.querySelector('#empName')?.value?.trim();
       const email = form.querySelector('#empEmail')?.value?.trim();
       const pass = form.querySelector('#empPass')?.value;
-      if (!name || !email || !pass) {
-        const msgEl = form.querySelector('#empCreateMsg');
-        if (!msgEl) {
-          alert('氏名・メール・パスワードは必須です。');
+      // Validation: kiểm tra trường bắt buộc
+      const missing = [];
+      if (!code) missing.push('社員番号');
+      if (!name) missing.push('氏名');
+      if (!email) missing.push('メール');
+      if (!pass) missing.push('パスワード');
+      if (missing.length > 0) {
+        const msgEl = form.querySelector('#empStepMsg');
+        if (msgEl) {
+          msgEl.textContent = `${missing.join('、')} は必須です。`;
+          msgEl.style.display = 'block';
+        } else {
+          alert(`${missing.join('、')} は必須です。`);
         }
         return;
       }
+      // Reset message
+      const msgEl2 = form.querySelector('#empStepMsg');
+      if (msgEl2) msgEl2.style.display = 'none';
       step1.style.display = 'none';
       step2.style.display = 'block';
       stepInd1.style.opacity = '0.4';
