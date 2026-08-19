@@ -54,7 +54,24 @@ async function resolveTenant(req, res, next) {
   // Extract tenant_id from JWT payload (field: tid)
   const tidFromJWT = req.user?.tid ? parseInt(String(req.user.tid), 10) : null;
 
-  if (!tidFromJWT) {
+  // Tab-scoped context: ưu tiên X-Tenant-Id header từ frontend (mỗi tab gửi riêng)
+  // Nếu header khớp với tenant trong JWT hoặc user có quyền sysadmin/owner → dùng header
+  const headerTid = req.headers['x-tenant-id'] ? parseInt(String(req.headers['x-tenant-id']), 10) : null;
+  const userRole = String(req.user?.role || '').toLowerCase();
+  const canOverrideTenant = userRole === 'sysadmin' || userRole === 'owner' || userRole === 'admin';
+
+  // Quyết định tenantId cuối cùng:
+  // 1. Nếu header X-Tenant-Id hợp lệ VÀ (khớp JWT hoặc user có quyền override) → dùng header
+  // 2. Nếu không → dùng từ JWT như cũ
+  let effectiveTid = tidFromJWT;
+  if (headerTid && headerTid > 0) {
+    if (headerTid === tidFromJWT || canOverrideTenant) {
+      effectiveTid = headerTid;
+    }
+    // Nếu user không có quyền override và header khác JWT → bỏ qua header, dùng JWT
+  }
+
+  if (!effectiveTid) {
     // User authenticated but has not selected a tenant yet
     // (e.g. they're on the select-company page flow)
     // Allow through with tenantId = null; individual routes that need a tenant
@@ -65,7 +82,7 @@ async function resolveTenant(req, res, next) {
   }
 
   try {
-    const tenant = await getTenantCached(tidFromJWT);
+    const tenant = await getTenantCached(effectiveTid);
     if (!tenant || tenant.status !== 'active') {
       return res.status(403).json({ message: 'Tenant not found or suspended' });
     }
@@ -82,7 +99,7 @@ async function resolveTenant(req, res, next) {
     };
     next();
   } catch (err) {
-    log.warn('tenant_resolve_error', { tenantId: tidFromJWT, error_message: err.message });
+    log.warn('tenant_resolve_error', { tenantId: effectiveTid, error_message: err.message });
     return res.status(500).json({ message: 'Failed to resolve tenant' });
   }
 }

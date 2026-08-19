@@ -111,6 +111,7 @@ export async function logout() {
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('_tabCtx');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.setItem('auth-logout-event', Date.now());

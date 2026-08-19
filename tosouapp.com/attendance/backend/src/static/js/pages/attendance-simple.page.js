@@ -941,8 +941,20 @@ const getCalendarOff = async (date) => {
   const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
   console.log('[getCalendarOff]', date, 'API response:', cal);
   if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
-    return Number(cal?.is_off || 0) === 1;
+    if (Number(cal?.is_off || 0) === 1) return true;
   }
+
+  // Kiểm tra shift request: nếu quản lý đã set OFF cho ngày này → coi là nghỉ
+  try {
+    const month = String(date || '').slice(0, 7);
+    const shiftData = await fetchJSONAuth(`/api/attendance/shifts/monthly/${encodeURIComponent(month)}`).catch(() => null);
+    const schedule = shiftData?.data?.schedule || shiftData?.schedule || {};
+    const dayShift = schedule[date] || null;
+    if (dayShift && (dayShift.status === 'OFF' || dayShift.status === 'LEAVE')) {
+      console.log('[getCalendarOff]', date, 'shift request → OFF/LEAVE');
+      return true;
+    }
+  } catch (e) { /* bỏ qua lỗi shift */ }
 
   // Fallback an toàn khi API calendar tạm thời lỗi.
   const weekend = (() => {
@@ -1091,12 +1103,16 @@ const load = async (date, opts = {}) => {
     }
 
     const daily = daily0?.daily || null;
-    const defaultKubun = isOff ? '休日' : '出勤';
     const kubunSaved = String(daily?.kubun || '').trim();
-    const kubunInit = kubunSaved || defaultKubun;
+    // Nếu kubun đã lưu chứa "休日" → coi như ngày nghỉ (ưu tiên kubun đã lưu hơn lịch công ty)
+    const isOffEffective = isOff || kubunSaved.includes('休日');
+    const defaultKubun = isOffEffective ? '休日' : '出勤';
+    // "休日予定"/"出勤予定" là kubun dạng dự kiến → map sang kubun thực
+    const kubunMapped = kubunSaved === '休日予定' ? '休日' : (kubunSaved === '出勤予定' ? '出勤' : kubunSaved);
+    const kubunInit = kubunMapped || defaultKubun;
     
     // Cập nhật state trước khi gọi applyHolidayRestMode
-    state.isOff = !!isOff;
+    state.isOff = !!isOffEffective;
     
     const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
 

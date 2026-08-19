@@ -489,6 +489,11 @@ async function impersonateTenant(tenantId, tenantName) {
       sessionStorage.setItem('user', merged);
       localStorage.setItem('user', merged);
     } catch (e) { /* silently ignored */ }
+    // Tab-scoped context: lưu tenantId riêng cho tab này (impersonate)
+    try {
+      const { setTabContext } = await import('/static/js/api/tab-context.js');
+      setTabContext({ tenantId: data.tenantId, tenantName: data.tenantName, role: 'admin', userId: null });
+    } catch (e) { /* bỏ qua */ }
 
     // Small delay to ensure storage is written before navigation
     await new Promise(r => setTimeout(r, 80));

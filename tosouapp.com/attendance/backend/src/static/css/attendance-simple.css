@@ -904,7 +904,7 @@ body {
 .simple-bottom .simple-btn {
   flex: 0 1 auto;
   min-width: 140px;
-  padding: 12px 24px;
+  padding: 10px 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -912,6 +912,8 @@ body {
   box-sizing: border-box;
   height: 44px;
   border-radius: 6px;
+  font-weight: 900;
+  font-size: 16px;
   transition: all 0.2s ease;
 }
 .simple-bottom .simple-btn.primary:hover {
