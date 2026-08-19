@@ -308,9 +308,31 @@ async function init() {
       await runMigrations();
       await ensureModuleTables();
       await ensureSuperAdmin();
+      await autoAssignEmployeeCodes();
     })();
   }
   return initPromise;
+}
+
+async function autoAssignEmployeeCodes() {
+  try {
+    const [users] = await db.query(
+      "SELECT id FROM users WHERE (employee_code IS NULL OR employee_code = '') ORDER BY id ASC"
+    );
+    if (!users || users.length === 0) return;
+    const [maxRows] = await db.query(
+      "SELECT employee_code FROM users WHERE employee_code REGEXP '^EMP[0-9]+$' ORDER BY CAST(SUBSTRING(employee_code, 4) AS UNSIGNED) DESC LIMIT 1"
+    );
+    let nextNum = 1;
+    if (maxRows && maxRows.length > 0) {
+      nextNum = parseInt(maxRows[0].employee_code.replace('EMP', ''), 10) + 1;
+    }
+    for (const u of users) {
+      const code = 'EMP' + String(nextNum).padStart(3, '0');
+      await db.query('UPDATE users SET employee_code = ? WHERE id = ? AND (employee_code IS NULL OR employee_code = ?)', [code, u.id, '']);
+      nextNum++;
+    }
+  } catch (e) { /* silently ignored — non-critical */ }
 }
 
 module.exports = { init };
