@@ -202,7 +202,7 @@ module.exports = {
     const r = String(role || '').toLowerCase();
     const lim = Math.min(200, Math.max(1, parseInt(String(limit || 50), 10) || 50));
     const tid = tenantId ? parseInt(String(tenantId), 10) : null;
-    const tenantClause = tid ? `AND (n.tenant_id = ${tid} OR n.tenant_id IS NULL)` : '';
+    const tenantClause = tid ? `AND (n.tenant_id = ${tid} OR n.target_user_id = ${uid})` : '';
     const audienceSql = r === 'admin'
       ? `(n.audience IS NULL OR n.audience = '' OR n.audience IN ('all','admin','admin_manager'))`
       : `(n.audience IS NULL OR n.audience = '' OR n.audience IN ('all','manager','admin_manager'))`;
@@ -282,7 +282,7 @@ module.exports = {
     }
     if (!items.length) {
       // Compatibility path: return legacy notice history even when audience metadata is missing/broken.
-      const legacyTenantClause = tid ? `AND (n.tenant_id = ${tid} OR n.tenant_id IS NULL)` : '';
+      const legacyTenantClause = tid ? `AND (n.tenant_id = ${tid})` : '';
       const [legacyRows] = await db.query(
         `
         SELECT
@@ -466,8 +466,8 @@ module.exports = {
     const lim = Math.min(50, Math.max(1, parseInt(String(limit || 10), 10) || 10));
     const uid = parseInt(String(userId || 0), 10) || 0;
     const tid = tenantId ? parseInt(String(tenantId), 10) : null;
-    const tenantClause = tid ? 'AND (n.tenant_id = ? OR n.tenant_id IS NULL)' : '';
-    const tenantParams = tid ? [tid] : [];
+    const tenantClause = tid ? 'AND (n.tenant_id = ? OR n.target_user_id = ?)' : '';
+    const tenantParams = tid ? [tid, uid] : [];
     const [rows] = await db.query(
       `
         SELECT n.id, n.target_user_id, n.target_date, n.target_month, n.message, n.created_by, n.created_at, n.link_url,
@@ -501,8 +501,8 @@ module.exports = {
     const lim = Math.min(200, Math.max(1, parseInt(String(limit || 30), 10) || 30));
     const uid = parseInt(String(userId || 0), 10) || 0;
     const tid = tenantId ? parseInt(String(tenantId), 10) : null;
-    const tenantClause = tid ? 'AND (n.tenant_id = ? OR n.tenant_id IS NULL)' : '';
-    const tenantParams = tid ? [tid] : [];
+    const tenantClause = tid ? 'AND (n.tenant_id = ? OR n.target_user_id = ?)' : '';
+    const tenantParams = tid ? [tid, uid] : [];
     const [rows] = await db.query(
       `
         SELECT n.id, n.target_user_id, n.target_date, n.target_month, n.message, n.created_by, n.created_at,
