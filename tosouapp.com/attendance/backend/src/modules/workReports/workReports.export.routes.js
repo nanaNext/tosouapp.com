@@ -656,7 +656,6 @@ router.get('/export.xlsx',
 
         const lastDayColLetter = getColName(5 + dates.length);
         const rowIdx = (isPartTime ? s1Rows_part.length : s1Rows_full.length) + 2;
-        s1Cells_type.push({ v: '', s: 'empty' }); // Spacer column
         s1Cells_type.push({ v: `COUNTIF(F${rowIdx}:${lastDayColLetter}${rowIdx}, "出勤")`, f: true, s: 'cell' });
         
         const sheetName = isPartTime ? `アルバイト詳細_${qMonth}` : `正社員詳細_${qMonth}`;
