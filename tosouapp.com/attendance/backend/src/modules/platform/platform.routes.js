@@ -294,6 +294,26 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// ── GET /api/platform/audit-logs ───────────────────────────────────────────────
+// 監査ログ: sysadminが全テナントのログを閲覧
+router.get('/audit-logs', async (req, res) => {
+  try {
+    const { userId, action, from, to, page, pageSize } = req.query || {};
+    const result = await auditRepo.listLogs({
+      userId: userId ? parseInt(userId, 10) : null,
+      action: action || null,
+      from: from || null,
+      to: to || null,
+      page: page || 1,
+      pageSize: pageSize || 50,
+      tenantId: null, // sysadmin sees all tenants
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ── GET /api/platform/today-checkins ──────────────────────────────────────────
 // 本日の打刻一覧: 今日チェックインした全ユーザーの名前・時刻を返す
 router.get('/today-checkins', async (req, res) => {
