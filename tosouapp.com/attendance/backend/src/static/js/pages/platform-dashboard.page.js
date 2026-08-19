@@ -481,6 +481,7 @@ async function impersonateTenant(tenantId, tenantName) {
       tenantLogo: data.tenantLogo,
       tenantLogoName: data.tenantLogoName,
       _impersonate: true,
+      _sysadmin: true,
       _platformReturn: '/platform/dashboard',
     };
     try {
@@ -608,7 +609,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!token) { window.location.href = '/ui/login'; return; }
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-    if (user.role !== 'sysadmin') { window.location.href = '/ui/login'; return; }
+    if (user.role !== 'sysadmin' && !user._sysadmin) { window.location.href = '/ui/login'; return; }
     const nameEl = $('#pd-user-name');
     if (nameEl) nameEl.textContent = user.username || user.email || 'Sysadmin';
   } catch (e) { /* silently ignored */ }

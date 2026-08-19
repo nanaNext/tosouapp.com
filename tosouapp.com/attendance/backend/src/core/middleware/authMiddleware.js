@@ -140,6 +140,7 @@ async function authenticateToken(token) {
     departmentId: user.departmentId || null,
     branchId: user.branchId || user.branch_id || null,
     tid: decoded?.tid ? parseInt(String(decoded.tid), 10) : null,
+    _impersonate: !!decoded?._impersonate,
   };
 }
 
@@ -202,8 +203,8 @@ function authorize(...allowedRoles) {
         const role = normalizeRole(req.user?.role);
         const level = roleLevel(role);
         // sysadmin (level 100) and owner (level 80) pass everything
-        // For other roles: must be explicitly in the allowed set
-        const ok = level >= 80 || (role && allowed.has(role));
+        // _impersonate flag means sysadmin acting as admin in a tenant → still has sysadmin access
+        const ok = level >= 80 || req.user?._impersonate || (role && allowed.has(role));
         if (!ok) {
             return res.status(403).json({ message: 'Forbidden: Access denied' });
         }

@@ -45,12 +45,9 @@
 
     applyBrandColor(color);
 
-    // Impersonate back-link — chỉ hiện khi sysadmin đang impersonate vào tenant
-    // Không hiện nếu: đang ở trang platform, hoặc đang ở admin dashboard chính (không impersonate)
-    var isAdminDashboard = window.location.pathname.startsWith('/admin');
+    // Impersonate back-link — hiện khi đang impersonate (sysadmin vào tenant)
     var isPlatformPage = window.location.pathname.startsWith('/platform');
-    var isSysadmin = u && (u.role === 'sysadmin' || u.role === 'superadmin' || u._sysadmin);
-    if (u && u._impersonate && !isPlatformPage && !(isSysadmin && isAdminDashboard && !u._impersonatedTenantId)) {
+    if (u && u._impersonate && !isPlatformPage) {
       var bar = document.createElement('a');
       bar.href = '/platform/dashboard';
       bar.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:3px 10px;background:#fef9c3;color:#92400e;border-radius:99px;font-size:11px;font-weight:700;text-decoration:none;border:1px solid #fde68a;';
