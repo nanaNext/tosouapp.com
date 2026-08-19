@@ -20,7 +20,7 @@ const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slic
 const roleScopeSql = (req, alias = 'u') => {
   const role = String(req.user?.role || '').toLowerCase();
   if (role === 'manager') return ` AND ${alias}.role = 'employee'`;
-  return '';
+  return ` AND ${alias}.role NOT IN ('admin','manager','sysadmin','owner')`;
 };
 
 const weekdayJa = (dateStr) => {
