@@ -14,7 +14,8 @@ export async function getEmployee(id) {
 
 export async function createEmployee(body) {
   const options = arguments.length >= 2 ? arguments[1] : undefined;
-  return fetchJSONAuth(`${BASE}`, { ...(options || {}), method: 'POST', body: JSON.stringify(body) });
+  const headers = options?.headers || {};
+  return fetchJSONAuth(`${BASE}`, { ...(options || {}), method: 'POST', body: JSON.stringify(body), headers });
 }
 
 export async function updateEmployee(id, body) {

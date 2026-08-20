@@ -1,6 +1,19 @@
 const db = require('../../core/database/mysql');
+
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 module.exports = {
-  async list() {
+  async list(tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [rows] = await db.query(
+        `SELECT id, code, name_ja AS nameJa, is_distance_based AS isDistanceBased FROM expense_types WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY id ASC`,
+        [tid]
+      );
+      return rows || [];
+    }
     const [rows] = await db.query(`SELECT id, code, name_ja AS nameJa, is_distance_based AS isDistanceBased FROM expense_types ORDER BY id ASC`);
     return rows || [];
   }

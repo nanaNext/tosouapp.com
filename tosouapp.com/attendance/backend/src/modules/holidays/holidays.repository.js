@@ -5,6 +5,10 @@ const db = require('../../core/database/mysql');
  * Tách biệt với company_holidays (lịch nghỉ chung toàn công ty).
  */
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 let _tableEnsured = false;
 
 async function ensureTable() {
@@ -34,8 +38,20 @@ module.exports = {
   /**
    * Lấy danh sách ngày nghỉ theo bộ phận và năm
    */
-  async listByDepartmentAndYear(departmentId, year) {
+  async listByDepartmentAndYear(departmentId, year, tenantId = null) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      const [rows] = await db.query(
+        `SELECT dh.id, dh.department_id, dh.date, dh.name, dh.type, dh.is_off, dh.created_at, dh.updated_at
+         FROM department_holidays dh
+         INNER JOIN departments d ON d.id = dh.department_id AND d.tenant_id = ?
+         WHERE dh.department_id = ? AND YEAR(dh.date) = ?
+         ORDER BY dh.date ASC`,
+        [tid, departmentId, year]
+      );
+      return rows;
+    }
     const [rows] = await db.query(
       `SELECT id, department_id, date, name, type, is_off, created_at, updated_at
        FROM department_holidays
@@ -49,9 +65,21 @@ module.exports = {
   /**
    * Lấy danh sách ngày nghỉ theo bộ phận, năm và tháng
    */
-  async listByDepartmentAndMonth(departmentId, yearMonth) {
+  async listByDepartmentAndMonth(departmentId, yearMonth, tenantId = null) {
     await ensureTable();
     const [y, m] = String(yearMonth).split('-').map(Number);
+    const tid = _tid(tenantId);
+    if (tid) {
+      const [rows] = await db.query(
+        `SELECT dh.id, dh.department_id, dh.date, dh.name, dh.type, dh.is_off, dh.created_at, dh.updated_at
+         FROM department_holidays dh
+         INNER JOIN departments d ON d.id = dh.department_id AND d.tenant_id = ?
+         WHERE dh.department_id = ? AND YEAR(dh.date) = ? AND MONTH(dh.date) = ?
+         ORDER BY dh.date ASC`,
+        [tid, departmentId, y, m]
+      );
+      return rows;
+    }
     const [rows] = await db.query(
       `SELECT id, department_id, date, name, type, is_off, created_at, updated_at
        FROM department_holidays
@@ -65,8 +93,21 @@ module.exports = {
   /**
    * Lấy tất cả ngày nghỉ của tất cả bộ phận trong 1 năm
    */
-  async listAllByYear(year) {
+  async listAllByYear(year, tenantId = null) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      const [rows] = await db.query(
+        `SELECT dh.id, dh.department_id, dh.date, dh.name, dh.type, dh.is_off,
+                dh.created_at, dh.updated_at, d.name AS department_name
+         FROM department_holidays dh
+         INNER JOIN departments d ON d.id = dh.department_id AND d.tenant_id = ?
+         WHERE YEAR(dh.date) = ?
+         ORDER BY dh.department_id ASC, dh.date ASC`,
+        [tid, year]
+      );
+      return rows;
+    }
     const [rows] = await db.query(
       `SELECT dh.id, dh.department_id, dh.date, dh.name, dh.type, dh.is_off,
               dh.created_at, dh.updated_at, d.name AS department_name
@@ -82,8 +123,19 @@ module.exports = {
   /**
    * Lấy 1 bản ghi theo ID
    */
-  async getById(id) {
+  async getById(id, tenantId = null) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      const [rows] = await db.query(
+        `SELECT dh.id, dh.department_id, dh.date, dh.name, dh.type, dh.is_off, dh.created_at, dh.updated_at
+         FROM department_holidays dh
+         INNER JOIN departments d ON d.id = dh.department_id AND d.tenant_id = ?
+         WHERE dh.id = ? LIMIT 1`,
+        [tid, id]
+      );
+      return rows[0] || null;
+    }
     const [rows] = await db.query(
       `SELECT id, department_id, date, name, type, is_off, created_at, updated_at
        FROM department_holidays WHERE id = ? LIMIT 1`,
@@ -95,8 +147,19 @@ module.exports = {
   /**
    * Thêm mới ngày nghỉ cho bộ phận
    */
-  async create({ departmentId, date, name, type, isOff }) {
+  async create({ departmentId, date, name, type, isOff, tenantId = null }) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      // Verify department belongs to tenant
+      const [deptRows] = await db.query(
+        `SELECT id FROM departments WHERE id = ? AND tenant_id = ? LIMIT 1`,
+        [departmentId, tid]
+      );
+      if (!deptRows || !deptRows.length) {
+        throw Object.assign(new Error('Department not found or access denied'), { status: 403 });
+      }
+    }
     const [result] = await db.query(
       `INSERT INTO department_holidays (department_id, date, name, type, is_off)
        VALUES (?, ?, ?, ?, ?)
@@ -109,8 +172,19 @@ module.exports = {
   /**
    * Thêm nhiều ngày nghỉ cùng lúc (bulk)
    */
-  async createMany(departmentId, items) {
+  async createMany(departmentId, items, tenantId = null) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      // Verify department belongs to tenant
+      const [deptRows] = await db.query(
+        `SELECT id FROM departments WHERE id = ? AND tenant_id = ? LIMIT 1`,
+        [departmentId, tid]
+      );
+      if (!deptRows || !deptRows.length) {
+        throw Object.assign(new Error('Department not found or access denied'), { status: 403 });
+      }
+    }
     const results = [];
     for (const item of (items || [])) {
       const date = String(item.date || '').slice(0, 10);
@@ -129,8 +203,21 @@ module.exports = {
   /**
    * Cập nhật ngày nghỉ
    */
-  async update(id, { date, name, type, isOff }) {
+  async update(id, { date, name, type, isOff, tenantId = null }) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      // Verify the holiday record belongs to a department of this tenant
+      const [check] = await db.query(
+        `SELECT dh.id FROM department_holidays dh
+         INNER JOIN departments d ON d.id = dh.department_id AND d.tenant_id = ?
+         WHERE dh.id = ? LIMIT 1`,
+        [tid, id]
+      );
+      if (!check || !check.length) {
+        throw Object.assign(new Error('Holiday not found or access denied'), { status: 403 });
+      }
+    }
     const fields = [];
     const params = [];
     if (date !== undefined) { fields.push('date = ?'); params.push(String(date).slice(0, 10)); }
@@ -149,8 +236,19 @@ module.exports = {
   /**
    * Xóa ngày nghỉ theo ID
    */
-  async deleteById(id) {
+  async deleteById(id, tenantId = null) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      // Only delete if the holiday belongs to a department of this tenant
+      const [result] = await db.query(
+        `DELETE dh FROM department_holidays dh
+         INNER JOIN departments d ON d.id = dh.department_id AND d.tenant_id = ?
+         WHERE dh.id = ?`,
+        [tid, id]
+      );
+      return { affected: result.affectedRows };
+    }
     const [result] = await db.query(
       `DELETE FROM department_holidays WHERE id = ?`,
       [id]
@@ -161,8 +259,18 @@ module.exports = {
   /**
    * Xóa tất cả ngày nghỉ của bộ phận trong 1 năm
    */
-  async deleteByDepartmentAndYear(departmentId, year) {
+  async deleteByDepartmentAndYear(departmentId, year, tenantId = null) {
     await ensureTable();
+    const tid = _tid(tenantId);
+    if (tid) {
+      const [result] = await db.query(
+        `DELETE dh FROM department_holidays dh
+         INNER JOIN departments d ON d.id = dh.department_id AND d.tenant_id = ?
+         WHERE dh.department_id = ? AND YEAR(dh.date) = ?`,
+        [tid, departmentId, year]
+      );
+      return { affected: result.affectedRows };
+    }
     const [result] = await db.query(
       `DELETE FROM department_holidays WHERE department_id = ? AND YEAR(date) = ?`,
       [departmentId, year]
@@ -173,15 +281,30 @@ module.exports = {
   /**
    * Copy ngày nghỉ từ bộ phận này sang bộ phận khác
    */
-  async copyFromDepartment(sourceDeptId, targetDeptId, year) {
+  async copyFromDepartment(sourceDeptId, targetDeptId, year, tenantId = null) {
     await ensureTable();
-    const sourceRows = await this.listByDepartmentAndYear(sourceDeptId, year);
+    const tid = _tid(tenantId);
+    if (tid) {
+      // Verify both source and target departments belong to tenant
+      const [srcRows] = await db.query(
+        `SELECT id FROM departments WHERE id = ? AND tenant_id = ? LIMIT 1`,
+        [sourceDeptId, tid]
+      );
+      const [tgtRows] = await db.query(
+        `SELECT id FROM departments WHERE id = ? AND tenant_id = ? LIMIT 1`,
+        [targetDeptId, tid]
+      );
+      if (!srcRows || !srcRows.length || !tgtRows || !tgtRows.length) {
+        throw Object.assign(new Error('Department not found or access denied'), { status: 403 });
+      }
+    }
+    const sourceRows = await this.listByDepartmentAndYear(sourceDeptId, year, tenantId);
     const items = sourceRows.map(r => ({
       date: r.date,
       name: r.name,
       type: r.type,
       is_off: r.is_off
     }));
-    return this.createMany(targetDeptId, items);
+    return this.createMany(targetDeptId, items, tenantId);
   }
 };

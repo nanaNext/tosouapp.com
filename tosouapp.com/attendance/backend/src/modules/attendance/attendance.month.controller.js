@@ -15,7 +15,7 @@ const {
 
 // ─── Local helpers ────────────────────────────────────────────────────────────
 
-async function computeMonthMissing(userId, y, m) {
+async function computeMonthMissing(userId, y, m, tenantId = null) {
   const pad = (n) => String(n).padStart(2, '0');
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const from = `${y}-${pad(m)}-01`;
@@ -25,9 +25,9 @@ async function computeMonthMissing(userId, y, m) {
   const isPartTime = user?.employment_type === 'part_time';
 
   const off = await getUserOffDaySet(y, userId);
-  const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
+  const dailyRows = await repo.listDailyBetween(userId, from, to, { tenantId }).catch(() => []);
   const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
-  const segRows = await repo.listByUserBetween(userId, from, to).catch(() => []);
+  const segRows = await repo.listByUserBetween(userId, from, to, { tenantId }).catch(() => []);
   const segByDate = new Map();
   for (const r of segRows || []) {
     const ds = String(r?.checkIn || r?.checkOut || '').slice(0, 10);
@@ -71,7 +71,7 @@ exports.getMonthStatus = async (req, res) => {
     const { year, month } = req.query || {};
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
-    const r = await repo.getMonthStatus(userId, year, month);
+    const r = await repo.getMonthStatus(userId, year, month, { tenantId: req.tenantId || null });
     const status = String(r?.status || '').trim() || 'draft';
     res.status(200).json({
       userId,
@@ -99,7 +99,7 @@ exports.getMonthStatusBulk = async (req, res) => {
     if (!userIds || !year || !month) return res.status(400).json({ message: 'Missing userIds/year/month' });
     const ids = String(userIds).split(',').map(s => parseInt(s, 10)).filter(Boolean);
     if (!ids.length) return res.status(200).json([]);
-    const rows = await repo.getMonthStatusBulk(ids, year, month);
+    const rows = await repo.getMonthStatusBulk(ids, year, month, { tenantId: req.tenantId || null });
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
     const pad = (n) => String(n).padStart(2, '0');
@@ -110,9 +110,9 @@ exports.getMonthStatusBulk = async (req, res) => {
     const enrich = async (uid) => {
       try {
         const off = await getUserOffDaySet(y, uid);
-        const dailyRows = await repo.listDailyBetween(uid, from, to).catch(() => []);
+        const dailyRows = await repo.listDailyBetween(uid, from, to, { tenantId: req.tenantId || null }).catch(() => []);
         const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
-        const segRows = await repo.listByUserBetween(uid, from, to).catch(() => []);
+        const segRows = await repo.listByUserBetween(uid, from, to, { tenantId: req.tenantId || null }).catch(() => []);
         const segByDate = new Map();
         for (const r of segRows || []) {
           const ds = String(r?.checkIn || r?.checkOut || '').slice(0, 10);
@@ -178,11 +178,11 @@ exports.submitMonth = async (req, res) => {
     if (status === 'approved') return res.status(409).json({ message: 'Locked: month is closed' });
 
     try {
-      const missing = await computeMonthMissing(userId, y, m);
+      const missing = await computeMonthMissing(userId, y, m, req.tenantId || null);
       if (missing.length) return res.status(400).json({ message: `入力が未完了です`, missing });
     } catch (e) { /* silently ignored */ }
 
-    await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
+    await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null });
 
     try {
       const u = await userRepo.getUserById(userId).catch(() => null);
@@ -214,7 +214,7 @@ exports.getMonthMissing = async (req, res) => {
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
     if (!uid || !y || !m) return res.status(400).json({ message: 'Missing userId/year/month' });
-    const missing = await computeMonthMissing(uid, y, m);
+    const missing = await computeMonthMissing(uid, y, m, req.tenantId || null);
     res.status(200).json({ userId: uid, year: y, month: m, missing });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -245,24 +245,24 @@ exports.approveReadyMonth = async (req, res) => {
 
     const y = parseInt(ym.slice(0, 4), 10);
     const m = parseInt(ym.slice(5, 7), 10);
-    const rows = await repo.getActiveUserIds(effectiveDeptId);
+    const rows = await repo.getActiveUserIds(effectiveDeptId, { tenantId: req.tenantId || null });
     let approved = 0, submitted = 0, skipped = 0;
     const results = [];
     for (const r of (rows || [])) {
       const uid = Number(r.userId);
-      const st = await repo.getMonthStatus(uid, y, m).catch(() => null);
+      const st = await repo.getMonthStatus(uid, y, m, { tenantId: req.tenantId || null }).catch(() => null);
       const status = String(st?.status || '').trim() || 'draft';
-      const missing = await computeMonthMissing(uid, y, m).catch(() => ['error']);
+      const missing = await computeMonthMissing(uid, y, m, req.tenantId || null).catch(() => ['error']);
       if (missing && missing.length) {
         results.push({ userId: uid, status, ok: false, reason: 'missing_days', missing });
         skipped++;
         continue;
       }
       if (status !== 'submitted') {
-        await repo.setMonthStatus(uid, y, m, 'submitted', req.user?.id).catch(() => {});
+        await repo.setMonthStatus(uid, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null }).catch(() => {});
         submitted++;
       }
-      await repo.setMonthStatus(uid, y, m, 'approved', req.user?.id).catch(() => {});
+      await repo.setMonthStatus(uid, y, m, 'approved', req.user?.id, { tenantId: req.tenantId || null }).catch(() => {});
       approved++;
       results.push({ userId: uid, status: 'approved', ok: true });
     }
@@ -284,13 +284,13 @@ exports.approveMonth = async (req, res) => {
     const m = parseInt(String(month), 10);
     const status = await getMonthStatusValue(userId, y, m);
     if (status !== 'submitted') {
-      await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
+      await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null });
     }
     try {
-      const missing = await computeMonthMissing(userId, y, m);
+      const missing = await computeMonthMissing(userId, y, m, req.tenantId || null);
       if (missing.length) return res.status(400).json({ message: `未承認: 勤務未入力の日があります`, missing });
     } catch (e) { /* silently ignored */ }
-    await repo.setMonthStatus(userId, y, m, 'approved', req.user?.id);
+    await repo.setMonthStatus(userId, y, m, 'approved', req.user?.id, { tenantId: req.tenantId || null });
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'approved' });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -308,7 +308,7 @@ exports.unlockMonth = async (req, res) => {
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
-    await repo.setMonthStatus(userId, y, m, 'unlocked', req.user?.id);
+    await repo.setMonthStatus(userId, y, m, 'unlocked', req.user?.id, { tenantId: req.tenantId || null });
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'unlocked' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -322,7 +322,7 @@ exports.getMonthSummary = async (req, res) => {
     const y = parseInt(String(req.query?.year || ''), 10);
     const m = parseInt(String(req.query?.month || ''), 10);
     if (!userId || !y || !m) return res.status(400).json({ message: 'Missing userId/year/month' });
-    const row = await repo.getMonthSummary(userId, y, m);
+    const row = await repo.getMonthSummary(userId, y, m, { tenantId: req.tenantId || null });
     const safeParse = (s) => { try { return s ? JSON.parse(String(s)) : null; } catch { return null; } };
     res.status(200).json({
       userId, year: y, month: m,
@@ -356,7 +356,7 @@ exports.putMonthSummary = async (req, res) => {
     } catch {
       return res.status(400).json({ message: 'Invalid summary payload' });
     }
-    const r = await repo.upsertMonthSummary(userId, y, m, all, inhouse, req.user?.id || null);
+    const r = await repo.upsertMonthSummary(userId, y, m, all, inhouse, req.user?.id || null, { tenantId: req.tenantId || null });
     res.status(200).json({ ok: true, ...r });
   } catch (err) {
     res.status(500).json({ message: err.message });

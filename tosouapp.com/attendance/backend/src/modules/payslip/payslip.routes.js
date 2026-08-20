@@ -31,8 +31,8 @@ function shouldRestrictManagerPayrollScope() {
 async function ensureManagerPayrollScope(req, targetUserId) {
   if (req.user.role !== 'manager') return true;
   if (!shouldRestrictManagerPayrollScope()) return true;
-  const me = await userRepo.getUserById(req.user.id);
-  const target = await userRepo.getUserById(targetUserId);
+  const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
   if (!me?.departmentId || !target?.departmentId) return false;
   return String(me.departmentId) === String(target.departmentId);
 }
@@ -205,8 +205,8 @@ router.get('/my/:id', authenticate, authorize('employee','manager','admin'), asy
     const row = await repo.getById(id);
     if (!row) return res.status(404).json({ message: 'Not found' });
     if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const targetUser = await userRepo.getUserById(row.userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const targetUser = await userRepo.getUserById(row.userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(targetUser?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden: cross-department access' });
       }
@@ -232,8 +232,8 @@ router.get('/my/:id/download', authenticate, authorize('employee','manager','adm
     const row = await repo.getById(id);
     if (!row) return res.status(404).json({ message: 'Not found' });
     if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const targetUser = await userRepo.getUserById(row.userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const targetUser = await userRepo.getUserById(row.userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(targetUser?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden: cross-department access' });
       }

@@ -109,13 +109,13 @@ function computeLabelsForCheckOut(open, tsJST, loc) {
  * @param {string} [workType] - 'onsite' | 'remote' | 'satellite'
  * @returns {Promise<CheckInResult|null>} null if already checked in (duplicate)
  */
-async function checkIn(userId, time, loc, workType) {
+async function checkIn(userId, time, loc, workType, tenantId = null) {
   const flags = await settingsService.getFlags();
   const ts = time ? formatInputToMySQLJST(time) : nowJSTMySQL();
   const labels = computeLabelsForCheckIn(flags, loc);
   const wt = String(workType || '').trim();
   const resolvedWorkType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
-  const id = await repo.createCheckInTx(userId, ts, loc, labels.join(','), resolvedWorkType);
+  const id = await repo.createCheckInTx(userId, ts, loc, labels.join(','), resolvedWorkType, { tenantId });
   if (!id) {
     return null;
   }
@@ -129,17 +129,17 @@ async function checkIn(userId, time, loc, workType) {
  * @param {GeoLocation} loc - Geolocation data
  * @returns {Promise<CheckOutResult>}
  */
-async function checkOut(userId, time, loc) {
-  const open = await repo.getOpenAttendanceForUser(userId);
+async function checkOut(userId, time, loc, tenantId = null) {
+  const open = await repo.getOpenAttendanceForUser(userId, { tenantId });
   const ts = time ? formatInputToMySQLJST(time) : nowJSTMySQL();
   if (!open) {
     const labels = [];
     if (loc?.accuracy != null && Number(loc.accuracy) > 100) labels.push('low_accuracy');
-    const id = await repo.createMissingCheckIn(userId, ts, loc, labels.join(','), 'missing_checkin');
+    const id = await repo.createMissingCheckIn(userId, ts, loc, labels.join(','), 'missing_checkin', { tenantId });
     return { id, userId, checkIn: null, checkOut: ts, labels, anomaly_type: 'missing_checkin' };
   }
   const labels = computeLabelsForCheckOut(open, ts, loc);
-  await repo.setCheckOut(open.id, ts, loc, labels.join(','));
+  await repo.setCheckOut(open.id, ts, loc, labels.join(','), { tenantId });
   return { id: open.id, userId, checkIn: open.checkIn, checkOut: ts, labels };
 }
 
@@ -150,8 +150,8 @@ async function checkOut(userId, time, loc) {
  * @param {string} toDate - YYYY-MM-DD
  * @returns {Promise<TimesheetResult>}
  */
-async function timesheet(userId, fromDate, toDate) {
-  const rows = await repo.listByUserBetween(userId, fromDate, toDate);
+async function timesheet(userId, fromDate, toDate, tenantId = null) {
+  const rows = await repo.listByUserBetween(userId, fromDate, toDate, { tenantId });
   const res = await rules.computeRange(rows);
   return res;
 }

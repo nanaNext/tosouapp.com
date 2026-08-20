@@ -660,6 +660,76 @@ function closeAssignModal() {
   if (search) search.style.display = '';
 }
 
+// ── Create User modal ─────────────────────────────────────────────────────────
+
+function openCreateUserModal() {
+  const modal = $('#pd-create-user-modal');
+  if (!modal) return;
+
+  // Reset form
+  $('#pd-cu-username').value = '';
+  $('#pd-cu-email').value = '';
+  $('#pd-cu-password').value = '';
+  $('#pd-cu-role').value = 'employee';
+  $('#pd-cu-phone').value = '';
+  $('#pd-cu-error').style.display = 'none';
+
+  // Populate tenant dropdown
+  const tenantSel = $('#pd-cu-tenant-select');
+  tenantSel.innerHTML = '<option value="">選択してください</option>' +
+    tenantsCache.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+  modal.removeAttribute('hidden');
+  setTimeout(() => $('#pd-cu-username')?.focus(), 80);
+}
+
+function closeCreateUserModal() {
+  const modal = $('#pd-create-user-modal');
+  if (modal) modal.setAttribute('hidden', '');
+}
+
+async function handleCreateUserSubmit(e) {
+  e.preventDefault();
+  const errEl = $('#pd-cu-error');
+  if (errEl) errEl.style.display = 'none';
+
+  const tenantId = parseInt($('#pd-cu-tenant-select').value || '0', 10);
+  const username = ($('#pd-cu-username').value || '').trim();
+  const email = ($('#pd-cu-email').value || '').trim();
+  const password = ($('#pd-cu-password').value || '').trim();
+  const role = $('#pd-cu-role').value;
+  const phone = ($('#pd-cu-phone').value || '').trim();
+
+  if (!tenantId) {
+    if (errEl) { errEl.textContent = 'テナントを選択してください'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (!username || !email || !password) {
+    if (errEl) { errEl.textContent = '氏名・メール・パスワードは必須です'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  const submitBtn = $('#pd-cu-submit');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '作成中...'; }
+
+  try {
+    const result = await apiFetch(`/api/platform/tenants/${tenantId}/create-user`, {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password, role, phone }),
+    });
+    closeCreateUserModal();
+    await loadAllUsers();
+    await loadStats();
+    // Show success notification
+    showError('');
+    alert(`ユーザーを作成しました: ${result.username} (${result.email}) → ${result.tenantName}`);
+  } catch (err) {
+    if (errEl) { errEl.textContent = err.message || '作成に失敗しました'; errEl.style.display = 'block'; }
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '作成'; }
+  }
+}
+
 async function handleAssignSubmit(e) {
   e.preventDefault();
   const errEl = $('#pd-assign-error');
@@ -775,6 +845,15 @@ function openEditModal(tenantId) {
   $('#pd-f-logo-url').value = t.logo_url || '';
   $('#pd-f-plan').value = t.plan || 'basic';
   $('#pd-f-status').value = t.status || 'active';
+  // Contact fields
+  $('#pd-f-contact-sys-dept').value = t.contact_system_dept || '';
+  $('#pd-f-contact-sys-email').value = t.contact_system_email || '';
+  $('#pd-f-contact-sys-tel').value = t.contact_system_tel || '';
+  $('#pd-f-contact-sys-hours').value = t.contact_system_hours || '';
+  $('#pd-f-contact-gen-dept').value = t.contact_general_dept || '';
+  $('#pd-f-contact-gen-email').value = t.contact_general_email || '';
+  $('#pd-f-contact-gen-tel').value = t.contact_general_tel || '';
+  $('#pd-f-contact-gen-hours').value = t.contact_general_hours || '';
   const ferr = $('#pd-form-error');
   if (ferr) ferr.style.display = 'none';
   modal.removeAttribute('hidden');
@@ -799,6 +878,14 @@ async function handleTenantFormSubmit(e) {
     logo_url: $('#pd-f-logo-url').value.trim(),
     plan: $('#pd-f-plan').value,
     status: $('#pd-f-status').value,
+    contact_system_dept: $('#pd-f-contact-sys-dept').value.trim(),
+    contact_system_email: $('#pd-f-contact-sys-email').value.trim(),
+    contact_system_tel: $('#pd-f-contact-sys-tel').value.trim(),
+    contact_system_hours: $('#pd-f-contact-sys-hours').value.trim(),
+    contact_general_dept: $('#pd-f-contact-gen-dept').value.trim(),
+    contact_general_email: $('#pd-f-contact-gen-email').value.trim(),
+    contact_general_tel: $('#pd-f-contact-gen-tel').value.trim(),
+    contact_general_hours: $('#pd-f-contact-gen-hours').value.trim(),
   };
 
   if (!body.name || !body.slug) {
@@ -872,6 +959,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#pd-assign-form')?.addEventListener('submit', handleAssignSubmit);
   $('#pd-assign-modal')?.addEventListener('click', (e) => {
     if (e.target === $('#pd-assign-modal')) closeAssignModal();
+  });
+
+  // Wire create-user modal
+  $('#pd-create-user-btn')?.addEventListener('click', openCreateUserModal);
+  $('#pd-cu-cancel')?.addEventListener('click', closeCreateUserModal);
+  $('#pd-create-user-form')?.addEventListener('submit', handleCreateUserSubmit);
+  $('#pd-create-user-modal')?.addEventListener('click', (e) => {
+    if (e.target === $('#pd-create-user-modal')) closeCreateUserModal();
   });
 
   // Wire user search in assign modal

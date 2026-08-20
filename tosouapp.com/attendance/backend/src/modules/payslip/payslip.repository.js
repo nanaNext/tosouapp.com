@@ -1,4 +1,9 @@
 const db = require('../../core/database/mysql');
+
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 // cái này là để tạo bảng payslip files nếu chưa có 
 async function ensureTable() {
   const sql = `
@@ -81,7 +86,13 @@ async function ensureTable() {
   } catch (e) { /* silently ignored */ }
 }
 
-async function create({ userId, month, filename, originalName, uploadedBy, iv, authTag, keyVersion, hash, version = 1 }) {
+async function create({ userId, month, filename, originalName, uploadedBy, iv, authTag, keyVersion, hash, version = 1, tenantId = null }) {
+  const tid = _tid(tenantId);
+  // If tenantId provided, verify user belongs to tenant
+  if (tid !== null) {
+    const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+    if (!check || !check.length) return null;
+  }
   const sql = `
     INSERT INTO payslip_files (userId, month, filename, original_name, uploaded_by, iv, auth_tag, key_version, hash, version)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -90,72 +101,139 @@ async function create({ userId, month, filename, originalName, uploadedBy, iv, a
   return res.insertId;
 }
 
-async function listByUserMonth(userId, month) {
-  const sql = `
-    SELECT id, userId, month, filename, original_name, uploaded_by, created_at
-    FROM payslip_files
-    WHERE userId = ? AND ( ? IS NULL OR month = ? )
-    ORDER BY created_at DESC
-  `;
-  const [rows] = await db.query(sql, [userId, month || null, month || null]);
+async function listByUserMonth(userId, month, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  let params;
+  if (tid !== null) {
+    sql = `
+      SELECT pf.id, pf.userId, pf.month, pf.filename, pf.original_name, pf.uploaded_by, pf.created_at
+      FROM payslip_files pf
+      JOIN users u ON u.id = pf.userId
+      WHERE pf.userId = ? AND ( ? IS NULL OR pf.month = ? ) AND u.tenant_id = ?
+      ORDER BY pf.created_at DESC
+    `;
+    params = [userId, month || null, month || null, tid];
+  } else {
+    sql = `
+      SELECT id, userId, month, filename, original_name, uploaded_by, created_at
+      FROM payslip_files
+      WHERE userId = ? AND ( ? IS NULL OR month = ? )
+      ORDER BY created_at DESC
+    `;
+    params = [userId, month || null, month || null];
+  }
+  const [rows] = await db.query(sql, params);
   return rows;
 }
 
-async function getById(id) {
-  const sql = `SELECT * FROM payslip_files WHERE id = ? LIMIT 1`;
-  const [rows] = await db.query(sql, [id]);
+async function getById(id, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  let params;
+  if (tid !== null) {
+    sql = `
+      SELECT pf.*
+      FROM payslip_files pf
+      JOIN users u ON u.id = pf.userId
+      WHERE pf.id = ? AND u.tenant_id = ?
+      LIMIT 1
+    `;
+    params = [id, tid];
+  } else {
+    sql = `SELECT * FROM payslip_files WHERE id = ? LIMIT 1`;
+    params = [id];
+  }
+  const [rows] = await db.query(sql, params);
   return rows[0];
 }
 
-async function deleteById(id) {
-  const before = await getById(id);
+async function deleteById(id, tenantId = null) {
+  const before = await getById(id, tenantId);
   if (!before) return null;
   const sql = `DELETE FROM payslip_files WHERE id = ?`;
   await db.query(sql, [id]);
   return before;
 }
 
-async function updateFile(id, filename, originalName, uploadedBy, iv, authTag, keyVersion, hash, version = null) {
+async function updateFile(id, filename, originalName, uploadedBy, iv, authTag, keyVersion, hash, version = null, tenantId = null) {
+  const tid = _tid(tenantId);
+  // If tenantId provided, verify the payslip belongs to a user in the tenant
+  if (tid !== null) {
+    const existing = await getById(id, tenantId);
+    if (!existing) return null;
+  }
   const sql = `
     UPDATE payslip_files
     SET filename = ?, original_name = ?, uploaded_by = ?, iv = ?, auth_tag = ?, key_version = ?, hash = ?, version = COALESCE(?, version)
     WHERE id = ?
   `;
   await db.query(sql, [filename, originalName, uploadedBy, iv || null, authTag || null, keyVersion || null, hash || null, version, id]);
-  return getById(id);
+  return getById(id, tenantId);
 }
 
-async function listByUserBetween(userId, fromMonth, toMonth) {
-  let sql = `
-    SELECT id, userId, month, filename, original_name, uploaded_by, created_at
-    FROM payslip_files
-    WHERE userId = ?
-  `;
-  const params = [userId];
+async function listByUserBetween(userId, fromMonth, toMonth, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  const params = [];
+
+  if (tid !== null) {
+    sql = `
+      SELECT pf.id, pf.userId, pf.month, pf.filename, pf.original_name, pf.uploaded_by, pf.created_at
+      FROM payslip_files pf
+      JOIN users u ON u.id = pf.userId
+      WHERE pf.userId = ? AND u.tenant_id = ?
+    `;
+    params.push(userId, tid);
+  } else {
+    sql = `
+      SELECT id, userId, month, filename, original_name, uploaded_by, created_at
+      FROM payslip_files
+      WHERE userId = ?
+    `;
+    params.push(userId);
+  }
+
   if (fromMonth && toMonth) {
-    sql += ` AND month >= ? AND month <= ?`;
+    sql += tid !== null ? ` AND pf.month >= ? AND pf.month <= ?` : ` AND month >= ? AND month <= ?`;
     params.push(fromMonth, toMonth);
   } else if (fromMonth) {
-    sql += ` AND month >= ?`;
+    sql += tid !== null ? ` AND pf.month >= ?` : ` AND month >= ?`;
     params.push(fromMonth);
   } else if (toMonth) {
-    sql += ` AND month <= ?`;
+    sql += tid !== null ? ` AND pf.month <= ?` : ` AND month <= ?`;
     params.push(toMonth);
   }
-  sql += ` ORDER BY month DESC, created_at DESC`;
+  sql += tid !== null ? ` ORDER BY pf.month DESC, pf.created_at DESC` : ` ORDER BY month DESC, created_at DESC`;
   const [rows] = await db.query(sql, params);
   return rows;
 }
 
-async function findLatestByUserMonth(userId, month) {
-  const sql = `
-    SELECT id, userId, month, filename, original_name, uploaded_by, created_at
-    FROM payslip_files
-    WHERE userId = ? AND month = ?
-    ORDER BY created_at DESC
-    LIMIT 1
-  `;
-  const [rows] = await db.query(sql, [userId, month]);
+async function findLatestByUserMonth(userId, month, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  let params;
+  if (tid !== null) {
+    sql = `
+      SELECT pf.id, pf.userId, pf.month, pf.filename, pf.original_name, pf.uploaded_by, pf.created_at
+      FROM payslip_files pf
+      JOIN users u ON u.id = pf.userId
+      WHERE pf.userId = ? AND pf.month = ? AND u.tenant_id = ?
+      ORDER BY pf.created_at DESC
+      LIMIT 1
+    `;
+    params = [userId, month, tid];
+  } else {
+    sql = `
+      SELECT id, userId, month, filename, original_name, uploaded_by, created_at
+      FROM payslip_files
+      WHERE userId = ? AND month = ?
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    params = [userId, month];
+  }
+  const [rows] = await db.query(sql, params);
   return rows[0];
 }
 

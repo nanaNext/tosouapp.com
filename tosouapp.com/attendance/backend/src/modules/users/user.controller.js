@@ -82,6 +82,15 @@ exports.create = async (req, res) => {
     }
     const hashed = bcrypt.hashSync(password, bcryptRounds);
     const id = await repo.createUser({ employeeCode, username, email, password: hashed, role, departmentId, branchId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId, tenantId: req.tenantId || null });
+
+    // Auto-add to tenant_users mapping so the user appears in tenant's user list
+    if (req.tenantId) {
+      try {
+        const tenantRepo = require('../tenants/tenant.repository');
+        await tenantRepo.addUserToTenant(id, req.tenantId, role || 'employee');
+      } catch (e) { /* silently ignored — tenant_users insert may already exist */ }
+    }
+
     res.status(201).json({ id });
   } catch (err) {
     if (err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062)) {
@@ -151,7 +160,7 @@ exports.remove = async (req, res) => {
   try {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: 'Missing id' });
-    await repo.deleteUser(id);
+    await repo.deleteUser(id, req.tenantId || null);
     res.status(200).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -209,7 +218,7 @@ exports.meSelf = async (req, res) => {
   try {
     const id = req.user?.id;
     if (!id) return res.status(401).json({ message: 'Unauthorized' });
-    const row = await repo.getUserById(id);
+    const row = await repo.getUserById(id, req.tenantId || null);
     if (!row) return res.status(404).json({ message: 'Not found' });
     res.status(200).json(row);
   } catch (err) {

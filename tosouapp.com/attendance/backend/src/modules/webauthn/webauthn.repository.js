@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 async function ensureTable() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS user_passkeys (
@@ -17,7 +21,15 @@ async function ensureTable() {
   `);
 }
 
-async function listUserPasskeys(userId) {
+async function listUserPasskeys(userId, tenantId = null) {
+  const tid = _tid(tenantId);
+  if (tid != null) {
+    // Verify user belongs to tenant
+    const [userRows] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+    if (!userRows || !userRows.length) {
+      throw new Error('User does not belong to the specified tenant');
+    }
+  }
   const [rows] = await db.query(`SELECT id, credential_id, public_key, counter, transports, aaguid, created_at FROM user_passkeys WHERE user_id = ?`, [userId]);
   return rows || [];
 }
@@ -27,7 +39,15 @@ async function findByCredentialId(credentialId) {
   return rows && rows[0] ? rows[0] : null;
 }
 
-async function createPasskey({ userId, credentialId, publicKey, counter, transports, aaguid }) {
+async function createPasskey({ userId, credentialId, publicKey, counter, transports, aaguid, tenantId = null }) {
+  const tid = _tid(tenantId);
+  if (tid != null) {
+    // Verify user belongs to tenant before creating passkey
+    const [userRows] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+    if (!userRows || !userRows.length) {
+      throw new Error('User does not belong to the specified tenant');
+    }
+  }
   await db.query(
     `INSERT INTO user_passkeys (user_id, credential_id, public_key, counter, transports, aaguid) VALUES (?, ?, ?, ?, ?, ?)`,
     [userId, credentialId, publicKey, counter || 0, transports || null, aaguid || null]

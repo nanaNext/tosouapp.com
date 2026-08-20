@@ -1,6 +1,15 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
+/**
+ * Parse tenant id safely.
+ * @param {number|string|null} tenantId
+ * @returns {number|null}
+ */
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 // ─── Column cache (avoid information_schema on every request) ─────────
 let _attendanceColCache = null;
 let _attendanceColCacheTs = 0;
@@ -127,60 +136,74 @@ async function _doEnsureAttendanceDailySchema() {
 }
 
 module.exports = {
-  async listPlanBetween(userId, fromDate, toDate) {
+  async listPlanBetween(userId, fromDate, toDate, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'date >= ?', 'date <= ?'];
+    const params = [userId, String(fromDate).slice(0, 10), String(toDate).slice(0, 10)];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const [rows] = await db.query(
-      `SELECT * FROM attendance_plan WHERE userId = ? AND date >= ? AND date <= ? ORDER BY date ASC`,
-      [userId, String(fromDate).slice(0, 10), String(toDate).slice(0, 10)]
+      `SELECT * FROM attendance_plan WHERE ${where.join(' AND ')} ORDER BY date ASC`,
+      params
     );
     return rows;
   },
-  async upsertPlan(userId, dateStr, plan) {
+  async upsertPlan(userId, dateStr, plan, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const date = String(dateStr).slice(0, 10);
     const p = plan || {};
     const [res] = await db.query(
-      `INSERT INTO attendance_plan (userId, date, shiftId, work_type, location, memo)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO attendance_plan (userId, date, shiftId, work_type, location, memo, tenant_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          shiftId = VALUES(shiftId),
          work_type = VALUES(work_type),
          location = VALUES(location),
          memo = VALUES(memo)`,
-      [userId, date, p.shiftId || null, p.workType || null, p.location || null, p.memo || null]
+      [userId, date, p.shiftId || null, p.workType || null, p.location || null, p.memo || null, tid]
     );
     return { ok: true, affectedRows: res.affectedRows };
   },
-  async getMonthStatus(userId, year, month) {
+  async getMonthStatus(userId, year, month, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
     if (!userId || !y || !m) return null;
+    const where = ['ams.userId = ?', 'ams.year = ?', 'ams.month = ?'];
+    const params = [userId, y, m];
+    if (tid != null) { where.push('ams.tenant_id = ?'); params.push(tid); }
     const [rows] = await db.query(
       `
       SELECT ams.*, u.username AS approved_by_name
       FROM attendance_month_status ams
       LEFT JOIN users u ON u.id = ams.approved_by
-      WHERE ams.userId = ? AND ams.year = ? AND ams.month = ?
+      WHERE ${where.join(' AND ')}
       LIMIT 1
       `,
-      [userId, y, m]
+      params
     );
     return rows && rows[0] ? rows[0] : null;
   },
-  async getMonthStatusBulk(userIds, year, month) {
+  async getMonthStatusBulk(userIds, year, month, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
     if (!Array.isArray(userIds) || !userIds.length || !y || !m) return [];
+    const where = ['ams.userId IN (?)', 'ams.year = ?', 'ams.month = ?'];
+    const params = [userIds, y, m];
+    if (tid != null) { where.push('ams.tenant_id = ?'); params.push(tid); }
     const [rows] = await db.query(
       `
       SELECT ams.*, u.username AS approved_by_name
       FROM attendance_month_status ams
       LEFT JOIN users u ON u.id = ams.approved_by
-      WHERE ams.userId IN (?) AND ams.year = ? AND ams.month = ?
+      WHERE ${where.join(' AND ')}
       `,
-      [userIds, y, m]
+      params
     );
     return rows || [];
   },
-  async setMonthStatus(userId, year, month, status, actorId) {
+  async setMonthStatus(userId, year, month, status, actorId, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
     const st = String(status || '').trim();
@@ -198,8 +221,8 @@ module.exports = {
     const unlockedAt = st === 'unlocked' ? fmt(now) : null;
     const [res] = await db.query(
       `
-        INSERT INTO attendance_month_status (userId, year, month, status, submitted_at, submitted_by, approved_at, approved_by, unlocked_at, unlocked_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO attendance_month_status (userId, year, month, status, submitted_at, submitted_by, approved_at, approved_by, unlocked_at, unlocked_by, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           status = VALUES(status),
           submitted_at = COALESCE(VALUES(submitted_at), submitted_at),
@@ -219,16 +242,18 @@ module.exports = {
         approvedAt,
         st === 'approved' ? actor : null,
         unlockedAt,
-        st === 'unlocked' ? actor : null
+        st === 'unlocked' ? actor : null,
+        tid
       ]
     );
     return { ok: true, affectedRows: Number(res?.affectedRows || 0) };
   },
-  async upsertDaily(userId, dateStr, daily) {
+  async upsertDaily(userId, dateStr, daily, { tenantId = null } = {}) {
     await ensureAttendanceDailySchema();
+    const tid = _tid(tenantId);
     const date = String(dateStr).slice(0, 10);
     const incoming = daily && typeof daily === 'object' ? daily : {};
-    const existing = await this.getDaily(userId, date);
+    const existing = await this.getDaily(userId, date, { tenantId });
 
     console.log(`[upsertDaily] userId=${userId}, date=${date}, incoming=`, incoming, 'existing.notes=', existing?.notes);
 
@@ -330,8 +355,8 @@ module.exports = {
     }
     const [res] = await db.query(
       `
-        INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, furikae_holiday_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, furikae_holiday_date, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           kubun = VALUES(kubun),
           kubun_confirmed = VALUES(kubun_confirmed),
@@ -360,63 +385,83 @@ module.exports = {
         early_minutes,
         Number.isFinite(breakMin) ? breakMin : null,
         Number.isFinite(nightBreakMin) ? nightBreakMin : null,
-        furikaeHolidayDate
+        furikaeHolidayDate,
+        tid
       ]
     );
     return { ok: true, affectedRows: Number(res?.affectedRows || 0) };
   },
-  async getDaily(userId, dateStr) {
+  async getDaily(userId, dateStr, { tenantId = null } = {}) {
     await ensureAttendanceDailySchema();
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'date = ?'];
+    const params = [userId, String(dateStr).slice(0, 10)];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const [rows] = await db.query(
-      `SELECT * FROM attendance_daily WHERE userId = ? AND date = ? LIMIT 1`,
-      [userId, String(dateStr).slice(0, 10)]
+      `SELECT * FROM attendance_daily WHERE ${where.join(' AND ')} LIMIT 1`,
+      params
     );
     return rows && rows[0] ? rows[0] : null;
   },
-  async listDailyBetween(userId, fromDate, toDate) {
+  async listDailyBetween(userId, fromDate, toDate, { tenantId = null } = {}) {
     await ensureAttendanceDailySchema();
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'date >= ?', 'date <= ?'];
+    const params = [userId, String(fromDate).slice(0, 10), String(toDate).slice(0, 10)];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const sql = `
       SELECT *
       FROM attendance_daily
-      WHERE userId = ?
-        AND date >= ? AND date <= ?
+      WHERE ${where.join(' AND ')}
       ORDER BY date ASC
     `;
-    const [rows] = await db.query(sql, [userId, String(fromDate).slice(0, 10), String(toDate).slice(0, 10)]);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
-  async setWorkTypeForUserDate(userId, dateStr, workType) {
+  async setWorkTypeForUserDate(userId, dateStr, workType, { tenantId = null } = {}) {
     const set = await getAttendanceColumnSet();
     if (!set.has('work_type')) return { updated: 0 };
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'DATE(checkIn) = ?'];
+    const params = [workType || null, userId, String(dateStr).slice(0, 10)];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const sql = `
       UPDATE attendance
       SET work_type = ?
-      WHERE userId = ?
-        AND DATE(checkIn) = ?
+      WHERE ${where.join(' AND ')}
       ORDER BY checkIn DESC
       LIMIT 1
     `;
-    const [res] = await db.query(sql, [workType || null, userId, String(dateStr).slice(0, 10)]);
+    const [res] = await db.query(sql, params);
     return { updated: Number(res?.affectedRows || 0) };
   },
-  async setWorkTypeById(attendanceId, workType) {
+  async setWorkTypeById(attendanceId, workType, { tenantId = null } = {}) {
     const set = await getAttendanceColumnSet();
     if (!set.has('work_type')) return { updated: 0 };
-    const [res] = await db.query(`UPDATE attendance SET work_type = ? WHERE id = ?`, [workType || null, attendanceId]);
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [workType || null, attendanceId];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [res] = await db.query(`UPDATE attendance SET work_type = ? WHERE ${where.join(' AND ')}`, params);
     return { updated: Number(res?.affectedRows || 0) };
   },
-  async getMonthSummary(userId, year, month) {
+  async getMonthSummary(userId, year, month, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const uid = parseInt(String(userId), 10);
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
     if (!uid || !y || !m) return null;
+    const where = ['userId = ?', 'year = ?', 'month = ?'];
+    const params = [uid, y, m];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const [rows] = await db.query(
-      `SELECT * FROM attendance_month_summary WHERE userId = ? AND year = ? AND month = ? LIMIT 1`,
-      [uid, y, m]
+      `SELECT * FROM attendance_month_summary WHERE ${where.join(' AND ')} LIMIT 1`,
+      params
     );
     return rows && rows[0] ? rows[0] : null;
   },
-  async upsertMonthSummary(userId, year, month, summaryAll, summaryInhouse, actorId) {
+  async upsertMonthSummary(userId, year, month, summaryAll, summaryInhouse, actorId, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const uid = parseInt(String(userId), 10);
     const y = parseInt(String(year), 10);
     const m = parseInt(String(month), 10);
@@ -426,14 +471,14 @@ module.exports = {
     const actor = actorId != null ? parseInt(String(actorId), 10) : null;
     const [res] = await db.query(
       `
-        INSERT INTO attendance_month_summary (userId, year, month, summary_all, summary_inhouse, updated_by)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO attendance_month_summary (userId, year, month, summary_all, summary_inhouse, updated_by, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           summary_all = VALUES(summary_all),
           summary_inhouse = VALUES(summary_inhouse),
           updated_by = VALUES(updated_by)
       `,
-      [uid, y, m, allStr, ihStr, actor]
+      [uid, y, m, allStr, ihStr, actor, tid]
     );
     return { ok: true, affectedRows: Number(res?.affectedRows || 0) };
   }

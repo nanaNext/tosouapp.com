@@ -48,6 +48,12 @@ exports.getMonthDetail = async (req, res) => {
     const { year, month } = req.query || {};
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
+    // Verify userId belongs to the same tenant when viewing another user's data
+    const tid = req.tenantId || null;
+    if (tid != null && String(userId) !== String(req.user?.id)) {
+      const [userRows] = await db.query('SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1', [userId, tid]);
+      if (!userRows || userRows.length === 0) return res.status(404).json({ message: 'User not found in tenant' });
+    }
 
     const pad     = n => String(n).padStart(2, '0');
     const y       = parseInt(year, 10);
@@ -260,14 +266,14 @@ exports.getMonthDetail = async (req, res) => {
         }
         // Đối chiếu thêm với kubun trong attendance_daily (trường hợp chưa có leave_request)
         try {
-          const [kR] = await db.query(
-            `SELECT COUNT(*) as cnt FROM attendance_daily WHERE userId = ? AND date BETWEEN ? AND ? AND kubun = '有給休暇'`,
-            [userId, from, to]
-          );
-          const [kH] = await db.query(
-            `SELECT COUNT(*) as cnt FROM attendance_daily WHERE userId = ? AND date BETWEEN ? AND ? AND kubun = '半休(有給)'`,
-            [userId, from, to]
-          );
+          let kRSql = `SELECT COUNT(*) as cnt FROM attendance_daily WHERE userId = ? AND date BETWEEN ? AND ? AND kubun = '有給休暇'`;
+          const kRParams = [userId, from, to];
+          if (tid != null) { kRSql += ` AND tenant_id = ?`; kRParams.push(tid); }
+          const [kR] = await db.query(kRSql, kRParams);
+          let kHSql = `SELECT COUNT(*) as cnt FROM attendance_daily WHERE userId = ? AND date BETWEEN ? AND ? AND kubun = '半休(有給)'`;
+          const kHParams = [userId, from, to];
+          if (tid != null) { kHSql += ` AND tenant_id = ?`; kHParams.push(tid); }
+          const [kH] = await db.query(kHSql, kHParams);
           const kubunPaid = Number(kR?.[0]?.cnt || 0) + Number(kH?.[0]?.cnt || 0) * 0.5;
           if (kubunPaid > paidDays) paidDays = kubunPaid;
         } catch (e) { /* bỏ qua */ }

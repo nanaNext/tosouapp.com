@@ -51,8 +51,8 @@ async function resolveTenant(req, res, next) {
     return next();
   }
 
-  // Extract tenant_id from JWT payload (field: tid)
-  const tidFromJWT = req.user?.tid ? parseInt(String(req.user.tid), 10) : null;
+  // Extract tenant_id from JWT payload (field: tid or tenant_id)
+  const tidFromJWT = (req.user?.tid || req.user?.tenant_id) ? parseInt(String(req.user.tid || req.user.tenant_id), 10) : null;
 
   // Tab-scoped context: ưu tiên X-Tenant-Id header từ frontend (mỗi tab gửi riêng)
   // Nếu header khớp với tenant trong JWT hoặc user có quyền sysadmin/owner → dùng header
@@ -144,7 +144,7 @@ async function injectTenantLocals(req, res, next) {
   try {
     const jwt = require('jsonwebtoken');
     const token = req.cookies?.session_token || '';
-    if (!token) return next();
+    if (!token) { console.log('[injectTenantLocals] NO session_token cookie'); return next(); }
     const secrets = [
       process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET,
       process.env.JWT_SECRET_PREVIOUS || '',
@@ -153,7 +153,9 @@ async function injectTenantLocals(req, res, next) {
     for (const s of secrets) {
       try { decoded = jwt.verify(token, s); break; } catch (e) { /* silently ignored */ }
     }
-    const tid = decoded?.tid ? parseInt(String(decoded.tid), 10) : null;
+    if (!decoded) { console.log('[injectTenantLocals] JWT verify FAILED'); return next(); }
+    const tid = (decoded?.tid || decoded?.tenant_id) ? parseInt(String(decoded.tid || decoded.tenant_id), 10) : null;
+    console.log('[injectTenantLocals] decoded.tid=', decoded?.tid, 'decoded.tenant_id=', decoded?.tenant_id, '→ tid=', tid);
     if (!tid) return next();
     const tenant = await getTenantCached(tid);
     if (tenant && tenant.status === 'active') {
@@ -164,6 +166,19 @@ async function injectTenantLocals(req, res, next) {
         logoUrl: tenant.logo_url || '/static/images/logo1.png',
         logoName: tenant.logo_name || 'IIZUKA',
         primaryColor: tenant.primary_color || '#0b5ed7',
+        address: tenant.address || '',
+        phone: tenant.phone || '',
+        fax: tenant.fax || '',
+        licenseNumber: tenant.license_number || '',
+        representative: tenant.representative || '',
+        contactSystemDept: tenant.contact_system_dept || '',
+        contactSystemEmail: tenant.contact_system_email || '',
+        contactSystemTel: tenant.contact_system_tel || '',
+        contactSystemHours: tenant.contact_system_hours || '',
+        contactGeneralDept: tenant.contact_general_dept || '',
+        contactGeneralEmail: tenant.contact_general_email || '',
+        contactGeneralTel: tenant.contact_general_tel || '',
+        contactGeneralHours: tenant.contact_general_hours || '',
       };
     }
   } catch (e) { /* silently ignored — fall through to default */ }

@@ -68,7 +68,7 @@ router.post('/',
       if (tripType === 'round_trip') amt = amt * 2;
       else if (tripType === 'multi') amt = amt * (tripCount > 0 ? tripCount : 1);
       if (!(amt >= 0)) return res.status(400).json({ message: 'Invalid amount' });
-      const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass, clientToken: b.clientToken });
+      const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass, clientToken: b.clientToken, tenantId: req.tenantId || null });
       try { await auditRepo.writeLog({ userId: req.user.id, action: 'expense_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, date, amount: amt, origin, destination }) }); } catch (e) { /* silently ignored */ }
       res.status(201).json({ id });
     } catch (err) {
@@ -84,7 +84,7 @@ router.get('/my',
       const month = String(req.query.month || '').slice(0, 7);
       const status = req.query.status ? String(req.query.status) : null;
       const type = req.query.type ? String(req.query.type).toLowerCase() : null;
-      const rows = await repo.listMineAdvanced({ userId: req.user.id, month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, status, type });
+      const rows = await repo.listMineAdvanced({ userId: req.user.id, month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, status, type, tenantId: req.tenantId || null });
       res.status(200).json(rows || []);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -99,7 +99,7 @@ router.get('/export.csv',
       const month = String(req.query.month || '').slice(0, 7);
       const status = req.query.status ? String(req.query.status) : null;
       const type = req.query.type ? String(req.query.type).toLowerCase() : null;
-      const rows = await repo.listMineAdvanced({ userId: req.user.id, month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, status, type });
+      const rows = await repo.listMineAdvanced({ userId: req.user.id, month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, status, type, tenantId: req.tenantId || null });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="expenses_${month || 'all'}.csv"`);
       const header = ['date','route','type','amount','status','memo'];
@@ -166,7 +166,8 @@ router.get('/admin/list',
         maxAmount: req.query.maxAmount,
         approverId: req.query.approverId,
         sortBy: req.query.sortBy,
-        sortDir: req.query.sortDir
+        sortDir: req.query.sortDir,
+        tenantId: req.tenantId || null
       });
       rowsCount = Array.isArray(result?.rows) ? result.rows.length : 0;
       total = Number(result?.total || 0);
@@ -195,7 +196,7 @@ router.get('/admin/dashboard',
     try {
       const month = String(req.query.month || '').slice(0, 7);
       const months = req.query.months;
-      const result = await repo.getAdminDashboard({ month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, months });
+      const result = await repo.getAdminDashboard({ month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, months, tenantId: req.tenantId || null });
       trendPoints = Array.isArray(result?.trend) ? result.trend.length : 0;
       departmentCount = Array.isArray(result?.departmentShares) ? result.departmentShares.length : 0;
       res.status(200).json(result);
@@ -219,7 +220,7 @@ router.get('/admin/detail/:id',
     try {
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const row = await repo.getAdminDetailById(id);
+      const row = await repo.getAdminDetailById(id, req.tenantId || null);
       if (!row) return res.status(404).json({ message: 'Not found' });
       res.status(200).json(row);
     } catch (err) {
@@ -246,7 +247,8 @@ router.get('/admin/export.csv',
         maxAmount: req.query.maxAmount,
         approverId: req.query.approverId,
         sortBy: req.query.sortBy,
-        sortDir: req.query.sortDir
+        sortDir: req.query.sortDir,
+        tenantId: req.tenantId || null
       });
       const rows = Array.isArray(result?.rows) ? result.rows : [];
       const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -315,8 +317,8 @@ router.get('/admin/monthly-summary',
       const userId = userIdRaw || null;
       if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
       const [totals, closures] = await Promise.all([
-        repo.getMonthlyApprovedTotals(month, userId),
-        repo.getMonthlyClosures(month, userId)
+        repo.getMonthlyApprovedTotals(month, userId, req.tenantId || null),
+        repo.getMonthlyClosures(month, userId, req.tenantId || null)
       ]);
       res.status(200).json({ month, totals: totals || [], closures: closures || [] });
     } catch (err) {
@@ -338,9 +340,10 @@ router.post('/admin/monthly-close',
         month,
         closedBy: req.user.id,
         forceRecalc,
-        userId
+        userId,
+        tenantId: req.tenantId || null
       });
-      const closures = await repo.getMonthlyClosures(month);
+      const closures = await repo.getMonthlyClosures(month, undefined, req.tenantId || null);
       res.status(200).json({ ok: true, result, closures: closures || [] });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -354,7 +357,7 @@ router.post('/admin/months/approve',
     try {
       const { userId, month } = req.body || {};
       if (!userId || !month) return res.status(400).json({ message: 'Missing userId or month' });
-      const result = await repo.approveMonthByAdmin({ userId, month, approverId: req.user.id });
+      const result = await repo.approveMonthByAdmin({ userId, month, approverId: req.user.id, tenantId: req.tenantId || null });
       try {
         await noticesRepo.createNotice({
           targetUserId: userId,
@@ -380,7 +383,8 @@ router.get('/admin/monthly-history',
       const userId = userIdRaw || null;
       const rows = await repo.listMonthlyClosureHistory({
         userId,
-        limit: Number.isFinite(limit) ? limit : 12
+        limit: Number.isFinite(limit) ? limit : 12,
+        tenantId: req.tenantId || null
       });
       res.status(200).json(rows || []);
     } catch (err) {
@@ -393,7 +397,7 @@ router.get('/months/active',
   authorize('employee','manager','admin'),
   async (req, res) => {
     try {
-      const r = await repo.getActiveMonth(req.user.id);
+      const r = await repo.getActiveMonth(req.user.id, req.tenantId || null);
       res.status(200).json(r || null);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -407,7 +411,7 @@ router.post('/months/start',
     try {
       const month = String(req.body?.month || '').slice(0,7);
       if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
-      const r = await repo.startMonth(req.user.id, month);
+      const r = await repo.startMonth(req.user.id, month, req.tenantId || null);
       res.status(201).json(r || null);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -423,7 +427,7 @@ router.post('/months/delete',
       const month = String(req.body?.month || '').slice(0,7);
       if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
       // Call the repository function
-      const ok = await repo.deleteMonth(req.user.id, month);
+      const ok = await repo.deleteMonth(req.user.id, month, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Month not found or cannot be deleted' });
       res.status(200).json({ ok: true });
     } catch (err) {
@@ -437,7 +441,7 @@ router.get('/months/my',
   authorize('employee','manager','admin'),
   async (req, res) => {
     try {
-      const rows = await repo.listMonths(req.user.id);
+      const rows = await repo.listMonths(req.user.id, req.tenantId || null);
       res.status(200).json(rows || []);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -452,7 +456,7 @@ router.get('/months/profile',
     try {
       const month = String(req.query.month || '').slice(0, 7);
       if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
-      const row = await repo.getMonthProfile(req.user.id, month);
+      const row = await repo.getMonthProfile(req.user.id, month, req.tenantId || null);
       if (!row) return res.status(404).json({ message: 'Not found' });
       res.status(200).json(row);
     } catch (err) {
@@ -473,7 +477,8 @@ router.post('/months/profile',
         employeeName: b.employeeName,
         employeeCode: b.employeeCode,
         birthDate: b.birthDate,
-        startDate: b.startDate
+        startDate: b.startDate,
+        tenantId: req.tenantId || null
       });
       res.status(200).json(row);
     } catch (err) {
@@ -489,7 +494,7 @@ router.post('/months/apply',
     try {
       const month = String(req.body?.month || '').slice(0,7);
       if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
-      const ok = await repo.applyMonth(req.user.id, month);
+      const ok = await repo.applyMonth(req.user.id, month, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Month not found or cannot be applied' });
       res.status(200).json({ ok: true });
     } catch (err) {
@@ -502,7 +507,7 @@ router.get('/months/applied',
   authorize('employee','manager','admin'),
   async (req, res) => {
     try {
-      const r = await repo.getLatestAppliedMonthStats(req.user.id);
+      const r = await repo.getLatestAppliedMonthStats(req.user.id, req.tenantId || null);
       res.status(200).json(r || null);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -515,7 +520,7 @@ router.get('/my/messages',
   async (req, res) => {
     try {
       const month = String(req.query.month || '').slice(0, 7);
-      const rows = await repo.listRecentMessagesForUser(req.user.id, (month && /^\d{4}-\d{2}$/.test(month)) ? month : null);
+      const rows = await repo.listRecentMessagesForUser(req.user.id, (month && /^\d{4}-\d{2}$/.test(month)) ? month : null, req.tenantId || null);
       res.status(200).json(rows || []);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -528,7 +533,7 @@ router.get('/admin/messages',
   async (req, res) => {
     try {
       const month = String(req.query.month || '').slice(0, 7);
-      const rows = await repo.listRecentMessagesForAdmin((month && /^\d{4}-\d{2}$/.test(month)) ? month : null);
+      const rows = await repo.listRecentMessagesForAdmin((month && /^\d{4}-\d{2}$/.test(month)) ? month : null, req.tenantId || null);
       res.status(200).json(rows || []);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -542,13 +547,13 @@ router.delete('/:id',
     try {
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const r = await repo.getById(id);
+      const r = await repo.getById(id, req.tenantId || null);
       if (!r) return res.status(404).json({ message: 'Not Found' });
       const role = String(req.user.role || '').toLowerCase();
       if (String(r.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
         return res.status(403).json({ message: 'Forbidden' });
       }
-      const ok = await repo.deleteMine(id);
+      const ok = await repo.deleteMine(id, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
       res.status(200).json({ ok: true });
     } catch (err) {
@@ -563,7 +568,7 @@ router.get('/:id',
     try {
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const row = await repo.getById(id);
+      const row = await repo.getById(id, req.tenantId || null);
       if (!row) return res.status(404).json({ message: 'Not Found' });
       const role = String(req.user.role || '').toLowerCase();
       if (String(row.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
@@ -584,7 +589,7 @@ router.post('/:id/files',
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id) return res.status(400).json({ message: 'Invalid id' });
       const files = (req.files || []).map(f => ({ path: `/uploads/${f.filename}`, originalName: f.originalname, mimeType: f.mimetype, size: f.size }));
-      const rows = await repo.addFiles(id, files);
+      const rows = await repo.addFiles(id, files, req.tenantId || null);
       res.status(201).json({ files: rows });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -612,7 +617,7 @@ router.delete('/files/:fileId',
     try {
       const fileId = parseInt(String(req.params.fileId || '0'), 10);
       if (!fileId) return res.status(400).json({ message: 'Invalid id' });
-      const r = await repo.deleteFile(fileId, req.user.id);
+      const r = await repo.deleteFile(fileId, req.user.id, req.tenantId || null);
       if (!r.ok) return res.status(404).json({ message: 'Not Found' });
       res.status(200).json({ ok: true });
     } catch (err) {
@@ -635,8 +640,8 @@ router.post('/admin/bulk-status',
       for (const rawId of ids) {
         const id = parseInt(String(rawId), 10);
         if (id > 0) {
-          const row = await repo.getById(id);
-          const ok = await repo.updateStatus(id, st, note, req.user.id);
+          const row = await repo.getById(id, req.tenantId || null);
+          const ok = await repo.updateStatus(id, st, note, req.user.id, req.tenantId || null);
           if (ok && row && row.userId && st !== 'pending') {
             const ym = row.date ? String(row.date).slice(0, 7) : null;
             if (ym) {
@@ -679,10 +684,10 @@ router.patch('/:id/status',
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
       const st = String(req.body?.status || '').toLowerCase();
       const note = String(req.body?.note || '').trim() || null;
-      const ok = await repo.updateStatus(id, st, note, req.user.id);
+      const ok = await repo.updateStatus(id, st, note, req.user.id, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
       try {
-        const row = await repo.getById(id);
+        const row = await repo.getById(id, req.tenantId || null);
         if (row && row.userId && st !== 'pending') {
           const statusLabel = st === 'approved' ? '承認' : (st === 'rejected' ? '差戻し' : (st === 'paid' ? '支給' : st));
           await noticesRepo.createNotice({
@@ -707,10 +712,10 @@ router.post('/:id/apply',
     try {
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const ok = await repo.updateStatus(id, 'applied', null, null);
+      const ok = await repo.updateStatus(id, 'applied', null, null, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
       try {
-        const row = await repo.getById(id);
+        const row = await repo.getById(id, req.tenantId || null);
         const userName = String(req.user?.username || req.user?.email || `user#${req.user?.id || ''}`);
         await noticesRepo.createAdminNotification({
           kind: 'expense_apply',
@@ -743,7 +748,7 @@ router.post('/:id/reply',
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
       const note = String(req.body?.note || '').trim();
       if (!note) return res.status(400).json({ message: '理由を入力してください' });
-      const ok = await repo.setEmployeeReplyAndApply(id, req.user.id, note);
+      const ok = await repo.setEmployeeReplyAndApply(id, req.user.id, note, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
       res.status(200).json({ ok: true });
     } catch (err) {
@@ -760,8 +765,8 @@ router.patch('/:id',
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
       const role = String(req.user.role || '').toLowerCase();
       const ok = role === 'manager' || role === 'admin'
-        ? await repo.updateByAdmin(id, req.body || {})
-        : await repo.updateMine(id, req.user.id, req.body || {});
+        ? await repo.updateByAdmin(id, req.body || {}, req.tenantId || null)
+        : await repo.updateMine(id, req.user.id, req.body || {}, req.tenantId || null);
       if (!ok) return res.status(403).json({ message: 'Forbidden' });
       res.status(200).json({ ok: true });
     } catch (err) {
@@ -777,13 +782,13 @@ router.get('/:id/messages',
       try { await repo.ensureTable(); } catch (e) { /* silently ignored */ }
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const r = await repo.getById(id);
+      const r = await repo.getById(id, req.tenantId || null);
       if (!r) return res.status(404).json({ message: 'Not Found' });
       const role = String(req.user.role || '').toLowerCase();
       if (String(r.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
         return res.status(403).json({ message: 'Forbidden' });
       }
-      const rows = await repo.listMessages(id);
+      const rows = await repo.listMessages(id, req.tenantId || null);
       res.status(200).json(rows || []);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -798,7 +803,7 @@ router.post('/:id/messages',
       try { await repo.ensureTable(); } catch (e) { /* silently ignored */ }
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
-      const r = await repo.getById(id);
+      const r = await repo.getById(id, req.tenantId || null);
       if (!r) return res.status(404).json({ message: 'Not Found' });
       const role = String(req.user.role || '').toLowerCase();
       if (String(r.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
@@ -806,7 +811,7 @@ router.post('/:id/messages',
       }
       const text = String(req.body?.message || '').trim();
       if (!text) return res.status(400).json({ message: 'メッセージを入力してください' });
-      const newId = await repo.addMessage({ expenseId: id, userId: req.user.id, message: text });
+      const newId = await repo.addMessage({ expenseId: id, userId: req.user.id, message: text, tenantId: req.tenantId || null });
       res.status(201).json({ id: newId });
     } catch (err) {
       res.status(500).json({ message: err.message });

@@ -128,10 +128,17 @@ exports.todayRoster = async (req, res) => {
     if (role === 'manager') {
       items = items.filter(i => String(i.role || '').toLowerCase() === 'employee');
     }
+    // Employee không được thấy admin/manager
+    if (role === 'employee' || role === 'staff') {
+      items = items.filter(i => {
+        const r = String(i.role || '').toLowerCase();
+        return r !== 'admin' && r !== 'manager' && r !== 'owner' && r !== 'sysadmin';
+      });
+    }
     itemsCount = items.length;
 
     // ─── Lấy kế hoạch shift (planned) ────────────────────────────────────────
-    const plannedBase = await repo.getTodayPlannedItems(date);
+    const plannedBase = await repo.getTodayPlannedItems(date, req.tenantId || null);
     let dayIsOff = false;
     try { dayIsOff = await calendarRepo.isOff(date); } catch { /* bỏ qua */ }
 
@@ -140,8 +147,8 @@ exports.todayRoster = async (req, res) => {
     let assignmentMap = new Map(), shiftDefMap = new Map();
     try {
       [assignmentMap, shiftDefMap] = await Promise.all([
-        repo.batchGetActiveAssignments(plannedUserIds, date),
-        repo.batchGetAllShiftDefinitions(),
+        repo.batchGetActiveAssignments(plannedUserIds, date, { tenantId: req.tenantId || null }),
+        repo.batchGetAllShiftDefinitions({ tenantId: req.tenantId || null }),
       ]);
     } catch (e) { /* fallback về empty map, non-critical */ }
 

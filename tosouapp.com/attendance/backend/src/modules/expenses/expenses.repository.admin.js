@@ -6,6 +6,10 @@
  */
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 function mapExpenseStatus(v) {
   const s = String(v || '').trim().toLowerCase();
   if (!s) return '';
@@ -69,6 +73,11 @@ function buildAdminListWhere(filters = {}) {
   if (approverId) {
     where.push(`COALESCE(ec.approver_id, ec.approved_by) = ?`);
     args.push(approverId);
+  }
+  const tid = _tid(filters.tenantId);
+  if (tid != null) {
+    where.push(`u.tenant_id = ?`);
+    args.push(tid);
   }
   return { where, args };
 }
@@ -145,12 +154,18 @@ function listYMBack(ym, n) {
   return months;
 }
 
-exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
+exports.getAdminDashboard = async function({ month, months = 6, tenantId = null } = {}) {
+  const tid = _tid(tenantId);
   const ym = isYM(month) ? String(month) : new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
   const ymList = listYMBack(ym, months);
   const startYM = ymList[0];
   const endYM = ymList[ymList.length - 1];
 
+  const tenantJoin = tid != null ? ' JOIN users u ON u.id = ec.userId' : '';
+  const tenantWhere = tid != null ? ' AND u.tenant_id = ?' : '';
+
+  const kpiParams = [ym];
+  if (tid != null) kpiParams.push(tid);
   const [[kpiRow]] = await db.query(`
     SELECT
       COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved','paid') THEN ec.amount ELSE 0 END), 0) AS total_amount,
@@ -163,10 +178,12 @@ exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
       COALESCE(SUM(ec.status = 'paid'), 0) AS paid_count,
       COALESCE(SUM(ec.status = 'rejected'), 0) AS rejected_count,
       COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved','paid') THEN ec.userId END) AS applicant_users
-    FROM expense_claims ec
-    WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?
-  `, [ym]);
+    FROM expense_claims ec${tenantJoin}
+    WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?${tenantWhere}
+  `, kpiParams);
 
+  const trendParams = [startYM, endYM];
+  if (tid != null) trendParams.push(tid);
   const [trendRows] = await db.query(`
     SELECT
       DATE_FORMAT(ec.date, '%Y-%m') AS month,
@@ -176,11 +193,11 @@ exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
       COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,
       COALESCE(SUM(ec.status = 'approved'), 0) AS approved_count,
       COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved') THEN ec.userId END) AS applicant_users
-    FROM expense_claims ec
-    WHERE DATE_FORMAT(ec.date, '%Y-%m') BETWEEN ? AND ?
+    FROM expense_claims ec${tenantJoin}
+    WHERE DATE_FORMAT(ec.date, '%Y-%m') BETWEEN ? AND ?${tenantWhere}
     GROUP BY DATE_FORMAT(ec.date, '%Y-%m')
     ORDER BY DATE_FORMAT(ec.date, '%Y-%m') ASC
-  `, [startYM, endYM]);
+  `, trendParams);
 
   const trendMap = new Map((trendRows || []).map((r) => [String(r.month || ''), r]));
   const trend = ymList.map((m) => {
@@ -196,6 +213,9 @@ exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
     };
   });
 
+  const deptParams = [ym];
+  if (tid != null) deptParams.push(tid);
+  const tenantDeptWhere = tid != null ? ' AND u.tenant_id = ?' : '';
   const [deptRows] = await db.query(`
     SELECT
       u.departmentId AS department_id,
@@ -205,11 +225,11 @@ exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
     FROM expense_claims ec
     JOIN users u ON u.id = ec.userId
     WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?
-      AND ec.status IN ('applied','approved')
+      AND ec.status IN ('applied','approved')${tenantDeptWhere}
     GROUP BY u.departmentId
     ORDER BY total_amount DESC
     LIMIT 30
-  `, [ym]);
+  `, deptParams);
 
   const monthStats = {
     month: ym,
@@ -236,10 +256,10 @@ exports.getAdminDashboard = async function({ month, months = 6 } = {}) {
   };
 };
 
-exports.closeMonthlyApprovedTotals = async function({ month, closedBy, forceRecalc, userId = null }) {
+exports.closeMonthlyApprovedTotals = async function({ month, closedBy, forceRecalc, userId = null, tenantId = null }) {
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
   const mainRepo = require('./expenses.repository');
-  const rows = await mainRepo.getMonthlyApprovedTotals(month, userId);
+  const rows = await mainRepo.getMonthlyApprovedTotals(month, userId, tenantId);
   if (!rows.length) return { month: String(month), affectedUsers: 0 };
   const doForce = !!forceRecalc;
   for (const r of rows) {

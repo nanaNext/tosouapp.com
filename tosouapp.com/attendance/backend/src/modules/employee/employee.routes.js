@@ -22,14 +22,14 @@ router.get('/documents', authorize('employee','manager','admin'), async (req, re
     if (req.user.role === 'employee') {
       userId = req.user.id;
     }
-    const result = await docRepo.listFiltered({ userId, types, from, to, owner, page, pageSize });
+    const result = await docRepo.listFiltered({ userId, types, from, to, owner, page, pageSize, tenantId: req.tenantId || null });
     if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
       const cache = new Map();
       const filtered = [];
       for (const r of result.rows) {
         if (!cache.has(r.userId)) {
-          cache.set(r.userId, await userRepo.getUserById(r.userId));
+          cache.set(r.userId, await userRepo.getUserById(r.userId, req.tenantId || null));
         }
         const target = cache.get(r.userId);
         if (me?.departmentId && String(me.departmentId) === String(target?.departmentId)) {
@@ -51,7 +51,7 @@ router.get('/documents', authorize('employee','manager','admin'), async (req, re
 router.get('/documents/:id', authorize('employee','manager','admin'), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const row = await docRepo.getById(id);
+    const row = await docRepo.getById(id, req.tenantId || null);
     if (!row) {
       return res.status(404).json({ message: 'Not found' });
     }
@@ -59,8 +59,8 @@ router.get('/documents/:id', authorize('employee','manager','admin'), async (req
       return res.status(403).json({ message: 'Forbidden' });
     }
     if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const target = await userRepo.getUserById(row.userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const target = await userRepo.getUserById(row.userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden' });
       }
@@ -76,7 +76,7 @@ router.get('/documents/:id/download',
   async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const row = await docRepo.getById(id);
+    const row = await docRepo.getById(id, req.tenantId || null);
     if (!row) {
       return res.status(404).json({ message: 'Not found' });
     }
@@ -84,8 +84,8 @@ router.get('/documents/:id/download',
       return res.status(403).json({ message: 'Forbidden' });
     }
     if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const target = await userRepo.getUserById(row.userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const target = await userRepo.getUserById(row.userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden' });
       }
@@ -108,11 +108,11 @@ router.get('/documents/:id/download',
 router.get('/payslips/:id', authorize('employee','manager','admin'), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const row = await payslipRepo.getById(id);
+    const row = await payslipRepo.getById(id, req.tenantId || null);
     if (!row) return res.status(404).json({ message: 'Not found' });
     if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const targetUser = await userRepo.getUserById(row.userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const targetUser = await userRepo.getUserById(row.userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(targetUser?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden: cross-department access' });
       }
@@ -138,11 +138,11 @@ router.get('/payslips/:id/download',
   async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const row = await payslipRepo.getById(id);
+    const row = await payslipRepo.getById(id, req.tenantId || null);
     if (!row) return res.status(404).json({ message: 'Not found' });
     if (req.user.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const targetUser = await userRepo.getUserById(row.userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const targetUser = await userRepo.getUserById(row.userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(targetUser?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden: cross-department access' });
       }

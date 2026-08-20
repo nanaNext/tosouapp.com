@@ -131,8 +131,83 @@ router.post('/tenants/:id/users', async (req, res) => {
     const { user_id, role_in_tenant } = req.body || {};
     if (!user_id) return res.status(400).json({ message: 'user_id required' });
     await tenantRepo.addUserToTenant(user_id, tenantId, role_in_tenant || 'employee');
+    // Also update user's tenant_id on the users table for primary tenant
+    await db.query('UPDATE users SET tenant_id = COALESCE(tenant_id, ?) WHERE id = ? AND tenant_id IS NULL', [tenantId, user_id]);
     res.status(201).json({ ok: true });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── POST /api/platform/tenants/:id/create-user ───────────────────────────────
+// Create a BRAND NEW user and assign them to the tenant in one step.
+// Used for onboarding a new company — sysadmin creates the first admin.
+const bcrypt = require('bcrypt');
+const { bcryptRounds } = require('../../config/env');
+router.post('/tenants/:id/create-user', async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.id, 10);
+    if (!tenantId) return res.status(400).json({ message: 'Invalid tenant id' });
+
+    const tenant = await tenantRepo.getTenantById(tenantId);
+    if (!tenant || tenant.status !== 'active') {
+      return res.status(404).json({ message: 'Tenant not found or inactive' });
+    }
+
+    const { username, email, password, role, departmentId, employmentType, phone } = req.body || {};
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'username, email, and password are required' });
+    }
+
+    // Check email uniqueness
+    const authRepo = require('../auth/auth.repository');
+    const existing = await authRepo.findUserByEmail(email);
+    if (existing) {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+
+    // Validate role
+    const validRoles = ['admin', 'manager', 'employee', 'owner'];
+    const userRole = validRoles.includes(role) ? role : 'employee';
+
+    // Create user with tenantId
+    const hashed = bcrypt.hashSync(password, bcryptRounds);
+    const userId = await userRepo.createUser({
+      username,
+      email,
+      password: hashed,
+      role: userRole,
+      departmentId: departmentId || null,
+      employmentType: employmentType || 'full_time',
+      phone: phone || null,
+      tenantId,
+    });
+
+    // Add to tenant_users mapping
+    await tenantRepo.addUserToTenant(userId, tenantId, userRole);
+
+    try {
+      await auditRepo.writeLog({
+        userId: req.user.id, action: 'platform_create_user_for_tenant',
+        path: req.path, method: req.method, ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        beforeData: null,
+        afterData: JSON.stringify({ userId, email, role: userRole, tenantId, tenantName: tenant.name }),
+      });
+    } catch (e) { /* silently ignored */ }
+
+    res.status(201).json({
+      id: userId,
+      username,
+      email,
+      role: userRole,
+      tenantId,
+      tenantName: tenant.name,
+    });
+  } catch (err) {
+    if (err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062)) {
+      return res.status(409).json({ message: 'Email or employee code already exists' });
+    }
     res.status(500).json({ message: err.message });
   }
 });

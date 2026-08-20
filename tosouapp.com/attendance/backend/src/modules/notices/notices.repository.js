@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const isYM = (s) => /^\d{4}-\d{2}$/.test(String(s || ''));
 const isSelfSubmitNotice = (row, uid) => {
@@ -168,7 +172,7 @@ module.exports = {
     const [rows] = await db.query(`SELECT * FROM notices WHERE id = ? LIMIT 1`, [id]);
     return rows && rows[0] ? rows[0] : { id };
   },
-  async createAdminNotification({ kind, title, message, linkUrl, payload, createdBy, audience = 'admin_manager' }) {
+  async createAdminNotification({ kind, title, message, linkUrl, payload, createdBy, audience = 'admin_manager', tenantId = null }) {
     await ensureNoticesSchema();
     const k = String(kind || '').slice(0, 64) || 'general';
     const t = String(title || '').trim().slice(0, 255) || '通知';
@@ -178,20 +182,21 @@ module.exports = {
     let pj = null;
     try { pj = payload == null ? null : JSON.stringify(payload); } catch { pj = null; }
     const aud = ['all', 'admin', 'manager', 'admin_manager'].includes(String(audience)) ? String(audience) : 'admin_manager';
+    const tid = _tid(tenantId);
     try {
       const [res] = await db.query(
-        `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by, kind, title, link_url, payload_json, audience)
-         VALUES (NULL, NULL, NULL, ?, ?, ?, ?, ?, ?, ?)`,
-        [msg, createdBy || null, k, t, link, pj, aud]
+        `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by, kind, title, link_url, payload_json, audience, tenant_id)
+         VALUES (NULL, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [msg, createdBy || null, k, t, link, pj, aud, tid]
       );
       return { id: Number(res?.insertId || 0) };
     } catch {
       // Backward-compatible fallback if optional columns are unavailable on older DB schema.
       const compact = `[${t}] ${msg}`;
       const [res2] = await db.query(
-        `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by)
-         VALUES (NULL, NULL, NULL, ?, ?)`,
-        [compact, createdBy || null]
+        `INSERT INTO notices (target_user_id, target_date, target_month, message, created_by, tenant_id)
+         VALUES (NULL, NULL, NULL, ?, ?, ?)`,
+        [compact, createdBy || null, tid]
       );
       return { id: Number(res2?.insertId || 0) };
     }
@@ -661,7 +666,7 @@ module.exports = {
     );
     return (rows || []).filter((r) => inferCategoryFromRow(r) === 'system');
   },
-  async markRead({ noticeIds, userId }) {
+  async markRead({ noticeIds, userId, tenantId = null }) {
     await ensureNoticesSchema();
     await ensureNoticeReadsSchema();
     const uid = parseInt(String(userId || 0), 10) || 0;
@@ -674,15 +679,28 @@ module.exports = {
     }
     const unique = Array.from(new Set(cleaned)).slice(0, 50);
     if (!unique.length) return { marked: 0 };
-    for (const nid of unique) {
+    const tid = _tid(tenantId);
+    let validIds = unique;
+    if (tid) {
+      // Verify notices belong to tenant before marking read
+      const placeholders = unique.map(() => '?').join(',');
+      const [validRows] = await db.query(
+        `SELECT id FROM notices WHERE id IN (${placeholders}) AND (tenant_id = ? OR tenant_id IS NULL)`,
+        [...unique, tid]
+      );
+      const validSet = new Set((validRows || []).map(r => Number(r.id)));
+      validIds = unique.filter(id => validSet.has(id));
+    }
+    if (!validIds.length) return { marked: 0 };
+    for (const nid of validIds) {
       await db.query(
         `INSERT INTO notice_reads (notice_id, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE read_at = read_at`,
         [nid, uid]
       );
     }
-    return { marked: unique.length };
+    return { marked: validIds.length };
   },
-  async hideForUser({ noticeIds, userId }) {
+  async hideForUser({ noticeIds, userId, tenantId = null }) {
     await ensureNoticesSchema();
     await ensureNoticeHidesSchema();
     const uid = parseInt(String(userId || 0), 10) || 0;
@@ -695,18 +713,36 @@ module.exports = {
     }
     const unique = Array.from(new Set(cleaned)).slice(0, 200);
     if (!unique.length) return { hidden: 0 };
-    for (const nid of unique) {
+    const tid = _tid(tenantId);
+    let validIds = unique;
+    if (tid) {
+      // Verify notices belong to tenant before hiding
+      const placeholders = unique.map(() => '?').join(',');
+      const [validRows] = await db.query(
+        `SELECT id FROM notices WHERE id IN (${placeholders}) AND (tenant_id = ? OR tenant_id IS NULL)`,
+        [...unique, tid]
+      );
+      const validSet = new Set((validRows || []).map(r => Number(r.id)));
+      validIds = unique.filter(id => validSet.has(id));
+    }
+    if (!validIds.length) return { hidden: 0 };
+    for (const nid of validIds) {
       await db.query(
         `INSERT INTO notice_hides (notice_id, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE hidden_at = hidden_at`,
         [nid, uid]
       );
     }
-    return { hidden: unique.length };
+    return { hidden: validIds.length };
   },
-  async deleteNotice(id) {
+  async deleteNotice(id, tenantId = null) {
     await ensureNoticesSchema();
     const nid = parseInt(String(id || 0), 10);
     if (!nid) throw Object.assign(new Error('Missing id'), { status: 400 });
+    const tid = _tid(tenantId);
+    if (tid) {
+      const [res] = await db.query(`DELETE FROM notices WHERE id = ? AND tenant_id = ?`, [nid, tid]);
+      return { deleted: Number(res?.affectedRows || 0) };
+    }
     const [res] = await db.query(`DELETE FROM notices WHERE id = ?`, [nid]);
     return { deleted: Number(res?.affectedRows || 0) };
   }

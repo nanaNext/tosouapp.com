@@ -57,11 +57,11 @@ router.get('/salary', async (req, res) => {
     const pad = n => String(n).padStart(2, '0');
     const issueDate = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-${pad(today.getUTCDate())}`;
     if (req.user?.role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
       const myDept = me?.departmentId || null;
       const filtered = [];
       for (const id of ids) {
-        const u = await userRepo.getUserById(id);
+        const u = await userRepo.getUserById(id, req.tenantId || null);
         if (u?.departmentId && myDept && String(u.departmentId) === String(myDept)) {
           filtered.push(id);
         }
@@ -88,8 +88,8 @@ async function ensureSameDepartmentIfManager(req, targetUserId) {
   // Payroll/PDF flows are intentionally company-wide for managers unless
   // an explicit payroll-specific scope lock is enabled.
   if (String(process.env.MANAGER_STRICT_DEPT_PAYROLL || '').toLowerCase() !== 'true') return true;
-  const me = await userRepo.getUserById(req.user.id);
-  const target = await userRepo.getUserById(targetUserId);
+  const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
   if (!me?.departmentId || !target?.departmentId) return false;
   return String(me.departmentId) === String(target.departmentId);
 }
@@ -513,8 +513,8 @@ router.delete('/salary/deliveries/:id', async (req, res) => {
     const row = await payslipDeliveryRepo.getById(id);
     if (!row) return res.status(404).json({ message: 'Not found' });
     if (role === 'manager') {
-      const me = await userRepo.getUserById(req.user.id);
-      const target = await userRepo.getUserById(row.userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const target = await userRepo.getUserById(row.userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden: cross-department access' });
       }

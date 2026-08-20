@@ -24,7 +24,7 @@ exports.getWorkDetails = async (req, res) => {
     if (!userId) return res.status(404).json({ message: 'User not found' });
     const from = String(req.query?.from || '').slice(0, 10);
     const to = String(req.query?.to || '').slice(0, 10);
-    const rows = await repo.listWorkDetailsBetween(userId, from || '1900-01-01', to || '2999-12-31');
+    const rows = await repo.listWorkDetailsBetween(userId, from || '1900-01-01', to || '2999-12-31', { tenantId: req.tenantId || null });
     const items = (rows || []).map(r => ({
       id: r.id, startDate: String(r.start_date || '').slice(0, 10) || null, endDate: r.end_date ? String(r.end_date).slice(0, 10) : null,
       companyName: r.company_name || null, workPlaceAddress: r.work_place_address || null, workContent: r.work_content || null,
@@ -43,7 +43,7 @@ exports.postWorkDetail = async (req, res) => {
     const userId = await resolveTargetUserId(req);
     if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     if (!userId) return res.status(404).json({ message: 'User not found' });
-    const id = await repo.createWorkDetail(userId, req.body || {});
+    const id = await repo.createWorkDetail(userId, req.body || {}, { tenantId: req.tenantId || null });
     if (!id) return res.status(400).json({ message: 'Invalid payload' });
     res.status(201).json({ id });
   } catch (err) {
@@ -60,7 +60,7 @@ exports.putWorkDetail = async (req, res) => {
     if (!userId) return res.status(404).json({ message: 'User not found' });
     const id = parseInt(String(req.params.id), 10);
     if (!id) return res.status(400).json({ message: 'Missing id' });
-    const r = await repo.updateWorkDetail(id, userId, req.body || {});
+    const r = await repo.updateWorkDetail(id, userId, req.body || {}, { tenantId: req.tenantId || null });
     if (!r?.ok) return res.status(404).json({ message: 'Not found' });
     res.status(200).json({ id, updated: r.updated || 0 });
   } catch (err) {
@@ -77,7 +77,7 @@ exports.deleteWorkDetail = async (req, res) => {
     if (!userId) return res.status(404).json({ message: 'User not found' });
     const id = parseInt(String(req.params.id), 10);
     if (!id) return res.status(400).json({ message: 'Missing id' });
-    const r = await repo.deleteWorkDetail(id, userId);
+    const r = await repo.deleteWorkDetail(id, userId, { tenantId: req.tenantId || null });
     res.status(200).json({ id, deleted: r.deleted || 0 });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -161,7 +161,7 @@ exports.putMonthBulk = async (req, res) => {
         lookupIndices.push(i);
       }
       if (timesToLookup.length) {
-        const existingMap = await repo.findCheckInsByTimes(userId, timesToLookup).catch(() => new Map());
+        const existingMap = await repo.findCheckInsByTimes(userId, timesToLookup, { tenantId: req.tenantId || null }).catch(() => new Map());
         for (let j = 0; j < timesToLookup.length; j++) {
           const existing = existingMap.get(timesToLookup[j]);
           if (existing?.id) {
@@ -176,7 +176,7 @@ exports.putMonthBulk = async (req, res) => {
 
     let result = null;
     try {
-      result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates });
+      result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates }, { tenantId: req.tenantId || null });
     } catch (err) {
       if (String(err?.code || '') === 'ER_DUP_ENTRY') {
         try {
@@ -190,7 +190,7 @@ exports.putMonthBulk = async (req, res) => {
             lookupItems.push(u);
           }
           if (timesToLookup.length) {
-            const existingMap = await repo.findCheckInsByTimes(userId, timesToLookup).catch(() => new Map());
+            const existingMap = await repo.findCheckInsByTimes(userId, timesToLookup, { tenantId: req.tenantId || null }).catch(() => new Map());
             for (let j = 0; j < timesToLookup.length; j++) {
               const existing = existingMap.get(timesToLookup[j]);
               if (existing?.id) {
@@ -200,7 +200,7 @@ exports.putMonthBulk = async (req, res) => {
             }
           }
         } catch (e) { /* silently ignored */ }
-        result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates });
+        result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates }, { tenantId: req.tenantId || null });
       } else {
         throw err;
       }
@@ -246,8 +246,8 @@ exports.syncSalary = async (req, res) => {
     const from = `${y}-${String(m).padStart(2, '0')}-01`;
     const to = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    const dailyRows = await repo.listDailyBetween(userId, from, to).catch(() => []);
-    const attendanceRows = await repo.listByUserBetween(userId, from, to).catch(() => []);
+    const dailyRows = await repo.listDailyBetween(userId, from, to, { tenantId: req.tenantId || null }).catch(() => []);
+    const attendanceRows = await repo.listByUserBetween(userId, from, to, { tenantId: req.tenantId || null }).catch(() => []);
 
     const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
     const workDaysSet = new Set();
@@ -289,7 +289,7 @@ exports.putPlan = async (req, res) => {
     if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     const { date, plan } = req.body || {};
     if (!userId || !date) return res.status(400).json({ message: 'Missing userId/date' });
-    const result = await repo.upsertPlan(userId, date, plan);
+    const result = await repo.upsertPlan(userId, date, plan, { tenantId: req.tenantId || null });
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });

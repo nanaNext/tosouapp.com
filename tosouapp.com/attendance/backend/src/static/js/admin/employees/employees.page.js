@@ -903,6 +903,12 @@ async function renderEmployees(profile, c) {
   // Load branches for dropdown
   let branches = [];
   try { branches = (await fetchJSONAuth('/api/branches'))?.data || []; } catch { branches = []; }
+  // Load tenants for sysadmin (to populate "所属会社" dropdown in create form)
+  let tenantsList = [];
+  const isSysRole = role2 === 'sysadmin' || role2 === 'owner';
+  if (isSysRole) {
+    try { tenantsList = (await fetchJSONAuth('/api/platform/tenants'))?.tenants || []; } catch { tenantsList = []; }
+  }
   if (seq !== employeesRenderSeq) return;
   if (role2 === 'manager' && (!users || users.length === 0)) {
     try {
@@ -1355,6 +1361,7 @@ async function renderEmployees(profile, c) {
       <div id="step1" class="emp-add-form" style="border:1px solid #cbd5e1; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.04);">
         <div class="section-header">基本情報</div>
         <table style="width:100%;border-collapse:collapse;">
+          <tr><td class="field-label">所属会社 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empTenantSelect" style="font-weight:600;"><option value="">読み込み中...</option></select></td></tr>
           <tr><td class="field-label">社員番号 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empCode" placeholder="例: EMP001"></td></tr>
           <tr><td class="field-label">氏名 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empName" placeholder="山田 太郎"></td></tr>
           <tr><td class="field-label">メール <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empEmail" type="email" placeholder="example@company.com"></td></tr>
@@ -1424,6 +1431,91 @@ async function renderEmployees(profile, c) {
       }
     } catch (e) { /* silently ignored */ }
 
+    // Populate tenant dropdown for sysadmin
+    try {
+      const tenantSel = form.querySelector('#empTenantSelect');
+      if (tenantSel) {
+        if (isSysRole && tenantsList.length > 0) {
+          // Sysadmin: show all tenants
+          const currentTid = String(profile?.tenantId || '');
+          tenantSel.innerHTML = '<option value="">選択してください</option>' +
+            tenantsList.map(t => `<option value="${t.id}"${String(t.id) === currentTid ? ' selected' : ''}>${t.name}</option>`).join('');
+        } else {
+          // Admin/Manager: fetch their own tenant info from /api/auth/me or use profile
+          let tid = profile?.tenantId || '';
+          let tName = profile?.tenantName || '';
+          if (!tid) {
+            try {
+              const me = await fetchJSONAuth('/api/auth/me');
+              tid = me?.tenantId || me?.tenant_id || '';
+              tName = me?.tenantName || me?.tenant_name || '';
+              // Also try tenants list from user context
+              if (!tid && me?.tenants && me.tenants.length > 0) {
+                tid = me.tenants[0].id || '';
+                tName = me.tenants[0].name || '';
+              }
+            } catch (e) { /* silently ignored */ }
+          }
+          if (!tid) {
+            // Last resort: get from JWT payload
+            try {
+              const token = sessionStorage.getItem('accessToken') || '';
+              if (token) {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                tid = payload.tid || payload.tenant_id || '';
+              }
+            } catch (e) { /* silently ignored */ }
+          }
+          if (!tid) {
+            // Absolute fallback: call tenants API which the select-company flow uses
+            try {
+              const data = await fetchJSONAuth('/api/auth/my-tenants');
+              const list = data?.tenants || data || [];
+              if (Array.isArray(list) && list.length > 0) {
+                tenantSel.innerHTML = list.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+              } else {
+                tenantSel.innerHTML = '<option value="">テナント未設定</option>';
+              }
+            } catch (e) {
+              tenantSel.innerHTML = '<option value="">テナント未設定</option>';
+            }
+          } else {
+            tenantSel.innerHTML = `<option value="${tid}" selected>${tName || '会社 #' + tid}</option>`;
+          }
+        }
+      }
+      // When tenant changes, reload departments for that tenant
+      const tenantSel2 = form.querySelector('#empTenantSelect');
+      if (tenantSel2) {
+        tenantSel2.addEventListener('change', async () => {
+          const tid = tenantSel2.value;
+          const deptSel = form.querySelector('#empDept');
+          if (!deptSel) return;
+          deptSel.innerHTML = '<option value="">読み込み中...</option>';
+          try {
+            const headers = tid ? { 'X-Tenant-Id': tid } : {};
+            const deptsData = await fetchJSONAuth('/api/admin/departments', { headers });
+            const list = Array.isArray(deptsData) ? deptsData : (deptsData?.rows || deptsData?.departments || []);
+            deptSel.innerHTML = '<option value="">未設定</option>' + list.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+          } catch (e) {
+            deptSel.innerHTML = '<option value="">未設定</option>';
+          }
+          // Also reload branches for the selected tenant
+          const brSel = form.querySelector('#empBranch');
+          if (brSel) {
+            try {
+              const headers = tid ? { 'X-Tenant-Id': tid } : {};
+              const brData = await fetchJSONAuth('/api/branches', { headers });
+              const brList = Array.isArray(brData) ? brData : (brData?.data || []);
+              brSel.innerHTML = '<option value="">未設定</option>' + brList.map(br => `<option value="${br.id}">${br.name}</option>`).join('');
+            } catch (e) {
+              brSel.innerHTML = '<option value="">未設定</option>';
+            }
+          }
+        });
+      }
+    } catch (e) { /* silently ignored */ }
+
     // Step navigation logic
     const step1 = form.querySelector('#step1');
     const step2 = form.querySelector('#step2');
@@ -1434,12 +1526,14 @@ async function renderEmployees(profile, c) {
 
     const goToStep2 = () => {
       // Validate step 1 required fields
+      const tenantVal = form.querySelector('#empTenantSelect')?.value;
       const code = form.querySelector('#empCode')?.value?.trim();
       const name = form.querySelector('#empName')?.value?.trim();
       const email = form.querySelector('#empEmail')?.value?.trim();
       const pass = form.querySelector('#empPass')?.value;
       // Validation: kiểm tra trường bắt buộc
       const missing = [];
+      if (!tenantVal) missing.push('所属会社');
       if (!code) missing.push('社員番号');
       if (!name) missing.push('氏名');
       if (!email) missing.push('メール');
@@ -1509,12 +1603,15 @@ async function renderEmployees(profile, c) {
       if (msgEl) msgEl.style.display = 'none';
       const ok = window.confirm('作成しますか？');
       if (!ok) return;
+      // Pass selected tenant as X-Tenant-Id header for multi-tenant support
+      const selectedTenantId = document.querySelector('#empTenantSelect')?.value || '';
+      const createOpts = selectedTenantId ? { headers: { 'X-Tenant-Id': selectedTenantId } } : undefined;
       if (btn) {
         btn.disabled = true;
         btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> <span>作成中...</span>`;
       }
       try {
-        const r = await createEmployee(b);
+        const r = await createEmployee(b, createOpts);
         try {
           const fileEl = document.querySelector('#empAvatarFile');
           if (fileEl && fileEl.files && fileEl.files.length && r && r.id) {

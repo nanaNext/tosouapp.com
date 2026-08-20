@@ -51,29 +51,36 @@ exports.getReportMatrix = async (req, res) => {
     const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
     const from    = `${month}-01`;
     const to      = `${month}-${String(lastDay).padStart(2, '0')}`;
+    const tid = req.tenantId || null;
 
     // Lấy danh sách nhân viên đang hoạt động (không gồm admin/manager)
     // 工事部 hiển thị trước, sau đó sắp xếp theo employee_code
-    const [users] = await db.query(`
+    let userSql = `
       SELECT u.id, u.username, u.employee_code, u.employment_type, d.name AS departmentName
       FROM users u
       LEFT JOIN departments d ON u.departmentId = d.id
       WHERE u.employment_status = 'active' AND u.role NOT IN ('admin','manager')
-      ORDER BY CASE WHEN d.name LIKE '%工事%' THEN 1 ELSE 2 END, u.employee_code ASC, u.id ASC
-    `);
+    `;
+    const userParams = [];
+    if (tid != null) { userSql += ` AND u.tenant_id = ?`; userParams.push(tid); }
+    userSql += ` ORDER BY CASE WHEN d.name LIKE '%工事%' THEN 1 ELSE 2 END, u.employee_code ASC, u.id ASC`;
+    const [users] = await db.query(userSql, userParams);
 
     // Lấy tất cả bản ghi chấm công trong tháng
-    const [records] = await db.query(`
+    let attSql = `
       SELECT userId, checkIn, checkOut FROM attendance
       WHERE (DATE(checkIn) BETWEEN ? AND ?)
          OR (checkIn IS NULL AND DATE(checkOut) BETWEEN ? AND ?)
-    `, [from, to, from, to]);
+    `;
+    const attParams = [from, to, from, to];
+    if (tid != null) { attSql += ` AND tenant_id = ?`; attParams.push(tid); }
+    const [records] = await db.query(attSql, attParams);
 
     // Lấy break_minutes từ attendance_daily để tính giờ làm net
-    const [dailyRows] = await db.query(
-      `SELECT userId, date, break_minutes FROM attendance_daily WHERE date BETWEEN ? AND ?`,
-      [from, to]
-    );
+    let dailySql = `SELECT userId, date, break_minutes FROM attendance_daily WHERE date BETWEEN ? AND ?`;
+    const dailyParams = [from, to];
+    if (tid != null) { dailySql += ` AND tenant_id = ?`; dailyParams.push(tid); }
+    const [dailyRows] = await db.query(dailySql, dailyParams);
 
     // Build lookup map: "userId_date" → [{checkIn, checkOut}]
     const attendanceMap = {};

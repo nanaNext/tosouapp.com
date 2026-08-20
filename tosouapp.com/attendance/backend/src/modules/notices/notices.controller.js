@@ -42,7 +42,7 @@ exports.listAdmin = async (req, res) => {
 exports.markRead = async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
-    const r = await repo.markRead({ noticeIds: ids, userId: req.user?.id || null });
+    const r = await repo.markRead({ noticeIds: ids, userId: req.user?.id || null, tenantId: req.tenantId || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -52,7 +52,7 @@ exports.markRead = async (req, res) => {
 exports.hideForMe = async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
-    const r = await repo.hideForUser({ noticeIds: ids, userId: req.user?.id || null });
+    const r = await repo.hideForUser({ noticeIds: ids, userId: req.user?.id || null, tenantId: req.tenantId || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
@@ -103,7 +103,7 @@ exports.create = async (req, res) => {
 exports.remove = async (req, res) => {
   try {
     const id = req.params.id;
-    const r = await repo.deleteNotice(id);
+    const r = await repo.deleteNotice(id, req.tenantId || null);
     res.status(200).json({ id: parseInt(String(id || 0), 10) || null, ...r });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });

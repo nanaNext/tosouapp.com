@@ -1,6 +1,10 @@
 const db = require('../../core/database/mysql');
 const crypto = require('crypto');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 async function ensureTable() {
   const sql = `
     CREATE TABLE IF NOT EXISTS refresh_tokens (
@@ -56,7 +60,7 @@ function hashToken(token) {
 
 module.exports = {
   ensureTable,
-  async createToken({ userId, token, expiresAt, userAgent, ip }) {
+  async createToken({ userId, token, expiresAt, userAgent, ip, tenantId = null }) {
     const tokenHash = hashToken(token);
     const sql = `
       INSERT INTO refresh_tokens (userId, token_hash, expires_at, user_agent, ip)
@@ -101,24 +105,51 @@ module.exports = {
     await db.query(sql, [tokenHash]);
   },
 
-  async deleteUserTokens(userId) {
+  async deleteUserTokens(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      // Verify user belongs to tenant before deletion
+      const [userRows] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+      if (!userRows || !userRows.length) {
+        throw new Error('User does not belong to the specified tenant');
+      }
+    }
     const sql = `DELETE FROM refresh_tokens WHERE userId = ?`;
     await db.query(sql, [userId]);
   },
- 
+
   async cleanupExpired() {
     const sql = `DELETE FROM refresh_tokens WHERE expires_at < NOW()`;
     const [result] = await db.query(sql);
     return { deleted: result?.affectedRows || 0 };
   },
- 
-   async deleteAllTokens() {
-     const sql = `DELETE FROM refresh_tokens`;
-     const [result] = await db.query(sql);
-     return { deleted: result?.affectedRows || 0 };
-   },
 
-  async listByUser(userId, { page = 1, pageSize = 20 } = {}) {
+  async deleteAllTokens(tenantId = null) {
+    const tid = _tid(tenantId);
+    const multiTenant = process.env.ENABLE_MULTI_TENANT === 'true';
+    if (multiTenant && tid == null) {
+      throw new Error('deleteAllTokens requires a tenantId when multi-tenant mode is enabled');
+    }
+    if (tid != null) {
+      // Only delete tokens for users belonging to this tenant
+      const sql = `DELETE rt FROM refresh_tokens rt INNER JOIN users u ON u.id = rt.userId WHERE u.tenant_id = ?`;
+      const [result] = await db.query(sql, [tid]);
+      return { deleted: result?.affectedRows || 0 };
+    }
+    const sql = `DELETE FROM refresh_tokens`;
+    const [result] = await db.query(sql);
+    return { deleted: result?.affectedRows || 0 };
+  },
+
+  async listByUser(userId, { page = 1, pageSize = 20, tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      // Verify user belongs to tenant
+      const [userRows] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+      if (!userRows || !userRows.length) {
+        throw new Error('User does not belong to the specified tenant');
+      }
+    }
     const p = Math.max(1, parseInt(page, 10) || 1);
     const ps = Math.max(1, parseInt(pageSize, 10) || 20);
     const offset = (p - 1) * ps;

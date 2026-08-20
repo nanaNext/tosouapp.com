@@ -301,6 +301,12 @@ exports.approveShiftMonth = async (req, res) => {
     if (!userId || !month || !status) return res.status(400).json({ message: 'Missing fields' });
     const validStatuses = ['APPROVED', 'REJECTED', 'PENDING', 'draft'];
     if (!validStatuses.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+    const tid = req.tenantId || null;
+    // Verify userId belongs to the same tenant
+    if (tid != null) {
+      const [userRows] = await db.query('SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1', [userId, tid]);
+      if (!userRows || userRows.length === 0) return res.status(404).json({ message: 'User not found in tenant' });
+    }
     await db.query(`UPDATE shift_month_status SET status = ? WHERE userId = ? AND month = ?`, [status, userId, month]);
 
     // Khi APPROVED: tự động lưu kubun '休日' cho ngày OFF và gửi thông báo cho nhân viên
@@ -374,6 +380,12 @@ exports.getMyMonthlyShifts = async (req, res) => {
     if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
     if (!month) return res.status(400).json({ message: 'Missing month' });
+    // Verify userId belongs to the same tenant when viewing another user's data
+    const tid = req.tenantId || null;
+    if (tid != null && String(userId) !== String(req.user?.id)) {
+      const [userRows] = await db.query('SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1', [userId, tid]);
+      if (!userRows || userRows.length === 0) return res.status(404).json({ message: 'User not found in tenant' });
+    }
 
     let submission_status = 'draft';
     try {
