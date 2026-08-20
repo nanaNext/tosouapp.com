@@ -38,7 +38,7 @@ exports.checkIn = async (req, res) => {
       deviceId: b?.deviceId,
       tzOffset: b?.tzOffset
     };
-    const result = await service.checkIn(userId, b?.time, loc, workType);
+    const result = await service.checkIn(userId, b?.time, loc, workType, req.tenantId || null);
     if (!result) {
       return res.status(409).json({ message: 'Already checked in' });
     }
@@ -46,10 +46,10 @@ exports.checkIn = async (req, res) => {
     // Auto-update attendance_daily kubun to '出勤' upon check-in
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-      const dailyRec = await repo.getDaily(userId, dtStr);
+      const dailyRec = await repo.getDaily(userId, dtStr, { tenantId: req.tenantId || null });
       const dailies = dailyRec ? [dailyRec] : [];
       if (!dailies.length || !dailies[0].kubun || dailies[0].kubun !== '出勤') {
-        await repo.upsertDaily(userId, dtStr, { kubun: '出勤' });
+        await repo.upsertDaily(userId, dtStr, { kubun: '出勤' }, { tenantId: req.tenantId || null });
       }
     } catch (err) {
       log.warn('auto_set_kubun_failed', { userId, error_message: err.message });
@@ -72,7 +72,7 @@ exports.checkIn = async (req, res) => {
       const y = parseInt(dtStr.slice(0, 4), 10);
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
-      if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
+      if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null });
     } catch (e) { log.warn('month_status_update_failed', { userId, error_message: e.message }); }
     try {
       const u = await userRepo.getUserById(userId);
@@ -116,7 +116,7 @@ exports.checkOut = async (req, res) => {
       deviceId: b?.deviceId,
       tzOffset: b?.tzOffset
     };
-    const result = await service.checkOut(userId, b?.time, loc);
+    const result = await service.checkOut(userId, b?.time, loc, req.tenantId || null);
     if (!result) {
       return res.status(404).json({ message: 'No open attendance' });
     }
@@ -137,7 +137,7 @@ exports.checkOut = async (req, res) => {
       const y = parseInt(dtStr.slice(0, 4), 10);
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
-      if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id);
+      if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null });
     } catch (e) { log.warn('month_status_update_failed', { userId, error_message: e.message }); }
     try {
       const u = await userRepo.getUserById(userId);
@@ -159,7 +159,7 @@ exports.checkOut = async (req, res) => {
         const dtStr2 = String(result.checkOut).slice(0, 10);
         let breakMin = 60;
         try {
-          const dailyRec = await repo.getDaily(userId, dtStr2);
+          const dailyRec = await repo.getDaily(userId, dtStr2, { tenantId: req.tenantId || null });
           const dailies = dailyRec ? [dailyRec] : [];
           if (dailies.length > 0) {
             breakMin = Number(dailies[0].break_minutes || 0) + Number(dailies[0].night_break_minutes || 0);
@@ -235,7 +235,7 @@ exports.setWorkType = async (req, res) => {
     const date = String(b.date || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const wt = String(b?.workType || b?.work_type || '').trim();
     const workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
-    const r = await repo.setWorkTypeForUserDate(userId, date, workType);
+    const r = await repo.setWorkTypeForUserDate(userId, date, workType, { tenantId: req.tenantId || null });
     res.status(200).json({ date, workType, updated: Number(r?.updated || 0) });
   } catch (err) {
     res.status(500).json({ message: err.message });

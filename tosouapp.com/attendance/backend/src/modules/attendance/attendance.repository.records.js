@@ -1,6 +1,15 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
+/**
+ * Parse tenant id safely.
+ * @param {number|string|null} tenantId
+ * @returns {number|null}
+ */
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 const mergeLabels = (...values) => {
   const set = new Set();
   for (const value of values) {
@@ -83,7 +92,8 @@ function getUSAStartCol(set) {
 }
 
 module.exports = {
-  async createCheckIn(userId, time, loc, labels, workType) {
+  async createCheckIn(userId, time, loc, labels, workType, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const dateStr = String(time).slice(0, 10);
     const setUSA = await getUSAColumnSet();
     const startCol = getUSAStartCol(setUSA);
@@ -117,12 +127,14 @@ module.exports = {
     if (set.has('in_deviceId')) { cols.push('in_deviceId'); vals.push(loc?.deviceId ?? null); }
     if (set.has('in_tzOffset')) { cols.push('in_tzOffset'); vals.push(loc?.tzOffset ?? null); }
     if (set.has('labels')) { cols.push('labels'); vals.push(labels || null); }
+    if (set.has('tenant_id') && tid != null) { cols.push('tenant_id'); vals.push(tid); }
     const placeholders = cols.map(() => '?').join(', ');
     const sql = `INSERT INTO attendance (${cols.join(', ')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)`;
     const [result] = await db.query(sql, vals);
     return result.insertId;
   },
-  async createCheckInTx(userId, time, loc, labels, workType) {
+  async createCheckInTx(userId, time, loc, labels, workType, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const conn = await db.getConnection();
     try {
       await conn.beginTransaction();
@@ -210,6 +222,7 @@ module.exports = {
       if (set.has('in_deviceId')) { cols.push('in_deviceId'); vals.push(loc?.deviceId ?? null); }
       if (set.has('in_tzOffset')) { cols.push('in_tzOffset'); vals.push(loc?.tzOffset ?? null); }
       if (set.has('labels')) { cols.push('labels'); vals.push(labels || null); }
+      if (set.has('tenant_id') && tid != null) { cols.push('tenant_id'); vals.push(tid); }
       const placeholders = cols.map(() => '?').join(', ');
       const sql = `INSERT INTO attendance (${cols.join(', ')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)`;
       const [result] = await conn.query(sql, vals);
@@ -222,13 +235,18 @@ module.exports = {
       conn.release();
     }
   },
-  async getOpenAttendanceForUser(userId, dateStr) {
+  async getOpenAttendanceForUser(userId, dateStr, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const d = String(dateStr || todayJST()).slice(0, 10);
-    const sql = `SELECT * FROM attendance WHERE userId = ? AND checkOut IS NULL AND DATE(checkIn) = ? ORDER BY checkIn DESC LIMIT 1`;
-    const [rows] = await db.query(sql, [userId, d]);
+    const where = ['userId = ?', 'checkOut IS NULL', 'DATE(checkIn) = ?'];
+    const params = [userId, d];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const sql = `SELECT * FROM attendance WHERE ${where.join(' AND ')} ORDER BY checkIn DESC LIMIT 1`;
+    const [rows] = await db.query(sql, params);
     return rows[0];
   },
-  async createMissingCheckIn(userId, checkOutTime, loc, labels, anomalyType) {
+  async createMissingCheckIn(userId, checkOutTime, loc, labels, anomalyType, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const set = await getAttendanceColumnSet();
     const cols = ['userId', 'checkOut'];
     const vals = [userId, checkOutTime];
@@ -243,12 +261,14 @@ module.exports = {
     if (set.has('out_deviceId')) { cols.push('out_deviceId'); vals.push(loc?.deviceId ?? null); }
     if (set.has('out_tzOffset')) { cols.push('out_tzOffset'); vals.push(loc?.tzOffset ?? null); }
     if (set.has('labels')) { cols.push('labels'); vals.push(labels || null); }
+    if (set.has('tenant_id') && tid != null) { cols.push('tenant_id'); vals.push(tid); }
     const placeholders = cols.map(() => '?').join(', ');
     const sql = `INSERT INTO attendance (${cols.join(', ')}) VALUES (${placeholders})`;
     const [result] = await db.query(sql, vals);
     return result.insertId;
   },
-  async setCheckOut(attendanceId, time, loc, labels) {
+  async setCheckOut(attendanceId, time, loc, labels, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const set = await getAttendanceColumnSet();
     const updates = ['checkOut = ?'];
     const vals = [time];
@@ -261,11 +281,19 @@ module.exports = {
     if (set.has('out_deviceId')) { updates.push('out_deviceId = ?'); vals.push(loc?.deviceId ?? null); }
     if (set.has('out_tzOffset')) { updates.push('out_tzOffset = ?'); vals.push(loc?.tzOffset ?? null); }
     if (set.has('labels')) { updates.push('labels = ?'); vals.push(labels || null); }
-    const sql = `UPDATE attendance SET ${updates.join(', ')} WHERE id = ?`;
+    const where = ['id = ?'];
     vals.push(attendanceId);
+    if (tid != null) { where.push('tenant_id = ?'); vals.push(tid); }
+    const sql = `UPDATE attendance SET ${updates.join(', ')} WHERE ${where.join(' AND ')}`;
     await db.query(sql, vals);
   },
-  async listByUserBetween(userId, fromDate, toDate) {
+  async listByUserBetween(userId, fromDate, toDate, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const start = fromDate + ' 00:00:00';
+    const end = toDate + ' 23:59:59';
+    let tidClause = '';
+    const params = [userId, start, end, start, end];
+    if (tid != null) { tidClause = ' AND tenant_id = ?'; params.push(tid); }
     const sql = `
       SELECT * FROM attendance
       WHERE userId = ?
@@ -273,50 +301,64 @@ module.exports = {
           (checkIn >= ? AND checkIn <= ?)
           OR (checkIn IS NULL AND checkOut >= ? AND checkOut <= ?)
         )
+        ${tidClause}
       ORDER BY COALESCE(checkIn, checkOut) ASC
     `;
-    const start = fromDate + ' 00:00:00';
-    const end = toDate + ' 23:59:59';
-    const [rows] = await db.query(sql, [userId, start, end, start, end]);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
-  async findCheckInByTime(userId, time) {
-    const sql = `SELECT id FROM attendance WHERE userId = ? AND checkIn = ? LIMIT 1`;
-    const [rows] = await db.query(sql, [userId, time]);
+  async findCheckInByTime(userId, time, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'checkIn = ?'];
+    const params = [userId, time];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(`SELECT id FROM attendance WHERE ${where.join(' AND ')} LIMIT 1`, params);
     return rows[0];
   },
   /**
    * Batch version: find multiple checkIns in one query.
    * Returns a Map<checkInTime, { id }>.
    */
-  async findCheckInsByTimes(userId, times) {
+  async findCheckInsByTimes(userId, times, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const result = new Map();
     if (!Array.isArray(times) || !times.length) return result;
     const placeholders = times.map(() => '?').join(',');
+    const where = ['userId = ?', `checkIn IN (${placeholders})`];
+    const params = [userId, ...times];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const [rows] = await db.query(
-      `SELECT id, checkIn FROM attendance WHERE userId = ? AND checkIn IN (${placeholders})`,
-      [userId, ...times]
+      `SELECT id, checkIn FROM attendance WHERE ${where.join(' AND ')}`,
+      params
     );
     for (const r of (rows || [])) {
       result.set(String(r.checkIn), { id: r.id });
     }
     return result;
   },
-  async findCheckOutByTime(userId, time) {
-    const sql = `SELECT id FROM attendance WHERE userId = ? AND checkOut = ? LIMIT 1`;
-    const [rows] = await db.query(sql, [userId, time]);
+  async findCheckOutByTime(userId, time, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', 'checkOut = ?'];
+    const params = [userId, time];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(`SELECT id FROM attendance WHERE ${where.join(' AND ')} LIMIT 1`, params);
     return rows[0];
   },
-  async getById(attendanceId) {
-    const [rows] = await db.query(`SELECT * FROM attendance WHERE id = ? LIMIT 1`, [attendanceId]);
+  async getById(attendanceId, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['id = ?'];
+    const params = [attendanceId];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(`SELECT * FROM attendance WHERE ${where.join(' AND ')} LIMIT 1`, params);
     return rows[0];
   },
-  async updateTimes(attendanceId, checkIn, checkOut) {
+  async updateTimes(attendanceId, checkIn, checkOut, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const inV = checkIn ? String(checkIn) : '';
     const outV = checkOut ? String(checkOut) : '';
     if (!inV && !outV) return;
 
-    const current = await this.getById(attendanceId);
+    const current = await this.getById(attendanceId, { tenantId });
     if (!current) return;
     const currentUserId = parseInt(String(current.userId || 0), 10);
     if (!currentUserId) return;
@@ -388,7 +430,8 @@ module.exports = {
    * TRANSACTIONAL BULK UPSERT (Ưu tiên 1)
    * Xử lý cả attendance_daily và attendance segments trong 1 transaction.
    */
-  async bulkUpsertAttendance(userId, { updates, dailyUpdates }) {
+  async bulkUpsertAttendance(userId, { updates, dailyUpdates }, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const conn = await db.getConnection();
 
     // Helper: parse "HH:MM" → minutes from midnight
@@ -502,10 +545,14 @@ module.exports = {
             const loc = u.location || null;
             const mem = u.memo || null;
             const not = u.notes || null;
+            const insertCols = ['userId', 'checkIn', 'checkOut', 'work_type', 'location', 'memo', 'notes'];
+            const insertVals = [userId, u.checkIn, u.checkOut||null, u.workType||null, loc, mem, not];
+            if (tid != null) { insertCols.push('tenant_id'); insertVals.push(tid); }
+            const ph = insertCols.map(() => '?').join(', ');
             const [res] = await conn.query(
-              `INSERT INTO attendance (userId, checkIn, checkOut, work_type, location, memo, notes) VALUES (?, ?, ?, ?, ?, ?, ?)
+              `INSERT INTO attendance (${insertCols.join(', ')}) VALUES (${ph})
                ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id),checkOut=VALUES(checkOut),work_type=VALUES(work_type),location=VALUES(location),memo=VALUES(memo),notes=VALUES(notes)`,
-              [userId, u.checkIn, u.checkOut||null, u.workType||null, loc, mem, not]
+              insertVals
             );
             const newId = Number(res?.insertId||0)||null;
             const affected = Number(res?.affectedRows||0);
@@ -564,8 +611,8 @@ module.exports = {
 
           await conn.query(
             `
-            INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, status, furikae_holiday_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO attendance_daily (userId, date, kubun, kubun_confirmed, work_type, location, reason, memo, notes, late_minutes, early_minutes, break_minutes, night_break_minutes, status, furikae_holiday_date, tenant_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
               kubun = VALUES(kubun),
               kubun_confirmed = VALUES(kubun_confirmed),
@@ -596,7 +643,8 @@ module.exports = {
               d.breakMinutes !== null && d.breakMinutes !== undefined ? d.breakMinutes : null,
               d.nightBreakMinutes !== null && d.nightBreakMinutes !== undefined ? d.nightBreakMinutes : null,
               status,
-              (() => { const fv = String(d.furikaeHolidayDate || d.furikae_holiday_date || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null; })()
+              (() => { const fv = String(d.furikaeHolidayDate || d.furikae_holiday_date || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null; })(),
+              tid
             ]
           );
           dailySaved++;

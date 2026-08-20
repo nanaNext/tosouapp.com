@@ -23,7 +23,7 @@ const {
 
 // ─── API: Lấy toàn bộ lịch nghỉ của năm ─────────────────────────────────────
 // GET /api/attendance/calendar?year=2026
-// Lưu ý: 工事部 (bộ phận thi công) có quy tắc ngày nghỉ khác (chỉ nghỉ CN + thứ 7 tuần 4)
+// Lưu ý: 工事部 (bộ phận thi công) có quy tắc ngày nghỉ khác (chỉ nghỉ CN + thứ 7 tuần 4, ví dụ vẫn còn tuần thứ 5 thì đi làm)
 exports.getCalendar = async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);

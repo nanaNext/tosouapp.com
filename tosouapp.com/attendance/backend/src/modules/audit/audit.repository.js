@@ -10,6 +10,7 @@ module.exports = {
       CREATE TABLE IF NOT EXISTS audit_logs (
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         userId BIGINT UNSIGNED NULL,
+        tenant_id BIGINT UNSIGNED NULL,
         action VARCHAR(64) NOT NULL,
         path VARCHAR(255),
         method VARCHAR(16),
@@ -20,17 +21,33 @@ module.exports = {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_user (userId),
         INDEX idx_action (action),
-        INDEX idx_created (created_at)
+        INDEX idx_created (created_at),
+        INDEX idx_tenant (tenant_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Ensure tenant_id column exists on older tables
+    try {
+      const [cols] = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_schema = DATABASE() AND table_name = 'audit_logs'
+      `);
+      const set = new Set((cols || []).map(c => String(c.column_name)));
+      if (!set.has('tenant_id')) {
+        await db.query(`ALTER TABLE audit_logs ADD COLUMN tenant_id BIGINT UNSIGNED NULL AFTER userId`);
+        try { await db.query(`ALTER TABLE audit_logs ADD INDEX idx_tenant (tenant_id)`); } catch (e) { /* silently ignored */ }
+      }
+    } catch (e) { /* silently ignored */ }
   },
   async writeLog(data) {
+    const tid = _tid(data.tenantId);
     const sql = `
-      INSERT INTO audit_logs (userId, action, path, method, ip, userAgent, beforeData, afterData)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO audit_logs (userId, tenant_id, action, path, method, ip, userAgent, beforeData, afterData)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     await db.query(sql, [
       data.userId,
+      tid,
       data.action,
       data.path,
       data.method,

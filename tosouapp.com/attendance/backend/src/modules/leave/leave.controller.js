@@ -46,9 +46,9 @@ function overlapDays(aStart, aEnd, bStart, bEnd) {
   if (s > e) return 0;
   return daysBetweenInclusive(s, e);
 }
-async function tryReconcileAttendance() {
+async function tryReconcileAttendance(tenantId = null) {
   try {
-    await repo.reconcileApprovedPaidWithAttendance();
+    await repo.reconcileApprovedPaidWithAttendance(tenantId);
   } catch (e) { /* silently ignored */ }
 }
 function scheduleGrants(hireDate, untilDate) {
@@ -88,7 +88,7 @@ function addDays(d, n) {
 function isSameDate(a, b) {
   return fmt(new Date(a + 'T00:00:00Z')) === fmt(new Date(b + 'T00:00:00Z'));
 }
-async function getGrantAttendanceEligibility(userId, hireDate, grantDate) {
+async function getGrantAttendanceEligibility(userId, hireDate, grantDate, tenantId = null) {
   if (!hireDate || !grantDate) return false;
   const firstGrantDate = fmt(addMonths(new Date(hireDate + 'T00:00:00Z'), 6));
   let periodStart;
@@ -103,7 +103,7 @@ async function getGrantAttendanceEligibility(userId, hireDate, grantDate) {
   if (periodStart > periodEnd) return { eligible: false, workDays: 0, presentDays: 0, attendanceRate: 0, periodStart, periodEnd };
   let stats = { workDays: 0, presentDays: 0 };
   try {
-    stats = await repo.getAttendanceStats(userId, periodStart, periodEnd);
+    stats = await repo.getAttendanceStats(userId, periodStart, periodEnd, tenantId);
   } catch (e) { /* silently ignored */ }
   const workDays = Number(stats.workDays || 0);
   const presentDays = Number(stats.presentDays || 0);
@@ -117,14 +117,14 @@ async function getGrantAttendanceEligibility(userId, hireDate, grantDate) {
     periodEnd
   };
 }
-async function isGrantEligibleByAttendance(userId, hireDate, grantDate) {
-  const r = await getGrantAttendanceEligibility(userId, hireDate, grantDate);
+async function isGrantEligibleByAttendance(userId, hireDate, grantDate, tenantId = null) {
+  const r = await getGrantAttendanceEligibility(userId, hireDate, grantDate, tenantId);
   return !!r?.eligible;
 }
-async function ensureUserGrants(userId) {
+async function ensureUserGrants(userId, tenantId = null) {
   const mode = getLeaveGrantMode();
   const listGrants = async () => {
-    const rows = await repo.listGrants(userId, 'paid');
+    const rows = await repo.listGrants(userId, 'paid', tenantId);
     return (rows || []).slice().sort((a, b) => String(a?.grantDate || '').localeCompare(String(b?.grantDate || '')));
   };
 
@@ -143,7 +143,7 @@ async function ensureUserGrants(userId) {
     const eTmp = addYears(new Date(g.grantDate + 'T00:00:00Z'), 2);
     eTmp.setUTCDate(eTmp.getUTCDate() - 1);
     const expiry = fmt(eTmp);
-    await repo.upsertGrant({ userId, type: 'paid', grantDate: g.grantDate, daysGranted: g.days, expiryDate: expiry });
+    await repo.upsertGrant({ userId, type: 'paid', grantDate: g.grantDate, daysGranted: g.days, expiryDate: expiry, tenantId });
   }
   return listGrants();
 }
@@ -175,7 +175,7 @@ exports.create = async (req, res) => {
     if (!userId || !startDate || !endDate || !type) {
       return res.status(400).json({ message: 'Missing userId/startDate/endDate/type' });
     }
-    const id = await repo.create({ userId, startDate, endDate, type, reason });
+    const id = await repo.create({ userId, startDate, endDate, type, reason, tenantId: req.tenantId || null });
     try {
       const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
       await noticesRepo.createAdminNotification({
@@ -200,11 +200,11 @@ exports.createPaid = async (req, res) => {
     if (!userId || !startDate || !endDate) {
       return res.status(400).json({ message: 'Missing userId/startDate/endDate' });
     }
-    const existed = await repo.findExactRequest({ userId, startDate, endDate, type: 'paid', statuses: ['pending', 'approved'] });
+    const existed = await repo.findExactRequest({ userId, startDate, endDate, type: 'paid', statuses: ['pending', 'approved'], tenantId: req.tenantId || null });
     if (existed) {
       return res.status(200).json({ id: existed.id, duplicated: true, status: existed.status });
     }
-    const id = await repo.create({ userId, startDate, endDate, type: 'paid', reason });
+    const id = await repo.create({ userId, startDate, endDate, type: 'paid', reason, tenantId: req.tenantId || null });
     try {
       const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
       await noticesRepo.createAdminNotification({
@@ -229,7 +229,7 @@ exports.cancelMyPaid = async (req, res) => {
     if (!userId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ message: 'Missing userId/date' });
     }
-    const affected = await repo.cancelOwnPaidByDate(userId, date);
+    const affected = await repo.cancelOwnPaidByDate(userId, date, req.tenantId || null);
     return res.status(200).json({ ok: true, affected });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -237,7 +237,7 @@ exports.cancelMyPaid = async (req, res) => {
 };
 exports.reconcileAttendance = async (req, res) => {
   try {
-    const updated = await repo.reconcileApprovedPaidWithAttendance();
+    const updated = await repo.reconcileApprovedPaidWithAttendance(req.tenantId || null);
     return res.status(200).json({ ok: true, updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -247,16 +247,20 @@ exports.reconcileAttendance = async (req, res) => {
 exports.listMine = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const rows = await repo.listMine(userId);
+    const rows = await repo.listMine(userId, req.tenantId || null);
     
     // Also include 有給休暇 days from attendance_daily that may not have an approved leave_request
     const db = require('../../core/database/mysql');
     try {
-      const [kubunDays] = await db.query(`
+      const tid = req.tenantId || null;
+      let kubunSql = `
         SELECT date FROM attendance_daily 
         WHERE userId = ? AND kubun = '有給休暇'
-        ORDER BY date ASC
-      `, [userId]);
+      `;
+      const kubunParams = [userId];
+      if (tid != null) { kubunSql += ` AND tenant_id = ?`; kubunParams.push(tid); }
+      kubunSql += ` ORDER BY date ASC`;
+      const [kubunDays] = await db.query(kubunSql, kubunParams);
       
       // For each kubun day, check if there's already an approved request covering it
       const existingApproved = new Set();
@@ -315,7 +319,7 @@ exports.listPending = async (req, res) => {
 exports.listAdminRequests = async (req, res) => {
   try {
     // Keep reconciliation best-effort only; never block list endpoint.
-    await tryReconcileAttendance();
+    await tryReconcileAttendance(req.tenantId || null);
     const statusRaw = String(req.query?.status || '').trim().toLowerCase();
     const status = ['pending', 'approved', 'rejected'].includes(statusRaw) ? statusRaw : null;
     // Stable path: always use simple query so FE never falls back to legacy pending.
@@ -354,14 +358,14 @@ exports.updateStatus = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-async function computeUserBalance(userId) {
-  const grants = await ensureUserGrants(userId);
+async function computeUserBalance(userId, tenantId = null) {
+  const grants = await ensureUserGrants(userId, tenantId);
   if (!grants.length) {
     return { totalAvailable: 0, usedDays: 0, grants: [], upcomingGrantDate: null, obligation: { required: 0, taken: 0, remaining: 0 } };
   }
   const minDate = grants[0].grantDate;
   const maxExpiry = grants[grants.length - 1].expiryDate;
-  const reqs = await repo.listApprovedPaidLeaves(userId, minDate, maxExpiry);
+  const reqs = await repo.listApprovedPaidLeaves(userId, minDate, maxExpiry, tenantId);
   const alloc = allocateUsage(grants, reqs);
   const totalAvailable = alloc.reduce((s, g) => s + Math.max(0, (new Date(g.expiryDate) >= new Date() ? g.daysRemaining : 0)), 0);
   const usedDays = reqs.reduce((s, r) => s + daysBetweenInclusive(r.startDate, r.endDate), 0);
@@ -395,7 +399,7 @@ exports.myBalance = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-    const data = await computeUserBalance(userId);
+    const data = await computeUserBalance(userId, req.tenantId || null);
     return res.status(200).json({ ...data, grantMode: getLeaveGrantMode() });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -405,7 +409,7 @@ exports.userBalance = async (req, res) => {
   try {
     const userId = parseInt(String(req.query.userId || ''), 10);
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
-    const data = await computeUserBalance(userId);
+    const data = await computeUserBalance(userId, req.tenantId || null);
     return res.status(200).json({ userId, ...data, grantMode: getLeaveGrantMode() });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -428,9 +432,9 @@ exports.grant = async (req, res) => {
     }
     const isDelete = parsedDays <= 0;
     if (isDelete) {
-      await repo.deleteGrant({ userId, type: 'paid', grantDate: gDate });
+      await repo.deleteGrant({ userId, type: 'paid', grantDate: gDate, tenantId: req.tenantId || null });
     } else {
-      await repo.upsertGrant({ userId, type: 'paid', grantDate: gDate, daysGranted: parsedDays, expiryDate: eDate });
+      await repo.upsertGrant({ userId, type: 'paid', grantDate: gDate, daysGranted: parsedDays, expiryDate: eDate, tenantId: req.tenantId || null });
     }
     try {
       await auditRepo.writeLog({
@@ -466,13 +470,13 @@ exports.eligibleList = async (req, res) => {
       if (empStatus === 'inactive' || empStatus === 'retired') continue;
       const hireDate = resolveEmploymentStartDate(u);
       if (!hireDate) continue;
-      const existing = await repo.listGrants(u.id, 'paid');
+      const existing = await repo.listGrants(u.id, 'paid', tenantId);
       const existSet = new Set((existing || []).map(g => String(g?.grantDate || '').slice(0, 10)));
       const plan = scheduleGrants(hireDate, todayStr);
       for (const g of plan) {
         const grantDate = String(g.grantDate || '').slice(0, 10);
         if (!grantDate || existSet.has(grantDate)) continue;
-        const info = await getGrantAttendanceEligibility(u.id, hireDate, grantDate);
+        const info = await getGrantAttendanceEligibility(u.id, hireDate, grantDate, tenantId);
         if (!info?.eligible) continue;
         out.push({
           userId: u.id,
@@ -500,7 +504,7 @@ exports.grantEligibleNow = async (req, res) => {
     if (mode === 'MANUAL') {
       return res.status(400).json({ message: 'LEAVE_GRANT_MODE=MANUAL のため一括付与は無効です', mode });
     }
-    const listReq = { user: req.user, query: {}, body: {} };
+    const listReq = { user: req.user, query: {}, body: {}, tenantId: req.tenantId || null };
     const fakeRes = { statusCode: 200, _data: null, status(code) { this.statusCode = code; return this; }, json(v) { this._data = v; return this; } };
     await exports.eligibleList(listReq, fakeRes);
     const rows = Array.isArray(fakeRes?._data?.rows) ? fakeRes._data.rows : [];
@@ -512,7 +516,7 @@ exports.grantEligibleNow = async (req, res) => {
       const et = addYears(new Date(gDate + 'T00:00:00Z'), 2);
       et.setUTCDate(et.getUTCDate() - 1);
       const expiryDate = fmt(et);
-      await repo.upsertGrant({ userId: Number(r.userId), type: 'paid', grantDate: gDate, daysGranted: d, expiryDate });
+      await repo.upsertGrant({ userId: Number(r.userId), type: 'paid', grantDate: gDate, daysGranted: d, expiryDate, tenantId: req.tenantId || null });
       granted++;
     }
     try {
@@ -541,7 +545,7 @@ exports.createRequest = async (req, res) => {
       return res.status(400).json({ message: 'Missing userId/startDate/endDate' });
     }
     const t = type || 'paid';
-    const id = await repo.create({ userId, startDate, endDate, type: t, reason });
+    const id = await repo.create({ userId, startDate, endDate, type: t, reason, tenantId: req.tenantId || null });
     try {
       const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
       await noticesRepo.createAdminNotification({
@@ -567,9 +571,9 @@ exports.approve = async (req, res) => {
     if (!id) return res.status(400).json({ message: 'Missing id' });
     const s = status || 'approved';
     if (!['approved','rejected','pending'].includes(s)) return res.status(400).json({ message: 'Invalid status' });
-    await repo.updateStatus(id, s);
+    await repo.updateStatus(id, s, req.tenantId || null);
     try {
-      const row = await repo.getById(id);
+      const row = await repo.getById(id, req.tenantId || null);
       if (row && row.userId && s !== 'pending') {
         const statusLabel = s === 'approved' ? '承認' : (s === 'rejected' ? '差戻し' : s);
         await noticesRepo.createNotice({
@@ -608,7 +612,7 @@ exports.summary = async (req, res) => {
   let processedUsers = 0;
   let resultCount = 0;
   try {
-    await tryReconcileAttendance();
+    await tryReconcileAttendance(req.tenantId || null);
     // Tenant isolation: chỉ lấy users thuộc tenant của admin đang đăng nhập.
     // req.tenantId được set bởi resolveTenant middleware từ JWT field tid.
     const tenantId = req.tenantId || null;
@@ -620,7 +624,7 @@ exports.summary = async (req, res) => {
       const role = String(u?.role || '').toLowerCase();
       if (role === 'admin' || role === 'manager') continue;
       processedUsers += 1;
-      const b = await computeUserBalance(u.id);
+      const b = await computeUserBalance(u.id, tenantId);
       const grants = b.grants || [];
       const today = new Date();
       const totalGranted = grants.reduce((s, g) => s + (new Date(g.expiryDate) >= today ? g.daysGranted : 0), 0);
@@ -671,7 +675,7 @@ exports.autoGrantNow = async (req, res) => {
     let ok = 0;
     for (const u of list) {
       try {
-        await ensureUserGrants(u.id);
+        await ensureUserGrants(u.id, tenantId);
         ok++;
       } catch (e) { /* silently ignored */ }
     }

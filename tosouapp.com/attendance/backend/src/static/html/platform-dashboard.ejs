@@ -81,6 +81,7 @@
     }
     .pd-btn:hover { opacity: .85; }
     .pd-btn-primary { background: #1976d2; color: #fff; }
+    .pd-btn-success { background: #059669; color: #fff; }
     .pd-btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 5px; }
     .pd-btn-danger { background: #fee2e2; color: #dc2626; }
     .pd-btn-ghost { background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; }
@@ -308,7 +309,10 @@
       <div class="pd-panel" id="panel-users">
         <div class="pd-section-header">
           <span class="pd-section-title">ユーザー管理</span>
-          <button class="pd-btn pd-btn-primary" id="pd-assign-user-btn" type="button">+ ユーザーをテナントに割り当て</button>
+          <div style="display:flex;gap:8px;">
+            <button class="pd-btn pd-btn-success" id="pd-create-user-btn" type="button">+ 新規ユーザー作成</button>
+            <button class="pd-btn pd-btn-primary" id="pd-assign-user-btn" type="button">+ 既存ユーザー割り当て</button>
+          </div>
         </div>
         <!-- Search + Filter bar -->
         <div class="pd-search-bar">
@@ -606,6 +610,51 @@
   </div>
 
   <!-- Modal: Create / Edit Tenant -->
+  <div class="pd-modal-backdrop" id="pd-create-user-modal" hidden>
+    <div class="pd-modal">
+      <h2 class="pd-modal-title">新規ユーザー作成</h2>
+      <form id="pd-create-user-form" novalidate>
+        <div class="pd-form-row">
+          <label>テナント（会社）*</label>
+          <select id="pd-cu-tenant-select" required>
+            <option value="">選択してください</option>
+          </select>
+        </div>
+        <div class="pd-form-row">
+          <label>氏名 *</label>
+          <input type="text" id="pd-cu-username" placeholder="山田 太郎" required>
+        </div>
+        <div class="pd-form-row">
+          <label>メールアドレス *</label>
+          <input type="email" id="pd-cu-email" placeholder="yamada@example.com" required>
+        </div>
+        <div class="pd-form-row">
+          <label>パスワード *</label>
+          <input type="text" id="pd-cu-password" placeholder="初回パスワード" required>
+        </div>
+        <div class="pd-form-row">
+          <label>ロール *</label>
+          <select id="pd-cu-role" required>
+            <option value="admin">管理者 (admin)</option>
+            <option value="manager">マネージャー (manager)</option>
+            <option value="employee" selected>従業員 (employee)</option>
+            <option value="owner">取締役 (owner)</option>
+          </select>
+        </div>
+        <div class="pd-form-row">
+          <label>電話番号</label>
+          <input type="tel" id="pd-cu-phone" placeholder="090-1234-5678">
+        </div>
+        <div id="pd-cu-error" style="color:#dc2626;font-size:12px;margin-bottom:8px;display:none"></div>
+        <div class="pd-modal-footer">
+          <button type="button" class="pd-btn pd-btn-ghost" id="pd-cu-cancel">キャンセル</button>
+          <button type="submit" class="pd-btn pd-btn-success" id="pd-cu-submit">作成</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Create / Edit Tenant -->
   <div class="pd-modal-backdrop" id="pd-tenant-modal" hidden>
     <div class="pd-modal">
       <h2 class="pd-modal-title" id="pd-modal-title">新規テナント</h2>
@@ -643,6 +692,41 @@
             <option value="suspended">Suspended</option>
             <option value="cancelled">Cancelled</option>
           </select>
+        </div>
+        <div style="border-top:1px solid #e2e8f0;margin:12px 0 8px;padding-top:12px;">
+          <strong style="font-size:13px;color:#475569;">連絡先情報（お問い合わせページに表示）</strong>
+        </div>
+        <div class="pd-form-row">
+          <label>システム窓口 担当</label>
+          <input type="text" id="pd-f-contact-sys-dept" placeholder="情報システム部">
+        </div>
+        <div class="pd-form-row">
+          <label>システム窓口 Email</label>
+          <input type="email" id="pd-f-contact-sys-email" placeholder="admin@company.com">
+        </div>
+        <div class="pd-form-row">
+          <label>システム窓口 TEL</label>
+          <input type="tel" id="pd-f-contact-sys-tel" placeholder="03-1234-5678">
+        </div>
+        <div class="pd-form-row">
+          <label>システム窓口 受付時間</label>
+          <input type="text" id="pd-f-contact-sys-hours" placeholder="9:00 - 18:00（土日祝を除く）">
+        </div>
+        <div class="pd-form-row">
+          <label>総務窓口 担当</label>
+          <input type="text" id="pd-f-contact-gen-dept" placeholder="総務部">
+        </div>
+        <div class="pd-form-row">
+          <label>総務窓口 Email</label>
+          <input type="email" id="pd-f-contact-gen-email" placeholder="soumu@company.com">
+        </div>
+        <div class="pd-form-row">
+          <label>総務窓口 TEL</label>
+          <input type="tel" id="pd-f-contact-gen-tel" placeholder="03-1234-5678">
+        </div>
+        <div class="pd-form-row">
+          <label>総務窓口 受付時間</label>
+          <input type="text" id="pd-f-contact-gen-hours" placeholder="9:00 - 18:00（土日祝を除く）">
         </div>
         <div id="pd-form-error" style="color:#dc2626;font-size:12px;margin-bottom:8px;display:none"></div>
         <div class="pd-modal-footer">

@@ -1,11 +1,27 @@
 /**
  * @module user.repository
  * Data access layer for the users table.
+ *
+ * MULTI-TENANT: All functions accept an optional `tenantId` parameter.
+ * When provided, queries are scoped to the specified tenant.
+ * When ENABLE_MULTI_TENANT=true, callers MUST pass tenantId to prevent
+ * cross-tenant data leakage.
  */
 'use strict';
 
 const db = require('../../core/database/mysql');
 const { tenantScope } = require('../../core/database/tenantDb');
+
+const _multiTenantEnabled = () => String(process.env.ENABLE_MULTI_TENANT || '').toLowerCase() === 'true';
+
+/**
+ * Parse tenant id safely.
+ * @param {number|string|null} tenantId
+ * @returns {number|null}
+ */
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
 
 /**
  * @typedef {Object} User
@@ -42,9 +58,18 @@ const { tenantScope } = require('../../core/database/tenantDb');
 module.exports = {
   /**
    * List all users (unpaged, ordered by hire_date).
+   * @param {number|null} [tenantId] — when provided, only return users for that tenant
    * @returns {Promise<User[]>}
    */
-  async listUsers() {
+  async listUsers(tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [rows] = await db.query(
+        `SELECT * FROM users WHERE tenant_id = ? ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC`,
+        [tid]
+      );
+      return rows;
+    }
     const [rows] = await db.query(`SELECT * FROM users ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC`);
     return rows;
   },
@@ -117,14 +142,21 @@ module.exports = {
   /**
    * Get a single user by ID.
    * @param {number|string} id
+   * @param {number|null} [tenantId] — when provided, verify user belongs to tenant
    * @returns {Promise<User|undefined>}
    */
-  async getUserById(id) {
+  async getUserById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [rows] = await db.query(`SELECT * FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [id, tid]);
+      return rows[0];
+    }
     const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [id]);
     return rows[0];
   },
-  async createUser({ employeeCode = null, username, email, password, role = 'employee', departmentId = null, branchId = null, employmentType = 'full_time', hireDate = null, level = null, managerId = null, phone = null, birthDate = null, gender = null, avatarUrl = null, probationDate = null, officialDate = null, contractEnd = null, baseSalary = null, shiftId = null, employmentStatus = null, joinDate = null }) {
+  async createUser({ employeeCode = null, username, email, password, role = 'employee', departmentId = null, branchId = null, employmentType = 'full_time', hireDate = null, level = null, managerId = null, phone = null, birthDate = null, gender = null, avatarUrl = null, probationDate = null, officialDate = null, contractEnd = null, baseSalary = null, shiftId = null, employmentStatus = null, joinDate = null, tenantId = null }) {
     const today = new Date().toISOString().slice(0, 10);
+    const tid = _tid(tenantId);
     const cols = [
       'employee_code',
       'username',
@@ -148,7 +180,8 @@ module.exports = {
       'base_salary',
       'shift_id',
       'employment_status',
-      'join_date'
+      'join_date',
+      'tenant_id'
     ];
     const vals = [
       employeeCode,
@@ -173,7 +206,8 @@ module.exports = {
       baseSalary,
       shiftId,
       employmentStatus || 'active',
-      joinDate || hireDate || today
+      joinDate || hireDate || today,
+      tid
     ];
     const placeholders = cols.map(() => '?').join(', ');
     const sql = `INSERT INTO users (${cols.join(', ')}) VALUES (${placeholders})`;
@@ -185,7 +219,10 @@ module.exports = {
     }
     return id;
   },
-  async updateUser(id, { employeeCode, username, email, role, branchId, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin }) {
+  async updateUser(id, { employeeCode, username, email, role, branchId, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin, tenantId = null }) {
+    const tid = _tid(tenantId);
+    const whereClause = tid != null ? `WHERE id = ? AND tenant_id = ?` : `WHERE id = ?`;
+    const whereParams = tid != null ? [id, tid] : [id];
     const sql = `
       UPDATE users
       SET username = COALESCE(?, username),
@@ -220,7 +257,7 @@ module.exports = {
           join_date = COALESCE(?, join_date)
           ${'' /* keep last_login separate to avoid MySQL syntax issues */}
           , last_login = COALESCE(?, last_login)
-      WHERE id = ?
+      ${whereClause}
     `;
     await db.query(sql, [
       username || null,
@@ -254,59 +291,105 @@ module.exports = {
       shiftId || null,
       joinDate || null,
       lastLogin || null,
-      id
+      ...whereParams
     ]);
   },
-  async deleteUser(id) {
-    const sql = `DELETE FROM users WHERE id = ?`;
-    await db.query(sql, [id]);
+  async deleteUser(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const sql = `DELETE FROM users WHERE id = ? AND tenant_id = ?`;
+      await db.query(sql, [id, tid]);
+    } else {
+      const sql = `DELETE FROM users WHERE id = ?`;
+      await db.query(sql, [id]);
+    }
   },
-  async setRole(id, role) {
-    const sql = `UPDATE users SET role = ? WHERE id = ?`;
-    await db.query(sql, [role, id]);
+  async setRole(id, role, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      await db.query(`UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?`, [role, id, tid]);
+    } else {
+      await db.query(`UPDATE users SET role = ? WHERE id = ?`, [role, id]);
+    }
   },
-  async setDepartment(id, departmentId) {
-    const sql = `UPDATE users SET departmentId = ? WHERE id = ?`;
-    await db.query(sql, [departmentId, id]);
+  async setDepartment(id, departmentId, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      await db.query(`UPDATE users SET departmentId = ? WHERE id = ? AND tenant_id = ?`, [departmentId, id, tid]);
+    } else {
+      await db.query(`UPDATE users SET departmentId = ? WHERE id = ?`, [departmentId, id]);
+    }
   },
-  async setPassword(id, hashedPassword) {
-    const sql = `UPDATE users SET password = ? WHERE id = ?`;
-    await db.query(sql, [hashedPassword, id]);
+  async setPassword(id, hashedPassword, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      await db.query(`UPDATE users SET password = ? WHERE id = ? AND tenant_id = ?`, [hashedPassword, id, tid]);
+    } else {
+      await db.query(`UPDATE users SET password = ? WHERE id = ?`, [hashedPassword, id]);
+    }
   },
-  async incrementTokenVersion(id) {
-    await db.query(`UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?`, [id]);
+  async incrementTokenVersion(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      await db.query(`UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ? AND tenant_id = ?`, [id, tid]);
+    } else {
+      await db.query(`UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?`, [id]);
+    }
   },
-  async getAllDepartments() {
-    const sql = `SELECT * FROM departments ORDER BY name ASC`;
-    const [rows] = await db.query(sql);
+  async getAllDepartments(tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [rows] = await db.query(`SELECT * FROM departments WHERE tenant_id = ? ORDER BY name ASC`, [tid]);
+      return rows;
+    }
+    const [rows] = await db.query(`SELECT * FROM departments ORDER BY name ASC`);
     return rows;
   },
 
-  async getDepartmentById(id) {
-    const sql = `SELECT * FROM departments WHERE id = ? LIMIT 1`;
-    const [rows] = await db.query(sql, [id]);
+  async getDepartmentById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [rows] = await db.query(`SELECT * FROM departments WHERE id = ? AND tenant_id = ? LIMIT 1`, [id, tid]);
+      return rows[0];
+    }
+    const [rows] = await db.query(`SELECT * FROM departments WHERE id = ? LIMIT 1`, [id]);
     return rows[0];
   },
 
-  async createDepartment(name) {
-    const sql = `INSERT INTO departments (name) VALUES (?)`;
-    const [result] = await db.query(sql, [name]);
+  async createDepartment(name, tenantId = null) {
+    const tid = _tid(tenantId);
+    const sql = `INSERT INTO departments (name, tenant_id) VALUES (?, ?)`;
+    const [result] = await db.query(sql, [name, tid]);
     return result.insertId;
   },
 
-  async updateDepartment(id, name) {
-    const sql = `UPDATE departments SET name = ? WHERE id = ?`;
-    await db.query(sql, [name, id]);
+  async updateDepartment(id, name, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      await db.query(`UPDATE departments SET name = ? WHERE id = ? AND tenant_id = ?`, [name, id, tid]);
+    } else {
+      await db.query(`UPDATE departments SET name = ? WHERE id = ?`, [name, id]);
+    }
   },
 
-  async deleteDepartment(id) {
-    const sql = `DELETE FROM departments WHERE id = ?`;
-    await db.query(sql, [id]);
+  async deleteDepartment(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      await db.query(`DELETE FROM departments WHERE id = ? AND tenant_id = ?`, [id, tid]);
+    } else {
+      await db.query(`DELETE FROM departments WHERE id = ?`, [id]);
+    }
   },
 
-  async touchLastActive(id, at = null) {
+  async touchLastActive(id, at = null, tenantId = null) {
     try { await db.query(`ALTER TABLE users ADD COLUMN last_active_at DATETIME NULL`); } catch (e) { /* silently ignored */ }
-    const sql = `UPDATE users SET last_active_at = COALESCE(?, NOW()) WHERE id = ?`;
-    await db.query(sql, [at ? String(at).slice(0, 19).replace('T', ' ') : null, id]);
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const sql = `UPDATE users SET last_active_at = COALESCE(?, NOW()) WHERE id = ? AND tenant_id = ?`;
+      await db.query(sql, [at ? String(at).slice(0, 19).replace('T', ' ') : null, id, tid]);
+    } else {
+      const sql = `UPDATE users SET last_active_at = COALESCE(?, NOW()) WHERE id = ?`;
+      await db.query(sql, [at ? String(at).slice(0, 19).replace('T', ' ') : null, id]);
+    }
   }
 };

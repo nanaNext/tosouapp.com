@@ -133,13 +133,13 @@ async function authenticateToken(token) {
     // When JWT has tid (after select-tenant), use role from JWT.
     // This allows owner to act as admin within a specific tenant.
     // When no tid, fall back to DB role (normal login flow).
-    role: normalizeRole(decoded?.tid ? (decoded.role || user.role) : (user.role || decoded.role)),
+    role: normalizeRole((decoded?.tid || decoded?.tenant_id) ? (decoded.role || user.role) : (user.role || decoded.role)),
     v: dbVersion,
     email: user.email,
     username: user.username,
     departmentId: user.departmentId || null,
     branchId: user.branchId || user.branch_id || null,
-    tid: decoded?.tid ? parseInt(String(decoded.tid), 10) : null,
+    tid: (decoded?.tid || decoded?.tenant_id) ? parseInt(String(decoded.tid || decoded.tenant_id), 10) : null,
     _impersonate: !!decoded?._impersonate,
   };
 }

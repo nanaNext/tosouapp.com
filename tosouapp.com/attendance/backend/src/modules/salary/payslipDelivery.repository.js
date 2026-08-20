@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 async function ensureTable() {
   const sql = `
     CREATE TABLE IF NOT EXISTS payslip_deliveries (
@@ -56,7 +60,13 @@ async function ensureTable() {
   } catch (e) { /* silently ignored */ }
 }
 
-async function create({ userId, month, payslipFileId, sentBy }) {
+async function create({ userId, month, payslipFileId, sentBy, tenantId = null }) {
+  const tid = _tid(tenantId);
+  // If tenantId provided, verify user belongs to tenant
+  if (tid !== null) {
+    const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+    if (!check || !check.length) return null;
+  }
   const sql = `
     INSERT INTO payslip_deliveries (userId, month, payslip_file_id, sent_by)
     VALUES (?, ?, ?, ?)
@@ -65,8 +75,9 @@ async function create({ userId, month, payslipFileId, sentBy }) {
   return res.insertId;
 }
 
-async function list({ userId = null, month = null, limit = 200 } = {}) {
-  const sql = `
+async function list({ userId = null, month = null, limit = 200, tenantId = null } = {}) {
+  const tid = _tid(tenantId);
+  let sql = `
     SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at, d.is_read,
       u.username AS user_name, u.email AS user_email,
       s.username AS sender_name, s.email AS sender_email,
@@ -77,31 +88,66 @@ async function list({ userId = null, month = null, limit = 200 } = {}) {
     JOIN payslip_files f ON f.id = d.payslip_file_id
     WHERE (? IS NULL OR d.userId = ?)
       AND (? IS NULL OR d.month = ?)
+  `;
+  const params = [userId, userId, month, month];
+  if (tid !== null) {
+    sql += ` AND u.tenant_id = ?`;
+    params.push(tid);
+  }
+  sql += `
     ORDER BY d.sent_at DESC
     LIMIT ?
   `;
-  const [rows] = await db.query(sql, [userId, userId, month, month, Math.max(1, Math.min(1000, Number(limit) || 200))]);
+  params.push(Math.max(1, Math.min(1000, Number(limit) || 200)));
+  const [rows] = await db.query(sql, params);
   return rows || [];
 }
 
-async function getById(id) {
-  const sql = `
-    SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at, d.is_read
-    FROM payslip_deliveries d
-    WHERE d.id = ?
-    LIMIT 1
-  `;
-  const [rows] = await db.query(sql, [id]);
+async function getById(id, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  let params;
+  if (tid !== null) {
+    sql = `
+      SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at, d.is_read
+      FROM payslip_deliveries d
+      JOIN users u ON u.id = d.userId
+      WHERE d.id = ? AND u.tenant_id = ?
+      LIMIT 1
+    `;
+    params = [id, tid];
+  } else {
+    sql = `
+      SELECT d.id, d.userId, d.month, d.payslip_file_id, d.sent_by, d.sent_at, d.is_read
+      FROM payslip_deliveries d
+      WHERE d.id = ?
+      LIMIT 1
+    `;
+    params = [id];
+  }
+  const [rows] = await db.query(sql, params);
   return rows[0] || null;
 }
 
-async function markAsRead(id) {
-  const sql = `UPDATE payslip_deliveries SET is_read = 1 WHERE id = ?`;
-  await db.query(sql, [id]);
+async function markAsRead(id, tenantId = null) {
+  const tid = _tid(tenantId);
+  if (tid !== null) {
+    // Verify delivery belongs to a user in the tenant
+    const sql = `
+      UPDATE payslip_deliveries d
+      JOIN users u ON u.id = d.userId
+      SET d.is_read = 1
+      WHERE d.id = ? AND u.tenant_id = ?
+    `;
+    await db.query(sql, [id, tid]);
+  } else {
+    const sql = `UPDATE payslip_deliveries SET is_read = 1 WHERE id = ?`;
+    await db.query(sql, [id]);
+  }
 }
 
-async function deleteById(id) {
-  const before = await getById(id);
+async function deleteById(id, tenantId = null) {
+  const before = await getById(id, tenantId);
   if (!before) return null;
   await db.query(`DELETE FROM payslip_deliveries WHERE id = ?`, [id]);
   return before;

@@ -40,16 +40,18 @@ describe('user list response shape', () => {
 
   it('returns paged shape for /api/admin/users without filters', async () => {
     const rows = [{ id: 1, username: 'Alice' }, { id: 2, username: 'Bob' }];
-    userRepo.listUsers.mockResolvedValue(rows);
+    userRepo.listUsersPaged.mockResolvedValue({ rows, total: 2, limit: 2, offset: 0 });
     const req = {
       query: {},
-      user: { role: 'admin', email: 'admin@test.local' }
+      user: { role: 'admin', email: 'admin@test.local' },
+      tenantId: 1
     };
     const res = createRes();
 
     await userController.list(req, res);
 
-    expect(userRepo.listUsers).toHaveBeenCalledTimes(1);
+    // With tenantId set, listUsersPaged is used (tenantId triggers usePaged path)
+    expect(userRepo.listUsersPaged).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       rows,

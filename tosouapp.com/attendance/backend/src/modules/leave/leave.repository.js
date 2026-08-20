@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 async function ensureSchema() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS leave_requests (
@@ -142,7 +146,16 @@ async function resolveGrantsTable() {
 
 module.exports = {
   ensureSchema,
-  async create({ userId, startDate, endDate, type, reason }) {
+  async create({ userId, startDate, endDate, type, reason, tenantId = null }) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const sql = `
+        INSERT INTO leave_requests (userId, startDate, endDate, type, reason, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+      const [res] = await db.query(sql, [userId, startDate, endDate, type, reason || null, tid]);
+      return res.insertId;
+    }
     const sql = `
       INSERT INTO leave_requests (userId, startDate, endDate, type, reason)
       VALUES (?, ?, ?, ?, ?)
@@ -150,20 +163,28 @@ module.exports = {
     const [res] = await db.query(sql, [userId, startDate, endDate, type, reason || null]);
     return res.insertId;
   },
-  async listMine(userId) {
+  async listMine(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [userId];
+    let where = 'WHERE userId = ?';
+    if (tid != null) { where += ' AND tenant_id = ?'; params.push(tid); }
     const sql = `
       SELECT * FROM leave_requests
-      WHERE userId = ?
+      ${where}
       ORDER BY created_at DESC
     `;
-    const [rows] = await db.query(sql, [userId]);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
-  async findExactRequest({ userId, startDate, endDate, type = 'paid', statuses = ['pending', 'approved'] }) {
+  async findExactRequest({ userId, startDate, endDate, type = 'paid', statuses = ['pending', 'approved'], tenantId = null }) {
+    const tid = _tid(tenantId);
     const list = Array.isArray(statuses) && statuses.length
       ? statuses.filter(s => ['pending', 'approved', 'rejected'].includes(String(s || '').toLowerCase()))
       : ['pending', 'approved'];
     const marks = list.map(() => '?').join(',');
+    const params = [userId, startDate, endDate, type, ...list];
+    let tenantFilter = '';
+    if (tid != null) { tenantFilter = 'AND tenant_id = ?'; params.push(tid); }
     const sql = `
       SELECT id, userId, startDate, endDate, type, status
       FROM leave_requests
@@ -172,26 +193,39 @@ module.exports = {
         AND endDate = ?
         AND type = ?
         AND status IN (${marks})
+        ${tenantFilter}
       ORDER BY id DESC
       LIMIT 1
     `;
-    const [rows] = await db.query(sql, [userId, startDate, endDate, type, ...list]);
+    const [rows] = await db.query(sql, params);
     return rows && rows[0] ? rows[0] : null;
   },
-  async listByUser(userId) {
+  async listByUser(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [userId];
+    let where = 'WHERE userId = ?';
+    if (tid != null) { where += ' AND tenant_id = ?'; params.push(tid); }
     const sql = `
       SELECT * FROM leave_requests
-      WHERE userId = ?
+      ${where}
       ORDER BY created_at DESC
     `;
-    const [rows] = await db.query(sql, [userId]);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
-  async getById(id) {
-    const [rows] = await db.query(`SELECT * FROM leave_requests WHERE id = ? LIMIT 1`, [id]);
+  async getById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [id];
+    let where = 'WHERE id = ?';
+    if (tid != null) { where += ' AND tenant_id = ?'; params.push(tid); }
+    const [rows] = await db.query(`SELECT * FROM leave_requests ${where} LIMIT 1`, params);
     return rows && rows[0] ? rows[0] : null;
   },
-  async listApprovedByUserOverlap(userId, fromDate, toDate) {
+  async listApprovedByUserOverlap(userId, fromDate, toDate, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [userId, fromDate, toDate];
+    let tenantFilter = '';
+    if (tid != null) { tenantFilter = 'AND tenant_id = ?'; params.push(tid); }
     const sql = `
       SELECT *
       FROM leave_requests
@@ -199,9 +233,10 @@ module.exports = {
         AND status = 'approved'
         AND endDate >= ?
         AND startDate <= ?
+        ${tenantFilter}
       ORDER BY startDate DESC
     `;
-    const [rows] = await db.query(sql, [userId, fromDate, toDate]);
+    const [rows] = await db.query(sql, params);
     return rows;
   },
   async listAllPending(tenantId = null) {
@@ -405,7 +440,11 @@ module.exports = {
     `;
     await db.query(sql, [status, id]);
   },
-  async cancelOwnPaidByDate(userId, date) {
+  async cancelOwnPaidByDate(userId, date, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [userId, date, date];
+    let tenantFilter = '';
+    if (tid != null) { tenantFilter = 'AND tenant_id = ?'; params.push(tid); }
     const sql = `
       UPDATE leave_requests
       SET
@@ -419,13 +458,18 @@ module.exports = {
         AND status IN ('pending', 'approved')
         AND startDate <= ?
         AND endDate >= ?
+        ${tenantFilter}
     `;
-    const [res] = await db.query(sql, [userId, date, date]);
+    const [res] = await db.query(sql, params);
     return Number(res?.affectedRows || 0);
   },
-  async reconcileApprovedPaidWithAttendance() {
+  async reconcileApprovedPaidWithAttendance(tenantId = null) {
+    const tid = _tid(tenantId);
     // Safety scope: reconcile only one-day paid requests to avoid changing multi-day requests unexpectedly.
     try {
+      const params = [];
+      let tenantFilter = '';
+      if (tid != null) { tenantFilter = 'AND lr.tenant_id = ?'; params.push(tid); }
       const sql = `
         UPDATE leave_requests lr
         LEFT JOIN attendance_daily ad
@@ -448,11 +492,15 @@ module.exports = {
             (ad.userId IS NOT NULL AND REPLACE(TRIM(COALESCE(ad.kubun, '')), '　', '') <> '有給休暇')
             OR (a.id IS NOT NULL AND (a.checkIn IS NOT NULL OR a.checkOut IS NOT NULL))
           )
+          ${tenantFilter}
       `;
-      const [res] = await db.query(sql);
+      const [res] = await db.query(sql, params);
       return Number(res?.affectedRows || 0);
     } catch {
       // Fallback for environments where attendance table/join may fail.
+      const params2 = [];
+      let tenantFilter2 = '';
+      if (tid != null) { tenantFilter2 = 'AND lr.tenant_id = ?'; params2.push(tid); }
       const sql2 = `
         UPDATE leave_requests lr
         INNER JOIN attendance_daily ad
@@ -469,12 +517,19 @@ module.exports = {
           AND lr.status = 'approved'
           AND lr.startDate = lr.endDate
           AND REPLACE(TRIM(COALESCE(ad.kubun, '')), '　', '') <> '有給休暇'
+          ${tenantFilter2}
       `;
-      const [res2] = await db.query(sql2);
+      const [res2] = await db.query(sql2, params2);
       return Number(res2?.affectedRows || 0);
     }
   },
-  async upsertGrant({ userId, type = 'paid', grantDate, daysGranted, expiryDate }) {
+  async upsertGrant({ userId, type = 'paid', grantDate, daysGranted, expiryDate, tenantId = null }) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      // Verify userId belongs to tenant before upserting
+      const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`, [userId, tid]);
+      if (!check || !check.length) return;
+    }
     const table = await resolveGrantsTable();
     const sql = `
       INSERT INTO ${table} (userId, type, grantDate, daysGranted, expiryDate)
@@ -483,7 +538,12 @@ module.exports = {
     `;
     await db.query(sql, [userId, type, grantDate, daysGranted, expiryDate]);
   },
-  async deleteGrant({ userId, type = 'paid', grantDate }) {
+  async deleteGrant({ userId, type = 'paid', grantDate, tenantId = null }) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`, [userId, tid]);
+      if (!check || !check.length) return 0;
+    }
     const table = await resolveGrantsTable();
     const [res] = await db.query(`
       DELETE FROM ${table}
@@ -491,7 +551,12 @@ module.exports = {
     `, [userId, type, grantDate]);
     return Number(res?.affectedRows || 0);
   },
-  async listGrants(userId, type = 'paid') {
+  async listGrants(userId, type = 'paid', tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`, [userId, tid]);
+      if (!check || !check.length) return [];
+    }
     const table = await resolveGrantsTable();
     const [rows] = await db.query(`
       SELECT * FROM ${table}
@@ -501,7 +566,11 @@ module.exports = {
     `, [userId, type]);
     return rows;
   },
-  async listApprovedPaidLeaves(userId, fromDate, toDate) {
+  async listApprovedPaidLeaves(userId, fromDate, toDate, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [userId, fromDate, toDate];
+    let tenantFilter = '';
+    if (tid != null) { tenantFilter = 'AND lr.tenant_id = ?'; params.push(tid); }
     try {
       const [rows] = await db.query(`
         SELECT lr.id, lr.userId, lr.startDate, lr.endDate, lr.type, lr.status
@@ -531,11 +600,15 @@ module.exports = {
               )
             )
           )
+          ${tenantFilter}
         ORDER BY startDate ASC
-      `, [userId, fromDate, toDate]);
+      `, params);
       return rows;
     } catch {
       // Hard fallback: preserve page availability when advanced join fails.
+      const fbParams = [userId, fromDate, toDate];
+      let fbFilter = '';
+      if (tid != null) { fbFilter = 'AND tenant_id = ?'; fbParams.push(tid); }
       const [rows] = await db.query(`
         SELECT id, userId, startDate, endDate, type, status
         FROM leave_requests
@@ -543,12 +616,18 @@ module.exports = {
           AND type = 'paid' 
           AND status = 'approved'
           AND endDate >= ? AND startDate <= ?
+          ${fbFilter}
         ORDER BY startDate ASC
-      `, [userId, fromDate, toDate]);
+      `, fbParams);
       return rows;
     }
   },
-  async getAttendanceStats(userId, fromDate, toDate) {
+  async getAttendanceStats(userId, fromDate, toDate, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`, [userId, tid]);
+      if (!check || !check.length) return { workDays: 0, presentDays: 0 };
+    }
     // Workdays: rows that are not explicit holidays.
     // Present days: workdays excluding explicit absence types.
     const [rows] = await db.query(`

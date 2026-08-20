@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 async function ensureTable() {
   const sql = `
     CREATE TABLE IF NOT EXISTS salary_inputs (
@@ -45,40 +49,82 @@ async function ensureTable() {
   } catch (e) { /* silently ignored */ }
 }
 
-async function getByUserMonth(userId, month) {
-  const sql = `SELECT id, userId, month, payload, is_published, updated_by, updated_at FROM salary_inputs WHERE userId = ? AND month = ? LIMIT 1`;
-  const [rows] = await db.query(sql, [userId, month]);
+async function getByUserMonth(userId, month, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  let params;
+  if (tid !== null) {
+    sql = `
+      SELECT si.id, si.userId, si.month, si.payload, si.is_published, si.updated_by, si.updated_at
+      FROM salary_inputs si
+      JOIN users u ON u.id = si.userId
+      WHERE si.userId = ? AND si.month = ? AND u.tenant_id = ?
+      LIMIT 1
+    `;
+    params = [userId, month, tid];
+  } else {
+    sql = `SELECT id, userId, month, payload, is_published, updated_by, updated_at FROM salary_inputs WHERE userId = ? AND month = ? LIMIT 1`;
+    params = [userId, month];
+  }
+  const [rows] = await db.query(sql, params);
   return rows[0] || null;
 }
 
-async function upsert({ userId, month, payload, updatedBy }) {
+async function upsert({ userId, month, payload, updatedBy, tenantId = null }) {
+  const tid = _tid(tenantId);
+  // If tenantId provided, verify user belongs to tenant before upserting
+  if (tid !== null) {
+    const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+    if (!check || !check.length) return null;
+  }
   const sql = `
     INSERT INTO salary_inputs (userId, month, payload, updated_by)
     VALUES (?, ?, CAST(? AS JSON), ?)
     ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_by = VALUES(updated_by)
   `;
   await db.query(sql, [userId, month, JSON.stringify(payload || {}), updatedBy || null]);
-  return getByUserMonth(userId, month);
+  return getByUserMonth(userId, month, tenantId);
 }
 
-async function setPublished(userId, month, isPublished, updatedBy) {
+async function setPublished(userId, month, isPublished, updatedBy, tenantId = null) {
+  const tid = _tid(tenantId);
+  // If tenantId provided, verify user belongs to tenant
+  if (tid !== null) {
+    const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+    if (!check || !check.length) return null;
+  }
   const sql = `
     UPDATE salary_inputs
     SET is_published = ?, updated_by = ?
     WHERE userId = ? AND month = ?
   `;
   await db.query(sql, [isPublished ? 1 : 0, updatedBy || null, userId, month]);
-  return getByUserMonth(userId, month);
+  return getByUserMonth(userId, month, tenantId);
 }
 
-async function listPublishedByUser(userId) {
-  const sql = `
-    SELECT userId, month, is_published, updated_by, updated_at
-    FROM salary_inputs
-    WHERE userId = ? AND is_published = 1
-    ORDER BY month DESC, updated_at DESC
-  `;
-  const [rows] = await db.query(sql, [userId]);
+async function listPublishedByUser(userId, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  let params;
+  if (tid !== null) {
+    sql = `
+      SELECT si.userId, si.month, si.is_published, si.updated_by, si.updated_at
+      FROM salary_inputs si
+      JOIN users u ON u.id = si.userId
+      WHERE si.userId = ? AND si.is_published = 1 AND u.tenant_id = ?
+      ORDER BY si.month DESC, si.updated_at DESC
+    `;
+    params = [userId, tid];
+  } else {
+    sql = `
+      SELECT userId, month, is_published, updated_by, updated_at
+      FROM salary_inputs
+      WHERE userId = ? AND is_published = 1
+      ORDER BY month DESC, updated_at DESC
+    `;
+    params = [userId];
+  }
+  const [rows] = await db.query(sql, params);
   return rows || [];
 }
 

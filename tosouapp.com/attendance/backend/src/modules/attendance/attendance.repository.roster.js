@@ -6,29 +6,37 @@ function _tid(tenantId) {
 }
 
 module.exports = {
-  async getUserWorkDetails(userId, limit = 10) {
+  async getUserWorkDetails(userId, limit = 10, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?'];
+    const params = [userId];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    params.push(limit);
     const [rows] = await db.query(`
       SELECT id, start_date, end_date, company_name, work_place_address, work_content, role_title, responsibility_level
       FROM user_work_details
-      WHERE userId = ?
+      WHERE ${where.join(' AND ')}
       ORDER BY start_date DESC, id DESC
       LIMIT ?
-    `, [userId, limit]);
+    `, params);
     return rows || [];
   },
   async getTodaySummaryStats(dateStr, tenantId = null) {
+    const tid = _tid(tenantId);
+    const attTidClause = tid ? 'AND tenant_id = ?' : '';
+    const attTidParam = tid ? [tid] : [];
     const [[{ c_checkin } = { c_checkin: 0 }]] = await db.query(`
       SELECT COUNT(DISTINCT userId) AS c_checkin
       FROM attendance
-      WHERE DATE(checkIn) = ?
-    `, [dateStr]);
+      WHERE DATE(checkIn) = ? ${attTidClause}
+    `, [dateStr, ...attTidParam]);
     const [[{ c_open } = { c_open: 0 }]] = await db.query(`
       SELECT COUNT(DISTINCT userId) AS c_open
       FROM attendance
-      WHERE DATE(checkIn) = ? AND checkOut IS NULL
-    `, [dateStr]);
-    const tidClause = tenantId ? 'AND tenant_id = ?' : '';
-    const tidParam = tenantId ? [parseInt(String(tenantId), 10)] : [];
+      WHERE DATE(checkIn) = ? AND checkOut IS NULL ${attTidClause}
+    `, [dateStr, ...attTidParam]);
+    const tidClause = tid ? 'AND tenant_id = ?' : '';
+    const tidParam = tid ? [tid] : [];
     const [[{ c_active } = { c_active: 0 }]] = await db.query(`
       SELECT COUNT(*) AS c_active
       FROM users
@@ -36,25 +44,28 @@ module.exports = {
         AND role IN ('employee','manager')
         ${tidClause}
     `, tidParam);
+    const leaveTidClause = tid ? 'AND lr.userId IN (SELECT id FROM users WHERE tenant_id = ?)' : '';
+    const leaveTidParam = tid ? [tid] : [];
     const [[{ c_leave_users } = { c_leave_users: 0 }]] = await db.query(`
       SELECT COUNT(DISTINCT userId) AS c_leave_users
-      FROM leave_requests
-      WHERE status = 'approved'
-        AND ? BETWEEN startDate AND endDate
-    `, [dateStr]);
+      FROM leave_requests lr
+      WHERE lr.status = 'approved'
+        AND ? BETWEEN lr.startDate AND lr.endDate
+        ${leaveTidClause}
+    `, [dateStr, ...leaveTidParam]);
     return { c_checkin, c_open, c_active, c_leave_users };
   },
-  async getTodayAttendanceRecords(userId, dateStr) {
+  async getTodayAttendanceRecords(userId, dateStr, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['userId = ?', '(DATE(checkIn) = ? OR (checkIn IS NULL AND DATE(checkOut) = ?))'];
+    const params = [userId, dateStr, dateStr];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
     const [rows] = await db.query(`
       SELECT id, checkIn, checkOut
       FROM attendance
-      WHERE userId = ?
-        AND (
-          DATE(checkIn) = ?
-          OR (checkIn IS NULL AND DATE(checkOut) = ?)
-        )
+      WHERE ${where.join(' AND ')}
       ORDER BY COALESCE(checkIn, checkOut) DESC
-    `, [userId, dateStr, dateStr]);
+    `, params);
     return rows || [];
   },
   async getTodayRosterItems(date, tenantId = null) {
@@ -102,7 +113,10 @@ module.exports = {
     `, [date, date, date, date, date, ...tidParam]);
     return rows || [];
   },
-  async getTodayPlannedItems(date) {
+  async getTodayPlannedItems(date, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tidClause = tid ? 'AND u.tenant_id = ?' : '';
+    const tidParam = tid ? [tid] : [];
     const [rows] = await db.query(`
       SELECT
         u.id AS userId,
@@ -122,11 +136,13 @@ module.exports = {
        AND ? BETWEEN lr.startDate AND lr.endDate
       WHERE u.employment_status = 'active'
         AND u.role IN ('employee','manager')
+        ${tidClause}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
-    `, [date]);
+    `, [date, ...tidParam]);
     return rows || [];
   },
-  async getActiveUserIds(departmentId = null) {
+  async getActiveUserIds(departmentId = null, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const params = [];
     let sql = `
       SELECT u.id AS userId
@@ -137,6 +153,10 @@ module.exports = {
     if (departmentId != null) {
       sql += ` AND u.departmentId = ?`;
       params.push(parseInt(String(departmentId), 10));
+    }
+    if (tid != null) {
+      sql += ` AND u.tenant_id = ?`;
+      params.push(tid);
     }
     const [rows] = await db.query(sql, params);
     return rows || [];
@@ -269,30 +289,40 @@ module.exports = {
     const [result] = await db.query(sql, params);
     return result.affectedRows;
   },
-  async listWorkDetailsBetween(userId, fromDate, toDate) {
+  async listWorkDetailsBetween(userId, fromDate, toDate, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const uid = parseInt(String(userId), 10);
     const from = String(fromDate || '').slice(0, 10);
     const to = String(toDate || '').slice(0, 10);
     if (!uid) return [];
-    const whereFromTo = (from && to) ? `AND d.start_date <= ? AND (d.end_date IS NULL OR d.end_date >= ?)` : '';
+    const where = ['d.userId = ?'];
     const params = [uid];
-    if (from && to) { params.push(to, from); }
+    if (tid != null) { where.push('d.tenant_id = ?'); params.push(tid); }
+    if (from && to) {
+      where.push('d.start_date <= ?');
+      where.push('(d.end_date IS NULL OR d.end_date >= ?)');
+      params.push(to, from);
+    }
     const [rows] = await db.query(`
       SELECT *
       FROM user_work_details d
-      WHERE d.userId = ?
-      ${whereFromTo}
+      WHERE ${where.join(' AND ')}
       ORDER BY d.start_date ASC, d.id ASC
     `, params);
     return rows || [];
   },
-  async getWorkDetailById(id) {
+  async getWorkDetailById(id, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const xid = parseInt(String(id), 10);
     if (!xid) return null;
-    const [rows] = await db.query(`SELECT * FROM user_work_details WHERE id = ? LIMIT 1`, [xid]);
+    const where = ['id = ?'];
+    const params = [xid];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(`SELECT * FROM user_work_details WHERE ${where.join(' AND ')} LIMIT 1`, params);
     return rows && rows[0] ? rows[0] : null;
   },
-  async createWorkDetail(userId, data) {
+  async createWorkDetail(userId, data, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const uid = parseInt(String(userId), 10);
     if (!uid) return null;
     const d = data && typeof data === 'object' ? data : {};
@@ -305,12 +335,13 @@ module.exports = {
     const roleTitle = d.roleTitle != null ? String(d.roleTitle).slice(0, 80) : null;
     const resp = d.responsibilityLevel != null ? String(d.responsibilityLevel).slice(0, 80) : null;
     const [res] = await db.query(`
-      INSERT INTO user_work_details (userId, start_date, end_date, company_name, work_place_address, work_content, role_title, responsibility_level)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [uid, startDate, endDate, company, addr, content, roleTitle, resp]);
+      INSERT INTO user_work_details (userId, start_date, end_date, company_name, work_place_address, work_content, role_title, responsibility_level, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [uid, startDate, endDate, company, addr, content, roleTitle, resp, tid]);
     return res?.insertId || null;
   },
-  async updateWorkDetail(id, userId, data) {
+  async updateWorkDetail(id, userId, data, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const xid = parseInt(String(id), 10);
     const uid = parseInt(String(userId), 10);
     if (!xid || !uid) return { ok: false, updated: 0 };
@@ -331,15 +362,21 @@ module.exports = {
     if (Object.prototype.hasOwnProperty.call(d, 'roleTitle')) { fields.push(`role_title = ?`); vals.push(d.roleTitle); }
     if (Object.prototype.hasOwnProperty.call(d, 'responsibilityLevel')) { fields.push(`responsibility_level = ?`); vals.push(d.responsibilityLevel); }
     if (!fields.length) return { ok: true, updated: 0 };
+    const where = ['id = ?', 'userId = ?'];
     vals.push(xid, uid);
-    const [res] = await db.query(`UPDATE user_work_details SET ${fields.join(', ')} WHERE id = ? AND userId = ?`, vals);
+    if (tid != null) { where.push('tenant_id = ?'); vals.push(tid); }
+    const [res] = await db.query(`UPDATE user_work_details SET ${fields.join(', ')} WHERE ${where.join(' AND ')}`, vals);
     return { ok: true, updated: res?.affectedRows || 0 };
   },
-  async deleteWorkDetail(id, userId) {
+  async deleteWorkDetail(id, userId, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
     const xid = parseInt(String(id), 10);
     const uid = parseInt(String(userId), 10);
     if (!xid || !uid) return { ok: false, deleted: 0 };
-    const [res] = await db.query(`DELETE FROM user_work_details WHERE id = ? AND userId = ?`, [xid, uid]);
+    const where = ['id = ?', 'userId = ?'];
+    const params = [xid, uid];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [res] = await db.query(`DELETE FROM user_work_details WHERE ${where.join(' AND ')}`, params);
     return { ok: true, deleted: Number(res?.affectedRows || 0) };
   }
 };

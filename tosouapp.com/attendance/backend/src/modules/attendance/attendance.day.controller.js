@@ -143,7 +143,13 @@ exports.putDay = async (req, res) => {
     if (typeof location !== 'undefined') { colUpdates.push('location = ?'); colParams.push(location || null); }
     if (typeof memo     !== 'undefined') { colUpdates.push('memo = ?');     colParams.push(memo     || null); }
     if (typeof notes    !== 'undefined') { colUpdates.push('notes = ?');    colParams.push(notes    || null); }
-    if (colUpdates.length) await db.query(`UPDATE attendance SET ${colUpdates.join(', ')} WHERE id = ?`, [...colParams, attendanceId]);
+    if (colUpdates.length) {
+      const tid = req.tenantId || null;
+      let updSql = `UPDATE attendance SET ${colUpdates.join(', ')} WHERE id = ?`;
+      const updParams = [...colParams, attendanceId];
+      if (tid != null) { updSql += ` AND tenant_id = ?`; updParams.push(tid); }
+      await db.query(updSql, updParams);
+    }
     // Thông báo admin nếu giờ punch thay đổi
     if (inChanged)  await notifyPunch(userId, String(nextIn).slice(11, 16),  'in');
     else if (outChanged) await notifyPunch(userId, String(nextOut).slice(11, 16), 'out');
@@ -205,7 +211,7 @@ exports.deleteSegment = async (req, res) => {
       try { await assertMonthWritable(req, userId, y, m); }
       catch (e) { return res.status(Number(e?.status || 500)).json({ message: e.message }); }
     }
-    await db.query(`DELETE FROM attendance WHERE id = ?`, [id]);
+    await db.query(`DELETE FROM attendance WHERE id = ?${req.tenantId != null ? ' AND tenant_id = ?' : ''}`, req.tenantId != null ? [id, req.tenantId] : [id]);
     res.status(200).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -220,8 +226,12 @@ exports.submitDay = async (req, res) => {
     const date   = req.params.date;
     if (!userId || !date) return res.status(400).json({ message: 'Missing date' });
     const rows = await repo.listByUserBetween(userId, date, date);
+    const tid = req.tenantId || null;
     for (const r of rows) {
-      await db.query(`UPDATE attendance SET labels = CONCAT_WS(',', labels, 'submitted') WHERE id = ?`, [r.id]);
+      let labelSql = `UPDATE attendance SET labels = CONCAT_WS(',', labels, 'submitted') WHERE id = ?`;
+      const labelParams = [r.id];
+      if (tid != null) { labelSql += ` AND tenant_id = ?`; labelParams.push(tid); }
+      await db.query(labelSql, labelParams);
     }
     res.status(200).json({ submitted: rows.length });
   } catch (err) {

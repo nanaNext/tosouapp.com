@@ -1,6 +1,10 @@
 const db = require('../../core/database/mysql');
 const crypto = require('crypto');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 function hashToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
@@ -36,7 +40,7 @@ async function ensureTable() {
 
 module.exports = {
   ensureTable,
-  async createReset({ userId, token, expiresAt, userAgent, ip }) {
+  async createReset({ userId, token, expiresAt, userAgent, ip, tenantId = null }) {
     const tokenHash = hashToken(token);
     const sql = `
       INSERT INTO password_reset_tokens (userId, token_hash, expires_at, user_agent, ip)
@@ -46,7 +50,15 @@ module.exports = {
     await db.query(sql, [userId, tokenHash, expiresAt, userAgent || null, ip || null]);
     return { ok: true };
   },
-  async revokeUnsedForUser(userId) {
+  async revokeUnsedForUser(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      // Verify user belongs to tenant before revocation
+      const [userRows] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [userId, tid]);
+      if (!userRows || !userRows.length) {
+        throw new Error('User does not belong to the specified tenant');
+      }
+    }
     const sql = `DELETE FROM password_reset_tokens WHERE userId = ? AND used_at IS NULL`;
     await db.query(sql, [userId]);
   },

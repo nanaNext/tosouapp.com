@@ -173,7 +173,12 @@ async function ensureProfileChangeTable() {
 exports.listProfileChangePending = async (req, res) => {
   try {
     await ensureProfileChangeTable();
-    const [rows] = await db.query(`SELECT * FROM user_change_requests WHERE status='pending' ORDER BY created_at DESC`);
+    const tid = req.tenantId || null;
+    let sql = `SELECT ucr.* FROM user_change_requests ucr LEFT JOIN users u ON u.id = ucr.user_id WHERE ucr.status='pending'`;
+    const params = [];
+    if (tid != null) { sql += ` AND u.tenant_id = ?`; params.push(tid); }
+    sql += ` ORDER BY ucr.created_at DESC`;
+    const [rows] = await db.query(sql, params);
     const cache = new Map();
     const result = [];
     for (const r of rows) {
@@ -200,7 +205,12 @@ exports.getProfileChange = async (req, res) => {
     await ensureProfileChangeTable();
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ message: 'Missing id' });
-    const [rows] = await db.query(`SELECT * FROM user_change_requests WHERE id=? LIMIT 1`, [id]);
+    const tid = req.tenantId || null;
+    let sql = `SELECT ucr.* FROM user_change_requests ucr LEFT JOIN users u ON u.id = ucr.user_id WHERE ucr.id = ?`;
+    const params = [id];
+    if (tid != null) { sql += ` AND u.tenant_id = ?`; params.push(tid); }
+    sql += ` LIMIT 1`;
+    const [rows] = await db.query(sql, params);
     const row = rows[0];
     if (!row) return res.status(404).json({ message: 'Not found' });
     const target = await userRepo.getUserById(row.user_id);
@@ -224,7 +234,12 @@ exports.approveProfileChange = async (req, res) => {
     const id = parseInt(req.params.id, 10);
     const { status } = req.body || {};
     if (!id || !status) return res.status(400).json({ message: 'Missing id/status' });
-    const [rows] = await db.query(`SELECT * FROM user_change_requests WHERE id=? LIMIT 1`, [id]);
+    const tid = req.tenantId || null;
+    let sql = `SELECT ucr.* FROM user_change_requests ucr LEFT JOIN users u ON u.id = ucr.user_id WHERE ucr.id = ?`;
+    const params = [id];
+    if (tid != null) { sql += ` AND u.tenant_id = ?`; params.push(tid); }
+    sql += ` LIMIT 1`;
+    const [rows] = await db.query(sql, params);
     const row = rows[0];
     if (!row) return res.status(404).json({ message: 'Not found' });
     if (row.status !== 'pending') return res.status(409).json({ message: 'Already processed' });

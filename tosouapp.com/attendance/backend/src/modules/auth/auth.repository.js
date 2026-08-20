@@ -1,5 +1,9 @@
 const db = require('../../core/database/mysql');
 
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 module.exports = {
   async ensureUserSecurityColumns() {
     const sql = `
@@ -37,21 +41,33 @@ module.exports = {
     try { await db.query(`UPDATE users SET email_lower = LOWER(TRIM(email)) WHERE email IS NOT NULL AND (email_lower IS NULL OR email_lower = '' OR email_lower != LOWER(TRIM(email)))`); } catch (e) { /* silently ignored */ }
     try { await db.query(`ALTER TABLE users ADD UNIQUE KEY uniq_email_lower (email_lower)`); } catch (e) { /* silently ignored */ }
   },
-  async findUserByEmail(email) {
+  async findUserByEmail(email, tenantId = null) {
     const e = String(email || '').trim();
-    let [rows] = await db.query(`SELECT * FROM users WHERE email_lower = LOWER(?) LIMIT 1`, [e]);
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+    const params = tid != null ? [e, tid] : [e];
+    let [rows] = await db.query(`SELECT * FROM users WHERE email_lower = LOWER(?)${tenantClause} LIMIT 1`, params);
     if (!rows || !rows.length) {
-      [rows] = await db.query(`SELECT * FROM users WHERE TRIM(email) = ? LIMIT 1`, [e]);
+      [rows] = await db.query(`SELECT * FROM users WHERE TRIM(email) = ?${tenantClause} LIMIT 1`, params);
     }
     return rows[0];
   },
-  async findUserById(id) {
-    const sql = `SELECT * FROM users WHERE id = ? LIMIT 1`;
-    const [rows] = await db.query(sql, [id]);
+  async findUserById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+    const params = tid != null ? [id, tid] : [id];
+    const sql = `SELECT * FROM users WHERE id = ?${tenantClause} LIMIT 1`;
+    const [rows] = await db.query(sql, params);
     return rows[0];
   },
 
-  async createUser({ username, email, password }) {
+  async createUser({ username, email, password, tenantId = null }) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const sql = `INSERT INTO users (username, email, email_lower, password, tenant_id) VALUES (?, ?, LOWER(?), ?, ?)`;
+      const [result] = await db.query(sql, [username, email, email, password, tid]);
+      return result.insertId;
+    }
     const sql = `INSERT INTO users (username, email, email_lower, password) VALUES (?, ?, LOWER(?), ?)`;
     const [result] = await db.query(sql, [username, email, email, password]);
     return result.insertId;

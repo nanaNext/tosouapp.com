@@ -157,7 +157,8 @@ exports.login = async (req, res) => {
       maxAge: refreshTokenExpiresDays * 24 * 60 * 60 * 1000,
       path: '/'
     });
-    setSessionCookie(req, res, token);
+    // NOTE: session_token cookie is set AFTER auto-select logic below
+    // to ensure it contains the tenant-scoped JWT when applicable.
 
     // Check if 2FA is required for this user
     let requires2FA = false;
@@ -198,7 +199,7 @@ exports.login = async (req, res) => {
       try {
         const tenantId = tenants[0].id;
         const tenantRole = tenants[0].role || role;
-        const tokenPayload = { id: user.id, email: user.email, role: tenantRole, tenant_id: tenantId };
+        const tokenPayload = { id: user.id, email: user.email, role: tenantRole, tid: tenantId };
         const jwt = require('jsonwebtoken');
         const secret = process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET || 'fallback';
         finalToken = jwt.sign(tokenPayload, secret, { expiresIn: '24h' });
@@ -214,6 +215,9 @@ exports.login = async (req, res) => {
       finalNextPath = legacyNextPath;
     }
 
+    // Set session cookie with the final token (tenant-scoped if auto-selected)
+    setSessionCookie(req, res, finalToken);
+
     res.status(200).json({
       id: user.id,
       username: user.username,
@@ -225,6 +229,8 @@ exports.login = async (req, res) => {
       tenants: multiTenantEnabled ? tenants : undefined,
       tenantId: autoSelectedTenant ? autoSelectedTenant.id : undefined,
       tenantName: autoSelectedTenant ? autoSelectedTenant.name : undefined,
+      tenantLogo: autoSelectedTenant ? (autoSelectedTenant.logo_url || '') : undefined,
+      tenantLogoName: autoSelectedTenant ? (autoSelectedTenant.logo_name || '') : undefined,
     });
     try {
       await auditRepo.writeLog({
@@ -265,7 +271,19 @@ exports.me = async (req, res) => {
       } catch (e) { /* silently ignored */ }
     }
 
-    res.status(200).json({ ...user, role: roleFromJWT });
+    // Attach tenant info from JWT or DB
+    const rawTenantId = req.user?.tid || req.user?.tenant_id || req.tenantId || user.tenant_id || null;
+    const tenantId = rawTenantId ? parseInt(String(rawTenantId), 10) : null;
+    let tenantName = null;
+    if (tenantId && Number.isFinite(tenantId)) {
+      try {
+        const tenantRepo = require('../tenants/tenant.repository');
+        const t = await tenantRepo.getTenantById(tenantId);
+        if (t && t.name) tenantName = t.name;
+      } catch (e) { /* silently ignored */ }
+    }
+
+    res.status(200).json({ ...user, role: roleFromJWT, tenantId: tenantId || null, tenantName });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

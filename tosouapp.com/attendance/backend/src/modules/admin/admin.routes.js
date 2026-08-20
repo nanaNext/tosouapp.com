@@ -116,14 +116,14 @@ router.post('/users', async (req, res, next) => {
 }, rateLimitNamed('admin_users_create', { windowMs: 60_000, max: 10 }), authorize('admin'), userCtrl.create);
 router.patch('/users/:id', async (req, res, next) => {
   try {
-    const before = await userRepo.getUserById(req.params.id);
+    const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
   } catch (e) { /* silently ignored */ }
   next();
 }, rateLimitNamed('admin_users_update', { windowMs: 60_000, max: 30 }), authorize('admin'), userCtrl.update);
 router.delete('/users/:id', async (req, res, next) => {
   try {
-    const before = await userRepo.getUserById(req.params.id);
+    const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
     const superEmail = process.env.SUPER_ADMIN_EMAIL;
     if (before?.email === superEmail) {
       return res.status(403).json({ message: 'Cannot delete SUPER_ADMIN user' });
@@ -511,7 +511,7 @@ router.post('/employees', async (req, res, next) => {
 }, userCtrl.create);
 router.put('/employees/:id', async (req, res, next) => {
   try {
-    const before = await userRepo.getUserById(req.params.id);
+    const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
   } catch (e) { /* silently ignored */ }
   next();
@@ -524,7 +524,7 @@ router.put('/employees/:id', async (req, res, next) => {
 }, userCtrl.update);
 router.patch('/employees/:id', async (req, res, next) => {
   try {
-    const before = await userRepo.getUserById(req.params.id);
+    const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
   } catch (e) { /* silently ignored */ }
   next();
@@ -538,7 +538,7 @@ router.patch('/employees/:id', async (req, res, next) => {
 router.delete('/employees/:id', permit('employees','manage'), async (req, res) => {
   try {
     const id = req.params.id;
-    const before = await userRepo.getUserById(id);
+    const before = await userRepo.getUserById(id, req.tenantId || null);
     if (!before) return res.status(404).json({ message: 'User not found' });
     const superEmail = process.env.SUPER_ADMIN_EMAIL;
     if (before?.email === superEmail) {
@@ -646,21 +646,21 @@ router.delete('/employees/:id/photos/:photoId', permit('employees','manage'), as
 });
 router.patch('/users/:id/role', async (req, res, next) => {
   try {
-    const before = await userRepo.getUserById(req.params.id);
+    const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_set_role', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
   } catch (e) { /* silently ignored */ }
   next();
 }, authorize('admin'), userCtrl.setRole);
 router.patch('/users/:id/department', async (req, res, next) => {
   try {
-    const before = await userRepo.getUserById(req.params.id);
+    const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
     await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_set_department', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before || {}), afterData: JSON.stringify(req.body || {}) });
   } catch (e) { /* silently ignored */ }
   next();
 }, authorize('admin'), userCtrl.setDepartment);
 router.patch('/users/:id/password', async (req, res, next) => {
   try {
-    const before = await userRepo.getUserById(req.params.id);
+    const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
     const superEmail = process.env.SUPER_ADMIN_EMAIL;
     if (before?.email === superEmail && String(req.user.id) !== String(req.params.id)) {
       return res.status(403).json({ message: 'Only SUPER_ADMIN can change own password' });
@@ -674,7 +674,7 @@ router.patch('/users/:id/lock', authorize('admin'), async (req, res) => {
   try {
     const id = req.params.id;
     const minutes = parseInt((req.body?.minutes ?? 60), 10);
-    const user = await userRepo.getUserById(id);
+    const user = await userRepo.getUserById(id, req.tenantId || null);
     if (!user) return res.status(404).json({ message: 'User not found' });
     await authRepo.lockUser(user.email, minutes);
     try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_lock', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: user.id, email: user.email }), afterData: JSON.stringify({ minutes }) }); } catch (e) { /* silently ignored */ }
@@ -686,7 +686,7 @@ router.patch('/users/:id/lock', authorize('admin'), async (req, res) => {
 router.patch('/users/:id/unlock', authorize('admin'), async (req, res) => {
   try {
     const id = req.params.id;
-    const user = await userRepo.getUserById(id);
+    const user = await userRepo.getUserById(id, req.tenantId || null);
     if (!user) return res.status(404).json({ message: 'User not found' });
     await authRepo.resetLock(user.email);
     try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_user_unlock', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: user.id, email: user.email }), afterData: JSON.stringify({ unlocked: true }) }); } catch (e) { /* silently ignored */ }
@@ -838,7 +838,7 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
     let singleEmpCode = '';
 
     for (const id of ids) {
-      const u = await userRepo.getUserById(id).catch(() => null);
+      const u = await userRepo.getUserById(id, req.tenantId || null).catch(() => null);
       const empCode = u?.employee_code || '';
       const uName = String(u?.full_name || u?.fullName || u?.username || u?.email || `ID:${id}`);
       if (ids.length === 1) {
@@ -1357,8 +1357,8 @@ router.get('/salary/files', async (req, res) => {
     const month = req.query?.month ? String(req.query.month).slice(0, 7) : null;
     const limit = Math.max(1, Math.min(1000, parseInt(String(req.query?.limit || '500'), 10) || 500));
     if (role === 'manager' && userId && String(process.env.MANAGER_STRICT_DEPT_PAYROLL || '').toLowerCase() === 'true') {
-      const me = await userRepo.getUserById(req.user.id);
-      const target = await userRepo.getUserById(userId);
+      const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+      const target = await userRepo.getUserById(userId, req.tenantId || null);
       if (!me?.departmentId || String(me.departmentId) !== String(target?.departmentId)) {
         return res.status(403).json({ message: 'Forbidden: cross-department access' });
       }

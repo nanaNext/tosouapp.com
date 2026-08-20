@@ -43,6 +43,7 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     const role = String(req.user?.role || '').toLowerCase();
     const userBranchId = req.user?.branchId || null;
     const branchFilter = (role === 'manager' && userBranchId) ? userBranchId : null;
+    const tid = req.tenantId || null;
 
     let userQuery = `
       SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName
@@ -51,6 +52,7 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
       WHERE u.employment_status = 'active' AND u.role NOT IN ('admin', 'manager')
     `;
     const userParams = [];
+    if (tid != null) { userQuery += ` AND u.tenant_id = ?`; userParams.push(tid); }
     if (branchFilter) { userQuery += ` AND u.branch_id = ?`; userParams.push(branchFilter); }
     userQuery += ` ORDER BY CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END, u.employee_code ASC, u.id ASC`;
     const [users] = await db.query(userQuery, userParams);

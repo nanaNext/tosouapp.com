@@ -1,11 +1,22 @@
 ﻿const db = require('../../core/database/mysql');
+
+function _tid(tenantId) {
+  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+}
+
 module.exports = {
-  async create({ userId, date, origin, via, destination, amount, memo, type, purpose, teiki, receiptUrl, km, category, tripType, tripCount, unitPricePerKm, commuterPass, clientToken }) {
-    const sql = `
+  async create({ userId, date, origin, via, destination, amount, memo, type, purpose, teiki, receiptUrl, km, category, tripType, tripCount, unitPricePerKm, commuterPass, clientToken, tenantId = null }) {
+    const tid = _tid(tenantId);
+    const sql = tid != null
+      ? `
+      INSERT IGNORE INTO expense_claims (userId, date, origin, via, destination, amount, memo, type, purpose, teiki_flag, receipt_url, distance_km, unit_price_per_km, trip_type, trip_count, category, status, approver_id, approved_at, commuter_pass, client_token, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?, ?)
+    `
+      : `
       INSERT IGNORE INTO expense_claims (userId, date, origin, via, destination, amount, memo, type, purpose, teiki_flag, receipt_url, distance_km, unit_price_per_km, trip_type, trip_count, category, status, approver_id, approved_at, commuter_pass, client_token)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)
     `;
-    const [res] = await db.query(sql, [
+    const params = [
       userId,
       date,
       origin || null,
@@ -24,7 +35,9 @@ module.exports = {
       category || null,
       commuterPass ? 1 : 0,
       clientToken || null
-    ]);
+    ];
+    if (tid != null) params.push(tid);
+    const [res] = await db.query(sql, params);
     if (res.insertId && res.insertId > 0) return res.insertId;
     if (clientToken) {
       const [rows] = await db.query(`SELECT id FROM expense_claims WHERE client_token = ? LIMIT 1`, [clientToken]);
@@ -37,27 +50,35 @@ module.exports = {
     );
     return (rows && rows[0] && rows[0].id) ? rows[0].id : 0;
   },
-  async listMine(userId, month) {
+  async listMine(userId, month, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
     if (month && /^\d{4}-\d{2}$/.test(String(month))) {
+      const params = [userId, String(month)];
+      if (tid != null) params.push(tid);
       const [rows] = await db.query(
-        `SELECT * FROM expense_claims WHERE userId = ? AND DATE_FORMAT(date,'%Y-%m') = ? ORDER BY date DESC, created_at DESC`,
-        [userId, String(month)]
+        `SELECT * FROM expense_claims WHERE userId = ? AND DATE_FORMAT(date,'%Y-%m') = ?${tenantClause} ORDER BY date DESC, created_at DESC`,
+        params
       );
       return rows;
     }
+    const params = [userId];
+    if (tid != null) params.push(tid);
     const [rows] = await db.query(
-      `SELECT * FROM expense_claims WHERE userId = ? ORDER BY date DESC, created_at DESC`,
-      [userId]
+      `SELECT * FROM expense_claims WHERE userId = ?${tenantClause} ORDER BY date DESC, created_at DESC`,
+      params
     );
     return rows;
   },
-  async listMineAdvanced({ userId, month, status, type }) {
+  async listMineAdvanced({ userId, month, status, type, tenantId = null }) {
+    const tid = _tid(tenantId);
     const where = [`userId = ?`];
     const args = [userId];
+    if (tid != null) { where.push(`tenant_id = ?`); args.push(tid); }
     if (month && /^\d{4}-\d{2}$/.test(String(month))) { where.push(`DATE_FORMAT(date,'%Y-%m') = ?`); args.push(String(month)); }
     if (status) {
       const st = String(status).toLowerCase();
-      const map = { 'æœªç”³è«‹':'draft', 'ç”³è«‹ä¸­':'applied', 'æ‰¿èªæ¸ˆã¿':'approved', 'å·®æˆ»ã—':'rejected', 'æ”¯çµ¦æ¸ˆã¿':'paid' };
+      const map = { 'æœªç"³è«‹':'draft', 'ç"³è«‹ä¸­':'applied', 'æ‰¿èªæ¸ˆã¿':'approved', 'å·®æˆ»ã—':'rejected', 'æ"¯çµ¦æ¸ˆã¿':'paid' };
       const st2 = map[status] || st;
       if (st2 === 'draft' || st2 === 'pending') {
         where.push(`status IN ('draft', 'pending')`);
@@ -76,11 +97,20 @@ module.exports = {
     const [rows] = await db.query(sql, args);
     return rows;
   },
-  async getById(id) {
+  async getById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [rows] = await db.query(`SELECT * FROM expense_claims WHERE id = ? AND tenant_id = ?`, [id, tid]);
+      return rows[0] || null;
+    }
     const [rows] = await db.query(`SELECT * FROM expense_claims WHERE id = ?`, [id]);
     return rows[0] || null;
   },
-  async getAdminDetailById(id) {
+  async getAdminDetailById(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND ec.tenant_id = ?' : '';
+    const params = [id];
+    if (tid != null) params.push(tid);
     const [rows] = await db.query(
       `
       SELECT
@@ -93,22 +123,37 @@ module.exports = {
         (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name
       FROM expense_claims ec
       JOIN users u ON u.id = ec.userId
-      WHERE ec.id = ?
+      WHERE ec.id = ?${tenantClause}
       LIMIT 1
       `,
-      [id]
+      params
     );
     return rows && rows[0] ? rows[0] : null;
   },
-  async listAll(month) {
+  async listAll(month, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND ec.tenant_id = ?' : '';
     if (month && /^\d{4}-\d{2}$/.test(String(month))) {
+      const params = [String(month)];
+      if (tid != null) params.push(tid);
       const [rows] = await db.query(
         `SELECT ec.*, 
           (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
           (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
           (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
-         FROM expense_claims ec WHERE DATE_FORMAT(ec.date,'%Y-%m') = ? ORDER BY ec.date DESC, ec.created_at DESC`,
-        [String(month)]
+         FROM expense_claims ec WHERE DATE_FORMAT(ec.date,'%Y-%m') = ?${tenantClause} ORDER BY ec.date DESC, ec.created_at DESC`,
+        params
+      );
+      return rows;
+    }
+    if (tid != null) {
+      const [rows] = await db.query(
+        `SELECT ec.*, 
+          (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
+          (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
+          (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
+         FROM expense_claims ec WHERE ec.tenant_id = ? ORDER BY ec.date DESC, ec.created_at DESC`,
+        [tid]
       );
       return rows;
     }
@@ -121,9 +166,11 @@ module.exports = {
     );
     return rows;
   },
-  async updateStatus(id, status, note, managerId) {
+  async updateStatus(id, status, note, managerId, tenantId = null) {
+    const tid = _tid(tenantId);
     const st = String(status || '').toLowerCase();
     if (!['draft','pending','applied','approved','rejected','paid'].includes(st)) throw new Error('Invalid status');
+    const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
     const sql = `
       UPDATE expense_claims
       SET
@@ -134,24 +181,32 @@ module.exports = {
         applied_at = CASE WHEN ? = 'applied' THEN CURRENT_TIMESTAMP ELSE applied_at END,
         approved_at = CASE WHEN ? IN ('approved','rejected','paid') THEN CURRENT_TIMESTAMP ELSE approved_at END,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ?${tenantClause}
     `;
-    const [res] = await db.query(sql, [st, note || null, st, managerId || null, st, managerId || null, st, st, id]);
+    const params = [st, note || null, st, managerId || null, st, managerId || null, st, st, id];
+    if (tid != null) params.push(tid);
+    const [res] = await db.query(sql, params);
     return res.affectedRows > 0;
   },
-  async setEmployeeReplyAndApply(id, userId, note) {
-    const [rows] = await db.query(`SELECT id, userId FROM expense_claims WHERE id = ?`, [id]);
+  async setEmployeeReplyAndApply(id, userId, note, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+    const selectParams = [id];
+    if (tid != null) selectParams.push(tid);
+    const [rows] = await db.query(`SELECT id, userId FROM expense_claims WHERE id = ?${tenantClause}`, selectParams);
     const r = rows && rows[0] ? rows[0] : null;
     if (!r || String(r.userId) !== String(userId)) return false;
     const sql = `
       UPDATE expense_claims
       SET employee_note = ?, reply_at = CURRENT_TIMESTAMP, status = 'applied', applied_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ?${tenantClause}
     `;
-    const [res] = await db.query(sql, [note || null, id]);
+    const updateParams = [note || null, id];
+    if (tid != null) updateParams.push(tid);
+    const [res] = await db.query(sql, updateParams);
     return res.affectedRows > 0;
   },
-  async addFiles(id, files) {
+  async addFiles(id, files, tenantId = null) {
     if (!Array.isArray(files) || !files.length) return [];
     const rows = [];
     for (const f of files) {
@@ -167,8 +222,12 @@ module.exports = {
     const [rows] = await db.query(`SELECT id, file_path AS path, original_name AS name, mime_type AS mime, size FROM expense_files WHERE expense_id = ? ORDER BY id ASC`, [id]);
     return rows || [];
   },
-  async deleteFile(fileId, userId) {
-    const [rows] = await db.query(`SELECT ef.*, ec.userId FROM expense_files ef JOIN expense_claims ec ON ec.id = ef.expense_id WHERE ef.id = ?`, [fileId]);
+  async deleteFile(fileId, userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND ec.tenant_id = ?' : '';
+    const selectParams = [fileId];
+    if (tid != null) selectParams.push(tid);
+    const [rows] = await db.query(`SELECT ef.*, ec.userId FROM expense_files ef JOIN expense_claims ec ON ec.id = ef.expense_id WHERE ef.id = ?${tenantClause}`, selectParams);
     const r = rows && rows[0] ? rows[0] : null;
     if (!r) return { ok:false, path:null };
     if (String(r.userId) !== String(userId)) return { ok:false, path:null };
@@ -176,13 +235,22 @@ module.exports = {
     const [res] = await db.query(`DELETE FROM expense_files WHERE id = ?`, [fileId]);
     return { ok: res.affectedRows > 0, path: p };
   },
-  async deleteMine(id) {
+  async deleteMine(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    if (tid != null) {
+      const [res] = await db.query(`DELETE FROM expense_claims WHERE id = ? AND tenant_id = ?`, [id, tid]);
+      return res.affectedRows > 0;
+    }
     const [res] = await db.query(`DELETE FROM expense_claims WHERE id = ?`, [id]);
     return res.affectedRows > 0;
   }
 };
-module.exports.updateMine = async function(id, userId, payload) {
-  const [rows] = await db.query(`SELECT * FROM expense_claims WHERE id = ?`, [id]);
+module.exports.updateMine = async function(id, userId, payload, tenantId = null) {
+  const tid = _tid(tenantId);
+  const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+  const selectParams = [id];
+  if (tid != null) selectParams.push(tid);
+  const [rows] = await db.query(`SELECT * FROM expense_claims WHERE id = ?${tenantClause}`, selectParams);
   const r = rows && rows[0] ? rows[0] : null;
   if (!r || String(r.userId) !== String(userId)) return false;
   const f = payload || {};
@@ -210,13 +278,19 @@ module.exports.updateMine = async function(id, userId, payload) {
   const sql = `
     UPDATE expense_claims
     SET origin = ?, via = ?, destination = ?, memo = ?, type = ?, purpose = ?, teiki_flag = ?, distance_km = ?, unit_price_per_km = ?, trip_type = ?, trip_count = ?, category = ?, commuter_pass = ?, date = ?, amount = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
+    WHERE id = ?${tenantClause}
   `;
-  const [res] = await db.query(sql, [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, commuter_pass, date, amount || 0, id]);
+  const updateParams = [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, commuter_pass, date, amount || 0, id];
+  if (tid != null) updateParams.push(tid);
+  const [res] = await db.query(sql, updateParams);
   return res.affectedRows > 0;
 };
-module.exports.updateByAdmin = async function(id, payload) {
-  const [rows] = await db.query(`SELECT * FROM expense_claims WHERE id = ?`, [id]);
+module.exports.updateByAdmin = async function(id, payload, tenantId = null) {
+  const tid = _tid(tenantId);
+  const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+  const selectParams = [id];
+  if (tid != null) selectParams.push(tid);
+  const [rows] = await db.query(`SELECT * FROM expense_claims WHERE id = ?${tenantClause}`, selectParams);
   const r = rows && rows[0] ? rows[0] : null;
   if (!r) return false;
   const f = payload || {};
@@ -244,9 +318,11 @@ module.exports.updateByAdmin = async function(id, payload) {
   const sql = `
     UPDATE expense_claims
     SET origin = ?, via = ?, destination = ?, memo = ?, type = ?, purpose = ?, teiki_flag = ?, distance_km = ?, unit_price_per_km = ?, trip_type = ?, trip_count = ?, category = ?, commuter_pass = ?, date = ?, amount = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
+    WHERE id = ?${tenantClause}
   `;
-  const [res] = await db.query(sql, [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, commuter_pass, date, amount || 0, id]);
+  const updateParams = [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, commuter_pass, date, amount || 0, id];
+  if (tid != null) updateParams.push(tid);
+  const [res] = await db.query(sql, updateParams);
   return res.affectedRows > 0;
 };
 module.exports.ensureTable = async function() {
@@ -385,11 +461,31 @@ module.exports.ensureTable = async function() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 };
-module.exports.getActiveMonth = async function(userId) {
+module.exports.getActiveMonth = async function(userId, tenantId = null) {
+  const tid = _tid(tenantId);
+  if (tid != null) {
+    const [rows] = await db.query(
+      `SELECT em.* FROM expense_months em JOIN users u ON u.id = em.userId WHERE em.userId = ? AND em.is_active = 1 AND u.tenant_id = ? LIMIT 1`,
+      [userId, tid]
+    );
+    return rows && rows[0] ? rows[0] : null;
+  }
   const [rows] = await db.query(`SELECT * FROM expense_months WHERE userId = ? AND is_active = 1 LIMIT 1`, [userId]);
   return rows && rows[0] ? rows[0] : null;
 };
-module.exports.listMonths = async function(userId) {
+module.exports.listMonths = async function(userId, tenantId = null) {
+  const tid = _tid(tenantId);
+  if (tid != null) {
+    const [rows] = await db.query(
+      `SELECT em.id, em.userId, em.month, em.status, em.is_active, em.applied_at, em.approved_at, em.created_at, em.updated_at
+       FROM expense_months em
+       JOIN users u ON u.id = em.userId
+       WHERE em.userId = ? AND u.tenant_id = ?
+       ORDER BY em.month DESC`,
+      [userId, tid]
+    );
+    return rows || [];
+  }
   const [rows] = await db.query(
     `SELECT id, userId, month, status, is_active, applied_at, approved_at, created_at, updated_at
      FROM expense_months
@@ -400,12 +496,14 @@ module.exports.listMonths = async function(userId) {
   return rows || [];
 };
 
-module.exports.listAppliedMonthsForAdmin = async function({ month = null, userId = null, limit = 200 } = {}) {
+module.exports.listAppliedMonthsForAdmin = async function({ month = null, userId = null, limit = 200, tenantId = null } = {}) {
+  const tid = _tid(tenantId);
   const m = String(month || '').slice(0, 7);
   const hasMonth = /^\d{4}-\d{2}$/.test(m);
   const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
   const hasUser = uid !== null;
   const lim = Math.max(1, Math.min(500, parseInt(String(limit || '200'), 10) || 200));
+  const tenantClause = tid != null ? ' AND u.tenant_id = ?' : '';
   const [rows] = await db.query(
     `
     SELECT
@@ -429,7 +527,7 @@ module.exports.listAppliedMonthsForAdmin = async function({ month = null, userId
      AND ec.status IN ('applied','approved')
     WHERE em.status = 'applied'
       AND (? = 0 OR em.month = ?)
-      AND (? IS NULL OR em.userId = ?)
+      AND (? IS NULL OR em.userId = ?)${tenantClause}
     GROUP BY
       em.userId, em.month, em.status, em.applied_at, em.approved_at,
       COALESCE(p.employee_name, u.username, u.email, CONCAT('user#', u.id)),
@@ -438,20 +536,24 @@ module.exports.listAppliedMonthsForAdmin = async function({ month = null, userId
     ORDER BY em.applied_at DESC, em.month DESC, em.userId ASC
     LIMIT ?
     `,
-    [hasMonth ? 1 : 0, hasMonth ? m : '', hasUser ? uid : null, hasUser ? uid : null, lim]
+    [hasMonth ? 1 : 0, hasMonth ? m : '', hasUser ? uid : null, hasUser ? uid : null, ...(tid != null ? [tid] : []), lim]
   );
   return rows || [];
 };
 
-module.exports.approveMonthByAdmin = async function({ userId, month, approverId }) {
+module.exports.approveMonthByAdmin = async function({ userId, month, approverId, tenantId = null }) {
+  const tid = _tid(tenantId);
   const uid = parseInt(String(userId || 0), 10);
   const ym = String(month || '').slice(0, 7);
   if (!uid || !(uid > 0)) throw new Error('Invalid userId');
   if (!/^\d{4}-\d{2}$/.test(ym)) throw new Error('Invalid month');
   const mid = parseInt(String(approverId || 0), 10) || null;
+  const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
+    const updParams = [mid, mid, uid, ym];
+    if (tid != null) updParams.push(tid);
     const [upd] = await conn.query(
       `
       UPDATE expense_claims
@@ -463,9 +565,9 @@ module.exports.approveMonthByAdmin = async function({ userId, month, approverId 
         updated_at = CURRENT_TIMESTAMP
       WHERE userId = ?
         AND DATE_FORMAT(date, '%Y-%m') = ?
-        AND status = 'applied'
+        AND status = 'applied'${tenantClause}
       `,
-      [mid, mid, uid, ym]
+      updParams
     );
     await conn.query(
       `
@@ -478,6 +580,8 @@ module.exports.approveMonthByAdmin = async function({ userId, month, approverId 
       `,
       [uid, ym]
     );
+    const sumParams = [uid, ym];
+    if (tid != null) sumParams.push(tid);
     const [[sumRow]] = await conn.query(
       `
       SELECT
@@ -486,9 +590,9 @@ module.exports.approveMonthByAdmin = async function({ userId, month, approverId 
       FROM expense_claims
       WHERE userId = ?
         AND DATE_FORMAT(date, '%Y-%m') = ?
-        AND status = 'approved'
+        AND status = 'approved'${tenantClause}
       `,
-      [uid, ym]
+      sumParams
     );
     await conn.commit();
     return {
@@ -505,7 +609,7 @@ module.exports.approveMonthByAdmin = async function({ userId, month, approverId 
     try { conn.release(); } catch (e) { /* silently ignored */ }
   }
 };
-module.exports.startMonth = async function(userId, month) {
+module.exports.startMonth = async function(userId, month, tenantId = null) {
   if (!/^\d{4}-\d{2}$/.test(String(month))) throw new Error('Invalid month');
   await db.query(`UPDATE expense_months SET is_active = 0 WHERE userId = ?`, [userId]);
   await db.query(`
@@ -516,9 +620,13 @@ module.exports.startMonth = async function(userId, month) {
   const [rows] = await db.query(`SELECT * FROM expense_months WHERE userId = ? AND month = ? LIMIT 1`, [userId, String(month)]);
   return rows && rows[0] ? rows[0] : null;
 };
-module.exports.applyMonth = async function(userId, month) {
+module.exports.applyMonth = async function(userId, month, tenantId = null) {
+  const tid = _tid(tenantId);
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
   const ym = String(month);
+  const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+  const updParams = [userId, ym];
+  if (tid != null) updParams.push(tid);
   const [upd] = await db.query(
     `UPDATE expense_claims
      SET status = 'applied',
@@ -526,9 +634,11 @@ module.exports.applyMonth = async function(userId, month) {
          updated_at = CURRENT_TIMESTAMP
      WHERE userId = ?
        AND DATE_FORMAT(date,'%Y-%m') = ?
-       AND status IN ('draft','pending','rejected')`,
-    [userId, ym]
+       AND status IN ('draft','pending','rejected')${tenantClause}`,
+    updParams
   );
+  const sumParams = [userId, ym];
+  if (tid != null) sumParams.push(tid);
   const [sumRows] = await db.query(
     `SELECT
        COUNT(*) AS cnt,
@@ -536,8 +646,8 @@ module.exports.applyMonth = async function(userId, month) {
      FROM expense_claims
      WHERE userId = ?
        AND DATE_FORMAT(date,'%Y-%m') = ?
-       AND status IN ('applied','approved')`,
-    [userId, ym]
+       AND status IN ('applied','approved')${tenantClause}`,
+    sumParams
   );
   const cnt = Number(sumRows?.[0]?.cnt || 0);
   const totalAmount = Number(sumRows?.[0]?.total_amount || 0);
@@ -557,16 +667,20 @@ module.exports.applyMonth = async function(userId, month) {
     totalAmount
   };
 };
-module.exports.deleteMonth = async function(userId, month) {
+module.exports.deleteMonth = async function(userId, month, tenantId = null) {
+  const tid = _tid(tenantId);
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
   const ym = String(month);
+  const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+  const checkParams = [userId, ym];
+  if (tid != null) checkParams.push(tid);
   const [lockedRows] = await db.query(
     `SELECT COUNT(*) AS cnt
      FROM expense_claims
      WHERE userId = ?
        AND DATE_FORMAT(date,'%Y-%m') = ?
-       AND status IN ('applied','approved')`,
-    [userId, ym]
+       AND status IN ('applied','approved')${tenantClause}`,
+    checkParams
   );
   const lockedCnt = Number(lockedRows?.[0]?.cnt || 0);
   if (lockedCnt > 0) throw new Error('Submitted month cannot be deleted');
@@ -578,18 +692,32 @@ module.exports.deleteMonth = async function(userId, month) {
   );
   const closedCnt = Number(closureRows?.[0]?.cnt || 0);
   if (closedCnt > 0) throw new Error('Closed month cannot be deleted');
+  const delParams = [userId, ym];
+  if (tid != null) delParams.push(tid);
   const [delClaims] = await db.query(
     `DELETE FROM expense_claims
      WHERE userId = ?
-       AND DATE_FORMAT(date,'%Y-%m') = ?`,
-    [userId, ym]
+       AND DATE_FORMAT(date,'%Y-%m') = ?${tenantClause}`,
+    delParams
   );
   await db.query(`DELETE FROM expense_month_profiles WHERE userId = ? AND month = ?`, [userId, ym]);
   await db.query(`DELETE FROM expense_months WHERE userId = ? AND month = ?`, [userId, ym]);
   return { month: ym, deletedCount: Number(delClaims?.affectedRows || 0) };
 };
-module.exports.getMonthProfile = async function(userId, month) {
+module.exports.getMonthProfile = async function(userId, month, tenantId = null) {
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const tid = _tid(tenantId);
+  if (tid != null) {
+    const [rows] = await db.query(
+      `SELECT emp.id, emp.userId, emp.month, emp.employee_name, emp.employee_code, emp.birth_date, emp.start_date, emp.created_at, emp.updated_at
+       FROM expense_month_profiles emp
+       JOIN users u ON u.id = emp.userId
+       WHERE emp.userId = ? AND emp.month = ? AND u.tenant_id = ?
+       LIMIT 1`,
+      [userId, String(month), tid]
+    );
+    return rows && rows[0] ? rows[0] : null;
+  }
   const [rows] = await db.query(
     `SELECT id, userId, month, employee_name, employee_code, birth_date, start_date, created_at, updated_at
      FROM expense_month_profiles
@@ -599,7 +727,7 @@ module.exports.getMonthProfile = async function(userId, month) {
   );
   return rows && rows[0] ? rows[0] : null;
 };
-module.exports.upsertMonthProfile = async function({ userId, month, employeeName, employeeCode, birthDate, startDate }) {
+module.exports.upsertMonthProfile = async function({ userId, month, employeeName, employeeCode, birthDate, startDate, tenantId = null }) {
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birthDate || ''))) throw new Error('Invalid birth date');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(startDate || ''))) throw new Error('Invalid start date');
@@ -621,28 +749,45 @@ module.exports.upsertMonthProfile = async function({ userId, month, employeeName
       String(startDate)
     ]
   );
-  return module.exports.getMonthProfile(userId, month);
+  return module.exports.getMonthProfile(userId, month, tenantId);
 };
-module.exports.getLatestAppliedMonthStats = async function(userId) {
+module.exports.getLatestAppliedMonthStats = async function(userId, tenantId = null) {
+  const tid = _tid(tenantId);
+  const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+  const params = [userId];
+  if (tid != null) params.push(tid);
   const [rows] = await db.query(`
     SELECT DATE_FORMAT(date,'%Y-%m') AS month, COUNT(*) AS cnt, MAX(applied_at) AS last_applied
     FROM expense_claims
-    WHERE userId = ? AND status = 'applied'
+    WHERE userId = ? AND status = 'applied'${tenantClause}
     GROUP BY DATE_FORMAT(date,'%Y-%m')
     ORDER BY last_applied DESC
     LIMIT 1
-  `, [userId]);
+  `, params);
   const r = rows && rows[0] ? rows[0] : null;
   return r ? { month: r.month, count: Number(r.cnt || 0) } : null;
 };
-module.exports.addMessage = async function({ expenseId, userId, message }) {
+module.exports.addMessage = async function({ expenseId, userId, message, tenantId = null }) {
   const [res] = await db.query(
     `INSERT INTO expense_messages (expense_id, sender_user_id, message) VALUES (?, ?, ?)`,
     [expenseId, userId, String(message)]
   );
   return res.insertId || 0;
 };
-module.exports.listMessages = async function(expenseId) {
+module.exports.listMessages = async function(expenseId, tenantId = null) {
+  const tid = _tid(tenantId);
+  if (tid != null) {
+    const [rows] = await db.query(
+      `SELECT em.id, em.expense_id, em.sender_user_id, em.message, em.created_at,
+              (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = em.sender_user_id) AS sender_name
+       FROM expense_messages em
+       JOIN expense_claims ec ON ec.id = em.expense_id
+       WHERE em.expense_id = ? AND ec.tenant_id = ?
+       ORDER BY em.created_at ASC, em.id ASC`,
+      [expenseId, tid]
+    );
+    return rows || [];
+  }
   const [rows] = await db.query(
     `SELECT em.id, em.expense_id, em.sender_user_id, em.message, em.created_at,
             (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = em.sender_user_id) AS sender_name
@@ -653,8 +798,12 @@ module.exports.listMessages = async function(expenseId) {
   );
   return rows || [];
 };
-module.exports.listRecentMessagesForAdmin = async function(month) {
+module.exports.listRecentMessagesForAdmin = async function(month, tenantId = null) {
+  const tid = _tid(tenantId);
+  const tenantClause = tid != null ? ' AND ec.tenant_id = ?' : '';
   if (month && /^\d{4}-\d{2}$/.test(String(month))) {
+    const params = [String(month)];
+    if (tid != null) params.push(tid);
     const [rows] = await db.query(
       `SELECT em.id, em.expense_id, em.sender_user_id, em.message, em.created_at,
               ec.userId AS employee_id,
@@ -663,13 +812,16 @@ module.exports.listRecentMessagesForAdmin = async function(month) {
               ec.date, ec.origin, ec.via, ec.destination, ec.purpose, ec.memo, ec.manager_note, ec.status
        FROM expense_messages em
        JOIN expense_claims ec ON ec.id = em.expense_id
-       WHERE DATE_FORMAT(ec.date,'%Y-%m') = ?
+       WHERE DATE_FORMAT(ec.date,'%Y-%m') = ?${tenantClause}
        ORDER BY em.created_at DESC
        LIMIT 50`,
-      [String(month)]
+      params
     );
     return rows || [];
   }
+  const params = [];
+  if (tid != null) params.push(tid);
+  const whereBase = tid != null ? `WHERE ec.tenant_id = ?` : '';
   const [rows] = await db.query(
     `SELECT em.id, em.expense_id, em.sender_user_id, em.message, em.created_at,
             ec.userId AS employee_id,
@@ -678,22 +830,27 @@ module.exports.listRecentMessagesForAdmin = async function(month) {
             ec.date, ec.origin, ec.via, ec.destination, ec.purpose, ec.memo, ec.manager_note, ec.status
      FROM expense_messages em
      JOIN expense_claims ec ON ec.id = em.expense_id
+     ${whereBase}
      ORDER BY em.created_at DESC
-     LIMIT 50`
+     LIMIT 50`,
+    params
   );
   return rows || [];
 };
-module.exports.listRecentMessagesForUser = async function(userId, month) {
+module.exports.listRecentMessagesForUser = async function(userId, month, tenantId = null) {
+  const tid = _tid(tenantId);
+  const tenantClause = tid != null ? ' AND ec.tenant_id = ?' : '';
   const args = [userId];
   let whereMonth = '';
   if (month && /^\d{4}-\d{2}$/.test(String(month))) { whereMonth = ' AND DATE_FORMAT(ec.date,\'%Y-%m\') = ? '; args.push(String(month)); }
+  if (tid != null) args.push(tid);
   const [rows] = await db.query(
     `SELECT em.id, em.expense_id, em.sender_user_id, em.message, em.created_at,
             (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = em.sender_user_id) AS sender_name,
             ec.date, ec.origin, ec.via, ec.destination, ec.purpose, ec.manager_note
      FROM expense_messages em
      JOIN expense_claims ec ON ec.id = em.expense_id
-     WHERE ec.userId = ? ${whereMonth}
+     WHERE ec.userId = ? ${whereMonth}${tenantClause}
      ORDER BY em.created_at DESC
      LIMIT 20`,
     args
@@ -701,10 +858,14 @@ module.exports.listRecentMessagesForUser = async function(userId, month) {
   return rows || [];
 };
 
-module.exports.getMonthlyApprovedTotals = async function(month, userId = null) {
+module.exports.getMonthlyApprovedTotals = async function(month, userId = null, tenantId = null) {
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const tid = _tid(tenantId);
   const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
   const hasUser = uid !== null;
+  const tenantClause = tid != null ? ' AND u.tenant_id = ?' : '';
+  const params = [String(month), hasUser ? uid : null, hasUser ? uid : null];
+  if (tid != null) params.push(tid);
   const [rows] = await db.query(
     `SELECT
        ec.userId AS user_id,
@@ -717,18 +878,22 @@ module.exports.getMonthlyApprovedTotals = async function(month, userId = null) {
      JOIN users u ON u.id = ec.userId
      WHERE ec.status = 'approved'
        AND DATE_FORMAT(ec.date, '%Y-%m') = ?
-       AND (? IS NULL OR ec.userId = ?)
+       AND (? IS NULL OR ec.userId = ?)${tenantClause}
      GROUP BY ec.userId, COALESCE(u.username, u.email), DATE_FORMAT(ec.date, '%Y-%m')
      ORDER BY COALESCE(u.username, u.email) ASC`,
-    [String(month), hasUser ? uid : null, hasUser ? uid : null]
+    params
   );
   return rows || [];
 };
 
-module.exports.getMonthlyClosures = async function(month, userId = null) {
+module.exports.getMonthlyClosures = async function(month, userId = null, tenantId = null) {
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const tid = _tid(tenantId);
   const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
   const hasUser = uid !== null;
+  const tenantClause = tid != null ? ' AND u.tenant_id = ?' : '';
+  const params = [String(month), hasUser ? uid : null, hasUser ? uid : null];
+  if (tid != null) params.push(tid);
   const [rows] = await db.query(
     `SELECT
        c.userId AS user_id,
@@ -742,17 +907,37 @@ module.exports.getMonthlyClosures = async function(month, userId = null) {
      FROM expense_monthly_closures c
      JOIN users u ON u.id = c.userId
      WHERE c.month = ?
-       AND (? IS NULL OR c.userId = ?)
+       AND (? IS NULL OR c.userId = ?)${tenantClause}
      ORDER BY COALESCE(u.username, u.email) ASC`,
-    [String(month), hasUser ? uid : null, hasUser ? uid : null]
+    params
   );
   return rows || [];
 };
 
-module.exports.listMonthlyClosureHistory = async function({ userId = null, limit = 12 } = {}) {
+module.exports.listMonthlyClosureHistory = async function({ userId = null, limit = 12, tenantId = null } = {}) {
+  const tid = _tid(tenantId);
   const n = Math.max(1, Math.min(36, parseInt(String(limit || '12'), 10) || 12));
   const uid = userId == null || String(userId).trim() === '' ? null : String(userId).trim();
   const hasUser = uid !== null;
+  if (tid != null) {
+    const params = [hasUser ? uid : null, hasUser ? uid : null, tid, n];
+    const [rows] = await db.query(
+      `SELECT
+         c.month,
+         COUNT(*) AS closed_users,
+         COALESCE(SUM(c.approved_count), 0) AS approved_count,
+         COALESCE(SUM(c.total_amount), 0) AS total_amount,
+         MAX(c.closed_at) AS last_closed_at
+       FROM expense_monthly_closures c
+       JOIN users u ON u.id = c.userId
+       WHERE (? IS NULL OR c.userId = ?) AND u.tenant_id = ?
+       GROUP BY c.month
+       ORDER BY c.month DESC
+       LIMIT ?`,
+      params
+    );
+    return rows || [];
+  }
   const [rows] = await db.query(
     `SELECT
        c.month,
@@ -769,7 +954,7 @@ module.exports.listMonthlyClosureHistory = async function({ userId = null, limit
   );
   return rows || [];
 };
-// â”€â”€â”€ Admin operations (extracted to expenses.repository.admin.js) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Admin operations (extracted to expenses.repository.admin.js) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const adminRepo = require('./expenses.repository.admin');
 module.exports.listAllPaged = adminRepo.listAllPaged;
 module.exports.getAdminDashboard = adminRepo.getAdminDashboard;
