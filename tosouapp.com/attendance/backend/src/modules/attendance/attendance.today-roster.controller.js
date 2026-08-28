@@ -51,6 +51,20 @@ exports.todayRoster = async (req, res) => {
     const is4thSaturday = dow === 6 && Math.ceil(dD / 7) === 4;
     let isCompanyHoliday = false;
     try { isCompanyHoliday = await calendarRepo.isOff(date); } catch { /* bỏ qua nếu lỗi */ }
+    // QUAN TRỌNG: isOff() gộp cả thứ 7/CN vào off_days. Với 工事部, thứ 7 (trừ tuần 4)
+    // KHÔNG phải ngày nghỉ, nên không được dùng isCompanyHoliday trực tiếp cho họ —
+    // nếu không mọi thứ 7 sẽ bị đánh nghỉ oan. Ta tính riêng "ngày lễ thật"
+    // (祝日/振替/国民の休日/固定休 …), loại bỏ type saturday & sunday.
+    let isRealHoliday = false;
+    try {
+      const HOLIDAY_TYPES = new Set(['jp_auto', 'jp_substitute', 'jp_bridge', 'fixed', 'custom']);
+      const cal = await calendarRepo.computeYear(dY);
+      isRealHoliday = (cal?.detail || []).some(it =>
+        String(it?.date || '').slice(0, 10) === date &&
+        Number(it?.is_off || 0) === 1 &&
+        HOLIDAY_TYPES.has(String(it?.type || ''))
+      );
+    } catch { /* bỏ qua nếu lỗi */ }
 
     const todayJST = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const isPastDay = date < todayJST; // Ngày đã qua → hiển thị trạng thái "quên" thay vì "chưa đến"
@@ -88,10 +102,10 @@ exports.todayRoster = async (req, res) => {
       // Ưu tiên 4: không có dữ liệu → xét lịch nghỉ theo loại nhân viên + bộ phận
       } else {
         const isKoujibu = String(r.departmentName || '').includes('工事');
-        // 工事部: chỉ nghỉ CN + thứ 7 tuần 4 + ngày lễ công ty
+        // 工事部: chỉ nghỉ CN + thứ 7 tuần 4 + ngày lễ THẬT (không tính thứ 7 thường)
         // Các bộ phận khác: nghỉ T7, CN + ngày lễ công ty
         const isOff = isPartTime ? true
-          : isKoujibu ? (dow === 0 || is4thSaturday || isCompanyHoliday)
+          : isKoujibu ? (dow === 0 || is4thSaturday || isRealHoliday)
           : (dow === 0 || dow === 6 || isCompanyHoliday);
         if (isPartTime || isOff) {
           status = 'off';
