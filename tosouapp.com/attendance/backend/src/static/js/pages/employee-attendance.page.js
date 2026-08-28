@@ -1354,7 +1354,10 @@ async function mountAttendanceImpl({
 
   /* Dropdown Menu Logic Removed */
 
-  const dateEl = rosterWrap.querySelector('#rosterDate');
+  // Date picker desktop được mount vào #subbarDateSlot (NGOÀI rosterWrap), nên phải
+  // dùng document.getElementById chứ không phải rosterWrap.querySelector — nếu không
+  // dateEl = null → event 'change' không được gắn → đổi ngày không reload bảng.
+  const dateEl = document.getElementById('rosterDate');
   const dateElMobile = document.getElementById('rosterDateMobile');
   
   // Navigate Date Helpers
