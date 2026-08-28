@@ -57,21 +57,35 @@ router.use(resolveTenant);
 router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
   try {
     const date = isISODate(req.query?.date) ? String(req.query.date) : todayJST();
-    const isOffGlobal = await calendarRepo.isOff(date).catch(() => false);
-    
+
     // Per-user off-day logic (工事部 vs 総務)
     const [dY, dM, dD] = date.split('-').map(n => parseInt(n, 10));
     const dateObj = new Date(Date.UTC(dY, dM - 1, dD));
     const dow = dateObj.getUTCDay(); // 0=Sun, 6=Sat
     const is4thSat = dow === 6 && Math.ceil(dD / 7) === 4;
-    
+
+    // QUAN TRỌNG: calendarRepo.isOff() gộp CẢ thứ 7 thường vào off_days, nên không
+    // được dùng nó làm "ngày nghỉ áp dụng cho mọi người" — nếu không 工事部 sẽ bị
+    // đánh nghỉ oan vào mọi thứ 7. Ta chỉ coi là nghỉ toàn cục khi là NGÀY LỄ THẬT
+    // (祝日/振替/国民の休日/固定休 …), loại bỏ type saturday & sunday.
+    let isRealHoliday = false;
+    try {
+      const HOLIDAY_TYPES = new Set(['jp_auto', 'jp_substitute', 'jp_bridge', 'fixed', 'custom']);
+      const cal = await calendarRepo.computeYear(dY);
+      isRealHoliday = (cal?.detail || []).some(it =>
+        String(it?.date || '').slice(0, 10) === date &&
+        Number(it?.is_off || 0) === 1 &&
+        HOLIDAY_TYPES.has(String(it?.type || ''))
+      );
+    } catch { /* bỏ qua nếu lỗi */ }
+
     const isOffForUser = (deptName) => {
-      if (isOffGlobal) return true; // Calendar holiday (祝日) applies to all
+      if (isRealHoliday) return true; // Ngày lễ thật (祝日) áp dụng cho tất cả
       const isKouji = String(deptName || '').includes('工事');
       if (isKouji) {
-        return dow === 0 || is4thSat; // 工事部: only Sun + 4th Sat
+        return dow === 0 || is4thSat; // 工事部: chỉ nghỉ CN + thứ 7 tuần 4
       }
-      return dow === 0 || dow === 6; // 総務: Sat + Sun
+      return dow === 0 || dow === 6; // 総務: nghỉ thứ 7 + CN
     };
     
     const [rows] = await db.query(`
