@@ -1489,10 +1489,13 @@ const tryCheckIn = async () => {
     // Auto-update classification dropdown locally to reflect DB change immediately
     const sel = $('#kubun');
     if (sel && (!sel.value || sel.value.includes('予定') || sel.value === '出勤' || sel.value === '休日出勤')) {
-      const isSat = !!document.querySelector('#topDate')?.textContent.includes('土');
-      const isSun = !!document.querySelector('#topDate')?.textContent.includes('日');
+      // Xác định ngày này có phải ngày nghỉ không, TÔN TRỌNG policy 工事部
+      // (工事部 chỉ nghỉ CN + thứ 7 tuần 4, nên thứ 7 thường → 出勤, KHÔNG phải 休日出勤).
+      // Trước đây dùng "có chữ 土" nên mọi thứ 7 đều thành 休日出勤 → sai cho 工事部.
+      const curDate = getUrlDate();
       const isHol = !!document.querySelector('#topDate')?.textContent.includes('祝');
-      sel.value = (isSat || isSun || isHol) ? '休日出勤' : '出勤';
+      const isDayOff = isWeekendOffForProfile(curDate) || isHol;
+      sel.value = isDayOff ? '休日出勤' : '出勤';
       
       // Force trigger the save to DB and UI update by simulating user action
       try { 
