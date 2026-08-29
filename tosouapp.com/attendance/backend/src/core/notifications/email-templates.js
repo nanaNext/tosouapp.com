@@ -7,7 +7,7 @@
  *   const { html, text } = renderEmail('shift-reminder', { username: '田中', month: '2026-08' });
  */
 
-const companyName = process.env.COMPANY_NAME || '飯塚塗研株式会社';
+const companyName = process.env.COMPANY_NAME || '飯塚グループ・エンジニアリング';
 const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
 const lineUrl = 'https://lin.ee/zBKnhkd';
 

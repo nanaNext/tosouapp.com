@@ -131,6 +131,11 @@ router.get('/export.xlsx',
       return calByYear.get(cacheKey).has(String(dateStr).slice(0, 10));
     };
 
+    // ── Tenant isolation: không xuất dữ liệu của công ty khác ──
+    const _tid = req.tenantId ? parseInt(String(req.tenantId), 10) : null;
+    const tenantUserClause = _tid ? ' AND userId IN (SELECT id FROM users WHERE tenant_id = ?)' : '';
+    const tenantP = _tid ? [_tid] : [];
+
     const [users] = await db.query(`
       SELECT u.id AS userId, u.employee_code AS employeeCode, u.username AS username,
              d.name AS departmentName, u.birth_date AS birthDate, u.employment_type AS employmentType
@@ -138,8 +143,9 @@ router.get('/export.xlsx',
       LEFT JOIN departments d ON d.id = u.departmentId
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
+        ${_tid ? 'AND u.tenant_id = ?' : ''}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
-    `);
+    `, [...tenantP]);
 
     const [attRows] = await db.query(`
       SELECT a.userId, DATE(COALESCE(a.checkIn, a.checkOut)) AS date, a.checkIn, a.checkOut, a.work_type AS work_type
@@ -147,48 +153,48 @@ router.get('/export.xlsx',
       INNER JOIN (
         SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS date, MAX(COALESCE(checkIn, checkOut)) AS maxTime
         FROM attendance
-        WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?
+        WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?${tenantUserClause}
         GROUP BY userId, DATE(COALESCE(checkIn, checkOut))
       ) t
         ON t.userId = a.userId AND t.maxTime = COALESCE(a.checkIn, a.checkOut)
-    `, [start, end]);
+    `, [start, end, ...tenantP]);
 
     const [attFullRows] = await db.query(`
       SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS date, location, memo
       FROM attendance
-      WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?
-    `, [start, end]);
+      WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?${tenantUserClause}
+    `, [start, end, ...tenantP]);
 
     const [repRows] = await db.query(`
       SELECT userId, date, site, work, work_type
       FROM work_reports
-      WHERE date >= ? AND date <= ?
-    `, [start, end]);
+      WHERE date >= ? AND date <= ?${tenantUserClause}
+    `, [start, end, ...tenantP]);
 
     const [dailyRows] = await db.query(`
       SELECT userId, date, kubun, location, memo, late_minutes, early_minutes, reason
       FROM attendance_daily
-      WHERE date >= ? AND date <= ?
-    `, [start, end]);
+      WHERE date >= ? AND date <= ?${tenantUserClause}
+    `, [start, end, ...tenantP]);
 
     const [leaveRows] = await db.query(`
       SELECT userId, startDate, endDate, type
       FROM leave_requests
       WHERE status = 'approved'
-        AND endDate >= ? AND startDate <= ?
-    `, [start, end]);
+        AND endDate >= ? AND startDate <= ?${tenantUserClause}
+    `, [start, end, ...tenantP]);
 
     const [shiftRows] = await db.query(`
       SELECT userId, date, status
       FROM shift_requests
-      WHERE date >= ? AND date <= ?
-    `, [start, end]);
+      WHERE date >= ? AND date <= ?${tenantUserClause}
+    `, [start, end, ...tenantP]);
     
     const [userAssignRows] = await db.query(`
       SELECT userId, start_date
       FROM user_shift_assignments
-      WHERE start_date >= ? AND start_date <= ?
-    `, [start, end]);
+      WHERE start_date >= ? AND start_date <= ?${tenantUserClause}
+    `, [start, end, ...tenantP]);
 
     const attMap = new Map();
     for (const a of (attRows || [])) {
