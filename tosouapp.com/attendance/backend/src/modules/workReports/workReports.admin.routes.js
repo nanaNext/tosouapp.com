@@ -419,6 +419,12 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
       return set.has(dow) ? 'work' : 'off';
     };
 
+    // ── Tenant isolation: chỉ lấy dữ liệu của nhân viên thuộc tenant hiện tại ──
+    // Lọc theo chủ sở hữu (userId IN users của tenant) để không rò rỉ chấm công chéo công ty.
+    const _tid = req.tenantId ? parseInt(String(req.tenantId), 10) : null;
+    const tenantUserClause = _tid ? ' AND userId IN (SELECT id FROM users WHERE tenant_id = ?)' : '';
+    const tenantUserClauseA = _tid ? ' AND a.userId IN (SELECT id FROM users WHERE tenant_id = ?)' : '';
+
     let latestRows = [];
     try {
       const [x] = await db.query(`
@@ -433,8 +439,9 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
             FROM users
             WHERE employment_status = 'active'
               ${String(req.user?.role || '').toLowerCase() === 'manager' ? "AND role = 'employee'" : "AND role IN ('employee','manager')"}
+              ${_tid ? 'AND tenant_id = ?' : ''}
           )
-      `, [start + ' 00:00:00', end + ' 00:00:00', start + ' 00:00:00', end + ' 00:00:00']);
+      `, [start + ' 00:00:00', end + ' 00:00:00', start + ' 00:00:00', end + ' 00:00:00', ...(_tid ? [_tid] : [])]);
       latestRows = x;
     } catch {
       try {
@@ -450,8 +457,9 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
               FROM users
               WHERE employment_status = 'active'
                 ${String(req.user?.role || '').toLowerCase() === 'manager' ? "AND role = 'employee'" : "AND role IN ('employee','manager')"}
+                ${_tid ? 'AND tenant_id = ?' : ''}
             )
-        `, [start + ' 00:00:00', end + ' 00:00:00', start + ' 00:00:00', end + ' 00:00:00']);
+        `, [start + ' 00:00:00', end + ' 00:00:00', start + ' 00:00:00', end + ' 00:00:00', ...(_tid ? [_tid] : [])]);
         latestRows = attRows;
       } catch (e) { /* silently ignored */ }
     }
@@ -460,14 +468,14 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
       SELECT userId, startDate, endDate
       FROM leave_requests
       WHERE status = 'approved'
-        AND endDate >= ? AND startDate <= ?
-    `, [start, end]);
+        AND endDate >= ? AND startDate <= ?${tenantUserClause}
+    `, [start, end, ...(_tid ? [_tid] : [])]);
 
     const [dailyRows] = await db.query(`
       SELECT userId, date, kubun
       FROM attendance_daily
-      WHERE date >= ? AND date <= ?
-    `, [start, end]);
+      WHERE date >= ? AND date <= ?${tenantUserClause}
+    `, [start, end, ...(_tid ? [_tid] : [])]);
 
     const reports = await repo.listByMonth(month);
     const reportMap = new Map();
@@ -482,9 +490,9 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
              GROUP_CONCAT(NULLIF(TRIM(location), '') ORDER BY checkIn ASC SEPARATOR ' / ') AS site,
              GROUP_CONCAT(NULLIF(TRIM(memo), '') ORDER BY checkIn ASC SEPARATOR ' / ') AS work
       FROM attendance
-      WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?
+      WHERE DATE(COALESCE(checkIn, checkOut)) >= ? AND DATE(COALESCE(checkIn, checkOut)) <= ?${tenantUserClause}
       GROUP BY userId, DATE(COALESCE(checkIn, checkOut))
-    `, [start, end]);
+    `, [start, end, ...(_tid ? [_tid] : [])]);
     const attConcatMap = new Map();
     for (const r of (attConcatRows || [])) {
       attConcatMap.set(`${r.userId}|${String(r.date).slice(0, 10)}`, r);
@@ -1106,6 +1114,10 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       return '17:00';
     };
 
+    // ── Tenant isolation: chỉ lấy dữ liệu của nhân viên thuộc tenant hiện tại ──
+    const _tid2 = req.tenantId ? parseInt(String(req.tenantId), 10) : null;
+    const tenantUserClause2 = _tid2 ? ' AND userId IN (SELECT id FROM users WHERE tenant_id = ?)' : '';
+
     const [attRows] = await db.query(`
       SELECT a.userId,
              DATE(COALESCE(a.checkIn, a.checkOut)) AS date,
@@ -1121,15 +1133,16 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
           FROM users
             WHERE employment_status = 'active'
             ${String(req.user?.role || '').toLowerCase() === 'manager' ? "AND role = 'employee'" : "AND role IN ('employee','manager')"}
+            ${_tid2 ? 'AND tenant_id = ?' : ''}
         )
       ORDER BY DATE(COALESCE(a.checkIn, a.checkOut)) ASC, a.userId ASC, a.checkIn ASC
-    `, [start, end]);
+    `, [start, end, ...(_tid2 ? [_tid2] : [])]);
 
     const [dailyRows] = await db.query(`
       SELECT userId, date, kubun, work_type, location, memo, notes, late_minutes, early_minutes, reason
       FROM attendance_daily
-      WHERE date >= ? AND date <= ?
-    `, [start, end]);
+      WHERE date >= ? AND date <= ?${tenantUserClause2}
+    `, [start, end, ...(_tid2 ? [_tid2] : [])]);
     const dailyMap = new Map();
     for (const r of (dailyRows || [])) {
       dailyMap.set(`${r.userId}|${String(r.date).slice(0, 10)}`, {
@@ -1148,8 +1161,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       SELECT userId, startDate, endDate, type
       FROM leave_requests
       WHERE status = 'approved'
-        AND endDate >= ? AND startDate <= ?
-    `, [start, end]);
+        AND endDate >= ? AND startDate <= ?${tenantUserClause2}
+    `, [start, end, ...(_tid2 ? [_tid2] : [])]);
     const leaveByUserDate = new Map();
     for (const r of (leaveRows || [])) {
       const uid = Number(r.userId);

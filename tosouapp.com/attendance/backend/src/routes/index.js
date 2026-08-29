@@ -198,7 +198,7 @@ module.exports = function(app) {
       const isDryRun = String(req.query.dry_run || '').toLowerCase() === 'true';
 
       const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-      const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+      const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
       const results = [];
 
       for (const user of users) {
@@ -208,7 +208,7 @@ module.exports = function(app) {
         }
 
         const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
-        const subject = `[TEST] [飯塚塗研株式会社] 来月（${targetMonthStr}）のシフト提出のお願い`;
+        const subject = `[TEST] [飯塚グループ・エンジニアリング] 来月（${targetMonthStr}）のシフト提出のお願い`;
         const text = `[TEST EMAIL]\n\n${user.username} 様\n\nこれはシフト提出リマインダーのテスト送信です。\n対象月: ${targetMonthStr}\n\n▼ シフト提出はこちらから\n${appUrl}ui/shifts`;
         const html = `<p><strong>[TEST EMAIL]</strong></p><p>${user.username} 様</p><p>これはシフト提出リマインダーのテスト送信です。</p><p>対象月: <strong>${targetMonthStr}</strong></p><p><a href="${appUrl}ui/shifts">${appUrl}ui/shifts</a></p>`;
 
@@ -259,7 +259,7 @@ module.exports = function(app) {
       );
 
       const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-      const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+      const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
       const results = [];
 
       for (const user of users) {
@@ -268,7 +268,7 @@ module.exports = function(app) {
           continue;
         }
         const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
-        const subject = `[飯塚塗研株式会社] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
+        const subject = `[飯塚グループ・エンジニアリング] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
         const text = `${user.username} 様\n\nお疲れ様です。\n来月（${targetMonthStr}）のシフト提出のお願いです。\n\n▼ シフト提出はこちらから\n${appUrl}ui/shifts`;
         const html = `<p>${user.username} 様</p><p>お疲れ様です。<br>来月（<strong>${targetMonthStr}</strong>）のシフト提出のお願いです。</p><p><a href="${appUrl}ui/shifts">${appUrl}ui/shifts</a></p><hr><p style="font-size:12px;color:#666;">このメッセージはシステムにより自動送信されております。</p>`;
         try {

@@ -608,23 +608,26 @@ exports.exportMonthXlsx = async (req, res) => {
     push1(3, [cell('A3', '承認済み・承認依頼中の行は取り込み対象外です。', 2)], 18);
     push1(4, [cell('A4', `社員番号: ${employeeCode || ''}　　氏名: ${employeeName || ''}`, 1)], 22);
     push1(5, [cell('A5', '日次実績', 1)], 22);
+    // Thứ tự cột khớp với màn hình web: ...現場 | 現場(任意) | 作業内容 | 開始時刻...
     push1(6, [
       cell('A6', '日付', 3),
       cell('B6', '勤務区分', 3),
       cell('C6', '出社', 3),
       cell('D6', '在宅', 3),
       cell('E6', '現場', 3),
-      cell('F6', '開始時刻', 3),
-      cell('G6', '終了時刻', 3),
-      cell('H6', '休憩時間', 3),
-      cell('I6', '深夜休憩', 3),
-      cell('J6', '勤務時間', 3),
-      cell('K6', '超過時間', 3),
-      cell('L6', '遅刻/早退', 3),
-      cell('M6', '理由', 3),
-      cell('N6', '備考', 3),
-      cell('O6', '承認ステータス', 14),
-      cell('P6', '承認者', 14)
+      cell('F6', '現場（任意）', 3),
+      cell('G6', '作業内容', 3),
+      cell('H6', '開始時刻', 3),
+      cell('I6', '終了時刻', 3),
+      cell('J6', '休憩時間', 3),
+      cell('K6', '深夜休憩', 3),
+      cell('L6', '勤務時間', 3),
+      cell('M6', '超過時間', 3),
+      cell('N6', '遅刻/早退', 3),
+      cell('O6', '理由', 3),
+      cell('P6', '備考', 3),
+      cell('Q6', '承認ステータス', 14),
+      cell('R6', '承認者', 14)
     ], 22);
     for (let i = 0; i < sheetRows.length; i++) {
       const r = sheetRows[i];
@@ -652,61 +655,61 @@ exports.exportMonthXlsx = async (req, res) => {
         const d = /^\d{4}-(\d{2})-(\d{2})$/.exec(ds);
         return d ? `${parseInt(d[1], 10)}月${parseInt(d[2], 10)}日(${dow})` : ds;
       })();
+      // Thứ tự khớp màn hình web (18 cột A→R):
+      // [0]日付 [1]勤務区分 [2]出社 [3]在宅 [4]現場 [5]現場(任意) [6]作業内容
+      // [7]開始時刻 [8]終了時刻 [9]休憩時間 [10]深夜休憩 [11]勤務時間
+      // [12]超過時間 [13]遅刻/早退 [14]理由 [15]備考 [16]承認ステータス [17]承認者
       const vals = [
         dayText,
         src[4] || '',
-        (src[6] && typeof src[6] === 'object' ? src[6].v : '') || '',
-        (src[7] && typeof src[7] === 'object' ? src[7].v : '') || '',
-        (src[8] && typeof src[8] === 'object' ? src[8].v : '') || '',
-        src[9] || '',
-        src[10] || '',
-        src[13] || '0:00',
-        src[14] || '0:00',
-        src[15] || '0:00',
-        src[17] || '0:00',
-        src[18] || '',
-        src[19] || '',
-        src[20] || '',
-        monthApproverName
+        (src[6] && typeof src[6] === 'object' ? src[6].v : '') || '', // 出社 ✓
+        (src[7] && typeof src[7] === 'object' ? src[7].v : '') || '', // 在宅 ✓
+        (src[8] && typeof src[8] === 'object' ? src[8].v : '') || '', // 現場 ✓
+        src[5] || '',  // 現場(任意): tên hiện trường (workLocation)
+        src[20] || '', // 作業内容: nội dung công việc (workContent)
+        src[9] || '',  // 開始時刻
+        src[10] || '', // 終了時刻
+        src[13] || '0:00', // 休憩時間
+        src[14] || '0:00', // 深夜休憩
+        src[15] || '0:00', // 勤務時間
+        src[17] || '0:00', // 超過時間
+        src[18] || '', // 遅刻/早退
+        src[19] || '', // 理由
+        src[21] || '', // 備考: ghi chú (notes), KHÔNG phải nội dung công việc
+        '',            // 承認ステータス (giữ trống như logic cũ)
+        monthApproverName // 承認者
       ];
       const rowNum = 7 + i;
+      // Index cột (0-based): 出社/在宅/現場 tick = 2,3,4; ô text 現場(任意)/作業内容 = 5,6;
+      // các cột giờ (開始..超過) = 7..12; cột wrapText = 5,6,15.
+      const TICK_CI = [2, 3, 4];
+      const WRAP_CI = [5, 6, 15];
+      const TIME_DEFAULT_CI = [9, 10, 11, 12]; // 休憩/深夜/勤務/超過 → mặc định '0:00'
       const xmlCells = vals.map((v, ci) => {
         const ref = `${colRef(ci + 1)}${rowNum}`;
-        const isTimeCell = (ci >= 5 && ci <= 10);
-        const isTextWide = ci === 12 || ci === 13;
-        const baseStyle = rowStyle;
-        // Highlight only the date cell (日付) for Sundays.
-        let styleWithDay = (isSunday && ci === 0) ? 16 : baseStyle;
-        
+        let styleWithDay = (isSunday && ci === 0) ? 16 : rowStyle;
+
         let cellValue = String(v || '');
-        if ((ci === 2 || ci === 3 || ci === 4) && cellValue === '✓') {
-          styleWithDay = 20; // apply blue background style
+        if (TICK_CI.includes(ci) && cellValue === '✓') {
+          styleWithDay = 20; // nền xanh cho ô tick
+        }
+        if (WRAP_CI.includes(ci)) {
+          styleWithDay = 13; // wrapText cho 現場(任意)/作業内容/備考
+        }
+        // 勤務区分: nếu là 休日出勤 nhưng không có tick nào và không có giờ → hiển thị 休日 (giữ hành vi cũ)
+        if (ci === 1 && cellValue === '休日出勤' && !vals[2] && !vals[3] && !vals[4] && !vals[7] && !vals[8]) {
+          const ds = String(src[2] || '');
+          const daily = ds ? dailyMap.get(ds) : null;
+          if (daily?.kubun !== '休日出勤') cellValue = '休日';
         }
 
-        if (ci === 1) {
-          if (cellValue === '休日出勤' && !vals[5] && !vals[6] && !vals[8] && !vals[9]) {
-            const ds = String(vals[2] || '');
-            const daily = ds ? dailyMap.get(ds) : null;
-            if (daily?.kubun !== '休日出勤') cellValue = '休日';
-          }
-        }
-        if (ci === 2) {
-          if (cellValue === '休日出勤' && !vals[5] && !vals[6] && !vals[8] && !vals[9]) {
-            const ds = String(vals[2] || '');
-            const daily = ds ? dailyMap.get(ds) : null;
-            if (daily?.kubun !== '休日出勤') cellValue = '休日';
-          }
-        }
-
-        if (ci === 9) {
-          return cell(ref, cellValue || '0:00', styleWithDay);
-        }
-        if (ci === 10) {
+        if (TIME_DEFAULT_CI.includes(ci)) {
           return cell(ref, cellValue || '0:00', styleWithDay);
         }
         return cell(ref, cellValue, styleWithDay);
       });
-      xmlCells.push(numberCell(`Q${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
+      // Cột ẩn số phút (dùng cho import sau này) đặt ở S (cột 19), sau 18 cột hiển thị.
+      xmlCells.push(numberCell(`S${rowNum}`, hmToMinutes(src[13] || '0:00'), 0));
       push1(rowNum, xmlCells);
     }
 
@@ -837,17 +840,19 @@ exports.exportMonthXlsx = async (req, res) => {
       cell('P' + sRow2, `${sumRemoteDays}日`)
     ]);
 
-    const sheet1VisibleCols = [12, 14, 5, 5, 5, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
+    // Thứ tự khớp màn hình: 日付|勤務区分|出社|在宅|現場|現場(任意)|作業内容|開始|終了|休憩|深夜|勤務|超過|遅刻早退|理由|備考|承認ステータス|承認者
+    const sheet1VisibleCols = [12, 10, 5, 5, 5, 28, 40, 10, 10, 10, 10, 10, 10, 10, 12, 30, 14, 12];
     const sheet1Cols = [
       ...sheet1VisibleCols.map((w, i) => {
         return `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`;
       }),
-      `<col min="17" max="17" width="2" hidden="1" customWidth="1"/>`
+      // Cột ẩn số phút dời từ 17 -> 19 (S)
+      `<col min="19" max="19" width="2" hidden="1" customWidth="1"/>`
     ].join('');
     const sheet1Merges = [
       'A1:J1', 'A2:J2', 'A3:J3',
       'A4:J4',
-      'A5:P5'
+      'A5:R5'
     ].map(r => `<mergeCell ref="${r}"/>`).join('');
     const lastSheet1Row = 6 + Math.max(1, sheetRows.length);
     const sheet1Validations = [
@@ -857,6 +862,7 @@ exports.exportMonthXlsx = async (req, res) => {
     ].join('');
     const sheet1Xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
   <sheetViews><sheetView workbookViewId="0"><pane ySplit="6" topLeftCell="A7" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
   <sheetFormatPr defaultRowHeight="18"/>
   <cols>${sheet1Cols}</cols>
@@ -864,6 +870,9 @@ exports.exportMonthXlsx = async (req, res) => {
   <sheetProtection sheet="1" objects="1" scenarios="1" />
   <mergeCells count="${(sheet1Merges.match(/<mergeCell /g) || []).length}">${sheet1Merges}</mergeCells>
   <dataValidations count="3">${sheet1Validations}</dataValidations>
+  <printOptions horizontalCentered="1"/>
+  <pageMargins left="0.3" right="0.3" top="0.4" bottom="0.4" header="0.2" footer="0.2"/>
+  <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
     const sheet2Header = planColumns.map((c, i) => cell(`${colRef(i + 1)}1`, c.header, 3));
     const sheet2Rows = [rowXml(1, sheet2Header, 22)];
@@ -987,11 +996,11 @@ exports.exportMonthXlsx = async (req, res) => {
 </worksheet>`;
 
     const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="入力用勤怠表" sheetId="1" r:id="rId1"/><sheet name="予定" sheetId="2" r:id="rId2"/><sheet name="現場・作業内容" sheetId="3" r:id="rId4"/></sheets><calcPr calcId="171027" fullCalcOnLoad="1"/></workbook>`;
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="入力用勤怠表" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="171027" fullCalcOnLoad="1"/></workbook>`;
     const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/></Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
     const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
     const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
     const buf = buildXlsxArchive([
@@ -1000,9 +1009,7 @@ exports.exportMonthXlsx = async (req, res) => {
       { name: 'xl/workbook.xml', data: workbookXml },
       { name: 'xl/_rels/workbook.xml.rels', data: workbookRels },
       { name: 'xl/styles.xml', data: stylesXml },
-      { name: 'xl/worksheets/sheet1.xml', data: sheet1Xml },
-      { name: 'xl/worksheets/sheet2.xml', data: sheet2Xml },
-      { name: 'xl/worksheets/sheet3.xml', data: sheet3Xml }
+      { name: 'xl/worksheets/sheet1.xml', data: sheet1Xml }
     ]);
 
     // Auto-save export to R2

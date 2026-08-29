@@ -1907,7 +1907,20 @@
       const officeCode = profile.office_code || profile.officeCode || '00084';
       if ($('#officeCode')) $('#officeCode').textContent = (ctx.role === 'employee') ? (String(officeCode || '').trim() || '—') : '—';
     } catch (e) { /* silently ignored */ }
-    try { if ($('#officeName')) $('#officeName').textContent = '飯塚塗研'; } catch (e) { /* silently ignored */ }
+    // オフィス名 = tên công ty (tenant) của chính nhân viên, KHÔNG hardcode 飯塚塗研.
+    try {
+      const nameFromProfile = String(profile.tenantName || profile.tenant_name || '').trim();
+      if ($('#officeName')) $('#officeName').textContent = nameFromProfile || '—';
+      // Nếu profile cache chưa có tenantName, lấy từ /api/auth/me rồi cập nhật lại.
+      if (!nameFromProfile) {
+        fetchJSONAuth('/api/auth/me')
+          .then((me) => {
+            const nm = String(me?.tenantName || me?.tenant_name || '').trim();
+            if (nm && $('#officeName')) $('#officeName').textContent = nm;
+          })
+          .catch(() => { /* giữ nguyên '—' nếu không lấy được */ });
+      }
+    } catch (e) { /* silently ignored */ }
     try { if ($('#empDept')) $('#empDept').textContent = (ctx.role === 'employee') ? (profile.departmentName || profile.department || '—') : '—'; } catch (e) { /* silently ignored */ }
 
     ctx.actingUserId = '';

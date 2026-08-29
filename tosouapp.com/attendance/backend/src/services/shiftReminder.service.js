@@ -497,12 +497,12 @@ async function checkMonthlyMissingAttendance() {
 
 async function sendMissingEmail(user, type, dateStr) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
   
   let subject, text, html;
 
   if (type === 'daily_in') {
-    subject = `[飯塚塗研株式会社] 勤怠未入力のお知らせ（出勤）`;
+    subject = `[飯塚グループ・エンジニアリング] 勤怠未入力のお知らせ（出勤）`;
     text = `
 ${user.username} さん
 
@@ -533,7 +533,7 @@ ${appUrl}
       お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
     `;
   } else if (type === 'daily_out') {
-    subject = `[飯塚塗研株式会社] 勤怠未入力のお知らせ（退勤）`;
+    subject = `[飯塚グループ・エンジニアリング] 勤怠未入力のお知らせ（退勤）`;
     text = `
 ${user.username} さん
 
@@ -562,7 +562,7 @@ ${appUrl}
       お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
     `;
   } else if (type === 'monthly') {
-    subject = `[飯塚塗研株式会社] 今月の勤怠未入力に関する重要なお知らせ`;
+    subject = `[飯塚グループ・エンジニアリング] 今月の勤怠未入力に関する重要なお知らせ`;
     text = `
 ${user.username} さん
 
@@ -613,9 +613,9 @@ ${appUrl}
 
 async function sendMonthlyCompleteEmail(user, monthStr, totalWorkedDays) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
   
-  const subject = `[飯塚塗研株式会社] 今月の勤怠データ確認完了のお知らせ`;
+  const subject = `[飯塚グループ・エンジニアリング] 今月の勤怠データ確認完了のお知らせ`;
   const text = `
 ${user.username} さん
 
@@ -665,12 +665,12 @@ ${appUrl}
 
 async function sendDailySummaryEmail(user, dateStr, checkIn, checkOut, totalHours) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
   
   const inStr = String(checkIn || '').slice(11, 16);
   const outStr = String(checkOut || '').slice(11, 16);
   
-  const subject = `[飯塚塗研株式会社] 本日の勤務お疲れ様でした`;
+  const subject = `[飯塚グループ・エンジニアリング] 本日の勤務お疲れ様でした`;
   const text = `
 ${user.username} さん
 
@@ -730,12 +730,12 @@ ${appUrl}
 async function sendReminderEmail(user, shiftName, timeHm, offsetMin, type) {
   const isStart = type === 'start';
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/'; // URL app chấm công
-  const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
   
   let subject, text, html;
 
   if (isStart) {
-    subject = `[飯塚塗研株式会社] 勤怠確認`;
+    subject = `[飯塚グループ・エンジニアリング] 勤怠確認`;
     
     let timeText;
     if (offsetMin > 0) {
@@ -774,7 +774,7 @@ ${appUrl}
     `;
   } else {
     const timeText = offsetMin === 0 ? 'になりました' : `から ${offsetMin} 分経過しました`;
-    subject = `[飯塚塗研株式会社] 勤怠確認`;
+    subject = `[飯塚グループ・エンジニアリング] 勤怠確認`;
     text = `
 ${user.username} さん
 

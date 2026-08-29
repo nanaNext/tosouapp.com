@@ -1945,6 +1945,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const company = $('#company');
     if (company && !company.value) company.value = 'iizuka';
     setupSimpleCombo(company);
+    // 企業名 = tên công ty (tenant) của chính nhân viên, KHÔNG hardcode 飯塚塗研.
+    // Giá trị select này không được submit khi打刻 (chỉ hiển thị), nên đổi nhãn an toàn.
+    ensureAuthProfile()
+      .then((prof) => {
+        const nm = String(prof?.tenantName || prof?.tenant_name || '').trim();
+        if (!nm || !company) return;
+        // 1) Đổi text của <option> gốc.
+        const opt = company.querySelector('option[value="iizuka"]')
+          || (company.selectedOptions && company.selectedOptions[0])
+          || company.querySelector('option:not([disabled])');
+        if (opt) opt.textContent = nm;
+        // 2) Cập nhật UI combo tùy biến do setupSimpleCombo dựng (.simple-combo-text + item trong list).
+        const combo = company.nextElementSibling && company.nextElementSibling.classList.contains('simple-combo')
+          ? company.nextElementSibling : null;
+        if (combo) {
+          const textEl = combo.querySelector('.simple-combo-text');
+          if (textEl) textEl.textContent = nm;
+          combo.querySelectorAll('.simple-combo-item').forEach((it) => {
+            if ((it.dataset.value || '') === (opt ? opt.value : 'iizuka')) it.textContent = nm;
+          });
+        }
+      })
+      .catch(() => { /* giữ nguyên nếu không lấy được tenant */ });
   } catch (e) { /* silently ignored */ }
 
   $('#btnReload')?.addEventListener('click', async () => { await load(state.date); });
