@@ -74,7 +74,45 @@ exports.updateStatus = async (req, res) => {
     if (status === 'approved') {
       const reqRow = await repo.getById(id, tid);
       if (reqRow) {
-        await attendanceRepo.updateTimes(reqRow.attendanceId, reqRow.requestedCheckIn, reqRow.requestedCheckOut);
+        // Ghi giờ đã duyệt vào bảng chấm công của nhân viên để admin KHÔNG phải
+        // sang màn 月次勤怠入力 nhập lại.
+        // - Nếu đơn gắn với record chấm công có sẵn (attendanceId) → update record đó.
+        // - Nếu ngày đó CHƯA có record (attendanceId null) và có giờ 出勤 →
+        //   dùng bulkUpsertAttendance (chính là hàm màn 月次 dùng) để TẠO MỚI record
+        //   cho đúng ngày, đồng thời đồng bộ attendance_daily.
+        try {
+          if (reqRow.attendanceId) {
+            await attendanceRepo.updateTimes(
+              reqRow.attendanceId,
+              reqRow.requestedCheckIn,
+              reqRow.requestedCheckOut,
+              { tenantId: tid }
+            );
+          } else if (reqRow.requestedCheckIn) {
+            await attendanceRepo.bulkUpsertAttendance(
+              reqRow.userId,
+              {
+                updates: [{
+                  checkIn: reqRow.requestedCheckIn,
+                  checkOut: reqRow.requestedCheckOut || null
+                }],
+                dailyUpdates: []
+              },
+              { tenantId: tid }
+            );
+          } else {
+            // Đơn chỉ có giờ 退勤, không có record gốc → giữ hành vi cũ.
+            await attendanceRepo.updateTimes(
+              reqRow.attendanceId,
+              reqRow.requestedCheckIn,
+              reqRow.requestedCheckOut,
+              { tenantId: tid }
+            );
+          }
+        } catch (e) {
+          // Không chặn việc duyệt nếu ghi giờ lỗi; log để theo dõi.
+          console.error('[adjust.approve] write attendance failed:', e && e.message);
+        }
       }
     }
     try {
