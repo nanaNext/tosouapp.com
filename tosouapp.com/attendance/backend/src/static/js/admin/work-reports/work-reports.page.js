@@ -450,7 +450,7 @@ export async function mount() {
       const kubun = kubunStr ? esc(kubunStr) : dash;
       const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
       const rawWork = String(it.work || '').trim();
-      const work = rawWork ? esc(rawWork) : dash;
+      const work = rawWork ? esc(rawWork).replace(/\n/g, '<br>') : dash;
       const dept = String(it.departmentName || '').trim() ? esc(String(it.departmentName).trim()) : dash;
       const branch = String(it.branchName || '').trim() ? esc(String(it.branchName).trim()) : dash;
       const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
@@ -771,7 +771,7 @@ export async function mount() {
         }
         const kubun = kubunStr ? esc(kubunStr) : dash;
         const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
-        const work = String(it.work || '').trim() ? esc(String(it.work).trim()) : dash;
+        const work = String(it.work || '').trim() ? esc(String(it.work).trim()).replace(/\n/g, '<br>') : dash;
         const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
         const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
         const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
