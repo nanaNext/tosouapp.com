@@ -575,11 +575,20 @@ async function mountAttendanceImpl({
     `;
   }
 
-  // Also inject date picker at top of rosterWrap for mobile if no mobileActions slot
+  // Also inject date picker at top of rosterWrap for mobile if no mobileActions slot.
+  // Trên trang 勤怠記録 của nhân viên (mobile ≤480px) thanh .subbar bị ẩn hoàn toàn
+  // (CSS: body:not(.admin) .subbar{display:none}), nên ô ngày desktop trong subbar
+  // không hiển thị. Vì vậy phải luôn chèn ô ngày mobile ở đầu nội dung, kèm nút
+  // lùi/tiến ngày để người dùng dễ xem các ngày trước.
   if (window.innerWidth <= 768 && !mobileActions) {
     const mobileDateDiv = document.createElement('div');
-    mobileDateDiv.style.cssText = 'display:flex; align-items:center; justify-content:center; padding:4px 12px; background:#fff; border-bottom:1px solid #e5e7eb;';
-    mobileDateDiv.innerHTML = `<input type="date" id="rosterDateMobile" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">`;
+    mobileDateDiv.id = 'rosterMobileDateBar';
+    mobileDateDiv.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb;';
+    mobileDateDiv.innerHTML = `
+      <button type="button" id="rosterPrevDayMobile" aria-label="前日" style="height:34px; min-width:38px; padding:0 10px; font-size:16px; line-height:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:700; cursor:pointer;">‹</button>
+      <input type="date" id="rosterDateMobile" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">
+      <button type="button" id="rosterNextDayMobile" aria-label="翌日" style="height:34px; min-width:38px; padding:0 10px; font-size:16px; line-height:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:700; cursor:pointer;">›</button>
+    `;
     rosterWrap.insertBefore(mobileDateDiv, rosterWrap.firstChild);
   }
 
@@ -1361,10 +1370,15 @@ async function mountAttendanceImpl({
   const dateElMobile = document.getElementById('rosterDateMobile');
   
   // Navigate Date Helpers
+  // Timezone-safe: parse the YYYY-MM-DD string as a UTC calendar date and use
+  // UTC getters/setters so no local/JST offset can shift the result by a day.
   const addDays = (dateStr, days) => {
-    const d = new Date(dateStr);
+    const s = String(dateStr || '').slice(0, 10);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return dateStr;
+    const d = new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10)));
     if (isNaN(d.getTime())) return dateStr;
-    d.setDate(d.getDate() + days);
+    d.setUTCDate(d.getUTCDate() + days);
     return d.toISOString().slice(0, 10);
   };
   
@@ -1375,12 +1389,18 @@ async function mountAttendanceImpl({
   };
 
   const handleDateChange = async (e) => {
-    const d = (dateEl && dateEl.value) ? dateEl.value : (dateElMobile && dateElMobile.value ? dateElMobile.value : today);
+    // Ưu tiên giá trị từ input vừa phát sự kiện (event.target). Trên mobile cả
+    // #rosterDate (ẩn trong subbar) và #rosterDateMobile cùng tồn tại; nếu lấy
+    // #rosterDate trước thì luôn ra "hôm nay" và người dùng không lùi ngày được.
+    const fromTarget = (e && e.target && e.target.value) ? e.target.value : '';
+    const d = fromTarget
+      || (dateElMobile && dateElMobile.value ? dateElMobile.value : '')
+      || (dateEl && dateEl.value ? dateEl.value : '')
+      || today;
     if (d) {
-      if (dateEl && dateElMobile) {
-        dateEl.value = d;
-        dateElMobile.value = d;
-      }
+      // Đồng bộ cả hai input để hai bản (mobile/desktop) không bị lệch ngày.
+      if (dateEl) dateEl.value = d;
+      if (dateElMobile) dateElMobile.value = d;
       await loadRoster(d);
     }
   };
@@ -1393,14 +1413,16 @@ async function mountAttendanceImpl({
     if (btn) btn.addEventListener('click', action);
   };
 
+  // Lấy ngày hiện tại từ bất kỳ input nào đang có giá trị (mobile hoặc desktop).
+  const currentSelectedDate = () =>
+    (dateElMobile && dateElMobile.value) || (dateEl && dateEl.value) || today;
+
   const goPrevDay = () => {
-    const curr = (dateEl && dateEl.value) || today;
-    updateDate(addDays(curr, -1));
+    updateDate(addDays(currentSelectedDate(), -1));
   };
 
   const goNextDay = () => {
-    const curr = (dateEl && dateEl.value) || today;
-    updateDate(addDays(curr, 1));
+    updateDate(addDays(currentSelectedDate(), 1));
   };
 
   const goToday = () => updateDate(today);
