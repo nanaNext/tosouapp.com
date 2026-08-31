@@ -6,6 +6,9 @@ logs/
 coverage/
 dist/
 build/
+# 例外: PDF.js ビューアの build ディレクトリは同梱する（worker/pdf.mjs が必要）
+!attendance/backend/src/static/vendor/pdfjs/build/
+!attendance/backend/src/static/vendor/pdfjs/build/**
 
 # Environment files
 .env
