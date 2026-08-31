@@ -246,9 +246,12 @@ body.drawer-open.admin.has-sidebar .content {
 }
 
 /* Fallback: if JS toggle is blocked on a route, clicking the user button
-   still opens the menu via focus state. */
-.admin .topbar .user .user-menu:focus-within .dropdown,
-.admin .topbar .user .user-menu:focus-within .dropdown[hidden] {
+   still opens the menu via focus state.
+   LƯU Ý: chỉ mở khi dropdown KHÔNG còn thuộc tính [hidden] (tức JS đã chủ đích
+   mở). Trước đây rule này ép hiện cả khi [hidden], nên khi giữ focus vào nút
+   user rồi resize cửa sổ, dropdown tự bung ra và để lộ avatar trong .ud-head
+   (#userInitial) cạnh avatar topbar (#userBtnInitial) → trông như 2 hình tròn. */
+.admin .topbar .user .user-menu:focus-within .dropdown:not([hidden]) {
   display: block !important;
   pointer-events: auto;
 }
@@ -964,9 +967,35 @@ body.drawer-open.admin.has-sidebar .content {
   padding: 0 10px;
 }
 
-.admin .topbar-inner>*:not(:first-child) {
-  border-left: 1px solid #1e293b;
+/* ── Vạch phân cách dọc topbar — MỘT KIỂU DUY NHẤT cho đồng bộ ──
+   Mọi ô con (trừ brand) vẽ vạch bên TRÁI bằng ::before định vị tuyệt đối:
+   full chiều cao, cùng màu, cùng độ dày. Không dùng border-left (border chỉ
+   cao bằng nội dung nên các vạch trông dài ngắn khác nhau). */
+.admin .topbar-inner>* {
+  position: relative;
 }
+.admin .topbar-inner>* {
+  border-left: none !important;
+}
+/* Vạch full chiều cao cho các ô KHÔNG bị overflow:hidden (brand, actions, user).
+   .search có overflow:hidden nên vẽ vạch của nó từ brand::after thay vì ::before
+   để không bị cắt. */
+.admin .topbar-inner > .brand::after,
+.admin .topbar-inner > .topbar-actions::before,
+.admin .topbar-inner > .user::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 1px !important;
+  height: var(--topbar-height, 56px) !important;
+  background: rgba(255,255,255,0.28) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+.admin .topbar-inner > .brand::after { right: 0 !important; }
+.admin .topbar-inner > .topbar-actions::before { left: 0 !important; }
+.admin .topbar-inner > .user::before { left: 0 !important; }
 
 .admin .topbar-inner .search {
   margin-left: 0;
@@ -1135,16 +1164,13 @@ body.drawer-open.admin.has-sidebar .content {
   cursor: pointer;
 }
 
-/* Prevent separator line from overlapping the rounded corner of the first action button */
 .admin .topbar-inner .topbar-actions {
   position: relative;
-  padding-left: 0;
-  border-left: none !important;
+  padding-left: 12px;
+  border-left: none !important; /* vạch dùng ::before ở rule chung phía trên */
 }
 
-.admin .topbar-inner .topbar-actions::before {
-  display: none;
-}
+/* (Rule ẩn ::before cũ đã bỏ — giờ ::before được dùng để vẽ vạch phân cách.) */
 
 .admin .topbar-inner .topbar-actions>*:first-child {
   margin-left: 12px;
@@ -2568,19 +2594,29 @@ body.drawer-open.admin.has-sidebar .content {
     font-size: 12px;
   }
 
+  /* Chỉ ở mobile: bỏ vạch phân cách bên trái khối user (avatar). Trên mobile
+     các nút actions bị ẩn nên vạch #1e293b đứng sát avatar, trông như gạch đen
+     thừa. Desktop vẫn giữ vạch bình thường. */
+  .admin .topbar-inner > .user {
+    border-left: none !important;
+  }
+
+  /* Giữ tên user ẩn (screen-reader only) trên topbar admin ở mobile.
+     Trước đây rule này bỏ ẩn #userName (display:inline) làm tên đầy đủ (vd "グェン")
+     hiện đè sau avatar "グ" → trông như 2 hình tròn cạnh nhau. Avatar đã hiện chữ
+     cái đầu nên không cần hiện lại tên. */
   .admin .topbar .user #userName {
-    position: static !important;
-    width: auto !important;
-    height: auto !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    clip: auto !important;
-    clip-path: none !important;
-    white-space: nowrap;
-    display: inline !important;
-    font-size: 12px;
-    font-weight: 700;
-    color: #0f172a;
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    display: block !important;
   }
 
   .admin .topbar .user .caret {
@@ -4613,6 +4649,47 @@ body.drawer-open.admin.has-sidebar .content {
 .admin *::before,
 .admin *::after {
   border-radius: 0 !important;
+}
+
+/* Ngoại lệ: badge thông báo (số đỏ trên chuông) phải là hình TRÒN ĐỀU, không bị
+   rule "flatten" ở trên ép vuông. Ép width = height và bỏ padding ngang để
+   không bị kéo dài thành viên thuốc (pill). Đặt sau rule flatten để thắng. */
+.admin .topbar .notify-btn .notify-badge,
+.admin #adminNotifyBadge {
+  border-radius: 999px !important;
+  width: 25px !important;
+  min-width: 25px !important;
+  height: 25px !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  /* Hiệu ứng động: nảy nhẹ + quầng đỏ nhấp nháy để gây chú ý khi có thông báo. */
+  transform-origin: center !important;
+  animation: adminNotifyPulse 1.6s ease-in-out infinite !important;
+}
+
+@keyframes adminNotifyPulse {
+  0%, 60%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+  }
+  30% {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+  }
+}
+
+/* Tôn trọng người dùng tắt hiệu ứng chuyển động (accessibility). */
+@media (prefers-reduced-motion: reduce) {
+  .admin .topbar .notify-btn .notify-badge,
+  .admin #adminNotifyBadge {
+    animation: none !important;
+  }
 }
 
 /* ─── Attendance toolbar summary inline pills alignment ─── */
