@@ -5,10 +5,10 @@ export async function mount(options = {}) {
   if (!host) return;
 
   host.innerHTML = `
-    <div style="padding:16px;max-width:720px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin:0;font-size:18px;font-weight:700;">支店管理</h2>
-        <div style="display:flex;gap:8px;align-items:center;">
+    <div class="branch-page" style="padding:16px;max-width:720px;">
+      <div class="branch-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 class="branch-title" style="margin:0;font-size:18px;font-weight:700;">支店管理</h2>
+        <div class="branch-new" style="display:flex;gap:8px;align-items:center;">
           <span style="font-size:13px;color:#64748b;">新規</span>
           <input id="branchNewName" type="text" placeholder="例: 東京支店" style="height:32px;border:1px solid #cbd5e1;border-radius:4px;padding:0 10px;font-size:13px;width:200px;">
           <input id="branchNewCode" type="text" placeholder="コード (任意)" style="height:32px;border:1px solid #cbd5e1;border-radius:4px;padding:0 10px;font-size:13px;width:100px;">
@@ -16,8 +16,8 @@ export async function mount(options = {}) {
         </div>
       </div>
 
-      <div id="branchTableWrap" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;">
+      <div id="branchTableWrap" class="branch-table-wrap" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+        <table class="branch-table" style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;">
           <colgroup>
             <col style="width:36px;">
             <col style="width:70px;">
@@ -58,17 +58,17 @@ export async function mount(options = {}) {
       }
 
       tbody.innerHTML = branches.map(b => `
-        <tr style="border-bottom:1px solid #f1f5f9;">
-          <td style="padding:6px 10px;">${b.id}</td>
-          <td style="padding:6px 10px;overflow:hidden;"><input data-id="${b.id}" data-field="code" value="${esc(b.code || '')}" style="width:100%;height:28px;border:1px solid #e2e8f0;border-radius:4px;padding:0 6px;font-size:12px;box-sizing:border-box;"></td>
-          <td style="padding:6px 10px;overflow:hidden;"><input data-id="${b.id}" data-field="name" value="${esc(b.name)}" style="width:100%;height:28px;border:1px solid #e2e8f0;border-radius:4px;padding:0 6px;font-size:13px;box-sizing:border-box;"></td>
-          <td style="padding:6px 10px;">${b.employeeCount || 0}人</td>
-          <td style="padding:6px 10px;overflow:hidden;">
+        <tr class="branch-row" style="border-bottom:1px solid #f1f5f9;">
+          <td data-label="ID" style="padding:6px 10px;">${b.id}</td>
+          <td data-label="コード" style="padding:6px 10px;overflow:hidden;"><input data-id="${b.id}" data-field="code" value="${esc(b.code || '')}" style="width:100%;height:28px;border:1px solid #e2e8f0;border-radius:4px;padding:0 6px;font-size:12px;box-sizing:border-box;"></td>
+          <td data-label="名前" style="padding:6px 10px;overflow:hidden;"><input data-id="${b.id}" data-field="name" value="${esc(b.name)}" style="width:100%;height:28px;border:1px solid #e2e8f0;border-radius:4px;padding:0 6px;font-size:13px;box-sizing:border-box;"></td>
+          <td data-label="社員数" style="padding:6px 10px;">${b.employeeCount || 0}人</td>
+          <td data-label="管理者" style="padding:6px 10px;overflow:hidden;">
             <select data-id="${b.id}" data-field="manager" style="width:100%;height:28px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;padding:0 2px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;">
               <option value="">未設定</option>
             </select>
           </td>
-          <td style="padding:6px 10px;white-space:nowrap;">
+          <td data-label="操作" style="padding:6px 10px;white-space:nowrap;">
             <button data-save="${b.id}" style="padding:2px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;margin-right:4px;">保存</button>
             <button data-delete="${b.id}" style="padding:2px 10px;background:#fff;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;font-size:12px;cursor:pointer;">削除</button>
           </td>

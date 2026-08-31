@@ -10,7 +10,7 @@ export async function mount(options = {}) {
   if (!content) return;
   content.className = 'card';
   const p = normalizePath(window.location.pathname);
-  const mod = await import('../legacy/legacy-leave.page.js?v=9');
+  const mod = await import('../legacy/legacy-leave.page.js?v=navy-20260831-fullwidth3');
 
   if (content.querySelector('.leave-page-layout')) {
     // Already mounted! Just switch tab.
