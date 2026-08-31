@@ -554,6 +554,11 @@ router.delete('/:id',
       if (String(r.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
         return res.status(403).json({ message: 'Forbidden' });
       }
+      // Không cho xóa bản ghi đã 支給済み (paid) — dữ liệu tài chính đã chi trả,
+      // phải giữ lại để đối soát. Chặn ở backend kể cả khi gọi API trực tiếp.
+      if (String(r.status || '').toLowerCase() === 'paid') {
+        return res.status(409).json({ message: '支給済みの申請は削除できません。' });
+      }
       const ok = await repo.deleteMine(id, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
       res.status(200).json({ ok: true });

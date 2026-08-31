@@ -496,7 +496,7 @@ const route = async () => {
     if (p2 === '/admin/expenses') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=navy-20260831-monthly-newtab1');
         const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/expenses', profile: profile });
-        const mod = await loadModule('./expenses/expenses.page.js');
+        const mod = await loadModule('./expenses/expenses.page.js?v=navy-20260831-nodelete-paid1');
         if (seq !== routeSeq) return;
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
         return;
