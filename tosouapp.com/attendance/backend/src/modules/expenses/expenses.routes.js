@@ -23,6 +23,46 @@ function recordEndpointPerf(endpoint, startedAt, meta = {}) {
   }
 }
 
+// 交通費 承認ワークフロー: 申請中(applied) -> 総務確認(soumu_checked) -> 社長承認(approved) -> 支給(paid)
+// 差戻し(rejected) はどの承認段階からでも可能。役割: manager=総務, admin=社長/経理。
+// 戻り値: null=OK / string=エラーメッセージ
+function validateStatusTransition(currentStatus, nextStatus, role) {
+  const from = String(currentStatus || '').toLowerCase();
+  const to = String(nextStatus || '').toLowerCase();
+  const r = String(role || '').toLowerCase();
+  const isManager = r === 'manager' || r === 'admin';
+  const isAdmin = r === 'admin';
+
+  // 差戻し: 承認過程(applied/soumu_checked/approved)からのみ、manager/admin
+  if (to === 'rejected') {
+    if (!['applied', 'soumu_checked', 'approved'].includes(from)) {
+      return 'この状態からは差戻しできません';
+    }
+    return isManager ? null : '権限がありません';
+  }
+
+  // 総務確認: 申請中 -> 総務確認済み (manager or admin)
+  if (to === 'soumu_checked') {
+    if (from !== 'applied') return '申請中の項目のみ総務確認できます';
+    return isManager ? null : '権限がありません';
+  }
+
+  // 社長承認: 総務確認済み -> 承認済み (admin only)
+  if (to === 'approved') {
+    if (from !== 'soumu_checked') return '総務確認済みの項目のみ承認できます';
+    return isAdmin ? null : '社長承認は管理者のみ可能です';
+  }
+
+  // 支給: 承認済み -> 支給済み (admin only)
+  if (to === 'paid') {
+    if (from !== 'approved') return '承認済みの項目のみ支給できます';
+    return isAdmin ? null : '支給処理は管理者のみ可能です';
+  }
+
+  // その他の遷移(applied再申請など)は従来どおり許可しない対象外 -> エラー
+  return '不正なステータス遷移です';
+}
+
 router.use(authenticate);
 router.use(resolveTenant);
 router.get('/types',
@@ -647,10 +687,14 @@ router.post('/admin/bulk-status',
       
       const userMonthMap = new Map(); // key: userId_month, value: { userId, month, totalAmount, count }
 
+      let skipped = 0;
       for (const rawId of ids) {
         const id = parseInt(String(rawId), 10);
         if (id > 0) {
           const row = await repo.getById(id, req.tenantId || null);
+          if (!row) { skipped++; continue; }
+          const transErr = validateStatusTransition(row.status, st, req.user.role);
+          if (transErr) { skipped++; continue; }
           const ok = await repo.updateStatus(id, st, note, req.user.id, req.tenantId || null);
           if (ok && row && row.userId && st !== 'pending') {
             const ym = row.date ? String(row.date).slice(0, 7) : null;
@@ -669,7 +713,7 @@ router.post('/admin/bulk-status',
 
       // Send ONE notification per user per month
       for (const m of userMonthMap.values()) {
-        const statusLabel = st === 'approved' ? '承認' : (st === 'rejected' ? '差戻し' : (st === 'paid' ? '支給' : st));
+        const statusLabel = st === 'soumu_checked' ? '総務確認' : (st === 'approved' ? '社長承認' : (st === 'rejected' ? '差戻し' : (st === 'paid' ? '支給' : st)));
         await noticesRepo.createNotice({
           targetUserId: m.userId,
           targetMonth: m.month,
@@ -678,7 +722,7 @@ router.post('/admin/bulk-status',
         });
       }
 
-      res.status(200).json({ ok: true, processed: ids.length });
+      res.status(200).json({ ok: true, processed: ids.length - skipped, skipped });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -694,12 +738,16 @@ router.patch('/:id/status',
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
       const st = String(req.body?.status || '').toLowerCase();
       const note = String(req.body?.note || '').trim() || null;
+      const cur = await repo.getById(id, req.tenantId || null);
+      if (!cur) return res.status(404).json({ message: 'Not Found' });
+      const transErr = validateStatusTransition(cur.status, st, req.user.role);
+      if (transErr) return res.status(403).json({ message: transErr });
       const ok = await repo.updateStatus(id, st, note, req.user.id, req.tenantId || null);
       if (!ok) return res.status(404).json({ message: 'Not Found' });
       try {
         const row = await repo.getById(id, req.tenantId || null);
         if (row && row.userId && st !== 'pending') {
-          const statusLabel = st === 'approved' ? '承認' : (st === 'rejected' ? '差戻し' : (st === 'paid' ? '支給' : st));
+          const statusLabel = st === 'soumu_checked' ? '総務確認' : (st === 'approved' ? '社長承認' : (st === 'rejected' ? '差戻し' : (st === 'paid' ? '支給' : st)));
           await noticesRepo.createNotice({
             targetUserId: row.userId,
             targetDate: row.date ? String(row.date).slice(0, 10) : null,

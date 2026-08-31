@@ -174,10 +174,11 @@ exports.getAdminDashboard = async function({ month, months = 6, tenantId = null 
       COALESCE(SUM(CASE WHEN ec.status = 'paid' THEN ec.amount ELSE 0 END), 0) AS paid_amount,
       COALESCE(SUM(CASE WHEN ec.status = 'rejected' THEN ec.amount ELSE 0 END), 0) AS rejected_amount,
       COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,
+      COALESCE(SUM(ec.status = 'soumu_checked'), 0) AS soumu_checked_count,
       COALESCE(SUM(ec.status = 'approved'), 0) AS approved_count,
       COALESCE(SUM(ec.status = 'paid'), 0) AS paid_count,
       COALESCE(SUM(ec.status = 'rejected'), 0) AS rejected_count,
-      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved','paid') THEN ec.userId END) AS applicant_users
+      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','soumu_checked','approved','paid') THEN ec.userId END) AS applicant_users
     FROM expense_claims ec${tenantJoin}
     WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?${tenantWhere}
   `, kpiParams);
@@ -238,6 +239,7 @@ exports.getAdminDashboard = async function({ month, months = 6, tenantId = null 
     approvedAmount: Number(kpiRow?.approved_amount || 0),
     rejectedAmount: Number(kpiRow?.rejected_amount || 0),
     appliedCount: Number(kpiRow?.applied_count || 0),
+    soumuCheckedCount: Number(kpiRow?.soumu_checked_count || 0),
     approvedCount: Number(kpiRow?.approved_count || 0),
     rejectedCount: Number(kpiRow?.rejected_count || 0),
     applicantUsers: Number(kpiRow?.applicant_users || 0)

@@ -41,7 +41,8 @@ export const fmtMonthLabel = (ym) => {
 export const statusLabel = (st) => {
   const v = String(st || '').toLowerCase();
   if (v === 'applied') return '承認待ち';
-  if (v === 'approved') return '承認済';
+  if (v === 'soumu_checked') return '総務確認済';
+  if (v === 'approved') return '社長承認済';
   if (v === 'paid') return '支給済';
   if (v === 'rejected') return '差戻し';
   if (v === 'draft') return '下書き';
@@ -52,6 +53,7 @@ export const statusLabel = (st) => {
 export const statusPillClass = (st) => {
   const v = String(st || '').toLowerCase();
   if (v === 'approved') return 'st-approved';
+  if (v === 'soumu_checked') return 'st-soumu';
   if (v === 'paid') return 'st-paid';
   if (v === 'applied') return 'st-applied';
   if (v === 'rejected') return 'st-rejected';

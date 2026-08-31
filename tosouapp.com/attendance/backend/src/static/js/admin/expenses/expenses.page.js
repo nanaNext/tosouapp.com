@@ -1,6 +1,6 @@
 import { requireAdmin } from '../_shared/require-admin.js';
 import { fetchJSONAuth } from '../../api/http.api.js';
-import { $, showSpinner, hideSpinner, todayISO, todayMonth, fmtDT, fmtJPY, fmtMonthLabel, statusLabel, statusPillClass, isYM, addMonthsYM, listYMBack } from './expenses.helpers.js';
+import { $, showSpinner, hideSpinner, todayISO, todayMonth, fmtDT, fmtJPY, fmtMonthLabel, statusLabel, statusPillClass, isYM, addMonthsYM, listYMBack } from './expenses.helpers.js?v=navy-20260831-workflow1';
 
 const render = async (host) => {
   if (!host) return;
@@ -689,9 +689,14 @@ const render = async (host) => {
         .exp-admin-page .exp-dash-pager { display:flex; align-items:center; justify-content:center; gap: 10px; margin-top: 10px; }
         .exp-admin-page .pill.st-approved { border-color:#bbf7d0; background:#f0fdf4; color:#166534; }
         .exp-admin-page .pill.st-applied { border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
+        .exp-admin-page .pill.st-soumu { border-color:#fde68a; background:#fffbeb; color:#92400e; }
         .exp-admin-page .pill.st-rejected { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
         .exp-admin-page .pill.st-paid { border-color:#d8b4fe; background:#faf5ff; color:#9333ea; }
         .exp-admin-page .pill.st-other { border-color:#e2e8f0; background:#f8fafc; color:#334155; }
+        .exp-admin-page .exp-dash-flow { display:grid; gap:6px; margin-top:4px; }
+        .exp-admin-page .exp-dash-flow-step { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px; background:#f8fafc; }
+        .exp-admin-page .exp-dash-flow-label { font-weight:700; color:#334155; white-space:nowrap; }
+        .exp-admin-page .exp-dash-flow-val { color:#0f172a; text-align:right; }
         .exp-admin-page .exp-dash-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, .45); z-index: 1600; }
         .exp-admin-page .exp-dash-backdrop[hidden] { display: none !important; }
         .exp-admin-page .exp-dash-root.with-drawer .exp-dash-drawer { display: flex; }
@@ -898,6 +903,15 @@ const render = async (host) => {
               </span>
               <span id="expBadgeApplied" class="exp-dash-badge" hidden>0</span>
             </button>
+            <button type="button" class="exp-dash-nav" data-status="soumu_checked">
+              <span class="left">
+                <span class="ico" style="color: #fbbf24;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                </span>
+                <span>総務確認済（承認待ち）</span>
+              </span>
+              <span id="expBadgeSoumu" class="exp-dash-badge" hidden>0</span>
+            </button>
             <button type="button" class="exp-dash-nav" data-status="approved">
               <span class="left">
                 <span class="ico" style="color: #38bdf8;">
@@ -1027,9 +1041,8 @@ const render = async (host) => {
                 <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">コメント</div>
                 <textarea id="expDashNote" class="exp-dash-note" placeholder="コメントを入力してください"></textarea>
                 <div class="exp-dash-drawer-actions" style="margin-top: 4px;">
-                  <button id="expDashApprove" class="btn exp-dash-btn-approve" type="button">承認する</button>
+                  <button id="expDashApprove" class="btn exp-dash-btn-approve" type="button" data-next="">承認する</button>
                   <button id="expDashReject" class="btn exp-dash-btn-reject" type="button">差し戻す</button>
-                  <button id="expDashDeny" class="btn exp-dash-btn-deny" type="button">却下する</button>
                 </div>
               </div>
             </aside>
@@ -1491,8 +1504,26 @@ const render = async (host) => {
         </div>
 
         <div class="exp-dash-history">
-          <div class="exp-dash-history-title">承認履歴</div>
-          <div class="v" style="font-size:12px; color:#64748b;">${esc(rec?.manager_note || 'ー')}</div>
+          <div class="exp-dash-history-title">承認フロー履歴</div>
+          <div class="exp-dash-flow">
+            <div class="exp-dash-flow-step">
+              <span class="exp-dash-flow-label">① 申請</span>
+              <span class="exp-dash-flow-val">${rec?.applied_at ? esc(fmtDT(rec.applied_at)) : (String(st).toLowerCase() !== 'draft' && String(st).toLowerCase() !== 'pending' ? '申請済' : '未申請')}</span>
+            </div>
+            <div class="exp-dash-flow-step">
+              <span class="exp-dash-flow-label">② 総務確認</span>
+              <span class="exp-dash-flow-val">${rec?.soumu_checked_at ? `${esc(fmtDT(rec.soumu_checked_at))}${rec?.soumu_checked_name ? ' / ' + esc(rec.soumu_checked_name) : ''}` : '未確認'}</span>
+            </div>
+            <div class="exp-dash-flow-step">
+              <span class="exp-dash-flow-label">③ 社長承認</span>
+              <span class="exp-dash-flow-val">${(String(st).toLowerCase() === 'approved' || String(st).toLowerCase() === 'paid') && rec?.approved_at ? `${esc(fmtDT(rec.approved_at))}${rec?.approver_name ? ' / ' + esc(rec.approver_name) : ''}` : '未承認'}</span>
+            </div>
+            <div class="exp-dash-flow-step">
+              <span class="exp-dash-flow-label">④ 支給</span>
+              <span class="exp-dash-flow-val">${String(st).toLowerCase() === 'paid' && rec?.approved_at ? esc(fmtDT(rec.approved_at)) : '未支給'}</span>
+            </div>
+          </div>
+          <div class="v" style="font-size:12px; color:#64748b; margin-top:6px;">コメント: ${esc(rec?.manager_note || 'ー')}</div>
         </div>
       `;
       // Lưu 支払方法 (admin) qua PATCH.
@@ -1514,10 +1545,38 @@ const render = async (host) => {
           }
         });
       }
-      const canAct = String(st).toLowerCase() === 'applied';
+      // 承認フロー: 申請中(applied) -> 総務確認(soumu_checked) -> 社長承認(approved) -> 支給(paid)
+      // 役割: manager=総務(総務確認), admin/owner/sysadmin=社長/経理(社長承認・支給)。差戻しは各承認段階で可能。
+      const role = String((window.ADMIN_PROFILE && window.ADMIN_PROFILE.role) || '').toLowerCase();
+      const isAdminRole = role === 'admin' || role === 'owner' || role === 'sysadmin';
+      const isManagerRole = role === 'manager' || isAdminRole;
+      const stLower = String(st).toLowerCase();
+      let nextStatus = '';
+      let nextLabel = '';
+      if (stLower === 'applied' && isManagerRole) { nextStatus = 'soumu_checked'; nextLabel = '総務確認する'; }
+      else if (stLower === 'soumu_checked' && isAdminRole) { nextStatus = 'approved'; nextLabel = '社長承認する'; }
+      else if (stLower === 'approved' && isAdminRole) { nextStatus = 'paid'; nextLabel = '支給する'; }
+      // 差戻しは applied/soumu_checked/approved の段階で manager/admin が可能
+      const canReject = ['applied', 'soumu_checked', 'approved'].includes(stLower) && isManagerRole;
+      const canAct = !!nextStatus || canReject;
       const foot = document.querySelector('.exp-dash-drawer-foot');
       if (foot) {
         foot.style.display = canAct ? 'grid' : 'none';
+      }
+      const primaryBtn = document.getElementById('expDashApprove');
+      if (primaryBtn) {
+        if (nextStatus) {
+          primaryBtn.style.display = '';
+          primaryBtn.textContent = nextLabel;
+          primaryBtn.setAttribute('data-next', nextStatus);
+        } else {
+          primaryBtn.style.display = 'none';
+          primaryBtn.setAttribute('data-next', '');
+        }
+      }
+      const rejectBtn = document.getElementById('expDashReject');
+      if (rejectBtn) {
+        rejectBtn.style.display = canReject ? '' : 'none';
       }
       const note = document.getElementById('expDashNote');
       if (note) {
@@ -1637,7 +1696,7 @@ const render = async (host) => {
             ? ''
             : `<button type="button" class="btn" data-action="delete-expense" data-id="${esc(id)}" style="background:transparent;border:none;color:#ef4444;padding:4px;cursor:pointer;" title="削除">${deleteIcon}</button>`;
           
-          const checkbox = (st === 'applied' || st === 'pending' || st === 'approved') ? `<input type="checkbox" class="exp-dash-bulk-cb child-cb-${r.userId}-${r.month}" data-id="${esc(id)}" style="cursor:pointer;" />` : '';
+          const checkbox = (st === 'applied' || st === 'pending' || st === 'soumu_checked' || st === 'approved') ? `<input type="checkbox" class="exp-dash-bulk-cb child-cb-${r.userId}-${r.month}" data-id="${esc(id)}" style="cursor:pointer;" />` : '';
           
           return `
             <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -1725,11 +1784,12 @@ const render = async (host) => {
         </button>
       </div>
       `;
-    } else if (state.status === 'applied') {
+    } else if (state.status === 'applied' || state.status === 'soumu_checked') {
+      const bulkLabel = state.status === 'applied' ? '一括総務確認' : '一括社長承認';
       bulkToolbar = `
       <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; flex-wrap: wrap;">
         <span style="font-size: 13px; color: #64748b;">選択した項目を:</span>
-        <button type="button" class="btn" id="expDashBulkApprove" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${checkIcon}一括承認</button>
+        <button type="button" class="btn" id="expDashBulkApprove" style="display:flex; align-items:center; background:#10b981; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${checkIcon}${bulkLabel}</button>
         <button type="button" class="btn" id="expDashBulkCancel" style="display:flex; align-items:center; background:#f59e0b; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${xIcon}一括取消</button>
         <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIconBtn}一括削除</button>
       </div>
@@ -1978,32 +2038,41 @@ const render = async (host) => {
     if (btnBulkApprove) {
       btnBulkApprove.addEventListener('click', async () => {
         const ids = getSelectedIds();
-        if (ids.length === 0) return alert('承認する項目を選択してください。');
-        if (!confirm(`選択した ${ids.length} 件を一括承認しますか？`)) return;
+        if (ids.length === 0) return alert('処理する項目を選択してください。');
+        // 現在のタブに応じて次のステップを決定: applied -> soumu_checked(総務確認), soumu_checked -> approved(社長承認)
+        const fromStatus = String(state.status || '');
+        const nextStatus = fromStatus === 'applied' ? 'soumu_checked' : (fromStatus === 'soumu_checked' ? 'approved' : 'approved');
+        const actionLabel = nextStatus === 'soumu_checked' ? '総務確認' : '社長承認';
+        const nextTab = nextStatus === 'soumu_checked' ? 'soumu_checked' : 'approved';
+        const nextTitle = nextStatus === 'soumu_checked' ? '総務確認済み' : '承認済み';
+        if (!confirm(`選択した ${ids.length} 件を一括${actionLabel}しますか？`)) return;
         
         btnBulkApprove.disabled = true;
         btnBulkApprove.innerHTML = '処理中...';
         try {
-          await fetchJSONAuth('/api/expenses/admin/bulk-status', {
+          const resp = await fetchJSONAuth('/api/expenses/admin/bulk-status', {
             method: 'POST',
-            body: JSON.stringify({ ids, status: 'approved', note: '一括承認' })
+            body: JSON.stringify({ ids, status: nextStatus, note: `一括${actionLabel}` })
           });
-          state.status = 'approved';
+          if (resp && Number(resp.skipped) > 0) {
+            alert(`${Number(resp.processed || 0)} 件を処理しました（${Number(resp.skipped)} 件は権限または状態が対象外のためスキップ）。`);
+          }
+          state.status = nextTab;
           state.page = 1;
           applyViewMode();
           const setTitle = (t) => { const el = document.getElementById('expDashTitle'); if (el) el.textContent = t; };
-          setTitle('承認済み');
+          setTitle(nextTitle);
           document.querySelectorAll('.exp-dash-side .exp-dash-nav').forEach(x => x.classList.remove('is-active'));
-          const approvedTab = document.querySelector('.exp-dash-side .exp-dash-nav[data-status="approved"]');
-          if (approvedTab) approvedTab.classList.add('is-active');
+          const nextTabBtn = document.querySelector(`.exp-dash-side .exp-dash-nav[data-status="${nextTab}"]`);
+          if (nextTabBtn) nextTabBtn.classList.add('is-active');
           try {
             const url = new URL(window.location);
-            url.searchParams.set('tab', 'approved');
+            url.searchParams.set('tab', nextTab);
             window.history.replaceState({}, '', url);
           } catch (e) { /* silently ignored */ }
           await reloadAll();
         } catch (e) {
-          alert('一部の承認に失敗しました。');
+          alert('一部の処理に失敗しました。');
           btnBulkApprove.disabled = false;
           btnBulkApprove.innerHTML = `${checkIcon}一括承認`;
         }
@@ -2065,6 +2134,7 @@ const render = async (host) => {
       renderTrend(dash);
       renderDeptShare(dash);
       setBadge('expBadgeApplied', dash?.month?.appliedCount || 0);
+      setBadge('expBadgeSoumu', dash?.month?.soumuCheckedCount || 0);
       setBadge('expBadgeApproved', dash?.month?.approvedCount || 0);
       setBadge('expBadgeRejected', dash?.month?.rejectedCount || 0);
       setBadge('expDashBellBadge', dash?.month?.appliedCount || 0);
@@ -2185,6 +2255,7 @@ const render = async (host) => {
         state.view = 'list';
         applyViewMode();
         if (state.status === 'applied') setTitle('承認管理');
+        else if (state.status === 'soumu_checked') setTitle('総務確認済み（社長承認待ち）');
         else if (state.status === 'monthly_approval') setTitle('月次承認');
         else if (state.status === 'archived') setTitle('月次締め履歴');
         else if (state.status === 'approved') setTitle('承認済み');
@@ -2474,15 +2545,17 @@ const render = async (host) => {
       }
     });
     document.getElementById('expDashDrawerClose')?.addEventListener('click', closeDrawer);
-    document.getElementById('expDashApprove')?.addEventListener('click', async () => {
+    document.getElementById('expDashApprove')?.addEventListener('click', async (ev) => {
       if (!state.selectedId) return;
+      const nextStatus = String(ev.currentTarget?.getAttribute('data-next') || '').trim();
+      if (!nextStatus) return;
       const note = String(document.getElementById('expDashNote')?.value || '').trim();
       try {
-        await fetchJSONAuth(`/api/expenses/${encodeURIComponent(state.selectedId)}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'approved', note }) });
+        await fetchJSONAuth(`/api/expenses/${encodeURIComponent(state.selectedId)}/status`, { method: 'PATCH', body: JSON.stringify({ status: nextStatus, note }) });
         await reloadAll();
         await openDrawer(state.selectedId);
       } catch (e) {
-        setStatusText(String(e?.message || '承認に失敗しました'), true);
+        setStatusText(String(e?.message || '処理に失敗しました'), true);
       }
     });
     document.getElementById('expDashReject')?.addEventListener('click', async () => {
@@ -2523,6 +2596,7 @@ const render = async (host) => {
       
       const setTitle = (t) => { const el = document.getElementById('expDashTitle'); if (el) el.textContent = t; };
       if (state.status === 'applied') setTitle('承認管理');
+      else if (state.status === 'soumu_checked') setTitle('総務確認済み（社長承認待ち）');
       else if (state.status === 'monthly_approval' || state.status === 'applied_approved') setTitle('月次承認');
       else if (state.status === 'approved') setTitle('承認済み');
       else if (state.status === 'rejected') setTitle('差戻し一覧');

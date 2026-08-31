@@ -124,7 +124,8 @@ module.exports = {
         u.employee_code,
         u.departmentId,
         u.employment_type,
-        (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name
+        (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
+        (SELECT COALESCE(u3.username, u3.email) FROM users u3 WHERE u3.id = ec.soumu_checked_by) AS soumu_checked_name
       FROM expense_claims ec
       JOIN users u ON u.id = ec.userId
       WHERE ec.id = ?${tenantClause}
@@ -173,13 +174,15 @@ module.exports = {
   async updateStatus(id, status, note, managerId, tenantId = null) {
     const tid = _tid(tenantId);
     const st = String(status || '').toLowerCase();
-    if (!['draft','pending','applied','approved','rejected','paid'].includes(st)) throw new Error('Invalid status');
+    if (!['draft','pending','applied','soumu_checked','approved','rejected','paid'].includes(st)) throw new Error('Invalid status');
     const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
     const sql = `
       UPDATE expense_claims
       SET
         status = ?,
         manager_note = ?,
+        soumu_checked_by = CASE WHEN ? = 'soumu_checked' THEN ? ELSE soumu_checked_by END,
+        soumu_checked_at = CASE WHEN ? = 'soumu_checked' THEN CURRENT_TIMESTAMP ELSE soumu_checked_at END,
         approved_by = CASE WHEN ? IN ('approved','rejected','paid') THEN ? ELSE approved_by END,
         approver_id = CASE WHEN ? IN ('approved','rejected','paid') THEN ? ELSE approver_id END,
         applied_at = CASE WHEN ? = 'applied' THEN CURRENT_TIMESTAMP ELSE applied_at END,
@@ -187,7 +190,7 @@ module.exports = {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?${tenantClause}
     `;
-    const params = [st, note || null, st, managerId || null, st, managerId || null, st, st, id];
+    const params = [st, note || null, st, managerId || null, st, st, managerId || null, st, managerId || null, st, st, id];
     if (tid != null) params.push(tid);
     const [res] = await db.query(sql, params);
     return res.affectedRows > 0;
@@ -369,6 +372,8 @@ module.exports.ensureTable = async function() {
       approver_id BIGINT UNSIGNED NULL,
       approved_at DATETIME NULL,
       applied_at DATETIME NULL,
+      soumu_checked_at DATETIME NULL,
+      soumu_checked_by BIGINT UNSIGNED NULL,
       employee_note VARCHAR(255) NULL,
       reply_at DATETIME NULL,
       commuter_pass TINYINT(1) NOT NULL DEFAULT 0,
@@ -406,6 +411,8 @@ module.exports.ensureTable = async function() {
   try { await db.query(`ALTER TABLE expense_claims ADD COLUMN payment_method VARCHAR(16) NULL`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE expense_claims ADD COLUMN item_name VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE expense_claims ADD COLUMN vendor VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN soumu_checked_at DATETIME NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN soumu_checked_by BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE expense_claims ADD UNIQUE KEY uniq_client_token (client_token)`); } catch (e) { /* silently ignored */ }
   try { await db.query(`CREATE INDEX idx_status ON expense_claims (status)`); } catch (e) { /* silently ignored */ }
   await db.query(`
@@ -587,7 +594,7 @@ module.exports.approveMonthByAdmin = async function({ userId, month, approverId,
         updated_at = CURRENT_TIMESTAMP
       WHERE userId = ?
         AND DATE_FORMAT(date, '%Y-%m') = ?
-        AND status = 'applied'${tenantClause}
+        AND status IN ('applied','soumu_checked')${tenantClause}
       `,
       updParams
     );
