@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260626-18">
   <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260626-18">
   <link rel="icon" href="data:,">
-  <script type="module" src="/static/js/pages/expenses.page.js?v=navy-20260626-25"></script>
+  <script type="module" src="/static/js/pages/expenses.page.js?v=navy-20260831-emptyclose1"></script>
   <style>
     *,
     *::before,
@@ -3381,6 +3381,66 @@
       to { transform: translateY(0); }
     }
     
+    /* 明細一覧 (danh sách chi tiết) mobile: thẻ sát mép, thoáng, bỏ khung lồng khung */
+    @media (max-width: 768px) {
+      /* Bỏ padding ngang của MỌI lớp cha bọc danh sách để thẻ ra sát mép */
+      body:not(.admin) .content,
+      body:not(.admin) main.content,
+      .expense-main,
+      .expense-main > section,
+      #homeSection,
+      #step1Input {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+      /* Tiêu đề 明細一覧 vẫn cần chút lề trái cho đẹp */
+      #step1Input > h3 { padding-left: 12px !important; }
+      /* Khung ngoài: bỏ viền + bo góc để thẻ sát mép */
+      #step1Input > div {
+        border: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+      #step1Input table { display: block !important; width: 100% !important; }
+      #step1Input table thead { display: none !important; }
+      #step1Input table tbody { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+      /* Mỗi bản ghi = 1 thẻ */
+      #step1Input table tbody tr {
+        display: block !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+        padding: 8px 12px !important;
+      }
+      /* Mỗi ô: 1 dòng, full width, thoáng */
+      #step1Input table tbody td {
+        display: block !important;
+        padding: 5px 0 !important;
+        border: none !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      /* Bỏ khung con lồng bên trong (div có border) -> để trống, thoáng */
+      #step1Input table tbody td > div {
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      /* Hàng thao tác (sửa/xóa) canh phải */
+      #step1Input table tbody td:last-child {
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 6px !important;
+        padding-top: 6px !important;
+        border-top: 1px dashed #f1f5f9 !important;
+        margin-top: 2px !important;
+      }
+    }
+
     /* Mobile Modal UX Optimization */
     @media (max-width: 768px) {
       #exItemModal > div {
