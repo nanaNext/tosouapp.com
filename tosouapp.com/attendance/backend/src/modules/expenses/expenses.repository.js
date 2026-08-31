@@ -5,16 +5,16 @@ function _tid(tenantId) {
 }
 
 module.exports = {
-  async create({ userId, date, origin, via, destination, amount, memo, type, purpose, teiki, receiptUrl, km, category, tripType, tripCount, unitPricePerKm, commuterPass, clientToken, tenantId = null }) {
+  async create({ userId, date, origin, via, destination, amount, memo, type, purpose, teiki, receiptUrl, km, category, tripType, tripCount, unitPricePerKm, commuterPass, siteName, paymentMethod, itemName, vendor, clientToken, tenantId = null }) {
     const tid = _tid(tenantId);
     const sql = tid != null
       ? `
-      INSERT IGNORE INTO expense_claims (userId, date, origin, via, destination, amount, memo, type, purpose, teiki_flag, receipt_url, distance_km, unit_price_per_km, trip_type, trip_count, category, status, approver_id, approved_at, commuter_pass, client_token, tenant_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?, ?)
+      INSERT IGNORE INTO expense_claims (userId, date, origin, via, destination, amount, memo, type, purpose, teiki_flag, receipt_url, distance_km, unit_price_per_km, trip_type, trip_count, category, site_name, payment_method, item_name, vendor, status, approver_id, approved_at, commuter_pass, client_token, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?, ?)
     `
       : `
-      INSERT IGNORE INTO expense_claims (userId, date, origin, via, destination, amount, memo, type, purpose, teiki_flag, receipt_url, distance_km, unit_price_per_km, trip_type, trip_count, category, status, approver_id, approved_at, commuter_pass, client_token)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)
+      INSERT IGNORE INTO expense_claims (userId, date, origin, via, destination, amount, memo, type, purpose, teiki_flag, receipt_url, distance_km, unit_price_per_km, trip_type, trip_count, category, site_name, payment_method, item_name, vendor, status, approver_id, approved_at, commuter_pass, client_token)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)
     `;
     const params = [
       userId,
@@ -33,6 +33,10 @@ module.exports = {
       tripType || null,
       tripCount == null ? 1 : Number(tripCount),
       category || null,
+      siteName || null,
+      paymentMethod || null,
+      itemName || null,
+      vendor || null,
       commuterPass ? 1 : 0,
       clientToken || null
     ];
@@ -266,6 +270,10 @@ module.exports.updateMine = async function(id, userId, payload, tenantId = null)
   const trip_type = f.trip_type ?? r.trip_type;
   const trip_count = f.trip_count != null ? Number(f.trip_count) : r.trip_count;
   const category = f.category ?? r.category;
+  const site_name = f.site_name ?? r.site_name;
+  const payment_method = f.payment_method ?? r.payment_method;
+  const item_name = f.item_name ?? r.item_name;
+  const vendor = f.vendor ?? r.vendor;
   const commuter_pass = f.commuter_pass != null ? (f.commuter_pass ? 1 : 0) : r.commuter_pass;
   const date = f.date ?? r.date;
   let amount = f.amount != null ? Number(f.amount) : r.amount;
@@ -278,10 +286,10 @@ module.exports.updateMine = async function(id, userId, payload, tenantId = null)
   }
   const sql = `
     UPDATE expense_claims
-    SET origin = ?, via = ?, destination = ?, memo = ?, type = ?, purpose = ?, teiki_flag = ?, distance_km = ?, unit_price_per_km = ?, trip_type = ?, trip_count = ?, category = ?, commuter_pass = ?, date = ?, amount = ?, updated_at = CURRENT_TIMESTAMP
+    SET origin = ?, via = ?, destination = ?, memo = ?, type = ?, purpose = ?, teiki_flag = ?, distance_km = ?, unit_price_per_km = ?, trip_type = ?, trip_count = ?, category = ?, site_name = ?, payment_method = ?, item_name = ?, vendor = ?, commuter_pass = ?, date = ?, amount = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?${tenantClause}
   `;
-  const updateParams = [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, commuter_pass, date, amount || 0, id];
+  const updateParams = [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, site_name || null, payment_method || null, item_name || null, vendor || null, commuter_pass, date, amount || 0, id];
   if (tid != null) updateParams.push(tid);
   const [res] = await db.query(sql, updateParams);
   return res.affectedRows > 0;
@@ -307,6 +315,10 @@ module.exports.updateByAdmin = async function(id, payload, tenantId = null) {
   const trip_type = f.trip_type ?? r.trip_type;
   const trip_count = f.trip_count != null ? Number(f.trip_count) : r.trip_count;
   const category = f.category ?? r.category;
+  const site_name = f.site_name ?? r.site_name;
+  const payment_method = f.payment_method ?? r.payment_method;
+  const item_name = f.item_name ?? r.item_name;
+  const vendor = f.vendor ?? r.vendor;
   const commuter_pass = f.commuter_pass != null ? (f.commuter_pass ? 1 : 0) : r.commuter_pass;
   const date = f.date ?? r.date;
   let amount = f.amount != null ? Number(f.amount) : r.amount;
@@ -319,10 +331,10 @@ module.exports.updateByAdmin = async function(id, payload, tenantId = null) {
   }
   const sql = `
     UPDATE expense_claims
-    SET origin = ?, via = ?, destination = ?, memo = ?, type = ?, purpose = ?, teiki_flag = ?, distance_km = ?, unit_price_per_km = ?, trip_type = ?, trip_count = ?, category = ?, commuter_pass = ?, date = ?, amount = ?, updated_at = CURRENT_TIMESTAMP
+    SET origin = ?, via = ?, destination = ?, memo = ?, type = ?, purpose = ?, teiki_flag = ?, distance_km = ?, unit_price_per_km = ?, trip_type = ?, trip_count = ?, category = ?, site_name = ?, payment_method = ?, item_name = ?, vendor = ?, commuter_pass = ?, date = ?, amount = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?${tenantClause}
   `;
-  const updateParams = [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, commuter_pass, date, amount || 0, id];
+  const updateParams = [origin || null, via || null, destination || null, memo || null, type || null, purpose || null, teiki, distance_km == null ? null : distance_km, unit_price_per_km == null ? null : unit_price_per_km, trip_type || null, trip_count || 1, category || null, site_name || null, payment_method || null, item_name || null, vendor || null, commuter_pass, date, amount || 0, id];
   if (tid != null) updateParams.push(tid);
   const [res] = await db.query(sql, updateParams);
   return res.affectedRows > 0;
@@ -347,6 +359,10 @@ module.exports.ensureTable = async function() {
       trip_type VARCHAR(16) NULL,
       trip_count INT NOT NULL DEFAULT 1,
       category VARCHAR(32) NULL,
+      site_name VARCHAR(255) NULL,
+      payment_method VARCHAR(16) NULL,
+      item_name VARCHAR(255) NULL,
+      vendor VARCHAR(255) NULL,
       status VARCHAR(16) NOT NULL DEFAULT 'pending',
       manager_note VARCHAR(255) NULL,
       approved_by BIGINT UNSIGNED NULL,
@@ -386,6 +402,10 @@ module.exports.ensureTable = async function() {
   try { await db.query(`ALTER TABLE expense_claims ADD COLUMN client_token VARCHAR(64) NULL`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE expense_claims ADD COLUMN employee_note VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE expense_claims ADD COLUMN reply_at DATETIME NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN site_name VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN payment_method VARCHAR(16) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN item_name VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
+  try { await db.query(`ALTER TABLE expense_claims ADD COLUMN vendor VARCHAR(255) NULL`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE expense_claims ADD UNIQUE KEY uniq_client_token (client_token)`); } catch (e) { /* silently ignored */ }
   try { await db.query(`CREATE INDEX idx_status ON expense_claims (status)`); } catch (e) { /* silently ignored */ }
   await db.query(`

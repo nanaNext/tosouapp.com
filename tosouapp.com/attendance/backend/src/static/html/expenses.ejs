@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260626-18">
   <link rel="stylesheet" href="/static/css/portal.css?v=navy-20260626-18">
   <link rel="icon" href="data:,">
-  <script type="module" src="/static/js/pages/expenses.page.js?v=navy-20260831-emptyclose1"></script>
+  <script type="module" src="/static/js/pages/expenses.page.js?v=navy-20260831-goods2"></script>
   <style>
     *,
     *::before,
@@ -3309,8 +3309,13 @@
               <option value="car">自家用車</option>
               <option value="parking">駐車場代</option>
               <option value="highway">高速料金</option>
+              <option value="goods">物品購入</option>
             </select>
           </div>
+          <div class="adjust-label" id="exItemNameLabel">購入物品名<span class="req">*</span></div>
+          <div id="exItemNameWrap"><input id="exItemName" type="text" class="adjust-input" placeholder="例）ビス・釘 など"></div>
+          <div class="adjust-label adjust-label-right" id="exVendorLabel">購入先</div>
+          <div id="exVendorWrap"><input id="exVendor" type="text" class="adjust-input" placeholder="例）〇〇ホームセンター"></div>
           <div class="adjust-label">出発地<span class="req">*</span></div>
           <div><input id="exOrigin" type="text" class="adjust-input" placeholder="例）新宿駅"></div>
           <div class="adjust-label adjust-label-right">経由</div>
@@ -3335,8 +3340,10 @@
           <div><input id="exPurpose" type="text" class="adjust-input" placeholder="例）客先訪問（A社）"></div>
           <div class="adjust-label adjust-label-right">金額<span class="req">*</span></div>
           <div><input id="exAmount" type="text" inputmode="numeric" class="adjust-input" placeholder="例）1,240"></div>
-          <div class="adjust-label">定期</div>
-          <div><label class="checkbox-row"><input id="exTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
+          <div class="adjust-label">現場名</div>
+          <div><input id="exSiteName" type="text" class="adjust-input" placeholder="例）〇〇邸 新築工事"></div>
+          <div class="adjust-label" id="exTeikiLabel">定期</div>
+          <div id="exTeikiWrap"><label class="checkbox-row"><input id="exTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
           <div class="upload-sections full-row">
             <div class="upload-section-title">添付ファイル（任意）</div>
             <div class="upload-section-help">必要な場合のみ、ICカード / 定期券の写真またはPDFを添付してください</div>

@@ -436,7 +436,9 @@ const openQuickEditExpense = async (recId) => {
     </div>
     <div class="adjust-grid qe-grid" style="grid-template-columns:110px minmax(0,1fr) 110px minmax(0,1fr);gap:8px;">
       <div class="adjust-label">日付</div><div><input id="qeDate" type="date" class="adjust-input"></div>
-      <div class="adjust-label">種別</div><div><select id="qeType" class="adjust-input"><option value="train">電車</option><option value="bus">バス</option><option value="taxi">タクシー</option><option value="car">自家用車</option><option value="parking">駐車場代</option><option value="highway">高速料金</option></select></div>
+      <div class="adjust-label">種別</div><div><select id="qeType" class="adjust-input"><option value="train">電車</option><option value="bus">バス</option><option value="taxi">タクシー</option><option value="car">自家用車</option><option value="parking">駐車場代</option><option value="highway">高速料金</option><option value="goods">物品購入</option></select></div>
+      <div class="adjust-label" id="qeItemNameLabel">購入物品名</div><div id="qeItemNameWrap"><input id="qeItemName" class="adjust-input"></div>
+      <div class="adjust-label" id="qeVendorLabel">購入先</div><div id="qeVendorWrap"><input id="qeVendor" class="adjust-input"></div>
       <div class="adjust-label">出発地</div><div><input id="qeOrigin" class="adjust-input"></div>
       <div class="adjust-label">経由</div><div><input id="qeVia" class="adjust-input"></div>
       <div class="adjust-label">到着地</div><div><input id="qeDestination" class="adjust-input"></div>
@@ -446,7 +448,8 @@ const openQuickEditExpense = async (recId) => {
       <div class="adjust-label">単価(円/km)</div><div><input id="qeUnitPrice" type="number" step="1" min="0" class="adjust-input"></div>
       <div class="adjust-label">用途</div><div><input id="qePurpose" class="adjust-input"></div>
       <div class="adjust-label">金額</div><div><input id="qeAmount" type="number" step="1" min="0" class="adjust-input"></div>
-      <div class="adjust-label">定期</div><div><label style="display:flex;align-items:center;gap:8px;"><input id="qeTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
+      <div class="adjust-label">現場名</div><div><input id="qeSiteName" class="adjust-input"></div>
+      <div class="adjust-label" id="qeTeikiLabel">定期</div><div id="qeTeikiWrap"><label style="display:flex;align-items:center;gap:8px;"><input id="qeTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
       <div class="adjust-label full-row">メモ</div><div class="full-row"><input id="qeMemo" class="adjust-input"></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
@@ -507,8 +510,28 @@ const openQuickEditExpense = async (recId) => {
   setVal('qeUnitPrice', rec?.unit_price_per_km != null ? rec.unit_price_per_km : '');
   setVal('qePurpose', rec?.purpose || '');
   setVal('qeAmount', rec?.amount != null ? rec.amount : '');
+  setVal('qeSiteName', rec?.site_name || '');
+  setVal('qeItemName', rec?.item_name || '');
+  setVal('qeVendor', rec?.vendor || '');
   setVal('qeMemo', rec?.memo || '');
   try { const c = document.getElementById('qeTeiki'); if (c) c.checked = !!rec?.teiki_flag; } catch (e) { /* silently ignored */ }
+  // Ẩn/hiện field theo 種別 trong modal sửa (goods -> hiện 購入物品名/購入先, ẩn giao thông).
+  const qeToggleByType = () => {
+    const isGoods = (document.getElementById('qeType')?.value || '') === 'goods';
+    const setQeRow = (id, visible) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const wrap = el.parentElement;
+      const label = wrap ? wrap.previousElementSibling : null;
+      if (wrap) wrap.style.display = visible ? '' : 'none';
+      if (label) label.style.display = visible ? '' : 'none';
+    };
+    ['qeOrigin', 'qeVia', 'qeDestination', 'qeTripType', 'qeTripCount', 'qeKm', 'qeUnitPrice', 'qeTeiki']
+      .forEach((id) => setQeRow(id, !isGoods));
+    setQeRow('qeItemName', isGoods);
+    setQeRow('qeVendor', isGoods);
+  };
+  try { document.getElementById('qeType')?.addEventListener('change', qeToggleByType); qeToggleByType(); } catch (e) { /* silently ignored */ }
   const close = () => { try { modal.remove(); } catch (e) { /* silently ignored */ } try { backdrop.remove(); } catch (e) { /* silently ignored */ } };
   return await new Promise((resolve) => {
     const cancelBtn = document.getElementById('qeCancel');
@@ -529,6 +552,9 @@ const openQuickEditExpense = async (recId) => {
         purpose: document.getElementById('qePurpose')?.value || '',
         amount: Number(document.getElementById('qeAmount')?.value || 0) || 0,
         teiki_flag: !!document.getElementById('qeTeiki')?.checked,
+        site_name: document.getElementById('qeSiteName')?.value || '',
+        item_name: document.getElementById('qeItemName')?.value || '',
+        vendor: document.getElementById('qeVendor')?.value || '',
         memo: document.getElementById('qeMemo')?.value || ''
       };
       try {
@@ -964,14 +990,18 @@ const renderList = async () => {
           if (exAppToConfirmBtn) exAppToConfirmBtn.disabled = false;
 
           const typeMap = {
-            train: '電車', bus: 'バス', taxi: 'タクシー', car: '自家用車', parking: '駐車場', highway: '高速道路'
+            train: '電車', bus: 'バス', taxi: 'タクシー', car: '自家用車', parking: '駐車場', highway: '高速道路', goods: '物品購入'
           };
 
           const html = rows.map(r => {
             const a = Number(r.amount || 0);
             total += a;
             const d = String(r.date || '').slice(0, 10).replace(/-/g, '/');
-            const route = [r.origin, r.destination].filter(Boolean).join(' → ') || '-';
+            const isGoodsRow = String(r.type || r.category || '') === 'goods';
+            // Với 物品購入: hiển thị 購入物品名 (・購入先) thay cho lộ trình đi lại.
+            const route = isGoodsRow
+              ? ([r.item_name, r.vendor].filter(Boolean).join(' / ') || '-')
+              : ([r.origin, r.destination].filter(Boolean).join(' → ') || '-');
             const purpose = r.purpose ? ` (${r.purpose})` : '';
             const typeLabel = typeMap[r.type || r.category] || '電車';
             const memo = r.memo || (r.teiki_flag ? '定期区間内' : '定期区間外');
@@ -1077,6 +1107,10 @@ const renderList = async () => {
       const teikiEl = document.getElementById('exTeiki'); if (teikiEl) teikiEl.checked = false;
       setVal('exAmount', '');
       setVal('exMemo', '');
+      setVal('exSiteName', '');
+      setVal('exItemName', '');
+      setVal('exVendor', '');
+      try { document.getElementById('exType')?.dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ }
       if (exItemModal) exItemModal.style.display = 'flex';
     });
 
@@ -2099,6 +2133,10 @@ const renderList = async () => {
                 const teikiEl = document.getElementById('exTeiki'); if (teikiEl) teikiEl.checked = false;
                 setVal('exAmount', '');
                 setVal('exMemo', '');
+                setVal('exSiteName', '');
+                setVal('exItemName', '');
+                setVal('exVendor', '');
+                try { document.getElementById('exType')?.dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ }
                 formActive = true;
                 const navBtn = document.getElementById('expNavNew') || document.getElementById('topNavNew');
                 if (navBtn) {
@@ -2247,6 +2285,25 @@ export async function bootExpensesPage() {
       if (cntRowLabel) cntRowLabel.style.display = isMulti ? '' : 'none';
     }
   };
+  // Ẩn/hiện cả cặp (label + ô input) trong lưới .adjust-grid theo id của input.
+  const setFieldRowVisible = (inputId, visible) => {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    const wrap = el.parentElement;             // ô chứa input
+    const label = wrap ? wrap.previousElementSibling : null; // ô label bên trái
+    if (wrap) wrap.style.display = visible ? '' : 'none';
+    if (label) label.style.display = visible ? '' : 'none';
+  };
+  // Loại 物品購入 (goods): ẩn các trường giao thông, hiện 購入物品名/購入先.
+  const toggleGoodsFields = () => {
+    const isGoods = (typeSel?.value || '') === 'goods';
+    // Field giao thông: ẩn khi goods
+    ['exOrigin', 'exVia', 'exDestination', 'exTripType', 'exTripCount', 'exKm', 'exUnitPrice', 'exTeiki']
+      .forEach((id) => setFieldRowVisible(id, !isGoods));
+    // Field mua vật tư: hiện khi goods
+    setFieldRowVisible('exItemName', isGoods);
+    setFieldRowVisible('exVendor', isGoods);
+  };
   const recomputeAmountPreview = () => {
     const type = typeSel?.value || '';
     if (type === 'car') {
@@ -2259,13 +2316,14 @@ export async function bootExpensesPage() {
     }
     // No auto-multiplication for round_trip or multi - employee enters total amount manually
   };
-  typeSel?.addEventListener('change', () => { toggleCarFields(); recomputeAmountPreview(); });
+  typeSel?.addEventListener('change', () => { toggleCarFields(); toggleTripCount(); toggleGoodsFields(); recomputeAmountPreview(); });
   kmEl?.addEventListener('input', recomputeAmountPreview);
   unitEl?.addEventListener('input', recomputeAmountPreview);
   tripSel?.addEventListener('change', () => { toggleTripCount(); recomputeAmountPreview(); });
   tripCountEl?.addEventListener('input', recomputeAmountPreview);
   toggleCarFields();
   toggleTripCount();
+  toggleGoodsFields();
   bindAmountFormatter(amtEl);
   try { if (amtEl && amtEl.value) amtEl.value = formatAmount(amtEl.value); } catch (e) { /* silently ignored */ }
   const frontInput = document.getElementById('exReceiptFront');
@@ -2288,10 +2346,17 @@ export async function bootExpensesPage() {
     const purpose = String($('#exPurpose')?.value || '').trim();
     const type = $('#exType')?.value || 'train';
     const teiki = !!$('#exTeiki')?.checked;
+    const itemName = String($('#exItemName')?.value || '').trim();
     const rawAmount = String($('#exAmount')?.value || '').trim();
+    const isGoods = type === 'goods';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setFieldError('exDate', '日付を正しく入力してください。'); ok = false; }
-    if (!origin) { setFieldError('exOrigin', '出発地は必須です。'); ok = false; }
-    if (!destination) { setFieldError('exDestination', '到着地は必須です。'); ok = false; }
+    if (isGoods) {
+      // 物品購入: cần tên vật tư; không bắt buộc 出発地/到着地.
+      if (!itemName) { setFieldError('exItemName', '購入物品名は必須です。'); ok = false; }
+    } else {
+      if (!origin) { setFieldError('exOrigin', '出発地は必須です。'); ok = false; }
+      if (!destination) { setFieldError('exDestination', '到着地は必須です。'); ok = false; }
+    }
     if (!purpose) { setFieldError('exPurpose', '用途は必須です。'); ok = false; }
     if (!rawAmount && !(type === 'train' && teiki)) { setFieldError('exAmount', '金額は必須です。'); ok = false; }
     if (!ok) {
@@ -2332,6 +2397,9 @@ export async function bootExpensesPage() {
     const km = $('#exKm')?.value || '';
     const unitPricePerKm = $('#exUnitPrice')?.value || '';
     const memo = $('#exMemo')?.value || '';
+    const siteName = $('#exSiteName')?.value || '';
+    const itemName = $('#exItemName')?.value || '';
+    const vendor = $('#exVendor')?.value || '';
     const rawAmount = String($('#exAmount')?.value || '').trim();
     let amount = parseAmount(rawAmount);
     if (type === 'train' && teiki) amount = 0;
@@ -2342,7 +2410,7 @@ export async function bootExpensesPage() {
         method: 'POST', body: JSON.stringify({
           date, type, origin, via, destination, tripType, tripCount, purpose, teiki,
           km: km ? Number(km) : null, unitPricePerKm: unitPricePerKm ? Number(unitPricePerKm) : null,
-          amount: Number(amount), memo, clientToken
+          amount: Number(amount), memo, siteName, itemName, vendor, clientToken
         })
       });
       const newId = create?.id;

@@ -57,6 +57,10 @@ router.post('/',
       const tripType = String(b.tripType || '').trim().toLowerCase() || null;
       const tripCount = b.tripCount == null ? 1 : parseInt(String(b.tripCount), 10);
       const commuterPass = !!b.commuterPass;
+      const siteName = String(b.siteName || '').trim() || null;
+      const paymentMethod = String(b.paymentMethod || '').trim().toLowerCase() || null;
+      const itemName = String(b.itemName || '').trim() || null;
+      const vendor = String(b.vendor || '').trim() || null;
       const receiptUrl = String(b.receiptUrl || '').trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ message: 'Invalid date' });
       let amt = baseAmount;
@@ -69,7 +73,7 @@ router.post('/',
       // Nhân viên nhập số tiền bao nhiêu thì lưu đúng bấy nhiêu; trip_type chỉ là
       // thông tin ghi chú, không dùng để tính lại số tiền.
       if (!(amt >= 0)) return res.status(400).json({ message: 'Invalid amount' });
-      const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass, clientToken: b.clientToken, tenantId: req.tenantId || null });
+      const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass, siteName, paymentMethod, itemName, vendor, clientToken: b.clientToken, tenantId: req.tenantId || null });
       try { await auditRepo.writeLog({ userId: req.user.id, action: 'expense_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, date, amount: amt, origin, destination }) }); } catch (e) { /* silently ignored */ }
       res.status(201).json({ id });
     } catch (err) {

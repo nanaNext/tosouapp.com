@@ -1444,6 +1444,25 @@ const render = async (host) => {
       const st = String(rec?.status || '');
       const stLabel = statusLabel(st);
       const stCls = statusPillClass(st);
+      const isGoods = String(rec?.type || rec?.category || '') === 'goods';
+      const siteNameVal = String(rec?.site_name || '').trim();
+      const pmVal = String(rec?.payment_method || '');
+      const pmOptions = [
+        ['', '未設定'],
+        ['cash', '現金'],
+        ['advance', '立替'],
+        ['corporate_card', '法人カード']
+      ].map(([v, l]) => `<option value="${v}" ${pmVal === v ? 'selected' : ''}>${l}</option>`).join('');
+      // Hàng nội dung khác nhau theo loại: 物品購入 -> 購入物品名/購入先; còn lại -> 通勤区間/交通機関.
+      const contentRows = isGoods
+        ? `
+          <div class="row"><div class="k">購入物品名</div><div class="v">${esc(rec?.item_name || 'ー')}</div></div>
+          <div class="row"><div class="k">購入先</div><div class="v">${esc(rec?.vendor || 'ー')}</div></div>
+        `
+        : `
+          <div class="row"><div class="k">通勤区間</div><div class="v">${esc(route)}</div></div>
+          <div class="row"><div class="k">利用交通機関</div><div class="v">${esc(rec?.transport_type || '電車')}</div></div>
+        `;
       body.innerHTML = `
         <div class="exp-dash-detail">
           <div class="row"><div class="k">申請ID</div><div class="v">${esc(String(rec?.id || ''))} <span class="pill ${stCls}" style="margin-left:4px;">${esc(stLabel)}</span></div></div>
@@ -1451,10 +1470,19 @@ const render = async (host) => {
           <div class="row"><div class="k">部署</div><div class="v">${esc(deptName)}</div></div>
           <div class="row"><div class="k">対象月</div><div class="v">${esc(fmtMonthLabel(String(rec?.date || '').slice(0,7)) || '')}</div></div>
           <div class="row"><div class="k">申請日</div><div class="v">${esc(String(rec?.date || '').slice(0,10))}</div></div>
-          <div class="row"><div class="k">通勤区間</div><div class="v">${esc(route)}</div></div>
-          <div class="row"><div class="k">利用交通機関</div><div class="v">${esc(rec?.transport_type || '電車')}</div></div>
+          ${contentRows}
+          <div class="row"><div class="k">現場名</div><div class="v">${esc(siteNameVal || 'ー')}</div></div>
           <div class="row"><div class="k">金額</div><div class="v">${esc(fmtJPY(rec?.amount || 0))}</div></div>
           <div class="row"><div class="k">備考</div><div class="v">${esc(rec?.note || 'ー')}</div></div>
+        </div>
+
+        <div class="exp-dash-history">
+          <div class="exp-dash-history-title">支払方法（経理）</div>
+          <div class="v" style="display:flex; gap:8px; align-items:center;">
+            <select id="expDashPayMethod" class="exp-dash-note" style="min-height:34px; height:34px; padding:0 8px; flex:1;">${pmOptions}</select>
+            <button id="expDashPayMethodSave" class="btn" type="button" style="min-height:34px; padding:0 12px; font-weight:800; border:1px solid #0b2c66; background:#0b2c66; color:#fff; border-radius:4px;">保存</button>
+          </div>
+          <div id="expDashPayMethodMsg" style="font-size:11px; color:#16a34a; margin-top:4px;"></div>
         </div>
 
         <div class="exp-dash-history">
@@ -1467,6 +1495,25 @@ const render = async (host) => {
           <div class="v" style="font-size:12px; color:#64748b;">${esc(rec?.manager_note || 'ー')}</div>
         </div>
       `;
+      // Lưu 支払方法 (admin) qua PATCH.
+      const pmSaveBtn = document.getElementById('expDashPayMethodSave');
+      if (pmSaveBtn && !pmSaveBtn.dataset.bound) {
+        pmSaveBtn.dataset.bound = '1';
+        pmSaveBtn.addEventListener('click', async () => {
+          const sel = document.getElementById('expDashPayMethod');
+          const msg = document.getElementById('expDashPayMethodMsg');
+          const pm = String(sel?.value || '');
+          pmSaveBtn.disabled = true;
+          try {
+            await fetchJSONAuth(`/api/expenses/${encodeURIComponent(state.selectedId)}`, { method: 'PATCH', body: JSON.stringify({ payment_method: pm }) });
+            if (msg) { msg.style.color = '#16a34a'; msg.textContent = '支払方法を保存しました。'; }
+          } catch (e) {
+            if (msg) { msg.style.color = '#b00020'; msg.textContent = String(e?.message || '保存に失敗しました'); }
+          } finally {
+            pmSaveBtn.disabled = false;
+          }
+        });
+      }
       const canAct = String(st).toLowerCase() === 'applied';
       const foot = document.querySelector('.exp-dash-drawer-foot');
       if (foot) {
