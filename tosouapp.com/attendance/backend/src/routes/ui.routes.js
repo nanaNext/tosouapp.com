@@ -190,7 +190,7 @@ router.get('/ui/requests', sendPage('requests.html'));
 router.get('/ui/salary', sendPage('salary.html'));
 router.get('/ui/chatbot', (req, res) => res.redirect('/ui/faq')); // Redirect old chatbot links to FAQ
 router.get('/ui/change-password', sendPage('change-password.html'));
-router.get('/ui/manual', sendPage('manual.html'));
+router.get('/ui/manual', sendPageNoCache('manual.html'));
 router.get('/ui/admin-manual', authenticateFromCookie, authorizePage('admin', 'manager'), sendPage('admin-manual.html'));
 router.get('/ui/faq', sendPageNoCache('faq.html'));
 router.get('/ui/contact', sendPage('contact.html'));
