@@ -427,10 +427,14 @@ const openQuickEditExpense = async (recId) => {
   const backdrop = document.createElement('div');
   backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1200;';
   const modal = document.createElement('div');
+  modal.className = 'qe-modal';
   modal.style.cssText = 'position:fixed;left:50%;top:84px;transform:translateX(-50%);width:min(860px,95vw);max-height:82vh;overflow:auto;background:#fff;border:1px solid #dbe3ef;border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,.18);padding:14px;z-index:1210;';
   modal.innerHTML = `
-    <div style="font-weight:800;color:#0b2c66;margin-bottom:8px;">申請内容を編集</div>
-    <div class="adjust-grid" style="grid-template-columns:110px minmax(0,1fr) 110px minmax(0,1fr);gap:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-weight:800;color:#0b2c66;">申請内容を編集</div>
+      <button id="qeClose" type="button" aria-label="閉じる" style="width:32px;height:32px;border:none;background:transparent;color:#64748b;font-size:22px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;">&times;</button>
+    </div>
+    <div class="adjust-grid qe-grid" style="grid-template-columns:110px minmax(0,1fr) 110px minmax(0,1fr);gap:8px;">
       <div class="adjust-label">日付</div><div><input id="qeDate" type="date" class="adjust-input"></div>
       <div class="adjust-label">種別</div><div><select id="qeType" class="adjust-input"><option value="train">電車</option><option value="bus">バス</option><option value="taxi">タクシー</option><option value="car">自家用車</option><option value="parking">駐車場代</option><option value="highway">高速料金</option></select></div>
       <div class="adjust-label">出発地</div><div><input id="qeOrigin" class="adjust-input"></div>
@@ -450,6 +454,45 @@ const openQuickEditExpense = async (recId) => {
       <button id="qeSave" class="btn btn-primary" type="button" style="height:34px;">保存</button>
     </div>
   `;
+  // CSS thu gọn modal sửa trên mobile: xếp 1 cột (nhãn trên, ô nhập full width),
+  // không còn bị chật/cắt chữ như lưới 4 cột của desktop.
+  if (!document.getElementById('qe-modal-mobile-style')) {
+    const qeStyle = document.createElement('style');
+    qeStyle.id = 'qe-modal-mobile-style';
+    qeStyle.textContent = `
+      @media (max-width: 768px) {
+        .qe-modal {
+          left: 8px !important;
+          right: 8px !important;
+          transform: none !important;
+          width: auto !important;
+          top: 12px !important;
+          max-height: 92vh !important;
+          padding: 14px !important;
+          border-radius: 12px !important;
+        }
+        .qe-grid {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 4px 0 !important;
+        }
+        .qe-grid .adjust-label {
+          margin-top: 8px !important;
+          font-weight: 700 !important;
+          color: #475569 !important;
+        }
+        .qe-grid .adjust-label.full-row,
+        .qe-grid .full-row { grid-column: auto !important; }
+        .qe-grid .adjust-input {
+          width: 100% !important;
+          height: 40px !important;
+          box-sizing: border-box !important;
+          font-size: 16px !important;
+        }
+      }
+    `;
+    document.head.appendChild(qeStyle);
+  }
   document.body.appendChild(backdrop);
   document.body.appendChild(modal);
   const setVal = (id2, v) => { const el = document.getElementById(id2); if (el) el.value = v == null ? '' : String(v); };
@@ -497,7 +540,9 @@ const openQuickEditExpense = async (recId) => {
         saveBtn.disabled = false;
       }
     };
+    const closeBtn = document.getElementById('qeClose');
     cancelBtn?.addEventListener('click', onCancel);
+    closeBtn?.addEventListener('click', onCancel);
     backdrop.addEventListener('click', onCancel);
     saveBtn?.addEventListener('click', onSave);
   });
@@ -635,10 +680,36 @@ const renderList = async () => {
       if (selectedGlobalYear) {
         msg = `${selectedGlobalYear}年の交通費申請履歴はありません。`;
       }
-      boardHost.innerHTML = `<div style="padding: 40px 20px; text-align: center; color: #64748b; background: #fff; border-radius: 12px; border: 1px solid var(--border); font-weight: 700;">
-        <div style="margin-bottom: 16px;">${msg}</div>
-        <button type="button" onclick="document.getElementById('expNavNew')?.click()" style="background: #2563eb; color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;">＋ 新規作成</button>
-      </div>`;
+      boardHost.innerHTML = `
+        <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--border);">
+            <div style="font-weight: 700; color: #475569; font-size: 14px;">月別一覧</div>
+            <button type="button" class="btn" data-action="close-monthly-board" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+              <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div style="padding: 40px 20px; text-align: center; color: #64748b; font-weight: 700;">
+            <div style="margin-bottom: 16px;">${msg}</div>
+            <button type="button" onclick="document.getElementById('expNavNew')?.click()" style="background: #2563eb; color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;">＋ 新規作成</button>
+          </div>
+        </div>`;
+      // Gắn handler đóng bảng 月別一覧 -> quay về summary cards (nhánh rỗng return sớm
+      // nên handler chung phía dưới chưa chạy; gắn trực tiếp ở đây).
+      const closeEmptyBoard = boardHost.querySelector('button[data-action="close-monthly-board"]');
+      if (closeEmptyBoard) {
+        closeEmptyBoard.addEventListener('click', () => {
+          boardHost.style.display = 'none';
+          activeSummaryCard = '';
+          document.querySelectorAll('.summary-card').forEach(card => {
+            card.style.border = '1px solid var(--border)';
+            card.style.boxShadow = 'none';
+            card.style.background = '#fff';
+          });
+          const summaryCards = document.getElementById('exSummaryCards');
+          if (summaryCards) summaryCards.style.display = 'grid';
+        });
+      }
       return allMonths;
     }
 
@@ -934,8 +1005,11 @@ const renderList = async () => {
                     ${memo}
                   </div>
                 </td>
-                <td style="padding: 12px 16px; text-align: center;">
-                  <button type="button" class="icon-btn" data-del-draft="${r.id}" style="width:32px;height:32px;border:none;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#ef4444;cursor:pointer;">
+                <td style="padding: 12px 16px; text-align: center; white-space: nowrap;">
+                  <button type="button" class="icon-btn" data-edit-draft="${r.id}" aria-label="編集" style="width:32px;height:32px;border:none;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#2563eb;cursor:pointer;margin-right:2px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  </button>
+                  <button type="button" class="icon-btn" data-del-draft="${r.id}" aria-label="削除" style="width:32px;height:32px;border:none;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#ef4444;cursor:pointer;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                   </button>
                 </td>
@@ -955,6 +1029,19 @@ const renderList = async () => {
   if (!window._expensesNewFlowBound) {
     window._expensesNewFlowBound = true;
     exAppItemsList?.addEventListener('click', async (e) => {
+      // Nút chỉnh sửa: mở modal sửa nhanh, lưu xong thì tải lại danh sách.
+      const editBtn = e.target.closest('button[data-edit-draft]');
+      if (editBtn) {
+        const editId = editBtn.getAttribute('data-edit-draft');
+        if (!editId) return;
+        try {
+          const changed = await openQuickEditExpense(editId);
+          if (changed) await renderAppItemsList();
+        } catch (err) {
+          showErr(err?.message || '編集に失敗しました');
+        }
+        return;
+      }
       const btn = e.target.closest('button[data-del-draft]');
       if (!btn) return;
       const id = btn.getAttribute('data-del-draft');
@@ -1378,7 +1465,37 @@ const renderList = async () => {
       const emptyText = activeHistoryTab === 'notice'
         ? '通知・確認事項はありません'
         : (monthJa ? `${monthJa}の交通費提出履歴はありません` : '当月の交通費提出履歴はありません');
-      host.innerHTML = `<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>${emptyText}</div></div>`;
+      // Khi đang XEM CHI TIẾT 1 tháng (selectedHistoryMonth) mà không có dữ liệu,
+      // vẫn hiển thị header + nút 閉じる để người dùng đóng quay lại 月別一覧.
+      if (selectedHistoryMonth) {
+        host.innerHTML = `
+          <div style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-weight: 800; color: #0f172a; font-size: 16px;">${monthJa}の詳細</div>
+            <button type="button" class="btn" data-action="go-back-monthly" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+              <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="empty-state"><div style="font-size:28px;">🗂️</div><div>${emptyText}</div></div>
+        `;
+      } else {
+        host.innerHTML = `<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>${emptyText}</div></div>`;
+      }
+      // Gắn handler đóng (không phụ thuộc hàm định nghĩa ở nhánh có dữ liệu).
+      const closeBtnEmpty = host.querySelector('button[data-action="go-back-monthly"]');
+      if (closeBtnEmpty) {
+        closeBtnEmpty.addEventListener('click', () => {
+          selectedHistoryMonth = '';
+          const listHost = document.getElementById('exListHost');
+          const listWrapper = document.getElementById('exListWrapper');
+          if (listHost) listHost.style.display = 'none';
+          if (listWrapper) listWrapper.style.display = 'none';
+          const boardHost2 = document.getElementById('exMonthlyBoardHost');
+          if (boardHost2) boardHost2.style.display = (activeSummaryCard === '') ? 'none' : 'block';
+          const summaryCards2 = document.getElementById('exSummaryCards');
+          if (summaryCards2) summaryCards2.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
+        });
+      }
       return;
     }
     const isCompactSplit = showMonthProgressInNewMode && (activeHistoryTab === 'new' || activeHistoryTab === 'applied');
@@ -1587,11 +1704,11 @@ const renderList = async () => {
       
       host.innerHTML = `
         <div style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-          <button type="button" class="btn" data-action="go-back-monthly" style="background: transparent; border: 1px solid var(--border); color: #475569; padding: 6px 16px; height: 32px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            戻る
-          </button>
           <div style="font-weight: 800; color: #0f172a; font-size: 16px;">${monthJa}の詳細</div>
+          <button type="button" class="btn" data-action="go-back-monthly" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
+            <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
         </div>
         ${noticeSummary}
         <div class="adj-table-card expense-desktop-only">

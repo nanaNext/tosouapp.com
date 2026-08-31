@@ -269,11 +269,12 @@ module.exports.updateMine = async function(id, userId, payload, tenantId = null)
   const commuter_pass = f.commuter_pass != null ? (f.commuter_pass ? 1 : 0) : r.commuter_pass;
   const date = f.date ?? r.date;
   let amount = f.amount != null ? Number(f.amount) : r.amount;
+  // Xe riêng (private_car): tính tiền = 距離 × 単価 (nếu có nhập km & đơn giá).
+  // KHÔNG nhân đôi khi 往復 hay nhân theo số lần — nhập/ tính bao nhiêu lưu bấy nhiêu.
+  // trip_type / trip_count chỉ là thông tin ghi chú.
   if (String(category || '').toLowerCase() === 'private_car') {
     const base = (distance_km || 0) * (unit_price_per_km || 0);
-    const rt = String(trip_type || '').toLowerCase() === 'round_trip' ? 2 : 1;
-    const cnt = trip_count || 1;
-    amount = Math.round(base * rt * cnt);
+    if (base > 0) amount = Math.round(base);
   }
   const sql = `
     UPDATE expense_claims
@@ -309,11 +310,12 @@ module.exports.updateByAdmin = async function(id, payload, tenantId = null) {
   const commuter_pass = f.commuter_pass != null ? (f.commuter_pass ? 1 : 0) : r.commuter_pass;
   const date = f.date ?? r.date;
   let amount = f.amount != null ? Number(f.amount) : r.amount;
+  // Xe riêng (private_car): tính tiền = 距離 × 単価 (nếu có nhập km & đơn giá).
+  // KHÔNG nhân đôi khi 往復 hay nhân theo số lần — nhập/ tính bao nhiêu lưu bấy nhiêu.
+  // trip_type / trip_count chỉ là thông tin ghi chú.
   if (String(category || '').toLowerCase() === 'private_car') {
     const base = (distance_km || 0) * (unit_price_per_km || 0);
-    const rt = String(trip_type || '').toLowerCase() === 'round_trip' ? 2 : 1;
-    const cnt = trip_count || 1;
-    amount = Math.round(base * rt * cnt);
+    if (base > 0) amount = Math.round(base);
   }
   const sql = `
     UPDATE expense_claims

@@ -65,8 +65,9 @@ router.post('/',
         const unit = unitPricePerKm == null ? 0 : unitPricePerKm;
         if (dist > 0 && unit > 0) amt = dist * unit;
       }
-      if (tripType === 'round_trip') amt = amt * 2;
-      else if (tripType === 'multi') amt = amt * (tripCount > 0 ? tripCount : 1);
+      // KHÔNG tự nhân đôi khi 往復 (round_trip) hay nhân theo số lần khi 複数 (multi).
+      // Nhân viên nhập số tiền bao nhiêu thì lưu đúng bấy nhiêu; trip_type chỉ là
+      // thông tin ghi chú, không dùng để tính lại số tiền.
       if (!(amt >= 0)) return res.status(400).json({ message: 'Invalid amount' });
       const id = await repo.create({ userId: req.user.id, date, origin, via, destination, amount: amt, memo, type, purpose, teiki, receiptUrl, km, category: type, tripType, tripCount, unitPricePerKm, commuterPass, clientToken: b.clientToken, tenantId: req.tenantId || null });
       try { await auditRepo.writeLog({ userId: req.user.id, action: 'expense_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, date, amount: amt, origin, destination }) }); } catch (e) { /* silently ignored */ }
