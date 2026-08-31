@@ -148,11 +148,16 @@ export async function mount() {
         
         .hidden-on-mobile { display: none !important; }
         
-        /* Main Row: Month, Search, Toggle */
-        .wr-mobile-row.main-row { display: none !important; } /* Hidden, moved to header */
-        .wr-mobile-row.main-row .wr-month { display: none !important; }
-        .wr-mobile-row.main-row .wr-query { display: none !important; }
-        .wr-mobile-row.main-row .wr-filter-toggle { display: none !important; }
+        /* Main Row: Month picker (prev/next), Search, Toggle — hiển thị ngay trong
+           nội dung trang vì slot header #attHubMobileActions không tồn tại ở admin.ejs. */
+        .wr-mobile-row.main-row { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; width: 100% !important; align-items: center !important; padding: 10px 12px !important; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; margin: 0 0 12px 0 !important; box-sizing: border-box !important; }
+        .wr-mobile-row.main-row .wr-month.hidden-on-mobile { display: none !important; }
+        .wr-mobile-row.main-row .wr-month-nav { display: flex !important; align-items: center !important; gap: 6px !important; flex: 1 1 100% !important; }
+        .wr-mobile-row.main-row .wr-month-nav .wr-month { flex: 1 !important; height: 38px !important; font-size: 15px !important; text-align: center !important; border-radius: 6px !important; border: 1px solid #cbd5e1 !important; background: #fff !important; }
+        .wr-mobile-row.main-row .wr-month-btn { height: 38px !important; min-width: 42px !important; padding: 0 10px !important; font-size: 18px !important; line-height: 1 !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important; background: #fff !important; color: #0f172a !important; font-weight: 700 !important; cursor: pointer !important; flex-shrink: 0 !important; }
+        .wr-mobile-row.main-row .wr-query { flex: 1 1 auto !important; height: 38px !important; font-size: 14px !important; border-radius: 6px !important; border: 1px solid #cbd5e1 !important; background: #fff !important; }
+        .wr-mobile-row.main-row .wr-filter-toggle { display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 38px !important; width: 42px !important; flex-shrink: 0 !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important; background: #fff !important; color: #475569 !important; cursor: pointer !important; padding: 0 !important; }
+        .wr-mobile-row.main-row .wr-filter-toggle.active { background: #eef2ff !important; border-color: #94a3b8 !important; color: #0f172a !important; }
         
         .wr-toolbar-wrapper { padding-bottom: 0 !important; }
         .wr-toolbar { padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; border-radius: 0 !important; }
@@ -308,6 +313,8 @@ export async function mount() {
         .group-hide { display: none !important; }
         .hidden-on-mobile { display: flex !important; }
         .hidden-on-desktop { display: none !important; }
+        .wr-mobile-only { display: none !important; }
+        .wr-month-nav { display: contents !important; }
         .wr-toolbar { display: flex !important; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; flex-shrink: 0; }
         .wr-mobile-row { display: contents !important; }
         .search-row .wr-input { background-image: none !important; padding-left: 10px !important; }
@@ -321,9 +328,16 @@ export async function mount() {
     <div class="wr-toolbar-wrapper" style="flex-shrink: 0; padding-bottom: 12px; position: relative; z-index: 50;">
       <div class="wr-toolbar" style="position: relative; z-index: 50;">
         <div class="wr-mobile-row main-row">
-          <input id="wrMonthMobile" type="month" class="wr-input wr-month hidden-on-desktop" value="${state.month}">
+          <div class="wr-month-nav">
+            <button type="button" id="wrPrevMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="前月">‹</button>
+            <input id="wrMonthMobile" type="month" class="wr-input wr-month hidden-on-desktop" value="${state.month}">
+            <button type="button" id="wrNextMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="翌月">›</button>
+          </div>
           <input id="wrMonth" type="month" class="wr-input wr-month hidden-on-mobile" value="${state.month}">
           <input id="wrQuery" type="text" class="wr-input wr-text wr-query" placeholder="社員番号/氏名で検索" value="${esc(state.q)}">
+          <button type="button" id="wrFilterToggleMobile" class="wr-filter-toggle wr-mobile-only" aria-label="絞り込み">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          </button>
         </div>
         
         <div class="wr-mobile-row advanced-filters" id="wrAdvancedFilters">
@@ -402,7 +416,8 @@ export async function mount() {
 
   let currentPage = 1;
   const isMobile = window.innerWidth <= 768;
-  const pageSize = isMobile ? 30 : 10;
+  // Mobile hiển thị ít dòng hơn (15) để không phải cuộn quá dài; dùng phân trang.
+  const pageSize = isMobile ? 15 : 10;
 
   const formatDelay = (mins) => {
     if (!mins || isNaN(mins)) return '';
@@ -1108,6 +1123,33 @@ export async function mount() {
     if (dMonth) dMonth.value = state.month;
     if (!isYM(state.month)) return;
     await load();
+  });
+
+  // Prev/Next tháng cho mobile. Tính theo UTC để không lệch tháng do timezone.
+  const shiftMonth = (ym, delta) => {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ''));
+    if (!m) return ym;
+    const d = new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1 + delta, 1));
+    return d.toISOString().slice(0, 7);
+  };
+  const applyMonth = async (ym) => {
+    if (!isYM(ym)) return;
+    state.month = ym;
+    const dMonth = $('#wrMonth');
+    const mMonth = $('#wrMonthMobile');
+    if (dMonth) dMonth.value = ym;
+    if (mMonth) mMonth.value = ym;
+    await load();
+  };
+  $('#wrPrevMonthMobile')?.addEventListener('click', () => applyMonth(shiftMonth(state.month, -1)));
+  $('#wrNextMonthMobile')?.addEventListener('click', () => applyMonth(shiftMonth(state.month, 1)));
+
+  // Nút mở/đóng bộ lọc nâng cao (chung với nút toggle ở header nếu có).
+  $('#wrFilterToggleMobile')?.addEventListener('click', () => {
+    const adv = $('#wrAdvancedFilters');
+    const btn = $('#wrFilterToggleMobile');
+    if (adv) adv.classList.toggle('show');
+    if (btn) btn.classList.toggle('active');
   });
 
   $('#wrExport')?.addEventListener('click', async () => {
