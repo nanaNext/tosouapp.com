@@ -2671,13 +2671,14 @@ body.drawer-open.admin.has-sidebar .content {
     display: none !important;
   }
 
-  /* Mobile drawer: move header together with content */
+  /* Drawer giờ là overlay full-width nằm DƯỚI topbar, nên KHÔNG đẩy topbar/nội
+     dung sang phải nữa (nếu đẩy, chuông + avatar trên topbar sẽ bị trôi ra
+     ngoài màn hình). Giữ mọi thứ đứng yên. */
   body.drawer-open.admin .topbar,
   body.drawer-open.admin .subbar,
   body.drawer-open.admin.has-sidebar #adminChrome+.content,
   body.drawer-open.admin.has-sidebar .content {
-    transform: translateX(var(--drawer-offset, 280px)) !important;
-    transition: transform .2s ease;
+    transform: none !important;
   }
 
   .admin .content {
@@ -2714,85 +2715,73 @@ body.drawer-open.admin.has-sidebar .content {
     min-width: 680px;
   }
 
-  /* Drawer layout to match segmented mobile menu */
-  .admin .drawer-backdrop {
-    z-index: 2147483498 !important;
-    background: rgba(2, 6, 23, .28) !important;
+  /* Drawer full-width nên KHÔNG cần lớp phủ tối (backdrop) — trước đây backdrop
+     đè lên drawer làm danh sách menu bị tối. Ẩn hẳn backdrop trên mobile. */
+  .admin .drawer-backdrop,
+  .admin #drawerBackdrop,
+  body.drawer-open.admin #drawerBackdrop {
+    display: none !important;
+    background: transparent !important;
   }
 
+  /* Drawer full width nhưng bắt đầu TỪ DƯỚI topbar, để topbar (chuông + avatar)
+     vẫn hiển thị phía trên khi mở menu. */
   .admin .mobile-drawer {
     position: fixed !important;
-    top: 0;
+    top: var(--topbar-height, 48px) !important;
     left: 0;
+    right: 0;
     bottom: 0;
-    width: var(--drawer-offset, 280px) !important;
-    max-width: 86vw !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
     background: #f8fbff !important;
-    border-right: 1px solid #d8dee8 !important;
+    border-right: none !important;
     padding-top: 0 !important;
-    z-index: 2147483499 !important;
+    z-index: 2147483200 !important; /* dưới topbar (2147483000... để topbar nổi trên) */
     overflow-y: auto;
   }
+  /* Topbar phải nổi TRÊN drawer để thấy chuông + avatar */
+  .admin .topbar {
+    z-index: 2147483400 !important;
+  }
+  /* Khi drawer mở: ẩn nội dung trang phía sau để không lộ/dính chữ mờ dưới
+     topbar (trước đây danh sách phía sau hiện xuyên qua khe hở). */
+  body.drawer-open.admin .content,
+  body.drawer-open.admin #adminContent,
+  body.drawer-open.admin main.content {
+    visibility: hidden !important;
+  }
+  /* Drawer che kín từ sát đáy topbar (chồng lên 1px để không hở khe) */
+  .admin .mobile-drawer {
+    top: calc(var(--topbar-height, 48px) - 1px) !important;
+  }
+  /* Ẩn header trong drawer (✕ + logo) vì topbar đã hiển thị sẵn phía trên;
+     nút đóng dùng chính nút ☰ trên topbar (bấm lại để đóng). */
+  .admin .mobile-drawer .drawer-header {
+    display: none !important;
+  }
+  /* Khi drawer mở: đổi ☰ thành ✕ trên topbar để báo "bấm để đóng". */
+  body.drawer-open .admin .mobile-btn,
+  body.drawer-open .mobile-btn {
+    font-size: 0 !important;
+  }
+  body.drawer-open .admin .mobile-btn::after,
+  body.drawer-open .mobile-btn::after {
+    content: "\00D7"; /* ✕ */
+    font-size: 24px !important;
+    line-height: 1 !important;
+    color: #ffffff !important;
+  }
 
+  /* Ẩn TOÀN BỘ header nội bộ + search + link tĩnh trong drawer, vì đã dùng
+     topbar thật (✕/☰ + logo + chuông + avatar) hiển thị phía trên drawer.
+     Tránh 2 header chồng nhau. */
   .admin .mobile-drawer .drawer-header,
+  .admin .mobile-drawer .drawer-header-actions,
+  .admin .mobile-drawer .drawer-brand,
+  .admin .mobile-drawer .mobile-close,
   .admin .mobile-drawer .drawer-search,
   .admin .mobile-drawer .drawer-static {
-    display: none !important;
-  }
-
-  .admin .mobile-drawer .drawer-header {
-    display: flex !important;
-    align-items: center;
-    justify-content: flex-end;
-    height: 46px;
-    border-bottom: 1px solid #dbe5f3;
-    background: #f8fbff;
-    padding: 0 8px;
-  }
-
-  .admin .mobile-drawer .drawer-header::before {
-    content: "MENU";
-    margin-right: auto;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: .08em;
-    color: #64748b;
-  }
-
-  .admin .mobile-drawer .mobile-close {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    margin: 0;
-    border: 0;
-    border-right: 0;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #0b2c66;
-    font-size: 21px;
-    line-height: 1;
-    margin-left: auto;
-    border: 1px solid #d7e4f3;
-    box-shadow: 0 1px 2px rgba(2, 6, 23, .08);
-  }
-
-  .admin .mobile-drawer .drawer-brand {
-    display: none !important;
-  }
-
-  .admin .mobile-drawer .drawer-brand-icon {
-    height: 24px;
-    width: auto;
-  }
-
-  .admin .mobile-drawer .drawer-brand-text {
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.3px;
-    line-height: 1;
-  }
-
-  .admin .mobile-drawer .drawer-header-actions {
     display: none !important;
   }
 
@@ -4454,14 +4443,10 @@ body.drawer-open.admin.has-sidebar .content {
     pointer-events: auto !important;
   }
 
+  /* Drawer full-width: KHÔNG hiện backdrop tối (làm menu bị xỉn màu). */
   body.drawer-open.admin #drawerBackdrop {
-    display: block !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 2147483498;
+    display: none !important;
+    background: transparent !important;
   }
 }
 
@@ -4759,4 +4744,411 @@ body.booting,
 body.admin {
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* ─── Topbar mobile: bố cục theo mẫu Home ───
+   ☰ | LOGO 会社名 | 🔔 (chuông) | avatar. Ẩn ô search; hiện brand + chuông.
+   Đặt ở cuối file để thắng các rule mobile trước đó. */
+@media (max-width: 768px) {
+  /* Hiện logo + tên công ty */
+  .admin .topbar .brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: auto !important;
+    padding-left: 8px !important;
+    flex: 0 0 auto !important;
+    overflow: hidden !important;
+  }
+  .admin .topbar .brand .logo-mark {
+    width: 24px !important;
+    height: 24px !important;
+    flex: 0 0 24px !important;
+    border-radius: 0 !important; /* bỏ bo tròn: logo không bị cắt góc */
+    overflow: visible !important;
+  }
+  .admin .topbar .brand .logo-mark > img.icon,
+  .admin .topbar .brand .icon {
+    border-radius: 0 !important;
+    object-fit: contain !important; /* hiện trọn logo, không cắt */
+  }
+  .admin .topbar .brand .logo {
+    display: inline-flex !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+    max-width: 130px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Ẩn ô tìm kiếm trên mobile (mẫu không có search) */
+  .admin .topbar .search {
+    display: none !important;
+  }
+
+  /* Hiện cụm actions nhưng CHỈ nút chuông; ẩn 新規作成 / マニュアル / ? */
+  .admin .topbar-actions {
+    display: inline-flex !important;
+    gap: 0 !important;
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+  }
+  .admin .topbar-actions .icon-btn#btnAdminNew,
+  .admin .topbar-actions .icon-btn#btnAdminManual,
+  .admin .topbar-actions .icon-btn#btnAdminHelp {
+    display: none !important;
+  }
+  .admin .topbar-actions .notify-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 14px 0 6px !important; /* chừa chỗ bên phải cho badge, không đè icon */
+    min-width: 46px !important;
+    height: 40px !important;
+    color: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  /* topbar-inner: brand trái; cụm (chuông + avatar) dính liền nhau, dồn PHẢI.
+     Chỉ .topbar-actions đẩy phải; avatar KHÔNG dùng margin-left:auto nữa để
+     không bị tách ra khiến chuông rơi vào giữa. */
+  .admin .topbar-inner {
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
+  .admin .topbar-inner > .topbar-actions { margin-left: auto !important; }
+  .admin .topbar-inner > .user { margin-left: 0 !important; }
+
+  /* Ẩn các vạch phân cách ::before/::after trên mobile cho gọn */
+  .admin .topbar-inner > .brand::after,
+  .admin .topbar-inner > .topbar-actions::before,
+  .admin .topbar-inner > .user::before {
+    display: none !important;
+  }
+}
+
+/* ─── Panel thông báo (chuông) — thu gọn cho mobile ───
+   Trên desktop panel rộng 360px cố định góc phải; trên mobile cho vừa màn hình:
+   gần full chiều rộng, bo góc, giới hạn chiều cao, canh sát mép phải-trên. */
+@media (max-width: 768px) {
+  .admin .admin-notify-panel,
+  #adminNotifyPanel {
+    position: fixed !important;
+    top: calc(var(--topbar-height, 46px) + 6px) !important;
+    right: 8px !important;
+    left: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 70vh !important;
+    overflow: auto !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 36px rgba(15,23,42,.22) !important;
+    box-sizing: border-box !important;
+  }
+  .admin .admin-notify-panel .admin-notify-head,
+  #adminNotifyPanel .admin-notify-head {
+    font-size: 15px !important;
+    padding: 12px 14px !important;
+  }
+  .admin .admin-notify-panel .admin-notify-row,
+  #adminNotifyPanel .admin-notify-row {
+    padding: 10px 12px !important;
+  }
+  .admin .admin-notify-panel .admin-notify-title,
+  #adminNotifyPanel .admin-notify-title {
+    font-size: 14px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+  .admin .admin-notify-panel .admin-notify-meta,
+  #adminNotifyPanel .admin-notify-meta {
+    font-size: 11px !important;
+  }
+}
+
+/* ─── Badge thông báo nhỏ lại trên mobile ───
+   Desktop giữ 25px; mobile thu về 16px. Không cho badge nhô lên trên (top âm)
+   vì chuông sát mép topbar sẽ bị cắt — đặt badge nằm gọn trong topbar và bảo
+   đảm nút chuông + topbar không cắt phần badge. */
+@media (max-width: 768px) {
+  .admin .topbar,
+  .admin .topbar-inner,
+  .admin .topbar-actions,
+  .admin .topbar .notify-btn {
+    overflow: visible !important;
+  }
+  .admin .topbar .notify-btn {
+    position: relative !important;
+  }
+  /* Icon chuông phải luôn hiện, không bị badge che */
+  .admin .topbar .notify-btn .notify-bell {
+    display: inline-flex !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    position: relative !important;
+    z-index: 1 !important;
+  }
+  /* Badge nằm sát góc trên-PHẢI nút, lệch ra ngoài icon để KHÔNG che chuông. */
+  .admin .topbar .notify-btn .notify-badge,
+  #adminNotifyBadge {
+    width: 15px !important;
+    min-width: 15px !important;
+    height: 15px !important;
+    font-size: 9px !important;
+    top: 3px !important;
+    right: -2px !important;
+    left: auto !important;
+    border-width: 1px !important;
+    z-index: 2 !important;
+  }
+}
+
+/* ═══ CHUẨN HÓA TOPBAR MOBILE — đồng đều kích thước (đặt cuối file, thắng mọi rule) ═══
+   Mục tiêu: ☰ | logo IIZUKA | (dồn phải) 🔔 | avatar — mọi thứ cùng hệ kích thước,
+   căn giữa dọc, khoảng cách đều. */
+@media (max-width: 768px) {
+  .admin .topbar { min-height: 48px !important; }
+  .admin .topbar-inner {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    height: 48px !important;
+  }
+
+  /* Nút ☰ : vùng chạm 40px, icon 20px, có vạch dọc trắng bên phải tách khỏi logo */
+  .admin .mobile-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 48px !important;
+    padding: 0 !important;
+    font-size: 20px !important;
+    border-right: 1px solid rgba(255,255,255,0.28) !important;
+  }
+
+  /* Logo + tên công ty: cao 26px, chữ 15px, căn giữa dọc */
+  .admin .topbar .brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    height: 40px !important;
+    padding: 0 4px !important;
+  }
+  .admin .topbar .brand .logo-mark {
+    width: 26px !important;
+    height: 26px !important;
+    flex: 0 0 26px !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+  .admin .topbar .brand .logo-mark > img.icon,
+  .admin .topbar .brand .icon {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    border-radius: 0 !important;
+  }
+  .admin .topbar .brand .logo {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    color: #fff !important;
+  }
+
+  /* Cụm chuông + avatar dồn phải, cùng cao 40px */
+  .admin .topbar-actions { margin-left: auto !important; height: 40px !important; align-items: center !important; }
+  .admin .topbar .notify-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+  }
+  .admin .topbar .notify-btn .notify-bell {
+    font-size: 24px !important;
+    line-height: 1 !important;
+  }
+  /* Badge nhỏ hơn icon chuông và nhô ra GÓC TRÊN-PHẢI (ra ngoài icon), chỉ đè
+     một góc nhỏ — không che thân chuông. Nút chuông overflow:visible để không cắt.
+     Không dùng transform (đã dùng cho animation pulse); định vị bằng top/right âm. */
+  .admin .topbar .notify-btn { overflow: visible !important; }
+  .admin .topbar .notify-btn .notify-badge,
+  #adminNotifyBadge {
+    width: 14px !important;
+    min-width: 14px !important;
+    height: 14px !important;
+    font-size: 9px !important;
+    top: -2px !important;
+    right: -2px !important;
+    left: auto !important;
+    border: 1.5px solid #0b2c66 !important; /* viền màu topbar cho tách khỏi chuông */
+  }
+
+  /* Avatar: 30px, cùng hàng, căn giữa */
+  .admin .topbar .user {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-left: 0 !important;
+  }
+  .admin .topbar .user .user-btn {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+  }
+  .admin .topbar .user .ud-avatar.sm {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+  }
+}
+
+/* ─── Drawer mobile: chữ TO hơn, ô GỌN lại (đặt cuối file để thắng) ─── */
+@media (max-width: 768px) {
+  /* Mục chính (社員管理, 勤怠管理, ...) — chữ to, dòng thấp gọn */
+  .admin #drawerNavMount .drawer-nav > a,
+  .admin #drawerNavMount .drawer-nav details > summary {
+    min-height: 40px !important;
+    padding: 7px 14px !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    letter-spacing: .01em !important;
+    line-height: 1.2 !important;
+  }
+  /* Icon mục chính */
+  .admin #drawerNavMount .drawer-nav > a svg,
+  .admin #drawerNavMount .drawer-nav details > summary svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  /* Mũi tên xổ / chỉ báo */
+  .admin #drawerNavMount .drawer-nav details > summary .chev::before {
+    font-size: 15px !important;
+  }
+  .admin #drawerNavMount .drawer-nav > a::after {
+    font-size: 18px !important;
+  }
+  /* Submenu (社員一覧, 月次勤怠入力, ...) — chữ to hơn, dòng thấp gọn */
+  .admin #drawerNavMount .drawer-nav details > a {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    padding: 8px 14px 8px 44px !important;
+    color: #1e3a8a !important;
+    line-height: 1.2 !important;
+  }
+}
+
+/* ─── 支店管理 (branches) — bảng → thẻ dọc trên mobile. Desktop giữ bảng. ─── */
+@media (max-width: 768px) {
+  /* Toolbar: tiêu đề + form thêm mới xếp dọc, không bó chữ */
+  .branch-page { padding: 12px !important; max-width: 100% !important; }
+  .branch-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .branch-title { font-size: 18px !important; white-space: nowrap !important; }
+  .branch-new {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .branch-new #branchNewName { flex: 1 1 100% !important; width: auto !important; }
+  .branch-new #branchNewCode { flex: 1 1 auto !important; width: auto !important; }
+  .branch-new #btnCreateBranch { flex: 0 0 auto !important; }
+
+  /* Bảng → thẻ */
+  .branch-table-wrap { border: none !important; border-radius: 0 !important; overflow: visible !important; }
+  .branch-table { display: block !important; width: 100% !important; table-layout: auto !important; }
+  .branch-table colgroup, .branch-table thead { display: none !important; }
+  .branch-table tbody { display: flex !important; flex-direction: column !important; gap: 12px !important; }
+  .branch-table tr.branch-row {
+    display: block !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    padding: 6px 0 !important;
+  }
+  .branch-table tr.branch-row > td {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 8px 14px !important;
+    border: none !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+  .branch-table tr.branch-row > td:last-child { border-bottom: none !important; }
+  .branch-table tr.branch-row > td::before {
+    content: attr(data-label);
+    flex: 0 0 88px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+  }
+  /* Ô nhập / select trong thẻ chiếm phần còn lại, cao hơn cho dễ bấm */
+  .branch-table tr.branch-row > td input,
+  .branch-table tr.branch-row > td select {
+    flex: 1 1 auto !important;
+    height: 36px !important;
+    font-size: 14px !important;
+  }
+  /* Dòng thao tác: 2 nút to, canh phải */
+  .branch-table tr.branch-row > td[data-label="操作"] {
+    justify-content: flex-end !important;
+  }
+  .branch-table tr.branch-row > td[data-label="操作"] button {
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* ─── 休暇 (leave) mobile: thẻ giãn SÁT hai mép + chữ nhãn to hơn ───
+   Dùng body.leave-active (thêm bằng JS) để bỏ padding mọi lớp cha, tương thích
+   rộng (không phụ thuộc :has()). */
+@media (max-width: 768px) {
+  body.leave-active.admin .content,
+  body.leave-active.admin main.content,
+  body.leave-active.admin #adminContent,
+  body.leave-active.admin #adminContent.card,
+  body.leave-active.admin .card {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  body.leave-active .leave-page {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  body.leave-active .leave-page-layout { padding: 0 !important; }
+  /* Thẻ sát hẳn mép: bỏ bo góc + viền trái/phải cho liền mạch */
+  body.leave-active .leave-table tbody tr {
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Chữ nhãn bên trái (社員番号・氏名, 期間, 種類, 状態, 残数, 操作) to hơn */
+  body.leave-active .leave-table tbody td::before {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    min-width: 96px !important;
+  }
+  /* Giá trị bên phải cũng to hơn cho cân */
+  body.leave-active .leave-table tbody td {
+    font-size: 15px !important;
+  }
 }

@@ -430,10 +430,12 @@ function ensureLeaveUiStyles() {
       .leave-table tbody { display: block !important; width: 100% !important; }
       .leave-table tbody tr {
         display: block !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 8px !important;
-        margin-bottom: 12px !important;
-        padding: 12px !important;
+        border: none !important;
+        border-top: 1px solid #e5e7eb !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        border-radius: 0 !important;
+        margin: 0 0 10px 0 !important;
+        padding: 10px 12px !important;
         width: 100% !important;
         box-sizing: border-box !important;
       }
@@ -470,6 +472,11 @@ function ensureLeaveUiStyles() {
         width: 100% !important;
         max-width: 100% !important;
         overflow: visible !important;
+      }
+      /* Bỏ lề ngang hoàn toàn để thẻ giãn SÁT hai mép màn hình */
+      .leave-page {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
       }
       .leave-pager {
         flex-direction: row !important;
@@ -1476,6 +1483,8 @@ export async function mountLeaveUnified({
 }) {
   ensureLeaveUiStyles();
   content.classList.add('leave-page');
+  // Đánh dấu trên body để CSS bỏ padding các lớp cha (tương thích rộng, không cần :has()).
+  try { document.body.classList.add('leave-active'); } catch (e) { /* ignore */ }
 
   // Calculate precise height accounting for both topbar and subbar in admin
   const style = document.createElement('style');

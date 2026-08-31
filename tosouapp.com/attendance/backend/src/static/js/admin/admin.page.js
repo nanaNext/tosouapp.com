@@ -9,6 +9,49 @@ import { createLoader } from './admin-loader.utils.js';
 // Tạo loadModule gắn với import.meta.url của file này để resolve relative paths đúng
 const loadModule = createLoader(import.meta.url);
 
+// Màn Home admin/manager trên MOBILE: chỉ hiển thị slogan có 3 chấm chạy động.
+// Desktop không gọi hàm này (vẫn render danh sách 勤怠記録 như cũ).
+function renderAdminMobileHome(host) {
+  if (!host) return;
+  try {
+    host.innerHTML = `
+      <div class="admin-mobile-home">
+        <p class="admin-mobile-home-text">毎日の勤怠を、もっとシンプルに<span class="admin-mobile-home-dots" aria-hidden="true"></span></p>
+      </div>
+      <style>
+        .admin-mobile-home {
+          display: flex;
+          align-items: flex-start;
+          justify-content: flex-start;
+          padding: 28px 20px;
+          box-sizing: border-box;
+        }
+        .admin-mobile-home-text {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+          color: #0f172a;
+          line-height: 1.7;
+        }
+        .admin-mobile-home-dots::after {
+          content: "";
+          animation: adminMobileHomeDots 1.6s steps(1, end) infinite;
+        }
+        @keyframes adminMobileHomeDots {
+          0%   { content: ""; }
+          25%  { content: "。"; }
+          50%  { content: "。。"; }
+          75%  { content: "。。。"; }
+          100% { content: ""; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .admin-mobile-home-dots::after { content: "。。。"; animation: none; }
+        }
+      </style>
+    `;
+  } catch (e) { /* silently ignored */ }
+}
+
 let lastRenderErr = null;
 let globalErrShown = false;
 try {
@@ -333,6 +376,16 @@ const route = async () => {
     if (p2 === '/admin' || p2 === '/admin/dashboard') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=navy-20260831-monthly-newtab1');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
+      if (seq !== routeSeq) return;
+      // Mobile: Home admin/manager hiển thị màn slogan riêng (ẩn danh sách).
+      // Desktop: giữ nguyên danh sách 勤怠記録 như cũ.
+      const isMobileHome = (() => {
+        try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
+      })();
+      if (isMobileHome) {
+        renderAdminMobileHome(hubContent);
+        return;
+      }
       const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260831-mobiledate1');
       if (seq !== routeSeq) return;
       await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
@@ -459,7 +512,7 @@ const route = async () => {
       if (p2 === '/admin/branches') {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=navy-20260831-monthly-newtab1');
         const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/branches', profile: profile });
-        const mod = await loadModule('./organization/branches.page.js?v=navy-20260707-fix4');
+        const mod = await loadModule('./organization/branches.page.js?v=navy-20260831-cards1');
         if (seq !== routeSeq) return;
         await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
         return;
