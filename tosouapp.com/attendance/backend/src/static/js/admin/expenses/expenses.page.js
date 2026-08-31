@@ -1585,7 +1585,10 @@ const render = async (host) => {
           const route = [item.origin, item.destination].filter(Boolean).join(' → ') || '-';
           
           const deleteIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
-          const deleteBtn = `<button type="button" class="btn" data-action="delete-expense" data-id="${esc(id)}" style="background:transparent;border:none;color:#ef4444;padding:4px;cursor:pointer;" title="削除">${deleteIcon}</button>`;
+          // KHÔNG cho xóa bản ghi đã 支給済み (paid) — dữ liệu tài chính đã chi trả.
+          const deleteBtn = (st === 'paid')
+            ? ''
+            : `<button type="button" class="btn" data-action="delete-expense" data-id="${esc(id)}" style="background:transparent;border:none;color:#ef4444;padding:4px;cursor:pointer;" title="削除">${deleteIcon}</button>`;
           
           const checkbox = (st === 'applied' || st === 'pending' || st === 'approved') ? `<input type="checkbox" class="exp-dash-bulk-cb child-cb-${r.userId}-${r.month}" data-id="${esc(id)}" style="cursor:pointer;" />` : '';
           
@@ -1684,7 +1687,8 @@ const render = async (host) => {
         <button type="button" class="btn" id="expDashBulkDelete" style="display:flex; align-items:center; background:#ef4444; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:4px; font-weight:bold;">${deleteIconBtn}一括削除</button>
       </div>
       `;
-    } else if (state.status === 'approved') {
+    } else if (state.status === 'approved' || state.status === 'paid') {
+      // 支給済み (paid) và 承認済み (approved): không cho xóa hàng loạt (dữ liệu đã xử lý).
       bulkToolbar = '';
     } else if (!isArchived) {
       bulkToolbar = `
