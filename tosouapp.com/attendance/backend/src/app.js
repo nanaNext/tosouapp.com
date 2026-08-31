@@ -298,6 +298,27 @@ app.use('/uploads/payslips', (req, res) => {
 // because it bypasses the payslips block if someone knows the filename.
 // If legacy uploads need to be served, they should be done via authenticated endpoints.
 
+// PDF.js ビューア専用の CSP 上書き（このサブツリー限定で緩和）。
+// PDF.js は Web Worker / WASM を使用するため、worker-src(blob) と wasm-unsafe-eval を許可する。
+// 影響範囲は /static/vendor/pdfjs/ 配下のみで、アプリ全体の CSP は厳格なまま維持する。
+app.use('/static/vendor/pdfjs', (req, res, next) => {
+  const nonce = res.locals.cspNonce || '';
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "img-src 'self' data: blob:",
+    "style-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'wasm-unsafe-eval' 'nonce-${nonce}'`,
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' blob: data:",
+    "object-src 'none'",
+    "frame-ancestors 'self'",
+    "base-uri 'self'"
+  ].join('; '));
+  next();
+});
+
 // Serve other static uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } }));
 app.use('/static', express.static(path.join(__dirname, 'static'), {
