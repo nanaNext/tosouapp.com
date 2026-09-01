@@ -1048,6 +1048,10 @@ async function showEditPtoModal(userId, userName, onSaved) {
     <div class="pto-modal-body">
       <div id="ptoModalLoading" style="text-align:center; padding: 20px; color:#6B7280;">読み込み中...</div>
       <div id="ptoGrantsList" style="display:none;"></div>
+      <div id="ptoUsedSection" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E5E5E5;">
+        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: normal; color: #32363A;">取得済み有給休暇</h4>
+        <div id="ptoUsedList" style="font-size:13px; color:#32363A;">読み込み中...</div>
+      </div>
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E5E5E5;">
         <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: normal; color: #32363A;">手動付与（追加）</h4>
         <div class="pto-grant-row" style="background: #F4F4F4; box-shadow: none;">
@@ -1207,8 +1211,46 @@ async function showEditPtoModal(userId, userName, onSaved) {
       btn.textContent = '追加';
     }
   });
-  
+
+  // 取得済み有給休暇（全日=1.0 / 半休(有給)=0.5）の一覧を表示
+  async function loadUsedDays() {
+    const usedEl = modal.querySelector('#ptoUsedList');
+    if (!usedEl) return;
+    usedEl.innerHTML = '読み込み中...';
+    try {
+      const res = await api.get('/api/leave/used-days?userId=' + userId);
+      const days = Array.isArray(res.days) ? res.days : [];
+      const total = Number(res.total || 0);
+      if (!days.length) {
+        usedEl.innerHTML = '<div style="color:#6B7280;">取得済みの有給休暇はありません。</div>';
+        return;
+      }
+      const rowsHtml = days.map(d => {
+        const isHalf = Number(d.days) === 0.5;
+        const label = isHalf ? '半休（有給）' : '有給休暇';
+        const badgeColor = isHalf ? '#0E7490' : '#107E3E';
+        const badgeBg = isHalf ? '#ECFEFF' : '#F5FAFF';
+        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #F0F0F0;">
+          <span style="font-family:monospace; color:#32363A;">${String(d.date)}</span>
+          <span style="display:inline-flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:${badgeColor}; background:${badgeBg}; padding:2px 8px; border-radius:4px;">${label}</span>
+            <span style="min-width:36px; text-align:right; font-weight:700; color:#32363A;">${Number(d.days).toFixed(1)}日</span>
+          </span>
+        </div>`;
+      }).join('');
+      usedEl.innerHTML = `
+        <div style="border:1px solid #EAECEE; border-radius:6px; overflow:hidden;">
+          ${rowsHtml}
+        </div>
+        <div style="text-align:right; margin-top:8px; font-weight:700; color:#32363A;">合計取得: ${total.toFixed(1)}日</div>
+      `;
+    } catch (err) {
+      usedEl.innerHTML = '<div style="color:#DC2626;">エラー: ' + (err && err.message ? err.message : 'error') + '</div>';
+    }
+  }
+
   await loadGrants();
+  await loadUsedDays();
 }
 
 export async function mountLeaveBalance({

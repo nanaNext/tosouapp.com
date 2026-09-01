@@ -456,6 +456,18 @@ exports.userBalance = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: 取得済み有給休暇（全日=1.0 / 半休(有給)=0.5）の日付一覧（Admin/Manager用）
+exports.usedPaidLeaveDays = async (req, res) => {
+  try {
+    const userId = parseInt(String(req.query.userId || ''), 10);
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    const days = await repo.listPaidLeaveUsedDays(userId, req.tenantId || null);
+    const total = days.reduce((s, d) => s + Number(d.days || 0), 0);
+    return res.status(200).json({ userId, days, total });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 // API: Cấp phát thêm ngày nghỉ phép cho nhân viên (Admin)
 exports.grant = async (req, res) => {
   try {
