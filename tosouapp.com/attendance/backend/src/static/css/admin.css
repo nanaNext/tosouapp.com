@@ -1638,7 +1638,7 @@ body.drawer-open.admin.has-sidebar .content {
     font-weight: 700;
     font-size: 13px;
     padding: 5px 8px;
-    border-bottom: 1px solid #dbe7f6;
+    border: 1px solid #dbe7f6;
   }
 
   .admin .attrec-list-scroll-wrap .attrec-dash-table tbody td {
@@ -1646,7 +1646,7 @@ body.drawer-open.admin.has-sidebar .content {
     color: #0f172a;
     line-height: 1.25;
     padding: 5px 8px;
-    border-bottom: 1px solid #edf2f8;
+    border: 1px solid #e2e8f0;
     white-space: nowrap;
     vertical-align: middle;
   }
