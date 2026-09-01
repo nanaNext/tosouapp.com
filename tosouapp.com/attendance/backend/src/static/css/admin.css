@@ -11,7 +11,7 @@ body.admin { --topbar-height: 52px !important; overflow-x: hidden !important; }
   width: 180px !important;
   z-index: 1000 !important;
   background: var(--admin-sidebar-bg, #ffffff) !important;
-  border-right: none !important;
+  border-right: 1px solid #e2e8f0 !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
@@ -1603,7 +1603,7 @@ body.drawer-open.admin.has-sidebar .content {
 
 .admin .attrec-table {
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: auto;
   max-height: min(62vh, 560px);
 }
@@ -1636,16 +1636,16 @@ body.drawer-open.admin.has-sidebar .content {
     background: #eaf2ff;
     color: #0d2c5b;
     font-weight: 700;
-    font-size: 15px;
-    padding: 8px 10px;
+    font-size: 13px;
+    padding: 5px 8px;
     border-bottom: 1px solid #dbe7f6;
   }
 
   .admin .attrec-list-scroll-wrap .attrec-dash-table tbody td {
-    font-size: 16px;
+    font-size: 13px;
     color: #0f172a;
-    line-height: 1.35;
-    padding: 8px 10px;
+    line-height: 1.25;
+    padding: 5px 8px;
     border-bottom: 1px solid #edf2f8;
     white-space: nowrap;
     vertical-align: middle;
@@ -1710,12 +1710,18 @@ body.drawer-open.admin.has-sidebar .content {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 8px;
-  border-radius: 0;
-  font-weight: 900;
-  font-size: 12px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
   border: 1px solid transparent;
   white-space: nowrap;
+}
+
+/* 勤怠記録: 個人タイムシート出力フォーム（Excel/CSV/社員選択/年/From/To/表示）を非表示。
+   一覧は全件表示・日付切替のみとする。 */
+#topRightFormContainer {
+  display: none !important;
 }
 
 .admin .attrec-pill.ok {
