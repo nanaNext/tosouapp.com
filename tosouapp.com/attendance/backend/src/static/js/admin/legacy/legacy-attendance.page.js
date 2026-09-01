@@ -493,8 +493,8 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
             .beautiful-table .attrec-pill.warn { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
             .beautiful-table .attrec-pill.danger { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; }
             
-            /* Mobile Optimization (Card Layout) */
-            @media (max-width: 768px) {
+            /* Mobile Optimization (Card Layout) - chỉ áp dụng cho điện thoại thật (<=576px) */
+            @media (max-width: 576px) {
               .beautiful-table {
                 border: none !important;
                 box-shadow: none !important;
@@ -588,9 +588,9 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
                 width: 100%;
               }
             }
-            /* Desktop: tuyệt đối không dùng layout thẻ (card) của mobile.
+            /* Từ tablet trở lên (>=577px): tuyệt đối không dùng layout thẻ (card) của mobile.
                Tắt nhãn ::before và flex để ô không bị "chia đôi" bởi dải nhãn 70px. */
-            @media (min-width: 769px) {
+            @media (min-width: 577px) {
               .beautiful-table td::before,
               .beautiful-table td:not(:nth-child(1))::before {
                 content: none !important;
@@ -599,6 +599,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
               .beautiful-table td,
               .beautiful-table td:not(:nth-child(1)) {
                 display: table-cell !important;
+                border: 1px solid #e2e8f0 !important;
               }
             }
             .pagination-btn {
