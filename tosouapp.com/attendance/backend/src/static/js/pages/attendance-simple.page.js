@@ -693,7 +693,7 @@ const renderStampButtons = ({ date, inHm = '', outHm = '', hasOpen = false } = {
 
     // Kiểm tra trạng thái ngày nghỉ
     const kubun = String($('#kubun')?.value || '').trim();
-    const isNonWorking = !!st.restHoliday || ['欠勤', '有給休暇', '半休', '無給休暇'].includes(kubun);
+    const isNonWorking = !!st.restHoliday || ['欠勤', '有給休暇', '無給休暇'].includes(kubun);
 
     if (btnIn) {
       if (isNonWorking) {
@@ -746,7 +746,7 @@ const syncWorkTypeButtons = () => {
 const ensureDefaultWorkTypeForToday = (date) => {
   try {
     const kubun = String($('#kubun')?.value || '').trim();
-    const nonWorking = ['欠勤', '有給休暇', '半休', '無給休暇', '休日'].includes(kubun);
+    const nonWorking = ['欠勤', '有給休暇', '無給休暇', '休日'].includes(kubun);
     if (nonWorking) return;
     const el = $('#workType');
     if (!el) return;
@@ -763,7 +763,7 @@ const applyWorkTypeGate = () => {
   const st = window.state || {};
   const kubun = String($('#kubun')?.value || '').trim();
   const workType = String($('#workType')?.value || '').trim();
-  const nonWorking = !!st.restHoliday || ['欠勤', '有給休暇', '半休', '無給休暇'].includes(kubun);
+  const nonWorking = !!st.restHoliday || ['欠勤', '有給休暇', '無給休暇'].includes(kubun);
   const locked = !nonWorking && !workType;
   const setDisabled = (selector, disabled) => {
     const el = $(selector);
@@ -800,12 +800,17 @@ const applyHolidayRestMode = () => {
     el.style.display = hidden ? 'none' : '';
   };
 
-  const nonWorking = restHoliday || ['欠勤', '有給休暇', '半休', '無給休暇', '代替休日'].includes(kubun);
+  // 半休/半休(有給): 半日は勤務があるため時間入力を表示（午前 08:00〜12:00 を初期提案）。
+  const isHankyu = ['半休', '半休(有給)'].includes(kubun);
+  // 終日休み系（時間・打刻を隠す対象）。半休は含めない。
+  const nonWorking = restHoliday || ['欠勤', '有給休暇', '無給休暇', '代替休日'].includes(kubun);
+  // 終日休み系（現場・作業内容を隠す対象）。半休/半休(有給) は半日勤務があるため作業報告は表示する。
+  const fullLeave = restHoliday || ['欠勤', '有給休暇', '無給休暇', '代替休日'].includes(kubun);
   toggle(document.querySelector('.simple-stamp-stack'), nonWorking);
   toggle(document.querySelector('.simple-grid2'), nonWorking);
   toggle($('#workMinutes')?.closest('.simple-row'), nonWorking);
   toggle(document.querySelector('.simple-worktype-buttons'), nonWorking);
-  toggle(document.querySelector('.simple-work-report'), restHoliday);
+  toggle(document.querySelector('.simple-work-report'), fullLeave);
 
   if (nonWorking) {
     const st = $('#startTime');
@@ -829,29 +834,52 @@ const applyHolidayRestMode = () => {
     if (btnOut) btnOut.disabled = true;
     const siteEl = $('#workSite');
     const workEl = $('#workContent');
-    // Không tự động xóa site/work nếu đã có dữ liệu (để user có thể lưu báo cáo ngày nghỉ nếu muốn)
-    // if (siteEl) siteEl.value = '';
-    // if (workEl) workEl.value = '';
+    // 終日休み系（有給/欠勤/無給/代替休日/休日）は現場・作業内容を保存対象外にするため値をクリア。
+    // 半休/半休(有給) は半日勤務があるため入力値を保持する。
+    if (fullLeave) {
+      if (siteEl) siteEl.value = '';
+      if (workEl) workEl.value = '';
+    }
     syncWorkTypeButtons();
     renderWorkMinutes();
   } else {
     const st = $('#startTime');
     const et = $('#endTime');
+    const stateSt = String((window.state || {}).shiftStart || '');
+    // 半休の初期提案終了時間 = 開始 + 4時間（午前休の想定）。ユーザーは自由に修正可能。
+    const halfDayEnd = (() => {
+      const p = parseHm(stateSt);
+      if (!p) return '';
+      const total = p.total + 4 * 60;
+      const hh = Math.floor((total % (24 * 60)) / 60);
+      const mm = total % 60;
+      return `${pad2(hh)}:${pad2(mm)}`;
+    })();
     if (st && !String(st.value || '').trim()) {
       if (st.dataset.actual) {
         st.value = st.dataset.actual;
         clearAutoTime(st);
-      } else if (/^\d{2}:\d{2}$/.test(String((window.state || {}).shiftStart || ''))) {
-        applyAutoTime(st, (window.state || {}).shiftStart);
+      } else if (/^\d{2}:\d{2}$/.test(stateSt)) {
+        applyAutoTime(st, stateSt);
       }
     }
     if (et && !String(et.value || '').trim()) {
       if (et.dataset.actual) {
         et.value = et.dataset.actual;
         clearAutoTime(et);
+      } else if (isHankyu && /^\d{2}:\d{2}$/.test(halfDayEnd)) {
+        // 半休: 終了時間を「開始+4時間」で初期提案
+        applyAutoTime(et, halfDayEnd);
       } else if (/^\d{2}:\d{2}$/.test(String((window.state || {}).shiftEnd || ''))) {
         applyAutoTime(et, (window.state || {}).shiftEnd);
       }
+    }
+    // 半休: 半日勤務のため休憩は0分（実働＝半日分をそのまま計上）
+    if (isHankyu) {
+      const brEl = $('#breakMin');
+      const nbEl = $('#nightBreakMin');
+      if (brEl && !brEl.dataset.touched) brEl.value = '0';
+      if (nbEl && !nbEl.dataset.touched) nbEl.value = '0';
     }
     // Also call renderStampButtons to ensure the text matches the state
     try {
@@ -1169,7 +1197,7 @@ const load = async (date, opts = {}) => {
         selK.innerHTML = `<option value="" disabled>${kubunGroupLabel}</option>${kubunOptions.map(k => {
           let disabledOpt = '';
           if (!isAdminView && isFuture) {
-            if (['出勤', '休日出勤', '代替出勤', '半休'].includes(k)) {
+            if (['出勤', '休日出勤', '代替出勤', '半休', '半休(有給)'].includes(k)) {
               disabledOpt = 'disabled';
             }
           }

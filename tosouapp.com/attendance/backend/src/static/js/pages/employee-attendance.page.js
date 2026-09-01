@@ -1134,9 +1134,9 @@ async function mountAttendanceImpl({
           const st = it.status || '';
           const kubunRaw = String(it.dailyKubun || '').trim();
           const kubun = kubunRaw || ((selectedDateIsOff && (st === 'leave' || st === 'off')) ? '休日' : '');
-          const leaveSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇']);
+          const leaveSet = new Set(['欠勤', '有給休暇', '半休', '半休(有給)', '無給休暇']);
           const holidaySet = new Set(['休日', '代替休日']);
-          const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
+          const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '半休(有給)', '無給休暇', '休日', '代替休日']);
           const isHolidayKubun = holidaySet.has(kubun);
           // Hàm trạng thái
           // chức năng dùng để hiển thị trạng thái của nhân viên
