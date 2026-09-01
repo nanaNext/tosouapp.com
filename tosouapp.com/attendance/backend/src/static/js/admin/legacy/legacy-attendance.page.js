@@ -449,7 +449,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
             <div style="font-size:28px;">\u{1F5C2}\uFE0F</div>
             <div>\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>
           </div>
-        `;return}let e=1;const a=window.innerWidth<=768,l=a?15:10,c=()=>{if(!t)return;t.innerHTML="";const f=document.createElement("table");f.id="attrecList",f.className="beautiful-table",f.style.tableLayout="auto",f.style.width="100%",f.style.minWidth="1200px",f.style.borderCollapse="collapse",f.style.border="none",f.style.borderRadius="0",f.style.overflow="visible",f.innerHTML=`
+        `;return}let e=1;const a=window.innerWidth<=768,l=999999,c=()=>{if(!t)return;t.innerHTML="";const f=document.createElement("table");f.id="attrecList",f.className="beautiful-table",f.style.tableLayout="auto",f.style.width="100%",f.style.minWidth="1200px",f.style.borderCollapse="collapse",f.style.border="none",f.style.borderRadius="0",f.style.overflow="visible",f.innerHTML=`
           <style>
             .beautiful-table {
               box-shadow: none;

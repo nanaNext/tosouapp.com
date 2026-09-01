@@ -1203,14 +1203,18 @@
       renderSummary(ctx.summaryHost, state.currentMonthDetail, state.currentMonthTimesheet);
       
       // Sync salary in background so Save returns immediately.
+      // 給与同期は管理者・マネージャーのみ許可（従業員が呼ぶと 403 になるためスキップ）。
       try {
-        const [y, m] = ym.split('-');
-        fetchJSONAuth('/api/attendance/month/sync-salary', {
-          method: 'POST',
-          body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId || null })
-        }).catch((e) => {
-          try { console.error('Salary sync failed:', e); } catch (e) { /* silently ignored */ }
-        });
+        const role = String(ctx.profile?.role || ctx.role || '').toLowerCase();
+        if (role === 'admin' || role === 'manager') {
+          const [y, m] = ym.split('-');
+          fetchJSONAuth('/api/attendance/month/sync-salary', {
+            method: 'POST',
+            body: JSON.stringify({ year: y, month: m, userId: ctx.actingUserId || null })
+          }).catch((e) => {
+            try { console.error('Salary sync failed:', e); } catch (e) { /* silently ignored */ }
+          });
+        }
       } catch (e) { /* silently ignored */ }
     } catch (e) {
       const msg = String(e?.message || '');
