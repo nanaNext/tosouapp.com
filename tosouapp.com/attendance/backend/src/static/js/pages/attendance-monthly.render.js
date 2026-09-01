@@ -498,6 +498,8 @@
       <td data-field="excess" class="${otAutoCls}" style="text-align:center;color:#0f172a;font-weight:900; font-size:12px; letter-spacing:-0.5px;">${esc(otHm)}</td>
       <td data-field="lateEarly" style="text-align:center;color:#64748b;">${(() => {
         if (!isWorkDay) return '—';
+        // 半休/半休(有給) は半日休みが正規のため遅刻・早退を計上しない
+        if (isHankyuu) return '—';
         // Không tính đi muộn / về sớm cho các ca làm thêm (dòng phụ)
         if (!primary) return '—';
         
@@ -1115,7 +1117,8 @@
       if (lateEarly) {
         let text = '—';
         // Chỉ tính toán đi muộn/về sớm cho dòng chính (primary row)
-        if (isPrimaryRow) {
+        // 半休/半休(有給) は半日休みが正規のため遅刻・早退を計上しない
+        if (isPrimaryRow && !isHankyuu) {
           const a = parseHm(inVal);
           const b2 = parseHm(outVal);
           if (isWorkDay && a != null && b2 != null) {

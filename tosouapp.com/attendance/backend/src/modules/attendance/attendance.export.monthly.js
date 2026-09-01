@@ -388,6 +388,8 @@ exports.exportMonthXlsx = async (req, res) => {
       }
       const lateEarly = (() => {
         if (holidayLock) return '';
+        // 半休/半休(有給) は半日休みが正規のため遅刻・早退を計上しない
+        if (kubunInfo.effective === '半休' || kubunInfo.effective === '半休(有給)') return '';
         if (!exportInHm && !exportOutHm) return '';
         const parse = (t) => {
           const s = String(t || '');
