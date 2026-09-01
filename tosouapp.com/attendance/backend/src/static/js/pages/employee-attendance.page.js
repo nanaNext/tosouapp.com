@@ -228,6 +228,12 @@ async function mountAttendanceImpl({
         color: #475569 !important;
         border: none !important;
       }
+      .attrec-pill.halfpaid {
+        background: #0d9488 !important;
+        color: #ffffff !important;
+        border: none !important;
+        font-weight: 700 !important;
+      }
       .attrec-fiori-override .attrec-summary {
         gap: 6px !important;
       }
@@ -809,6 +815,7 @@ async function mountAttendanceImpl({
             .attrec-pill.danger { color: #bb0000; background: transparent; }
             .attrec-pill.warn { color: #e9730c; background: transparent; }
             .attrec-pill.neutral { color: #5e696e; background: transparent; }
+            .attrec-pill.halfpaid { color: #0d9488; background: transparent; font-weight: bold; }
 
             /* Add Fiori-like icons to status */
             .attrec-pill.ok::before { content: "✓"; margin-right: 4px; font-weight: normal; }
@@ -1165,7 +1172,7 @@ async function mountAttendanceImpl({
             stClass = 'attrec-pill warn';
           } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
             stLabel = kubun || '休日';
-            stClass = 'attrec-pill neutral';
+            stClass = kubun === '半休(有給)' ? 'attrec-pill halfpaid' : 'attrec-pill neutral';
           } else if (st === 'off') {
             stLabel = kubun || '休日';
             stClass = 'attrec-pill neutral';
