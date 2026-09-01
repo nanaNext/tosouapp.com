@@ -493,114 +493,27 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
             .beautiful-table .attrec-pill.warn { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
             .beautiful-table .attrec-pill.danger { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; }
             
-            /* Mobile Optimization (Card Layout) - chỉ áp dụng cho điện thoại thật (<=576px) */
-            @media (max-width: 576px) {
-              .beautiful-table {
-                border: none !important;
-                box-shadow: none !important;
-                background: transparent !important;
-                min-width: 0 !important;
-                display: block;
-              }
-              .beautiful-table thead {
-                display: none;
-              }
-              .beautiful-table tbody {
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-              }
-              .beautiful-table tr {
-                display: grid;
-                grid-template-columns: 90px 1fr;
-                grid-auto-rows: auto;
-                background: #fff;
-                border: 1px solid #e2e8f0;
-                border-radius: 0;
-                padding: 0;
-                box-shadow: none;
-                position: relative;
-              }
-              
-              /* Code (Left Column) */
-              .beautiful-table td:nth-child(1) {
-                grid-column: 1 / 2;
-                grid-row: 1 / 10; /* Span across all rows */
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                justify-content: flex-start;
-                padding: 16px 12px;
-                border: none;
-                border-right: 1px solid #e2e8f0;
-                background: #f8fafc;
-                border-radius: 0;
-                text-align: left !important;
-              }
-              .beautiful-table td:nth-child(1)::before {
-                content: "\u793E\u54E1\u756A\u53F7";
-                font-size: 11px;
-                font-weight: 400;
-                color: #64748b;
-                margin-bottom: 4px;
-                margin-right: 0;
-              }
-              .beautiful-table td:nth-child(1) span,
-              .beautiful-table td:nth-child(1) {
-                font-size: 14px;
-                font-weight: 700;
-                color: #0f172a;
-              }
-
-              /* Other cells (Right Column) */
-              .beautiful-table td:not(:nth-child(1)) {
-                grid-column: 2 / 3;
-                display: flex;
-                align-items: center;
-                justify-content: flex-start;
-                padding: 8px 16px;
-                border: none;
-                border-bottom: 1px dashed #f1f5f9;
-                text-align: left !important;
-              }
-              .beautiful-table td:last-child {
-                border-bottom: none;
-              }
-              
-              /* Label positioning */
-              .beautiful-table td:not(:nth-child(1))::before {
-                content: attr(data-label);
-                width: 70px;
-                font-size: 13px;
-                font-weight: 600;
-                color: #64748b;
-                margin-right: 8px;
-                text-align: left;
-                flex-shrink: 0;
-              }
-              
-              /* Content styling */
-              .beautiful-table td:not(:nth-child(1)) > div,
-              .beautiful-table td:not(:nth-child(1)) > span {
-                text-align: left !important;
-                font-size: 14px;
-                color: #1e293b;
-                width: 100%;
-              }
+            /* Bảng luôn hiển thị dạng bảng bình thường ở MỌI kích thước màn hình.
+               Không dùng layout thẻ (card) mobile nữa: không chèn nhãn ::before,
+               không flex, để ô không bị "chẻ đôi" bởi dải nhãn. Màn hình nhỏ thì cuộn ngang. */
+            .beautiful-table td::before,
+            .beautiful-table th::before {
+              content: none !important;
+              display: none !important;
             }
-            /* Từ tablet trở lên (>=577px): tuyệt đối không dùng layout thẻ (card) của mobile.
-               Tắt nhãn ::before và flex để ô không bị "chia đôi" bởi dải nhãn 70px. */
-            @media (min-width: 577px) {
-              .beautiful-table td::before,
-              .beautiful-table td:not(:nth-child(1))::before {
-                content: none !important;
-                display: none !important;
-              }
-              .beautiful-table td,
-              .beautiful-table td:not(:nth-child(1)) {
-                display: table-cell !important;
-                border: 1px solid #e2e8f0 !important;
-              }
+            .beautiful-table thead {
+              display: table-header-group !important;
+            }
+            .beautiful-table tbody {
+              display: table-row-group !important;
+            }
+            .beautiful-table tr {
+              display: table-row !important;
+            }
+            .beautiful-table td,
+            .beautiful-table th {
+              display: table-cell !important;
+              border: 1px solid #e2e8f0 !important;
             }
             .pagination-btn {
               padding: 6px 12px;
