@@ -623,6 +623,33 @@ module.exports = {
       return rows;
     }
   },
+  // 有給休暇（全日=1.0）と半休(有給)（半日=0.5）の取得済み日を勤怠実績(attendance_daily)から取得。
+  // 半休(有給) は leave_requests に半日情報が無いため、kubun を正とする。
+  async listPaidLeaveUsedDays(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [userId];
+    let tenantFilter = '';
+    if (tid != null) {
+      const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`, [userId, tid]);
+      if (!check || !check.length) return [];
+      tenantFilter = 'AND ad.tenant_id = ?';
+      params.push(tid);
+    }
+    const [rows] = await db.query(`
+      SELECT ad.date AS date,
+             REPLACE(TRIM(COALESCE(ad.kubun, '')), '　', '') AS kubun
+      FROM attendance_daily ad
+      WHERE ad.userId = ?
+        AND REPLACE(TRIM(COALESCE(ad.kubun, '')), '　', '') IN ('有給休暇', '半休(有給)')
+        ${tenantFilter}
+      ORDER BY ad.date ASC
+    `, params);
+    return (rows || []).map(r => {
+      const kubun = String(r.kubun || '');
+      const days = kubun === '半休(有給)' ? 0.5 : 1.0;
+      return { date: String(r.date).slice(0, 10), kubun, days };
+    });
+  },
   async getAttendanceStats(userId, fromDate, toDate, tenantId = null) {
     const tid = _tid(tenantId);
     if (tid != null) {
