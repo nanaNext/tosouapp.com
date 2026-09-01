@@ -167,6 +167,29 @@ function allocateUsage(grants, requests) {
   return out;
 }
 
+// 半休(有給)=0.5 / 有給休暇=1.0 を考慮し、取得日(attendance_daily由来)を付与枠へ按分する。
+// usedDays: [{ date: 'YYYY-MM-DD', days: 0.5|1.0 }]
+function allocateUsageByDays(grants, usedDays) {
+  const out = grants.map(g => ({ ...g, daysRemaining: g.daysGranted, daysUsedAlloc: 0 }));
+  const sorted = [...(usedDays || [])].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  for (const u of sorted) {
+    let need = Number(u.days || 0);
+    const d = String(u.date || '').slice(0, 10);
+    for (const g of out) {
+      if (need <= 0) break;
+      // その日が付与枠の有効期間内か
+      if (d < String(g.grantDate).slice(0, 10) || d > String(g.expiryDate).slice(0, 10)) continue;
+      const take = Math.min(need, g.daysRemaining);
+      if (take > 0) {
+        g.daysRemaining -= take;
+        g.daysUsedAlloc += take;
+        need -= take;
+      }
+    }
+  }
+  return out;
+}
+
 // API: Nhân viên tạo yêu cầu nghỉ phép (có lương/không lương)
 exports.create = async (req, res) => {
   try {
@@ -404,18 +427,22 @@ async function computeUserBalance(userId, tenantId = null) {
   if (!grants.length) {
     return { totalAvailable: 0, usedDays: 0, grants: [], upcomingGrantDate: null, obligation: { required: 0, taken: 0, remaining: 0 } };
   }
-  const minDate = grants[0].grantDate;
-  const maxExpiry = grants[grants.length - 1].expiryDate;
-  const reqs = await repo.listApprovedPaidLeaves(userId, minDate, maxExpiry, tenantId);
-  const alloc = allocateUsage(grants, reqs);
+  // 取得日は勤怠実績(attendance_daily)を正とする。半休(有給)=0.5 / 有給休暇=1.0。
+  // これにより「取得済み一覧」ポップアップと残数カードの数値が常に一致する。
+  const usedDayList = await repo.listPaidLeaveUsedDays(userId, tenantId);
+  const alloc = allocateUsageByDays(grants, usedDayList);
   const totalAvailable = alloc.reduce((s, g) => s + Math.max(0, (new Date(g.expiryDate) >= new Date() ? g.daysRemaining : 0)), 0);
-  const usedDays = reqs.reduce((s, r) => s + daysBetweenInclusive(r.startDate, r.endDate), 0);
+  const usedDays = usedDayList.reduce((s, u) => s + Number(u.days || 0), 0);
   const today = fmt(new Date());
   const latest = alloc[alloc.length - 1];
   let required = latest.daysGranted >= 10 ? 5 : 0;
-  let taken = 0;
+  // 義務取得日数(5日)の判定期間: 最新付与日〜1年後。半休は0.5換算。
   const oneYearEnd = fmt(addYears(new Date(latest.grantDate + 'T00:00:00Z'), 1));
-  for (const r of reqs) taken += overlapDays(r.startDate, r.endDate, latest.grantDate, oneYearEnd);
+  let taken = 0;
+  for (const u of usedDayList) {
+    const d = String(u.date || '').slice(0, 10);
+    if (d >= String(latest.grantDate).slice(0, 10) && d < oneYearEnd) taken += Number(u.days || 0);
+  }
   const upcomingGrantDate = (() => {
     const lastGrant = alloc[alloc.length - 1];
     const next = fmt(addYears(new Date(lastGrant.grantDate + 'T00:00:00Z'), 1));
