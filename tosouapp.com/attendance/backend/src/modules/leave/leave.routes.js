@@ -11,6 +11,7 @@ router.use(authenticate, resolveTenant);
 router.post('/', authenticate, authorize('employee','manager','admin'), controller.create);
 router.post('/paid', authenticate, authorize('employee','manager','admin'), controller.createPaid);
 router.post('/my/cancel-paid', authenticate, authorize('employee','manager','admin'), controller.cancelMyPaid);
+router.post('/notify-kubun', authenticate, authorize('employee','manager','admin'), controller.notifyLeaveKubun);
 router.post('/reconcile-attendance', authenticate, permit('leaveAdmin','full'), controller.reconcileAttendance);
 router.post('/grant', authenticate, permit('leaveAdmin','full'), controller.grant);
 router.get('/eligible-list', authenticate, permit('leaveAdmin','view'), controller.eligibleList);
