@@ -435,11 +435,12 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
         <div class="attrec-control hidden-on-mobile" style="display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100%; padding: 0 !important; gap: 12px; background: transparent !important; border: none !important; overflow: visible !important;">
           <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
             <input id="rosterDate" class="attrec-input" type="date" value="${b(T)}" style="width: 140px; border: 1px solid #cbd5e1; height: 34px; box-sizing: border-box; border-radius: 0;" />
+            <button type="button" id="rosterShowBtn" style="height:34px; padding:0 16px; background:#1d4ed8; color:#fff; border:1px solid #1d4ed8; border-radius:0; font-size:13px; font-weight:700; cursor:pointer;">表示</button>
             <div id="rosterSummaryInline" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"></div>
           </div>
           <div id="topRightFormContainer" style="display: flex; align-items: center; gap: 8px;"></div>
         </div>
-  `,I=y.querySelector(".attrec-controls");I&&(I.innerHTML=kt),window.addEventListener("resize",()=>{const o=window.innerWidth<=768;I&&(I.style.display=o?"none":"block")}),I&&(I.style.display=window.innerWidth<=768?"none":"block");const at=o=>{},lt=async o=>{const t=y.querySelector("#rosterTable");t&&(t.innerHTML=`
+  `,I=y.querySelector(".attrec-controls");I&&(I.innerHTML=kt),window.addEventListener("resize",()=>{const o=window.innerWidth<=768;I&&(I.style.display=o?"none":"block")}),I&&(I.style.display=window.innerWidth<=768?"none":"block");const rosterShowBtn=y.querySelector("#rosterShowBtn");rosterShowBtn&&rosterShowBtn.addEventListener("click",()=>{const rd=y.querySelector("#rosterDate");lt((rd&&rd.value)||T)});const at=o=>{},lt=async o=>{const t=y.querySelector("#rosterTable");t&&(t.innerHTML=`
         <div class="empty-state">
           <div style="font-size:28px;">\u23F3</div>
           <div>\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>
