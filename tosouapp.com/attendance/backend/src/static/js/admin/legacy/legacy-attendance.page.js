@@ -463,14 +463,14 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
               color: #1e293b;
               font-size: 13px;
               text-align: center;
-              border: 1px solid #d1d5db;
-              border-bottom: 2px solid #cbd5e1;
+              border: 1px solid #eef2f6;
+              border-bottom: 1px solid #e2e8f0;
             }
             .beautiful-table td {
               padding: 4px 8px;
               font-size: 13px;
               color: #334155;
-              border: 1px solid #d1d5db;
+              border: 1px solid #eef2f6;
               vertical-align: middle;
             }
             .beautiful-table tbody tr:hover {

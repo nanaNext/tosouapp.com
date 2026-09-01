@@ -1638,7 +1638,7 @@ body.drawer-open.admin.has-sidebar .content {
     font-weight: 700;
     font-size: 13px;
     padding: 5px 8px;
-    border: 1px solid #dbe7f6;
+    border: 1px solid #eef2f6;
   }
 
   .admin .attrec-list-scroll-wrap .attrec-dash-table tbody td {
@@ -1646,7 +1646,7 @@ body.drawer-open.admin.has-sidebar .content {
     color: #0f172a;
     line-height: 1.25;
     padding: 5px 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #eef2f6;
     white-space: nowrap;
     vertical-align: middle;
   }
@@ -1658,12 +1658,12 @@ body.drawer-open.admin.has-sidebar .content {
 
 .admin .attrec-dash-table {
   border-collapse: collapse;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #eef2f6;
 }
 
 .admin .attrec-dash-table th,
 .admin .attrec-dash-table td {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #eef2f6;
 }
 
 /* 勤怠記録: 表全体を四角く（角丸を完全に除去） */
