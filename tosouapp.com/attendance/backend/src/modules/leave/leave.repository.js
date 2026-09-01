@@ -423,12 +423,13 @@ module.exports = {
   async updateStatus(id, status, tenantId = null) {
     if (tenantId != null && Number.isFinite(Number(tenantId))) {
       const tid = parseInt(String(tenantId), 10);
+      // 注意: JOIN を含む UPDATE では LIMIT を使用できない（MySQL: Incorrect usage of UPDATE and LIMIT）。
+      // WHERE lr.id = ? が主キー条件で1行に限定されるため LIMIT は不要。
       const sql = `
         UPDATE leave_requests lr
         INNER JOIN users u ON u.id = lr.userId
         SET lr.status = ?
         WHERE lr.id = ? AND u.tenant_id = ?
-        LIMIT 1
       `;
       await db.query(sql, [status, id, tid]);
       return;
