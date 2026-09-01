@@ -386,7 +386,7 @@ const route = async () => {
         renderAdminMobileHome(hubContent);
         return;
       }
-      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260901-attrec-thinborder1');
+      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260901-attrec-goout1');
       if (seq !== routeSeq) return;
       await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
       return;
@@ -458,7 +458,7 @@ const route = async () => {
     if (p2 === '/admin/attendance' || p2.startsWith('/admin/attendance/')) {
       const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=navy-20260831-monthly-newtab1');
       const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });
-      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260901-attrec-thinborder1');
+      const mod = await loadModule('./legacy/legacy-attendance.page.js?v=navy-20260901-attrec-goout1');
       if (seq !== routeSeq) return;
       await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
       return;
