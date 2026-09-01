@@ -1618,6 +1618,14 @@ body.drawer-open.admin.has-sidebar .content {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Khi wrapper nằm trong #rosterTable (đã tự cuộn), không cho nó cuộn nữa
+   để tránh xuất hiện thanh cuộn kép (2 ngang + 2 dọc). Chỉ #rosterTable cuộn. */
+.admin #rosterTable .attrec-list-scroll-wrap {
+  max-width: none !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+}
+
 @media (max-width: 768px) {
   .admin .attrec-list-scroll-wrap {
     max-width: calc(100vw - 20px) !important;
