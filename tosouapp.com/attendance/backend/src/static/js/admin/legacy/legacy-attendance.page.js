@@ -455,22 +455,23 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
               box-shadow: none;
             }
             .beautiful-table thead {
-              background-color: #e6f0fa;
+              background-color: #f8fafc;
             }
             .beautiful-table th {
-              padding: 6px 8px;
-              font-weight: 700;
-              color: #1e293b;
-              font-size: 13px;
+              padding: 6px 12px;
+              font-weight: 600;
+              color: #475569;
+              font-size: 12px;
               text-align: center;
-              border: 1px solid #eef2f6;
-              border-bottom: 1px solid #e2e8f0;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
             }
             .beautiful-table td {
-              padding: 4px 8px;
+              padding: 6px 12px;
               font-size: 13px;
               color: #334155;
-              border: 1px solid #eef2f6;
+              border: 1px solid #e2e8f0;
+              border-bottom: 1px solid #f1f5f9;
               vertical-align: middle;
             }
             .beautiful-table tbody tr:hover {

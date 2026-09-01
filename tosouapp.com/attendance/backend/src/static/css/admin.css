@@ -1633,12 +1633,12 @@ body.drawer-open.admin.has-sidebar .content {
     position: sticky;
     top: 0;
     z-index: 3;
-    background: #eaf2ff;
-    color: #0d2c5b;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 5px 8px;
-    border: 1px solid #eef2f6;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
   }
 
   .admin .attrec-list-scroll-wrap .attrec-dash-table tbody td {
