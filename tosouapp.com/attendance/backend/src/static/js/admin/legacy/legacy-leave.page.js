@@ -783,13 +783,14 @@ export async function mountLeaveAdmin({ content }) {
   const tbody = document.createElement('tbody');
 
   for (const r of data) {
+    const fmtD = (n) => { const v = Math.round(Number(n || 0) * 10) / 10; return Number.isInteger(v) ? String(v) : v.toFixed(1); };
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${r.userId} ${r.name || ''}</td>
       <td>${r.departmentId == null ? '' : r.departmentId}</td>
-      <td>${r.totalGranted}</td>
-      <td>${r.usedDays}</td>
-      <td>${r.remainingDays}</td>`;
+      <td>${fmtD(r.totalGranted)}</td>
+      <td>${fmtD(r.usedDays)}</td>
+      <td>${fmtD(r.remainingDays)}</td>`;
     tbody.appendChild(tr);
   }
 
@@ -1349,9 +1350,11 @@ export async function mountLeaveBalance({
         card.style.background = '#FFFBEB';
       }
       
-      const totalG = Number(r.totalGranted || 0);
-      const usedD = Number(r.usedDays || 0);
-      const remainD = Number(r.remainingDays || 0);
+      // 半休(有給)は0.5日換算のため小数を許容。表示は不要な .0 を省く（例: 13.5 / 14）。
+      const fmtDays = (n) => { const v = Math.round(Number(n || 0) * 10) / 10; return Number.isInteger(v) ? String(v) : v.toFixed(1); };
+      const totalG = fmtDays(r.totalGranted || 0);
+      const usedD = fmtDays(r.usedDays || 0);
+      const remainD = fmtDays(r.remainingDays || 0);
       
       // Progress bar calculations
       const pTotal = totalG > 0 ? totalG : 1;
