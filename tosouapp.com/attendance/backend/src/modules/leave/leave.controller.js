@@ -222,6 +222,47 @@ exports.createPaid = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: 任意の休暇区分（欠勤・半休(有給)・無給休暇 など）の申請を管理者へ通知する（通知のみ・有給残数には影響しない）。
+// 有給休暇は createPaid 側でリクエスト作成＋通知を行うため、この API では通知のみを扱う。
+const LEAVE_KUBUN_LABELS = {
+  '有給休暇': '有給休暇',
+  '半休(有給)': '半休（有給）',
+  '半休（有給）': '半休（有給）',
+  '半休': '半休',
+  '欠勤': '欠勤',
+  '無給休暇': '無給休暇',
+  '代替休日': '代替休日'
+};
+exports.notifyLeaveKubun = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const date = String(req.body?.date || '').slice(0, 10);
+    const kubunRaw = String(req.body?.kubun || '').trim();
+    if (!userId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !kubunRaw) {
+      return res.status(400).json({ message: 'Missing userId/date/kubun' });
+    }
+    // 休暇系の区分のみ通知対象（出勤系は対象外）
+    const label = LEAVE_KUBUN_LABELS[kubunRaw];
+    if (!label) {
+      return res.status(200).json({ ok: true, skipped: true });
+    }
+    try {
+      const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
+      await noticesRepo.createAdminNotification({
+        kind: 'leave_request',
+        title: '休暇申請',
+        message: `${userName} さんが${label}を申請しました（${date}）`,
+        linkUrl: '/admin/leave/requests',
+        payload: { source: 'attendance_kubun', userId, date, kubun: kubunRaw },
+        createdBy: userId,
+        audience: 'admin_manager'
+      });
+    } catch (e) { /* silently ignored */ }
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 exports.cancelMyPaid = async (req, res) => {
   try {
     const userId = req.user?.id;

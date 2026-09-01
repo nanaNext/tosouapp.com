@@ -651,6 +651,22 @@
         throw new Error(String(err?.message || '有給申請の取消に失敗しました'));
       }
     };
+    // 休暇系の区分（欠勤・半休(有給)・無給休暇 など）を選択した際に管理者へ通知する（通知のみ）。
+    const LEAVE_KUBUN_NOTIFY = new Set(['半休(有給)', '半休（有給）', '半休', '欠勤', '無給休暇', '代替休日']);
+    const notifyLeaveKubun = async (row, dateStr, kubun) => {
+      if (!row || !dateStr || !kubun) return;
+      if (role !== 'employee') return;
+      if (!LEAVE_KUBUN_NOTIFY.has(kubun)) return;
+      // 同一日・同一区分で二重通知を避ける
+      if (row.dataset.kubunNotified === kubun) return;
+      try {
+        await core.fetchJSONAuth('/api/leave/notify-kubun', {
+          method: 'POST',
+          body: JSON.stringify({ date: dateStr, kubun })
+        });
+        row.dataset.kubunNotified = kubun;
+      } catch (e) { /* silently ignored */ }
+    };
 
     const applyHolidayLock = (row) => {
       if (!row) return;
@@ -1013,11 +1029,14 @@
             } else {
               const dateStr = String(row.dataset.date || '').slice(0, 10);
               if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                // 有給以外へ変更した場合は有給申請を取消
                 try {
                   await cancelPaidLeaveRequest(row, dateStr);
                 } catch (err) {
                   alert(String(err?.message || '有給申請の取消に失敗しました'));
                 }
+                // 休暇系の区分（欠勤・半休(有給)・無給休暇 など）なら管理者へ通知
+                await notifyLeaveKubun(row, dateStr, v);
               }
             }
           }
