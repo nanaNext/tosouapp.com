@@ -1666,6 +1666,20 @@ body.drawer-open.admin.has-sidebar .content {
   border: 1px solid #e5e7eb;
 }
 
+/* 勤怠記録: 表全体を四角く（角丸を完全に除去） */
+.admin #rosterTable,
+.admin .attrec-table,
+.admin .attrec-list-scroll-wrap,
+.admin #attrecTableWrap,
+.admin #attrecList,
+.admin .beautiful-table,
+.admin .beautiful-table thead,
+.admin .beautiful-table th,
+.admin .beautiful-table td,
+.admin .beautiful-table tr {
+  border-radius: 0 !important;
+}
+
 .admin .attrec-dash-table thead th {
   position: sticky;
   top: 0;
