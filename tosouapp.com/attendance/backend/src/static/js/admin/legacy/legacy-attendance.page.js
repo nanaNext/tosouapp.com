@@ -18,7 +18,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
         border: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
-        padding: 16px 24px !important;
+        padding: 0 0 16px 0 !important;
         margin: 0 !important;
         box-sizing: border-box;
       }
