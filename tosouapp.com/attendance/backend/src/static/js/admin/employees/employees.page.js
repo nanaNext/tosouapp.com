@@ -17,14 +17,6 @@ async function renderEmployees(profile, c) {
   clearTopbarNoResultState();
   try {
     const currentPath = String(location.pathname || '');
-    if (currentPath === '/admin/employees/monthly-summary' || currentPath === '/admin/employees/monthly-summary/') {
-      try {
-        window.location.replace(currentPath + location.search + location.hash);
-      } catch {
-        window.location.href = currentPath + location.search + location.hash;
-      }
-      return;
-    }
     if (!isEmployeesPath(currentPath)) return;
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') showNavSpinner();
@@ -215,7 +207,6 @@ async function renderEmployees(profile, c) {
       </div>
       <div class="sap-actions">
         <a class="sap-btn sap-btn-primary" id="btnDetailEdit" href="/admin/employees?edit=${u.id}">編集</a>
-        <a class="sap-btn sap-btn-ghost" id="btnDetailSummary" href="/admin/employees?summary=${u.id}">月次サマリ</a>
         <a class="sap-btn sap-btn-ghost" id="btnDetailBack" href="/admin/employees#list">一覧へ</a>
       </div>
     `;
@@ -294,10 +285,7 @@ async function renderEmployees(profile, c) {
       for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
       const qsKeep = keep.toString();
       const backHref = `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`;
-      const summaryHref = `/admin/employees/monthly-summary?userId=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
       const editHref = `/admin/employees?edit=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
-      const btnSummary = panel.querySelector('#btnDetailSummary');
-      if (btnSummary) btnSummary.setAttribute('href', summaryHref);
       const btnEdit = panel.querySelector('#btnDetailEdit');
       if (btnEdit) btnEdit.setAttribute('href', editHref);
       const btnBack = panel.querySelector('#btnDetailBack');
@@ -309,228 +297,6 @@ async function renderEmployees(profile, c) {
         });
       }
     } catch (e) { /* bỏ qua lỗi */ }
-    hideNavSpinner();
-    return;
-  }
-
-  if (mode === 'summary' && summaryId) {
-    try {
-      const month = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
-      // Để routing SPA tự xử lý bằng cách thay state và kích hoạt cập nhật route
-      history.replaceState(null, '', `/admin/employees/monthly-summary?userId=${encodeURIComponent(summaryId)}&month=${encodeURIComponent(month)}`);
-      window.dispatchEvent(new Event('popstate'));
-      return;
-    } catch (e) { /* bỏ qua lỗi */ }
-    const u = await getEmployee(summaryId);
-    if (seq !== employeesRenderSeq) return;
-    content.innerHTML = ``;
-    const wrap = document.createElement('div');
-    const code = u.employee_code || ('EMP' + String(u.id).padStart(3,'0'));
-    const jstYM = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
-    wrap.innerHTML = `
-      <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <a class="btn" id="sumBack" href="/admin/employees#list">← 社員一覧へ戻る</a>
-        <a class="btn" id="sumToDetail" href="/admin/employees?detail=${u.id}">詳細</a>
-        <a class="btn" id="sumToEdit" href="/admin/employees?edit=${u.id}">社員編集</a>
-      </div>
-      <h4 style="margin:0 0 12px;">社員月次サマリ（${code} / ${u.username || u.email || ''}）</h4>
-      <table class="excel-table" style="margin-bottom:12px;">
-        <thead><tr><th colspan="2">月次サマリ</th></tr></thead>
-        <tbody>
-          <tr>
-            <td style="width:180px;">対象年月</td>
-            <td>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input id="sumMonth" type="month" style="width:180px">
-                <button type="button" class="btn" id="btnSumLoad">読込</button>
-                <button type="button" class="btn-primary" id="btnSumSave">保存</button>
-                <span id="sumStatus" style="margin-left:4px;color:#334155;font-weight:800;"></span>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>全体</td>
-            <td>
-              <div style="display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:8px;">
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">所定日数</span><input id="sumAllPlannedDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">出勤日数</span><input id="sumAllAttendDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">代出休出</span><input id="sumAllHolidayWorkDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">待機日数</span><input id="sumAllStandbyDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">総労働時間</span><input id="sumAllTotalWork" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">深夜時間</span><input id="sumAllNight" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">総残業時間</span><input id="sumAllOvertime" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">法定外時間</span><input id="sumAllLegalOvertime" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">有休日数</span><input id="sumAllPaidDays" type="number" step="0.1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">代休日数</span><input id="sumAllSubstituteDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">無給休暇</span><input id="sumAllUnpaidDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">欠勤日数</span><input id="sumAllAbsentDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">控除時間</span><input id="sumAllDeduction" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">出社日数</span><input id="sumAllOnsiteDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">在宅日数</span><input id="sumAllRemoteDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">現場</span><input id="sumAllSatelliteDays" type="number" step="1" style="width:90px"></label>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>社内勤務</td>
-            <td>
-              <div style="display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:8px;">
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">所定日数</span><input id="sumIhPlannedDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">出勤日数</span><input id="sumIhAttendDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">代出休出</span><input id="sumIhHolidayWorkDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">待機日数</span><input id="sumIhStandbyDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">総労働時間</span><input id="sumIhTotalWork" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">深夜時間</span><input id="sumIhNight" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">総残業時間</span><input id="sumIhOvertime" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">法定外時間</span><input id="sumIhLegalOvertime" placeholder="0:00" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">有休日数</span><input id="sumIhPaidDays" type="number" step="0.1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">代休日数</span><input id="sumIhSubstituteDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">無給休暇</span><input id="sumIhUnpaidDays" type="number" step="1" style="width:90px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:86px;">欠勤日数</span><input id="sumIhAbsentDays" type="number" step="1" style="width:90px"></label>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    `;
-    content.appendChild(wrap);
-
-    const ymEl = wrap.querySelector('#sumMonth');
-    if (ymEl && !ymEl.value) ymEl.value = jstYM();
-    const stEl = wrap.querySelector('#sumStatus');
-    const status = (msg) => { if (stEl) stEl.textContent = msg || ''; };
-    const hmToMin = (s) => {
-      const t = String(s || '').trim();
-      if (!t) return 0;
-      const m = t.match(/^(\d+):(\d{2})$/);
-      if (!m) return null;
-      const h = parseInt(m[1], 10);
-      const mm = parseInt(m[2], 10);
-      if (!Number.isFinite(h) || !Number.isFinite(mm) || mm < 0 || mm >= 60) return null;
-      return Math.max(0, (h * 60) + mm);
-    };
-    const minToHm = (min) => {
-      const m = Math.max(0, Number(min || 0));
-      const h = Math.floor(m / 60);
-      const r = Math.floor(m % 60);
-      return `${h}:${String(r).padStart(2, '0')}`;
-    };
-    const num = (v) => {
-      const x = Number(v);
-      return Number.isFinite(x) ? x : 0;
-    };
-    const setAll = (obj) => {
-      const x = obj && typeof obj === 'object' ? obj : {};
-      wrap.querySelector('#sumAllPlannedDays').value = String(x.plannedDays == null ? '' : x.plannedDays);
-      wrap.querySelector('#sumAllAttendDays').value = String(x.attendDays == null ? '' : x.attendDays);
-      wrap.querySelector('#sumAllHolidayWorkDays').value = String(x.holidayWorkDays == null ? '' : x.holidayWorkDays);
-      wrap.querySelector('#sumAllStandbyDays').value = String(x.standbyDays == null ? '' : x.standbyDays);
-      wrap.querySelector('#sumAllTotalWork').value = minToHm(x.totalWorkMinutes == null ? 0 : x.totalWorkMinutes);
-      wrap.querySelector('#sumAllNight').value = minToHm(x.nightMinutes == null ? 0 : x.nightMinutes);
-      wrap.querySelector('#sumAllOvertime').value = minToHm(x.overtimeMinutes == null ? 0 : x.overtimeMinutes);
-      wrap.querySelector('#sumAllLegalOvertime').value = minToHm(x.legalOvertimeMinutes == null ? 0 : x.legalOvertimeMinutes);
-      wrap.querySelector('#sumAllPaidDays').value = String(x.paidDays == null ? '' : x.paidDays);
-      wrap.querySelector('#sumAllSubstituteDays').value = String(x.substituteDays == null ? '' : x.substituteDays);
-      wrap.querySelector('#sumAllUnpaidDays').value = String(x.unpaidDays == null ? '' : x.unpaidDays);
-      wrap.querySelector('#sumAllAbsentDays').value = String(x.absentDays == null ? '' : x.absentDays);
-      wrap.querySelector('#sumAllDeduction').value = minToHm(x.deductionMinutes == null ? 0 : x.deductionMinutes);
-      wrap.querySelector('#sumAllOnsiteDays').value = String(x.onsiteDays == null ? '' : x.onsiteDays);
-      wrap.querySelector('#sumAllRemoteDays').value = String(x.remoteDays == null ? '' : x.remoteDays);
-      wrap.querySelector('#sumAllSatelliteDays').value = String(x.satelliteDays == null ? '' : x.satelliteDays);
-    };
-    const setIh = (obj) => {
-      const x = obj && typeof obj === 'object' ? obj : {};
-      wrap.querySelector('#sumIhPlannedDays').value = String(x.plannedDays == null ? '' : x.plannedDays);
-      wrap.querySelector('#sumIhAttendDays').value = String(x.attendDays == null ? '' : x.attendDays);
-      wrap.querySelector('#sumIhHolidayWorkDays').value = String(x.holidayWorkDays == null ? '' : x.holidayWorkDays);
-      wrap.querySelector('#sumIhStandbyDays').value = String(x.standbyDays == null ? '' : x.standbyDays);
-      wrap.querySelector('#sumIhTotalWork').value = minToHm(x.totalWorkMinutes == null ? 0 : x.totalWorkMinutes);
-      wrap.querySelector('#sumIhNight').value = minToHm(x.nightMinutes == null ? 0 : x.nightMinutes);
-      wrap.querySelector('#sumIhOvertime').value = minToHm(x.overtimeMinutes == null ? 0 : x.overtimeMinutes);
-      wrap.querySelector('#sumIhLegalOvertime').value = minToHm(x.legalOvertimeMinutes == null ? 0 : x.legalOvertimeMinutes);
-      wrap.querySelector('#sumIhPaidDays').value = String(x.paidDays == null ? '' : x.paidDays);
-      wrap.querySelector('#sumIhSubstituteDays').value = String(x.substituteDays == null ? '' : x.substituteDays);
-      wrap.querySelector('#sumIhUnpaidDays').value = String(x.unpaidDays == null ? '' : x.unpaidDays);
-      wrap.querySelector('#sumIhAbsentDays').value = String(x.absentDays == null ? '' : x.absentDays);
-    };
-    const getAll = () => {
-      const totalWorkMinutes = hmToMin(wrap.querySelector('#sumAllTotalWork').value);
-      const nightMinutes = hmToMin(wrap.querySelector('#sumAllNight').value);
-      const overtimeMinutes = hmToMin(wrap.querySelector('#sumAllOvertime').value);
-      const legalOvertimeMinutes = hmToMin(wrap.querySelector('#sumAllLegalOvertime').value);
-      const deductionMinutes = hmToMin(wrap.querySelector('#sumAllDeduction').value);
-      if (totalWorkMinutes == null || nightMinutes == null || overtimeMinutes == null || legalOvertimeMinutes == null || deductionMinutes == null) return null;
-      return {
-        plannedDays: num(wrap.querySelector('#sumAllPlannedDays').value),
-        attendDays: num(wrap.querySelector('#sumAllAttendDays').value),
-        holidayWorkDays: num(wrap.querySelector('#sumAllHolidayWorkDays').value),
-        standbyDays: num(wrap.querySelector('#sumAllStandbyDays').value),
-        totalWorkMinutes,
-        nightMinutes,
-        overtimeMinutes,
-        legalOvertimeMinutes,
-        paidDays: num(wrap.querySelector('#sumAllPaidDays').value),
-        substituteDays: num(wrap.querySelector('#sumAllSubstituteDays').value),
-        unpaidDays: num(wrap.querySelector('#sumAllUnpaidDays').value),
-        absentDays: num(wrap.querySelector('#sumAllAbsentDays').value),
-        deductionMinutes,
-        onsiteDays: num(wrap.querySelector('#sumAllOnsiteDays').value),
-        remoteDays: num(wrap.querySelector('#sumAllRemoteDays').value),
-        satelliteDays: num(wrap.querySelector('#sumAllSatelliteDays').value)
-      };
-    };
-    const getIh = () => {
-      const totalWorkMinutes = hmToMin(wrap.querySelector('#sumIhTotalWork').value);
-      const nightMinutes = hmToMin(wrap.querySelector('#sumIhNight').value);
-      const overtimeMinutes = hmToMin(wrap.querySelector('#sumIhOvertime').value);
-      const legalOvertimeMinutes = hmToMin(wrap.querySelector('#sumIhLegalOvertime').value);
-      if (totalWorkMinutes == null || nightMinutes == null || overtimeMinutes == null || legalOvertimeMinutes == null) return null;
-      return {
-        plannedDays: num(wrap.querySelector('#sumIhPlannedDays').value),
-        attendDays: num(wrap.querySelector('#sumIhAttendDays').value),
-        holidayWorkDays: num(wrap.querySelector('#sumIhHolidayWorkDays').value),
-        standbyDays: num(wrap.querySelector('#sumIhStandbyDays').value),
-        totalWorkMinutes,
-        nightMinutes,
-        overtimeMinutes,
-        legalOvertimeMinutes,
-        paidDays: num(wrap.querySelector('#sumIhPaidDays').value),
-        substituteDays: num(wrap.querySelector('#sumIhSubstituteDays').value),
-        unpaidDays: num(wrap.querySelector('#sumIhUnpaidDays').value),
-        absentDays: num(wrap.querySelector('#sumIhAbsentDays').value)
-      };
-    };
-    const load = async () => {
-      const ym = String((ymEl && ymEl.value != null) ? ymEl.value : '').trim();
-      if (!/^\d{4}-\d{2}$/.test(ym)) return;
-      const y = parseInt(ym.slice(0, 4), 10);
-      const m = parseInt(ym.slice(5, 7), 10);
-      status('読込中...');
-      const r = await fetchJSONAuth(`/api/attendance/month/summary?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}&userId=${encodeURIComponent(String(u.id))}`);
-      setAll((r && r.all) ? r.all : {});
-      setIh((r && r.inhouse) ? r.inhouse : {});
-      status('読込完了');
-    };
-    const save = async () => {
-      const ym = String((ymEl && ymEl.value != null) ? ymEl.value : '').trim();
-      if (!/^\d{4}-\d{2}$/.test(ym)) return;
-      const y = parseInt(ym.slice(0, 4), 10);
-      const m = parseInt(ym.slice(5, 7), 10);
-      const all = getAll();
-      const inhouse = getIh();
-      if (!all || !inhouse) { status('時間はH:MMで入力してください'); return; }
-      status('保存中...');
-      await fetchJSONAuth(`/api/attendance/month/summary?year=${encodeURIComponent(y)}&month=${encodeURIComponent(m)}&userId=${encodeURIComponent(String(u.id))}`, {
-        method: 'PUT',
-        body: JSON.stringify({ year: y, month: m, userId: u.id, all, inhouse })
-      });
-      status('保存しました');
-    };
-    const btnSumLoad = wrap.querySelector('#btnSumLoad');
-    if (btnSumLoad) btnSumLoad.addEventListener('click', () => { load().catch(e => status(String((e && e.message) ? e.message : '読込失敗'))); });
-    const btnSumSave = wrap.querySelector('#btnSumSave');
-    if (btnSumSave) btnSumSave.addEventListener('click', () => { save().catch(e => status(String((e && e.message) ? e.message : '保存失敗'))); });
-    load().catch(() => {});
     hideNavSpinner();
     return;
   }
@@ -706,6 +472,61 @@ async function renderEmployees(profile, c) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- シフト割当 (thêm/sửa/xóa cho nhân viên đã tạo) -->
+      <div style="margin-top: 24px;">
+        <table class="excel-table" style="width:100%;">
+          <thead><tr><th colspan="4">シフト割当</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="width:140px;">シフト</td>
+              <td><select id="saShift" style="width:100%"><option value="">シフト</option></select></td>
+              <td style="width:120px;">適用開始日</td>
+              <td><input id="saStart" type="date" style="width:100%"></td>
+            </tr>
+            <tr>
+              <td>適用終了日</td>
+              <td><input id="saEnd" type="date" style="width:100%"></td>
+              <td colspan="2" style="text-align:right;">
+                <button type="button" class="btn" id="btnSaAdd">追加</button>
+                <button type="button" class="btn" id="btnSaReload">再読込</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div id="saStatus" style="font-size:12px;color:#64748b;margin:4px 0;"></div>
+        <div id="saTable"></div>
+      </div>
+
+      <!-- 契約内容・業務内容 (thêm/sửa/xóa cho nhân viên đã tạo) -->
+      <div style="margin-top: 24px;">
+        <table class="excel-table" style="width:100%;">
+          <thead><tr><th colspan="4">契約内容・業務内容</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="width:140px;">開始日</td><td><input id="wdStart" type="date" style="width:100%"></td>
+              <td style="width:120px;">終了日</td><td><input id="wdEnd" type="date" style="width:100%"></td>
+            </tr>
+            <tr>
+              <td>企業名</td><td><input id="wdCompany" style="width:100%" placeholder="企業名"></td>
+              <td>就業先住所</td><td><input id="wdAddr" style="width:100%" placeholder="住所"></td>
+            </tr>
+            <tr>
+              <td>業務内容</td><td><input id="wdWork" style="width:100%" placeholder="業務内容"></td>
+              <td>役職</td><td><input id="wdRole" style="width:100%" placeholder="役職"></td>
+            </tr>
+            <tr>
+              <td>責任程度</td><td><input id="wdResp" style="width:100%" placeholder="責任程度"></td>
+              <td colspan="2" style="text-align:right;">
+                <button type="button" class="btn" id="btnWdAdd">保存</button>
+                <button type="button" class="btn" id="btnWdReload">再読込</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div id="wdStatus" style="font-size:12px;color:#64748b;margin:4px 0;"></div>
+        <div id="wdTable"></div>
       </div>
 
       <div class="form-actions" style="margin-top: 24px; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
@@ -931,6 +752,224 @@ async function renderEmployees(profile, c) {
       } catch (e) { /* bỏ qua lỗi */ }
       await renderEmployees(profile);
     });
+    // ─── シフト割当 / 契約内容・業務内容 (thêm/sửa/xóa cho nhân viên đang chỉnh) ───
+    // Dùng chính u.id làm userId; gọi API /api/attendance/shifts + work-details (admin có toàn quyền).
+    const wsUid = String(u.id);
+    const wsQ = (sel) => formEdit.querySelector(sel);
+    const wsSetSaStatus = (t) => { const el = wsQ('#saStatus'); if (el) el.textContent = t || ''; };
+    const wsSetWdStatus = (t) => { const el = wsQ('#wdStatus'); if (el) el.textContent = t || ''; };
+    const wsVal = (sel) => String(wsQ(sel)?.value || '').trim();
+    const wsNormDate = (s) => { const v = String(s || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ''; };
+    const wsFmtHm = (min) => {
+      const m = Math.max(0, Number(min || 0));
+      return `${Math.floor(m / 60)}:${String(Math.floor(m % 60)).padStart(2, '0')}`;
+    };
+
+    // --- シフト割当 ---
+    const wsLoadShiftDefs = async () => {
+      const sel = wsQ('#saShift');
+      if (!sel) return;
+      try {
+        const defs = await fetchJSONAuth('/api/attendance/shifts/definitions');
+        const rows = Array.isArray(defs) ? defs : [];
+        sel.innerHTML = `<option value="">シフト</option>${rows.map((d) => `<option value="${d.id}">${d.name} ${d.start_time}-${d.end_time}</option>`).join('')}`;
+      } catch (e) {
+        sel.innerHTML = '<option value="">シフト</option>';
+      }
+    };
+    const wsRenderSa = (items) => {
+      const host = wsQ('#saTable');
+      if (!host) return;
+      const rows = Array.isArray(items) ? items : [];
+      host.innerHTML = `
+        <table class="excel-table" style="width:100%;margin:0;">
+          <thead><tr>
+            <th>No</th><th>シフト</th><th>開始時刻</th><th>終了時刻</th><th>休憩時間</th><th>所定労働時間</th><th>適用開始日</th><th>適用終了日</th><th>操作</th>
+          </tr></thead>
+          <tbody>
+            ${rows.length ? rows.map((r, i) => {
+              const s = r?.shift || null;
+              return `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${s ? (s.name || '') : ''}</td>
+                <td>${s ? (s.start_time || '—') : '—'}</td>
+                <td>${s ? (s.end_time || '—') : '—'}</td>
+                <td>${s ? wsFmtHm(s.break_minutes || 0) : '—'}</td>
+                <td>${s ? wsFmtHm(s.standard_minutes || 0) : '—'}</td>
+                <td>${r?.start_date || '—'}</td>
+                <td>${r?.end_date || '—'}</td>
+                <td><button type="button" class="btn" data-sa-del="${r.id}">削除</button></td>
+              </tr>`;
+            }).join('') : `<tr><td colspan="9" style="text-align:center;color:#64748b;">シフトが未設定です</td></tr>`}
+          </tbody>
+        </table>
+      `;
+      host.querySelectorAll('button[data-sa-del]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-sa-del');
+          if (!id) return;
+          if (!window.confirm('削除します。よろしいですか？')) return;
+          wsSetSaStatus('削除中...');
+          try {
+            await fetchJSONAuth(`/api/attendance/shifts/assignments/${encodeURIComponent(String(id))}?userId=${encodeURIComponent(wsUid)}`, { method: 'DELETE' });
+            await wsLoadSa();
+            wsSetSaStatus('削除しました');
+          } catch (e) {
+            wsSetSaStatus(String(e?.message || '削除失敗'));
+          }
+        });
+      });
+    };
+    const wsLoadSa = async () => {
+      wsSetSaStatus('読込中...');
+      try {
+        const r = await fetchJSONAuth(`/api/attendance/shifts/assignments?userId=${encodeURIComponent(wsUid)}&from=1900-01-01&to=2999-12-31`);
+        wsRenderSa((r && Array.isArray(r.items)) ? r.items : []);
+        wsSetSaStatus('');
+      } catch (e) {
+        wsRenderSa([]);
+        wsSetSaStatus(String(e?.message || '読込失敗'));
+      }
+    };
+    wsQ('#btnSaReload')?.addEventListener('click', () => { wsLoadSa().catch(e => wsSetSaStatus(String(e?.message || '読込失敗'))); });
+    wsQ('#btnSaAdd')?.addEventListener('click', async () => {
+      const shiftId = wsVal('#saShift');
+      const startDate = wsVal('#saStart');
+      const endDate = wsVal('#saEnd');
+      if (!shiftId || !startDate) { wsSetSaStatus('シフト/適用開始日を入力してください'); return; }
+      wsSetSaStatus('保存中...');
+      try {
+        await fetchJSONAuth('/api/attendance/shifts/assign', {
+          method: 'POST',
+          body: JSON.stringify({ userId: wsUid, shiftId, startDate, endDate: endDate || null })
+        });
+        await wsLoadSa();
+        wsSetSaStatus('保存しました');
+      } catch (e) {
+        wsSetSaStatus(String(e?.message || '保存失敗'));
+      }
+    });
+
+    // --- 契約内容・業務内容 ---
+    const wsIsISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '').slice(0, 10));
+    const wsClearWdForm = () => {
+      ['#wdStart', '#wdEnd', '#wdCompany', '#wdAddr', '#wdWork', '#wdRole', '#wdResp'].forEach((id) => {
+        const el = wsQ(id);
+        if (el) el.value = '';
+      });
+      const btn = wsQ('#btnWdAdd');
+      if (btn) { btn.textContent = '保存'; delete btn.dataset.editing; }
+    };
+    const wsRenderWd = (items) => {
+      const host = wsQ('#wdTable');
+      if (!host) return;
+      const rows = Array.isArray(items) ? items : [];
+      host.innerHTML = `
+        <table class="excel-table" style="width:100%;margin:0;">
+          <thead><tr>
+            <th>企業名</th><th>適用終了日</th><th>就業先住所</th><th>業務内容</th><th>役職</th><th>責任の程度</th><th>操作</th>
+          </tr></thead>
+          <tbody>
+            ${rows.length ? rows.map((r) => `
+              <tr>
+                <td>${r.companyName || ''}</td>
+                <td>${r.endDate || '—'}</td>
+                <td>${r.workPlaceAddress || ''}</td>
+                <td>${r.workContent || ''}</td>
+                <td>${r.roleTitle || ''}</td>
+                <td>${r.responsibilityLevel || ''}</td>
+                <td>
+                  <button type="button" class="btn" data-wd-edit="${r.id}">編集</button>
+                  <button type="button" class="btn" data-wd-del="${r.id}">削除</button>
+                </td>
+              </tr>
+            `).join('') : `<tr><td colspan="7" style="text-align:center;color:#64748b;">業務内容が未設定です</td></tr>`}
+          </tbody>
+        </table>
+      `;
+      host.querySelectorAll('button[data-wd-del]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-wd-del');
+          if (!id) return;
+          if (!window.confirm('削除します。よろしいですか？')) return;
+          wsSetWdStatus('削除中...');
+          try {
+            await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(String(id))}`, {
+              method: 'DELETE',
+              body: JSON.stringify({ userId: wsUid })
+            });
+            await wsLoadWd();
+            wsSetWdStatus('削除しました');
+          } catch (e) {
+            wsSetWdStatus(String(e?.message || '削除失敗'));
+          }
+        });
+      });
+      host.querySelectorAll('button[data-wd-edit]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-wd-edit');
+          const cur = rows.find((x) => String(x.id) === String(id));
+          if (!cur) return;
+          const put = (sel, v) => { const el = wsQ(sel); if (el) el.value = v || ''; };
+          put('#wdStart', cur.startDate);
+          put('#wdEnd', cur.endDate);
+          put('#wdCompany', cur.companyName);
+          put('#wdAddr', cur.workPlaceAddress);
+          put('#wdWork', cur.workContent);
+          put('#wdRole', cur.roleTitle);
+          put('#wdResp', cur.responsibilityLevel);
+          const addBtn = wsQ('#btnWdAdd');
+          if (addBtn) { addBtn.textContent = '更新'; addBtn.dataset.editing = String(id); }
+        });
+      });
+    };
+    const wsLoadWd = async () => {
+      wsSetWdStatus('読込中...');
+      try {
+        const r = await fetchJSONAuth(`/api/attendance/work-details?userId=${encodeURIComponent(wsUid)}&from=1900-01-01&to=2999-12-31`);
+        wsRenderWd((r && Array.isArray(r.items)) ? r.items : []);
+        wsSetWdStatus('');
+      } catch (e) {
+        wsRenderWd([]);
+        wsSetWdStatus(String(e?.message || '読込失敗'));
+      }
+    };
+    wsQ('#btnWdReload')?.addEventListener('click', () => { wsLoadWd().catch(e => wsSetWdStatus(String(e?.message || '読込失敗'))); });
+    wsQ('#btnWdAdd')?.addEventListener('click', async () => {
+      const btn = wsQ('#btnWdAdd');
+      const editing = String(btn?.dataset?.editing || '').trim();
+      const payload = {
+        userId: wsUid,
+        startDate: wsNormDate(wsVal('#wdStart')),
+        endDate: wsNormDate(wsVal('#wdEnd')) || null,
+        companyName: wsVal('#wdCompany'),
+        workPlaceAddress: wsVal('#wdAddr'),
+        workContent: wsVal('#wdWork'),
+        roleTitle: wsVal('#wdRole'),
+        responsibilityLevel: wsVal('#wdResp')
+      };
+      if (!payload.startDate) { wsSetWdStatus('開始日を入力してください'); return; }
+      if (!wsIsISODate(payload.startDate) || (payload.endDate && !wsIsISODate(payload.endDate))) { wsSetWdStatus('日付はYYYY-MM-DD形式で入力してください'); return; }
+      wsSetWdStatus('保存中...');
+      try {
+        if (editing) {
+          await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(editing)}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+          await fetchJSONAuth('/api/attendance/work-details', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        wsClearWdForm();
+        await wsLoadWd();
+        wsSetWdStatus('保存しました');
+      } catch (e) {
+        wsSetWdStatus(String(e?.message || '保存失敗'));
+      }
+    });
+
+    // Tải dữ liệu ban đầu cho 2 khối.
+    wsLoadShiftDefs().then(() => wsLoadSa()).catch(() => { });
+    wsLoadWd().catch(() => { });
+
     content.appendChild(formEdit);
     hideNavSpinner();
     return;
@@ -1013,7 +1052,7 @@ async function renderEmployees(profile, c) {
         .emp-add-form .section-header { background:#f1f5f9; padding:12px 20px; font-weight:700; font-size:14px; color:#0f172a; border-bottom:1px solid #d1d5db; letter-spacing:0.3px; }
         .emp-add-form .field-label { width:130px; padding:12px 20px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:500; color:#374151; background:#f8fafc; vertical-align:middle; }
         .emp-add-form .field-value { padding:10px 16px; border-bottom:1px solid #e5e7eb; vertical-align:middle; }
-        .emp-add-form .field-value input, .emp-add-form .field-value select { width:100%; height:34px; border:1px solid #d1d5db; padding:0 10px; font-size:14px; box-sizing:border-box; background:#fff; color:#0f172a; }
+        .emp-add-form .field-value input, .emp-add-form .field-value select { width:100%; max-width:420px; height:34px; border:1px solid #d1d5db; padding:0 10px; font-size:14px; box-sizing:border-box; background:#fff; color:#0f172a; }
         .emp-add-form .field-value select { cursor:pointer; }
         .emp-add-form tr:last-child .field-label, .emp-add-form tr:last-child .field-value { border-bottom:none; }
 
@@ -1032,7 +1071,7 @@ async function renderEmployees(profile, c) {
       <div style="margin-bottom:20px;"><a id="addBack" class="btn" href="#list" style="color:#475569;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:4px;">← 社員一覧へ戻る</a></div>
       
       <!-- Step Indicator -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
         <div id="stepInd1" style="display:flex;align-items:center;gap:6px;">
           <span style="width:28px;height:28px;border-radius:50%;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">1</span>
           <span style="font-size:13px;font-weight:600;color:#0f172a;">基本情報</span>
@@ -1041,6 +1080,16 @@ async function renderEmployees(profile, c) {
         <div id="stepInd2" style="display:flex;align-items:center;gap:6px;opacity:0.4;">
           <span style="width:28px;height:28px;border-radius:50%;background:#94a3b8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
           <span style="font-size:13px;font-weight:600;color:#64748b;">職務情報</span>
+        </div>
+        <div style="flex:0 0 40px;height:2px;background:#cbd5e1;"></div>
+        <div id="stepInd3" style="display:flex;align-items:center;gap:6px;opacity:0.4;">
+          <span style="width:28px;height:28px;border-radius:50%;background:#94a3b8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">3</span>
+          <span style="font-size:13px;font-weight:600;color:#64748b;">シフト割当</span>
+        </div>
+        <div style="flex:0 0 40px;height:2px;background:#cbd5e1;"></div>
+        <div id="stepInd4" style="display:flex;align-items:center;gap:6px;opacity:0.4;">
+          <span style="width:28px;height:28px;border-radius:50%;background:#94a3b8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">4</span>
+          <span style="font-size:13px;font-weight:600;color:#64748b;">契約内容</span>
         </div>
       </div>
 
@@ -1085,16 +1134,37 @@ async function renderEmployees(profile, c) {
           <tr><td class="field-label">画像</td><td class="field-value"><input id="empAvatarUrl" placeholder="画像URL (任意)"><input id="empAvatarFile" type="file" accept="image/*" multiple style="margin-top:8px;font-size:12px;"></td></tr>
         </table>
 
-        <!-- シフト割当 (tùy chọn) -->
-        <div class="section-header" style="border-top:1px solid #d1d5db;">シフト割当（任意）</div>
+        <div style="display:flex;justify-content:space-between;padding:16px 20px;border-top:1px solid #e2e8f0;">
+          <button type="button" id="btnPrev" style="height:38px;padding:0 24px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+            ← 戻る
+          </button>
+          <button type="button" id="btnNext2" style="height:38px;padding:0 24px;background:#0f172a;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+            次へ →
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: シフト割当 (任意) -->
+      <div id="step3" class="emp-add-form" style="border:1px solid #cbd5e1; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); display:none;">
+        <div class="section-header">シフト割当（任意）</div>
         <table style="width:100%;border-collapse:collapse;">
           <tr><td class="field-label">シフト</td><td class="field-value"><select id="empShiftAssign"><option value="">シフト</option></select></td></tr>
           <tr><td class="field-label">開始日</td><td class="field-value"><input id="empShiftStart" type="date"></td></tr>
           <tr><td class="field-label">終了日</td><td class="field-value"><input id="empShiftEnd" type="date"></td></tr>
         </table>
+        <div style="display:flex;justify-content:space-between;padding:16px 20px;border-top:1px solid #e2e8f0;">
+          <button type="button" id="btnPrev3" style="height:38px;padding:0 24px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+            ← 戻る
+          </button>
+          <button type="button" id="btnNext3" style="height:38px;padding:0 24px;background:#0f172a;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+            次へ →
+          </button>
+        </div>
+      </div>
 
-        <!-- 契約内容・業務内容 (tùy chọn) -->
-        <div class="section-header" style="border-top:1px solid #d1d5db;">契約内容・業務内容（任意）</div>
+      <!-- Step 4: 契約内容・業務内容 (任意) -->
+      <div id="step4" class="emp-add-form" style="border:1px solid #cbd5e1; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); display:none;">
+        <div class="section-header">契約内容・業務内容（任意）</div>
         <table style="width:100%;border-collapse:collapse;">
           <tr><td class="field-label">開始日</td><td class="field-value"><input id="empWdStart" type="date"></td></tr>
           <tr><td class="field-label">終了日</td><td class="field-value"><input id="empWdEnd" type="date"></td></tr>
@@ -1104,9 +1174,8 @@ async function renderEmployees(profile, c) {
           <tr><td class="field-label">役職</td><td class="field-value"><input id="empWdRole" placeholder="役職"></td></tr>
           <tr><td class="field-label">責任程度</td><td class="field-value"><input id="empWdResp" placeholder="責任程度"></td></tr>
         </table>
-
         <div style="display:flex;justify-content:space-between;padding:16px 20px;border-top:1px solid #e2e8f0;">
-          <button type="button" id="btnPrev" style="height:38px;padding:0 24px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+          <button type="button" id="btnPrev4" style="height:38px;padding:0 24px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
             ← 戻る
           </button>
           <div style="display:flex;align-items:center;gap:12px;">
@@ -1234,22 +1303,31 @@ async function renderEmployees(profile, c) {
       }
     } catch (e) { /* bỏ qua lỗi */ }
 
-    // Logic điều hướng giữa các bước
-    const step1 = form.querySelector('#step1');
-    const step2 = form.querySelector('#step2');
-    const stepInd1 = form.querySelector('#stepInd1');
-    const stepInd2 = form.querySelector('#stepInd2');
+    // Logic điều hướng giữa các bước (4 bước: 基本情報 → 職務情報 → シフト割当 → 契約内容)
+    const stepEls = [1, 2, 3, 4].map((n) => form.querySelector(`#step${n}`));
+    const indEls = [1, 2, 3, 4].map((n) => form.querySelector(`#stepInd${n}`));
     const btnNext = form.querySelector('#btnNext');
     const btnPrev = form.querySelector('#btnPrev');
 
+    // Hiển thị bước thứ n (1-4) và cập nhật chỉ báo tiến trình.
+    const showStep = (n) => {
+      stepEls.forEach((el, i) => { if (el) el.style.display = (i === n - 1) ? 'block' : 'none'; });
+      indEls.forEach((el, i) => {
+        if (!el) return;
+        const active = i === n - 1;
+        el.style.opacity = active ? '1' : '0.4';
+        const dot = el.querySelector('span');
+        if (dot) dot.style.background = active ? '#0f172a' : '#94a3b8';
+      });
+    };
+
+    // Bước 1 → 2: kiểm tra các trường bắt buộc của 基本情報 trước khi chuyển.
     const goToStep2 = () => {
-      // Kiểm tra các trường bắt buộc ở bước 1
       const tenantVal = form.querySelector('#empTenantSelect')?.value;
       const code = form.querySelector('#empCode')?.value?.trim();
       const name = form.querySelector('#empName')?.value?.trim();
       const email = form.querySelector('#empEmail')?.value?.trim();
       const pass = form.querySelector('#empPass')?.value;
-      // Kiểm tra hợp lệ: các trường bắt buộc
       const missing = [];
       if (!tenantVal) missing.push('所属会社');
       if (!code) missing.push('社員番号');
@@ -1266,24 +1344,18 @@ async function renderEmployees(profile, c) {
         }
         return;
       }
-      // Xóa thông báo
       const msgEl2 = form.querySelector('#empStepMsg');
       if (msgEl2) msgEl2.style.display = 'none';
-      step1.style.display = 'none';
-      step2.style.display = 'block';
-      stepInd1.style.opacity = '0.4';
-      stepInd1.querySelector('span').style.background = '#94a3b8';
-      stepInd2.style.opacity = '1';
-      stepInd2.querySelector('span').style.background = '#0f172a';
+      showStep(2);
     };
-    const goToStep1 = () => {
-      step2.style.display = 'none';
-      step1.style.display = 'block';
-      stepInd2.style.opacity = '0.4';
-      stepInd2.querySelector('span').style.background = '#94a3b8';
-      stepInd1.style.opacity = '1';
-      stepInd1.querySelector('span').style.background = '#0f172a';
-    };
+    const goToStep1 = () => showStep(1);
+    const goToStep3 = () => showStep(3);
+    const goToStep4 = () => showStep(4);
+
+    if (form.querySelector('#btnNext2')) form.querySelector('#btnNext2').addEventListener('click', goToStep3);
+    if (form.querySelector('#btnPrev3')) form.querySelector('#btnPrev3').addEventListener('click', goToStep2);
+    if (form.querySelector('#btnNext3')) form.querySelector('#btnNext3').addEventListener('click', goToStep4);
+    if (form.querySelector('#btnPrev4')) form.querySelector('#btnPrev4').addEventListener('click', goToStep3);
     if (btnNext) btnNext.addEventListener('click', goToStep2);
     if (btnPrev) btnPrev.addEventListener('click', goToStep1);
 

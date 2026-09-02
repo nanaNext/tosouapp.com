@@ -460,7 +460,6 @@ export const setTopbarNoResultState = (searchedText) => {
 
 export function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFlag) {
   if (editId) return 'edit';
-  if (summaryId) return 'summary';
   if (detailId) return 'detail';
   if (createFlag) return 'add';
   if (pathname === '/admin/employees/add') return 'add';
@@ -468,7 +467,6 @@ export function getEmployeesMode(pathname, hash, detailId, editId, summaryId, cr
   if (hash === '#add') return 'add';
   if (hash === '#delete') return 'delete';
   if (hash === '#edit') return 'edit';
-  if (hash === '#summary') return 'summary';
   return 'list';
 }
 

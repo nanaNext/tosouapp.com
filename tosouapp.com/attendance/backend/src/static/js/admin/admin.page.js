@@ -379,14 +379,6 @@ const route = async () => {
       await mountModule(mod.mountAttendance ? { mount: () => mod.mountAttendance({ content: hubContent, listUsers, getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL }) } : mod);
       return;
     }
-    if (p2 === '/admin/employees/monthly-summary' || p2 === '/admin/employees/monthly-summary/') {
-      const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=navy-20260831-monthly-newtab1');
-      const hubContent = await hubMod.mount({ content: host, initialPath: '/admin/employees/monthly-summary', profile: profile });
-      const mod = await loadModule('../pages/admin-employees-monthly-summary.page.js?v=navy-20260704-ms5');
-      if (seq !== routeSeq) return;
-      await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : { mount: async () => { hubContent.innerHTML = ''; if (mod.default) await mod.default(hubContent); else Object.assign(hubContent, await mod); } });
-      return;
-    }
     if (p2 === '/admin/employees' || p2.startsWith('/admin/employees/')) {
         const hubMod = await loadModule('./attendance/attendance-hub.page.js?v=navy-20260831-monthly-newtab1');
         const hubContent = await hubMod.mount({ content: host, initialPath: p2, profile: profile });

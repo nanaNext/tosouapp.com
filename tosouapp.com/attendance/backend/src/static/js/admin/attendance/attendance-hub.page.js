@@ -8,7 +8,6 @@ export async function mount({ content, initialPath, profile }) {
     { id: 'global-emp', label: '社員管理', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', href: '/admin/employees', hasSubmenu: true },
     { id: 'emp-list', label: '社員一覧', href: '/admin/employees', parent: 'global-emp' },
     { id: 'emp-add', label: '社員追加', href: '/admin/employees/add', parent: 'global-emp' },
-    { id: 'emp-monthly', label: '月次集計', href: '/admin/employees/monthly-summary', parent: 'global-emp' },
     { id: 'global-attendance', label: '勤怠管理', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', href: '/admin/attendance', hasSubmenu: true },
     { id: 'att-records', label: '勤怠記録', href: '/admin/attendance', parent: 'global-attendance' },
     { id: 'att-monthly', label: '月次勤怠入力(管理者)', href: '/admin/attendance/monthly', parent: 'global-attendance', newTab: true },
