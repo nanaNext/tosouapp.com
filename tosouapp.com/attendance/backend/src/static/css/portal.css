@@ -1711,6 +1711,10 @@ body:not(.admin) .topbar-inner .user #userName {
   border-color: #f87171;
 }
 
+/* Hàng nhân viên clickable: con trỏ pointer và highlight khi rê chuột. */
+.admin .card .excel-table tbody tr.emp-row-clickable { cursor: pointer; }
+.admin .card .excel-table tbody tr.emp-row-clickable:hover td { background: #eff6ff; }
+
 /* ============================================================
    Status / Role / Type pills
    ============================================================ */
