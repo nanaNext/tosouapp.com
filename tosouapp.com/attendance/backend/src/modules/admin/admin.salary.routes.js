@@ -13,6 +13,7 @@ const salaryService = require('../salary/salary.service');
 const salaryInputRepo = require('../salary/salaryInput.repository');
 const payslipRepo = require('../payslip/payslip.repository');
 const auditRepo = require('../audit/audit.repository');
+const noticesRepo = require('../notices/notices.repository');
 const { companyName, payslipEncKey, payslipKeyVersion } = require('../../config/env');
 const { buildPayslipPdf } = require('../salary/payslipPdf');
 const db = require('../../core/database/mysql');
@@ -454,6 +455,19 @@ router.post('/salary/publish', async (req, res) => {
       const file = await payslipRepo.findLatestByUserMonth(userId, month);
       if (!file?.id) return res.status(404).json({ message: 'PDFが作成されていません（先にPDF作成してください）' });
       try { await payslipDeliveryRepo.create({ userId, month, payslipFileId: file.id, sentBy: req.user.id }); } catch (e) { /* silently ignored */ }
+      // Tạo thông báo cho nhân viên để hiển thị trong お知らせ khi có 給与明細 gửi đến.
+      try {
+        await noticesRepo.createNotice({
+          targetUserId: userId,
+          targetMonth: month,
+          message: `給与明細: ${month} の給与明細が届きました`,
+          createdBy: req.user.id,
+          kind: 'payslip',
+          title: '給与明細',
+          audience: 'all',
+          tenantId: req.tenantId || null
+        });
+      } catch (e) { /* silently ignored */ }
     }
 
     await salaryInputRepo.setPublished(userId, month, isPublished, req.user.id);

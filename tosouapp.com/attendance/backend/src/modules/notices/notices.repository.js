@@ -682,11 +682,13 @@ module.exports = {
     const tid = _tid(tenantId);
     let validIds = unique;
     if (tid) {
-      // Verify notices belong to tenant before marking read
+      // Kiem tra notice hop le truoc khi danh dau da doc.
+      // Phai dong bo voi listForUserFeed: thong bao thuoc tenant HOAC gui rieng cho chinh user
+      // (target_user_id = uid) deu duoc phep doc, du tenant_id cua notice khac.
       const placeholders = unique.map(() => '?').join(',');
       const [validRows] = await db.query(
-        `SELECT id FROM notices WHERE id IN (${placeholders}) AND (tenant_id = ? OR tenant_id IS NULL)`,
-        [...unique, tid]
+        `SELECT id FROM notices WHERE id IN (${placeholders}) AND (tenant_id = ? OR tenant_id IS NULL OR target_user_id = ?)`,
+        [...unique, tid, uid]
       );
       const validSet = new Set((validRows || []).map(r => Number(r.id)));
       validIds = unique.filter(id => validSet.has(id));
@@ -716,11 +718,13 @@ module.exports = {
     const tid = _tid(tenantId);
     let validIds = unique;
     if (tid) {
-      // Verify notices belong to tenant before hiding
+      // Kiem tra notice hop le truoc khi an.
+      // Dong bo voi listForUserFeed va markRead: cho phep an notice thuoc tenant
+      // HOAC notice gui rieng cho chinh user (target_user_id = uid).
       const placeholders = unique.map(() => '?').join(',');
       const [validRows] = await db.query(
-        `SELECT id FROM notices WHERE id IN (${placeholders}) AND (tenant_id = ? OR tenant_id IS NULL)`,
-        [...unique, tid]
+        `SELECT id FROM notices WHERE id IN (${placeholders}) AND (tenant_id = ? OR tenant_id IS NULL OR target_user_id = ?)`,
+        [...unique, tid, uid]
       );
       const validSet = new Set((validRows || []).map(r => Number(r.id)));
       validIds = unique.filter(id => validSet.has(id));
