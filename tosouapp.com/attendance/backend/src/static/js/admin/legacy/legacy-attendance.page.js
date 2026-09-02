@@ -458,7 +458,9 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
               background-color: #f8fafc;
             }
             .beautiful-table th {
-              padding: 4px 12px;
+              padding: 3px 12px !important;
+              height: 26px !important;
+              line-height: 1.2 !important;
               font-weight: 600;
               color: #475569;
               font-size: 12px;
@@ -467,13 +469,19 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
               border: 1px solid #e2e8f0;
             }
             .beautiful-table td {
-              padding: 2px 12px;
+              padding: 1px 12px !important;
+              height: 26px !important;
+              line-height: 1.2 !important;
               font-size: 13px;
               color: #334155;
               border: 1px solid #e2e8f0;
               border-bottom: 1px solid #f1f5f9;
               vertical-align: middle;
-              line-height: 1.3;
+            }
+            /* Badge trạng thái không được kéo hàng cao lên */
+            .beautiful-table td .attrec-pill {
+              padding: 1px 10px !important;
+              line-height: 1.2 !important;
             }
             .beautiful-table tbody tr:hover td {
               background-color: #f8fafc;
