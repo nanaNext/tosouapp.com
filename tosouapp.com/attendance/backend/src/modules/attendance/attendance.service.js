@@ -1,7 +1,7 @@
 /**
  * @module attendance.service
- * Core attendance business logic — checkIn, checkOut, timesheet.
- * This layer is role-agnostic; RBAC is enforced at the controller level.
+ * Logic nghiệp vụ chấm công — checkIn, checkOut, timesheet.
+ * Lớp này không phụ thuộc vai trò; phân quyền (RBAC) được xử lý ở lớp controller.
  */
 'use strict';
 
@@ -14,46 +14,46 @@ const rules = require('./attendance.rules');
  * @typedef {Object} GeoLocation
  * @property {number|null} latitude
  * @property {number|null} longitude
- * @property {number|null} accuracy - GPS accuracy in meters
+ * @property {number|null} accuracy - Độ chính xác GPS (mét)
  * @property {string|null} locationSource - 'gps' | 'ip' | 'manual'
  * @property {string|null} countryCode - ISO 3166-1 alpha-2
  * @property {string|null} note
  * @property {string|null} deviceId
- * @property {number|null} tzOffset - Timezone offset in minutes
+ * @property {number|null} tzOffset - Chênh lệch múi giờ (phút)
  */
 
 /**
  * @typedef {Object} CheckInResult
- * @property {number} id - Attendance record ID
+ * @property {number} id - ID bản ghi chấm công
  * @property {number} userId
- * @property {string} checkIn - JST timestamp (YYYY-MM-DD HH:mm:ss)
- * @property {string[]} labels - Anomaly labels (e.g. 'low_accuracy', 'out_of_jp')
+ * @property {string} checkIn - Thời điểm theo JST (YYYY-MM-DD HH:mm:ss)
+ * @property {string[]} labels - Nhãn bất thường (vd: 'low_accuracy', 'out_of_jp')
  * @property {string|null} workType - 'onsite' | 'remote' | 'satellite' | null
  */
 
 /**
  * @typedef {Object} CheckOutResult
- * @property {number} id - Attendance record ID
+ * @property {number} id - ID bản ghi chấm công
  * @property {number} userId
- * @property {string|null} checkIn - JST timestamp or null (if missing_checkin)
- * @property {string} checkOut - JST timestamp
- * @property {string[]} labels - Anomaly labels
- * @property {string} [anomaly_type] - 'missing_checkin' if auto-created
+ * @property {string|null} checkIn - Thời điểm JST hoặc null (nếu thiếu check-in)
+ * @property {string} checkOut - Thời điểm theo JST
+ * @property {string[]} labels - Nhãn bất thường
+ * @property {string} [anomaly_type] - 'missing_checkin' nếu bản ghi tự tạo
  */
 
 /**
  * @typedef {Object} TimesheetResult
- * @property {Object[]} days - Array of daily attendance records with computed metrics
- * @property {Object} total - Aggregated totals (regularMinutes, overtimeMinutes, nightMinutes)
+ * @property {Object[]} days - Mảng bản ghi chấm công từng ngày kèm số liệu đã tính
+ * @property {Object} total - Tổng cộng (regularMinutes, overtimeMinutes, nightMinutes)
  */
 
 /**
- * Calculate the great-circle distance between two coordinates using Haversine formula.
+ * Tính khoảng cách đường tròn lớn giữa hai tọa độ bằng công thức Haversine.
  * @param {number} lat1
  * @param {number} lon1
  * @param {number} lat2
  * @param {number} lon2
- * @returns {number} Distance in kilometers
+ * @returns {number} Khoảng cách (km)
  */
 function haversineKm(lat1, lon1, lat2, lon2) {
   const toRad = (v) => (v * Math.PI) / 180;
@@ -68,10 +68,10 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Compute anomaly labels for a check-in event based on location flags.
- * @param {Object} flags - System settings (minAccuracyMeters, countryWhitelist)
+ * Tính nhãn bất thường cho sự kiện check-in dựa trên cờ vị trí.
+ * @param {Object} flags - Cấu hình hệ thống (minAccuracyMeters, countryWhitelist)
  * @param {GeoLocation} loc
- * @returns {string[]} Array of anomaly labels
+ * @returns {string[]} Mảng nhãn bất thường
  */
 function computeLabelsForCheckIn(flags, loc) {
   const labels = [];
@@ -84,11 +84,11 @@ function computeLabelsForCheckIn(flags, loc) {
 }
 
 /**
- * Compute anomaly labels for a check-out event (travel speed checks).
- * @param {Object} open - The open attendance record (with checkIn, in_latitude, in_longitude)
- * @param {string} tsJST - Check-out timestamp in JST
+ * Tính nhãn bất thường cho sự kiện check-out (kiểm tra tốc độ di chuyển).
+ * @param {Object} open - Bản ghi chấm công đang mở (có checkIn, in_latitude, in_longitude)
+ * @param {string} tsJST - Thời điểm check-out theo JST
  * @param {GeoLocation} loc
- * @returns {string[]} Array of anomaly labels
+ * @returns {string[]} Mảng nhãn bất thường
  */
 function computeLabelsForCheckOut(open, tsJST, loc) {
   const labels = [];
@@ -102,12 +102,12 @@ function computeLabelsForCheckOut(open, tsJST, loc) {
 }
 
 /**
- * Record employee check-in.
+ * Ghi nhận check-in của nhân viên.
  * @param {number} userId
- * @param {string|number|null} time - ISO timestamp or epoch ms (null = now)
- * @param {GeoLocation} loc - Geolocation data
+ * @param {string|number|null} time - Thời điểm ISO hoặc epoch ms (null = bây giờ)
+ * @param {GeoLocation} loc - Dữ liệu vị trí
  * @param {string} [workType] - 'onsite' | 'remote' | 'satellite'
- * @returns {Promise<CheckInResult|null>} null if already checked in (duplicate)
+ * @returns {Promise<CheckInResult|null>} null nếu đã check-in rồi (trùng)
  */
 async function checkIn(userId, time, loc, workType, tenantId = null) {
   const flags = await settingsService.getFlags();
@@ -123,10 +123,10 @@ async function checkIn(userId, time, loc, workType, tenantId = null) {
 }
 
 /**
- * Record employee check-out. If no open check-in exists, creates a missing_checkin record.
+ * Ghi nhận check-out của nhân viên. Nếu không có check-in đang mở thì tạo bản ghi missing_checkin.
  * @param {number} userId
- * @param {string|number|null} time - ISO timestamp or epoch ms (null = now)
- * @param {GeoLocation} loc - Geolocation data
+ * @param {string|number|null} time - Thời điểm ISO hoặc epoch ms (null = bây giờ)
+ * @param {GeoLocation} loc - Dữ liệu vị trí
  * @returns {Promise<CheckOutResult>}
  */
 async function checkOut(userId, time, loc, tenantId = null) {
@@ -144,7 +144,7 @@ async function checkOut(userId, time, loc, tenantId = null) {
 }
 
 /**
- * Get attendance timesheet for a user within a date range.
+ * Lấy bảng chấm công của nhân viên trong khoảng thời gian.
  * @param {number} userId
  * @param {string} fromDate - YYYY-MM-DD
  * @param {string} toDate - YYYY-MM-DD

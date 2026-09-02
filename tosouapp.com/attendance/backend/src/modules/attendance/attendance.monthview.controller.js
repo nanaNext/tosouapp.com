@@ -14,7 +14,7 @@
  */
 'use strict';
 
-// ─── Dependencies ─────────────────────────────────────────────────────────────
+// Import phụ thuộc
 const service = require('./attendance.service'); // Tính toán timesheet
 const {
   resolveTargetUserId, // Kiểm tra RBAC: ai được xem của ai

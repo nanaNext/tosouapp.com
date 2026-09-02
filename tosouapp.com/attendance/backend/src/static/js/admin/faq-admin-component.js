@@ -1,6 +1,6 @@
 import { fetchJSONAuth } from '../api/http.api.js';
 
-// FAQ Admin Management Component
+// Component quản lý FAQ cho admin
 export class FaqAdminComponent {
   constructor(containerId) {
     this.container = document.getElementById(containerId);
@@ -9,17 +9,14 @@ export class FaqAdminComponent {
   }
 
   async init() {
-    console.log('🚀 Initializing FAQ Admin Component');
     await this.loadQuestions();
     this.render();
   }
 
   async loadQuestions() {
     try {
-      console.log('📥 Loading admin questions...');
       const result = await fetchJSONAuth('/api/faq/admin/questions');
       this.allQuestions = result.data || [];
-      console.log(`✅ Loaded ${this.allQuestions.length} questions`);
     } catch (e) {
       console.error('❌ Error loading questions:', e);
       alert('エラー: ' + e.message);
@@ -204,12 +201,10 @@ export class FaqAdminComponent {
     }
 
     try {
-      console.log('🌐 Submitting answer...');
       const result = await fetchJSONAuth(`/api/faq/admin/questions/${questionId}/answer`, {
         method: 'POST',
         body: JSON.stringify({ answer: answerText })
       });
-      console.log('✅ Answer saved successfully', result);
       alert('✓ 回答を保存しました');
       await this.loadQuestions();
       this.render();

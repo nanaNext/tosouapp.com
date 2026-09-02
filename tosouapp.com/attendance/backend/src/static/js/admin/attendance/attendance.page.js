@@ -17,19 +17,19 @@ export async function mount({ content, p2 }) {
   if (p === '/admin/attendance/holidays') {
     const mod = await import('../legacy/legacy-calendar.page.js');
     await mod.mountCalendar({ content });
-    return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
+    return () => { try { content.innerHTML = ''; } catch (e) { /* bỏ qua lỗi */ } };
   }
   if (p === '/admin/attendance/shifts' || p === '/admin/attendance/shift-assignment') {
     const mod = await import('../legacy/legacy-shifts.page.js');
     await mod.mountShifts({ content });
-    return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
+    return () => { try { content.innerHTML = ''; } catch (e) { /* bỏ qua lỗi */ } };
   }
   if (p === '/admin/attendance/go-out') {
     const mod = await import('./admin-go-out.page.js');
     await mod.mountGoOut({ content });
-    return () => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } };
+    return () => { try { content.innerHTML = ''; } catch (e) { /* bỏ qua lỗi */ } };
   }
-  // Default: attendance records
+  // Mặc định: bản ghi chấm công
   const mod = await import('../legacy/legacy-attendance.page.js?v=4');
   const cleanup = await mod.mountAttendance({
     content,
@@ -40,7 +40,7 @@ export async function mount({ content, p2 }) {
     buildTimesheetExportURL
   });
   return () => {
-    try { if (typeof cleanup === 'function') cleanup(); } catch (e) { /* silently ignored */ }
-    try { content.innerHTML = ''; } catch (e) { /* silently ignored */ }
+    try { if (typeof cleanup === 'function') cleanup(); } catch (e) { /* bỏ qua lỗi */ }
+    try { content.innerHTML = ''; } catch (e) { /* bỏ qua lỗi */ }
   };
 }

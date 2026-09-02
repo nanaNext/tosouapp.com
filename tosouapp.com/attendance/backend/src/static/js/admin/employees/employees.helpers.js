@@ -359,18 +359,18 @@ export function ensureEmployeePillStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export const showNavSpinner = () => {
-  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
+  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const hideNavSpinner = () => {
   try {
     const c = document.querySelector('#adminContent');
     if (c) c.style.visibility = '';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const getTopbarSearchParts = () => {
@@ -395,13 +395,13 @@ export const bindTopbarSearchClear = () => {
     if (closeBtn.dataset.empClearBound === '1') return;
     closeBtn.dataset.empClearBound = '1';
     const clearAndBack = (e) => {
-      try { e.preventDefault(); } catch (e) { /* silently ignored */ }
-      try { e.stopPropagation(); } catch (e) { /* silently ignored */ }
+      try { e.preventDefault(); } catch (e) { /* bỏ qua lỗi */ }
+      try { e.stopPropagation(); } catch (e) { /* bỏ qua lỗi */ }
       try { window.location.assign('/admin/employees#list'); } catch { window.location.href = '/admin/employees#list'; }
     };
     closeBtn.addEventListener('pointerdown', clearAndBack, true);
     closeBtn.addEventListener('click', clearAndBack, true);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const syncTopbarSearchKeyword = (keyword) => {
@@ -418,7 +418,7 @@ export const syncTopbarSearchKeyword = (keyword) => {
       return;
     }
     searchBox.classList.remove('emp-query-active');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const clearTopbarNoResultState = () => {
@@ -433,7 +433,7 @@ export const clearTopbarNoResultState = () => {
     hint.textContent = def || 'Ctrl+K';
     hint.removeAttribute('title');
     hint.style.display = '';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const setTopbarNoResultState = (searchedText) => {
@@ -455,7 +455,7 @@ export const setTopbarNoResultState = (searchedText) => {
     hint.textContent = msg;
     hint.title = msg;
     hint.style.display = 'inline-flex';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export function getEmployeesMode(pathname, hash, detailId, editId, summaryId, createFlag) {

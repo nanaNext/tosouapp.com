@@ -1,8 +1,8 @@
 'use strict';
 /**
  * attendance.export.monthly.js
- * Monthly attendance Excel export (exportMonthXlsx).
- * Split from attendance.export.controller.js for maintainability.
+ * Xuất Excel chấm công theo tháng (exportMonthXlsx).
+ * Tách ra từ attendance.export.controller.js cho dễ bảo trì.
  */
 const service = require('./attendance.service');
 const auditRepo = require('../audit/audit.repository');
@@ -270,7 +270,7 @@ exports.exportMonthXlsx = async (req, res) => {
       const ds = `${y}-${pad(m)}-${pad(day)}`;
       const dow = dowJa(ds);
       
-      // Determine isOff logically the same way the frontend does (from calendar rule)
+      // Xác định isOff theo đúng cách frontend làm (dựa vào rule lịch)
       const isOff = off.has(ds);
       
       // Sheet 1: 入力用勤怠表
@@ -286,7 +286,7 @@ exports.exportMonthXlsx = async (req, res) => {
           if (def && !wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
             return false;
           }
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi lọc */ }
         return true;
       });
       const seg = segs[0] || null;
@@ -331,7 +331,7 @@ exports.exportMonthXlsx = async (req, res) => {
       const kubun = kubunInfo.display;
       const isWorkKubun = workKubunSet.has(kubunInfo.effective);
       
-      // We only export ACTUAL data, not the faded placeholder data from the UI.
+      // Chỉ xuất dữ liệu THỰC, không xuất dữ liệu placeholder mờ trên UI.
       const shouldShowDefaultShift = !isOff && (kubun === '' || kubun === '出勤' || kubun === '【予定出勤】' || kubun === '休日出勤' || kubun === '代替出勤');
       
       let wt = isWorkKubun ? String(seg?.workType || daily?.workType || '').trim() : '';
@@ -356,13 +356,13 @@ exports.exportMonthXlsx = async (req, res) => {
         exportBrMin = (holidayLock || isHankyuu) ? 0 : (daily?.breakMinutes == null ? defaultBr : Number(daily.breakMinutes));
         exportNbMin = (holidayLock || isHankyuu) ? 0 : (daily?.nightBreakMinutes == null ? 0 : Number(daily.nightBreakMinutes));
         exportWorkedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - hmToMinutes(inHm) - exportBrMin - exportNbMin);
-        // 超過時間 = checkout - shift_end (thời gian sau giờ kết thúc ca)
+        // 超過時間 = checkout - shift_end (giờ sau khi kết thúc ca)
         const shiftEndMin = shiftDef ? shiftDef.endMin : (17 * 60);
         const outMin = hmToMinutes(outHm);
         exportOtMin = holidayLock ? 0 : Math.max(0, outMin - shiftEndMin);
       }
 
-      // ─── 丸め (Rounded values) ───
+      // 丸め (giá trị đã làm tròn)
       let roundedIn = '';
       let roundedOut = '';
       let roundedWorkedMin = '';
@@ -372,9 +372,9 @@ exports.exportMonthXlsx = async (req, res) => {
         const shiftEndMin2 = shiftDef ? shiftDef.endMin : (17 * 60);
         const inMin = hmToMinutes(exportInHm);
         const outMinR = hmToMinutes(exportOutHm);
-        // Clock-in: before shift → shift start, otherwise keep actual
+        // Giờ vào: đến trước ca → tính từ giờ ca bắt đầu, còn lại giữ giờ thực
         const rInMin = inMin < shiftStartMin ? shiftStartMin : inMin;
-        // Clock-out: round DOWN OT after shift end
+        // Giờ ra: làm tròn XUỐNG phần OT sau khi kết thúc ca
         let rOutMin = outMinR;
         if (outMinR > shiftEndMin2) {
           const otRaw = outMinR - shiftEndMin2;
@@ -388,7 +388,7 @@ exports.exportMonthXlsx = async (req, res) => {
       }
       const lateEarly = (() => {
         if (holidayLock) return '';
-        // 半休/半休(有給) は半日休みが正規のため遅刻・早退を計上しない
+        // 半休/半休(有給): nghỉ nửa ngày là hợp lệ nên không tính đi muộn/về sớm
         if (kubunInfo.effective === '半休' || kubunInfo.effective === '半休(有給)') return '';
         if (!exportInHm && !exportOutHm) return '';
         const parse = (t) => {
@@ -403,7 +403,7 @@ exports.exportMonthXlsx = async (req, res) => {
         const se = shiftForDate(ds);
         const startBase = se?.startMin ?? (8 * 60);
         const endBase = se?.endMin ?? (17 * 60);
-        // Match monthly table rule exactly: late if in > shift start, early if out < shift end.
+        // Khớp đúng rule bảng tháng: muộn nếu vào > giờ ca bắt đầu, sớm nếu ra < giờ ca kết thúc.
         const late = a > startBase;
         const early = b < endBase;
         if (late && early) return '遅刻/早退';
@@ -636,20 +636,20 @@ exports.exportMonthXlsx = async (req, res) => {
       const src = Array.isArray(r?.cells) ? r.cells : [];
       const rowDow = String(src[3] || '').trim();
       const isSunday = rowDow === '日';
-      // Determine row color style based on kubun and attendance status
+      // Chọn màu dòng dựa theo kubun và trạng thái chấm công
       const rowKubun = String(src[4] || '').trim();
-      const rowHasTime = !!(src[9] || src[10]); // has 開始 or 終了
+      const rowHasTime = !!(src[9] || src[10]); // có 開始 hoặc 終了
       const rowIsOff = r?.isOff;
-      // Style IDs: 21=blue(worked), 22=gray(not worked), 23=yellow(paid leave), 24=red(absent), 25=green(half), 26=pink(holiday)
+      // Mã style: 21=xanh dương(đã làm), 22=xám(chưa làm), 23=vàng(nghỉ có phép), 24=đỏ(vắng), 25=xanh lá(nửa ngày), 26=hồng(ngày nghỉ)
       const rowStyle = (() => {
-        if (rowKubun === '有給休暇') return 23; // yellow
-        if (rowKubun === '欠勤') return 24; // red
-        if (rowKubun === '半休' || rowKubun === '半休(有給)') return 25; // light green
-        if (rowKubun === '休日' || rowKubun === '【予定休日】' || rowIsOff) return 26; // pink (holiday/off)
-        if (rowHasTime) return 21; // blue (has actual attendance)
-        if (rowKubun.includes('予定')) return 12; // white (planned, no data yet)
-        if (rowKubun === '出勤' || rowKubun === '休日出勤' || rowKubun === '代替出勤') return 22; // gray (work day but no time yet)
-        return 12; // default
+        if (rowKubun === '有給休暇') return 23; // vàng
+        if (rowKubun === '欠勤') return 24; // đỏ
+        if (rowKubun === '半休' || rowKubun === '半休(有給)') return 25; // xanh lá nhạt
+        if (rowKubun === '休日' || rowKubun === '【予定休日】' || rowIsOff) return 26; // hồng (ngày nghỉ/off)
+        if (rowHasTime) return 21; // xanh dương (có chấm công thực)
+        if (rowKubun.includes('予定')) return 12; // trắng (mới là dự kiến, chưa có dữ liệu)
+        if (rowKubun === '出勤' || rowKubun === '休日出勤' || rowKubun === '代替出勤') return 22; // xám (ngày làm nhưng chưa có giờ)
+        return 12; // mặc định
       })();
       const dayText = (() => {
         const ds = String(src[2] || '');
@@ -715,8 +715,8 @@ exports.exportMonthXlsx = async (req, res) => {
       push1(rowNum, xmlCells);
     }
 
-    // ─── 当月サマリ (Monthly Summary) ──────────────────────────────────────────
-    const summaryStartRow = 7 + sheetRows.length + 2; // 2 rows gap
+    // 当月サマリ (tổng hợp tháng)
+    const summaryStartRow = 7 + sheetRows.length + 2; // cách 2 dòng
     const totalWorkingDays = lastDay - [...off].filter(d => d >= from && d <= to).length;
     let sumAttendDays = 0;
     let sumHolidayWorkDays = 0;
@@ -743,12 +743,12 @@ exports.exportMonthXlsx = async (req, res) => {
       if (hasActual) {
         if (isOffDay) sumHolidayWorkDays++;
         else sumAttendDays++;
-        // Work type counting
+        // Đếm theo hình thức làm việc
         const wt = String(segs0[0]?.workType || daily?.workType || '').trim();
         if (wt === 'onsite') sumOnsiteDays++;
         else if (wt === 'remote') sumRemoteDays++;
         else if (wt === 'satellite') sumSatelliteDays++;
-        else if (hasActual && !isOffDay) sumOnsiteDays++; // default to onsite if has attendance
+        else if (hasActual && !isOffDay) sumOnsiteDays++; // mặc định là onsite nếu có chấm công
       } else if (kubun === '半休' || kubun === '半休(有給)') {
         sumAttendDays += 0.5;
       }
@@ -768,7 +768,7 @@ exports.exportMonthXlsx = async (req, res) => {
           const raw = hmToMinutes(sOut) - hmToMinutes(sIn);
           if (raw > 0) sumTotalWorkedMin += raw;
         }
-        // Overtime
+        // Giờ làm thêm
         const seg = segs0[0];
         const outHmS = hm(seg?.checkOut);
         if (outHmS) {
@@ -800,7 +800,7 @@ exports.exportMonthXlsx = async (req, res) => {
     const sumNetWorkedMin = Math.max(0, sumTotalWorkedMin - sumBreakMin);
 
     const totalPaidLeave = sumPaidDays + sumHalfPaidDays;
-    // Entitlement
+    // Số ngày phép được cấp
     let entitlementDays = '—';
     try {
       const empStart = await resolveEmploymentStartDate(userId);
@@ -808,9 +808,9 @@ exports.exportMonthXlsx = async (req, res) => {
         const ent = calculatePaidLeaveEntitlement(empStart, `${y}-${pad(m)}-01`);
         entitlementDays = String(ent?.remaining ?? ent?.total ?? '—');
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi tính phép */ }
 
-    // Push summary rows
+    // Ghi các dòng tổng hợp
     push1(summaryStartRow, [cell('A' + summaryStartRow, '当月サマリ', 1)], 22);
     const sRow1 = summaryStartRow + 1;
     push1(sRow1, [
@@ -1014,7 +1014,7 @@ exports.exportMonthXlsx = async (req, res) => {
       { name: 'xl/worksheets/sheet1.xml', data: sheet1Xml }
     ]);
 
-    // Auto-save export to R2
+    // Tự động lưu file xuất lên R2
     const s3Service = require('../../core/services/s3.service');
     if (s3Service.isR2Configured()) {
       const ts = new Date().toISOString().replace(/[:.]/g, '-');

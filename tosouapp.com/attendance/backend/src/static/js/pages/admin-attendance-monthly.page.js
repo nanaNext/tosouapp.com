@@ -71,7 +71,7 @@ function showFrameSpinner(root, show) {
     if (!el) return;
     if (show) el.removeAttribute('hidden');
     else el.setAttribute('hidden', '');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function openMonthlyInFrame(root, uid, month) {
@@ -124,13 +124,13 @@ function wireFrameLoading(root) {
         const u = new URL(frame.src || '', window.location.origin);
         const uid = String(u.searchParams.get('userId') || '').trim();
         if (/^\d+$/.test(uid)) localStorage.setItem('admin.monthly.lastUserId', uid);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     });
     frame.addEventListener('error', () => {
       showFrameSpinner(root, false);
       showErr(root, '読み込みに失敗しました。もう一度お試しください。');
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function renderScaffold(root) {
@@ -179,7 +179,7 @@ async function boot(root, { standalone = false } = {}) {
   try {
     const userName = document.querySelector('#userName');
     if (userName) userName.textContent = profile.username || profile.email || '管理者';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   wireFrameLoading(root);
   const monthEl   = q(root, '#month');
   const ml        = q(root, '#monthLabel');
@@ -190,7 +190,7 @@ async function boot(root, { standalone = false } = {}) {
       const u = new URL(window.location.href);
       const m = String(u.searchParams.get('month') || '').slice(0, 7);
       if (/^\d{4}-\d{2}$/.test(m)) return m;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return currentMonthJST();
   })();
   if (monthEl) monthEl.value = ym0;
@@ -208,7 +208,7 @@ async function boot(root, { standalone = false } = {}) {
       const u = new URL(window.location.href);
       const qid = String(u.searchParams.get('userId') || '').trim();
       if (/^\d+$/.test(qid) && users.some(row => String(row.id) === qid)) return qid;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     if (/^\d+$/.test(lastUid) && users.some(u => String(u.id) === lastUid)) return lastUid;
     const first = users[0];
     return first && first.id != null ? String(first.id).trim() : '';
@@ -224,12 +224,12 @@ async function boot(root, { standalone = false } = {}) {
       const u = new URL(window.location.href);
       u.searchParams.set('month', month);
       history.pushState(null, '', u.pathname + u.search + u.hash);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const uid = empSelect ? String(empSelect.value || '').trim() : defaultUid;
     if (/^\d+$/.test(uid)) openMonthlyInFrame(root, uid, month);
   };
 
-  // Wire events
+  // Gắn sự kiện
   monthEl?.addEventListener('change', loadFrame);
   empSelect?.addEventListener('change', loadFrame);
 

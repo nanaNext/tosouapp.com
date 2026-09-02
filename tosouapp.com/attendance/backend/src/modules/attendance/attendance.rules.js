@@ -1,5 +1,5 @@
 const { parseMySQLJSTToDate } = require('../../utils/dateTime');
-// Chuyển chuỗi DATETIME (JST) sang Date (UTC-based) để tính toán
+// Chuyển chuỗi DATETIME (JST) sang Date (theo UTC) để tính toán
 
 function minutesBetween(a, b) {
   // Tính chênh lệch phút giữa hai thời điểm, không âm
@@ -19,12 +19,12 @@ const getJSTDateStr = (val) => {
 };
 
 /**
- * PURE FUNCTIONS FOR TESTING (Ưu tiên 2)
- * Tách logic tính toán ra khỏi DB để có thể viết Unit Test chí mạng.
+ * Hàm thuần để dễ test (ưu tiên 2)
+ * Tách logic tính toán ra khỏi DB để viết được Unit Test.
  */
 const CoreRules = {
   /**
-   * Tính toán thời gian làm việc cơ bản và các flag bất thường
+   * Tính thời gian làm việc cơ bản và các cờ bất thường
    */
   calculateWorkMetrics(checkIn, checkOut, shift, isOff = false) {
     if (!checkIn || !checkOut) {
@@ -44,26 +44,26 @@ const CoreRules = {
     const worked = minutesBetween(inJ, outJ);
     const breakMin = shift?.breakMinutes ?? 60;
     
-    // 1. Tính toán baseline (theo ca làm việc)
-    // Shift times are also parsed correctly
+    // 1. Tính baseline (theo ca làm việc)
+    // Giờ ca cũng được parse đúng định dạng
     const shiftStart = shift?.start ? parseMySQLJSTToDate(shift.start) : new Date();
     const shiftEnd = shift?.end ? parseMySQLJSTToDate(shift.end) : new Date();
 
-    // Tính scheduled minutes dựa trên start/end của shift (không trừ break tự động ở đây)
+    // Tính số phút theo lịch dựa trên start/end của ca (chưa trừ nghỉ tự động ở đây)
     const scheduled = isOff ? 0 : minutesBetween(shiftStart, shiftEnd);
     
-    // Regular minutes = tối đa là (scheduled - breakMin), nhưng không vượt quá (worked - breakMin)
+    // Số phút công chuẩn = tối đa (scheduled - breakMin), nhưng không vượt (worked - breakMin)
     const regular = isOff ? 0 : Math.min(worked - breakMin, scheduled - breakMin);
     const overtime = Math.max(0, worked - scheduled);
 
-    // 2. Tính toán giờ làm đêm (22:00 - 05:00)
+    // 2. Tính giờ làm đêm (22:00 - 05:00)
     let night = 0;
     const y = inJ.getUTCFullYear();
     const m = inJ.getUTCMonth();
     const d = inJ.getUTCDate();
     const nightWindows = [];
-    // JST is UTC+9, so 22:00 JST is 13:00 UTC, 05:00 JST is 20:00 UTC (previous day or same day)
-    // To simplify and match existing logic:
+    // JST là UTC+9, nên 22:00 JST = 13:00 UTC, 05:00 JST = 20:00 UTC (ngày trước hoặc cùng ngày)
+    // Đơn giản hóa để khớp với logic hiện tại:
     for (let k = -1; k < 2; k++) { 
       const start = new Date(Date.UTC(y, m, d + k, 22 - 9, 0, 0));
       const end = new Date(Date.UTC(y, m, d + k + 1, 5 - 9, 0, 0));
@@ -76,11 +76,11 @@ const CoreRules = {
       night += mins;
     }
 
-    // 3. Xử lý ANOMALY FLAGS (Chặn rủi ro Business)
+    // 3. Xử lý cờ bất thường (chặn rủi ro nghiệp vụ)
     let isAnomaly = false;
     let anomalyType = null;
 
-    // JST date check (UTC+9)
+    // Kiểm tra ngày theo giờ JST (UTC+9)
     const inJST = new Date(inJ.getTime() + 9 * 3600 * 1000);
     const outJST = new Date(outJ.getTime() + 9 * 3600 * 1000);
     const inJSTDate = inJST.getUTCDate();
@@ -142,7 +142,7 @@ async function computeRecord(rec, ctx = null) {
         if (!wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
           template = true;
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua nếu lỗi */ }
     }
   }
   if (!shift) {
@@ -215,7 +215,7 @@ async function computeRecord(rec, ctx = null) {
     worked = minutesBetween(inJ, outJ);
   }
   
-  // Trừ thời gian ra ngoài việc cá nhân (私用)
+  // Trừ thời gian ra ngoài vì việc cá nhân
   let privateGoOutMinutes = 0;
   let workGoOutMinutes = 0;
   let goOuts = [];
@@ -248,12 +248,12 @@ async function computeRecord(rec, ctx = null) {
   // Trừ đi thời gian đi việc riêng và thời gian nghỉ
   worked = Math.max(0, worked - privateGoOutMinutes - breakMin);
 
-  // ─── 丸目 (làm tròn) ───────────────────────────────────────────────────────
+  // ─── Làm tròn ────────────────────────────────────────────────────────────
   // 1. Giờ vào trước ca → chỉ tính từ giờ ca bắt đầu
-  // 2. OT → làm tròn xuống bước 30 phút
+  // 2. OT → làm tròn xuống theo bước 30 phút
   const ROUND_STEP = 30; // phút
   if (inJ && shift.start && inJ < shift.start) {
-    // Trừ đi phút đến sớm (đã tính vào worked nhưng không nên)
+    // Trừ đi số phút đến sớm (đã cộng vào worked nhưng không nên tính)
     const earlyMinutes = minutesBetween(inJ, shift.start);
     worked = Math.max(0, worked - earlyMinutes);
   }
@@ -268,7 +268,7 @@ async function computeRecord(rec, ctx = null) {
   const rawOvertime = Math.max(0, worked - scheduled);
   const overtime = Math.floor(rawOvertime / ROUND_STEP) * ROUND_STEP;
 
-  // Dùng CoreRules để lấy thêm thông tin Anomaly
+  // Dùng CoreRules để lấy thêm thông tin bất thường
   const metrics = CoreRules.calculateWorkMetrics(rec.checkIn, rec.checkOut, shift, isOff);
 
   return {
@@ -381,7 +381,6 @@ async function computeRange(rows) {
       }
     }));
   }
-// 
   const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache, dailyCache };
   const computedItems = await Promise.all(
     rows

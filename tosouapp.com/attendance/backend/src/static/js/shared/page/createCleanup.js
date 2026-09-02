@@ -8,7 +8,7 @@ export function createCleanup() {
 
     run() {
       for (const fn of tasks.splice(0)) {
-        try { fn(); } catch (e) { /* silently ignored */ }
+        try { fn(); } catch (e) { /* bỏ qua lỗi */ }
       }
     }
   };

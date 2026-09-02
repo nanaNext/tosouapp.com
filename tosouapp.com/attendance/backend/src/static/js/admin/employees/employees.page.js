@@ -28,7 +28,7 @@ async function renderEmployees(profile, c) {
     if (!isEmployeesPath(currentPath)) return;
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') showNavSpinner();
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const seq = ++employeesRenderSeq;
   const content = c || $('#adminContent');
@@ -62,9 +62,9 @@ async function renderEmployees(profile, c) {
     if ((pathname === '/admin/employees' || pathname === '/admin/employees/') && !hash && !detailId && !editId && !summaryId && !createFlag) {
       history.replaceState(null, '', '/admin/employees#list');
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  try { document.body.classList.remove('employees-wide'); } catch (e) { /* silently ignored */ }
+  try { document.body.classList.remove('employees-wide'); } catch (e) { /* bỏ qua lỗi */ }
   try {
     if (mode === 'delete') {
       document.body.classList.add('emp-delete-mode');
@@ -73,8 +73,8 @@ async function renderEmployees(profile, c) {
       document.body.classList.remove('emp-delete-mode');
       document.documentElement.classList.remove('emp-delete-mode');
     }
-  } catch (e) { /* silently ignored */ }
-  try { content.innerHTML = ''; } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
+  try { content.innerHTML = ''; } catch (e) { /* bỏ qua lỗi */ }
 
   if (mode === 'detail' && detailId) {
     const u = await getEmployee(detailId);
@@ -103,7 +103,7 @@ async function renderEmployees(profile, c) {
       try {
         const x = new Date(raw);
         if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getDate()).padStart(2,'0')}`;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       return raw;
     };
 
@@ -126,7 +126,7 @@ async function renderEmployees(profile, c) {
       allUsers3 = (allUsers3 && allUsers3.rows) || allUsers3;
       const mgr3 = allUsers3.find(x => String(x.id) === String(u.manager_id));
       mgrName3 = mgr3 ? (mgr3.username || mgr3.email) : '';
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const avatarBlock3 = `<div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;color:#475569;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;border:1px solid #cbd5e1;">${ini3}</div>`;
     const branchName3 = (branches.find(br => String(br.id) === String(u.branch_id)) || {}).name || '';
     panel.style.cssText = 'border:1px solid #d0d7de;border-radius:0;background:#fff;box-shadow:none;overflow:hidden;max-width:100%;';
@@ -239,7 +239,7 @@ async function renderEmployees(profile, c) {
           try {
             const defs = await fetchJSONAuth('/api/attendance/shifts/definitions');
             def = (defs || []).find(d => String(d.id) === String(active.shiftId)) || null;
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
         }
         if (active.shift && typeof active.shift === 'object') {
           name = String(active.shift.name || '');
@@ -262,7 +262,7 @@ async function renderEmployees(profile, c) {
         const rangeText = range && !range.startsWith('—') ? ` ${range}` : '';
         rowShift.innerHTML = `<span style="display:inline-block;padding:4px 12px;border-radius:999px;background:#eef5ff;color:#0b2c66;font-weight:700;margin-right:8px;">${nm}</span><span style="font-weight:700;color:#334155;margin-right:8px;">${time}</span><span style="color:#64748b;">${rangeText}</span>`;
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       const box = panel.querySelector('#detailAvatarGallery');
       if (box) {
@@ -308,7 +308,7 @@ async function renderEmployees(profile, c) {
           window.location.href = '/admin/employees';
         });
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     hideNavSpinner();
     return;
   }
@@ -316,11 +316,11 @@ async function renderEmployees(profile, c) {
   if (mode === 'summary' && summaryId) {
     try {
       const month = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
-      // Let SPA routing handle it by replacing the state and triggering route update
+      // Để routing SPA tự xử lý bằng cách thay state và kích hoạt cập nhật route
       history.replaceState(null, '', `/admin/employees/monthly-summary?userId=${encodeURIComponent(summaryId)}&month=${encodeURIComponent(month)}`);
       window.dispatchEvent(new Event('popstate'));
       return;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const u = await getEmployee(summaryId);
     if (seq !== employeesRenderSeq) return;
     content.innerHTML = ``;
@@ -697,7 +697,7 @@ async function renderEmployees(profile, c) {
         }
       });
       loadSa().catch(() => {});
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     try {
       const wdStatus = wrap.querySelector('#wdStatus');
@@ -843,7 +843,7 @@ async function renderEmployees(profile, c) {
         }
       });
       loadWd().catch(() => {});
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     hideNavSpinner();
     return;
   }
@@ -900,10 +900,10 @@ async function renderEmployees(profile, c) {
     if (!isForbiddenErr(e3)) errMsgs.push(`部署: ${(e3 && e3.message) ? e3.message : 'unknown'}`);
     try { depts = role2 === 'manager' ? await listDepartments() : await fetchJSONAuth('/api/manager/departments'); } catch (e4) { if (!isForbiddenErr(e4)) errMsgs.push(`部署(予備): ${(e4 && e4.message) ? e4.message : 'unknown'}`); depts = []; }
   }
-  // Load branches for dropdown
+  // Tải danh sách chi nhánh cho dropdown
   let branches = [];
   try { branches = (await fetchJSONAuth('/api/branches'))?.data || []; } catch { branches = []; }
-  // Load tenants for sysadmin (to populate "所属会社" dropdown in create form)
+  // Tải danh sách tenant cho sysadmin (để đổ dropdown "所属会社" trong form tạo mới)
   let tenantsList = [];
   const isSysRole = role2 === 'sysadmin' || role2 === 'owner';
   if (isSysRole) {
@@ -918,7 +918,7 @@ async function renderEmployees(profile, c) {
       note.style.fontWeight = '700';
       note.textContent = '従業員が見つかりません。従業員が未登録か、表示条件に一致しません。';
       content.appendChild(note);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (errMsgs.length) {
     const msg = document.createElement('div');
@@ -1040,14 +1040,14 @@ async function renderEmployees(profile, c) {
       const cancelA = formEdit.querySelector('#btnCancelEdit');
       if (backA) backA.setAttribute('href', backHref);
       if (cancelA) cancelA.setAttribute('href', backHref);
-    } catch (e) { /* silently ignored */ }
-    // Populate branch dropdown
+    } catch (e) { /* bỏ qua lỗi */ }
+    // Đổ dropdown chi nhánh
     try {
       const brSel = formEdit.querySelector('#empBranch');
       if (brSel && branches.length) {
         brSel.innerHTML = '<option value="">未設定</option>' + branches.map(br => `<option value="${br.id}" ${String(u.branch_id||u.branchId||'')===String(br.id)?'selected':''}>${br.name}</option>`).join('');
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     formEdit.addEventListener('submit', async (e) => {
       e.preventDefault();
       const submitBtn = formEdit.querySelector('button[type="submit"]');
@@ -1096,7 +1096,7 @@ async function renderEmployees(profile, c) {
             });
             uploadedCount = Number(out?.count || saveFiles.length || 0);
             if (statusElOnSave) statusElOnSave.textContent = `アップロード完了 (${uploadedCount}件)`;
-            try { fileElOnSave.value = ''; } catch (e) { /* silently ignored */ }
+            try { fileElOnSave.value = ''; } catch (e) { /* bỏ qua lỗi */ }
           } catch (uploadErr) {
             if (statusElOnSave) statusElOnSave.textContent = String(uploadErr?.message || 'アップロード失敗');
             throw new Error(`社員情報は保存済みですが、写真アップロードに失敗しました: ${String(uploadErr?.message || '')}`);
@@ -1105,14 +1105,14 @@ async function renderEmployees(profile, c) {
         try {
           const msg = uploadedCount > 0 ? `保存しました（写真${uploadedCount}件アップロード）` : '保存しました';
           sessionStorage.setItem('empFlashMessage', msg);
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         try {
           const listKeys = ['q','dept','employmentType','role','status','hireFrom','hireTo','sortKey','sortDir','page','code','showAll'];
           const keep = new URLSearchParams();
           for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
           const qsKeep = keep.toString();
           history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         await renderEmployees(profile);
       } catch (err) {
         window.alert(String(err?.message || '保存に失敗しました'));
@@ -1213,7 +1213,7 @@ async function renderEmployees(profile, c) {
             body: fd
           });
           if (statusEl) statusEl.textContent = `アップロード完了 (${Number(out?.count || files.length)}件)`;
-          try { fileEl.value = ''; } catch (e) { /* silently ignored */ }
+          try { fileEl.value = ''; } catch (e) { /* bỏ qua lỗi */ }
           renderSelectedPreview([]);
           await loadAvatarGallery();
         } catch (err) {
@@ -1230,7 +1230,7 @@ async function renderEmployees(profile, c) {
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       await renderEmployees(profile);
     });
     formEdit.querySelector('#btnCancelEdit').addEventListener('click', async (e) => {
@@ -1241,7 +1241,7 @@ async function renderEmployees(profile, c) {
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       await renderEmployees(profile);
     });
     content.appendChild(formEdit);
@@ -1274,7 +1274,7 @@ async function renderEmployees(profile, c) {
       const key = (document.querySelector('#editKey').value || '').trim();
       if (!key) {
         if (errEl) { errEl.style.display = 'block'; errEl.textContent = '社員番号を入力してください。'; }
-        try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
+        try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* bỏ qua lỗi */ }
         return;
       }
       if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
@@ -1305,7 +1305,7 @@ async function renderEmployees(profile, c) {
       window.location.href = `/admin/employees?edit=${id}`;
     });
     content.appendChild(prompt);
-    try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
+    try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* bỏ qua lỗi */ }
     hideNavSpinner();
     return;
   }
@@ -1419,29 +1419,29 @@ async function renderEmployees(profile, c) {
         for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
         const qsKeep = keep.toString();
         history.replaceState(null, '', `/admin/employees${qsKeep ? '?' + qsKeep : ''}#list`);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       await renderEmployees(profile);
     });
 
-    // Populate branch dropdown for create form
+    // Đổ dropdown chi nhánh cho form tạo mới
     try {
       const brSelCreate = form.querySelector('#empBranch');
       if (brSelCreate && branches.length) {
         brSelCreate.innerHTML = '<option value="">未設定</option>' + branches.map(br => `<option value="${br.id}">${br.name}</option>`).join('');
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
-    // Populate tenant dropdown for sysadmin
+    // Đổ dropdown tenant cho sysadmin
     try {
       const tenantSel = form.querySelector('#empTenantSelect');
       if (tenantSel) {
         if (isSysRole && tenantsList.length > 0) {
-          // Sysadmin: show all tenants
+          // Sysadmin: hiện tất cả tenant
           const currentTid = String(profile?.tenantId || '');
           tenantSel.innerHTML = '<option value="">選択してください</option>' +
             tenantsList.map(t => `<option value="${t.id}"${String(t.id) === currentTid ? ' selected' : ''}>${t.name}</option>`).join('');
         } else {
-          // Admin/Manager: fetch their own tenant info from /api/auth/me or use profile
+          // Admin/Manager: lấy thông tin tenant của chính họ từ /api/auth/me hoặc dùng profile
           let tid = profile?.tenantId || '';
           let tName = profile?.tenantName || '';
           if (!tid) {
@@ -1449,25 +1449,25 @@ async function renderEmployees(profile, c) {
               const me = await fetchJSONAuth('/api/auth/me');
               tid = me?.tenantId || me?.tenant_id || '';
               tName = me?.tenantName || me?.tenant_name || '';
-              // Also try tenants list from user context
+              // Thử luôn danh sách tenant từ ngữ cảnh user
               if (!tid && me?.tenants && me.tenants.length > 0) {
                 tid = me.tenants[0].id || '';
                 tName = me.tenants[0].name || '';
               }
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
           }
           if (!tid) {
-            // Last resort: get from JWT payload
+            // Phương án cuối: lấy từ payload JWT
             try {
               const token = sessionStorage.getItem('accessToken') || '';
               if (token) {
                 const payload = JSON.parse(atob(token.split('.')[1]));
                 tid = payload.tid || payload.tenant_id || '';
               }
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
           }
           if (!tid) {
-            // Absolute fallback: call tenants API which the select-company flow uses
+            // Dự phòng cuối cùng: gọi API tenants mà luồng chọn công ty dùng
             try {
               const data = await fetchJSONAuth('/api/auth/my-tenants');
               const list = data?.tenants || data || [];
@@ -1484,7 +1484,7 @@ async function renderEmployees(profile, c) {
           }
         }
       }
-      // When tenant changes, reload departments for that tenant
+      // Khi đổi tenant, tải lại danh sách phòng ban của tenant đó
       const tenantSel2 = form.querySelector('#empTenantSelect');
       if (tenantSel2) {
         tenantSel2.addEventListener('change', async () => {
@@ -1500,7 +1500,7 @@ async function renderEmployees(profile, c) {
           } catch (e) {
             deptSel.innerHTML = '<option value="">未設定</option>';
           }
-          // Also reload branches for the selected tenant
+          // Tải lại luôn chi nhánh cho tenant được chọn
           const brSel = form.querySelector('#empBranch');
           if (brSel) {
             try {
@@ -1514,9 +1514,9 @@ async function renderEmployees(profile, c) {
           }
         });
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
-    // Step navigation logic
+    // Logic điều hướng giữa các bước
     const step1 = form.querySelector('#step1');
     const step2 = form.querySelector('#step2');
     const stepInd1 = form.querySelector('#stepInd1');
@@ -1525,13 +1525,13 @@ async function renderEmployees(profile, c) {
     const btnPrev = form.querySelector('#btnPrev');
 
     const goToStep2 = () => {
-      // Validate step 1 required fields
+      // Kiểm tra các trường bắt buộc ở bước 1
       const tenantVal = form.querySelector('#empTenantSelect')?.value;
       const code = form.querySelector('#empCode')?.value?.trim();
       const name = form.querySelector('#empName')?.value?.trim();
       const email = form.querySelector('#empEmail')?.value?.trim();
       const pass = form.querySelector('#empPass')?.value;
-      // Validation: kiểm tra trường bắt buộc
+      // Kiểm tra hợp lệ: các trường bắt buộc
       const missing = [];
       if (!tenantVal) missing.push('所属会社');
       if (!code) missing.push('社員番号');
@@ -1548,7 +1548,7 @@ async function renderEmployees(profile, c) {
         }
         return;
       }
-      // Reset message
+      // Xóa thông báo
       const msgEl2 = form.querySelector('#empStepMsg');
       if (msgEl2) msgEl2.style.display = 'none';
       step1.style.display = 'none';
@@ -1603,7 +1603,7 @@ async function renderEmployees(profile, c) {
       if (msgEl) msgEl.style.display = 'none';
       const ok = window.confirm('作成しますか？');
       if (!ok) return;
-      // Pass selected tenant as X-Tenant-Id header for multi-tenant support
+      // Gửi tenant được chọn qua header X-Tenant-Id để hỗ trợ multi-tenant
       const selectedTenantId = document.querySelector('#empTenantSelect')?.value || '';
       const createOpts = selectedTenantId ? { headers: { 'X-Tenant-Id': selectedTenantId } } : undefined;
       if (btn) {
@@ -1622,14 +1622,14 @@ async function renderEmployees(profile, c) {
               body: fd
             });
           }
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         if (btn) {
           btn.style.background = 'transparent';
           btn.style.borderColor = 'transparent';
           btn.style.color = '#10b981';
           btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> <span>作成成功</span>`;
         }
-        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
+        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* bỏ qua lỗi */ }
         setTimeout(() => { window.location.href = '/admin/employees#list'; }, 1000);
         return;
       } catch (err) {
@@ -1640,10 +1640,10 @@ async function renderEmployees(profile, c) {
             msgEl.style.color = '#f87171';
             if (m.includes('社員番号') || low.includes('uniq_employee_code') || low.includes('duplicate entry')) {
               msgEl.textContent = '社員番号が既に存在します。別の番号を入力してください。';
-              try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
+              try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch (e) { /* bỏ qua lỗi */ }
             } else if (m.includes('Email') || low.includes('email')) {
               msgEl.textContent = m;
-              try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
+              try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch (e) { /* bỏ qua lỗi */ }
             } else {
               msgEl.textContent = '作成失敗: ' + (m || 'error');
             }
@@ -1764,7 +1764,7 @@ async function renderEmployees(profile, c) {
         `;
         document.head.appendChild(style);
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
 
   const state = { showAll: false, searchVisible: false, code: '', q: '', branch: '', dept: '', employmentType: '', status: '', sortKey: 'id', sortDir: 'asc', page: 1, pageSize: 10 };
@@ -1781,7 +1781,7 @@ async function renderEmployees(profile, c) {
     state.sortKey = params.get('sortKey') || state.sortKey;
     state.sortDir = params.get('sortDir') || state.sortDir;
     state.page = parseInt(params.get('page') || String(state.page), 10) || state.page;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const updateUrl = (hashValue) => {
     try {
       const p = new URLSearchParams();
@@ -1797,7 +1797,7 @@ async function renderEmployees(profile, c) {
       if (state.page && state.page > 1) p.set('page', String(state.page));
       const qs = p.toString();
       history.replaceState(null, '', `/admin/employees${qs ? '?' + qs : ''}${hashValue || ''}`);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const searchHint = document.createElement('div');
@@ -1813,7 +1813,7 @@ async function renderEmployees(profile, c) {
     if (tbl && mode === 'delete') tbl.after(searchHint);
     else if (act) act.after(searchHint);
     else filterWrap.appendChild(searchHint);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const table = document.createElement('table');
   table.id = 'list';
@@ -1857,17 +1857,17 @@ async function renderEmployees(profile, c) {
   const syncPinnedColumnsSticky = () => {
     try {
       const removeOverlay = () => {
-        try { tableScrollWrap.classList.remove('has-freeze-overlay'); } catch (e) { /* silently ignored */ }
+        try { tableScrollWrap.classList.remove('has-freeze-overlay'); } catch (e) { /* bỏ qua lỗi */ }
         try {
           const el = tableScrollWrap.querySelector('.emp-freeze-overlay');
           if (el) el.remove();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       };
       try {
         tableScrollWrap.classList.remove('use-pin-overlay');
         const legacyPanel = tableScrollWrap.querySelector('.emp-pin-panel');
         if (legacyPanel) legacyPanel.remove();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       removeOverlay();
       const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
       const isNarrowMobile = isMobileFlatMode();
@@ -1897,12 +1897,12 @@ async function renderEmployees(profile, c) {
         setWidth(tds[1], w2);
       });
 
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   if (!tableScrollWrap.dataset.pinBound) {
     tableScrollWrap.dataset.pinBound = '1';
-    try { window.addEventListener('resize', () => { try { syncPinnedColumnsSticky(); } catch (e) { /* silently ignored */ } }); } catch (e) { /* silently ignored */ }
-    try { window.addEventListener('orientationchange', () => { try { syncPinnedColumnsSticky(); } catch (e) { /* silently ignored */ } }); } catch (e) { /* silently ignored */ }
+    try { window.addEventListener('resize', () => { try { syncPinnedColumnsSticky(); } catch (e) { /* bỏ qua lỗi */ } }); } catch (e) { /* bỏ qua lỗi */ }
+    try { window.addEventListener('orientationchange', () => { try { syncPinnedColumnsSticky(); } catch (e) { /* bỏ qua lỗi */ } }); } catch (e) { /* bỏ qua lỗi */ }
   }
 
   const pager = document.createElement('div');
@@ -1961,10 +1961,10 @@ async function renderEmployees(profile, c) {
   noResultCenter.textContent = '該当データがありません';
   content.appendChild(noResultCenter);
   const hideFilterWrap = () => {
-    try { filterWrap.style.setProperty('display', 'none', 'important'); } catch (e) { /* silently ignored */ }
+    try { filterWrap.style.setProperty('display', 'none', 'important'); } catch (e) { /* bỏ qua lỗi */ }
   };
   const showFilterWrap = () => {
-    try { filterWrap.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
+    try { filterWrap.style.removeProperty('display'); } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const fmtEmpNo = (id) => 'EMP' + String(id).padStart(3, '0');
@@ -2029,7 +2029,7 @@ async function renderEmployees(profile, c) {
     try {
       const x = new Date(raw);
       if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getDate()).padStart(2,'0')}`;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return raw;
   };
   const normalizeSearchText = (v) => String(v || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -2108,29 +2108,29 @@ async function renderEmployees(profile, c) {
           ? `「${buildSearchSummaryJa()}」は見つかりません`
           : '該当データがありません';
         noResultCenter.textContent = noResultMsg;
-        try { noResultCenter.style.display = 'flex'; } catch (e) { /* silently ignored */ }
+        try { noResultCenter.style.display = 'flex'; } catch (e) { /* bỏ qua lỗi */ }
         hideFilterWrap();
-        try { if (listHeader) listHeader.style.display = 'none'; } catch (e) { /* silently ignored */ }
+        try { if (listHeader) listHeader.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
       } else {
-        try { noResultCenter.style.display = 'none'; } catch (e) { /* silently ignored */ }
+        try { noResultCenter.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
         showFilterWrap();
-        try { if (listHeader) listHeader.style.display = ''; } catch (e) { /* silently ignored */ }
+        try { if (listHeader) listHeader.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
       }
       clearTopbarNoResultState();
-      try { table.style.display = 'none'; } catch (e) { /* silently ignored */ }
-      try { tableScrollWrap.style.display = 'none'; } catch (e) { /* silently ignored */ }
-      try { pager.style.display = 'none'; } catch (e) { /* silently ignored */ }
+      try { table.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { tableScrollWrap.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { pager.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
       const pageInfo0 = content.querySelector('#empPageInfo');
       if (pageInfo0) pageInfo0.textContent = '';
       return;
     }
-    try { noResultCenter.style.display = 'none'; } catch (e) { /* silently ignored */ }
+    try { noResultCenter.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
     showFilterWrap();
-    try { if (listHeader) listHeader.style.display = ''; } catch (e) { /* silently ignored */ }
+    try { if (listHeader) listHeader.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
     clearTopbarNoResultState();
-    try { table.style.display = ''; } catch (e) { /* silently ignored */ }
-    try { tableScrollWrap.style.display = ''; } catch (e) { /* silently ignored */ }
-    try { pager.style.display = ''; } catch (e) { /* silently ignored */ }
+    try { table.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
+    try { tableScrollWrap.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
+    try { pager.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
     for (const u of pageItems) {
       const tr = document.createElement('tr');
       const rowStatus = String(u.employment_status || '').toLowerCase();
@@ -2193,7 +2193,7 @@ async function renderEmployees(profile, c) {
       const maxPage = Math.max(1, Math.ceil(total / state.pageSize));
       pageInfo.textContent = `${from}-${to} / ${total} (${maxPage}ページ)`;
       
-      // Update button states
+      // Cập nhật trạng thái nút
       if (prevEl) {
         prevEl.disabled = state.page <= 1;
         prevEl.style.display = '';
@@ -2203,7 +2203,7 @@ async function renderEmployees(profile, c) {
         nextEl.style.display = '';
       }
       
-      // Show/hide page info
+      // Ẩn/hiện thông tin trang
       if (total === 0) {
         pageInfo.style.display = 'none';
       } else {
@@ -2212,13 +2212,13 @@ async function renderEmployees(profile, c) {
     }
     if (!isNarrowMobile) {
       syncPinnedColumnsSticky();
-      try { setTimeout(() => syncPinnedColumnsSticky(), 80); } catch (e) { /* silently ignored */ }
-      try { setTimeout(() => syncPinnedColumnsSticky(), 220); } catch (e) { /* silently ignored */ }
+      try { setTimeout(() => syncPinnedColumnsSticky(), 80); } catch (e) { /* bỏ qua lỗi */ }
+      try { setTimeout(() => syncPinnedColumnsSticky(), 220); } catch (e) { /* bỏ qua lỗi */ }
     } else {
       try {
         tableScrollWrap.style.removeProperty('--pin-col-1');
         tableScrollWrap.style.removeProperty('--pin-col-2');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
   };
   const handleViewportLayoutChange = () => {
@@ -2227,12 +2227,12 @@ async function renderEmployees(profile, c) {
       if (lastMobileFlatMode === null) return;
       if (now === lastMobileFlatMode) return;
       renderRows();
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   if (!tableScrollWrap.dataset.layoutBound) {
     tableScrollWrap.dataset.layoutBound = '1';
-    try { window.addEventListener('resize', handleViewportLayoutChange, { passive: true }); } catch (e) { /* silently ignored */ }
-    try { window.addEventListener('orientationchange', handleViewportLayoutChange); } catch (e) { /* silently ignored */ }
+    try { window.addEventListener('resize', handleViewportLayoutChange, { passive: true }); } catch (e) { /* bỏ qua lỗi */ }
+    try { window.addEventListener('orientationchange', handleViewportLayoutChange); } catch (e) { /* bỏ qua lỗi */ }
   }
   renderRows();
   if (mode === 'delete') {
@@ -2268,7 +2268,7 @@ async function renderEmployees(profile, c) {
       if (tabSearch) tabSearch.addEventListener('click', () => {
         state.showAll = false;
         state.searchVisible = false;
-        try { searchHint.style.display = 'none'; } catch (e) { /* silently ignored */ }
+        try { searchHint.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
         setActive();
         updateUrl('#delete');
       });
@@ -2276,12 +2276,12 @@ async function renderEmployees(profile, c) {
         state.showAll = true;
         state.searchVisible = false;
         state.page = 1;
-        try { searchHint.style.display = 'none'; } catch (e) { /* silently ignored */ }
+        try { searchHint.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
         setActive();
         renderRows();
         updateUrl('#delete');
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
 
   try {
@@ -2295,7 +2295,7 @@ async function renderEmployees(profile, c) {
       const hasAny0 = !!((params.get('code') || '').trim() || (params.get('q') || '').trim() || state.dept || state.employmentType || state.status);
       searchHint.style.display = hasAny0 ? 'none' : 'none';
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   filterWrap.querySelector('#btnEmpSearch').addEventListener('click', () => {
     const codeEl2 = filterWrap.querySelector('#empSearchCode');
@@ -2315,8 +2315,8 @@ async function renderEmployees(profile, c) {
     if (!hasAny && !(mode === 'delete' && state.showAll)) {
       syncTopbarSearchKeyword('');
       clearTopbarNoResultState();
-      try { searchHint.style.display = 'block'; } catch (e) { /* silently ignored */ }
-      try { const el = filterWrap.querySelector('#empSearchCode'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
+      try { searchHint.style.display = 'block'; } catch (e) { /* bỏ qua lỗi */ }
+      try { const el = filterWrap.querySelector('#empSearchCode'); if (el && el.focus) el.focus(); } catch (e) { /* bỏ qua lỗi */ }
       if (mode === 'delete') {
         try {
           const listBox = filterWrap.querySelector('#empListBox');
@@ -2325,11 +2325,11 @@ async function renderEmployees(profile, c) {
           pager.style.display = 'none';
           const tb = filterWrap.querySelector('.emp-del-toolbar');
           if (tb) tb.style.display = 'none';
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }
       return;
     }
-    try { searchHint.style.display = 'none'; } catch (e) { /* silently ignored */ }
+    try { searchHint.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
     if (mode === 'delete') {
       state.searchVisible = hasAny;
       if (!hasAny && !state.showAll) {
@@ -2340,7 +2340,7 @@ async function renderEmployees(profile, c) {
           pager.style.display = 'none';
           const tb = filterWrap.querySelector('.emp-del-toolbar');
           if (tb) tb.style.display = 'none';
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         return;
       }
       try {
@@ -2350,7 +2350,7 @@ async function renderEmployees(profile, c) {
         pager.style.display = '';
         const tb = filterWrap.querySelector('.emp-del-toolbar');
         if (tb) tb.style.display = '';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
     if (mode !== 'delete' && hasAny) {
       const matchedCount = applyFilterSort().length;
@@ -2359,7 +2359,7 @@ async function renderEmployees(profile, c) {
         updateUrl('#list');
         try {
           if (noResultBackTimer) clearTimeout(noResultBackTimer);
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         noResultBackTimer = setTimeout(() => {
           state.code = '';
           state.q = '';
@@ -2367,11 +2367,11 @@ async function renderEmployees(profile, c) {
           state.employmentType = '';
           state.status = '';
           state.page = 1;
-          try { if (codeEl2) codeEl2.value = ''; } catch (e) { /* silently ignored */ }
-          try { if (keywordEl2) keywordEl2.value = ''; } catch (e) { /* silently ignored */ }
-          try { if (deptEl2) deptEl2.value = ''; } catch (e) { /* silently ignored */ }
-          try { if (typeEl2) typeEl2.value = ''; } catch (e) { /* silently ignored */ }
-          try { if (statusEl2) statusEl2.value = ''; } catch (e) { /* silently ignored */ }
+          try { if (codeEl2) codeEl2.value = ''; } catch (e) { /* bỏ qua lỗi */ }
+          try { if (keywordEl2) keywordEl2.value = ''; } catch (e) { /* bỏ qua lỗi */ }
+          try { if (deptEl2) deptEl2.value = ''; } catch (e) { /* bỏ qua lỗi */ }
+          try { if (typeEl2) typeEl2.value = ''; } catch (e) { /* bỏ qua lỗi */ }
+          try { if (statusEl2) statusEl2.value = ''; } catch (e) { /* bỏ qua lỗi */ }
           renderRows();
           updateUrl('#list');
         }, 1500);
@@ -2386,12 +2386,12 @@ async function renderEmployees(profile, c) {
   const next = pager.querySelector('#empNext');
   const pageSizeSelect = pager.querySelector('#empPageSize');
   
-  // Initialize page size select
+  // Khởi tạo select số dòng mỗi trang
   if (pageSizeSelect) {
     pageSizeSelect.value = state.pageSize;
     pageSizeSelect.addEventListener('change', (e) => {
       state.pageSize = parseInt(e.target.value, 10);
-      state.page = 1; // Reset to first page when changing page size
+      state.page = 1; // Quay về trang đầu khi đổi số dòng mỗi trang
       renderRows();
       updateUrl(mode === 'delete' ? '#delete' : '#list');
     });
@@ -2457,7 +2457,7 @@ async function renderEmployees(profile, c) {
       `;
       overlay.appendChild(modal);
       document.body.appendChild(overlay);
-      const close = () => { try { document.body.removeChild(overlay); } catch (e) { /* silently ignored */ } };
+      const close = () => { try { document.body.removeChild(overlay); } catch (e) { /* bỏ qua lỗi */ } };
       overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
       modal.querySelector('#modalCancelDisable').addEventListener('click', close);
       modal.querySelector('#modalConfirmDisable').addEventListener('click', async () => {
@@ -2465,7 +2465,7 @@ async function renderEmployees(profile, c) {
         btn.disabled = true;
         try {
           for (const id of ids) {
-            try { await deleteEmployee(id); } catch (e) { /* silently ignored */ }
+            try { await deleteEmployee(id); } catch (e) { /* bỏ qua lỗi */ }
           }
           for (const id of ids) {
             const u = users.find(x => String(x.id) === String(id));
@@ -2543,7 +2543,7 @@ export async function mount(opt) { const c = opt && opt.content;
   try {
     const userName = document.querySelector('#userName');
     if (userName) userName.textContent = profile.username || profile.email || '管理者';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const status = $('#status');
   if (status) status.textContent = '';
@@ -2557,16 +2557,16 @@ export async function mount(opt) { const c = opt && opt.content;
     try {
       if (!isEmployeesPath(location.pathname)) return;
       renderEmployees(profile, content);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   window.addEventListener('hashchange', onRouteUpdate);
   window.addEventListener('popstate', onRouteUpdate);
   return () => {
-    try { window.removeEventListener('hashchange', onRouteUpdate); } catch (e) { /* silently ignored */ }
-    try { window.removeEventListener('popstate', onRouteUpdate); } catch (e) { /* silently ignored */ }
+    try { window.removeEventListener('hashchange', onRouteUpdate); } catch (e) { /* bỏ qua lỗi */ }
+    try { window.removeEventListener('popstate', onRouteUpdate); } catch (e) { /* bỏ qua lỗi */ }
     try {
       document.body.classList.remove('emp-delete-mode');
       document.documentElement.classList.remove('emp-delete-mode');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 }

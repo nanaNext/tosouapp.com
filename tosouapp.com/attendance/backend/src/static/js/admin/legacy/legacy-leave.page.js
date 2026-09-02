@@ -660,7 +660,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
     const setBusy = (flag) => {
       try {
         if (el && typeof el.disabled !== 'undefined') el.disabled = !!flag;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
 
     if (action === 'balance') {
@@ -684,7 +684,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
         setBusy(true);
         await api.patch(`/api/leave/${id}/status`, { status: s });
         if (typeof opts?.onDataChanged === 'function') await opts.onDataChanged();
-        // 再描画: 正しい引数形式で呼び直す
+        // Vẽ lại: gọi lại với đúng dạng tham số
         await mountApprovalsFn(host || content, { ...(opts || {}), status: selectedStatus });
       } catch (err) {
         alert('状態更新失敗: ' + ((err && err.message) ? err.message : 'error'));
@@ -701,7 +701,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
         setBusy(true);
         await api.patch(`/api/manager/profile-change/${pcId}/status`, { status: s });
         if (typeof opts?.onDataChanged === 'function') await opts.onDataChanged();
-        // 再描画
+        // Vẽ lại
         await mountApprovalsFn(host || content, opts || {});
       } catch (err) {
         alert('プロフィール申請更新失敗: ' + ((err && err.message) ? err.message : 'error'));
@@ -726,7 +726,7 @@ export async function mountApprovals({ host, content, opts, mountApprovalsFn }) 
   c.appendChild(pager);
   if (monthEl) monthEl.addEventListener('change', () => { page = 1; renderTableRows(); bindActionButtons(); });
 
-  // プロフィール更新申請
+  // Yêu cầu cập nhật hồ sơ
   if (opts?.hideProfileSection) return;
   const pcWrap = document.createElement('div');
   pcWrap.innerHTML = '<h4>プロフィール更新申請</h4>';
@@ -1001,7 +1001,7 @@ export async function mountLeaveGrant({
       );
       form.querySelector('#expireDate').value = fmt(tmp);
     } catch {
-      // ignore
+      // bỏ qua
     }
   });
 
@@ -1088,7 +1088,7 @@ async function showEditPtoModal(userId, userName, onSaved) {
   const loadingEl = modal.querySelector('#ptoModalLoading');
   const listEl = modal.querySelector('#ptoGrantsList');
   
-  // Set default expiry (2 years - 1 day)
+  // Đặt hạn dùng mặc định (2 năm trừ 1 ngày)
   const today = new Date();
   const defExpiry = new Date(today.getUTCFullYear() + 2, today.getUTCMonth(), today.getUTCDate() - 1);
   modal.querySelector('#newGrantExpiry').value = defExpiry.toISOString().slice(0,10);
@@ -1125,7 +1125,7 @@ async function showEditPtoModal(userId, userName, onSaved) {
         `).join('');
       }
       
-      // Attach save events
+      // Gắn sự kiện lưu
       listEl.querySelectorAll('.btn-save-grant').forEach(btn => {
         btn.addEventListener('click', async () => {
           const idx = btn.dataset.idx;
@@ -1156,7 +1156,7 @@ async function showEditPtoModal(userId, userName, onSaved) {
         });
       });
 
-      // Attach delete events
+      // Gắn sự kiện xóa
       listEl.querySelectorAll('.btn-delete-grant').forEach(btn => {
         btn.addEventListener('click', async () => {
           const idx = btn.dataset.idx;
@@ -1168,10 +1168,10 @@ async function showEditPtoModal(userId, userName, onSaved) {
           btn.textContent = '...';
           btn.disabled = true;
           try {
-            // Backend treats 0 days as a real delete for this grant date.
+            // Backend coi days = 0 là xóa thật cho ngày cấp này
             await api.post('/api/leave/grant', { userId: Number(userId), days: 0, grantDate, expiryDate: daysInput.dataset.expiry });
             if (onSaved) onSaved();
-            await loadGrants(); // reload list to remove row
+            await loadGrants(); // tải lại danh sách để bỏ dòng vừa xóa
           } catch (err) {
             alert('削除に失敗しました: ' + err.message);
             btn.textContent = '削除';
@@ -1213,7 +1213,7 @@ async function showEditPtoModal(userId, userName, onSaved) {
     }
   });
 
-  // 取得済み有給休暇（全日=1.0 / 半休(有給)=0.5）の一覧を表示
+  // Hiển thị danh sách phép đã dùng (cả ngày = 1.0 / nửa ngày có lương = 0.5)
   async function loadUsedDays() {
     const usedEl = modal.querySelector('#ptoUsedList');
     if (!usedEl) return;
@@ -1350,13 +1350,13 @@ export async function mountLeaveBalance({
         card.style.background = '#FFFBEB';
       }
       
-      // 半休(有給)は0.5日換算のため小数を許容。表示は不要な .0 を省く（例: 13.5 / 14）。
+      // Nửa ngày (có lương) tính 0.5 ngày nên cho phép số lẻ. Bỏ phần .0 thừa khi hiển thị (ví dụ: 13.5 / 14).
       const fmtDays = (n) => { const v = Math.round(Number(n || 0) * 10) / 10; return Number.isInteger(v) ? String(v) : v.toFixed(1); };
       const totalG = fmtDays(r.totalGranted || 0);
       const usedD = fmtDays(r.usedDays || 0);
       const remainD = fmtDays(r.remainingDays || 0);
       
-      // Progress bar calculations
+      // Tính toán cho thanh tiến trình
       const pTotal = totalG > 0 ? totalG : 1;
       const pctUsed = Math.min(100, Math.max(0, (usedD / pTotal) * 100));
       
@@ -1422,7 +1422,7 @@ export async function mountLeaveBalance({
       });
     });
 
-    // Add event listeners for edit buttons AFTER adding the gridWrap to the DOM
+    // Gắn sự kiện cho nút sửa SAU KHI đã thêm gridWrap vào DOM
     setTimeout(() => {
       gridWrap.querySelectorAll('.pto-card-clickable').forEach(cardEl => {
         cardEl.addEventListener('click', async (e) => {
@@ -1431,7 +1431,7 @@ export async function mountLeaveBalance({
           const userId = cardEl.dataset.userid;
           const userName = cardEl.dataset.username;
           await showEditPtoModal(userId, userName, async () => {
-            // reload data
+            // tải lại dữ liệu
             try {
               data = await api.get('/api/leave/summary');
               render();
@@ -1442,7 +1442,7 @@ export async function mountLeaveBalance({
         });
       });
       
-      // Keep button working too, just stop propagation so it doesn't trigger card twice
+      // Vẫn giữ nút hoạt động, chỉ chặn lan sự kiện để không kích hoạt card hai lần
       gridWrap.querySelectorAll('.leave-btn-edit').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1529,9 +1529,9 @@ export async function mountLeaveUnified({
   ensureLeaveUiStyles();
   content.classList.add('leave-page');
   // Đánh dấu trên body để CSS bỏ padding các lớp cha (tương thích rộng, không cần :has()).
-  try { document.body.classList.add('leave-active'); } catch (e) { /* ignore */ }
+  try { document.body.classList.add('leave-active'); } catch (e) { /* bỏ qua */ }
 
-  // Calculate precise height accounting for both topbar and subbar in admin
+  // Tính chiều cao chính xác, tính cả topbar lẫn subbar trong trang admin
   const style = document.createElement('style');
   style.id = 'leave-dynamic-height';
   style.textContent = `
@@ -1594,21 +1594,21 @@ export async function mountLeaveUnified({
   `;
   document.head.appendChild(style);
 
-  // Reset parent containers to make it flush to the edges and prevent them from scrolling
+  // Reset các container cha để sát mép và không cho chúng cuộn
   if (content.id === 'adminContent' || content.classList.contains('card')) {
-    content.classList.remove('card'); // Completely remove the card class
+    content.classList.remove('card'); // Bỏ hẳn class card
     content.style.padding = '0';
     content.style.margin = '0';
     content.style.maxWidth = 'none';
     content.style.border = 'none';
     content.style.boxShadow = 'none';
     content.style.background = '#FFFFFF';
-    content.style.height = 'calc(100vh - var(--topbar-height, 48px))'; // Recalculate without subbar
+    content.style.height = 'calc(100vh - var(--topbar-height, 48px))'; // Tính lại không kể subbar
     content.style.overflow = 'hidden';
     const body = document.body;
-    body.style.overflow = 'hidden'; // Stop the whole page from scrolling
+    body.style.overflow = 'hidden'; // Chặn cả trang cuộn
     
-    // Also explicitly hide siblings like #status or #error if they exist to prevent top gap
+    // Ẩn luôn các phần tử cùng cấp như #status hay #error nếu có để tránh khoảng hở phía trên
     const parent = content.parentElement;
     if (parent) {
       parent.style.padding = '0';
@@ -1644,7 +1644,7 @@ export async function mountLeaveUnified({
 
   const contentArea = content.querySelector('#leave-content-area');
 
-  // Tab containers
+  // Các container cho từng tab
   const tabApprovals = document.createElement('div');
   tabApprovals.className = 'leave-tab-content active';
   tabApprovals.id = 'tab-approvals';
@@ -1679,18 +1679,18 @@ export async function mountLeaveUnified({
   tabBalances.appendChild(secB);
   
   const refreshBalance = async () => {
-    // Show all items by setting limit to a very high number (e.g. 1000)
+    // Hiện tất cả bằng cách đặt limit rất lớn (ví dụ 1000)
     await mountLeaveBalanceFn(secB, { unified: true, limit: 1000, onDataChanged: refreshBalance });
     const h3 = secB.querySelector('h3');
     if (h3) h3.remove();
   };
   
-  // Dynamic height adjustment to perfectly fit the screen without cutting off the bottom
+  // Điều chỉnh chiều cao động cho vừa khít màn hình mà không bị cắt phần dưới
   const adjustHeight = () => {
     const layout = content.querySelector('.leave-page-layout');
     if (layout) {
       const top = layout.getBoundingClientRect().top;
-      const offset = top > 0 ? top : 56; // Fallback
+      const offset = top > 0 ? top : 56; // Giá trị dự phòng
       const h = `calc(100vh - ${offset}px)`;
       
       layout.style.setProperty('height', h, 'important');
@@ -1715,17 +1715,17 @@ export async function mountLeaveUnified({
 
   await mountLeaveGrantFn(secG, { unified: true, onDataChanged: refreshBalance });
 
-  // Clean up grant section
+  // Dọn dẹp phần cấp phép
   if (secG) {
-    // Remove the batch grant buttons toolbar
+    // Bỏ thanh công cụ chứa các nút cấp phép hàng loạt
     const batchToolbar = secG.querySelector('.leave-toolbar');
     if (batchToolbar) batchToolbar.remove();
     
-    // Remove the "Manual PTO Grant" heading
+    // Bỏ tiêu đề "Manual PTO Grant"
     const manualHeading = secG.querySelector('h4');
     if (manualHeading) manualHeading.remove();
 
-    // Remove the extra description text under the title
+    // Bỏ dòng mô tả thừa bên dưới tiêu đề
     const gTitle = secG.querySelector('h3');
     if (gTitle) {
       gTitle.innerHTML = '有給付与';
@@ -1734,7 +1734,7 @@ export async function mountLeaveUnified({
   
   await refreshBalance();
 
-  // Tab Switching Logic
+  // Xử lý chuyển tab
   content.querySelectorAll('.leave-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       content.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
@@ -1744,7 +1744,7 @@ export async function mountLeaveUnified({
       e.currentTarget.classList.add('active');
       content.querySelector(`#${targetId}`).classList.add('active');
 
-      // Update URL history to reflect the current tab
+      // Cập nhật lịch sử URL theo tab hiện tại
       if (targetId === 'tab-approvals') {
         history.replaceState(null, '', '/admin/leave/requests');
       } else if (targetId === 'tab-grant') {
@@ -1753,7 +1753,7 @@ export async function mountLeaveUnified({
         history.replaceState(null, '', '/admin/leave/balance');
       }
       
-      // Update sidebar active status to sync with internal tabs
+      // Cập nhật trạng thái active của sidebar cho khớp với tab bên trong
       const sidebarEl = document.querySelector('.att-hub-sidebar');
       if (sidebarEl) {
          sidebarEl.querySelectorAll('.att-sidebar-item').forEach(item => {
@@ -1786,7 +1786,7 @@ export async function mountLeaveUnified({
     });
   });
 
-  // Set initial active tab based on current URL
+  // Chọn tab active ban đầu dựa trên URL hiện tại
   const currentPath = window.location.pathname;
   content.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
   content.querySelectorAll('.leave-tab-content').forEach(c => c.classList.remove('active'));
@@ -1802,7 +1802,7 @@ export async function mountLeaveUnified({
     const contentTab = content.querySelector('#tab-balances');
     if (contentTab) contentTab.classList.add('active');
   } else {
-    // Default to requests
+    // Mặc định về tab yêu cầu
     const tab = content.querySelector('.leave-tab[data-target="tab-approvals"]');
     if (tab) tab.classList.add('active');
     const contentTab = content.querySelector('#tab-approvals');

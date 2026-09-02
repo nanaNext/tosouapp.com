@@ -96,7 +96,7 @@ exports.putMonthBulk = async (req, res) => {
     const y = parseInt(year, 10), m = parseInt(month, 10);
     await assertMonthWritable(req, userId, y, m);
 
-    // Capture before-state for audit
+    // Chụp lại trạng thái trước khi sửa để ghi audit
     let beforeSnap = null;
     try {
       const pad = n => String(n).padStart(2, '0');
@@ -112,7 +112,7 @@ exports.putMonthBulk = async (req, res) => {
         [userId, from, to]
       );
       beforeSnap = { attendance: rows || [], daily: dailyRows || [] };
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     if (req.user.role === 'employee' && !isEditableMonth(y, m)) {
       return res.status(403).json({ message: 'Forbidden: cannot edit past months' });
@@ -136,7 +136,7 @@ exports.putMonthBulk = async (req, res) => {
     const normalizedUpdates = Array.isArray(updates) ? updates.map(u => ({ ...(u || {}) })) : [];
     const normalizedDailyUpdates = Array.isArray(dailyUpdates) ? dailyUpdates : dailyUpdates;
 
-    // De-dup within the same request by (userId, checkIn)
+    // Khử trùng lặp trong cùng request theo (userId, checkIn)
     try {
       const seen = new Map();
       for (let i = 0; i < normalizedUpdates.length; i++) {
@@ -146,9 +146,9 @@ exports.putMonthBulk = async (req, res) => {
         if (seen.has(key)) normalizedUpdates[seen.get(key)] = null;
         seen.set(key, i);
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
-    // Normalize: if segment already exists (same checkIn), convert "create" into "update"
+    // Chuẩn hóa: nếu segment đã tồn tại (cùng checkIn) thì chuyển "create" thành "update"
     try {
       const timesToLookup = [];
       const lookupIndices = [];
@@ -170,7 +170,7 @@ exports.putMonthBulk = async (req, res) => {
           }
         }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     const cleanedUpdates = normalizedUpdates.filter(Boolean);
 
@@ -199,7 +199,7 @@ exports.putMonthBulk = async (req, res) => {
               }
             }
           }
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         result = await repo.bulkUpsertAttendance(userId, { updates: cleanedUpdates, dailyUpdates: normalizedDailyUpdates }, { tenantId: req.tenantId || null });
       } else {
         throw err;
@@ -208,7 +208,7 @@ exports.putMonthBulk = async (req, res) => {
 
     try {
       await auditRepo.writeLog({ userId: req.user?.id, action: 'attendance_month_bulk', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(beforeSnap || null), afterData: JSON.stringify({ targetUserId: userId, year: y, month: m, saved: result.saved }) });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     try {
       const dailyList = Array.isArray(normalizedDailyUpdates) ? normalizedDailyUpdates : [];
@@ -222,7 +222,7 @@ exports.putMonthBulk = async (req, res) => {
       for (const [ds, kubun] of latestByDate.entries()) {
         await syncPaidLeaveByKubun(userId, ds, kubun);
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     res.status(200).json(result);
   } catch (err) {

@@ -1005,7 +1005,6 @@ const renderGoOutBanner = (currentGoOut) => {
 const getCalendarOff = async (date) => {
   // Ưu tiên trạng thái nghỉ từ API vì đã áp dụng policy theo phòng ban (ví dụ: 工事部).
   const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
-  console.log('[getCalendarOff]', date, 'API response:', cal);
   if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
     if (Number(cal?.is_off || 0) === 1) return true;
   }
@@ -1017,7 +1016,6 @@ const getCalendarOff = async (date) => {
     const schedule = shiftData?.data?.schedule || shiftData?.schedule || {};
     const dayShift = schedule[date] || null;
     if (dayShift && (dayShift.status === 'OFF' || dayShift.status === 'LEAVE')) {
-      console.log('[getCalendarOff]', date, 'shift request → OFF/LEAVE');
       return true;
     }
   } catch (e) { /* bỏ qua lỗi shift */ }
@@ -1204,7 +1202,6 @@ const load = async (date, opts = {}) => {
           return `<option value="${k}" ${disabledOpt}>${k}</option>`;
         }).join('')}`;
         selK.value = kubunOptions.includes(fallbackKubun) ? fallbackKubun : localDefaultKubun;
-        console.log('[loadDay kubun set]', 'isOff:', isOff, 'kubunSaved:', kubunSaved, 'defaultKubun:', defaultKubun, 'fallbackKubun:', fallbackKubun, 'final:', selK.value);
         selK.classList.toggle('is-planned', !kubunSaved);
         setupSimpleCombo(selK);
         
@@ -1646,8 +1643,6 @@ const tryCheckOut = async () => {
       break_minutes: Number($('#breakMin')?.value || 60),
       night_break_minutes: Number($('#nightBreakMin')?.value || 0)
     };
-    console.log("PAYLOAD BEING SENT TO /daily:", payload);
-    
     await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
       method: 'PUT',
       body: JSON.stringify(payload)

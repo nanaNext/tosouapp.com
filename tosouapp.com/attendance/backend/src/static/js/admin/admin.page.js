@@ -49,7 +49,7 @@ function renderAdminMobileHome(host) {
         }
       </style>
     `;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 let lastRenderErr = null;
@@ -70,7 +70,7 @@ try {
         err.message = String(err.message || baseMsg) + `\n@ ${loc}`;
       }
       lastRenderErr(err);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
   window.addEventListener('unhandledrejection', (ev) => {
     if (globalErrShown) return;
@@ -80,21 +80,9 @@ try {
       const r = ev ? ev.reason : null;
       const err = r instanceof Error ? r : new Error(String(r || 'Unhandled rejection'));
       lastRenderErr(err);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
-} catch (e) { /* silently ignored */ }
-
-
-
-
-
-
-
-
-
-
-
-
+} catch (e) { /* bỏ qua lỗi */ }
 
 const resetTransientUiState = () => {
   try {
@@ -102,7 +90,7 @@ const resetTransientUiState = () => {
     const btn = document.querySelector('.user-btn');
     if (dd && !dd.hasAttribute('hidden')) dd.setAttribute('hidden', '');
     if (btn) btn.setAttribute('aria-expanded', 'false');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const drawer = document.querySelector('#mobileDrawer');
     const backdrop = document.querySelector('#drawerBackdrop');
@@ -119,26 +107,26 @@ const resetTransientUiState = () => {
     }
     if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('drawer-open');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
-      try { spinner.setAttribute('hidden', 'true'); } catch (e) { /* silently ignored */ }
-      try { spinner.style.display = 'none'; } catch (e) { /* silently ignored */ }
-      try { spinner.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-      try { spinner.style.visibility = 'hidden'; } catch (e) { /* silently ignored */ }
-      try { spinner.style.opacity = '0'; } catch (e) { /* silently ignored */ }
+      try { spinner.setAttribute('hidden', 'true'); } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.visibility = 'hidden'; } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.opacity = '0'; } catch (e) { /* bỏ qua lỗi */ }
     });
     const content = document.querySelector('#adminContent');
     if (content) content.style.visibility = '';
     sessionStorage.removeItem('navSpinner');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     document.querySelectorAll('.modal-overlay').forEach((el) => {
-      try { el.remove(); } catch (e) { /* silently ignored */ }
+      try { el.remove(); } catch (e) { /* bỏ qua lỗi */ }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   
-  // Ensure body scroll is unlocked when resetting UI state
+  // Đảm bảo mở khóa scroll của body khi reset trạng thái UI
   try {
     document.body.style.removeProperty('overflow');
     document.body.style.removeProperty('overflow-y');
@@ -155,18 +143,18 @@ const resetTransientUiState = () => {
     const adminEditModal = document.querySelector('#adminEditModal');
     if (adminEditModal) {
       adminEditModal.style.display = 'none';
-      try { adminEditModal.remove(); } catch (e) { /* silently ignored */ }
+      try { adminEditModal.remove(); } catch (e) { /* bỏ qua lỗi */ }
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const leaveDynamicHeight = document.querySelector('#leave-dynamic-height');
     if (leaveDynamicHeight) leaveDynamicHeight.remove();
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     document.querySelectorAll('.subbar .menu.open').forEach((el) => {
-      try { el.classList.remove('open'); } catch (e) { /* silently ignored */ }
+      try { el.classList.remove('open'); } catch (e) { /* bỏ qua lỗi */ }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const search = document.querySelector('.topbar-inner .search');
     const inner = search ? search.closest('.topbar-inner') : null;
@@ -175,20 +163,20 @@ const resetTransientUiState = () => {
       inner.style.gridTemplateColumns = '';
       delete inner.dataset.searchLocked;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const hardHidePageSpinner = () => {
   try {
     document.querySelectorAll('#pageSpinner, .page-spinner').forEach((spinner) => {
-      try { spinner.setAttribute('hidden', 'true'); } catch (e) { /* silently ignored */ }
-      try { spinner.style.display = 'none'; } catch (e) { /* silently ignored */ }
-      try { spinner.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-      try { spinner.style.visibility = 'hidden'; } catch (e) { /* silently ignored */ }
-      try { spinner.style.opacity = '0'; } catch (e) { /* silently ignored */ }
+      try { spinner.setAttribute('hidden', 'true'); } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.visibility = 'hidden'; } catch (e) { /* bỏ qua lỗi */ }
+      try { spinner.style.opacity = '0'; } catch (e) { /* bỏ qua lỗi */ }
     });
-  } catch (e) { /* silently ignored */ }
-  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
+  try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* bỏ qua lỗi */ }
 };
 
 let currentViewCleanup = null;
@@ -199,9 +187,9 @@ const route = async () => {
     const cleanup = currentViewCleanup;
     currentViewCleanup = null;
     if (typeof cleanup === 'function') await cleanup();
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   
-  // Make sure body doesn't have overflow hidden from other pages
+  // Đảm bảo body không còn overflow hidden sót lại từ trang khác
   try {
     document.body.style.removeProperty('overflow');
     document.body.style.removeProperty('overflow-y');
@@ -210,7 +198,7 @@ const route = async () => {
     document.documentElement.style.removeProperty('overflow');
     document.documentElement.style.removeProperty('overflow-y');
     document.documentElement.style.setProperty('overflow-y', 'auto', 'important');
-    // Special fix for standalone SPA router
+    // Xử lý riêng cho router SPA standalone
     if (document.body.classList.contains('has-sidebar')) {
       document.body.style.setProperty('overflow-y', 'auto', 'important');
     }
@@ -226,7 +214,7 @@ const route = async () => {
       const host = document.createElement('section');
       host.id = 'adminContent';
       
-      // Remove default card styling if it's an attendance hub page or full-bleed page
+      // Bỏ style card mặc định nếu là trang attendance hub hoặc trang full-bleed
       if (window.location.pathname.includes('/admin/attendance') || 
           window.location.pathname.includes('/admin/work-reports') ||
           window.location.pathname.includes('/admin/payroll/salary') ||
@@ -252,7 +240,7 @@ const route = async () => {
       host.style.visibility = '';
       prevHost.replaceWith(host);
 
-      // Make sure the parent container (main.content) has no leftover inline styles from legacy pages
+      // Đảm bảo container cha (main.content) không còn style inline sót từ trang legacy
       const parent = host.parentElement;
       if (parent && parent.classList.contains('content')) {
         parent.style.removeProperty('padding');
@@ -264,14 +252,14 @@ const route = async () => {
         parent.style.removeProperty('box-shadow');
         parent.style.removeProperty('background');
         
-        // Restore siblings like #status or #error if they were hidden
+        // Khôi phục các phần tử anh em như #status hoặc #error nếu bị ẩn
         const statusEl = parent.querySelector('#status');
         if (statusEl) statusEl.style.removeProperty('display');
         const errorEl = parent.querySelector('#error');
         if (errorEl) errorEl.style.removeProperty('display');
       }
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const mountModule = async (mod) => {
     if (!mod || typeof mod.mount !== 'function') {
       currentViewCleanup = null;
@@ -280,7 +268,7 @@ const route = async () => {
     const cleanup = await mod.mount({ content: document.querySelector('#adminContent') });
     if (seq !== routeSeq) {
       if (typeof cleanup === 'function') {
-        try { await cleanup(); } catch (e) { /* silently ignored */ }
+        try { await cleanup(); } catch (e) { /* bỏ qua lỗi */ }
       }
       return;
     }
@@ -298,7 +286,7 @@ const route = async () => {
       try {
         const m = msg.match(/Module load failed:\s*(\S+)/);
         if (m && m[1]) hint = `読み込み失敗モジュール: ${m[1]}`;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       host.innerHTML = `
         <div style="max-width:1100px;margin:18px auto;padding:0 12px;">
           <div style="border:1px solid #fecaca;background:#fff1f2;color:#7f1d1d;border-radius:12px;padding:14px 14px;">
@@ -314,7 +302,7 @@ const route = async () => {
         </div>
       `;
       const btnReload = host.querySelector('#btnAdminReload');
-      if (btnReload) btnReload.addEventListener('click', () => { try { window.location.reload(); } catch (e) { /* silently ignored */ } });
+      if (btnReload) btnReload.addEventListener('click', () => { try { window.location.reload(); } catch (e) { /* bỏ qua lỗi */ } });
       const btnHardReload = host.querySelector('#btnAdminHardReload');
       if (btnHardReload) btnHardReload.addEventListener('click', () => {
         try {
@@ -322,10 +310,10 @@ const route = async () => {
             caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => window.location.reload());
             return;
           }
-        } catch (e) { /* silently ignored */ }
-        try { window.location.reload(); } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
+        try { window.location.reload(); } catch (e) { /* bỏ qua lỗi */ }
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   lastRenderErr = renderErr;
 
@@ -336,30 +324,30 @@ const route = async () => {
       await navigate(mapped, true);
       return;
     }
-    try { document.body.classList.remove('employees-wide'); } catch (e) { /* silently ignored */ }
+    try { document.body.classList.remove('employees-wide'); } catch (e) { /* bỏ qua lỗi */ }
     try {
       const opens = document.querySelectorAll('.subbar .menu.open');
       for (const el of opens) el.classList.remove('open');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     markActiveNav();
     try {
       const home = document.querySelector('.sidebar .sidebar-nav a[data-admin-link="dashboard"]');
       if (home) home.classList.add('pinned');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     expandActiveSidebarSection();
     if (seq !== routeSeq) return;
 
     try {
       if (p === '/admin') {
-        try { history.replaceState(null, '', '/admin/dashboard'); } catch (e) { /* silently ignored */ }
+        try { history.replaceState(null, '', '/admin/dashboard'); } catch (e) { /* bỏ qua lỗi */ }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     let profile = { role: 'employee' };
     try {
       const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
       if (userStr) profile = JSON.parse(userStr);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const role = profile.role || 'employee';
 
     const p2 = normalizePath(window.location.pathname);
@@ -544,8 +532,8 @@ const route = async () => {
       await mountModule(mod.mount ? { mount: () => mod.mount({ content: hubContent }) } : mod);
       return;
     }
-    // Do not fallback to legacy admin bootstrap; it causes mixed old/new
-    // headers and visible flicker on first load.
+    // Không fallback về bootstrap admin cũ; nó gây lẫn header cũ/mới
+    // và nháy màn hình lúc tải lần đầu.
     if (normalizePath(p2) === '/admin') {
       await navigate('/admin/dashboard', true);
       return;
@@ -577,7 +565,7 @@ const navigate = async (href, replace = false) => {
       return;
     }
 
-    // If there is no SPA container on the current page, do a full page navigation
+    // Nếu trang hiện tại không có container SPA thì điều hướng cả trang
     if (!document.querySelector('#adminContent')) {
       if (replace) {
         window.location.replace(u.href);
@@ -593,10 +581,10 @@ const navigate = async (href, replace = false) => {
       try {
         if (replace) history.replaceState(null, '', u.pathname + u.search + u.hash);
         else history.pushState(null, '', u.pathname + u.search + u.hash);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
   } catch {
-    try { window.location.href = href; } catch (e) { /* silently ignored */ }
+    try { window.location.href = href; } catch (e) { /* bỏ qua lỗi */ }
     return;
   }
   await route();
@@ -618,7 +606,7 @@ const wireLegacyLinkRewrite = () => {
       e.preventDefault();
       navigate(mapped);
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const wireSpaNav = () => {
@@ -636,7 +624,7 @@ const wireSpaNav = () => {
       if (!href) return;
       if (!isSameOrigin(href)) return;
       
-      // If there is no SPA container on the current page, let the browser handle it
+      // Nếu trang hiện tại không có container SPA thì để trình duyệt tự xử lý
       if (!document.querySelector('#adminContent')) return;
 
       const u = new URL(href, window.location.origin);
@@ -651,11 +639,11 @@ const wireSpaNav = () => {
           window.__legacyTabPopstate = '';
           return;
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       route();
     });
     window.addEventListener('hashchange', () => { route(); });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const wireTopbarMenus = () => {
@@ -688,7 +676,7 @@ const wireTopbarMenus = () => {
     document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
 
-    // 新規作成 ボタン → 社員追加ページへ移動
+    // Nút 新規作成 → chuyển sang trang thêm nhân viên
     const btnNew = document.getElementById('btnAdminNew');
     if (btnNew && !btnNew.dataset.bound) {
       btnNew.dataset.bound = '1';
@@ -696,7 +684,7 @@ const wireTopbarMenus = () => {
         window.location.href = '/admin/employees/add';
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const wireNavSelection = () => {
@@ -717,7 +705,7 @@ const wireNavSelection = () => {
         const a = el.tagName === 'A' ? el : null;
         const key = a ? `a:${a.getAttribute('href') || ''}` : 'summary';
         sessionStorage.setItem('admin.nav.selected', key);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
 
     try {
@@ -727,7 +715,7 @@ const wireNavSelection = () => {
         const a = nav.querySelector(`a[href="${CSS.escape(href)}"]`);
         if (a) a.classList.add('selected');
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     nav.addEventListener('click', (e) => {
       const t = e && e.target;
@@ -741,18 +729,17 @@ const wireNavSelection = () => {
         selectEl(summary);
       }
     }, true);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const boot = async () => {
-  // Verify tenant context — force reload if tenant changed
+  // Kiểm tra tenant — buộc tải lại nếu tenant thay đổi
   try {
     const tok = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken') || '';
     if (tok) {
       const parts = tok.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-        console.log('[boot] JWT tid=', payload.tid, 'role=', payload.role, 'id=', payload.id);
 
         if (!payload.tid) {
           const sc = sessionStorage.getItem('sc_tenants') || localStorage.getItem('sc_tenants');
@@ -762,10 +749,10 @@ const boot = async () => {
         const lastTid = sessionStorage.getItem('admin.last_tid');
         const currentTid = String(payload.tid || '');
         if (lastTid && lastTid !== currentTid) {
-          // Tenant changed — must do a hard reload to clear all in-memory module state
+          // Tenant đổi — phải hard reload để xóa toàn bộ state module trong bộ nhớ
           sessionStorage.removeItem('admin.last_tid');
           sessionStorage.removeItem('admin.nav.selected');
-          // Clear ALL cached data
+          // Xóa toàn bộ dữ liệu cache
           const toRemove = [];
           for (let i = 0; i < sessionStorage.length; i++) {
             const k = sessionStorage.key(i);
@@ -779,18 +766,18 @@ const boot = async () => {
               if (k && (k.startsWith('monthly.') || k.startsWith('admin.'))) lrm.push(k);
             }
             lrm.forEach(k => localStorage.removeItem(k));
-          } catch(e) { /* silently ignored */ }
+          } catch(e) { /* bỏ qua lỗi */ }
           sessionStorage.setItem('admin.last_tid', currentTid);
-          // Force hard reload to flush all JS module caches
+          // Buộc hard reload để xóa toàn bộ cache module JS
           window.location.reload(true);
           return;
         }
         sessionStorage.setItem('admin.last_tid', currentTid);
       }
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // Cleanup stale sidebar state
+  // Dọn state sidebar cũ còn sót
   try { localStorage.removeItem('sidebar.collapsed'); document.body.classList.remove('sidebar-collapsed'); } catch (e) {}
   try {
     const globalTableStyle = document.createElement('style');
@@ -833,11 +820,9 @@ const boot = async () => {
       }
     `;
     document.head.appendChild(globalTableStyle);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   // Bỏ preboot: không ẩn body — hiển thị ngay lập tức, tránh chớp trắng
-  // try { document.documentElement.classList.add('admin-preboot'); } catch (e) { /* silently ignored */ }
-  // try { document.body.classList.add('booting'); } catch (e) { /* silently ignored */ }
   const isStandaloneApp = (() => {
     try {
       const sp = new URLSearchParams(window.location.search || '');
@@ -856,54 +841,54 @@ const boot = async () => {
       } else if (p.includes('/admin/attendance')) {
         document.title = '勤怠管理';
       }
-    } catch (e) { /* silently ignored */ }
-    try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-    try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch (e) { /* silently ignored */ }
-    try { document.body.classList.remove('has-sidebar'); } catch (e) { /* silently ignored */ }
-    try { document.body.classList.add('expenses-standalone'); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+    try { document.getElementById('adminChrome')?.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
+    try { const el = document.getElementById('adminChrome'); if (el) el.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+    try { document.body.classList.remove('has-sidebar'); } catch (e) { /* bỏ qua lỗi */ }
+    try { document.body.classList.add('expenses-standalone'); } catch (e) { /* bỏ qua lỗi */ }
     try {
-      try { document.documentElement.style.setProperty('height', '100%', 'important'); } catch (e) { /* silently ignored */ }
-      try { document.documentElement.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { /* silently ignored */ }
-    } catch (e) { /* silently ignored */ }
+      try { document.documentElement.style.setProperty('height', '100%', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+      try { document.documentElement.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
-      try { document.body.style.setProperty('height', '100%', 'important'); } catch (e) { /* silently ignored */ }
-      try { document.body.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { /* silently ignored */ }
-    } catch (e) { /* silently ignored */ }
+      try { document.body.style.setProperty('height', '100%', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+      try { document.body.style.setProperty('overflow', 'hidden', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       const main = document.querySelector('main.content');
       if (main) {
-        try { main.style.setProperty('margin', '0', 'important'); } catch (e) { /* silently ignored */ }
-        try { main.style.setProperty('padding', '0', 'important'); } catch (e) { /* silently ignored */ }
-        try { main.style.setProperty('margin-top', '0', 'important'); } catch (e) { /* silently ignored */ }
-        try { main.style.setProperty('padding-top', '0', 'important'); } catch (e) { /* silently ignored */ }
+        try { main.style.setProperty('margin', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+        try { main.style.setProperty('padding', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+        try { main.style.setProperty('margin-top', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+        try { main.style.setProperty('padding-top', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
-      try { document.documentElement.style.setProperty('margin', '0', 'important'); } catch (e) { /* silently ignored */ }
-      try { document.documentElement.style.setProperty('padding', '0', 'important'); } catch (e) { /* silently ignored */ }
-    } catch (e) { /* silently ignored */ }
+      try { document.documentElement.style.setProperty('margin', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+      try { document.documentElement.style.setProperty('padding', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
-      try { document.body.style.setProperty('margin', '0', 'important'); } catch (e) { /* silently ignored */ }
-      try { document.body.style.setProperty('padding', '0', 'important'); } catch (e) { /* silently ignored */ }
-    } catch (e) { /* silently ignored */ }
+      try { document.body.style.setProperty('margin', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+      try { document.body.style.setProperty('padding', '0', 'important'); } catch (e) { /* bỏ qua lỗi */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   let revealed = false;
   const reveal = () => {
     if (revealed) return;
     revealed = true;
-    try { document.body.classList.remove('booting'); } catch (e) { /* silently ignored */ }
-    try { document.documentElement.classList.remove('admin-preboot'); } catch (e) { /* silently ignored */ }
+    try { document.body.classList.remove('booting'); } catch (e) { /* bỏ qua lỗi */ }
+    try { document.documentElement.classList.remove('admin-preboot'); } catch (e) { /* bỏ qua lỗi */ }
     try {
       if (isStandaloneApp) applyStandaloneApp();
       else document.getElementById('adminChrome')?.removeAttribute('hidden');
-    } catch (e) { /* silently ignored */ }
-    try { document.body.style.visibility = ''; } catch (e) { /* silently ignored */ }
-    try { document.getElementById('adminBootMask')?.remove(); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+    try { document.body.style.visibility = ''; } catch (e) { /* bỏ qua lỗi */ }
+    try { document.getElementById('adminBootMask')?.remove(); } catch (e) { /* bỏ qua lỗi */ }
   };
   let forceRevealTimer = null;
-  try { forceRevealTimer = setTimeout(reveal, 1200); } catch (e) { /* silently ignored */ }
+  try { forceRevealTimer = setTimeout(reveal, 1200); } catch (e) { /* bỏ qua lỗi */ }
   setTopbarHeightVar();
-  try { window.addEventListener('resize', setTopbarHeightVar); } catch (e) { /* silently ignored */ }
+  try { window.addEventListener('resize', setTopbarHeightVar); } catch (e) { /* bỏ qua lỗi */ }
   wireSidebarAccordion();
   wireNavSelection();
   wireLegacyLinkRewrite();
@@ -911,13 +896,13 @@ const boot = async () => {
   wireExpandingSearch();
   wireTopbarMenus();
   wireAdminShell({ logoutRedirect: '/ui/login' });
-  try { window.addEventListener('pageshow', hardHidePageSpinner); } catch (e) { /* silently ignored */ }
+  try { window.addEventListener('pageshow', hardHidePageSpinner); } catch (e) { /* bỏ qua lỗi */ }
   try {
     applyStandaloneApp();
     await route();
   } finally {
     hardHidePageSpinner();
-    try { if (forceRevealTimer) clearTimeout(forceRevealTimer); } catch (e) { /* silently ignored */ }
+    try { if (forceRevealTimer) clearTimeout(forceRevealTimer); } catch (e) { /* bỏ qua lỗi */ }
     try {
       requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(reveal, 40)));
     } catch {

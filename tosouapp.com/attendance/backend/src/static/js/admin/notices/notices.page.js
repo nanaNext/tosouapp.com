@@ -26,11 +26,11 @@ export async function mount() {
   try {
     const userName = document.querySelector('#userName');
     if (userName) userName.textContent = profile.username || profile.email || '管理者';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const status = document.querySelector('#status');
     if (status) status.textContent = '';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const host = document.querySelector('#adminContent');
   if (!host) return;
@@ -67,7 +67,7 @@ export async function mount() {
       rows = [];
     }
     let targets = [];
-    try { targets = await loadTargets(); } catch (e) { /* silently ignored */ }
+    try { targets = await loadTargets(); } catch (e) { /* bỏ qua lỗi */ }
     const isMobileView = (() => {
       try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
     })();
@@ -77,7 +77,7 @@ export async function mount() {
         const v = localStorage.getItem(composerKey);
         if (v === '0') return false;
         if (v === '1') return true;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       return true;
     })();
     const tableKey = 'adminNotices.table.visible';
@@ -86,7 +86,7 @@ export async function mount() {
         const v = localStorage.getItem(tableKey);
         if (v === '0') return false;
         if (v === '1') return true;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       return true;
     })();
     const fmtRecipient = (r) => {
@@ -488,7 +488,7 @@ export async function mount() {
       </div>
     `;
 
-    // Pagination handlers
+    // Xử lý phân trang
     const updatePagination = () => {
       const tbody = host.querySelector('#noticeTableBody');
       const pagDiv = host.querySelector('#noticePagination');
@@ -498,7 +498,7 @@ export async function mount() {
         pagDiv.querySelector('#noticePrevPage')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
         pagDiv.querySelector('#noticeNextPage')?.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; updatePagination(); } });
       }
-      // Re-bind delete buttons
+      // Gắn lại sự kiện cho nút xóa
       host.querySelectorAll('[data-notice-del]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const nid = btn.dataset.noticeDel;
@@ -506,7 +506,7 @@ export async function mount() {
           try {
             await fetchJSONAuth(`/api/notices/admin/${nid}`, { method: 'DELETE' });
             await render();
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
         });
       });
     };
@@ -526,19 +526,19 @@ export async function mount() {
       const body = host.querySelector('#noticeComposerBody');
       const curHidden = !!(body && body.hasAttribute && body.hasAttribute('hidden'));
       const nextHidden = !curHidden;
-      if (nextHidden) { try { if (body) body.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ } }
-      else { try { if (body) body.removeAttribute('hidden'); } catch (e) { /* silently ignored */ } }
-      try { localStorage.setItem(composerKey, nextHidden ? '0' : '1'); } catch (e) { /* silently ignored */ }
-      try { host.querySelector('#btnNoticeComposerToggle').textContent = nextHidden ? '入力欄を表示' : '入力欄を隠す'; } catch (e) { /* silently ignored */ }
+      if (nextHidden) { try { if (body) body.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ } }
+      else { try { if (body) body.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ } }
+      try { localStorage.setItem(composerKey, nextHidden ? '0' : '1'); } catch (e) { /* bỏ qua lỗi */ }
+      try { host.querySelector('#btnNoticeComposerToggle').textContent = nextHidden ? '入力欄を表示' : '入力欄を隠す'; } catch (e) { /* bỏ qua lỗi */ }
     });
     const toggleNoticeTable = host.querySelector('#toggleNoticeTable');
     if (toggleNoticeTable) toggleNoticeTable.addEventListener('change', () => {
       const chk = toggleNoticeTable;
       const sec = host.querySelector('#noticeTableSection');
       const vis = !!chk.checked;
-      if (vis) { try { if (sec) sec.removeAttribute('hidden'); } catch (e) { /* silently ignored */ } }
-      else { try { if (sec) sec.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ } }
-      try { localStorage.setItem(tableKey, vis ? '1' : '0'); } catch (e) { /* silently ignored */ }
+      if (vis) { try { if (sec) sec.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ } }
+      else { try { if (sec) sec.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ } }
+      try { localStorage.setItem(tableKey, vis ? '1' : '0'); } catch (e) { /* bỏ qua lỗi */ }
     });
 
     const recipient = host.querySelector('#noticeRecipient');
@@ -553,7 +553,7 @@ export async function mount() {
         msg.style.height = '0px';
         const h = Math.max(120, msg.scrollHeight);
         msg.style.height = `${h}px`;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
 
     const applyScope = () => {

@@ -20,7 +20,7 @@ function ensurePayrollNavStyle() {
       .pe-nav a.active{color:#2563eb;border-bottom-color:#2563eb}
     `;
     document.head.appendChild(st);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function tabHref(tab) {
@@ -164,7 +164,7 @@ export async function mountSalaryCalc({ content, listUsers }) {
         a.download = 'salary.csv';
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
   });
 }
@@ -174,7 +174,7 @@ export async function mountPayslipSend({ content, listUsers }) {
   
   ensurePayrollNavStyle();
   content.innerHTML = '';
-  // Removed top nav per user request: content.appendChild(mountNav('salary_send'));
+  // Đã bỏ nav trên cùng theo yêu cầu người dùng: content.appendChild(mountNav('salary_send'));
 
   (function mountLocalStyle(){
     if (document.getElementById('payslipHistoryStyle')) return;
@@ -241,7 +241,7 @@ export async function mountPayslipSend({ content, listUsers }) {
   const monthsCard = document.createElement('div');
   monthsCard.className = 'ps-card';
   monthsCard.style.padding = '0';
-  monthsCard.style.display = 'block'; // active by default
+  monthsCard.style.display = 'block'; // mặc định hiển thị
   monthsCard.innerHTML = `
     <div id="monthsHost" style="overflow-x:auto">
       <table class="ps-table">
@@ -276,7 +276,7 @@ export async function mountPayslipSend({ content, listUsers }) {
   `;
   content.appendChild(filesCard);
 
-  // Tab switching logic
+  // Logic chuyển tab
   subNav.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -411,7 +411,7 @@ export async function mountPayslipSend({ content, listUsers }) {
       }
     } catch (e) {
       const msg = String(e?.message || '読み込み失敗');
-      try { console.error('payslip history load error:', e); } catch (e) { /* silently ignored */ }
+      try { console.error('payslip history load error:', e); } catch (e) { /* bỏ qua lỗi */ }
       if (delivBox) delivBox.textContent = `読み込み失敗: ${msg}`;
       if (fileBox) fileBox.textContent = `読み込み失敗: ${msg}`;
     }
@@ -457,7 +457,7 @@ export async function mountPayslipSend({ content, listUsers }) {
       });
     } catch (e) {
       const msg = String(e?.message || '読み込み失敗');
-      try { console.error('payslip months summary error:', e); } catch (e) { /* silently ignored */ }
+      try { console.error('payslip months summary error:', e); } catch (e) { /* bỏ qua lỗi */ }
       host.innerHTML = `<tr><td style="padding:10px 12px" colspan="3">読み込み失敗: ${msg}</td></tr>`;
     }
   }
@@ -466,5 +466,5 @@ export async function mountPayslipSend({ content, listUsers }) {
   const pm = document.getElementById('psMonth');
   if (pm) pm.addEventListener('change', () => { selectedMonth = String(pm.value || ''); loadHistory(); refreshMonthSummary(); });
   const pc = document.getElementById('psClear');
-  if (pc) pc.addEventListener('click', () => { selectedMonth = ''; try { document.getElementById('psMonth').value = ''; } catch (e) { /* silently ignored */ } loadHistory(); refreshMonthSummary(); });
+  if (pc) pc.addEventListener('click', () => { selectedMonth = ''; try { document.getElementById('psMonth').value = ''; } catch (e) { /* bỏ qua lỗi */ } loadHistory(); refreshMonthSummary(); });
 }

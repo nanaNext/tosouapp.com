@@ -12,7 +12,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const showErr = (msg) => {
@@ -27,13 +27,13 @@ const showSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const hideSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -78,24 +78,24 @@ const markMonthViewed = (month) => {
     const set = getViewedMonths();
     set.add(m);
     localStorage.setItem(viewedKey(), JSON.stringify(Array.from(set)));
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     fetchJSONAuth('/api/salary/my/read', {
       method: 'POST',
       body: JSON.stringify({ month: m })
     }).catch(() => {});
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const ensureAuthProfile = async () => {
   let accessToken = '';
-  try { accessToken = sessionStorage.getItem('accessToken') || ''; } catch (e) { /* silently ignored */ }
+  try { accessToken = sessionStorage.getItem('accessToken') || ''; } catch (e) { /* bỏ qua lỗi */ }
   if (!accessToken) {
     const r = await refresh();
     accessToken = r?.accessToken || '';
     try {
       if (accessToken) sessionStorage.setItem('accessToken', accessToken);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!accessToken) throw new Error('Missing access token');
   const profile = await me(accessToken);
@@ -103,7 +103,7 @@ const ensureAuthProfile = async () => {
     const s = JSON.stringify(profile || {});
     sessionStorage.setItem('user', s);
     localStorage.setItem('user', s);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   return profile;
 };
 
@@ -118,14 +118,14 @@ const wireUserMenu = () => {
   });
   document.addEventListener('click', (e) => {
     if (e.target.closest('.user-menu')) return;
-    try { dd.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+    try { dd.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
   });
   const logoutBtn = $('#btnLogout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { /* silently ignored */ }
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+      try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
+      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
       window.location.replace('/ui/login');
     });
   }
@@ -140,17 +140,17 @@ const wireDrawer = () => {
   if (btn.dataset.bound === '1') return;
   btn.dataset.bound = '1';
   const close = () => {
-    try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+    try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
     try {
       drawer?.querySelectorAll?.('.drawer-group-btn[data-drawer-group]').forEach((b) => {
         b.setAttribute('aria-expanded', 'false');
         b.classList.remove('open');
       });
       drawer?.querySelectorAll?.('.drawer-group-list[data-drawer-panel]').forEach((p) => p.setAttribute('hidden', ''));
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   const open = () => {
-    try { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
+    try { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
   };
   if (btn) btn.addEventListener('click', () => { if (drawer?.hasAttribute('hidden')) open(); else close(); });
   if (closeBtn) closeBtn.addEventListener('click', close);
@@ -179,7 +179,7 @@ const wireDrawer = () => {
       a.addEventListener('click', () => close());
     });
     drawer?.querySelectorAll?.('.drawer-item, a').forEach(el => el.addEventListener('click', close));
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const render = async () => {
@@ -187,7 +187,7 @@ const render = async () => {
   if (!host) return;
   const params = new URLSearchParams(String(window.location.search || ''));
   const monthFromQuery = String(params.get('month') || '').trim();
-  // Add styles for the buttons and table
+  // Thêm style cho các nút và bảng
   const style = document.createElement('style');
   style.textContent = `
     .sal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
@@ -524,7 +524,7 @@ const render = async () => {
               window.history.back();
               return;
             }
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
           window.location.replace('/ui/salary');
         });
       }
@@ -585,7 +585,7 @@ const render = async () => {
               const m = month.slice(5, 7);
               const title = `${y}年${m}月給与明細`;
               const pub = it.publishedAt ? formatDateTime(it.publishedAt) : '';
-              // Use server state first, fallback to local storage
+              // Ưu tiên trạng thái từ server, fallback về local storage
               const isRead = it.isRead || viewed.has(month);
               const viewedCls = isRead ? ' is-hidden' : '';
               return `

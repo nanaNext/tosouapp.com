@@ -27,7 +27,7 @@ export async function mount({ content }) {
   localHost.className = (localHost.className || '') + ' adjust-page-content';
   localHost.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; background: #FFFFFF; flex: 1; min-width: 0;`;
 
-  // Handle resize to show/hide mobile date picker dynamically
+  // Xử lý resize để ẩn/hiện bộ chọn ngày trên mobile theo thời gian thực
   window.addEventListener('resize', () => {
     if (localHost && document.getElementById('btnMonthPrev')) {
       handleMobileHeader();
@@ -198,7 +198,7 @@ function openRejectModal(id) {
   `;
 
   const close = () => {
-    try { document.body.removeChild(modal); } catch (e) { /* silently ignored */ }
+    try { document.body.removeChild(modal); } catch (e) { /* bỏ qua lỗi */ }
   };
 
   document.body.appendChild(modal);
@@ -296,7 +296,7 @@ function openChatModal(id) {
   };
 
   const close = () => {
-    try { document.body.removeChild(modal); } catch (e) { /* silently ignored */ }
+    try { document.body.removeChild(modal); } catch (e) { /* bỏ qua lỗi */ }
     openChatRequestId = null;
   };
 

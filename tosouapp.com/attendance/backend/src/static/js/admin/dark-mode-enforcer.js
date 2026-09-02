@@ -1,7 +1,7 @@
 /**
  * dark-mode-enforcer.js
- * Scans DOM and forces all light backgrounds/colors to dark when [data-theme="dark"].
- * Runs on DOMContentLoaded + MutationObserver for dynamic content.
+ * Quét DOM và ép mọi nền/màu sáng sang tối khi [data-theme="dark"].
+ * Chạy lúc DOMContentLoaded + MutationObserver cho nội dung động.
  */
 (function () {
   const DARK_BG = '#16161e';
@@ -10,7 +10,7 @@
   const DARK_BORDER = '#2e2e44';
   const DARK_TEXT = '#c8ccd4';
 
-  // Light colors to detect
+  // Các màu sáng cần phát hiện
   const LIGHT_BGS = ['#fff', '#ffffff', '#f8fafc', '#f1f5f9', '#f3f4f6', '#e6f2ff', '#eef2ff', '#e0f2fe', '#f0fdf4', '#fff7ed', '#fef2f2', '#eff6ff', '#f9fafb', '#fafafa', '#f5f7fb', '#fafbfc', '#fbfcfd', 'white', 'rgb(255, 255, 255)', 'rgb(248, 250, 252)', 'rgb(241, 245, 249)', 'rgb(243, 244, 246)', 'rgb(249, 250, 251)', 'rgb(250, 250, 250)', 'rgb(245, 247, 251)', 'rgb(250, 251, 252)', 'rgb(251, 252, 253)'];
   const DARK_TEXTS = ['#0f172a', '#1e293b', '#334155', '#475569', '#1f2937', '#374151', '#111827', 'rgb(15, 23, 42)', 'rgb(30, 41, 59)', 'rgb(51, 65, 85)'];
 
@@ -37,7 +37,7 @@
     const admin = document.querySelector('.admin') || document.body;
     if (!admin) return;
 
-    // Force body and main content backgrounds
+    // Ép nền cho body và vùng nội dung chính
     document.body.style.setProperty('background-color', DARK_BG, 'important');
     const mainContent = document.querySelector('main.content');
     if (mainContent) mainContent.style.setProperty('background-color', DARK_BG, 'important');
@@ -50,19 +50,19 @@
 
       const cs = window.getComputedStyle(el);
 
-      // Fix background
+      // Sửa nền
       const bg = cs.backgroundColor;
       if (isLightBg(bg)) {
         el.style.setProperty('background-color', DARK_SURFACE, 'important');
       }
 
-      // Fix text color
+      // Sửa màu chữ
       const color = cs.color;
       if (isDarkText(color)) {
         el.style.setProperty('color', DARK_TEXT, 'important');
       }
 
-      // Fix borders
+      // Sửa viền
       const bc = cs.borderTopColor || cs.borderColor;
       if (isLightBorder(bc)) {
         el.style.setProperty('border-color', DARK_BORDER, 'important');
@@ -73,13 +73,13 @@
   function init() {
     if (document.documentElement.getAttribute('data-theme') !== 'dark') return;
 
-    // Run after page renders
+    // Chạy sau khi trang render xong
     enforce();
     setTimeout(enforce, 500);
     setTimeout(enforce, 1500);
     setTimeout(enforce, 3000);
 
-    // Watch for dynamic content changes
+    // Theo dõi thay đổi nội dung động
     const observer = new MutationObserver(() => {
       clearTimeout(observer._timer);
       observer._timer = setTimeout(enforce, 200);
@@ -89,12 +89,12 @@
     observer.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
   }
 
-  // Also watch theme changes
+  // Đồng thời theo dõi thay đổi theme
   const themeObserver = new MutationObserver(() => {
     if (document.documentElement.getAttribute('data-theme') === 'dark') {
       setTimeout(enforce, 100);
     } else {
-      // Revert all inline dark styles
+      // Gỡ bỏ toàn bộ style tối inline
       document.body.style.removeProperty('background-color');
       const mainContent = document.querySelector('main.content');
       if (mainContent) mainContent.style.removeProperty('background-color');

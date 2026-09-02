@@ -38,7 +38,7 @@ export function wireUserInitials() {
         const u = JSON.parse(uStr);
         full = (u && u.username) ? String(u.username).trim() : (u && u.email ? String(u.email).trim() : '');
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     if (!full && nameEl && nameEl.textContent) full = nameEl.textContent.trim();
     if (full) {
       apply(full);
@@ -47,13 +47,13 @@ export function wireUserInitials() {
         .then(r => r && r.ok ? r.json() : null)
         .then(p => {
           if (!p) return;
-          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { /* silently ignored */ }
+          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { /* bỏ qua lỗi */ }
           const f = String(p.username || '').trim() || String(p.email || '').trim();
           apply(f);
         })
         .catch(() => {});
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 export function wireTopbarHeightVar() {
   const sync = () => {
@@ -63,10 +63,10 @@ export function wireTopbarHeightVar() {
       document.documentElement.style.removeProperty('--topbar-height');
       const h = topbar ? Math.round(topbar.getBoundingClientRect().height || 0) : 0;
       if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   sync();
-  try { window.addEventListener('resize', sync); } catch (e) { /* silently ignored */ }
+  try { window.addEventListener('resize', sync); } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export function wireUserMenu() {
@@ -83,10 +83,10 @@ export function wireUserMenu() {
       try {
         document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
         document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const closeAllSubMenus = () => {
-      try { document.querySelectorAll('.subbar .menu.open').forEach((m) => m.classList.remove('open')); } catch (e) { /* silently ignored */ }
+      try { document.querySelectorAll('.subbar .menu.open').forEach((m) => m.classList.remove('open')); } catch (e) { /* bỏ qua lỗi */ }
     };
     const placeDropdown = (btn, dd) => {
       try {
@@ -101,7 +101,7 @@ export function wireUserMenu() {
         dd.style.right = 'auto';
         dd.style.zIndex = '2147483000';
         dd.style.minWidth = `${minW}px`;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const clearDropdownPlacement = (dd) => {
       try {
@@ -111,7 +111,7 @@ export function wireUserMenu() {
         dd.style.right = '';
         dd.style.zIndex = '';
         dd.style.minWidth = '';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const emergencyBtnId = 'emergencyUserBtn';
     const emergencyPanelId = 'emergencyUserPanel';
@@ -124,7 +124,7 @@ export function wireUserMenu() {
           p.style.visibility = 'hidden';
           p.style.opacity = '0';
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const openEmergencyPanel = () => {
       try {
@@ -149,12 +149,12 @@ export function wireUserMenu() {
             p.style.overflowY = '';
             p.style.padding = '8px';
           }
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         p.removeAttribute('hidden');
         p.style.display = 'block';
         p.style.visibility = 'visible';
         p.style.opacity = '1';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const ensureEmergencyUserPanel = () => {
       try {
@@ -200,21 +200,21 @@ export function wireUserMenu() {
         const outBtn = p.querySelector('#emergencyLogoutBtn');
         if (outBtn) {
           outBtn.addEventListener('click', async () => {
-            try { await logout(); } catch (e) { /* silently ignored */ }
+            try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
             try {
               sessionStorage.removeItem('accessToken');
               sessionStorage.removeItem('refreshToken');
               sessionStorage.removeItem('user');
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
             try {
               localStorage.removeItem('refreshToken');
               localStorage.removeItem('user');
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
             try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
           });
         }
         return p;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       return null;
     };
     const toggleEmergencyPanel = () => {
@@ -226,7 +226,7 @@ export function wireUserMenu() {
         const hidden = p.hasAttribute('hidden');
         if (hidden) openEmergencyPanel();
         else closeEmergencyPanel();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const ensureEmergencyUserButton = () => {
       try {
@@ -246,7 +246,7 @@ export function wireUserMenu() {
             if (!(r.width > 8 && r.height > 8)) return false;
             const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
             const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-            // Button is considered visible only when it is actually inside viewport.
+            // Chỉ coi là hiện khi nút thực sự nằm trong viewport
             return r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh;
           } catch {
             return false;
@@ -280,7 +280,7 @@ export function wireUserMenu() {
         };
         emBtn.addEventListener('pointerdown', onTap, true);
         emBtn.addEventListener('click', onTap, true);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const toggleRealUserMenu = () => {
       try {
@@ -295,13 +295,13 @@ export function wireUserMenu() {
         if (hidden) {
           placeDropdown(btn, dd);
           dd.removeAttribute('hidden');
-          try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
+          try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
           return true;
         } else {
           clearDropdownPlacement(dd);
           return true;
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       return false;
     };
     const bindRealUserButton = () => {
@@ -327,26 +327,26 @@ export function wireUserMenu() {
           ev.stopPropagation();
           safeToggle();
         }, true);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const bindDynamicUserControls = () => {
       try {
         ensureEmergencyUserButton();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         bindRealUserButton();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     bindDynamicUserControls();
     if (!shellState.userMenuBoundDynamic) {
       shellState.userMenuBoundDynamic = '1';
       try {
-        // Some admin pages render topbar/user menu after script init.
-        // Re-bind to avoid intermittent "button not clickable" states.
+        // Một số trang admin render topbar/menu user sau khi script chạy
+        // Bind lại để tránh tình trạng nút thỉnh thoảng không bấm được
         setTimeout(bindDynamicUserControls, 100);
         setTimeout(bindDynamicUserControls, 500);
         setTimeout(bindDynamicUserControls, 1500);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
     if (!shellState.userMenuBoundDelegated) {
       shellState.userMenuBoundDelegated = '1';
@@ -368,7 +368,7 @@ export function wireUserMenu() {
           const dd = root ? root.querySelector('.dropdown') : null;
           if (!dd || dd.hasAttribute('hidden')) return;
           placeDropdown(btn, dd);
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       });
       window.addEventListener('scroll', () => {
         try {
@@ -378,19 +378,19 @@ export function wireUserMenu() {
             clearDropdownPlacement(dd);
           });
           document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         closeEmergencyPanel();
       }, true);
     }
 
-    // Theme submenu wiring (idempotent)
+    // Gắn sự kiện cho submenu theme (chạy lại nhiều lần không bị lỗi)
     const themeDrop = qs('#themeDropdown');
     if (themeDrop && themeDrop.dataset.bound !== '1') {
       themeDrop.dataset.bound = '1';
       const applyTheme = (val) => {
-        if (val === 'system' || val === '') { try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* silently ignored */ } }
+        if (val === 'system' || val === '') { try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* bỏ qua lỗi */ } }
         else { document.documentElement.dataset.theme = val; }
-        try { localStorage.setItem('theme', val); } catch (e) { /* silently ignored */ }
+        try { localStorage.setItem('theme', val); } catch (e) { /* bỏ qua lỗi */ }
         Array.from(themeDrop.querySelectorAll('.theme-item')).forEach(el => {
           const v = el.getAttribute('data-value') || '';
           if (v === val) el.classList.add('sel'); else el.classList.remove('sel');
@@ -414,7 +414,7 @@ export function wireUserMenu() {
         }
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export function wireTopbarSearch() {
@@ -434,7 +434,7 @@ export function wireTopbarSearch() {
         go();
       }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export function wireMobileDrawer() {
@@ -447,16 +447,16 @@ export function wireMobileDrawer() {
     if (!btn || !drawer || !backdrop) return;
     if (btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
-    // Recover from stale state after route/view swaps.
-    try { drawer.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-    try { drawer.style.display = 'none'; } catch (e) { /* silently ignored */ }
-    try { drawer.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-    try { backdrop.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-    try { backdrop.style.display = 'none'; } catch (e) { /* silently ignored */ }
-    try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-    try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
+    // Khôi phục từ trạng thái cũ sau khi chuyển route/view
+    try { drawer.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
+    try { drawer.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+    try { drawer.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+    try { backdrop.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
+    try { backdrop.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+    try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+    try { document.body.classList.remove('drawer-open'); } catch (e) { /* bỏ qua lỗi */ }
     const open = () => {
-      // Ensure drawer has menu content (re-sync from sidebar if empty)
+      // Đảm bảo drawer có nội dung menu (đồng bộ lại từ sidebar nếu trống)
       try {
         if (mount && (!mount.innerHTML || mount.innerHTML.trim().length < 10)) {
           const src = document.querySelector('.sidebar .sidebar-nav');
@@ -477,28 +477,28 @@ export function wireMobileDrawer() {
               '</nav>';
           }
         }
-      } catch (e) { /* silently ignored */ }
-      try { drawer.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
-      try { backdrop.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
-      // Recover from transient reset state that can force inline hide.
-      try { drawer.style.display = ''; } catch (e) { /* silently ignored */ }
-      try { drawer.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
-      try { drawer.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
-      try { backdrop.style.display = ''; } catch (e) { /* silently ignored */ }
-      try { backdrop.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
-      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
-      try { document.body.classList.add('drawer-open'); } catch (e) { /* silently ignored */ }
-      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ }
+      // Khôi phục từ trạng thái reset tạm thời có thể ép ẩn inline
+      try { drawer.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.style.removeProperty('display'); } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.style.removeProperty('pointer-events'); } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.removeProperty('display'); } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { /* bỏ qua lỗi */ }
+      try { document.body.classList.add('drawer-open'); } catch (e) { /* bỏ qua lỗi */ }
+      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
     };
     const close = () => {
-      try { drawer.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-      try { drawer.style.display = 'none'; } catch (e) { /* silently ignored */ }
-      try { drawer.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-      try { backdrop.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-      try { backdrop.style.display = 'none'; } catch (e) { /* silently ignored */ }
-      try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-      try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+      try { drawer.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+      try { document.body.classList.remove('drawer-open'); } catch (e) { /* bỏ qua lỗi */ }
+      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
     };
     const toggle = () => {
       const isOpen = !drawer.hasAttribute('hidden');
@@ -519,10 +519,10 @@ export function wireMobileDrawer() {
     let lastMenuToggleAt = 0;
     const onMenuTap = (e) => {
       const now = Date.now();
-      // Prevent double-toggle caused by pointerdown + click/touchstart firing together.
+      // Tránh toggle 2 lần do pointerdown + click/touchstart cùng bắn
       if (now - lastMenuToggleAt < 260) {
-        try { if (e.cancelable) e.preventDefault(); } catch (e) { /* silently ignored */ }
-        try { e.stopPropagation(); } catch (e) { /* silently ignored */ }
+        try { if (e.cancelable) e.preventDefault(); } catch (e) { /* bỏ qua lỗi */ }
+        try { e.stopPropagation(); } catch (e) { /* bỏ qua lỗi */ }
         return;
       }
       lastMenuToggleAt = now;
@@ -530,18 +530,18 @@ export function wireMobileDrawer() {
       e.stopPropagation();
       toggle();
     };
-    // Normal binding
+    // Bind bình thường
     btn.addEventListener('click', onMenuTap);
     btn.addEventListener('pointerdown', onMenuTap, true);
     btn.addEventListener('touchstart', onMenuTap, { capture: true, passive: false });
-    // Fallback: if another overlay sits above the button, still react by tap coordinates.
+    // Dự phòng: nếu có overlay khác đè lên nút thì vẫn phản hồi theo toạ độ chạm
     document.addEventListener('pointerdown', (e) => {
       try {
         const t = e && e.target;
         if (t && t.closest && t.closest('#mobileMenuBtn')) return;
         if (!tapWithinMenuBtn(e)) return;
         onMenuTap(e);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }, true);
     document.addEventListener('touchstart', (e) => {
       try {
@@ -549,7 +549,7 @@ export function wireMobileDrawer() {
         if (t && t.closest && t.closest('#mobileMenuBtn')) return;
         if (!tapWithinMenuBtn(e)) return;
         onMenuTap(e);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }, { capture: true, passive: false });
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
     drawer.addEventListener('click', (e) => {
@@ -577,7 +577,7 @@ export function wireMobileDrawer() {
       if (to.pathname === window.location.pathname && to.search === window.location.search && to.hash === window.location.hash) return;
       window.location.href = to.pathname + to.search + to.hash;
     });
-    // UX requirement: right dark area is non-interactive; close only via X button.
+    // Yêu cầu UX: vùng tối bên phải không tương tác, chỉ đóng bằng nút X
     backdrop.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
     try {
@@ -591,7 +591,7 @@ export function wireMobileDrawer() {
           mount.appendChild(clone);
           filled = true;
         }
-        // Fallback: build drawer nav from top horizontal subbar menus.
+        // Dự phòng: dựng drawer nav từ menu subbar ngang phía trên
         if (!filled) {
           const subnav = document.querySelector('.subbar .subnav');
           if (subnav) {
@@ -660,8 +660,8 @@ export function wireMobileDrawer() {
           mount.dataset.filled = '1';
         }
       }
-    } catch (e) { /* silently ignored */ }
-  } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export function wireLogout(logoutRedirect = '/ui/login') {
@@ -671,17 +671,17 @@ export function wireLogout(logoutRedirect = '/ui/login') {
     if (btnLogout.dataset.bound === '1') return;
     btnLogout.dataset.bound = '1';
     btnLogout.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { /* silently ignored */ }
+      try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try { window.location.replace(logoutRedirect); } catch { window.location.href = logoutRedirect; }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }

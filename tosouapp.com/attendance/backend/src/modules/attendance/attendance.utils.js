@@ -1,7 +1,7 @@
 /**
  * @module attendance.utils
- * Pure shared helpers used across attendance sub-controllers.
- * No HTTP request/response logic here — only reusable business utilities.
+ * Các hàm dùng chung cho các controller con của attendance.
+ * Không có logic request/response HTTP ở đây — chỉ là tiện ích nghiệp vụ tái sử dụng.
  */
 'use strict';
 
@@ -12,13 +12,13 @@ const leaveRepo = require('../leave/leave.repository');
 const userRepo = require('../users/user.repository');
 const calendarRepo = require('../calendar/calendar.repository');
 
-// ─── Performance tracking ─────────────────────────────────────────────────────
+// ─── Theo dõi hiệu năng ───────────────────────────────────────────────────────
 
 /**
- * Record endpoint performance metrics and warn on slow responses.
- * @param {string} endpoint - Endpoint identifier
- * @param {number} startedAt - Date.now() when request started
- * @param {Object} [meta] - Additional metadata
+ * Ghi số liệu hiệu năng của endpoint và cảnh báo khi phản hồi chậm.
+ * @param {string} endpoint - Định danh endpoint
+ * @param {number} startedAt - Date.now() lúc bắt đầu request
+ * @param {Object} [meta] - Dữ liệu bổ sung
  */
 function recordEndpointPerf(endpoint, startedAt, meta = {}) {
   const durationMs = Date.now() - startedAt;
@@ -33,7 +33,7 @@ function recordEndpointPerf(endpoint, startedAt, meta = {}) {
   }
 }
 
-// ─── Leave / Kubun sync ───────────────────────────────────────────────────────
+// ─── Đồng bộ nghỉ phép / kubun ───────────────────────────────────────────────
 
 async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attendance') {
   try {
@@ -73,15 +73,15 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
   }
 }
 
-// ─── RBAC helpers ─────────────────────────────────────────────────────────────
+// ─── Hàm hỗ trợ phân quyền ───────────────────────────────────────────────────
 
 /**
- * Resolve the target userId for the current request, enforcing RBAC rules.
- * - Employee: always returns own ID
- * - Manager: only allowed to target employees (role='employee')
- * - Admin: can target anyone
+ * Xác định userId đích cho request hiện tại, áp dụng quy tắc phân quyền.
+ * - Employee: luôn trả về ID của chính mình
+ * - Manager: chỉ được thao tác với employee (role='employee')
+ * - Admin: được thao tác với bất kỳ ai
  * @param {import('express').Request} req
- * @returns {Promise<number|string|null>} userId, '__forbidden__', or null
+ * @returns {Promise<number|string|null>} userId, '__forbidden__', hoặc null
  */
 async function resolveTargetUserId(req) {
   const role = String(req.user?.role || '').toLowerCase();
@@ -107,7 +107,7 @@ async function resolveTargetUserId(req) {
   return targetId;
 }
 
-// ─── Month helpers ────────────────────────────────────────────────────────────
+// ─── Hàm hỗ trợ theo tháng ───────────────────────────────────────────────────
 
 function parseMonth(s) {
   const [y, m] = String(s).split('-');
@@ -157,7 +157,7 @@ async function assertMonthWritable(req, targetUserId, year, month) {
   }
 }
 
-// ─── Calendar / Kouji helpers ─────────────────────────────────────────────────
+// ─── Hàm hỗ trợ lịch / bộ phận công trình ────────────────────────────────────
 
 const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
 
@@ -197,9 +197,9 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
 }
 
 /**
- * Build the set of off-days for a given year + userId,
- * respecting Kouji department policy and department-specific holidays.
- * Single source of truth — replaces the 3 duplicate copies in daily/month/export controllers.
+ * Dựng tập ngày nghỉ cho một năm + userId,
+ * theo chính sách bộ phận công trình và ngày nghỉ riêng của từng bộ phận.
+ * Nguồn duy nhất — thay cho 3 bản trùng lặp ở các controller daily/month/export.
  * @param {number} year
  * @param {number} userId
  * @returns {Promise<Set<string>>}
@@ -221,7 +221,7 @@ async function getUserOffDaySet(year, userId) {
         if (h.is_off) off.add(String(h.date).slice(0, 10));
       }
     }
-  } catch (e) { /* department holidays not available, skip */ }
+  } catch (e) { /* không có ngày nghỉ theo bộ phận, bỏ qua */ }
   return off;
 }
 

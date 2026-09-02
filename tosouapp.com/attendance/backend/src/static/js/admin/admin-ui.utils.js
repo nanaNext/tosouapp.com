@@ -19,33 +19,33 @@ export const wireUserMenu = (logoutFn) => {
       const hidden = dd.hasAttribute('hidden');
       if (hidden) dd.removeAttribute('hidden');
       else dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', hidden ? 'true' : 'false'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-expanded', hidden ? 'true' : 'false'); } catch (e) { /* bỏ qua lỗi */ }
     });
     document.addEventListener('click', (e) => {
       const t = e && e.target;
       if (t && t.closest && t.closest('.user-menu')) return;
       dd.setAttribute('hidden', '');
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const btnLogout = document.querySelector('#btnLogout');
     if (!btnLogout || btnLogout.dataset.bound === '1') return;
     btnLogout.dataset.bound = '1';
     btnLogout.addEventListener('click', async () => {
-      try { await logoutFn(); } catch (e) { /* silently ignored */ }
+      try { await logoutFn(); } catch (e) { /* bỏ qua lỗi */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try { window.location.replace('/ui/login'); } catch { window.location.href = '/ui/login'; }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const wireExpandingSearch = () => {
@@ -72,7 +72,7 @@ export const wireExpandingSearch = () => {
           inner.style.gridTemplateColumns = `${bw || 'auto'} 1fr ${aw || 'auto'} ${uw || 'auto'}`;
           inner.dataset.searchLocked = '1';
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       box.classList.add('active');
       try {
         if (input) {
@@ -80,7 +80,7 @@ export const wireExpandingSearch = () => {
           input.focus(); input.select();
         }
         if (prefixTxt) prefixTxt.textContent = 'Search';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const close = () => {
       box.classList.remove('active');
@@ -90,14 +90,14 @@ export const wireExpandingSearch = () => {
           inner.style.gridTemplateColumns = '';
           delete inner.dataset.searchLocked;
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         if (input) {
           if (originalPlaceholder) input.setAttribute('placeholder', originalPlaceholder);
           input.blur();
         }
         if (prefixTxt) prefixTxt.textContent = 'Projects';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     input.addEventListener('focus', open);
     if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
@@ -128,7 +128,7 @@ export const wireExpandingSearch = () => {
       if (t && t.closest && t.closest('.topbar-inner .search')) return;
       close();
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const wireMobileDrawer = () => {
@@ -145,27 +145,27 @@ export const wireMobileDrawer = () => {
 
     const open = () => {
       if (closeTimer) clearTimeout(closeTimer);
-      try { drawer.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
-      try { backdrop.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
-      try { drawer.style.display = ''; } catch (e) { /* silently ignored */ }
-      try { drawer.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
-      try { drawer.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
-      try { backdrop.style.display = ''; } catch (e) { /* silently ignored */ }
-      try { backdrop.style.removeProperty('display'); } catch (e) { /* silently ignored */ }
-      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { /* silently ignored */ }
-      try { document.body.classList.add('drawer-open'); } catch (e) { /* silently ignored */ }
-      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
+      try { drawer.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.style.removeProperty('display'); } catch (e) { /* bỏ qua lỗi */ }
+      try { drawer.style.removeProperty('pointer-events'); } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.display = ''; } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.removeProperty('display'); } catch (e) { /* bỏ qua lỗi */ }
+      try { backdrop.style.removeProperty('pointer-events'); } catch (e) { /* bỏ qua lỗi */ }
+      try { document.body.classList.add('drawer-open'); } catch (e) { /* bỏ qua lỗi */ }
+      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
     };
     const close = () => {
-      try { document.body.classList.remove('drawer-open'); } catch (e) { /* silently ignored */ }
-      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+      try { document.body.classList.remove('drawer-open'); } catch (e) { /* bỏ qua lỗi */ }
+      try { btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
       closeTimer = setTimeout(() => {
-        try { drawer.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-        try { drawer.style.display = 'none'; } catch (e) { /* silently ignored */ }
-        try { drawer.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
-        try { backdrop.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
-        try { backdrop.style.display = 'none'; } catch (e) { /* silently ignored */ }
-        try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* silently ignored */ }
+        try { drawer.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
+        try { drawer.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+        try { drawer.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+        try { backdrop.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
+        try { backdrop.style.display = 'none'; } catch (e) { /* bỏ qua lỗi */ }
+        try { backdrop.style.pointerEvents = 'none'; } catch (e) { /* bỏ qua lỗi */ }
       }, 200);
     };
     const toggle = () => {
@@ -178,7 +178,7 @@ export const wireMobileDrawer = () => {
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
     backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const setTopbarHeightVar = () => {
@@ -189,5 +189,5 @@ export const setTopbarHeightVar = () => {
     if (!topbar) return;
     const h = Math.round(topbar.getBoundingClientRect().height);
     if (h > 0) document.documentElement.style.setProperty('--topbar-height', `${h}px`);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };

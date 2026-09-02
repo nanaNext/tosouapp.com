@@ -75,7 +75,7 @@ export async function mount(options = {}) {
         </tr>
       `).join('');
 
-      // Load managers for dropdown
+      // Tải danh sách quản lý cho dropdown
       try {
         const usersRes = await fetchJSONAuth('/api/admin/users?role=manager');
         const adminsRes = await fetchJSONAuth('/api/admin/users?role=admin');
@@ -91,9 +91,9 @@ export async function mount(options = {}) {
             sel.appendChild(opt);
           });
         });
-      } catch (e) { /* ignore — managers dropdown optional */ }
+      } catch (e) { /* bỏ qua — dropdown quản lý không bắt buộc */ }
 
-      // Save buttons
+      // Nút lưu
       tbody.querySelectorAll('[data-save]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = btn.dataset.save;
@@ -108,7 +108,7 @@ export async function mount(options = {}) {
         });
       });
 
-      // Delete buttons
+      // Nút xóa
       tbody.querySelectorAll('[data-delete]').forEach(btn => {
         btn.addEventListener('click', async () => {
           if (!confirm('この支店を削除しますか？所属社員の支店設定が解除されます。')) return;
@@ -123,7 +123,7 @@ export async function mount(options = {}) {
     }
   }
 
-  // Create branch
+  // Tạo chi nhánh
   document.getElementById('btnCreateBranch')?.addEventListener('click', async () => {
     const name = document.getElementById('branchNewName')?.value?.trim();
     const code = document.getElementById('branchNewCode')?.value?.trim();

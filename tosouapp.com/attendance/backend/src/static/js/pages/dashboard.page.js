@@ -10,7 +10,7 @@ function prefillUserName() {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function showSpinner() {
@@ -19,7 +19,7 @@ function showSpinner() {
     if (!el) return;
     el.removeAttribute('hidden');
     el.style.display = 'grid';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function hideSpinner() {
@@ -28,7 +28,7 @@ function hideSpinner() {
     if (!el) return;
     el.setAttribute('hidden', '');
     el.style.display = 'none';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function showError(msg) {
@@ -46,22 +46,22 @@ function esc(v) {
 
 async function ensureAuthProfile() {
   let token = '';
-  try { token = sessionStorage.getItem('accessToken') || ''; } catch (e) { /* silently ignored */ }
+  try { token = sessionStorage.getItem('accessToken') || ''; } catch (e) { /* bỏ qua lỗi */ }
   if (token) {
     try {
       const p = await me(token);
       return p;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   try {
     const r = await refresh();
     token = r?.accessToken || '';
     if (token) {
-      try { sessionStorage.setItem('accessToken', token); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.setItem('accessToken', token); } catch (e) { /* bỏ qua lỗi */ }
       const p2 = await me(token);
       return p2;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   return null;
 }
 
@@ -81,16 +81,16 @@ function wireUserMenu() {
   const btnLogout = $('#btnLogout');
   if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { /* silently ignored */ }
+      try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       window.location.replace('/ui/login');
     });
   }
@@ -127,7 +127,7 @@ function renderProfile(profile) {
   if (!tiles) return;
   tiles.classList.remove('employee-portal');
   tiles.classList.add('dashboard-profile-host');
-  // Force dashboard container to full-width block layout (avoid inheriting tile grid on mobile).
+  // Ép container dashboard về layout block full-width (tránh kế thừa grid tile trên mobile).
   tiles.style.display = 'block';
   tiles.style.gridTemplateColumns = 'none';
   tiles.style.width = '100%';
@@ -234,8 +234,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const input = box.querySelector('input[type="search"]');
       const closeBtn = box.querySelector('.search-close');
       const hint = box.querySelector('.search-hint');
-      const open = () => { box.classList.add('active'); try { input?.focus(); input?.select(); } catch (e) { /* silently ignored */ } };
-      const close = () => { box.classList.remove('active'); try { input?.blur(); } catch (e) { /* silently ignored */ } };
+      const open = () => { box.classList.add('active'); try { input?.focus(); input?.select(); } catch (e) { /* bỏ qua lỗi */ } };
+      const close = () => { box.classList.remove('active'); try { input?.blur(); } catch (e) { /* bỏ qua lỗi */ } };
       if (input) input.addEventListener('focus', open);
       if (hint) hint.addEventListener('click', (e) => { e.preventDefault(); open(); });
       if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); close(); });
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         close();
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     const profile = await ensureAuthProfile();
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const s = JSON.stringify(profile || {});
       sessionStorage.setItem('user', s);
       localStorage.setItem('user', s);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const nameEl = $('#userName');
     if (nameEl) nameEl.textContent = profile.username || profile.email || 'ユーザー';
     renderProfile(profile);

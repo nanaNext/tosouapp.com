@@ -35,10 +35,10 @@ export const markActiveNav = () => {
       try {
         if (a === best) a.setAttribute('aria-current', 'page');
         else a.removeAttribute('aria-current');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
 
-    // Highlight top-level menu buttons khi submenu link khớp path hiện tại
+    // Làm nổi bật nút menu cấp cao khi link submenu khớp path hiện tại
     try {
       const menus = Array.from(document.querySelectorAll('.subbar .menu'));
       let bestMenu = null;
@@ -62,17 +62,17 @@ export const markActiveNav = () => {
         try {
           if (btn === bestMenu) btn.setAttribute('aria-current', 'page');
           else btn.removeAttribute('aria-current');
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     try {
       const nav = document.querySelector('.sidebar .sidebar-nav');
       if (nav && !nav.querySelector('.selected')) {
         if (best) best.classList.add('selected');
       }
-    } catch (e) { /* silently ignored */ }
-  } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const expandActiveSidebarSection = () => {
@@ -90,7 +90,7 @@ export const expandActiveSidebarSection = () => {
       parent.open = true;
       parent.classList.add('active-section');
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const wireSidebarAccordion = () => {
@@ -115,5 +115,5 @@ export const wireSidebarAccordion = () => {
       }
       details.open = isOpening;
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };

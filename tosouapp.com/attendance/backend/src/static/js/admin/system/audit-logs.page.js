@@ -118,7 +118,7 @@ export async function mount(options = {}) {
         `).join('');
       }
 
-      // Pager
+      // Phân trang
       if (pager) {
         const prevDisabled = page <= 1 ? 'disabled' : '';
         const nextDisabled = page >= pages ? 'disabled' : '';
@@ -138,7 +138,7 @@ export async function mount(options = {}) {
     }
   }
 
-  // Bind events
+  // Gắn sự kiện
   document.getElementById('auditBtnSearch')?.addEventListener('click', () => loadLogs(1));
   document.getElementById('auditBtnReset')?.addEventListener('click', () => {
     document.getElementById('auditFilterAction').value = '';
@@ -147,6 +147,6 @@ export async function mount(options = {}) {
     loadLogs(1);
   });
 
-  // Initial load
+  // Tải lần đầu
   await loadLogs(1);
 }

@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
       var clean = Array.from(new Set((Array.isArray(arr) ? arr : []).map(function (x) { return parseInt(String(x || '0'), 10) || 0; }).filter(function (x) { return !!x; }))).slice(0, 2000);
       localStorage.setItem(ADMIN_HIDDEN_KEY, JSON.stringify(clean));
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   var appendHiddenIds = function (ids) {
     var current = readHiddenIds();
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
       st.textContent = '.notify-btn{position:relative;min-width:44px;padding:0 10px}.notify-bell{font-size:16px;line-height:1}.notify-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff}.notify-badge[hidden]{display:none !important}.admin-notify-panel{position:fixed;top:56px;right:12px;width:360px;max-height:420px;overflow:auto;background:#fff;border:1px solid #dbe3f0;border-radius:10px;box-shadow:0 12px 36px rgba(15,23,42,.18);z-index:2147483646}.admin-notify-panel[hidden]{display:none}.admin-notify-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eef2f7;font-weight:700;color:#0f172a}.admin-notify-summary{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border-bottom:1px solid #eef2f7;background:#f8fafc}.admin-notify-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:2px 8px;font-size:11px;color:#334155}.admin-notify-chip strong{color:#0f172a}.admin-notify-chip .unread{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:700}.admin-notify-list{padding:6px}.admin-notify-row{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:8px;border:1px solid transparent}.admin-notify-row:hover{background:#f8fbff;border-color:#e5edf8}.admin-notify-row.is-unread{background:#eef6ff;border-color:#dbeafe}.admin-notify-item{display:block;flex:1;min-width:0;text-decoration:none;color:#0f172a}.admin-notify-count{display:inline-block;min-width:18px;padding:1px 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;margin-left:6px;vertical-align:middle}.admin-notify-delete{border:1px solid #e2e8f0;background:#fff;color:#64748b;border-radius:6px;font-size:11px;line-height:1;padding:4px 6px;cursor:pointer}.admin-notify-delete:hover{border-color:#cbd5e1;color:#334155;background:#f8fafc}.admin-notify-meta{font-size:11px;color:#64748b}.admin-notify-title{font-size:13px;font-weight:700;color:#0f172a;margin:2px 0}.admin-notify-empty{padding:14px;color:#64748b;font-size:12px}';
       document.head.appendChild(st);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     var btn = document.getElementById('userBtnInitial');
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var nameEl = document.getElementById('userName');
     var userStr = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     var full = '';
-    try { if (userStr) { var u = JSON.parse(userStr); full = (u && u.username) || (u && u.email) || ''; } } catch (e) { /* silently ignored */ }
+    try { if (userStr) { var u = JSON.parse(userStr); full = (u && u.username) || (u && u.email) || ''; } } catch (e) { /* bỏ qua lỗi */ }
     if (!full && nameEl && nameEl.textContent) full = nameEl.textContent.trim();
     var firstChar = function (s) { try { var t = String(s || '').trim(); if (!t) return ''; var arr = Array.from(t); return arr.length ? arr[0] : ''; } catch { return ''; } };
     var ch = firstChar(full);
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
       fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' }).then(function (r) { if (!r.ok) return null; return r.json(); })
         .then(function (p) {
           if (!p) return;
-          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { /* silently ignored */ }
+          try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { /* bỏ qua lỗi */ }
           var full2 = (String(p.username || '').trim()) || (String(p.email || '').trim());
           var c = firstChar(full2);
           if (nameEl && full2 && !nameEl.textContent) nameEl.textContent = full2;
@@ -59,10 +59,10 @@ document.addEventListener('DOMContentLoaded', function () {
           var c2 = firstChar(cur);
           if (btn && !btn.getAttribute('data-initial')) { btn.textContent = ''; btn.setAttribute('data-initial', c2); }
           if (dd && !dd.getAttribute('data-initial')) { dd.textContent = ''; dd.setAttribute('data-initial', c2); }
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }, 400);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     var notifyBtn = document.getElementById('btnAdminNotify');
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
           var right = Math.max(8, Math.round(window.innerWidth - rect.right));
           panel.style.top = String(top) + 'px';
           panel.style.right = String(right) + 'px';
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       };
 
       var fmtTime = function (v) {
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var rawMsg = String(it && it.message || '').trim();
         var rawTitle = String(it && it.title || '').trim();
         var rawKind = String(it && it.kind || '').toLowerCase();
-        // Employee-targeted result notices must not appear in admin bell.
+        // Thông báo kết quả gửi cho nhân viên không được hiện ở chuông admin.
         return ((/交通費申請/.test(rawMsg) || /交通費/.test(rawTitle) || rawKind.indexOf('expense') >= 0)
           && /(承認されました|差戻しされました|却下されました)/.test(rawMsg));
       };
@@ -180,14 +180,14 @@ document.addEventListener('DOMContentLoaded', function () {
         var entries = Object.keys(byCat).map(function (k) {
           return { name: k, total: byCat[k].total, unread: byCat[k].unread };
         });
-        // Summary badges should only reflect unread counts.
+        // Badge tóm tắt chỉ phản ánh số chưa đọc.
         entries = entries.filter(function (e) { return Number(e.unread || 0) > 0; });
         entries.sort(function (a, b) { return Number(b.unread || 0) - Number(a.unread || 0); });
         if (!entries.length) {
           summaryEl.innerHTML = '<span class="admin-notify-chip">通知なし</span>';
           return;
         }
-        // If only one category exists, hide summary chips to avoid duplicated count feeling.
+        // Nếu chỉ có một danh mục, ẩn chip tóm tắt để tránh cảm giác đếm trùng.
         if (entries.length <= 1) {
           summaryEl.innerHTML = '';
           return;
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var rowCls = 'admin-notify-row' + ((Number(it && it.unread || 0) > 0) ? ' is-unread' : '');
         var idsCsv = Array.isArray(it && it.ids) ? it.ids.join(',') : '';
         var unreadCount = Number(it && it.unread || 0);
-        // Always show unread badge inside panel (including "1") for quick visibility.
+        // Luôn hiện badge chưa đọc trong panel (kể cả "1") để dễ thấy nhanh.
         var countHtml = unreadCount > 0 ? ('<span class="admin-notify-count">' + esc(unreadCount) + '</span>') : '';
         return '<div class="' + rowCls + '" data-notice-row="' + esc(idsCsv) + '">' +
           '<a class="admin-notify-item" href="' + esc(link) + '" data-notice-ids="' + esc(idsCsv) + '">' +
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
           body: JSON.stringify({ ids: [nid] })
         }).then(function (r) {
           if (r && r.ok) return;
-          // Backward compatibility for old server snapshots.
+          // Tương thích ngược với các bản server cũ.
           return fetch('/api/admin/notifications/hide', {
             method: 'POST',
             credentials: 'include',
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
       };
 
       var load = function () {
-        // Prevent employee users from hitting 403 when topbar loads on their pages
+        // Tránh để user nhân viên bị 403 khi topbar tải trên trang của họ
         var rawUser = localStorage.getItem('user') || sessionStorage.getItem('user') || '{}';
         var userRole = '';
         try { 
@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
 
-        // Add additional check for standalone app routes where user might not be available in localStorage
+        // Kiểm tra thêm cho route app standalone nơi user có thể không có trong localStorage
         if (window.location.pathname.includes('attendance/holidays') || window.location.pathname.includes('attendance?standalone=1')) {
           return;
         }
@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
           Promise.all(idsToDelete.map(function (idv) { return deleteNotice(idv); }))
             .then(function () { load(); })
             .catch(function (err) {
-              try { window.alert('削除に失敗しました: ' + String((err && err.message) ? err.message : 'unknown')); } catch (e) { /* silently ignored */ }
+              try { window.alert('削除に失敗しました: ' + String((err && err.message) ? err.message : 'unknown')); } catch (e) { /* bỏ qua lỗi */ }
               load();
             });
           return;
@@ -437,9 +437,9 @@ document.addEventListener('DOMContentLoaded', function () {
           markRead(ids).finally(function () { setTimeout(load, 80); });
         }
         closePanel();
-        // Let native anchor navigation happen for maximum reliability.
+        // Để anchor điều hướng theo cách native cho ổn định nhất.
       });
-      // Use capture phase so panel closes even if other handlers stop propagation.
+      // Dùng capture phase để panel vẫn đóng dù handler khác chặn propagation.
       document.addEventListener('click', function (e) {
         var t = e && e.target;
         if (shouldKeepOpen(t)) return;
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (shouldKeepOpen(t)) return;
         closePanel();
       }, true);
-      // Close when route/page context changes.
+      // Đóng khi route/ngữ cảnh trang thay đổi.
       window.addEventListener('popstate', closePanel);
       window.addEventListener('hashchange', closePanel);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePanel(); });
@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
       window.addEventListener('scroll', positionPanel, { passive: true });
       load();
       pollTimer = setInterval(load, 30000);
-      window.addEventListener('beforeunload', function () { try { clearInterval(pollTimer); } catch (e) { /* silently ignored */ } });
+      window.addEventListener('beforeunload', function () { try { clearInterval(pollTimer); } catch (e) { /* bỏ qua lỗi */ } });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 });

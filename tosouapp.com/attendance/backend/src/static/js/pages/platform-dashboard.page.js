@@ -1,7 +1,7 @@
 /**
  * platform-dashboard.page.js
- * Sysadmin-only platform management UI.
- * Communicates with /api/platform/* endpoints.
+ * Giao diện quản lý nền tảng chỉ dành cho sysadmin.
+ * Giao tiếp với các endpoint /api/platform/*.
  */
 
 const $ = (sel) => document.querySelector(sel);
@@ -65,7 +65,7 @@ function switchPanel(name) {
 
   if (name === 'tenants') loadTenants();
   if (name === 'users') {
-    // Ensure tenants are loaded first (needed for filter dropdown + role lookup)
+    // Đảm bảo tenant được tải trước (cần cho dropdown filter + tra cứu role)
     if (tenantsCache.length === 0) {
       loadTenants().then(() => loadAllUsers());
     } else {
@@ -83,7 +83,7 @@ async function loadStats() {
     sv('#stat-tenants', data.total_tenants);
     sv('#stat-users', data.total_users);
     sv('#stat-checkins', data.total_checkins_today);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   // 全ユーザー card click → 一覧表示
   const cardUsers = $('#card-users');
@@ -97,7 +97,7 @@ async function loadStats() {
         const modal = document.createElement('div');
         modal.style.cssText = 'background:#fff;border-radius:16px;padding:0;max-width:900px;width:94%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .2s ease;overflow:hidden;';
 
-        // Search state
+        // Trạng thái tìm kiếm
         let searchQuery = '';
 
         const renderTable = (filtered) => {
@@ -169,7 +169,7 @@ async function loadStats() {
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
-        // Search handler
+        // Xử lý tìm kiếm
         const searchInput = modal.querySelector('#usersModalSearch');
         const tbody = modal.querySelector('#usersModalBody');
         const countEl = modal.querySelector('#usersModalCount');
@@ -186,12 +186,12 @@ async function loadStats() {
         });
         searchInput?.focus();
 
-        // Close handlers
+        // Xử lý đóng
         const closeModal = () => { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 100); };
         overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
         modal.querySelector('#closeUsersModal')?.addEventListener('click', closeModal);
         modal.querySelector('#closeUsersModalBtn')?.addEventListener('click', closeModal);
-        // ESC key
+        // Phím ESC
         const escHandler = (e) => { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', escHandler); } };
         document.addEventListener('keydown', escHandler);
       } catch (e) {
@@ -308,7 +308,7 @@ function renderTenants(tenants) {
       </tr>`;
   }).join('');
 
-  // Wire buttons
+  // Gắn sự kiện cho các nút
   tbody.querySelectorAll('[data-action="enter"]').forEach(btn => {
     btn.addEventListener('click', () => impersonateTenant(parseInt(btn.dataset.id, 10), btn.title));
   });
@@ -331,9 +331,9 @@ async function loadTenants() {
   }
 }
 
-// ── All users ─────────────────────────────────────────────────────────────────
+// ── Tất cả người dùng ────────────────────────────────────────────────────────
 
-let allUsersCache = [];  // flat list of all platform users with their tenant assignments
+let allUsersCache = [];  // danh sách phẳng toàn bộ user nền tảng kèm phân công tenant
 let usersFilterState = { q: '', tenantId: '', role: '' };
 
 function roleLabelJa(role) {
@@ -341,12 +341,12 @@ function roleLabelJa(role) {
   return map[String(role || '').toLowerCase()] || role || '—';
 }
 
-// Build tenant tag dropdown HTML inside a cell
+// Dựng HTML dropdown tag tenant bên trong một ô
 function tenantTagsHtml(user) {
   if (!user.tenant_ids) return '<span style="color:#94a3b8;font-size:12px">未割り当て</span>';
   const ids = String(user.tenant_ids).split(',');
   const names = String(user.tenant_names || '').split('||');
-  // Get roles from user.tenantAssignments map (populated by loadAllUsers)
+  // Lấy role từ map user.tenantAssignments (được loadAllUsers đổ vào)
   return ids.map((tid, i) => {
     const tname = names[i] || tid;
     const tshort = tname.length > 10 ? tname.slice(0, 10) + '…' : tname;
@@ -374,11 +374,11 @@ async function loadAllUsers() {
   if (empty) empty.style.display = 'none';
 
   try {
-    // Load all users platform-wide
+    // Tải toàn bộ user trên toàn nền tảng
     const data = await apiFetch('/api/platform/users');
     const users = data.users || [];
 
-    // Also load per-tenant assignments to get role_in_tenant
+    // Tải luôn phân công theo từng tenant để lấy role_in_tenant
     const tenantUserMap = {};  // { userId: { tenantId: role } }
     if (tenantsCache.length > 0) {
       const results = await Promise.all(
@@ -395,7 +395,7 @@ async function loadAllUsers() {
       }
     }
 
-    // Attach tenantRoles map to each user
+    // Gắn map tenantRoles vào mỗi user
     allUsersCache = users.map(u => ({
       ...u,
       tenantRoles: tenantUserMap[u.id] || {},
@@ -403,7 +403,7 @@ async function loadAllUsers() {
 
     if (loading) loading.style.display = 'none';
 
-    // Populate tenant filter dropdown
+    // Đổ dữ liệu vào dropdown filter tenant
     const tenantFilter = $('#pd-users-tenant-filter');
     if (tenantFilter && tenantsCache.length > 0) {
       const current = tenantFilter.value;
@@ -445,7 +445,7 @@ function renderUsersTable() {
   if (filtered.length === 0) {
     if (table) table.style.display = 'none';
     if (empty) empty.style.display = 'block';
-    // Remove pagination
+    // Xóa phân trang
     const existingPager = document.querySelector('#pd-users-pager');
     if (existingPager) existingPager.remove();
     return;
@@ -465,7 +465,7 @@ function renderUsersTable() {
     else grouped['employee'].push(u);
   }
 
-  // Pagination: 20 users per page (flat across all groups)
+  // Phân trang: 20 user mỗi trang (phẳng trên tất cả các nhóm)
   const PAGE_SIZE = 20;
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   if (!usersFilterState.page || usersFilterState.page > totalPages) usersFilterState.page = 1;
@@ -473,7 +473,7 @@ function renderUsersTable() {
   const start = (page - 1) * PAGE_SIZE;
   const pageItems = filtered.slice(start, start + PAGE_SIZE);
 
-  // Re-group page items
+  // Gom nhóm lại các mục trong trang
   const pageGrouped = {};
   for (const r of roleOrder) pageGrouped[r] = [];
   for (const u of pageItems) {
@@ -511,7 +511,7 @@ function renderUsersTable() {
   }
   tbody.innerHTML = html;
 
-  // Accordion: click header → toggle rows
+  // Accordion: click header → bật/tắt các dòng
   tbody.querySelectorAll('.pd-role-header').forEach(header => {
     header.addEventListener('click', () => {
       const sectionId = header.dataset.section;
@@ -521,11 +521,11 @@ function renderUsersTable() {
       rows.forEach(row => { row.style.display = isHidden ? '' : 'none'; });
       if (chevron) chevron.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
     });
-    // Default: expand all
+    // Mặc định: mở rộng tất cả
     const chevron = header.querySelector('.pd-role-chevron');
     if (chevron) chevron.style.transform = 'rotate(90deg)';
   });
-  // Pagination UI
+  // Giao diện phân trang
   let pager = document.querySelector('#pd-users-pager');
   if (!pager) {
     pager = document.createElement('div');
@@ -541,7 +541,7 @@ function renderUsersTable() {
   pager.querySelector('#pd-pager-prev')?.addEventListener('click', () => { usersFilterState.page = Math.max(1, page - 1); renderUsersTable(); });
   pager.querySelector('#pd-pager-next')?.addEventListener('click', () => { usersFilterState.page = Math.min(totalPages, page + 1); renderUsersTable(); });
 
-  // Wire: role change inline
+  // Gắn sự kiện: đổi role trực tiếp
   tbody.querySelectorAll('.pd-role-inline').forEach(sel => {
     sel.addEventListener('change', async () => {
       const userId = parseInt(sel.dataset.user, 10);
@@ -551,7 +551,7 @@ function renderUsersTable() {
         await apiFetch(`/api/platform/tenants/${tenantId}/users/${userId}`, {
           method: 'PATCH', body: JSON.stringify({ role_in_tenant: role })
         });
-        // Update cache silently
+        // Cập nhật cache ngầm
         const u = allUsersCache.find(x => x.id === userId);
         if (u && u.tenantRoles) u.tenantRoles[tenantId] = role;
       } catch (e) {
@@ -561,7 +561,7 @@ function renderUsersTable() {
     });
   });
 
-  // Wire: remove from tenant
+  // Gắn sự kiện: xóa khỏi tenant
   tbody.querySelectorAll('.pd-remove-tenant').forEach(btn => {
     btn.addEventListener('click', () => removeUserFromTenant(
       parseInt(btn.dataset.user, 10),
@@ -569,7 +569,7 @@ function renderUsersTable() {
     ));
   });
 
-  // Wire: quick assign button
+  // Gắn sự kiện: nút gán nhanh
   tbody.querySelectorAll('.pd-assign-quick').forEach(btn => {
     btn.addEventListener('click', () => openAssignModal(
       parseInt(btn.dataset.userId, 10),
@@ -602,7 +602,7 @@ function openAssignModal(prefillUserId = null, prefillUsername = '') {
   const modal = $('#pd-assign-modal');
   if (!modal) return;
 
-  // Reset form
+  // Đặt lại form
   assignSelectedUser = null;
   $('#pd-assign-user-search').value = '';
   $('#pd-assign-user-results').style.display = 'none';
@@ -613,12 +613,12 @@ function openAssignModal(prefillUserId = null, prefillUsername = '') {
   $('#pd-assign-role-select').value = 'employee';
   $('#pd-assign-error').style.display = 'none';
 
-  // Populate tenant dropdown
+  // Đổ dữ liệu vào dropdown tenant
   const tenantSel = $('#pd-assign-tenant-select');
   tenantSel.innerHTML = '<option value="">選択してください</option>' +
     tenantsCache.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 
-  // Prefill user if called from quick-assign button
+  // Điền sẵn user nếu được gọi từ nút gán nhanh
   if (prefillUserId) {
     const u = allUsersCache.find(x => x.id === prefillUserId);
     if (u) {
@@ -666,7 +666,7 @@ function openCreateUserModal() {
   const modal = $('#pd-create-user-modal');
   if (!modal) return;
 
-  // Reset form
+  // Đặt lại form
   $('#pd-cu-username').value = '';
   $('#pd-cu-email').value = '';
   $('#pd-cu-password').value = '';
@@ -674,7 +674,7 @@ function openCreateUserModal() {
   $('#pd-cu-phone').value = '';
   $('#pd-cu-error').style.display = 'none';
 
-  // Populate tenant dropdown
+  // Đổ dữ liệu vào dropdown tenant
   const tenantSel = $('#pd-cu-tenant-select');
   tenantSel.innerHTML = '<option value="">選択してください</option>' +
     tenantsCache.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -720,7 +720,7 @@ async function handleCreateUserSubmit(e) {
     closeCreateUserModal();
     await loadAllUsers();
     await loadStats();
-    // Show success notification
+    // Hiện thông báo thành công
     showError('');
     alert(`ユーザーを作成しました: ${result.username} (${result.email}) → ${result.tenantName}`);
   } catch (err) {
@@ -759,7 +759,7 @@ async function handleAssignSubmit(e) {
     closeAssignModal();
     await loadAllUsers();
     await loadStats();
-    await loadTenants(); // refresh user_count in tenant list
+    await loadTenants(); // làm mới user_count trong danh sách tenant
   } catch (err) {
     if (errEl) { errEl.textContent = err.message; errEl.style.display = 'block'; }
   } finally {
@@ -777,12 +777,12 @@ async function impersonateTenant(tenantId, tenantName) {
       body: JSON.stringify({ tenant_id: tenantId }),
     });
 
-    // Save new scoped token to BOTH sessionStorage and localStorage
-    // so all admin page auth guards can find it
+    // Lưu token mới theo tenant vào CẢ sessionStorage và localStorage
+    // để tất cả auth guard của trang admin đều tìm thấy
     sessionStorage.setItem('accessToken', data.accessToken);
-    try { localStorage.setItem('accessToken', data.accessToken); } catch (e) { /* silently ignored */ }
+    try { localStorage.setItem('accessToken', data.accessToken); } catch (e) { /* bỏ qua lỗi */ }
 
-    // Update user object with tenant context + impersonate flag
+    // Cập nhật object user với context tenant + cờ impersonate
     const newUser = {
       role: 'admin',
       tenantId: data.tenantId,
@@ -798,14 +798,14 @@ async function impersonateTenant(tenantId, tenantName) {
       const merged = JSON.stringify({ ...existing, ...newUser });
       sessionStorage.setItem('user', merged);
       localStorage.setItem('user', merged);
-    } catch (e) { /* silently ignored */ }
-    // Tab-scoped context: lưu tenantId riêng cho tab này (impersonate)
+    } catch (e) { /* bỏ qua lỗi */ }
+    // Context riêng theo tab: lưu tenantId riêng cho tab này (impersonate)
     try {
       const { setTabContext } = await import('/static/js/api/tab-context.js');
       setTabContext({ tenantId: data.tenantId, tenantName: data.tenantName, role: 'admin', userId: null });
     } catch (e) { /* bỏ qua */ }
 
-    // Small delay to ensure storage is written before navigation
+    // Chờ một chút để đảm bảo storage được ghi xong trước khi điều hướng
     await new Promise(r => setTimeout(r, 80));
     window.location.href = data.nextPath || '/admin/dashboard';
   } catch (e) {
@@ -845,7 +845,7 @@ function openEditModal(tenantId) {
   $('#pd-f-logo-url').value = t.logo_url || '';
   $('#pd-f-plan').value = t.plan || 'basic';
   $('#pd-f-status').value = t.status || 'active';
-  // Contact fields
+  // Các trường liên hệ
   $('#pd-f-contact-sys-dept').value = t.contact_system_dept || '';
   $('#pd-f-contact-sys-email').value = t.contact_system_email || '';
   $('#pd-f-contact-sys-tel').value = t.contact_system_tel || '';
@@ -922,15 +922,15 @@ async function handleLogout() {
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
       credentials: 'include',
     });
-  } catch (e) { /* silently ignored */ }
-  try { sessionStorage.clear(); } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
+  try { sessionStorage.clear(); } catch (e) { /* bỏ qua lỗi */ }
   window.location.href = '/ui/login';
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Verify sysadmin
+  // Xác minh quyền sysadmin
   const token = getToken();
   if (!token) { window.location.href = '/ui/login'; return; }
   try {
@@ -938,14 +938,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (user.role !== 'sysadmin' && !user._sysadmin) { window.location.href = '/ui/login'; return; }
     const nameEl = $('#pd-user-name');
     if (nameEl) nameEl.textContent = user.username || user.email || 'Sysadmin';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // Wire sidebar nav
+  // Gắn sự kiện điều hướng sidebar
   document.querySelectorAll('.pd-nav-item[data-panel]').forEach(btn => {
     btn.addEventListener('click', () => switchPanel(btn.dataset.panel));
   });
 
-  // Wire tenant modal
+  // Gắn sự kiện modal tenant
   $('#pd-add-tenant-btn')?.addEventListener('click', openCreateModal);
   $('#pd-modal-cancel')?.addEventListener('click', closeModal);
   $('#pd-tenant-form')?.addEventListener('submit', handleTenantFormSubmit);
@@ -953,7 +953,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === $('#pd-tenant-modal')) closeModal();
   });
 
-  // Wire assign modal
+  // Gắn sự kiện modal gán
   $('#pd-assign-user-btn')?.addEventListener('click', () => openAssignModal());
   $('#pd-assign-cancel')?.addEventListener('click', closeAssignModal);
   $('#pd-assign-form')?.addEventListener('submit', handleAssignSubmit);
@@ -961,7 +961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === $('#pd-assign-modal')) closeAssignModal();
   });
 
-  // Wire create-user modal
+  // Gắn sự kiện modal tạo user
   $('#pd-create-user-btn')?.addEventListener('click', openCreateUserModal);
   $('#pd-cu-cancel')?.addEventListener('click', closeCreateUserModal);
   $('#pd-create-user-form')?.addEventListener('submit', handleCreateUserSubmit);
@@ -969,7 +969,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === $('#pd-create-user-modal')) closeCreateUserModal();
   });
 
-  // Wire user search in assign modal
+  // Gắn sự kiện tìm user trong modal gán
   $('#pd-assign-user-search')?.addEventListener('input', (e) => {
     clearTimeout(assignSearchTimer);
     const q = e.target.value.trim().toLowerCase();
@@ -1003,7 +1003,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 200);
   });
 
-  // Wire search/filter in users panel
+  // Gắn sự kiện tìm kiếm/lọc trong panel user
   $('#pd-users-search')?.addEventListener('input', (e) => {
     usersFilterState.q = e.target.value.trim();
     usersFilterState.page = 1;
@@ -1020,10 +1020,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderUsersTable();
   });
 
-  // Wire logout
+  // Gắn sự kiện đăng xuất
   $('#pd-logout-btn')?.addEventListener('click', handleLogout);
 
-  // Initial load
+  // Tải lần đầu
   await loadStats();
   await loadTenants();
   await loadAllUsers();
@@ -1093,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Settings Panel ────────────────────────────────────────────────────────
   const settingsPanel = $('#panel-settings');
 
-  // Toggle helper - also updates track background color via JS
+  // Hàm hỗ trợ toggle - đồng thời cập nhật màu nền track qua JS
   function pdSyncToggle(checkboxId, statusId) {
     const cb = document.getElementById(checkboxId);
     const st = document.getElementById(statusId);
@@ -1115,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   pdSyncToggle('pd-toggle-gps', 'pd-gps-status');
   pdSyncToggle('pd-toggle-note-remote', 'pd-note-remote-status');
 
-  // Load flags
+  // Tải các flag
   async function pdLoadFlags() {
     try {
       const flags = await apiFetch('/api/admin/system/flags');
@@ -1138,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) { /* use defaults */ }
   }
 
-  // Load password policy
+  // Tải chính sách mật khẩu
   async function pdLoadPasswordPolicy() {
     try {
       const res = await apiFetch('/api/admin/settings/password-policy');
@@ -1154,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) { /* defaults */ }
   }
 
-  // Load 2FA policy
+  // Tải chính sách 2FA
   async function pdLoad2FA() {
     try {
       const res = await apiFetch('/api/admin/settings/2fa-policy');
@@ -1165,7 +1165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) { /* default off */ }
   }
 
-  // Save password policy
+  // Lưu chính sách mật khẩu
   $('#pd-form-pw-policy')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const resultEl = document.getElementById('pd-pw-result');
@@ -1207,7 +1207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Test mail button
+  // Nút gửi mail thử
   $('#pd-test-mail')?.addEventListener('click', async () => {
     const btn = document.getElementById('pd-test-mail');
     const resultEl = document.getElementById('pd-test-mail-result');
@@ -1227,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Save flags (maintenance, GPS, remote policy)
+  // Lưu các flag (bảo trì, GPS, chính sách làm việc từ xa)
   $('#pd-save-flags')?.addEventListener('click', async () => {
     const btn = document.getElementById('pd-save-flags');
     const resultEl = document.getElementById('pd-flags-result');
@@ -1257,7 +1257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Load settings data when panel becomes visible
+  // Tải dữ liệu cài đặt khi panel hiển thị
   if (settingsPanel) {
     const settingsObserver = new MutationObserver(() => {
       if (settingsPanel.classList.contains('active') && !settingsPanel.dataset.loaded) {
@@ -1268,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
     settingsObserver.observe(settingsPanel, { attributes: true, attributeFilter: ['class'] });
-    // Also load if already active
+    // Tải luôn nếu panel đã đang active
     if (settingsPanel.classList.contains('active')) {
       settingsPanel.dataset.loaded = '1';
       pdLoadFlags();

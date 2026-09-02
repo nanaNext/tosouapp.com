@@ -25,7 +25,7 @@ export async function downloadWithAuth(url, filename) {
   const res = await request(url);
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
-    try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
+    try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* bỏ qua lỗi */ }
     throw new Error(msg);
   }
 
@@ -51,7 +51,7 @@ export async function downloadWithAuth(url, filename) {
   a.href = objUrl;
   a.download = finalFilename;
   a.click();
-  setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { /* silently ignored */ } }, 1000);
+  setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { /* bỏ qua lỗi */ } }, 1000);
 }
 
 export const api = {

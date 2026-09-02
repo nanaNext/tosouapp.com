@@ -13,9 +13,9 @@
 
   const $ = (sel) => document.querySelector(sel);
 
-  try { globalThis.__monthlyBooted = Date.now(); } catch (e) { /* silently ignored */ }
-  // Mark core nav as owner early so HTML fallback does not bind competing handlers.
-  try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch (e) { /* silently ignored */ }
+  try { globalThis.__monthlyBooted = Date.now(); } catch (e) { /* bỏ qua lỗi */ }
+  // Đánh dấu core nav là chủ sở hữu sớm để phần HTML fallback không gắn handler tranh chấp.
+  try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch (e) { /* bỏ qua lỗi */ }
 
   const showSpinner = (mode = '', isSuccess = false) => {
     try {
@@ -29,23 +29,23 @@
         }
         if (mode) el.setAttribute('data-mode', String(mode));
         else el.removeAttribute('data-mode');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       
       if (isSuccess) {
-        try { el.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
+        try { el.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ }
       } else {
-        try { el.removeAttribute('hidden'); } catch (e) { /* silently ignored */ }
+        try { el.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   const hideSpinner = () => {
     try {
       const el = $('#pageSpinner');
       if (!el) return;
-      try { el.removeAttribute('data-mode'); } catch (e) { /* silently ignored */ }
-      try { el.classList.remove('is-success'); } catch (e) { /* silently ignored */ }
+      try { el.removeAttribute('data-mode'); } catch (e) { /* bỏ qua lỗi */ }
+      try { el.classList.remove('is-success'); } catch (e) { /* bỏ qua lỗi */ }
       el.setAttribute('hidden', '');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const MonthlyAuth = globalThis.MonthlyAuth || {};
@@ -57,7 +57,7 @@
   const cssEscape = (s) => {
     try {
       if (globalThis.CSS && typeof globalThis.CSS.escape === 'function') return globalThis.CSS.escape(String(s));
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return String(s).replace(/[\"\\]/g, '\\$&');
   };
 
@@ -65,7 +65,7 @@
     try {
       const c = globalThis.crypto;
       if (c && typeof c.randomUUID === 'function') return c.randomUUID();
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return 'cid_' + Date.now() + '_' + Math.random().toString(16).slice(2);
   };
 
@@ -89,7 +89,7 @@
         try {
           el.classList.remove('show');
           el.setAttribute('hidden', '');
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         return;
       }
       if (toastTimer) {
@@ -98,25 +98,25 @@
       }
       el.classList.remove('show');
       el.removeAttribute('hidden');
-      // restart css animation
+      // khởi động lại animation css
       void el.offsetWidth;
       el.classList.add('show');
       toastTimer = setTimeout(() => {
         try {
           el.classList.remove('show');
           el.setAttribute('hidden', '');
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         toastTimer = null;
       }, 1850);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const setDirty = () => {
     state.dirty = true;
     window.onbeforeunload = (e) => {
-      try { e.preventDefault(); } catch (e) { /* silently ignored */ }
+      try { e.preventDefault(); } catch (e) { /* bỏ qua lỗi */ }
       const msg = '確定されていない内容は失われます。よろしいですか？';
-      try { e.returnValue = msg; } catch (e) { /* silently ignored */ }
+      try { e.returnValue = msg; } catch (e) { /* bỏ qua lỗi */ }
       return msg;
     };
   };
@@ -161,9 +161,9 @@
     const menu = $('#userMenu');
     if (!btn || !menu) return;
     const doLogout = async () => {
-      try { await logout(); } catch (e) { /* silently ignored */ }
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+      try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
+      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
       window.location.replace('/ui/login');
     };
     btn.addEventListener('click', (e) => {
@@ -174,7 +174,7 @@
     });
     document.addEventListener('click', (e) => {
       if (e.target?.closest?.('#userBtn') || e.target?.closest?.('#userMenu')) return;
-      try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+      try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
     });
     $('#btnLogout')?.addEventListener('click', doLogout);
     document.querySelectorAll('[data-action=\"logout\"]').forEach((el) => {
@@ -224,20 +224,20 @@
         panel.innerHTML = rows.map((r) => `<a href="${r.href}">${r.label}</a>`).join('');
       });
     };
-    try { ensurePanelLinks(); } catch (e) { /* silently ignored */ }
-    // Normalize old/cached links that may miss "/ui" prefix on mobile devices.
+    try { ensurePanelLinks(); } catch (e) { /* bỏ qua lỗi */ }
+    // Chuẩn hóa các link cũ/bị cache có thể thiếu tiền tố "/ui" trên thiết bị mobile.
     try {
       document.querySelectorAll('.kintai-dd[data-dd-panel] a[href^="/"]').forEach((a) => {
         const href = String(a.getAttribute('href') || '').trim();
         const fixed = normalizeNavHref(href);
         if (fixed && fixed !== href) a.setAttribute('href', fixed);
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const btns = Array.from(document.querySelectorAll('.kintai-nav-btn[data-dd]'));
     const panels = Array.from(document.querySelectorAll('.kintai-dd[data-dd-panel]'));
     if (!btns.length || !panels.length) return;
-    try { document.body.classList.add('nav-js'); } catch (e) { /* silently ignored */ }
-    try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch (e) { /* silently ignored */ }
+    try { document.body.classList.add('nav-js'); } catch (e) { /* bỏ qua lỗi */ }
+    try { document.documentElement.dataset.monthlyCoreNavBound = '1'; } catch (e) { /* bỏ qua lỗi */ }
     try {
       if (document.documentElement.dataset.monthlyCoreNavLinkBound !== '1') {
         document.documentElement.dataset.monthlyCoreNavLinkBound = '1';
@@ -265,11 +265,11 @@
         document.addEventListener('touchend', go, true);
         document.addEventListener('click', go, true);
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     const closeAll = () => {
       for (const b of btns) {
-        try { b.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+        try { b.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
       }
       for (const p of panels) {
         try {
@@ -284,20 +284,20 @@
           p.style.overflow = '';
           p.style.zIndex = '';
           p.style.transform = '';
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }
-      document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch (e) { /* silently ignored */ } });
+      document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch (e) { /* bỏ qua lỗi */ } });
     };
 
     const openOne = (key) => {
-      try { ensurePanelLinks(); } catch (e) { /* silently ignored */ }
+      try { ensurePanelLinks(); } catch (e) { /* bỏ qua lỗi */ }
       closeAll();
       const btn = btns.find(b => b.dataset.dd === key);
       const panel = panels.find(p => p.dataset.ddPanel === key);
       if (!btn || !panel) return;
-      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
-      try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch (e) { /* silently ignored */ }
-      try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch (e) { /* silently ignored */ }
+      try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
+      try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch (e) { /* bỏ qua lỗi */ }
+      try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch (e) { /* bỏ qua lỗi */ }
       try {
         const mobile = !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
         if (mobile) {
@@ -318,8 +318,8 @@
             const maxLeft = Math.max(6, (window.innerWidth || 0) - w - 6);
             left = Math.min(left, maxLeft);
             panel.style.left = `${left}px`;
-          } catch (e) { /* silently ignored */ }
-          try { panel.style.transform = 'none'; } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
+          try { panel.style.transform = 'none'; } catch (e) { /* bỏ qua lỗi */ }
         } else {
           panel.style.position = '';
           panel.style.left = '';
@@ -331,7 +331,7 @@
           panel.style.zIndex = '';
           panel.style.transform = '';
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
 
     for (const b of btns) {
@@ -370,13 +370,13 @@
     });
   };
 
-  // Bind top nav independently so dropdown still works even if later boot steps fail.
+  // Gắn top nav độc lập để dropdown vẫn hoạt động ngay cả khi các bước boot sau bị lỗi.
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      try { wireTopNavDropdowns(); } catch (e) { /* silently ignored */ }
+      try { wireTopNavDropdowns(); } catch (e) { /* bỏ qua lỗi */ }
     }, { once: true });
   } else {
-    try { wireTopNavDropdowns(); } catch (e) { /* silently ignored */ }
+    try { wireTopNavDropdowns(); } catch (e) { /* bỏ qua lỗi */ }
   }
 
   const addMonths = (ym, delta) => {

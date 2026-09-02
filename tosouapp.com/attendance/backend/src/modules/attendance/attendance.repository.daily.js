@@ -1,19 +1,15 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
-/**
- * Parse tenant id safely.
- * @param {number|string|null} tenantId
- * @returns {number|null}
- */
+// Chuẩn hóa tenant id về số nguyên (hoặc null).
 function _tid(tenantId) {
   return tenantId != null ? parseInt(String(tenantId), 10) : null;
 }
 
-// ─── Column cache (avoid information_schema on every request) ─────────
+// Cache danh sách cột bảng attendance để tránh truy vấn information_schema mỗi request
 let _attendanceColCache = null;
 let _attendanceColCacheTs = 0;
-const COL_CACHE_TTL = 600000; // 10 minutes
+const COL_CACHE_TTL = 600000; // 10 phút
 
 async function getAttendanceColumnSet() {
   const now = Date.now();
@@ -254,8 +250,6 @@ module.exports = {
     const date = String(dateStr).slice(0, 10);
     const incoming = daily && typeof daily === 'object' ? daily : {};
     const existing = await this.getDaily(userId, date, { tenantId });
-
-    console.log(`[upsertDaily] userId=${userId}, date=${date}, incoming=`, incoming, 'existing.notes=', existing?.notes);
 
     let kubun = existing?.kubun ?? null;
     if (Object.prototype.hasOwnProperty.call(incoming, 'kubun')) {

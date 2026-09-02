@@ -5,12 +5,12 @@ function _tid(tenantId) {
   return tenantId != null ? parseInt(String(tenantId), 10) : null;
 }
 
-// ─── Column cache ─────────
+// ─── Cache danh sách cột ─────────
 let _usaColCache = null;
 let _usaColCacheTs = 0;
 let _attColCache = null;
 let _attColCacheTs = 0;
-const COL_CACHE_TTL = 600000; // 10 minutes
+const COL_CACHE_TTL = 600000; // 10 phút
 
 async function getUSAColumnSet() {
   const now = Date.now();
@@ -391,8 +391,8 @@ module.exports = {
         if (!result.has(row.userId)) result.set(row.userId, row);
       }
     } catch (e) {
-      // Fallback: if the batch query fails (schema mismatch), return empty map
-      // The caller will use individual queries
+      // Nếu query gộp lỗi (lệch schema) thì trả về map rỗng,
+      // bên gọi sẽ tự truy vấn từng người
     }
     return result;
   },

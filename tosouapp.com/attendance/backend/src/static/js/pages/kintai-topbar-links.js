@@ -1,6 +1,6 @@
 (function () {
   if (document.documentElement && document.documentElement.dataset.kintaiTopbarLinks === '1') return;
-  try { document.documentElement.dataset.kintaiTopbarLinks = '1'; } catch (e) { /* silently ignored */ }
+  try { document.documentElement.dataset.kintaiTopbarLinks = '1'; } catch (e) { /* bỏ qua lỗi */ }
 
   function getCookie(name) {
     try {
@@ -21,16 +21,16 @@
           credentials: 'include',
           body: JSON.stringify({})
         });
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     } finally {
       try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
     }
@@ -86,7 +86,7 @@
       navLoadShowTimer = null;
       if (navLoadHideTimer) clearTimeout(navLoadHideTimer);
       navLoadHideTimer = null;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const showNavLoading = (delayMs = 1200) => {
@@ -99,7 +99,7 @@
         if (navLoadHideTimer) clearTimeout(navLoadHideTimer);
         navLoadHideTimer = setTimeout(() => hideNavLoading(), 4000);
       }, Math.max(0, Number(delayMs) || 0));
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const shouldShowForAnchor = (a, e) => {
@@ -123,7 +123,7 @@
   const bindGlobalNavLoading = () => {
     if (document.documentElement.dataset.navTransitionBound === '1') return;
     document.documentElement.dataset.navTransitionBound = '1';
-    // Disable global nav loading overlay to avoid topbar/search flicker on page transitions.
+    // Tắt lớp phủ loading điều hướng toàn cục để tránh nhấp nháy topbar/search khi chuyển trang.
     window.addEventListener('pageshow', () => hideNavLoading());
   };
 
@@ -134,22 +134,22 @@
   };
 
   const ensureMobileMenu = () => {
-    // Desktop does not use the mobile drawer; remove any previously injected nodes.
+    // Desktop không dùng drawer mobile; xóa các node đã được chèn trước đó nếu có.
     if (!isMobile()) {
-      try { document.body.classList.remove('mobile-drawer-open'); } catch (e) { /* silently ignored */ }
+      try { document.body.classList.remove('mobile-drawer-open'); } catch (e) { /* bỏ qua lỗi */ }
       try {
         const btn0 = document.getElementById('mobileMenuBtn');
         if (btn0 && btn0.classList.contains('mobile-btn')) btn0.remove();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         const drawer0 = document.getElementById('mobileDrawer');
         const isInjectedDrawer = !!(drawer0 && drawer0.classList.contains('mobile-drawer') && drawer0.querySelector('#mobileDrawerSearch'));
         if (isInjectedDrawer) drawer0.remove();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       try {
         const backdrop0 = document.getElementById('mobileDrawerBackdrop');
         if (backdrop0 && backdrop0.classList.contains('mobile-drawer-backdrop')) backdrop0.remove();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       return;
     }
 
@@ -327,10 +327,10 @@
   };
 
   document.addEventListener('DOMContentLoaded', () => {
-    try { document.body.classList.add('nav-js'); } catch (e) { /* silently ignored */ }
-    try { bindGlobalNavLoading(); } catch (e) { /* silently ignored */ }
-    try { ensureMobileMenu(); } catch (e) { /* silently ignored */ }
-    window.addEventListener('resize', () => { try { ensureMobileMenu(); } catch (e) { /* silently ignored */ } }, { passive: true });
+    try { document.body.classList.add('nav-js'); } catch (e) { /* bỏ qua lỗi */ }
+    try { bindGlobalNavLoading(); } catch (e) { /* bỏ qua lỗi */ }
+    try { ensureMobileMenu(); } catch (e) { /* bỏ qua lỗi */ }
+    window.addEventListener('resize', () => { try { ensureMobileMenu(); } catch (e) { /* bỏ qua lỗi */ } }, { passive: true });
     try {
       if (document.documentElement?.dataset?.kintaiTopNavDdBound === '1') return;
       document.documentElement.dataset.kintaiTopNavDdBound = '1';
@@ -357,7 +357,7 @@
               panel2.style.removeProperty('overflow');
               panel2.style.removeProperty('z-index');
               panel2.style.removeProperty('transform');
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
             const btn2 = dd2.querySelector('.kintai-nav-btn');
             btn2?.setAttribute('aria-expanded', 'false');
           });
@@ -368,13 +368,13 @@
           if (!btn2 || !panel2) return;
           let lastToggleAt = 0;
           const toggleDropdown = (e) => {
-            try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* silently ignored */ }
+            try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* bỏ qua lỗi */ }
             const isOpen = !panel2.hasAttribute('hidden');
             closeAll();
             if (!isOpen) {
               dd2.classList.add('open');
               panel2.removeAttribute('hidden');
-              try { panel2.hidden = false; } catch (e) { /* silently ignored */ }
+              try { panel2.hidden = false; } catch (e) { /* bỏ qua lỗi */ }
               try {
                 panel2.classList.add('show');
                 panel2.style.setProperty('display', 'block', 'important');
@@ -399,17 +399,17 @@
                     const maxLeft = Math.max(6, (window.innerWidth || 0) - w - 6);
                     left = Math.min(left, maxLeft);
                     panel2.style.left = `${left}px`;
-                  } catch (e) { /* silently ignored */ }
-                  try { panel2.style.transform = 'none'; } catch (e) { /* silently ignored */ }
+                  } catch (e) { /* bỏ qua lỗi */ }
+                  try { panel2.style.transform = 'none'; } catch (e) { /* bỏ qua lỗi */ }
                 }
-              } catch (e) { /* silently ignored */ }
+              } catch (e) { /* bỏ qua lỗi */ }
               btn2.setAttribute('aria-expanded', 'true');
             }
           };
           const onTouchLike = (e) => {
             const now = Date.now();
             if (now - lastToggleAt < 300) {
-              try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* silently ignored */ }
+              try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* bỏ qua lỗi */ }
               return;
             }
             lastToggleAt = now;
@@ -418,7 +418,7 @@
           const onClick = (e) => {
             const now = Date.now();
             if (now - lastToggleAt < 700) {
-              try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* silently ignored */ }
+              try { e.preventDefault(); e.stopPropagation(); } catch (e) { /* bỏ qua lỗi */ }
               return;
             }
             lastToggleAt = now;
@@ -430,7 +430,7 @@
           btn2.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') toggleDropdown(e);
           }, { passive: false });
-          // Close menus only when clicking outside or pressing Escape; avoid closing on mouseenter to prevent flicker
+          // Chỉ đóng menu khi click ra ngoài hoặc nhấn Escape; tránh đóng khi mouseenter để không nhấp nháy
         });
         document.addEventListener('click', (e) => {
           const t = targetEl(e);
@@ -440,18 +440,18 @@
         }, { passive: true });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); }, { passive: true });
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
 
-  // Auto-logout on inactivity (idle timeout)
+  // Tự động đăng xuất khi không hoạt động (hết thời gian chờ)
   (function setupIdleTimeout() {
-    const IDLE_MS = 15 * 60 * 1000; // 15 minutes
+    const IDLE_MS = 15 * 60 * 1000; // 15 phút
     let idleTimer = null;
     const resetIdle = () => {
-      try { clearTimeout(idleTimer); } catch (e) { /* silently ignored */ }
+      try { clearTimeout(idleTimer); } catch (e) { /* bỏ qua lỗi */ }
       idleTimer = setTimeout(() => {
-        try { doLogout(); } catch (e) { /* silently ignored */ }
-        try { location.href = '/ui/login?timeout=1'; } catch (e) { /* silently ignored */ }
+        try { doLogout(); } catch (e) { /* bỏ qua lỗi */ }
+        try { location.href = '/ui/login?timeout=1'; } catch (e) { /* bỏ qua lỗi */ }
       }, IDLE_MS);
     };
     ['click','keydown','mousemove','touchstart','scroll','visibilitychange'].forEach(ev => {

@@ -51,11 +51,11 @@ export async function mountCalendar({ content }) {
   const year0 = now.getUTCFullYear();
   const month0 = `${year0}-${pad2(now.getUTCMonth() + 1)}`;
 
-  // Check if standalone
+  // Kiểm tra có chạy ở chế độ standalone không
   const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
   const vhExpr = isStandalone ? '100dvh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
 
-  // Render UI
+  // Vẽ giao diện
   content.style.margin = '0';
   content.style.padding = '0'; // Reset padding ở cấp độ host container để nhường padding cho thẻ con
   content.style.width = '100%';
@@ -328,7 +328,7 @@ export async function mountCalendar({ content }) {
     render(rows, { ping: (ping && ping.version) ? ping.version : null });
   };
 
-  // Event listeners (có signal để auto cleanup)
+  // Gắn sự kiện (có signal để tự dọn dẹp)
   const mEl = content.querySelector('#calMonth');
   const onlyEl = content.querySelector('#calOnlyOff');
   if (mEl) mEl.addEventListener('change', load, { signal });
@@ -408,7 +408,7 @@ export async function mountCalendar({ content }) {
   await load();
 }
 
-// Cleanup khi rời tab
+// Dọn dẹp khi rời tab
 export function unmountCalendar() {
   if (controller) {
     controller.abort();

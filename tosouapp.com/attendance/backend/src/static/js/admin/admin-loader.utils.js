@@ -10,11 +10,11 @@ const assetV = (() => {
     const meta = document.querySelector('meta[name="asset-v"]');
     const v = meta ? (meta.getAttribute('content') || '') : '';
     if (v) return String(v);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const v2 = window.__assetV;
     return v2 ? String(v2) : '';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   return '';
 })();
 
@@ -25,7 +25,7 @@ export const withAssetV = (path) => {
   const p = String(path || '');
   if (!assetV) return p;
   if (!p) return p;
-  // Strip existing ?v=... or &v=... to always use latest BUILD_ID
+  // Bỏ ?v=... hoặc &v=... cũ để luôn dùng BUILD_ID mới nhất
   const stripped = p.replace(/([?&])v=[^&]*/g, '$1').replace(/[?&]$/, '').replace(/\?&/, '?');
   return stripped + (stripped.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(assetV);
 };

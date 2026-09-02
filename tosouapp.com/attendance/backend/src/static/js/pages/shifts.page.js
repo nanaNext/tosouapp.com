@@ -1,6 +1,6 @@
 import { fetchJSONAuth } from '../api/http.api.js';
 
-// Add esc helper function at the top
+// Thêm hàm hỗ trợ esc ở đầu file
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -11,8 +11,8 @@ let targetUserId = null;
 let currentMonth = new Date();
 
 let shiftData = {}; // key: YYYY-MM-DD, value: object
-let serverStatus = null; // Track if the month is already submitted or approved
-let calendarDataMap = {}; // Global calendar data map
+let serverStatus = null; // Theo dõi xem tháng đã được nộp hoặc duyệt chưa
+let calendarDataMap = {}; // Map dữ liệu lịch dùng chung
 
 const SEISHAIN_LEAVE_TYPES = [
   { value: 'paid', label: '有給休暇' },
@@ -50,7 +50,7 @@ async function init() {
       const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
       if (name) el.textContent = name;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     currentUser = await fetchJSONAuth('/api/auth/me');
@@ -59,7 +59,7 @@ async function init() {
       return;
     }
     
-    // If targetUserId is specified, override currentUser with target user data
+    // Nếu có chỉ định targetUserId thì ghi đè currentUser bằng dữ liệu user đích
     if (targetUserId && (currentUser.role === 'admin' || currentUser.role === 'manager')) {
       const targetUser = await fetchJSONAuth(`/api/admin/employees/${targetUserId}`);
       if (targetUser && !targetUser.error) {
@@ -70,22 +70,22 @@ async function init() {
       }
     }
     
-    // Also update header userName just in case it wasn't in storage
+    // Cập nhật luôn userName trên header phòng khi nó chưa có trong storage
     const el = $('#userName');
     if (el && currentUser) {
       const name = currentUser.username || currentUser.email;
       if (name) el.textContent = name;
     }
     
-    // Save updated user to storage only if not overriding
+    // Chỉ lưu user đã cập nhật vào storage nếu không phải đang ghi đè
     if (!targetUserId) {
       try {
         sessionStorage.setItem('user', JSON.stringify(currentUser));
         localStorage.setItem('user', JSON.stringify(currentUser));
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
     
-    // Render user profile info inside the shifts-header box (Now fully handled by renderApp)
+    // Hiển thị thông tin profile user trong khung shifts-header (giờ do renderApp xử lý hoàn toàn)
     const uiName = currentUser.username || currentUser.email || '未設定';
     const uiDept = currentUser.departmentName || '未設定';
     const isSeishain = currentUser.employment_type === 'full_time' || currentUser.employment_type === '正社員';
@@ -168,13 +168,13 @@ async function loadMonthData(year, month) {
     const isSeishain = currentUser.employment_type === 'full_time';
     const isKoujibu = String(currentUser.departmentName || currentUser.departmentId || '').includes('工事部') || String(currentUser.departmentName || '').includes('Kouji');
     
-    // Fetch calendar data for the month
-    // API provides 'is_off' for each day if it's a company holiday
+    // Lấy dữ liệu lịch cho tháng
+    // API trả về 'is_off' cho mỗi ngày nếu đó là ngày nghỉ của công ty
     calendarDataMap = {};
     const calendarData = calendarDataMap;
     const daysInMonth = getDaysInMonth(year, month);
     
-    // Reset data
+    // Đặt lại dữ liệu
     shiftData = {};
     serverStatus = null;
 
@@ -183,12 +183,12 @@ async function loadMonthData(year, month) {
     // 1. Fetch server shift data first to check if there's already submitted/approved data
     try {
       const q = targetUserId ? `&userId=${targetUserId}` : '';
-      const serverRes = await fetchJSONAuth(`/api/attendance/shifts/monthly/${monthStr}?_t=${Date.now()}${q}`); // Add timestamp to bypass cache
-      if (serverRes && serverRes.success !== false) { // Assuming response is an array or object containing status
-        // Handle array response (if it returns user shifts directly) or object response
+      const serverRes = await fetchJSONAuth(`/api/attendance/shifts/monthly/${monthStr}?_t=${Date.now()}${q}`); // Thêm timestamp để bỏ qua cache
+      if (serverRes && serverRes.success !== false) { // Giả định response là mảng hoặc object chứa status
+        // Xử lý response dạng mảng (nếu trả về ca của user trực tiếp) hoặc dạng object
         const data = serverRes.data || serverRes;
         
-        // Find my status
+        // Tìm trạng thái của mình
         if (Array.isArray(data)) {
           const myData = data.find(u => u.id === currentUser.id);
           if (myData) {
@@ -201,7 +201,7 @@ async function loadMonthData(year, month) {
         }
       }
     } catch (e) {
-      console.log('No existing shift data found for this month or error fetching', e);
+      /* bỏ qua lỗi */
     }
     
     // 2. We fetch day by day or use working-days for calendar off-days. 
@@ -216,7 +216,7 @@ async function loadMonthData(year, month) {
       }
     }));
     
-    // Add Koujibu fallback dict just for rendering
+    // Thêm từ điển dự phòng cho Koujibu (工事部) chỉ để render
     daysInMonth.forEach(d => {
       const dateStr = formatDate(d);
       const dow = d.getDay();
@@ -229,16 +229,16 @@ async function loadMonthData(year, month) {
       const dateStr = formatDate(d);
       const dow = d.getDay();
       
-      // Default initialization if not already set
+      // Khởi tạo mặc định nếu chưa được đặt
       if (!shiftData[dateStr]) {
         const isRedDay = calendarData[dateStr] === true;
         const isHolidayForUser = isKoujibu ? calendarData[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
         
         if (isSeishain) {
-          // Backend API already accounts for Koujibu policy and returns `is_off` accordingly
+          // API backend đã tính sẵn chính sách của Koujibu (工事部) và trả về `is_off` tương ứng
           shiftData[dateStr] = { status: !isHolidayForUser ? 'WORKING' : 'LEAVE', leaveType: !isHolidayForUser ? undefined : undefined };
         } else {
-          // Baito: Default to WORKING on weekdays, OFF on weekends, similar to Seishain but simpler
+          // Baito (nhân viên thời vụ): mặc định WORKING ngày thường, OFF cuối tuần, giống Seishain nhưng đơn giản hơn
           shiftData[dateStr] = { status: !isHolidayForUser ? 'WORKING' : 'OFF' };
         }
       }
@@ -283,7 +283,7 @@ function renderApp() {
   const month = currentMonth.getMonth();
   const days = getDaysInMonth(year, month);
   
-  // Create header structure safely since original might be lost or modified
+  // Tạo cấu trúc header một cách an toàn vì bản gốc có thể bị mất hoặc bị sửa
   const uiName = currentUser.username || currentUser.email || '未設定';
   const uiDept = currentUser.departmentName || '未設定';
   const uiType = isSeishain ? '正社員' : 'アルバイト / パート';
@@ -311,11 +311,11 @@ function renderApp() {
     </div>
   `;
 
-  // Generate empty cells for previous month
+  // Tạo các ô trống cho tháng trước
   const firstDay = new Date(year, month, 1).getDay();
   const emptyCellsHtml = Array.from({ length: firstDay }).map(() => `<div class="shift-cell empty-cell"></div>`).join('');
   
-  // Header row for days of week
+  // Hàng header cho các thứ trong tuần
   const daysOfWeek = [
     { label: '日', sub: 'SUN', class: 'sunday' },
     { label: '月', sub: 'MON', class: '' },
@@ -327,7 +327,7 @@ function renderApp() {
   ];
   const daysHeaderHtml = daysOfWeek.map(d => `<div class="shifts-grid-header-cell ${d.class}">${d.label}<br><span style="font-size: 10px; font-weight: normal;">${d.sub}</span></div>`).join('');
 
-  // Calculate trailing empty cells
+  // Tính các ô trống ở cuối
   const totalCells = firstDay + days.length;
   const remainder = totalCells % 7;
   const trailingEmptyCellsHtml = remainder !== 0 ? Array.from({ length: 7 - remainder }).map(() => `<div class="shift-cell empty-cell"></div>`).join('') : '';
@@ -469,7 +469,7 @@ function renderDayCell(date, isSeishain) {
      dayClass += ' is-leave';
   }
   
-  // Color the date text based on actual off days
+  // Tô màu chữ ngày dựa trên ngày nghỉ thực tế
   let isHoliday = false;
   const isRedDay = calendarDataMap[dateStr] === true;
   
@@ -481,7 +481,7 @@ function renderDayCell(date, isSeishain) {
       isHoliday = true;
     }
   } else {
-    // For baito, color sundays and red days red. For Koujibu, 4th saturday is red day too.
+    // Với baito, tô đỏ Chủ nhật và ngày lễ. Với Koujibu (工事部), thứ Bảy tuần thứ 4 cũng là ngày đỏ.
     const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
     if (isHolidayForUser) isHoliday = true;
   }
@@ -492,7 +492,7 @@ function renderDayCell(date, isSeishain) {
     dayClass += ' saturday';
   }
   
-  // Calculate Lunar Date
+  // Tính ngày âm lịch
   let lunarText = '';
   try {
     if (typeof window.Lunar !== 'undefined') {
@@ -505,8 +505,8 @@ function renderDayCell(date, isSeishain) {
         lunarText = `${lDay}`;
       }
     } else {
-      // Fallback or debug
-      // If window.Lunar is not available, we can't show lunar date
+      // Dự phòng hoặc debug
+      // Nếu không có window.Lunar thì không hiển thị được ngày âm lịch
     }
   } catch (e) {
     console.error('Lunar error', e);
@@ -527,10 +527,10 @@ function renderDayCell(date, isSeishain) {
       dayClass += ' is-leave';
     } else {
       if (!data.leaveType) {
-        // System default holiday
+        // Ngày nghỉ mặc định của hệ thống
         contentHtml = `<div class="status-leave" style="color:#dc2626;">休</div>`;
       } else {
-        // User requested leave
+        // Ngày nghỉ do người dùng đăng ký
         const typeLabel = SEISHAIN_LEAVE_TYPES.find(t => t.value === data.leaveType)?.label || data.leaveType;
         const shortTypeLabel = typeLabel.includes('有給') ? '有休' : (typeLabel.includes('欠勤') ? '欠勤' : typeLabel);
         
@@ -539,14 +539,14 @@ function renderDayCell(date, isSeishain) {
       dayClass += ' is-leave';
     }
     
-    // Add logic to disable clicks if approved or pending, except for leave cells where we want to view reason
+    // Thêm logic vô hiệu hóa click nếu đã duyệt hoặc đang chờ, trừ ô nghỉ phép vì cần xem lý do
     const isLocked = serverStatus === 'APPROVED' || serverStatus === 'PENDING';
     const isLeave = data.status !== 'WORKING';
-    // If it is a system default holiday (no leaveType specified), we don't need to show reason
+    // Nếu là ngày nghỉ mặc định của hệ thống (không có leaveType) thì không cần hiển thị lý do
     const isSystemHoliday = isLeave && !data.leaveType;
     
-    // If it's locked AND (it's a working day OR it's a system holiday), disable pointer events. 
-    // If it's a requested leave day, allow clicking to view the reason.
+    // Nếu bị khóa VÀ (là ngày làm việc HOẶC ngày nghỉ hệ thống) thì tắt pointer events.
+    // Nếu là ngày nghỉ phép do đăng ký thì cho phép click để xem lý do.
     const lockStyle = (isLocked && (!isLeave || isSystemHoliday)) ? 'style="pointer-events:none;"' : '';
     
     return `
@@ -559,7 +559,7 @@ function renderDayCell(date, isSeishain) {
       </div>
     `;
   } else {
-    // Baito display logic
+    // Logic hiển thị cho baito
     const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
     const isWeekendOrHoliday = isHolidayForUser;
     const offLabel = '休日';
@@ -568,7 +568,7 @@ function renderDayCell(date, isSeishain) {
       { value: 'WORKING', label: '出勤' }
     ];
 
-    // Add logic to disable clicks if approved
+    // Thêm logic vô hiệu hóa click nếu đã duyệt
     const isLocked = serverStatus === 'APPROVED';
     
     const isWorking = data.status === 'WORKING';
@@ -640,7 +640,7 @@ function attachEvents(isSeishain) {
     });
     $('#btnModalRevert').addEventListener('click', () => {
       const dateStr = $('#modalDateVal').value;
-      // Revert to default holiday (no leaveType = system holiday)
+      // Quay về ngày nghỉ mặc định (không có leaveType = ngày nghỉ hệ thống)
       shiftData[dateStr] = { status: 'LEAVE' };
       closeLeaveModal();
       renderApp();
@@ -650,7 +650,7 @@ function attachEvents(isSeishain) {
       const swapSection = $('#modalSwapSection');
       const swapSelect = $('#modalSwapDate');
       const saveSwapBtn = $('#btnModalSaveSwap');
-      // Populate dropdown with workdays in the month that are not already off/swapped
+      // Đổ vào dropdown các ngày làm việc trong tháng chưa bị nghỉ/hoán đổi
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth();
       const daysInMonth = getDaysInMonth(year, month);
@@ -658,11 +658,11 @@ function attachEvents(isSeishain) {
       let options = '<option value="">-- 日付を選択 --</option>';
       daysInMonth.forEach(d => {
         const ds = formatDate(d);
-        if (ds === currentDateStr) return; // skip self
+        if (ds === currentDateStr) return; // bỏ qua chính ngày đó
         const dayData = shiftData[ds];
         const dow = d.getDay();
         const isOff = calendarDataMap[ds] === true || dow === 0 || dow === 6;
-        // Only show workdays that are currently WORKING (not already swapped/leave)
+        // Chỉ hiện các ngày đang là WORKING (chưa bị hoán đổi/nghỉ)
         if (dayData && dayData.status === 'WORKING' && !isOff) {
           const dowLabel = ['日','月','火','水','木','金','土'][dow];
           options += `<option value="${esc(ds)}">${esc(ds)} (${dowLabel})</option>`;
@@ -671,12 +671,12 @@ function attachEvents(isSeishain) {
       swapSelect.innerHTML = options;
       swapSection.style.display = 'block';
       saveSwapBtn.style.display = 'block';
-      // Hide other action buttons while selecting
+      // Ẩn các nút thao tác khác trong lúc đang chọn
       $('#btnModalFurikae').style.display = 'none';
       $('#btnModalClear').style.display = 'none';
       $('#btnModalSave').style.display = 'none';
     });
-    // Save swap pair
+    // Lưu cặp hoán đổi
     $('#btnModalSaveSwap').addEventListener('click', () => {
       const holidayDate = $('#modalDateVal').value;
       const compOffDate = $('#modalSwapDate').value;
@@ -684,30 +684,30 @@ function attachEvents(isSeishain) {
         alert('代替休日の日付を選択してください。');
         return;
       }
-      // Set the holiday as 振替出勤
+      // Đặt ngày nghỉ thành 振替出勤 (đi làm bù)
       shiftData[holidayDate] = { status: 'FURIKAE_WORK', swapDate: compOffDate };
-      // Set the workday as 代替休日
+      // Đặt ngày làm việc thành 代替休日 (nghỉ bù)
       shiftData[compOffDate] = { status: 'FURIKAE_OFF', swapDate: holidayDate };
       closeLeaveModal();
       renderApp();
     });
-    // Cancel swap (when viewing a day that already has furikae)
+    // Hủy hoán đổi (khi xem một ngày đã có furikae)
     $('#btnModalCancelSwap').addEventListener('click', () => {
       const dateStr = $('#modalDateVal').value;
       const data = shiftData[dateStr];
       const pairDate = data?.swapDate;
       if (data.status === 'FURIKAE_WORK') {
-        // This is a holiday that was marked as swap-work → revert to LEAVE
+        // Đây là ngày nghỉ đã được đánh dấu là đi làm bù → quay lại LEAVE
         if (pairDate && shiftData[pairDate]) {
-          shiftData[pairDate] = { status: 'WORKING' }; // Revert comp-off back to working
+          shiftData[pairDate] = { status: 'WORKING' }; // Trả ngày nghỉ bù về lại đi làm
         }
-        shiftData[dateStr] = { status: 'LEAVE' }; // Revert to holiday
+        shiftData[dateStr] = { status: 'LEAVE' }; // Quay lại ngày nghỉ
       } else if (data.status === 'FURIKAE_OFF') {
-        // This is a workday that became comp-off → revert to WORKING
+        // Đây là ngày làm việc đã trở thành nghỉ bù → quay lại WORKING
         if (pairDate && shiftData[pairDate]) {
-          shiftData[pairDate] = { status: 'LEAVE' }; // Revert swap-work back to holiday
+          shiftData[pairDate] = { status: 'LEAVE' }; // Trả ngày đi làm bù về lại ngày nghỉ
         }
-        shiftData[dateStr] = { status: 'WORKING' }; // Revert to working
+        shiftData[dateStr] = { status: 'WORKING' }; // Quay lại đi làm
       }
       closeLeaveModal();
       renderApp();
@@ -719,7 +719,7 @@ function attachEvents(isSeishain) {
         const newStatus = e.target.value;
         shiftData[dateStr] = { status: newStatus };
         
-        // Update cell background color immediately
+        // Cập nhật màu nền ô ngay lập tức
         const cell = e.target.closest('.baito-cell');
         if (cell) {
           if (newStatus === 'WORKING') {
@@ -764,29 +764,29 @@ function openLeaveModal(dateStr) {
   $('#modalDateVal').value = dateStr;
   const data = shiftData[dateStr];
 
-  // Determine if this day is a system holiday (calendar off-day with no user-requested leave)
+  // Xác định xem ngày này có phải ngày nghỉ hệ thống không (ngày nghỉ theo lịch, không có đơn nghỉ của user)
   const isCalendarHoliday = calendarDataMap[dateStr] === true;
   const dow = new Date(dateStr + 'T00:00:00').getDay();
   const isWeekend = dow === 0 || dow === 6;
   const isSystemHoliday = (isCalendarHoliday || isWeekend) && !data.leaveType && data.status !== 'FURIKAE_OFF';
-  // isSystemHoliday = true for:
-  //   1. Day is still showing as 休 (status = LEAVE, no leaveType)
-  //   2. Day was changed to 出勤 (WORKING) but is still a calendar holiday
-  //   3. Day is 振替出勤 (FURIKAE_WORK) — still a calendar holiday being worked
+  // isSystemHoliday = true trong các trường hợp:
+  //   1. Ngày vẫn hiển thị là 休 (status = LEAVE, không có leaveType)
+  //   2. Ngày đã đổi sang 出勤 (WORKING) nhưng vẫn là ngày nghỉ theo lịch
+  //   3. Ngày là 振替出勤 (FURIKAE_WORK) — vẫn là ngày nghỉ theo lịch nhưng đi làm
 
-  // Get form elements
+  // Lấy các phần tử form
   const formLeaveType = $('#modalLeaveType').closest('.form-group');
   const formReason = $('#modalReason').closest('.form-group');
   const formDetail = $('#modalDetailGroup');
   const btnSave = $('#btnModalSave');
 
   if (isSystemHoliday) {
-    // System holiday: hide leave form, only show「出勤に変更」and「振替出勤」
+    // Ngày nghỉ hệ thống: ẩn form nghỉ phép, chỉ hiện「出勤に変更」và「振替出勤」
     if (formLeaveType) formLeaveType.style.display = 'none';
     if (formReason) formReason.style.display = 'none';
     if (formDetail) formDetail.style.display = 'none';
     btnSave.style.display = 'none';
-    // Show furikae button for holidays not yet changed
+    // Hiện nút furikae cho các ngày nghỉ chưa được thay đổi
     const furikaeBtn = $('#btnModalFurikae');
     if (furikaeBtn) {
       if (data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK') {
@@ -805,11 +805,11 @@ function openLeaveModal(dateStr) {
     if (furikaeBtn) furikaeBtn.style.display = 'none';
   }
 
-  // Hide swap section by default
+  // Ẩn phần hoán đổi theo mặc định
   $('#modalSwapSection').style.display = 'none';
   $('#btnModalSaveSwap').style.display = 'none';
 
-  // If this day is FURIKAE_OFF (代替休日), hide form, only show cancel
+  // Nếu ngày này là FURIKAE_OFF (代替休日), ẩn form, chỉ hiện nút hủy
   if (data.status === 'FURIKAE_OFF') {
     if (formLeaveType) formLeaveType.style.display = 'none';
     if (formReason) formReason.style.display = 'none';
@@ -821,7 +821,7 @@ function openLeaveModal(dateStr) {
     const revertBtn2 = $('#btnModalRevert');
     if (revertBtn2) revertBtn2.style.display = 'none';
   }
-  // If this day is FURIKAE_WORK (振替出勤), hide form, only show cancel
+  // Nếu ngày này là FURIKAE_WORK (振替出勤), ẩn form, chỉ hiện nút hủy
   if (data.status === 'FURIKAE_WORK') {
     if (formLeaveType) formLeaveType.style.display = 'none';
     if (formReason) formReason.style.display = 'none';
@@ -834,12 +834,12 @@ function openLeaveModal(dateStr) {
     if (revertBtn2) revertBtn2.style.display = 'none';
   }
 
-  // Show cancel-swap button if this day is part of a furikae pair
+  // Hiện nút hủy hoán đổi nếu ngày này thuộc một cặp furikae
   const cancelSwapBtn = $('#btnModalCancelSwap');
   if (cancelSwapBtn) {
     if (data.status === 'FURIKAE_WORK' || data.status === 'FURIKAE_OFF') {
       cancelSwapBtn.style.display = 'block';
-      // Show info about the pair
+      // Hiện thông tin về cặp hoán đổi
       const pairLabel = data.status === 'FURIKAE_WORK'
         ? `振替出勤 → 代替休日: ${data.swapDate || ''}`
         : `代替休日 ← 振替出勤: ${data.swapDate || ''}`;
@@ -862,10 +862,10 @@ function openLeaveModal(dateStr) {
     $('#modalDetail').value = '';
   }
   
-  // Trigger change event to show/hide detail
+  // Kích hoạt sự kiện change để hiện/ẩn phần chi tiết
   $('#modalReason').dispatchEvent(new Event('change'));
   
-  // If approved, make everything readonly and hide save buttons
+  // Nếu đã duyệt thì cho tất cả readonly và ẩn các nút lưu
   const isLocked = serverStatus === 'APPROVED';
   if (isLocked) {
     $('#modalLeaveType').disabled = true;
@@ -880,20 +880,20 @@ function openLeaveModal(dateStr) {
     $('#modalDetail').disabled = false;
     $('#btnModalCancel').textContent = 'キャンセル';
     
-    // Update the clear button text depending on current status
+    // Cập nhật chữ trên nút clear tùy theo trạng thái hiện tại
     if (!data.leaveType && data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK' && data.status !== 'FURIKAE_OFF') {
-      $('#btnModalClear').textContent = '出勤に変更'; // Default holiday -> Change to Work
+      $('#btnModalClear').textContent = '出勤に変更'; // Ngày nghỉ mặc định -> đổi sang đi làm
     } else if (data.leaveType && data.status !== 'WORKING') {
-      $('#btnModalClear').textContent = '出勤に変更 (休暇取消)'; // Leave -> Change to Work (Cancel leave)
+      $('#btnModalClear').textContent = '出勤に変更 (休暇取消)'; // Nghỉ phép -> đổi sang đi làm (hủy nghỉ)
     } else {
-      $('#btnModalClear').textContent = '出勤'; // Already working
-      $('#btnModalClear').style.display = 'none'; // Hide if already working or furikae
+      $('#btnModalClear').textContent = '出勤'; // Đã đi làm
+      $('#btnModalClear').style.display = 'none'; // Ẩn nếu đã đi làm hoặc furikae
     }
     if (data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK' && data.status !== 'FURIKAE_OFF') {
       $('#btnModalClear').style.display = 'inline-block';
     }
 
-    // Show「休日に戻す」button if this is a calendar holiday and user changed it to WORKING (not furikae)
+    // Hiện nút「休日に戻す」nếu đây là ngày nghỉ theo lịch mà user đã đổi sang WORKING (không phải furikae)
     const isCalendarHoliday = calendarDataMap[dateStr] === true;
     const revertBtn = $('#btnModalRevert');
     if (revertBtn) {
@@ -967,7 +967,7 @@ async function submitShifts() {
     
     if (res && res.success) {
       alert('シフトを提出しました！');
-      // Update status immediately so UI refreshes to PENDING
+      // Cập nhật trạng thái ngay để UI chuyển sang PENDING
       serverStatus = 'PENDING';
       renderApp();
     } else {

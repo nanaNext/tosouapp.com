@@ -7,10 +7,10 @@
 export const $ = (sel) => document.querySelector(sel);
 
 export const showSpinner = () => {
-  try { const el = document.querySelector('#pageSpinner'); if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; } } catch (e) { /* silently ignored */ }
+  try { const el = document.querySelector('#pageSpinner'); if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; } } catch (e) { /* bỏ qua lỗi */ }
 };
 export const hideSpinner = () => {
-  try { const el = document.querySelector('#pageSpinner'); if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; } } catch (e) { /* silently ignored */ }
+  try { const el = document.querySelector('#pageSpinner'); if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; } } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const todayISO = () => new Date().toLocaleDateString('sv-SE');

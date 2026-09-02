@@ -156,7 +156,7 @@ exports.getAnnualSummary = async (req, res) => {
             const usedDays = Number(kubunRows?.[0]?.cnt || 0);
             const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
             let entitled = 10;
-            try { entitled = calculatePaidLeaveEntitlement(hireDate) || 10; } catch (e) { /* fallback */ }
+            try { entitled = calculatePaidLeaveEntitlement(hireDate) || 10; } catch (e) { /* dùng giá trị mặc định */ }
             paidLeaveInfo = { grantDate: hireDate, totalGranted: entitled, usedSinceGrant: usedDays, remaining: Math.max(0, entitled - usedDays) };
           }
         }

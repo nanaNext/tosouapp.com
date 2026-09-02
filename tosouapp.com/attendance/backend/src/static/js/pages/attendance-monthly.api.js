@@ -125,20 +125,20 @@
       const effectiveKubun = kubunVal || plannedKubun;
       
       const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
-      // IMPORTANT: classify by effective kubun (fallback to planned default),
-      // otherwise planned workdays with empty kubun can be skipped from updates.
+      // QUAN TRỌNG: phân loại theo kubun hiệu lực (fallback về mặc định theo kế hoạch),
+      // nếu không ngày làm việc theo kế hoạch mà kubun rỗng có thể bị bỏ qua khi cập nhật.
       const isWorkKubun = workKubunSet.has(effectiveKubun);
       const isHoliday = !isWorkKubun;
       const effTime = (el, acceptAuto) => {
         const v = String(el?.value || '');
         if (acceptAuto) return v;
         const isAuto = String(el?.dataset?.auto || '') === '1';
-        // Always ignore auto-filled time for save. We only want REAL manual punches.
+        // Luôn bỏ qua giờ tự động điền khi lưu. Chỉ lấy giờ chấm công nhập tay thật sự.
         if (isAuto) return '';
         return v;
       };
-      // Never persist planned auto-filled times as real attendance.
-      // Only user-entered/manual values should become checkIn/checkOut.
+      // Không lưu giờ tự động điền theo kế hoạch thành chấm công thật.
+      // Chỉ giá trị người dùng tự nhập mới trở thành checkIn/checkOut.
       const inEff = effTime(inEl, false);
       const outEff = effTime(outEl, false);
       const hasManual = !!(inEff || outEff);

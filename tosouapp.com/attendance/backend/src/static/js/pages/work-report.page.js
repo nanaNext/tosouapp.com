@@ -11,7 +11,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
@@ -21,14 +21,14 @@ async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
   if (token) {
-    try { profile = await me(token); } catch (e) { /* silently ignored */ }
+    try { profile = await me(token); } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
@@ -37,7 +37,7 @@ async function ensureAuthProfile() {
       if (user && (user.role === 'admin' || user.role === 'manager' || user.role === 'employee')) {
         profile = user;
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   return profile || null;
 }
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   prefillUserName();
   const pageSpinner = $('#pageSpinner');
 
-  // Keep header height stable to avoid first-paint layout jump between pages.
+  // Giữ chiều cao header ổn định để tránh nhảy layout ở lần render đầu khi chuyển trang.
   const setTopbarHeightVar = () => {};
 
   const profile = await ensureAuthProfile();
@@ -65,19 +65,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const userName = $('#userName');
     if (userName) userName.textContent = profile.username || profile.email || 'ユーザー';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const goLogin = async () => {
-    try { await logout(); } catch (e) { /* silently ignored */ }
+    try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
     try {
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
   };
 
@@ -97,9 +97,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         dd.setAttribute('hidden', '');
       });
     }
-  } catch (e) { /* silently ignored */ }
-  try { $('#btnLogout')?.addEventListener('click', goLogin); } catch (e) { /* silently ignored */ }
-  try { $('#drawerLogout')?.addEventListener('click', goLogin); } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
+  try { $('#btnLogout')?.addEventListener('click', goLogin); } catch (e) { /* bỏ qua lỗi */ }
+  try { $('#drawerLogout')?.addEventListener('click', goLogin); } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     const mobileBtn = $('#mobileMenuBtn');
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       mobileBtn.addEventListener('click', () => toggleDrawer());
       if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const params = new URLSearchParams(window.location.search);
   const date = isISODate(params.get('date')) ? String(params.get('date')) : todayJST();
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
       return;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   let existing = null;
   let closed = false;
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const r = await fetchJSONAuth(`/api/work-reports/my?date=${encodeURIComponent(date)}`);
     existing = r?.report || null;
     closed = !!r?.closed;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const siteVal = esc(existing?.site || '');
@@ -221,5 +221,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+  try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
 });

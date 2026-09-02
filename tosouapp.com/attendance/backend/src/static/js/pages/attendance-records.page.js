@@ -12,7 +12,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const showSpinner = (isSuccess = false) => {
@@ -25,7 +25,7 @@ const showSpinner = (isSuccess = false) => {
       el.classList.remove('is-success');
     }
     el.removeAttribute('hidden');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const hideSpinner = () => {
   try { 
@@ -33,7 +33,7 @@ const hideSpinner = () => {
     if (!el) return;
     el.classList.remove('is-success');
     el.setAttribute('hidden', ''); 
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const showErr = (msg) => {
@@ -56,19 +56,19 @@ const isYukyuKubun = (v) => String(v || '').trim() === '有給休暇';
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
-  if (token) { try { profile = await me(token); } catch (e) { /* silently ignored */ } }
+  if (token) { try { profile = await me(token); } catch (e) { /* bỏ qua lỗi */ } }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
       const userStr = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
       profile = userStr ? JSON.parse(userStr) : null;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   return profile || null;
 }
@@ -99,9 +99,9 @@ const wireUserMenu = () => {
   if (logoutBtn && !logoutBtn.dataset.bound) {
     logoutBtn.dataset.bound = '1';
     logoutBtn.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { /* silently ignored */ }
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+      try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
+      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
       window.location.replace('/ui/login');
     });
   }
@@ -137,9 +137,9 @@ const wireTopNavDropdowns = () => {
     drawerLogout.dataset.bound = '1';
     drawerLogout.addEventListener('click', async (e) => {
       e.preventDefault();
-      try { await logout(); } catch (e) { /* silently ignored */ }
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+      try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
+      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
       window.location.replace('/ui/login');
     });
   }
@@ -220,7 +220,7 @@ const renderNotice = async (profile) => {
       const v = localStorage.getItem(prefKey);
       if (v === '0') return false;
       if (v === '1') return true;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return true;
   })();
   host.innerHTML = `
@@ -243,14 +243,14 @@ const renderNotice = async (profile) => {
       const nextHidden = !curHidden;
       if (nextHidden) body?.setAttribute?.('hidden', '');
       else body?.removeAttribute?.('hidden');
-      try { localStorage.setItem(prefKey, nextHidden ? '0' : '1'); } catch (e) { /* silently ignored */ }
-      try { host.querySelector('#btnNoticeToggle').textContent = nextHidden ? '表示' : '非表示'; } catch (e) { /* silently ignored */ }
+      try { localStorage.setItem(prefKey, nextHidden ? '0' : '1'); } catch (e) { /* bỏ qua lỗi */ }
+      try { host.querySelector('#btnNoticeToggle').textContent = nextHidden ? '表示' : '非表示'; } catch (e) { /* bỏ qua lỗi */ }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const markOne = async (id) => {
     if (!id) return;
-    try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); } catch (e) { /* silently ignored */ }
+    try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); } catch (e) { /* bỏ qua lỗi */ }
   };
   host.querySelectorAll('details[data-notice-id]').forEach((el) => {
     el.addEventListener('toggle', () => {
@@ -261,7 +261,7 @@ const renderNotice = async (profile) => {
         el.classList.remove('is-unread');
         el.classList.add('is-read');
         markOne(id);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     });
   });
 };
@@ -276,10 +276,10 @@ const renderAttendance = async () => {
     const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
     let isOff;
     if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
-      // API already applies department-specific rules (e.g. 工事部 Saturdays).
+      // API đã áp dụng sẵn quy tắc theo phòng ban (ví dụ: thứ Bảy của 工事部).
       isOff = Number(cal?.is_off || 0) === 1;
     } else {
-      // Safe fallback when calendar API is temporarily unavailable.
+      // Fallback an toàn khi API lịch tạm thời không khả dụng.
       const weekend = (() => {
         try {
           const y = parseInt(date.slice(0, 4), 10);
@@ -365,14 +365,14 @@ const renderAttendance = async () => {
       if (sel) sel.value = loadWT();
       sel?.addEventListener('change', async () => {
         const v = String(sel.value || '');
-        try { localStorage.setItem(wtKey, v); } catch (e) { /* silently ignored */ }
+        try { localStorage.setItem(wtKey, v); } catch (e) { /* bỏ qua lỗi */ }
         try {
           await fetchJSONAuth('/api/attendance/worktype', { method: 'POST', body: JSON.stringify({ date, workType: v }) });
           const kubun = String($('#kubun')?.value || kubunInit);
           await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, { method: 'PUT', body: JSON.stringify({ kubun, workType: v }) });
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const hideKubunSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
     const toggleWorkTypeRow = () => {
       const kubun = String($('#kubun')?.value || defaultKubun);
@@ -413,7 +413,7 @@ const renderAttendance = async () => {
           hideSpinner();
         }
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     $('#btnCheckIn')?.addEventListener('click', async () => {
       showErr('');
       showSpinner();
@@ -513,7 +513,7 @@ export async function bootAttendanceRecordsPage() {
     const isBack = params.get('back') === '1';
     const ref = String(document.referrer || '');
     const fromSimple = ref.includes('/ui/attendance/simple');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   showErr('');
   wireUserMenu();
   wireTopNavDropdowns();
@@ -525,12 +525,12 @@ export async function bootAttendanceRecordsPage() {
   }
   const role = String(profile?.role || '').toLowerCase();
   if (role === 'admin') {
-    try { document.body.dataset.roleAdmin = '1'; } catch (e) { /* silently ignored */ }
+    try { document.body.dataset.roleAdmin = '1'; } catch (e) { /* bỏ qua lỗi */ }
   }
-  try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { /* silently ignored */ }
+  try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { /* bỏ qua lỗi */ }
   
   try {
-    // Dynamic import to avoid loading issues in older browsers or during fast SPA navigation
+    // Import động để tránh lỗi tải trên trình duyệt cũ hoặc khi điều hướng SPA nhanh
     const [mod, usersApi, attendanceApi] = await Promise.all([
       import('./employee-attendance.page.js?v=' + Date.now()),
       import('../api/users.api.js'),
@@ -567,7 +567,7 @@ export async function bootAttendanceRecordsPage() {
           buildTimesheetExportURL: attendanceApi.buildTimesheetExportURL
         });
 
-        // Implement table search functionality
+        // Xử lý chức năng tìm kiếm trong bảng
         const searchInput = document.getElementById('globalSearchInputEmp');
         if (searchInput) {
           const applySearch = () => {
@@ -581,7 +581,7 @@ export async function bootAttendanceRecordsPage() {
           searchInput.addEventListener('input', applySearch);
           searchInput.addEventListener('change', applySearch);
           
-          // Search clear button
+          // Nút xóa nội dung tìm kiếm
           const searchClose = document.querySelector('.search-close');
           if (searchClose) {
             searchClose.addEventListener('click', () => {
