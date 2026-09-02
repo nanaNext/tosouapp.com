@@ -449,7 +449,7 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
             <div style="font-size:28px;">\u{1F5C2}\uFE0F</div>
             <div>\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>
           </div>
-        `;return}let e=1;const a=window.innerWidth<=768,l=999999,c=()=>{if(!t)return;t.innerHTML="";const f=document.createElement("table");f.id="attrecList",f.className="beautiful-table",f.style.tableLayout="auto",f.style.width="100%",f.style.minWidth="1200px",f.style.borderCollapse="collapse",f.style.border="none",f.style.borderRadius="0",f.style.overflow="visible",f.innerHTML=`
+        `;return}let e=1;const a=window.innerWidth<=768,l=999999,c=()=>{if(!t)return;t.innerHTML="";const f=document.createElement("table");f.id="attrecList",f.className="beautiful-table",f.style.tableLayout="auto",f.style.width="100%",f.style.minWidth="1000px",f.style.borderCollapse="collapse",f.style.border="none",f.style.borderRadius="0",f.style.overflow="visible",f.innerHTML=`
           <style>
             .beautiful-table {
               box-shadow: none;
@@ -474,8 +474,13 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
               border-bottom: 1px solid #f1f5f9;
               vertical-align: middle;
             }
-            .beautiful-table tbody tr:hover {
+            .beautiful-table tbody tr:hover td {
               background-color: #f8fafc;
+            }
+            /* Giữ đường kẻ ngăn cột ổn định khi hover (không bị "chớp tắt") */
+            .beautiful-table tbody tr:hover td {
+              border-color: #e2e8f0 !important;
+              background-clip: padding-box;
             }
             .beautiful-table .attrec-pill {
               display: inline-flex;
@@ -545,8 +550,8 @@ import{escapeHtml as b,delegate as Ut}from"../_shared/dom.js";import{api as ut,d
             ${Pt}
             <td data-label="\u51FA\u52E4" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;${ft?" color:#166534; font-weight:600;":""}">${b(ft)}</td>
             <td data-label="\u9000\u52E4" style="text-align:center; font-family:monospace; font-size:14px; white-space:nowrap;${xt?" color:#0b2c66; font-weight:600;":""}">${b(xt)}</td>
-            <td data-label="\u73FE\u5834"><div style="font-size:13px; color:#475569;">${b(It)}</div></td>
-            <td data-label="\u4F5C\u696D\u5185\u5BB9"><div style="font-size:13px; color:#475569; word-break:break-all; white-space:pre-wrap;">${b(Lt)}</div></td>
+            <td data-label="\u73FE\u5834" style="min-width:150px;"><div style="font-size:13px; color:#475569;">${b(It)}</div></td>
+            <td data-label="\u4F5C\u696D\u5185\u5BB9" style="width:auto; min-width:220px;"><div style="font-size:13px; color:#475569; word-break:break-all; white-space:pre-wrap;">${b(Lt)}</div></td>
           `,H.appendChild(J)}f.appendChild(H);const N=document.createElement("div");if(N.id="attrecTableWrap",N.className="emp-list-scroll-wrap attrec-list-scroll-wrap",N.style.cssText="overflow:visible; width:100%; margin-bottom:0; position:relative;",N.appendChild(f),t.appendChild(N),i.length>0){const g=Math.ceil(i.length/l),r=document.createElement("div");if(a){r.className="attrec-mobile-pagination";const x=document.createElement("div");x.innerHTML=`\u5168 <span style="font-weight:700; color:#0f172a;">${i.length}</span> \u4EF6\u4E2D <span style="font-weight:700; color:#0f172a;">${D+1}</span> - <span style="font-weight:700; color:#0f172a;">${V}</span> \u4EF6\u3092\u8868\u793A`,x.style.color="#64748b",x.style.fontSize="14px";const p=document.createElement("div");p.style.display="flex",p.style.gap="8px";const u=e===1?"#f1f5f9":"#fff",X=e===1?"not-allowed":"pointer",E=document.createElement("button");E.type="button",E.textContent="\u524D\u3078",E.style.cssText=`padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${u}; color:#475569; cursor:${X}; font-size:14px;`,E.disabled=e===1,E.onclick=()=>{e>1&&(e--,c(),setTimeout(()=>{t&&t.scrollIntoView({behavior:"smooth",block:"start"})},50))};const K=e===g?"#f1f5f9":"#fff",m=e===g?"not-allowed":"pointer",z=document.createElement("button");z.type="button",z.textContent="\u6B21\u3078",z.style.cssText=`padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${K}; color:#475569; cursor:${m}; font-size:14px;`,z.disabled=e===g,z.onclick=()=>{e<g&&(e++,c(),setTimeout(()=>{t&&t.scrollIntoView({behavior:"smooth",block:"start"})},50))},p.appendChild(E),p.appendChild(z),r.appendChild(x),r.appendChild(p),t.appendChild(r)}else{r.className="attrec-paging desktop-only",r.style.display="flex",r.style.alignItems="center",r.style.justifyContent="flex-start",r.style.gap="15px",r.style.padding="10px 0 20px 0";const x=document.createElement("button");x.type="button",x.textContent="\u524D\u3078",x.className="pagination-btn",x.disabled=e===1,x.onclick=()=>{e>1&&(e--,c())};const p=document.createElement("button");p.type="button",p.textContent="\u6B21\u3078",p.className="pagination-btn",p.disabled=e===g,p.onclick=()=>{e<g&&(e++,c())};const u=document.createElement("span");u.textContent=`${D+1}-${V} / ${i.length}`,u.style.fontSize="14px",u.style.color="#333",r.appendChild(x),r.appendChild(u),r.appendChild(p),t.appendChild(r)}}};c()}catch(n){if(n&&n.name==="AbortError"||!M)return;t&&(t.innerHTML=`
           <div class="empty-state" style="color:#b00020;">
             <div style="font-size:28px;">\u26A0\uFE0F</div>
