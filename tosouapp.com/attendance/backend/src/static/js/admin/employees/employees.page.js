@@ -392,56 +392,6 @@ async function renderEmployees(profile, c) {
           </tr>
         </tbody>
       </table>
-      <table class="excel-table" style="margin-bottom:12px;">
-        <thead><tr><th colspan="2">シフト割当</th></tr></thead>
-        <tbody>
-          <tr>
-            <td style="width:180px;">新規割当</td>
-            <td>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <select id="saShift" style="min-width:220px;"><option value="">シフト</option></select>
-                <input id="saStart" type="date">
-                <input id="saEnd" type="date">
-                <button type="button" class="btn-primary" id="btnSaAdd">追加</button>
-                <button type="button" class="btn" id="btnSaReload">再読込</button>
-                <span id="saStatus" style="color:#334155;font-weight:700;"></span>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>一覧</td>
-            <td><div id="saTable"></div></td>
-          </tr>
-        </tbody>
-      </table>
-      <table class="excel-table" style="margin-bottom:12px;">
-        <thead><tr><th colspan="2">就業条件明示</th></tr></thead>
-        <tbody>
-          <tr>
-            <td style="width:180px;">入力</td>
-            <td>
-              <div style="display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:8px;">
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:92px;">開始日</span><input id="wdStart" type="date" style="width:180px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:92px;">終了日</span><input id="wdEnd" type="date" style="width:180px"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:92px;">企業名</span><input id="wdCompany" style="width:100%;"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:92px;">就業先住所</span><input id="wdAddr" style="width:100%;"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:92px;">業務内容</span><input id="wdWork" style="width:100%;"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:92px;">役職</span><input id="wdRole" style="width:100%;"></label>
-                <label style="display:flex;gap:6px;align-items:center;"><span style="min-width:92px;">責任の程度</span><input id="wdResp" style="width:100%;"></label>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
-                <button type="button" class="btn-primary" id="btnWdAdd">追加</button>
-                <button type="button" class="btn" id="btnWdReload">再読込</button>
-                <span id="wdStatus" style="color:#334155;font-weight:700;"></span>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>一覧</td>
-            <td><div id="wdTable"></div></td>
-          </tr>
-        </tbody>
-      </table>
     `;
     content.appendChild(wrap);
 
@@ -581,269 +531,6 @@ async function renderEmployees(profile, c) {
     const btnSumSave = wrap.querySelector('#btnSumSave');
     if (btnSumSave) btnSumSave.addEventListener('click', () => { save().catch(e => status(String((e && e.message) ? e.message : '保存失敗'))); });
     load().catch(() => {});
-
-    try {
-      const saShift = wrap.querySelector('#saShift');
-      const saStart = wrap.querySelector('#saStart');
-      const saEnd = wrap.querySelector('#saEnd');
-      const saTable = wrap.querySelector('#saTable');
-      const saStatus = wrap.querySelector('#saStatus');
-      const setSaStatus = (msg) => { if (saStatus) saStatus.textContent = msg || ''; };
-      let defs = [];
-      try { defs = await fetchJSONAuth('/api/attendance/shifts/definitions'); } catch { defs = []; }
-      const opt = (defs || []).map(d => `<option value="${d.id}">${d.name} ${d.start_time}-${d.end_time}</option>`).join('');
-      if (saShift) saShift.innerHTML = `<option value="">シフト</option>${opt}`;
-      if (saStart && !saStart.value) {
-        const ym = String((ymEl && ymEl.value != null) ? ymEl.value : '').trim();
-        saStart.value = (/^\d{4}-\d{2}$/.test(ym) ? `${ym}-01` : '');
-      }
-      const fmtHm2 = (min) => {
-        const m = Math.max(0, Number(min || 0));
-        const h = Math.floor(m / 60);
-        const r = Math.floor(m % 60);
-        if (h === 0 && r === 0) return '0:00';
-        return `${h}:${String(r).padStart(2, '0')}`;
-      };
-      const renderSa = (items) => {
-        const rows = Array.isArray(items) ? items : [];
-        if (!saTable) return;
-        if (!rows.length) { saTable.innerHTML = ''; return; }
-        const table = document.createElement('table');
-        table.className = 'excel-table';
-        table.style.margin = '0';
-        table.innerHTML = `
-          <thead><tr>
-            <th style="width:50px;white-space:nowrap;">No</th>
-            <th style="min-width:140px;white-space:nowrap;">シフト</th>
-            <th style="width:90px;white-space:nowrap;">開始時刻</th>
-            <th style="width:90px;white-space:nowrap;">終了時刻</th>
-            <th style="width:90px;white-space:nowrap;">休憩時間</th>
-            <th style="width:130px;white-space:nowrap;">所定労働時間</th>
-            <th style="width:120px;white-space:nowrap;">適用開始日</th>
-            <th style="width:120px;white-space:nowrap;">適用終了日</th>
-            <th style="width:90px;white-space:nowrap;">操作</th>
-          </tr></thead>
-          <tbody>
-            ${rows.map((r, i) => {
-              const s = (r && r.shift) ? r.shift : null;
-              const name = s ? (s.name || '') : ((r && r.shiftName) ? r.shiftName : '');
-              const st = s ? (s.start_time || '—') : '—';
-              const et = s ? (s.end_time || '—') : '—';
-              const br = s ? fmtHm2(s.break_minutes || 0) : '—';
-              const std = s ? fmtHm2(s.standard_minutes || 0) : '—';
-              const sd = (r && r.start_date) ? r.start_date : '—';
-              const ed = (r && r.end_date) ? r.end_date : '—';
-              return `<tr>
-                <td>${i + 1}</td>
-                <td>${name || '—'}</td>
-                <td>${st}</td>
-                <td>${et}</td>
-                <td>${br}</td>
-                <td>${std}</td>
-                <td>${sd}</td>
-                <td>${ed}</td>
-                <td><button type="button" class="btn" data-sa-del="${r.id}">削除</button></td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        `;
-        saTable.innerHTML = '';
-        saTable.appendChild(table);
-        saTable.querySelectorAll('button[data-sa-del]').forEach((b) => {
-          b.addEventListener('click', async () => {
-            const id = b.getAttribute('data-sa-del');
-            if (!id) return;
-            if (!confirm('削除します。よろしいですか？')) return;
-            setSaStatus('削除中...');
-            try {
-              await fetchJSONAuth(`/api/attendance/shifts/assignments/${encodeURIComponent(String(id))}?userId=${encodeURIComponent(String(u.id))}`, { method: 'DELETE' });
-              await loadSa();
-              setSaStatus('削除しました');
-            } catch (e) {
-              setSaStatus(String((e && e.message) ? e.message : '削除失敗'));
-            }
-          });
-        });
-      };
-      const loadSa = async () => {
-        setSaStatus('読込中...');
-        try {
-          const r = await fetchJSONAuth(`/api/attendance/shifts/assignments?userId=${encodeURIComponent(String(u.id))}&from=1900-01-01&to=2999-12-31`);
-          renderSa((r && Array.isArray(r.items)) ? r.items : []);
-          setSaStatus('');
-        } catch (e) {
-          renderSa([]);
-          setSaStatus(String((e && e.message) ? e.message : '読込失敗'));
-        }
-      };
-      const btnSaReload = wrap.querySelector('#btnSaReload');
-      if (btnSaReload) btnSaReload.addEventListener('click', () => { loadSa().catch(e => setSaStatus(String((e && e.message) ? e.message : '読込失敗'))); });
-      const btnSaAdd = wrap.querySelector('#btnSaAdd');
-      if (btnSaAdd) btnSaAdd.addEventListener('click', async () => {
-        const shiftId = saShift && saShift.value != null ? saShift.value : '';
-        const startDate = String(saStart && saStart.value != null ? saStart.value : '').trim();
-        const endDate = String(saEnd && saEnd.value != null ? saEnd.value : '').trim();
-        if (!shiftId || !startDate) { setSaStatus('shift/start を入力'); return; }
-        setSaStatus('保存中...');
-        try {
-          await fetchJSONAuth(`/api/attendance/shifts/assign`, {
-            method: 'POST',
-            body: JSON.stringify({ userId: u.id, shiftId, startDate, endDate: endDate || null })
-          });
-          await loadSa();
-          setSaStatus('保存しました');
-        } catch (e) {
-          setSaStatus(String((e && e.message) ? e.message : '保存失敗'));
-        }
-      });
-      loadSa().catch(() => {});
-    } catch (e) { /* bỏ qua lỗi */ }
-
-    try {
-      const wdStatus = wrap.querySelector('#wdStatus');
-      const setWdStatus = (msg) => { if (wdStatus) wdStatus.textContent = msg || ''; };
-      const wdTable = wrap.querySelector('#wdTable');
-      const val = (id) => {
-        const el = wrap.querySelector(id);
-        return String((el && el.value != null) ? el.value : '').trim();
-      };
-      const normDate = (s) => {
-        const t = String(s || '').trim();
-        if (!t) return '';
-        const m = t.match(/^(\d{4})[\/-](\d{2})[\/-](\d{2})/);
-        if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-        return t;
-      };
-      const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '').slice(0, 10));
-      const clearWdForm = () => {
-        for (const id of ['#wdStart','#wdEnd','#wdCompany','#wdAddr','#wdWork','#wdRole','#wdResp']) {
-          const el = wrap.querySelector(id);
-          if (el) el.value = '';
-        }
-      };
-      const renderWd = (items) => {
-        const rows = Array.isArray(items) ? items : [];
-        if (!wdTable) return;
-        if (!rows.length) { wdTable.innerHTML = ''; return; }
-        const table = document.createElement('table');
-        table.className = 'excel-table';
-        table.style.margin = '0';
-        table.innerHTML = `
-          <thead><tr>
-            <th style="width:50px;white-space:nowrap;">No</th>
-            <th style="min-width:160px;white-space:nowrap;">企業名</th>
-            <th style="width:120px;white-space:nowrap;">適用開始日</th>
-            <th style="width:120px;white-space:nowrap;">適用終了日</th>
-            <th style="min-width:220px;white-space:nowrap;">就業先住所</th>
-            <th style="min-width:180px;white-space:nowrap;">業務内容</th>
-            <th style="width:120px;white-space:nowrap;">役職</th>
-            <th style="width:140px;white-space:nowrap;">責任の程度</th>
-            <th style="width:130px;white-space:nowrap;">操作</th>
-          </tr></thead>
-          <tbody>
-            ${rows.map((r, i) => {
-              return `<tr>
-                <td>${i + 1}</td>
-                <td>${r.companyName || ''}</td>
-                <td>${r.startDate || '—'}</td>
-                <td>${r.endDate || '—'}</td>
-                <td>${r.workPlaceAddress || ''}</td>
-                <td>${r.workContent || ''}</td>
-                <td>${r.roleTitle || ''}</td>
-                <td>${r.responsibilityLevel || ''}</td>
-                <td>
-                  <button type="button" class="btn" data-wd-edit="${r.id}">編集</button>
-                  <button type="button" class="btn" data-wd-del="${r.id}">削除</button>
-                </td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        `;
-        wdTable.innerHTML = '';
-        wdTable.appendChild(table);
-        table.querySelectorAll('button[data-wd-del]').forEach((b) => {
-          b.addEventListener('click', async () => {
-            const id = b.getAttribute('data-wd-del');
-            if (!id) return;
-            if (!confirm('削除します。よろしいですか？')) return;
-            setWdStatus('削除中...');
-            try {
-              await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(String(id))}`, { method: 'DELETE', body: JSON.stringify({ userId: u.id }) });
-              await loadWd();
-              setWdStatus('削除しました');
-            } catch (e) {
-              setWdStatus(String((e && e.message) ? e.message : '削除失敗'));
-            }
-          });
-        });
-        table.querySelectorAll('button[data-wd-edit]').forEach((b) => {
-          b.addEventListener('click', async () => {
-            const id = b.getAttribute('data-wd-edit');
-            const cur = rows.find(x => String(x.id) === String(id));
-            if (!cur) return;
-            wrap.querySelector('#wdStart').value = cur.startDate || '';
-            wrap.querySelector('#wdEnd').value = cur.endDate || '';
-            wrap.querySelector('#wdCompany').value = cur.companyName || '';
-            wrap.querySelector('#wdAddr').value = cur.workPlaceAddress || '';
-            wrap.querySelector('#wdWork').value = cur.workContent || '';
-            wrap.querySelector('#wdRole').value = cur.roleTitle || '';
-            wrap.querySelector('#wdResp').value = cur.responsibilityLevel || '';
-            wrap.querySelector('#btnWdAdd').textContent = '更新';
-            wrap.querySelector('#btnWdAdd').dataset.editing = String(id);
-          });
-        });
-      };
-      const loadWd = async () => {
-        setWdStatus('読込中...');
-        try {
-          const r = await fetchJSONAuth(`/api/attendance/work-details?userId=${encodeURIComponent(String(u.id))}&from=1900-01-01&to=2999-12-31`);
-          renderWd((r && Array.isArray(r.items)) ? r.items : []);
-          setWdStatus('');
-        } catch (e) {
-          renderWd([]);
-          setWdStatus(String((e && e.message) ? e.message : '読込失敗'));
-        }
-      };
-      const btnWdReload = wrap.querySelector('#btnWdReload');
-      if (btnWdReload) btnWdReload.addEventListener('click', () => { loadWd().catch(e => setWdStatus(String((e && e.message) ? e.message : '読込失敗'))); });
-      const btnWdAdd = wrap.querySelector('#btnWdAdd');
-      if (btnWdAdd) btnWdAdd.addEventListener('click', async () => {
-        const editing = btnWdAdd.dataset.editing || '';
-        const payload = {
-          userId: u.id,
-          startDate: normDate(val('#wdStart')),
-          endDate: normDate(val('#wdEnd')) || null,
-          companyName: val('#wdCompany'),
-          workPlaceAddress: val('#wdAddr'),
-          workContent: val('#wdWork'),
-          roleTitle: val('#wdRole'),
-          responsibilityLevel: val('#wdResp')
-        };
-        if (!payload.startDate) { setWdStatus('開始日を入力'); return; }
-        if (!isISODate(payload.startDate) || (payload.endDate && !isISODate(payload.endDate))) {
-          setWdStatus('日付はYYYY-MM-DD形式で入力してください');
-          return;
-        }
-        setWdStatus('保存中...');
-        try {
-          if (editing) {
-            await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(String(editing))}`, { method: 'PUT', body: JSON.stringify(payload) });
-            btnWdAdd.textContent = '追加';
-            delete btnWdAdd.dataset.editing;
-          } else {
-            await fetchJSONAuth('/api/attendance/work-details', { method: 'POST', body: JSON.stringify(payload) });
-          }
-          clearWdForm();
-          await loadWd();
-          setWdStatus('保存しました');
-        } catch (e) {
-          const m = String((e && e.message) ? e.message : '保存失敗');
-          if (m === 'Invalid payload') { setWdStatus('日付はYYYY-MM-DD形式で入力してください'); return; }
-          setWdStatus(m);
-        }
-      });
-      loadWd().catch(() => {});
-    } catch (e) { /* bỏ qua lỗi */ }
     hideNavSpinner();
     return;
   }
@@ -1397,6 +1084,27 @@ async function renderEmployees(profile, c) {
           <tr><td class="field-label">状態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empStatus"><option value="active">在職</option><option value="inactive">休職/無効</option><option value="retired">退職</option></select></td></tr>
           <tr><td class="field-label">画像</td><td class="field-value"><input id="empAvatarUrl" placeholder="画像URL (任意)"><input id="empAvatarFile" type="file" accept="image/*" multiple style="margin-top:8px;font-size:12px;"></td></tr>
         </table>
+
+        <!-- シフト割当 (tùy chọn) -->
+        <div class="section-header" style="border-top:1px solid #d1d5db;">シフト割当（任意）</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td class="field-label">シフト</td><td class="field-value"><select id="empShiftAssign"><option value="">シフト</option></select></td></tr>
+          <tr><td class="field-label">開始日</td><td class="field-value"><input id="empShiftStart" type="date"></td></tr>
+          <tr><td class="field-label">終了日</td><td class="field-value"><input id="empShiftEnd" type="date"></td></tr>
+        </table>
+
+        <!-- 契約内容・業務内容 (tùy chọn) -->
+        <div class="section-header" style="border-top:1px solid #d1d5db;">契約内容・業務内容（任意）</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td class="field-label">開始日</td><td class="field-value"><input id="empWdStart" type="date"></td></tr>
+          <tr><td class="field-label">終了日</td><td class="field-value"><input id="empWdEnd" type="date"></td></tr>
+          <tr><td class="field-label">企業名</td><td class="field-value"><input id="empWdCompany" placeholder="企業名"></td></tr>
+          <tr><td class="field-label">就業先住所</td><td class="field-value"><input id="empWdAddr" placeholder="住所"></td></tr>
+          <tr><td class="field-label">業務内容</td><td class="field-value"><input id="empWdWork" placeholder="業務内容"></td></tr>
+          <tr><td class="field-label">役職</td><td class="field-value"><input id="empWdRole" placeholder="役職"></td></tr>
+          <tr><td class="field-label">責任程度</td><td class="field-value"><input id="empWdResp" placeholder="責任程度"></td></tr>
+        </table>
+
         <div style="display:flex;justify-content:space-between;padding:16px 20px;border-top:1px solid #e2e8f0;">
           <button type="button" id="btnPrev" style="height:38px;padding:0 24px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
             ← 戻る
@@ -1428,6 +1136,16 @@ async function renderEmployees(profile, c) {
       const brSelCreate = form.querySelector('#empBranch');
       if (brSelCreate && branches.length) {
         brSelCreate.innerHTML = '<option value="">未設定</option>' + branches.map(br => `<option value="${br.id}">${br.name}</option>`).join('');
+      }
+    } catch (e) { /* bỏ qua lỗi */ }
+
+    // Đổ dropdown シフト cho khối シフト割当 (tùy chọn) trong form tạo mới
+    try {
+      const shiftSel = form.querySelector('#empShiftAssign');
+      if (shiftSel) {
+        const defs = await fetchJSONAuth('/api/attendance/shifts/definitions').catch(() => []);
+        const opts = (Array.isArray(defs) ? defs : []).map(d => `<option value="${d.id}">${d.name} ${d.start_time || ''}-${d.end_time || ''}</option>`).join('');
+        shiftSel.innerHTML = `<option value="">シフト</option>${opts}`;
       }
     } catch (e) { /* bỏ qua lỗi */ }
 
@@ -1612,6 +1330,54 @@ async function renderEmployees(profile, c) {
       }
       try {
         const r = await createEmployee(b, createOpts);
+
+        // Nếu admin có nhập シフト割当 / 契約内容 thì tạo luôn cho nhân viên mới.
+        // Bảng tháng sẽ tự đọc từ user_shift_assignments / user_work_details và hiển thị.
+        try {
+          if (r && r.id) {
+            const jsonOpts = selectedTenantId
+              ? { headers: { 'X-Tenant-Id': selectedTenantId } }
+              : {};
+            const shiftId = (document.querySelector('#empShiftAssign')?.value || '').trim();
+            const shiftStart = (document.querySelector('#empShiftStart')?.value || '').trim();
+            const shiftEnd = (document.querySelector('#empShiftEnd')?.value || '').trim();
+            if (shiftId && shiftStart) {
+              await fetchJSONAuth('/api/attendance/shifts/assign', {
+                ...jsonOpts,
+                method: 'POST',
+                body: JSON.stringify({ userId: r.id, shiftId, startDate: shiftStart, endDate: shiftEnd || null })
+              }).catch(() => {});
+            }
+            const wdStart = (document.querySelector('#empWdStart')?.value || '').trim();
+            const wdEnd = (document.querySelector('#empWdEnd')?.value || '').trim();
+            const wdCompany = (document.querySelector('#empWdCompany')?.value || '').trim();
+            const wdAddr = (document.querySelector('#empWdAddr')?.value || '').trim();
+            const wdWork = (document.querySelector('#empWdWork')?.value || '').trim();
+            const wdRole = (document.querySelector('#empWdRole')?.value || '').trim();
+            const wdResp = (document.querySelector('#empWdResp')?.value || '').trim();
+            const hasWd = wdCompany || wdAddr || wdWork || wdRole || wdResp;
+            if (hasWd) {
+              const wdStartFinal = wdStart || b.hireDate || shiftStart || '';
+              if (wdStartFinal) {
+                await fetchJSONAuth('/api/attendance/work-details', {
+                  ...jsonOpts,
+                  method: 'POST',
+                  body: JSON.stringify({
+                    userId: r.id,
+                    startDate: wdStartFinal,
+                    endDate: wdEnd || null,
+                    companyName: wdCompany,
+                    workPlaceAddress: wdAddr,
+                    workContent: wdWork,
+                    roleTitle: wdRole,
+                    responsibilityLevel: wdResp
+                  })
+                }).catch(() => {});
+              }
+            }
+          }
+        } catch (e) { /* bỏ qua lỗi tạo シフト/契約 - không chặn việc tạo nhân viên */ }
+
         try {
           const fileEl = document.querySelector('#empAvatarFile');
           if (fileEl && fileEl.files && fileEl.files.length && r && r.id) {

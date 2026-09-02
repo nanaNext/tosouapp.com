@@ -262,6 +262,19 @@ const renderEmployeeNoticeBell = () => {
     } else {
       badge.setAttribute('hidden', '');
     }
+    // Dong bo badge tren tile お知らせ voi so chua doc cua chuong thong bao,
+    // de sau khi doc thong bao thi badge tile cung giam ngay (khong can reload portal).
+    try {
+      const tileBadge = document.getElementById('tileNoticeBadge');
+      if (tileBadge) {
+        if (unread > 0) {
+          tileBadge.textContent = unread > 9 ? '9+' : String(unread);
+          tileBadge.style.display = 'inline-block';
+        } else {
+          tileBadge.style.display = 'none';
+        }
+      }
+    } catch (e) { /* bỏ qua lỗi */ }
     if (!groupsAll.length) {
       setHeadCount(0, 0);
       list.innerHTML = `<div class="emp-notify-empty">新しいお知らせはありません。</div>`;
