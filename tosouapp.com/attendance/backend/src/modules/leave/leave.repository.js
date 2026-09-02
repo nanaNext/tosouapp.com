@@ -632,7 +632,10 @@ module.exports = {
     if (tid != null) {
       const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`, [userId, tid]);
       if (!check || !check.length) return [];
-      tenantFilter = 'AND ad.tenant_id = ?';
+      // Da xac minh user thuoc tenant nay. Van chap nhan cac ban ghi cham cong co
+      // tenant_id NULL (du lieu cu/thieu tenant khi ghi attendance_daily) cua chinh user do,
+      // neu khong ngay 半休(有給)/有給休暇 co tenant_id NULL se bi bo sot khoi 取得済み.
+      tenantFilter = 'AND (ad.tenant_id = ? OR ad.tenant_id IS NULL)';
       params.push(tid);
     }
     const [rows] = await db.query(`
