@@ -1,4 +1,4 @@
-import { myPaidBalance, listMyRequests } from '../api/leave.api.js';
+import { myPaidBalance, listMyRequests, myUsedPaidLeaveDays } from '../api/leave.api.js';
 import { me } from '../api/auth.api.js';
 
 const qs = (sel, root = document) => root.querySelector(sel);
@@ -26,13 +26,6 @@ function addYearsYmd(ymd, years) {
   if (!d) return '';
   d.setUTCFullYear(d.getUTCFullYear() + Number(years || 0));
   return utcDateToYmd(d);
-}
-function daysBetweenInclusiveYmd(a, b) {
-  const d1 = ymdToUtcDate(a);
-  const d2 = ymdToUtcDate(b);
-  if (!d1 || !d2) return 0;
-  const ms = 24 * 60 * 60 * 1000;
-  return Math.max(0, Math.floor((d2 - d1) / ms) + 1);
 }
 function enumerateDatesYmd(startDate, endDate, max = 4000) {
   const s = ymdToUtcDate(startDate);
@@ -108,7 +101,7 @@ async function renderLedger() {
     errorEl.hidden = !m;
   };
 
-  const state = { balance: null, grants: [], requests: null };
+  const state = { balance: null, grants: [], requests: null, usedDays: null };
 
   const buildOneRowTable = (headers, values) => {
     const tbl = document.createElement('table');
@@ -192,6 +185,19 @@ async function renderLedger() {
     const reqs = await listMyRequests();
     state.requests = Array.isArray(reqs) ? reqs : [];
     return state.requests;
+  };
+
+  // Danh sach ngay da dung phep co luong lay tu attendance_daily (giong man quan ly),
+  // de phan biet 全休(有給休暇=1.0) va 半休(有給)(=0.5).
+  const ensureUsedDaysLoaded = async () => {
+    if (state.usedDays) return state.usedDays;
+    try {
+      const res = await myUsedPaidLeaveDays();
+      state.usedDays = Array.isArray(res?.days) ? res.days : [];
+    } catch (e) {
+      state.usedDays = [];
+    }
+    return state.usedDays;
   };
 
   try {
@@ -303,7 +309,7 @@ async function renderLedger() {
       ];
 
       let approvedReqs = [];
-      let paidReqs = [];
+      let paidUsedRows = [];
       let usedDays = 0;
       if (!isPre) {
         const reqs = await ensureRequestsLoaded();
@@ -317,12 +323,17 @@ async function renderLedger() {
           }))
           .filter((r) => r.startDate && r.endDate && r.endDate >= jan1 && r.startDate <= dec31);
 
-        paidReqs = approvedReqs.filter((r) => r.type === 'paid');
-        usedDays = paidReqs.reduce((sum, r) => {
-          const s = r.startDate < jan1 ? jan1 : r.startDate;
-          const e = r.endDate > dec31 ? dec31 : r.endDate;
-          return sum + daysBetweenInclusiveYmd(s, e);
-        }, 0);
+        // 有休の取得実績は attendance_daily を正とする（管理画面と同じ）。
+        // 半休(有給)=0.5 / 有給休暇=1.0 を正しく反映するため leave_requests では集計しない。
+        const usedList = await ensureUsedDaysLoaded();
+        paidUsedRows = (usedList || [])
+          .map((u) => ({
+            date: toYmd(u?.date),
+            kubun: String(u?.kubun || ''),
+            days: Number(u?.days || 0)
+          }))
+          .filter((u) => u.date && u.date >= jan1 && u.date <= dec31);
+        usedDays = paidUsedRows.reduce((sum, u) => sum + Number(u.days || 0), 0);
       }
 
       const yearGranted = isPre ? 0 : state.grants.filter((g) => yearOfYmd(g.grantDate) === yearNum).reduce((s, g) => s + Number(g.daysGranted || 0), 0);
@@ -348,26 +359,35 @@ async function renderLedger() {
       frag.appendChild(el('div', { style: 'height:6px' }));
       frag.appendChild(bottomTbl);
 
-      const dayRows = [];
+      // 欠勤・無給休暇の明細は従来どおり承認済み申請(leave_requests)から日付展開する。
+      const absentDayRows = [];
       if (!isPre) {
         for (const r of approvedReqs) {
+          if (r.type === 'paid') continue;
           const s = r.startDate < jan1 ? jan1 : r.startDate;
           const e = r.endDate > dec31 ? dec31 : r.endDate;
           for (const d of enumerateDatesYmd(s, e)) {
-            dayRows.push({ date: d, type: r.type, reason: r.reason });
+            absentDayRows.push({ date: d, type: r.type, reason: r.reason });
           }
         }
       }
-      dayRows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
-      const paidRows = dayRows.filter((r) => r.type === 'paid');
-      const absentRows = dayRows.filter((r) => r.type !== 'paid');
+      absentDayRows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+      const absentRows = absentDayRows;
+      // 有休明細は attendance_daily 由来。半休(有給) は「半休」と表示する。
+      const paidRows = paidUsedRows
+        .slice()
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
       const usedWrap = el('div', { style: 'margin-top:10px;display:grid;gap:10px;max-width:520px' });
       if (paidRows.length) {
         usedWrap.appendChild(el('div', { text: '● 有休', style: 'font-weight:700;font-size:14px;margin:0' }));
         usedWrap.appendChild(buildDataTable(
           ['取得年月日', '全休/半休', '区分'],
-          paidRows.map((r) => [r.date, '全休', '有給休暇'])
+          paidRows.map((r) => [
+            r.date,
+            r.kubun === '半休(有給)' ? '半休' : '全休',
+            '有給休暇'
+          ])
         ));
       }
       if (absentRows.length) {

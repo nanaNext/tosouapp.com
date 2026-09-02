@@ -495,6 +495,19 @@ exports.usedPaidLeaveDays = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// API: 取得済み有給休暇の日付一覧（従業員本人用）。管理画面と同じく attendance_daily を正とし、
+// 半休(有給)=0.5 / 有給休暇=1.0 を返す。これにより 休暇欠勤台帳 の「● 有休」も半休を正しく表示できる。
+exports.myUsedPaidLeaveDays = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const days = await repo.listPaidLeaveUsedDays(userId, req.tenantId || null);
+    const total = days.reduce((s, d) => s + Number(d.days || 0), 0);
+    return res.status(200).json({ userId, days, total });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 // API: Cấp phát thêm ngày nghỉ phép cho nhân viên (Admin)
 exports.grant = async (req, res) => {
   try {
