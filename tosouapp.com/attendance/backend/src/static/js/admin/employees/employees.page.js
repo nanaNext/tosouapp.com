@@ -144,6 +144,10 @@ async function renderEmployees(profile, c) {
         .sap-btn { padding:6px 14px; font-size:12px; font-weight:600; border-radius:3px; text-decoration:none; cursor:pointer; border:1px solid #0854a0; }
         .sap-btn-primary { background:#0854a0; color:#fff; }
         .sap-btn-ghost { background:transparent; color:#0854a0; }
+        .sap-btn-danger { background:transparent; color:#b91c1c; border-color:#fca5a5; }
+        .sap-btn-danger:hover { background:#fee2e2; border-color:#f87171; }
+        .sap-btn-del { background:transparent; color:#b91c1c; border-color:#fca5a5; }
+        .sap-btn-del:hover { background:#fee2e2; border-color:#f87171; }
         @media (max-width:768px) { .sap-two-col { grid-template-columns:1fr; } }
       </style>
       <div class="sap-obj-header">
@@ -206,11 +210,39 @@ async function renderEmployees(profile, c) {
         <div style="padding:8px 16px;"><div id="detailAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;min-height:32px;"><span style="color:#6a6d70;font-size:12px;">読み込み中...</span></div></div>
       </div>
       <div class="sap-actions">
-        <a class="sap-btn sap-btn-primary" id="btnDetailEdit" href="/admin/employees?edit=${u.id}">編集</a>
-        <a class="sap-btn sap-btn-ghost" id="btnDetailBack" href="/admin/employees#list">一覧へ</a>
+        <a class="sap-btn sap-btn-primary" id="btnDetailEdit" href="/admin/employees?edit=${u.id}">✏️ 編集</a>
+        ${role2 === 'admin' ? `<button type="button" class="sap-btn sap-btn-danger" id="btnDetailDisable" data-uid="${u.id}">🚫 無効化</button>` : ''}
+        ${role2 === 'admin' ? `<button type="button" class="sap-btn sap-btn-del" id="btnDetailDelete" data-uid="${u.id}">🗑️ 削除</button>` : ''}
+        <a class="sap-btn sap-btn-ghost" id="btnDetailBack" href="/admin/employees#list">← 一覧へ</a>
       </div>
     `;
     content.appendChild(panel);
+
+    // Handler 無効化: đổi trạng thái nhân viên sang inactive.
+    panel.querySelector('#btnDetailDisable')?.addEventListener('click', async () => {
+      if (!confirm(`この社員（${u.username || u.email}）を無効化しますか？`)) return;
+      try {
+        await deleteEmployee(u.id);
+        alert('無効化しました（状態: 無効/休職）');
+        history.replaceState(null, '', '/admin/employees#list');
+        await renderEmployees(profile);
+      } catch (err) {
+        alert(String(err?.message || '無効化に失敗しました'));
+      }
+    });
+    // Handler 削除: nhân viên bị xóa hoàn toàn (không thể khôi phục).
+    panel.querySelector('#btnDetailDelete')?.addEventListener('click', async () => {
+      if (!confirm(`この社員（${u.username || u.email}）を完全に削除しますか？この操作は取り消せません。`)) return;
+      try {
+        await deleteUserHard(String(u.id));
+        alert('削除しました');
+        history.replaceState(null, '', '/admin/employees#list');
+        await renderEmployees(profile);
+      } catch (err) {
+        alert(String(err?.message || '削除に失敗しました'));
+      }
+    });
+
     try {
       const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const r = await fetchJSONAuth(`/api/attendance/shifts/assignments?userId=${encodeURIComponent(String(u.id))}&from=1900-01-01&to=2999-12-31`);
@@ -387,155 +419,145 @@ async function renderEmployees(profile, c) {
     content.innerHTML = ``;
     const formEdit = document.createElement('form');
     formEdit.innerHTML = `
-      <div style="margin-bottom:8px;"><a id="editBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
-      <h4>社員編集（${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))}）</h4>
-      
-      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin-bottom: 24px;">
-        <!-- Cột 1: 基本情報 -->
-        <div style="flex: 1 1 300px;">
-          <table class="excel-table" style="width: 100%;">
-            <thead><tr><th colspan="2">基本情報</th></tr></thead>
-            <tbody>
-              <tr><td style="width:140px;">社員番号</td><td>${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))}</td></tr>
-              <tr><td>氏名 <span style="color:#ef4444">*</span></td><td><input id="empName" style="width:100%" value="${u.username || ''}"></td></tr>
-              <tr><td>メール <span style="color:#ef4444">*</span></td><td><input id="empEmail" style="width:100%" value="${u.email || ''}"></td></tr>
-              <tr><td>パスワード</td><td><input id="empPw" type="password" style="width:100%" placeholder="変更する場合のみ入力"></td></tr>
-              <tr><td>生年月日</td><td><input id="empBirth" type="date" style="width:100%" value="${u.birth_date || ''}"></td></tr>
-              <tr><td>性別</td><td><select id="empGender" style="width:100%"><option value="">未設定</option><option value="male" ${u.gender==='male'?'selected':''}>男</option><option value="female" ${u.gender==='female'?'selected':''}>女</option><option value="other" ${u.gender==='other'?'selected':''}>その他</option></select></td></tr>
-              <tr><td>電話番号</td><td><input id="empPhone" style="width:100%" value="${u.phone || ''}"></td></tr>
-              <tr><td>住所</td><td><input id="empAddr" style="width:100%" value="${u.address || ''}"></td></tr>
-            </tbody>
-          </table>
+      <style>
+        .emp-edit-wrap { max-width:960px; margin:0 auto; }
+        .emp-edit-wrap .emp-add-form td input, .emp-edit-wrap .emp-add-form td select { transition:border-color .15s,box-shadow .15s; outline:none; }
+        .emp-edit-wrap .emp-add-form td input:focus, .emp-edit-wrap .emp-add-form td select:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.12); }
+        .emp-edit-wrap .emp-add-form .section-header { background:#f1f5f9; padding:10px 16px; font-weight:700; font-size:13px; color:#0f172a; border-bottom:1px solid #d1d5db; }
+        .emp-edit-wrap .emp-add-form .field-label { width:120px; padding:9px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:500; color:#374151; background:#f8fafc; vertical-align:middle; white-space:nowrap; }
+        .emp-edit-wrap .emp-add-form .field-value { padding:8px 12px; border-bottom:1px solid #e5e7eb; vertical-align:middle; }
+        .emp-edit-wrap .emp-add-form .field-value input, .emp-edit-wrap .emp-add-form .field-value select { width:100%; height:32px; border:1px solid #d1d5db; padding:0 8px; font-size:13px; box-sizing:border-box; background:#fff; color:#0f172a; }
+        .emp-edit-wrap .emp-add-form .field-value select { cursor:pointer; }
+        .emp-edit-wrap .emp-add-form tr:last-child .field-label, .emp-edit-wrap .emp-add-form tr:last-child .field-value { border-bottom:none; }
+        .emp-edit-2col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+        @media(max-width:700px){ .emp-edit-2col { grid-template-columns:1fr; } }
+        .emp-edit-2col .emp-add-form { margin-bottom:0; }
+        :root[data-theme='dark'] .emp-edit-wrap .emp-add-form { border-color:#334155!important; background:#111827!important; }
+        :root[data-theme='dark'] .emp-edit-wrap .emp-add-form .section-header { background:#1e293b!important; color:#93c5fd!important; border-color:#334155!important; }
+        :root[data-theme='dark'] .emp-edit-wrap .emp-add-form .field-label { background:#111827!important; color:#fff!important; border-color:#1e293b!important; }
+        :root[data-theme='dark'] .emp-edit-wrap .emp-add-form .field-value { border-color:#1e293b!important; }
+        :root[data-theme='dark'] .emp-edit-wrap .emp-add-form .field-value input,
+        :root[data-theme='dark'] .emp-edit-wrap .emp-add-form .field-value select { background:#1e293b!important; color:#f1f5f9!important; border-color:#475569!important; }
+      </style>
+
+      <div class="emp-edit-wrap">
+        <div style="margin-bottom:12px;"><a id="editBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
+        <h4 style="margin:0 0 16px;font-size:17px;font-weight:700;color:#0f172a;">社員編集（${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))}）</h4>
+
+        <!-- 2 cột: 基本情報 + 職務情報 -->
+        <div class="emp-edit-2col">
+          <div class="emp-add-form" style="border:1px solid #cbd5e1;box-shadow:0 1px 3px rgba(0,0,0,.04);">
+            <div class="section-header">基本情報</div>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td class="field-label">社員番号</td><td class="field-value"><span style="font-size:13px;color:#334155;font-weight:600;">${u.employee_code || ('EMP' + String(u.id).padStart(3,'0'))}</span></td></tr>
+              <tr><td class="field-label">氏名 <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empName" value="${u.username || ''}"></td></tr>
+              <tr><td class="field-label">メール <span style="color:#ef4444">*</span></td><td class="field-value"><input id="empEmail" type="email" value="${u.email || ''}"></td></tr>
+              <tr><td class="field-label">パスワード</td><td class="field-value"><input id="empPw" type="password" placeholder="変更する場合のみ入力" autocomplete="new-password"></td></tr>
+              <tr><td class="field-label">生年月日</td><td class="field-value"><input id="empBirth" type="date" value="${u.birth_date || ''}"></td></tr>
+              <tr><td class="field-label">性別</td><td class="field-value"><select id="empGender"><option value="">未設定</option><option value="male" ${u.gender==='male'?'selected':''}>男性</option><option value="female" ${u.gender==='female'?'selected':''}>女性</option><option value="other" ${u.gender==='other'?'selected':''}>その他</option></select></td></tr>
+              <tr><td class="field-label">電話番号</td><td class="field-value"><input id="empPhone" value="${u.phone || ''}" placeholder="080-1234-5678"></td></tr>
+              <tr><td class="field-label">住所</td><td class="field-value"><input id="empAddr" value="${u.address || ''}" placeholder="東京都..."></td></tr>
+            </table>
+          </div>
+
+          <div class="emp-add-form" style="border:1px solid #cbd5e1;box-shadow:0 1px 3px rgba(0,0,0,.04);">
+            <div class="section-header">職務情報</div>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td class="field-label">支店</td><td class="field-value"><select id="empBranch"><option value="">未設定</option></select></td></tr>
+              <tr><td class="field-label">部署</td><td class="field-value"><select id="empDept"><option value="">未設定</option>${depts.map(d=>`<option value="${d.id}" ${String(u.departmentId||'')===String(d.id)?'selected':''}>${d.name}</option>`).join('')}</select></td></tr>
+              <tr><td class="field-label">役割 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empRole"><option value="employee" ${u.role==='employee'?'selected':''}>従業員</option><option value="manager" ${u.role==='manager'?'selected':''}>マネージャー</option><option value="admin" ${u.role==='admin'?'selected':''}>管理者</option></select></td></tr>
+              <tr><td class="field-label">雇用形態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empType"><option value="full_time" ${u.employment_type==='full_time'?'selected':''}>正社員</option><option value="part_time" ${u.employment_type==='part_time'?'selected':''}>パート・アルバイト</option><option value="contract" ${u.employment_type==='contract'?'selected':''}>契約社員</option></select></td></tr>
+              <tr><td class="field-label">状態 <span style="color:#ef4444">*</span></td><td class="field-value"><select id="empStatus"><option value="active" ${String(u.employment_status||'')==='active'?'selected':''}>在職</option><option value="inactive" ${String(u.employment_status||'')==='inactive'?'selected':''}>無効/休職</option><option value="retired" ${String(u.employment_status||'')==='retired'?'selected':''}>退職</option></select></td></tr>
+              <tr><td class="field-label">マネージャー</td><td class="field-value"><select id="empManager"><option value="">未設定</option>${users.filter(x=>x.role==='manager').map(m=>`<option value="${m.id}" ${String(u.manager_id||'')===String(m.id)?'selected':''}>${m.username || m.email}</option>`).join('')}</select></td></tr>
+              <tr><td class="field-label">レベル</td><td class="field-value"><input id="empLevel" value="${u.level || ''}" placeholder="L1/L2/Senior"></td></tr>
+              <tr><td class="field-label">入社日</td><td class="field-value"><input id="empHireDate" type="date" value="${(u.hire_date || u.join_date || '').slice(0,10)}"></td></tr>
+              <tr><td class="field-label">試用開始</td><td class="field-value"><input id="empProbDate" type="date" value="${(u.probation_date || '').slice(0,10)}"></td></tr>
+              <tr><td class="field-label">正社員化</td><td class="field-value"><input id="empOfficialDate" type="date" value="${(u.official_date || '').slice(0,10)}"></td></tr>
+              <tr><td class="field-label">契約終了</td><td class="field-value"><input id="empContractEnd" type="date" value="${(u.contract_end || '').slice(0,10)}"></td></tr>
+              <tr><td class="field-label">基本給</td><td class="field-value"><input id="empBaseSalary" type="number" step="0.01" value="${u.base_salary == null ? '' : u.base_salary}" placeholder="円"></td></tr>
+            </table>
+          </div>
         </div>
 
-        <!-- Cột 2: 職務情報 -->
-        <div style="flex: 1 1 300px;">
-          <table class="excel-table" style="width: 100%;">
-            <thead><tr><th colspan="2">職務情報</th></tr></thead>
-            <tbody>
-              <tr><td style="width:140px;">支店</td><td><select id="empBranch" style="width:100%"><option value="">未設定</option></select></td></tr>
-              <tr><td style="width:140px;">部署</td><td><select id="empDept" style="width:100%"><option value="">未設定</option>${depts.map(d=>`<option value="${d.id}" ${String(u.departmentId||'')===String(d.id)?'selected':''}>${d.name}</option>`).join('')}</select></td></tr>
-              <tr><td>役割 <span style="color:#ef4444">*</span></td><td>
-                <select id="empRole" style="width:100%">
-                  <option value="employee" ${u.role==='employee'?'selected':''}>従業員</option>
-                  <option value="manager" ${u.role==='manager'?'selected':''}>マネージャー</option>
-                  <option value="admin" ${u.role==='admin'?'selected':''}>管理者</option>
-                </select>
-              </td></tr>
-              <tr><td>雇用形態 <span style="color:#ef4444">*</span></td><td>
-                <select id="empType" style="width:100%">
-                  <option value="full_time" ${u.employment_type==='full_time'?'selected':''}>正社員</option>
-                  <option value="part_time" ${u.employment_type==='part_time'?'selected':''}>パート・アルバイト</option>
-                  <option value="contract" ${u.employment_type==='contract'?'selected':''}>契約社員</option>
-                </select>
-              </td></tr>
-              <tr><td>状態 <span style="color:#ef4444">*</span></td><td>
-                <select id="empStatus" style="width:100%">
-                  <option value="active" ${String(u.employment_status||'')==='active'?'selected':''}>在職</option>
-                  <option value="inactive" ${String(u.employment_status||'')==='inactive'?'selected':''}>無効/休職</option>
-                  <option value="retired" ${String(u.employment_status||'')==='retired'?'selected':''}>退職</option>
-                </select>
-              </td></tr>
-              <tr><td>直属マネージャー</td><td>
-                <select id="empManager" style="width:100%"><option value="">未設定</option>${users.filter(x=>x.role==='manager').map(m=>`<option value="${m.id}" ${String(u.manager_id||'')===String(m.id)?'selected':''}>${m.username || m.email}</option>`).join('')}</select>
-              </td></tr>
-              <tr><td>レベル</td><td><input id="empLevel" style="width:100%" value="${u.level || ''}" placeholder="例: L1/L2/Senior"></td></tr>
-              <tr><td>入社日</td><td><input id="empHireDate" type="date" style="width:100%" value="${(u.hire_date || u.join_date || '').slice(0, 10)}"></td></tr>
-              <tr><td>試用開始</td><td><input id="empProbDate" type="date" style="width:100%" value="${(u.probation_date || '').slice(0, 10)}"></td></tr>
-              <tr><td>正社員化</td><td><input id="empOfficialDate" type="date" style="width:100%" value="${(u.official_date || '').slice(0, 10)}"></td></tr>
-              <tr><td>契約終了</td><td><input id="empContractEnd" type="date" style="width:100%" value="${(u.contract_end || '').slice(0, 10)}"></td></tr>
-              <tr><td>基本給</td><td><input id="empBaseSalary" type="number" step="0.01" style="width:100%" value="${u.base_salary == null ? '' : u.base_salary}" placeholder="円"></td></tr>
-            </tbody>
+        <!-- シフト割当 -->
+        <div class="emp-add-form" style="border:1px solid #cbd5e1;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);">
+          <div class="section-header">シフト割当</div>
+          <table style="width:100%;max-width:520px;border-collapse:collapse;">
+            <tr><td class="field-label">シフト</td><td class="field-value"><select id="saShift"><option value="">シフト</option></select></td></tr>
+            <tr><td class="field-label">適用開始日</td><td class="field-value"><input id="saStart" type="date"></td></tr>
+            <tr><td class="field-label">適用終了日</td><td class="field-value"><input id="saEnd" type="date"></td></tr>
           </table>
+          <div style="padding:8px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;">
+            <button type="button" class="btn" id="btnSaAdd">追加</button>
+          </div>
+          <div id="saStatus" style="font-size:12px;color:#64748b;padding:2px 16px 6px;"></div>
         </div>
 
-        <!-- Cột 3: その他 (Ảnh) -->
-        <div style="flex: 1;">
-          <table class="excel-table" style="width: 100%;">
-            <thead><tr><th colspan="2">その他</th></tr></thead>
-            <tbody>
-              <tr><td style="width:140px;">プロフィール写真</td><td>
-                <div id="avatarPreviewBox" style="width: 120px; height: 120px; border-radius: 8px; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; background: #f8fafc; overflow: hidden; color: #94a3b8; font-size: 12px; margin-bottom: 12px;">
-                  ${u.avatar_url ? '<img src="'+u.avatar_url+'" style="width:100%;height:100%;object-fit:cover;">' : 'No Image'}
-                </div>
-              </td></tr>
-              <tr><td>画像をアップロード</td><td>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-                  <input id="empAvatarFile" type="file" accept="image/*" multiple style="flex:1; padding:4px;">
-                  <button type="button" id="btnAvatarUpload" class="btn">アップロード</button>
-                  <span id="avatarUploadStatus" style="color:#334155;"></span>
-                </div>
-                <div id="empAvatarSelectedPreview" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;"></div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">推奨: 400x400px (JPG/PNG)</div>
-              </td></tr>
-              <tr><td>保存済み写真</td><td><div id="empAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;"></div></td></tr>
-            </tbody>
+        <!-- 契約内容・業務内容 -->
+        <div class="emp-add-form" style="border:1px solid #cbd5e1;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);">
+          <div class="section-header">契約内容・業務内容</div>
+          <table style="width:100%;max-width:520px;border-collapse:collapse;">
+            <tr><td class="field-label">開始日</td><td class="field-value"><input id="wdStart" type="date"></td></tr>
+            <tr><td class="field-label">終了日</td><td class="field-value"><input id="wdEnd" type="date"></td></tr>
+            <tr><td class="field-label">企業名</td><td class="field-value"><input id="wdCompany" placeholder="企業名"></td></tr>
+            <tr><td class="field-label">就業先住所</td><td class="field-value"><input id="wdAddr" placeholder="住所"></td></tr>
+            <tr><td class="field-label">業務内容</td><td class="field-value"><input id="wdWork" placeholder="業務内容"></td></tr>
+            <tr><td class="field-label">役職</td><td class="field-value"><input id="wdRole" placeholder="役職"></td></tr>
+            <tr><td class="field-label">責任程度</td><td class="field-value"><input id="wdResp" placeholder="責任程度"></td></tr>
           </table>
+          <div style="padding:8px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;">
+            <button type="button" class="btn" id="btnWdAdd">保存</button>
+          </div>
+          <div id="wdStatus" style="font-size:12px;color:#64748b;padding:2px 16px 6px;"></div>
         </div>
-      </div>
 
-      <!-- シフト割当 (thêm/sửa/xóa cho nhân viên đã tạo) -->
-      <div style="margin-top: 24px;">
-        <table class="excel-table" style="width:100%;">
-          <thead><tr><th colspan="4">シフト割当</th></tr></thead>
-          <tbody>
+        <!-- プロフィール写真 -->
+        <div class="emp-add-form" style="border:1px solid #cbd5e1;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);">
+          <div class="section-header">プロフィール写真</div>
+          <table style="width:100%;max-width:520px;border-collapse:collapse;">
             <tr>
-              <td style="width:140px;">シフト</td>
-              <td><select id="saShift" style="width:100%"><option value="">シフト</option></select></td>
-              <td style="width:120px;">適用開始日</td>
-              <td><input id="saStart" type="date" style="width:100%"></td>
-            </tr>
-            <tr>
-              <td>適用終了日</td>
-              <td><input id="saEnd" type="date" style="width:100%"></td>
-              <td colspan="2" style="text-align:right;">
-                <button type="button" class="btn" id="btnSaAdd">追加</button>
-                <button type="button" class="btn" id="btnSaReload">再読込</button>
+              <td class="field-label">現在の写真</td>
+              <td class="field-value">
+                <div id="avatarPreviewBox" style="width:72px;height:72px;border-radius:6px;border:1px solid #cbd5e1;display:flex;align-items:center;justify-content:center;background:#f8fafc;overflow:hidden;color:#94a3b8;font-size:11px;">
+                  ${u.avatar_url ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;">` : 'No Image'}
+                </div>
               </td>
             </tr>
-          </tbody>
-        </table>
-        <div id="saStatus" style="font-size:12px;color:#64748b;margin:4px 0;"></div>
-        <div id="saTable"></div>
-      </div>
-
-      <!-- 契約内容・業務内容 (thêm/sửa/xóa cho nhân viên đã tạo) -->
-      <div style="margin-top: 24px;">
-        <table class="excel-table" style="width:100%;">
-          <thead><tr><th colspan="4">契約内容・業務内容</th></tr></thead>
-          <tbody>
             <tr>
-              <td style="width:140px;">開始日</td><td><input id="wdStart" type="date" style="width:100%"></td>
-              <td style="width:120px;">終了日</td><td><input id="wdEnd" type="date" style="width:100%"></td>
-            </tr>
-            <tr>
-              <td>企業名</td><td><input id="wdCompany" style="width:100%" placeholder="企業名"></td>
-              <td>就業先住所</td><td><input id="wdAddr" style="width:100%" placeholder="住所"></td>
-            </tr>
-            <tr>
-              <td>業務内容</td><td><input id="wdWork" style="width:100%" placeholder="業務内容"></td>
-              <td>役職</td><td><input id="wdRole" style="width:100%" placeholder="役職"></td>
-            </tr>
-            <tr>
-              <td>責任程度</td><td><input id="wdResp" style="width:100%" placeholder="責任程度"></td>
-              <td colspan="2" style="text-align:right;">
-                <button type="button" class="btn" id="btnWdAdd">保存</button>
-                <button type="button" class="btn" id="btnWdReload">再読込</button>
+              <td class="field-label">写真を選ぶ</td>
+              <td class="field-value">
+                <!-- input file ẩn — trigger bằng nút custom -->
+                <input id="empAvatarFile" type="file" accept="image/*" multiple style="display:none;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <button type="button" class="btn" id="btnChooseFile" onclick="document.getElementById('empAvatarFile').click()">ファイルを選ぶ</button>
+                  <span id="empFileLabel" style="font-size:13px;color:#64748b;">選択されていません</span>
+                </div>
+                <!-- Preview ảnh đã chọn (trước khi upload) -->
+                <div id="empAvatarSelectedPreview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
               </td>
             </tr>
-          </tbody>
-        </table>
-        <div id="wdStatus" style="font-size:12px;color:#64748b;margin:4px 0;"></div>
-        <div id="wdTable"></div>
-      </div>
+            <tr id="rowUpload" style="display:none;">
+              <td class="field-label">アップロード</td>
+              <td class="field-value" style="display:flex;align-items:center;gap:10px;border-bottom:none;">
+                <button type="button" id="btnAvatarUpload" class="btn" style="background:#0f172a;color:#fff;border-color:#0f172a;">アップロード</button>
+                <span id="avatarUploadStatus" style="font-size:13px;color:#334155;"></span>
+              </td>
+            </tr>
+            <tr>
+              <td class="field-label">保存済み写真</td>
+              <td class="field-value"><div id="empAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;min-height:20px;"></div></td>
+            </tr>
+          </table>
+        </div>
 
-      <div class="form-actions" style="margin-top: 24px; padding: 12px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
-        <div id="empEditMsg" style="color: #f87171; font-weight: 600; font-size: 14px; flex: 1; text-align: left; display: none;"></div>
-        <a id="btnCancelEdit" href="#list" style="background: transparent; color: #64748b; border: none; font-weight: bold; min-width: 80px; height: 40px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;">キャンセル</a>
-        <button type="submit" style="background: transparent; color: #2b6cb0; border: none; min-width: 100px; height: 40px; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; cursor: pointer;">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-          <span>更新</span>
-        </button>
+        <div class="form-actions" style="padding:12px 0;display:flex;justify-content:flex-end;align-items:center;gap:12px;">
+          <div id="empEditMsg" style="color:#f87171;font-weight:600;font-size:14px;flex:1;text-align:left;display:none;"></div>
+          <a id="btnCancelEdit" href="#list" style="background:transparent;color:#64748b;border:none;font-weight:bold;min-width:80px;height:40px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;">キャンセル</a>
+          <button type="submit" style="background:#0f172a;color:#fff;border:none;padding:0 28px;height:40px;font-weight:700;font-size:14px;border-radius:4px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            更新
+          </button>
+        </div>
       </div>
 `;
     try {
@@ -636,6 +658,14 @@ async function renderEmployees(profile, c) {
     const renderSelectedPreview = (files) => {
       if (!selectedPreviewEl) return;
       const list = Array.isArray(files) ? files : [];
+      // Cập nhật label tên file và hiện/ẩn hàng upload
+      const fileLabel = formEdit.querySelector('#empFileLabel');
+      const rowUpload = formEdit.querySelector('#rowUpload');
+      if (fileLabel) fileLabel.textContent = list.length ? list.map(f => f.name).join(', ') : '選択されていません';
+      if (rowUpload) rowUpload.style.display = list.length ? '' : 'none';
+      // Reset status khi chọn file mới
+      const statusEl = formEdit.querySelector('#avatarUploadStatus');
+      if (statusEl && list.length) statusEl.textContent = '';
       if (!list.length) {
         selectedPreviewEl.innerHTML = `<span style="color:#94a3b8;">選択中の画像はありません</span>`;
         return;
@@ -723,6 +753,9 @@ async function renderEmployees(profile, c) {
           if (statusEl) statusEl.textContent = `アップロード完了 (${Number(out?.count || files.length)}件)`;
           try { fileEl.value = ''; } catch (e) { /* bỏ qua lỗi */ }
           renderSelectedPreview([]);
+          // Ẩn hàng upload sau khi xong
+          const rowUp = formEdit.querySelector('#rowUpload');
+          if (rowUp) rowUp.style.display = 'none';
           await loadAvatarGallery();
         } catch (err) {
           const statusEl = formEdit.querySelector('#avatarUploadStatus');
@@ -760,11 +793,6 @@ async function renderEmployees(profile, c) {
     const wsSetWdStatus = (t) => { const el = wsQ('#wdStatus'); if (el) el.textContent = t || ''; };
     const wsVal = (sel) => String(wsQ(sel)?.value || '').trim();
     const wsNormDate = (s) => { const v = String(s || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ''; };
-    const wsFmtHm = (min) => {
-      const m = Math.max(0, Number(min || 0));
-      return `${Math.floor(m / 60)}:${String(Math.floor(m % 60)).padStart(2, '0')}`;
-    };
-
     // --- シフト割当 ---
     const wsLoadShiftDefs = async () => {
       const sel = wsQ('#saShift');
@@ -777,62 +805,6 @@ async function renderEmployees(profile, c) {
         sel.innerHTML = '<option value="">シフト</option>';
       }
     };
-    const wsRenderSa = (items) => {
-      const host = wsQ('#saTable');
-      if (!host) return;
-      const rows = Array.isArray(items) ? items : [];
-      host.innerHTML = `
-        <table class="excel-table" style="width:100%;margin:0;">
-          <thead><tr>
-            <th>No</th><th>シフト</th><th>開始時刻</th><th>終了時刻</th><th>休憩時間</th><th>所定労働時間</th><th>適用開始日</th><th>適用終了日</th><th>操作</th>
-          </tr></thead>
-          <tbody>
-            ${rows.length ? rows.map((r, i) => {
-              const s = r?.shift || null;
-              return `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${s ? (s.name || '') : ''}</td>
-                <td>${s ? (s.start_time || '—') : '—'}</td>
-                <td>${s ? (s.end_time || '—') : '—'}</td>
-                <td>${s ? wsFmtHm(s.break_minutes || 0) : '—'}</td>
-                <td>${s ? wsFmtHm(s.standard_minutes || 0) : '—'}</td>
-                <td>${r?.start_date || '—'}</td>
-                <td>${r?.end_date || '—'}</td>
-                <td><button type="button" class="btn" data-sa-del="${r.id}">削除</button></td>
-              </tr>`;
-            }).join('') : `<tr><td colspan="9" style="text-align:center;color:#64748b;">シフトが未設定です</td></tr>`}
-          </tbody>
-        </table>
-      `;
-      host.querySelectorAll('button[data-sa-del]').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          const id = btn.getAttribute('data-sa-del');
-          if (!id) return;
-          if (!window.confirm('削除します。よろしいですか？')) return;
-          wsSetSaStatus('削除中...');
-          try {
-            await fetchJSONAuth(`/api/attendance/shifts/assignments/${encodeURIComponent(String(id))}?userId=${encodeURIComponent(wsUid)}`, { method: 'DELETE' });
-            await wsLoadSa();
-            wsSetSaStatus('削除しました');
-          } catch (e) {
-            wsSetSaStatus(String(e?.message || '削除失敗'));
-          }
-        });
-      });
-    };
-    const wsLoadSa = async () => {
-      wsSetSaStatus('読込中...');
-      try {
-        const r = await fetchJSONAuth(`/api/attendance/shifts/assignments?userId=${encodeURIComponent(wsUid)}&from=1900-01-01&to=2999-12-31`);
-        wsRenderSa((r && Array.isArray(r.items)) ? r.items : []);
-        wsSetSaStatus('');
-      } catch (e) {
-        wsRenderSa([]);
-        wsSetSaStatus(String(e?.message || '読込失敗'));
-      }
-    };
-    wsQ('#btnSaReload')?.addEventListener('click', () => { wsLoadSa().catch(e => wsSetSaStatus(String(e?.message || '読込失敗'))); });
     wsQ('#btnSaAdd')?.addEventListener('click', async () => {
       const shiftId = wsVal('#saShift');
       const startDate = wsVal('#saStart');
@@ -844,7 +816,7 @@ async function renderEmployees(profile, c) {
           method: 'POST',
           body: JSON.stringify({ userId: wsUid, shiftId, startDate, endDate: endDate || null })
         });
-        await wsLoadSa();
+        ['#saShift', '#saStart', '#saEnd'].forEach(id => { const el = wsQ(id); if (el) el.value = ''; });
         wsSetSaStatus('保存しました');
       } catch (e) {
         wsSetSaStatus(String(e?.message || '保存失敗'));
@@ -853,92 +825,7 @@ async function renderEmployees(profile, c) {
 
     // --- 契約内容・業務内容 ---
     const wsIsISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '').slice(0, 10));
-    const wsClearWdForm = () => {
-      ['#wdStart', '#wdEnd', '#wdCompany', '#wdAddr', '#wdWork', '#wdRole', '#wdResp'].forEach((id) => {
-        const el = wsQ(id);
-        if (el) el.value = '';
-      });
-      const btn = wsQ('#btnWdAdd');
-      if (btn) { btn.textContent = '保存'; delete btn.dataset.editing; }
-    };
-    const wsRenderWd = (items) => {
-      const host = wsQ('#wdTable');
-      if (!host) return;
-      const rows = Array.isArray(items) ? items : [];
-      host.innerHTML = `
-        <table class="excel-table" style="width:100%;margin:0;">
-          <thead><tr>
-            <th>企業名</th><th>適用終了日</th><th>就業先住所</th><th>業務内容</th><th>役職</th><th>責任の程度</th><th>操作</th>
-          </tr></thead>
-          <tbody>
-            ${rows.length ? rows.map((r) => `
-              <tr>
-                <td>${r.companyName || ''}</td>
-                <td>${r.endDate || '—'}</td>
-                <td>${r.workPlaceAddress || ''}</td>
-                <td>${r.workContent || ''}</td>
-                <td>${r.roleTitle || ''}</td>
-                <td>${r.responsibilityLevel || ''}</td>
-                <td>
-                  <button type="button" class="btn" data-wd-edit="${r.id}">編集</button>
-                  <button type="button" class="btn" data-wd-del="${r.id}">削除</button>
-                </td>
-              </tr>
-            `).join('') : `<tr><td colspan="7" style="text-align:center;color:#64748b;">業務内容が未設定です</td></tr>`}
-          </tbody>
-        </table>
-      `;
-      host.querySelectorAll('button[data-wd-del]').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          const id = btn.getAttribute('data-wd-del');
-          if (!id) return;
-          if (!window.confirm('削除します。よろしいですか？')) return;
-          wsSetWdStatus('削除中...');
-          try {
-            await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(String(id))}`, {
-              method: 'DELETE',
-              body: JSON.stringify({ userId: wsUid })
-            });
-            await wsLoadWd();
-            wsSetWdStatus('削除しました');
-          } catch (e) {
-            wsSetWdStatus(String(e?.message || '削除失敗'));
-          }
-        });
-      });
-      host.querySelectorAll('button[data-wd-edit]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('data-wd-edit');
-          const cur = rows.find((x) => String(x.id) === String(id));
-          if (!cur) return;
-          const put = (sel, v) => { const el = wsQ(sel); if (el) el.value = v || ''; };
-          put('#wdStart', cur.startDate);
-          put('#wdEnd', cur.endDate);
-          put('#wdCompany', cur.companyName);
-          put('#wdAddr', cur.workPlaceAddress);
-          put('#wdWork', cur.workContent);
-          put('#wdRole', cur.roleTitle);
-          put('#wdResp', cur.responsibilityLevel);
-          const addBtn = wsQ('#btnWdAdd');
-          if (addBtn) { addBtn.textContent = '更新'; addBtn.dataset.editing = String(id); }
-        });
-      });
-    };
-    const wsLoadWd = async () => {
-      wsSetWdStatus('読込中...');
-      try {
-        const r = await fetchJSONAuth(`/api/attendance/work-details?userId=${encodeURIComponent(wsUid)}&from=1900-01-01&to=2999-12-31`);
-        wsRenderWd((r && Array.isArray(r.items)) ? r.items : []);
-        wsSetWdStatus('');
-      } catch (e) {
-        wsRenderWd([]);
-        wsSetWdStatus(String(e?.message || '読込失敗'));
-      }
-    };
-    wsQ('#btnWdReload')?.addEventListener('click', () => { wsLoadWd().catch(e => wsSetWdStatus(String(e?.message || '読込失敗'))); });
     wsQ('#btnWdAdd')?.addEventListener('click', async () => {
-      const btn = wsQ('#btnWdAdd');
-      const editing = String(btn?.dataset?.editing || '').trim();
       const payload = {
         userId: wsUid,
         startDate: wsNormDate(wsVal('#wdStart')),
@@ -953,22 +840,16 @@ async function renderEmployees(profile, c) {
       if (!wsIsISODate(payload.startDate) || (payload.endDate && !wsIsISODate(payload.endDate))) { wsSetWdStatus('日付はYYYY-MM-DD形式で入力してください'); return; }
       wsSetWdStatus('保存中...');
       try {
-        if (editing) {
-          await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(editing)}`, { method: 'PUT', body: JSON.stringify(payload) });
-        } else {
-          await fetchJSONAuth('/api/attendance/work-details', { method: 'POST', body: JSON.stringify(payload) });
-        }
-        wsClearWdForm();
-        await wsLoadWd();
+        await fetchJSONAuth('/api/attendance/work-details', { method: 'POST', body: JSON.stringify(payload) });
+        ['#wdStart','#wdEnd','#wdCompany','#wdAddr','#wdWork','#wdRole','#wdResp'].forEach(id => { const el = wsQ(id); if (el) el.value = ''; });
         wsSetWdStatus('保存しました');
       } catch (e) {
         wsSetWdStatus(String(e?.message || '保存失敗'));
       }
     });
 
-    // Tải dữ liệu ban đầu cho 2 khối.
-    wsLoadShiftDefs().then(() => wsLoadSa()).catch(() => { });
-    wsLoadWd().catch(() => { });
+    // シフト定義のみロード（リスト取得なし）
+    wsLoadShiftDefs().catch(() => { });
 
     content.appendChild(formEdit);
     hideNavSpinner();
@@ -1673,7 +1554,6 @@ async function renderEmployees(profile, c) {
         <th data-sort="employment_status" style="min-width:60px;">状態</th>
         <th data-sort="hire_date" style="min-width:90px;">入社日</th>
         <th data-sort="created_at" style="min-width:90px;">作成日</th>
-        <th style="min-width:180px;">操作</th>
       </tr>
     </thead>
   `;
@@ -1973,18 +1853,14 @@ async function renderEmployees(profile, c) {
       const tr = document.createElement('tr');
       const rowStatus = String(u.employment_status || '').toLowerCase();
       tr.className = `emp-row ${rowStatus || 'active'}`;
+      // Cho phép nhấp vào hàng để mở 詳細 (trừ chế độ chọn xóa hàng loạt).
+      if (mode !== 'delete') {
+        tr.classList.add('emp-row-clickable');
+        tr.dataset.detailId = String(u.id);
+      }
       const emailVal = normText(u.email);
       const deptVal = normText(deptName(u.departmentId));
-      const canManageThis = role2 === 'admin';
 
-      const detailBtn   = `<a class="emp-act" href="/admin/employees?detail=${u.id}">👁 詳細</a>`;
-      const summaryBtn  = `<a class="emp-act" href="/admin/employees?summary=${u.id}">📊 月次</a>`;
-      const editBtn     = `<a class="emp-act" href="/admin/employees?edit=${u.id}">✏️ 編集</a>`;
-      const disableBtn  = canManageThis ? `<button type="button" class="emp-act danger" data-delete="${u.id}">🚫 無効化</button>` : '';
-      const hardDeleteBtn = canManageThis ? `<button type="button" class="emp-act danger" data-hard-delete="${u.id}">🗑️ 削除</button>` : '';
-      const mainOps = mode === 'delete' ? `${detailBtn}${summaryBtn}` : `${detailBtn}${summaryBtn}${editBtn}`;
-      const dangerOps   = `${disableBtn}${hardDeleteBtn}`;
-      const ops = `<div class="emp-act-row">${mainOps}${dangerOps}</div>`;
       if (isNarrowMobile && mode !== 'delete') {
         tr.classList.add('mobile-flat');
         tr.innerHTML = `
@@ -2000,7 +1876,6 @@ async function renderEmployees(profile, c) {
             <div class="m-line"><span class="m-k">雇用形態:</span> <span class="m-v">${typePill(u.employment_type)}</span></div>
             <div class="m-line"><span class="m-k">状態:</span> <span class="m-v">${statusJa(u.employment_status)}</span></div>
             <div class="m-line"><span class="m-k">入社日:</span> <span class="m-v">${fmtDate(u.hire_date)}</span></div>
-            <div class="m-actions">${mainOps}${dangerOps}</div>
           </td>
         `;
       } else {
@@ -2016,10 +1891,22 @@ async function renderEmployees(profile, c) {
         <td data-label="状態">${statusPill(u.employment_status)}</td>
         <td data-label="入社日">${fmtDate(u.hire_date)}</td>
         <td data-label="作成日">${fmtDate(u.created_at)}</td>
-        <td data-label="操作" class="col-ops">${ops}</td>
       `;
       }
       tbody.appendChild(tr);
+    }
+
+    // Nhấp vào hàng nhân viên để mở 詳細. Bỏ qua khi nhấp vào nút/link/ô chọn
+    // để không nuốt thao tác 編集/無効化/削除. Chỉ gắn listener một lần cho tbody.
+    if (!tbody.dataset.rowClickWired) {
+      tbody.dataset.rowClickWired = '1';
+      tbody.addEventListener('click', (e) => {
+        const t = e.target;
+        if (t.closest('a, button, input, select, label')) return;
+        const row = t.closest('tr.emp-row-clickable');
+        if (!row || !row.dataset.detailId) return;
+        window.location.href = `/admin/employees?detail=${encodeURIComponent(row.dataset.detailId)}`;
+      });
     }
 
     const from = total ? Math.min(total, start + 1) : 0;
