@@ -118,6 +118,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         ad.late_minutes,
         ad.early_minutes,
         ad.reason,
+        ad.notes,
         wr.updated_at AS updated_at
       FROM users u
       LEFT JOIN departments d
@@ -216,6 +217,7 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         lateMinutes: r.late_minutes || 0,
         earlyMinutes: r.early_minutes || 0,
         reason: r.reason || null,
+        notes: r.notes || null,
         workType: wt,
         report: hasReport ? {
           workType: wt,

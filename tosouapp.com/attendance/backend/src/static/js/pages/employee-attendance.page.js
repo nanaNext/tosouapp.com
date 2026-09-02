@@ -1122,9 +1122,10 @@ async function mountAttendanceImpl({
             <col style="width:7%;">
             <col style="width:7%;">
             <col style="width:12%;">
-            <col style="width:17%;">
+            <col style="width:14%;">
+            <col style="width:13%;">
           </colgroup>
-          <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th></tr></thead>
+          <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th><th>備考</th></tr></thead>
         `;
         const tbody = document.createElement('tbody');
         const selectedDateIsOff = isWeekend(date);
@@ -1201,10 +1202,12 @@ async function mountAttendanceImpl({
             const s = String(v || '').trim();
             return s ? s : '—';
           };
+          const remark = String(it.notes || it.reason || '').trim();
           const cinView = dashOr(cin);
           const coutView = dashOr(cout);
           const siteView = dashOr(site);
           const workView = dashOr(work);
+          const remarkView = dashOr(remark);
           const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
           const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場' : (st === 'off' ? '休日' : '—'));
           const tr = document.createElement('tr');
@@ -1246,6 +1249,7 @@ async function mountAttendanceImpl({
               <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">退勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${coutView === '—' ? '<span class="empty-dash">—</span>' : esc(coutView)}</div></div>
               <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">現場</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${siteView === '—' ? '<span class="empty-dash">—</span>' : esc(siteView)}</div></div>
               <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">備考</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${remarkView === '—' ? '<span class="empty-dash">—</span>' : esc(remarkView)}</div></div>
             </td>
           `;
           
@@ -1259,6 +1263,7 @@ async function mountAttendanceImpl({
             ${coutView === '—' ? emptyDash('退勤').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="退勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(coutView)}</span></td>`}
             ${siteView === '—' ? emptyDash('現場').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
             ${workView === '—' ? emptyDash('作業内容').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:none; overflow:visible;">${esc(workView)}</div></td>`}
+            ${remarkView === '—' ? emptyDash('備考').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="備考"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:300px;">${esc(remarkView)}</div></td>`}
           `;
 
           tr.innerHTML = mobileHtml + desktopHtml;
