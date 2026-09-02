@@ -7,7 +7,7 @@ let searchQuery = '';
 let statusFilter = 'ALL';
 let departmentFilter = '';
 
-// Handle resize to show/hide mobile date picker dynamically
+// Xử lý resize để ẩn/hiện bộ chọn tháng trên mobile theo thời gian thực
 window.addEventListener('resize', () => {
   if (localHost && document.getElementById('monthFilter')) {
     const mobileActions = document.getElementById('attHubMobileActions');
@@ -76,7 +76,7 @@ function wireSubbarMenus() {
       });
     });
     document.addEventListener('click', () => closeAll());
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 async function renderList() {
@@ -104,7 +104,7 @@ function renderTable() {
   const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
   const tableVhExpr = isStandalone ? 'calc(100vh - 62px)' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 62px)';
 
-  // Calculate workCount for each employee
+  // Tính workCount cho từng nhân viên
   allRows.forEach(emp => {
     const isSeishain = emp.employment_type === 'full_time';
     const schedule = emp.schedule || {};
@@ -230,8 +230,8 @@ function renderTable() {
   const getDayColor = (d) => {
     const date = new Date(year, monthNum - 1, d);
     const day = date.getDay();
-    if (day === 0) return 'color: #dc2626;'; // Sunday
-    if (day === 6) return 'color: #2563eb;'; // Saturday
+    if (day === 0) return 'color: #dc2626;'; // Chủ nhật
+    if (day === 6) return 'color: #2563eb;'; // Thứ bảy
     return '';
   };
   const getDayStr = (d) => {
@@ -272,7 +272,7 @@ function renderTable() {
     let mobileHtml = `<div class="shift-mobile-list"><div style="padding: 20px; text-align: center; color: #94a3b8;">データがありません</div></div>`;
     html += mobileHtml;
   } else {
-    // Generate headers for each employee
+    // Tạo header cho từng nhân viên
     filteredRows.forEach(emp => {
       const isSeishain = emp.employment_type === 'full_time';
       let statusHtml = getStatusLabel(emp.submission_status || 'UNSUBMITTED');
@@ -305,7 +305,7 @@ function renderTable() {
           <tbody>
     `;
 
-    // Generate rows for each day
+    // Tạo dòng cho từng ngày
     for (let d = 1; d <= daysInMonth; d++) {
       html += `<tr>`;
       html += `<td class="col-fixed-1" style="${getDayColor(d)} font-size: 10px; letter-spacing: -0.5px;">${monthNum}月${d}日</td>`;
@@ -359,7 +359,7 @@ function renderTable() {
       </div>
     `;
     
-    // Build Mobile HTML
+    // Dựng HTML cho mobile
     let mobileHtml = `<div class="shift-mobile-list">`;
     filteredRows.forEach(emp => {
       const isSeishain = emp.employment_type === 'full_time';
@@ -466,7 +466,7 @@ function renderTable() {
     }
   }
 
-  // Add event listeners
+  // Gắn các event listener
   const empSearch = localHost.querySelector('#empSearch');
   if (empSearch) {
     empSearch.addEventListener('input', (e) => {
@@ -483,7 +483,7 @@ function renderTable() {
     });
   }
 
-  // Department filter — populate from loaded data + wire change event
+  // Bộ lọc phòng ban — đổ dữ liệu từ data đã tải + gắn sự kiện change
   const deptFilterEl = localHost.querySelector('#deptFilter');
   if (deptFilterEl) {
     const depts = [...new Set(allRows.map(r => r.departmentName).filter(Boolean))].sort();
@@ -496,7 +496,7 @@ function renderTable() {
     });
     deptFilterEl.addEventListener('change', (e) => {
       departmentFilter = e.target.value;
-      renderList(); // Re-fetch from server with department filter
+      renderList(); // Tải lại từ server theo bộ lọc phòng ban
     });
   }
 
@@ -508,7 +508,7 @@ function renderTable() {
     });
   }
 
-  // Handle Mobile Header Date Picker
+  // Xử lý bộ chọn tháng trên header mobile
   const mobileActions = document.getElementById('attHubMobileActions');
   if (window.innerWidth <= 768 && mobileActions) {
     let mobileMonth = document.getElementById('monthFilterMobile');
@@ -529,7 +529,7 @@ function renderTable() {
     mobileActions.innerHTML = '';
   }
 
-  // Modal logic
+  // Xử lý modal
   const modal = localHost.querySelector('#reasonModal');
   const modalText = localHost.querySelector('#reasonModalText');
   const closeBtn = localHost.querySelector('#closeReasonModalBtn');
@@ -613,14 +613,14 @@ async function openProxyModal(userId, empName) {
   const daysInMonth = new Date(year, monthNum, 0).getDate();
   const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
 
-  // Load current shifts for this employee
+  // Tải ca hiện tại của nhân viên này
   let existingShifts = [];
   try {
     const res = await fetchJSONAuth(`/api/attendance/shifts/user-month?userId=${userId}&month=${currentMonth}`);
     existingShifts = Array.isArray(res) ? res : [];
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // Determine if full-time or part-time
+  // Xác định là nhân viên chính thức hay bán thời gian
   const emp = allRows.find(r => String(r.id) === String(userId));
   const isPartTime = emp && emp.employment_type !== 'full_time';
 
@@ -630,7 +630,7 @@ async function openProxyModal(userId, empName) {
     scheduleMap[d] = { status: s.status || 'OFF', leaveType: s.leaveType || null };
   });
 
-  // Build modal HTML
+  // Dựng HTML cho modal
   let daysHtml = '';
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -643,12 +643,12 @@ async function openProxyModal(userId, empName) {
     const curStatus = current.status || '';
     const curLeave = current.leaveType || '';
 
-    // Determine if this day is an off-day (company holiday)
+    // Xác định ngày này có phải ngày nghỉ (nghỉ công ty) không
     const isKouji = emp && String(emp.departmentName || '').includes('工事部');
     const is4thSat = isSat && Math.ceil(d / 7) === 4;
     const isOffDay = isSun || (isKouji ? is4thSat : isSat);
 
-    // Determine selected value
+    // Xác định giá trị được chọn
     let selected = '';
     if (curStatus === 'WORKING') selected = 'WORKING';
     else if (curStatus === 'LEAVE' && curLeave === 'paid') selected = 'PAID';
@@ -708,7 +708,7 @@ async function openProxyModal(userId, empName) {
     </div>
   `;
 
-  // Insert modal into page
+  // Chèn modal vào trang
   const existing = document.getElementById('proxyModal');
   if (existing) existing.remove();
   document.body.insertAdjacentHTML('beforeend', modalHtml);
@@ -727,7 +727,7 @@ async function openProxyModal(userId, empName) {
     saveBtn.disabled = true;
     saveBtn.textContent = '保存中...';
 
-    // Collect all day selections
+    // Gom lựa chọn của tất cả các ngày
     const shifts = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -756,7 +756,7 @@ async function openProxyModal(userId, empName) {
       });
       if (res.success) {
         closeModal();
-        await renderList(); // Reload matrix
+        await renderList(); // Tải lại ma trận
       } else {
         alert('保存失敗: ' + (res.message || ''));
         saveBtn.disabled = false;

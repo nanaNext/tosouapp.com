@@ -28,7 +28,7 @@ export const mapLegacyAdminToNewPath = (href) => {
     if (tab === 'audit') return '/admin/system/audit-logs';
     if (tab === 'settings') return '/admin/system/settings';
     return '/admin/dashboard';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   return null;
 };
 
@@ -78,5 +78,5 @@ export const syncUrlState = () => {
   if (state.tab) url.searchParams.set('tab', state.tab);
   else url.searchParams.delete('tab');
   url.hash = state.hash || '';
-  try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { /* silently ignored */ }
+  try { history.replaceState(null, '', url.pathname + url.search + url.hash); } catch (e) { /* bỏ qua lỗi */ }
 };

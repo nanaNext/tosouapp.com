@@ -46,7 +46,7 @@ exports.userProfileForMonthly = async (req, res) => {
     const user = await userRepo.getUserById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
     const dept = user?.departmentId ? (await userRepo.getDepartmentById(user.departmentId)) : null;
-    try { await repo.ensureWorkDetailsSchemaPublic(); } catch (e) { /* non-critical */ }
+    try { await repo.ensureWorkDetailsSchemaPublic(); } catch (e) { /* không quan trọng */ }
     const workRows = await repo.getUserWorkDetails(userId, 10);
     // Tìm ca làm việc đang áp dụng
     let shift = null;
@@ -248,6 +248,6 @@ exports.todaySummary = async (req, res) => {
   }
 };
 
-// todayRoster đã được tách sang file riêng để giữ file này dưới 200 dòng.
-// Re-export để attendance.controller.js không cần thay đổi.
+// todayRoster đã tách sang file riêng để giữ file này dưới 200 dòng.
+// Export lại để attendance.controller.js không cần đổi.
 exports.todayRoster = require('./attendance.today-roster.controller').todayRoster;

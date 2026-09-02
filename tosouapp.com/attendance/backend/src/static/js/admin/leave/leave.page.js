@@ -13,7 +13,7 @@ export async function mount(options = {}) {
   const mod = await import('../legacy/legacy-leave.page.js?v=navy-20260901-halfday-balance1');
 
   if (content.querySelector('.leave-page-layout')) {
-    // Already mounted! Just switch tab.
+    // Đã mount rồi! Chỉ cần chuyển tab.
     let target = 'tab-approvals';
     if (p.includes('grants')) target = 'tab-grant';
     else if (p.includes('balance')) target = 'tab-balances';

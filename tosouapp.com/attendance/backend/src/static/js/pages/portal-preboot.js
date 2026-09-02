@@ -7,8 +7,8 @@
     if (r === '従業員' || r === 'nhanvien' || r === 'nhân viên' || r === 'staff') return 'employee';
     return r;
   };
-  const reveal = () => { try { document.documentElement.classList.remove('portal-preboot'); } catch (e) { /* silently ignored */ } };
-  try { document.documentElement.classList.add('portal-preboot'); } catch (e) { /* silently ignored */ }
+  const reveal = () => { try { document.documentElement.classList.remove('portal-preboot'); } catch (e) { /* bỏ qua lỗi */ } };
+  try { document.documentElement.classList.add('portal-preboot'); } catch (e) { /* bỏ qua lỗi */ }
   const routeAdmin = () => { try { window.location.replace('/admin/dashboard'); } catch (e) { window.location.href = '/admin/dashboard'; } };
   try {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
@@ -17,6 +17,6 @@
       routeAdmin();
       return;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   reveal();
 })();

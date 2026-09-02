@@ -56,7 +56,7 @@ async function ensureAttendanceSchema() {
       await db.query(`ALTER TABLE attendance ${alters.join(', ')}`);
     }
 
-    // UNIQUE INDEX (userId, checkIn) - Chặn rủi ro Double Submit (Ưu tiên 1)
+    // UNIQUE INDEX (userId, checkIn) - chặn double submit
     const [indexes] = await db.query(`SHOW INDEX FROM attendance WHERE Key_name = 'unique_user_checkin'`);
     if (!indexes.length) {
       try {
@@ -64,7 +64,7 @@ async function ensureAttendanceSchema() {
       } catch (err) {
         try {
           console.warn('⚠️ Could not add unique constraint, maybe duplicates already exist:', err.message);
-          // Deduplicate: keep the smallest id per (userId, checkIn)
+          // Dọn trùng: giữ lại id nhỏ nhất cho mỗi cặp (userId, checkIn)
           await db.query(`
             DELETE a FROM attendance a
             JOIN (
@@ -163,7 +163,7 @@ async function ensureAttendanceDailySchema() {
     if (alters.length) {
       try { await db.query(`ALTER TABLE attendance_daily ${alters.join(', ')}`); } catch {}
     }
-    // Ensure 遅刻 is in the status ENUM (in case column exists but was created before this value was added)
+    // Đảm bảo giá trị 遅刻 có trong ENUM status (phòng khi cột đã tạo trước khi thêm giá trị này)
     if (set.has('status')) {
       try {
         const [typeCols] = await db.query(`SELECT COLUMN_TYPE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'attendance_daily' AND COLUMN_NAME = 'status'`);
@@ -280,19 +280,19 @@ async function ensureAttendanceGoOutSchema() {
   try {
     await db.query(`ALTER TABLE attendance_go_out ADD COLUMN status VARCHAR(20) DEFAULT '外出中'`);
   } catch (e) {
-    // ignore duplicate column error
+    // bỏ qua lỗi cột đã tồn tại
   }
   try {
     await db.query(`ALTER TABLE attendance_go_out ADD COLUMN admin_note VARCHAR(500) NULL`);
   } catch (e) {
-    // ignore duplicate column error
+    // bỏ qua lỗi cột đã tồn tại
   }
   try {
     await db.query(`ALTER TABLE attendance_go_out ADD COLUMN tenant_id BIGINT UNSIGNED NULL`);
-  } catch (e) { /* column may exist */ }
+  } catch (e) { /* cột có thể đã tồn tại */ }
   try {
     await db.query(`ALTER TABLE attendance_go_out ADD INDEX idx_ago_tid (tenant_id)`);
-  } catch (e) { /* index may exist */ }
+  } catch (e) { /* index có thể đã tồn tại */ }
 }
 
 async function ensureShiftTables() {
@@ -311,7 +311,7 @@ async function ensureShiftTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
   
-  // Add working_days column if not exists
+  // Thêm cột working_days nếu chưa có
   try {
     const [cols] = await db.query(`SHOW COLUMNS FROM shift_definitions`);
     const set = new Set((cols || []).map(c => String(c.Field)));
@@ -324,7 +324,7 @@ async function ensureShiftTables() {
   } catch {}
   try {
     await db.query(`ALTER TABLE shift_definitions ADD INDEX idx_sd_tid (tenant_id)`);
-  } catch (e) { /* index may exist */ }
+  } catch (e) { /* index có thể đã tồn tại */ }
   await db.query(`
     CREATE TABLE IF NOT EXISTS user_shift_assignments (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

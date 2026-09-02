@@ -49,7 +49,7 @@ function ensureUserClickHandler(content) {
         }
       }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export async function mountUsers({ content, listUsers, deleteUserAccount, resetUserPassword }) {

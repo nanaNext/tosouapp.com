@@ -202,7 +202,7 @@ export async function mount(options = {}) {
   aborter = new AbortController();
   const { signal } = aborter;
 
-  try { window.scrollTo(0, 0); } catch (e) { /* silently ignored */ }
+  try { window.scrollTo(0, 0); } catch (e) { /* bỏ qua lỗi */ }
 
   mountStyle();
 
@@ -570,7 +570,7 @@ export async function mount(options = {}) {
   previewModalOverlay.style.width = '100vw';
   previewModalOverlay.style.height = '100vh';
   previewModalOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-  // Must stay above the fixed admin topbar/sidebar shell.
+  // Phải nằm trên topbar/sidebar cố định của admin.
   previewModalOverlay.style.zIndex = '2147483647';
   previewModalOverlay.style.padding = '56px 20px 24px';
   previewModalOverlay.style.boxSizing = 'border-box';
@@ -590,7 +590,7 @@ export async function mount(options = {}) {
   previewCard.style.color = '#0f172a';
   previewCard.style.opacity = '1';
   previewCard.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-  previewCard.style.display = 'block'; // Always block since overlay controls visibility
+  previewCard.style.display = 'block'; // Luôn block vì overlay điều khiển việc hiển thị
 
   previewModalOverlay.appendChild(previewCard);
   document.body.appendChild(previewModalOverlay);
@@ -622,7 +622,7 @@ export async function mount(options = {}) {
     }
   };
 
-    // Tab logic
+    // Logic tab
     const tabBtns = wrap.querySelectorAll('.pe-tab-btn');
     const editorView = wrap.querySelector('#peEditorView');
     const historyView = wrap.querySelector('#peHistoryView');
@@ -696,9 +696,9 @@ export async function mount(options = {}) {
     let lastUserId = String(localStorage.getItem('payroll.lastUserId') || '').trim();
     const lastMonth = String(localStorage.getItem('payroll.lastMonth') || '').trim();
     
-    // Auto-select first employee if no previous selection exists
+    // Tự chọn nhân viên đầu tiên nếu chưa có lựa chọn trước đó
     if (!lastUserId && sel.options.length > 1) {
-      lastUserId = sel.options[1].value; // options[0] is the empty placeholder
+      lastUserId = sel.options[1].value; // options[0] là placeholder rỗng
     }
     
     if (lastUserId) {
@@ -708,12 +708,12 @@ export async function mount(options = {}) {
     if (/^\d{4}-\d{2}$/.test(lastMonth)) {
       monthEl.value = lastMonth;
     } else {
-      // Default to current month if no previous month exists
+      // Mặc định là tháng hiện tại nếu chưa có tháng trước đó
       const d = new Date();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       monthEl.value = `${d.getFullYear()}-${m}`;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   let lastPdfKey = '';
   let lastSecureUrl = '';
   let lastEmpCode = '';
@@ -760,7 +760,7 @@ export async function mount(options = {}) {
       if (el) {
         el.disabled = autoCalc;
         if (autoCalc) {
-          el.value = ''; // Clear manual overrides if auto calc is selected
+          el.value = ''; // Xóa giá trị nhập tay nếu chọn tự động tính
           el.placeholder = '自動計算';
         } else {
           el.placeholder = '0';
@@ -797,7 +797,7 @@ export async function mount(options = {}) {
         </div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
         overlayWrap.appendChild(overlay);
 
-        // Force refresh kintai from server without overwriting the form's auto-calc state
+        // Buộc làm mới kintai từ server mà không ghi đè trạng thái auto-calc của form
         await autoFillKintaiCounts();
       } catch (e) {
         console.error(e);
@@ -870,7 +870,7 @@ export async function mount(options = {}) {
         btnDownloadPdf.disabled = !ok || !lastSecureUrl;
         btnDownloadPdf.style.opacity = (!ok || !lastSecureUrl) ? '0.55' : '1';
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const renderKv = (obj, { money = true, hide = [] } = {}) => {
@@ -906,7 +906,7 @@ export async function mount(options = {}) {
       if (!Object.prototype.hasOwnProperty.call(obj || {}, k)) return '';
       const v = obj[k];
       const f = map[k] || ((x) => x);
-      // Ensure v is treated as string for time values that are already formatted
+      // Đảm bảo coi v là chuỗi với các giá trị thời gian đã được format sẵn
       const vv = (typeof v === 'string' && v.includes(':')) ? esc(v) : (typeof v === 'number' ? esc(f(v)) : esc(v));
       return `<tr><td>${esc(k)}</td><td>${vv}</td></tr>`;
     }).join('')}
@@ -916,7 +916,7 @@ export async function mount(options = {}) {
 
   const updatePreview = (emp) => {
     if (!emp) return;
-    try { lastEmpCode = String((emp && emp['従業員コード']) ? emp['従業員コード'] : '').trim() || lastEmpCode; } catch (e) { /* silently ignored */ }
+    try { lastEmpCode = String((emp && emp['従業員コード']) ? emp['従業員コード'] : '').trim() || lastEmpCode; } catch (e) { /* bỏ qua lỗi */ }
     const totals = (emp && emp['合計'] && typeof emp['合計'] === 'object') ? emp['合計'] : {};
     const pay = (emp && emp['支払'] && typeof emp['支払'] === 'object') ? emp['支払'] : {};
     const kintai = (emp && emp['勤怠'] && typeof emp['勤怠'] === 'object') ? { ...emp['勤怠'] } : {};
@@ -924,7 +924,7 @@ export async function mount(options = {}) {
     const ded = (emp && emp['控除'] && typeof emp['控除'] === 'object') ? emp['控除'] : {};
     const other = (emp && emp['その他'] && typeof emp['その他'] === 'object') ? emp['その他'] : {};
     
-    // Grab the exact strings from inputs to avoid parsing/formatting loops
+    // Lấy chuỗi nguyên bản từ input để tránh vòng lặp parse/format
     const kwhEl = document.querySelector('#payrollKWorkHours');
     if (kwhEl && kwhEl.value) kintai['就業時間'] = String(kwhEl.value).trim();
     
@@ -948,7 +948,7 @@ export async function mount(options = {}) {
       const sumEl = document.querySelector('#payrollPaySum');
       if (netEl) netEl.value = fmtNum(netPay);
       if (sumEl) sumEl.value = fmtNum(paySum);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const autoEl = document.querySelector('#payrollAutoCalc');
     const isAuto = String(autoEl && autoEl.value != null ? autoEl.value : '0') === '1';
     const calcHint = isAuto ? '【自動計算ON】 保険料・所得税は自動算出されます' : '【自動計算OFF】 保険料・所得税は手入力の値が使用されます';
@@ -961,7 +961,7 @@ export async function mount(options = {}) {
           absentEl.value = absentDays > 0 && val ? String(val) : '';
         }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     previewCard.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div class="pe-title" style="margin:0;font-size:16px;">給与明細書（プレビュー）</div>
@@ -1009,7 +1009,7 @@ export async function mount(options = {}) {
       </div>
     `;
     
-    // Append debug details
+    // Thêm phần chi tiết debug
     const debugDetails = document.createElement('details');
     debugDetails.style.marginTop = '10px';
     debugDetails.innerHTML = `<summary class="pe-title">JSON（デバッグ）</summary><pre style="white-space:pre-wrap;background:#fff;border:none;border-radius:0;padding:10px 12px;overflow:auto;font-size:12px;line-height:1.4;margin:0;">${JSON.stringify(emp || {}, null, 2)}</pre>`;
@@ -1046,7 +1046,7 @@ export async function mount(options = {}) {
       const month = escapeHtml(it && it.month ? it.month : '');
       const fileName = escapeHtml(it && it.fileName ? it.fileName : '');
       const fileId = String((it && it.fileId != null) ? it.fileId : '');
-      const result = '成功'; // Assuming success if it's in the list, or we need to extract from it
+      const result = '成功'; // Giả định thành công nếu nó nằm trong danh sách, hoặc cần trích xuất từ đó
       const errorDetail = '-';
       
       return `
@@ -1066,7 +1066,7 @@ export async function mount(options = {}) {
         const id = String(a.getAttribute('data-file-id') || '').trim();
         if (!id) return;
         let w = null;
-        try { w = window.open('about:blank', '_blank'); } catch (e) { /* silently ignored */ }
+        try { w = window.open('about:blank', '_blank'); } catch (e) { /* bỏ qua lỗi */ }
         if (!w) { msg('ポップアップがブロックされました。許可してください。'); return; }
         setPopupMessage(w, '処理中…');
         let res = null;
@@ -1079,7 +1079,7 @@ export async function mount(options = {}) {
         const ct = String(res.headers.get('content-type') || '').toLowerCase();
         if (!ct.includes('application/pdf')) {
           let t = '';
-          try { t = await res.clone().text(); } catch (e) { /* silently ignored */ }
+          try { t = await res.clone().text(); } catch (e) { /* bỏ qua lỗi */ }
           setPopupMessage(w, 'PDFの取得に失敗しました。', t || '');
           return;
         }
@@ -1087,8 +1087,8 @@ export async function mount(options = {}) {
         const url = URL.createObjectURL(blob);
         try {
           w.location.href = url;
-        } catch (e) { /* silently ignored */ }
-        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* silently ignored */ } }, 30000);
+        } catch (e) { /* bỏ qua lỗi */ }
+        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* bỏ qua lỗi */ } }, 30000);
       });
     });
   };
@@ -1172,7 +1172,7 @@ export async function mount(options = {}) {
       const isAuto = String(acEl && acEl.value != null ? acEl.value : '0') === '1';
       const calcHint = isAuto ? '<span style="color:#3b82f6;background:#eff6ff;padding:2px 6px;border-radius:4px;font-size:12px;margin-left:8px;font-weight:600">自動計算ON</span>' : '<span style="color:#64748b;background:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:12px;margin-left:8px;font-weight:600">自動計算OFF</span>';
       setKpi({ gross: totals['総支給額'], deduct: totals['総控除額'], net, paySum: sum, hint: `${hint} ${calcHint}` });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     updatePreview(emp);
   };
 
@@ -1185,17 +1185,17 @@ export async function mount(options = {}) {
     clearPdfStateIfKeyChanged
   });
 
-  const safeCloseWindow = (w) => { try { if (w && !w.closed) w.close(); } catch (e) { /* silently ignored */ } };
+  const safeCloseWindow = (w) => { try { if (w && !w.closed) w.close(); } catch (e) { /* bỏ qua lỗi */ } };
   const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
   const setPopupMessage = (w, title, detail = '') => {
     if (!w || w.closed) return;
     const t = escapeHtml(title);
     const d = escapeHtml(detail);
-    try { w.document.open(); } catch (e) { /* silently ignored */ }
+    try { w.document.open(); } catch (e) { /* bỏ qua lỗi */ }
     try {
       w.document.write(`<title>${t}</title><meta charset="utf-8"><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:24px;color:#0f172a}h1{font-size:16px;margin:0 0 12px}pre{white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px}</style><h1>${t}</h1>${d ? `<pre>${d}</pre>` : ''}`);
       w.document.close();
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const createPdf = async (openedWindow) => {
@@ -1237,7 +1237,7 @@ export async function mount(options = {}) {
     msg('処理中…');
     let w = openedWindow;
     if (!w) {
-      try { w = window.open('about:blank', '_blank'); } catch (e) { /* silently ignored */ }
+      try { w = window.open('about:blank', '_blank'); } catch (e) { /* bỏ qua lỗi */ }
     }
     let res = null;
     try {
@@ -1250,7 +1250,7 @@ export async function mount(options = {}) {
     const ct = String(res.headers.get('content-type') || '').toLowerCase();
     if (!ct.includes('application/pdf')) {
       let t = '';
-      try { t = await res.clone().text(); } catch (e) { /* silently ignored */ }
+      try { t = await res.clone().text(); } catch (e) { /* bỏ qua lỗi */ }
       setPopupMessage(w, 'PDFの取得に失敗しました。', t || '');
       msg(t || 'PDFの取得に失敗しました。', false);
       return;
@@ -1275,12 +1275,12 @@ export async function mount(options = {}) {
     try {
       if (w) {
         w.location.href = url;
-        try { w.document.title = filename; } catch (e) { /* silently ignored */ }
+        try { w.document.title = filename; } catch (e) { /* bỏ qua lỗi */ }
       } else {
         window.open(url, '_blank');
       }
-    } catch (e) { /* silently ignored */ }
-    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* silently ignored */ } }, 30000);
+    } catch (e) { /* bỏ qua lỗi */ }
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* bỏ qua lỗi */ } }, 30000);
     msg('PDFを開きました', true);
   };
 
@@ -1299,7 +1299,7 @@ export async function mount(options = {}) {
     const ct = String(res.headers.get('content-type') || '').toLowerCase();
     if (!ct.includes('application/pdf')) {
       let t = '';
-      try { t = await res.clone().text(); } catch (e) { /* silently ignored */ }
+      try { t = await res.clone().text(); } catch (e) { /* bỏ qua lỗi */ }
       msg(t || 'PDFの取得に失敗しました。', false);
       return;
     }
@@ -1325,8 +1325,8 @@ export async function mount(options = {}) {
       a.href = url;
       a.download = filename;
       a.click();
-    } catch (e) { /* silently ignored */ }
-    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* silently ignored */ } }, 30000);
+    } catch (e) { /* bỏ qua lỗi */ }
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* bỏ qua lỗi */ } }, 30000);
     msg('PDFをダウンロードしました', true);
   };
 
@@ -1340,7 +1340,7 @@ export async function mount(options = {}) {
 
   wrap.addEventListener('input', (e) => {
     if (!e || !e.target) return;
-    if (e.target.id === 'payrollAutoCalc') return; // Handled by change event
+    if (e.target.id === 'payrollAutoCalc') return; // Đã xử lý bằng sự kiện change
     scheduleRealtime();
   }, { passive: true, signal });
 
@@ -1379,7 +1379,7 @@ export async function mount(options = {}) {
   const btnCreate = actionTopBar.querySelector('#btnCreatePdf');
   if (btnCreate) btnCreate.addEventListener('click', () => {
     let w = null;
-    try { w = window.open('about:blank', '_blank'); } catch (e) { /* silently ignored */ }
+    try { w = window.open('about:blank', '_blank'); } catch (e) { /* bỏ qua lỗi */ }
     if (!w) msg('ポップアップがブロックされました。許可してください。');
     createPdf(w).catch(e => showError(e));
   }, { signal });
@@ -1529,7 +1529,7 @@ export async function mount(options = {}) {
 
       const kWork = safeStr(attendDays);
       const kHoliday = safeStr(holidayWorkDays);
-      const kHalf = '0'; // Half-days could be computed similarly if needed
+      const kHalf = '0'; // Số ngày nửa buổi có thể tính tương tự nếu cần
       const kAbsent = safeStr(absentDays);
       const kUnpaid = safeStr(unpaidDays);
       const kPaid = safeStr(paidDays);
@@ -1577,8 +1577,8 @@ export async function mount(options = {}) {
     if (!userId || !/^\d{4}-\d{2}$/.test(ym)) return;
 
     clearPdfStateIfKeyChanged();
-    try { localStorage.setItem('payroll.lastUserId', userId); } catch (e) { /* silently ignored */ }
-    try { localStorage.setItem('payroll.lastMonth', ym); } catch (e) { /* silently ignored */ }
+    try { localStorage.setItem('payroll.lastUserId', userId); } catch (e) { /* bỏ qua lỗi */ }
+    try { localStorage.setItem('payroll.lastMonth', ym); } catch (e) { /* bỏ qua lỗi */ }
 
     msg('データ取得中...');
 
@@ -1598,7 +1598,7 @@ export async function mount(options = {}) {
           transportEl.value = u.allowance_transport != null ? String(u.allowance_transport) : '';
         }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
     // 3. Tự động cập nhật số liệu chấm công mới nhất để đảm bảo chính xác tuyệt đối
     await autoFillKintaiCounts().catch(() => { });
@@ -1628,6 +1628,6 @@ export async function mount(options = {}) {
     try {
       const modal = document.getElementById('payrollPreviewModalOverlay');
       if (modal) modal.remove();
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 }

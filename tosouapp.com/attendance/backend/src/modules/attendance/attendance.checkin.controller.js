@@ -1,6 +1,6 @@
 /**
  * @module attendance.checkin.controller
- * Handlers: checkIn, checkOut, recordGoOut, recordReturn, setWorkType
+ * Các handler: checkIn, checkOut, recordGoOut, recordReturn, setWorkType
  */
 'use strict';
 
@@ -17,7 +17,7 @@ const { getMonthStatusValue } = require('./attendance.utils');
 // API: Nhân viên ấn nút Check-in (Đi làm)
 exports.checkIn = async (req, res) => {
   try {
-    // Security: employee can only check-in for themselves. Admin/manager can override via body.
+    // Nhân viên chỉ được check-in cho chính mình; admin/manager mới override được qua body
     const role = String(req.user?.role || '').toLowerCase();
     const canOverride = role === 'admin' || role === 'manager';
     const userId = (canOverride && req.body.userId) ? req.body.userId : req.user?.id;
@@ -43,7 +43,7 @@ exports.checkIn = async (req, res) => {
       return res.status(409).json({ message: 'Already checked in' });
     }
 
-    // Auto-update attendance_daily kubun to '出勤' upon check-in
+    // Tự động đặt kubun trong attendance_daily thành '出勤' khi check-in
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const dailyRec = await repo.getDaily(userId, dtStr, { tenantId: req.tenantId || null });
@@ -98,7 +98,7 @@ exports.checkIn = async (req, res) => {
 // API: Nhân viên ấn nút Check-out (Tan làm)
 exports.checkOut = async (req, res) => {
   try {
-    // Security: employee can only check-out for themselves. Admin/manager can override via body.
+    // Nhân viên chỉ được check-out cho chính mình; admin/manager mới override được qua body
     const role = String(req.user?.role || '').toLowerCase();
     const canOverride = role === 'admin' || role === 'manager';
     const userId = (canOverride && req.body.userId) ? req.body.userId : req.user?.id;
@@ -152,7 +152,7 @@ exports.checkOut = async (req, res) => {
         audience: 'admin_manager'
       });
 
-      // Calculate total hours and send daily summary email
+      // Tính tổng giờ làm và gửi email tổng kết trong ngày
       if (u && u.email && result?.checkIn && result?.checkOut) {
         const inDate = new Date(result.checkIn);
         const outDate = new Date(result.checkOut);
@@ -164,7 +164,7 @@ exports.checkOut = async (req, res) => {
           if (dailies.length > 0) {
             breakMin = Number(dailies[0].break_minutes || 0) + Number(dailies[0].night_break_minutes || 0);
           }
-        } catch (e) { /* break lookup non-critical */ }
+        } catch (e) { /* tra giờ nghỉ không bắt buộc, bỏ qua lỗi */ }
 
         const diffMs = outDate - inDate;
         let totalMinutes = Math.floor(diffMs / 60000) - breakMin;

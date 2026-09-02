@@ -1,6 +1,6 @@
 import { fetchJSONAuth } from '../api/http.api.js';
 
-// Add esc helper function at the top
+// Thêm hàm hỗ trợ esc ở đầu file
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -10,7 +10,7 @@ let currentUser = null;
 let currentMonth = new Date();
 
 let shiftData = {}; // key: YYYY-MM-DD, value: object
-let serverStatus = null; // Track if the month is already submitted or approved
+let serverStatus = null; // Theo dõi xem tháng đã được nộp hoặc duyệt chưa
 
 const SEISHAIN_LEAVE_TYPES = [
   { value: 'paid', label: '有給休暇' },
@@ -42,7 +42,7 @@ async function init() {
       const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
       if (name) el.textContent = name;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     currentUser = await fetchJSONAuth('/api/auth/me');
@@ -51,20 +51,20 @@ async function init() {
       return;
     }
     
-    // Also update header userName just in case it wasn't in storage
+    // Cập nhật luôn userName trên header phòng khi nó chưa có trong storage
     const el = $('#userName');
     if (el && currentUser) {
       const name = currentUser.username || currentUser.email;
       if (name) el.textContent = name;
     }
     
-    // Save updated user to storage
+    // Lưu thông tin user đã cập nhật vào storage
     try {
       sessionStorage.setItem('user', JSON.stringify(currentUser));
       localStorage.setItem('user', JSON.stringify(currentUser));
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     
-    // Render user profile info inside the shifts-header box
+    // Hiển thị thông tin profile user trong khung shifts-header
     const isSeishain = currentUser.employment_type === 'full_time' || currentUser.employment_type === '正社員';
     
     await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
@@ -132,7 +132,7 @@ async function loadMonthData(year, month) {
     const res = await fetchJSONAuth(`/api/attendance/shifts/all-employees?month=${monthStr}`);
     allEmployeesShifts = Array.isArray(res) ? res : [];
     
-    // Fetch calendar data
+    // Lấy dữ liệu lịch
     calendarDataMap = {};
     const daysInMonth = getDaysInMonth(year, month);
     await Promise.all(daysInMonth.map(async (d) => {
@@ -146,7 +146,7 @@ async function loadMonthData(year, month) {
       }
     }));
     
-    // Fallback dictionary for Koujibu (for 4th Saturday)
+    // Từ điển dự phòng cho Koujibu (工事部) (cho thứ Bảy tuần thứ 4)
     daysInMonth.forEach(d => {
       const dateStr = formatDate(d);
       const dow = d.getDay();
@@ -244,11 +244,11 @@ function renderApp() {
       
       let workCount = 0;
       
-      // Find the day of week for the 1st of the month to add empty padding cells
+      // Tìm thứ trong tuần của ngày mùng 1 để thêm các ô đệm trống
       const firstDayOfMonth = new Date(year, month, 1).getDay();
       let mobileDaysHtml = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0;">';
       
-      // Add empty cells for days before the 1st
+      // Thêm các ô trống cho những ngày trước mùng 1
       for (let i = 0; i < firstDayOfMonth; i++) {
         mobileDaysHtml += `<div class="sac-day-item empty" style="border: none; background: transparent;"></div>`;
       }
@@ -267,7 +267,7 @@ function renderApp() {
         // Xác định thứ 7 tuần thứ 4
         const is4thSaturday = dow === 6 && Math.ceil(d.getDate() / 7) === 4;
 
-        // Check if the user has specific calendar based on department
+        // Kiểm tra xem user có lịch riêng theo phòng ban hay không
         let isHolidayForUser = false;
         if (isKoujibu) {
           isHolidayForUser = calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay;
@@ -291,43 +291,43 @@ function renderApp() {
           if (shift.leaveType === 'paid') {
             cellText = '有休';
             cellClass = 'status-paid';
-            cellTextColor = '#d97706'; // Amber
+            cellTextColor = '#d97706'; // Vàng hổ phách
           } else if (shift.leaveType === 'unpaid') {
             cellText = '欠';
             cellClass = 'status-unpaid';
-            cellTextColor = '#9333ea'; // Purple
+            cellTextColor = '#9333ea'; // Tím
           } else {
             cellText = '休';
             cellClass = 'status-holiday';
-            cellTextColor = '#dc2626'; // Red
+            cellTextColor = '#dc2626'; // Đỏ
           }
         } else if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
           cellText = '休';
           cellClass = 'status-holiday';
-          cellTextColor = '#dc2626'; // Red
+          cellTextColor = '#dc2626'; // Đỏ
         } else if (shift && shift.status === 'WORKING') {
           if (isWeekendOrHoliday) {
-            cellText = '出'; // 休日出勤
+            cellText = '出'; // 休日出勤 (đi làm ngày nghỉ)
             cellClass = 'status-holiday-work';
-            cellTextColor = '#0284c7'; // Blue/Teal
+            cellTextColor = '#0284c7'; // Xanh dương/xanh mòng két
           } else {
             cellText = '出勤';
             cellClass = 'status-working';
-            cellTextColor = '#16a34a'; // Green
+            cellTextColor = '#16a34a'; // Xanh lá
           }
           workCount++;
         } else if (shift && shift.status === 'OFF') {
           // Part-time đăng ký nghỉ rõ ràng → hiển thị đỏ (休日), không phải xám
           cellText = '休';
           cellClass = 'status-holiday';
-          cellTextColor = '#dc2626'; // Red
+          cellTextColor = '#dc2626'; // Đỏ
         } else {
           cellText = '-'; // Chưa đăng ký gì
           cellClass = 'status-empty';
-          cellTextColor = '#94a3b8'; // Gray
+          cellTextColor = '#94a3b8'; // Xám
         }
 
-        // Add visual indicator if there's a reason or detail
+        // Thêm chỉ báo trực quan nếu có lý do hoặc chi tiết
         let indicator = '';
         if (shift && shift.status === 'LEAVE') {
           const hasReason = shift.reason && shift.reason !== '' && shift.reason !== 'other';
@@ -352,17 +352,17 @@ function renderApp() {
         
         const st = shift || {};
         let statusLabel = '';
-        let statusColor = '#0f172a'; // Default dark text
+        let statusColor = '#0f172a'; // Màu chữ tối mặc định
         
         if (st.status === 'WORKING') {
           statusLabel = '出';
-          statusColor = '#1e40af'; // Blue for working
+          statusColor = '#1e40af'; // Xanh dương cho ngày đi làm
         } else if (st.status === 'OFF') {
           statusLabel = '休';
-          statusColor = '#ef4444'; // Red for holiday
+          statusColor = '#ef4444'; // Đỏ cho ngày nghỉ
         } else if (st.status === 'LEAVE') {
           if (st.leaveType && st.leaveType !== 'paid' && st.leaveType !== 'special' && st.leaveType !== 'absence') {
-            statusLabel = '休'; // Handle legacy string types
+            statusLabel = '休'; // Xử lý các kiểu chuỗi cũ (legacy)
           } else if (st.leaveType === 'paid') {
             statusLabel = '有休';
           } else if (st.leaveType === 'special') {
@@ -372,10 +372,10 @@ function renderApp() {
           } else {
             statusLabel = '休';
           }
-          statusColor = '#ef4444'; // Red for leave
+          statusColor = '#ef4444'; // Đỏ cho ngày nghỉ phép
         } else {
           statusLabel = '未';
-          statusColor = '#94a3b8'; // Gray for unassigned
+          statusColor = '#94a3b8'; // Xám cho ngày chưa gán
         }
         
         mobileDaysHtml += `
@@ -385,7 +385,7 @@ function renderApp() {
           </div>
         `;
       });
-      mobileDaysHtml += `</div>`; // Close grid container
+      mobileDaysHtml += `</div>`; // Đóng container grid
       
       rowHtml += `</tr>`;
       tbodyHtml += rowHtml;
@@ -562,7 +562,7 @@ function renderApp() {
   
   app.innerHTML = html;
   
-  // Mobile pagination for shift cards
+  // Phân trang trên mobile cho các thẻ ca làm
   const mobileList = app.querySelector('.shift-mobile-list');
   if (mobileList) {
     const cards = Array.from(mobileList.querySelectorAll('.sac-card'));
@@ -583,7 +583,7 @@ function renderApp() {
     }
   }
 
-  // Attach styling for table cells dynamically
+  // Gán style cho các ô của bảng một cách động
   $$('.shifts-desktop-table td, .shifts-desktop-table th', app).forEach(cell => {
     cell.style.border = '1px solid #e2e8f0';
     cell.style.padding = '8px 4px';
@@ -623,7 +623,7 @@ function attachEvents() {
       const year = currentMonth.getFullYear();
       const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
 
-      // Calculate department summary for print header
+      // Tính tổng hợp theo phòng ban cho phần header khi in
       const deptCounts = {};
       allEmployeesShifts.forEach(emp => {
         const dept = emp.departmentName || '未配属';

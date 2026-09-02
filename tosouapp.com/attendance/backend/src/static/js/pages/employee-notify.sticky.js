@@ -16,7 +16,7 @@ const resolveEmployeeUid = () => {
   try {
     const fromWin = parseInt(String(window.__EMP_UID || 0), 10) || 0;
     if (fromWin) return fromWin;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     const u = raw ? JSON.parse(raw) : null;
@@ -70,7 +70,7 @@ function writeHiddenIds(setLike) {
   try {
     const arr = Array.from(setLike || []).map((x) => parseInt(String(x || 0), 10) || 0).filter((x) => !!x).slice(0, 1000);
     localStorage.setItem(HIDE_KEY, JSON.stringify(arr));
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 function readCache() {
   try {
@@ -86,7 +86,7 @@ function readCache() {
 function writeCache(items) {
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), items: Array.isArray(items) ? items.slice(0, 60) : [] }));
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function ensureStyle() {
@@ -251,7 +251,7 @@ function render() {
         return it?.read_at ? it : { ...it, read_at: nowIso };
       });
       render();
-      try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { /* silently ignored */ }
+      try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { /* bỏ qua lỗi */ }
       if (link) window.location.href = link;
     });
     onDelete?.addEventListener('click', (e) => {
@@ -285,7 +285,7 @@ function mount() {
       <div class="emp-notify-head"><span>通知</span><span id="empNotifyStickyHeadCount">0件</span></div>
       <div id="empNotifyStickyList" class="emp-notify-list"><div class="emp-notify-empty">読み込み中...</div></div>
     </div>`;
-  wrap.style.display = 'none'; // Force hide the wrapper
+  wrap.style.display = 'none'; // Ép ẩn wrapper
   wrap.style.marginLeft = subnav ? 'auto' : '8px';
   host.appendChild(wrap);
   const btn = wrap.querySelector('#empNotifyStickyBtn');
@@ -310,13 +310,13 @@ function mount() {
     try {
       if (!(target instanceof Node)) return false;
       if (wrap.contains(target)) return true;
-      // Keep open only when clicking inside the notify UI itself.
+      // Chỉ giữ mở khi click bên trong chính UI thông báo.
       return false;
     } catch (e) {
       return false;
     }
   };
-  // Capture phase prevents conflicts with other handlers using stopPropagation.
+  // Dùng capture phase để tránh xung đột với các handler khác dùng stopPropagation.
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (shouldKeepOpen(t)) return;
@@ -344,7 +344,7 @@ function tryBoot() {
     refresh().catch(() => { });
     if (state.timer) clearInterval(state.timer);
     state.timer = setInterval(() => { refresh().catch(() => { }); }, 60000);
-    if (state.observer) { try { state.observer.disconnect(); } catch (e) { /* silently ignored */ } state.observer = null; }
+    if (state.observer) { try { state.observer.disconnect(); } catch (e) { /* bỏ qua lỗi */ } state.observer = null; }
     return true;
   } catch (e) {
     return false;
@@ -392,11 +392,11 @@ function setNavCurrent(pathName) {
       if (u.pathname === pathName) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 function syncPageHeadStyle(doc) {
   try {
-    // Sync external stylesheets
+    // Đồng bộ các stylesheet ngoài
     const currentLinks = new Set(Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).map(l => l.getAttribute('href').split('?')[0]));
     const newLinks = Array.from(doc?.head?.querySelectorAll('link[rel="stylesheet"]') || []);
     newLinks.forEach(link => {
@@ -419,7 +419,7 @@ function syncPageHeadStyle(doc) {
       document.head.appendChild(st);
     }
     st.textContent = styles.join('\n\n');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 async function softNavigateLocal(url, push = true) {
   try {
@@ -441,22 +441,22 @@ async function softNavigateLocal(url, push = true) {
         try {
           const mod = await import('/static/js/pages/requests.page.js');
           if (mod && typeof mod.bootRequestsPage === 'function') await mod.bootRequestsPage();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       } else if (url.pathname === EXP_PATH) {
         try {
           const mod = await import('/static/js/pages/expenses.page.js?v=20260529-23');
           if (mod && typeof mod.bootExpensesPage === 'function') await mod.bootExpensesPage();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       } else if (url.pathname === ATT_RECORDS_PATH) {
         try {
           const mod = await import('/static/js/pages/attendance-records.page.js?v=' + Date.now());
           if (mod && typeof mod.bootAttendanceRecordsPage === 'function') await mod.bootAttendanceRecordsPage();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       } else if (url.pathname === SHIFTS_PATH) {
         try {
           const mod = await import('/static/js/pages/shifts.page.js?v=' + Date.now());
           if (mod && typeof mod.bootShiftsPage === 'function') await mod.bootShiftsPage();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }
     return true;
   } catch (e) {
@@ -487,7 +487,7 @@ function bindSoftRequestNavigation() {
       return;
     }
     
-    // Explicitly close user dropdown and mobile drawer when navigating
+    // Đóng hẳn dropdown người dùng và drawer mobile khi điều hướng
     try {
       const dropdown = document.querySelector('#userDropdown');
       const btn = document.querySelector('.user .user-btn');
@@ -541,24 +541,24 @@ function bindSoftRequestNavigation() {
         softNavInFlight = false;
       }
       if (!ok) window.location.reload();
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
 }
 
-// Reduce header/subbar flicker feeling on employee pages.
-try { document.documentElement.classList.add('topbar-ready'); } catch (e) { /* silently ignored */ }
-try { bindSelfNavigationGuard(); } catch (e) { /* silently ignored */ }
-// Keep a single navigation router (portal.page.js) to avoid race/flicker.
+// Giảm cảm giác nhấp nháy header/subbar trên các trang nhân viên.
+try { document.documentElement.classList.add('topbar-ready'); } catch (e) { /* bỏ qua lỗi */ }
+try { bindSelfNavigationGuard(); } catch (e) { /* bỏ qua lỗi */ }
+// Chỉ dùng một router điều hướng (portal.page.js) để tránh tranh chấp/nhấp nháy.
 try {
   const sp = document.getElementById('pageSpinner');
   if (sp) sp.setAttribute('hidden', '');
-} catch (e) { /* silently ignored */ }
+} catch (e) { /* bỏ qua lỗi */ }
 
 if (!tryBoot()) {
-  // Mount as soon as subnav is inserted, without waiting full page lifecycle.
+  // Gắn ngay khi subnav được chèn vào, không chờ toàn bộ vòng đời trang.
   try {
     state.observer = new MutationObserver(() => { if (tryBoot()) return; });
     state.observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   document.addEventListener('DOMContentLoaded', () => { tryBoot(); }, { once: true });
 }

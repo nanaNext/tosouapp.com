@@ -536,14 +536,14 @@ export async function mount(options = {}) {
     </style>
   `;
 
-  // ═══ Helper: toggle status text ═══
+  // ═══ Helper: cập nhật chữ trạng thái toggle ═══
   function syncToggleStatus(checkbox, statusEl) {
     const on = checkbox.checked;
     statusEl.textContent = on ? 'ON' : 'OFF';
     statusEl.style.color = on ? '#16a34a' : '#94a3b8';
   }
 
-  // Wire all toggles
+  // Gắn sự kiện cho tất cả toggle
   const togglePairs = [
     ['toggle2FA', 'toggle2FAStatus'],
     ['toggleMaintenance', 'toggleMaintenanceStatus'],
@@ -560,7 +560,7 @@ export async function mount(options = {}) {
     }
   });
 
-  // ═══ Load flags from API ═══
+  // ═══ Tải flags từ API ═══
   async function loadFlags() {
     try {
       const flags = await fetchJSONAuth('/api/admin/system/flags');
@@ -573,17 +573,17 @@ export async function mount(options = {}) {
         document.getElementById('toggleNoteOnRemote').checked = !!flags.requireNoteOnRemote;
         document.getElementById('inputCountryWhitelist').value = flags.countryWhitelist || '';
         document.getElementById('inputMaxDevices').value = flags.maxDevicesPerUser || 5;
-        // Re-sync status labels
+        // Đồng bộ lại nhãn trạng thái
         togglePairs.forEach(([cbId, statusId]) => {
           const cb = document.getElementById(cbId);
           const st = document.getElementById(statusId);
           if (cb && st) syncToggleStatus(cb, st);
         });
       }
-    } catch (e) { /* silently ignored - defaults will show */ }
+    } catch (e) { /* bỏ qua lỗi - sẽ hiển thị giá trị mặc định */ }
   }
 
-  // ═══ Save flags ═══
+  // ═══ Lưu flags ═══
   document.getElementById('btnSaveFlags')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnSaveFlags');
     const resultEl = document.getElementById('flagsResult');
@@ -621,7 +621,7 @@ export async function mount(options = {}) {
     }
   });
 
-  // ═══ Password Policy Form ═══
+  // ═══ Form chính sách mật khẩu ═══
   document.getElementById('formPasswordPolicy')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button[type="submit"]');
@@ -658,7 +658,7 @@ export async function mount(options = {}) {
     }
   });
 
-  // ═══ Load password policy ═══
+  // ═══ Tải chính sách mật khẩu ═══
   async function loadPasswordPolicy() {
     try {
       const res = await fetchJSONAuth('/api/admin/settings/password-policy');
@@ -670,10 +670,10 @@ export async function mount(options = {}) {
         if (res.requireSymbol != null) document.getElementById('pwRequireSymbol').checked = !!res.requireSymbol;
         if (res.expiryDays != null) document.getElementById('pwExpiryDays').value = res.expiryDays;
       }
-    } catch (e) { /* use defaults */ }
+    } catch (e) { /* dùng giá trị mặc định */ }
   }
 
-  // ═══ 2FA Toggle ═══
+  // ═══ Bật/tắt 2FA ═══
   document.getElementById('toggle2FA')?.addEventListener('change', async (e) => {
     const on = e.target.checked;
     const statusEl = document.getElementById('toggle2FAStatus');
@@ -684,14 +684,14 @@ export async function mount(options = {}) {
         body: JSON.stringify({ enforced: on })
       });
     } catch (err) {
-      // Revert on failure
+      // Hoàn tác khi thất bại
       e.target.checked = !on;
       syncToggleStatus(e.target, statusEl);
       alert('2FA設定の更新に失敗しました: ' + (err.message || ''));
     }
   });
 
-  // ═══ Load 2FA policy ═══
+  // ═══ Tải chính sách 2FA ═══
   async function load2FAPolicy() {
     try {
       const res = await fetchJSONAuth('/api/admin/settings/2fa-policy');
@@ -700,10 +700,10 @@ export async function mount(options = {}) {
         cb.checked = !!res.enforced;
         syncToggleStatus(cb, document.getElementById('toggle2FAStatus'));
       }
-    } catch (e) { /* default off */ }
+    } catch (e) { /* mặc định tắt */ }
   }
 
-  // ═══ Passkey management ═══
+  // ═══ Quản lý passkey ═══
   const statusEl = document.getElementById('passkeyStatus');
   const listEl = document.getElementById('passkeyList');
 
@@ -735,7 +735,7 @@ export async function mount(options = {}) {
     }
   }
 
-  // Register passkey
+  // Đăng ký passkey
   document.getElementById('btnRegisterPasskey')?.addEventListener('click', async () => {
     try {
       const user = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
@@ -778,7 +778,7 @@ export async function mount(options = {}) {
     }
   });
 
-  // ═══ Test Mail button ═══
+  // ═══ Nút gửi mail thử ═══
   document.getElementById('btnTestMail')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnTestMail');
     const resultEl = document.getElementById('testMailResult');
@@ -804,7 +804,7 @@ export async function mount(options = {}) {
     }
   });
 
-  // ═══ Shift Reminder ═══
+  // ═══ Nhắc nộp ca làm ═══
   const monthInput = document.getElementById('reminderMonth');
   if (monthInput) {
     const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
@@ -930,6 +930,6 @@ export async function mount(options = {}) {
     }
   });
 
-  // ═══ Init: load all data ═══
+  // ═══ Khởi tạo: tải toàn bộ dữ liệu ═══
   await Promise.all([loadPasskeys(), loadFlags(), loadPasswordPolicy(), load2FAPolicy()]);
 }

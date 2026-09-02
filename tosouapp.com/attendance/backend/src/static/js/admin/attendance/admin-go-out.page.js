@@ -173,7 +173,7 @@ export async function mountGoOut({ content }) {
   const tbody = document.getElementById('goOutAdminTableBody');
   const monthInput = document.getElementById('goOutAdminFilterMonth');
   
-  // Move date picker to top header on mobile if available
+  // Chuyển bộ chọn tháng lên header trên cùng khi ở mobile (nếu có)
   const mobileActions = document.getElementById('attHubMobileActions');
   if (mobileActions && window.innerWidth <= 768) {
     const monthClone = monthInput.cloneNode(true);
@@ -191,7 +191,7 @@ export async function mountGoOut({ content }) {
     });
   }
   
-  // Set default month to current month
+  // Đặt tháng mặc định là tháng hiện tại
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   monthInput.value = defaultMonth;
@@ -239,7 +239,7 @@ export async function mountGoOut({ content }) {
     const filterMonth = document.getElementById('goOutAdminFilterMonth');
     if (!filterMonth) return;
     
-    // Get month value (YYYY-MM)
+    // Lấy giá trị tháng (YYYY-MM)
     const monthVal = filterMonth.value;
     const tbodyEl = document.getElementById('goOutAdminTableBody');
     if (tbodyEl) {
@@ -248,7 +248,7 @@ export async function mountGoOut({ content }) {
 
     try {
       const qs = new URLSearchParams();
-      // Only append if we have a valid YYYY-MM
+      // Chỉ thêm khi có YYYY-MM hợp lệ
       if (monthVal && /^\d{4}-\d{2}$/.test(monthVal)) {
         qs.append('month', monthVal);
       }
@@ -265,7 +265,7 @@ export async function mountGoOut({ content }) {
   };
 
   const renderTable = () => {
-    // For mobile devices, show all records (ignore pagination)
+    // Trên mobile hiển thị toàn bộ bản ghi (bỏ phân trang)
     const isMobile = window.innerWidth <= 768;
     const pageSizeEl = document.getElementById('goOutAdminPageSize');
     if (!pageSizeEl) return;
@@ -311,7 +311,7 @@ export async function mountGoOut({ content }) {
       const statusBg = r.status === '外出中' ? '#fef3c7' : (r.status === '修正済み' ? '#d1fae5' : '#f1f5f9');
       
       const typeColor = r.type === '業務' ? 'white' : 'white';
-      const typeBg = r.type === '業務' ? '#3b82f6' : '#ef4444'; // Blue for 業務, Red for 私用
+      const typeBg = r.type === '業務' ? '#3b82f6' : '#ef4444'; // Xanh cho 業務, đỏ cho 私用
 // hàm let actions để hiển thị các nút tác động cho mỗi dòng dữ liệu
       let actions = '';
       if (r.status === '外出中') {
@@ -385,7 +385,7 @@ export async function mountGoOut({ content }) {
     });
     if (tbodyEl) tbodyEl.innerHTML = html;
 
-    // Attach events
+    // Gắn sự kiện
     document.querySelectorAll('.btn-force-end').forEach(btn => {
       btn.addEventListener('click', handleForceEnd);
     });
@@ -429,12 +429,12 @@ export async function mountGoOut({ content }) {
   };
 
   const handleEdit = (e) => {
-    // Traverse up to find the button element if clicked on svg/path
+    // Truy ngược lên để lấy phần tử button nếu bấm trúng svg/path
     const btn = e.target.closest('.btn-edit');
     if (!btn) return;
     const json = JSON.parse(btn.dataset.json);
     
-    // Create modal
+    // Tạo modal
     const modal = document.createElement('div');
     modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
     
@@ -557,13 +557,13 @@ export async function mountGoOut({ content }) {
   document.getElementById('goOutAdminFilterMonth').addEventListener('change', loadData);
   document.getElementById('goOutAdminFilterMonth').addEventListener('input', loadData);
   
-  // Re-render table when resizing between mobile and desktop to adjust pagination logic
+  // Render lại bảng khi đổi kích thước giữa mobile/desktop để chỉnh logic phân trang
   const handleResize = () => {
     if (allRecords.length > 0 && document.getElementById('goOutAdminItemCount')) {
       renderTable();
     }
     
-    // Manage date picker position based on screen size
+    // Quản lý vị trí bộ chọn tháng theo kích thước màn hình
     const mobileActions = document.getElementById('attHubMobileActions');
     const mobileMonth = document.getElementById('goOutAdminFilterMonthMobile');
     if (window.innerWidth <= 768) {

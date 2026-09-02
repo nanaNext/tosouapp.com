@@ -13,11 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const birthDateInput = $('#birthDate');
   if (birthDateInput) {
     const closeDatePicker = (e) => {
-      try { e?.preventDefault(); } catch (e) { /* silently ignored */ }
+      try { e?.preventDefault(); } catch (e) { /* bỏ qua lỗi */ }
       birthDateInput.blur();
     };
-    // On some mobile browsers, tapping the date field again does not close the picker.
-    // If already focused, blur on second tap to close it.
+    // Trên vài trình duyệt mobile, chạm lại vào ô ngày không đóng được lịch chọn.
+    // Nếu ô đang focus thì blur khi chạm lần nữa để đóng.
     birthDateInput.addEventListener('pointerdown', (e) => {
       if (document.activeElement !== birthDateInput) return;
       closeDatePicker(e);

@@ -1174,7 +1174,7 @@ const render = async (host) => {
       
       const tableHost = document.getElementById('expDashList');
       if (tableHost) tableHost.style.display = 'block';
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const setStatusText = (t, isErr) => {
@@ -1282,7 +1282,7 @@ const render = async (host) => {
   const fetchList = async () => {
       const isMonthly = state.status === 'monthly_approval' || state.status === 'archived';
       const statusParam = isMonthly ? (state.status === 'archived' ? 'approved' : 'applied') : state.status;
-    const limitParam = 2000; // Force load all to allow frontend grouping
+    const limitParam = 2000; // Tải hết để frontend gom nhóm
     const q = new URLSearchParams();
     q.set('month', String(state.month || '').slice(0, 7));
     q.set('page', String(state.page || 1));
@@ -1411,7 +1411,7 @@ const render = async (host) => {
     try {
       const root = document.getElementById('expDashRoot');
       if (root && isDesktop()) root.classList.add('with-drawer');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     state.selectedId = String(id || '');
     drawer.removeAttribute('hidden');
     const desktop = isDesktop();
@@ -1423,7 +1423,7 @@ const render = async (host) => {
         backdrop?.removeAttribute('hidden');
         document.body.style.overflow = 'hidden';
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     body.innerHTML = `<div class="exp-dash-muted">読み込み中…</div>`;
     try {
       const [rec, files] = await Promise.all([
@@ -1596,8 +1596,8 @@ const render = async (host) => {
     try {
       const root = document.getElementById('expDashRoot');
       root?.classList.remove('with-drawer');
-    } catch (e) { /* silently ignored */ }
-    try { document.body.style.overflow = ''; } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+    try { document.body.style.overflow = ''; } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const renderList = (result) => {
@@ -1613,7 +1613,7 @@ const render = async (host) => {
       if (!uid) return;
       const monthStr = String(r.date || '').slice(0, 7);
       const st = String(r.status || 'pending').toLowerCase();
-      // Group by user and month ONLY to avoid duplicate groups for the same employee
+      // Chỉ nhóm theo user và tháng để tránh nhóm trùng cho cùng nhân viên
       const key = `${uid}_${monthStr}`;
       const prev = userMap.get(key) || { userId: uid, userName: r.user_name || r.user_email || '社員', userCode: r.employee_code, dept: r.departmentId, count: 0, amount: 0, month: monthStr, items: [] };
       prev.count += 1;
@@ -1642,7 +1642,7 @@ const render = async (host) => {
         }
 
         const isMonthly = state.status === 'monthly_approval' || state.status === 'archived';
-      const showAccordion = state.status === 'applied'; // Only "未承認" (Pending) shows accordion
+      const showAccordion = state.status === 'applied'; // Chỉ "未承認" (chờ duyệt) mới hiện accordion
 
         let actionHtml = '';
         if (!showAccordion) {
@@ -1830,7 +1830,7 @@ const render = async (host) => {
       </div>
     `;
     
-    // Group checkbox logic for non-monthly modes
+    // Logic checkbox nhóm cho các chế độ không phải theo tháng
     if (state.status !== 'monthly_approval' && state.status !== 'archived') {
       const groupCbs = document.querySelectorAll('.exp-dash-bulk-group');
       groupCbs.forEach(cb => {
@@ -1843,7 +1843,7 @@ const render = async (host) => {
       });
     }
 
-    // Bind drawer open events
+    // Gắn sự kiện mở drawer
     document.querySelectorAll('a[data-action="open-drawer"]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -1853,12 +1853,12 @@ const render = async (host) => {
       });
     });
 
-    // Monthly bulk actions event binding
+    // Gắn sự kiện cho các thao tác hàng loạt theo tháng
     if (state.status === 'monthly_approval') {
         const checkAllMonthly = document.getElementById('expDashBulkCheckAllMonthly');
         const cbListMonthly = document.querySelectorAll('.exp-dash-bulk-cb-monthly');
         
-        // Row click toggle
+        // Bấm vào dòng để bật/tắt chọn
         document.querySelectorAll('.exp-dash-row').forEach(row => {
           row.addEventListener('click', (e) => {
             if (e.target.closest('a') || e.target.closest('button')) return;
@@ -1915,11 +1915,11 @@ const render = async (host) => {
         }
       }
 
-    // Bulk action event listeners
+    // Sự kiện cho các thao tác hàng loạt
     const checkAll = document.getElementById('expDashBulkCheckAll');
     const cbList = document.querySelectorAll('.exp-dash-bulk-cb');
     
-    // Make entire row click toggle group checkbox for non-monthly modes
+    // Cho phép bấm cả dòng để bật/tắt checkbox nhóm ở chế độ không phải theo tháng
     if (state.status !== 'monthly_approval') {
       document.querySelectorAll('.exp-dash-row').forEach(row => {
         row.addEventListener('click', (e) => {
@@ -1978,7 +1978,7 @@ const render = async (host) => {
 
     const getSelectedIds = () => {
       const ids = [];
-      // First try to get IDs from the individual checkboxes (child checkboxes)
+      // Trước tiên thử lấy ID từ các checkbox riêng lẻ (checkbox con)
       const childCbs = document.querySelectorAll('.exp-dash-bulk-cb:checked');
       if (childCbs.length > 0) {
         childCbs.forEach(cb => {
@@ -1986,9 +1986,9 @@ const render = async (host) => {
           if (id) ids.push(id);
         });
       } else {
-        // If no child checkboxes are visible or checked, but group checkboxes are checked,
-        // we need to get the IDs from the items in those groups.
-        // We can find the underlying items by looking at the hidden expanded rows.
+        // Nếu không có checkbox con nào hiện/được chọn nhưng checkbox nhóm được chọn,
+        // ta cần lấy ID từ các item trong những nhóm đó.
+        // Có thể tìm các item đó qua các dòng expand đang ẩn.
         document.querySelectorAll('.exp-dash-bulk-group:checked').forEach(cb => {
           const uid = cb.getAttribute('data-uid');
           const month = cb.getAttribute('data-month');
@@ -2069,7 +2069,7 @@ const render = async (host) => {
             const url = new URL(window.location);
             url.searchParams.set('tab', nextTab);
             window.history.replaceState({}, '', url);
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
           await reloadAll();
         } catch (e) {
           alert('一部の処理に失敗しました。');
@@ -2105,7 +2105,7 @@ const render = async (host) => {
             const url = new URL(window.location);
             url.searchParams.set('tab', 'paid');
             window.history.replaceState({}, '', url);
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
           await reloadAll();
         } catch (err) {
           alert('一部の処理に失敗しました。');
@@ -2140,7 +2140,7 @@ const render = async (host) => {
       setBadge('expDashBellBadge', dash?.month?.appliedCount || 0);
       renderList(list);
 
-      // Update Bell Popup
+      // Cập nhật popup chuông thông báo
       const bellBody = document.getElementById('expDashBellPopupBody');
       if (bellBody) {
         const bellRows = bellRes.status === 'fulfilled' && Array.isArray(bellRes.value?.rows) ? bellRes.value.rows : [];
@@ -2185,7 +2185,7 @@ const render = async (host) => {
       renderList(list);
       setStatusText('', false);
       
-      // Ensure visibility is correct after fetching
+      // Đảm bảo hiển thị đúng sau khi lấy dữ liệu
       applyViewMode();
     } catch (e) {
       setStatusText(String(e?.message || '取得失敗'), true);
@@ -2202,7 +2202,7 @@ const render = async (host) => {
       if (el) el.textContent = String(name || '').trim();
       const chip = el?.closest?.('.exp-dash-userchip');
       if (chip) chip.setAttribute('title', String(name || '').trim());
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       const depts = await fetchJSONAuth('/api/admin/departments').catch(() => fetchJSONAuth('/api/departments').catch(() => []));
       state.departments = Array.isArray(depts) ? depts : [];
@@ -2211,7 +2211,7 @@ const render = async (host) => {
       if (sel) {
         sel.innerHTML = `<option value="">全部署</option>` + state.departments.map((d) => `<option value="${esc(String(d.id))}">${esc(d.name || d.code || `#${String(d.id)}`)}</option>`).join('');
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const monthInput = document.getElementById('expDashMonth');
     if (monthInput) monthInput.value = state.month;
     document.getElementById('expDashReload')?.addEventListener('click', async () => {
@@ -2266,7 +2266,7 @@ const render = async (host) => {
           const url = new URL(window.location);
           url.searchParams.set('tab', state.status || 'list');
           window.history.replaceState({}, '', url);
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
 
         await reloadListOnly();
       });
@@ -2293,13 +2293,13 @@ const render = async (host) => {
           const url = new URL(window.location);
           url.searchParams.delete('tab');
           window.history.replaceState({}, '', url);
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
 
         await reloadAll();
       });
     });
     
-    // Bind Month Close event dynamically after rendering
+    // Gắn sự kiện chốt tháng động sau khi render
     document.addEventListener('click', async (e) => {
       const btnMonthClose = e.target.closest('#expDashMonthClose');
       if (btnMonthClose) {
@@ -2309,14 +2309,14 @@ const render = async (host) => {
         btnMonthClose.disabled = true;
         btnMonthClose.innerHTML = '処理中...';
         try {
-          // Send request to month close API endpoint
+          // Gửi request tới API chốt tháng
           await fetchJSONAuth(`/api/expenses/admin/monthly-close`, {
             method: 'POST',
             body: JSON.stringify({ month: ym })
           });
           alert(`${ym} の月次締めが完了しました。`);
           
-          // Switch to archive tab to show result
+          // Chuyển sang tab lưu trữ để xem kết quả
           state.status = 'archived';
           state.page = 1;
           applyViewMode();
@@ -2329,7 +2329,7 @@ const render = async (host) => {
             const url = new URL(window.location);
             url.searchParams.set('tab', 'archived');
             window.history.replaceState({}, '', url);
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
           await reloadAll();
         } catch (err) {
           alert(`月次締めに失敗しました: ${err.message || 'unknown'}`);
@@ -2348,13 +2348,13 @@ const render = async (host) => {
         if (window.innerWidth <= 760) {
           const isOpen = root.classList.contains('mobile-open');
           btn.textContent = isOpen ? '✕' : '☰';
-          try { btn.setAttribute('aria-label', isOpen ? '閉じる' : 'メニュー'); } catch (e) { /* silently ignored */ }
+          try { btn.setAttribute('aria-label', isOpen ? '閉じる' : 'メニュー'); } catch (e) { /* bỏ qua lỗi */ }
         } else {
           const collapsed = root.classList.contains('collapsed');
           btn.textContent = collapsed ? '☰' : '✕';
-          try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch (e) { /* silently ignored */ }
+          try { btn.setAttribute('aria-label', collapsed ? 'メニュー' : '閉じる'); } catch (e) { /* bỏ qua lỗi */ }
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     document.getElementById('expDashLogout')?.addEventListener('click', async () => {
       try {
@@ -2398,7 +2398,7 @@ const render = async (host) => {
           root.classList.toggle('collapsed');
         }
         syncBurger();
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     });
     syncBurger();
     document.getElementById('expDashBell')?.addEventListener('click', (e) => {
@@ -2577,7 +2577,7 @@ const render = async (host) => {
 
   await wire();
   
-  // Check if we need to load a specific tab from URL params
+  // Kiểm tra xem có cần tải một tab cụ thể từ tham số URL không
   const tabParam = new URLSearchParams(window.location.search).get('tab');
   if (tabParam) {
     const btn = document.querySelector(`.exp-dash-nav[data-status="${tabParam}"]`);
@@ -2607,9 +2607,9 @@ const render = async (host) => {
   applyViewMode();
   await reloadAll();
   return () => {
-    try { if (pollTimer) window.clearInterval(pollTimer); } catch (e) { /* silently ignored */ }
-    try { hideSpinner(); } catch (e) { /* silently ignored */ }
-    try { closeDrawer(); } catch (e) { /* silently ignored */ }
+    try { if (pollTimer) window.clearInterval(pollTimer); } catch (e) { /* bỏ qua lỗi */ }
+    try { hideSpinner(); } catch (e) { /* bỏ qua lỗi */ }
+    try { closeDrawer(); } catch (e) { /* bỏ qua lỗi */ }
   };
   const includeByMode = (status, mode) => {
     const st = String(status || '').toLowerCase();
@@ -2917,7 +2917,7 @@ const render = async (host) => {
           const latest = Array.from(monthSet).sort((a, b) => String(b).localeCompare(String(a)))[0] || '';
           const m = document.getElementById('expMonth');
           if (m && latest) m.value = latest;
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         viewState.selectedRowIds.clear();
         viewState.page = 1;
         await reload();
@@ -3016,7 +3016,7 @@ const render = async (host) => {
     const [sortBy, sortDirRaw] = String(sortKey).split('_');
     const sortDir = String(sortDirRaw || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
     
-    // Add current view status if present
+    // Thêm trạng thái view hiện tại nếu có
     const st = String(state.status || '');
     const isMonthly = (st === 'monthly_approval' || st === 'applied_approved');
     const listStatus = isMonthly ? 'applied' : st;
@@ -3313,7 +3313,7 @@ const render = async (host) => {
           const ok = window.confirm(`${ids.length}件を一括承認しますか？`);
           if (!ok) return;
           for (const rid of ids) {
-            try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch (e) { /* silently ignored */ }
+            try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch (e) { /* bỏ qua lỗi */ }
           }
           viewState.selectedRowIds.clear();
           await reload();
@@ -3398,7 +3398,7 @@ const render = async (host) => {
                if (!ok) return;
                approveGroupBtn.disabled = true;
                for (const rid of ids) {
-                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch (e) { /* silently ignored */ }
+                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'approved', note: '' }) }); } catch (e) { /* bỏ qua lỗi */ }
                }
                viewState.selectedRowIds.clear();
                await reload();
@@ -3415,7 +3415,7 @@ const render = async (host) => {
                if (!ok) return;
                payGroupBtn.disabled = true;
                for (const rid of ids) {
-                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'paid', note: '' }) }); } catch (e) { /* silently ignored */ }
+                 try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(rid)}/status`, { method:'PATCH', body: JSON.stringify({ status: 'paid', note: '' }) }); } catch (e) { /* bỏ qua lỗi */ }
                }
                viewState.selectedRowIds.clear();
                await reload();
@@ -3503,7 +3503,7 @@ const render = async (host) => {
                   try {
                     const root = tableHost || document;
                     root.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'));
-                  } catch (e) { /* silently ignored */ }
+                  } catch (e) { /* bỏ qua lỗi */ }
                 };
                 const openEdit = async (recId) => {
                   closeOpenActionMenus();
@@ -3522,16 +3522,16 @@ const render = async (host) => {
                     set('adKm', r.distance_km != null ? String(r.distance_km) : '');
                     set('adUnitPrice', r.unit_price_per_km != null ? String(r.unit_price_per_km) : '');
                     set('adPurpose', r.purpose || '');
-                    try { const c1 = document.getElementById('adTeiki'); if (c1) c1.checked = !!r.teiki_flag; } catch (e) { /* silently ignored */ }
-                    try { const c2 = document.getElementById('adCommuter'); if (c2) c2.checked = !!r.commuter_pass; } catch (e) { /* silently ignored */ }
+                    try { const c1 = document.getElementById('adTeiki'); if (c1) c1.checked = !!r.teiki_flag; } catch (e) { /* bỏ qua lỗi */ }
+                    try { const c2 = document.getElementById('adCommuter'); if (c2) c2.checked = !!r.commuter_pass; } catch (e) { /* bỏ qua lỗi */ }
                     set('adAmount', r.amount != null ? String(r.amount) : '');
                     set('adMemo', r.memo || '');
-                  } catch (e) { /* silently ignored */ }
+                  } catch (e) { /* bỏ qua lỗi */ }
                   overlay.style.display = 'flex';
-                  try { document.body.style.overflow = 'hidden'; } catch (e) { /* silently ignored */ }
+                  try { document.body.style.overflow = 'hidden'; } catch (e) { /* bỏ qua lỗi */ }
                   const onCancel = () => {
                     overlay.style.display = 'none';
-                    try { document.body.style.overflow = ''; } catch (e) { /* silently ignored */ }
+                    try { document.body.style.overflow = ''; } catch (e) { /* bỏ qua lỗi */ }
                     cleanup();
                   };
                   const onSave = async () => {
@@ -3572,7 +3572,7 @@ const render = async (host) => {
                       const msg = changed.length ? ('変更内容:\n' + changed.join('\n') + '\n保存しますか？') : '変更はありません。保存しますか？';
                       const ok = window.confirm(msg);
                       if (!ok) return;
-                    } catch (e) { /* silently ignored */ }
+                    } catch (e) { /* bỏ qua lỗi */ }
                     try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(recId)}`, { method:'PATCH', body: JSON.stringify(payload) }); await reload(); onCancel(); } catch (errU) {
                       const status = document.getElementById('expStatus');
                       if (status) {
@@ -3620,7 +3620,7 @@ const render = async (host) => {
                 await openEdit(id);
               } else if (action === 'files') {
                 let rows = [];
-                try { rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (e) { /* silently ignored */ }
+                try { rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (e) { /* bỏ qua lỗi */ }
                 const next = rowEl3.nextElementSibling;
                 if (next && next.classList.contains('files-row')) {
                   next.remove();
@@ -3655,7 +3655,7 @@ const render = async (host) => {
                 await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method:'DELETE' });
                 await reload();
               }
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
             if (action === 'chat') {
               const next = rowEl3.nextElementSibling;
               if (next && next.classList.contains('chat-row')) {
@@ -3685,7 +3685,7 @@ const render = async (host) => {
                 const rec = rows.find(x => String(x.id) === String(id));
                 const reason = rec && rec.manager_note ? String(rec.manager_note) : '';
                 if (reasonEl) reasonEl.textContent = reason ? ('差戻し理由: ' + reason) : '';
-              } catch (e) { /* silently ignored */ }
+              } catch (e) { /* bỏ qua lỗi */ }
               const load = async () => {
                 try {
                   const msgs = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/messages`);
@@ -3715,7 +3715,7 @@ const render = async (host) => {
                   await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/messages`, { method:'POST', body: JSON.stringify({ message: val }) });
                   text.value = '';
                   await load();
-                } catch (errSend) { /* silently ignored */ }
+                } catch (errSend) { /* bỏ qua lỗi */ }
                 send.disabled = false;
               };
               send.addEventListener('click', doSend);
@@ -3771,7 +3771,7 @@ const render = async (host) => {
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
   const toggleDetailsBtn = $('#expToggleDetails');
   toggleDetailsBtn?.addEventListener('click', async () => {
@@ -3827,34 +3827,34 @@ const render = async (host) => {
         const month = $('#expMonth') ? $('#expMonth').value : todayMonth();
         const chats = await fetchJSONAuth(`/api/expenses/admin/messages?month=${encodeURIComponent(month)}`);
         renderChatNotice(chats, $('#expTableHost'));
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }, 30000);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   return () => {
-    try { if (pollTimer) window.clearInterval(pollTimer); } catch (e) { /* silently ignored */ }
-    try { hideSpinner(); } catch (e) { /* silently ignored */ }
+    try { if (pollTimer) window.clearInterval(pollTimer); } catch (e) { /* bỏ qua lỗi */ }
+    try { hideSpinner(); } catch (e) { /* bỏ qua lỗi */ }
     try {
       const backdrop = document.getElementById('drawerBackdrop');
       if (backdrop) {
         backdrop.setAttribute('hidden', '');
         backdrop.style.display = 'none';
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       const overlay = document.getElementById('adminEditModalOverlay');
       if (overlay) {
         overlay.style.display = 'none';
         overlay.remove();
       }
-    } catch (e) { /* silently ignored */ }
-    try { document.body.style.overflow = ''; } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+    try { document.body.style.overflow = ''; } catch (e) { /* bỏ qua lỗi */ }
   };
 };
 export async function mount(options = {}) {
   const root = options.content || document.querySelector('#adminContent');
   const profile = await requireAdmin();
   if (!profile) return;
-  try { window.ADMIN_ID = profile.id; } catch (e) { /* silently ignored */ }
-  try { window.ADMIN_PROFILE = profile; } catch (e) { /* silently ignored */ }
+  try { window.ADMIN_ID = profile.id; } catch (e) { /* bỏ qua lỗi */ }
+  try { window.ADMIN_PROFILE = profile; } catch (e) { /* bỏ qua lỗi */ }
   return await render(root);
 }

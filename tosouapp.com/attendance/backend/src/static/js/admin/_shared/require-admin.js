@@ -4,11 +4,11 @@ export async function requireAdmin() {
   let profile = null;
   try {
     profile = await fetchJSONAuth('/api/auth/me');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const role = String(profile && profile.role ? profile.role : '').toLowerCase();
   const path = window.location.pathname;
   const isAllowedEmployeePath = path === '/admin/attendance';
-  // Allow: admin, manager, owner, sysadmin (and employee on specific path)
+  // Cho phép: admin, manager, owner, sysadmin (và employee ở path cụ thể)
   const isAllowed = role === 'admin' || role === 'manager' || role === 'owner' || role === 'sysadmin'
     || (role === 'employee' && isAllowedEmployeePath);
   if (!profile || !isAllowed) {
@@ -18,12 +18,12 @@ export async function requireAdmin() {
         err.style.display = 'block';
         err.textContent = profile ? '管理者権限が必要です。従業員ポータルへ移動してください。' : 'ログインが必要です。もう一度ログインしてください。';
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       const sp = document.querySelector('#pageSpinner');
       if (sp) { sp.setAttribute('hidden', ''); sp.style.display = 'none'; }
-    } catch (e) { /* silently ignored */ }
-    try { window.location.replace('/ui/login'); } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+    try { window.location.replace('/ui/login'); } catch (e) { /* bỏ qua lỗi */ }
     return null;
   }
   return profile;

@@ -1,7 +1,7 @@
 /**
  * @module attendance.routes
- * Declares all /api/attendance/* endpoints and delegates to sub-controllers.
- * No business logic lives here — handlers are in the respective controller files.
+ * Khai báo toàn bộ endpoint /api/attendance/* và chuyển tới các controller con.
+ * Không có logic nghiệp vụ ở đây — handler nằm trong các file controller tương ứng.
  */
 'use strict';
 
@@ -15,10 +15,10 @@ const controller   = require('./attendance.controller');
 const calendarCtrl = require('./attendance.calendar.controller'); // GET /calendar/*
 const annualCtrl   = require('./attendance.annual.controller');   // GET /annual-summary, /month/report-matrix
 
-// SECURITY: debug routes are only available outside production.
+// BẢO MẬT: route debug chỉ bật khi không phải môi trường production.
 const allowDebugRoutes = process.env.NODE_ENV !== 'production';
 
-// ─── Check-in / Check-out ─────────────────────────────────────────────────────
+// ─── Chấm công vào / ra ───────────────────────────────────────────────────────
 
 router.post('/checkin',
   authenticate, resolveTenant,
@@ -44,7 +44,7 @@ router.post('/return',
   rateLimitNamed('attendance_return', { windowMs: 60_000, max: 30, keyBy: 'user_or_ip' }),
   controller.recordReturn);
 
-// ─── Admin Go-Out Management ──────────────────────────────────────────────────
+// ─── Quản lý ra ngoài (admin) ─────────────────────────────────────────────────
 
 router.get('/go-out/admin-list',
   authenticate, resolveTenant, authorize('manager', 'admin'),
@@ -62,7 +62,7 @@ router.delete('/go-out/admin/:id',
   authenticate, resolveTenant, authorize('manager', 'admin'),
   controller.adminDeleteGoOut);
 
-// ─── Work type / Timesheet / GPS ──────────────────────────────────────────────
+// ─── Loại công việc / Bảng công / GPS ────────────────────────────────────────
 
 router.post('/worktype',
   authenticate, authorize('employee', 'manager', 'admin'),
@@ -82,7 +82,7 @@ router.post('/sync',
   authenticate, authorize('employee', 'manager'),
   controller.syncOffline);
 
-// ─── Status / Roster ──────────────────────────────────────────────────────────
+// ─── Trạng thái / Danh sách điểm danh ────────────────────────────────────────
 
 router.get('/status',
   authenticate, authorize('employee', 'manager', 'admin'),
@@ -96,7 +96,7 @@ router.get('/today-roster',
   authenticate, resolveTenant, authorize('admin', 'manager'),
   controller.todayRoster);
 
-// ─── Day / Daily / Segments ───────────────────────────────────────────────────
+// ─── Ngày / Chi tiết ngày / Phân đoạn ────────────────────────────────────────
 
 router.get('/date/:date',
   authenticate, resolveTenant, authorize('employee', 'manager', 'admin'),
@@ -130,7 +130,7 @@ router.post('/date/:date/submit',
   authenticate, authorize('employee', 'manager'),
   controller.submitDay);
 
-// ─── Month ────────────────────────────────────────────────────────────────────
+// ─── Tháng ────────────────────────────────────────────────────────────────────
 
 router.get('/month',
   authenticate, authorize('employee', 'manager', 'admin', 'payroll'),
@@ -195,7 +195,7 @@ router.get('/month/export.xlsx',
   authenticate, authorize('employee', 'manager', 'admin', 'payroll'),
   controller.exportMonthXlsx);
 
-// ─── Shifts — definitions ──────────────────────────────────────────────────────
+// ─── Ca làm — định nghĩa ─────────────────────────────────────────────────────
 
 router.get('/shifts/definitions',
   authenticate, resolveTenant, authorize('manager', 'admin', 'payroll'),
@@ -211,7 +211,7 @@ router.delete('/shifts/definitions/:id',
   authenticate, resolveTenant, authorize('manager', 'admin'),
   controller.deleteShiftDefinition);
 
-// ─── Shifts — assignments ──────────────────────────────────────────────────────
+// ─── Ca làm — phân ca ────────────────────────────────────────────────────────
 
 router.get('/shifts/assignments',
   authenticate, resolveTenant, authorize('employee', 'manager', 'admin', 'payroll'),
@@ -248,7 +248,7 @@ router.post('/shifts/backfill',
     }
   });
 
-// ─── Shifts — bulk / approvals / matrix ───────────────────────────────────────
+// ─── Ca làm — lưu hàng loạt / duyệt / bảng ca ────────────────────────────────
 
 router.post('/shifts/bulk',
   authenticate, resolveTenant, authorize('employee', 'manager', 'admin'),
@@ -282,7 +282,7 @@ router.get('/shifts/monthly/:month',
   authenticate, resolveTenant, authorize('employee', 'manager', 'admin'),
   controller.getMyMonthlyShifts);
 
-// ─── Plan / Work details ───────────────────────────────────────────────────────
+// ─── Kế hoạch / Chi tiết công việc ───────────────────────────────────────────
 
 router.put('/plan',
   authenticate, authorize('employee', 'manager', 'admin'),
@@ -307,7 +307,7 @@ router.delete('/work-details/:id',
   authenticate, authorize('manager', 'admin'),
   controller.deleteWorkDetail);
 
-// ─── User profile / Export ────────────────────────────────────────────────────
+// ─── Hồ sơ nhân viên / Xuất file ─────────────────────────────────────────────
 
 router.get('/user-profile',
   authenticate, authorize('employee', 'manager', 'admin'),
@@ -317,7 +317,7 @@ router.get('/export',
   authenticate, authorize('employee', 'manager', 'admin'),
   controller.exportCsv);
 
-// ─── Calendar ─────────────────────────────────────────────────────────────────
+// ─── Lịch ─────────────────────────────────────────────────────────────────────
 
 router.get('/calendar',
   authenticate, authorize('employee', 'manager', 'admin'),
@@ -331,13 +331,13 @@ router.get('/calendar/working-days',
   authenticate, authorize('employee', 'manager', 'admin'),
   calendarCtrl.getCalendarWorkingDays);
 
-// ─── Annual summary ───────────────────────────────────────────────────────────
+// ─── Tổng hợp năm ─────────────────────────────────────────────────────────────
 
 router.get('/annual-summary',
   authenticate, authorize('employee', 'manager', 'admin'),
   annualCtrl.getAnnualSummary);
 
-// ─── Debug routes (non-production only) ──────────────────────────────────────
+// ─── Route debug (chỉ ngoài production) ──────────────────────────────────────
 
 if (allowDebugRoutes) {
   const attendanceRepo = require('./attendance.repository');

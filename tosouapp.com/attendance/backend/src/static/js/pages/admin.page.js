@@ -5,7 +5,7 @@ import { listDepartments } from '../api/departments.api.js';
 import { listUsers, deleteUser as deleteUserAccount, resetUserPassword } from '../api/users.api.js';
 import { getTimesheet, getAttendanceDay, updateAttendanceSegment, buildTimesheetExportURL } from '../api/attendance.api.js';
 
-// Layout System
+// Hệ thống layout
 import { 
   initLayout, 
   setTopbarHeightVar, 
@@ -24,11 +24,11 @@ const assetV = (() => {
     const meta = document.querySelector('meta[name="asset-v"]');
     const v = meta ? (meta.getAttribute('content') || '') : '';
     if (v) return String(v);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const v2 = window.__assetV;
     return v2 ? String(v2) : '';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   return '';
 })();
 
@@ -44,7 +44,7 @@ async function ensureAdmin() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
   if (token) {
-    try { profile = await me(token); } catch (e) { /* silently ignored */ }
+    try { profile = await me(token); } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
@@ -52,7 +52,7 @@ async function ensureAdmin() {
       sessionStorage.setItem('accessToken', r.accessToken);
       token = r.accessToken;
       profile = await me(token);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
@@ -60,7 +60,7 @@ async function ensureAdmin() {
       sessionStorage.setItem('accessToken', r2.accessToken);
       token = r2.accessToken;
       profile = await me(token);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
@@ -71,14 +71,14 @@ async function ensureAdmin() {
         try {
           const r3 = await refresh();
           sessionStorage.setItem('accessToken', r3.accessToken);
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
-      // Fallback: /api/auth/me can authenticate via session cookie even when
-      // access token in sessionStorage is stale or missing.
+      // Fallback: /api/auth/me có thể xác thực qua session cookie ngay cả khi
+      // access token trong sessionStorage đã cũ hoặc bị thiếu.
       profile = await fetchJSONAuth('/api/auth/me');
       if (profile && !token) {
         try {
@@ -87,9 +87,9 @@ async function ensureAdmin() {
             sessionStorage.setItem('accessToken', r4.accessToken);
             token = r4.accessToken;
           }
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     const err = document.querySelector('#error');
@@ -97,7 +97,7 @@ async function ensureAdmin() {
     try {
       const sp = document.querySelector('#pageSpinner');
       if (sp) { sp.setAttribute('hidden', ''); sp.style.display = 'none'; }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return null;
   }
   const role = String(profile.role || '').toLowerCase();
@@ -110,12 +110,12 @@ async function ensureAdmin() {
 }
 
 async function bootLegacyAdminPage() {
-  // Init Shared Styles
+  // Khởi tạo style dùng chung
   ensureSpinnerStyle();
   ensureJapanSafeColorsStyle();
   ensureEmployeePillStyle();
 
-  // Init Layout DOM Events (topbar, sidebar, mobile drawer, dropdowns)
+  // Khởi tạo sự kiện DOM cho layout (topbar, sidebar, drawer mobile, dropdown)
   initLayout();
 
   const status = $('#status');
@@ -135,11 +135,11 @@ async function bootLegacyAdminPage() {
     try {
       const sp = document.querySelector('#pageSpinner');
       if (sp) { sp.setAttribute('hidden', ''); sp.style.display = 'none'; }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       const st = document.querySelector('#status');
       if (st) st.textContent = '';
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return;
   }
   
@@ -154,7 +154,7 @@ async function bootLegacyAdminPage() {
     if (ddName && full) ddName.textContent = full;
     if (ddInit && ch) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
     if (btnInit && ch) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const content = $('#adminContent');
   
   function getCurrentTab() {
@@ -201,7 +201,7 @@ async function bootLegacyAdminPage() {
       setSidebarActive(tab);
       try {
         document.body.classList.remove('employees-wide');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       const contentEl2 = document.querySelector('#adminContent');
       if (contentEl2) {
         contentEl2.className = 'card';
@@ -247,7 +247,7 @@ async function bootLegacyAdminPage() {
               return employeesDyn.mount(ctx);
             },
             unmount() {
-              try { if (employeesDyn && typeof employeesDyn.unmount === 'function') employeesDyn.unmount(); } catch (e) { /* silently ignored */ }
+              try { if (employeesDyn && typeof employeesDyn.unmount === 'function') employeesDyn.unmount(); } catch (e) { /* bỏ qua lỗi */ }
               employeesDyn = null;
             }
           },
@@ -271,7 +271,7 @@ async function bootLegacyAdminPage() {
               return attendanceDyn.mount(ctx);
             },
             unmount() {
-              try { if (attendanceDyn && typeof attendanceDyn.unmount === 'function') attendanceDyn.unmount(); } catch (e) { /* silently ignored */ }
+              try { if (attendanceDyn && typeof attendanceDyn.unmount === 'function') attendanceDyn.unmount(); } catch (e) { /* bỏ qua lỗi */ }
               attendanceDyn = null;
             }
           },
@@ -334,7 +334,7 @@ async function bootLegacyAdminPage() {
         const nextPage = routes[nextPageKey] || routes.home;
 
         if (currentPage) {
-          try { currentPage.unmount(); } catch (e) { /* silently ignored */ }
+          try { currentPage.unmount(); } catch (e) { /* bỏ qua lỗi */ }
         }
 
         currentPage = nextPage;
@@ -363,20 +363,20 @@ async function bootLegacyAdminPage() {
         if (err) { err.style.display = 'block'; err.textContent = '読み込みエラー: ' + ((e && e.message) ? e.message : 'unknown'); }
       } finally {
         hideNavSpinner();
-        try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
+        try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* bỏ qua lỗi */ }
       }
     }
     window.addEventListener('hashchange', async () => { hideNavSpinner(); await renderByTab(); });
     window.addEventListener('popstate', async () => { hideNavSpinner(); await renderByTab(); });
     await renderByTab();
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1') {
       showNavSpinner();
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   if (status) status.textContent = '';
 }
 
@@ -384,14 +384,14 @@ function startLegacyAdminPage() {
   try {
     if (window.__legacyAdminPageBooting || window.__legacyAdminPageBooted) return;
     window.__legacyAdminPageBooting = true;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   Promise.resolve()
     .then(() => bootLegacyAdminPage())
     .finally(() => {
       try {
         window.__legacyAdminPageBooting = false;
         window.__legacyAdminPageBooted = true;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     });
 }
 

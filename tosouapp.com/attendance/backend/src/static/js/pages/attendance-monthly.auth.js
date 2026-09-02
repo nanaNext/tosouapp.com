@@ -15,7 +15,7 @@
     });
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* bỏ qua lỗi */ }
       throw new Error(msg);
     }
     return res.json();
@@ -31,7 +31,7 @@
     });
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* bỏ qua lỗi */ }
       throw new Error(msg);
     }
     return res.json();
@@ -81,8 +81,8 @@
       sessionStorage.removeItem('user');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch (e) { /* silently ignored */ }
-    try { window.location.href = '/ui/login'; } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
+    try { window.location.href = '/ui/login'; } catch (e) { /* bỏ qua lỗi */ }
   }
 
   async function fetchJSONAuth(url, options) {
@@ -115,14 +115,14 @@
           cache: cacheMode,
           ...options
         });
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
       try {
         const j = await res.json();
         msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       const m = String(msg || '').toLowerCase();
       if (res.status === 429 || m.includes('too many requests')) {
         throw new Error('Too many requests（操作が多すぎます。1分ほど待ってから再度お試しください）');
@@ -148,11 +148,11 @@
         tok = r.accessToken;
         const csrf2 = getCookie('csrfToken');
         res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tok, 'X-CSRF-Token': csrf2 || '' }, credentials: 'include' });
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* bỏ qua lỗi */ }
       throw new Error(msg);
     }
     
@@ -178,19 +178,19 @@
     a.href = objUrl;
     a.download = finalFilename;
     a.click();
-    setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { /* silently ignored */ } }, 1000);
+    setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) { /* bỏ qua lỗi */ } }, 1000);
   }
 
   async function ensureAuthProfile() {
     let token = sessionStorage.getItem('accessToken');
     let profile = null;
-    if (token) { try { profile = await me(token); } catch (e) { /* silently ignored */ } }
+    if (token) { try { profile = await me(token); } catch (e) { /* bỏ qua lỗi */ } }
     if (!profile) {
       try {
         const r = await refreshCached();
         sessionStorage.setItem('accessToken', r.accessToken);
         profile = await me(r.accessToken);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
     if (!profile) {
       try {
@@ -198,7 +198,7 @@
         const user = userStr ? JSON.parse(userStr) : null;
         const role = String(user?.role || '').toLowerCase();
         profile = role === 'admin' || role === 'manager' || role === 'employee' ? user : null;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
     return profile || null;
   }

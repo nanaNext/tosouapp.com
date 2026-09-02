@@ -54,7 +54,7 @@
     const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow, shiftRequest, canAddMore) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
-        // Must follow backend calendar policy (department-aware), do not force Saturday/Sunday here.
+        // Phải theo chính sách lịch của backend (có tính phòng ban), không ép Thứ 7/Chủ nhật ở đây.
         const offDay = !!isOff;
         
         const kubunConfirmed = Number(daily?.kubunConfirmed || 0) === 1;
@@ -69,7 +69,7 @@
         }
       }
 
-      // Always include 休日 in the options if admin/manager
+      // Luôn thêm 休日 vào các lựa chọn nếu là admin/manager
     
       let kubunOptions = [];
       if (isPartTime) {
@@ -94,7 +94,7 @@
       const outHmRaw = fromDateTime(seg?.checkOut);
       const segWt = String(seg?.workType || '').trim();
       const segLabels = String(seg?.labels || '').trim();
-      // Ignore shift-shaped placeholder rows (planned auto rows), keep only real punches.
+      // Bỏ qua các dòng placeholder dạng ca (dòng auto theo kế hoạch), chỉ giữ chấm công thật.
       const isShiftPlaceholder = false;
       const inHm = isShiftPlaceholder ? '' : inHmRaw;
       const outHm = isShiftPlaceholder ? '' : outHmRaw;
@@ -159,7 +159,7 @@
                 if (daily) daily.reason = shiftRequest.reason;
              }
           } else if (shiftRequest.status === 'WORKING') {
-            // Check detail for off-day work type (振替出勤 or 休日出勤)
+            // Kiểm tra detail để xác định kiểu đi làm ngày nghỉ (振替出勤 hoặc 休日出勤)
             const detail = String(shiftRequest.detail || shiftRequest.reason || '').trim();
             if (offDay && detail === '休日出勤') {
               plannedLabel = (hasActualIn || hasActualOut) ? '休日出勤' : '【休日出勤】';
@@ -187,27 +187,27 @@
       const isHankyuu = effectiveKubun === '半休' || effectiveKubun === '半休(有給)';
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
 
-      // If off day but already has actual check-in/out and kubun is not set, infer 休日出勤 for display
-      // Part-time: off-day work is paid the same rate, so treat as 出勤 (not 休日出勤)
+      // Nếu là ngày nghỉ nhưng đã có check-in/out thực tế mà kubun chưa đặt thì suy ra 休日出勤 để hiển thị
+      // Part-time: đi làm ngày nghỉ vẫn tính cùng mức lương nên coi là 出勤 (không phải 休日出勤)
       if (offDay && !kubunInit) {
         if (hasActual) kubunInit = isPartTime ? '出勤' : '休日出勤';
       }
-      // Consider row "actual" only when visible (non-placeholder) punch times exist.
-      // For working-day classifications, only real punches can make row "actual".
-      // This prevents auto/scheduled values from appearing as confirmed 出勤.
-      // Keep explicitly saved kubun visible even when there is no check-in/out yet.
-      // Previous logic hid work kubun (e.g. 出勤) unless actual attendance existed,
-      // which looked like "not saved" after reload.
+      // Chỉ coi dòng là "thực tế" khi có giờ chấm công hiển thị (không phải placeholder).
+      // Với các phân loại ngày làm việc, chỉ chấm công thật mới làm dòng thành "thực tế".
+      // Điều này tránh việc giá trị auto/theo kế hoạch bị hiển thị như 出勤 đã xác nhận.
+      // Giữ hiển thị kubun đã lưu rõ ràng ngay cả khi chưa có check-in/out.
+      // Logic cũ ẩn kubun làm việc (ví dụ 出勤) trừ khi có chấm công thực tế,
+      // khiến sau khi reload trông như "chưa lưu".
       const allowDailyAsActual = hasActual || kubunConfirmed;
       if (!allowDailyAsActual) kubunInit = '';
       
       const isPlanned = !kubunInit && !hasActual && !kubunConfirmed;
       const canEditWorkRow = !!state.editableMonth && ((isWorkDay || hasActual) && !!kubunInit || !isEmployee);
       
-      // Treat work-day rows without real checkin/checkout as planned-like for visual fading.
+      // Coi các dòng ngày làm việc mà không có checkin/checkout thật là dạng theo kế hoạch để làm mờ.
       const isPlannedLikeWork = !hasActual && isWorkDay;
 
-      // Permission check: if employee role and has selection or actual data, disable planned options
+      // Kiểm tra quyền: nếu là employee mà đã có lựa chọn hoặc dữ liệu thực tế thì tắt các lựa chọn theo kế hoạch
       const disablePlanned = isEmployee && (kubunInit !== '' || hasActual);
 
       // CHỐT: Chỉ hiển thị giờ dự kiến nếu là ngày đi làm (isWorkDay) HOẶC là ngày nghỉ nhưng có dữ liệu làm việc (hasActual). Ngày nghỉ không có lịch làm việc thì để trống.
@@ -229,7 +229,7 @@
       const autoIn = primary && shouldShowDefaultShift && !inHm && shiftStartOk;
       const autoOut = primary && shouldShowDefaultShift && !outHm && shiftEndOk;
       
-      // Field-level visual logic:
+      // Logic hiển thị ở cấp từng ô:
       const inAutoCls = autoIn ? 'is-auto' : '';
       const outAutoCls = autoOut ? 'is-auto' : '';
 

@@ -16,13 +16,13 @@ const showSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const hideSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const fmtInt = (v) => {
@@ -62,7 +62,7 @@ const renderDashboard = async (profile) => {
   try {
     const status = $('#status');
     if (status) { status.textContent = ''; status.style.display = 'none'; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   content.className = 'card';
   content.innerHTML = '';
 
@@ -71,7 +71,7 @@ const renderDashboard = async (profile) => {
 
   const head = document.createElement('div');
   head.className = 'dashboard-head';
-  // omit title heading on dashboard
+  // bỏ tiêu đề trên dashboard
   wrap.appendChild(head);
 
   showSpinner();
@@ -112,7 +112,7 @@ const renderDashboard = async (profile) => {
     }
     return c;
   };
-  // deltas: backend may not provide -> only show when available
+  // deltas: backend có thể không trả về -> chỉ hiện khi có
   const deltas = stats && typeof stats === 'object' ? {
     users: stats.usersDelta == null ? null : stats.usersDelta,
     work: stats.todayCheckinDelta == null ? null : stats.todayCheckinDelta,
@@ -135,7 +135,7 @@ const renderDashboard = async (profile) => {
       window.location.href = '/admin/employees#list';
     }
   });
-  // Keep KPI cards text-only to avoid clipping artifacts from nested mini lists.
+  // Giữ thẻ KPI chỉ có chữ để tránh lỗi cắt xén từ các mini list lồng bên trong.
   kpi.appendChild(usersCard);
   let plannedCount = 0;
   let plannedNames = [];
@@ -147,7 +147,7 @@ const renderDashboard = async (profile) => {
       .map(it => `${it.employeeCode || `EMP${String(it.userId).padStart(3,'0')}`} ${it.username || ''}`.trim())
       .filter(Boolean)
       .slice(0, 8);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const workCard = make('kpi-work', '本日の出勤（予定）', fmtInt(plannedCount || stats.todayCheckin), '', deltas.work == null ? null : deltas.work);
   workCard.classList.add('clickable');
   workCard.setAttribute('role', 'button');
@@ -159,7 +159,7 @@ const renderDashboard = async (profile) => {
       window.open('/admin/attendance?standalone=1', '_blank');
     }
   });
-  // Keep KPI cards text-only to avoid clipping artifacts from nested mini lists.
+  // Giữ thẻ KPI chỉ có chữ để tránh lỗi cắt xén từ các mini list lồng bên trong.
   kpi.appendChild(workCard);
   const showLeaveCard = false;
   if (showLeaveCard) {
@@ -229,7 +229,7 @@ const renderDashboard = async (profile) => {
       absentCard.appendChild(listWrap);
     }
     grid.appendChild(absentCard);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     const paidLeaveCard = document.createElement('div');
@@ -285,7 +285,7 @@ const renderDashboard = async (profile) => {
       paidLeaveCard.appendChild(listWrap);
     }
     grid.appendChild(paidLeaveCard);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const showChart = false;
   if (showChart) {
@@ -334,7 +334,7 @@ const renderDashboard = async (profile) => {
         try {
           const r = await fetchJSONAuth(url);
           if (r && Array.isArray(r.values)) return r;
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       }
       return null;
     };
@@ -421,11 +421,11 @@ const renderDashboard = async (profile) => {
     workCard2.setAttribute('role', 'button');
     workCard2.setAttribute('tabindex', '0');
     const openMonth = () => {
-      try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* bỏ qua lỗi */ }
       try {
         const sp = document.querySelector('#pageSpinner');
         if (sp) { sp.removeAttribute('hidden'); sp.style.display = 'grid'; }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       window.location.href = monthHref;
     };
     workCard2.addEventListener('click', (e) => {
@@ -464,15 +464,15 @@ const renderDashboard = async (profile) => {
     link.className = 'btn';
     link.style.textDecoration = 'none';
     link.addEventListener('click', () => {
-      try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* bỏ qua lỗi */ }
       try {
         const sp = document.querySelector('#pageSpinner');
         if (sp) { sp.removeAttribute('hidden'); sp.style.display = 'grid'; }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     });
     actions.appendChild(link);
     workCard2.appendChild(actions);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   grid.appendChild(workCard2);
 
   wrap.appendChild(grid);
@@ -481,15 +481,15 @@ const renderDashboard = async (profile) => {
   try {
     const err = $('#error');
     if (err) { err.style.display = 'none'; err.textContent = ''; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const status = $('#status');
     if (status) status.textContent = '';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const userName = $('#userName');
     if (userName) userName.textContent = profile.username || profile.email || '管理者';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export async function mount() {
@@ -498,6 +498,6 @@ export async function mount() {
   await renderDashboard(profile);
   return () => {
     dashboardRenderSeq++;
-    try { hideSpinner(); } catch (e) { /* silently ignored */ }
+    try { hideSpinner(); } catch (e) { /* bỏ qua lỗi */ }
   };
 }

@@ -5,7 +5,7 @@ export async function bootLegacyTab({ tab, hash, host }) {
     else url.searchParams.delete('tab');
     url.hash = hash || '';
     history.replaceState(null, '', url.pathname + url.search + url.hash);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   if (tab === 'payroll_editor') {
     let v = '';
@@ -13,7 +13,7 @@ export async function bootLegacyTab({ tab, hash, host }) {
       const meta = document.querySelector('meta[name="asset-v"]');
       v = meta ? (meta.getAttribute('content') || '') : '';
       if (!v) v = window.__assetV ? String(window.__assetV) : '';
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const spec = v ? `../payroll/editor.page.js?v=${encodeURIComponent(v)}` : '../payroll/editor.page.js';
     const mod = await import(spec);
     if (mod.mount && host) {
@@ -29,16 +29,16 @@ export async function bootLegacyTab({ tab, hash, host }) {
     try {
       const meta = document.querySelector('meta[name="asset-v"]');
       v = meta ? (meta.getAttribute('content') || '') : '';
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     if (!v) {
-      try { v = window.__assetV ? String(window.__assetV) : ''; } catch (e) { /* silently ignored */ }
+      try { v = window.__assetV ? String(window.__assetV) : ''; } catch (e) { /* bỏ qua lỗi */ }
     }
     if (v && p.indexOf('v=') < 0) p = p + '?v=' + encodeURIComponent(String(v));
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   await import(p);
   try {
-    // Notify legacy page to refresh tab without forcing modern admin router loop.
+    // Báo cho legacy page refresh lại tab mà không kích hoạt vòng lặp router admin mới
     window.__legacyTabPopstate = '1';
     window.dispatchEvent(new Event('popstate'));
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }

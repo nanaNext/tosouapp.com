@@ -7,13 +7,13 @@ export function extractUserRows(payload) {
 }
 
 export async function listUsers(options) {
-  // Use manager endpoint which returns all company employees without dept scoping.
-  // It accepts both admin and manager roles (authorize('manager','admin')).
+  // Dùng endpoint manager để lấy toàn bộ nhân viên công ty, không giới hạn theo phòng ban
+  // Endpoint này chấp nhận cả role admin lẫn manager (authorize('manager','admin'))
   try {
     const r = await fetchJSONAuth('/api/manager/users', options);
     return extractUserRows(r);
   } catch (e) {
-    // Fallback to admin endpoint for any edge case
+    // Dự phòng: nếu lỗi thì gọi sang endpoint admin
     const r = await fetchJSONAuth(`${BASE}`, options);
     return extractUserRows(r);
   }

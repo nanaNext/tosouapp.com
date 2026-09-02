@@ -11,7 +11,7 @@ const $ = (sel) => document.querySelector(sel);
 // Dùng để đánh dấu khi topbar đã sẵn sàng để sử dụng
 
 const markTopbarReady = () => {
-  try { document.documentElement.classList.add('topbar-ready'); } catch (e) { /* silently ignored */ }
+  try { document.documentElement.classList.add('topbar-ready'); } catch (e) { /* bỏ qua lỗi */ }
 };
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,13 +30,13 @@ const resolveEmployeeUid = () => {
   try {
     const fromWin = parseInt(String(window.__EMP_UID || 0), 10) || 0;
     if (fromWin) return fromWin;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
     const u = raw ? JSON.parse(raw) : null;
     const id = parseInt(String(u?.id || 0), 10) || 0;
     if (id) return id;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   return 0;
 };
 const shouldHideEmployeeAppliedNotice = (it) => {
@@ -96,12 +96,12 @@ const ensureEmpNotifyStyle = () => {
       .emp-notify-empty { padding: 12px; color: #64748b; font-size: 12px; }
     `;
     document.head.appendChild(st);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const mountEmployeeNoticeBell = () => {
   try {
     if (notifyState.mounted) return true;
-    // If a sticky/shared bell is already mounted on this page, skip local mount.
+    // Nếu chuông sticky/dùng chung đã được gắn trên trang này thì bỏ qua gắn cục bộ.
     if (document.getElementById('empNotifyBtn') || document.getElementById('empNotifyStickyBtn')) {
       notifyState.mounted = true;
       return true;
@@ -119,7 +119,7 @@ const mountEmployeeNoticeBell = () => {
         <div id="empNotifyList" class="emp-notify-list"><div class="emp-notify-empty">読み込み中...</div></div>
       </div>
     `;
-    wrap.style.display = 'none'; // Force hide the wrapper
+    wrap.style.display = 'none'; // Ép ẩn wrapper
     wrap.style.marginLeft = 'auto';
     wrap.style.marginRight = '24px'; // Thêm margin right để không bị sát lề phải
     subnav.appendChild(wrap);
@@ -149,7 +149,7 @@ const mountEmployeeNoticeBell = () => {
         return false;
       }
     };
-    // Capture phase prevents conflicts with other handlers using stopPropagation.
+    // Dùng capture phase để tránh xung đột với các handler khác dùng stopPropagation.
     document.addEventListener('click', (e) => {
       const t = e.target;
       if (shouldKeepOpen(t)) return;
@@ -319,7 +319,7 @@ const renderEmployeeNoticeBell = () => {
           return it?.read_at ? it : { ...it, read_at: nowIso };
         });
         renderEmployeeNoticeBell();
-        try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { /* silently ignored */ }
+        try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: safeMarkIds }) }); } catch (e) { /* bỏ qua lỗi */ }
         if (link) {
           try {
             const to = new URL(link, window.location.origin);
@@ -333,7 +333,7 @@ const renderEmployeeNoticeBell = () => {
               window.location.href = href;
               return;
             }
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
           window.location.href = link;
         }
       });
@@ -350,16 +350,16 @@ const renderEmployeeNoticeBell = () => {
         dropSet.forEach((id) => notifyState.hiddenIds.add(id));
         try {
           localStorage.setItem('emp_notify_hidden_v1', JSON.stringify(Array.from(notifyState.hiddenIds).slice(0, 1000)));
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         notifyState.items = items.filter((it) => {
           const nid = parseInt(String(it?.id || 0), 10) || 0;
           return !dropSet.has(nid);
         });
         renderEmployeeNoticeBell();
-        try { await fetchJSONAuth('/api/notices/hide', { method: 'POST', body: JSON.stringify({ ids }) }); } catch (e) { /* silently ignored */ }
+        try { await fetchJSONAuth('/api/notices/hide', { method: 'POST', body: JSON.stringify({ ids }) }); } catch (e) { /* bỏ qua lỗi */ }
       });
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const refreshEmployeeNoticeBell = async () => {
   try {
@@ -368,7 +368,7 @@ const refreshEmployeeNoticeBell = async () => {
     const res = await fetchJSONAuth(`/api/notices?all=1&date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&limit=30`).catch(() => null);
     notifyState.items = (Array.isArray(res?.notices) ? res.notices : []).filter((it) => !shouldHideEmployeeAppliedNotice(it));
     renderEmployeeNoticeBell();
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const bootEmployeeNoticeBell = () => {
   try {
@@ -376,7 +376,7 @@ const bootEmployeeNoticeBell = () => {
     refreshEmployeeNoticeBell();
     if (notifyState.refreshTimer) clearInterval(notifyState.refreshTimer);
     notifyState.refreshTimer = setInterval(() => { refreshEmployeeNoticeBell(); }, 60000);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const prefillUserName = () => {
@@ -387,7 +387,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const setUserNameStable = (nextName, { force = false } = {}) => {
@@ -400,12 +400,12 @@ const setUserNameStable = (nextName, { force = false } = {}) => {
     if (!force && current) return;
     if (current === next) return;
     el.textContent = next;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
-// Run as early as possible (module executes before DOMContentLoaded on these pages)
-// to reduce visible flicker in the user area while auth/profile is still resolving.
-try { prefillUserName(); } catch (e) { /* silently ignored */ }
+// Chạy càng sớm càng tốt (module chạy trước DOMContentLoaded trên các trang này)
+// để giảm nhấp nháy ở khu vực user trong lúc còn đang xử lý auth/profile.
+try { prefillUserName(); } catch (e) { /* bỏ qua lỗi */ }
 markTopbarReady();
 
 function getCookie(name) {
@@ -433,17 +433,17 @@ const wireExpandingSearch = () => {
         const editable = (t && (t.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'));
         if (editable) return;
         e.preventDefault();
-        try { input && input.focus({ preventScroll: true }); input && input.select(); } catch (e) { /* silently ignored */ }
+        try { input && input.focus({ preventScroll: true }); input && input.select(); } catch (e) { /* bỏ qua lỗi */ }
       }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
 
-  // Add timeout to prevent hanging
+  // Thêm timeout để tránh bị treo
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('Auth timeout')), 5000)
   );
@@ -473,7 +473,7 @@ async function ensureAuthProfile() {
           try {
             const r2 = await Promise.race([refresh(), timeoutPromise]);
             sessionStorage.setItem('accessToken', r2.accessToken);
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
         }
       } catch (e) {
         console.warn('⚠️ Fallback profile failed:', e.message);
@@ -490,8 +490,8 @@ async function ensureAuthProfile() {
 document.addEventListener('DOMContentLoaded', async () => {
   markTopbarReady();
   prefillUserName();
-  // Prevent full reload when user clicks the link of the page already opened.
-  // This removes topbar/user flicker on same-tab clicks such as "申請" on /ui/requests.
+  // Ngăn tải lại toàn trang khi user click link của trang đang mở.
+  // Điều này loại bỏ nhấp nháy topbar/user khi click cùng tab như "申請" trên /ui/requests.
   try {
     if (!window.__preventSelfNavBound) {
       window.__preventSelfNavBound = true;
@@ -518,32 +518,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }, true);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const pageSpinner = document.querySelector('#pageSpinner');
   try {
     const navEntry = (typeof performance !== 'undefined' && performance.getEntriesByType) ? performance.getEntriesByType('navigation')[0] : null;
     const navType = navEntry?.type || (performance && performance.navigation && performance.navigation.type === 2 ? 'back_forward' : '');
     if (navType === 'back_forward') {
       if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
-      try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* bỏ qua lỗi */ }
     }
     window.addEventListener('pageshow', () => {
-      try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* bỏ qua lỗi */ }
       if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     /* giữ spinner đến khi xác thực xong, không auto-hide theo thời gian */
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
     const f = sessionStorage.getItem('navSpinner');
     if (f === '1' && pageSpinner) {
       pageSpinner.removeAttribute('hidden');
     }
     sessionStorage.removeItem('navSpinner');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const waitMinDelay = async () => { };
-  // Keep header height stable to avoid first-paint layout jump between pages.
+  // Giữ chiều cao header ổn định để tránh nhảy layout ở lần render đầu khi chuyển trang.
   const setTopbarHeightVar = () => { };
   const status = $('#status');
   if (status) status.textContent = '認証を確認しています…';
@@ -562,9 +562,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const userStr = sessionStorage.getItem('user') || '';
     if (userStr) { localStorage.setItem('user', userStr); }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const role = String(profile.role || '').toLowerCase();
-  try { window.__EMP_UID = parseInt(String(profile.id || 0), 10) || 0; } catch (e) { /* silently ignored */ }
+  try { window.__EMP_UID = parseInt(String(profile.id || 0), 10) || 0; } catch (e) { /* bỏ qua lỗi */ }
   setUserNameStable(profile.username || profile.email || 'ユーザー');
   if (role === 'admin' || role === 'manager') {
     const p0 = String(window.location.pathname || '');
@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const applyContentSpacing = (pathName) => {
       try {
         const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-        // Route-level hardening: prevent style bleed when navigating from expenses page.
+        // Gia cố ở cấp route: tránh style bị lẫn khi điều hướng từ trang expenses.
         let pad;
         if (isMobile) {
           pad = pathName === '/ui/portal' ? 'calc(var(--topbar-height) + 32px)' : 'calc(var(--topbar-height) + 2px)';
@@ -608,11 +608,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
           main.style.setProperty('padding-top', pad, 'important');
         }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const syncInlinePageStyle = (doc, pathName) => {
         try {
-          // Sync external stylesheets
+          // Đồng bộ các stylesheet ngoài
           const currentLinks = new Set(Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).map(l => l.getAttribute('href').split('?')[0]));
           const newLinks = Array.from(doc?.head?.querySelectorAll('link[rel="stylesheet"]') || []);
           newLinks.forEach(link => {
@@ -647,7 +647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.head.appendChild(st);
           }
           st.textContent = styles.join('\n\n');
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       };
     const setNavCurrent = (pathName) => {
       try {
@@ -663,7 +663,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (u.pathname === pathName) a.setAttribute('aria-current', 'page');
           else a.removeAttribute('aria-current');
         });
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const loadViaPjax = async (url, push = true) => {
       try {
@@ -671,8 +671,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (typeof window.__employeePageCleanup === 'function') {
             window.__employeePageCleanup();
           }
-        } catch (e) { /* silently ignored */ }
-        try { delete window.__employeePageCleanup; } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
+        try { delete window.__employeePageCleanup; } catch (e) { /* bỏ qua lỗi */ }
         const res = await fetch(url.pathname + url.search, { credentials: 'include', cache: 'no-store' });
         if (!res.ok) return false;
         const html = await res.text();
@@ -692,7 +692,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mod && typeof mod.bootRequestsPage === 'function') {
               await mod.bootRequestsPage();
             }
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
         }
         if (url.pathname === EXP_PATH) {
             try {
@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               if (mod && typeof mod.bootExpensesPage === 'function') {
                 await mod.bootExpensesPage();
               }
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
           }
           if (url.pathname === ATT_RECORDS_PATH) {
             try {
@@ -739,7 +739,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   spinner.classList.remove('is-success');
                   spinner.setAttribute('hidden', '');
                 }
-              } catch (e) { /* silently ignored */ }
+              } catch (e) { /* bỏ qua lỗi */ }
             }
           }
           if (url.pathname === SHIFTS_PATH) {
@@ -748,7 +748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               if (mod && typeof mod.bootShiftsPage === 'function') {
                 await mod.bootShiftsPage();
               }
-            } catch (e) { /* silently ignored */ }
+            } catch (e) { /* bỏ qua lỗi */ }
           }
         if (url.pathname === CHATBOT_PATH) {
           try {
@@ -756,10 +756,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mod && typeof mod.bootChatbotPage === 'function') {
               await mod.bootChatbotPage();
             }
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
         }
         if (url.pathname === HOME_PATH) {
-          try { renderHomeTiles(role); } catch (e) { /* silently ignored */ }
+          try { renderHomeTiles(role); } catch (e) { /* bỏ qua lỗi */ }
           try {
             const tiles = document.querySelector('.tiles');
             if (tiles && tiles.dataset.navBound !== '1') {
@@ -780,7 +780,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
               });
             }
-          } catch (e) { /* silently ignored */ }
+          } catch (e) { /* bỏ qua lỗi */ }
         }
         return true;
       } catch (e) {
@@ -828,7 +828,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.location.pathname === to.pathname && window.location.search === to.search) {
           e.preventDefault();
           e.stopImmediatePropagation();
-          // Force close user dropdown and mobile drawer
+          // Đóng hẳn dropdown người dùng và drawer mobile
           try {
             const dropdown = document.querySelector('#userDropdown');
             const userBtn = document.querySelector('.user .user-btn');
@@ -905,23 +905,23 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (document.querySelector('.req-page')) {
             window.location.reload();
           }
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       });
     }
   };
   bindEmployeePjaxRequests();
   if (pageSpinner) { pageSpinner.setAttribute('hidden', ''); }
-  // Keep natural browser history:
-  // sub page -> home -> login
-  // (do not force back button to jump directly to login)
+  // Giữ lịch sử trình duyệt tự nhiên:
+  // trang con -> home -> login
+  // (không ép nút back nhảy thẳng về login)
   try {
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   if (role === 'employee' || role === 'manager') {
-    // tiles rendered by renderHomeTiles below
+    // các tile được renderHomeTiles bên dưới render
   }
 
   if (role === 'admin') {
-    // tiles rendered by renderHomeTiles below
+    // các tile được renderHomeTiles bên dưới render
     const drawer = document.querySelector('#mobileDrawer');
     if (drawer) {
       drawer.innerHTML = `
@@ -946,9 +946,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
     }
   } else if (role === 'manager') {
-    // manager drawer set above; tiles rendered by renderHomeTiles below
+    // drawer của manager đã đặt ở trên; các tile do renderHomeTiles bên dưới render
   } else {
-    // non-admin/non-manager; tiles rendered by renderHomeTiles below
+    // không phải admin/manager; các tile do renderHomeTiles bên dưới render
   }
   const renderHomeTiles = (role) => {
     const tiles = document.querySelector('.tiles');
@@ -990,7 +990,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </a>
         </div>
       `;
-      // Fetch unread notification count and show badge (desktop only)
+      // Lấy số thông báo chưa đọc và hiện badge (chỉ desktop)
       try {
         fetchJSONAuth('/api/notices?all=1&limit=50').then(res => {
           const items = Array.isArray(res?.notices) ? res.notices : [];
@@ -1001,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             badge.style.display = 'inline-block';
           }
         }).catch(() => {});
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       return;
     }
     const cfg = [
@@ -1050,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   renderHomeTiles(role);
   if (role === 'employee') {
-    try { bootEmployeeNoticeBell(); } catch (e) { /* silently ignored */ }
+    try { bootEmployeeNoticeBell(); } catch (e) { /* bỏ qua lỗi */ }
   }
   try {
     const brand = document.querySelector('.topbar .brand');
@@ -1068,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/ui/portal';
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   /* dùng biến pageSpinner đã khai báo ở đầu scope */
   function navigateWithSpinner(href) {
     const goSoft = window.__employeeSoftNavigate;
@@ -1097,12 +1097,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     drawerEl.addEventListener('click', async (e) => {
       const btn = e.target?.closest?.('#drawerLogout');
       if (btn) {
-        try { await logout(); } catch (e) { /* silently ignored */ }
+        try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* silently ignored */ }
+        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* bỏ qua lỗi */ }
         window.location.replace('/ui/login');
       }
     });
@@ -1163,7 +1163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.setAttribute('aria-expanded', 'true');
             const firstItem = dd.querySelector('.item, a, button');
             if (firstItem && typeof firstItem.focus === 'function') {
-              try { firstItem.focus(); } catch (err) { /* silently ignored */ }   
+              try { firstItem.focus(); } catch (err) { /* bỏ qua lỗi */ }   
             }
           } else {
             dd.setAttribute('hidden', '');
@@ -1183,12 +1183,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnLogout && btnLogout.dataset.bound !== '1') {
       btnLogout.dataset.bound = '1';
       btnLogout.addEventListener('click', async () => {
-        try { await logout(); } catch (e) { /* silently ignored */ }
+        try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* silently ignored */ }
+        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* bỏ qua lỗi */ }
         window.location.replace('/ui/login');
       });
     }
@@ -1207,12 +1207,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lockViewport = () => {
       try {
         document.documentElement.style.overflow = 'hidden';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const unlockViewport = () => {
       try {
         document.documentElement.style.overflow = '';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const toggleDrawer = (open) => {
       const isHidden = mobileDrawer.hasAttribute('hidden');
@@ -1226,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.documentElement.style.setProperty('--drawer-offset', `${w}px`);
           document.body.classList.add('drawer-open');
           lockViewport();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       } else {
         mobileDrawer.setAttribute('hidden', '');
         if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
@@ -1263,5 +1263,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     /* backdrop không đóng, chỉ nút X mới đóng */
   }
-  try { wireExpandingSearch(); } catch (e) { /* silently ignored */ }
+  try { wireExpandingSearch(); } catch (e) { /* bỏ qua lỗi */ }
 });

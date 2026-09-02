@@ -1,16 +1,14 @@
-// FAQ Admin Management Page
+// Trang quản lý FAQ cho admin
 import { FaqAdminComponent } from '../faq-admin-component.js?v=navy-20260427-faqfix1';
 
 export async function mount(options = {}) {
-  console.log('🎯 Mounting FAQ Admin Page');
-  
   const host = (options && options.content) || document.querySelector('#adminContent');
   if (!host) {
     console.error('❌ Admin content host not found');
     return;
   }
 
-  // Create main container
+  // Tạo container chính
   host.className = '';
   host.innerHTML = `
     <div style="padding: 20px;">
@@ -18,12 +16,10 @@ export async function mount(options = {}) {
     </div>
   `;
 
-  // Initialize component
+  // Khởi tạo component
   const component = new FaqAdminComponent('faqAdminContainer');
   await component.init();
 
-  // Return cleanup function
-  return async () => {
-    console.log('🧹 Cleaning up FAQ Admin Page');
-  };
+  // Hàm dọn dẹp
+  return async () => {};
 }

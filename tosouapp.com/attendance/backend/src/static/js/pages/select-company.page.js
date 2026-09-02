@@ -1,20 +1,20 @@
 /**
  * select-company.page.js
- * Handles the company selection screen shown after login when multi-tenant is enabled.
+ * Xử lý màn hình chọn công ty hiển thị sau khi đăng nhập khi bật chế độ nhiều công ty (multi-tenant).
  *
- * Flow:
- * 1. Read tenants + accessToken from sessionStorage (set by login.page.js)
- * 2. Render company cards with logos
- * 3. On click → POST /api/auth/select-tenant → get new tenant-scoped JWT
- * 4. Save new token → redirect to app
+ * Luồng:
+ * 1. Đọc danh sách tenant + accessToken từ sessionStorage (được login.page.js lưu)
+ * 2. Render các thẻ công ty kèm logo
+ * 3. Khi click → POST /api/auth/select-tenant → lấy JWT mới theo tenant
+ * 4. Lưu token mới → chuyển hướng vào app
  */
 
 const $ = (sel) => document.querySelector(sel);
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Hàm hỗ trợ ──────────────────────────────────────────────────────────────
 
-// Try sessionStorage first, fallback to localStorage
-// so token survives Chrome password popup focus changes
+// Ưu tiên sessionStorage, fallback sang localStorage
+// để token còn giữ được khi popup lưu mật khẩu của Chrome làm mất focus
 function getToken() {
   return sessionStorage.getItem('accessToken')
     || localStorage.getItem('accessToken')
@@ -59,7 +59,7 @@ function roleLabel(role) {
   return map[String(role || '').toLowerCase()] || role || '';
 }
 
-// ── Render companies ──────────────────────────────────────────────────────────
+// ── Render danh sách công ty ────────────────────────────────────────────────
 
 function renderGrid(tenants, username) {
   const grid = $('#sc-grid');
@@ -101,24 +101,24 @@ function renderGrid(tenants, username) {
       </button>`;
   }).join('');
 
-  // Wire click handlers
+  // Gắn sự kiện click
   grid.querySelectorAll('.sc-company-btn').forEach(btn => {
     btn.addEventListener('click', () => handleSelectTenant(btn));
   });
 }
 
-// ── Select tenant ─────────────────────────────────────────────────────────────
+// ── Chọn tenant ─────────────────────────────────────────────────────────────
 
 async function handleSelectTenant(btn) {
   setError('');
   const tenantId = parseInt(btn.dataset.tenantId, 10);
   if (!tenantId) { setError('tenant ID missing'); return; }
 
-  // Show spinner on clicked button
+  // Hiện spinner trên nút vừa bấm
   btn.classList.add('loading');
   btn.setAttribute('aria-busy', 'true');
 
-  // Disable all buttons while processing
+  // Khóa tất cả các nút trong lúc xử lý
   $('#sc-grid').querySelectorAll('.sc-company-btn').forEach(b => {
     if (b !== btn) b.disabled = true;
   });
@@ -126,8 +126,6 @@ async function handleSelectTenant(btn) {
   try {
     const accessToken = getToken();
     const csrf = getCookie('csrfToken');
-
-    console.log('[select-tenant] tenantId=', tenantId, 'hasToken=', !!accessToken, 'hasCsrf=', !!csrf);
 
     const res = await fetch('/api/auth/select-tenant', {
       method: 'POST',
@@ -141,16 +139,15 @@ async function handleSelectTenant(btn) {
     });
 
     const data = await res.json();
-    console.log('[select-tenant] status=', res.status, 'data=', JSON.stringify(data));
 
     if (!res.ok) {
       throw new Error(data?.message || `HTTP ${res.status}`);
     }
 
-    // Save tenant-scoped token and tenant info
+    // Lưu token theo tenant và thông tin tenant
     sessionStorage.setItem('accessToken', data.accessToken);
-    try { localStorage.setItem('accessToken', data.accessToken); } catch (e) { /* silently ignored */ }
-    // Tab-scoped context: lưu tenantId riêng cho tab này
+    try { localStorage.setItem('accessToken', data.accessToken); } catch (e) { /* bỏ qua lỗi */ }
+    // Context riêng theo tab: lưu tenantId riêng cho tab này
     try {
       const { setTabContext } = await import('/static/js/api/tab-context.js');
       setTabContext({ tenantId: data.tenantId, tenantName: data.tenantName, role: data.role, userId: data.userId || null });
@@ -168,9 +165,9 @@ async function handleSelectTenant(btn) {
       });
       sessionStorage.setItem('user', newUser);
       localStorage.setItem('user', newUser);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
 
-    // Clear ALL cached admin data to prevent cross-tenant data bleed
+    // Xóa TẤT CẢ dữ liệu admin đã cache để tránh lẫn dữ liệu giữa các tenant
     try {
       const keysToRemove = [];
       for (let i = 0; i < sessionStorage.length; i++) {
@@ -178,7 +175,7 @@ async function handleSelectTenant(btn) {
         if (k && (k.startsWith('monthly.cache.') || k.startsWith('admin.') || k === 'navSpinner')) keysToRemove.push(k);
       }
       keysToRemove.forEach(k => sessionStorage.removeItem(k));
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -186,8 +183,8 @@ async function handleSelectTenant(btn) {
         if (k && (k.startsWith('monthly.cache.') || k.startsWith('monthly.') || k.startsWith('admin.'))) keysToRemove.push(k);
       }
       keysToRemove.forEach(k => localStorage.removeItem(k));
-    } catch (e) { /* silently ignored */ }
-    // Navigate to app
+    } catch (e) { /* bỏ qua lỗi */ }
+    // Chuyển hướng vào app
     showPageSpinner();
     const next = data.nextPath || '/ui/portal';
     window.location.href = next;
@@ -209,7 +206,7 @@ async function handleSelectTenant(btn) {
   }
 }
 
-// ── Logout ────────────────────────────────────────────────────────────────────
+// ── Đăng xuất ───────────────────────────────────────────────────────────────
 
 async function handleLogout() {
   try {
@@ -219,13 +216,13 @@ async function handleLogout() {
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
       credentials: 'include',
     });
-  } catch (e) { /* silently ignored */ }
-  try { sessionStorage.clear(); } catch (e) { /* silently ignored */ }
-  try { localStorage.removeItem('user'); localStorage.removeItem('refreshToken'); } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
+  try { sessionStorage.clear(); } catch (e) { /* bỏ qua lỗi */ }
+  try { localStorage.removeItem('user'); localStorage.removeItem('refreshToken'); } catch (e) { /* bỏ qua lỗi */ }
   window.location.href = '/ui/login';
 }
 
-// ── Direct select (no UI rendering) ───────────────────────────────────────────
+// ── Chọn trực tiếp (không render UI) ─────────────────────────────────────────
 
 async function handleSelectTenant_direct(tenant) {
   if (!tenant || !tenant.id) {
@@ -272,16 +269,16 @@ async function handleSelectTenant_direct(tenant) {
     const next = data.nextPath || '/ui/portal';
     window.location.href = next;
   } catch (e) {
-    // Fallback: go to portal anyway
+    // Fallback: vẫn vào portal
     window.location.href = '/ui/portal';
   }
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// ── Khởi động ───────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Read tenants from sessionStorage (saved by login.page.js on successful login)
-  // Fallback to localStorage in case Chrome popup caused sessionStorage to be cleared
+  // Đọc danh sách tenant từ sessionStorage (được login.page.js lưu khi đăng nhập thành công)
+  // Fallback sang localStorage phòng khi popup Chrome làm sessionStorage bị xóa
   let tenants = [];
   let username = '';
   let userRole = 'employee';
@@ -289,14 +286,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const raw = sessionStorage.getItem('sc_tenants')
       || localStorage.getItem('sc_tenants');
     if (raw) tenants = JSON.parse(raw);
-    // Restore to sessionStorage if it was cleared
+    // Khôi phục lại vào sessionStorage nếu đã bị xóa
     if (!sessionStorage.getItem('sc_tenants') && raw) {
-      try { sessionStorage.setItem('sc_tenants', raw); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.setItem('sc_tenants', raw); } catch (e) { /* bỏ qua lỗi */ }
     }
-    // Restore accessToken if cleared
+    // Khôi phục accessToken nếu bị xóa
     const lsToken = localStorage.getItem('accessToken');
     if (!sessionStorage.getItem('accessToken') && lsToken) {
-      try { sessionStorage.setItem('accessToken', lsToken); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.setItem('accessToken', lsToken); } catch (e) { /* bỏ qua lỗi */ }
     }
     const userRaw = sessionStorage.getItem('user') || localStorage.getItem('user');
     if (userRaw) {
@@ -304,40 +301,40 @@ document.addEventListener('DOMContentLoaded', () => {
       username = u.username || u.email || '';
       userRole = u.role || 'employee';
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // If no tenants in session → user came here directly without login
+  // Nếu không có tenant trong session → người dùng vào thẳng đây mà chưa đăng nhập
   if (!tenants || tenants.length === 0) {
     const accessToken = sessionStorage.getItem('accessToken');
     if (!accessToken) {
       window.location.href = '/ui/login';
       return;
     }
-    // Try to fetch tenants from API using current token
+    // Thử lấy danh sách tenant từ API bằng token hiện tại
     fetchTenantsFromAPI();
     return;
   }
 
-  // Auto-select if user is an employee or has only 1 tenant
-  // Skip rendering entirely — go straight through
+  // Tự động chọn nếu người dùng là nhân viên hoặc chỉ có 1 tenant
+  // Bỏ qua render hoàn toàn — đi thẳng luôn
   if (tenants.length === 1 || userRole === 'employee') {
     showPageSpinner();
-    // Hide the entire page content to prevent logo flash
+    // Ẩn toàn bộ nội dung trang để tránh nhấp nháy logo
     const container = $('#sc-container') || document.querySelector('.sc-container');
     if (container) container.style.display = 'none';
     document.body.style.background = '#f8fafc';
-    // Directly call select-tenant API without rendering cards
+    // Gọi thẳng API select-tenant mà không render các thẻ
     handleSelectTenant_direct(tenants[0]);
     return;
   }
 
   hidePageSpinner();
-  // Show the wrapper only when user needs to choose a company
+  // Chỉ hiện wrapper khi người dùng cần chọn công ty
   const scWrapper = document.querySelector('.sc-wrapper');
   if (scWrapper) scWrapper.style.visibility = 'visible';
   renderGrid(tenants, username);
 
-  // Wire logout button
+  // Gắn sự kiện cho nút đăng xuất
   const logoutBtn = $('#sc-logout-btn');
   if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 });
@@ -370,7 +367,7 @@ async function fetchTenantsFromAPI() {
       }
     } catch(e) {}
 
-    try { sessionStorage.setItem('sc_tenants', JSON.stringify(tenants)); } catch (e) { /* silently ignored */ }
+    try { sessionStorage.setItem('sc_tenants', JSON.stringify(tenants)); } catch (e) { /* bỏ qua lỗi */ }
     
     if (tenants.length === 1 || userRole === 'employee') {
       showPageSpinner();

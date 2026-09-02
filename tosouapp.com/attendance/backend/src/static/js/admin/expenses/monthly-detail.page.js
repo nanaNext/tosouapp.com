@@ -89,11 +89,11 @@ const render = async () => {
     const tabParam = params.get('tab');
     let url = '/admin/expenses';
 
-    // Always append parameters if they exist, even when not standalone
+    // Luôn thêm tham số nếu có, kể cả khi không phải standalone
     const urlParams = [];
     if (isStandalone) urlParams.push(`standalone=${encodeURIComponent(isStandalone)}`);
     if (tabParam) urlParams.push(`tab=${encodeURIComponent(tabParam)}`);
-    else urlParams.push(`tab=monthly_approval`); // fallback tab
+    else urlParams.push(`tab=monthly_approval`); // tab dự phòng
 
     if (urlParams.length > 0) {
       url += '?' + urlParams.join('&');

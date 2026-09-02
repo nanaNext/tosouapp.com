@@ -5,7 +5,7 @@ export async function mount({ content }) {
 }
 
 export async function mountShifts({ content }) {
-  // Check if standalone
+  // Kiểm tra có chạy standalone không
   const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
   const vhExpr = isStandalone ? '100dvh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
 
@@ -47,7 +47,7 @@ export async function mountShifts({ content }) {
   addWrap.style.borderTop = 'none';
   addWrap.style.borderBottom = '1px solid #e2e8f0';
   
-  // Create wrapper for inputs
+  // Tạo khung bọc cho các ô nhập
   const inputsWrap = document.createElement('div');
   inputsWrap.className = 'shift-inputs-wrap';
   
@@ -82,7 +82,7 @@ export async function mountShifts({ content }) {
   inputsWrap.appendChild(createField('終了時間', eIn));
   inputsWrap.appendChild(createField('休憩時間', brSel));
   
-  // Create wrapper for buttons
+  // Tạo khung bọc cho các nút
   const btnsWrap = document.createElement('div');
   btnsWrap.className = 'shift-btns-wrap';
   
@@ -90,8 +90,8 @@ export async function mountShifts({ content }) {
   addBtn.type = 'button'; addBtn.className = 'shift-btn shift-btn-add'; addBtn.textContent = '追加';
   let updateBtn = document.createElement('button');
   updateBtn.type = 'button'; updateBtn.className = 'shift-btn shift-btn-update'; updateBtn.textContent = '更新';
-  updateBtn.disabled = true; // Disabled by default
-  updateBtn.style.opacity = '0.5'; // Visual cue for disabled
+  updateBtn.disabled = true; // Mặc định vô hiệu hóa
+  updateBtn.style.opacity = '0.5'; // Làm mờ để báo hiệu đang bị khóa
   updateBtn.style.cursor = 'not-allowed';
   
   btnsWrap.appendChild(addBtn);
@@ -174,7 +174,7 @@ export async function mountShifts({ content }) {
   const defTable = document.createElement('div');
   defTable.className = 'shift-list-container';
   
-  // Create desktop table inside container
+  // Tạo bảng cho bản desktop bên trong container
   const desktopTable = document.createElement('table');
   desktopTable.className = 'excel-table shift-desktop-table';
   desktopTable.innerHTML = `
@@ -190,7 +190,7 @@ export async function mountShifts({ content }) {
   `;
   defTable.appendChild(desktopTable);
   
-  // Create mobile card list inside container
+  // Tạo danh sách card cho bản mobile bên trong container
   const mobileList = document.createElement('div');
   mobileList.className = 'shift-mobile-list';
   defTable.appendChild(mobileList);
@@ -209,7 +209,7 @@ export async function mountShifts({ content }) {
     const tb = desktopTable.querySelector('tbody');
     tb.innerHTML = '';
     
-    // Render mobile list
+    // Vẽ danh sách bản mobile
     mobileList.innerHTML = '';
 
     for (const d of (Array.isArray(rows) ? rows : [])) {
@@ -261,11 +261,11 @@ export async function mountShifts({ content }) {
           timeInputs[1].value = d.end_time || '';
           select.value = String(d.break_minutes ?? 0);
           enableUpdate();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       });
       tb.appendChild(tr);
 
-      // Mobile Card
+      // Card cho bản mobile
       const card = document.createElement('div');
       card.className = 'shift-card';
       card.innerHTML = `
@@ -329,7 +329,7 @@ export async function mountShifts({ content }) {
           timeInputs[1].value = d.end_time || '';
           select.value = String(d.break_minutes ?? 0);
           enableUpdate();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       });
 
       mobileList.appendChild(card);

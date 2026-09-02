@@ -66,13 +66,13 @@ const showSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const hideSpinner = () => {
   try {
     const el = document.querySelector('#pageSpinner');
     if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export async function mount() {
@@ -411,7 +411,7 @@ export async function mount() {
       if (state.group) u.searchParams.set('group', '1');
       else u.searchParams.delete('group');
       history.replaceState(null, '', u.pathname + u.search + u.hash);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   let currentPage = 1;
@@ -449,7 +449,7 @@ export async function mount() {
       const stx = effectiveStatus(it);
       const meta = statusMeta(stx);
 
-      // Define specific icon based on status
+      // Xác định icon riêng theo trạng thái
       let statusIcon = '';
       if (stx === 'checkout_missing' || stx === 'missing' || stx === 'not_punched' || stx === 'absence') {
         statusIcon = '⚠ ';
@@ -472,19 +472,19 @@ export async function mount() {
       const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
       const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
 
-      // Auto-detect late/early based on time if not manually set in DB
+      // Tự phát hiện đi trễ/về sớm theo giờ nếu DB chưa set thủ công
       let autoLateStr = '';
       if (it.attendance?.checkIn) {
         const cin = fmtTime(it.attendance.checkIn);
         const isPartTime = String(it.role || '').toLowerCase() === 'part_time' || String(it.employment_type || '').toLowerCase() === 'part_time' || String(it.employment_type || '') === 'アルバイト';
-        // Koujibu standard start is 08:00, but Part-time can have flexible shifts like 09:00.
-        // For simplicity, we use 09:00 as the threshold for Part-time in Koujibu unless a specific shift dictates otherwise.
+        // Bộ phận công trình bắt đầu chuẩn lúc 08:00, nhưng part-time có thể có ca linh hoạt như 09:00.
+        // Cho đơn giản, dùng 09:00 làm mốc cho part-time ở bộ phận công trình trừ khi ca cụ thể quy định khác.
         const threshold = (it.departmentName || '').includes('工事') && !isPartTime ? '08:00' : '09:00';
         if (cin > threshold && it.status !== '休日出勤') {
           const [h1, m1] = cin.split(':').map(Number);
           const [h2, m2] = threshold.split(':').map(Number);
           const diff = (h1 * 60 + m1) - (h2 * 60 + m2);
-          if (diff > 0 && !it.lateMinutes) it.lateMinutes = diff; // override for display
+          if (diff > 0 && !it.lateMinutes) it.lateMinutes = diff; // ghi đè để hiển thị
         }
       }
 
@@ -497,13 +497,13 @@ export async function mount() {
       const tooltip = combinedReasonMemo ? `title="${esc(combinedReasonMemo)}"` : '';
       const displayReason = combinedReasonMemo.length > 20 ? combinedReasonMemo.substring(0, 20) + '...' : combinedReasonMemo;
 
-      const reasonHtml = ''; // Remove reason from lateEarlyHtml since it has its own column now
+      const reasonHtml = ''; // Bỏ lý do khỏi lateEarlyHtml vì giờ nó có cột riêng
 
       const lateEarlyHtml = lateEarlyCombo || '';
 
       const dc = dowClass(it.weekday);
       const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
-      // Calculate holiday from backend flag
+      // Tính ngày nghỉ từ cờ backend
       const isPublicHoliday = !!it.holiday && it.weekday !== '土' && it.weekday !== '日';
 
       const isOffRow = (dc === 'wr-dow-sun' || isPublicHoliday);
@@ -590,7 +590,7 @@ export async function mount() {
       ${paginationHtml}
     `;
 
-    // Scroll container handled by CSS (width:0; min-width:100% trick)
+    // Container cuộn được CSS xử lý (mẹo width:0; min-width:100%)
 
     if (items.length > 0) {
       const btnPrev = document.getElementById('btnWrPrev');
@@ -771,7 +771,7 @@ export async function mount() {
         const stx = effectiveStatus(it);
         const meta = statusMeta(stx);
 
-        // Define specific icon based on status
+        // Xác định icon riêng theo trạng thái
         let statusIcon = '';
         if (stx === 'checkout_missing' || stx === 'missing' || stx === 'not_punched' || stx === 'absence') {
           statusIcon = '⚠ ';
@@ -796,7 +796,7 @@ export async function mount() {
 
         const dc = dowClass(it.weekday);
         const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
-        // Calculate holiday from backend flag
+        // Tính ngày nghỉ từ cờ backend
         const isHoliday = !!it.holiday && it.weekday !== '土' && it.weekday !== '日';
         const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
         const lateStr = Number(it.lateMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 遅刻 ${formatDelay(it.lateMinutes)}</span>` : '';
@@ -812,7 +812,7 @@ export async function mount() {
         const textColor = (dc === 'wr-dow-sun' || isHoliday) ? 'color:#ef4444;' : (dc === 'wr-dow-sat' ? 'color:#d97706;' : '');
         const trClass = (dc === 'wr-dow-sun' || isHoliday) ? 'wr-off-row' : (dc === 'wr-dow-sat' ? 'wr-sat-row' : '');
 
-        // Row merging logic for multiple shifts on same day
+        // Logic gộp dòng cho nhiều ca trong cùng một ngày
         const prev = idx > 0 ? g.items[idx - 1] : null;
         // Sửa lỗi: Cần kiểm tra kĩ userId và date của các record trước đó để gộp đúng người, đúng ngày
         const isSameUserDate = prev && prev.date === it.date && prev.userId === it.userId;
@@ -830,7 +830,7 @@ export async function mount() {
         // Căn giữa ngang và dọc cho các ô đã merge
         const cellStyle = 'vertical-align: middle;';
 
-        // If it's the same day, hide the borders of the repetitive info
+        // Nếu cùng ngày, ẩn viền của phần thông tin lặp lại
         const displayDateHtml = !isSameUserDate ? `<td data-label="日付" class="${dc}" style="text-align:center; font-weight:600; ${cellStyle} ${dowColor}"${rsHtml}>${esc(displayDate)}</td>` : ``;
         const dowHtml = !isSameUserDate ? `<td data-label="曜" class="${dc}" style="text-align:center; font-weight:600; ${cellStyle} ${dowColor}"${rsHtml}>${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>` : ``;
         const codeHtml = !isSameUserDate ? `<td data-label="社員番号" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${esc(code)}</td>` : ``;
@@ -1053,12 +1053,12 @@ export async function mount() {
     }
   };
 
-  // Sync date picker values if resized
+  // Đồng bộ giá trị bộ chọn tháng khi thay đổi kích thước
   window.addEventListener('resize', () => {
     const mobileActions = document.getElementById('attHubMobileActions');
     if (window.innerWidth <= 768 && mobileActions) {
       if (!document.getElementById('wrMonthMobileHeader')) {
-        // Re-inject if missing
+        // Chèn lại nếu bị thiếu
         mobileActions.style.flex = '1';
         mobileActions.style.marginLeft = '8px';
         mobileActions.innerHTML = `
@@ -1154,7 +1154,7 @@ export async function mount() {
 
   $('#wrExport')?.addEventListener('click', async () => {
     try {
-      // Pass filtering & sorting parameters to the backend
+      // Truyền tham số lọc và sắp xếp xuống backend
       const qParams = new URLSearchParams({
         period: 'month',
         month: state.month,
@@ -1170,10 +1170,10 @@ export async function mount() {
     }
   });
 
-  // Mobile Filter Toggle Logic handled by header button now if moved, but we still need the logic
+  // Nút toggle ở header xử lý việc bật/tắt bộ lọc, nhưng vẫn cần giữ logic này
   const advancedFilters = $('#wrAdvancedFilters');
   
-  // Handle Mobile Header Date Picker and Filter Toggle
+  // Xử lý chọn tháng và nút lọc trên header mobile
   const mobileActions = document.getElementById('attHubMobileActions');
   if (window.innerWidth <= 768 && mobileActions) {
     mobileActions.style.flex = '1';
@@ -1235,9 +1235,9 @@ export async function mount() {
     try {
       const summaryEl = $('#wrSummary');
       if (summaryEl && summaryEl.innerHTML) {
-        // Summary is now just "出勤X 提出Y 未提出Z", no need to update "表示: N"
+        // Tóm tắt giờ chỉ còn "出勤X 提出Y 未提出Z", không cần cập nhật "表示: N" nữa
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
   $('#wrDept')?.addEventListener('change', async () => {
     const sel = $('#wrDept');
@@ -1249,9 +1249,9 @@ export async function mount() {
     try {
       const summaryEl = $('#wrSummary');
       if (summaryEl && summaryEl.innerHTML) {
-        // Summary is now just "出勤X 提出Y 未提出Z", no need to update "表示: N"
+        // Tóm tắt giờ chỉ còn "出勤X 提出Y 未提出Z", không cần cập nhật "表示: N" nữa
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
   $('#wrQuery')?.addEventListener('input', async () => {
     const inp = $('#wrQuery');
@@ -1263,9 +1263,9 @@ export async function mount() {
     try {
       const summaryEl = $('#wrSummary');
       if (summaryEl && summaryEl.innerHTML) {
-        // Summary is now just "出勤X 提出Y 未提出Z", no need to update "表示: N"
+        // Tóm tắt giờ chỉ còn "出勤X 提出Y 未提出Z", không cần cập nhật "表示: N" nữa
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
   $('#wrGroup')?.addEventListener('change', async () => {
     const ck = $('#wrGroup');

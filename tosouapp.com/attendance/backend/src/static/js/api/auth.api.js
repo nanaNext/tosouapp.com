@@ -24,7 +24,7 @@ async function fetchJSON(url, options) {
     try {
       const j = await res.json();
       msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     throw new Error(msg);
   }
   return res.json();
@@ -42,11 +42,11 @@ export async function login(email, password) {
     try {
       const j = await res.json();
       msg = j.message || (Array.isArray(j.errors) && j.errors.length ? j.errors[0].msg : msg);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     throw new Error(msg);
   }
   const data = await res.json();
-  try { localStorage.setItem('auth-login-event', Date.now()); } catch (e) { /* silently ignored */ }
+  try { localStorage.setItem('auth-login-event', Date.now()); } catch (e) { /* bỏ qua lỗi */ }
   return data;
 }
 
@@ -62,8 +62,8 @@ export async function me(accessToken) {
 
   let res = await requestMe(true);
   if (!res.ok && (res.status === 401 || res.status === 403) && token) {
-    // If bearer token is stale but session cookie is still valid,
-    // retry once without Authorization header.
+    // Token bearer hết hạn nhưng cookie session còn hiệu lực
+    // thì thử lại một lần mà không gửi header Authorization
     res = await requestMe(false);
   }
   if (!res.ok) {
@@ -71,7 +71,7 @@ export async function me(accessToken) {
     try {
       const j = await res.json();
       msg = j.message || msg;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     throw new Error(msg);
   }
   return res.json();
@@ -90,7 +90,7 @@ export async function refresh() {
     try {
       const j = await res.json();
       msg = j.message || msg;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     throw new Error(msg);
   }
   return res.json();
@@ -115,7 +115,7 @@ export async function logout() {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.setItem('auth-logout-event', Date.now());
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

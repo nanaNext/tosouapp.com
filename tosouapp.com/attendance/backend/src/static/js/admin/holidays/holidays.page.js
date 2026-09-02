@@ -6,7 +6,7 @@ let controller = null;
 export async function mount({ content }) {
   controller = new AbortController();
 
-  // State
+  // Trạng thái
   let departments = [];
   let jpHolidays = [];       // Ngày lễ cố định Nhật Bản (祝日) — read only
   let companyHolidays = [];  // Ngày nghỉ công ty (お盆, 年末年始...) — từ company_holidays
@@ -15,7 +15,7 @@ export async function mount({ content }) {
   let selectedYear = new Date().getFullYear();
   let editingItem = null;
 
-  // Helpers
+  // Hàm tiện ích
   const dowJa = (dateStr) => {
     try {
       const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
@@ -48,9 +48,9 @@ export async function mount({ content }) {
   ];
   const isJpType = (t) => ['jp_auto', 'jp_substitute', 'jp_bridge'].includes(t);
 
-  // Load departments
+  // Tải danh sách phòng ban
   const loadDepartments = async () => {
-    // Try admin endpoint first (correct URL)
+    // Thử endpoint admin trước (URL đúng)
     try {
       const data = await api.get('/admin/departments');
       if (Array.isArray(data) && data.length > 0) {
@@ -60,16 +60,16 @@ export async function mount({ content }) {
     } catch (e) {
       console.warn('[holidays] /admin/departments failed, will use fallback:', e.message || e);
     }
-    // departments will be populated from loadJpHolidays response if this fails
+    // Nếu lỗi thì departments sẽ được lấy từ response của loadJpHolidays
   };
 
-  // Load Japan national holidays (祝日)
+  // Tải ngày lễ quốc gia Nhật Bản (祝日)
   const loadJpHolidays = async () => {
     try {
       const data = await api.get(`/holidays/jp?year=${selectedYear}`);
       jpHolidays = Array.isArray(data.holidays) ? data.holidays : [];
       companyHolidays = Array.isArray(data.companyHolidays) ? data.companyHolidays : [];
-      // Also pick up departments from this endpoint as fallback
+      // Lấy luôn danh sách phòng ban từ endpoint này làm dự phòng
       if (Array.isArray(data.departments) && data.departments.length > 0 && departments.length === 0) {
         departments = data.departments;
       }
@@ -80,7 +80,7 @@ export async function mount({ content }) {
     }
   };
 
-  // Load department custom holidays
+  // Tải ngày nghỉ tùy chỉnh theo phòng ban
   const loadDeptHolidays = async () => {
     try {
       const params = new URLSearchParams({ year: selectedYear });
@@ -93,7 +93,7 @@ export async function mount({ content }) {
     }
   };
 
-  // Merge & sort all holidays for display
+  // Gộp & sắp xếp tất cả ngày nghỉ để hiển thị
   const getMergedList = () => {
     const jpRows = jpHolidays.map(r => ({
       id: null,
@@ -133,7 +133,7 @@ export async function mount({ content }) {
     return all;
   };
 
-  // Render
+  // Render giao diện
   const render = () => {
     if (!content) return;
     const merged = getMergedList();
@@ -283,7 +283,7 @@ export async function mount({ content }) {
       </div>
     `;
 
-    // Bind events
+    // Gắn sự kiện
     content.querySelector('#holDept')?.addEventListener('change', async (e) => {
       selectedDeptId = e.target.value;
       await loadDeptHolidays();
@@ -334,7 +334,7 @@ export async function mount({ content }) {
     });
   };
 
-  // Modal render
+  // Render modal
   const renderModal = () => {
     document.querySelector('.hol-overlay')?.remove();
     if (!editingItem) return;
@@ -393,7 +393,7 @@ export async function mount({ content }) {
 
       try {
         if (dept === '__all__') {
-          // 全社 → company_holidays テーブルに保存
+          // Toàn công ty → lưu vào bảng company_holidays
           await api.post('/holidays/company', { date, name, type: type || 'fixed', is_off: isOff });
         } else if (isNew) {
           await api.post('/holidays', { department_id: dept, date, name, type, is_off: isOff });
@@ -415,12 +415,12 @@ export async function mount({ content }) {
     document.querySelector('.hol-overlay')?.remove();
   };
 
-  // Initial load
+  // Tải lần đầu
   await loadDepartments();
   await Promise.all([loadJpHolidays(), loadDeptHolidays()]);
   render();
 
-  // Cleanup
+  // Dọn dẹp
   return () => {
     if (controller) { controller.abort(); controller = null; }
     closeModal();

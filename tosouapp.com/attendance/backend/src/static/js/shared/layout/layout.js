@@ -21,7 +21,7 @@ export function setTopbarHeightVar() {
       _topbarH = h;
       document.documentElement.style.setProperty('--topbar-height', `${h}px`);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export function scheduleTopbarMeasure() {
@@ -51,9 +51,9 @@ export function initLayout() {
       });
       ro.observe(tb);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // Brand click
+  // Click vào logo/brand
   try {
     const brand = document.querySelector('.topbar .brand');
     if (brand) {
@@ -66,25 +66,25 @@ export function initLayout() {
         window.location.href = '/ui/portal';
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // Logout nav
+  // Nút đăng xuất trên nav
   try {
     const logoutBtn = document.querySelector('#nav-logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
-        try { await logout(); } catch (e) { /* silently ignored */ }
+        try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* silently ignored */ }
+        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* bỏ qua lỗi */ }
         window.location.replace('/ui/login');
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // User Dropdown
+  // Dropdown người dùng
   const userBtn = document.querySelector('.user .user-btn');
   const dropdown = document.querySelector('#userDropdown');
   if (userBtn && dropdown) {
@@ -92,7 +92,7 @@ export function initLayout() {
       try {
         document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
         document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const placeDropdown = (btn, dd) => {
       try {
@@ -107,7 +107,7 @@ export function initLayout() {
         dd.style.right = 'auto';
         dd.style.zIndex = '2147483000';
         dd.style.minWidth = `${minW}px`;
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     const bindUserButtonsStable = () => {
       try {
@@ -127,7 +127,7 @@ export function initLayout() {
             if (hidden) {
               placeDropdown(btn, dd);
               dd.removeAttribute('hidden');
-              try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
+              try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
             }
           };
           btn.addEventListener('pointerdown', (e) => {
@@ -141,7 +141,7 @@ export function initLayout() {
             toggle();
           }, true);
         });
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     bindUserButtonsStable();
     try {
@@ -149,7 +149,7 @@ export function initLayout() {
       setTimeout(bindUserButtonsStable, 500);
       const mo = new MutationObserver(() => bindUserButtonsStable());
       mo.observe(document.body, { childList: true, subtree: true });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const firstChar = (s) => {
       try {
         const t = String(s || '').trim();
@@ -168,13 +168,13 @@ export function initLayout() {
         try {
           const u = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || 'null');
           uname = (u?.username || '').trim();
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         const full = uname || (nameEl?.textContent || '').trim() || (window.userName || '');
         const ch = firstChar(full);
         if (ddName) ddName.textContent = full || ddName.textContent || '';
         if (ddInit) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
         if (btnInit) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     setInitials();
     try {
@@ -183,7 +183,7 @@ export function initLayout() {
         const mo = new MutationObserver(() => setInitials());
         mo.observe(nameEl, { characterData: true, subtree: true, childList: true });
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     (async () => {
       try {
         const ddInit = document.querySelector('#userInitial');
@@ -199,13 +199,13 @@ export function initLayout() {
         const email = String(p?.email || '').trim();
         const full = uname || email || '';
         const ch = firstChar(full);
-        try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { /* silently ignored */ }
+        try { sessionStorage.setItem('user', JSON.stringify(p)); } catch (e) { /* bỏ qua lỗi */ }
         if (nameEl && full && !hasName) nameEl.textContent = full;
         if (ddInit) { ddInit.textContent = ''; ddInit.setAttribute('data-initial', ch); }
         if (btnInit) { btnInit.textContent = ''; btnInit.setAttribute('data-initial', ch); }
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     })();
-    // Final retry loop (up to ~1.5s) to ensure initials appear even with late DOM paints
+    // Thử lại vài lần (khoảng 1.5s) để chữ cái đầu vẫn hiện dù DOM render trễ
     try {
       let tries = 0;
       const timer = setInterval(() => {
@@ -213,19 +213,19 @@ export function initLayout() {
         setInitials();
         if (tries >= 6) clearInterval(timer);
       }, 250);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     document.addEventListener('click', (e) => {
       const insideAnyUser = e.target && e.target.closest ? e.target.closest('.user') : null;
       if (insideAnyUser) return;
       try {
         document.querySelectorAll('.user .dropdown').forEach((dd) => dd.setAttribute('hidden', ''));
         document.querySelectorAll('.user .user-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     });
     const btnLogout = document.querySelector('#btnLogout');
     if (btnLogout) {
       btnLogout.addEventListener('click', async () => {
-        try { await logout(); } catch (e) { /* silently ignored */ }
+        try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
@@ -243,16 +243,16 @@ export function initLayout() {
           const b = root ? root.querySelector('.user-btn') : userBtn;
           if (dd) dd.setAttribute('hidden', '');
           if (b) b.setAttribute('aria-expanded', 'false');
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       });
     });
     const applyTheme = (val) => {
       if (val === 'system' || val === '') {
-        try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* silently ignored */ }
+        try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* bỏ qua lỗi */ }
       } else {
         document.documentElement.dataset.theme = val;
       }
-      try { localStorage.setItem('theme', val); } catch (e) { /* silently ignored */ }
+      try { localStorage.setItem('theme', val); } catch (e) { /* bỏ qua lỗi */ }
       Array.from(document.querySelectorAll('#themeDropdown .theme-item')).forEach(el => {
         const v = el.getAttribute('data-value') || '';
         if (v === val) el.classList.add('sel');
@@ -261,11 +261,11 @@ export function initLayout() {
     };
     const initTheme = () => {
       let v = 'system';
-      try { v = (localStorage.getItem('theme') || 'system'); } catch (e) { /* silently ignored */ }
+      try { v = (localStorage.getItem('theme') || 'system'); } catch (e) { /* bỏ qua lỗi */ }
       applyTheme(v);
     };
     initTheme();
-    // Delegated handlers to survive dynamic page changes
+    // Dùng event delegation để vẫn chạy được khi trang thay đổi động
     document.addEventListener('click', (e) => {
       const t = e.target.closest ? e.target.closest('#btnTheme') : null;
       if (t) {
@@ -290,7 +290,7 @@ export function initLayout() {
     });
   }
 
-  // Wire Mobile Drawer
+  // Gắn sự kiện cho drawer mobile
   const mobileMenuBtn = document.querySelector('#mobileMenuBtn');
   const mobileDrawer = document.querySelector('#mobileDrawer');
   const mobileClose = document.querySelector('#mobileClose');
@@ -306,7 +306,7 @@ export function initLayout() {
         if (mobileBackdrop) mobileBackdrop.setAttribute('hidden', '');
         if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'false');
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   normalizeDrawerState();
   if (mobileMenuBtn && mobileDrawer) {
@@ -320,9 +320,9 @@ export function initLayout() {
           const w = Math.round(mobileDrawer.getBoundingClientRect().width || 280);
           document.documentElement.style.setProperty('--drawer-offset', `${w}px`);
           document.body.classList.add('drawer-open');
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         if (mobileBackdrop) { mobileBackdrop.removeAttribute('hidden'); }
-        // Admin URL dynamic fix removed, using change-password for all users
+        // Đã bỏ phần sửa URL admin động, dùng change-password cho tất cả user
       } else {
         mobileDrawer.setAttribute('hidden', '');
         mobileMenuBtn.setAttribute('aria-expanded', 'false');
@@ -343,12 +343,12 @@ export function initLayout() {
       mobileBackdrop.setAttribute('hidden', '');
       if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'false');
       document.body.classList.remove('drawer-open');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   });
   window.addEventListener('pageshow', normalizeDrawerState);
   window.addEventListener('resize', normalizeDrawerState);
 
-  // Link interceptor
+  // Bắt sự kiện click link
   const mapLegacyAdminHref = (href) => {
     try {
       const u = new URL(href, location.origin);
@@ -368,7 +368,7 @@ export function initLayout() {
       if (tab === 'audit') return '/admin/system/audit-logs';
       if (tab === 'settings') return '/admin/system/settings';
       return '/admin/dashboard';
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return '/admin/dashboard';
   };
   document.addEventListener('click', (e) => {
@@ -380,10 +380,10 @@ export function initLayout() {
       e.preventDefault();
       const mapped = mapLegacyAdminHref(href);
       if (isAdminLayout()) {
-        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
+        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* bỏ qua lỗi */ }
         showNavSpinner();
       }
-      try { window.location.href = mapped; } catch (e) { /* silently ignored */ }
+      try { window.location.href = mapped; } catch (e) { /* bỏ qua lỗi */ }
       return;
     }
     if (href.startsWith('/ui/portal') || href.startsWith('/ui/admin?')) {
@@ -394,7 +394,7 @@ export function initLayout() {
       const samePath = target.pathname === now.pathname;
       const onlyHashChange = samePath && nowTab === targetTab && target.hash !== now.hash;
       if (isAdminLayout() && !onlyHashChange && nowTab !== targetTab) {
-        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
+        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* bỏ qua lỗi */ }
         showNavSpinner();
       }
       if (a.classList.contains('tile')) {
@@ -404,7 +404,7 @@ export function initLayout() {
     }
   });
 
-  // Global page-transition spinner for internal navigation links/forms.
+  // Spinner chuyển trang chung cho các link/form điều hướng nội bộ
   if (!window.__globalNavSpinnerBound) {
     window.__globalNavSpinnerBound = true;
     let spinnerHideTimer = null;
@@ -437,7 +437,7 @@ export function initLayout() {
       try {
         if (spinnerHideTimer) clearTimeout(spinnerHideTimer);
         spinnerHideTimer = setTimeout(() => hideNavSpinner(), 10000);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     };
     document.addEventListener('click', (e) => {
       const a = e.target?.closest?.('a[href]');
@@ -445,12 +445,12 @@ export function initLayout() {
       showWithAutoHide();
     }, true);
     window.addEventListener('pageshow', () => {
-      try { if (spinnerShowTimer) clearTimeout(spinnerShowTimer); } catch (e) { /* silently ignored */ }
+      try { if (spinnerShowTimer) clearTimeout(spinnerShowTimer); } catch (e) { /* bỏ qua lỗi */ }
       hideNavSpinner();
     });
   }
 
-  // Re-check mobile sizing removed to allow dynamic switching
+  // Đã bỏ phần kiểm tra lại kích thước mobile để cho phép chuyển đổi động
 }
 
 export function setSidebarActive(t) {
@@ -476,12 +476,12 @@ export function setSidebarActive(t) {
       const link = document.querySelector(sel);
       if (link) link.classList.add('active');
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export const showNavSpinner = () => {
   try {
-    try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
+    try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* bỏ qua lỗi */ }
     let el = document.querySelector('#pageSpinner');
     if (!el) {
       el = document.createElement('div');
@@ -502,18 +502,18 @@ export const showNavSpinner = () => {
       el.style.display = 'grid';
       el.style.pointerEvents = 'none';
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export const hideNavSpinner = () => {
   try {
-    try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* silently ignored */ }
+    try { sessionStorage.removeItem('navSpinner'); } catch (e) { /* bỏ qua lỗi */ }
     const el = document.querySelector('#pageSpinner');
     if (el) {
       el.setAttribute('hidden', 'true');
       el.style.display = 'none';
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 export function ensureSpinnerStyle() {
@@ -541,7 +541,7 @@ export function ensureSpinnerStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export function ensureJapanSafeColorsStyle() {
@@ -570,7 +570,7 @@ export function ensureJapanSafeColorsStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 export function ensureEmployeePillStyle() {
@@ -613,5 +613,5 @@ export function ensureEmployeePillStyle() {
       `;
       document.head.appendChild(style);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }

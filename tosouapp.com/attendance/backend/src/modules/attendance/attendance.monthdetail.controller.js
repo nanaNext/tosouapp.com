@@ -23,7 +23,7 @@
  */
 'use strict';
 
-// ─── Dependencies ─────────────────────────────────────────────────────────────
+// Import phụ thuộc
 const repo           = require('./attendance.repository');                // Đọc DB chấm công
 const workReportRepo = require('../workReports/workReports.repository'); // Ghi chú công việc
 const leaveRepo      = require('../leave/leave.repository');              // Phép năm
@@ -39,8 +39,8 @@ const {
 
 // ─── API: Lấy toàn bộ chi tiết tháng ─────────────────────────────────────────
 // GET /api/attendance/month/detail?year=2026&month=3
-// Response bao gồm: user info, monthStatus, days[], shiftAssignments, workDetails,
-//                   monthSummary, leaveSummary
+// Trả về: thông tin nhân viên, monthStatus, days[], shiftAssignments, workDetails,
+//         monthSummary, leaveSummary
 exports.getMonthDetail = async (req, res) => {
   try {
     const userId = await resolveTargetUserId(req);
@@ -48,7 +48,7 @@ exports.getMonthDetail = async (req, res) => {
     const { year, month } = req.query || {};
     if (!userId) return res.status(404).json({ message: 'User not found' });
     if (!year || !month) return res.status(400).json({ message: 'Missing year/month' });
-    // Verify userId belongs to the same tenant when viewing another user's data
+    // Xem dữ liệu của người khác thì phải cùng tenant
     const tid = req.tenantId || null;
     if (tid != null && String(userId) !== String(req.user?.id)) {
       const [userRows] = await db.query('SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1', [userId, tid]);
@@ -92,7 +92,7 @@ exports.getMonthDetail = async (req, res) => {
       repo.getGoOutRecordsByMonth(userId, y, m).catch(() => []),
     ]);
 
-    // ─── Build: shift request map (date → {status, leaveType, reason, detail}) ──
+    // Dựng map shift request (date → {status, leaveType, reason, detail})
     const shiftReqMap = new Map();
     for (const r of shiftReqRows || []) {
       const dStr = String(r.date || '');
@@ -104,7 +104,7 @@ exports.getMonthDetail = async (req, res) => {
       }
     }
 
-    // ─── Build: shift definition maps (id → def, name → def) ────────────────
+    // Dựng map định nghĩa ca (id → def, name → def)
     const shiftById   = new Map((shiftDefs || []).map(s => [String(s.id), s]));
     const shiftByName = new Map((shiftDefs || []).map(s => [String(s.name), s]));
     const resolveDefForAssign = a => {
@@ -113,7 +113,7 @@ exports.getMonthDetail = async (req, res) => {
       return byId || byName || null;
     };
 
-    // ─── Build: attendance segments map (date → [segment]) ───────────────────
+    // Dựng map segment chấm công (date → [segment])
     const toMySQLDT = v => {
       if (!v) return '';
       const s = String(v);
@@ -136,7 +136,7 @@ exports.getMonthDetail = async (req, res) => {
       });
     }
 
-    // ─── Build: daily map (date → daily record) ───────────────────────────────
+    // Dựng map daily (date → daily record)
     // work_report cung cấp workType/location/memo dự phòng nếu attendance_daily không có
     const reportMap = new Map();
     for (const r of workReportRows || []) {
@@ -178,7 +178,7 @@ exports.getMonthDetail = async (req, res) => {
       }
     }
 
-    // ─── Helper: tìm shift definition áp dụng cho ngày cụ thể ────────────────
+    // Helper: tìm định nghĩa ca áp dụng cho ngày cụ thể
     // Lấy assignment gần nhất có start_date <= ds và end_date >= ds (hoặc không có end_date)
     const shiftForDate = ds => {
       let best = null;
@@ -198,7 +198,7 @@ exports.getMonthDetail = async (req, res) => {
       } : null;
     };
 
-    // ─── Build: shift assignments list ───────────────────────────────────────
+    // Dựng danh sách gán ca
     const shiftAssignments = (assigns || []).map(a => {
       const def = resolveDefForAssign(a);
       return {
@@ -213,7 +213,7 @@ exports.getMonthDetail = async (req, res) => {
       };
     });
 
-    // ─── Build: work details list ─────────────────────────────────────────────
+    // Dựng danh sách work details
     const workDetails = (workDetailsRows || []).map(r => ({
       id:                  r.id,
       startDate:           String(r.start_date || '').slice(0, 10) || null,
@@ -225,7 +225,7 @@ exports.getMonthDetail = async (req, res) => {
       responsibilityLevel: r.responsibility_level || null,
     }));
 
-    // ─── Build: month summary (tổng hợp do admin nhập) ───────────────────────
+    // Dựng month summary (tổng hợp do admin nhập)
     const safeParse = s => { try { return s ? JSON.parse(String(s)) : null; } catch { return null; } };
     const monthSummary = monthSummaryRow ? {
       all:       safeParse(monthSummaryRow.summary_all),
@@ -234,7 +234,7 @@ exports.getMonthDetail = async (req, res) => {
       updatedAt: monthSummaryRow.updated_at || null,
     } : null;
 
-    // ─── Build: leave summary (phép năm đã dùng trong tháng) ─────────────────
+    // Dựng leave summary (phép năm đã dùng trong tháng)
     const leaveSummary = await (async () => {
       // Helper: số ngày trong khoảng [a, b] giao [bStart, bEnd]
       const daysBetween = (a, b) => Math.max(0, Math.ceil(
@@ -291,7 +291,7 @@ exports.getMonthDetail = async (req, res) => {
       }
     })();
 
-    // ─── Build: go-out map (date → [go_out records]) ─────────────────────────
+    // Dựng map ra ngoài (date → [go_out records])
     const goOutMap = new Map();
     for (const r of goOutRecordsRows) {
       const d = String(r.date).slice(0, 10);
@@ -302,7 +302,7 @@ exports.getMonthDetail = async (req, res) => {
       });
     }
 
-    // ─── Build: danh sách từng ngày trong tháng ────────────────────────────────
+    // Dựng danh sách từng ngày trong tháng
     const days = [];
     for (let day = 1; day <= lastDay; day++) {
       const ds   = `${y}-${pad(m)}-${pad(day)}`;
@@ -319,7 +319,7 @@ exports.getMonthDetail = async (req, res) => {
       });
     }
 
-    // ─── Build: thông tin nhân viên + số ngày phép được cấp ──────────────────
+    // Dựng thông tin nhân viên + số ngày phép được cấp
     const u = await userRepo.getUserById(userId).catch(() => null);
     const paidLeaveEntitlement = calculatePaidLeaveEntitlement(resolveEmploymentStartDate(u));
     const user = u ? {
@@ -338,7 +338,7 @@ exports.getMonthDetail = async (req, res) => {
       paidLeaveGrantedTotalDays: Number(leaveSummary?.grantedDaysTotal || 0),
     } : null;
 
-    // ─── Response ─────────────────────────────────────────────────────────────
+    // Trả kết quả
     res.status(200).json({
       year: y, month: m, from, to,
       user,

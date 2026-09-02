@@ -82,7 +82,7 @@ exports.getReportMatrix = async (req, res) => {
     if (tid != null) { dailySql += ` AND tenant_id = ?`; dailyParams.push(tid); }
     const [dailyRows] = await db.query(dailySql, dailyParams);
 
-    // Build lookup map: "userId_date" → [{checkIn, checkOut}]
+    // Dựng map tra cứu: "userId_date" → [{checkIn, checkOut}]
     const attendanceMap = {};
     for (const r of records) {
       const key = `${r.userId}_${String(r.checkIn || r.checkOut || '').slice(0, 10)}`;
@@ -90,7 +90,7 @@ exports.getReportMatrix = async (req, res) => {
       attendanceMap[key].push({ checkIn: r.checkIn, checkOut: r.checkOut });
     }
 
-    // Build lookup map: "userId_date" → {break_minutes}
+    // Dựng map tra cứu: "userId_date" → {break_minutes}
     const dailyMap = {};
     for (const r of dailyRows) {
       dailyMap[`${r.userId}_${String(r.date).slice(0, 10)}`] = r;

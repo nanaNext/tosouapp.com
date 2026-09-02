@@ -13,7 +13,7 @@ const {
   assertMonthWritable,
 } = require('./attendance.utils');
 
-// ─── Shift definitions ────────────────────────────────────────────────────────
+// ─── Định nghĩa ca làm việc ──────────────────────────────────────────────────
 
 exports.listShiftDefinitions = async (req, res) => {
   try {
@@ -65,7 +65,7 @@ exports.deleteShiftDefinition = async (req, res) => {
   }
 };
 
-// ─── Shift assignments ────────────────────────────────────────────────────────
+// ─── Phân ca cho nhân viên ───────────────────────────────────────────────────
 
 exports.getShiftAssignments = async (req, res) => {
   try {
@@ -132,7 +132,7 @@ exports.deleteShiftAssignment = async (req, res) => {
   }
 };
 
-// ─── Shift bulk / approvals / matrix ─────────────────────────────────────────
+// ─── Lưu hàng loạt / duyệt / bảng ca ─────────────────────────────────────────
 
 exports.postShiftsBulk = async (req, res) => {
   try {
@@ -165,7 +165,7 @@ exports.postShiftsBulk = async (req, res) => {
         const u = await userRepo.getUserById(userId).catch(() => null);
         const userName = u ? (u.username || u.email || '従業員') : '従業員';
         await noticesRepo.createAdminNotification({ kind: 'shift_submit', title: 'シフト提出', message: `${userName} さんが${month}のシフトを提出しました`, linkUrl: '/admin/attendance/shifts-approvals', payload: { source: 'shift', userId, month }, createdBy: userId, audience: 'admin_manager' });
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua nếu lỗi */ }
     } catch (e) {
       await conn.rollback();
       throw e;
@@ -302,7 +302,7 @@ exports.approveShiftMonth = async (req, res) => {
     const validStatuses = ['APPROVED', 'REJECTED', 'PENDING', 'draft'];
     if (!validStatuses.includes(status)) return res.status(400).json({ message: 'Invalid status' });
     const tid = req.tenantId || null;
-    // Verify userId belongs to the same tenant
+    // Kiểm tra userId thuộc đúng tenant
     if (tid != null) {
       const [userRows] = await db.query('SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1', [userId, tid]);
       if (!userRows || userRows.length === 0) return res.status(404).json({ message: 'User not found in tenant' });
@@ -380,7 +380,7 @@ exports.getMyMonthlyShifts = async (req, res) => {
     if (userId === '__forbidden__') return res.status(403).json({ message: 'Forbidden' });
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
     if (!month) return res.status(400).json({ message: 'Missing month' });
-    // Verify userId belongs to the same tenant when viewing another user's data
+    // Khi xem dữ liệu của người khác thì kiểm tra userId thuộc đúng tenant
     const tid = req.tenantId || null;
     if (tid != null && String(userId) !== String(req.user?.id)) {
       const [userRows] = await db.query('SELECT id FROM users WHERE id = ? AND tenant_id = ? LIMIT 1', [userId, tid]);
@@ -391,13 +391,13 @@ exports.getMyMonthlyShifts = async (req, res) => {
     try {
       const [statusRows] = await db.query(`SELECT status FROM shift_month_status WHERE userId = ? AND month = ?`, [userId, month]);
       if (statusRows && statusRows.length > 0) submission_status = statusRows[0].status;
-    } catch (e) { /* table might not exist */ }
+    } catch (e) { /* bảng có thể chưa tồn tại */ }
 
     let schedule = {};
     try {
       const [shiftRows] = await db.query(`SELECT date, status, leaveType, reason, detail FROM shift_requests WHERE userId = ? AND date LIKE ?`, [userId, `${month}-%`]);
       shiftRows.forEach(r => { schedule[String(r.date).slice(0, 10)] = r; });
-    } catch (e) { /* table might not exist */ }
+    } catch (e) { /* bảng có thể chưa tồn tại */ }
 
     res.status(200).json({ success: true, data: { submission_status, schedule } });
   } catch (err) {

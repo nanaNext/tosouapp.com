@@ -7,11 +7,11 @@ window.addEventListener('error', (e) => {
     }
     const st = document.querySelector('#status');
     if (st) st.textContent = 'Error';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 });
 window.addEventListener('DOMContentLoaded', () => {
   try {
     const st = document.querySelector('#status');
     if (st) st.textContent = '';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 });

@@ -6,12 +6,12 @@ const userRepo = require('../users/user.repository');
 const log = require('../../core/logger');
 const { getUserOffDaySet } = require('./attendance.utils');
 
-// ─── Monthly XLSX export ──────────────────────────────────────────────────────
+// Xuất Excel chấm công tháng
 
 const monthlyExport = require('./attendance.export.monthly');
 exports.exportMonthXlsx = monthlyExport.exportMonthXlsx;
 
-// ─── CSV export ───────────────────────────────────────────────────────────────
+// Xuất CSV
 
 exports.exportCsv = async (req, res) => {
   try {
@@ -32,7 +32,7 @@ exports.exportCsv = async (req, res) => {
   }
 };
 
-// ─── All-employee shifts Excel export ────────────────────────────────────────
+// Xuất Excel bảng ca của toàn bộ nhân viên
 
 exports.exportAllEmployeeShiftsExcel = async (req, res) => {
   try {
@@ -244,7 +244,7 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
           console.error('Failed to auto-save export to R2:', e);
         });
       }
-    } catch (e) { /* R2 upload failure should not affect user */ }
+    } catch (e) { /* lỗi upload R2 không ảnh hưởng tới người dùng */ }
   } catch (err) {
     console.error('Excel Export Error:', err);
     res.status(500).json({ message: err.message });

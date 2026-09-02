@@ -12,7 +12,7 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const showSpinner = (isSuccess = false) => {
@@ -25,7 +25,7 @@ const showSpinner = (isSuccess = false) => {
       el.classList.remove('is-success');
     }
     el.removeAttribute('hidden');
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 const hideSpinner = () => {
   try { 
@@ -33,7 +33,7 @@ const hideSpinner = () => {
     if (!el) return;
     el.classList.remove('is-success');
     el.setAttribute('hidden', ''); 
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const showErr = (msg) => {
@@ -56,19 +56,19 @@ const isYukyuKubun = (v) => String(v || '').trim() === '有給休暇';
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
-  if (token) { try { profile = await me(token); } catch (e) { /* silently ignored */ } }
+  if (token) { try { profile = await me(token); } catch (e) { /* bỏ qua lỗi */ } }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
       const userStr = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
       profile = userStr ? JSON.parse(userStr) : null;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   return profile || null;
 }
@@ -85,12 +85,12 @@ const wireUserMenu = () => {
   });
   document.addEventListener('click', (e) => {
     if (e.target?.closest?.('#userBtn') || e.target?.closest?.('#userMenu')) return;
-    try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+    try { menu.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
   });
   $('#btnLogout')?.addEventListener('click', async () => {
-    try { await logout(); } catch (e) { /* silently ignored */ }
-    try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-    try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
+    try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
+    try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
+    try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
     window.location.replace('/ui/login');
   });
 };
@@ -137,27 +137,27 @@ const wireTopNavDropdowns = () => {
       panel.innerHTML = rows.map((r) => `<a href="${r.href}">${r.label}</a>`).join('');
     });
   };
-  try { ensurePanelLinks(); } catch (e) { /* silently ignored */ }
-  // Normalize old/cached links that may miss "/ui" prefix on mobile devices.
+  try { ensurePanelLinks(); } catch (e) { /* bỏ qua lỗi */ }
+  // Chuẩn hóa các link cũ/bị cache có thể thiếu tiền tố "/ui" trên thiết bị mobile.
   try {
     document.querySelectorAll('.kintai-dd[data-dd-panel] a[href^="/"]').forEach((a) => {
       const href = String(a.getAttribute('href') || '').trim();
       const fixed = normalizeNavHref(href);
       if (fixed && fixed !== href) a.setAttribute('href', fixed);
     });
-  } catch (e) { /* silently ignored */ }
-  // If shared topbar script already owns nav dropdowns, skip local binding.
+  } catch (e) { /* bỏ qua lỗi */ }
+  // Nếu script topbar dùng chung đã quản lý dropdown nav thì bỏ qua việc gắn cục bộ.
   try {
     if (document.documentElement.dataset.kintaiTopNavDdBound === '1') return;
     if (document.documentElement.dataset.attendancePageNavBound === '1') return;
     document.documentElement.dataset.attendancePageNavBound = '1';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   const btns = Array.from(document.querySelectorAll('.kintai-nav-btn[data-dd]'));
   const panels = Array.from(document.querySelectorAll('.kintai-dd[data-dd-panel]'));
   if (!btns.length || !panels.length) return;
-  try { document.body.classList.add('nav-js'); } catch (e) { /* silently ignored */ }
+  try { document.body.classList.add('nav-js'); } catch (e) { /* bỏ qua lỗi */ }
 
-  // Ensure dropdown links always navigate even when other handlers interfere.
+  // Đảm bảo link dropdown luôn điều hướng được ngay cả khi handler khác can thiệp.
   try {
     if (document.documentElement.dataset.attendancePageNavLinkBound !== '1') {
       document.documentElement.dataset.attendancePageNavLinkBound = '1';
@@ -185,11 +185,11 @@ const wireTopNavDropdowns = () => {
       document.addEventListener('touchend', go, true);
       document.addEventListener('click', go, true);
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const closeAll = () => {
     for (const b of btns) {
-      try { b.setAttribute('aria-expanded', 'false'); } catch (e) { /* silently ignored */ }
+      try { b.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
     }
     for (const p of panels) {
       try {
@@ -204,20 +204,20 @@ const wireTopNavDropdowns = () => {
         p.style.overflow = '';
         p.style.zIndex = '';
         p.style.transform = '';
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     }
-    document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch (e) { /* silently ignored */ } });
+    document.querySelectorAll('.kintai-nav-dd').forEach(dd => { try { dd.classList.remove('open'); } catch (e) { /* bỏ qua lỗi */ } });
   };
 
   const openOne = (key) => {
-    try { ensurePanelLinks(); } catch (e) { /* silently ignored */ }
+    try { ensurePanelLinks(); } catch (e) { /* bỏ qua lỗi */ }
     closeAll();
     const btn = btns.find(b => b.dataset.dd === key);
     const panel = panels.find(p => p.dataset.ddPanel === key);
     if (!btn || !panel) return;
-    try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* silently ignored */ }
-    try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch (e) { /* silently ignored */ }
-    try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch (e) { /* silently ignored */ }
+    try { btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
+    try { panel.removeAttribute('hidden'); panel.style.display = 'block'; } catch (e) { /* bỏ qua lỗi */ }
+    try { btn.closest('.kintai-nav-dd')?.classList.add('open'); } catch (e) { /* bỏ qua lỗi */ }
     try {
       const mobile = !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
       if (mobile) {
@@ -238,8 +238,8 @@ const wireTopNavDropdowns = () => {
           const maxLeft = Math.max(6, (window.innerWidth || 0) - w - 6);
           left = Math.min(left, maxLeft);
           panel.style.left = `${left}px`;
-        } catch (e) { /* silently ignored */ }
-        try { panel.style.transform = 'none'; } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
+        try { panel.style.transform = 'none'; } catch (e) { /* bỏ qua lỗi */ }
       } else {
         panel.style.position = '';
         panel.style.left = '';
@@ -251,7 +251,7 @@ const wireTopNavDropdowns = () => {
         panel.style.zIndex = '';
         panel.style.transform = '';
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   for (const b of btns) {
@@ -365,7 +365,7 @@ const renderNotice = async (profile) => {
       const v = localStorage.getItem(prefKey);
       if (v === '0') return false;
       if (v === '1') return true;
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     return true;
   })();
   host.innerHTML = `
@@ -388,14 +388,14 @@ const renderNotice = async (profile) => {
       const nextHidden = !curHidden;
       if (nextHidden) body?.setAttribute?.('hidden', '');
       else body?.removeAttribute?.('hidden');
-      try { localStorage.setItem(prefKey, nextHidden ? '0' : '1'); } catch (e) { /* silently ignored */ }
-      try { host.querySelector('#btnNoticeToggle').textContent = nextHidden ? '表示' : '非表示'; } catch (e) { /* silently ignored */ }
+      try { localStorage.setItem(prefKey, nextHidden ? '0' : '1'); } catch (e) { /* bỏ qua lỗi */ }
+      try { host.querySelector('#btnNoticeToggle').textContent = nextHidden ? '表示' : '非表示'; } catch (e) { /* bỏ qua lỗi */ }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const markOne = async (id) => {
     if (!id) return;
-    try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); } catch (e) { /* silently ignored */ }
+    try { await fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); } catch (e) { /* bỏ qua lỗi */ }
   };
   host.querySelectorAll('details[data-notice-id]').forEach((el) => {
     el.addEventListener('toggle', () => {
@@ -406,7 +406,7 @@ const renderNotice = async (profile) => {
         el.classList.remove('is-unread');
         el.classList.add('is-read');
         markOne(id);
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
     });
   });
 };
@@ -421,10 +421,10 @@ const renderAttendance = async () => {
     const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
     let isOff;
     if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
-      // API already applies department-specific rules (e.g. 工事部 Saturdays).
+      // API đã áp dụng sẵn quy tắc theo phòng ban (ví dụ: thứ Bảy của 工事部).
       isOff = Number(cal?.is_off || 0) === 1;
     } else {
-      // Safe fallback when calendar API is temporarily unavailable.
+      // Fallback an toàn khi API lịch tạm thời không khả dụng.
       const weekend = (() => {
         try {
           const y = parseInt(date.slice(0, 4), 10);
@@ -464,10 +464,10 @@ const renderAttendance = async () => {
     
     const st = last?.checkIn ? (last?.checkOut ? '退勤済' : '出勤中') : '未出勤';
     const canIn = !last?.checkIn;
-    // Allow checkout even if no check-in
+    // Cho phép chấm về (checkout) ngay cả khi chưa chấm vào (check-in)
     const canOut = !last?.checkOut;
     const wtLabel = (v) => v === 'onsite' ? '出社' : v === 'remote' ? '在宅' : v === 'satellite' ? '現場' : '出社';
-    // Detect part-time from stored user profile
+    // Nhận biết nhân viên bán thời gian từ profile đã lưu
     const _ptProfile = (() => { try { const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || ''; return raw ? JSON.parse(raw) : null; } catch (e) { return null; } })();
     const isPartTime = String(_ptProfile?.employment_type || '').toLowerCase() === 'part_time';
     const kubunOptions = isOff
@@ -528,14 +528,14 @@ const renderAttendance = async () => {
       if (sel) sel.value = loadWT();
       sel?.addEventListener('change', async () => {
         const v = String(sel.value || '');
-        try { localStorage.setItem(wtKey, v); } catch (e) { /* silently ignored */ }
+        try { localStorage.setItem(wtKey, v); } catch (e) { /* bỏ qua lỗi */ }
         try {
           await fetchJSONAuth('/api/attendance/worktype', { method: 'POST', body: JSON.stringify({ date, workType: v }) });
           const kubun = String($('#kubun')?.value || kubunInit);
           await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, { method: 'PUT', body: JSON.stringify({ kubun, workType: v }) });
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     const hideKubunSet = new Set(['欠勤', '有給休暇', '半休', '無給休暇', '休日', '代替休日']);
     const toggleWorkTypeRow = () => {
       const kubun = String($('#kubun')?.value || defaultKubun);
@@ -576,7 +576,7 @@ const renderAttendance = async () => {
           hideSpinner();
         }
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     $('#btnCheckIn')?.addEventListener('click', async () => {
       showErr('');
       showSpinner();
@@ -679,12 +679,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = '/ui/attendance/simple';
       return;
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   try {
-    const prevent = () => { try { history.pushState(null, '', location.href); } catch (e) { /* silently ignored */ } };
+    const prevent = () => { try { history.pushState(null, '', location.href); } catch (e) { /* bỏ qua lỗi */ } };
     prevent();
     window.addEventListener('popstate', () => { prevent(); });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   showErr('');
   wireUserMenu();
   wireTopNavDropdowns();
@@ -696,9 +696,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   const role = String(profile?.role || '').toLowerCase();
   if (role === 'admin') {
-    try { document.body.dataset.roleAdmin = '1'; } catch (e) { /* silently ignored */ }
+    try { document.body.dataset.roleAdmin = '1'; } catch (e) { /* bỏ qua lỗi */ }
   }
-  try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { /* silently ignored */ }
+  try { $('#userName').textContent = profile.username || profile.email || 'ユーザー'; } catch (e) { /* bỏ qua lỗi */ }
   await renderNotice(profile);
   await renderAttendance();
   hideSpinner();

@@ -1,11 +1,7 @@
 'use strict';
 const db = require('../../core/database/mysql');
 
-/**
- * Parse tenant id safely.
- * @param {number|string|null} tenantId
- * @returns {number|null}
- */
+// Ép kiểu tenantId về số cho an toàn
 function _tid(tenantId) {
   return tenantId != null ? parseInt(String(tenantId), 10) : null;
 }
@@ -27,10 +23,10 @@ const todayJST = () => {
   }
 };
 
-// ─── Column cache (avoids hitting information_schema on every request) ─────────
+// Cache danh sách cột để khỏi phải query information_schema mỗi lần
 let _attendanceColCache = null;
 let _attendanceColCacheTs = 0;
-const COL_CACHE_TTL = 600000; // 10 minutes
+const COL_CACHE_TTL = 600000; // 10 phút
 
 async function getAttendanceColumnSet() {
   const now = Date.now();
@@ -178,7 +174,7 @@ module.exports = {
       const assignedShiftStart = String(assignRows?.[0]?.shift_start || '08:00').trim() || '08:00';
       const assignedShiftEnd = String(assignRows?.[0]?.shift_end || '17:00').trim() || '17:00';
 
-      // Simple stamp screen policy: only one check-in per day.
+      // Màn hình chấm công: mỗi ngày chỉ cho check-in một lần
       const [openRows] = await conn.query(
         `SELECT id, checkIn, checkOut, work_type, labels
          FROM attendance
@@ -315,10 +311,7 @@ module.exports = {
     const [rows] = await db.query(`SELECT id FROM attendance WHERE ${where.join(' AND ')} LIMIT 1`, params);
     return rows[0];
   },
-  /**
-   * Batch version: find multiple checkIns in one query.
-   * Returns a Map<checkInTime, { id }>.
-   */
+  // Tìm nhiều checkIn trong một query, trả về Map<checkInTime, { id }>
   async findCheckInsByTimes(userId, times, { tenantId = null } = {}) {
     const tid = _tid(tenantId);
     const result = new Map();
@@ -363,14 +356,14 @@ module.exports = {
     const currentUserId = parseInt(String(current.userId || 0), 10);
     if (!currentUserId) return;
     const nextIn = inV;
-    
-    // Allow saving missing checkIn by marking it as an anomaly
+
+    // Cho phép lưu bản ghi thiếu checkIn bằng cách đánh dấu là bất thường
     const isAnomaly = (!inV && outV) ? 1 : 0;
     const anomalyType = (!inV && outV) ? 'missing_checkin' : null;
 
     const [dups] = await db.query(
       `SELECT id, checkOut, work_type, labels, shiftId FROM attendance WHERE userId = ? AND checkIn = ? AND id <> ? ORDER BY id ASC LIMIT 1`,
-      [currentUserId, nextIn || '1970-01-01', attendanceId] // Prevent matching when nextIn is empty
+      [currentUserId, nextIn || '1970-01-01', attendanceId] // Tránh match nhầm khi nextIn rỗng
     );
     const dup = dups && dups[0] ? dups[0] : null;
     if (dup && nextIn) {
@@ -403,7 +396,7 @@ module.exports = {
       return;
     }
     
-    // Check if table has is_anomaly and anomaly_type columns
+    // Kiểm tra bảng có cột is_anomaly và anomaly_type hay không
     const set = await getAttendanceColumnSet();
     
     if (set.has('is_anomaly') && set.has('anomaly_type')) {
@@ -426,21 +419,18 @@ module.exports = {
       await db.query(sql, [inV || null, outV || null, attendanceId]);
     }
   },
-  /**
-   * TRANSACTIONAL BULK UPSERT (Ưu tiên 1)
-   * Xử lý cả attendance_daily và attendance segments trong 1 transaction.
-   */
+  // Upsert hàng loạt trong một transaction: xử lý cả attendance_daily và các segment attendance
   async bulkUpsertAttendance(userId, { updates, dailyUpdates }, { tenantId = null } = {}) {
     const tid = _tid(tenantId);
     const conn = await db.getConnection();
 
-    // Helper: parse "HH:MM" → minutes from midnight
+    // Đổi "HH:MM" thành số phút tính từ nửa đêm
     const hmToMin = (hm) => {
       const m = /^(\d{1,2}):(\d{2})$/.exec(String(hm || ''));
       return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
     };
 
-    // Helper: derive status from kubun + whether checkIn exists + whether late
+    // Suy ra trạng thái từ kubun, có checkIn hay chưa, và có đi trễ hay không
     const deriveStatus = (kubun, checkInTime, shiftStart) => {
       const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const nonWorkKubunSet = new Set(['休日', '代替休日', '有給休暇', '無給休暇', '欠勤']);
@@ -449,12 +439,12 @@ module.exports = {
       if (k && nonWorkKubunSet.has(k)) return '未承認';
 
       if (!checkInTime) {
-        // No check-in: 未入力 only for actual working days
+        // Chưa check-in: chỉ báo 未入力 cho ngày làm việc thực sự
         if (!k || workKubunSet.has(k)) return '未入力';
         return '未承認';
       }
 
-      // Has check-in — compare against shift start time
+      // Đã có check-in: so với giờ bắt đầu ca
       const ciMin = hmToMin(checkInTime);
       const ssMin = hmToMin(shiftStart || '08:00') ?? (8 * 60);
       const isLate = ciMin != null && ciMin > ssMin;
@@ -469,15 +459,15 @@ module.exports = {
       let segUpdated = 0;
       const createdIds = [];
 
-      // Build a map of date → checkInTime from the updates payload (segments being saved)
-      // This is used so dailyUpdates can compute status against the NEW check-in, not DB state.
+      // Map date → checkInTime lấy từ payload updates (các segment đang lưu)
+      // Để dailyUpdates tính trạng thái theo check-in MỚI thay vì dữ liệu trong DB
       const checkInByDate = new Map();
       if (Array.isArray(updates)) {
         for (const u of updates) {
           if (u?.delete === true) continue;
           const ci = String(u?.checkIn || '').trim();
           if (!ci) continue;
-          // checkIn is "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SS"
+          // checkIn có dạng "YYYY-MM-DD HH:MM:SS" hoặc "YYYY-MM-DDTHH:MM:SS"
           const dateStr = ci.slice(0, 10);
           const timePart = ci.slice(11, 16); // "HH:MM"
           if (dateStr && timePart && !checkInByDate.has(dateStr)) {
@@ -486,9 +476,9 @@ module.exports = {
         }
       }
 
-      // 1. Process segments FIRST so that status calculation sees final state
+      // 1. Xử lý các segment TRƯỚC để phần tính trạng thái thấy được trạng thái cuối cùng
       if (Array.isArray(updates)) {
-        // Batch-fetch all existing records that will be updated (avoid N individual SELECTs)
+        // Lấy sẵn tất cả bản ghi sẽ cập nhật trong một lần (tránh N câu SELECT riêng lẻ)
         const idsToUpdate = updates.filter(u => u.id && u.delete !== true).map(u => u.id);
         const currentMap = new Map();
         if (idsToUpdate.length) {
@@ -512,7 +502,7 @@ module.exports = {
             const current = currentMap.get(Number(u.id));
             if (!current) continue;
             const nextCheckIn = u.checkIn ? String(u.checkIn) : null;
-            // Only check for duplicates if checkIn is actually changing
+            // Chỉ kiểm tra trùng khi checkIn thực sự thay đổi
             if (nextCheckIn && nextCheckIn !== String(current.checkIn || '')) {
               const [dupRows] = await conn.query(
                 `SELECT id, checkOut, work_type, labels, shiftId FROM attendance WHERE userId = ? AND checkIn = ? AND id <> ? ORDER BY id ASC LIMIT 1`,
@@ -565,9 +555,9 @@ module.exports = {
         }
       }
 
-      // 2. Process dailyUpdates — now segments are already committed in same transaction
+      // 2. Xử lý dailyUpdates — lúc này các segment đã nằm trong cùng transaction
       if (Array.isArray(dailyUpdates)) {
-        // Batch-fetch checkIn times for dates not already in the payload map
+        // Lấy sẵn giờ checkIn cho những ngày chưa có trong map payload
         const datesToLookup = [];
         for (const d of dailyUpdates) {
           const date = String(d?.date || '').slice(0, 10);
@@ -590,14 +580,14 @@ module.exports = {
                 dbCheckInByDate.set(ds, String(row.checkIn).slice(11, 16));
               }
             }
-          } catch (e) { /* silently ignored — fallback to individual queries not needed */ }
+          } catch (e) { /* bỏ qua — không cần fallback sang query từng cái */ }
         }
 
         for (const d of dailyUpdates) {
           const date = String(d?.date || '').slice(0, 10);
           if (!date) continue;
 
-          // Use checkIn from request payload; fall back to batch DB result
+          // Ưu tiên checkIn từ payload; nếu không có thì dùng kết quả lấy từ DB
           let checkInTime = checkInByDate.get(date) || null;
           if (!checkInTime && d.checkInTime) {
             checkInTime = String(d.checkInTime).slice(0, 5); // "HH:MM"

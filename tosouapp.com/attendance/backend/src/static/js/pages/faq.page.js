@@ -27,7 +27,7 @@ async function apiFetchJson(url, options = {}, timeoutMs = 12000) {
       signal: controller.signal
     });
     let data = null;
-    try { data = await response.json(); } catch (e) { /* silently ignored */ }
+    try { data = await response.json(); } catch (e) { /* bỏ qua lỗi */ }
     if (!response.ok) {
       const msg = data?.message || (data?.errors?.[0]?.msg) || `HTTP ${response.status}`;
       throw new Error(msg);

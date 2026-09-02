@@ -4,7 +4,7 @@
 
   const host = String(location.hostname || '').toLowerCase();
   const isProd = host === 'tosouapp.com' || host.endsWith('.tosouapp.com');
-  // Set to 30 minutes for security
+  // Đặt 30 phút cho mục đích bảo mật
   const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
   const WARNING_MS = 5 * 60 * 1000;
   const GRACE_MS = 3 * 60 * 1000;
@@ -24,7 +24,7 @@
   const now = () => Date.now();
 
   const setLastActivity = (t) => {
-    try { localStorage.setItem(ACTIVITY_KEY, String(t)); } catch (e) { /* silently ignored */ }
+    try { localStorage.setItem(ACTIVITY_KEY, String(t)); } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const getLastActivity = () => {
@@ -46,11 +46,11 @@
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const goLogin = () => {
@@ -61,14 +61,14 @@
     try {
       const list = Array.isArray(globalThis.__draftFlushers) ? globalThis.__draftFlushers : [];
       for (const fn of list) {
-        try { if (typeof fn === 'function') fn(); } catch (e) { /* silently ignored */ }
+        try { if (typeof fn === 'function') fn(); } catch (e) { /* bỏ qua lỗi */ }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
 
   const doLogout = async () => {
     flushDrafts();
-    try { localStorage.setItem(FORCE_LOGOUT_KEY, String(now())); } catch (e) { /* silently ignored */ }
+    try { localStorage.setItem(FORCE_LOGOUT_KEY, String(now())); } catch (e) { /* bỏ qua lỗi */ }
     try {
       const csrf = getCookie('csrfToken');
       await fetch('/api/auth/logout', {
@@ -77,7 +77,7 @@
         credentials: 'include',
         body: JSON.stringify({})
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     clearClientTokens();
     goLogin();
   };
@@ -92,12 +92,12 @@
     });
     if (!res.ok) {
       let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* silently ignored */ }
+      try { const j = await res.json(); msg = j.message || msg; } catch (e) { /* bỏ qua lỗi */ }
       throw new Error(msg);
     }
     const j = await res.json();
     if (j && j.accessToken) {
-      try { sessionStorage.setItem('accessToken', j.accessToken); } catch (e) { /* silently ignored */ }
+      try { sessionStorage.setItem('accessToken', j.accessToken); } catch (e) { /* bỏ qua lỗi */ }
     }
     bump();
     return true;
@@ -249,11 +249,11 @@
     if (warnOpen) hideWarn();
   };
   for (const ev of activityEvents) {
-    try { window.addEventListener(ev, onActivity, { passive: true }); } catch (e) { /* silently ignored */ }
+    try { window.addEventListener(ev, onActivity, { passive: true }); } catch (e) { /* bỏ qua lỗi */ }
   }
-  try { document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') onActivity(); }); } catch (e) { /* silently ignored */ }
-  try { window.addEventListener('focus', onActivity, { passive: true }); } catch (e) { /* silently ignored */ }
-  try { window.addEventListener('pageshow', onActivity, { passive: true }); } catch (e) { /* silently ignored */ }
+  try { document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') onActivity(); }); } catch (e) { /* bỏ qua lỗi */ }
+  try { window.addEventListener('focus', onActivity, { passive: true }); } catch (e) { /* bỏ qua lỗi */ }
+  try { window.addEventListener('pageshow', onActivity, { passive: true }); } catch (e) { /* bỏ qua lỗi */ }
   bump();
 
   let timer = 0;
@@ -284,7 +284,7 @@
 
     if (warnOpen) hideWarn();
   };
-  try { timer = window.setInterval(tick, CHECK_MS); } catch (e) { /* silently ignored */ }
+  try { timer = window.setInterval(tick, CHECK_MS); } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     window.addEventListener('storage', (e) => {
@@ -295,16 +295,16 @@
       }
       if (k === ACTIVITY_KEY) { graceUntil = 0; if (warnOpen) hideWarn(); }
     });
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const stop = () => {
-    try { if (timer) window.clearInterval(timer); } catch (e) { /* silently ignored */ }
+    try { if (timer) window.clearInterval(timer); } catch (e) { /* bỏ qua lỗi */ }
     timer = 0;
     for (const ev of activityEvents) {
-      try { window.removeEventListener(ev, onActivity); } catch (e) { /* silently ignored */ }
+      try { window.removeEventListener(ev, onActivity); } catch (e) { /* bỏ qua lỗi */ }
     }
-    try { window.removeEventListener('focus', onActivity); } catch (e) { /* silently ignored */ }
-    try { window.removeEventListener('pageshow', onActivity); } catch (e) { /* silently ignored */ }
+    try { window.removeEventListener('focus', onActivity); } catch (e) { /* bỏ qua lỗi */ }
+    try { window.removeEventListener('pageshow', onActivity); } catch (e) { /* bỏ qua lỗi */ }
   };
 
   globalThis.SessionIdle = { bump, stop, doLogout };

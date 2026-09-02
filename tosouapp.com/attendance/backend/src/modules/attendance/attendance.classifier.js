@@ -34,7 +34,7 @@ function classifyMonthlyDay({
 
   if (workKubun.has(k)) return { status: 'leave', plan: null, kubun: '欠勤' };
 
-  // If not working and planned to work and it's past
+  // Không đi làm nhưng dự kiến làm và ngày đã qua
   if (!isPlannedOff && d < todayJST()) {
      return { status: 'leave', plan: 'work', kubun: '欠勤' };
   }

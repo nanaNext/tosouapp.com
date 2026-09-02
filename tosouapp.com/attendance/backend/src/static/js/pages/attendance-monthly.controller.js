@@ -727,7 +727,6 @@
       } catch (e) { /* silently ignored */ }
     }
     const instant = cached || persisted || latestFast;
-    console.log('[monthly] setMonth cache check:', { cacheKey, hasCached: !!cached, hasPersisted: !!persisted, hasLatestFast: !!latestFast, hasInstant: !!instant?.detail });
     if (!instant?.detail) {
       try { renderInstantRightSkeleton(ym); } catch (e) { /* silently ignored */ }
     }
@@ -1461,8 +1460,6 @@
         ] 
       };
       const r = await fetchJSONAuth('/api/attendance/month/bulk', { method: 'PUT', body: JSON.stringify(payload) }, 120000);
-      
-      console.log('API Response:', r);
 
       if (!r || r.message === 'Unauthorized') {
          throw new Error('セッションが切れました。再ログインしてください。');

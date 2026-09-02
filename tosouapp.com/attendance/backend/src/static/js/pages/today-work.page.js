@@ -11,21 +11,21 @@ const prefillUserName = () => {
     const u = raw ? JSON.parse(raw) : null;
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) el.textContent = name;
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 async function ensureAuthProfile() {
   let token = sessionStorage.getItem('accessToken');
   let profile = null;
   if (token) {
-    try { profile = await me(token); } catch (e) { /* silently ignored */ }
+    try { profile = await me(token); } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
       const r = await refresh();
       sessionStorage.setItem('accessToken', r.accessToken);
       profile = await me(r.accessToken);
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   if (!profile) {
     try {
@@ -34,7 +34,7 @@ async function ensureAuthProfile() {
       if (user && (user.role === 'admin' || user.role === 'manager' || user.role === 'employee')) {
         profile = user;
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   }
   return profile || null;
 }
@@ -75,14 +75,14 @@ const render = (profile, summary, roster) => {
   const plannedItems = Array.isArray(roster?.planned) ? roster.planned : [];
   const plannedMap = new Map(plannedItems.map(p => [String(p.userId), p]));
   
-  // Create a list of all rows.
-  // First, all attendance records
+  // Tạo danh sách tất cả các dòng.
+  // Trước tiên là toàn bộ bản ghi chấm công
   const allRows = rosterItems.map(it => {
     const id = String(it.userId);
     return { id, it, plan: plannedMap.get(id) || null };
   });
 
-  // Then add planned users who have NO attendance records
+  // Sau đó thêm những người có kế hoạch nhưng KHÔNG có bản ghi chấm công
   const rosterIds = new Set(rosterItems.map(it => String(it.userId)));
   for (const p of plannedItems) {
     const id = String(p.userId);
@@ -106,11 +106,11 @@ const render = (profile, summary, roster) => {
     const st = isLeave ? 'leave' : (it?.status || 'not_checked_in');
     const stLabel = isLeave ? '休' : statusLabel(st);
 
-    // Row merging logic for multiple shifts on same day
+    // Logic gộp dòng khi một người có nhiều ca trong cùng ngày
     const prev = idx > 0 ? arr[idx - 1] : null;
     const isSameUser = prev && prev.id === id;
 
-    // If it's the same user, hide the borders of the repetitive info
+    // Nếu cùng một người thì ẩn viền của phần thông tin lặp lại
     const codeHtml = !isSameUser ? `<td rowspan="1">${code}</td>` : `<td style="border-top:none; color:transparent;">${code}</td>`;
     const nameHtml = !isSameUser ? `<td rowspan="1">${name}</td>` : `<td style="border-top:none; color:transparent;">${name}</td>`;
     const deptHtml = !isSameUser ? `<td rowspan="1">${dept}</td>` : `<td style="border-top:none; color:transparent;">${dept}</td>`;
@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   prefillUserName();
   const pageSpinner = $('#pageSpinner');
 
-  // Keep header height stable to avoid first-paint layout jump between pages.
+  // Giữ chiều cao header ổn định để tránh nhảy layout ở lần render đầu khi chuyển trang.
   const setTopbarHeightVar = () => {};
 
   const profile = await ensureAuthProfile();
@@ -236,16 +236,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const goLogin = async () => {
-    try { await logout(); } catch (e) { /* silently ignored */ }
+    try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
     try {
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
     try { window.location.replace('/ui/login'); } catch (e) { window.location.href = '/ui/login'; }
   };
 
@@ -253,19 +253,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const p = String(window.location.pathname || '');
     if ((p === '/ui/today-work' || p === '/ui/portal' || p === '/ui/dashboard') && document.body.dataset.backLoginBound !== '1') {
       document.body.dataset.backLoginBound = '1';
-      try { history.pushState({ back_to_login_guard: true }, '', window.location.href); } catch (e) { /* silently ignored */ }
+      try { history.pushState({ back_to_login_guard: true }, '', window.location.href); } catch (e) { /* bỏ qua lỗi */ }
       window.addEventListener('popstate', async () => {
         await goLogin();
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
-  // Do not force nav spinner on every link click. It causes visible flash.
+  // Không ép hiện spinner điều hướng mỗi lần click link. Sẽ gây nhấp nháy.
 
   try {
     const userName = $('#userName');
     if (userName) userName.textContent = profile.username || profile.email || 'ユーザー';
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     const btn = document.querySelector('.user-btn');
@@ -283,13 +283,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         dd.setAttribute('hidden', '');
       });
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   const doLogout = async () => {
     await goLogin();
   };
-  try { $('#btnLogout')?.addEventListener('click', doLogout); } catch (e) { /* silently ignored */ }
-  try { $('#drawerLogout')?.addEventListener('click', doLogout); } catch (e) { /* silently ignored */ }
+  try { $('#btnLogout')?.addEventListener('click', doLogout); } catch (e) { /* bỏ qua lỗi */ }
+  try { $('#drawerLogout')?.addEventListener('click', doLogout); } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     const mobileBtn = $('#mobileMenuBtn');
@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       mobileBtn.addEventListener('click', () => toggleDrawer());
       if (mobileClose) mobileClose.addEventListener('click', () => toggleDrawer(false));
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 
   try {
     const role = String(profile?.role || '').toLowerCase();
@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let roster = null;
     if (role === 'admin' || role === 'manager') {
       summary = await fetchJSONAuth('/api/attendance/today-summary');
-      try { roster = await fetchJSONAuth('/api/attendance/today-roster'); } catch (e) { /* silently ignored */ }
+      try { roster = await fetchJSONAuth('/api/attendance/today-roster'); } catch (e) { /* bỏ qua lỗi */ }
     } else {
       summary = await loadEmployeeSummary();
     }
@@ -341,10 +341,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
       }
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   } catch (e) {
     showErr('データ取得に失敗しました: ' + (e?.message || 'unknown'));
   } finally {
-    try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch (e) { /* silently ignored */ }
+    try { if (pageSpinner) pageSpinner.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
   }
 });

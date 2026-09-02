@@ -28,11 +28,11 @@ const saveDraft = () => {
       reason: String($('#reason')?.value || '')
     };
     localStorage.setItem(draftKey(), JSON.stringify(payload));
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const clearDraft = () => {
-  try { localStorage.removeItem(draftKey()); } catch (e) { /* silently ignored */ }
+  try { localStorage.removeItem(draftKey()); } catch (e) { /* bỏ qua lỗi */ }
 };
 
 async function renderBalance() {
@@ -96,7 +96,7 @@ async function renderMyRequests() {
     if (q) {
       let t = 0;
       q.addEventListener('input', () => {
-        try { clearTimeout(t); } catch (e) { /* silently ignored */ }
+        try { clearTimeout(t); } catch (e) { /* bỏ qua lỗi */ }
         t = setTimeout(() => {
           const text = String(q.value || '').trim().toLowerCase();
           box.querySelectorAll('.adj-table tbody tr').forEach(tr => {
@@ -116,18 +116,18 @@ function initApply() {
   const result = $('#applyResult');
   const d = loadDraft();
   if (d) {
-    try { if (d.startDate) $('#startDate').value = d.startDate; } catch (e) { /* silently ignored */ }
-    try { if (d.endDate) $('#endDate').value = d.endDate; } catch (e) { /* silently ignored */ }
-    try { if (d.reason != null) $('#reason').value = d.reason; } catch (e) { /* silently ignored */ }
+    try { if (d.startDate) $('#startDate').value = d.startDate; } catch (e) { /* bỏ qua lỗi */ }
+    try { if (d.endDate) $('#endDate').value = d.endDate; } catch (e) { /* bỏ qua lỗi */ }
+    try { if (d.reason != null) $('#reason').value = d.reason; } catch (e) { /* bỏ qua lỗi */ }
   }
   try {
     const g = globalThis;
     if (!Array.isArray(g.__draftFlushers)) g.__draftFlushers = [];
     g.__draftFlushers.push(saveDraft);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
   let t = 0;
   const schedule = () => {
-    try { clearTimeout(t); } catch (e) { /* silently ignored */ }
+    try { clearTimeout(t); } catch (e) { /* bỏ qua lỗi */ }
     t = setTimeout(saveDraft, 400);
   };
   form.addEventListener('input', schedule);

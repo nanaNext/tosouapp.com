@@ -37,16 +37,16 @@ export async function mount({ content, initialPath, profile }) {
     ];
   }
 
-  // RBAC: Manager không thấy menu admin-only (支店管理, 組織, 給与管理, システム)
+  // RBAC: Manager không thấy menu chỉ dành cho admin (chi nhánh, tổ chức, lương, hệ thống)
   if (profile && String(profile.role || '').toLowerCase() === 'manager') {
     const adminOnlyIds = new Set([
-      'global-branches',   // 支店管理
-      'global-org',        // 組織
-      'global-payroll',    // 給与管理
-      'global-system',     // システム
-      'sys-notices',       // お知らせ
-      'emp-add',           // 社員追加
-      'att-holidays',      // 休日設定
+      'global-branches',   // Quản lý chi nhánh
+      'global-org',        // Tổ chức
+      'global-payroll',    // Quản lý lương
+      'global-system',     // Hệ thống
+      'sys-notices',       // Thông báo
+      'emp-add',           // Thêm nhân viên
+      'att-holidays',      // Cài đặt ngày nghỉ
     ]);
     menuItems = menuItems.filter(item => !adminOnlyIds.has(item.id));
   }
@@ -54,7 +54,7 @@ export async function mount({ content, initialPath, profile }) {
   const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
   const qs = isStandalone ? '?standalone=1' : '';
 
-  // Generate Menu HTML using standard admin.css <details> and <summary> format
+  // Tạo HTML menu theo định dạng <details>/<summary> chuẩn của admin.css
   const generateMenuHtml = () => {
     return menuItems.filter(m => !m.parent).map(item => {
       if (item.isSeparator) return '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 8px 12px;">';
@@ -63,7 +63,7 @@ export async function mount({ content, initialPath, profile }) {
       const isActive = currentPath === item.href || subItems.some(sub => currentPath === sub.href);
       
       if (subItems.length > 0) {
-        // Multi-level menu
+        // Menu nhiều cấp
         const subHtml = subItems.map(sub => {
           const isSubActive = currentPath === sub.href;
           const subTargetAttr = sub.newTab ? ' target="_blank" rel="noopener noreferrer"' : '';
@@ -83,7 +83,7 @@ export async function mount({ content, initialPath, profile }) {
           </details>
         `;
       } else {
-        // Single-level menu
+        // Menu một cấp
         const targetAttr = item.newTab ? ' target="_blank" rel="noopener noreferrer"' : '';
         return `
           <a href="${item.href}${qs}" class="standalone-link ${isActive ? 'selected active' : ''}"${targetAttr} style="display:flex; align-items:center; gap:8px; padding: 3px 12px; margin: 0 4px; border-radius: 0; text-decoration: none;">
@@ -97,7 +97,7 @@ export async function mount({ content, initialPath, profile }) {
 
   const menuHtml = generateMenuHtml();
 
-  // Inject into Global Sidebar
+  // Chèn vào sidebar chung
   const sidebarNav = document.querySelector('.sidebar .sidebar-nav');
   if (sidebarNav) {
     const displayName = (profile && (profile.username || profile.email)) || '';
@@ -110,14 +110,14 @@ export async function mount({ content, initialPath, profile }) {
         </a>
       </div>
     `;
-    // Logout handler
+    // Xử lý đăng xuất
     const logoutBtn = sidebarNav.querySelector('#sidebarLogout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         try {
           await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-        } catch (e) { /* silently ignored */ }
+        } catch (e) { /* bỏ qua lỗi */ }
         window.location.href = '/login';
       });
     }
@@ -153,17 +153,17 @@ export async function mount({ content, initialPath, profile }) {
     });
   }
 
-  // Inject into Mobile Drawer
+  // Chèn vào drawer mobile
   const drawerNavMount = document.querySelector('#drawerNavMount');
   if (drawerNavMount) {
     drawerNavMount.innerHTML = `<nav class="drawer-nav">${menuHtml}</nav>`;
     drawerNavMount.dataset.filled = '1';
   }
 
-  // We are completely removing the .att-hub-layout wrapper to use the standard global layout
+  // Bỏ hẳn wrapper .att-hub-layout để dùng layout chung chuẩn
   const existingLayout = content.querySelector('.att-hub-layout');
   if (existingLayout) {
-    // If it was already mounted, just replace content with inner hub content
+    // Nếu đã mount trước đó thì thay content bằng nội dung hub bên trong
     const hubContent = existingLayout.querySelector('#attendanceHubContent');
     if (hubContent) {
       content.innerHTML = '';
@@ -174,8 +174,8 @@ export async function mount({ content, initialPath, profile }) {
       content.innerHTML = '';
     }
   } else {
-    // If it's a fresh mount, the content is already just #adminContent
-    // Clear it just in case
+    // Nếu là mount mới thì content vốn chỉ là #adminContent
+    // Dọn cho chắc
     content.innerHTML = '';
   }
 

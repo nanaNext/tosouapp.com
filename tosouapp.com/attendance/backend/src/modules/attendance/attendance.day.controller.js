@@ -44,7 +44,7 @@ async function notifyPunch(userId, timeStr, type) {
       kind: 'attendance_punch', title: '打刻通知', message: msg,
       linkUrl: '/admin/attendance', createdBy: userId, audience: 'admin_manager',
     });
-  } catch (e) { /* thông báo non-critical, bỏ qua lỗi */ }
+  } catch (e) { /* thông báo không quan trọng, bỏ qua lỗi */ }
 }
 
 // ─── Helper nội bộ: Cập nhật trạng thái tháng → submitted sau khi sửa ────────
@@ -52,7 +52,7 @@ async function touchMonthStatus(userId, y, m, requesterId) {
   try {
     const st = await getMonthStatusValue(userId, y, m);
     if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', requesterId);
-  } catch (e) { /* non-critical */ }
+  } catch (e) { /* không bắt buộc, bỏ qua lỗi */ }
 }
 
 // ─── API: Lấy tất cả segment + go-out của 1 ngày ─────────────────────────────
@@ -107,7 +107,7 @@ exports.putDaily = async (req, res) => {
     // Đồng bộ phép năm nếu kubun thay đổi sang 有給休暇
     try {
       await syncPaidLeaveByKubun(userId, date, String(daily?.kubun || req.body?.kubun || '').trim());
-    } catch (e) { /* non-critical */ }
+    } catch (e) { /* không bắt buộc, bỏ qua lỗi */ }
     await touchMonthStatus(userId, y, m, req.user?.id);
     res.status(200).json({ date, daily });
   } catch (err) {

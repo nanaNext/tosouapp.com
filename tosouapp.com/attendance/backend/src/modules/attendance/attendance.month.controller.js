@@ -13,7 +13,7 @@ const {
   getUserOffDaySet,
 } = require('./attendance.utils');
 
-// ─── Local helpers ────────────────────────────────────────────────────────────
+// Hàm hỗ trợ nội bộ
 
 async function computeMonthMissing(userId, y, m, tenantId = null) {
   const pad = (n) => String(n).padStart(2, '0');
@@ -60,8 +60,6 @@ async function computeMonthMissing(userId, y, m, tenantId = null) {
   }
   return missing;
 }
-
-// ─── Exports ──────────────────────────────────────────────────────────────────
 
 // API: Lấy trạng thái nộp bảng chấm công của một tháng
 exports.getMonthStatus = async (req, res) => {
@@ -180,7 +178,7 @@ exports.submitMonth = async (req, res) => {
     try {
       const missing = await computeMonthMissing(userId, y, m, req.tenantId || null);
       if (missing.length) return res.status(400).json({ message: `入力が未完了です`, missing });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi kiểm tra */ }
 
     await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null });
 
@@ -197,7 +195,7 @@ exports.submitMonth = async (req, res) => {
         createdBy: userId,
         audience: 'admin_manager'
       });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* gửi thông báo lỗi thì bỏ qua */ }
 
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'submitted' });
   } catch (err) {
@@ -289,7 +287,7 @@ exports.approveMonth = async (req, res) => {
     try {
       const missing = await computeMonthMissing(userId, y, m, req.tenantId || null);
       if (missing.length) return res.status(400).json({ message: `未承認: 勤務未入力の日があります`, missing });
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi kiểm tra */ }
     await repo.setMonthStatus(userId, y, m, 'approved', req.user?.id, { tenantId: req.tenantId || null });
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'approved' });
   } catch (err) {

@@ -13,9 +13,9 @@ const prefillUserName = () => {
     const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
     if (name) {
       el.textContent = name;
-      try { window.userName = name; } catch (e) { /* silently ignored */ }
+      try { window.userName = name; } catch (e) { /* bỏ qua lỗi */ }
     }
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 };
 
 const pinKey = 'se.req.pin';
@@ -53,7 +53,7 @@ function loadPin() {
   try { return localStorage.getItem(pinKey) === '1'; } catch (e) { return false; }
 }
 function savePin(v) {
-  try { localStorage.setItem(pinKey, v ? '1' : '0'); } catch (e) { /* silently ignored */ }
+  try { localStorage.setItem(pinKey, v ? '1' : '0'); } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function renderRows(rows) {
@@ -66,7 +66,7 @@ function renderRows(rows) {
     body.innerHTML = '';
     if (table) table.hidden = true;
     if (empty) empty.hidden = false;
-    // Remove pagination if exists
+    // Xóa phân trang nếu đang có
     const oldPag = document.getElementById('reqPagination');
     if (oldPag) oldPag.remove();
     return;
@@ -101,7 +101,7 @@ function renderRows(rows) {
     `;
   }).join('');
 
-  // Pagination controls
+  // Điều khiển phân trang
   let pagDiv = document.getElementById('reqPagination');
   if (list.length > PAGE_SIZE) {
     if (!pagDiv) {
@@ -133,7 +133,7 @@ async function load(q = '', options = {}) {
   lastLoadedQuery = query;
   try {
     if (typeof window.__reqRecentHook === 'function') window.__reqRecentHook(rows);
-  } catch (e) { /* silently ignored */ }
+  } catch (e) { /* bỏ qua lỗi */ }
 }
 
 function bindUI() {
@@ -180,7 +180,7 @@ function bindUI() {
   };
   if (listMenu) listMenu.hidden = !openListByDefault;
   if (listBtn) listBtn.setAttribute('aria-expanded', openListByDefault ? 'true' : 'false');
-  // New button now opens the full-list picker
+  // Nút New giờ mở bộ chọn danh sách đầy đủ
   if (btnNew) {
     const ensureNewListOpen = () => {
       if (!newListMenu) return;
@@ -198,11 +198,11 @@ function bindUI() {
           };
         }
         renderNewList(newListFilter?.value || '');
-      } catch (e) { /* silently ignored */ }
+      } catch (e) { /* bỏ qua lỗi */ }
       newListMenu.hidden = false;
       btnNew.setAttribute('aria-expanded', 'true');
       if (!keepNewListOpen && shouldAutoFocus()) {
-        try { newListFilter?.focus(); } catch (e) { /* silently ignored */ }
+        try { newListFilter?.focus(); } catch (e) { /* bỏ qua lỗi */ }
       }
     };
 
@@ -315,7 +315,7 @@ function bindUI() {
     return p.replace(/^\d+\s*[＿_－-]\s*/, '').trim();
   };
   const uniqueSortedItems = (arr) => {
-    // Keep exact source order/items for request type lists (do not dedupe/renumber).
+    // Giữ nguyên thứ tự/mục gốc cho danh sách loại đơn (không loại trùng/đánh số lại).
     return (arr || []).map((orig) => {
       const label = normalizeLabel(orig);
       return { name: orig, label, display: String(orig) };
@@ -344,7 +344,7 @@ function bindUI() {
     }
   };
   const saveRecent = (arr) => {
-    try { localStorage.setItem(recentKey, JSON.stringify((arr || []).slice(0, 8))); } catch (e) { /* silently ignored */ }
+    try { localStorage.setItem(recentKey, JSON.stringify((arr || []).slice(0, 8))); } catch (e) { /* bỏ qua lỗi */ }
   };
   const mergeRecent = (arr) => {
     const seen = new Set();
@@ -399,10 +399,10 @@ function bindUI() {
         if (appliedItems.length >= 50) break;
       }
       renderList(listFilter?.value || '');
-    } catch (e) { /* silently ignored */ }
+    } catch (e) { /* bỏ qua lỗi */ }
   };
   recentItems = loadRecent();
-  const saveSel = (v) => { try { localStorage.setItem(keySel, v); } catch (e) { /* silently ignored */ } };
+  const saveSel = (v) => { try { localStorage.setItem(keySel, v); } catch (e) { /* bỏ qua lỗi */ } };
   const loadSel = () => { try { return localStorage.getItem(keySel) || ''; } catch (e) { return '' } };
   const renderList = (filter = '') => {
     const q = String(filter || '').toLowerCase();
@@ -546,8 +546,8 @@ function bindUI() {
   if (setResetWidth) {
     setResetWidth.addEventListener('click', () => {
       document.querySelectorAll('.req-table th').forEach(th => {
-        try { th.style.width = ''; } catch (e) { /* silently ignored */ }
-        try { th.removeAttribute('style'); } catch (e) { /* silently ignored */ }
+        try { th.style.width = ''; } catch (e) { /* bỏ qua lỗi */ }
+        try { th.removeAttribute('style'); } catch (e) { /* bỏ qua lỗi */ }
       });
       if (settingsMenu && !settingsMenu.hidden) settingsMenu.hidden = true;
       toolSettings?.setAttribute('aria-expanded', 'false');
@@ -565,7 +565,7 @@ export async function bootRequestsPage() {
   if (page.dataset.booted === '1') return;
   page.dataset.booted = '1';
   prefillUserName();
-  try { window.userName = window.userName || $('#userName')?.textContent || ''; } catch (e) { /* silently ignored */ }
+  try { window.userName = window.userName || $('#userName')?.textContent || ''; } catch (e) { /* bỏ qua lỗi */ }
   bindUI();
   await load('', { force: true });
 }
