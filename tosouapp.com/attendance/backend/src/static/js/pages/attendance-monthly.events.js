@@ -1851,15 +1851,41 @@
               const fillH = measurePx(availHmm - 1);
               const overflowLimit = fillH;
 
-              const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
+              // ĐO CHIỀU CAO THẬT: tạm bỏ height/overflow của khung và flex của paper
+              // để nội dung 30 ngày hiện đầy đủ (không bị flex nén / overflow cắt),
+              // nhờ đó phát hiện đúng khi nào cần zoom thu nhỏ.
+              const savedScaleH = scaleEl.style.height;
+              const savedScaleOv = scaleEl.style.overflow;
+              const savedPaperFlex = paper.style.flex;
+              scaleEl.style.height = 'auto';
+              scaleEl.style.overflow = 'visible';
+              paper.style.flex = '0 0 auto';
+              // ép bảng cao tự nhiên khi đo
+              const tableEl = paper.querySelector('#enmDailyTable');
+              const savedTableFlex = tableEl ? tableEl.style.flex : '';
+              if (tableEl) tableEl.style.flex = '0 0 auto';
+
+              const contentH = paper.scrollHeight; // chiều cao thật (px)
+
+              // Khôi phục lại để flexbox/overflow hoạt động bình thường cho render.
+              scaleEl.style.height = savedScaleH;
+              scaleEl.style.overflow = savedScaleOv;
+              paper.style.flex = savedPaperFlex;
+              if (tableEl) tableEl.style.flex = savedTableFlex;
 
               if (contentH > overflowLimit + 15) {
-                // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom, chỉ nhẹ.
-                let z = Math.max(0.70, (overflowLimit / contentH) * 0.997);
+                // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom.
+                let z = Math.max(0.55, (overflowLimit / contentH) * 0.99);
                 paper.style.zoom = String(z);
-                for (let i = 0; i < 12; i++) {
-                  if (paper.getBoundingClientRect().height <= overflowLimit + 3) break;
-                  z = Math.max(0.70, z * 0.995);
+                // Sau zoom, đo lại chiều cao thật (cũng tạm bỏ ép flex) để siết cho vừa.
+                for (let i = 0; i < 15; i++) {
+                  scaleEl.style.height = 'auto'; scaleEl.style.overflow = 'visible'; paper.style.flex = '0 0 auto';
+                  if (tableEl) tableEl.style.flex = '0 0 auto';
+                  const h = paper.scrollHeight;
+                  scaleEl.style.height = savedScaleH; scaleEl.style.overflow = savedScaleOv; paper.style.flex = savedPaperFlex;
+                  if (tableEl) tableEl.style.flex = savedTableFlex;
+                  if (h <= overflowLimit) break;
+                  z = Math.max(0.55, z * 0.98);
                   paper.style.zoom = String(z);
                 }
               } else if (bodyRows.length) {
