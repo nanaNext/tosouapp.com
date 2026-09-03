@@ -1662,19 +1662,23 @@
                   print-color-adjust: exact;
                 }
                 /* ---------- IN-IFRAME PRINT CSS (A4, chữ đủ lớn, 30 ngày vừa 1 trang) ---------- */
-                .enm-title { text-align: center; font-size: 32px; letter-spacing: 12px; text-indent: 12px; margin-top: 0; margin-bottom: 4px; font-weight: normal; }
-                .enm-info { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 14px; }
-                .enm-company { font-size: 18px; font-weight: 700; }
-                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; border: 1px solid #000; }
-                .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px 5px; font-size: 11.5px; font-weight: normal; }
+                .enm-title { text-align: center; font-size: 38px; letter-spacing: 12px; text-indent: 12px; margin-top: 0; margin-bottom: 6px; font-weight: bold; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 16px; font-weight: 600; }
+                .enm-company { font-size: 22px; font-weight: 700; }
+                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; border: 1px solid #000; }
+                .enm-table th, .enm-table td { border: 1px solid #000; padding: 5px 6px; font-size: 13.5px; font-weight: 600; }
                 .enm-table th { background: #e2e8f0 !important; text-align: center; }
                 .enm-table td { text-align: left; }
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
                 .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 0; table-layout: fixed; }
+                /* Chống chia trang trong bảng + thead lặp sang trang 2 khi in. */
+                .enm-daily-table thead { display: table-row-group; }
+                .enm-daily-table tr, .enm-daily-table td, .enm-daily-table th { page-break-inside: avoid; break-inside: avoid; }
+                #printScale, #printScale * { page-break-inside: avoid; break-inside: avoid; }
                 /* Ô số liệu: đủ lớn dễ đọc, cân đối để 30 ngày + 1 header row vừa trong A4 dọc */
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 3px; font-size: 15px; line-height: 1.35; font-weight: normal; text-align: center; vertical-align: middle; min-height: 22px; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 12.5px; line-height: 1.4; padding: 4px 3px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 4px 3px; font-size: 17px; line-height: 1.35; font-weight: 600; text-align: center; vertical-align: middle; min-height: 26px; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: 600; font-size: 14px; line-height: 1.4; padding: 5px 3px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng. */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
@@ -1702,19 +1706,19 @@
                 /* 備考: chữ lớn hơn 作業内容, gần ngang với số liệu nhưng nhỏ hơn 1 chút */
                 .enm-daily-table td.enm-note {
                   white-space: normal; word-break: break-word; text-align: left;
-                  font-size: 13px; line-height: 1.35;
+                  font-size: 15px; line-height: 1.35;
                 }
                 /* Dòng tiêu đề kiểu mẫu: 年 月 ・ 名前 ・ 印 */
-                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 3px 0 5px; font-size: 15px; }
+                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 4px 0 6px; font-size: 17px; font-weight: 600; }
                 .enm-name-line .enm-ym,
                 .enm-name-line .enm-name-label,
                 .enm-name-line .enm-name-val { border-bottom: 1px solid #000; padding-bottom: 3px; }
                 .enm-name-line .enm-ym { min-width: 150px; }
                 .enm-name-line .enm-name-label { margin-left: 8px; padding-left: 4px; }
-                .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 17px; padding: 0 8px 3px; min-height: 22px; }
-                .enm-name-line .enm-stamp { display: inline-flex; align-items: center; justify-content: center; font-size: 14px; margin-left: 10px; }
-                .enm-name-line .enm-total-inline { margin-left: 20px; font-size: 15px; font-weight: 700; white-space: nowrap; }
-                .enm-footer-text { font-size: 11px; margin-top: 1px; text-align: right; padding-right: 10px; }
+                .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 20px; padding: 0 8px 3px; min-height: 24px; }
+                .enm-name-line .enm-stamp { display: inline-flex; align-items: center; justify-content: center; font-size: 15px; margin-left: 10px; }
+                .enm-name-line .enm-total-inline { margin-left: 20px; font-size: 17px; font-weight: 700; white-space: nowrap; }
+                .enm-footer-text { font-size: 13px; margin-top: 1px; text-align: right; padding-right: 10px; font-weight: 600; }
                 
                 html, body {
                   width: ${pageWmm}mm;
@@ -1726,8 +1730,7 @@
                   box-sizing: border-box;
                   overflow: hidden;
                 }
-                /* Wrapper: KHÔNG ép height cố định (gây tràn/lệch trang trên máy in
-                   vật lý). Để cao tự nhiên; JS giãn hàng lo việc lấp đầy trang. */
+                /* Wrapper: KHÔNG ép height cố định (gây tràn/lệch trang trên máy in vật lý). Để cao tự nhiên; JS giãn hàng lo việc lấp đầy trang. */
                 #printScale {
                   transform-origin: top left;
                   width: 100%;
@@ -1739,9 +1742,9 @@
                 #printScale > .enm-paper { box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; width: 100%; }
                 #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
                 #printScale > .enm-paper > .enm-footer-text { margin-top: auto; }
-                .print-container .enm-title { margin-top: 0 !important; margin-bottom: 3px !important; font-size: 30px !important; letter-spacing: 12px !important; text-indent: 12px !important; }
+                .print-container .enm-title { margin-top: 0 !important; margin-bottom: 4px !important; font-size: 38px !important; letter-spacing: 12px !important; text-indent: 12px !important; }
                 .print-container h4 { margin: 2px 0 1px 0 !important; }
-                .print-container .enm-table th, .print-container .enm-table td { padding: 3px 4px !important; font-size: 11px !important; }
+                .print-container .enm-table th, .print-container .enm-table td { padding: 4px 5px !important; font-size: 13.5px !important; }
                 #printScale .enm-paper > div:last-child { margin-top: 1px !important; margin-bottom: 0 !important; }
               </style>
             </head>
@@ -1792,19 +1795,22 @@
               // Mốc = availHmm gần như full (chỉ trừ 1mm an toàn) để tối ưu diện tích.
               // Chỉ ZOOM thu nhỏ khi nội dung THỰC SỰ vượt mốc này với ngưỡng +15px
               // (rất cao — ưu tiên chữ lớn trước; nếu phải thu nhỏ thì cũng chỉ nhẹ).
-              const fillH = measurePx(availHmm - 4);
-              const overflowLimit = fillH;
+              // Hai mốc riêng:
+              //  - overflowLimit: chỉ ZOOM thu nhỏ khi nội dung vượt cả trang (sát mép,
+              //    trừ 2mm). Ưu tiên giữ chữ to, chỉ thu khi thật sự tràn.
+              //  - fillTargetH: GIÃN hàng lấp đầy tới sát mép (trừ 2mm) → không thừa trắng.
+              const overflowLimit = measurePx(availHmm - 2);
+              const fillTargetH = measurePx(availHmm - 2);
 
               const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
 
-              if (contentH > overflowLimit + 15) {
-                // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom, nhưng chỉ nhẹ
-                // (z min 0.70 thay vì 0.55, giảm rất chậm 0.995/vòng, tối đa 12 vòng).
-                let z = Math.max(0.70, (overflowLimit / contentH) * 0.997);
+              if (contentH > overflowLimit + 5) {
+                // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom
+                let z = Math.max(0.65, (overflowLimit / contentH) * 0.99);
                 paper.style.zoom = String(z);
-                for (let i = 0; i < 12; i++) {
+                for (let i = 0; i < 20; i++) {
                   if (paper.getBoundingClientRect().height <= overflowLimit + 3) break;
-                  z = Math.max(0.70, z * 0.995);
+                  z = Math.max(0.65, z * 0.99);
                   paper.style.zoom = String(z);
                 }
               } else if (bodyRows.length) {
@@ -1813,8 +1819,8 @@
                 const rect0 = scaleEl.getBoundingClientRect();
                 const cs0 = iframe.contentWindow.getComputedStyle(scaleEl);
                 const padTop = parseFloat(cs0.paddingTop) || 0;
-                // Gần sát 100%: fillH chỉ còn 0.3mm an toàn ở đáy.
-                const targetBottom = rect0.top + padTop + (fillH - measurePx(0.3));
+                // Giãn tới sát mép (fillTargetH) → lấp đầy trang, không thừa trắng.
+                const targetBottom = rect0.top + padTop + fillTargetH;
                 const lastEl = paper.lastElementChild;
                 const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : paper.getBoundingClientRect().bottom);
                 // Giãn cực mạnh: 200 vòng, ngưỡng dừng cực thấp, phân bổ tất cả cell.
