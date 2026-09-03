@@ -108,6 +108,21 @@ async function _doEnsureAttendanceDailySchema() {
         }
       } catch {}
     }
+    // Nới các cột nội dung tự do (memo/notes/location) sang TEXT nếu đang là VARCHAR,
+    // để không giới hạn độ dài 作業内容 → tránh lỗi "Data too long for column 'memo'".
+    try {
+      const [dtCols] = await db.query(`
+        SELECT COLUMN_NAME AS name, DATA_TYPE AS dtype
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'attendance_daily'
+          AND COLUMN_NAME IN ('memo','notes','location')
+      `);
+      for (const c of (dtCols || [])) {
+        if (String(c.dtype).toLowerCase() !== 'text') {
+          try { await db.query(`ALTER TABLE attendance_daily MODIFY COLUMN ${c.name} TEXT NULL`); } catch {}
+        }
+      }
+    } catch {}
     try {
       const [idx] = await db.query(`
         SELECT index_name
@@ -283,12 +298,13 @@ module.exports = {
 
     let memo = existing?.memo ?? null;
     if (Object.prototype.hasOwnProperty.call(incoming, 'memo')) {
-      memo = incoming.memo != null ? String(incoming.memo).slice(0, 255) : null;
+      // Cột memo là TEXT (~65535 bytes). Giới hạn rộng để không mất dữ liệu 作業内容.
+      memo = incoming.memo != null ? String(incoming.memo).slice(0, 60000) : null;
     }
 
     let notes = existing?.notes ?? null;
     if (Object.prototype.hasOwnProperty.call(incoming, 'notes')) {
-      notes = incoming.notes != null ? String(incoming.notes).slice(0, 255) : null;
+      notes = incoming.notes != null ? String(incoming.notes).slice(0, 60000) : null;
     }
 
     let late_minutes = existing?.late_minutes ?? null;
