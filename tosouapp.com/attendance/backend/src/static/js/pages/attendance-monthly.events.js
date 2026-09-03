@@ -1767,19 +1767,27 @@
                 if (r.firstElementChild) r.firstElementChild.style.height = '';
               });
 
-              // Chiều cao MỤC TIÊU (px) để fit — tính từ fitHmm (đã trừ hao lề mặc
-              // định của trình duyệt), đo bằng probe trong iframe để đúng px thực.
-              const probe = doc.createElement('div');
-              probe.style.cssText = `position:absolute;visibility:hidden;height:${fitHmm}mm;`;
-              doc.body.appendChild(probe);
-              const targetH = probe.getBoundingClientRect().height;
-              doc.body.removeChild(probe);
+              // Hai mốc chiều cao (px), đo bằng probe trong iframe cho đúng px thực:
+              //  - scaleTargetH: từ fitHmm (đã trừ hao lề mặc định) → dùng khi TRÀN
+              //    để thu nhỏ, đảm bảo không mất ngày dù 余白=デフォルト.
+              //  - fillH: từ availHmm (sát mép vùng in khi margin:0) → dùng khi THỪA
+              //    để giãn hàng lấp đầy trang, không để khoảng trắng (khi in 余白=なし).
+              const measurePx = (mm) => {
+                const p = doc.createElement('div');
+                p.style.cssText = `position:absolute;visibility:hidden;height:${mm}mm;`;
+                doc.body.appendChild(p);
+                const h = p.getBoundingClientRect().height;
+                doc.body.removeChild(p);
+                return h;
+              };
+              const scaleTargetH = measurePx(fitHmm);
+              const fillH = measurePx(availHmm);
 
               const scrollH = scaleEl.scrollHeight;         // chiều cao nội dung thực (px)
 
-              if (scrollH > targetH + 1) {
-                // TRÀN: thu nhỏ đồng đều cho vừa vùng mục tiêu.
-                let ratio = Math.max(0.3, (targetH / scrollH) * 0.98);
+              if (scrollH > scaleTargetH + 1) {
+                // TRÀN: thu nhỏ đồng đều cho vừa vùng mục tiêu (an toàn cho lề デフォルト).
+                let ratio = Math.max(0.3, (scaleTargetH / scrollH) * 0.98);
                 const applyScale = (r) => {
                   scaleEl.style.width = `${100 / r}%`;
                   scaleEl.style.transform = `scale(${r})`;
@@ -1787,15 +1795,15 @@
                 applyScale(ratio);
                 for (let i = 0; i < 5; i++) {
                   const scaledH = scaleEl.scrollHeight * ratio;
-                  if (scaledH <= targetH) break;
-                  ratio = Math.max(0.3, ratio * (targetH / scaledH) * 0.98);
+                  if (scaledH <= scaleTargetH) break;
+                  ratio = Math.max(0.3, ratio * (scaleTargetH / scaledH) * 0.98);
                   applyScale(ratio);
                 }
-                if (container) container.style.height = `${Math.ceil(targetH)}px`;
+                if (container) container.style.height = `${Math.ceil(scaleTargetH)}px`;
               } else if (bodyRows.length) {
-                // THỪA: giãn đều chiều cao các hàng cho tới khi nội dung cao ~ targetH.
+                // THỪA: giãn đều chiều cao các hàng cho tới khi lấp đầy ~ fillH (sát mép).
                 for (let pass = 0; pass < 30; pass++) {
-                  const extra = targetH - scaleEl.scrollHeight;
+                  const extra = fillH - scaleEl.scrollHeight;
                   if (extra <= 1) break;
                   const perRow = extra / bodyRows.length;
                   if (perRow < 0.15) break;
