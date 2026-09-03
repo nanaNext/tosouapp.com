@@ -1711,7 +1711,7 @@
                   print-color-adjust: exact;
                 }
                 /* ---------- IN-IFRAME PRINT CSS (A4, chữ đủ lớn, 30 ngày vừa 1 trang) ---------- */
-                .enm-title { text-align: center; font-size: 38px; letter-spacing: 12px; text-indent: 12px; margin-top: 0; margin-bottom: 6px; font-weight: bold; }
+                .enm-title { text-align: center; font-size: 28px; letter-spacing: 10px; text-indent: 10px; margin-top: 0; margin-bottom: 6px; font-weight: bold; }
                 .enm-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 14px; font-weight: normal; }
                 .enm-company { font-size: 18px; font-weight: 700; }
                 .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; border: 1px solid #000; }
@@ -1793,7 +1793,7 @@
                 #printScale > .enm-paper { box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; width: 100%; }
                 #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
                 #printScale > .enm-paper > .enm-footer-text { margin-top: auto; }
-                .print-container .enm-title { margin-top: 0 !important; margin-bottom: 4px !important; font-size: 38px !important; letter-spacing: 12px !important; text-indent: 12px !important; }
+                .print-container .enm-title { margin-top: 0 !important; margin-bottom: 4px !important; font-size: 28px !important; letter-spacing: 10px !important; text-indent: 10px !important; }
                 .print-container h4 { margin: 2px 0 1px 0 !important; }
                 .print-container .enm-table th, .print-container .enm-table td { padding: 4px 5px !important; font-size: 12px !important; font-weight: normal !important; }
                 #printScale .enm-paper > div:last-child { margin-top: 1px !important; margin-bottom: 0 !important; }
