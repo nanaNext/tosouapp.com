@@ -1673,8 +1673,8 @@
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
                 .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 6px; table-layout: fixed; }
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 3px; font-size: 13px; line-height: 1.3; font-weight: normal; text-align: center; vertical-align: middle; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 12px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 2px 3px; font-size: 12px; line-height: 1.2; font-weight: normal; text-align: center; vertical-align: middle; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 11px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng (in ra vẫn giữ màu). */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
@@ -1778,18 +1778,18 @@
                 doc.body.removeChild(p);
                 return h;
               };
-              // Mốc lấp đầy = availHmm (sát mép khi margin:0). Chống tràn khi 余白=デフォルト
-              // thì trừ hao một chút (SAFE_MM) khỏi mốc TRÀN, còn mốc lấp đầy giữ sát mép.
+              // Mốc = availHmm (chiều cao vùng in 1 trang khi margin:0). Chỉ ZOOM
+              // thu nhỏ khi nội dung THẬT SỰ vượt cả trang này; còn lại giữ nguyên
+              // kích thước và giãn hàng lấp đầy.
               const fillH = measurePx(availHmm);
-              const SAFE_MM = 12; // dự phòng lề mặc định trình duyệt cho ngưỡng tràn
-              const overflowLimit = measurePx(availHmm - SAFE_MM);
+              const overflowLimit = fillH;
 
               const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
 
               if (contentH > overflowLimit + 1) {
                 // TRÀN: nội dung nhiều → thu nhỏ ĐỀU cả layout bằng zoom (không lệch
                 // ngang như transform, và co cả chiều cao layout thật → không tràn trang).
-                let z = Math.max(0.4, overflowLimit / contentH);
+                let z = Math.max(0.4, (overflowLimit / contentH) * 0.99);
                 paper.style.zoom = String(z);
                 // Đo lại vài vòng cho chắc vừa.
                 for (let i = 0; i < 5; i++) {
