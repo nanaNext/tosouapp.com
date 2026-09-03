@@ -1249,7 +1249,7 @@
       return map;
     };
 
-    const openModal = async () => {
+    const openModal = async (show = true) => {
       // Get current date
       const today = new Date();
       const yyyy = today.getFullYear();
@@ -1577,19 +1577,68 @@
       const totalDaysEl = document.querySelector('#enmTotalDays');
       if (totalDaysEl) totalDaysEl.textContent = `${totalWorkDays}日`;
 
-      modal.removeAttribute('hidden');
+      if (show) modal.removeAttribute('hidden');
+    };
+
+    // ── Bấm nút 就業状況通知書出力 → sinh PDF và mở tab mới (không mở modal) ──
+    const exportPdf = async () => {
+      // 1) Build nội dung vào #enmPrintArea (không hiện modal).
+      await openModal(false);
+
+      const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
+      const [paperName, paperOrient] = paperVal.split('-');
+      const PAPER_MM = { A4: { w: 210, h: 297 }, A3: { w: 297, h: 420 } };
+      const base = PAPER_MM[paperName] || PAPER_MM.A4;
+      const isLandscape = paperOrient === 'landscape';
+      const pageWmm = isLandscape ? base.h : base.w;
+      const pageHmm = isLandscape ? base.w : base.h;
+
+      const source = document.querySelector('#enmPrintArea .enm-paper');
+      if (!source || !window.html2canvas || !window.jspdf) {
+        // Thư viện chưa sẵn sàng → fallback về mở modal như cũ.
+        modal.removeAttribute('hidden');
+        return;
+      }
+
+      // 2) Render clone off-screen với chiều rộng cố định = bề rộng trang (px @96dpi)
+      //    để tỉ lệ khớp giấy, rồi html2canvas chụp ở scale cao cho nét.
+      const MM2PX = 96 / 25.4;
+      const wrap = document.createElement('div');
+      wrap.style.cssText = `position:fixed;left:-99999px;top:0;background:#fff;`
+        + `width:${Math.round(pageWmm * MM2PX)}px;padding:${Math.round(8 * MM2PX)}px;box-sizing:border-box;`;
+      const clone = source.cloneNode(true);
+      wrap.appendChild(clone);
+      document.body.appendChild(wrap);
+
+      try {
+        const canvas = await window.html2canvas(wrap, { scale: 2, backgroundColor: '#fff', useCORS: true });
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: paperName.toLowerCase() });
+        // Đóng ảnh vào PDF: giữ tỉ lệ, canh giữa, vừa 1 trang (lề 8mm).
+        const margin = 8;
+        const availW = pageWmm - margin * 2;
+        const availH = pageHmm - margin * 2;
+        const imgRatio = canvas.width / canvas.height;
+        let imgW = availW;
+        let imgH = imgW / imgRatio;
+        if (imgH > availH) { imgH = availH; imgW = imgH * imgRatio; }
+        const offsetX = margin + (availW - imgW) / 2;
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', offsetX, margin, imgW, imgH);
+        // 3) Mở PDF trong tab mới.
+        const blobUrl = pdf.output('bloburl');
+        window.open(blobUrl, '_blank');
+      } catch (err) {
+        alert('PDF生成に失敗しました: ' + (err?.message || err));
+        modal.removeAttribute('hidden'); // fallback
+      } finally {
+        document.body.removeChild(wrap);
+      }
     };
 
     btnOpen.addEventListener('click', (e) => {
       e.preventDefault();
-      openModal();
+      exportPdf();
     });
-
-    // Re-render when switching 実績/丸め in modal
-    const enmRoundSel = document.querySelector('#enmRoundMode');
-    if (enmRoundSel) {
-      enmRoundSel.addEventListener('change', () => { openModal(); });
-    }
 
     if (btnClose) btnClose.addEventListener('click', closeModal);
     if (btnCloseBottom) btnCloseBottom.addEventListener('click', closeModal);
