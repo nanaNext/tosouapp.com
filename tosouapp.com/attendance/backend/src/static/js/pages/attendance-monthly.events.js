@@ -1608,10 +1608,11 @@
         const isLandscape = paperOrient === 'landscape';
         const pageWmm = isLandscape ? base.h : base.w; // bề rộng trang khi in
         const pageHmm = isLandscape ? base.w : base.h; // chiều cao trang khi in
-        // Lề trang (mm) — mỏng nhưng đủ an toàn (cắt cạnh in), tận dụng tối đa A4.
-        const PAD_MM = 5;
+        // Lề trang (mm). Tăng lên 8mm để chừa vùng "không in được" của MÁY IN VẬT LÝ
+        // (~5mm/cạnh) → in ra máy in không bị đẩy tràn sang trang 2, giống bản PDF.
+        const PAD_MM = 8;
         const availHmm = pageHmm - PAD_MM * 2;
-        // Buffer tối thiểu 3mm để lề mặc định trình duyệt in không đẩy sang trang 2.
+        // Buffer thêm để lề vật lý/mặc định của máy in không đẩy sang trang 2.
         const fitHmm = availHmm - 3;
         const pageSizeCss = `${paperName} ${paperOrient}`;
 
@@ -1682,13 +1683,14 @@
                 .enm-daily-table thead tr:first-child th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: 600; }
                 
                 /* Làm mỏng/nhạt vạch dọc giữa 開始 - 終了 và 普通 - 深夜 (màu đen cực kỳ mỏng) */
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(1), .enm-daily-table tbody td:nth-child(3) { border-right: 0.1px solid #000 !important; }
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(2), .enm-daily-table tbody td:nth-child(4) { border-left: 0.1px solid #000 !important; }
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(3), .enm-daily-table tbody td:nth-child(5) { border-right: 0.1px solid #000 !important; }
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(4), .enm-daily-table tbody td:nth-child(6) { border-left: 0.1px solid #000 !important; }
+                /* Sử dụng viền mảnh với độ trong suốt rgba(0,0,0,0.2) thay vì 0.1px vì nhiều trình duyệt không hỗ trợ viền <1px tốt */
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(1), .enm-daily-table tbody td:nth-child(3) { border-right: 1px solid rgba(0, 0, 0, 0.2) !important; }
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(2), .enm-daily-table tbody td:nth-child(4) { border-left: 1px solid rgba(0, 0, 0, 0.2) !important; }
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(3), .enm-daily-table tbody td:nth-child(5) { border-right: 1px solid rgba(0, 0, 0, 0.2) !important; }
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(4), .enm-daily-table tbody td:nth-child(6) { border-left: 1px solid rgba(0, 0, 0, 0.2) !important; }
                 
                 /* Làm mỏng/nhạt vạch ngang giữa các ngày (từ mùng 1 đến cuối tháng) (màu đen cực kỳ mỏng) */
-                .enm-daily-table tbody tr td { border-bottom: 0.1px solid #000 !important; border-top: 0.1px solid #000 !important; }
+                .enm-daily-table tbody tr td { border-bottom: 1px solid rgba(0, 0, 0, 0.2) !important; border-top: 1px solid rgba(0, 0, 0, 0.2) !important; }
                 /* Giữ lại vạch đậm cho viền ngoài cùng của tbody (nếu cần) hoặc các vạch dọc khác */
                 .enm-daily-table tbody tr:first-child td { border-top: 1px solid #000 !important; }
                 .enm-daily-table tbody tr:last-child td { border-bottom: 1px solid #000 !important; }
