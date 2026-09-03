@@ -1709,20 +1709,23 @@
                 html, body {
                   width: ${pageWmm}mm;
                   margin: 0 auto;
+                  overflow: hidden;   /* chặn 1px dư tạo trang trắng thứ 2 khi in */
                 }
                 .print-container {
                   width: 100%;
                   box-sizing: border-box;
+                  overflow: hidden;
                 }
-                /* Wrapper cao đúng 1 trang (trừ lề). */
+                /* Wrapper cao 1 trang trừ biên an toàn 2mm (tránh trang trắng thứ 2). */
                 #printScale {
                   transform-origin: top left;
                   width: 100%;
-                  height: ${availHmm}mm;   /* chiều cao vùng in của 1 trang */
+                  height: ${availHmm - 2}mm;
                   padding: ${PAD_MM}mm;
                   box-sizing: border-box;
                   display: flex;
                   flex-direction: column;
+                  overflow: hidden;
                 }
                 /* .enm-paper co theo nội dung để JS đo được khoảng trống thực tế. */
                 #printScale > .enm-paper { box-sizing: border-box; }
@@ -1778,10 +1781,9 @@
                 doc.body.removeChild(p);
                 return h;
               };
-              // Mốc = availHmm (chiều cao vùng in 1 trang khi margin:0). Chỉ ZOOM
-              // thu nhỏ khi nội dung THẬT SỰ vượt cả trang này; còn lại giữ nguyên
-              // kích thước và giãn hàng lấp đầy.
-              const fillH = measurePx(availHmm);
+              // Mốc = availHmm trừ biên an toàn 4mm, tránh dư 1px đẩy sang trang trắng
+              // thứ 2 khi in. Chỉ ZOOM thu nhỏ khi nội dung THẬT SỰ vượt mốc này.
+              const fillH = measurePx(availHmm - 4);
               const overflowLimit = fillH;
 
               const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
