@@ -3646,8 +3646,9 @@ input.se-time[disabled][data-row-disabled="1"][data-manual="1"]::-webkit-datetim
 }
 .enm-title {
   text-align: center;
-  font-size: 24px;
-  letter-spacing: 2px;
+  font-size: 32px;
+  letter-spacing: 12px;
+  text-indent: 12px;
   margin-bottom: 30px;
 }
 .enm-title span {
