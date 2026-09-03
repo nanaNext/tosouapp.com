@@ -265,6 +265,13 @@
               <option value="actual">実績</option>
               <option value="round">丸め</option>
             </select>
+            <label style="font-size:12px;color:#475569;margin-left:8px;">用紙:</label>
+            <select id="enmPaperSize" style="font-size:12px;padding:2px 8px;border:1px solid #cbd5e1;border-radius:4px;">
+              <option value="A4-portrait">A4 縦</option>
+              <option value="A4-landscape">A4 横</option>
+              <option value="A3-portrait">A3 縦</option>
+              <option value="A3-landscape">A3 横</option>
+            </select>
           </div>
           <button type="button" class="enm-close" id="btnEnmClose" aria-label="閉じる">×</button>
         </div>
@@ -276,61 +283,31 @@
               <div class="enm-company">飯塚塗研株式会社</div>
               <div>作成日: <span id="enmDate"></span></div>
             </div>
-            
-            <table class="enm-table">
-              <tr>
-                <th style="width: 20%;">対象年月</th>
-                <td style="width: 30%;" id="enmTargetMonth"></td>
-                <th style="width: 20%;">社員番号</th>
-                <td style="width: 30%;" id="enmEmpCode"></td>
-              </tr>
-              <tr>
-                <th>氏名</th>
-                <td id="enmEmpName"></td>
-                <th>所属</th>
-                <td id="enmEmpDept"></td>
-              </tr>
-            </table>
 
-            <h4 style="margin: 0 0 10px 0; border-left: 4px solid #000; padding-left: 10px; font-size: 14px;">当月実績サマリ</h4>
-            <table class="enm-table center-align">
-              <tr>
-                <th style="width: 16%;">所定労働日数</th>
-                <th style="width: 16%;">出勤日数</th>
-                <th style="width: 17%;">総労働時間</th>
-                <th style="width: 17%;">時間外労働</th>
-                <th style="width: 17%;">深夜労働時間</th>
-                <th style="width: 17%;">休日労働時間</th>
-              </tr>
-              <tr>
-                <td id="enmPlanDays"></td>
-                <td id="enmAttendDays"></td>
-                <td id="enmTotalWork"></td>
-                <td id="enmOvertime"></td>
-                <td id="enmNightWork"></td>
-                <td id="enmHolidayWork"></td>
-              </tr>
-            </table>
+            <!-- Dòng tiêu đề kiểu hành chính: 年 月 ・ 名前 ・ 印 -->
+            <div class="enm-name-line">
+              <span id="enmYmLine" class="enm-ym"></span>
+              <span class="enm-name-label">名前：</span>
+              <span id="enmNameLine" class="enm-name-val"></span>
+              <span class="enm-stamp">印</span>
+            </div>
 
-            <h4 style="margin: 20px 0 10px 0; border-left: 4px solid #000; padding-left: 10px; font-size: 14px;">日次勤怠実績</h4>
+            <h4 style="margin: 0 0 10px 0; border-left: 4px solid #000; padding-left: 10px; font-size: 14px;">日次勤怠実績</h4>
             <table class="enm-daily-table" id="enmDailyTable">
               <thead>
                 <tr>
                   <th rowspan="2" style="width: 5%;">日</th>
-                  <th rowspan="2" style="width: 10%;">事由</th>
-                  <th colspan="3" style="width: 12%;">就業場所</th>
+                  <th rowspan="2" style="width: 9%;">事由</th>
                   <th colspan="2" style="width: 12%;">就業時間</th>
                   <th colspan="2" style="width: 12%;">休憩時間</th>
                   <th rowspan="2" style="width: 8%;">中抜け<br>時間</th>
                   <th rowspan="2" style="width: 8%;">勤務時間</th>
                   <th rowspan="2" style="width: 8%;">超過時間</th>
-                  <th rowspan="2" style="width: 15%;">備考</th>
-                  <th rowspan="2" style="width: 10%;">承認者</th>
+                  <th rowspan="2" style="width: 7%;">現場</th>
+                  <th rowspan="2" style="width: 23%;">作業内容</th>
+                  <th rowspan="2" style="width: 8%;">備考</th>
                 </tr>
                 <tr>
-                  <th>出社</th>
-                  <th>在宅</th>
-                  <th>現場</th>
                   <th>開始</th>
                   <th>終了</th>
                   <th>普通</th>
@@ -340,6 +317,13 @@
               <tbody>
                 <!-- Rows will be injected here by JS -->
               </tbody>
+              <tfoot>
+                <tr class="enm-total-row">
+                  <td style="text-align:center;font-weight:700;padding:4px 8px;white-space:nowrap;background:#fce7f3;">合計日数</td>
+                  <td id="enmTotalDays" style="text-align:center;font-weight:700;background:#fce7f3;">0日</td>
+                  <td colspan="10" style="background:transparent;border:none;"></td>
+                </tr>
+              </tfoot>
             </table>
 
             <div style="margin-top: 30px; font-size: 14px; text-align: right; margin-bottom: 20px;">
