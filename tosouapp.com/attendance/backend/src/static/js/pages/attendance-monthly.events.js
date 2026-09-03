@@ -1726,16 +1726,15 @@
                   box-sizing: border-box;
                   overflow: hidden;
                 }
-                /* Wrapper cao 1 trang, sát đáy tối đa (0.2mm an toàn). */
+                /* Wrapper: KHÔNG ép height cố định (gây tràn/lệch trang trên máy in
+                   vật lý). Để cao tự nhiên; JS giãn hàng lo việc lấp đầy trang. */
                 #printScale {
                   transform-origin: top left;
                   width: 100%;
-                  height: ${availHmm - 0.2}mm;
                   padding: ${PAD_MM}mm;
                   box-sizing: border-box;
                   display: flex;
                   flex-direction: column;
-                  overflow: hidden;
                 }
                 #printScale > .enm-paper { box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; width: 100%; }
                 #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
@@ -1793,7 +1792,7 @@
               // Mốc = availHmm gần như full (chỉ trừ 1mm an toàn) để tối ưu diện tích.
               // Chỉ ZOOM thu nhỏ khi nội dung THỰC SỰ vượt mốc này với ngưỡng +15px
               // (rất cao — ưu tiên chữ lớn trước; nếu phải thu nhỏ thì cũng chỉ nhẹ).
-              const fillH = measurePx(availHmm - 1);
+              const fillH = measurePx(availHmm - 4);
               const overflowLimit = fillH;
 
               const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
