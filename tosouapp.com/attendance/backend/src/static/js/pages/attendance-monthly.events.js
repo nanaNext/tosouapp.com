@@ -1612,6 +1612,10 @@
         // Lề trang (mm) — giữ mỏng để tận dụng tối đa diện tích
         const PAD_MM = 8;
         const availHmm = pageHmm - PAD_MM * 2;
+        // Chiều cao MỤC TIÊU để auto-fit (nhỏ hơn availHmm). Trừ hao thêm cho lề mặc
+        // định của trình duyệt khi in (余白=デフォルト ~10-12mm/cạnh) để nội dung LUÔN
+        // vừa 1 trang dù người dùng không đổi 余白. 20mm dự phòng cho 2 cạnh.
+        const fitHmm = availHmm - 20;
         const pageSizeCss = `${paperName} ${paperOrient}`;
 
         // Kích thước iframe cố định theo khổ giấy (px = mm * 96/25.4). KHÔNG dùng
@@ -1719,7 +1723,6 @@
                   box-sizing: border-box;
                   display: flex;
                   flex-direction: column;
-                  overflow: hidden;        /* lưới an toàn cuối: chặn tràn sang trang 2 */
                 }
                 /* .enm-paper co theo nội dung để JS đo được khoảng trống thực tế. */
                 #printScale > .enm-paper { box-sizing: border-box; }
@@ -1764,46 +1767,35 @@
                 if (r.firstElementChild) r.firstElementChild.style.height = '';
               });
 
-              // Mốc đáy vùng in = đáy phần padding-box của printScale.
-              // (padding dưới = lề). Đo bằng px nội bộ iframe → nhất quán.
-              const rect = scaleEl.getBoundingClientRect();
-              const cs = iframe.contentWindow.getComputedStyle(scaleEl);
-              const padBottom = parseFloat(cs.paddingBottom) || 0;
-              // Đáy khả dụng (mép trong của lề dưới), theo toạ độ viewport iframe.
-              const availBottom = rect.bottom - padBottom;
+              // Chiều cao MỤC TIÊU (px) để fit — tính từ fitHmm (đã trừ hao lề mặc
+              // định của trình duyệt), đo bằng probe trong iframe để đúng px thực.
+              const probe = doc.createElement('div');
+              probe.style.cssText = `position:absolute;visibility:hidden;height:${fitHmm}mm;`;
+              doc.body.appendChild(probe);
+              const targetH = probe.getBoundingClientRect().height;
+              doc.body.removeChild(probe);
 
-              // Đáy nội dung hiện tại = đáy phần tử cuối cùng trong .enm-paper.
-              const paper = scaleEl.querySelector('.enm-paper');
-              const lastEl = paper ? paper.lastElementChild : null;
-              const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : scaleEl.getBoundingClientRect().bottom);
+              const scrollH = scaleEl.scrollHeight;         // chiều cao nội dung thực (px)
 
-              // Phát hiện TRÀN bằng scrollHeight vs clientHeight của box cao cố định
-              // (bắt được cả margin của dòng chân trang — chính xác hơn đo bottom).
-              const boxH = scaleEl.clientHeight;            // = vùng in 1 trang (px)
-              const scrollH = scaleEl.scrollHeight;         // chiều cao nội dung thực
-
-              if (scrollH > boxH + 1) {
-                // TRÀN: thu nhỏ đồng đều cho vừa 1 trang. Biên an toàn 0.93 để chắc
-                // chắn không nhô sang trang 2 (thà chữ nhỏ hơn còn hơn mất trang).
-                let ratio = Math.max(0.3, (boxH / scrollH) * 0.93);
+              if (scrollH > targetH + 1) {
+                // TRÀN: thu nhỏ đồng đều cho vừa vùng mục tiêu.
+                let ratio = Math.max(0.3, (targetH / scrollH) * 0.98);
                 const applyScale = (r) => {
                   scaleEl.style.width = `${100 / r}%`;
                   scaleEl.style.transform = `scale(${r})`;
                 };
                 applyScale(ratio);
-                // Đo lại vài vòng: nếu nội dung sau scale vẫn cao hơn box thì siết thêm.
                 for (let i = 0; i < 5; i++) {
-                  // scrollHeight không đổi theo transform → suy chiều cao sau scale.
                   const scaledH = scaleEl.scrollHeight * ratio;
-                  if (scaledH <= boxH) break;
-                  ratio = Math.max(0.3, ratio * (boxH / scaledH) * 0.98);
+                  if (scaledH <= targetH) break;
+                  ratio = Math.max(0.3, ratio * (targetH / scaledH) * 0.98);
                   applyScale(ratio);
                 }
-                if (container) container.style.height = `${Math.ceil(boxH)}px`;
+                if (container) container.style.height = `${Math.ceil(targetH)}px`;
               } else if (bodyRows.length) {
-                // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm mép dưới vùng in.
+                // THỪA: giãn đều chiều cao các hàng cho tới khi nội dung cao ~ targetH.
                 for (let pass = 0; pass < 30; pass++) {
-                  const extra = availBottom - measureBottom();
+                  const extra = targetH - scaleEl.scrollHeight;
                   if (extra <= 1) break;
                   const perRow = extra / bodyRows.length;
                   if (perRow < 0.15) break;
