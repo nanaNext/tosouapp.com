@@ -1225,7 +1225,31 @@
       modal.setAttribute('hidden', '');
     };
 
-    const openModal = () => {
+    // Cache map ngày lễ Nhật (祝日) theo năm: { 'YYYY-MM-DD': '元日', ... }
+    // Dùng để hiển thị TÊN ngày lễ ở cột 事由 cho các ngày đỏ.
+    const holidayNameCache = {}; // year -> { dateStr: name }
+    const loadHolidayNames = async (year) => {
+      if (holidayNameCache[year]) return holidayNameCache[year];
+      const map = {};
+      try {
+        const r = await core.fetchJSONAuth(`/api/attendance/calendar?year=${encodeURIComponent(year)}&lang=ja`);
+        const detail = Array.isArray(r?.detail) ? r.detail : [];
+        // Chỉ lấy các loại là ngày lễ (祝日 / nghỉ công ty), bỏ qua thứ 7/CN thường.
+        const holidayTypes = new Set(['jp_auto', 'jp_substitute', 'jp_bridge', 'fixed', 'custom']);
+        for (const it of detail) {
+          const ds = String(it?.date || '').slice(0, 10);
+          const nm = it?.name || it?.label || '';
+          if (ds && nm && holidayTypes.has(String(it?.type || ''))) {
+            // Tên có thể ở dạng "山の日 振替休日 / Substitute..." → lấy phần trước dấu "/".
+            map[ds] = String(nm).split('/')[0].trim();
+          }
+        }
+      } catch (e) { /* không có mạng/không lấy được thì bỏ qua, cột 事由 để trống */ }
+      holidayNameCache[year] = map;
+      return map;
+    };
+
+    const openModal = async () => {
       // Get current date
       const today = new Date();
       const yyyy = today.getFullYear();
@@ -1233,36 +1257,51 @@
       const dd = String(today.getDate()).padStart(2, '0');
       document.querySelector('#enmDate').textContent = `${yyyy}年${mm}月${dd}日`;
 
-      // Get user info from DOM or state
+      // Dòng tiêu đề: 年 月 ・ 名前 (kiểu mẫu hành chính)
       const targetMonthStr = document.querySelector('#monthPicker')?.value || '';
-      if (targetMonthStr) {
+      const ymEl = document.querySelector('#enmYmLine');
+      if (ymEl && targetMonthStr) {
         const [year, month] = targetMonthStr.split('-');
-        document.querySelector('#enmTargetMonth').textContent = `${year}年${parseInt(month, 10)}月`;
+        ymEl.textContent = `${year}年　${parseInt(month, 10)}月`;
       }
-
-      document.querySelector('#enmEmpCode').textContent = (document.querySelector('#empCode')?.textContent || '').trim() || '—';
-      document.querySelector('#enmEmpName').textContent = (document.querySelector('#staffName')?.textContent || '').trim() || '—';
-      document.querySelector('#enmEmpDept').textContent = (document.querySelector('#empDept')?.textContent || '').trim() || '—';
+      const nameEl = document.querySelector('#enmNameLine');
+      if (nameEl) {
+        nameEl.textContent = (document.querySelector('#staffName')?.textContent || '').trim() || '';
+      }
 
       // Build daily table rows AND calculate summary dynamically based ONLY on actual records up to today
       const dailyTbody = document.querySelector('#enmDailyTable tbody');
-      
-      let sumAttendDays = 0;
-      let sumWorkMins = 0;
-      let sumOvertimeMins = 0;
-      let sumNightMins = 0;
-      let sumHolidayWorkMins = 0;
+      let totalWorkDays = 0;
 
       // Ensure we get the latest timesheet
       const timesheetData = state.currentMonthTimesheet || {};
       const days = Array.isArray(timesheetData.days) ? timesheetData.days : [];
       const totals = timesheetData.totals || {};
+
+      // Tải tên ngày lễ (祝日) của năm tương ứng để điền vào cột 事由.
+      const targetYear = parseInt((targetMonthStr || '').slice(0, 4), 10) || today.getFullYear();
+      const holidayNames = await loadHolidayNames(targetYear);
       
       const parseHmToMin = (hmStr) => {
         if (!hmStr) return 0;
         const parts = String(hmStr).trim().split(':');
         if (parts.length !== 2) return 0;
         return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+      };
+      // Escape HTML + xuống dòng → <br> (dùng cho 現場名 / 備考)
+      const escHtmlEnm = (s) => String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+      // 作業内容: nối các dòng bằng ・ thay vì xuống dòng → đoạn liền, tiết kiệm chiều cao, dễ ép 1 trang.
+      // Thêm WORD JOINER (\u2060) ngay sau mỗi ・ để dấu ・ luôn dính với chữ đứng sau,
+      // không bị trơ ở cuối dòng rồi chữ nhảy xuống dòng mới.
+      const formatWorkContent = (s) => {
+        const raw = String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return raw
+          .split(/\r?\n/)
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .join('・\u2060');
       };
       
       if (dailyTbody) {
@@ -1275,10 +1314,11 @@
         rows.forEach(tr => {
           const dateStr = tr.dataset.date || ''; // "YYYY-MM-DD"
           let dayDisplay = '';
+          let dow = '';
           if (dateStr) {
             const m = parseInt(dateStr.slice(5, 7), 10);
             const d = parseInt(dateStr.slice(8, 10), 10);
-            const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
+            dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
             dayDisplay = `${m}/${d}&nbsp;${dow}`;
           }
           
@@ -1352,9 +1392,15 @@
           let isOnsite = tr.querySelector('input[data-field="ckOnsite"]')?.checked ? '〇' : '';
           let isRemote = tr.querySelector('input[data-field="ckRemote"]')?.checked ? '〇' : '';
           let isTravel = tr.querySelector('input[data-field="ckSatellite"]')?.checked ? '〇' : '';
+          // Tên hiện trường (現場名) khi làm tại 現場
+          const locEl = tr.querySelector('input[data-field="location"]');
+          const locName = locEl ? String(locEl.value || '').trim() : '';
           
           const notesEl = tr.querySelector('input[data-field="notes"]');
           let notes = notesEl ? notesEl.value : '';
+          // 作業内容 (memo) — lấy để in ra bảng 就業状況通知書
+          const memoEl = tr.querySelector('[data-field="memo"]');
+          let workContent = memoEl ? String(memoEl.value || '') : '';
 
           let dayWorkMins = 0;
           let dayOvertimeMins = 0;
@@ -1449,73 +1495,81 @@
              isOnsite = '';
              isRemote = '';
              isTravel = '';
-          } else if (hasActualIn || hasActualOut) {
-            // NẾU CÓ DỮ LIỆU THỰC TẾ -> TÍNH TỔNG VÀO SUMMARY
-            if (!isHolidayKubun && kubun !== '欠勤') {
-               sumAttendDays++;
-               sumWorkMins += dayWorkMins;
-               sumOvertimeMins += dayOvertimeMins;
-               sumNightMins += dayNightMins;
-               
-               // Chỉ cộng vào Giờ làm ngày nghỉ nếu phân loại (Sự do) được chọn đích danh là '休日出勤' (Làm ngày nghỉ)
-               if (kubun === '休日出勤') {
-                 sumHolidayWorkMins += dayWorkMins;
-               }
-            }
-          }
-          
-          // Trích xuất người phê duyệt từ dữ liệu state.currentMonthStatus
-          // Dữ liệu người phê duyệt thường áp dụng cho cả tháng, hoặc lấy từ monthStatus
-          let approver = '';
-          if (state.currentMonthStatus === 'approved') {
-            approver = state.currentMonthDetail?.monthStatus?.approverName || '';
           }
 
+          // 現場 (gộp nơi làm): 現場 → tên hiện trường; 出社/在宅 → chữ tương ứng.
+          let placeCol = '';
+          if (isTravel) placeCol = locName ? escHtmlEnm(locName) : '現場';
+          else if (isOnsite) placeCol = '出社';
+          else if (isRemote) placeCol = '在宅';
+
+          // Đếm số ngày đi làm thực tế (có giờ vào/ra, không phải nghỉ/phép/kế hoạch)
+          if ((hasActualIn || hasActualOut) && !isHolidayKubun && !isLeaveKubun && kubun !== '予定') {
+            totalWorkDays++;
+          }
+
+          // 中抜け時間: tổng thời gian đi ra giữa giờ (外出) trong ngày. Chỉ hiển thị
+          // khi có dữ liệu thật (> 0), ngược lại để TRỐNG (không in 0:00).
+          let nakanukeMins = 0;
+          if (tsDay && Array.isArray(tsDay.goOutRecords)) {
+            for (const g of tsDay.goOutRecords) {
+              const go = g && g.go_out_time ? new Date(g.go_out_time).getTime() : NaN;
+              const ret = g && g.return_time ? new Date(g.return_time).getTime() : NaN;
+              if (!isNaN(go) && !isNaN(ret) && ret > go) {
+                nakanukeMins += Math.round((ret - go) / 60000);
+              }
+            }
+          }
+          // Fallback: nếu server có sẵn số phút 中抜け ở trường riêng thì dùng.
+          if (!nakanukeMins && tsDay) {
+            nakanukeMins = tsDay.nakanukeMinutes || tsDay.outsideMinutes || 0;
+          }
+          const nakanukeTime = nakanukeMins > 0 ? formatHm(nakanukeMins) : '';
+
+          // ── Ngày nghỉ: căn cứ theo LỊCH LÀM VIỆC của từng người (class 'off' trên
+          //    hàng gốc = ngày nghỉ theo lịch, gồm CN + ngày nghỉ; thứ 7 làm việc của
+          //    bộ phận như 工事部 KHÔNG có class 'off' nên sẽ không bị coi là nghỉ),
+          //    hoặc theo phân loại nghỉ/phép (休日/代替休日/有給...).
+          //    Ngày nghỉ → bỏ chữ 予定 ở cột 事由 và tô nền xám cả hàng.
+          const isScheduledOff = tr.classList.contains('off');
+          const hasNoActual = !hasActualIn && !hasActualOut;
+          // Chỉ tô xám khi thực sự NGHỈ (không có giờ làm thực tế). Nếu nhân viên đi
+          // làm vào ngày nghỉ/lịch nghỉ thì vẫn tính là ngày làm → không tô xám.
+          const isRestRow = hasNoActual && (isHolidayKubun || isLeaveKubun || isScheduledOff);
+          if (isRestRow && kubun === '予定') {
+            kubun = ''; // ngày nghỉ không cần hiển thị 予定
+          }
+          // Ngày lễ (lịch đỏ): hiển thị TÊN ngày lễ ở cột 事由 (元日, 海の日...).
+          // Chỉ điền khi ô đang trống hoặc chỉ là 休日 chung, để không đè phép cụ thể.
+          const holidayName = holidayNames[dateStr] || '';
+          if (isRestRow && holidayName && (kubun === '' || kubun === '休日')) {
+            kubun = holidayName;
+          }
+          const rowClass = isRestRow ? ' class="enm-rest-row"' : '';
+
           const html = `
-            <tr>
+            <tr${rowClass}>
               <td>${dayDisplay}</td>
               <td>${kubun}</td>
-              <td>${isOnsite}</td>
-              <td>${isRemote}</td>
-              <td>${isTravel}</td>
               <td>${timeIn}</td>
               <td>${timeOut}</td>
               <td>${breakNormal}</td>
               <td>${breakNight}</td>
-              <td>0:00</td>
+              <td>${nakanukeTime}</td>
               <td>${workedTime}</td>
               <td>${excessTime}</td>
-              <td class="left-align" style="font-size:10px;">${notes}</td>
-              <td>${approver}</td>
+              <td class="left-align enm-note">${placeCol}</td>
+              <td class="left-align enm-work">${formatWorkContent(workContent)}</td>
+              <td class="left-align enm-note">${escHtmlEnm(notes)}</td>
             </tr>
           `;
           dailyTbody.insertAdjacentHTML('beforeend', html);
         });
       }
       
-      // Cập nhật lại Summary Table bằng dữ liệu TÍNH TOÁN THỰC TẾ
-      const formatHm = (min) => {
-        if (min == null) return '0:00';
-        const m = Math.max(0, Number(min || 0));
-        const h = Math.floor(m / 60);
-        const r = Math.floor(m % 60);
-        if (h === 0 && r === 0) return '0:00';
-        return `${h}:${String(r).padStart(2, '0')}`;
-      };
-
-      // Vẫn lấy số ngày quy định từ state (vì nó cố định)
-      const s = state.currentMonthDetail?.monthSummary?.all || {};
-      document.querySelector('#enmPlanDays').textContent = (s.plannedDays || 0) + ' 日';
-      
-      // Ghi đè các thông số khác bằng dữ liệu quét thực tế từ UI
-      document.querySelector('#enmAttendDays').textContent = sumAttendDays + ' 日';
-      document.querySelector('#enmTotalWork').textContent = formatHm(sumWorkMins);
-      document.querySelector('#enmOvertime').textContent = formatHm(sumOvertimeMins);
-      
-      // Sử dụng tổng giờ làm đêm được tính toán trực tiếp từ dữ liệu thực tế trên màn hình (để ép về 0:00 nếu không làm đêm)
-      document.querySelector('#enmNightWork').textContent = formatHm(sumNightMins);
-      
-      document.querySelector('#enmHolidayWork').textContent = formatHm(sumHolidayWorkMins);
+      // 合計日数: tổng số ngày đi làm thực tế trong tháng
+      const totalDaysEl = document.querySelector('#enmTotalDays');
+      if (totalDaysEl) totalDaysEl.textContent = `${totalWorkDays}日`;
 
       modal.removeAttribute('hidden');
     };
@@ -1538,7 +1592,21 @@
     if (btnPrint) {
       btnPrint.addEventListener('click', () => {
         const printContent = document.querySelector('#enmPrintArea').innerHTML;
-        
+
+        // ── Khổ giấy do người dùng chọn (A4/A3, dọc/ngang) ──────────────
+        const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
+        const [paperName, paperOrient] = paperVal.split('-'); // ví dụ: 'A4', 'portrait'
+        // Kích thước giấy (mm) theo chiều dọc gốc
+        const PAPER_MM = { A4: { w: 210, h: 297 }, A3: { w: 297, h: 420 } };
+        const base = PAPER_MM[paperName] || PAPER_MM.A4;
+        const isLandscape = paperOrient === 'landscape';
+        const pageWmm = isLandscape ? base.h : base.w; // bề rộng trang khi in
+        const pageHmm = isLandscape ? base.w : base.h; // chiều cao trang khi in
+        // Lề trang (mm) — giữ mỏng để tận dụng tối đa diện tích
+        const PAD_MM = 8;
+        const availHmm = pageHmm - PAD_MM * 2;
+        const pageSizeCss = `${paperName} ${paperOrient}`;
+
         let iframe = document.getElementById('print-iframe');
         if (!iframe) {
           iframe = document.createElement('iframe');
@@ -1564,7 +1632,7 @@
               <style>
                 @page { 
                    margin: 0mm;
-                   size: A4 portrait; 
+                   size: ${pageSizeCss}; 
                 }
                 body { 
                   font-family: "Meiryo", "Hiragino Kaku Gothic ProN", "MS PGothic", sans-serif; 
@@ -1584,36 +1652,158 @@
                 .enm-table td { text-align: left; }
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
-                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 8px; }
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px; font-size: 10.5px; line-height: 1.2; font-weight: normal; text-align: center; vertical-align: middle; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; }
+                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 6px; table-layout: fixed; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; line-height: 1.2; font-weight: normal; text-align: center; vertical-align: middle; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 10px; }
+                /* Hàng ngày nghỉ: tô nền xám cả hàng (in ra vẫn giữ màu). */
+                .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                /* Hàng tổng: chỉ giữ ô 合計日数 + ô số; ô còn lại trống, không viền/nền. */
+                .enm-daily-table tfoot tr.enm-total-row td[colspan] { border: none !important; background: transparent !important; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
-                .enm-daily-table td:nth-child(1) { min-width: 40px; }
-                .enm-footer-text { font-size: 11px; margin-top: 8px; text-align: right; padding-right: 10px; }
+                .enm-daily-table td:nth-child(1) { min-width: 34px; }
+                /* 作業内容: nội dung nối bằng ・ (xử lý ở JS), cho xuống dòng khi dài; chữ nhỏ để tiết kiệm chiều cao. */
+                .enm-daily-table td.enm-work {
+                  white-space: normal; word-break: break-word; text-align: left;
+                  font-size: 8px; line-height: 1.15;
+                }
+                /* 備考: ô hẹp, cho xuống dòng, chữ nhỏ */
+                .enm-daily-table td.enm-note {
+                  white-space: normal; word-break: break-word; text-align: left;
+                  font-size: 8px; line-height: 1.1;
+                }
+                /* Dòng tiêu đề kiểu mẫu: 年 月 ・ 名前 ・ 印 */
+                /* gap:0 giữa các phần để đường gạch chân liền mạch từ ngày tháng đến hết tên. */
+                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 10px 0 12px; font-size: 13px; }
+                /* Gạch chân chạy suốt qua ngày tháng, nhãn 名前, và ô tên. */
+                .enm-name-line .enm-ym,
+                .enm-name-line .enm-name-label,
+                .enm-name-line .enm-name-val { border-bottom: 1px solid #000; padding-bottom: 2px; }
+                .enm-name-line .enm-ym { min-width: 120px; }
+                .enm-name-line .enm-name-label { margin-left: 8px; padding-left: 4px; }
+                .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 15px; padding: 0 8px 2px; min-height: 20px; }
+                .enm-name-line .enm-stamp { border: 1px solid #000; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-left: 10px; }
+                .enm-footer-text { font-size: 10px; margin-top: 6px; text-align: right; padding-right: 10px; }
                 
                 html, body {
-                  width: 210mm;
+                  width: ${pageWmm}mm;
                   margin: 0 auto;
                 }
                 .print-container {
                   width: 100%;
-                  padding: 15mm 10mm 10mm 10mm;
                   box-sizing: border-box;
+                  overflow: hidden; /* cắt bỏ phần rìa thừa sau khi scale, tránh đẩy sang trang 2 */
                 }
+                /* Wrapper cao đúng 1 trang (trừ lề). */
+                #printScale {
+                  transform-origin: top left;
+                  width: 100%;
+                  height: ${availHmm}mm;   /* chiều cao vùng in của 1 trang */
+                  padding: ${PAD_MM}mm;
+                  box-sizing: border-box;
+                  display: flex;
+                  flex-direction: column;
+                }
+                /* .enm-paper co theo nội dung để JS đo được khoảng trống thực tế. */
+                #printScale > .enm-paper { box-sizing: border-box; }
+                /* Nén các phần trên để dành chỗ cho bảng ngày, in gọn trong 1 trang */
+                .print-container .enm-title { margin-top: 4px !important; margin-bottom: 6px !important; font-size: 16px !important; }
+                .print-container h4 { margin: 8px 0 4px 0 !important; }
+                .print-container .enm-table th, .print-container .enm-table td { padding: 2px 4px !important; font-size: 10px !important; }
+                /* Chân trang: khoảng cách cố định nhỏ. */
+                #printScale .enm-paper > div:last-child { margin-top: 10px !important; margin-bottom: 0 !important; }
               </style>
             </head>
             <body>
               <div class="print-container">
-                ${printContent}
+                <div id="printScale">
+                  ${printContent}
+                </div>
               </div>
             </body>
           </html>
         `);
         iframe.contentWindow.document.close();
-        
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+
+        // Auto-fit: chiều cao lấp đầy do CSS flex lo (bảng nở lấp hết trang).
+        // JS chỉ can thiệp khi nội dung QUÁ NHIỀU không vừa 1 trang → thu nhỏ đồng đều.
+        let printed = false;
+        const doAutoFitAndPrint = () => {
+          if (printed) return; // tránh in trùng khi cả fonts.ready lẫn timeout dự phòng cùng chạy
+          printed = true;
+          try {
+            const doc = iframe.contentWindow.document;
+            const scaleEl = doc.getElementById('printScale');
+            const container = doc.querySelector('.print-container');
+            const table = doc.getElementById('enmDailyTable');
+            const bodyRows = table ? table.querySelectorAll('tbody tr') : [];
+            if (scaleEl) {
+              // Reset trước khi đo
+              scaleEl.style.transform = '';
+              scaleEl.style.width = '100%';
+              if (container) container.style.height = '';
+              bodyRows.forEach((r) => {
+                r.style.height = '';
+                if (r.firstElementChild) r.firstElementChild.style.height = '';
+              });
+
+              // Mốc đáy vùng in = đáy phần padding-box của printScale.
+              // (padding dưới = lề). Đo bằng px nội bộ iframe → nhất quán.
+              const rect = scaleEl.getBoundingClientRect();
+              const cs = iframe.contentWindow.getComputedStyle(scaleEl);
+              const padBottom = parseFloat(cs.paddingBottom) || 0;
+              // Đáy khả dụng (mép trong của lề dưới), theo toạ độ viewport iframe.
+              const availBottom = rect.bottom - padBottom;
+
+              // Đáy nội dung hiện tại = đáy phần tử cuối cùng trong .enm-paper.
+              const paper = scaleEl.querySelector('.enm-paper');
+              const lastEl = paper ? paper.lastElementChild : null;
+              const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : scaleEl.getBoundingClientRect().bottom);
+
+              const boxH = scaleEl.clientHeight;
+              const contentH = scaleEl.scrollHeight;
+
+              if (contentH > boxH + 1) {
+                // TRÀN: nội dung nhiều hơn 1 trang → thu nhỏ đồng đều cho vừa.
+                const ratio = Math.max(0.3, (boxH / contentH) * 0.99);
+                scaleEl.style.width = `${100 / ratio}%`;
+                scaleEl.style.transform = `scale(${ratio})`;
+                if (container) container.style.height = `${Math.floor(contentH * ratio)}px`;
+              } else if (bodyRows.length) {
+                // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm mép dưới vùng in.
+                for (let pass = 0; pass < 30; pass++) {
+                  const extra = availBottom - measureBottom();
+                  if (extra <= 1) break;
+                  const perRow = extra / bodyRows.length;
+                  if (perRow < 0.15) break;
+                  bodyRows.forEach((r) => {
+                    const cell = r.firstElementChild;
+                    const h = (cell || r).getBoundingClientRect().height;
+                    const nh = `${h + perRow}px`;
+                    r.style.height = nh;
+                    if (cell) cell.style.height = nh;
+                  });
+                }
+              }
+            }
+          } catch (e) { /* bỏ qua nếu không đo/scale được */ }
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        };
+
+        // Chờ font + layout ổn định rồi mới đo, để tránh đo sai chiều cao.
+        const startAutoFit = () => {
+          const win = iframe.contentWindow;
+          const run = () => win.requestAnimationFrame(() => win.requestAnimationFrame(doAutoFitAndPrint));
+          if (win.document.fonts && win.document.fonts.ready) {
+            win.document.fonts.ready.then(run).catch(run);
+            // Dự phòng nếu fonts.ready không resolve
+            setTimeout(run, 600);
+          } else {
+            setTimeout(run, 300);
+          }
+        };
+        startAutoFit();
       });
     }
   };
