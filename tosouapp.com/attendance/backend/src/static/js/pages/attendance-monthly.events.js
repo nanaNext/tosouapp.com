@@ -1319,7 +1319,7 @@
             const m = parseInt(dateStr.slice(5, 7), 10);
             const d = parseInt(dateStr.slice(8, 10), 10);
             dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
-            dayDisplay = `${m}/${d}&nbsp;${dow}`;
+            dayDisplay = `${m}/${d} ${dow}`;
           }
           
           const isFuture = dateStr > currentYmd;
@@ -1607,13 +1607,19 @@
         const availHmm = pageHmm - PAD_MM * 2;
         const pageSizeCss = `${paperName} ${paperOrient}`;
 
+        // Kích thước iframe cố định theo khổ giấy (px = mm * 96/25.4). KHÔNG dùng
+        // 100vw/100vh — trên điện thoại viewport hẹp khiến layout đo sai, gây cắt
+        // mất ngày cuối tháng và bóp cột. Kích thước cố định đảm bảo layout giống
+        // hệt trên mọi thiết bị (desktop và mobile).
+        const MM2PX = 96 / 25.4;
+        const iframeWpx = Math.round(pageWmm * MM2PX);
+        const iframeHpx = Math.round(pageHmm * MM2PX);
+
         let iframe = document.getElementById('print-iframe');
         if (!iframe) {
           iframe = document.createElement('iframe');
           iframe.id = 'print-iframe';
           iframe.style.position = 'fixed';
-          iframe.style.width = '100vw';
-          iframe.style.height = '100vh';
           iframe.style.left = '0';
           iframe.style.top = '0';
           iframe.style.border = 'none';
@@ -1622,6 +1628,9 @@
           iframe.style.pointerEvents = 'none';
           document.body.appendChild(iframe);
         }
+        // Đặt lại kích thước mỗi lần (khổ giấy có thể thay đổi giữa các lần in).
+        iframe.style.width = `${iframeWpx}px`;
+        iframe.style.height = `${iframeHpx}px`;
 
         iframe.contentWindow.document.open();
         iframe.contentWindow.document.write(`
@@ -1661,7 +1670,8 @@
                 .enm-daily-table tfoot tr.enm-total-row td[colspan] { border: none !important; background: transparent !important; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
-                .enm-daily-table td:nth-child(1) { min-width: 34px; }
+                /* Cột 日 (ngày + thứ): cho phép xuống dòng khi chật để KHÔNG cắt/tràn chữ. */
+                .enm-daily-table th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; }
                 /* 作業内容: nội dung nối bằng ・ (xử lý ở JS), cho xuống dòng khi dài; chữ nhỏ để tiết kiệm chiều cao. */
                 .enm-daily-table td.enm-work {
                   white-space: normal; word-break: break-word; text-align: left;
@@ -1682,7 +1692,7 @@
                 .enm-name-line .enm-ym { min-width: 120px; }
                 .enm-name-line .enm-name-label { margin-left: 8px; padding-left: 4px; }
                 .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 15px; padding: 0 8px 2px; min-height: 20px; }
-                .enm-name-line .enm-stamp { border: 1px solid #000; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-left: 10px; }
+                .enm-name-line .enm-stamp { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-left: 10px; }
                 .enm-footer-text { font-size: 10px; margin-top: 6px; text-align: right; padding-right: 10px; }
                 
                 html, body {
@@ -1692,7 +1702,6 @@
                 .print-container {
                   width: 100%;
                   box-sizing: border-box;
-                  overflow: hidden; /* cắt bỏ phần rìa thừa sau khi scale, tránh đẩy sang trang 2 */
                 }
                 /* Wrapper cao đúng 1 trang (trừ lề). */
                 #printScale {
