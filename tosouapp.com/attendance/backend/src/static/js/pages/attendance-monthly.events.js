@@ -1719,7 +1719,7 @@
                   box-sizing: border-box;
                   display: flex;
                   flex-direction: column;
-                  overflow: hidden;        /* lưới an toàn: tuyệt đối không tràn sang trang 2 */
+                  overflow: hidden;        /* lưới an toàn cuối: chặn tràn sang trang 2 */
                 }
                 /* .enm-paper co theo nội dung để JS đo được khoảng trống thực tế. */
                 #printScale > .enm-paper { box-sizing: border-box; }
@@ -1777,27 +1777,29 @@
               const lastEl = paper ? paper.lastElementChild : null;
               const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : scaleEl.getBoundingClientRect().bottom);
 
-              const boxTop = rect.top + (parseFloat(cs.paddingTop) || 0);
-              const availH = availBottom - boxTop;          // chiều cao vùng in thực (px)
-              const contentH = measureBottom() - boxTop;    // chiều cao nội dung thực (px)
+              // Phát hiện TRÀN bằng scrollHeight vs clientHeight của box cao cố định
+              // (bắt được cả margin của dòng chân trang — chính xác hơn đo bottom).
+              const boxH = scaleEl.clientHeight;            // = vùng in 1 trang (px)
+              const scrollH = scaleEl.scrollHeight;         // chiều cao nội dung thực
 
-              if (contentH > availH + 1) {
-                // TRÀN: nội dung nhiều hơn 1 trang → thu nhỏ đồng đều cho vừa.
-                // Dùng đáy thực tế + biên an toàn 0.96, rồi đo lại 1 vòng để chắc vừa.
-                let ratio = Math.max(0.3, (availH / contentH) * 0.96);
+              if (scrollH > boxH + 1) {
+                // TRÀN: thu nhỏ đồng đều cho vừa 1 trang. Biên an toàn 0.93 để chắc
+                // chắn không nhô sang trang 2 (thà chữ nhỏ hơn còn hơn mất trang).
+                let ratio = Math.max(0.3, (boxH / scrollH) * 0.93);
                 const applyScale = (r) => {
                   scaleEl.style.width = `${100 / r}%`;
                   scaleEl.style.transform = `scale(${r})`;
                 };
                 applyScale(ratio);
-                // Đo lại sau scale: nếu vẫn nhô quá mép thì siết thêm.
-                for (let i = 0; i < 4; i++) {
-                  const over = (measureBottom() - boxTop) * 1 - availH; // đã scale nên measureBottom phản ánh thực tế
-                  if (over <= 0) break;
-                  ratio = Math.max(0.3, ratio * (availH / (availH + over)) * 0.99);
+                // Đo lại vài vòng: nếu nội dung sau scale vẫn cao hơn box thì siết thêm.
+                for (let i = 0; i < 5; i++) {
+                  // scrollHeight không đổi theo transform → suy chiều cao sau scale.
+                  const scaledH = scaleEl.scrollHeight * ratio;
+                  if (scaledH <= boxH) break;
+                  ratio = Math.max(0.3, ratio * (boxH / scaledH) * 0.98);
                   applyScale(ratio);
                 }
-                if (container) container.style.height = `${Math.ceil(availH)}px`;
+                if (container) container.style.height = `${Math.ceil(boxH)}px`;
               } else if (bodyRows.length) {
                 // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm mép dưới vùng in.
                 for (let pass = 0; pass < 30; pass++) {
