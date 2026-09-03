@@ -1663,9 +1663,9 @@
                   -webkit-print-color-adjust: exact; 
                   print-color-adjust: exact;
                 }
-                .enm-title { text-align: center; font-size: 18px; letter-spacing: 2px; margin-top: 10px; margin-bottom: 12px; font-weight: normal; }
-                .enm-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
-                .enm-company { font-size: 14px; font-weight: 700; }
+                .enm-title { text-align: center; font-size: 20px; letter-spacing: 2px; margin-top: 10px; margin-bottom: 12px; font-weight: normal; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+                .enm-company { font-size: 16px; font-weight: 700; }
                 .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000; }
                 .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px; font-size: 11px; font-weight: normal; }
                 .enm-table th { background: #e2e8f0 !important; text-align: center; }
@@ -1673,8 +1673,8 @@
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
                 .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 6px; table-layout: fixed; }
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 3px; font-size: 12px; line-height: 1.25; font-weight: normal; text-align: center; vertical-align: middle; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 11px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 3px; font-size: 13px; line-height: 1.3; font-weight: normal; text-align: center; vertical-align: middle; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 12px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng (in ra vẫn giữ màu). */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
@@ -1684,12 +1684,12 @@
                 /* 作業内容: nội dung nối bằng ・ (xử lý ở JS), cho xuống dòng khi dài; chữ nhỏ để tiết kiệm chiều cao. */
                 .enm-daily-table td.enm-work {
                   white-space: normal; word-break: break-word; text-align: left;
-                  font-size: 9px; line-height: 1.2;
+                  font-size: 10px; line-height: 1.25;
                 }
                 /* 備考: ô hẹp, cho xuống dòng, chữ nhỏ */
                 .enm-daily-table td.enm-note {
                   white-space: normal; word-break: break-word; text-align: left;
-                  font-size: 9px; line-height: 1.15;
+                  font-size: 10px; line-height: 1.2;
                 }
                 /* Dòng tiêu đề kiểu mẫu: 年 月 ・ 名前 ・ 印 */
                 /* gap:0 giữa các phần để đường gạch chân liền mạch từ ngày tháng đến hết tên. */
