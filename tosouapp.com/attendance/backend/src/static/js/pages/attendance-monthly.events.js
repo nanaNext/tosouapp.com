@@ -1613,10 +1613,9 @@
         const isLandscape = paperOrient === 'landscape';
         const pageWmm = isLandscape ? base.h : base.w; // bề rộng trang khi in
         const pageHmm = isLandscape ? base.w : base.h; // chiều cao trang khi in
-        // Lề trang (mm). 8mm để chừa vùng KHÔNG IN ĐƯỢC của máy in vật lý (~4-5mm/cạnh):
-        // khi in thẳng ra máy in, nội dung vẫn nằm trong vùng in → KHÔNG bị cắt/thiếu ngày.
-        // Bản lưu PDF cũng dùng cùng lề này nên hai bản giống nhau.
-        const PAD_MM = 8;
+        // Lề trang (mm) — mỏng để bản PDF to/đẹp, tận dụng tối đa A4.
+        // (Luồng dùng: bấm nút → lưu PDF → mở PDF in ra, nên không cần chừa lề máy in.)
+        const PAD_MM = 5;
         const availHmm = pageHmm - PAD_MM * 2;
         const fitHmm = availHmm - 3;
         const pageSizeCss = `${paperName} ${paperOrient}`;
