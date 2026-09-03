@@ -1255,7 +1255,8 @@
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
-      document.querySelector('#enmDate').textContent = `${yyyy}年${mm}月${dd}日`;
+      const enmDateEl = document.querySelector('#enmDate');
+      if (enmDateEl) enmDateEl.textContent = `${yyyy}年${mm}月${dd}日`;
 
       // Dòng tiêu đề: 年 月 ・ 名前 (kiểu mẫu hành chính)
       const targetMonthStr = document.querySelector('#monthPicker')?.value || '';
@@ -1497,9 +1498,13 @@
              isTravel = '';
           }
 
-          // 現場 (gộp nơi làm): 現場 → tên hiện trường; 出社/在宅 → chữ tương ứng.
+          // 現場: nếu nhân viên có nhập tên hiện trường (location) thì ưu tiên hiển thị
+          // tên đó — kể cả khi đánh dấu 出社/在宅. Không có tên mới hiện 現場/出社/在宅.
+          // Ngày nghỉ/phép/予定 không hiển thị nơi làm (isOnsite/... đã bị reset ở trên).
+          const isWorkContext = isOnsite || isRemote || isTravel;
           let placeCol = '';
-          if (isTravel) placeCol = locName ? escHtmlEnm(locName) : '現場';
+          if (locName && isWorkContext) placeCol = escHtmlEnm(locName);
+          else if (isTravel) placeCol = '現場';
           else if (isOnsite) placeCol = '出社';
           else if (isRemote) placeCol = '在宅';
 
@@ -1654,7 +1659,7 @@
                 }
                 .enm-title { text-align: center; font-size: 18px; letter-spacing: 2px; margin-top: 10px; margin-bottom: 12px; font-weight: normal; }
                 .enm-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
-                .enm-company { font-size: 14px; font-weight: normal; }
+                .enm-company { font-size: 14px; font-weight: 700; }
                 .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000; }
                 .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px; font-size: 11px; font-weight: normal; }
                 .enm-table th { background: #e2e8f0 !important; text-align: center; }
