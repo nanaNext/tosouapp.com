@@ -1673,8 +1673,8 @@
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
                 .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 6px; table-layout: fixed; }
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; line-height: 1.2; font-weight: normal; text-align: center; vertical-align: middle; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 10px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 3px; font-size: 12px; line-height: 1.25; font-weight: normal; text-align: center; vertical-align: middle; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 11px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng (in ra vẫn giữ màu). */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
@@ -1684,12 +1684,12 @@
                 /* 作業内容: nội dung nối bằng ・ (xử lý ở JS), cho xuống dòng khi dài; chữ nhỏ để tiết kiệm chiều cao. */
                 .enm-daily-table td.enm-work {
                   white-space: normal; word-break: break-word; text-align: left;
-                  font-size: 8px; line-height: 1.15;
+                  font-size: 9px; line-height: 1.2;
                 }
                 /* 備考: ô hẹp, cho xuống dòng, chữ nhỏ */
                 .enm-daily-table td.enm-note {
                   white-space: normal; word-break: break-word; text-align: left;
-                  font-size: 8px; line-height: 1.1;
+                  font-size: 9px; line-height: 1.15;
                 }
                 /* Dòng tiêu đề kiểu mẫu: 年 月 ・ 名前 ・ 印 */
                 /* gap:0 giữa các phần để đường gạch chân liền mạch từ ngày tháng đến hết tên. */
@@ -1801,12 +1801,23 @@
                 }
                 if (container) container.style.height = `${Math.ceil(scaleTargetH)}px`;
               } else if (bodyRows.length) {
-                // THỪA: giãn đều chiều cao các hàng cho tới khi lấp đầy ~ fillH (sát mép).
-                for (let pass = 0; pass < 30; pass++) {
-                  const extra = fillH - scaleEl.scrollHeight;
-                  if (extra <= 1) break;
+                // THỪA: giãn đều chiều cao các hàng để ĐÁY nội dung chạm sát mép dưới
+                // vùng in → lấp đầy, không để khoảng trắng.
+                // Mốc = mép trong dưới của printScale (top + fillH content-box).
+                const rect0 = scaleEl.getBoundingClientRect();
+                const cs0 = iframe.contentWindow.getComputedStyle(scaleEl);
+                const padTop = parseFloat(cs0.paddingTop) || 0;
+                const padBottom = parseFloat(cs0.paddingBottom) || 0;
+                // fillH đo từ availHmm (đã trừ lề 2 bên) = chiều cao content-box mục tiêu.
+                const targetBottom = rect0.top + padTop + fillH;
+                const paper = scaleEl.querySelector('.enm-paper');
+                const lastEl = paper ? paper.lastElementChild : null;
+                const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : (scaleEl.getBoundingClientRect().bottom - padBottom));
+                for (let pass = 0; pass < 40; pass++) {
+                  const extra = targetBottom - measureBottom();
+                  if (extra <= 0.5) break;
                   const perRow = extra / bodyRows.length;
-                  if (perRow < 0.15) break;
+                  if (perRow < 0.1) break;
                   bodyRows.forEach((r) => {
                     const cell = r.firstElementChild;
                     const h = (cell || r).getBoundingClientRect().height;
