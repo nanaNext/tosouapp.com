@@ -1642,7 +1642,7 @@
           <!DOCTYPE html>
           <html>
             <head>
-              <title>就業状況通知書</title>
+              <title> </title>
               <style>
                 @page { 
                    margin: 0mm;
