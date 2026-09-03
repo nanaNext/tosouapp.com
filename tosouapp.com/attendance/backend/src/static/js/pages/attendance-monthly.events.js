@@ -1757,21 +1757,19 @@
             const container = doc.querySelector('.print-container');
             const table = doc.getElementById('enmDailyTable');
             const bodyRows = table ? table.querySelectorAll('tbody tr') : [];
-            if (scaleEl) {
+            const paper = scaleEl ? scaleEl.querySelector('.enm-paper') : null;
+            if (scaleEl && paper) {
               // Reset trước khi đo
-              scaleEl.style.transform = '';
-              scaleEl.style.width = '100%';
+              paper.style.zoom = '';
+              paper.style.transform = '';
+              paper.style.width = '';
               if (container) container.style.height = '';
               bodyRows.forEach((r) => {
                 r.style.height = '';
                 if (r.firstElementChild) r.firstElementChild.style.height = '';
               });
 
-              // Hai mốc chiều cao (px), đo bằng probe trong iframe cho đúng px thực:
-              //  - scaleTargetH: từ fitHmm (đã trừ hao lề mặc định) → dùng khi TRÀN
-              //    để thu nhỏ, đảm bảo không mất ngày dù 余白=デフォルト.
-              //  - fillH: từ availHmm (sát mép vùng in khi margin:0) → dùng khi THỪA
-              //    để giãn hàng lấp đầy trang, không để khoảng trắng (khi in 余白=なし).
+              // Chiều cao vùng in 1 trang (content-box của printScale), đo px thực.
               const measurePx = (mm) => {
                 const p = doc.createElement('div');
                 p.style.cssText = `position:absolute;visibility:hidden;height:${mm}mm;`;
@@ -1780,39 +1778,33 @@
                 doc.body.removeChild(p);
                 return h;
               };
-              const scaleTargetH = measurePx(fitHmm);
+              // Mốc lấp đầy = availHmm (sát mép khi margin:0). Chống tràn khi 余白=デフォルト
+              // thì trừ hao một chút (SAFE_MM) khỏi mốc TRÀN, còn mốc lấp đầy giữ sát mép.
               const fillH = measurePx(availHmm);
+              const SAFE_MM = 12; // dự phòng lề mặc định trình duyệt cho ngưỡng tràn
+              const overflowLimit = measurePx(availHmm - SAFE_MM);
 
-              const scrollH = scaleEl.scrollHeight;         // chiều cao nội dung thực (px)
+              const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
 
-              if (scrollH > scaleTargetH + 1) {
-                // TRÀN: thu nhỏ đồng đều cho vừa vùng mục tiêu (an toàn cho lề デフォルト).
-                let ratio = Math.max(0.3, (scaleTargetH / scrollH) * 0.98);
-                const applyScale = (r) => {
-                  scaleEl.style.width = `${100 / r}%`;
-                  scaleEl.style.transform = `scale(${r})`;
-                };
-                applyScale(ratio);
+              if (contentH > overflowLimit + 1) {
+                // TRÀN: nội dung nhiều → thu nhỏ ĐỀU cả layout bằng zoom (không lệch
+                // ngang như transform, và co cả chiều cao layout thật → không tràn trang).
+                let z = Math.max(0.4, overflowLimit / contentH);
+                paper.style.zoom = String(z);
+                // Đo lại vài vòng cho chắc vừa.
                 for (let i = 0; i < 5; i++) {
-                  const scaledH = scaleEl.scrollHeight * ratio;
-                  if (scaledH <= scaleTargetH) break;
-                  ratio = Math.max(0.3, ratio * (scaleTargetH / scaledH) * 0.98);
-                  applyScale(ratio);
+                  if (paper.getBoundingClientRect().height <= overflowLimit) break;
+                  z = Math.max(0.4, z * 0.98);
+                  paper.style.zoom = String(z);
                 }
-                if (container) container.style.height = `${Math.ceil(scaleTargetH)}px`;
               } else if (bodyRows.length) {
-                // THỪA: giãn đều chiều cao các hàng để ĐÁY nội dung chạm sát mép dưới
-                // vùng in → lấp đầy, không để khoảng trắng.
-                // Mốc = mép trong dưới của printScale (top + fillH content-box).
+                // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm sát mép dưới.
                 const rect0 = scaleEl.getBoundingClientRect();
                 const cs0 = iframe.contentWindow.getComputedStyle(scaleEl);
                 const padTop = parseFloat(cs0.paddingTop) || 0;
-                const padBottom = parseFloat(cs0.paddingBottom) || 0;
-                // fillH đo từ availHmm (đã trừ lề 2 bên) = chiều cao content-box mục tiêu.
                 const targetBottom = rect0.top + padTop + fillH;
-                const paper = scaleEl.querySelector('.enm-paper');
-                const lastEl = paper ? paper.lastElementChild : null;
-                const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : (scaleEl.getBoundingClientRect().bottom - padBottom));
+                const lastEl = paper.lastElementChild;
+                const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : paper.getBoundingClientRect().bottom);
                 for (let pass = 0; pass < 40; pass++) {
                   const extra = targetBottom - measureBottom();
                   if (extra <= 0.5) break;
