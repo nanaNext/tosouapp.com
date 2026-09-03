@@ -1673,8 +1673,6 @@
                 .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 10px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng (in ra vẫn giữ màu). */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                /* Hàng tổng: chỉ giữ ô 合計日数 + ô số; ô còn lại trống, không viền/nền. */
-                .enm-daily-table tfoot tr.enm-total-row td[colspan] { border: none !important; background: transparent !important; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
                 /* Cột 日 (ngày + thứ): cho phép xuống dòng khi chật để KHÔNG cắt/tràn chữ. */
@@ -1700,6 +1698,8 @@
                 .enm-name-line .enm-name-label { margin-left: 8px; padding-left: 4px; }
                 .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 15px; padding: 0 8px 2px; min-height: 20px; }
                 .enm-name-line .enm-stamp { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-left: 10px; }
+                /* 合計日数 cạnh dòng tên, KHÔNG gạch chân. */
+                .enm-name-line .enm-total-inline { margin-left: 20px; font-size: 13px; font-weight: 700; white-space: nowrap; }
                 .enm-footer-text { font-size: 10px; margin-top: 6px; text-align: right; padding-right: 10px; }
                 
                 html, body {

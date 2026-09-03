@@ -18,7 +18,7 @@
   <script src="/static/js/pages/attendance-monthly.sections-render.js?v=<%= appVersion %>" defer></script>
   <script src="/static/js/pages/attendance-monthly.draft.js?v=navy-20260703-3" defer></script>
   <script src="/static/js/pages/attendance-monthly.controller.js?v=navy-20260703-3" defer></script>
-  <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260903-shukkinbo3" defer></script>
+  <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260903-shukkinbo4" defer></script>
   <script src="/static/js/pages/attendance-monthly.page.js?v=navy-20260703-7" defer></script>
 </head>
 <body>
@@ -234,15 +234,15 @@
               <div class="enm-company">飯塚塗研株式会社</div>
             </div>
 
-            <!-- Dòng tiêu đề kiểu hành chính: 年 月 ・ 名前 ・ 印 -->
+            <!-- Dòng tiêu đề kiểu hành chính: 年 月 ・ 名前 ・ 印 ・ 合計日数 -->
             <div class="enm-name-line">
               <span id="enmYmLine" class="enm-ym"></span>
               <span class="enm-name-label">名前：</span>
               <span id="enmNameLine" class="enm-name-val"></span>
               <span class="enm-stamp">印</span>
+              <span class="enm-total-inline">合計日数：<span id="enmTotalDays">0日</span></span>
             </div>
 
-            <h4 style="margin: 0 0 10px 0; border-left: 4px solid #000; padding-left: 10px; font-size: 14px;">日次勤怠実績</h4>
             <table class="enm-daily-table" id="enmDailyTable">
               <thead>
                 <tr>
@@ -267,13 +267,6 @@
               <tbody>
                 <!-- Rows will be injected here by JS -->
               </tbody>
-              <tfoot>
-                <tr class="enm-total-row">
-                  <td style="text-align:center;font-weight:700;padding:4px 8px;white-space:nowrap;background:#fce7f3;">合計日数</td>
-                  <td id="enmTotalDays" style="text-align:center;font-weight:700;background:#fce7f3;">0日</td>
-                  <td colspan="10" style="background:transparent;border:none;"></td>
-                </tr>
-              </tfoot>
             </table>
 
             <div style="margin-top: 30px; font-size: 14px; text-align: right; margin-bottom: 20px;">
