@@ -1580,13 +1580,52 @@
       if (show) modal.removeAttribute('hidden');
     };
 
-    // ── Bấm nút 就業状況通知書出力 → dựng bản in (auto-fit, chữ chuẩn) rồi mở hộp
-    //    thoại in ngay. Người dùng chọn "PDF に保存" và bấm 保存 là xong. ──
+    // Phát hiện thiết bị di động (điện thoại/tablet). Trên mobile trình duyệt CHẶN
+    // window.print() tự động → phải sinh file PDF và tải về.
+    const isMobileDevice = () =>
+      /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 1 && !/Windows NT/i.test(navigator.userAgent));
+
+    // ── Bấm nút 就業状況通知書出力 ──
+    //  • Desktop: mở hộp thoại in (chữ chuẩn) → chọn PDF に保存.
+    //  • Điện thoại: sinh file PDF và TẢI VỀ máy (vì mobile chặn tự động in).
     const exportPdf = async () => {
-      await openModal(false); // build nội dung vào #enmPrintArea (không hiện modal)
-      const iframe = await renderPrintIframe(); // iframe + auto-fit (đúng bản đẹp)
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
+      await openModal(false);                    // build nội dung (không hiện modal)
+      const iframe = await renderPrintIframe();   // iframe + auto-fit (đúng bản đẹp)
+
+      if (!isMobileDevice()) {
+        // Desktop → in trực tiếp (chất lượng chuẩn).
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        return;
+      }
+
+      // Điện thoại → chụp iframe (bản đẹp đã auto-fit) thành PDF và tải về.
+      if (!window.html2canvas || !window.jspdf) {
+        // Thư viện chưa sẵn → thử in như thường (có thể bị chặn).
+        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
+        return;
+      }
+      try {
+        const doc = iframe.contentWindow.document;
+        const target = doc.querySelector('.print-container') || doc.body;
+        const canvas = await window.html2canvas(target, {
+          scale: 2, backgroundColor: '#fff', useCORS: true,
+          width: target.scrollWidth, height: target.scrollHeight,
+          windowWidth: target.scrollWidth, windowHeight: target.scrollHeight,
+        });
+        const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
+        const [paperName, paperOrient] = paperVal.split('-');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: paperOrient === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: paperName.toLowerCase() });
+        const pw = pdf.internal.pageSize.getWidth();
+        const ph = pdf.internal.pageSize.getHeight();
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pw, ph);
+        const empName = (document.querySelector('#enmNameLine')?.textContent || '').trim().replace(/[\\/:*?"<>|]/g, '');
+        pdf.save(`${empName ? '月次勤怠入力管理_' + empName : '月次勤怠入力管理'}.pdf`); // TẢI VỀ máy
+      } catch (err) {
+        alert('PDF生成に失敗しました: ' + (err?.message || err));
+      }
     };
 
     btnOpen.addEventListener('click', (e) => {
