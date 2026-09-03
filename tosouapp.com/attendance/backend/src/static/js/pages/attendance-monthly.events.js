@@ -1679,7 +1679,19 @@
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
                 /* Cột 日 (chỉ số ngày): in đậm nhẹ */
-                .enm-daily-table th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: 600; }
+                .enm-daily-table thead tr:first-child th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: 600; }
+                
+                /* Làm mỏng/nhạt vạch dọc giữa 開始 - 終了 và 普通 - 深夜 */
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(1), .enm-daily-table tbody td:nth-child(3) { border-right: 1px solid #cbd5e1 !important; }
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(2), .enm-daily-table tbody td:nth-child(4) { border-left: 1px solid #cbd5e1 !important; }
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(3), .enm-daily-table tbody td:nth-child(5) { border-right: 1px solid #cbd5e1 !important; }
+                .enm-daily-table thead tr:nth-child(2) th:nth-child(4), .enm-daily-table tbody td:nth-child(6) { border-left: 1px solid #cbd5e1 !important; }
+                
+                /* Làm mỏng/nhạt vạch ngang giữa các ngày (từ mùng 1 đến cuối tháng) */
+                .enm-daily-table tbody tr td { border-bottom: 1px solid #cbd5e1 !important; border-top: 1px solid #cbd5e1 !important; }
+                /* Giữ lại vạch đậm cho viền ngoài cùng của tbody (nếu cần) hoặc các vạch dọc khác */
+                .enm-daily-table tbody tr:first-child td { border-top: 1px solid #000 !important; }
+                .enm-daily-table tbody tr:last-child td { border-bottom: 1px solid #000 !important; }
                 /* 作業内容: giữ nhỏ (như yêu cầu), cho xuống dòng, padding hẹp để tiết kiệm chiều cao */
                 .enm-daily-table td.enm-work {
                   white-space: normal; word-break: break-word; text-align: left;
