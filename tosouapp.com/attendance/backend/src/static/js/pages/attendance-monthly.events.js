@@ -1580,36 +1580,13 @@
       if (show) modal.removeAttribute('hidden');
     };
 
-    // ── Bấm nút 就業状況通知書出力 → sinh PDF từ iframe in (đúng layout đẹp) rồi mở tab ──
+    // ── Bấm nút 就業状況通知書出力 → dựng bản in (auto-fit, chữ chuẩn) rồi mở hộp
+    //    thoại in ngay. Người dùng chọn "PDF に保存" và bấm 保存 là xong. ──
     const exportPdf = async () => {
       await openModal(false); // build nội dung vào #enmPrintArea (không hiện modal)
-      if (!window.html2canvas || !window.jspdf) {
-        // Thư viện PDF chưa sẵn sàng → fallback: mở modal để in thủ công.
-        modal.removeAttribute('hidden');
-        return;
-      }
-      try {
-        const iframe = await renderPrintIframe();          // dựng iframe + auto-fit (đúng bản đẹp)
-        const doc = iframe.contentWindow.document;
-        const target = doc.querySelector('.print-container') || doc.body;
-        const canvas = await window.html2canvas(target, {
-          scale: 2, backgroundColor: '#fff', useCORS: true,
-          width: target.scrollWidth, height: target.scrollHeight,
-          windowWidth: target.scrollWidth, windowHeight: target.scrollHeight,
-        });
-        const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
-        const [paperName, paperOrient] = paperVal.split('-');
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: paperOrient === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: paperName.toLowerCase() });
-        // Đóng ảnh phủ TOÀN trang (ảnh đã là 1 trang hoàn chỉnh do iframe layout).
-        const pw = pdf.internal.pageSize.getWidth();
-        const ph = pdf.internal.pageSize.getHeight();
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, ph);
-        window.open(pdf.output('bloburl'), '_blank');
-      } catch (err) {
-        alert('PDF生成に失敗しました: ' + (err?.message || err));
-        modal.removeAttribute('hidden');
-      }
+      const iframe = await renderPrintIframe(); // iframe + auto-fit (đúng bản đẹp)
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
     };
 
     btnOpen.addEventListener('click', (e) => {
