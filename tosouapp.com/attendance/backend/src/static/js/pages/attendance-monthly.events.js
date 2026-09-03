@@ -1298,11 +1298,13 @@
       // không bị trơ ở cuối dòng rồi chữ nhảy xuống dòng mới.
       const formatWorkContent = (s) => {
         const raw = String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return raw
+        const joined = raw
           .split(/\r?\n/)
-          .map(line => line.trim())
+          .map(line => line.trim().replace(/^[・･]+/, '').replace(/[・･]+$/, '').trim()) // bỏ ・ thừa ở đầu/cuối mỗi dòng
           .filter(line => line.length > 0)
           .join('・\u2060');
+        // Gộp mọi cụm ・ liên tiếp (kể cả do nhân viên tự nhập) thành 1 dấu ・.
+        return joined.replace(/[・･](?:\u2060?[・･])+/g, '・\u2060');
       };
       
       if (dailyTbody) {
@@ -1717,6 +1719,7 @@
                   box-sizing: border-box;
                   display: flex;
                   flex-direction: column;
+                  overflow: hidden;        /* lưới an toàn: tuyệt đối không tràn sang trang 2 */
                 }
                 /* .enm-paper co theo nội dung để JS đo được khoảng trống thực tế. */
                 #printScale > .enm-paper { box-sizing: border-box; }
@@ -1774,15 +1777,27 @@
               const lastEl = paper ? paper.lastElementChild : null;
               const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : scaleEl.getBoundingClientRect().bottom);
 
-              const boxH = scaleEl.clientHeight;
-              const contentH = scaleEl.scrollHeight;
+              const boxTop = rect.top + (parseFloat(cs.paddingTop) || 0);
+              const availH = availBottom - boxTop;          // chiều cao vùng in thực (px)
+              const contentH = measureBottom() - boxTop;    // chiều cao nội dung thực (px)
 
-              if (contentH > boxH + 1) {
+              if (contentH > availH + 1) {
                 // TRÀN: nội dung nhiều hơn 1 trang → thu nhỏ đồng đều cho vừa.
-                const ratio = Math.max(0.3, (boxH / contentH) * 0.99);
-                scaleEl.style.width = `${100 / ratio}%`;
-                scaleEl.style.transform = `scale(${ratio})`;
-                if (container) container.style.height = `${Math.floor(contentH * ratio)}px`;
+                // Dùng đáy thực tế + biên an toàn 0.96, rồi đo lại 1 vòng để chắc vừa.
+                let ratio = Math.max(0.3, (availH / contentH) * 0.96);
+                const applyScale = (r) => {
+                  scaleEl.style.width = `${100 / r}%`;
+                  scaleEl.style.transform = `scale(${r})`;
+                };
+                applyScale(ratio);
+                // Đo lại sau scale: nếu vẫn nhô quá mép thì siết thêm.
+                for (let i = 0; i < 4; i++) {
+                  const over = (measureBottom() - boxTop) * 1 - availH; // đã scale nên measureBottom phản ánh thực tế
+                  if (over <= 0) break;
+                  ratio = Math.max(0.3, ratio * (availH / (availH + over)) * 0.99);
+                  applyScale(ratio);
+                }
+                if (container) container.style.height = `${Math.ceil(availH)}px`;
               } else if (bodyRows.length) {
                 // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm mép dưới vùng in.
                 for (let pass = 0; pass < 30; pass++) {
