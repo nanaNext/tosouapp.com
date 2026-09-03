@@ -56,6 +56,22 @@ async function ensureAttendanceSchema() {
       await db.query(`ALTER TABLE attendance ${alters.join(', ')}`);
     }
 
+    // Nới memo/notes/location sang TEXT nếu bảng cũ đang là VARCHAR (tránh
+    // lỗi "Data too long for column 'memo'" khi 作業内容 dài).
+    try {
+      const [dtCols] = await db.query(`
+        SELECT COLUMN_NAME AS name, DATA_TYPE AS dtype
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'attendance'
+          AND COLUMN_NAME IN ('memo','notes','location')
+      `);
+      for (const c of (dtCols || [])) {
+        if (String(c.dtype).toLowerCase() !== 'text') {
+          try { await db.query(`ALTER TABLE attendance MODIFY COLUMN ${c.name} TEXT NULL`); } catch {}
+        }
+      }
+    } catch {}
+
     // UNIQUE INDEX (userId, checkIn) - chặn double submit
     const [indexes] = await db.query(`SHOW INDEX FROM attendance WHERE Key_name = 'unique_user_checkin'`);
     if (!indexes.length) {
