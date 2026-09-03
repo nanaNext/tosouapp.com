@@ -1873,21 +1873,25 @@
               paper.style.flex = savedPaperFlex;
               if (tableEl) tableEl.style.flex = savedTableFlex;
 
+              try { console.log('[ENM fit] contentH=', Math.round(contentH), 'overflowLimit=', Math.round(overflowLimit), 'rows=', bodyRows.length, 'availHmm=', availHmm); } catch(_) {}
               if (contentH > overflowLimit + 15) {
                 // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom.
                 let z = Math.max(0.55, (overflowLimit / contentH) * 0.99);
                 paper.style.zoom = String(z);
                 // Sau zoom, đo lại chiều cao thật (cũng tạm bỏ ép flex) để siết cho vừa.
+                let dbgIter = 0;
                 for (let i = 0; i < 15; i++) {
                   scaleEl.style.height = 'auto'; scaleEl.style.overflow = 'visible'; paper.style.flex = '0 0 auto';
                   if (tableEl) tableEl.style.flex = '0 0 auto';
-                  const h = paper.scrollHeight;
+                  const h = paper.getBoundingClientRect().height; // gồm cả zoom
                   scaleEl.style.height = savedScaleH; scaleEl.style.overflow = savedScaleOv; paper.style.flex = savedPaperFlex;
                   if (tableEl) tableEl.style.flex = savedTableFlex;
+                  dbgIter++;
                   if (h <= overflowLimit) break;
-                  z = Math.max(0.55, z * 0.98);
+                  z = Math.max(0.55, z * 0.97);
                   paper.style.zoom = String(z);
                 }
+                try { console.log('[ENM fit] ZOOM applied, final zoom=', paper.style.zoom, 'iters=', dbgIter); } catch(_) {}
               } else if (bodyRows.length) {
                 // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm sát mép dưới
                 // càng nhiều càng tốt — ưu tiên không để khoảng trắng thừa.
