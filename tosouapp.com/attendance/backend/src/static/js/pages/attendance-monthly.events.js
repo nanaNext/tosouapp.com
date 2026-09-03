@@ -1645,12 +1645,18 @@
         iframe.style.width = `${iframeWpx}px`;
         iframe.style.height = `${iframeHpx}px`;
 
+        // Tên file khi lưu PDF = tiêu đề trang in. Thêm tên nhân viên đang xem.
+        const empName = (document.querySelector('#enmNameLine')?.textContent
+          || document.querySelector('#staffName')?.textContent || '').trim()
+          .replace(/[\\/:*?"<>|]/g, ''); // bỏ ký tự không hợp lệ cho tên file
+        const docTitle = empName ? `月次勤怠入力管理_${empName}` : '月次勤怠入力管理';
+
         iframe.contentWindow.document.open();
         iframe.contentWindow.document.write(`
           <!DOCTYPE html>
           <html>
             <head>
-              <title> </title>
+              <title>${docTitle}</title>
               <style>
                 @page { 
                    margin: 0mm;
