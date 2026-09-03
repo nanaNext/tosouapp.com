@@ -1317,12 +1317,11 @@
         rows.forEach(tr => {
           const dateStr = tr.dataset.date || ''; // "YYYY-MM-DD"
           let dayDisplay = '';
-          let dow = '';
           if (dateStr) {
-            const m = parseInt(dateStr.slice(5, 7), 10);
             const d = parseInt(dateStr.slice(8, 10), 10);
-            dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
-            dayDisplay = `${m}/${d} ${dow}`;
+            const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
+            // Số ngày + thứ, KHÔNG lặp tháng (tiêu đề phía trên đã có 年月 rồi)
+            dayDisplay = `${d} ${dow}`;
           }
           
           const isFuture = dateStr > currentYmd;
@@ -1609,13 +1608,11 @@
         const isLandscape = paperOrient === 'landscape';
         const pageWmm = isLandscape ? base.h : base.w; // bề rộng trang khi in
         const pageHmm = isLandscape ? base.w : base.h; // chiều cao trang khi in
-        // Lề trang (mm) — giữ mỏng để tận dụng tối đa diện tích
-        const PAD_MM = 8;
+        // Lề trang (mm) — mỏng nhưng đủ an toàn (cắt cạnh in), tận dụng tối đa A4.
+        const PAD_MM = 5;
         const availHmm = pageHmm - PAD_MM * 2;
-        // Chiều cao MỤC TIÊU để auto-fit (nhỏ hơn availHmm). Trừ hao thêm cho lề mặc
-        // định của trình duyệt khi in (余白=デフォルト ~10-12mm/cạnh) để nội dung LUÔN
-        // vừa 1 trang dù người dùng không đổi 余白. 20mm dự phòng cho 2 cạnh.
-        const fitHmm = availHmm - 20;
+        // Buffer tối thiểu 3mm để lề mặc định trình duyệt in không đẩy sang trang 2.
+        const fitHmm = availHmm - 3;
         const pageSizeCss = `${paperName} ${paperOrient}`;
 
         // Kích thước iframe cố định theo khổ giấy (px = mm * 96/25.4). KHÔNG dùng
@@ -1663,78 +1660,76 @@
                   -webkit-print-color-adjust: exact; 
                   print-color-adjust: exact;
                 }
-                .enm-title { text-align: center; font-size: 20px; letter-spacing: 2px; margin-top: 10px; margin-bottom: 12px; font-weight: normal; }
-                .enm-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
-                .enm-company { font-size: 16px; font-weight: 700; }
-                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000; }
-                .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px; font-size: 11px; font-weight: normal; }
+                /* ---------- IN-IFRAME PRINT CSS (A4, chữ đủ lớn, 30 ngày vừa 1 trang) ---------- */
+                .enm-title { text-align: center; font-size: 28px; letter-spacing: 4px; margin-top: 0; margin-bottom: 4px; font-weight: normal; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 14px; }
+                .enm-company { font-size: 18px; font-weight: 700; }
+                .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; border: 1px solid #000; }
+                .enm-table th, .enm-table td { border: 1px solid #000; padding: 4px 5px; font-size: 11.5px; font-weight: normal; }
                 .enm-table th { background: #e2e8f0 !important; text-align: center; }
                 .enm-table td { text-align: left; }
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
-                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 6px; table-layout: fixed; }
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 2px 3px; font-size: 12px; line-height: 1.2; font-weight: normal; text-align: center; vertical-align: middle; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 11px; }
-                /* Hàng ngày nghỉ: tô nền xám cả hàng (in ra vẫn giữ màu). */
+                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 0; table-layout: fixed; }
+                /* Ô số liệu: đủ lớn dễ đọc, cân đối để 30 ngày + 1 header row vừa trong A4 dọc */
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 3px 3px; font-size: 15px; line-height: 1.35; font-weight: normal; text-align: center; vertical-align: middle; min-height: 22px; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 12.5px; line-height: 1.4; padding: 4px 3px; }
+                /* Hàng ngày nghỉ: tô nền xám cả hàng. */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
-                /* Cột 日 (ngày + thứ): cho phép xuống dòng khi chật để KHÔNG cắt/tràn chữ. */
-                .enm-daily-table th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; }
-                /* 作業内容: nội dung nối bằng ・ (xử lý ở JS), cho xuống dòng khi dài; chữ nhỏ để tiết kiệm chiều cao. */
+                /* Cột 日 (chỉ số ngày): in đậm nhẹ */
+                .enm-daily-table th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: 600; }
+                /* 作業内容: giữ nhỏ (như yêu cầu), cho xuống dòng, padding hẹp để tiết kiệm chiều cao */
                 .enm-daily-table td.enm-work {
                   white-space: normal; word-break: break-word; text-align: left;
-                  font-size: 10px; line-height: 1.25;
+                  font-size: 9.5px; line-height: 1.22; padding: 1px 3px;
                 }
-                /* 備考: ô hẹp, cho xuống dòng, chữ nhỏ */
+                /* 備考: chữ lớn hơn 作業内容, gần ngang với số liệu nhưng nhỏ hơn 1 chút */
                 .enm-daily-table td.enm-note {
                   white-space: normal; word-break: break-word; text-align: left;
-                  font-size: 10px; line-height: 1.2;
+                  font-size: 13px; line-height: 1.35;
                 }
                 /* Dòng tiêu đề kiểu mẫu: 年 月 ・ 名前 ・ 印 */
-                /* gap:0 giữa các phần để đường gạch chân liền mạch từ ngày tháng đến hết tên. */
-                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 10px 0 12px; font-size: 13px; }
-                /* Gạch chân chạy suốt qua ngày tháng, nhãn 名前, và ô tên. */
+                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 3px 0 5px; font-size: 15px; }
                 .enm-name-line .enm-ym,
                 .enm-name-line .enm-name-label,
-                .enm-name-line .enm-name-val { border-bottom: 1px solid #000; padding-bottom: 2px; }
-                .enm-name-line .enm-ym { min-width: 120px; }
+                .enm-name-line .enm-name-val { border-bottom: 1px solid #000; padding-bottom: 3px; }
+                .enm-name-line .enm-ym { min-width: 150px; }
                 .enm-name-line .enm-name-label { margin-left: 8px; padding-left: 4px; }
-                .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 15px; padding: 0 8px 2px; min-height: 20px; }
-                .enm-name-line .enm-stamp { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-left: 10px; }
-                /* 合計日数 cạnh dòng tên, KHÔNG gạch chân. */
-                .enm-name-line .enm-total-inline { margin-left: 20px; font-size: 13px; font-weight: 700; white-space: nowrap; }
-                .enm-footer-text { font-size: 10px; margin-top: 6px; text-align: right; padding-right: 10px; }
+                .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 17px; padding: 0 8px 3px; min-height: 22px; }
+                .enm-name-line .enm-stamp { display: inline-flex; align-items: center; justify-content: center; font-size: 14px; margin-left: 10px; }
+                .enm-name-line .enm-total-inline { margin-left: 20px; font-size: 15px; font-weight: 700; white-space: nowrap; }
+                .enm-footer-text { font-size: 11px; margin-top: 1px; text-align: right; padding-right: 10px; }
                 
                 html, body {
                   width: ${pageWmm}mm;
                   margin: 0 auto;
-                  overflow: hidden;   /* chặn 1px dư tạo trang trắng thứ 2 khi in */
+                  overflow: hidden;
                 }
                 .print-container {
                   width: 100%;
                   box-sizing: border-box;
                   overflow: hidden;
                 }
-                /* Wrapper cao 1 trang trừ biên an toàn 2mm (tránh trang trắng thứ 2). */
+                /* Wrapper cao 1 trang, sát đáy tối đa (0.2mm an toàn). */
                 #printScale {
                   transform-origin: top left;
                   width: 100%;
-                  height: ${availHmm - 2}mm;
+                  height: ${availHmm - 0.2}mm;
                   padding: ${PAD_MM}mm;
                   box-sizing: border-box;
                   display: flex;
                   flex-direction: column;
                   overflow: hidden;
                 }
-                /* .enm-paper co theo nội dung để JS đo được khoảng trống thực tế. */
-                #printScale > .enm-paper { box-sizing: border-box; }
-                /* Nén các phần trên để dành chỗ cho bảng ngày, in gọn trong 1 trang */
-                .print-container .enm-title { margin-top: 4px !important; margin-bottom: 6px !important; font-size: 16px !important; }
-                .print-container h4 { margin: 8px 0 4px 0 !important; }
-                .print-container .enm-table th, .print-container .enm-table td { padding: 2px 4px !important; font-size: 10px !important; }
-                /* Chân trang: khoảng cách cố định nhỏ. */
-                #printScale .enm-paper > div:last-child { margin-top: 10px !important; margin-bottom: 0 !important; }
+                #printScale > .enm-paper { box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; width: 100%; }
+                #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
+                #printScale > .enm-paper > .enm-footer-text { margin-top: auto; }
+                .print-container .enm-title { margin-top: 0 !important; margin-bottom: 3px !important; font-size: 26px !important; letter-spacing: 3px !important; }
+                .print-container h4 { margin: 2px 0 1px 0 !important; }
+                .print-container .enm-table th, .print-container .enm-table td { padding: 3px 4px !important; font-size: 11px !important; }
+                #printScale .enm-paper > div:last-child { margin-top: 1px !important; margin-bottom: 0 !important; }
               </style>
             </head>
             <body>
@@ -1781,43 +1776,53 @@
                 doc.body.removeChild(p);
                 return h;
               };
-              // Mốc = availHmm trừ biên an toàn 4mm, tránh dư 1px đẩy sang trang trắng
-              // thứ 2 khi in. Chỉ ZOOM thu nhỏ khi nội dung THẬT SỰ vượt mốc này.
-              const fillH = measurePx(availHmm - 4);
+              // Mốc = availHmm gần như full (chỉ trừ 1mm an toàn) để tối ưu diện tích.
+              // Chỉ ZOOM thu nhỏ khi nội dung THỰC SỰ vượt mốc này với ngưỡng +15px
+              // (rất cao — ưu tiên chữ lớn trước; nếu phải thu nhỏ thì cũng chỉ nhẹ).
+              const fillH = measurePx(availHmm - 1);
               const overflowLimit = fillH;
 
               const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
 
-              if (contentH > overflowLimit + 1) {
-                // TRÀN: nội dung nhiều → thu nhỏ ĐỀU cả layout bằng zoom (không lệch
-                // ngang như transform, và co cả chiều cao layout thật → không tràn trang).
-                let z = Math.max(0.4, (overflowLimit / contentH) * 0.99);
+              if (contentH > overflowLimit + 15) {
+                // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom, nhưng chỉ nhẹ
+                // (z min 0.70 thay vì 0.55, giảm rất chậm 0.995/vòng, tối đa 12 vòng).
+                let z = Math.max(0.70, (overflowLimit / contentH) * 0.997);
                 paper.style.zoom = String(z);
-                // Đo lại vài vòng cho chắc vừa.
-                for (let i = 0; i < 5; i++) {
-                  if (paper.getBoundingClientRect().height <= overflowLimit) break;
-                  z = Math.max(0.4, z * 0.98);
+                for (let i = 0; i < 12; i++) {
+                  if (paper.getBoundingClientRect().height <= overflowLimit + 3) break;
+                  z = Math.max(0.70, z * 0.995);
                   paper.style.zoom = String(z);
                 }
               } else if (bodyRows.length) {
-                // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm sát mép dưới.
+                // THỪA: giãn đều chiều cao các hàng để đáy nội dung chạm sát mép dưới
+                // càng nhiều càng tốt — ưu tiên không để khoảng trắng thừa.
                 const rect0 = scaleEl.getBoundingClientRect();
                 const cs0 = iframe.contentWindow.getComputedStyle(scaleEl);
                 const padTop = parseFloat(cs0.paddingTop) || 0;
-                const targetBottom = rect0.top + padTop + fillH;
+                // Gần sát 100%: fillH chỉ còn 0.3mm an toàn ở đáy.
+                const targetBottom = rect0.top + padTop + (fillH - measurePx(0.3));
                 const lastEl = paper.lastElementChild;
                 const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : paper.getBoundingClientRect().bottom);
-                for (let pass = 0; pass < 40; pass++) {
+                // Giãn cực mạnh: 200 vòng, ngưỡng dừng cực thấp, phân bổ tất cả cell.
+                for (let pass = 0; pass < 200; pass++) {
                   const extra = targetBottom - measureBottom();
-                  if (extra <= 0.5) break;
+                  // Đã sát đáy hoặc hơi lệch lên 0.05px → dừng.
+                  if (extra <= 0.05) break;
                   const perRow = extra / bodyRows.length;
-                  if (perRow < 0.1) break;
+                  if (perRow < 0.01) break;
                   bodyRows.forEach((r) => {
-                    const cell = r.firstElementChild;
-                    const h = (cell || r).getBoundingClientRect().height;
-                    const nh = `${h + perRow}px`;
-                    r.style.height = nh;
-                    if (cell) cell.style.height = nh;
+                    const cells = r.querySelectorAll('td, th');
+                    if (cells.length) {
+                      const firstCell = cells[0];
+                      const h = firstCell.getBoundingClientRect().height;
+                      const nh = `${h + perRow}px`;
+                      r.style.height = nh;
+                      cells.forEach((c) => { c.style.height = nh; });
+                    } else {
+                      const h = r.getBoundingClientRect().height;
+                      r.style.height = `${h + perRow}px`;
+                    }
                   });
                 }
               }
