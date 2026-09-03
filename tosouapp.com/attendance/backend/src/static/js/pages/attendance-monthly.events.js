@@ -1580,58 +1580,35 @@
       if (show) modal.removeAttribute('hidden');
     };
 
-    // ── Bấm nút 就業状況通知書出力 → sinh PDF và mở tab mới (không mở modal) ──
+    // ── Bấm nút 就業状況通知書出力 → sinh PDF từ iframe in (đúng layout đẹp) rồi mở tab ──
     const exportPdf = async () => {
-      // 1) Build nội dung vào #enmPrintArea (không hiện modal).
-      await openModal(false);
-
-      const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
-      const [paperName, paperOrient] = paperVal.split('-');
-      const PAPER_MM = { A4: { w: 210, h: 297 }, A3: { w: 297, h: 420 } };
-      const base = PAPER_MM[paperName] || PAPER_MM.A4;
-      const isLandscape = paperOrient === 'landscape';
-      const pageWmm = isLandscape ? base.h : base.w;
-      const pageHmm = isLandscape ? base.w : base.h;
-
-      const source = document.querySelector('#enmPrintArea .enm-paper');
-      if (!source || !window.html2canvas || !window.jspdf) {
-        // Thư viện chưa sẵn sàng → fallback về mở modal như cũ.
+      await openModal(false); // build nội dung vào #enmPrintArea (không hiện modal)
+      if (!window.html2canvas || !window.jspdf) {
+        // Thư viện PDF chưa sẵn sàng → fallback: mở modal để in thủ công.
         modal.removeAttribute('hidden');
         return;
       }
-
-      // 2) Render clone off-screen với chiều rộng cố định = bề rộng trang (px @96dpi)
-      //    để tỉ lệ khớp giấy, rồi html2canvas chụp ở scale cao cho nét.
-      const MM2PX = 96 / 25.4;
-      const wrap = document.createElement('div');
-      wrap.style.cssText = `position:fixed;left:-99999px;top:0;background:#fff;`
-        + `width:${Math.round(pageWmm * MM2PX)}px;padding:${Math.round(8 * MM2PX)}px;box-sizing:border-box;`;
-      const clone = source.cloneNode(true);
-      wrap.appendChild(clone);
-      document.body.appendChild(wrap);
-
       try {
-        const canvas = await window.html2canvas(wrap, { scale: 2, backgroundColor: '#fff', useCORS: true });
+        const iframe = await renderPrintIframe();          // dựng iframe + auto-fit (đúng bản đẹp)
+        const doc = iframe.contentWindow.document;
+        const target = doc.querySelector('.print-container') || doc.body;
+        const canvas = await window.html2canvas(target, {
+          scale: 2, backgroundColor: '#fff', useCORS: true,
+          width: target.scrollWidth, height: target.scrollHeight,
+          windowWidth: target.scrollWidth, windowHeight: target.scrollHeight,
+        });
+        const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
+        const [paperName, paperOrient] = paperVal.split('-');
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: paperName.toLowerCase() });
-        // Đóng ảnh vào PDF: giữ tỉ lệ, canh giữa, vừa 1 trang (lề 8mm).
-        const margin = 8;
-        const availW = pageWmm - margin * 2;
-        const availH = pageHmm - margin * 2;
-        const imgRatio = canvas.width / canvas.height;
-        let imgW = availW;
-        let imgH = imgW / imgRatio;
-        if (imgH > availH) { imgH = availH; imgW = imgH * imgRatio; }
-        const offsetX = margin + (availW - imgW) / 2;
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', offsetX, margin, imgW, imgH);
-        // 3) Mở PDF trong tab mới.
-        const blobUrl = pdf.output('bloburl');
-        window.open(blobUrl, '_blank');
+        const pdf = new jsPDF({ orientation: paperOrient === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: paperName.toLowerCase() });
+        // Đóng ảnh phủ TOÀN trang (ảnh đã là 1 trang hoàn chỉnh do iframe layout).
+        const pw = pdf.internal.pageSize.getWidth();
+        const ph = pdf.internal.pageSize.getHeight();
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, ph);
+        window.open(pdf.output('bloburl'), '_blank');
       } catch (err) {
         alert('PDF生成に失敗しました: ' + (err?.message || err));
-        modal.removeAttribute('hidden'); // fallback
-      } finally {
-        document.body.removeChild(wrap);
+        modal.removeAttribute('hidden');
       }
     };
 
@@ -1644,8 +1621,10 @@
     if (btnCloseBottom) btnCloseBottom.addEventListener('click', closeModal);
     if (backdrop) backdrop.addEventListener('click', closeModal);
 
-    if (btnPrint) {
-      btnPrint.addEventListener('click', () => {
+    // Dựng iframe in (CSS print + auto-fit) và trả về Promise<iframe> sau khi
+    // đã fit xong (CHƯA print). Dùng chung cho: in trực tiếp và sinh PDF.
+    const renderPrintIframe = () => new Promise((resolve) => {
+      {
         const printContent = document.querySelector('#enmPrintArea').innerHTML;
 
         // ── Khổ giấy do người dùng chọn (A4/A3, dọc/ngang) ──────────────
@@ -1895,8 +1874,7 @@
               }
             }
           } catch (e) { /* bỏ qua nếu không đo/scale được */ }
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
+          resolve(iframe); // auto-fit xong → trả iframe (chưa print)
         };
 
         // Chờ font + layout ổn định rồi mới đo, để tránh đo sai chiều cao.
@@ -1905,13 +1883,21 @@
           const run = () => win.requestAnimationFrame(() => win.requestAnimationFrame(doAutoFitAndPrint));
           if (win.document.fonts && win.document.fonts.ready) {
             win.document.fonts.ready.then(run).catch(run);
-            // Dự phòng nếu fonts.ready không resolve
             setTimeout(run, 600);
           } else {
             setTimeout(run, 300);
           }
         };
         startAutoFit();
+      }
+    });
+
+    // Nút 印刷/PDF保存 trong modal (nếu ai mở modal): in trực tiếp qua iframe.
+    if (btnPrint) {
+      btnPrint.addEventListener('click', async () => {
+        const iframe = await renderPrintIframe();
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
       });
     }
   };
