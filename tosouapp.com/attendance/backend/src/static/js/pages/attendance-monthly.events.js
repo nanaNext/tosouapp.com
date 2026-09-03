@@ -1556,7 +1556,7 @@
           const html = `
             <tr${rowClass}>
               <td>${dayDisplay}</td>
-              <td>${kubun}</td>
+              <td class="enm-reason">${kubun}</td>
               <td>${timeIn}</td>
               <td>${timeOut}</td>
               <td>${breakNormal}</td>
@@ -1593,36 +1593,51 @@
       await openModal(false);                    // build nội dung (không hiện modal)
       const iframe = await renderPrintIframe();   // iframe + auto-fit (đúng bản đẹp)
 
+      // ── Desktop: DÙNG CÔNG CỤ IN CỦA TRÌNH DUYỆT (native print) ──
+      // Trình duyệt dựng chữ tiếng Nhật CHUẨN, sắc nét, chọn/copy được và GIỐNG
+      // HỆT bản xem trước. (html2canvas hay bị chồng chữ / lệch letter-spacing nên
+      // KHÔNG dùng cho desktop.) Ở hộp thoại in, chọn 送信先 = "PDF に保存" để lưu.
       if (!isMobileDevice()) {
-        // Desktop → in trực tiếp (chất lượng chuẩn).
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
         return;
       }
 
-      // Điện thoại → chụp iframe (bản đẹp đã auto-fit) thành PDF và tải về.
+      // ── Điện thoại: mobile CHẶN window.print() tự động → phải sinh file PDF
+      // bằng html2canvas + jsPDF rồi TẢI VỀ. (Chấp nhận rằng bản mobile là ảnh.)
       if (!window.html2canvas || !window.jspdf) {
-        // Thư viện chưa sẵn → thử in như thường (có thể bị chặn).
         try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
         return;
       }
       try {
         const doc = iframe.contentWindow.document;
-        const target = doc.querySelector('.print-container') || doc.body;
+        // Chờ font tiếng Nhật tải xong TRONG iframe trước khi chụp → giảm chồng chữ.
+        try { if (doc.fonts && doc.fonts.ready) { await doc.fonts.ready; } } catch (e) {}
+        // Chụp CHÍNH #printScale — kích thước ĐÚNG 1 trang giấy → tỉ lệ khớp, không cắt.
+        const target = doc.getElementById('printScale') || doc.querySelector('.print-container') || doc.body;
+        const prevOverflow = target.style.overflow;
+        target.style.overflow = 'visible';
         const canvas = await window.html2canvas(target, {
-          scale: 2, backgroundColor: '#fff', useCORS: true,
-          width: target.scrollWidth, height: target.scrollHeight,
-          windowWidth: target.scrollWidth, windowHeight: target.scrollHeight,
+          scale: 3, backgroundColor: '#fff', useCORS: true,
+          width: target.offsetWidth, height: target.offsetHeight,
+          windowWidth: target.offsetWidth, windowHeight: target.offsetHeight,
         });
+        target.style.overflow = prevOverflow;
+
         const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
         const [paperName, paperOrient] = paperVal.split('-');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ orientation: paperOrient === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: paperName.toLowerCase() });
         const pw = pdf.internal.pageSize.getWidth();
         const ph = pdf.internal.pageSize.getHeight();
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pw, ph);
+        let imgW = pw;
+        let imgH = (canvas.height / canvas.width) * pw;
+        if (imgH > ph) { imgH = ph; imgW = (canvas.width / canvas.height) * ph; }
+        const offX = (pw - imgW) / 2;
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', offX, 0, imgW, imgH, undefined, 'FAST');
         const empName = (document.querySelector('#enmNameLine')?.textContent || '').trim().replace(/[\\/:*?"<>|]/g, '');
-        pdf.save(`${empName ? '月次勤怠入力管理_' + empName : '月次勤怠入力管理'}.pdf`); // TẢI VỀ máy
+        pdf.save(`${empName ? '出勤簿_' + empName : '出勤簿'}.pdf`); // TẢI VỀ máy
+        closeModal();
       } catch (err) {
         alert('PDF生成に失敗しました: ' + (err?.message || err));
       }
@@ -1698,7 +1713,9 @@
               <title>${docTitle}</title>
               <style>
                 @page { 
-                   margin: 0mm;
+                   /* margin:0 → dù người dùng chọn 余白=なし cũng KHÔNG phá bố cục.
+                      Lề đẹp được tạo bằng padding bên trong #printScale (PAD_MM). */
+                   margin: 0;
                    size: ${pageSizeCss}; 
                 }
                 body { 
@@ -1732,21 +1749,18 @@
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
+                /* Cột 事由: tên ngày lễ dài (国民の休日, 敬老の日...) phải xuống dòng
+                   trong ô, KHÔNG tràn ra ngoài. Chữ nhỏ hơn 1 chút + cho wrap. */
+                .enm-daily-table td.enm-reason {
+                  white-space: normal; word-break: break-all; overflow: hidden;
+                  font-size: 10.5px; line-height: 1.15; padding-left: 2px; padding-right: 2px;
+                }
                 /* Cột 日 (chỉ số ngày): in đậm nhẹ */
                 .enm-daily-table thead tr:first-child th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: normal; }
                 
-                /* Làm mỏng/nhạt vạch dọc giữa 開始 - 終了 và 普通 - 深夜 (màu đen cực kỳ mỏng) */
-                /* Sử dụng viền mảnh với độ trong suốt rgba(0,0,0,0.2) thay vì 0.1px vì nhiều trình duyệt không hỗ trợ viền <1px tốt */
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(1), .enm-daily-table tbody td:nth-child(3) { border-right: 1px solid rgba(0, 0, 0, 0.2) !important; }
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(2), .enm-daily-table tbody td:nth-child(4) { border-left: 1px solid rgba(0, 0, 0, 0.2) !important; }
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(3), .enm-daily-table tbody td:nth-child(5) { border-right: 1px solid rgba(0, 0, 0, 0.2) !important; }
-                .enm-daily-table thead tr:nth-child(2) th:nth-child(4), .enm-daily-table tbody td:nth-child(6) { border-left: 1px solid rgba(0, 0, 0, 0.2) !important; }
-                
-                /* Làm mỏng/nhạt vạch ngang giữa các ngày (từ mùng 1 đến cuối tháng) (màu đen cực kỳ mỏng) */
-                .enm-daily-table tbody tr td { border-bottom: 1px solid rgba(0, 0, 0, 0.2) !important; border-top: 1px solid rgba(0, 0, 0, 0.2) !important; }
-                /* Giữ lại vạch đậm cho viền ngoài cùng của tbody (nếu cần) hoặc các vạch dọc khác */
-                .enm-daily-table tbody tr:first-child td { border-top: 1px solid #000 !important; }
-                .enm-daily-table tbody tr:last-child td { border-bottom: 1px solid #000 !important; }
+                /* Tất cả vạch (dọc & ngang) đều là nét bình thường, đồng đều:
+                   1px solid #000. KHÔNG làm mờ/nhạt bất kỳ vạch nào nữa. */
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000 !important; }
                 /* 作業内容: giữ nhỏ (như yêu cầu), cho xuống dòng, padding hẹp để tiết kiệm chiều cao */
                 .enm-daily-table td.enm-work {
                   white-space: normal; word-break: break-word; text-align: left;
@@ -1769,9 +1783,11 @@
                 .enm-name-line .enm-total-inline { margin-left: 20px; font-size: 17px; font-weight: 700; white-space: nowrap; }
                 .enm-footer-text { font-size: 13px; margin-top: 1px; text-align: right; padding-right: 10px; font-weight: normal; }
                 
+                /* body = đúng 1 trang vật lý. Lề nằm TRONG #printScale (padding). */
                 html, body {
                   width: ${pageWmm}mm;
-                  margin: 0 auto;
+                  margin: 0;
+                  padding: 0;
                   overflow: hidden;
                 }
                 .print-container {
@@ -1779,11 +1795,14 @@
                   box-sizing: border-box;
                   overflow: hidden;
                 }
-                /* Wrapper cao đúng 1 trang → flexbox giúp bảng nở lấp đầy trang. */
+                /* Wrapper phủ gần đúng 1 trang (trừ 0.6mm chống sai số làm dây sang
+                   trang 2). Lề đẹp 4 phía = padding PAD_MM bên trong (border-box),
+                   nên KHÔNG phụ thuộc 余白 của hộp thoại in. Vùng nội dung thực =
+                   (pageWmm - 2*PAD) × (pageHmm - 2*PAD) = availWmm × availHmm. */
                 #printScale {
                   transform-origin: top left;
-                  width: 100%;
-                  height: ${availHmm - 0.2}mm;
+                  width: ${pageWmm}mm;
+                  height: ${pageHmm - 0.6}mm;
                   padding: ${PAD_MM}mm;
                   box-sizing: border-box;
                   display: flex;
