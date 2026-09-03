@@ -1608,9 +1608,8 @@
         const isLandscape = paperOrient === 'landscape';
         const pageWmm = isLandscape ? base.h : base.w; // bề rộng trang khi in
         const pageHmm = isLandscape ? base.w : base.h; // chiều cao trang khi in
-        // Lề trang (mm). Tăng lên 8mm để chừa vùng "không in được" của MÁY IN VẬT LÝ
-        // (~5mm/cạnh) → in ra máy in không bị đẩy tràn sang trang 2, giống bản PDF.
-        const PAD_MM = 8;
+        // Lề trang (mm) — mỏng nhưng đủ an toàn, tận dụng tối đa A4.
+        const PAD_MM = 5;
         const availHmm = pageHmm - PAD_MM * 2;
         // Buffer thêm để lề vật lý/mặc định của máy in không đẩy sang trang 2.
         const fitHmm = availHmm - 3;
@@ -1730,14 +1729,16 @@
                   box-sizing: border-box;
                   overflow: hidden;
                 }
-                /* Wrapper: KHÔNG ép height cố định (gây tràn/lệch trang trên máy in vật lý). Để cao tự nhiên; JS giãn hàng lo việc lấp đầy trang. */
+                /* Wrapper cao đúng 1 trang → flexbox giúp bảng nở lấp đầy trang. */
                 #printScale {
                   transform-origin: top left;
                   width: 100%;
+                  height: ${availHmm - 0.2}mm;
                   padding: ${PAD_MM}mm;
                   box-sizing: border-box;
                   display: flex;
                   flex-direction: column;
+                  overflow: hidden;
                 }
                 #printScale > .enm-paper { box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; width: 100%; }
                 #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
@@ -1795,22 +1796,20 @@
               // Mốc = availHmm gần như full (chỉ trừ 1mm an toàn) để tối ưu diện tích.
               // Chỉ ZOOM thu nhỏ khi nội dung THỰC SỰ vượt mốc này với ngưỡng +15px
               // (rất cao — ưu tiên chữ lớn trước; nếu phải thu nhỏ thì cũng chỉ nhẹ).
-              // Hai mốc riêng:
-              //  - overflowLimit: chỉ ZOOM thu nhỏ khi nội dung vượt cả trang (sát mép,
-              //    trừ 2mm). Ưu tiên giữ chữ to, chỉ thu khi thật sự tràn.
-              //  - fillTargetH: GIÃN hàng lấp đầy tới sát mép (trừ 2mm) → không thừa trắng.
-              const overflowLimit = measurePx(availHmm - 2);
-              const fillTargetH = measurePx(availHmm - 2);
+              // Mốc = availHmm gần như full (chỉ trừ 1mm an toàn). Chỉ ZOOM thu nhỏ
+              // khi nội dung THỰC SỰ vượt (ngưỡng +15px, ưu tiên giữ chữ to).
+              const fillH = measurePx(availHmm - 1);
+              const overflowLimit = fillH;
 
               const contentH = paper.scrollHeight; // chiều cao nội dung thực (px)
 
-              if (contentH > overflowLimit + 5) {
-                // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom
-                let z = Math.max(0.65, (overflowLimit / contentH) * 0.99);
+              if (contentH > overflowLimit + 15) {
+                // TRÀN: nội dung quá nhiều → thu nhỏ ĐỀU bằng zoom, chỉ nhẹ.
+                let z = Math.max(0.70, (overflowLimit / contentH) * 0.997);
                 paper.style.zoom = String(z);
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < 12; i++) {
                   if (paper.getBoundingClientRect().height <= overflowLimit + 3) break;
-                  z = Math.max(0.65, z * 0.99);
+                  z = Math.max(0.70, z * 0.995);
                   paper.style.zoom = String(z);
                 }
               } else if (bodyRows.length) {
@@ -1819,8 +1818,8 @@
                 const rect0 = scaleEl.getBoundingClientRect();
                 const cs0 = iframe.contentWindow.getComputedStyle(scaleEl);
                 const padTop = parseFloat(cs0.paddingTop) || 0;
-                // Giãn tới sát mép (fillTargetH) → lấp đầy trang, không thừa trắng.
-                const targetBottom = rect0.top + padTop + fillTargetH;
+                // Gần sát 100%: fillH chỉ còn 0.3mm an toàn ở đáy.
+                const targetBottom = rect0.top + padTop + (fillH - measurePx(0.3));
                 const lastEl = paper.lastElementChild;
                 const measureBottom = () => (lastEl ? lastEl.getBoundingClientRect().bottom : paper.getBoundingClientRect().bottom);
                 // Giãn cực mạnh: 200 vòng, ngưỡng dừng cực thấp, phân bổ tất cả cell.
