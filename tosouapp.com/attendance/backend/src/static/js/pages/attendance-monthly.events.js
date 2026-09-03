@@ -1667,10 +1667,10 @@
                 }
                 /* ---------- IN-IFRAME PRINT CSS (A4, chữ đủ lớn, 30 ngày vừa 1 trang) ---------- */
                 .enm-title { text-align: center; font-size: 38px; letter-spacing: 12px; text-indent: 12px; margin-top: 0; margin-bottom: 6px; font-weight: bold; }
-                .enm-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 16px; font-weight: 600; }
-                .enm-company { font-size: 22px; font-weight: 700; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 14px; font-weight: normal; }
+                .enm-company { font-size: 18px; font-weight: 700; }
                 .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; border: 1px solid #000; }
-                .enm-table th, .enm-table td { border: 1px solid #000; padding: 5px 6px; font-size: 13.5px; font-weight: 600; }
+                .enm-table th, .enm-table td { border: 1px solid #000; padding: 5px 6px; font-size: 12px; font-weight: normal; }
                 .enm-table th { background: #e2e8f0 !important; text-align: center; }
                 .enm-table td { text-align: left; }
                 .enm-table.right-align td { text-align: right; }
@@ -1681,14 +1681,14 @@
                 .enm-daily-table tr, .enm-daily-table td, .enm-daily-table th { page-break-inside: avoid; break-inside: avoid; }
                 #printScale, #printScale * { page-break-inside: avoid; break-inside: avoid; }
                 /* Ô số liệu: đủ lớn dễ đọc, cân đối để 30 ngày + 1 header row vừa trong A4 dọc */
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 4px 3px; font-size: 17px; line-height: 1.35; font-weight: 600; text-align: center; vertical-align: middle; min-height: 26px; }
-                .enm-daily-table th { background: #cbd5e1 !important; font-weight: 600; font-size: 14px; line-height: 1.4; padding: 5px 3px; }
+                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 4px 3px; font-size: 13px; line-height: 1.3; font-weight: normal; text-align: center; vertical-align: middle; min-height: 26px; }
+                .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 12px; line-height: 1.35; padding: 5px 3px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng. */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
                 /* Cột 日 (chỉ số ngày): in đậm nhẹ */
-                .enm-daily-table thead tr:first-child th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: 600; }
+                .enm-daily-table thead tr:first-child th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: normal; }
                 
                 /* Làm mỏng/nhạt vạch dọc giữa 開始 - 終了 và 普通 - 深夜 (màu đen cực kỳ mỏng) */
                 /* Sử dụng viền mảnh với độ trong suốt rgba(0,0,0,0.2) thay vì 0.1px vì nhiều trình duyệt không hỗ trợ viền <1px tốt */
@@ -1713,7 +1713,7 @@
                   font-size: 15px; line-height: 1.35;
                 }
                 /* Dòng tiêu đề kiểu mẫu: 年 月 ・ 名前 ・ 印 */
-                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 4px 0 6px; font-size: 17px; font-weight: 600; }
+                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 4px 0 6px; font-size: 15px; font-weight: normal; }
                 .enm-name-line .enm-ym,
                 .enm-name-line .enm-name-label,
                 .enm-name-line .enm-name-val { border-bottom: 1px solid #000; padding-bottom: 3px; }
@@ -1722,7 +1722,7 @@
                 .enm-name-line .enm-name-val { flex: 1; font-weight: 700; font-size: 20px; padding: 0 8px 3px; min-height: 24px; }
                 .enm-name-line .enm-stamp { display: inline-flex; align-items: center; justify-content: center; font-size: 15px; margin-left: 10px; }
                 .enm-name-line .enm-total-inline { margin-left: 20px; font-size: 17px; font-weight: 700; white-space: nowrap; }
-                .enm-footer-text { font-size: 13px; margin-top: 1px; text-align: right; padding-right: 10px; font-weight: 600; }
+                .enm-footer-text { font-size: 13px; margin-top: 1px; text-align: right; padding-right: 10px; font-weight: normal; }
                 
                 html, body {
                   width: ${pageWmm}mm;
@@ -1750,7 +1750,7 @@
                 #printScale > .enm-paper > .enm-footer-text { margin-top: auto; }
                 .print-container .enm-title { margin-top: 0 !important; margin-bottom: 4px !important; font-size: 38px !important; letter-spacing: 12px !important; text-indent: 12px !important; }
                 .print-container h4 { margin: 2px 0 1px 0 !important; }
-                .print-container .enm-table th, .print-container .enm-table td { padding: 4px 5px !important; font-size: 13.5px !important; }
+                .print-container .enm-table th, .print-container .enm-table td { padding: 4px 5px !important; font-size: 12px !important; font-weight: normal !important; }
                 #printScale .enm-paper > div:last-child { margin-top: 1px !important; margin-bottom: 0 !important; }
               </style>
             </head>
@@ -1851,19 +1851,23 @@
               }
             }
           } catch (e) { /* bỏ qua nếu không đo/scale được */ }
-          resolve(iframe); // auto-fit xong → trả iframe (chưa print)
+          // Chờ thêm 1 nhịp để layout sau zoom/giãn áp dụng xong (đặc biệt trên
+          // điện thoại chậm) rồi mới trả iframe → print/chụp đúng trạng thái đã fit.
+          setTimeout(() => resolve(iframe), 150);
         };
 
-        // Chờ font + layout ổn định rồi mới đo, để tránh đo sai chiều cao.
+        // Chờ font + layout ổn định rồi mới đo. Trên điện thoại font Nhật tải chậm
+        // và iframe ẩn bị throttle rAF, nên chờ chắc chắn bằng nhiều mốc thời gian.
         const startAutoFit = () => {
           const win = iframe.contentWindow;
           const run = () => win.requestAnimationFrame(() => win.requestAnimationFrame(doAutoFitAndPrint));
-          if (win.document.fonts && win.document.fonts.ready) {
-            win.document.fonts.ready.then(run).catch(run);
-            setTimeout(run, 600);
-          } else {
-            setTimeout(run, 300);
-          }
+          const fontsReady = (win.document.fonts && win.document.fonts.ready)
+            ? win.document.fonts.ready : Promise.resolve();
+          // Chờ cả fonts.ready lẫn một khoảng thời gian tối thiểu để chắc layout xong.
+          Promise.race([
+            fontsReady.then(() => new Promise(r => setTimeout(r, 250))),
+            new Promise(r => setTimeout(r, 1200)), // dự phòng nếu fonts.ready không resolve
+          ]).then(run).catch(run);
         };
         startAutoFit();
       }
