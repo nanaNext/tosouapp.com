@@ -1697,7 +1697,8 @@
               -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .sw-page { width: ${pageWmm}mm; height: ${pageHmm - 0.6}mm; padding: ${PAD_MM}mm;
               box-sizing: border-box; overflow: hidden; display:flex; flex-direction:column; }
-            table.sw-tbl { flex:1 1 auto; }
+            table.sw-tbl { flex:0 0 auto; }
+            table.sw-tbl tbody tr, table.sw-tbl tbody td { height:28px; }
             .sw-title { text-align:center; font-size:24px; letter-spacing:10px; text-indent:10px;
               font-weight:bold; margin:0 0 4px; }
             .sw-head { display:flex; align-items:flex-end; gap:12px; font-size:15px; margin:0 0 5px; }
@@ -1710,19 +1711,19 @@
             /* GHIM chiều cao hàng cố định → 31 ngày + header LUÔN vừa 1 trang.
                Nội dung 作業内容 dài sẽ bị cắt bớt (overflow:hidden) chứ KHÔNG đẩy
                hàng cao ra làm tràn trang. */
-            .sw-company { flex:0 0 auto; }
+            .sw-company { flex:0 0 auto; margin-top:auto; }
             table.sw-tbl td.sw-day { text-align:center; width:12%; white-space:nowrap; font-size:12px; }
-            table.sw-tbl td.sw-site { width:28%; font-size:11px; line-height:1.15; }
-            table.sw-tbl td.sw-work { width:60%; font-size:11px; line-height:1.15; }
+            table.sw-tbl td.sw-site { width:20%; font-size:11px; line-height:1.15; text-align:center; }
+            table.sw-tbl td.sw-work { width:68%; font-size:11px; line-height:1.15; }
             table.sw-tbl tr.sw-rest td { background:#d9d9d9; }
-            .sw-company { text-align:right; font-size:16px; font-weight:700; margin-top:6px; }
+            .sw-company { text-align:right; font-size:16px; font-weight:700; }
           </style></head><body>
             <div class="sw-page">
               <div class="sw-title">出勤簿</div>
               <div class="sw-head"><span class="sw-ym">${ymText}</span>
                 <span>名前：</span><span class="sw-nm">${nameText}</span></div>
               <table class="sw-tbl">
-                <thead><tr><th style="width:12%;">日</th><th style="width:28%;">現場</th><th style="width:60%;">作業内容</th></tr></thead>
+                <thead><tr><th style="width:12%;">日</th><th style="width:20%;">現場</th><th style="width:68%;">作業内容</th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
               </table>
               <div class="sw-company">飯塚塗研株式会社</div>
@@ -1927,14 +1928,18 @@
                   flex: 1 1 auto; min-height: 0;
                   display: flex; flex-direction: column;
                 }
-                /* Bảng nở lấp phần còn lại của trang → tbody chia đều chiều cao cho
-                   đủ số ngày, lấp kín tới đáy mà không cắt. */
-                #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
-                #printScale > .enm-paper > .enm-footer-text { flex: 0 0 auto; margin-top: 4px; }
+                /* KHÔNG cho bảng flex-stretch (flex:0 0 auto). Bảng flex-stretch là
+                   nguyên nhân header bị PHÌNH: trình duyệt (nhất là trên điện thoại)
+                   dồn phần chiều cao dôi vào hàng thead. Nay bảng cao TỰ NHIÊN =
+                   thead cố định + tbody chiều cao cố định → header GIỐNG HỆT desktop
+                   trên mọi thiết bị. */
+                #printScale > .enm-paper > .enm-daily-table { flex: 0 0 auto; width: 100%; }
+                #printScale > .enm-paper > .enm-footer-text { flex: 0 0 auto; margin-top: auto; }
                 /* Tên công ty: xuống CUỐI trang, canh mép PHẢI. */
                 #printScale > .enm-paper > .enm-company-bottom { flex: 0 0 auto; text-align: right; font-size: 17px; font-weight: 700; margin-top: 4px; padding-right: 6px; }
-                /* Bỏ min-height cứng để các hàng chia đều theo chiều cao bảng. */
-                #printScale .enm-daily-table tbody td { min-height: 0 !important; padding-top: 1px !important; padding-bottom: 1px !important; }
+                /* CHIỀU CAO HÀNG TBODY CỐ ĐỊNH → bảng không phình, header ổn định. */
+                #printScale .enm-daily-table tbody tr { height: 28px !important; }
+                #printScale .enm-daily-table tbody td { height: 28px !important; min-height: 0 !important; padding-top: 1px !important; padding-bottom: 1px !important; }
                 /* ── KHOÁ CHIỀU CAO HIỂN THỊ CỦA HEADER ──
                    Vì các ô thead có rowspan=2 + border-collapse + table-layout:fixed,
                    khi tbody bị giãn thì thuật toán bảng đẩy một phần chiều cao dôi
