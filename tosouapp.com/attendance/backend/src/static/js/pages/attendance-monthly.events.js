@@ -1626,19 +1626,17 @@
 
     const exportPdf = async () => {
       await openModal(false);                    // build nội dung (không hiện modal)
-      const iframe = await renderPrintIframe();   // iframe + layout đẹp (giống nhau mọi máy)
+      const iframe = await renderPrintIframe();   // iframe khổ giấy CỐ ĐỊNH (đẹp, giống nhau mọi máy)
 
-      // ── ĐIỆN THOẠI/TABLET: mở CỬA SỔ THẬT với ĐÚNG HTML đó rồi in ──
-      // Cùng một HTML + CSS như desktop nên PDF trên điện thoại ĐẸP GIỐNG HỆT desktop.
-      if (isMobileDevice() && iframe._printHtml) {
-        const ok = printInNewWindow(iframe._printHtml);
-        if (ok) return;
-        // Nếu mở cửa sổ thất bại thì thử in iframe (dự phòng).
+      // IN CÙNG MỘT IFRAME trên MỌI thiết bị → PDF trên điện thoại GIỐNG HỆT desktop
+      // (cùng iframe kích thước mm cố định, không bị viewport điện thoại co giãn).
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        // Dự phòng cực hiếm: nếu trình duyệt chặn in iframe → mở cửa sổ thật.
+        if (iframe._printHtml) printInNewWindow(iframe._printHtml);
       }
-
-      // ── DESKTOP: in iframe ẩn (native print, chữ chuẩn) ──
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
     };
 
     btnOpen.addEventListener('click', (e) => {
@@ -1692,7 +1690,7 @@
         const docTitle = empNameClean ? `現場作業内容_${empNameClean}` : '現場作業内容';
 
         const sitesHtml = `
-          <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>${docTitle}</title><style>
+          <!DOCTYPE html><html><head><title>${docTitle}</title><style>
             @page { margin: 0; size: ${pageSizeCss}; }
             html, body { width: ${pageWmm}mm; margin: 0; padding: 0; overflow: hidden;
               font-family: "Meiryo","Hiragino Kaku Gothic ProN","MS PGothic",sans-serif; color:#000;
@@ -1749,12 +1747,12 @@
         e.preventDefault();
         await openModal(false);                  // dựng dữ liệu enmSiteWorkRows (không hiện modal)
         const iframe = await renderSitesIframe();
-        // Điện thoại: mở cửa sổ thật với đúng HTML → PDF giống hệt desktop.
-        if (isMobileDevice() && iframe._printHtml) {
-          if (printInNewWindow(iframe._printHtml)) return;
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (e) {
+          if (iframe._printHtml) printInNewWindow(iframe._printHtml);
         }
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
       });
     }
 
@@ -1819,7 +1817,6 @@
           <!DOCTYPE html>
           <html>
             <head>
-              <meta name="viewport" content="width=device-width, initial-scale=1">
               <title>${docTitle}</title>
               <style>
                 @page { 
