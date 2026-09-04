@@ -72,18 +72,27 @@ function roleRedirect(role, nextPath) {
   try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
   showPageSpinner();
   const suggested = String(nextPath || '').trim();
-
-  // Always trust nextPath from server — it knows the role and tenant context
-  if (suggested && suggested.startsWith('/') && !suggested.startsWith('//')) {
-    try { window.location.href = suggested; return; } catch (e) { /* silently ignored */ }
-  }
-
-  // Fallback (should rarely happen) — use role to decide
   const r = String(role || '').toLowerCase();
-  const fallback = (r === 'admin' || r === 'manager' || r === 'sysadmin' || r === 'owner')
-    ? `/admin/dashboard?boot=${Date.now()}`
-    : '/ui/portal';
-  try { window.location.href = fallback; } catch (e) { /* silently ignored */ }
+
+  // Xác định đích đến sau đăng nhập
+  let dest = (suggested && suggested.startsWith('/') && !suggested.startsWith('//'))
+    ? suggested
+    : ((r === 'admin' || r === 'manager' || r === 'sysadmin' || r === 'owner')
+        ? `/admin/dashboard?boot=${Date.now()}`
+        : '/ui/portal');
+
+  // Trên MOBILE: nhân viên (employee) đăng nhập xong vào thẳng màn 簡易登録画面 (勤怠入力)
+  // thay vì màn home. Desktop giữ nguyên (vào home như cũ). Admin/manager không đổi.
+  try {
+    const isEmployee = !(r === 'admin' || r === 'manager' || r === 'sysadmin' || r === 'owner');
+    const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+    const goesHome = dest === '/ui/portal' || dest === '/ui/portal/' || /^\/ui\/portal(\?|#|$)/.test(dest);
+    if (isEmployee && isMobile && goesHome) {
+      dest = '/ui/attendance/simple';
+    }
+  } catch (e) { /* silently ignored */ }
+
+  try { window.location.href = dest; } catch (e) { /* silently ignored */ }
 }
 
 async function handleSubmit(e) {
