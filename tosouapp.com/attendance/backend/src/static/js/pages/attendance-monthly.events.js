@@ -1737,13 +1737,13 @@
                 .enm-table td { text-align: left; }
                 .enm-table.right-align td { text-align: right; }
                 .enm-table.center-align td { text-align: center; }
-                .enm-daily-table { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 0; table-layout: fixed; }
+                .enm-daily-table { width: 100%; border-collapse: collapse; border: 0.5px solid #888; margin-bottom: 0; table-layout: fixed; }
                 /* Chống chia trang trong bảng + thead lặp sang trang 2 khi in. */
                 .enm-daily-table thead { display: table-row-group; }
                 .enm-daily-table tr, .enm-daily-table td, .enm-daily-table th { page-break-inside: avoid; break-inside: avoid; }
                 #printScale, #printScale * { page-break-inside: avoid; break-inside: avoid; }
                 /* Ô số liệu: đủ lớn dễ đọc, cân đối để 30 ngày + 1 header row vừa trong A4 dọc */
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000; padding: 4px 3px; font-size: 13px; line-height: 1.3; font-weight: normal; text-align: center; vertical-align: middle; min-height: 26px; }
+                .enm-daily-table th, .enm-daily-table td { border: 0.5px solid #888; padding: 4px 3px; font-size: 13px; line-height: 1.3; font-weight: normal; text-align: center; vertical-align: middle; min-height: 26px; }
                 .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 12px; line-height: 1.35; padding: 5px 3px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng. */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -1758,9 +1758,9 @@
                 /* Cột 日 (chỉ số ngày): in đậm nhẹ */
                 .enm-daily-table thead tr:first-child th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: normal; }
                 
-                /* Tất cả vạch (dọc & ngang) đều là nét bình thường, đồng đều:
-                   1px solid #000. KHÔNG làm mờ/nhạt bất kỳ vạch nào nữa. */
-                .enm-daily-table th, .enm-daily-table td { border: 1px solid #000 !important; }
+                /* Tất cả vạch (dọc & ngang) đều MỎNG và ĐỒNG ĐỀU: 0.5px solid #888.
+                   KHÔNG để nét đậm/nhạt lẫn lộn. */
+                .enm-daily-table, .enm-daily-table th, .enm-daily-table td { border: 0.5px solid #888 !important; }
                 /* 作業内容: giữ nhỏ (như yêu cầu), cho xuống dòng, padding hẹp để tiết kiệm chiều cao */
                 .enm-daily-table td.enm-work {
                   white-space: normal; word-break: break-word; text-align: left;
