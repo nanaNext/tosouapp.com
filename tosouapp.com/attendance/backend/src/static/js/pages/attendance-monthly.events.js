@@ -1764,14 +1764,18 @@
                   flex-direction: column;
                   overflow: hidden;
                 }
-                #printScale > .enm-paper { box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; width: 100%; }
-                /* KHÔNG cho bảng flex-stretch (flex:0 0 auto) → bảng cao ĐÚNG bằng
-                   tổng chiều cao các hàng (thead ghim cố định + tbody do JS giãn).
-                   Nhờ đó header không bị phình và mọi nhân viên có form như nhau. */
-                #printScale > .enm-paper > .enm-daily-table { flex: 0 0 auto; width: 100%; }
-                /* Footer nằm NGAY DƯỚI bảng (không margin-top:auto) → khi tbody được
-                   giãn lấp trang thì footer đi theo sát đáy bảng, không tạo khe hở. */
+                /* LAYOUT CỐ ĐỊNH — mọi nhân viên GIỐNG HỆT NHAU.
+                   KHÔNG dùng flex để kéo giãn lấp trang nữa (đó là thứ khiến mỗi
+                   người một cỡ chữ / khoảng cách hàng khác nhau). Nội dung xếp từ
+                   trên xuống với cỡ chữ cố định + chiều cao hàng cố định. */
+                #printScale > .enm-paper { box-sizing: border-box; display: block; width: 100%; }
+                #printScale > .enm-paper > .enm-daily-table { width: 100%; }
                 #printScale > .enm-paper > .enm-footer-text { margin-top: 4px; }
+                /* CHIỀU CAO HÀNG CỐ ĐỊNH cho mọi dòng ngày → bảng luôn cùng hình
+                   dạng bất kể số ngày / độ dài nội dung. Tháng ít ngày chỉ ngắn hơn
+                   ở đáy, KHÔNG đổi cỡ chữ hay giãn hàng. */
+                #printScale .enm-daily-table tbody tr { height: 28px !important; }
+                #printScale .enm-daily-table tbody td { height: 28px !important; overflow: hidden; }
                 /* ── KHOÁ CHIỀU CAO HIỂN THỊ CỦA HEADER ──
                    Vì các ô thead có rowspan=2 + border-collapse + table-layout:fixed,
                    khi tbody bị giãn thì thuật toán bảng đẩy một phần chiều cao dôi
@@ -1805,11 +1809,15 @@
         `);
         iframe.contentWindow.document.close();
 
-        // Auto-fit: chiều cao lấp đầy do CSS flex lo (bảng nở lấp hết trang).
-        // JS chỉ can thiệp khi nội dung QUÁ NHIỀU không vừa 1 trang → thu nhỏ đồng đều.
+        // ── LAYOUT CỐ ĐỊNH (KHÔNG auto-fit) ──
+        // Trước đây hàm này đo nội dung từng nhân viên rồi ZOOM nhỏ (người nội dung
+        // nhiều) hoặc GIÃN hàng (người nội dung ít) → chính là lý do "mỗi người một
+        // cỡ chữ / khoảng cách khác nhau". Nay BỎ HẲN việc đo-động: cỡ chữ + chiều
+        // cao hàng đều cố định trong CSS, nên MỌI nhân viên có form GIỐNG HỆT NHAU.
+        // Hàm chỉ còn chờ font/layout ổn định rồi trả iframe để in.
         let printed = false;
         const doAutoFitAndPrint = () => {
-          if (printed) return; // tránh in trùng khi cả fonts.ready lẫn timeout dự phòng cùng chạy
+          if (printed) return; // tránh chạy trùng khi cả fonts.ready lẫn timeout cùng gọi
           printed = true;
           try {
             const doc = iframe.contentWindow.document;
@@ -1818,7 +1826,7 @@
             const table = doc.getElementById('enmDailyTable');
             const bodyRows = table ? table.querySelectorAll('tbody tr') : [];
             const paper = scaleEl ? scaleEl.querySelector('.enm-paper') : null;
-            if (scaleEl && paper) {
+            if (false && scaleEl && paper) {
               // Reset trước khi đo
               paper.style.zoom = '';
               paper.style.transform = '';
