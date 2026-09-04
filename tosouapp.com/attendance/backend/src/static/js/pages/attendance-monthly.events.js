@@ -1598,17 +1598,45 @@
     // ── Bấm nút 就業状況通知書出力 ──
     //  • Desktop: mở hộp thoại in (chữ chuẩn) → chọn PDF に保存.
     //  • Điện thoại: sinh file PDF và TẢI VỀ máy (vì mobile chặn tự động in).
+    // Điện thoại/tablet: in từ iframe ẩn KHÔNG đáng tin (nhiều trình duyệt in
+    // nhầm trang cha hoặc không in) → phải mở CỬA SỔ THẬT rồi in. Desktop thì
+    // in iframe ẩn cho gọn.
+    const isMobileDevice = () =>
+      /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 1 && !/Windows NT/i.test(navigator.userAgent));
+
+    // Mở CỬA SỔ MỚI chứa ĐÚNG HTML in (giống hệt desktop) rồi in. Dùng cho mobile.
+    const printInNewWindow = (html) => {
+      const w = window.open('', '_blank');
+      if (!w) { alert('ポップアップがブロックされました。許可してください。'); return false; }
+      w.document.open();
+      w.document.write(html);
+      // Tự động gọi in sau khi trang (và font) tải xong bên trong cửa sổ mới.
+      w.document.write(`<script>
+        (function(){
+          function go(){ try{ window.focus(); window.print(); }catch(e){} }
+          var fr = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+          Promise.race([ fr.then(function(){return new Promise(function(r){setTimeout(r,300);});}),
+                         new Promise(function(r){setTimeout(r,1200);}) ]).then(go).catch(go);
+        })();
+      <\/script>`);
+      w.document.close();
+      return true;
+    };
+
     const exportPdf = async () => {
       await openModal(false);                    // build nội dung (không hiện modal)
-      const iframe = await renderPrintIframe();   // iframe + auto-fit (đúng bản đẹp)
+      const iframe = await renderPrintIframe();   // iframe + layout đẹp (giống nhau mọi máy)
 
-      // ── DÙNG CÔNG CỤ IN CỦA TRÌNH DUYỆT (native print) TRÊN MỌI THIẾT BỊ ──
-      // Trình duyệt dựng chữ tiếng Nhật CHUẨN, sắc nét, GIỐNG HỆT bản xem trước và
-      // ỔN ĐỊNH như nhau trên mọi máy. TUYỆT ĐỐI KHÔNG dùng html2canvas nữa vì nó
-      // hay bị VỠ/CHỒNG CHỮ (mỗi máy render một kiểu khác nhau — nhất là khi font
-      // tiếng Nhật chưa tải xong lúc chụp). Trên điện thoại/tablet, window.print()
-      // vẫn mở được bảng in/chia sẻ của hệ điều hành (do bấm nút = user gesture),
-      // người dùng chọn "PDF に保存"/"PDFで保存" để lưu.
+      // ── ĐIỆN THOẠI/TABLET: mở CỬA SỔ THẬT với ĐÚNG HTML đó rồi in ──
+      // Cùng một HTML + CSS như desktop nên PDF trên điện thoại ĐẸP GIỐNG HỆT desktop.
+      if (isMobileDevice() && iframe._printHtml) {
+        const ok = printInNewWindow(iframe._printHtml);
+        if (ok) return;
+        // Nếu mở cửa sổ thất bại thì thử in iframe (dự phòng).
+      }
+
+      // ── DESKTOP: in iframe ẩn (native print, chữ chuẩn) ──
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
     };
@@ -1663,9 +1691,8 @@
         const empNameClean = nameText.replace(/[\\/:*?"<>|]/g, '');
         const docTitle = empNameClean ? `現場作業内容_${empNameClean}` : '現場作業内容';
 
-        iframe.contentWindow.document.open();
-        iframe.contentWindow.document.write(`
-          <!DOCTYPE html><html><head><title>${docTitle}</title><style>
+        const sitesHtml = `
+          <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>${docTitle}</title><style>
             @page { margin: 0; size: ${pageSizeCss}; }
             html, body { width: ${pageWmm}mm; margin: 0; padding: 0; overflow: hidden;
               font-family: "Meiryo","Hiragino Kaku Gothic ProN","MS PGothic",sans-serif; color:#000;
@@ -1702,8 +1729,11 @@
               </table>
               <div class="sw-company">飯塚塗研株式会社</div>
             </div>
-          </body></html>`);
+          </body></html>`;
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(sitesHtml);
         iframe.contentWindow.document.close();
+        iframe._printHtml = sitesHtml; // để in bằng cửa sổ mới trên điện thoại
 
         const win = iframe.contentWindow;
         // Chiều cao lấp đầy + chia đều các hàng do FLEXBOX lo (không cần JS đo).
@@ -1719,6 +1749,10 @@
         e.preventDefault();
         await openModal(false);                  // dựng dữ liệu enmSiteWorkRows (không hiện modal)
         const iframe = await renderSitesIframe();
+        // Điện thoại: mở cửa sổ thật với đúng HTML → PDF giống hệt desktop.
+        if (isMobileDevice() && iframe._printHtml) {
+          if (printInNewWindow(iframe._printHtml)) return;
+        }
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
       });
@@ -1781,11 +1815,11 @@
           .replace(/[\\/:*?"<>|]/g, ''); // bỏ ký tự không hợp lệ cho tên file
         const docTitle = empName ? `月次勤怠入力管理_${empName}` : '月次勤怠入力管理';
 
-        iframe.contentWindow.document.open();
-        iframe.contentWindow.document.write(`
+        const printHtml = `
           <!DOCTYPE html>
           <html>
             <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
               <title>${docTitle}</title>
               <style>
                 @page { 
@@ -1938,8 +1972,14 @@
               </div>
             </body>
           </html>
-        `);
+        `;
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(printHtml);
         iframe.contentWindow.document.close();
+        // Lưu HTML in để dùng lại khi mở cửa sổ mới trên điện thoại (in native
+        // từ iframe ẩn không đáng tin trên mobile → phải mở window thật).
+        iframe._printHtml = printHtml;
+        iframe._docTitle = docTitle;
 
         // ── LAYOUT CỐ ĐỊNH (KHÔNG auto-fit) ──
         // Trước đây hàm này đo nội dung từng nhân viên rồi ZOOM nhỏ (người nội dung
