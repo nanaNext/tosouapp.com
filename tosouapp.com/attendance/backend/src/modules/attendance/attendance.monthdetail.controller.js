@@ -302,25 +302,62 @@ exports.getMonthDetail = async (req, res) => {
       });
     }
 
+    // Thông tin nhân viên (lấy sớm để dùng cho suy diễn 休日 tự động bên dưới)
+    const u = await userRepo.getUserById(userId).catch(() => null);
+    const isPartTime = u?.employment_type === 'part_time';
+
+    // Các kubun được coi là "đi làm" (nếu đã set thì KHÔNG tự chuyển 休日)
+    const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
+    // Các kubun nghỉ/đã xác định rõ (nếu đã set thì giữ nguyên, không auto)
+    const explicitKubunSet = new Set(['休日', '有給休暇', '欠勤', '無給休暇', '代替休日', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤', '出勤']);
+
     // Dựng danh sách từng ngày trong tháng
     const days = [];
     for (let day = 1; day <= lastDay; day++) {
       const ds   = `${y}-${pad(m)}-${pad(day)}`;
       const plan = planRows.find(p => String(p.date).slice(0, 10) === ds) || null;
+      const dailyForDay = dailyMap.get(ds) || null;
+      const shiftReqForDay = shiftReqMap.get(ds) || null;
+      const segsForDay = segMap.get(ds) || [];
+
+      // ── Suy diễn "tự động 休日" ─────────────────────────────────────────────
+      // Khi đã đến ngày (hôm nay hoặc quá khứ) mà nhân viên KHÔNG chấm công và
+      // KHÔNG có kubun cụ thể, hệ thống tự hiển thị 休日 (không bắt nhập tay).
+      //   - 正社員: ngày nghỉ theo lịch (CN/ngày đỏ/công ty) hoặc đã đăng ký OFF.
+      //   - パート: ngày đăng ký OFF, hoặc 予定なし (không đăng ký), hoặc ngày nghỉ lịch.
+      // Ngày tương lai vẫn giữ 休日予定 / 出勤予定 / 予定なし như cũ.
+      let autoOff = 0;
+      const kubun0 = String(dailyForDay?.kubun || '').trim();
+      const hasPunch = segsForDay.some(s => !!s?.checkIn || !!s?.checkOut);
+      const reqStatus = shiftReqForDay?.status || null;
+      const isDatePassed = ds <= todayStr;                 // gồm cả hôm nay
+      const hasExplicitKubun = explicitKubunSet.has(kubun0);
+      const isWorkingReq = reqStatus === 'WORKING';
+      const isLeaveReq = reqStatus === 'LEAVE';
+
+      if (isDatePassed && !hasPunch && !hasExplicitKubun && !isWorkingReq && !isLeaveReq) {
+        if (isPartTime) {
+          // Part-time: mọi ngày không đi làm & không có WORKING/LEAVE -> 休日 tự động
+          // (bao gồm OFF đã đăng ký, 予定なし, và ngày nghỉ lịch)
+          autoOff = 1;
+        } else {
+          // 正社員: chỉ tự 休日 cho ngày nghỉ (lịch đỏ/CN/công ty) hoặc đã đăng ký OFF
+          if (off.has(ds) || reqStatus === 'OFF') autoOff = 1;
+        }
+      }
+
       days.push({
         date:         ds,
         is_off:       off.has(ds) ? 1 : 0,
+        autoOff,
         shift:        shiftForDate(ds),
-        daily:        dailyMap.get(ds) || null,
+        daily:        dailyForDay,
         plan:         plan ? { shiftId: plan.shiftId, workType: plan.work_type, location: plan.location, memo: plan.memo } : null,
-        shiftRequest: shiftReqMap.get(ds) || null,
-        segments:     segMap.get(ds)    || [],
+        shiftRequest: shiftReqForDay,
+        segments:     segsForDay,
         goOutRecords: goOutMap.get(ds)  || [],
       });
     }
-
-    // Dựng thông tin nhân viên + số ngày phép được cấp
-    const u = await userRepo.getUserById(userId).catch(() => null);
     const paidLeaveEntitlement = calculatePaidLeaveEntitlement(resolveEmploymentStartDate(u));
     const user = u ? {
       id:               u.id,

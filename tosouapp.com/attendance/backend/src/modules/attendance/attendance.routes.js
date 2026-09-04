@@ -166,6 +166,11 @@ router.post('/month/unlock',
   authenticate, authorize('admin'),
   controller.unlockMonth);
 
+// Nhân viên tự xem ngày thiếu chấm công của chính mình (không cần quyền manager/admin)
+router.get('/month/missing/me',
+  authenticate,
+  controller.getMonthMissingMe);
+
 router.get('/month/missing',
   authenticate, authorize('manager', 'admin'),
   controller.getMonthMissing);

@@ -61,6 +61,78 @@ async function computeMonthMissing(userId, y, m, tenantId = null) {
   return missing;
 }
 
+// Phiên bản chi tiết cho nhân viên: trả về từng ngày kèm lý do thiếu (thiếu 出勤 / thiếu 退勤 / cả hai).
+// Khác computeMonthMissing (dùng cho submit/approve) ở 2 điểm:
+//   - 半休 / 半休(有給): là làm nửa ngày, nếu đã 出勤 thì KHÔNG cần 退勤 -> không cảnh báo.
+//   - Trả về missIn/missOut để hiển thị đúng nội dung.
+async function computeMonthMissingDetailed(userId, y, m, tenantId = null) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const from = `${y}-${pad(m)}-01`;
+  const to = `${y}-${pad(m)}-${pad(lastDay)}`;
+
+  const user = await userRepo.getUserById(userId).catch(() => null);
+  const isPartTime = user?.employment_type === 'part_time';
+
+  const off = await getUserOffDaySet(y, userId);
+  const dailyRows = await repo.listDailyBetween(userId, from, to, { tenantId }).catch(() => []);
+  const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
+  const segRows = await repo.listByUserBetween(userId, from, to, { tenantId }).catch(() => []);
+  const segByDate = new Map();
+  for (const r of segRows || []) {
+    const ds = String(r?.checkIn || r?.checkOut || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+    if (!segByDate.has(ds)) segByDate.set(ds, []);
+    segByDate.get(ds).push(r);
+  }
+  const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
+  const halfDayKubun = new Set(['半休', '半休(有給)']);
+  const allowedNormal = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休み', '休日']);
+  const allowedOff = new Set(['休日', '休日出勤', '代替出勤', '休み']);
+
+  const result = [];
+  for (let day = 1; day <= lastDay; day++) {
+    const ds = `${y}-${pad(m)}-${pad(day)}`;
+    const isOff = off.has(ds);
+    const k0 = dailyKubun.get(ds) || '';
+    const kubun = (isOff ? (allowedOff.has(k0) ? k0 : '') : (allowedNormal.has(k0) ? k0 : ''));
+    const segs = segByDate.get(ds) || [];
+    const hasIn = segs.some(s => !!s?.checkIn);
+    const hasOut = segs.some(s => !!s?.checkOut);
+    const isWork = workKubunSet.has(kubun);
+
+    if (isPartTime) {
+      // Part-time: chỉ cảnh báo khi đã 出勤 nhưng chưa 退勤.
+      // Ngày không bấm gì (không đi làm) thì KHÔNG cảnh báo vì lịch part-time linh hoạt.
+      if (hasIn && !hasOut) {
+        result.push({ date: ds, missIn: false, missOut: true });
+      }
+      continue;
+    }
+
+    // Nhân viên chính thức: xác định ngày có bắt buộc chấm công không
+    let mustWork;
+    if (!isOff && !kubun) {
+      mustWork = true; // ngày thường không có kubun -> mặc định phải đi làm
+    } else {
+      mustWork = isWork;
+    }
+    if (!mustWork) continue;
+
+    // 半休 / 半休(有給): nếu đã có 出勤 thì coi như đủ (không cần 退勤)
+    if (halfDayKubun.has(kubun) && hasIn) continue;
+
+    if (!hasIn) {
+      // Không bấm gì cả (chưa 出勤) -> thiếu cả 出勤 lẫn 退勤
+      result.push({ date: ds, missIn: true, missOut: true });
+    } else if (!hasOut) {
+      // Đã 出勤 nhưng chưa 退勤
+      result.push({ date: ds, missIn: false, missOut: true });
+    }
+  }
+  return result;
+}
+
 // API: Lấy trạng thái nộp bảng chấm công của một tháng
 exports.getMonthStatus = async (req, res) => {
   try {
@@ -200,6 +272,36 @@ exports.submitMonth = async (req, res) => {
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'submitted' });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
+  }
+};
+
+// API: Nhân viên tự xem các ngày phải đi làm nhưng thiếu chấm công (出勤/退勤) của chính mình
+// GET /api/attendance/month/missing/me?year=&month=
+// Chỉ trả về những ngày ĐÃ QUA (< hôm nay, JST). Hôm nay chưa hết ngày nên không cảnh báo.
+// Mỗi ngày kèm lý do: missIn (thiếu 出勤), missOut (thiếu 退勤).
+exports.getMonthMissingMe = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const { year, month } = req.query || {};
+    const y = parseInt(String(year), 10);
+    const m = parseInt(String(month), 10);
+    if (!y || !m) return res.status(400).json({ message: 'Missing year/month' });
+
+    // Không lọc theo tenant ở đây: dữ liệu chấm công cũ có thể có tenant_id = NULL,
+    // và việc cô lập tenant đã được đảm bảo qua userId (mỗi user thuộc đúng 1 tenant).
+    // Cách này nhất quán với GET /api/attendance/date/:date (getDay) mà màn hình đang dùng.
+    const detailed = await computeMonthMissingDetailed(userId, y, m, null);
+
+    // Chỉ giữ các ngày đã qua (< hôm nay theo giờ Nhật/JST). Không cảnh báo hôm nay vì ngày chưa kết thúc.
+    const todayJst = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+    const missing = (detailed || [])
+      .filter(it => String(it.date) < todayJst)
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // mới nhất lên đầu
+
+    res.status(200).json({ userId, year: y, month: m, missing });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 

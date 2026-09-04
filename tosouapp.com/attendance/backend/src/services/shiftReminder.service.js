@@ -1,4 +1,4 @@
-const db = require('../core/database/mysql');
+﻿const db = require('../core/database/mysql');
 const emailService = require('../core/notifications/email.service');
 
 let cronInstance = null;
@@ -23,338 +23,7 @@ function getCron() {
 
 const sentReminders = new Set();
 
-/**
- * Parses "HH:mm" to minutes since midnight
- */
-function parseHmToMin(hm) {
-  if (!hm || typeof hm !== 'string') return null;
-  const parts = hm.split(':');
-  if (parts.length !== 2) return null;
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  if (isNaN(h) || isNaN(m)) return null;
-  return h * 60 + m;
-}
-
-/**
- * Checks if a shift time is within the reminder window.
- * @param {number} currentMin - Current time in minutes since midnight.
- * @param {number} targetMin - Shift start or end time in minutes since midnight.
- * @param {number} offset - 30, 15, or 5 minutes.
- * @returns {boolean} True if the current time matches the exact reminder minute.
- */
-async function processReminders() {
-  try {
-    if (!emailService.canSendMail()) {
-      // Email service not configured, skip
-      return;
-    }
-
-    const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
-    const todayStr = nowJST.toISOString().slice(0, 10);
-    const currentMin = nowJST.getUTCHours() * 60 + nowJST.getUTCMinutes(); // Hours and minutes in JST
-
-    const y = nowJST.getUTCFullYear();
-    const m = String(nowJST.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(nowJST.getUTCDate()).padStart(2, '0');
-    const todayJstStart = `${y}-${m}-${d} 00:00:00`;
-    const todayJstEnd = `${y}-${m}-${d} 23:59:59`;
-
-    // 1. Fetch all active users (only employees) with their emails and department info
-    const [users] = await db.query(`
-      SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
-      FROM users u 
-      LEFT JOIN departments d ON u.departmentId = d.id 
-      WHERE u.employment_status = 'active' AND u.role = 'employee'
-    `);
-    if (!users || users.length === 0) return;
-
-    // 2. Fetch today's shift assignments
-    const [assignments] = await db.query(`
-      SELECT 
-        a.userId, 
-        s.name, 
-        s.start_time, 
-        s.end_time 
-      FROM user_shift_assignments a
-      JOIN shift_definitions s ON a.shiftId = s.id
-      WHERE a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
-    `, [todayStr, todayStr]);
-
-    const assignMap = new Map();
-    for (const a of assignments) {
-      assignMap.set(a.userId, a);
-    }
-
-    // Check plan overrides
-    const [plans] = await db.query(`
-      SELECT 
-        userId, 
-        shiftId 
-      FROM attendance_plan 
-      WHERE date = ?
-    `, [todayStr]);
-
-    const planMap = new Map(plans.map(p => [p.userId, p.shiftId]));
-
-    const [allShifts] = await db.query(`SELECT id, name, start_time, end_time FROM shift_definitions`);
-    const shiftMap = new Map(allShifts.map(s => [s.id, s]));
-
-    // Check holidays and Sundays
-    let isRedDay = false;
-    let calendarExplanation = null;
-    try {
-      const calendarRepo = require('../modules/calendar/calendar.repository');
-      calendarExplanation = await calendarRepo.explainDate(todayStr);
-      isRedDay = !!calendarExplanation?.is_off;
-    } catch (e) {
-      console.error('[ShiftReminder] Error checking calendar:', e);
-    }
-    const isSunday = new Date(todayStr).getUTCDay() === 0;
-
-    // Check explicit daily kubun
-    const [dailies] = await db.query(`SELECT userId, kubun FROM attendance_daily WHERE date = ?`, [todayStr]);
-    const dailyMap = new Map(dailies.map(d => [d.userId, String(d.kubun || '').trim()]));
-
-    // Fetch shift_requests for today
-    const [shiftReqs] = await db.query(`SELECT userId, status FROM shift_requests WHERE date = ?`, [todayStr]);
-    const shiftReqMap = new Map(shiftReqs.map(sr => [sr.userId, sr.status]));
-
-    // 3. For each active user, check if we need to send a reminder
-    for (const user of users) {
-      const userId = user.id;
-      if (!user.email) continue;
-      
-      const isPartTime = user.employment_type === 'part_time';
-      const shiftReqStatus = shiftReqMap.get(userId);
-
-      // Nếu là part-time, chỉ nhắc nhở nếu có đăng ký đi làm (WORKING)
-      if (isPartTime) {
-        if (shiftReqStatus !== 'WORKING') continue; // Không nhắc nếu đăng ký nghỉ (OFF) hoặc chưa đăng ký
-      }
-
-      // Nếu là Seishain, kiểm tra xem có đăng ký nghỉ phép trên lịch ca không (LEAVE)
-      if (!isPartTime && shiftReqStatus === 'LEAVE') {
-        continue; // Không nhắc nhở nếu đã đăng ký nghỉ
-      }
-
-      // Kiểm tra xem có phải là nhân viên bộ phận Công trình (Koujibu) hay không
-        // (Part-time không áp dụng chính sách này)
-        const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('工事部');
-
-        // Determine if today is considered an off day for this specific user
-        let isUserOffDay = false;
-
-        if (!isKoujiUser) {
-          // Normal user: off on Sundays and Red Days (Nhân viên thường: Nghỉ Chủ nhật và các ngày lễ)
-          isUserOffDay = isSunday || isRedDay;
-        } else {
-          // Kouji User: specific policy logic (Nhân viên Công trình: Nghỉ Chủ nhật, Thứ 7 tuần 4, và các ngày lễ)
-          const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
-          const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_4th');
-          const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
-          isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
-        }
-      
-      const userKubun = dailyMap.get(userId) || '';
-      const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
-      const isExplicitWork = ['出勤', '休日出勤', '代替出勤', '半休'].includes(userKubun);
-      
-      if (isExplicitOff) continue;
-      if (isUserOffDay && !isExplicitWork) continue;
-
-      let shiftStartHm = '08:00';
-      let shiftEndHm = '17:00';
-      let shiftName = '基本シフト (08:00-17:00)';
-
-      const assign = assignMap.get(userId);
-      if (assign) {
-        shiftStartHm = assign.start_time;
-        shiftEndHm = assign.end_time;
-        shiftName = assign.name;
-      }
-
-      // If user has a specific plan for today, fetch that shift definition instead
-      const planShiftId = planMap.get(userId);
-      if (planShiftId) {
-        const pShift = shiftMap.get(planShiftId);
-        if (pShift) {
-           shiftStartHm = pShift.start_time;
-           shiftEndHm = pShift.end_time;
-           shiftName = pShift.name;
-        }
-      }
-
-      const startMin = parseHmToMin(shiftStartHm);
-      const endMin = parseHmToMin(shiftEndHm);
-
-      // Helper function to check attendance
-      const hasClockedIn = async () => {
-        const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkIn >= ? AND checkIn <= ? LIMIT 1`, [userId, todayJstStart, todayJstEnd]);
-        return att.length > 0;
-      };
-
-      const hasClockedOut = async () => {
-        const [att] = await db.query(`SELECT id FROM attendance WHERE userId = ? AND checkOut >= ? AND checkOut <= ? LIMIT 1`, [userId, todayJstStart, todayJstEnd]);
-        return att.length > 0;
-      };
-
-      // Check Shift Start Reminders (Before shift and exact/late)
-      const startOffsets = [30, 15, 0]; // Nhắc trước 30p, 15p và đúng giờ
-      for (const offset of startOffsets) {
-        if (startMin - currentMin === offset) {
-          const cacheKey = `${userId}_${todayStr}_start_${offset}m`;
-          if (!sentReminders.has(cacheKey)) {
-            const clockedIn = await hasClockedIn();
-            if (!clockedIn) {
-              await sendReminderEmail(user, shiftName, shiftStartHm, offset, 'start');
-            }
-            sentReminders.add(cacheKey);
-          }
-        }
-      }
-
-      // Check Shift End Reminders (After shift)
-      const endOffsets = [0, 15, 30]; // Nhắc đúng giờ về, sau 15p và sau 30p
-      for (const offset of endOffsets) {
-        if (currentMin - endMin === offset) {
-          const cacheKey = `${userId}_${todayStr}_end_${offset}m`;
-          if (!sentReminders.has(cacheKey)) {
-            const clockedOut = await hasClockedOut();
-            if (!clockedOut) {
-              await sendReminderEmail(user, shiftName, shiftEndHm, offset, 'end');
-            }
-            sentReminders.add(cacheKey);
-          }
-        }
-      }
-    }
-
-    // Clean up memory cache for previous days to prevent memory leak
-    // Ở đây là để tránh memory leak do sentReminders có nhiều key ko cần thiết để gửi email 
-    
-    const yesterdayStr = new Date(Date.now() + 9 * 3600 * 1000 - 86400000).toISOString().slice(0, 10);
-    for (const key of sentReminders) {
-      if (key.includes(yesterdayStr) && !key.startsWith('monthly_missing_')) {
-        sentReminders.delete(key);
-      }
-    }
-
-  } catch (err) {
-    console.error('[ShiftReminder] Error processing reminders:', err);
-  }
-}
-// Cái này checkin daily missing attendance
-async function checkDailyMissingAttendance() {
-  try {
-    const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
-    const todayStr = nowJST.toISOString().slice(0, 10);
-    const y = nowJST.getUTCFullYear();
-    const m = String(nowJST.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(nowJST.getUTCDate()).padStart(2, '0');
-    const todayJstStart = `${y}-${m}-${d} 00:00:00`;
-    const todayJstEnd = `${y}-${m}-${d} 23:59:59`;
-
-    // 1. Fetch all active users (only employees)
-    const [users] = await db.query(`
-      SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
-      FROM users u 
-      LEFT JOIN departments d ON u.departmentId = d.id 
-      WHERE u.employment_status = 'active' AND u.role = 'employee'
-    `);
-    if (!users || users.length === 0) return;
-
-    // 2. Check assignments
-    const [assignments] = await db.query(`
-      SELECT a.userId, s.name, s.start_time, s.end_time
-      FROM user_shift_assignments a
-      JOIN shift_definitions s ON a.shiftId = s.id
-      WHERE a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
-    `, [todayStr, todayStr]);
-    const assignMap = new Map();
-    for (const a of assignments) {
-      assignMap.set(a.userId, a);
-    }
-
-    // Check holidays and Sundays
-    let isRedDay = false;
-    let calendarExplanation = null;
-    try {
-      const calendarRepo = require('../modules/calendar/calendar.repository');
-      calendarExplanation = await calendarRepo.explainDate(todayStr);
-      isRedDay = !!calendarExplanation?.is_off;
-    } catch (e) {
-      console.error('[ShiftReminder] Error checking calendar:', e);
-    }
-    const isSunday = new Date(todayStr).getUTCDay() === 0;
-
-    // Check explicit daily kubun
-    const [dailies] = await db.query(`SELECT userId, kubun FROM attendance_daily WHERE date = ?`, [todayStr]);
-    const dailyMap = new Map(dailies.map(d => [d.userId, String(d.kubun || '').trim()]));
-
-    // Fetch shift_requests for today
-    const [shiftReqs] = await db.query(`SELECT userId, status FROM shift_requests WHERE date = ?`, [todayStr]);
-    const shiftReqMap = new Map(shiftReqs.map(sr => [sr.userId, sr.status]));
-
-    for (const user of users) {
-      if (!user.email) continue;
-      const userId = user.id;
-      
-      const isPartTime = user.employment_type === 'part_time';
-      const shiftReqStatus = shiftReqMap.get(userId);
-
-      // Nếu là part-time, chỉ nhắc nhở nếu có đăng ký đi làm (WORKING)
-      if (isPartTime) {
-        if (shiftReqStatus !== 'WORKING') continue;
-      }
-
-      // Nếu là Seishain, kiểm tra xem có đăng ký nghỉ phép trên lịch ca không (LEAVE)
-      if (!isPartTime && shiftReqStatus === 'LEAVE') {
-        continue;
-      }
-
-      const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('工事部');
-      
-      let isUserOffDay = false;
-      if (!isKoujiUser) {
-        isUserOffDay = isSunday || isRedDay;
-      } else {
-        const hasSundayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'sunday');
-        const hasLastSaturdayReason = calendarExplanation?.reasons?.some(x => x.is_off && x.type === 'saturday_4th');
-        const hasHolidayReason = calendarExplanation?.reasons?.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
-        isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
-      }
-
-      const userKubun = dailyMap.get(userId) || '';
-      const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
-      const isExplicitWork = ['出勤', '休日出勤', '代替出勤', '半休'].includes(userKubun);
-      
-      if (isExplicitOff) continue;
-      if (isUserOffDay && !isExplicitWork) continue;
-
-      const cacheKey = `daily_missing_${userId}_${todayStr}`;
-      if (sentReminders.has(cacheKey)) continue;
-
-      const [att] = await db.query(`SELECT id, checkIn, checkOut FROM attendance WHERE userId = ? AND (checkIn >= ? AND checkIn <= ? OR checkOut >= ? AND checkOut <= ?) LIMIT 1`, [userId, todayJstStart, todayJstEnd, todayJstStart, todayJstEnd]);
-      
-      if (att.length === 0) {
-        // Chưa check-in
-        await sendMissingEmail(user, 'daily_in', todayStr);
-        sentReminders.add(cacheKey);
-      } else if (!att[0].checkOut) {
-        // Đã check-in nhưng chưa check-out
-        await sendMissingEmail(user, 'daily_out', todayStr);
-        sentReminders.add(cacheKey);
-      } else {
-        // Đã check-in và check-out đầy đủ, đánh dấu để không nhắc nữa
-        sentReminders.add(cacheKey);
-      }
-    }
-  } catch (err) {
-    console.error('[ShiftReminder] Error daily missing:', err);
-  }
-}
-// Mục đích sử dụng của cái này là check monthly missing attendance
+// Má»¥c Ä‘Ã­ch sá»­ dá»¥ng cá»§a cÃ¡i nÃ y lÃ  check monthly missing attendance
 
 async function checkMonthlyMissingAttendance() {
   try {
@@ -392,16 +61,16 @@ async function checkMonthlyMissingAttendance() {
       assignMap.set(a.userId, a);
     }
 
-    // Lấy thông tin calendar để check ngày nghỉ của cả tháng
+    // Láº¥y thÃ´ng tin calendar Ä‘á»ƒ check ngÃ y nghá»‰ cá»§a cáº£ thÃ¡ng
     const calendarRepo = require('../modules/calendar/calendar.repository');
     const cal = await calendarRepo.computeYear(y).catch(() => null);
     
-    // Tách riêng các loại ngày nghỉ để phân tích logic cho 工事部
+    // TÃ¡ch riÃªng cÃ¡c loáº¡i ngÃ y nghá»‰ Ä‘á»ƒ phÃ¢n tÃ­ch logic cho å·¥äº‹éƒ¨
     const allDetail = cal?.detail || [];
     const redDays = new Set(allDetail.filter(it => it.is_off).map(it => String(it.date).slice(0, 10)));
     const offDays = new Set((cal?.off_days || []).map(d => String(d).slice(0, 10)));
     
-    // Lấy trước dữ liệu giải thích từng ngày để tái sử dụng
+    // Láº¥y trÆ°á»›c dá»¯ liá»‡u giáº£i thÃ­ch tá»«ng ngÃ y Ä‘á»ƒ tÃ¡i sá»­ dá»¥ng
     const explanations = new Map();
     const daysInMonth = [];
     for (let day = 1; day <= lastDay; day++) {
@@ -410,14 +79,14 @@ async function checkMonthlyMissingAttendance() {
       explanations.set(ds, allDetail.filter(it => String(it.date).slice(0, 10) === ds));
     }
 
-    // Lấy dữ liệu attendance_daily của toàn bộ tháng
+    // Láº¥y dá»¯ liá»‡u attendance_daily cá»§a toÃ n bá»™ thÃ¡ng
     const [dailies] = await db.query(`SELECT userId, date, kubun FROM attendance_daily WHERE date >= ? AND date <= ?`, [monthStartStr, monthEndStr]);
     const dailyMap = new Map(); // key: userId_date
     for (const d of dailies) {
       dailyMap.set(`${d.userId}_${String(d.date).slice(0, 10)}`, String(d.kubun || '').trim());
     }
 
-    // Lấy dữ liệu attendance của toàn bộ tháng
+    // Láº¥y dá»¯ liá»‡u attendance cá»§a toÃ n bá»™ thÃ¡ng
     const [attRows] = await db.query(`SELECT userId, DATE(checkIn) as inDate, DATE(checkOut) as outDate FROM attendance WHERE checkIn >= ? AND checkIn <= ?`, [monthStartJST, monthEndJST]);
     const attMap = new Map(); // key: userId_date
     for (const r of attRows) {
@@ -428,31 +97,31 @@ async function checkMonthlyMissingAttendance() {
       if (!user.email) continue;
       const userId = user.id;
       
-      // Bỏ qua nhân viên part-time (baito) vì họ có lịch làm việc không cố định
+      // Bá» qua nhÃ¢n viÃªn part-time (baito) vÃ¬ há» cÃ³ lá»‹ch lÃ m viá»‡c khÃ´ng cá»‘ Ä‘á»‹nh
       if (user.employment_type === 'part_time') continue;
       
-      // Kiểm tra xem có phải là nhân viên bộ phận Công trình (Koujibu) hay không
+      // Kiá»ƒm tra xem cÃ³ pháº£i lÃ  nhÃ¢n viÃªn bá»™ pháº­n CÃ´ng trÃ¬nh (Koujibu) hay khÃ´ng
       const isPartTime = user.employment_type === 'part_time';
-      const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('工事部');
+      const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('å·¥äº‹éƒ¨');
 
       const cacheKey = `monthly_missing_${userId}_${monthStr}`;
       if (sentReminders.has(cacheKey)) continue;
 
       let isMissingAnyDay = false;
 
-      // Kiểm tra từng ngày trong tháng cho user này
+      // Kiá»ƒm tra tá»«ng ngÃ y trong thÃ¡ng cho user nÃ y
       for (const ds of daysInMonth) {
-        // Bỏ qua ngày trong tương lai
+        // Bá» qua ngÃ y trong tÆ°Æ¡ng lai
         if (ds > todayStr) continue;
 
         const isSunday = new Date(ds).getUTCDay() === 0;
         let isUserOffDay = false;
 
         if (!isKoujiUser) {
-          // Nhân viên thường: Nghỉ chủ nhật, ngày lễ (redDays) hoặc ngày nghỉ công ty (offDays)
+          // NhÃ¢n viÃªn thÆ°á»ng: Nghá»‰ chá»§ nháº­t, ngÃ y lá»… (redDays) hoáº·c ngÃ y nghá»‰ cÃ´ng ty (offDays)
           isUserOffDay = isSunday || redDays.has(ds) || offDays.has(ds);
         } else {
-          // Nhân viên bộ phận Công trình (Koujibu): Có quy tắc ngày nghỉ riêng (Nghỉ thứ 7 tuần 4)
+          // NhÃ¢n viÃªn bá»™ pháº­n CÃ´ng trÃ¬nh (Koujibu): CÃ³ quy táº¯c ngÃ y nghá»‰ riÃªng (Nghá»‰ thá»© 7 tuáº§n 4)
           const detail = explanations.get(ds) || [];
           const hasSundayReason = detail.some(x => x.is_off && x.type === 'sunday');
           const hasLastSaturdayReason = detail.some(x => x.is_off && x.type === 'saturday_4th');
@@ -461,25 +130,25 @@ async function checkMonthlyMissingAttendance() {
         }
 
         const userKubun = dailyMap.get(`${userId}_${ds}`) || '';
-        const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
-        const isExplicitWork = ['出勤', '休日出勤', '代替出勤', '半休'].includes(userKubun);
+        const isExplicitOff = ['ä¼‘æ—¥', 'æœ‰çµ¦ä¼‘æš‡', 'æ¬ å‹¤', 'ç„¡çµ¦ä¼‘æš‡', 'ä»£æ›¿ä¼‘æ—¥'].includes(userKubun);
+        const isExplicitWork = ['å‡ºå‹¤', 'ä¼‘æ—¥å‡ºå‹¤', 'ä»£æ›¿å‡ºå‹¤', 'åŠä¼‘'].includes(userKubun);
 
         if (isExplicitOff) continue;
         if (isUserOffDay && !isExplicitWork) continue;
 
-        // Nếu ngày này là ngày phải làm việc, kiểm tra xem đã chấm công chưa
+        // Náº¿u ngÃ y nÃ y lÃ  ngÃ y pháº£i lÃ m viá»‡c, kiá»ƒm tra xem Ä‘Ã£ cháº¥m cÃ´ng chÆ°a
         if (!attMap.has(`${userId}_${ds}`)) {
           isMissingAnyDay = true;
-          break; // Chỉ cần thiếu 1 ngày là đủ điều kiện để gửi thông báo tháng
+          break; // Chá»‰ cáº§n thiáº¿u 1 ngÃ y lÃ  Ä‘á»§ Ä‘iá»u kiá»‡n Ä‘á»ƒ gá»­i thÃ´ng bÃ¡o thÃ¡ng
         }
       }
 
-      // Nếu có ít nhất 1 ngày làm việc bị thiếu chấm công, thì gửi thông báo
+      // Náº¿u cÃ³ Ã­t nháº¥t 1 ngÃ y lÃ m viá»‡c bá»‹ thiáº¿u cháº¥m cÃ´ng, thÃ¬ gá»­i thÃ´ng bÃ¡o
       if (isMissingAnyDay) {
         await sendMissingEmail(user, 'monthly', monthStr);
         sentReminders.add(cacheKey);
       } else {
-        // Đếm tổng số ngày đã đi làm trong tháng
+        // Äáº¿m tá»•ng sá»‘ ngÃ y Ä‘Ã£ Ä‘i lÃ m trong thÃ¡ng
         let totalWorkedDays = 0;
         for (const ds of daysInMonth) {
           if (attMap.has(`${userId}_${ds}`)) {
@@ -497,101 +166,41 @@ async function checkMonthlyMissingAttendance() {
 
 async function sendMissingEmail(user, type, dateStr) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
   
   let subject, text, html;
 
-  if (type === 'daily_in') {
-    subject = `[飯塚グループ・エンジニアリング] 勤怠未入力のお知らせ（出勤）`;
+  if (type === 'monthly') {
+    subject = `[é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°] ä»Šæœˆã®å‹¤æ€ æœªå…¥åŠ›ã«é–¢ã™ã‚‹é‡è¦ãªãŠçŸ¥ã‚‰ã›`;
     text = `
-${user.username} さん
+${user.username} ã•ã‚“
 
-本日（${dateStr}）の出勤打刻が確認できませんでした。
-勤務したにもかかわらず打刻を忘れた場合は、システムの報告申請から至急報告してください。
-もし本日がお休みの場合は、このメールは破棄していただいて構いません。
+ä»Šæœˆï¼ˆ${dateStr}ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã«æœªå…¥åŠ›ã®å‹¤å‹™æ—¥ãŒå«ã¾ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚
+å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ãŒæœªå…¥åŠ›ã®ã¾ã¾ã§ã™ã¨ã€çµ¦ä¸Žè¨ˆç®—ç­‰ã«å½±éŸ¿ãŒå‡ºã‚‹å¯èƒ½æ€§ãŒã‚ã‚Šã¾ã™ã€‚
+è‡³æ€¥ã€ã‚·ã‚¹ãƒ†ãƒ ã‚ˆã‚Šæ‰“åˆ»ã®çŠ¶æ³ã‚„ç”³è«‹æ¼ã‚ŒãŒãªã„ã‹ç¢ºèªã—ã¦ãã ã•ã„ã€‚
 
-▼ 打刻・申請はこちらから（アプリURL）
+â–¼ æ‰“åˆ»ãƒ»ç”³è«‹ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰
 ${appUrl}
 
-このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd
+ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚
+ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
+å…¬å¼LINEï¼š https://lin.ee/zBKnhkd
     `.trim();
 
     html = `
-      <p>${user.username} さん</p>
+      <p>${user.username} ã•ã‚“</p>
       <br/>
-      <p>本日（<strong>${dateStr}</strong>）の出勤打刻が確認できませんでした。</p>
-      <p>勤務したにもかかわらず打刻を忘れた場合は、システムの報告申請から至急報告してください。<br/>
-      もし本日がお休みの場合は、このメールは破棄していただいて構いません。</p>
+      <p>ä»Šæœˆï¼ˆ<strong>${dateStr}</strong>ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã«æœªå…¥åŠ›ã®å‹¤å‹™æ—¥ãŒå«ã¾ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚</p>
+      <p>å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ãŒæœªå…¥åŠ›ã®ã¾ã¾ã§ã™ã¨ã€çµ¦ä¸Žè¨ˆç®—ç­‰ã«å½±éŸ¿ãŒå‡ºã‚‹å¯èƒ½æ€§ãŒã‚ã‚Šã¾ã™ã€‚<br/>
+      è‡³æ€¥ã€ã‚·ã‚¹ãƒ†ãƒ ã‚ˆã‚Šæ‰“åˆ»ã®çŠ¶æ³ã‚„ç”³è«‹æ¼ã‚ŒãŒãªã„ã‹ç¢ºèªã—ã¦ãã ã•ã„ã€‚</p>
       <br/>
-      <p>▼ 打刻・申請はこちらから（アプリURL）<br/>
+      <p>â–¼ æ‰“åˆ»ãƒ»ç”³è«‹ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰<br/>
       <a href="${appUrl}">${appUrl}</a></p>
       <br/>
       <hr/>
-      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
-    `;
-  } else if (type === 'daily_out') {
-    subject = `[飯塚グループ・エンジニアリング] 勤怠未入力のお知らせ（退勤）`;
-    text = `
-${user.username} さん
-
-本日（${dateStr}）の退勤打刻が確認できませんでした。
-退勤の打刻を忘れた場合は、システムの報告申請から至急報告してください。
-
-▼ 打刻・申請はこちらから（アプリURL）
-${appUrl}
-
-このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd
-    `.trim();
-
-    html = `
-      <p>${user.username} さん</p>
-      <br/>
-      <p>本日（<strong>${dateStr}</strong>）の退勤打刻が確認できませんでした。</p>
-      <p>退勤の打刻を忘れた場合は、システムの報告申請から至急報告してください。</p>
-      <br/>
-      <p>▼ 打刻・申請はこちらから（アプリURL）<br/>
-      <a href="${appUrl}">${appUrl}</a></p>
-      <br/>
-      <hr/>
-      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
-    `;
-  } else if (type === 'monthly') {
-    subject = `[飯塚グループ・エンジニアリング] 今月の勤怠未入力に関する重要なお知らせ`;
-    text = `
-${user.username} さん
-
-今月（${dateStr}）の勤怠データに未入力の勤務日が含まれていることが確認されました。
-勤怠データが未入力のままですと、給与計算等に影響が出る可能性があります。
-至急、システムより打刻の状況や申請漏れがないか確認してください。
-
-▼ 打刻・申請はこちらから（アプリURL）
-${appUrl}
-
-このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd
-    `.trim();
-
-    html = `
-      <p>${user.username} さん</p>
-      <br/>
-      <p>今月（<strong>${dateStr}</strong>）の勤怠データに未入力の勤務日が含まれていることが確認されました。</p>
-      <p>勤怠データが未入力のままですと、給与計算等に影響が出る可能性があります。<br/>
-      至急、システムより打刻の状況や申請漏れがないか確認してください。</p>
-      <br/>
-      <p>▼ 打刻・申請はこちらから（アプリURL）<br/>
-      <a href="${appUrl}">${appUrl}</a></p>
-      <br/>
-      <hr/>
-      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd</p>
+      <p style="font-size: 12px; color: #666;">ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚<br/>
+      ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
+å…¬å¼LINEï¼š https://lin.ee/zBKnhkd</p>
     `;
   }
 
@@ -613,38 +222,38 @@ ${appUrl}
 
 async function sendMonthlyCompleteEmail(user, monthStr, totalWorkedDays) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
   
-  const subject = `[飯塚グループ・エンジニアリング] 今月の勤怠データ確認完了のお知らせ`;
+  const subject = `[é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°] ä»Šæœˆã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ç¢ºèªå®Œäº†ã®ãŠçŸ¥ã‚‰ã›`;
   const text = `
-${user.username} さん
+${user.username} ã•ã‚“
 
-今月（${monthStr}）の勤怠データはすべて正常に入力されていることが確認されました。
-今月の合計出勤日数は ${totalWorkedDays} 日です。
+ä»Šæœˆï¼ˆ${monthStr}ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã¯ã™ã¹ã¦æ­£å¸¸ã«å…¥åŠ›ã•ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚
+ä»Šæœˆã®åˆè¨ˆå‡ºå‹¤æ—¥æ•°ã¯ ${totalWorkedDays} æ—¥ã§ã™ã€‚
 
-詳細や有給等の状況について確認・修正が必要な場合は、システムの月次勤怠表をご確認いただくか、管理者までご連絡ください。
+è©³ç´°ã‚„æœ‰çµ¦ç­‰ã®çŠ¶æ³ã«ã¤ã„ã¦ç¢ºèªãƒ»ä¿®æ­£ãŒå¿…è¦ãªå ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®æœˆæ¬¡å‹¤æ€ è¡¨ã‚’ã”ç¢ºèªã„ãŸã ãã‹ã€ç®¡ç†è€…ã¾ã§ã”é€£çµ¡ãã ã•ã„ã€‚
 
-▼ 月次勤怠表はこちらから（アプリURL）
+â–¼ æœˆæ¬¡å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰
 ${appUrl}
 
-このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd
+ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚
+ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
+å…¬å¼LINEï¼š https://lin.ee/zBKnhkd
   `.trim();
 
   const html = `
-    <p>${user.username} さん</p>
+    <p>${user.username} ã•ã‚“</p>
     <br/>
-    <p>今月（<strong>${monthStr}</strong>）の勤怠データはすべて正常に入力されていることが確認されました。</p>
-    <p>今月の合計出勤日数は <strong>${totalWorkedDays} 日</strong>です。</p>
-    <p>詳細や有給等の状況について確認・修正が必要な場合は、システムの月次勤怠表をご確認いただくか、管理者までご連絡ください。</p>
+    <p>ä»Šæœˆï¼ˆ<strong>${monthStr}</strong>ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã¯ã™ã¹ã¦æ­£å¸¸ã«å…¥åŠ›ã•ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚</p>
+    <p>ä»Šæœˆã®åˆè¨ˆå‡ºå‹¤æ—¥æ•°ã¯ <strong>${totalWorkedDays} æ—¥</strong>ã§ã™ã€‚</p>
+    <p>è©³ç´°ã‚„æœ‰çµ¦ç­‰ã®çŠ¶æ³ã«ã¤ã„ã¦ç¢ºèªãƒ»ä¿®æ­£ãŒå¿…è¦ãªå ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®æœˆæ¬¡å‹¤æ€ è¡¨ã‚’ã”ç¢ºèªã„ãŸã ãã‹ã€ç®¡ç†è€…ã¾ã§ã”é€£çµ¡ãã ã•ã„ã€‚</p>
     <br/>
-    <p>▼ 月次勤怠表はこちらから（アプリURL）<br/>
+    <p>â–¼ æœˆæ¬¡å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰<br/>
     <a href="${appUrl}">${appUrl}</a></p>
     <br/>
     <hr/>
-    <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-    お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+    <p style="font-size: 12px; color: #666;">ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚<br/>
+    ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚<br/><strong>å…¬å¼LINEï¼š</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
   `;
 
   try {
@@ -665,50 +274,50 @@ ${appUrl}
 
 async function sendDailySummaryEmail(user, dateStr, checkIn, checkOut, totalHours) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
   
   const inStr = String(checkIn || '').slice(11, 16);
   const outStr = String(checkOut || '').slice(11, 16);
   
-  const subject = `[飯塚グループ・エンジニアリング] 本日の勤務お疲れ様でした`;
+  const subject = `[é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°] æœ¬æ—¥ã®å‹¤å‹™ãŠç–²ã‚Œæ§˜ã§ã—ãŸ`;
   const text = `
-${user.username} さん
+${user.username} ã•ã‚“
 
-本日の勤務お疲れ様でした。以下の通り退勤の打刻を受け付けました。
+æœ¬æ—¥ã®å‹¤å‹™ãŠç–²ã‚Œæ§˜ã§ã—ãŸã€‚ä»¥ä¸‹ã®é€šã‚Šé€€å‹¤ã®æ‰“åˆ»ã‚’å—ã‘ä»˜ã‘ã¾ã—ãŸã€‚
 
-・日付: ${dateStr}
-・出勤時間: ${inStr}
-・退勤時間: ${outStr}
-・総勤務時間: ${totalHours}
+ãƒ»æ—¥ä»˜: ${dateStr}
+ãƒ»å‡ºå‹¤æ™‚é–“: ${inStr}
+ãƒ»é€€å‹¤æ™‚é–“: ${outStr}
+ãƒ»ç·å‹¤å‹™æ™‚é–“: ${totalHours}
 
-打刻時間に誤りがある場合は、システムの勤怠表から修正申請を行ってください。
+æ‰“åˆ»æ™‚é–“ã«èª¤ã‚ŠãŒã‚ã‚‹å ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®å‹¤æ€ è¡¨ã‹ã‚‰ä¿®æ­£ç”³è«‹ã‚’è¡Œã£ã¦ãã ã•ã„ã€‚
 
-▼ 勤怠表はこちらから（アプリURL）
+â–¼ å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰
 ${appUrl}
 
-このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd
+ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚
+ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
+å…¬å¼LINEï¼š https://lin.ee/zBKnhkd
   `.trim();
 
   const html = `
-    <p>${user.username} さん</p>
+    <p>${user.username} ã•ã‚“</p>
     <br/>
-    <p>本日の勤務お疲れ様でした。以下の通り退勤の打刻を受け付けました。</p>
+    <p>æœ¬æ—¥ã®å‹¤å‹™ãŠç–²ã‚Œæ§˜ã§ã—ãŸã€‚ä»¥ä¸‹ã®é€šã‚Šé€€å‹¤ã®æ‰“åˆ»ã‚’å—ã‘ä»˜ã‘ã¾ã—ãŸã€‚</p>
     <ul>
-      <li><strong>日付:</strong> ${dateStr}</li>
-      <li><strong>出勤時間:</strong> ${inStr}</li>
-      <li><strong>退勤時間:</strong> ${outStr}</li>
-      <li><strong>総勤務時間:</strong> ${totalHours}</li>
+      <li><strong>æ—¥ä»˜:</strong> ${dateStr}</li>
+      <li><strong>å‡ºå‹¤æ™‚é–“:</strong> ${inStr}</li>
+      <li><strong>é€€å‹¤æ™‚é–“:</strong> ${outStr}</li>
+      <li><strong>ç·å‹¤å‹™æ™‚é–“:</strong> ${totalHours}</li>
     </ul>
-    <p>打刻時間に誤りがある場合は、システムの勤怠表から修正申請を行ってください。</p>
+    <p>æ‰“åˆ»æ™‚é–“ã«èª¤ã‚ŠãŒã‚ã‚‹å ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®å‹¤æ€ è¡¨ã‹ã‚‰ä¿®æ­£ç”³è«‹ã‚’è¡Œã£ã¦ãã ã•ã„ã€‚</p>
     <br/>
-    <p>▼ 勤怠表はこちらから（アプリURL）<br/>
+    <p>â–¼ å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰<br/>
     <a href="${appUrl}">${appUrl}</a></p>
     <br/>
     <hr/>
-    <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-    お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+    <p style="font-size: 12px; color: #666;">ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚<br/>
+    ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚<br/><strong>å…¬å¼LINEï¼š</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
   `;
 
   try {
@@ -727,99 +336,6 @@ ${appUrl}
   }
 }
 
-async function sendReminderEmail(user, shiftName, timeHm, offsetMin, type) {
-  const isStart = type === 'start';
-  const appUrl = process.env.APP_URL || 'https://tosouapp.com/'; // URL app chấm công
-  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
-  
-  let subject, text, html;
-
-  if (isStart) {
-    subject = `[飯塚グループ・エンジニアリング] 勤怠確認`;
-    
-    let timeText;
-    if (offsetMin > 0) {
-      timeText = `出勤予定時間の${offsetMin}分前になりました`;
-    } else if (offsetMin === 0) {
-      timeText = `出勤予定時間になりました`;
-    } else {
-      timeText = `出勤予定時間から${Math.abs(offsetMin)}分経過しました`;
-    }
-
-    text = `
-${user.username} さん
-
-${timeText}。遅延などで勤務開始が遅れる場合は、システムの報告申請から報告してください。
-
-▼ 打刻はこちらから（アプリURL）
-${appUrl}
-
-このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd
-    `.trim();
-
-    html = `
-      <p>${user.username} さん</p>
-      <br/>
-      <p><strong>${timeText}</strong>。遅延などで勤務開始が遅れる場合は、システムの報告申請から報告してください。</p>
-      <br/>
-      <p>▼ 打刻はこちらから（アプリURL）<br/>
-      <a href="${appUrl}">${appUrl}</a></p>
-      <br/>
-      <hr/>
-      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd</p>
-    `;
-  } else {
-    const timeText = offsetMin === 0 ? 'になりました' : `から ${offsetMin} 分経過しました`;
-    subject = `[飯塚グループ・エンジニアリング] 勤怠確認`;
-    text = `
-${user.username} さん
-
-退勤予定時間${timeText}。退勤の打刻を忘れないようにお願いいたします。
-
-▼ 打刻はこちらから（アプリURL）
-${appUrl}
-
-このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
-お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd
-    `.trim();
-
-    html = `
-      <p>${user.username} さん</p>
-      <br/>
-      <p>退勤予定時間<strong>${timeText}</strong>。退勤の打刻を忘れないようにお願いいたします。</p>
-      <br/>
-      <p>▼ 打刻はこちらから（アプリURL）<br/>
-      <a href="${appUrl}">${appUrl}</a></p>
-      <br/>
-      <hr/>
-      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
-      お問い合わせに関してはシステム公式LINEまでお願いいたします。
-公式LINE： https://lin.ee/zBKnhkd</p>
-    `;
-  }
-
-  try {
-    console.log(`[ShiftReminder] Sending ${offsetMin}m ${type} reminder to ${user.email} (${timeHm})`);
-    
-    if (typeof emailService.sendViaResend === 'function') {
-       await emailService.sendViaResend({
-         from: senderFrom,
-         to: user.email,
-         subject,
-         html,
-         text
-       });
-    }
-  } catch (err) {
-    console.error(`[ShiftReminder] Failed to send email to ${user.email}:`, err);
-  }
-}
-
 function init() {
   const cron = getCron();
   if (!cron || typeof cron.schedule !== 'function') {
@@ -827,16 +343,6 @@ function init() {
     console.warn(`[ShiftReminder] Scheduler disabled because node-cron is unavailable${detail}`);
     return false;
   }
-
-  // Run every minute at the 0th second
-  cron.schedule('* * * * *', () => {
-    processReminders();
-  });
-
-  // Daily missing check: run at 23:00 JST every day
-  cron.schedule('0 23 * * *', () => {
-    checkDailyMissingAttendance();
-  }, { timezone: 'Asia/Tokyo' });
 
   // Monthly missing check: run at 23:30 JST on the last day of every month
   cron.schedule('30 23 28-31 * *', () => {
@@ -848,14 +354,12 @@ function init() {
     }
   }, { timezone: 'Asia/Tokyo' });
 
-  console.log('[ShiftReminder] Cron job initialized (runs every minute). Daily at 23:00 JST, Monthly on last day 23:30 JST.');
+  console.log('[ShiftReminder] Cron job initialized. Monthly total-days check on last day 23:30 JST.');
   return true;
 }
 
 module.exports = {
   init,
-  processReminders,
-  checkDailyMissingAttendance,
   checkMonthlyMissingAttendance,
   sendDailySummaryEmail
 };
