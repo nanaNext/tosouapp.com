@@ -7,13 +7,7 @@ console.log('==================================================');
 console.log('🚀 KHỞI ĐỘNG CRON WORKER ĐỘC LẬP (BACKGROUND TASKS)');
 console.log('==================================================');
 
-// 1. Khởi chạy tác vụ quét quên check-out (Hard Timeout 12h)
 initAttendanceTimeoutCron();
-
-// 2. Khởi chạy tác vụ nhắc nhở nộp lịch ca (15, 25, cuối tháng)
-initShiftSubmissionReminderCron();
-
-// 3. Khởi chạy tác vụ Backup DB (Chỉ chạy trên Production)
 if (process.env.NODE_ENV === 'production') {
     initBackupCronJob();
     console.log('[CronWorker] Đã kích hoạt DB Backup Cron.');

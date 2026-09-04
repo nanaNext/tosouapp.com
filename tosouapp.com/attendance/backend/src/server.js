@@ -67,10 +67,8 @@ async function start() {
       const shownHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
       console.log(`Server is running at http://${shownHost}:${PORT} (bind ${HOST})`);
     });
-    // Khởi tạo các tác vụ chạy ngầm nếu không bị vô hiệu hóa
     if (!disableSchedulers) {
-      initAutoGrantScheduler(); // Cấp ngày nghỉ tự động
-      initShiftReminders();     // Gửi email nhắc nhở/báo cáo chấm công
+      initAutoGrantScheduler();
     }
 
     // Initialize backup cron job - Tự động sao lưu Database (chỉ chạy trên Production)
