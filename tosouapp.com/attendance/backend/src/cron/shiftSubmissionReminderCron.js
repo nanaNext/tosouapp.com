@@ -4,6 +4,7 @@ const emailService = require('../core/notifications/email.service');
 const noticesRepo = require('../modules/notices/notices.repository');
 
 async function processMonthlyShiftReminders() {
+    return;
     console.log('[ShiftReminderCron] Bắt đầu kiểm tra nhắc nhở nộp lịch ca tháng sau...');
     try {
         if (!emailService.canSendMail()) {
@@ -223,8 +224,8 @@ ${appUrl}ui/manual
 }
 
 function initShiftSubmissionReminderCron() {
-    // Chạy vào 15:00 mỗi ngày
-    // (Bên trong hàm sẽ tự check xem hôm nay có phải 15, 25, hoặc cuối tháng không)
+    console.log('[ShiftSubmissionReminderCron] Disabled by admin — skipping scheduler init.');
+    return;
     cron.schedule('0 15 * * *', () => {
         processMonthlyShiftReminders();
     }, {

@@ -171,7 +171,7 @@ exports.checkOut = async (req, res) => {
         if (totalMinutes < 0) totalMinutes = 0;
         const totalHoursStr = `${Math.floor(totalMinutes / 60)}時間${String(totalMinutes % 60).padStart(2, '0')}分`;
 
-        shiftReminderService.sendDailySummaryEmail(u, dtStr2, result.checkIn, result.checkOut, totalHoursStr).catch(e => log.warn('daily_summary_email_failed', { userId, error_message: e.message }));
+        // shiftReminderService.sendDailySummaryEmail(u, dtStr2, result.checkIn, result.checkOut, totalHoursStr).catch(e => log.warn('daily_summary_email_failed', { userId, error_message: e.message }));
       }
     } catch (e) {
       log.warn('notify_admin_checkout_failed', { userId, error_message: e.message });

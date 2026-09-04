@@ -1,4 +1,4 @@
-﻿const db = require('../core/database/mysql');
+const db = require('../core/database/mysql');
 const emailService = require('../core/notifications/email.service');
 
 let cronInstance = null;
@@ -26,6 +26,7 @@ const sentReminders = new Set();
 // Má»¥c Ä‘Ã­ch sá»­ dá»¥ng cá»§a cÃ¡i nÃ y lÃ  check monthly missing attendance
 
 async function checkMonthlyMissingAttendance() {
+  return;
   try {
     const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
     const y = nowJST.getUTCFullYear();
@@ -165,6 +166,7 @@ async function checkMonthlyMissingAttendance() {
 }
 
 async function sendMissingEmail(user, type, dateStr) {
+  return;
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
   const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
   
@@ -221,6 +223,7 @@ ${appUrl}
 }
 
 async function sendMonthlyCompleteEmail(user, monthStr, totalWorkedDays) {
+  return;
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
   const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
   
@@ -337,6 +340,8 @@ ${appUrl}
 }
 
 function init() {
+  console.log('[ShiftReminder] Disabled by admin — skipping scheduler init.');
+  return true;
   const cron = getCron();
   if (!cron || typeof cron.schedule !== 'function') {
     const detail = cronLoadError && cronLoadError.message ? `: ${cronLoadError.message}` : '';
