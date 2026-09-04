@@ -1580,12 +1580,6 @@
       if (show) modal.removeAttribute('hidden');
     };
 
-    // Phát hiện thiết bị di động (điện thoại/tablet). Trên mobile trình duyệt CHẶN
-    // window.print() tự động → phải sinh file PDF và tải về.
-    const isMobileDevice = () =>
-      /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)
-      || (navigator.maxTouchPoints > 1 && !/Windows NT/i.test(navigator.userAgent));
-
     // ── Bấm nút 就業状況通知書出力 ──
     //  • Desktop: mở hộp thoại in (chữ chuẩn) → chọn PDF に保存.
     //  • Điện thoại: sinh file PDF và TẢI VỀ máy (vì mobile chặn tự động in).
@@ -1593,54 +1587,15 @@
       await openModal(false);                    // build nội dung (không hiện modal)
       const iframe = await renderPrintIframe();   // iframe + auto-fit (đúng bản đẹp)
 
-      // ── Desktop: DÙNG CÔNG CỤ IN CỦA TRÌNH DUYỆT (native print) ──
-      // Trình duyệt dựng chữ tiếng Nhật CHUẨN, sắc nét, chọn/copy được và GIỐNG
-      // HỆT bản xem trước. (html2canvas hay bị chồng chữ / lệch letter-spacing nên
-      // KHÔNG dùng cho desktop.) Ở hộp thoại in, chọn 送信先 = "PDF に保存" để lưu.
-      if (!isMobileDevice()) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        return;
-      }
-
-      // ── Điện thoại: mobile CHẶN window.print() tự động → phải sinh file PDF
-      // bằng html2canvas + jsPDF rồi TẢI VỀ. (Chấp nhận rằng bản mobile là ảnh.)
-      if (!window.html2canvas || !window.jspdf) {
-        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
-        return;
-      }
-      try {
-        const doc = iframe.contentWindow.document;
-        // Chờ font tiếng Nhật tải xong TRONG iframe trước khi chụp → giảm chồng chữ.
-        try { if (doc.fonts && doc.fonts.ready) { await doc.fonts.ready; } } catch (e) {}
-        // Chụp CHÍNH #printScale — kích thước ĐÚNG 1 trang giấy → tỉ lệ khớp, không cắt.
-        const target = doc.getElementById('printScale') || doc.querySelector('.print-container') || doc.body;
-        const prevOverflow = target.style.overflow;
-        target.style.overflow = 'visible';
-        const canvas = await window.html2canvas(target, {
-          scale: 3, backgroundColor: '#fff', useCORS: true,
-          width: target.offsetWidth, height: target.offsetHeight,
-          windowWidth: target.offsetWidth, windowHeight: target.offsetHeight,
-        });
-        target.style.overflow = prevOverflow;
-
-        const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
-        const [paperName, paperOrient] = paperVal.split('-');
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: paperOrient === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: paperName.toLowerCase() });
-        const pw = pdf.internal.pageSize.getWidth();
-        const ph = pdf.internal.pageSize.getHeight();
-        let imgW = pw;
-        let imgH = (canvas.height / canvas.width) * pw;
-        if (imgH > ph) { imgH = ph; imgW = (canvas.width / canvas.height) * ph; }
-        const offX = (pw - imgW) / 2;
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', offX, 0, imgW, imgH, undefined, 'FAST');
-        const empName = (document.querySelector('#enmNameLine')?.textContent || '').trim().replace(/[\\/:*?"<>|]/g, '');
-        pdf.save(`${empName ? '出勤簿_' + empName : '出勤簿'}.pdf`); // TẢI VỀ máy
-        closeModal();
-      } catch (err) {
-        alert('PDF生成に失敗しました: ' + (err?.message || err));
-      }
+      // ── DÙNG CÔNG CỤ IN CỦA TRÌNH DUYỆT (native print) TRÊN MỌI THIẾT BỊ ──
+      // Trình duyệt dựng chữ tiếng Nhật CHUẨN, sắc nét, GIỐNG HỆT bản xem trước và
+      // ỔN ĐỊNH như nhau trên mọi máy. TUYỆT ĐỐI KHÔNG dùng html2canvas nữa vì nó
+      // hay bị VỠ/CHỒNG CHỮ (mỗi máy render một kiểu khác nhau — nhất là khi font
+      // tiếng Nhật chưa tải xong lúc chụp). Trên điện thoại/tablet, window.print()
+      // vẫn mở được bảng in/chia sẻ của hệ điều hành (do bấm nút = user gesture),
+      // người dùng chọn "PDF に保存"/"PDFで保存" để lưu.
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
     };
 
     btnOpen.addEventListener('click', (e) => {
