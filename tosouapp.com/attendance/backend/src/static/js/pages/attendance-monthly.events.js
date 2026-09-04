@@ -1765,8 +1765,20 @@
                   overflow: hidden;
                 }
                 #printScale > .enm-paper { box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; width: 100%; }
-                #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
-                #printScale > .enm-paper > .enm-footer-text { margin-top: auto; }
+                /* KHÔNG cho bảng flex-stretch (flex:0 0 auto) → bảng cao ĐÚNG bằng
+                   tổng chiều cao các hàng (thead ghim cố định + tbody do JS giãn).
+                   Nhờ đó header không bị phình và mọi nhân viên có form như nhau. */
+                #printScale > .enm-paper > .enm-daily-table { flex: 0 0 auto; width: 100%; }
+                /* Footer nằm NGAY DƯỚI bảng (không margin-top:auto) → khi tbody được
+                   giãn lấp trang thì footer đi theo sát đáy bảng, không tạo khe hở. */
+                #printScale > .enm-paper > .enm-footer-text { margin-top: 4px; }
+                /* GHIM chiều cao header cố định → header GIỐNG HỆT NHAU cho mọi nhân
+                   viên, KHÔNG bị flex kéo giãn phình to (trước đây thead hút phần
+                   chiều cao dư khi tbody ít nội dung → chữ 日/開始/終了 lệch xuống,
+                   nhìn như trùng). Chỉ tbody mới được giãn để lấp trang. */
+                #printScale .enm-daily-table thead tr:nth-child(1) { height: 34px !important; }
+                #printScale .enm-daily-table thead tr:nth-child(2) { height: 20px !important; }
+                #printScale .enm-daily-table thead th { height: auto !important; vertical-align: middle !important; padding-top: 2px !important; padding-bottom: 2px !important; }
                 .print-container .enm-title { margin-top: 0 !important; margin-bottom: 4px !important; font-size: 28px !important; letter-spacing: 10px !important; text-indent: 10px !important; }
                 .print-container h4 { margin: 2px 0 1px 0 !important; }
                 .print-container .enm-table th, .print-container .enm-table td { padding: 4px 5px !important; font-size: 12px !important; font-weight: normal !important; }
