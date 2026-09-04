@@ -5,24 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ポータル</title>
-  <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
-    // Sau khi đăng nhập trên MOBILE, nhân viên được đưa về home (trang này) kèm ?toSimple=1,
-    // rồi chuyển tiếp sang màn 簡易登録画面. Dùng location.href để HOME nằm trong lịch sử,
-    // nhờ vậy nút Back của trình duyệt từ màn simple sẽ quay về đúng home.
-    (function () {
-      try {
-        var params = new URLSearchParams(window.location.search);
-        if (params.get('toSimple') !== '1') return;
-        var isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-        if (!isMobile) return;
-        // Dọn ?toSimple=1 khỏi URL của home (thay thế trong lịch sử) để khi Back về đây
-        // KHÔNG bị chuyển tiếp lại sang simple (tránh lặp vô hạn).
-        try { window.history.replaceState(null, '', '/ui/portal'); } catch (e) {}
-        // Dùng href để đẩy simple vào lịch sử — Back từ simple sẽ về home (URL đã sạch).
-        window.location.href = '/ui/attendance/simple';
-      } catch (e) { /* silently ignored */ }
-    })();
-  </script>
   <style id="spinnerStyle">
     .page-spinner{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:3000}
     .page-spinner[hidden]{display:none}

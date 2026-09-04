@@ -74,25 +74,11 @@ function roleRedirect(role, nextPath) {
   const suggested = String(nextPath || '').trim();
   const r = String(role || '').toLowerCase();
 
-  // Xác định đích đến sau đăng nhập
   let dest = (suggested && suggested.startsWith('/') && !suggested.startsWith('//'))
     ? suggested
     : ((r === 'admin' || r === 'manager' || r === 'sysadmin' || r === 'owner')
         ? `/admin/dashboard?boot=${Date.now()}`
         : '/ui/portal');
-
-  // Trên MOBILE: nhân viên (employee) đăng nhập xong vào thẳng màn 簡易登録画面 (勤怠入力).
-  // Ta vẫn cho vào HOME trước (kèm cờ), rồi trang home tự chuyển tiếp sang simple bằng
-  // location.href — nhờ vậy HOME nằm trong lịch sử, nút Back của trình duyệt về đúng home.
-  // Desktop giữ nguyên (ở home). Admin/manager không đổi.
-  try {
-    const isEmployee = !(r === 'admin' || r === 'manager' || r === 'sysadmin' || r === 'owner');
-    const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-    const goesHome = dest === '/ui/portal' || dest === '/ui/portal/' || /^\/ui\/portal(\?|#|$)/.test(dest);
-    if (isEmployee && isMobile && goesHome) {
-      dest = '/ui/portal?toSimple=1';
-    }
-  } catch (e) { /* silently ignored */ }
 
   try { window.location.href = dest; } catch (e) { /* silently ignored */ }
 }
