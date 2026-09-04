@@ -1558,6 +1558,10 @@
           }
           const rowClass = isRestRow ? ' class="enm-rest-row"' : '';
 
+          // 中抜け時間: ngày nghỉ/lịch đỏ → để TRỐNG. Ngày làm mà không có số →
+          // hiển thị 0:00.
+          const nakanukeDisplay = isRestRow ? '' : (nakanukeTime || '0:00');
+
           const html = `
             <tr${rowClass}>
               <td>${dayDisplay}</td>
@@ -1569,7 +1573,7 @@
               <td>${timeOut}</td>
               <td>${breakNormal}</td>
               <td>${breakNight}</td>
-              <td>${nakanukeTime}</td>
+              <td>${nakanukeDisplay}</td>
               <td>${workedTime}</td>
               <td>${excessTime}</td>
               <td class="left-align enm-note">${escHtmlEnm(notes)}</td>
@@ -1719,7 +1723,7 @@
             .sw-company { text-align:right; font-size:16px; font-weight:700; }
           </style></head><body>
             <div class="sw-page">
-              <div class="sw-title">出勤簿</div>
+              <div class="sw-title">作業報告書</div>
               <div class="sw-head"><span class="sw-ym">${ymText}</span>
                 <span>名前：</span><span class="sw-nm">${nameText}</span></div>
               <table class="sw-tbl">
