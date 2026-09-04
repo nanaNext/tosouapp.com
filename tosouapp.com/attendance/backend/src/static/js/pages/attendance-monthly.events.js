@@ -1772,13 +1772,22 @@
                 /* Footer nằm NGAY DƯỚI bảng (không margin-top:auto) → khi tbody được
                    giãn lấp trang thì footer đi theo sát đáy bảng, không tạo khe hở. */
                 #printScale > .enm-paper > .enm-footer-text { margin-top: 4px; }
-                /* GHIM chiều cao header cố định → header GIỐNG HỆT NHAU cho mọi nhân
-                   viên, KHÔNG bị flex kéo giãn phình to (trước đây thead hút phần
-                   chiều cao dư khi tbody ít nội dung → chữ 日/開始/終了 lệch xuống,
-                   nhìn như trùng). Chỉ tbody mới được giãn để lấp trang. */
-                #printScale .enm-daily-table thead tr:nth-child(1) { height: 34px !important; }
-                #printScale .enm-daily-table thead tr:nth-child(2) { height: 20px !important; }
-                #printScale .enm-daily-table thead th { height: auto !important; vertical-align: middle !important; padding-top: 2px !important; padding-bottom: 2px !important; }
+                /* ── KHOÁ CHIỀU CAO HIỂN THỊ CỦA HEADER ──
+                   Vì các ô thead có rowspan=2 + border-collapse + table-layout:fixed,
+                   khi tbody bị giãn thì thuật toán bảng đẩy một phần chiều cao dôi
+                   LÊN hàng thead → chữ 日/開始/終了 lệch xuống, mỗi nhân viên một kiểu.
+                   Cách chặn triệt để: bọc chữ header trong <div class="thc"> có CHIỀU
+                   CAO CỐ ĐỊNH. Dù ô <th> có bị kéo cao bao nhiêu, khối chữ vẫn giữ
+                   nguyên chiều cao & căn giữa → header GIỐNG HỆT NHAU cho mọi người. */
+                #printScale .enm-daily-table thead th { padding: 0 !important; vertical-align: middle !important; }
+                #printScale .enm-daily-table thead .thc {
+                  display: flex; align-items: center; justify-content: center;
+                  text-align: center; line-height: 1.2; overflow: hidden; box-sizing: border-box;
+                }
+                /* thc2 (rowspan=2) = tổng 2 hàng đơn (2 × thc1) để ô rowspan KHÔNG
+                   yêu cầu cao hơn tổng 2 hàng → không ép hàng phình thêm. */
+                #printScale .enm-daily-table thead .thc1 { height: 22px; }  /* ô 1 hàng */
+                #printScale .enm-daily-table thead .thc2 { height: 44px; }  /* ô rowspan=2 = 2×22 */
                 .print-container .enm-title { margin-top: 0 !important; margin-bottom: 4px !important; font-size: 28px !important; letter-spacing: 10px !important; text-indent: 10px !important; }
                 .print-container h4 { margin: 2px 0 1px 0 !important; }
                 .print-container .enm-table th, .print-container .enm-table td { padding: 4px 5px !important; font-size: 12px !important; font-weight: normal !important; }

@@ -20,7 +20,7 @@
   <script src="/static/js/pages/attendance-monthly.controller.js?v=navy-20260703-3" defer></script>
   <script src="/static/vendor/pdfgen/html2canvas.min.js?v=1.4.1" defer></script>
   <script src="/static/vendor/pdfgen/jspdf.umd.min.js?v=2.5.1" defer></script>
-  <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260904-shukkinbo-pdf22-fixedheader" defer></script>
+  <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260904-shukkinbo-pdf23-headerlock" defer></script>
   <script src="/static/js/pages/attendance-monthly.page.js?v=navy-20260703-7" defer></script>
 </head>
 <body>
@@ -243,22 +243,22 @@
             <table class="enm-daily-table" id="enmDailyTable">
               <thead>
                 <tr>
-                  <th rowspan="2" style="width: 7%;">日</th>
-                  <th rowspan="2" style="width: 8%;">事由</th>
-                  <th colspan="2" style="width: 12%;">就業時間</th>
-                  <th colspan="2" style="width: 12%;">休憩時間</th>
-                  <th rowspan="2" style="width: 8%;">中抜け<br>時間</th>
-                  <th rowspan="2" style="width: 8%;">勤務時間</th>
-                  <th rowspan="2" style="width: 8%;">超過時間</th>
-                  <th rowspan="2" style="width: 7%;">現場</th>
-                  <th rowspan="2" style="width: 22%;">作業内容</th>
-                  <th rowspan="2" style="width: 8%;">備考</th>
+                  <th rowspan="2" style="width: 7%;"><div class="thc thc2">日</div></th>
+                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">事由</div></th>
+                  <th colspan="2" style="width: 12%;"><div class="thc thc1">就業時間</div></th>
+                  <th colspan="2" style="width: 12%;"><div class="thc thc1">休憩時間</div></th>
+                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">中抜け<br>時間</div></th>
+                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">勤務時間</div></th>
+                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">超過時間</div></th>
+                  <th rowspan="2" style="width: 7%;"><div class="thc thc2">現場</div></th>
+                  <th rowspan="2" style="width: 22%;"><div class="thc thc2">作業内容</div></th>
+                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">備考</div></th>
                 </tr>
                 <tr>
-                  <th>開始</th>
-                  <th>終了</th>
-                  <th>普通</th>
-                  <th>深夜</th>
+                  <th><div class="thc thc1">開始</div></th>
+                  <th><div class="thc thc1">終了</div></th>
+                  <th><div class="thc thc1">普通</div></th>
+                  <th><div class="thc thc1">深夜</div></th>
                 </tr>
               </thead>
               <tbody>
