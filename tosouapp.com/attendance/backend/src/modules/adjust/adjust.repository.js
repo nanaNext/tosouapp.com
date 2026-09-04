@@ -16,13 +16,19 @@ module.exports = {
   },
   async listMine(userId, tenantId = null) {
     const tid = _tid(tenantId);
-    const where = ['userId = ?'];
+    const where = ['r.userId = ?'];
     const params = [userId];
-    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    if (tid != null) { where.push('r.tenant_id = ?'); params.push(tid); }
+    // JOIN với bản ghi chấm công gốc để lấy giờ "変更前" (originalCheckIn/Out)
+    // JOIN theo attendanceId để lấy giờ gốc (変更前). Không ràng buộc tenant ở đây vì
+    // dữ liệu chấm công cũ có thể có tenant_id = NULL; việc cô lập đã đảm bảo qua r.userId
+    // (mỗi bản ghi thuộc đúng 1 người dùng của 1 tenant).
     const sql = `
-      SELECT * FROM time_adjust_requests
+      SELECT r.*, a.checkIn AS originalCheckIn, a.checkOut AS originalCheckOut
+      FROM time_adjust_requests r
+      LEFT JOIN attendance a ON a.id = r.attendanceId
       WHERE ${where.join(' AND ')}
-      ORDER BY created_at DESC
+      ORDER BY r.created_at DESC
     `;
     const [rows] = await db.query(sql, params);
     return rows;

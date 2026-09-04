@@ -1,4 +1,4 @@
-import { logout } from '../api/auth.api.js';
+﻿import { logout } from '../api/auth.api.js';
 import { fetchJSONAuth } from '../api/http.api.js';
 import '/static/js/pages/employee-notify.sticky.js';
 
@@ -23,6 +23,30 @@ const showErr = (msg) => {
   if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
   el.style.display = 'block';
   el.textContent = msg;
+};
+
+// Toast thành công/lỗi hiển thị ở trên đầu màn hình, tự ẩn sau vài giây
+let adjToastTimer = null;
+const showToast = (msg, type = 'success') => {
+  try {
+    let el = document.getElementById('adjToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'adjToast';
+      el.className = 'adj-toast';
+      document.body.appendChild(el);
+    }
+    const icon = type === 'error'
+      ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z"></path></svg>'
+      : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
+    el.className = 'adj-toast' + (type === 'error' ? ' error' : '');
+    el.innerHTML = icon + '<span>' + String(msg == null ? '' : msg) + '</span>';
+    // Kích hoạt hiệu ứng trượt xuống
+    void el.offsetWidth;
+    el.classList.add('show');
+    try { clearTimeout(adjToastTimer); } catch (e) { /* silently ignored */ }
+    adjToastTimer = setTimeout(() => { el.classList.remove('show'); }, 3200);
+  } catch (e) { /* silently ignored */ }
 };
 
 let spinnerCount = 0;
@@ -340,8 +364,8 @@ const renderForm = async () => {
       }
       .sap-tab:hover { color: #0f172a; }
       .sap-tab.active {
-        color: #005eb8;
-        border-bottom-color: #005eb8;
+        color: #b45309;
+        border-bottom-color: #f59e0b;
       }
       .sap-tab svg { width: 18px; height: 18px; color: currentColor; }
       .tab-badge {
@@ -415,65 +439,249 @@ const renderForm = async () => {
           opacity: 1 !important;
         }
       }
+
+      /* ===== Giao diện thẻ (card) tông cam cho form 修正申請 ===== */
+      .adj-card {
+        background: #fffdf9;
+        border: 1px solid #fde68a;
+        border-radius: 14px;
+        padding: 16px;
+        margin: 0 0 14px 0;
+        max-width: 560px;
+        box-shadow: 0 1px 3px rgba(180, 83, 9, 0.06);
+      }
+      .adj-card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 800;
+        color: #b45309;
+        margin: 0 0 12px 0;
+      }
+      .adj-card-title svg { width: 18px; height: 18px; color: #f59e0b; }
+      .adj-target-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: #fff;
+        border: 1px solid #fde68a;
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .adj-target-date { font-size: 17px; font-weight: 800; color: #1f2937; }
+      .adj-date-native {
+        border: none; background: transparent; font-size: 17px; font-weight: 800;
+        color: #1f2937; outline: none; width: 100%;
+      }
+      .adj-edit-icon {
+        flex: 0 0 auto; background: transparent; border: none; cursor: pointer;
+        color: #f59e0b; padding: 4px; display: inline-flex; align-items: center;
+      }
+      .adj-times {
+        display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px;
+      }
+      .adj-time-block { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+      .adj-time-label {
+        display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
+      }
+      .adj-time-label.in { color: #15803d; }
+      .adj-time-label.out { color: #ea580c; }
+      .adj-time-label svg { width: 16px; height: 16px; }
+      .adj-time-hint { font-size: 11px; color: #94a3b8; font-weight: 600; }
+      .adj-time-input {
+        width: 100%; max-width: 100%; box-sizing: border-box; font-size: 16px; font-weight: 700;
+        letter-spacing: 0; text-align: left; color: #1f2937;
+        border: 1px solid #fcd34d; border-radius: 10px; padding: 13px 8px;
+        background: #fff; outline: none; min-height: 52px; min-width: 0;
+      }
+      .adj-time-input::-webkit-calendar-picker-indicator { margin-left: 0; }
+      .adj-time-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+      .adj-reason-label {
+        display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
+        color: #b45309; margin-bottom: 6px;
+      }
+      .adj-reason-label svg { width: 16px; height: 16px; }
+      .adj-reason-input {
+        width: 100%; box-sizing: border-box; font-size: 15px; color: #1f2937;
+        border: 1px solid #fcd34d; border-radius: 10px; padding: 12px; background: #fff;
+        outline: none; resize: vertical; min-height: 96px; font-family: inherit; line-height: 1.5;
+      }
+      .adj-reason-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+      .adj-status-msg { font-size: 12px; font-weight: 700; color: #059669; margin-top: 8px; min-height: 16px; }
+
+      /* Toast thông báo ở trên đầu màn hình khi thao tác thành công */
+      .adj-toast {
+        position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-140%);
+        z-index: 12000; display: flex; align-items: center; gap: 10px;
+        max-width: calc(100vw - 24px);
+        padding: 12px 18px; border-radius: 12px;
+        background: #16a34a; color: #fff; font-size: 15px; font-weight: 800;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+        opacity: 0; transition: transform .28s ease, opacity .28s ease; pointer-events: none;
+      }
+      .adj-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+      .adj-toast.error { background: #dc2626; }
+      .adj-toast svg { width: 20px; height: 20px; flex: 0 0 auto; }
+
+      /* Trạng thái rỗng của danh sách 申請履歴 (gọn, tông xám nhạt) */
+      .adj-empty {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 8px; padding: 32px 16px; color: #94a3b8;
+      }
+      .adj-empty svg { width: 40px; height: 40px; color: #cbd5e1; }
+      .adj-empty span { font-size: 14px; font-weight: 700; }
+
+      /* Thanh nút dính đáy màn hình */
+      .adj-action-bar {
+        position: sticky; bottom: 0; left: 0; right: 0; z-index: 60;
+        display: flex; gap: 12px; padding: 12px;
+        background: rgba(255,255,255,0.96);
+        border-top: 1px solid #f1e4c9;
+        box-shadow: 0 -4px 14px rgba(0,0,0,0.06);
+        max-width: 560px;
+        margin: 0 auto;
+      }
+      .adj-btn {
+        flex: 1 1 0; min-height: 52px; border-radius: 12px; font-size: 16px; font-weight: 800;
+        cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        border: 1px solid transparent; transition: filter .15s ease, background .15s ease;
+      }
+      .adj-btn svg { width: 18px; height: 18px; }
+      .adj-btn-primary { background: #e8853b; color: #fff; }
+      .adj-btn-primary:hover { filter: brightness(1.05); }
+      .adj-btn-primary:active { filter: brightness(0.94); }
+      .adj-btn-danger { background: #e5e7eb; color: #6b7280; }
+      .adj-btn-danger:not(:disabled):hover { background: #d1d5db; color: #b91c1c; }
+      .adj-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+      @media (max-width: 768px) {
+        .adj-card { border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+        .adj-times { gap: 10px; }
+        .adj-time-input { font-size: 15px; padding: 13px 6px; }
+        .adj-action-bar { max-width: 100%; }
+      }
+      /* Màn hình hẹp: xếp 出勤/退勤 thành 1 cột để ô giờ không bị tràn */
+      @media (max-width: 480px) {
+        .adj-times { grid-template-columns: 1fr; gap: 12px; }
+        .adj-time-input { font-size: 16px; padding: 13px 10px; }
+      }
+
+      /* Header riêng của màn hình 勤怠修正: nút trở về + tiêu đề */
+      .adj-page-header {
+        display: flex; align-items: center; gap: 8px;
+        padding: 12px 6px; margin: 0 0 4px 0;
+        position: relative;
+      }
+      .adj-back-btn {
+        flex: 0 0 auto; width: 40px; height: 40px; border-radius: 999px;
+        border: none; background: transparent; cursor: pointer;
+        color: #b45309; display: inline-flex; align-items: center; justify-content: center;
+      }
+      .adj-back-btn:hover { background: rgba(245, 158, 11, 0.12); }
+      .adj-back-btn svg { width: 24px; height: 24px; }
+      .adj-page-title {
+        flex: 1 1 auto; text-align: center; font-size: 18px; font-weight: 800;
+        color: #1f2937; padding-right: 40px; /* cân bằng với nút back bên trái */
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
     </style>
+
+    <div class="adj-page-header">
+      <button id="adjBack" class="adj-back-btn" type="button" aria-label="戻る" title="ホームへ戻る">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <div id="adjPageTitle" class="adj-page-title">勤怠修正</div>
+    </div>
 
     <div class="sap-tabs-container" style="display: flex !important; align-items: center; justify-content: flex-start; position: relative; z-index: 50; margin-top: 0 !important; visibility: visible !important; opacity: 1 !important; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; gap: 8px;">
         <div class="sap-tabs-wrapper" style="display: flex !important; gap: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; width: 100%; opacity: 1 !important; visibility: visible !important;">
           <div class="sap-tab active" id="tabNew" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-          <span>新規作成</span>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          <span>編集</span>
         </div>
         <div class="sap-tab" id="tabRejected" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-          <span>差戻し確認</span>
+          <span>差戻し</span>
           <span id="rejectBadge" class="tab-badge" style="display:none;">0</span>
         </div>
         <div class="sap-tab" id="tabHistory" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-          <span>申請履歴</span>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>履歴</span>
         </div>
       </div>
       <div id="actionRequiredHost" style="display: none;"></div>
     </div>
-    <div id="adjustMonthFilterContainer" style="display: none; padding: 8px 0;">
-      <input type="month" id="adjustMonthFilter" class="sap-table-input" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-weight: 500; color: #0f172a;" value="${new Date().toISOString().slice(0, 7)}">
-    </div>
 
-    <div id="newAdjustFormCard" class="sap-compact-card" style="margin-top: 0; display: block;">
-      <div class="sap-header">
-        <h3 class="sap-title">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-          修正申請
-        </h3>
-        <div class="sap-toolbar" style="display: flex; align-items: center; gap: 8px;">
-            <button id="adjSubmit" title="申請" style="height:32px; padding:0 16px; border:none; background:#005eb8; color:#fff; border-radius:4px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.1); transition: background 0.2s;">
-              申請
-            </button>
-          </div>
-      </div>
-      
-      <div id="adjRejectReasonContainer" style="display:none; margin: 12px 16px 0; padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; color: #9a3412;">
+    <div id="newAdjustFormCard" style="display: block;">
+
+      <div id="adjRejectReasonContainer" style="display:none; margin: 0 0 12px; padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; color: #9a3412;">
         <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px;">差戻し理由:</div>
         <div id="adjRejectReasonText" style="font-size: 13px; white-space: pre-wrap; word-break: break-word;"></div>
       </div>
 
-      <div class="sap-grid">
-        <div class="sap-label">対象日 <span style="color:#ef4444">*</span></div>
-        <div><input id="adjDate" class="sap-input" type="date" value="${todayISO()}" style="width: 130px;"></div>
-
-        <div class="sap-label">現在の打刻</div>
-        <div><div id="adjCurrent" class="sap-current" style="width: 100%; max-width: none;">—</div></div>
-
-        <div class="sap-label">修正(出勤)</div>
-        <div><input id="adjIn" class="sap-input" type="datetime-local" style="width: 180px;"></div>
-
-        <div class="sap-label">修正(退勤)</div>
-        <div><input id="adjOut" class="sap-input" type="datetime-local" style="width: 180px;"></div>
-
-        <div class="sap-label" style="align-self: flex-start; margin-top: 6px;">理由 <span style="color:#ef4444">*</span></div>
-        <div><textarea id="adjReason" class="sap-textarea" placeholder="例: 打刻し忘れ（必須）"></textarea></div>
+      <!-- Thẻ: Ngày cần chỉnh -->
+      <div class="adj-card">
+        <div class="adj-card-title">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          修正対象日
+        </div>
+        <div class="adj-target-row">
+          <input id="adjDate" class="adj-date-native" type="date" value="${todayISO()}">
+          <span class="adj-edit-icon" aria-hidden="true">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          </span>
+        </div>
       </div>
-      <div id="adjStatus" style="font-size: 12px; font-weight: 600; color: #059669; text-align: right; margin-top: 8px; min-height: 18px;"></div>
+
+      <!-- Thẻ: Cài đặt chỉnh sửa -->
+      <div class="adj-card">
+        <div class="adj-card-title">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          修正設定
+        </div>
+
+        <div class="adj-times">
+          <div class="adj-time-block">
+            <span class="adj-time-label in">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14"></path></svg>
+              出勤時刻
+            </span>
+            <span id="adjInHint" class="adj-time-hint">現在の打刻 →</span>
+            <input id="adjIn" class="adj-time-input" type="datetime-local">
+          </div>
+          <div class="adj-time-block">
+            <span class="adj-time-label out">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+              退勤時刻
+            </span>
+            <span id="adjOutHint" class="adj-time-hint">現在の打刻 →</span>
+            <input id="adjOut" class="adj-time-input" type="datetime-local">
+          </div>
+        </div>
+
+        <div class="adj-reason-label">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          修正理由（必須）
+        </div>
+        <textarea id="adjReason" class="adj-reason-input" placeholder="修正理由を入力してください（例：電車遅延、残業、休憩時間調整など）"></textarea>
+
+        <div id="adjCurrent" style="display:none;">—</div>
+        <div id="adjStatus" class="adj-status-msg"></div>
+      </div>
+
+      <!-- Thanh nút dính đáy -->
+      <div class="adj-action-bar">
+        <button id="adjSubmit" class="adj-btn adj-btn-primary" title="勤怠を修正">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          勤怠を修正
+        </button>
+        <button id="adjDelete" class="adj-btn adj-btn-danger" title="勤怠を削除" disabled>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          勤怠を削除
+        </button>
+      </div>
     </div>
   `;
 
@@ -484,16 +692,44 @@ const renderForm = async () => {
     out: $('#adjOut'),
     reason: $('#adjReason'),
     submit: $('#adjSubmit'),
+    del: $('#adjDelete'),
     status: $('#adjStatus')
   };
 
+  // Tìm đơn 調整申請 đang chờ duyệt (pending) của ngày đang chọn để cho phép hủy
+  let pendingRequestId = null;
+  const refreshPendingForDate = (dateStr) => {
+    pendingRequestId = null;
+    try {
+      const list = Array.isArray(window.requestsCache) ? window.requestsCache : [];
+      const found = list.find(r => {
+        const st = String(r.status || 'pending').toLowerCase();
+        // Cùng thứ tự ưu tiên với card lịch sử: 出勤 → 退勤 → chấm công gốc
+        const target = String(r.requestedCheckIn || r.requestedCheckOut || r.originalCheckIn || '').slice(0, 10);
+        return st === 'pending' && target === dateStr;
+      });
+      pendingRequestId = found ? found.id : null;
+    } catch (e) { pendingRequestId = null; }
+    if (els.del) {
+      els.del.disabled = !pendingRequestId;
+      els.del.title = pendingRequestId ? '調整申請を取り消す' : '取り消せる申請はありません';
+    }
+  };
+
   const setCurrent = (seg) => {
+    // Hiển thị trạng thái chấm công hiện tại ngay dưới nhãn 出勤/退勤時刻
+    const inHint = $('#adjInHint');
+    const outHint = $('#adjOutHint');
+    const cin = seg ? String(seg.checkIn || '').slice(11, 16) : '';
+    const cout = seg ? String(seg.checkOut || '').slice(11, 16) : '';
+    if (inHint) inHint.textContent = cin ? `現在: ${cin}` : 'データ未登録 →';
+    if (outHint) outHint.textContent = cout ? `現在: ${cout}` : 'データ未登録 →';
+    // Giữ phần tử ẩn cũ để không phá vỡ tham chiếu khác (nếu có)
     const el = els.current;
-    if (!el) return;
-    if (!seg) { el.textContent = '打刻記録なし（修正時刻を入力して申請できます）'; return; }
-    const cin = String(seg.checkIn || '').slice(0, 16).replace('T', ' ');
-    const cout = String(seg.checkOut || '').slice(0, 16).replace('T', ' ');
-    el.innerHTML = `出勤: ${cin || '—'}<br>退勤: ${cout || '—'}`;
+    if (el) {
+      if (!seg) { el.textContent = '打刻記録なし'; }
+      else { el.innerHTML = `出勤: ${cin || '—'}<br>退勤: ${cout || '—'}`; }
+    }
   };
 
   let attendanceId = null;
@@ -518,6 +754,14 @@ const renderForm = async () => {
       setCurrent(seg);
       try { if (els.in) els.in.value = seg?.checkIn ? String(seg.checkIn).slice(0, 16) : ''; } catch (e) { /* silently ignored */ }
       try { if (els.out) els.out.value = seg?.checkOut ? String(seg.checkOut).slice(0, 16) : ''; } catch (e) { /* silently ignored */ }
+
+      // Cập nhật nút "勤怠を削除" theo đơn pending của ngày này
+      try {
+        if (!Array.isArray(window.requestsCache)) {
+          window.requestsCache = await fetchJSONAuth('/api/adjust/my').catch(() => []);
+        }
+      } catch (e) { /* silently ignored */ }
+      refreshPendingForDate(d);
     } catch (e) {
       attendanceId = null;
       setCurrent(null);
@@ -555,16 +799,23 @@ const renderForm = async () => {
       if (historyBlock) historyBlock.style.display = 'block';
     }
     
-    // Toggle month filter display — chỉ hiện khi ở tab 申請履歴
-    const monthFilterContainer = document.getElementById('adjustMonthFilterContainer');
-    if (monthFilterContainer) {
-      monthFilterContainer.style.display = tabId === 'tabHistory' ? 'block' : 'none';
-    }
   };
 
   $('#tabNew')?.addEventListener('click', () => switchTab('tabNew'));
   $('#tabRejected')?.addEventListener('click', () => switchTab('tabRejected'));
   $('#tabHistory')?.addEventListener('click', () => switchTab('tabHistory'));
+
+  // Header: tiêu đề "{tên user} - 勤怠修正" và nút trở về màn hình home
+  try {
+    const titleEl = $('#adjPageTitle');
+    if (titleEl) {
+      const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
+      const u = raw ? JSON.parse(raw) : null;
+      const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
+      titleEl.textContent = name ? `${name} - 勤怠修正` : '勤怠修正';
+    }
+  } catch (e) { /* silently ignored */ }
+  $('#adjBack')?.addEventListener('click', () => { window.location.href = '/ui/portal'; });
 
   // Xóa các event listener cũ của 3 nút Quick Actions do đã chuyển sang dùng Tab
   // Xử lý sự kiện click cho các nút động (close, overlay) bằng Event Delegation
@@ -631,14 +882,19 @@ const renderForm = async () => {
           body: JSON.stringify({ requestedCheckIn: inV, requestedCheckOut: outV, reason })
         });
         if (els.status) els.status.textContent = '更新しました';
+        showToast('申請を更新しました');
       } else {
         await fetchJSONAuth('/api/adjust', { method: 'POST', body: JSON.stringify({ attendanceId, requestedCheckIn: inV, requestedCheckOut: outV, reason }) });
         if (els.status) els.status.textContent = '申請しました';
+        showToast('勤怠修正を申請しました');
       }
       try { delete els.submit.dataset.editId; } catch (e) { /* silently ignored */ }
       if (els.in) els.in.value = '';
       if (els.out) els.out.value = '';
       if (els.reason) els.reason.value = '';
+      // Cập nhật lại cache + trạng thái nút "勤怠を削除" cho ngày đang chọn
+      window.requestsCache = await fetchJSONAuth('/api/adjust/my').catch(() => []);
+      refreshPendingForDate(els.date?.value);
       await renderList();
     } catch (e) {
       if (els.status) els.status.textContent = '';
@@ -655,10 +911,67 @@ const renderForm = async () => {
   };
 
   els.submit?.addEventListener('click', handleApply);
+
+  // "勤怠を削除" = hủy (取り消し) đơn 調整申請 đang chờ duyệt của ngày đang chọn
+  const handleCancelRequest = async () => {
+    if (!els.del || els.del.disabled || !pendingRequestId) return;
+    if (!confirm('この日の調整申請を取り消しますか？')) return;
+    showErr('');
+    els.del.disabled = true;
+    if (els.status) els.status.textContent = '取り消し中…';
+    showSpinner();
+    try {
+      await fetchJSONAuth(`/api/adjust/${encodeURIComponent(pendingRequestId)}`, { method: 'DELETE' });
+      if (els.status) els.status.textContent = '申請を取り消しました';
+      showToast('調整申請を取り消しました');
+      window.requestsCache = await fetchJSONAuth('/api/adjust/my').catch(() => []);
+      refreshPendingForDate(els.date?.value);
+      await renderList();
+    } catch (e) {
+      if (els.status) els.status.textContent = '';
+      showErr(e?.message || '取り消しに失敗しました');
+      if (els.del) els.del.disabled = false;
+    } finally {
+      hideSpinner();
+    }
+  };
+  els.del?.addEventListener('click', handleCancelRequest);
 };
 
 let currentPage = 1;
 const itemsPerPage = 15;
+// Tháng đang xem ở tab 履歴 (yyyy-MM). Giữ ở cấp module để nút ‹ › điều hướng bền qua các lần render.
+let historyMonth = new Date().toISOString().slice(0, 7);
+
+// Tiện ích cho card lịch sử
+const jpWeekday = ['日', '月', '火', '水', '木', '金', '土'];
+const fmtHistDate = (ds) => {
+  // ds = 'YYYY-MM-DD' -> 'YYYY/MM/DD (曜)'
+  const s = String(ds || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '—';
+  const [y, m, d] = s.split('-').map(Number);
+  const w = jpWeekday[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${s.replace(/-/g, '/')} (${w})`;
+};
+const fmtHistDateTime = (val) => {
+  // 'YYYY-MM-DD HH:mm...' -> 'YYYY/M/D HH:mm'
+  const s = String(val || '').replace('T', ' ');
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ ]?(\d{2}:\d{2})?/);
+  if (!m) return '—';
+  const time = m[4] ? ` ${m[4]}` : '';
+  return `${Number(m[1])}/${Number(m[2])}/${Number(m[3])}${time}`;
+};
+const monthLabelJP = (ym) => {
+  const [y, m] = String(ym || '').split('-').map(Number);
+  return (y && m) ? `${y}年${m}月` : '';
+};
+const shiftMonth = (ym, delta) => {
+  let [y, m] = String(ym || '').split('-').map(Number);
+  m += delta;
+  if (m < 1) { m = 12; y -= 1; }
+  else if (m > 12) { m = 1; y += 1; }
+  return `${y}-${String(m).padStart(2, '0')}`;
+};
 
 const renderList = async () => {
   const host = $('#adjustListHost');
@@ -666,20 +979,14 @@ const renderList = async () => {
   host.innerHTML = '<div style="color:#475569;font-weight:650;">履歴を読み込み中…</div>';
   showSpinner();
   try {
-    const [rows, profile] = await Promise.all([
+    const [rowsRaw, profile] = await Promise.all([
       fetchJSONAuth('/api/adjust/my'),
       fetchJSONAuth('/api/auth/me').catch(() => null)
     ]);
-    if (!Array.isArray(rows) || rows.length === 0) {
-      host.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>申請はありません</div></div>';
-      return;
-    }
-    // Thêm input chọn tháng nếu chưa có
-    let selectedMonth = '';
-    const now = new Date();
-    selectedMonth = now.toISOString().slice(0, 7); // yyyy-MM
-
+    const rows = Array.isArray(rowsRaw) ? rowsRaw : [];
     window.requestsCache = rows;
+    // Tháng đang xem lấy từ state module (điều hướng bằng nút ‹ ›)
+    let selectedMonth = historyMonth;
 
     // Hiển thị danh sách các yêu cầu bị trả về ở ngay màn hình chính
     const actionHost = document.getElementById('actionRequiredHost');
@@ -843,12 +1150,6 @@ const renderList = async () => {
       }
     }
 
-    const monthInput = document.getElementById('adjustMonthFilter');
-    if (monthInput && monthInput.value && monthInput.value !== selectedMonth) {
-      selectedMonth = monthInput.value;
-      currentPage = 1;
-    }
-
     // Lọc dữ liệu theo tháng được chọn (dùng 対象日 = requestedCheckIn)
     const filteredRows = rows.filter(r => {
       const target = r.requestedCheckIn ? String(r.requestedCheckIn).slice(0, 7) : (r.created_at ? String(r.created_at).slice(0, 7) : '');
@@ -861,355 +1162,201 @@ const renderList = async () => {
 
     const pagedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    if (!Array.isArray(pagedRows) || pagedRows.length === 0) {
-      host.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>申請はありません</div></div>';
-      return;
-    }
-
     const tr = pagedRows.map((r) => {
       const cin  = String(r.requestedCheckIn  || '').slice(0, 16).replace('T', ' ');
       const cout = String(r.requestedCheckOut || '').slice(0, 16).replace('T', ' ');
-      const cinTime = String(r.requestedCheckIn || '').slice(11, 16) || '—';
-      const coutTime = String(r.requestedCheckOut || '').slice(11, 16) || '—';
-      const targetDate = r.requestedCheckIn ? String(r.requestedCheckIn).slice(0, 10) : '—';
+      // 変更後 (giờ được yêu cầu)
+      const newInTime  = String(r.requestedCheckIn  || '').slice(11, 16) || '--:--';
+      const newOutTime = String(r.requestedCheckOut || '').slice(11, 16) || '--:--';
+      // 変更前 (giờ chấm công gốc, lấy từ JOIN attendance)
+      const oldInTime  = String(r.originalCheckIn  || '').slice(11, 16) || '--:--';
+      const oldOutTime = String(r.originalCheckOut || '').slice(11, 16) || '--:--';
+      const targetDate = r.requestedCheckIn ? String(r.requestedCheckIn).slice(0, 10)
+        : (r.originalCheckIn ? String(r.originalCheckIn).slice(0, 10) : (r.created_at ? String(r.created_at).slice(0, 10) : ''));
       const st = String(r.status || 'pending');
       let stLabel, stClass;
-      if (st === 'approved') { stLabel = '承認済み'; stClass = 'adj-status-approved'; }
-      else if (st === 'rejected') { stLabel = '却下'; stClass = 'adj-status-rejected'; }
-      else { stLabel = '承認待ち'; stClass = 'adj-status-pending'; }
-      const created = r.created_at ? String(r.created_at).slice(0, 16).replace('T', ' ') : '—';
-      const appNo = `R-${String(r.id).padStart(7, '0')}`;
-      const detail = `
-        <div style="font-size:12px;line-height:1.6;">
-          <div><strong>出勤:</strong> ${cinTime}</div>
-          <div><strong>退勤:</strong> ${coutTime}</div>
-          ${r.reason ? `<div style="margin-top:4px;"><strong>理由:</strong> ${esc(r.reason)}</div>` : ''}
-        </div>
-        ${r.admin_note ? `<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;"><strong>差戻し理由:</strong> ${esc(r.admin_note)}</div>` : ''}
-      `;
-      const type = '打刻修正（申請）';
+      if (st === 'approved') { stLabel = '承認済み'; stClass = 'approved'; }
+      else if (st === 'rejected') { stLabel = '却下'; stClass = 'rejected'; }
+      else { stLabel = '承認待ち'; stClass = 'pending'; }
+      const created = fmtHistDateTime(r.created_at);
+
       const editBtn = (st === 'pending' || st === 'rejected')
-        ? `<button class="btn-edit sap-action-btn" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" data-adminnote="${esc(r.admin_note || '')}" title="${st === 'rejected' ? '再申請' : '編集'}"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>`
+        ? `<button class="btn-edit adj-hist-actbtn" data-id="${r.id}" data-in="${cin}" data-out="${cout}" data-reason="${esc(r.reason || '')}" data-adminnote="${esc(r.admin_note || '')}" title="${st === 'rejected' ? '再申請' : '編集'}"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>`
         : '';
       const deleteBtn = st === 'pending'
-        ? ` <button class="btn-delete sap-action-btn delete" data-id="${r.id}" title="削除"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`
+        ? `<button class="btn-delete adj-hist-actbtn danger" data-id="${r.id}" title="削除"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`
         : '';
-      const chatBtn = ` <button class="btn-chat sap-action-btn" data-id="${r.id}" title="やり取り"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z"></path></svg></button>`;
-      const actions = `${editBtn}${chatBtn}${deleteBtn}`.trim();
-      const rowHtml = `<tr data-record-row="1" data-record-id="${r.id}">
-        <td data-label="申請番号"><div class="mobile-td-content"><a href="#" data-jump="${r.id}" style="color:#005eb8; text-decoration:none; font-weight:600;">${appNo}</a></div></td>
-        <td data-label="ステータス"><div class="mobile-td-content"><span class="sap-badge ${stClass}">${esc(stLabel)}</span></div></td>
-        <td data-label="レコードタイプ"><div class="mobile-td-content">${type}</div></td>
-        <td data-label="対象日"><div class="mobile-td-content">${targetDate}</div></td>
-        <td data-label="申請詳細"><div class="mobile-td-content">${detail}</div></td>
-        <td data-label="作成日時"><div class="mobile-td-content">${created}</div></td>
-        <td data-label="アクション"><div class="mobile-td-content">${actions}</div></td>
-      </tr>`;
-      return rowHtml;
+      const chatBtn = `<button class="btn-chat adj-hist-actbtn" data-id="${r.id}" title="やり取り"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z"></path></svg></button>`;
+
+      return `
+        <div class="adj-hist-card" data-record-id="${r.id}">
+          <div class="adj-hist-head">
+            <span class="adj-hist-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            </span>
+            <div class="adj-hist-head-text">
+              <div class="adj-hist-date">${fmtHistDate(targetDate)}</div>
+              <div class="adj-hist-sub">修正日時: ${created}</div>
+            </div>
+            <span class="adj-hist-badge ${stClass}">${esc(stLabel)}</span>
+          </div>
+
+          <div class="adj-hist-diff">
+            <div class="adj-hist-col">
+              <div class="adj-hist-col-title">変更前</div>
+              <div class="adj-hist-line">出勤時刻: ${oldInTime}</div>
+              <div class="adj-hist-line">退勤時刻: ${oldOutTime}</div>
+            </div>
+            <div class="adj-hist-arrow">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+            </div>
+            <div class="adj-hist-col after">
+              <div class="adj-hist-col-title">変更後</div>
+              <div class="adj-hist-line">出勤時刻: ${newInTime}</div>
+              <div class="adj-hist-line">退勤時刻: ${newOutTime}</div>
+            </div>
+          </div>
+
+          ${r.reason ? `
+          <div class="adj-hist-reason">
+            <div class="adj-hist-reason-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              修正理由
+            </div>
+            <div class="adj-hist-reason-text">${esc(r.reason)}</div>
+          </div>` : ''}
+
+          ${r.admin_note ? `<div class="adj-hist-adminnote"><strong>差戻し理由:</strong> ${esc(r.admin_note)}</div>` : ''}
+
+          ${(editBtn || deleteBtn || chatBtn) ? `<div class="adj-hist-actions">${editBtn}${chatBtn}${deleteBtn}</div>` : ''}
+        </div>
+      `;
     }).join('');
     host.innerHTML = `
         <style>
-          /* SAP Fiori Drawer (Side Panel) Styles */
-          .sap-drawer-overlay {
-            position: fixed;
-            top: var(--topbar-height, 60px); /* Bám sát dưới thanh tiêu đề */
-            left: 0;
-            width: 100vw;
-            height: calc(100vh - var(--topbar-height, 60px));
-            background: rgba(15, 23, 42, 0.4);
-            z-index: 900;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
+          .adj-hist-nav {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #fffdf9; border: 1px solid #fde68a; border-radius: 14px;
+            padding: 10px 12px; margin: 0 0 14px 0; max-width: 560px;
           }
-          @media (min-width: 1025px) {
-            .sap-drawer-overlay {
-              top: calc(var(--topbar-height, 60px) + 44px);
-              height: calc(100vh - var(--topbar-height, 60px) - 44px);
-            }
+          .adj-hist-nav-btn {
+            width: 40px; height: 40px; border-radius: 999px; border: none; cursor: pointer;
+            background: transparent; color: #b45309; display: inline-flex; align-items: center; justify-content: center;
           }
-          .sap-drawer-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-          }
-          .sap-drawer {
-            position: fixed;
-            top: var(--topbar-height, 60px); /* Bám sát dưới thanh tiêu đề */
-            right: -800px;
-            width: 100%;
-            max-width: 800px;
-            height: calc(100vh - var(--topbar-height, 60px));
-            background: #fff;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
-            z-index: 901;
-            transition: right 0.3s ease;
-            display: flex;
-            flex-direction: column;
-          }
-          @media (min-width: 1025px) {
-            .sap-drawer {
-              top: calc(var(--topbar-height, 60px) + 44px); /* Trên PC: Bám sát dưới thanh tiêu đề + thanh menu phụ (44px) */
-              height: calc(100vh - var(--topbar-height, 60px) - 44px);
-            }
-          }
-          .sap-drawer.active {
-            right: 0;
-          }
-          .sap-drawer-header {
-            padding: 8px 12px;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-            min-height: 40px;
-            box-sizing: border-box;
-          }
-          .sap-drawer-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: #0f172a;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-          }
-          .sap-drawer-close {
-            background: transparent;
-            border: none;
-            font-size: 20px;
-            color: #64748b;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.2s;
-            line-height: 1;
-          }
-          .sap-drawer-close:hover { background: #e2e8f0; color: #0f172a; }
-          .sap-drawer-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px; /* Giảm padding trên mobile */
-          }
-          @media (min-width: 768px) {
-            .sap-drawer-body {
-              padding: 20px;
-            }
-          }
-          
-          .sap-table-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-          .sap-table-input { padding: 6px 10px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; width: 100%; max-width: 140px; box-sizing: border-box; }
-          @media (max-width: 400px) {
-            .sap-table-input { max-width: 100%; }
-          }
-          .sap-table-input:focus { border-color: #005eb8; }
-          .sap-table-wrap { border: 1px solid #cbd5e1; overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff; }
-          .sap-compact-table { width: 100%; border-collapse: collapse; min-width: 600px; font-family: sans-serif; table-layout: fixed; }
-          .sap-compact-table th, .sap-compact-table td { border: 1px solid #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          .sap-compact-table th { background: #e0f2fe; padding: 6px 8px; font-size: 11px; font-weight: 700; color: #1e293b; text-align: center; white-space: nowrap; }
-          .sap-compact-table td { padding: 6px 8px; font-size: 12px; color: #1e293b; vertical-align: middle; text-align: center; }
-          .sap-compact-table td:nth-child(5) { text-align: left; } /* 申請詳細 align left */
-          
-          /* Điều chỉnh độ rộng các cột cố định */
-          .sap-compact-table th:nth-child(1) { width: 100px; } /* 申請番号 */
-          .sap-compact-table th:nth-child(2) { width: 90px; }  /* ステータス */
-          .sap-compact-table th:nth-child(3) { width: 130px; } /* レコードタイプ */
-          .sap-compact-table th:nth-child(4) { width: 100px; } /* 対象日 */
-          .sap-compact-table th:nth-child(5) { width: 150px; } /* 申請詳細 */
-          .sap-compact-table th:nth-child(6) { width: 130px; } /* 作成日時 */
-          .sap-compact-table th:nth-child(7) { width: 100px; } /* アクション */
+          .adj-hist-nav-btn:hover { background: rgba(245,158,11,0.12); }
+          .adj-hist-nav-btn svg { width: 22px; height: 22px; }
+          .adj-hist-nav-label { font-size: 17px; font-weight: 800; color: #1f2937; }
 
-          .sap-compact-table tr:hover { background: #f1f5f9; }
-          .sap-badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-          .sap-badge.approved { background: #dcfce7; color: #166534; }
-          .sap-badge.rejected { background: #fee2e2; color: #991b1b; }
-          .sap-badge.pending { background: #f1f5f9; color: #475569; }
-          .sap-action-btn { background: transparent; border: 1px solid transparent; color: #005eb8; padding: 4px; font-size: 12px; cursor: pointer; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; }
-          .sap-action-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
-          .sap-action-btn.delete { color: #ef4444; }
-          .sap-action-btn.btn-chat { color: #6366f1; }
-
-          /* Mobile Inline Edit Form Styles */
-          .inline-edit-container {
-            padding: 12px; 
-            background: #f8fafc; 
-            border: 2px solid #005eb8; 
-            position: relative; 
-            width: 100%; 
-            box-sizing: border-box;
-            box-shadow: inset 0 0 0 1px #fff;
+          .adj-hist-list { display: flex; flex-direction: column; gap: 14px; max-width: 560px; }
+          .adj-hist-card {
+            background: #fffdf9; border: 1px solid #fde68a; border-radius: 14px;
+            padding: 14px; box-shadow: 0 1px 3px rgba(180,83,9,0.06);
           }
-          /* Sticky Left Behavior for small screens (khi bảng bị cuộn) */
-          @media (max-width: 768px) {
-            .inline-edit-container {
-              position: sticky;
-              left: 0;
-              width: calc(100vw - 24px); /* Độ rộng bằng màn hình trừ đi padding của drawer */
-            }
+          .adj-hist-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+          .adj-hist-icon {
+            flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px;
+            background: #fef3e2; color: #f59e0b; display: inline-flex; align-items: center; justify-content: center;
           }
-          /* Media query cho tab trên mobile */
-          @media (max-width: 768px) {
-            .sap-table-wrap {
-              border: none;
-              background: transparent;
-            }
-            .sap-compact-table {
-              display: block;
-              width: 100%;
-              min-width: 0; /* Ghi đè min-width 600px của desktop */
-              table-layout: auto;
-            }
-            .sap-compact-table tbody {
-              display: block;
-              width: 100%;
-            }
-            .sap-compact-table tr {
-              display: block;
-              width: 100%;
-              margin-bottom: 16px;
-              background: #fff;
-              border: 1px solid #cbd5e1;
-              border-radius: 8px;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-              box-sizing: border-box;
-            }
-            .sap-compact-table td {
-              display: flex;
-              flex-direction: row; /* Thay đổi từ column sang row để chia hai bên */
-              justify-content: space-between; /* Đẩy 2 bên xa nhau */
-              align-items: center; /* Căn giữa theo chiều dọc */
-              text-align: right; /* Mặc định nội dung sẽ dồn sang phải */
-              border: none;
-              border-bottom: 1px solid #f1f5f9;
-              padding: 10px 12px;
-              white-space: normal;
-              min-height: auto;
-              width: 100%; /* Ép chiếm 100% width của thẻ cha */
-              box-sizing: border-box; /* Tính cả padding vào width */
-            }
-            .sap-compact-table thead {
-              display: none; /* Ẩn phần header của bảng */
-            }
-            .sap-compact-table tr:hover { background: #fff; }
-            .sap-compact-table td:last-child {
-              border-bottom: none;
-            }
-            .sap-compact-table td::before {
-              content: attr(data-label);
-              font-weight: 600;
-              color: #64748b;
-              text-align: left; /* Nhãn căn trái */
-              font-size: 11px;
-              flex-shrink: 0;
-              margin-bottom: 0; 
-              margin-right: 12px; /* Tạo khoảng cách với nội dung bên phải */
-              width: auto; /* Nhãn tự co giãn */
-              display: block; 
-            }
-            .mobile-td-content {
-              flex: 1;
-              text-align: right; 
-              display: flex;
-              justify-content: flex-end; /* Nội dung căn phải */
-              align-items: center;
-              word-break: break-word;
-              font-size: 13px;
-              font-weight: 500;
-              width: auto; 
-            }
-            
-            /* Sửa lại form inline edit cho mobile (nếu có) để không bị lỗi layout */
-            .sap-compact-table tr.inline-edit-row {
-               padding: 0;
-            }
-            .sap-compact-table tr.inline-edit-row td {
-               display: block;
-               padding: 0;
-               border: none;
-            }
-            .sap-compact-table tr.inline-edit-row td::before {
-               content: none;
-            }
+          .adj-hist-icon svg { width: 18px; height: 18px; }
+          .adj-hist-head-text { flex: 1 1 auto; min-width: 0; }
+          .adj-hist-date { font-size: 16px; font-weight: 800; color: #1f2937; }
+          .adj-hist-sub { font-size: 12px; color: #94a3b8; font-weight: 600; margin-top: 2px; }
+          .adj-hist-badge {
+            flex: 0 0 auto; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+          }
+          .adj-hist-badge.approved { background: #dcfce7; color: #166534; }
+          .adj-hist-badge.rejected { background: #fee2e2; color: #991b1b; }
+          .adj-hist-badge.pending { background: #fef3c7; color: #92400e; }
 
-            .sap-tabs-container {
-              gap: 8px; /* Thu hẹp khoảng cách giữa các tab */
-              justify-content: flex-start; /* Căn trái để không bị đè */
-              overflow-x: auto; /* Cho phép cuộn ngang nếu thiếu chỗ */
-              -webkit-overflow-scrolling: touch;
-              padding-bottom: 4px;
-              flex-wrap: wrap; /* Cho phép rớt dòng trên mobile */
-            }
-            .sap-tab {
-              padding: 8px 4px;
-              font-size: 11px; /* Chữ nhỏ lại một chút */
-              white-space: nowrap; /* Không cho rớt dòng trong từng tab */
-            }
-            .sap-tab svg {
-              width: 14px; /* Icon nhỏ lại */
-              height: 14px;
-            }
-            .sap-badge.notification {
-              padding: 0 4px;
-              font-size: 9px;
-            }
-            .adjust-search-bar {
-              margin-left: 0;
-              margin-top: 8px;
-              width: 100%;
-            }
-            .sap-table-input[type="month"] {
-              width: 120px; /* Thu gọn tối đa kích thước */
-              padding: 4px 6px; /* Giảm padding để nhỏ gọn hơn */
-              font-size: 11px; /* Thu nhỏ chữ */
-              height: 28px; /* Giảm chiều cao */
-              margin-top: 4px; /* Thêm khoảng cách phía trên khi rớt dòng */
-            }
+          .adj-hist-diff {
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
+            background: #fdf6ec; border-radius: 10px; padding: 12px;
+          }
+          .adj-hist-col { min-width: 0; }
+          .adj-hist-col-title { font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+          .adj-hist-col.after { text-align: right; }
+          .adj-hist-col.after .adj-hist-col-title { color: #ea580c; }
+          .adj-hist-col.after .adj-hist-line { color: #ea580c; font-weight: 700; }
+          .adj-hist-line { font-size: 14px; color: #334155; line-height: 1.7; white-space: nowrap; }
+          .adj-hist-arrow { color: #f59e0b; display: flex; align-items: center; justify-content: center; }
+          .adj-hist-arrow svg { width: 20px; height: 20px; }
+
+          .adj-hist-reason {
+            margin-top: 12px; background: #fffdf9; border: 1px solid #fde68a; border-radius: 10px; padding: 12px;
+          }
+          .adj-hist-reason-title {
+            display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #b45309; margin-bottom: 6px;
+          }
+          .adj-hist-reason-title svg { width: 16px; height: 16px; }
+          .adj-hist-reason-text { font-size: 14px; color: #1f2937; white-space: pre-wrap; word-break: break-word; }
+
+          .adj-hist-adminnote {
+            margin-top: 10px; padding: 8px 10px; border-radius: 8px;
+            background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px;
+          }
+          .adj-hist-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+          .adj-hist-actbtn {
+            width: 38px; height: 38px; border-radius: 10px; border: 1px solid #fde68a;
+            background: #fff; color: #b45309; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+          }
+          .adj-hist-actbtn:hover { background: #fef3e2; }
+          .adj-hist-actbtn.danger { color: #dc2626; border-color: #fecaca; }
+          .adj-hist-actbtn.danger:hover { background: #fef2f2; }
+
+          .adj-hist-pager { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 16px 0; max-width: 560px; }
+          .adj-hist-pager button {
+            padding: 8px 16px; border-radius: 10px; border: 1px solid #fde68a; background: #fff; color: #b45309;
+            font-weight: 700; cursor: pointer;
+          }
+          .adj-hist-pager button:disabled { opacity: .5; cursor: not-allowed; }
+          .adj-hist-pager .adj-hist-pager-info { font-size: 13px; color: #64748b; font-weight: 700; }
+
+          @media (max-width: 480px) {
+            .adj-hist-line { font-size: 13px; }
           }
         </style>
 
         <div id="sapHistoryBlock" class="sap-history-block" style="display: ${document.getElementById('tabHistory')?.classList?.contains('active') ? 'block' : 'none'};">
-            <div class="sap-history-body">
-              <div class="sap-table-wrap">
-              <table class="sap-compact-table">
-                <thead>
-                  <tr>
-                    <th>申請番号</th>
-                    <th>ステータス</th>
-                    <th>レコードタイプ</th>
-                    <th>対象日</th>
-                    <th>申請詳細</th>
-                    <th>作成日時</th>
-                    <th>アクション</th>
-                  </tr>
-                </thead>
-                <tbody>${tr}</tbody>
-              </table>
-              ${totalPages > 1 ? `
-                <div style="display:flex;justify-content:center;align-items:center;padding:16px 0;gap:12px;">
-                  <button id="btnAdjustPagePrev" class="sap-btn" ${currentPage === 1 ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>前へ</button>
-                  <span style="font-size:13px;color:#475569;">${currentPage} / ${totalPages} ページ</span>
-                  <button id="btnAdjustPageNext" class="sap-btn" ${currentPage === totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>次へ</button>
-                </div>
-              ` : ''}
-              </div>
+          <div class="adj-hist-nav">
+            <button id="adjHistPrev" class="adj-hist-nav-btn" type="button" aria-label="前の月">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <span class="adj-hist-nav-label">${monthLabelJP(selectedMonth)}</span>
+            <button id="adjHistNext" class="adj-hist-nav-btn" type="button" aria-label="次の月">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+          </div>
+
+          ${pagedRows.length ? `<div class="adj-hist-list">${tr}</div>` : '<div class="adj-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path></svg><span>申請はありません</span></div>'}
+
+          ${totalPages > 1 ? `
+            <div class="adj-hist-pager">
+              <button id="btnAdjustPagePrev" ${currentPage === 1 ? 'disabled' : ''}>前へ</button>
+              <span class="adj-hist-pager-info">${currentPage} / ${totalPages} ページ</span>
+              <button id="btnAdjustPageNext" ${currentPage === totalPages ? 'disabled' : ''}>次へ</button>
             </div>
+          ` : ''}
         </div>
       `;
+
+    // Điều hướng tháng bằng nút ‹ ›
+    $('#adjHistPrev')?.addEventListener('click', () => { historyMonth = shiftMonth(historyMonth, -1); currentPage = 1; renderList(); });
+    $('#adjHistNext')?.addEventListener('click', () => { historyMonth = shiftMonth(historyMonth, 1); currentPage = 1; renderList(); });
+    // Phân trang
+    $('#btnAdjustPagePrev')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderList(); } });
+    $('#btnAdjustPageNext')?.addEventListener('click', () => { currentPage++; renderList(); });
     // Logic xử lý khi click vào nút chỉnh sửa trên hàng (inline edit)
     const handleInlineEdit = (e) => {
       const btn = e.target.closest('.btn-edit');
       if (!btn) return;
-      const tr = btn.closest('tr');
-      if (!tr) return;
+      const card = btn.closest('.adj-hist-card');
+      if (!card) return;
       const recId = btn.getAttribute('data-id');
       if (!recId) return;
 
       // Đóng các form sửa inline khác đang mở
       document.querySelectorAll('.inline-edit-row').forEach(el => el.remove());
-      document.querySelectorAll('tr[data-hidden="1"]').forEach(el => {
+      document.querySelectorAll('.adj-hist-card[data-hidden="1"]').forEach(el => {
         el.style.display = '';
         delete el.dataset.hidden;
       });
@@ -1219,43 +1366,41 @@ const renderList = async () => {
       const reason = btn.getAttribute('data-reason') || '';
       const adminNote = btn.getAttribute('data-adminnote') || '';
 
-      // Ẩn dòng hiện tại
-      tr.style.display = 'none';
-      tr.dataset.hidden = '1';
+      // Ẩn card hiện tại
+      card.style.display = 'none';
+      card.dataset.hidden = '1';
 
-      // Tạo một hàng mới ngay dưới hàng được click
-      const editTr = document.createElement('tr');
-      editTr.className = 'inline-edit-row';
+      // Tạo block chỉnh sửa ngay dưới card được click (kiểu card cam)
+      const editTr = document.createElement('div');
+      editTr.className = 'inline-edit-row adj-card';
       editTr.innerHTML = `
-        <td colspan="6" style="padding: 0; border: none; background: #fff;">
-          <div class="inline-edit-container">
-            <button type="button" class="btn-close-inline-edit" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:16px; color:#64748b; cursor:pointer; padding:4px; line-height:1;" title="閉じる">&times;</button>
-            <div style="font-weight: 700; color: #005eb8; margin-bottom: 12px; font-size: 13px; text-align: center;">${String(btn.title || '') === '再申請' ? '差戻しされた申請を修正して再申請' : '申請の編集'}</div>
-            ${adminNote ? `<div style="margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px;"><strong>差戻し理由:</strong> ${esc(adminNote)}</div>` : ''}
-            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; justify-content:center;">
-              <div style="flex:1; min-width:180px; max-width:200px;">
-                <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:4px; text-align: center;">修正(出勤)</div>
-                <input type="datetime-local" class="sap-input full edit-in" value="${cin.replace(' ', 'T')}" style="height: 32px; font-size: 13px;">
-              </div>
-              <div style="flex:1; min-width:180px; max-width:200px;">
-                <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:4px; text-align: center;">修正(退勤)</div>
-                <input type="datetime-local" class="sap-input full edit-out" value="${cout.replace(' ', 'T')}" style="height: 32px; font-size: 13px;">
-              </div>
-              <div style="flex:2; min-width:250px;">
-                <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:4px; text-align: center;">理由 <span style="color:#ef4444">*</span></div>
-                <input type="text" class="sap-input full edit-reason" value="${esc(reason)}" placeholder="理由を入力してください" style="height: 32px; font-size: 13px;">
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button type="button" class="btn-cancel-inline-edit" style="height:32px; padding:0 12px; border:1px solid #cbd5e1; background:#fff; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer; color:#475569;">キャンセル</button>
-                <button type="button" class="btn-save-inline-edit" data-id="${recId}" style="height:32px; padding:0 16px; border:none; background:#005eb8; color:#fff; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer;">保存</button>
-              </div>
+        <div class="inline-edit-container" style="position:relative;">
+          <button type="button" class="btn-close-inline-edit" style="position:absolute; top:0; right:0; background:none; border:none; font-size:18px; color:#94a3b8; cursor:pointer; padding:4px; line-height:1;" title="閉じる">&times;</button>
+          <div style="font-weight: 800; color: #b45309; margin-bottom: 12px; font-size: 14px;">${String(btn.title || '') === '再申請' ? '差戻しされた申請を修正して再申請' : '申請の編集'}</div>
+          ${adminNote ? `<div style="margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px;"><strong>差戻し理由:</strong> ${esc(adminNote)}</div>` : ''}
+          <div style="display:grid; gap:10px;">
+            <div>
+              <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">修正(出勤)</div>
+              <input type="datetime-local" class="adj-time-input edit-in" value="${cin.replace(' ', 'T')}">
             </div>
-            <div class="edit-error" style="color:#ef4444; font-size:12px; font-weight:600; margin-top:8px; display:none; text-align: center;"></div>
+            <div>
+              <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">修正(退勤)</div>
+              <input type="datetime-local" class="adj-time-input edit-out" value="${cout.replace(' ', 'T')}">
+            </div>
+            <div>
+              <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">理由 <span style="color:#ef4444">*</span></div>
+              <input type="text" class="adj-time-input edit-reason" value="${esc(reason)}" placeholder="理由を入力してください" style="font-size:14px; font-weight:500;">
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:4px;">
+              <button type="button" class="btn-cancel-inline-edit adj-btn adj-btn-danger" style="flex:0 0 auto; min-height:44px; padding:0 18px;">キャンセル</button>
+              <button type="button" class="btn-save-inline-edit adj-btn adj-btn-primary" data-id="${recId}" style="flex:0 0 auto; min-height:44px; padding:0 22px;">保存</button>
+            </div>
           </div>
-        </td>
+          <div class="edit-error" style="color:#ef4444; font-size:12px; font-weight:600; margin-top:8px; display:none;"></div>
+        </div>
       `;
 
-      tr.after(editTr);
+      card.after(editTr);
 
       // Gắn sự kiện cho form
       const closeBtn = editTr.querySelector('.btn-close-inline-edit');
@@ -1265,8 +1410,8 @@ const renderList = async () => {
       const closeForm = (ev) => {
         if(ev) ev.preventDefault();
         editTr.remove();
-        tr.style.display = '';
-        delete tr.dataset.hidden;
+        card.style.display = '';
+        delete card.dataset.hidden;
       };
 
       closeBtn.addEventListener('click', closeForm);
@@ -1336,17 +1481,20 @@ const renderList = async () => {
     };
     // host.addEventListener('click', chatHandler);
       
-    // Fix: Remove document.querySelectorAll re-bindings to prevent duplicate events
-    // and just use event delegation on the host container which is much safer and cleaner.
-    host.addEventListener('click', (e) => {
-      if (e.target.closest('.btn-edit')) {
-        handleInlineEdit(e);
-      } else if (e.target.closest('.btn-delete')) {
-        deleteHandler(e);
-      } else if (e.target.closest('.btn-chat')) {
-        chatHandler(e);
-      }
-    });
+    // Event delegation trên #adjustListHost (phần tử cố định).
+    // Chỉ gắn MỘT LẦN để tránh listener chồng lên nhau qua mỗi lần renderList().
+    if (!host.dataset.wired) {
+      host.dataset.wired = '1';
+      host.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-edit')) {
+          handleInlineEdit(e);
+        } else if (e.target.closest('.btn-delete')) {
+          deleteHandler(e);
+        } else if (e.target.closest('.btn-chat')) {
+          chatHandler(e);
+        }
+      });
+    }
 
   } catch (e) {
     host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${esc(e?.message || 'unknown')}</div>`;
@@ -1377,8 +1525,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderForm();
   await renderList();
 
-  // Month filter change → re-render list (must be after renderList creates the element)
-  document.getElementById('adjustMonthFilter')?.addEventListener('change', () => {
-    renderList();
-  });
+
 });

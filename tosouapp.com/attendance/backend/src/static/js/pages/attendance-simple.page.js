@@ -380,49 +380,65 @@ const fmtYmd = (dateTimeStr) => {
     return `${y}/${m}/${d2}`;
   } catch (e) { return '—'; }
 };
+// Escape HTML để tránh XSS khi nhúng dữ liệu vào innerHTML
+const escHtml = (x) => String(x == null ? '' : x)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+// お知らせ (màn hình 簡易登録画面): chỉ hiển thị cảnh báo quên chấm công (出勤/退勤 chưa đủ).
+// KHÔNG hiển thị danh sách お知らせ chung (cái đó nằm ở màn hình home).
 const renderNotices = async (date) => {
   try {
     const box = $('#noticeBox');
     const title = $('#noticeTitle');
     if (!box) return;
-    const r = await fetchJSONAuth(`/api/notices?date=${encodeURIComponent(date)}&limit=10`).catch(() => null);
-    const items = Array.isArray(r?.notices) ? r.notices : [];
+
+    // Lấy các ngày phải đi làm nhưng thiếu chấm công của tháng đang xem (chỉ tính đến hôm qua)
+    const yy = String(date || '').slice(0, 4);
+    const mm = String(date || '').slice(5, 7);
+    let missing = [];
+    try {
+      const mr = await fetchJSONAuth(`/api/attendance/month/missing/me?year=${encodeURIComponent(yy)}&month=${encodeURIComponent(mm)}`).catch(() => null);
+      missing = Array.isArray(mr?.missing) ? mr.missing : [];
+    } catch (e) { missing = []; }
+
+    // 最終更新日: nếu có cảnh báo thì lấy hôm nay (dữ liệu vừa được kiểm tra), ngược lại "—"
+    const today = todayJST();
     if (title) {
-      const latest = items.length ? items[0] : null;
-      title.textContent = `お知らせ（最終更新日：${latest ? fmtYmd(latest.created_at) : '—'}）`;
+      title.textContent = `お知らせ（最終更新日：${missing.length ? fmtYmd(today) : '—'}）`;
     }
-    if (!items.length) {
+
+    if (!missing.length) {
       box.innerHTML = `<div class="simple-notice-empty">お知らせはありません</div>`;
       return;
     }
-    const html = [
-      `<div class="simple-notice-list">`,
-      ...items.map(n => `
-        <details class="simple-notice-item ${n.read_at ? 'is-read' : 'is-unread'}">
-          <summary class="simple-notice-summary">
-            <div class="simple-notice-left">
-              <span class="simple-notice-tag">お知らせ</span>
-              <span class="simple-notice-preview">${esc(String(n.message || '').slice(0, 200))}</span>
-            </div>
-            <span class="simple-notice-time">${esc(fmtYmd(n.created_at))}</span>
-          </summary>
-          <div class="simple-notice-body">${esc(String(n.message || ''))}</div>
-        </details>
-      `),
-      `</div>`
-    ].join('');
-    box.innerHTML = html;
-    try {
-      const ids = items.filter(it => !it.read_at).map(it => it.id);
-      if (ids.length) {
-        // Lazy mark as read
-        fetchJSONAuth('/api/notices/read', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => {});
-      }
-    } catch (e) { /* silently ignored */ }
+
+    // Nội dung cảnh báo theo đúng thực tế: thiếu 出勤 / thiếu 退勤 / cả hai
+    const missMsg = (it) => {
+      if (it.missIn && it.missOut) return '出勤・退勤の打刻が未完了です。';
+      if (it.missOut) return '退勤の打刻が未完了です。';
+      if (it.missIn) return '出勤の打刻が未完了です。';
+      return '打刻が未完了です。';
+    };
+
+    const items = missing.map(it => {
+      const d = it.date;
+      return `
+      <div class="simple-notice-miss-item">
+        <span class="simple-notice-miss-date">${escHtml(fmtYmd(d))}</span>
+        <span class="simple-notice-miss-msg">${escHtml(missMsg(it))}調整申請を行うか、管理者へご連絡ください。</span>
+        <a class="simple-notice-miss-btn" href="/ui/adjust?type=time_adjust&date=${encodeURIComponent(d)}">調整申請</a>
+      </div>
+    `;
+    }).join('');
+    box.innerHTML = `<div class="simple-notice-miss">${items}</div>`;
   } catch (e) {
     try {
       const box = $('#noticeBox');
-      if (box) box.innerHTML = `<div class="simple-notice-empty">個人カレンダー登録画面 へご確認ください。</div>`;
+      if (box) box.innerHTML = '';
     } catch (e) { /* silently ignored */ }
   }
 };
@@ -1184,8 +1200,18 @@ const load = async (date, opts = {}) => {
       localDefaultKubun = '';
     }
 
+    // Part-time, ngày ĐÃ QUA (< hôm nay), chưa lưu kubun và KHÔNG chấm công
+    // → tự hiển thị 休日 (đồng bộ với bảng tháng). Hôm nay/tương lai giữ mặc định cũ.
+    const hasPunchToday = Array.isArray(day?.segments) && day.segments.some(s => !!s?.checkIn || !!s?.checkOut);
+    const isPastDay = date < todayJST();
+    let autoOffSimple = false;
+    if (isPartTime && isPastDay && !kubunSaved && !hasPunchToday) {
+      autoOffSimple = true;
+      localDefaultKubun = '休日';
+    }
+
     // fallback cho defaultKubun nếu kubunInit rỗng
-    const fallbackKubun = kubunInit || defaultKubun || localDefaultKubun;
+    const fallbackKubun = autoOffSimple ? '休日' : (kubunInit || defaultKubun || localDefaultKubun);
 
     try {
       const isFuture = date > todayJST();
@@ -1202,7 +1228,8 @@ const load = async (date, opts = {}) => {
           return `<option value="${k}" ${disabledOpt}>${k}</option>`;
         }).join('')}`;
         selK.value = kubunOptions.includes(fallbackKubun) ? fallbackKubun : localDefaultKubun;
-        selK.classList.toggle('is-planned', !kubunSaved);
+        // Ngày auto-休日 coi như đã xác định (không phải dạng dự kiến/未申請)
+        selK.classList.toggle('is-planned', !kubunSaved && !autoOffSimple);
         setupSimpleCombo(selK);
         
         // Auto-clear work content when classification changes to Absence

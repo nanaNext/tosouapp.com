@@ -1203,3 +1203,49 @@ body {
   .simple-tab { font-size: 13px; padding: 5px 8px; }
   .simple-tabs { gap: 6px; padding: 6px 8px; top: calc(46px + env(safe-area-inset-top, 0px)); }
 }
+
+/* Cảnh báo quên chấm công (出勤/退勤 chưa đủ) trong お知らせ của màn hình 簡易登録画面 */
+.simple-notice-miss {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.simple-notice-miss-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.simple-notice-miss-date {
+  color: #b45309;
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.simple-notice-miss-msg {
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.5;
+  flex: 1 1 200px;
+}
+.simple-notice-miss-btn {
+  flex: 0 0 auto;
+  display: inline-block;
+  background: #f59e0b;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.simple-notice-miss-btn:hover {
+  background: #d97706;
+}

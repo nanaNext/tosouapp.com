@@ -51,7 +51,7 @@
     </thead>
   `;
     const tbody = document.createElement('tbody');
-    const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow, shiftRequest, canAddMore) => {
+    const buildTr = (dateStr, isOff, shift, daily, seg, goOutRecords, showDateDow, shiftRequest, canAddMore, autoOff) => {
       const primary = !!showDateDow;
       const dow = dowJa(dateStr);
         // Phải theo chính sách lịch của backend (có tính phòng ban), không ép Thứ 7/Chủ nhật ở đây.
@@ -181,6 +181,16 @@
         }
       }
 
+      // Tự động 休日: backend đã xác định ngày này (đã đến ngày, không chấm công,
+      // không có kubun/ca đi làm cụ thể) nên hiển thị 休日 luôn — không còn 予定なし/【休日予定】,
+      // không bắt nhân viên phải nhập tay. Chọn thẳng option "休日" thật để tránh
+      // trùng lặp (placeholder + option cùng chữ "休日").
+      const isAutoHolidayDay = !!autoOff && !hasActualIn && !hasActualOut && !kubunInit;
+      if (isAutoHolidayDay) {
+        kubunInit = '休日';
+        plannedKubun = '休日';
+      }
+
       const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
       const effectiveKubun = kubunInit || plannedKubun;
       const isWorkDay = workKubunSet.has(effectiveKubun);
@@ -198,10 +208,12 @@
       // Giữ hiển thị kubun đã lưu rõ ràng ngay cả khi chưa có check-in/out.
       // Logic cũ ẩn kubun làm việc (ví dụ 出勤) trừ khi có chấm công thực tế,
       // khiến sau khi reload trông như "chưa lưu".
-      const allowDailyAsActual = hasActual || kubunConfirmed;
+      // Không reset kubunInit của ngày auto-休日 (nó là 休日 do hệ thống tự đặt, không phải chưa lưu)
+      const allowDailyAsActual = hasActual || kubunConfirmed || isAutoHolidayDay;
       if (!allowDailyAsActual) kubunInit = '';
-      
-      const isPlanned = !kubunInit && !hasActual && !kubunConfirmed;
+
+      // Ngày auto-休日 coi như đã xác định: không phải "予定/未申請" và không làm mờ dòng.
+      const isPlanned = !isAutoHolidayDay && !kubunInit && !hasActual && !kubunConfirmed;
       const canEditWorkRow = !!state.editableMonth && ((isWorkDay || hasActual) && !!kubunInit || !isEmployee);
       
       // Coi các dòng ngày làm việc mà không có checkin/checkout thật là dạng theo kế hoạch để làm mờ.
@@ -593,7 +605,7 @@
       for (let i = 0; i < list0.length; i++) {
         const seg = list0[i];
         const isFirst = (i === 0);
-        tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, goOutRecords, isFirst, d.shiftRequest, canAddMore));
+        tbody.appendChild(buildTr(dateStr, isOff, shift, daily, seg, goOutRecords, isFirst, d.shiftRequest, canAddMore, Number(d?.autoOff || 0) === 1));
       }
     }
     table.appendChild(tbody);

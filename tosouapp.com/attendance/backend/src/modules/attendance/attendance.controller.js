@@ -69,6 +69,7 @@ exports.getMonthStatus     = monthCtrl.getMonthStatus;
 exports.getMonthStatusBulk = monthCtrl.getMonthStatusBulk;
 exports.submitMonth        = monthCtrl.submitMonth;
 exports.getMonthMissing    = monthCtrl.getMonthMissing;
+exports.getMonthMissingMe  = monthCtrl.getMonthMissingMe;
 exports.approveReadyMonth  = monthCtrl.approveReadyMonth;
 exports.approveMonth       = monthCtrl.approveMonth;
 exports.unlockMonth        = monthCtrl.unlockMonth;
