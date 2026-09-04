@@ -1912,6 +1912,10 @@
                    CAO CỐ ĐỊNH. Dù ô <th> có bị kéo cao bao nhiêu, khối chữ vẫn giữ
                    nguyên chiều cao & căn giữa → header GIỐNG HỆT NHAU cho mọi người. */
                 #printScale .enm-daily-table thead th { padding: 0 !important; min-height: 0 !important; vertical-align: middle !important; line-height: 1 !important; }
+                /* Ghim CỨNG chiều cao 2 hàng header → dù bảng bị flex kéo giãn cũng
+                   KHÔNG hút chiều cao vào header (chống chữ header trùng/dồn xuống). */
+                #printScale .enm-daily-table thead tr:nth-child(1) { height: 18px !important; }
+                #printScale .enm-daily-table thead tr:nth-child(2) { height: 18px !important; }
                 #printScale .enm-daily-table thead .thc {
                   display: flex; align-items: center; justify-content: center;
                   text-align: center; line-height: 1.2; overflow: hidden; box-sizing: border-box;
