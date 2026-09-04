@@ -20,7 +20,7 @@
   <script src="/static/js/pages/attendance-monthly.controller.js?v=navy-20260703-3" defer></script>
   <script src="/static/vendor/pdfgen/html2canvas.min.js?v=1.4.1" defer></script>
   <script src="/static/vendor/pdfgen/jspdf.umd.min.js?v=2.5.1" defer></script>
-  <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260904-shukkinbo-pdf24-fixedlayout" defer></script>
+  <script src="/static/js/pages/attendance-monthly.events.js?v=navy-20260904-shukkinbo-pdf30-companybottom" defer></script>
   <script src="/static/js/pages/attendance-monthly.page.js?v=navy-20260703-7" defer></script>
 </head>
 <body>
@@ -158,6 +158,7 @@
                       <button type="button" class="se-btn primary se-btn-wide lastMonthBtn" id="btnPrevMonth">≪ 前月</button>
                       <button type="button" class="se-btn primary se-btn-wide nextMonthBtn" id="btnNextMonth">翌月 ≫</button>
                       <button type="button" class="se-btn primary se-btn-wide" id="btnExportWeek" disabled>就業状況通知書出力</button>
+                      <button type="button" class="se-btn primary se-btn-wide" id="btnExportSites" disabled>現場・作業内容出力</button>
                     </div>
                   </div>
                   <div id="monthTable" class="se-table"></div>
@@ -226,10 +227,6 @@
         <div class="enm-body" id="enmPrintArea">
           <div class="enm-paper">
             <div class="enm-title"><span>出勤簿</span></div>
-            
-            <div class="enm-info">
-              <div class="enm-company">飯塚塗研株式会社</div>
-            </div>
 
             <!-- Dòng tiêu đề kiểu hành chính: 年 月 ・ 名前 ・ 印 ・ 合計日数 -->
             <div class="enm-name-line">
@@ -244,17 +241,19 @@
               <thead>
                 <tr>
                   <th rowspan="2" style="width: 7%;"><div class="thc thc2">日</div></th>
-                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">事由</div></th>
-                  <th colspan="2" style="width: 12%;"><div class="thc thc1">就業時間</div></th>
-                  <th colspan="2" style="width: 12%;"><div class="thc thc1">休憩時間</div></th>
-                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">中抜け<br>時間</div></th>
-                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">勤務時間</div></th>
-                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">超過時間</div></th>
-                  <th rowspan="2" style="width: 7%;"><div class="thc thc2">現場</div></th>
-                  <th rowspan="2" style="width: 22%;"><div class="thc thc2">作業内容</div></th>
-                  <th rowspan="2" style="width: 8%;"><div class="thc thc2">備考</div></th>
+                  <th rowspan="2" style="width: 9%;"><div class="thc thc2">事由</div></th>
+                  <th colspan="3" style="width: 18%;"><div class="thc thc1">就業現場</div></th>
+                  <th colspan="2" style="width: 14%;"><div class="thc thc1">就業時間</div></th>
+                  <th colspan="2" style="width: 14%;"><div class="thc thc1">休憩時間</div></th>
+                  <th rowspan="2" style="width: 9%;"><div class="thc thc2">中抜け<br>時間</div></th>
+                  <th rowspan="2" style="width: 10%;"><div class="thc thc2">勤務時間</div></th>
+                  <th rowspan="2" style="width: 10%;"><div class="thc thc2">超過時間</div></th>
+                  <th rowspan="2" style="width: 9%;"><div class="thc thc2">備考</div></th>
                 </tr>
                 <tr>
+                  <th><div class="thc thc1">出社</div></th>
+                  <th><div class="thc thc1">在宅</div></th>
+                  <th><div class="thc thc1">現場</div></th>
                   <th><div class="thc thc1">開始</div></th>
                   <th><div class="thc thc1">終了</div></th>
                   <th><div class="thc thc1">普通</div></th>
@@ -266,9 +265,10 @@
               </tbody>
             </table>
 
-            <div style="margin-top: 30px; font-size: 14px; text-align: right; margin-bottom: 20px;">
+            <div class="enm-footer-text" style="margin-top: 8px; font-size: 15px; text-align: right;">
               上記の通り、就業状況を通知いたします。
             </div>
+            <div class="enm-company-bottom">飯塚塗研株式会社</div>
           </div>
         </div>
         <div class="enm-footer">
