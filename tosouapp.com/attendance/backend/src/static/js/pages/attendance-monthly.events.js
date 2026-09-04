@@ -1225,6 +1225,10 @@
       modal.setAttribute('hidden', '');
     };
 
+    // Dữ liệu 現場 + 作業内容 của tháng đang xem — dựng lại mỗi lần openModal,
+    // dùng cho PDF riêng "現場・作業内容出力".
+    let enmSiteWorkRows = [];
+
     // Cache map ngày lễ Nhật (祝日) theo năm: { 'YYYY-MM-DD': '元日', ... }
     // Dùng để hiển thị TÊN ngày lễ ở cột 事由 cho các ngày đỏ.
     const holidayNameCache = {}; // year -> { dateStr: name }
@@ -1309,6 +1313,7 @@
       
       if (dailyTbody) {
         dailyTbody.innerHTML = '';
+        enmSiteWorkRows = []; // reset dữ liệu 現場+作業内容 cho tháng đang dựng
         const rows = document.querySelectorAll('#monthTableReal tbody tr[data-date]');
         
         // Lấy ngày hiện tại để xác định "quá khứ" và "tương lai"
@@ -1557,6 +1562,9 @@
             <tr${rowClass}>
               <td>${dayDisplay}</td>
               <td class="enm-reason">${kubun}</td>
+              <td class="enm-mark">${isOnsite}</td>
+              <td class="enm-mark">${isRemote}</td>
+              <td class="enm-mark">${isTravel}</td>
               <td>${timeIn}</td>
               <td>${timeOut}</td>
               <td>${breakNormal}</td>
@@ -1564,12 +1572,19 @@
               <td>${nakanukeTime}</td>
               <td>${workedTime}</td>
               <td>${excessTime}</td>
-              <td class="left-align enm-note">${placeCol}</td>
-              <td class="left-align enm-work">${formatWorkContent(workContent)}</td>
               <td class="left-align enm-note">${escHtmlEnm(notes)}</td>
             </tr>
           `;
           dailyTbody.insertAdjacentHTML('beforeend', html);
+
+          // Lưu dữ liệu 現場 + 作業内容 cho PDF riêng (nút 現場・作業内容出力).
+          // placeCol = tên hiện trường/出社/在宅/現場; workContent = nội dung công việc.
+          enmSiteWorkRows.push({
+            day: dayDisplay,
+            rest: isRestRow,
+            site: placeCol,               // đã là HTML an toàn (escHtmlEnm ở trên)
+            work: formatWorkContent(workContent),
+          });
         });
       }
       
@@ -1602,6 +1617,112 @@
       e.preventDefault();
       exportPdf();
     });
+
+    // ── Nút 現場・作業内容出力: PDF riêng chỉ gồm 日 / 現場 / 作業内容 ──
+    const btnSites = document.querySelector('#btnExportSites');
+    if (btnSites) {
+      btnSites.removeAttribute('disabled');
+
+      const renderSitesIframe = () => new Promise((resolve) => {
+        // Khổ giấy: dùng chung lựa chọn với bảng chính.
+        const paperVal = document.querySelector('#enmPaperSize')?.value || 'A4-portrait';
+        const [paperName, paperOrient] = paperVal.split('-');
+        const PAPER_MM = { A4: { w: 210, h: 297 }, A3: { w: 297, h: 420 } };
+        const base = PAPER_MM[paperName] || PAPER_MM.A4;
+        const isLandscape = paperOrient === 'landscape';
+        const pageWmm = isLandscape ? base.h : base.w;
+        const pageHmm = isLandscape ? base.w : base.h;
+        const PAD_MM = 5;
+        const pageSizeCss = `${paperName} ${paperOrient}`;
+        const MM2PX = 96 / 25.4;
+
+        // Tiêu đề: 年月 + tên nhân viên (lấy từ dòng đã dựng trong modal).
+        const ymText = (document.querySelector('#enmYmLine')?.textContent || '').trim();
+        const nameText = (document.querySelector('#enmNameLine')?.textContent
+          || document.querySelector('#staffName')?.textContent || '').trim();
+
+        // Dựng các hàng ngày: 日 / 現場 / 作業内容 (dữ liệu đã gom ở openModal).
+        let rowsHtml = '';
+        for (const r of enmSiteWorkRows) {
+          const cls = r.rest ? ' class="sw-rest"' : '';
+          rowsHtml += `<tr${cls}><td class="sw-day">${r.day}</td>`
+            + `<td class="sw-site">${r.site || ''}</td>`
+            + `<td class="sw-work">${r.work || ''}</td></tr>`;
+        }
+
+        let iframe = document.getElementById('print-iframe-sites');
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = 'print-iframe-sites';
+          iframe.style.cssText = 'position:fixed;left:0;top:0;border:none;opacity:0;z-index:-9999;pointer-events:none;';
+          document.body.appendChild(iframe);
+        }
+        iframe.style.width = `${Math.round(pageWmm * MM2PX)}px`;
+        iframe.style.height = `${Math.round(pageHmm * MM2PX)}px`;
+
+        const empNameClean = nameText.replace(/[\\/:*?"<>|]/g, '');
+        const docTitle = empNameClean ? `現場作業内容_${empNameClean}` : '現場作業内容';
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(`
+          <!DOCTYPE html><html><head><title>${docTitle}</title><style>
+            @page { margin: 0; size: ${pageSizeCss}; }
+            html, body { width: ${pageWmm}mm; margin: 0; padding: 0; overflow: hidden;
+              font-family: "Meiryo","Hiragino Kaku Gothic ProN","MS PGothic",sans-serif; color:#000;
+              -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .sw-page { width: ${pageWmm}mm; height: ${pageHmm - 0.6}mm; padding: ${PAD_MM}mm;
+              box-sizing: border-box; overflow: hidden; display:flex; flex-direction:column; }
+            table.sw-tbl { flex:1 1 auto; }
+            .sw-title { text-align:center; font-size:24px; letter-spacing:10px; text-indent:10px;
+              font-weight:bold; margin:0 0 4px; }
+            .sw-head { display:flex; align-items:flex-end; gap:12px; font-size:15px; margin:0 0 5px; }
+            .sw-head .sw-ym { border-bottom:1px solid #000; padding:0 8px 2px; min-width:150px; }
+            .sw-head .sw-nm { border-bottom:1px solid #000; padding:0 12px 2px; flex:1; font-weight:700; font-size:18px; }
+            table.sw-tbl { width:100%; border-collapse:collapse; table-layout:fixed; }
+            table.sw-tbl th, table.sw-tbl td { border:0.5px solid #888; padding:1px 6px;
+              vertical-align:middle; word-break:break-word; overflow:hidden; }
+            table.sw-tbl th { background:#cbd5e1; text-align:center; font-weight:normal; font-size:12px; height:24px; }
+            /* GHIM chiều cao hàng cố định → 31 ngày + header LUÔN vừa 1 trang.
+               Nội dung 作業内容 dài sẽ bị cắt bớt (overflow:hidden) chứ KHÔNG đẩy
+               hàng cao ra làm tràn trang. */
+            .sw-company { flex:0 0 auto; }
+            table.sw-tbl td.sw-day { text-align:center; width:12%; white-space:nowrap; font-size:12px; }
+            table.sw-tbl td.sw-site { width:28%; font-size:11px; line-height:1.15; }
+            table.sw-tbl td.sw-work { width:60%; font-size:11px; line-height:1.15; }
+            table.sw-tbl tr.sw-rest td { background:#d9d9d9; }
+            .sw-company { text-align:right; font-size:16px; font-weight:700; margin-top:6px; }
+          </style></head><body>
+            <div class="sw-page">
+              <div class="sw-title">出勤簿</div>
+              <div class="sw-head"><span class="sw-ym">${ymText}</span>
+                <span>名前：</span><span class="sw-nm">${nameText}</span></div>
+              <table class="sw-tbl">
+                <thead><tr><th style="width:12%;">日</th><th style="width:28%;">現場</th><th style="width:60%;">作業内容</th></tr></thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>
+              <div class="sw-company">飯塚塗研株式会社</div>
+            </div>
+          </body></html>`);
+        iframe.contentWindow.document.close();
+
+        const win = iframe.contentWindow;
+        // Chiều cao lấp đầy + chia đều các hàng do FLEXBOX lo (không cần JS đo).
+        const fontsReady = (win.document.fonts && win.document.fonts.ready) ? win.document.fonts.ready : Promise.resolve();
+        Promise.race([
+          fontsReady.then(() => new Promise(r => setTimeout(r, 250))),
+          new Promise(r => setTimeout(r, 1200)),
+        ]).then(() => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve(iframe))))
+          .catch(() => resolve(iframe));
+      });
+
+      btnSites.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await openModal(false);                  // dựng dữ liệu enmSiteWorkRows (không hiện modal)
+        const iframe = await renderSitesIframe();
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      });
+    }
 
     if (btnClose) btnClose.addEventListener('click', closeModal);
     if (btnCloseBottom) btnCloseBottom.addEventListener('click', closeModal);
@@ -1683,9 +1804,9 @@
                   print-color-adjust: exact;
                 }
                 /* ---------- IN-IFRAME PRINT CSS (A4, chữ đủ lớn, 30 ngày vừa 1 trang) ---------- */
-                .enm-title { text-align: center; font-size: 28px; letter-spacing: 10px; text-indent: 10px; margin-top: 0; margin-bottom: 6px; font-weight: bold; }
-                .enm-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 14px; font-weight: normal; }
-                .enm-company { font-size: 18px; font-weight: 700; }
+                .enm-title { text-align: center; font-size: 22px; letter-spacing: 10px; text-indent: 10px; margin-top: 0; margin-bottom: 3px; font-weight: bold; }
+                .enm-info { display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 13px; font-weight: normal; }
+                .enm-company { font-size: 15px; font-weight: 700; }
                 .enm-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; border: 1px solid #000; }
                 .enm-table th, .enm-table td { border: 1px solid #000; padding: 5px 6px; font-size: 12px; font-weight: normal; }
                 .enm-table th { background: #e2e8f0 !important; text-align: center; }
@@ -1698,17 +1819,19 @@
                 .enm-daily-table tr, .enm-daily-table td, .enm-daily-table th { page-break-inside: avoid; break-inside: avoid; }
                 #printScale, #printScale * { page-break-inside: avoid; break-inside: avoid; }
                 /* Ô số liệu: đủ lớn dễ đọc, cân đối để 30 ngày + 1 header row vừa trong A4 dọc */
-                .enm-daily-table th, .enm-daily-table td { border: 0.5px solid #888; padding: 4px 3px; font-size: 13px; line-height: 1.3; font-weight: normal; text-align: center; vertical-align: middle; min-height: 26px; }
+                .enm-daily-table th, .enm-daily-table td { border: 0.5px solid #888; padding: 4px 3px; font-size: 15px; line-height: 1.3; font-weight: normal; text-align: center; vertical-align: middle; min-height: 26px; }
                 .enm-daily-table th { background: #cbd5e1 !important; font-weight: normal; font-size: 12px; line-height: 1.35; padding: 5px 3px; }
                 /* Hàng ngày nghỉ: tô nền xám cả hàng. */
                 .enm-daily-table tbody tr.enm-rest-row td { background: #d9d9d9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .enm-daily-table td.left-align { text-align: left; }
+                /* Ô 出社/在宅/現場: chỉ chứa dấu 〇, căn giữa, chữ vừa phải. */
+                .enm-daily-table td.enm-mark { text-align: center; font-size: 15px; }
                 .enm-daily-table th, .enm-daily-table td { white-space: nowrap; word-break: keep-all; }
                 /* Cột 事由: tên ngày lễ dài (国民の休日, 敬老の日...) phải xuống dòng
                    trong ô, KHÔNG tràn ra ngoài. Chữ nhỏ hơn 1 chút + cho wrap. */
                 .enm-daily-table td.enm-reason {
                   white-space: normal; word-break: break-all; overflow: hidden;
-                  font-size: 10.5px; line-height: 1.15; padding-left: 2px; padding-right: 2px;
+                  font-size: 12px; line-height: 1.15; padding-left: 2px; padding-right: 2px;
                 }
                 /* Cột 日 (chỉ số ngày): in đậm nhẹ */
                 .enm-daily-table thead tr:first-child th:nth-child(1), .enm-daily-table td:nth-child(1) { white-space: normal; word-break: keep-all; overflow: visible; padding-left: 2px; padding-right: 2px; font-weight: normal; }
@@ -1727,7 +1850,7 @@
                   font-size: 15px; line-height: 1.35;
                 }
                 /* Dòng tiêu đề kiểu mẫu: 年 月 ・ 名前 ・ 印 */
-                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 4px 0 6px; font-size: 15px; font-weight: normal; }
+                .enm-name-line { display: flex; align-items: flex-end; gap: 0; margin: 2px 0 4px; font-size: 14px; font-weight: normal; }
                 .enm-name-line .enm-ym,
                 .enm-name-line .enm-name-label,
                 .enm-name-line .enm-name-val { border-bottom: 1px solid #000; padding-bottom: 3px; }
@@ -1754,6 +1877,10 @@
                    trang 2). Lề đẹp 4 phía = padding PAD_MM bên trong (border-box),
                    nên KHÔNG phụ thuộc 余白 của hộp thoại in. Vùng nội dung thực =
                    (pageWmm - 2*PAD) × (pageHmm - 2*PAD) = availWmm × availHmm. */
+                /* Khung cao ĐÚNG vùng in (availHmm = pageHmm - 2*PAD). KHÔNG dùng
+                   overflow:hidden + height dư (thứ này đang CẮT mất ngày cuối).
+                   Dùng flexbox để bảng TỰ giãn lấp đầy trang, các hàng chia đều →
+                   đủ tháng, không khoảng trắng, KHÔNG cắt. */
                 #printScale {
                   transform-origin: top left;
                   width: ${pageWmm}mm;
@@ -1764,18 +1891,19 @@
                   flex-direction: column;
                   overflow: hidden;
                 }
-                /* LAYOUT CỐ ĐỊNH — mọi nhân viên GIỐNG HỆT NHAU.
-                   KHÔNG dùng flex để kéo giãn lấp trang nữa (đó là thứ khiến mỗi
-                   người một cỡ chữ / khoảng cách hàng khác nhau). Nội dung xếp từ
-                   trên xuống với cỡ chữ cố định + chiều cao hàng cố định. */
-                #printScale > .enm-paper { box-sizing: border-box; display: block; width: 100%; }
-                #printScale > .enm-paper > .enm-daily-table { width: 100%; }
-                #printScale > .enm-paper > .enm-footer-text { margin-top: 4px; }
-                /* CHIỀU CAO HÀNG CỐ ĐỊNH cho mọi dòng ngày → bảng luôn cùng hình
-                   dạng bất kể số ngày / độ dài nội dung. Tháng ít ngày chỉ ngắn hơn
-                   ở đáy, KHÔNG đổi cỡ chữ hay giãn hàng. */
-                #printScale .enm-daily-table tbody tr { height: 28px !important; }
-                #printScale .enm-daily-table tbody td { height: 28px !important; overflow: hidden; }
+                #printScale > .enm-paper {
+                  box-sizing: border-box; width: 100%;
+                  flex: 1 1 auto; min-height: 0;
+                  display: flex; flex-direction: column;
+                }
+                /* Bảng nở lấp phần còn lại của trang → tbody chia đều chiều cao cho
+                   đủ số ngày, lấp kín tới đáy mà không cắt. */
+                #printScale > .enm-paper > .enm-daily-table { flex: 1 1 auto; width: 100%; }
+                #printScale > .enm-paper > .enm-footer-text { flex: 0 0 auto; margin-top: 4px; }
+                /* Tên công ty: xuống CUỐI trang, canh mép PHẢI. */
+                #printScale > .enm-paper > .enm-company-bottom { flex: 0 0 auto; text-align: right; font-size: 17px; font-weight: 700; margin-top: 4px; padding-right: 6px; }
+                /* Bỏ min-height cứng để các hàng chia đều theo chiều cao bảng. */
+                #printScale .enm-daily-table tbody td { min-height: 0 !important; padding-top: 1px !important; padding-bottom: 1px !important; }
                 /* ── KHOÁ CHIỀU CAO HIỂN THỊ CỦA HEADER ──
                    Vì các ô thead có rowspan=2 + border-collapse + table-layout:fixed,
                    khi tbody bị giãn thì thuật toán bảng đẩy một phần chiều cao dôi
@@ -1783,16 +1911,16 @@
                    Cách chặn triệt để: bọc chữ header trong <div class="thc"> có CHIỀU
                    CAO CỐ ĐỊNH. Dù ô <th> có bị kéo cao bao nhiêu, khối chữ vẫn giữ
                    nguyên chiều cao & căn giữa → header GIỐNG HỆT NHAU cho mọi người. */
-                #printScale .enm-daily-table thead th { padding: 0 !important; vertical-align: middle !important; }
+                #printScale .enm-daily-table thead th { padding: 0 !important; min-height: 0 !important; vertical-align: middle !important; line-height: 1 !important; }
                 #printScale .enm-daily-table thead .thc {
                   display: flex; align-items: center; justify-content: center;
                   text-align: center; line-height: 1.2; overflow: hidden; box-sizing: border-box;
                 }
                 /* thc2 (rowspan=2) = tổng 2 hàng đơn (2 × thc1) để ô rowspan KHÔNG
                    yêu cầu cao hơn tổng 2 hàng → không ép hàng phình thêm. */
-                #printScale .enm-daily-table thead .thc1 { height: 22px; }  /* ô 1 hàng */
-                #printScale .enm-daily-table thead .thc2 { height: 44px; }  /* ô rowspan=2 = 2×22 */
-                .print-container .enm-title { margin-top: 0 !important; margin-bottom: 4px !important; font-size: 28px !important; letter-spacing: 10px !important; text-indent: 10px !important; }
+                #printScale .enm-daily-table thead .thc1 { height: 18px; }  /* ô 1 hàng */
+                #printScale .enm-daily-table thead .thc2 { height: 36px; }  /* ô rowspan=2 = 2×18 */
+                .print-container .enm-title { margin-top: 0 !important; margin-bottom: 3px !important; font-size: 22px !important; letter-spacing: 10px !important; text-indent: 10px !important; }
                 .print-container h4 { margin: 2px 0 1px 0 !important; }
                 .print-container .enm-table th, .print-container .enm-table td { padding: 4px 5px !important; font-size: 12px !important; font-weight: normal !important; }
                 #printScale .enm-paper > div:last-child { margin-top: 1px !important; margin-bottom: 0 !important; }
@@ -1822,10 +1950,11 @@
           try {
             const doc = iframe.contentWindow.document;
             const scaleEl = doc.getElementById('printScale');
-            const container = doc.querySelector('.print-container');
             const table = doc.getElementById('enmDailyTable');
             const bodyRows = table ? table.querySelectorAll('tbody tr') : [];
             const paper = scaleEl ? scaleEl.querySelector('.enm-paper') : null;
+            // Chiều cao lấp đầy + chia đều các hàng do FLEXBOX lo (không cần JS đo).
+            const container = null;
             if (false && scaleEl && paper) {
               // Reset trước khi đo
               paper.style.zoom = '';
