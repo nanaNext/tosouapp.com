@@ -1,349 +1,15 @@
-import { fetchJSONAuth } from '../api/http.api.js';
-
-// Thêm hàm hỗ trợ esc ở đầu file
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
-let currentUser = null;
-let targetUserId = null;
-let currentMonth = new Date();
-
-let shiftData = {}; // key: YYYY-MM-DD, value: object
-let serverStatus = null; // Theo dõi xem tháng đã được nộp hoặc duyệt chưa
-let calendarDataMap = {}; // Map dữ liệu lịch dùng chung
-
-const SEISHAIN_LEAVE_TYPES = [
-  { value: 'paid', label: '有給休暇' },
-  { value: 'paid_half', label: '半休(有給)' },
-  { value: 'half', label: '半休' },
-  { value: 'unpaid', label: '欠勤 / 無給休暇' },
-  { value: 'substitute', label: '代替休日' },
-  { value: 'special', label: '特別休暇' }
-];
-
-const SEISHAIN_REASONS = [
-  { value: '私用のため', label: '私用のため' },
-  { value: '体調不良', label: '体調不良' },
-  { value: '定期健診', label: '定期健診' },
-  { value: 'other', label: 'その他' }
-];
-
-const BAITO_SHIFTS = [
-  { value: 'OFF', label: '休み' },
-  { value: 'WORKING', label: '出勤' }
-];
-
-async function init() {
-  const spinner = $('#pageSpinner');
-  if (spinner) spinner.removeAttribute('hidden');
-  
-  const params = new URLSearchParams(window.location.search);
-  targetUserId = params.get('userId');
-  
-  try {
-    const el = $('#userName');
-    if (el) {
-      const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-      const u = raw ? JSON.parse(raw) : null;
-      const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
-      if (name) el.textContent = name;
-    }
-  } catch (e) { /* bỏ qua lỗi */ }
-
-  try {
-    currentUser = await fetchJSONAuth('/api/auth/me');
-    if (!currentUser) {
-      window.location.replace('/ui/login?next=/ui/shifts');
-      return;
-    }
-    
-    // Nếu có chỉ định targetUserId thì ghi đè currentUser bằng dữ liệu user đích
-    if (targetUserId && (currentUser.role === 'admin' || currentUser.role === 'manager')) {
-      const targetUser = await fetchJSONAuth(`/api/admin/employees/${targetUserId}`);
-      if (targetUser && !targetUser.error) {
-        currentUser = targetUser;
-      } else {
-        alert('指定されたユーザーが見つかりません。');
-        targetUserId = null;
-      }
-    }
-    
-    // Cập nhật luôn userName trên header phòng khi nó chưa có trong storage
-    const el = $('#userName');
-    if (el && currentUser) {
-      const name = currentUser.username || currentUser.email;
-      if (name) el.textContent = name;
-    }
-    
-    // Chỉ lưu user đã cập nhật vào storage nếu không phải đang ghi đè
-    if (!targetUserId) {
-      try {
-        sessionStorage.setItem('user', JSON.stringify(currentUser));
-        localStorage.setItem('user', JSON.stringify(currentUser));
-      } catch (e) { /* bỏ qua lỗi */ }
-    }
-    
-    // Hiển thị thông tin profile user trong khung shifts-header (giờ do renderApp xử lý hoàn toàn)
-    const uiName = currentUser.username || currentUser.email || '未設定';
-    const uiDept = currentUser.departmentName || '未設定';
-    const isSeishain = currentUser.employment_type === 'full_time' || currentUser.employment_type === '正社員';
-    const uiType = isSeishain ? '正社員' : 'アルバイト / パート';
-    
-    if (targetUserId) {
-      const headerBox = document.querySelector('.page-header');
-      if (headerBox) {
-        const banner = document.createElement('div');
-        banner.style.background = '#fef3c7';
-        banner.style.color = '#92400e';
-        banner.style.padding = '10px';
-        banner.style.textAlign = 'center';
-        banner.style.fontWeight = 'bold';
-        banner.style.marginBottom = '15px';
-        banner.style.borderRadius = '4px';
-        banner.textContent = `【代理編集モード】現在、「${uiName}」のシフトを編集しています。`;
-        headerBox.parentNode.insertBefore(banner, headerBox.nextSibling);
-      }
-    }
-    
-    await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
-    renderApp();
-  } catch (err) {
-    console.error(err);
-    if (err.message && (err.message.includes('Invalid or expired token') || err.message.includes('No token provided'))) {
-      window.location.replace('/ui/login?next=/ui/shifts');
-      return;
-    }
-    alert('ユーザー情報の読み込みに失敗しました。\n' + err.message + '\n' + err.stack);
-  } finally {
-    if (spinner) spinner.setAttribute('hidden', '');
-    document.documentElement.classList.remove('portal-preboot');
-  }
-}
-
-function wireUserMenu() {
-  if (window.__employeeUserMenuDelegated) return;
-  window.__employeeUserMenuDelegated = true;
-  const btnLogout = document.querySelector('#btnLogout');
-  if (btnLogout) {
-    btnLogout.addEventListener('click', async () => {
-      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
-      sessionStorage.clear();
-      localStorage.clear();
-      window.location.replace('/ui/login');
-    });
-  }
-
-  document.addEventListener('click', (e) => {
-    const isBtn = e.target && e.target.closest && e.target.closest('.user .user-btn');
-    const isMenu = e.target && e.target.closest && e.target.closest('.user-menu');
-    const d = document.querySelector('#userDropdown');
-    const b = document.querySelector('.user .user-btn');
-    
-    if (isBtn) {
-      e.preventDefault();
-      if (d && b) {
-        const isHidden = d.hasAttribute('hidden');
-        if (isHidden) {
-          d.removeAttribute('hidden');
-          b.setAttribute('aria-expanded', 'true');
-        } else {
-          d.setAttribute('hidden', '');
-          b.setAttribute('aria-expanded', 'false');
-        }
-      }
-      return;
-    }
-
-    if (!isMenu && d && !d.hasAttribute('hidden')) {
-      d.setAttribute('hidden', '');
-      if (b) b.setAttribute('aria-expanded', 'false');
-    }
-  });
-}
-
-async function loadMonthData(year, month) {
-  try {
-    const isSeishain = currentUser.employment_type === 'full_time';
-    const isKoujibu = String(currentUser.departmentName || currentUser.departmentId || '').includes('工事部') || String(currentUser.departmentName || '').includes('Kouji');
-    
-    // Lấy dữ liệu lịch cho tháng
-    // API trả về 'is_off' cho mỗi ngày nếu đó là ngày nghỉ của công ty
-    calendarDataMap = {};
-    const calendarData = calendarDataMap;
-    const daysInMonth = getDaysInMonth(year, month);
-    
-    // Đặt lại dữ liệu
-    shiftData = {};
-    serverStatus = null;
-
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-
-    // 1. Fetch server shift data first to check if there's already submitted/approved data
-    try {
-      const q = targetUserId ? `&userId=${targetUserId}` : '';
-      const serverRes = await fetchJSONAuth(`/api/attendance/shifts/monthly/${monthStr}?_t=${Date.now()}${q}`); // Thêm timestamp để bỏ qua cache
-      if (serverRes && serverRes.success !== false) { // Giả định response là mảng hoặc object chứa status
-        // Xử lý response dạng mảng (nếu trả về ca của user trực tiếp) hoặc dạng object
-        const data = serverRes.data || serverRes;
-        
-        // Tìm trạng thái của mình
-        if (Array.isArray(data)) {
-          const myData = data.find(u => u.id === currentUser.id);
-          if (myData) {
-            serverStatus = myData.submission_status;
-            if (myData.schedule) shiftData = { ...myData.schedule };
-          }
-        } else if (data.submission_status) {
-          serverStatus = data.submission_status;
-          if (data.schedule) shiftData = { ...data.schedule };
-        }
-      }
-    } catch (e) {
-      /* bỏ qua lỗi */
-    }
-    
-    // 2. We fetch day by day or use working-days for calendar off-days. 
-    await Promise.all(daysInMonth.map(async (d) => {
-      const dateStr = formatDate(d);
-      const dow = d.getDay();
-      try {
-        const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(dateStr)}`);
-        calendarData[dateStr] = Number(cal?.is_off || 0) === 1;
-      } catch (e) {
-        calendarData[dateStr] = dow === 0 || dow === 6;
-      }
-    }));
-    
-    // Thêm từ điển dự phòng cho Koujibu (工事部) chỉ để render
-    daysInMonth.forEach(d => {
-      const dateStr = formatDate(d);
-      const dow = d.getDay();
-      const isSunday = dow === 0;
-      const is4thSaturday = dow === 6 && d.getDate() >= 22 && d.getDate() <= 28;
-      calendarData[`${dateStr}_koujibu`] = isSunday || is4thSaturday;
-    });
-    
-    daysInMonth.forEach(d => {
-      const dateStr = formatDate(d);
-      const dow = d.getDay();
-      
-      // Khởi tạo mặc định nếu chưa được đặt
-      if (!shiftData[dateStr]) {
-        const isRedDay = calendarData[dateStr] === true;
-        const isHolidayForUser = isKoujibu ? calendarData[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
-        
-        if (isSeishain) {
-          // API backend đã tính sẵn chính sách của Koujibu (工事部) và trả về `is_off` tương ứng
-          shiftData[dateStr] = { status: !isHolidayForUser ? 'WORKING' : 'LEAVE', leaveType: !isHolidayForUser ? undefined : undefined };
-        } else {
-          // Baito (nhân viên thời vụ): mặc định WORKING ngày thường, OFF cuối tuần, giống Seishain nhưng đơn giản hơn
-          shiftData[dateStr] = { status: !isHolidayForUser ? 'WORKING' : 'OFF' };
-        }
-      }
-    });
-  } catch (err) {
-    console.error('Failed to load calendar data', err);
-  }
-}
-
-function getDaysInMonth(year, month) {
-  const date = new Date(year, month, 1);
-  const days = [];
-  while (date.getMonth() === month) {
-    days.push(new Date(date));
-    date.setDate(date.getDate() + 1);
-  }
-  return days;
-}
-
-function formatDate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function getDayOfWeek(date) {
-  const days = ['日', '月', '火', '水', '木', '金', '土'];
-  return days[date.getDay()];
-}
-
-function renderApp() {
-  const isSeishain = currentUser.employment_type === 'full_time';
-  const app = $('#shiftsApp');
-  
-  if (!app) {
-    console.error('Element #shiftsApp not found.');
-    return;
-  }
-  
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const days = getDaysInMonth(year, month);
-  
-  // Tạo cấu trúc header một cách an toàn vì bản gốc có thể bị mất hoặc bị sửa
-  const uiName = currentUser.username || currentUser.email || '未設定';
-  const uiDept = currentUser.departmentName || '未設定';
-  const uiType = isSeishain ? '正社員' : 'アルバイト / パート';
-  const uiInstruction = isSeishain ? '※ 休暇を取得したい日を選択してください。' : '※ 出勤できるシフト（時間帯）を選択してください。';
-
-  let statusBadgeHtml = '';
-  if (serverStatus === 'PENDING') {
-    statusBadgeHtml = '<span class="status-badge" style="background:#f97316;">承認待ち</span>';
-  } else if (serverStatus === 'APPROVED') {
-    statusBadgeHtml = '<span class="status-badge" style="background:#22c55e;">承認済</span>';
-  } else if (serverStatus === 'RETURNED') {
-    statusBadgeHtml = '<span class="status-badge" style="background:#ef4444;">差戻し</span>';
-  } else {
-    statusBadgeHtml = '<span class="status-badge" style="background:#94a3b8;">未提出</span>';
-  }
-
-  const headerHtml = `
+import{fetchJSONAuth as A}from"../api/http.api.js";const O=n=>String(n??"").replace(/[&<>"']/g,o=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[o]),t=(n,o=document)=>o.querySelector(n),T=(n,o=document)=>Array.from(o.querySelectorAll(n));let p=null,k=null,h=new Date,b={},f=null,S={};const K=[{value:"paid",label:"\u6709\u7D66\u4F11\u6687"},{value:"paid_half",label:"\u534A\u4F11(\u6709\u7D66)"},{value:"half",label:"\u534A\u4F11"},{value:"unpaid",label:"\u6B20\u52E4 / \u7121\u7D66\u4F11\u6687"},{value:"substitute",label:"\u4EE3\u66FF\u4F11\u65E5"},{value:"special",label:"\u7279\u5225\u4F11\u6687"}],_=[{value:"\u79C1\u7528\u306E\u305F\u3081",label:"\u79C1\u7528\u306E\u305F\u3081"},{value:"\u4F53\u8ABF\u4E0D\u826F",label:"\u4F53\u8ABF\u4E0D\u826F"},{value:"\u5B9A\u671F\u5065\u8A3A",label:"\u5B9A\u671F\u5065\u8A3A"},{value:"other",label:"\u305D\u306E\u4ED6"}],q=[{value:"OFF",label:"\u4F11\u307F"},{value:"WORKING",label:"\u51FA\u52E4"}];async function U(){const n=t("#pageSpinner");n&&n.removeAttribute("hidden"),k=new URLSearchParams(window.location.search).get("userId");try{const e=t("#userName");if(e){const a=sessionStorage.getItem("user")||localStorage.getItem("user")||"",s=a?JSON.parse(a):null,l=s&&(s.username||s.email)?String(s.username||s.email):"";l&&(e.textContent=l)}}catch{}try{if(p=await A("/api/auth/me"),!p){window.location.replace("/ui/login?next=/ui/shifts");return}if(k&&(p.role==="admin"||p.role==="manager")){const i=await A(`/api/admin/employees/${k}`);i&&!i.error?p=i:(alert("\u6307\u5B9A\u3055\u308C\u305F\u30E6\u30FC\u30B6\u30FC\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002"),k=null)}const e=t("#userName");if(e&&p){const i=p.username||p.email;i&&(e.textContent=i)}if(!k)try{sessionStorage.setItem("user",JSON.stringify(p)),localStorage.setItem("user",JSON.stringify(p))}catch{}const a=p.username||p.email||"\u672A\u8A2D\u5B9A",s=p.departmentName||"\u672A\u8A2D\u5B9A",g=p.employment_type==="full_time"||p.employment_type==="\u6B63\u793E\u54E1"?"\u6B63\u793E\u54E1":"\u30A2\u30EB\u30D0\u30A4\u30C8 / \u30D1\u30FC\u30C8";if(k){const i=document.querySelector(".page-header");if(i){const d=document.createElement("div");d.style.background="#fef3c7",d.style.color="#92400e",d.style.padding="10px",d.style.textAlign="center",d.style.fontWeight="bold",d.style.marginBottom="15px",d.style.borderRadius="4px",d.textContent=`\u3010\u4EE3\u7406\u7DE8\u96C6\u30E2\u30FC\u30C9\u3011\u73FE\u5728\u3001\u300C${a}\u300D\u306E\u30B7\u30D5\u30C8\u3092\u7DE8\u96C6\u3057\u3066\u3044\u307E\u3059\u3002`,i.parentNode.insertBefore(d,i.nextSibling)}}await F(h.getFullYear(),h.getMonth()),E()}catch(e){if(console.error(e),e.message&&(e.message.includes("Invalid or expired token")||e.message.includes("No token provided"))){window.location.replace("/ui/login?next=/ui/shifts");return}alert(`\u30E6\u30FC\u30B6\u30FC\u60C5\u5831\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002
+`+e.message+`
+`+e.stack)}finally{n&&n.setAttribute("hidden",""),document.documentElement.classList.remove("portal-preboot")}}function W(){if(window.__employeeUserMenuDelegated)return;window.__employeeUserMenuDelegated=!0;const n=document.querySelector("#btnLogout");n&&n.addEventListener("click",async()=>{try{await fetch("/api/auth/logout",{method:"POST"})}catch{}sessionStorage.clear(),localStorage.clear(),window.location.replace("/ui/login")}),document.addEventListener("click",o=>{const e=o.target&&o.target.closest&&o.target.closest(".user .user-btn"),a=o.target&&o.target.closest&&o.target.closest(".user-menu"),s=document.querySelector("#userDropdown"),l=document.querySelector(".user .user-btn");if(e){o.preventDefault(),s&&l&&(s.hasAttribute("hidden")?(s.removeAttribute("hidden"),l.setAttribute("aria-expanded","true")):(s.setAttribute("hidden",""),l.setAttribute("aria-expanded","false")));return}!a&&s&&!s.hasAttribute("hidden")&&(s.setAttribute("hidden",""),l&&l.setAttribute("aria-expanded","false"))})}async function F(n,o){try{const e=p.employment_type==="full_time",a=String(p.departmentName||p.departmentId||"").includes("\u5DE5\u4E8B\u90E8")||String(p.departmentName||"").includes("Kouji");S={};const s=S,l=N(n,o);b={},f=null;const g=`${n}-${String(o+1).padStart(2,"0")}`;try{const i=k?`&userId=${k}`:"",d=await A(`/api/attendance/shifts/monthly/${g}?_t=${Date.now()}${i}`);if(d&&d.success!==!1){const r=d.data||d;if(Array.isArray(r)){const u=r.find(y=>y.id===p.id);u&&(f=u.submission_status,u.schedule&&(b={...u.schedule}))}else r.submission_status&&(f=r.submission_status,r.schedule&&(b={...r.schedule}))}}catch{}await Promise.all(l.map(async i=>{const d=L(i),r=i.getDay();try{const u=await A(`/api/attendance/calendar/day/${encodeURIComponent(d)}`);s[d]=Number(u?.is_off||0)===1}catch{s[d]=r===0||r===6}})),l.forEach(i=>{const d=L(i),r=i.getDay(),u=r===0,y=r===6&&i.getDate()>=22&&i.getDate()<=28;s[`${d}_koujibu`]=u||y}),l.forEach(i=>{const d=L(i),r=i.getDay();if(!b[d]){const u=s[d]===!0,y=a?s[`${d}_koujibu`]===!0||u:r===0||r===6||u;e?b[d]={status:y?"LEAVE":"WORKING",leaveType:void 0}:b[d]={status:y?"OFF":"WORKING"}}})}catch(e){console.error("Failed to load calendar data",e)}}function N(n,o){const e=new Date(n,o,1),a=[];for(;e.getMonth()===o;)a.push(new Date(e)),e.setDate(e.getDate()+1);return a}function L(n){const o=n.getFullYear(),e=String(n.getMonth()+1).padStart(2,"0"),a=String(n.getDate()).padStart(2,"0");return`${o}-${e}-${a}`}function Y(n){return["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"][n.getDay()]}function E(){const n=p.employment_type==="full_time",o=t("#shiftsApp");if(!o){console.error("Element #shiftsApp not found.");return}const e=h.getFullYear(),a=h.getMonth(),s=N(e,a),l=p.username||p.email||"\u672A\u8A2D\u5B9A",g=p.departmentName||"\u672A\u8A2D\u5B9A",i=n?"\u6B63\u793E\u54E1":"\u30A2\u30EB\u30D0\u30A4\u30C8 / \u30D1\u30FC\u30C8",d=n?"\u203B \u4F11\u6687\u3092\u53D6\u5F97\u3057\u305F\u3044\u65E5\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002":"\u203B \u51FA\u52E4\u3067\u304D\u308B\u30B7\u30D5\u30C8\uFF08\u6642\u9593\u5E2F\uFF09\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002";let r="";f==="PENDING"?r='<span class="status-badge" style="background:#f97316;">\u627F\u8A8D\u5F85\u3061</span>':f==="APPROVED"?r='<span class="status-badge" style="background:#22c55e;">\u627F\u8A8D\u6E08</span>':f==="RETURNED"?r='<span class="status-badge" style="background:#ef4444;">\u5DEE\u623B\u3057</span>':r='<span class="status-badge" style="background:#94a3b8;">\u672A\u63D0\u51FA</span>';const u=`
     <div class="shifts-header" style="display: flex; justify-content: space-between; align-items: center;">
       <div style="font-weight: bold; margin-bottom: 4px; display:flex; align-items:center; gap:8px;">
-        従業員: <span id="profileName">${uiName}</span> (<span id="profileDept">${uiDept}</span>)
-        ${statusBadgeHtml}
+        \u5F93\u696D\u54E1: <span id="profileName">${l}</span> (<span id="profileDept">${g}</span>)
+        ${r}
       </div>
-      <div style="margin-bottom: 8px;">雇用形態: <span id="profileType">${uiType}</span></div>
-      <div style="color: #ea580c; font-size: 0.9rem;" id="profileInstruction">${uiInstruction}</div>
+      <div style="margin-bottom: 8px;">\u96C7\u7528\u5F62\u614B: <span id="profileType">${i}</span></div>
+      <div style="color: #ea580c; font-size: 0.9rem;" id="profileInstruction">${d}</div>
     </div>
-  `;
-
-  // Tạo các ô trống cho tháng trước
-  const firstDay = new Date(year, month, 1).getDay();
-  const emptyCellsHtml = Array.from({ length: firstDay }).map(() => `<div class="shift-cell empty-cell"></div>`).join('');
-  
-  // Hàng header cho các thứ trong tuần
-  const daysOfWeek = [
-    { label: '日', sub: 'SUN', class: 'sunday' },
-    { label: '月', sub: 'MON', class: '' },
-    { label: '火', sub: 'TUE', class: '' },
-    { label: '水', sub: 'WED', class: '' },
-    { label: '木', sub: 'THU', class: '' },
-    { label: '金', sub: 'FRI', class: '' },
-    { label: '土', sub: 'SAT', class: 'saturday' }
-  ];
-  const daysHeaderHtml = daysOfWeek.map(d => `<div class="shifts-grid-header-cell ${d.class}">${d.label}<br><span style="font-size: 10px; font-weight: normal;">${d.sub}</span></div>`).join('');
-
-  // Tính các ô trống ở cuối
-  const totalCells = firstDay + days.length;
-  const remainder = totalCells % 7;
-  const trailingEmptyCellsHtml = remainder !== 0 ? Array.from({ length: 7 - remainder }).map(() => `<div class="shift-cell empty-cell"></div>`).join('') : '';
-
-  let statusBadge = '';
-  if (serverStatus === 'PENDING') {
-    statusBadge = '<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">申請中 (承認待ち)</span>';
-  } else if (serverStatus === 'APPROVED') {
-    statusBadge = '<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">承認済</span>';
-  } else if (serverStatus === 'RETURNED') {
-    statusBadge = '<span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">差戻し (再提出)</span>';
-  } else {
-    statusBadge = '<span style="background: #94a3b8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">未提出</span>';
-  }
-
-  const html = `
+  `,y=new Date(e,a,1).getDay(),v=Array.from({length:y}).map(()=>'<div class="shift-cell empty-cell"></div>').join(""),m=[{label:"\u65E5",sub:"SUN",class:"sunday"},{label:"\u6708",sub:"MON",class:""},{label:"\u706B",sub:"TUE",class:""},{label:"\u6C34",sub:"WED",class:""},{label:"\u6728",sub:"THU",class:""},{label:"\u91D1",sub:"FRI",class:""},{label:"\u571F",sub:"SAT",class:"saturday"}].map(x=>`<div class="shifts-grid-header-cell ${x.class}">${x.label}<br><span style="font-size: 10px; font-weight: normal;">${x.sub}</span></div>`).join(""),w=(y+s.length)%7,I=w!==0?Array.from({length:7-w}).map(()=>'<div class="shift-cell empty-cell"></div>').join(""):"";let D="";f==="PENDING"?D='<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">\u7533\u8ACB\u4E2D (\u627F\u8A8D\u5F85\u3061)</span>':f==="APPROVED"?D='<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">\u627F\u8A8D\u6E08</span>':f==="RETURNED"?D='<span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">\u5DEE\u623B\u3057 (\u518D\u63D0\u51FA)</span>':D='<span style="background: #94a3b8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">\u672A\u63D0\u51FA</span>';const M=`
     <div class="shifts-container">
       <div class="shifts-header" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding: 16px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #1e3a8a;">
         
@@ -352,27 +18,27 @@ function renderApp() {
           <div class="shifts-top-nav-left">
             <a href="/ui/shifts-all" id="btnAllShifts" style="padding: 8px 16px; border: 1px solid #d1d5db; background: #f8fafc; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #334155; display: flex; align-items: center; gap: 6px; text-decoration: none; transition: all 0.2s;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-              全員のシフト
+              \u5168\u54E1\u306E\u30B7\u30D5\u30C8
             </a>
           </div>
           
           <div class="shifts-top-nav-right" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
             <div class="modern-month-picker" style="display: flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); height: 38px;">
-              <button id="prevMonth" class="modern-btn-nav" title="先月" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
+              <button id="prevMonth" class="modern-btn-nav" title="\u5148\u6708" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
               </button>
               <div class="modern-month-display" style="padding: 0 16px; font-weight: bold; font-size: 15px; color: #0f172a; min-width: 120px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; height: 100%;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                ${year}年 ${String(month + 1).padStart(2, '0')}月
+                ${e}\u5E74 ${String(a+1).padStart(2,"0")}\u6708
               </div>
-              <button id="nextMonth" class="modern-btn-nav" title="来月" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
+              <button id="nextMonth" class="modern-btn-nav" title="\u6765\u6708" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
             </div>
             
-            <button id="btnSubmitTop" class="btn-submit" ${serverStatus === 'APPROVED' || serverStatus === 'PENDING' ? 'disabled' : ''} style="padding: 0 20px; font-size: 14px; border-radius: 6px; height: 38px; display: flex; align-items: center; gap: 6px;">
+            <button id="btnSubmitTop" class="btn-submit" ${f==="APPROVED"||f==="PENDING"?"disabled":""} style="padding: 0 20px; font-size: 14px; border-radius: 6px; height: 38px; display: flex; align-items: center; gap: 6px;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-              シフト提出
+              \u30B7\u30D5\u30C8\u63D0\u51FA
             </button>
           </div>
         </div>
@@ -383,31 +49,31 @@ function renderApp() {
         <div class="shifts-header-info" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; width: 100%;">
           <div class="shifts-header-info-left" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px;">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span style="color: #64748b;">従業員:</span>
-              <span id="profileName" style="font-weight: bold; color: #0f172a; font-size: 15px;">${currentUser.username || currentUser.email || '未設定'}</span>
-              <span id="profileDept" style="color: #64748b; font-size: 13px;">(${currentUser.departmentName || '未設定'})</span>
+              <span style="color: #64748b;">\u5F93\u696D\u54E1:</span>
+              <span id="profileName" style="font-weight: bold; color: #0f172a; font-size: 15px;">${p.username||p.email||"\u672A\u8A2D\u5B9A"}</span>
+              <span id="profileDept" style="color: #64748b; font-size: 13px;">(${p.departmentName||"\u672A\u8A2D\u5B9A"})</span>
             </div>
-            ${statusBadge}
+            ${D}
           </div>
           
           <div class="shifts-header-info-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
             <div style="font-size: 13px; color: #64748b;">
-              雇用形態: <span id="profileType" style="color: #0f172a; font-weight: bold;">${isSeishain ? '正社員' : 'アルバイト / パート'}</span>
+              \u96C7\u7528\u5F62\u614B: <span id="profileType" style="color: #0f172a; font-weight: bold;">${n?"\u6B63\u793E\u54E1":"\u30A2\u30EB\u30D0\u30A4\u30C8 / \u30D1\u30FC\u30C8"}</span>
             </div>
             <div style="color: #ea580c; font-size: 13px; font-weight: bold;" id="profileInstruction">
-              ${serverStatus === 'APPROVED' ? '※ この月のシフトは承認済みのため変更できません。' : (isSeishain ? '※ 休暇を取得したい日を選択してください。' : '※ 出勤できるシフト（時間帯）を選択してください。')}
+              ${f==="APPROVED"?"\u203B \u3053\u306E\u6708\u306E\u30B7\u30D5\u30C8\u306F\u627F\u8A8D\u6E08\u307F\u306E\u305F\u3081\u5909\u66F4\u3067\u304D\u307E\u305B\u3093\u3002":n?"\u203B \u4F11\u6687\u3092\u53D6\u5F97\u3057\u305F\u3044\u65E5\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002":"\u203B \u51FA\u52E4\u3067\u304D\u308B\u30B7\u30D5\u30C8\uFF08\u6642\u9593\u5E2F\uFF09\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002"}
             </div>
           </div>
         </div>
       </div>
 
-      <div class="shifts-grid ${serverStatus === 'APPROVED' ? 'is-approved' : (serverStatus === 'PENDING' ? 'is-pending' : 'is-draft')}">
+      <div class="shifts-grid ${f==="APPROVED"?"is-approved":f==="PENDING"?"is-pending":"is-draft"}">
         <div class="shifts-grid-header">
-          ${daysHeaderHtml}
+          ${m}
         </div>
-        ${emptyCellsHtml}
-        ${days.map(d => renderDayCell(d, isSeishain)).join('')}
-        ${trailingEmptyCellsHtml}
+        ${v}
+        ${s.map(x=>P(x,n)).join("")}
+        ${I}
       </div>
 
       <div class="shifts-footer" style="display: none;">
@@ -421,603 +87,57 @@ function renderApp() {
         <h3 id="modalDateTitle"></h3>
         <input type="hidden" id="modalDateVal">
         <div class="form-group">
-          <label for="modalLeaveType">休暇種類:</label>
+          <label for="modalLeaveType">\u4F11\u6687\u7A2E\u985E:</label>
           <select id="modalLeaveType" class="form-control">
-            ${SEISHAIN_LEAVE_TYPES.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
+            ${K.map(x=>`<option value="${x.value}">${x.label}</option>`).join("")}
           </select>
         </div>
         <div class="form-group">
-          <label for="modalReason">理由:</label>
+          <label for="modalReason">\u7406\u7531:</label>
           <select id="modalReason" class="form-control">
-            ${SEISHAIN_REASONS.map(r => `<option value="${r.value}">${r.label}</option>`).join('')}
+            ${_.map(x=>`<option value="${x.value}">${x.label}</option>`).join("")}
           </select>
         </div>
         <div class="form-group" id="modalDetailGroup" style="display: none;">
-          <label for="modalDetail">詳細 (必須):</label>
-          <textarea id="modalDetail" class="form-control" rows="3" placeholder="例: 歯医者、帰省..."></textarea>
+          <label for="modalDetail">\u8A73\u7D30 (\u5FC5\u9808):</label>
+          <textarea id="modalDetail" class="form-control" rows="3" placeholder="\u4F8B: \u6B6F\u533B\u8005\u3001\u5E30\u7701..."></textarea>
         </div>
-        <!-- 振替出勤 swap section -->
+        <!-- \u632F\u66FF\u51FA\u52E4 swap section -->
         <div id="modalSwapSection" style="display:none; margin-top:12px; padding:12px; border:1px solid #e2e8f0; background:#f8fafc;">
-          <label for="modalSwapDate" style="font-weight:600; font-size:13px; color:#0b2c66; margin-bottom:6px; display:block;">振替休日（代替休日）の日付を選択:</label>
+          <label for="modalSwapDate" style="font-weight:600; font-size:13px; color:#0b2c66; margin-bottom:6px; display:block;">\u632F\u66FF\u4F11\u65E5\uFF08\u4EE3\u66FF\u4F11\u65E5\uFF09\u306E\u65E5\u4ED8\u3092\u9078\u629E:</label>
           <select id="modalSwapDate" class="form-control" style="width:100%; height:36px; font-size:14px;"></select>
-          <p style="font-size:11px; color:#64748b; margin:6px 0 0;">※ 選択した日が代替休日になります</p>
+          <p style="font-size:11px; color:#64748b; margin:6px 0 0;">\u203B \u9078\u629E\u3057\u305F\u65E5\u304C\u4EE3\u66FF\u4F11\u65E5\u306B\u306A\u308A\u307E\u3059</p>
         </div>
         <div class="modal-actions">
-          <button id="btnModalCancel" class="btn-cancel">キャンセル</button>
-          <button id="btnModalSave" class="btn-save">保存</button>
-          <button id="btnModalClear" class="btn-clear">出勤に変更 (休暇取消)</button>
-          <button id="btnModalFurikae" class="btn-furikae" style="display:none; width:100%; margin-top:8px; padding:10px; border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; font-weight:600; cursor:pointer;">振替出勤（代替休日を指定）</button>
-          <button id="btnModalSaveSwap" class="btn-save" style="display:none; width:100%; margin-top:8px; padding:10px;">振替を確定</button>
-          <button id="btnModalRevert" class="btn-revert" style="display:none; width:100%; margin-top:8px; padding:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0b2c66; font-weight:600; cursor:pointer;">休日に戻す</button>
-          <button id="btnModalCancelSwap" class="btn-cancel" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid #fca5a5; background:#fef2f2; color:#991b1b; font-weight:600; cursor:pointer;">振替を取消</button>
+          <button id="btnModalCancel" class="btn-cancel">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
+          <button id="btnModalSave" class="btn-save">\u4FDD\u5B58</button>
+          <button id="btnModalClear" class="btn-clear">\u51FA\u52E4\u306B\u5909\u66F4 (\u4F11\u6687\u53D6\u6D88)</button>
+          <button id="btnModalFurikae" class="btn-furikae" style="display:none; width:100%; margin-top:8px; padding:10px; border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; font-weight:600; cursor:pointer;">\u632F\u66FF\u51FA\u52E4\uFF08\u4EE3\u66FF\u4F11\u65E5\u3092\u6307\u5B9A\uFF09</button>
+          <button id="btnModalSaveSwap" class="btn-save" style="display:none; width:100%; margin-top:8px; padding:10px;">\u632F\u66FF\u3092\u78BA\u5B9A</button>
+          <button id="btnModalRevert" class="btn-revert" style="display:none; width:100%; margin-top:8px; padding:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0b2c66; font-weight:600; cursor:pointer;">\u4F11\u65E5\u306B\u623B\u3059</button>
+          <button id="btnModalCancelSwap" class="btn-cancel" style="display:none; width:100%; margin-top:6px; padding:8px; border:1px solid #fca5a5; background:#fef2f2; color:#991b1b; font-weight:600; cursor:pointer;">\u632F\u66FF\u3092\u53D6\u6D88</button>
         </div>
       </div>
     </div>
-  `;
-  
-  app.innerHTML = html;
-  attachEvents(isSeishain);
-}
-
-function renderDayCell(date, isSeishain) {
-  const dateStr = formatDate(date);
-  const data = shiftData[dateStr] || { status: 'OFF' };
-  const dow = date.getDay();
-  let dayClass = 'shift-cell';
-  
-  if (data.status !== 'WORKING' && isSeishain) {
-     dayClass += ' is-leave';
-  }
-  
-  // Tô màu chữ ngày dựa trên ngày nghỉ thực tế
-  let isHoliday = false;
-  const isRedDay = calendarDataMap[dateStr] === true;
-  
-  const isKoujibu = String(currentUser.departmentName || '').includes('工事部');
-  
-  if (isSeishain) {
-    const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
-    if (isHolidayForUser || (data.status !== 'WORKING' && !data.leaveType)) {
-      isHoliday = true;
-    }
-  } else {
-    // Với baito, tô đỏ Chủ nhật và ngày lễ. Với Koujibu (工事部), thứ Bảy tuần thứ 4 cũng là ngày đỏ.
-    const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
-    if (isHolidayForUser) isHoliday = true;
-  }
-  
-  if (isHoliday) {
-    dayClass += ' sunday';
-  } else if (dow === 6) {
-    dayClass += ' saturday';
-  }
-  
-  // Tính ngày âm lịch
-  let lunarText = '';
-  try {
-    if (typeof window.Lunar !== 'undefined') {
-      const lunarDate = window.Lunar.fromDate(date);
-      const lDay = lunarDate.getDay();
-      const lMonth = lunarDate.getMonth();
-      if (lDay === 1) {
-        lunarText = `${lMonth}/${lDay}`;
-      } else {
-        lunarText = `${lDay}`;
-      }
-    } else {
-      // Dự phòng hoặc debug
-      // Nếu không có window.Lunar thì không hiển thị được ngày âm lịch
-    }
-  } catch (e) {
-    console.error('Lunar error', e);
-  }
-  const lunarHtml = lunarText ? `<div style="font-size: 11px; font-weight: normal; color: #94a3b8; line-height: 1; margin-top: 1px;">${esc(lunarText)}</div>` : '';
-  
-  let contentHtml = '';
-  
-  if (isSeishain) {
-    if (data.status === 'WORKING') {
-      contentHtml = `<div class="status-working" style="${serverStatus === null || serverStatus === 'RETURNED' ? 'color:#64748b;' : ''}">出勤</div>`;
-    } else if (data.status === 'FURIKAE_WORK') {
-      // 振替出勤: working on a holiday with a linked comp-off day
-      contentHtml = `<div class="status-working" style="color:#1d4ed8; font-weight:700;">振出</div>`;
-    } else if (data.status === 'FURIKAE_OFF') {
-      // 代替休日: comp-off day linked to a swap-work day
-      contentHtml = `<div class="status-leave" style="color:#7c3aed; font-weight:700;">代休</div>`;
-      dayClass += ' is-leave';
-    } else {
-      if (!data.leaveType) {
-        // Ngày nghỉ mặc định của hệ thống
-        contentHtml = `<div class="status-leave" style="color:#dc2626;">休</div>`;
-      } else {
-        // Ngày nghỉ do người dùng đăng ký
-        const typeLabel = SEISHAIN_LEAVE_TYPES.find(t => t.value === data.leaveType)?.label || data.leaveType;
-        const shortTypeLabel = typeLabel.includes('有給') ? '有休' : (typeLabel.includes('欠勤') ? '欠勤' : typeLabel);
-        
-        contentHtml = `<div class="status-leave" style="color:#dc2626; font-weight:normal;">${shortTypeLabel}</div>`;
-      }
-      dayClass += ' is-leave';
-    }
-    
-    // Thêm logic vô hiệu hóa click nếu đã duyệt hoặc đang chờ, trừ ô nghỉ phép vì cần xem lý do
-    const isLocked = serverStatus === 'APPROVED' || serverStatus === 'PENDING';
-    const isLeave = data.status !== 'WORKING';
-    // Nếu là ngày nghỉ mặc định của hệ thống (không có leaveType) thì không cần hiển thị lý do
-    const isSystemHoliday = isLeave && !data.leaveType;
-    
-    // Nếu bị khóa VÀ (là ngày làm việc HOẶC ngày nghỉ hệ thống) thì tắt pointer events.
-    // Nếu là ngày nghỉ phép do đăng ký thì cho phép click để xem lý do.
-    const lockStyle = (isLocked && (!isLeave || isSystemHoliday)) ? 'style="pointer-events:none;"' : '';
-    
-    return `
-      <div class="${dayClass} seishain-cell ${isLocked ? 'is-locked' : ''}" data-date="${dateStr}" ${lockStyle}>
+  `;o.innerHTML=M,G(n)}function P(n,o){const e=L(n),a=b[e]||{status:"OFF"},s=n.getDay();let l="shift-cell";a.status!=="WORKING"&&o&&(l+=" is-leave");let g=!1;const i=S[e]===!0,d=String(p.departmentName||"").includes("\u5DE5\u4E8B\u90E8");o?((d?S[`${e}_koujibu`]===!0||i:s===0||s===6||i)||a.status!=="WORKING"&&!a.leaveType)&&(g=!0):(d?S[`${e}_koujibu`]===!0||i:s===0||s===6||i)&&(g=!0),g?l+=" sunday":s===6&&(l+=" saturday");let r="";try{if(typeof window.Lunar<"u"){const v=window.Lunar.fromDate(n),c=v.getDay(),m=v.getMonth();c===1?r=`${m}/${c}`:r=`${c}`}}catch(v){console.error("Lunar error",v)}const u=r?`<div style="font-size: 11px; font-weight: normal; color: #94a3b8; line-height: 1; margin-top: 1px;">${O(r)}</div>`:"";let y="";if(o){if(a.status==="WORKING")y=`<div class="status-working" style="${f===null||f==="RETURNED"?"color:#64748b;":""}">\u51FA\u52E4</div>`;else if(a.status==="FURIKAE_WORK")y='<div class="status-working" style="color:#1d4ed8; font-weight:700;">\u632F\u51FA</div>';else if(a.status==="FURIKAE_OFF")y='<div class="status-leave" style="color:#7c3aed; font-weight:700;">\u4EE3\u4F11</div>',l+=" is-leave";else{if(!a.leaveType)y='<div class="status-leave" style="color:#dc2626;">\u4F11</div>';else{const w=K.find(D=>D.value===a.leaveType)?.label||a.leaveType;y=`<div class="status-leave" style="color:#dc2626; font-weight:normal;">${w.includes("\u6709\u7D66")?"\u6709\u4F11":w.includes("\u6B20\u52E4")?"\u6B20\u52E4":w}</div>`}l+=" is-leave"}const v=f==="APPROVED"||f==="PENDING",c=a.status!=="WORKING",m=c&&!a.leaveType;return`
+      <div class="${l} seishain-cell ${v?"is-locked":""}" data-date="${e}" ${v&&(!c||m)?'style="pointer-events:none;"':""}>
         <div class="cell-date">
-          <div>${date.getDate()}</div>
-          ${lunarHtml}
+          <div>${n.getDate()}</div>
+          ${u}
         </div>
-        <div class="cell-content">${contentHtml}</div>
+        <div class="cell-content">${y}</div>
       </div>
-    `;
-  } else {
-    // Logic hiển thị cho baito
-    const isHolidayForUser = isKoujibu ? calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay : (dow === 0 || dow === 6 || isRedDay);
-    const isWeekendOrHoliday = isHolidayForUser;
-    const offLabel = '休日';
-    const shifts = [
-      { value: 'OFF', label: offLabel },
-      { value: 'WORKING', label: '出勤' }
-    ];
-
-    // Thêm logic vô hiệu hóa click nếu đã duyệt
-    const isLocked = serverStatus === 'APPROVED';
-    
-    const isWorking = data.status === 'WORKING';
-    const cellClass = isWorking ? 'is-working' : 'is-off';
-    
-    return `
-      <div class="${dayClass} baito-cell ${cellClass}" data-date="${dateStr}">
+    `}else{const c=d?S[`${e}_koujibu`]===!0||i:s===0||s===6||i,$=[{value:"OFF",label:"\u4F11\u65E5"},{value:"WORKING",label:"\u51FA\u52E4"}],w=f==="APPROVED",D=a.status==="WORKING"?"is-working":"is-off";return`
+      <div class="${l} baito-cell ${D}" data-date="${e}">
         <div class="cell-date">
-          <div>${date.getDate()}</div>
-          ${lunarHtml}
+          <div>${n.getDate()}</div>
+          ${u}
         </div>
         <div class="cell-content baito-cell-content">
-          <select id="shift-select-${dateStr}" name="shift-select-${dateStr}" class="baito-shift-select" data-date="${dateStr}" ${isLocked ? 'disabled' : ''} aria-label="${dateStr}のシフト">
-            ${shifts.map(s => `<option value="${s.value}" ${data.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
+          <select id="shift-select-${e}" name="shift-select-${e}" class="baito-shift-select" data-date="${e}" ${w?"disabled":""} aria-label="${e}\u306E\u30B7\u30D5\u30C8">
+            ${$.map(M=>`<option value="${M.value}" ${a.status===M.value?"selected":""}>${M.label}</option>`).join("")}
           </select>
         </div>
       </div>
-    `;
-  }
-}
-
-function attachEvents(isSeishain) {
-  $('#prevMonth').addEventListener('click', async () => {
-    currentMonth.setMonth(currentMonth.getMonth() - 1);
-    await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
-    renderApp();
-  });
-  $('#nextMonth').addEventListener('click', async () => {
-    currentMonth.setMonth(currentMonth.getMonth() + 1);
-    await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
-    renderApp();
-  });
-  
-  if (isSeishain) {
-    $$('.seishain-cell').forEach(cell => {
-      cell.addEventListener('click', () => {
-        const dateStr = cell.getAttribute('data-date');
-        openLeaveModal(dateStr);
-      });
-    });
-    
-    $('#modalReason').addEventListener('change', (e) => {
-      const val = e.target.value;
-      const type = $('#modalLeaveType').value;
-      if (val === 'other' || type === 'special') {
-        $('#modalDetailGroup').style.display = 'block';
-      } else {
-        $('#modalDetailGroup').style.display = 'none';
-      }
-    });
-    
-    $('#modalLeaveType').addEventListener('change', (e) => {
-      const type = e.target.value;
-      const val = $('#modalReason').value;
-      if (val === 'other' || type === 'special') {
-        $('#modalDetailGroup').style.display = 'block';
-      } else {
-        $('#modalDetailGroup').style.display = 'none';
-      }
-    });
-    
-    $('#btnModalCancel').addEventListener('click', closeLeaveModal);
-    $('#btnModalSave').addEventListener('click', saveLeaveModal);
-    $('#btnModalClear').addEventListener('click', () => {
-      const dateStr = $('#modalDateVal').value;
-      shiftData[dateStr] = { status: 'WORKING' };
-      closeLeaveModal();
-      renderApp();
-    });
-    $('#btnModalRevert').addEventListener('click', () => {
-      const dateStr = $('#modalDateVal').value;
-      // Quay về ngày nghỉ mặc định (không có leaveType = ngày nghỉ hệ thống)
-      shiftData[dateStr] = { status: 'LEAVE' };
-      closeLeaveModal();
-      renderApp();
-    });
-    // 振替出勤 button: show swap date picker
-    $('#btnModalFurikae').addEventListener('click', () => {
-      const swapSection = $('#modalSwapSection');
-      const swapSelect = $('#modalSwapDate');
-      const saveSwapBtn = $('#btnModalSaveSwap');
-      // Đổ vào dropdown các ngày làm việc trong tháng chưa bị nghỉ/hoán đổi
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth();
-      const daysInMonth = getDaysInMonth(year, month);
-      const currentDateStr = $('#modalDateVal').value;
-      let options = '<option value="">-- 日付を選択 --</option>';
-      daysInMonth.forEach(d => {
-        const ds = formatDate(d);
-        if (ds === currentDateStr) return; // bỏ qua chính ngày đó
-        const dayData = shiftData[ds];
-        const dow = d.getDay();
-        const isOff = calendarDataMap[ds] === true || dow === 0 || dow === 6;
-        // Chỉ hiện các ngày đang là WORKING (chưa bị hoán đổi/nghỉ)
-        if (dayData && dayData.status === 'WORKING' && !isOff) {
-          const dowLabel = ['日','月','火','水','木','金','土'][dow];
-          options += `<option value="${esc(ds)}">${esc(ds)} (${dowLabel})</option>`;
-        }
-      });
-      swapSelect.innerHTML = options;
-      swapSection.style.display = 'block';
-      saveSwapBtn.style.display = 'block';
-      // Ẩn các nút thao tác khác trong lúc đang chọn
-      $('#btnModalFurikae').style.display = 'none';
-      $('#btnModalClear').style.display = 'none';
-      $('#btnModalSave').style.display = 'none';
-    });
-    // Lưu cặp hoán đổi
-    $('#btnModalSaveSwap').addEventListener('click', () => {
-      const holidayDate = $('#modalDateVal').value;
-      const compOffDate = $('#modalSwapDate').value;
-      if (!compOffDate) {
-        alert('代替休日の日付を選択してください。');
-        return;
-      }
-      // Đặt ngày nghỉ thành 振替出勤 (đi làm bù)
-      shiftData[holidayDate] = { status: 'FURIKAE_WORK', swapDate: compOffDate };
-      // Đặt ngày làm việc thành 代替休日 (nghỉ bù)
-      shiftData[compOffDate] = { status: 'FURIKAE_OFF', swapDate: holidayDate };
-      closeLeaveModal();
-      renderApp();
-    });
-    // Hủy hoán đổi (khi xem một ngày đã có furikae)
-    $('#btnModalCancelSwap').addEventListener('click', () => {
-      const dateStr = $('#modalDateVal').value;
-      const data = shiftData[dateStr];
-      const pairDate = data?.swapDate;
-      if (data.status === 'FURIKAE_WORK') {
-        // Đây là ngày nghỉ đã được đánh dấu là đi làm bù → quay lại LEAVE
-        if (pairDate && shiftData[pairDate]) {
-          shiftData[pairDate] = { status: 'WORKING' }; // Trả ngày nghỉ bù về lại đi làm
-        }
-        shiftData[dateStr] = { status: 'LEAVE' }; // Quay lại ngày nghỉ
-      } else if (data.status === 'FURIKAE_OFF') {
-        // Đây là ngày làm việc đã trở thành nghỉ bù → quay lại WORKING
-        if (pairDate && shiftData[pairDate]) {
-          shiftData[pairDate] = { status: 'LEAVE' }; // Trả ngày đi làm bù về lại ngày nghỉ
-        }
-        shiftData[dateStr] = { status: 'WORKING' }; // Quay lại đi làm
-      }
-      closeLeaveModal();
-      renderApp();
-    });
-  } else {
-    $$('.baito-shift-select').forEach(sel => {
-      sel.addEventListener('change', (e) => {
-        const dateStr = e.target.getAttribute('data-date');
-        const newStatus = e.target.value;
-        shiftData[dateStr] = { status: newStatus };
-        
-        // Cập nhật màu nền ô ngay lập tức
-        const cell = e.target.closest('.baito-cell');
-        if (cell) {
-          if (newStatus === 'WORKING') {
-            cell.classList.remove('is-off');
-            cell.classList.add('is-working');
-          } else {
-            cell.classList.remove('is-working');
-            cell.classList.add('is-off');
-          }
-        }
-      });
-    });
-  }
-  
-  const btnSubmit = $('#btnSubmit');
-  const btnSubmitTop = $('#btnSubmitTop');
-  
-  if (btnSubmit) {
-    btnSubmit.addEventListener('click', submitShifts);
-    if (serverStatus === 'APPROVED' || serverStatus === 'PENDING') {
-      btnSubmit.disabled = true;
-    } else {
-      btnSubmit.disabled = false;
-    }
-  }
-
-  if (btnSubmitTop) {
-    btnSubmitTop.addEventListener('click', submitShifts);
-    if (serverStatus === 'APPROVED' || serverStatus === 'PENDING') {
-      btnSubmitTop.disabled = true;
-    } else {
-      btnSubmitTop.disabled = false;
-    }
-  }
-}
-
-function openLeaveModal(dateStr) {
-  const modalDateTitle = $('#modalDateTitle');
-  if (modalDateTitle) {
-    modalDateTitle.textContent = dateStr;
-  }
-  $('#modalDateVal').value = dateStr;
-  const data = shiftData[dateStr];
-
-  // Xác định xem ngày này có phải ngày nghỉ hệ thống không (ngày nghỉ theo lịch, không có đơn nghỉ của user)
-  const isCalendarHoliday = calendarDataMap[dateStr] === true;
-  const dow = new Date(dateStr + 'T00:00:00').getDay();
-  const isWeekend = dow === 0 || dow === 6;
-  const isSystemHoliday = (isCalendarHoliday || isWeekend) && !data.leaveType && data.status !== 'FURIKAE_OFF';
-  // isSystemHoliday = true trong các trường hợp:
-  //   1. Ngày vẫn hiển thị là 休 (status = LEAVE, không có leaveType)
-  //   2. Ngày đã đổi sang 出勤 (WORKING) nhưng vẫn là ngày nghỉ theo lịch
-  //   3. Ngày là 振替出勤 (FURIKAE_WORK) — vẫn là ngày nghỉ theo lịch nhưng đi làm
-
-  // Lấy các phần tử form
-  const formLeaveType = $('#modalLeaveType').closest('.form-group');
-  const formReason = $('#modalReason').closest('.form-group');
-  const formDetail = $('#modalDetailGroup');
-  const btnSave = $('#btnModalSave');
-
-  if (isSystemHoliday) {
-    // Ngày nghỉ hệ thống: ẩn form nghỉ phép, chỉ hiện「出勤に変更」và「振替出勤」
-    if (formLeaveType) formLeaveType.style.display = 'none';
-    if (formReason) formReason.style.display = 'none';
-    if (formDetail) formDetail.style.display = 'none';
-    btnSave.style.display = 'none';
-    // Hiện nút furikae cho các ngày nghỉ chưa được thay đổi
-    const furikaeBtn = $('#btnModalFurikae');
-    if (furikaeBtn) {
-      if (data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK') {
-        furikaeBtn.style.display = 'block';
-      } else {
-        furikaeBtn.style.display = 'none';
-      }
-    }
-  } else {
-    // Normal day or user-requested leave: show form
-    if (formLeaveType) formLeaveType.style.display = '';
-    if (formReason) formReason.style.display = '';
-    // formDetail visibility handled by reason change event
-    btnSave.style.display = 'inline-block';
-    const furikaeBtn = $('#btnModalFurikae');
-    if (furikaeBtn) furikaeBtn.style.display = 'none';
-  }
-
-  // Ẩn phần hoán đổi theo mặc định
-  $('#modalSwapSection').style.display = 'none';
-  $('#btnModalSaveSwap').style.display = 'none';
-
-  // Nếu ngày này là FURIKAE_OFF (代替休日), ẩn form, chỉ hiện nút hủy
-  if (data.status === 'FURIKAE_OFF') {
-    if (formLeaveType) formLeaveType.style.display = 'none';
-    if (formReason) formReason.style.display = 'none';
-    if (formDetail) formDetail.style.display = 'none';
-    btnSave.style.display = 'none';
-    $('#btnModalClear').style.display = 'none';
-    const furikaeBtn = $('#btnModalFurikae');
-    if (furikaeBtn) furikaeBtn.style.display = 'none';
-    const revertBtn2 = $('#btnModalRevert');
-    if (revertBtn2) revertBtn2.style.display = 'none';
-  }
-  // Nếu ngày này là FURIKAE_WORK (振替出勤), ẩn form, chỉ hiện nút hủy
-  if (data.status === 'FURIKAE_WORK') {
-    if (formLeaveType) formLeaveType.style.display = 'none';
-    if (formReason) formReason.style.display = 'none';
-    if (formDetail) formDetail.style.display = 'none';
-    btnSave.style.display = 'none';
-    $('#btnModalClear').style.display = 'none';
-    const furikaeBtn = $('#btnModalFurikae');
-    if (furikaeBtn) furikaeBtn.style.display = 'none';
-    const revertBtn2 = $('#btnModalRevert');
-    if (revertBtn2) revertBtn2.style.display = 'none';
-  }
-
-  // Hiện nút hủy hoán đổi nếu ngày này thuộc một cặp furikae
-  const cancelSwapBtn = $('#btnModalCancelSwap');
-  if (cancelSwapBtn) {
-    if (data.status === 'FURIKAE_WORK' || data.status === 'FURIKAE_OFF') {
-      cancelSwapBtn.style.display = 'block';
-      // Hiện thông tin về cặp hoán đổi
-      const pairLabel = data.status === 'FURIKAE_WORK'
-        ? `振替出勤 → 代替休日: ${data.swapDate || ''}`
-        : `代替休日 ← 振替出勤: ${data.swapDate || ''}`;
-      modalDateTitle.textContent = `${dateStr}\n${pairLabel}`;
-    } else {
-      cancelSwapBtn.style.display = 'none';
-    }
-  }
-
-  if (data.status !== 'WORKING') {
-    $('#modalLeaveType').value = data.leaveType || 'paid';
-    $('#modalReason').value = data.reason || '私用のため';
-    $('#modalDetail').value = data.detail || '';
-    if (!data.leaveType) {
-      $('#modalLeaveType').value = 'paid';
-    }
-  } else {
-    $('#modalLeaveType').value = 'paid';
-    $('#modalReason').value = '私用のため';
-    $('#modalDetail').value = '';
-  }
-  
-  // Kích hoạt sự kiện change để hiện/ẩn phần chi tiết
-  $('#modalReason').dispatchEvent(new Event('change'));
-  
-  // Nếu đã duyệt thì cho tất cả readonly và ẩn các nút lưu
-  const isLocked = serverStatus === 'APPROVED';
-  if (isLocked) {
-    $('#modalLeaveType').disabled = true;
-    $('#modalReason').disabled = true;
-    $('#modalDetail').disabled = true;
-    btnSave.style.display = 'none';
-    $('#btnModalClear').style.display = 'none';
-    $('#btnModalCancel').textContent = '閉じる';
-  } else {
-    $('#modalLeaveType').disabled = false;
-    $('#modalReason').disabled = false;
-    $('#modalDetail').disabled = false;
-    $('#btnModalCancel').textContent = 'キャンセル';
-    
-    // Cập nhật chữ trên nút clear tùy theo trạng thái hiện tại
-    if (!data.leaveType && data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK' && data.status !== 'FURIKAE_OFF') {
-      $('#btnModalClear').textContent = '出勤に変更'; // Ngày nghỉ mặc định -> đổi sang đi làm
-    } else if (data.leaveType && data.status !== 'WORKING') {
-      $('#btnModalClear').textContent = '出勤に変更 (休暇取消)'; // Nghỉ phép -> đổi sang đi làm (hủy nghỉ)
-    } else {
-      $('#btnModalClear').textContent = '出勤'; // Đã đi làm
-      $('#btnModalClear').style.display = 'none'; // Ẩn nếu đã đi làm hoặc furikae
-    }
-    if (data.status !== 'WORKING' && data.status !== 'FURIKAE_WORK' && data.status !== 'FURIKAE_OFF') {
-      $('#btnModalClear').style.display = 'inline-block';
-    }
-
-    // Hiện nút「休日に戻す」nếu đây là ngày nghỉ theo lịch mà user đã đổi sang WORKING (không phải furikae)
-    const isCalendarHoliday = calendarDataMap[dateStr] === true;
-    const revertBtn = $('#btnModalRevert');
-    if (revertBtn) {
-      if (isCalendarHoliday && data.status === 'WORKING') {
-        revertBtn.style.display = 'block';
-      } else {
-        revertBtn.style.display = 'none';
-      }
-    }
-  }
-  
-  $('#leaveModal').removeAttribute('hidden');
-}
-
-function closeLeaveModal() {
-  $('#leaveModal').setAttribute('hidden', '');
-}
-
-function saveLeaveModal() {
-  const dateStr = $('#modalDateVal').value;
-  const leaveType = $('#modalLeaveType').value;
-  const reason = $('#modalReason').value;
-  const detail = $('#modalDetail').value.trim();
-  
-  if ((reason === 'other' || leaveType === 'special') && !detail) {
-    alert('詳細な理由を入力してください！');
-    return;
-  }
-  
-  shiftData[dateStr] = {
-    status: 'LEAVE',
-    leaveType,
-    reason,
-    detail
-  };
-  
-  closeLeaveModal();
-  renderApp();
-}
-
-async function submitShifts() {
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth() + 1;
-  const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-  
-  const payload = {
-    month: monthStr,
-    shifts: Object.keys(shiftData).filter(k => k.startsWith(monthStr)).map(k => {
-      return {
-        date: k,
-        ...shiftData[k]
-      };
-    })
-  };
-  if (targetUserId) {
-    payload.userId = targetUserId;
-  }
-  
-  if (!confirm(`${year}年${month}月のシフトを提出しますか？`)) {
-    return;
-  }
-  
-  const spinner = $('#pageSpinner');
-  if (spinner) spinner.removeAttribute('hidden');
-  
-  try {
-    const res = await fetchJSONAuth('/api/attendance/shifts/bulk', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    
-    if (res && res.success) {
-      alert('シフトを提出しました！');
-      // Cập nhật trạng thái ngay để UI chuyển sang PENDING
-      serverStatus = 'PENDING';
-      renderApp();
-    } else {
-      alert('エラーが発生しました: ' + (res?.message || 'Unknown'));
-    }
-  } catch (err) {
-    console.error(err);
-    alert('サーバーへの接続エラー。');
-  } finally {
-    if (spinner) spinner.setAttribute('hidden', '');
-  }
-}
-
-function wireDrawer() {
-  const btn = document.querySelector('#mobileMenuBtn');
-  const drawer = document.querySelector('#mobileDrawer');
-  const close = document.querySelector('#mobileClose');
-  const backdrop = document.querySelector('#drawerBackdrop');
-  if (!btn || !drawer) return;
-  if (btn.dataset.bound === '1') return;
-  btn.dataset.bound = '1';
-  const open = () => {
-    drawer.removeAttribute('hidden');
-    btn.setAttribute('aria-expanded', 'true');
-    if (backdrop) backdrop.removeAttribute('hidden');
-    document.body.classList.add('drawer-open');
-  };
-  const shut = () => {
-    drawer.setAttribute('hidden', '');
-    btn.setAttribute('aria-expanded', 'false');
-    if (backdrop) backdrop.setAttribute('hidden', '');
-    document.body.classList.remove('drawer-open');
-  };
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (drawer.hasAttribute('hidden')) open();
-    else shut();
-  });
-  if (close) close.addEventListener('click', shut);
-  if (backdrop) backdrop.addEventListener('click', shut);
-}
-
-export async function bootShiftsPage() {
-  init();
-  wireUserMenu();
-  wireDrawer();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  if (window.location.pathname.includes('/ui/shifts')) {
-    bootShiftsPage();
-  }
-});
+    `}}function G(n){t("#prevMonth").addEventListener("click",async()=>{h.setMonth(h.getMonth()-1),await F(h.getFullYear(),h.getMonth()),E()}),t("#nextMonth").addEventListener("click",async()=>{h.setMonth(h.getMonth()+1),await F(h.getFullYear(),h.getMonth()),E()}),n?(T(".seishain-cell").forEach(a=>{a.addEventListener("click",()=>{const s=a.getAttribute("data-date");H(s)})}),t("#modalReason").addEventListener("change",a=>{const s=a.target.value,l=t("#modalLeaveType").value;s==="other"||l==="special"?t("#modalDetailGroup").style.display="block":t("#modalDetailGroup").style.display="none"}),t("#modalLeaveType").addEventListener("change",a=>{const s=a.target.value;t("#modalReason").value==="other"||s==="special"?t("#modalDetailGroup").style.display="block":t("#modalDetailGroup").style.display="none"}),t("#btnModalCancel").addEventListener("click",R),t("#btnModalSave").addEventListener("click",j),t("#btnModalClear").addEventListener("click",()=>{const a=t("#modalDateVal").value;b[a]={status:"WORKING"},R(),E()}),t("#btnModalRevert").addEventListener("click",()=>{const a=t("#modalDateVal").value;b[a]={status:"LEAVE"},R(),E()}),t("#btnModalFurikae").addEventListener("click",()=>{const a=t("#modalSwapSection"),s=t("#modalSwapDate"),l=t("#btnModalSaveSwap"),g=h.getFullYear(),i=h.getMonth(),d=N(g,i),r=t("#modalDateVal").value;let u='<option value="">-- \u65E5\u4ED8\u3092\u9078\u629E --</option>';d.forEach(y=>{const v=L(y);if(v===r)return;const c=b[v],m=y.getDay(),$=S[v]===!0||m===0||m===6;if(c&&c.status==="WORKING"&&!$){const w=["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"][m];u+=`<option value="${O(v)}">${O(v)} (${w})</option>`}}),s.innerHTML=u,a.style.display="block",l.style.display="block",t("#btnModalFurikae").style.display="none",t("#btnModalClear").style.display="none",t("#btnModalSave").style.display="none"}),t("#btnModalSaveSwap").addEventListener("click",()=>{const a=t("#modalDateVal").value,s=t("#modalSwapDate").value;if(!s){alert("\u4EE3\u66FF\u4F11\u65E5\u306E\u65E5\u4ED8\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}b[a]={status:"FURIKAE_WORK",swapDate:s},b[s]={status:"FURIKAE_OFF",swapDate:a},R(),E()}),t("#btnModalCancelSwap").addEventListener("click",()=>{const a=t("#modalDateVal").value,s=b[a],l=s?.swapDate;s.status==="FURIKAE_WORK"?(l&&b[l]&&(b[l]={status:"WORKING"}),b[a]={status:"LEAVE"}):s.status==="FURIKAE_OFF"&&(l&&b[l]&&(b[l]={status:"LEAVE"}),b[a]={status:"WORKING"}),R(),E()})):T(".baito-shift-select").forEach(a=>{a.addEventListener("change",s=>{const l=s.target.getAttribute("data-date"),g=s.target.value;b[l]={status:g};const i=s.target.closest(".baito-cell");i&&(g==="WORKING"?(i.classList.remove("is-off"),i.classList.add("is-working")):(i.classList.remove("is-working"),i.classList.add("is-off")))})});const o=t("#btnSubmit"),e=t("#btnSubmitTop");o&&(o.addEventListener("click",C),f==="APPROVED"||f==="PENDING"?o.disabled=!0:o.disabled=!1),e&&(e.addEventListener("click",C),f==="APPROVED"||f==="PENDING"?e.disabled=!0:e.disabled=!1)}function H(n){const o=t("#modalDateTitle");o&&(o.textContent=n),t("#modalDateVal").value=n;const e=b[n],a=S[n]===!0,s=new Date(n+"T00:00:00").getDay(),g=(a||(s===0||s===6))&&!e.leaveType&&e.status!=="FURIKAE_OFF",i=t("#modalLeaveType").closest(".form-group"),d=t("#modalReason").closest(".form-group"),r=t("#modalDetailGroup"),u=t("#btnModalSave");if(g){i&&(i.style.display="none"),d&&(d.style.display="none"),r&&(r.style.display="none"),u.style.display="none";const c=t("#btnModalFurikae");c&&(e.status!=="WORKING"&&e.status!=="FURIKAE_WORK"?c.style.display="block":c.style.display="none")}else{i&&(i.style.display=""),d&&(d.style.display=""),u.style.display="inline-block";const c=t("#btnModalFurikae");c&&(c.style.display="none")}if(t("#modalSwapSection").style.display="none",t("#btnModalSaveSwap").style.display="none",e.status==="FURIKAE_OFF"){i&&(i.style.display="none"),d&&(d.style.display="none"),r&&(r.style.display="none"),u.style.display="none",t("#btnModalClear").style.display="none";const c=t("#btnModalFurikae");c&&(c.style.display="none");const m=t("#btnModalRevert");m&&(m.style.display="none")}if(e.status==="FURIKAE_WORK"){i&&(i.style.display="none"),d&&(d.style.display="none"),r&&(r.style.display="none"),u.style.display="none",t("#btnModalClear").style.display="none";const c=t("#btnModalFurikae");c&&(c.style.display="none");const m=t("#btnModalRevert");m&&(m.style.display="none")}const y=t("#btnModalCancelSwap");if(y)if(e.status==="FURIKAE_WORK"||e.status==="FURIKAE_OFF"){y.style.display="block";const c=e.status==="FURIKAE_WORK"?`\u632F\u66FF\u51FA\u52E4 \u2192 \u4EE3\u66FF\u4F11\u65E5: ${e.swapDate||""}`:`\u4EE3\u66FF\u4F11\u65E5 \u2190 \u632F\u66FF\u51FA\u52E4: ${e.swapDate||""}`;o.textContent=`${n}
+${c}`}else y.style.display="none";if(e.status!=="WORKING"?(t("#modalLeaveType").value=e.leaveType||"paid",t("#modalReason").value=e.reason||"\u79C1\u7528\u306E\u305F\u3081",t("#modalDetail").value=e.detail||"",e.leaveType||(t("#modalLeaveType").value="paid")):(t("#modalLeaveType").value="paid",t("#modalReason").value="\u79C1\u7528\u306E\u305F\u3081",t("#modalDetail").value=""),t("#modalReason").dispatchEvent(new Event("change")),f==="APPROVED")t("#modalLeaveType").disabled=!0,t("#modalReason").disabled=!0,t("#modalDetail").disabled=!0,u.style.display="none",t("#btnModalClear").style.display="none",t("#btnModalCancel").textContent="\u9589\u3058\u308B";else{t("#modalLeaveType").disabled=!1,t("#modalReason").disabled=!1,t("#modalDetail").disabled=!1,t("#btnModalCancel").textContent="\u30AD\u30E3\u30F3\u30BB\u30EB",!e.leaveType&&e.status!=="WORKING"&&e.status!=="FURIKAE_WORK"&&e.status!=="FURIKAE_OFF"?t("#btnModalClear").textContent="\u51FA\u52E4\u306B\u5909\u66F4":e.leaveType&&e.status!=="WORKING"?t("#btnModalClear").textContent="\u51FA\u52E4\u306B\u5909\u66F4 (\u4F11\u6687\u53D6\u6D88)":(t("#btnModalClear").textContent="\u51FA\u52E4",t("#btnModalClear").style.display="none"),e.status!=="WORKING"&&e.status!=="FURIKAE_WORK"&&e.status!=="FURIKAE_OFF"&&(t("#btnModalClear").style.display="inline-block");const c=S[n]===!0,m=t("#btnModalRevert");m&&(c&&e.status==="WORKING"?m.style.display="block":m.style.display="none")}t("#leaveModal").removeAttribute("hidden")}function R(){t("#leaveModal").setAttribute("hidden","")}function j(){const n=t("#modalDateVal").value,o=t("#modalLeaveType").value,e=t("#modalReason").value,a=t("#modalDetail").value.trim();if((e==="other"||o==="special")&&!a){alert("\u8A73\u7D30\u306A\u7406\u7531\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\uFF01");return}b[n]={status:"LEAVE",leaveType:o,reason:e,detail:a},R(),E()}async function C(){const n=h.getFullYear(),o=h.getMonth()+1,e=`${n}-${String(o).padStart(2,"0")}`,a={month:e,shifts:Object.keys(b).filter(l=>l.startsWith(e)).map(l=>({date:l,...b[l]}))};if(k&&(a.userId=k),!confirm(`${n}\u5E74${o}\u6708\u306E\u30B7\u30D5\u30C8\u3092\u63D0\u51FA\u3057\u307E\u3059\u304B\uFF1F`))return;const s=t("#pageSpinner");s&&s.removeAttribute("hidden");try{const l=await A("/api/attendance/shifts/bulk",{method:"POST",body:JSON.stringify(a)});l&&l.success?(alert("\u30B7\u30D5\u30C8\u3092\u63D0\u51FA\u3057\u307E\u3057\u305F\uFF01"),f="PENDING",E()):alert("\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F: "+(l?.message||"Unknown"))}catch(l){console.error(l),alert("\u30B5\u30FC\u30D0\u30FC\u3078\u306E\u63A5\u7D9A\u30A8\u30E9\u30FC\u3002")}finally{s&&s.setAttribute("hidden","")}}function V(){const n=document.querySelector("#mobileMenuBtn"),o=document.querySelector("#mobileDrawer"),e=document.querySelector("#mobileClose"),a=document.querySelector("#drawerBackdrop");if(!n||!o||n.dataset.bound==="1")return;n.dataset.bound="1";const s=()=>{o.removeAttribute("hidden"),n.setAttribute("aria-expanded","true"),a&&a.removeAttribute("hidden"),document.body.classList.add("drawer-open")},l=()=>{o.setAttribute("hidden",""),n.setAttribute("aria-expanded","false"),a&&a.setAttribute("hidden",""),document.body.classList.remove("drawer-open")};n.addEventListener("click",g=>{g.preventDefault(),o.hasAttribute("hidden")?s():l()}),e&&e.addEventListener("click",l),a&&a.addEventListener("click",l)}async function B(){U(),W(),V()}document.addEventListener("DOMContentLoaded",()=>{window.location.pathname.includes("/ui/shifts")&&B()});export{B as bootShiftsPage};
