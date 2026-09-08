@@ -1,180 +1,19 @@
-import { escapeHtml as esc } from '../_shared/dom.js';
-import { api } from '../../shared/api/client.js';
-
-let controller = null;
-
-export async function mount({ content }) {
-  controller = new AbortController();
-
-  // Trạng thái
-  let departments = [];
-  let jpHolidays = [];       // Ngày lễ cố định Nhật Bản (祝日) — read only
-  let companyHolidays = [];  // Ngày nghỉ công ty (お盆, 年末年始...) — từ company_holidays
-  let deptHolidays = [];     // Ngày nghỉ do bộ phận tự thiết lập
-  let selectedDeptId = '';
-  let selectedYear = new Date().getFullYear();
-  let editingItem = null;
-
-  // Hàm tiện ích
-  const dowJa = (dateStr) => {
-    try {
-      const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1, d));
-      return ['日','月','火','水','木','金','土'][dt.getUTCDay()];
-    } catch { return ''; }
-  };
-  const dowClass = (dateStr) => {
-    try {
-      const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1, d));
-      const w = dt.getUTCDay();
-      if (w === 0) return 'hol-dow-sun';
-      if (w === 6) return 'hol-dow-sat';
-      return '';
-    } catch { return ''; }
-  };
-  const typeLabel = (t) => {
-    const map = {
-      jp_auto: '祝日', jp_substitute: '振替休日', jp_bridge: '国民の休日',
-      custom: '会社設定', fixed: '会社指定', annual: '年次', special: '特別'
-    };
-    return map[t] || t || '—';
-  };
-  const typeOptions = [
-    { value: 'custom', label: '会社設定' },
-    { value: 'fixed', label: '会社指定' },
-    { value: 'annual', label: '年次休暇' },
-    { value: 'special', label: '特別休暇' }
-  ];
-  const isJpType = (t) => ['jp_auto', 'jp_substitute', 'jp_bridge'].includes(t);
-
-  // Tải danh sách phòng ban
-  const loadDepartments = async () => {
-    // Thử endpoint admin trước (URL đúng)
-    try {
-      const data = await api.get('/admin/departments');
-      if (Array.isArray(data) && data.length > 0) {
-        departments = data;
-        return;
-      }
-    } catch (e) {
-      console.warn('[holidays] /admin/departments failed, will use fallback:', e.message || e);
-    }
-    // Nếu lỗi thì departments sẽ được lấy từ response của loadJpHolidays
-  };
-
-  // Tải ngày lễ quốc gia Nhật Bản (祝日)
-  const loadJpHolidays = async () => {
-    try {
-      const data = await api.get(`/holidays/jp?year=${selectedYear}`);
-      jpHolidays = Array.isArray(data.holidays) ? data.holidays : [];
-      companyHolidays = Array.isArray(data.companyHolidays) ? data.companyHolidays : [];
-      // Lấy luôn danh sách phòng ban từ endpoint này làm dự phòng
-      if (Array.isArray(data.departments) && data.departments.length > 0 && departments.length === 0) {
-        departments = data.departments;
-      }
-    } catch (e) {
-      console.error('[holidays] Failed to load JP holidays:', e);
-      jpHolidays = [];
-      companyHolidays = [];
-    }
-  };
-
-  // Tải ngày nghỉ tùy chỉnh theo phòng ban
-  const loadDeptHolidays = async () => {
-    try {
-      const params = new URLSearchParams({ year: selectedYear });
-      if (selectedDeptId) params.set('department_id', selectedDeptId);
-      const data = await api.get(`/holidays?${params.toString()}`);
-      deptHolidays = Array.isArray(data.rows) ? data.rows : [];
-    } catch (e) {
-      console.error('[holidays] Failed to load dept holidays:', e);
-      deptHolidays = [];
-    }
-  };
-
-  // Gộp & sắp xếp tất cả ngày nghỉ để hiển thị
-  const getMergedList = () => {
-    const jpRows = jpHolidays.map(r => ({
-      id: null,
-      date: String(r.date || '').slice(0, 10),
-      name: r.name || '',
-      name_en: r.name_en || '',
-      type: r.type,
-      is_off: 1,
-      department_name: '—',
-      department_id: null,
-      source: 'jp'
-    }));
-    const companyRows = companyHolidays.map(r => ({
-      id: null,
-      date: String(r.date || '').slice(0, 10),
-      name: r.name || '',
-      name_en: '',
-      type: r.type || 'fixed',
-      is_off: 1,
-      department_name: '全社',
-      department_id: null,
-      source: 'company'
-    }));
-    const deptRows = deptHolidays.map(r => ({
-      id: r.id,
-      date: String(r.date || '').slice(0, 10),
-      name: r.name || '',
-      name_en: '',
-      type: r.type,
-      is_off: r.is_off,
-      department_name: r.department_name || departments.find(d => String(d.id) === String(r.department_id))?.name || '',
-      department_id: r.department_id,
-      source: 'dept'
-    }));
-    const all = [...jpRows, ...companyRows, ...deptRows];
-    all.sort((a, b) => a.date.localeCompare(b.date));
-    return all;
-  };
-
-  // Render giao diện
-  const render = () => {
-    if (!content) return;
-    const merged = getMergedList();
-
-    const deptOptions = departments.map(d =>
-      `<option value="${esc(d.id)}" ${String(d.id) === String(selectedDeptId) ? 'selected' : ''}>${esc(d.name)}</option>`
-    ).join('');
-
-    const yearOptions = [];
-    for (let y = selectedYear - 2; y <= selectedYear + 2; y++) {
-      yearOptions.push(`<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}年</option>`);
-    }
-
-    const jpCount = merged.filter(r => r.source === 'jp').length;
-    const companyCount = merged.filter(r => r.source === 'company').length;
-    const deptCount = merged.filter(r => r.source === 'dept').length;
-
-    const tableRows = merged.map(h => {
-      const isJp = h.source === 'jp';
-      const isCompany = h.source === 'company';
-      const isReadOnly = isJp || isCompany;
-      const rowClass = isJp ? 'hol-row-jp' : (isCompany ? 'hol-row-company' : 'hol-row-dept');
-      return `
-        <tr class="${rowClass}">
-          <td class="${dowClass(h.date)}">${esc(h.date)}</td>
-          <td class="${dowClass(h.date)}">${esc(dowJa(h.date))}</td>
-          <td>${isJp ? `<span class="hol-badge-jp">祝日</span>` : (isCompany ? `<span class="hol-badge-company">全社</span>` : esc(h.department_name))}</td>
-          <td>${esc(h.name)}${h.name_en ? ` <span class="hol-name-en">${esc(h.name_en)}</span>` : ''}</td>
-          <td><span class="hol-pill ${h.is_off ? 'hol-pill-off' : 'hol-pill-on'}">${h.is_off ? '休' : '出勤'}</span></td>
-          <td>${esc(typeLabel(h.type))}</td>
+import{escapeHtml as l}from"../_shared/dom.js";import{api as u}from"../../shared/api/client.js";let v=null;async function T({content:h}){v=new AbortController;let f=[],$=[],_=[],x=[],p="",b=new Date().getFullYear(),s=null;const M=o=>{try{const[i,c,a]=String(o).slice(0,10).split("-").map(Number),t=new Date(Date.UTC(i,c-1,a));return["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"][t.getUTCDay()]}catch{return""}},j=o=>{try{const[i,c,a]=String(o).slice(0,10).split("-").map(Number),r=new Date(Date.UTC(i,c-1,a)).getUTCDay();return r===0?"hol-dow-sun":r===6?"hol-dow-sat":""}catch{return""}},D=o=>({jp_auto:"\u795D\u65E5",jp_substitute:"\u632F\u66FF\u4F11\u65E5",jp_bridge:"\u56FD\u6C11\u306E\u4F11\u65E5",custom:"\u4F1A\u793E\u8A2D\u5B9A",fixed:"\u4F1A\u793E\u6307\u5B9A",annual:"\u5E74\u6B21",special:"\u7279\u5225"})[o]||o||"\u2014",C=[{value:"custom",label:"\u4F1A\u793E\u8A2D\u5B9A"},{value:"fixed",label:"\u4F1A\u793E\u6307\u5B9A"},{value:"annual",label:"\u5E74\u6B21\u4F11\u6687"},{value:"special",label:"\u7279\u5225\u4F11\u6687"}],L=o=>["jp_auto","jp_substitute","jp_bridge"].includes(o),q=async()=>{try{const o=await u.get("/admin/departments");if(Array.isArray(o)&&o.length>0){f=o;return}}catch(o){console.warn("[holidays] /admin/departments failed, will use fallback:",o.message||o)}},k=async()=>{try{const o=await u.get(`/holidays/jp?year=${b}`);$=Array.isArray(o.holidays)?o.holidays:[],_=Array.isArray(o.companyHolidays)?o.companyHolidays:[],Array.isArray(o.departments)&&o.departments.length>0&&f.length===0&&(f=o.departments)}catch(o){console.error("[holidays] Failed to load JP holidays:",o),$=[],_=[]}},m=async()=>{try{const o=new URLSearchParams({year:b});p&&o.set("department_id",p);const i=await u.get(`/holidays?${o.toString()}`);x=Array.isArray(i.rows)?i.rows:[]}catch(o){console.error("[holidays] Failed to load dept holidays:",o),x=[]}},A=()=>{const o=$.map(t=>({id:null,date:String(t.date||"").slice(0,10),name:t.name||"",name_en:t.name_en||"",type:t.type,is_off:1,department_name:"\u2014",department_id:null,source:"jp"})),i=_.map(t=>({id:null,date:String(t.date||"").slice(0,10),name:t.name||"",name_en:"",type:t.type||"fixed",is_off:1,department_name:"\u5168\u793E",department_id:null,source:"company"})),c=x.map(t=>({id:t.id,date:String(t.date||"").slice(0,10),name:t.name||"",name_en:"",type:t.type,is_off:t.is_off,department_name:t.department_name||f.find(r=>String(r.id)===String(t.department_id))?.name||"",department_id:t.department_id,source:"dept"})),a=[...o,...i,...c];return a.sort((t,r)=>t.date.localeCompare(r.date)),a},g=()=>{if(!h)return;const o=A(),i=f.map(e=>`<option value="${l(e.id)}" ${String(e.id)===String(p)?"selected":""}>${l(e.name)}</option>`).join(""),c=[];for(let e=b-2;e<=b+2;e++)c.push(`<option value="${e}" ${e===b?"selected":""}>${e}\u5E74</option>`);const a=o.filter(e=>e.source==="jp").length,t=o.filter(e=>e.source==="company").length,r=o.filter(e=>e.source==="dept").length,y=o.map(e=>{const n=e.source==="jp",d=e.source==="company",S=n||d;return`
+        <tr class="${n?"hol-row-jp":d?"hol-row-company":"hol-row-dept"}">
+          <td class="${j(e.date)}">${l(e.date)}</td>
+          <td class="${j(e.date)}">${l(M(e.date))}</td>
+          <td>${n?'<span class="hol-badge-jp">\u795D\u65E5</span>':d?'<span class="hol-badge-company">\u5168\u793E</span>':l(e.department_name)}</td>
+          <td>${l(e.name)}${e.name_en?` <span class="hol-name-en">${l(e.name_en)}</span>`:""}</td>
+          <td><span class="hol-pill ${e.is_off?"hol-pill-off":"hol-pill-on"}">${e.is_off?"\u4F11":"\u51FA\u52E4"}</span></td>
+          <td>${l(D(e.type))}</td>
           <td class="hol-actions-cell">
-            ${isReadOnly ? '<span class="hol-fixed-label">固定</span>' : `
-              <button class="hol-btn-edit" data-id="${esc(h.id)}" title="編集">✏️</button>
-              <button class="hol-btn-del" data-id="${esc(h.id)}" title="削除">🗑️</button>
+            ${S?'<span class="hol-fixed-label">\u56FA\u5B9A</span>':`
+              <button class="hol-btn-edit" data-id="${l(e.id)}" title="\u7DE8\u96C6">\u270F\uFE0F</button>
+              <button class="hol-btn-del" data-id="${l(e.id)}" title="\u524A\u9664">\u{1F5D1}\uFE0F</button>
             `}
           </td>
         </tr>
-      `;
-    }).join('');
-
-    content.innerHTML = `
+      `}).join("");h.innerHTML=`
       <style>
         .hol-page { display:flex; flex-direction:column; height:100%; padding:24px; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
         .hol-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px; }
@@ -243,186 +82,68 @@ export async function mount({ content }) {
       <div class="hol-page">
         <div class="hol-toolbar">
           <select id="holDept">
-            <option value="">全部署</option>
-            ${deptOptions}
+            <option value="">\u5168\u90E8\u7F72</option>
+            ${i}
           </select>
-          <select id="holYear">${yearOptions.join('')}</select>
-          <button class="primary" id="holAdd">＋ 休日追加</button>
-          <button class="danger" id="holBulkDel" ${!selectedDeptId ? 'disabled title="部署を選択してください"' : ''}>一括削除</button>
+          <select id="holYear">${c.join("")}</select>
+          <button class="primary" id="holAdd">\uFF0B \u4F11\u65E5\u8FFD\u52A0</button>
+          <button class="danger" id="holBulkDel" ${p?"":'disabled title="\u90E8\u7F72\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044"'}>\u4E00\u62EC\u524A\u9664</button>
         </div>
         <div class="hol-stats">
-          <span class="hol-stat-badge hol-stat-jp">🇯🇵 祝日: ${jpCount}件</span>
-          <span class="hol-stat-badge hol-stat-company">🏢 全社休日: ${companyCount}件</span>
-          <span class="hol-stat-badge hol-stat-dept">📋 部署設定: ${deptCount}件</span>
-          <span>合計: <strong>${merged.length}</strong>件</span>
-          ${selectedDeptId ? `<span>— ${esc(departments.find(d => String(d.id) === String(selectedDeptId))?.name || '')}</span>` : ''}
+          <span class="hol-stat-badge hol-stat-jp">\u{1F1EF}\u{1F1F5} \u795D\u65E5: ${a}\u4EF6</span>
+          <span class="hol-stat-badge hol-stat-company">\u{1F3E2} \u5168\u793E\u4F11\u65E5: ${t}\u4EF6</span>
+          <span class="hol-stat-badge hol-stat-dept">\u{1F4CB} \u90E8\u7F72\u8A2D\u5B9A: ${r}\u4EF6</span>
+          <span>\u5408\u8A08: <strong>${o.length}</strong>\u4EF6</span>
+          ${p?`<span>\u2014 ${l(f.find(e=>String(e.id)===String(p))?.name||"")}</span>`:""}
         </div>
         <div class="hol-table-wrap">
-          ${merged.length ? `
+          ${o.length?`
             <table class="hol-table">
               <thead>
                 <tr>
-                  <th>日付</th>
-                  <th>曜日</th>
-                  <th>部署/区分</th>
-                  <th>名称</th>
-                  <th>休日</th>
-                  <th>種別</th>
-                  <th>操作</th>
+                  <th>\u65E5\u4ED8</th>
+                  <th>\u66DC\u65E5</th>
+                  <th>\u90E8\u7F72/\u533A\u5206</th>
+                  <th>\u540D\u79F0</th>
+                  <th>\u4F11\u65E5</th>
+                  <th>\u7A2E\u5225</th>
+                  <th>\u64CD\u4F5C</th>
                 </tr>
               </thead>
-              <tbody>${tableRows}</tbody>
+              <tbody>${y}</tbody>
             </table>
-          ` : `
+          `:`
             <div class="hol-empty">
-              <div class="hol-empty-icon">📅</div>
-              <div>データがありません</div>
+              <div class="hol-empty-icon">\u{1F4C5}</div>
+              <div>\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>
             </div>
           `}
         </div>
       </div>
-    `;
-
-    // Gắn sự kiện
-    content.querySelector('#holDept')?.addEventListener('change', async (e) => {
-      selectedDeptId = e.target.value;
-      await loadDeptHolidays();
-      render();
-    });
-    content.querySelector('#holYear')?.addEventListener('change', async (e) => {
-      selectedYear = parseInt(e.target.value, 10);
-      await Promise.all([loadJpHolidays(), loadDeptHolidays()]);
-      render();
-    });
-    content.querySelector('#holAdd')?.addEventListener('click', () => {
-      editingItem = { id: null, department_id: selectedDeptId || '', date: '', name: '', type: 'custom', is_off: true };
-      renderModal();
-    });
-    content.querySelector('#holBulkDel')?.addEventListener('click', async () => {
-      if (!selectedDeptId) return;
-      const deptName = departments.find(d => String(d.id) === String(selectedDeptId))?.name || '';
-      if (!confirm(`「${deptName}」の ${selectedYear}年 の会社設定休日を全て削除しますか？\n※ 祝日（国の休日）は削除されません。`)) return;
-      try {
-        await api.del(`/holidays/department/${selectedDeptId}/year/${selectedYear}`);
-        await loadDeptHolidays();
-        render();
-      } catch (e) {
-        alert('削除に失敗しました: ' + (e.message || e));
-      }
-    });
-    content.querySelectorAll('.hol-btn-edit').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const item = deptHolidays.find(h => String(h.id) === id);
-        if (!item) return;
-        editingItem = { ...item, date: String(item.date || '').slice(0, 10), is_off: !!item.is_off };
-        renderModal();
-      });
-    });
-    content.querySelectorAll('.hol-btn-del').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        if (!confirm('この休日を削除しますか？')) return;
-        try {
-          await api.del(`/holidays/${id}`);
-          await loadDeptHolidays();
-          render();
-        } catch (e) {
-          alert('削除に失敗しました: ' + (e.message || e));
-        }
-      });
-    });
-  };
-
-  // Render modal
-  const renderModal = () => {
-    document.querySelector('.hol-overlay')?.remove();
-    if (!editingItem) return;
-
-    const isNew = !editingItem.id;
-    const deptOpts = departments.map(d =>
-      `<option value="${esc(d.id)}" ${String(d.id) === String(editingItem.department_id) ? 'selected' : ''}>${esc(d.name)}</option>`
-    ).join('');
-    const typeOpts = typeOptions.map(t =>
-      `<option value="${esc(t.value)}" ${t.value === editingItem.type ? 'selected' : ''}>${esc(t.label)}</option>`
-    ).join('');
-
-    const overlay = document.createElement('div');
-    overlay.className = 'hol-overlay';
-    overlay.innerHTML = `
+    `,h.querySelector("#holDept")?.addEventListener("change",async e=>{p=e.target.value,await m(),g()}),h.querySelector("#holYear")?.addEventListener("change",async e=>{b=parseInt(e.target.value,10),await Promise.all([k(),m()]),g()}),h.querySelector("#holAdd")?.addEventListener("click",()=>{s={id:null,department_id:p||"",date:"",name:"",type:"custom",is_off:!0},z()}),h.querySelector("#holBulkDel")?.addEventListener("click",async()=>{if(!p)return;const e=f.find(n=>String(n.id)===String(p))?.name||"";if(confirm(`\u300C${e}\u300D\u306E ${b}\u5E74 \u306E\u4F1A\u793E\u8A2D\u5B9A\u4F11\u65E5\u3092\u5168\u3066\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F
+\u203B \u795D\u65E5\uFF08\u56FD\u306E\u4F11\u65E5\uFF09\u306F\u524A\u9664\u3055\u308C\u307E\u305B\u3093\u3002`))try{await u.del(`/holidays/department/${p}/year/${b}`),await m(),g()}catch(n){alert("\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+(n.message||n))}}),h.querySelectorAll(".hol-btn-edit").forEach(e=>{e.addEventListener("click",()=>{const n=e.dataset.id,d=x.find(S=>String(S.id)===n);d&&(s={...d,date:String(d.date||"").slice(0,10),is_off:!!d.is_off},z())})}),h.querySelectorAll(".hol-btn-del").forEach(e=>{e.addEventListener("click",async()=>{const n=e.dataset.id;if(confirm("\u3053\u306E\u4F11\u65E5\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F"))try{await u.del(`/holidays/${n}`),await m(),g()}catch(d){alert("\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+(d.message||d))}})})},z=()=>{if(document.querySelector(".hol-overlay")?.remove(),!s)return;const o=!s.id,i=f.map(t=>`<option value="${l(t.id)}" ${String(t.id)===String(s.department_id)?"selected":""}>${l(t.name)}</option>`).join(""),c=C.map(t=>`<option value="${l(t.value)}" ${t.value===s.type?"selected":""}>${l(t.label)}</option>`).join(""),a=document.createElement("div");a.className="hol-overlay",a.innerHTML=`
       <div class="hol-modal">
-        <h3>${isNew ? '🏢 会社休日を追加' : '✏️ 休日を編集'}</h3>
-        <label>対象 <span style="color:#dc2626">*</span></label>
-        <select id="holModalDept" ${!isNew ? 'disabled' : ''}>
-          <option value="">選択してください</option>
-          <option value="__all__" ${editingItem.department_id === '__all__' ? 'selected' : ''}>🏢 全社（全体）</option>
-          ${deptOpts}
+        <h3>${o?"\u{1F3E2} \u4F1A\u793E\u4F11\u65E5\u3092\u8FFD\u52A0":"\u270F\uFE0F \u4F11\u65E5\u3092\u7DE8\u96C6"}</h3>
+        <label>\u5BFE\u8C61 <span style="color:#dc2626">*</span></label>
+        <select id="holModalDept" ${o?"":"disabled"}>
+          <option value="">\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044</option>
+          <option value="__all__" ${s.department_id==="__all__"?"selected":""}>\u{1F3E2} \u5168\u793E\uFF08\u5168\u4F53\uFF09</option>
+          ${i}
         </select>
-        <div class="hol-hint">※「全社」を選ぶと全社員に適用されます（お盆・年末年始など）</div>
-        <label>日付 <span style="color:#dc2626">*</span></label>
-        <input type="date" id="holModalDate" value="${esc(editingItem.date || '')}">
-        <label>名称</label>
-        <input type="text" id="holModalName" value="${esc(editingItem.name || '')}" placeholder="例: お盆休み、年末年始、創立記念日">
-        <label>種別</label>
-        <select id="holModalType">${typeOpts}</select>
+        <div class="hol-hint">\u203B\u300C\u5168\u793E\u300D\u3092\u9078\u3076\u3068\u5168\u793E\u54E1\u306B\u9069\u7528\u3055\u308C\u307E\u3059\uFF08\u304A\u76C6\u30FB\u5E74\u672B\u5E74\u59CB\u306A\u3069\uFF09</div>
+        <label>\u65E5\u4ED8 <span style="color:#dc2626">*</span></label>
+        <input type="date" id="holModalDate" value="${l(s.date||"")}">
+        <label>\u540D\u79F0</label>
+        <input type="text" id="holModalName" value="${l(s.name||"")}" placeholder="\u4F8B: \u304A\u76C6\u4F11\u307F\u3001\u5E74\u672B\u5E74\u59CB\u3001\u5275\u7ACB\u8A18\u5FF5\u65E5">
+        <label>\u7A2E\u5225</label>
+        <select id="holModalType">${c}</select>
         <div class="hol-checkbox-row">
-          <input type="checkbox" id="holModalIsOff" ${editingItem.is_off ? 'checked' : ''}>
-          <label for="holModalIsOff" style="margin:0;cursor:pointer;">休日とする</label>
+          <input type="checkbox" id="holModalIsOff" ${s.is_off?"checked":""}>
+          <label for="holModalIsOff" style="margin:0;cursor:pointer;">\u4F11\u65E5\u3068\u3059\u308B</label>
         </div>
         <div class="hol-modal-actions">
-          <button id="holModalCancel">キャンセル</button>
-          <button class="save" id="holModalSave">${isNew ? '登録' : '更新'}</button>
+          <button id="holModalCancel">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
+          <button class="save" id="holModalSave">${o?"\u767B\u9332":"\u66F4\u65B0"}</button>
         </div>
       </div>
-    `;
-    document.body.appendChild(overlay);
-
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal();
-    });
-    overlay.querySelector('#holModalCancel').addEventListener('click', closeModal);
-    overlay.querySelector('#holModalSave').addEventListener('click', async () => {
-      const dept = overlay.querySelector('#holModalDept').value;
-      const date = overlay.querySelector('#holModalDate').value;
-      const name = overlay.querySelector('#holModalName').value.trim();
-      const type = overlay.querySelector('#holModalType').value;
-      const isOff = overlay.querySelector('#holModalIsOff').checked;
-
-      if (!dept) { alert('対象を選択してください'); return; }
-      if (!date) { alert('日付を入力してください'); return; }
-
-      try {
-        if (dept === '__all__') {
-          // Toàn công ty → lưu vào bảng company_holidays
-          await api.post('/holidays/company', { date, name, type: type || 'fixed', is_off: isOff });
-        } else if (isNew) {
-          await api.post('/holidays', { department_id: dept, date, name, type, is_off: isOff });
-        } else {
-          await api.patch(`/holidays/${editingItem.id}`, { date, name, type, is_off: isOff });
-        }
-        closeModal();
-        await Promise.all([loadJpHolidays(), loadDeptHolidays()]);
-        render();
-      } catch (e) {
-        console.error('[holidays] Save failed:', e);
-        alert('保存に失敗しました: ' + (e.message || JSON.stringify(e)));
-      }
-    });
-  };
-
-  const closeModal = () => {
-    editingItem = null;
-    document.querySelector('.hol-overlay')?.remove();
-  };
-
-  // Tải lần đầu
-  await loadDepartments();
-  await Promise.all([loadJpHolidays(), loadDeptHolidays()]);
-  render();
-
-  // Dọn dẹp
-  return () => {
-    if (controller) { controller.abort(); controller = null; }
-    closeModal();
-  };
-}
+    `,document.body.appendChild(a),a.addEventListener("click",t=>{t.target===a&&w()}),a.querySelector("#holModalCancel").addEventListener("click",w),a.querySelector("#holModalSave").addEventListener("click",async()=>{const t=a.querySelector("#holModalDept").value,r=a.querySelector("#holModalDate").value,y=a.querySelector("#holModalName").value.trim(),e=a.querySelector("#holModalType").value,n=a.querySelector("#holModalIsOff").checked;if(!t){alert("\u5BFE\u8C61\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044");return}if(!r){alert("\u65E5\u4ED8\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");return}try{t==="__all__"?await u.post("/holidays/company",{date:r,name:y,type:e||"fixed",is_off:n}):o?await u.post("/holidays",{department_id:t,date:r,name:y,type:e,is_off:n}):await u.patch(`/holidays/${s.id}`,{date:r,name:y,type:e,is_off:n}),w(),await Promise.all([k(),m()]),g()}catch(d){console.error("[holidays] Save failed:",d),alert("\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+(d.message||JSON.stringify(d)))}})},w=()=>{s=null,document.querySelector(".hol-overlay")?.remove()};return await q(),await Promise.all([k(),m()]),g(),()=>{v&&(v.abort(),v=null),w()}}export{T as mount};

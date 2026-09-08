@@ -35,6 +35,17 @@ function fromMin(mn) {
   return `${String(Math.floor(mn / 60)).padStart(2, '0')}:${String(mn % 60).padStart(2, '0')}`;
 }
 
+function ceilToStep(v, step) {
+  const n = Number(v || 0);
+  if (!Number.isFinite(n)) return 0;
+  return Math.ceil(n / step) * step;
+}
+function floorToStep(v, step) {
+  const n = Number(v || 0);
+  if (!Number.isFinite(n)) return 0;
+  return Math.floor(n / step) * step;
+}
+
 const shiftStartMin = toMin(SHIFT_START);
 const shiftEndMin   = toMin(SHIFT_END);
 
@@ -131,10 +142,14 @@ exports.getReportMatrix = async (req, res) => {
         // Tính giờ làm đã làm tròn:
         // - Vào trước ca → tính từ giờ ca bắt đầu
         // - OT sau ca → làm tròn xuống bước ROUND_STEP phút
-        const rIn  = inMin < shiftStartMin ? shiftStartMin : inMin;
-        const rOut = outMin > shiftEndMin
-          ? shiftEndMin + Math.floor((outMin - shiftEndMin) / ROUND_STEP) * ROUND_STEP
-          : outMin;
+        // Làm tròn: giờ vào luôn LÊN theo bước, không ép về shiftStart
+        const rIn  = ceilToStep(inMin, ROUND_STEP);
+        // Giờ ra: nếu sau shiftEnd thì phần OT làm tròn XUỐNG; nếu trong ca thì làm tròn XUỐNG về bước gần nhất
+        let rOut = outMin > shiftEndMin
+          ? shiftEndMin + floorToStep(outMin - shiftEndMin, ROUND_STEP)
+          : floorToStep(outMin, ROUND_STEP);
+        // Không để rOut nhỏ hơn rIn
+        if (rOut < rIn) rOut = rIn;
         const roundedWorked = Math.max(0, rOut - rIn - breakMin);
 
         row.days[d] = {
@@ -157,9 +172,11 @@ exports.getReportMatrix = async (req, res) => {
     for (const d of days) {
       let attendCount = 0, totalWorkedMin = 0;
       for (const row of matrix) {
-        if (row.days[d]?.workedMin > 0) {
+        const cell = row.days[d];
+        if (cell?.workedMin > 0) {
           attendCount++;
-          totalWorkedMin += row.days[d].workedMin;
+          const addMin = (cell.roundedWorkedMin != null && cell.roundedWorkedMin > 0) ? cell.roundedWorkedMin : cell.workedMin;
+          totalWorkedMin += addMin;
         }
       }
       dailySummary[d] = { attendCount, totalWorkedHours: totalWorkedMin / 60 };

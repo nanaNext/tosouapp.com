@@ -127,6 +127,23 @@ exports.exportMonthXlsx = async (req, res) => {
       const mm = Math.floor(m0 % 60);
       return `${h}:${String(mm).padStart(2, '0')}`;
     };
+    const ceilToStep = (minValue, step) => {
+      const v = Number(minValue || 0);
+      if (!Number.isFinite(v)) return 0;
+      return Math.ceil(v / step) * step;
+    };
+    const floorToStep = (minValue, step) => {
+      const v = Number(minValue || 0);
+      if (!Number.isFinite(v)) return 0;
+      return Math.floor(v / step) * step;
+    };
+    // Chuyển phút sang giờ thập phân, làm tròn LÊN tới bước 0.5 giờ
+    const minutesToHalfHourCeilDisplay = (mins) => {
+      const m = Math.max(0, Number(mins || 0));
+      const hours = m / 60;
+      const rounded = Math.ceil(hours * 2) / 2; // ceil to 0.5
+      return rounded.toFixed(1);
+    };
     const hmToMinutes = (s) => {
       const t = String(s || '').trim();
       const m = t.match(/^(\d+):(\d{2})$/);
@@ -372,14 +389,19 @@ exports.exportMonthXlsx = async (req, res) => {
         const shiftEndMin2 = shiftDef ? shiftDef.endMin : (17 * 60);
         const inMin = hmToMinutes(exportInHm);
         const outMinR = hmToMinutes(exportOutHm);
-        // Giờ vào: đến trước ca → tính từ giờ ca bắt đầu, còn lại giữ giờ thực
-        const rInMin = inMin < shiftStartMin ? shiftStartMin : inMin;
-        // Giờ ra: làm tròn XUỐNG phần OT sau khi kết thúc ca
+        // Giờ vào: luôn làm tròn LÊN theo bước rStep (không ép về giờ bắt đầu ca)
+        let rInMin = ceilToStep(inMin, rStep);
+        // Giờ ra: nếu sau ca thì phần OT làm tròn XUỐNG theo bước rStep
         let rOutMin = outMinR;
         if (outMinR > shiftEndMin2) {
           const otRaw = outMinR - shiftEndMin2;
-          const otRounded = Math.floor(otRaw / rStep) * rStep;
+          const otRounded = floorToStep(otRaw, rStep);
           rOutMin = shiftEndMin2 + otRounded;
+        } else {
+          // Nếu rơi trong ca (<= shift end) thì làm tròn XUỐNG về bước 30 gần nhất
+          rOutMin = floorToStep(outMinR, rStep);
+          // Tuy nhiên không được nhỏ hơn shift start
+          if (rOutMin < shiftStartMin) rOutMin = shiftStartMin;
         }
         roundedIn = fmtHm(rInMin);
         roundedOut = fmtHm(rOutMin);
@@ -468,7 +490,7 @@ exports.exportMonthXlsx = async (req, res) => {
           brLabel(exportBrMin),
           nbLabel(exportNbMin),
           exportWorkedMin !== '' ? fmtHm(exportWorkedMin) : '',
-          roundedWorkedMin !== '' ? fmtHm(roundedWorkedMin) : '',
+          roundedWorkedMin !== '' ? minutesToHalfHourCeilDisplay(roundedWorkedMin) : '',
           exportOtMin !== '' ? fmtHm(exportOtMin) : '',
           lateEarly,
           reasonLabel(daily?.reason || ''),

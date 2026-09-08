@@ -118,7 +118,7 @@
       const tabs = Array.from(sSec.querySelectorAll('.se-tab[data-tab]'));
       for (const t of tabs) {
         if (t.dataset.tabListenerWired === '1') continue;
-        t.addEventListener('click', (e) => {
+        t.addEventListener('click', async (e) => {
           e.preventDefault();
           try { console.debug('attendance:tab-click', { section: 'summary', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
           // Ignore additional click events (double/triple clicks)
@@ -137,7 +137,7 @@
       const tabs = Array.from(dSec.querySelectorAll('.se-tab[data-tab]'));
       for (const t of tabs) {
         if (t.dataset.tabListenerWired === '1') continue;
-        t.addEventListener('click', (e) => {
+        t.addEventListener('click', async (e) => {
           e.preventDefault();
           try { console.debug('attendance:tab-click', { section: 'daily', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
           // Ignore additional click events (double/triple clicks)

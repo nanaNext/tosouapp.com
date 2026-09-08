@@ -1,831 +1,280 @@
-// @ts-nocheck
-import { delegate } from '../_shared/dom.js';
-import { api } from '../../shared/api/client.js';
-import { createPage } from '../../shared/page/createPage.js';
-import { createCleanup } from '../../shared/page/createCleanup.js';
-
-let employeesRenderSeq = 0;
-
-async function mountEmployeesImpl({
-  content,
-  profile,
-  listEmployees,
-  listUsers,
-  listDepartments,
-  getEmployee,
-  createEmployee,
-  updateEmployee,
-  deleteEmployee,
-  showNavSpinner,
-  hideNavSpinner,
-  renderEmployees
-}) {
-  const cleanup = createCleanup();
-  const done = () => cleanup.run();
-  let isCurrent = true;
-  const controller = new AbortController();
-  const signal = controller.signal;
-  cleanup.add(() => { isCurrent = false; });
-  cleanup.add(() => controller.abort());
-  cleanup.add(() => { try { content.innerHTML = ''; } catch (e) { /* silently ignored */ } });
-
-  try {
-    const brand = document.querySelector('.topbar .brand');
-    const brandHTML = brand ? brand.innerHTML : null;
-    cleanup.add(() => {
-      try {
-        if (brand && brandHTML !== null) brand.innerHTML = brandHTML;
-      } catch (e) { /* silently ignored */ }
-    });
-  } catch (e) { /* silently ignored */ }
-
-  try {
-    const contentEl = document.querySelector('#adminContent');
-    const contentPaddingTop = contentEl ? contentEl.style.paddingTop : '';
-    const contentMarginTop = contentEl ? contentEl.style.marginTop : '';
-    const subbarEl = document.querySelector('.subbar');
-    const subbarDisplay = subbarEl ? subbarEl.style.display : '';
-    cleanup.add(() => {
-      try {
-        if (contentEl) {
-          contentEl.style.paddingTop = contentPaddingTop;
-          contentEl.style.marginTop = contentMarginTop;
-        }
-        if (subbarEl) subbarEl.style.display = subbarDisplay;
-      } catch (e) { /* silently ignored */ }
-      try {
-        document.body.classList.remove('emp-delete-mode');
-        document.documentElement.classList.remove('emp-delete-mode');
-      } catch (e) { /* silently ignored */ }
-    });
-  } catch (e) { /* silently ignored */ }
-  function renderEmployeesTopbar(mode) {
-    try {
-      const brand = document.querySelector('.topbar .brand');
-      if (brand && document.body.classList.contains('employees-wide')) {
-        brand.innerHTML = `
+import{delegate as ke}from"../_shared/dom.js";import{api as F}from"../../shared/api/client.js";import{createPage as Ee}from"../../shared/page/createPage.js";import{createCleanup as Ce}from"../../shared/page/createCleanup.js";let C=0;async function Te({content:h,profile:te,listEmployees:fe,listUsers:G,listDepartments:ie,getEmployee:ae,createEmployee:he,updateEmployee:be,deleteEmployee:le,showNavSpinner:J,hideNavSpinner:P,renderEmployees:E}){const T=Ce(),x=()=>T.run();let k=!0;const re=new AbortController,S=re.signal;T.add(()=>{k=!1}),T.add(()=>re.abort()),T.add(()=>{try{h.innerHTML=""}catch{}});try{const e=document.querySelector(".topbar .brand"),a=e?e.innerHTML:null;T.add(()=>{try{e&&a!==null&&(e.innerHTML=a)}catch{}})}catch{}try{const e=document.querySelector("#adminContent"),a=e?e.style.paddingTop:"",l=e?e.style.marginTop:"",i=document.querySelector(".subbar"),r=i?i.style.display:"";T.add(()=>{try{e&&(e.style.paddingTop=a,e.style.marginTop=l),i&&(i.style.display=r)}catch{}try{document.body.classList.remove("emp-delete-mode"),document.documentElement.classList.remove("emp-delete-mode")}catch{}})}catch{}function oe(e){try{const a=document.querySelector(".topbar .brand");if(a&&document.body.classList.contains("employees-wide")){a.innerHTML=`
           <img src="/static/images/logo1.png" alt="logo" class="icon">
           <span class="logo">IIZUKA</span>
           <div class="brand-menu" style="display:inline-block;position:relative;margin-left:10px;">
-            <button id="brandMenuBtn" class="brand-link">社員管理 ▾</button>
+            <button id="brandMenuBtn" class="brand-link">\u793E\u54E1\u7BA1\u7406 \u25BE</button>
             <div class="dropdown" id="brandDropdown" hidden>
-              <a href="#list" class="item" id="brandList">社員一覧</a>
-              <a href="#add" class="item" id="brandAdd">社員追加</a>
-              <a href="#edit" class="item" id="brandEdit" aria-disabled="true">社員編集</a>
-              <a href="#delete" class="item" id="brandDelete">社員削除</a>
+              <a href="#list" class="item" id="brandList">\u793E\u54E1\u4E00\u89A7</a>
+              <a href="#add" class="item" id="brandAdd">\u793E\u54E1\u8FFD\u52A0</a>
+              <a href="#edit" class="item" id="brandEdit" aria-disabled="true">\u793E\u54E1\u7DE8\u96C6</a>
+              <a href="#delete" class="item" id="brandDelete">\u793E\u54E1\u524A\u9664</a>
             </div>
           </div>
-        `;
-        const menuBtn = brand.querySelector('#brandMenuBtn');
-        const dd = brand.querySelector('#brandDropdown');
-        if (menuBtn && dd) {
-          menuBtn.addEventListener('click', () => {
-            const open = !dd.hasAttribute('hidden');
-            if (open) dd.setAttribute('hidden', '');
-            else dd.removeAttribute('hidden');
-          });
-          const onDocClick = (e) => {
-            if (!dd) return;
-            const inside = e.target.closest('.brand-menu');
-            if (!inside) dd.setAttribute('hidden', '');
-          };
-          document.addEventListener('click', onDocClick);
-          cleanup.add(() => { try { document.removeEventListener('click', onDocClick); } catch (e) { /* silently ignored */ } });
-          dd.addEventListener('click', async (e) => {
-            const a = e.target.closest('a.item');
-            if (!a) return;
-            e.preventDefault();
-            const idSel = Array.from(document.querySelectorAll('.empSel:checked')).map(i => i.value);
-            const href = a.getAttribute('href') || '#list';
-            if (href === '#list') {
-              try { history.pushState(null, '', `/ui/admin?tab=employees#list`); } catch { window.location.href = `/ui/admin?tab=employees#list`; return; }
-              await renderEmployees();
-            } else if (href === '#add') {
-              try { history.pushState(null, '', `/ui/admin?tab=employees#add`); } catch { window.location.href = `/ui/admin?tab=employees#add`; return; }
-              await renderEmployees();
-            } else if (href === '#edit') {
-              if (idSel.length === 1) {
-                const id = idSel[0];
-                try { history.pushState(null, '', `/ui/admin?tab=employees&edit=${id}`); } catch { window.location.href = `/ui/admin?tab=employees&edit=${id}`; return; }
-              } else {
-                try { history.pushState(null, '', `/ui/admin?tab=employees#edit`); } catch { window.location.href = `/ui/admin?tab=employees#edit`; return; }
-              }
-              await renderEmployees();
-            } else if (href === '#delete') {
-              try { history.pushState(null, '', `/ui/admin?tab=employees#delete`); } catch { window.location.href = `/ui/admin?tab=employees#delete`; return; }
-              await renderEmployees();
-            }
-            dd.setAttribute('hidden', '');
-          });
-        }
-      }
-    } catch (e) { /* silently ignored */ }
-  }
-
-  try {
-    const f = sessionStorage.getItem('navSpinner');
-    if (f === '1') showNavSpinner();
-  } catch (e) { /* silently ignored */ }
-  const seq = ++employeesRenderSeq;
-  const params = new URLSearchParams(location.search);
-  const detailId = params.get('detail');
-  const editId = params.get('edit');
-  const createFlag = params.get('create');
-  const role2 = String((profile && profile.role) || '').toLowerCase();
-  const hash = location.hash || (detailId || editId || createFlag ? '' : '#list');
-  let mode = 'list';
-  if (editId) mode = 'edit';
-  else if (createFlag || hash === '#add') mode = 'add';
-  else if (hash === '#delete') mode = 'delete';
-  else if (hash === '#edit') mode = 'edit';
-  try {
-    if (mode === 'list' && location.hash !== '#list') {
-      history.replaceState(null, '', '#list');
-    }
-  } catch (e) { /* silently ignored */ }
-  try {
-    const contentEl = document.querySelector('#adminContent');
-    if (contentEl) {
-      contentEl.style.paddingTop = mode === 'delete' ? '0' : '';
-      contentEl.style.marginTop = mode === 'delete' ? '-12px' : '';
-    }
-    const subbarEl = document.querySelector('.subbar');
-    if (subbarEl) subbarEl.style.display = mode === 'delete' ? 'none' : 'flex';
-    try {
-      if (mode === 'delete') {
-        document.body.classList.add('emp-delete-mode');
-        document.documentElement.classList.add('emp-delete-mode');
-      } else {
-        document.body.classList.remove('emp-delete-mode');
-        document.documentElement.classList.remove('emp-delete-mode');
-      }
-    } catch (e) { /* silently ignored */ }
-    if (mode === 'delete') {
-      try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch { window.scrollTo(0, 0); }
-    }
-  } catch (e) { /* silently ignored */ }
-  if (detailId) {
-    const u = await getEmployee(detailId, { signal });
-    if (!isCurrent || seq !== employeesRenderSeq) return done;
-    let depts2 = [];
-    try { depts2 = role2 === 'manager' ? await api.get('/api/manager/departments', { signal }) : await listDepartments({ signal }); } catch (e) { if (e && e.name === 'AbortError') return done; depts2 = []; }
-    if (!isCurrent || seq !== employeesRenderSeq) return done;
-    const deptName2 = (id) => {
-      const d = depts2.find(x => String(x.id) === String(id));
-      return d ? d.name : '';
-    };
-    const statusJa2 = (s) => {
-      const v = String(s || '').toLowerCase();
-      if (v === 'inactive') return '無効';
-      if (v === 'retired') return '退職';
-      return '在職';
-    };
-    const fmtDate2 = (d) => {
-      if (!d || String(d) === '-' || String(d) === '0000-00-00') return '未登録';
-      const raw = String(d);
-      const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (m) return `${m[1]}/${m[2]}/${m[3]}`;
-      try {
-        const x = new Date(raw);
-        if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getDate()).padStart(2, '0')}`;
-      } catch (e) { /* silently ignored */ }
-      return raw;
-    };
-    content.innerHTML = '<h3 class="excel-header">社員詳細</h3>';
-    const panel = document.createElement('div');
-    panel.className = 'card detail-card';
-    const roleV = String(u.role || '').toLowerCase();
-    const roleJa3 = roleV === 'admin' ? '管理者' : roleV === 'manager' ? 'マネージャー' : roleV === 'employee' ? '従業員' : (u.role || '');
-    const roleCls3 = roleV === 'admin' ? 'admin' : roleV === 'manager' ? 'manager' : 'employee';
-    const typeV = String(u.employment_type || '').toLowerCase();
-    const typeJa3 = typeV === 'full_time' ? '正社員' : typeV === 'part_time' ? 'パート・アルバイト' : typeV === 'contract' ? '契約社員' : (u.employment_type || '');
-    const typeCls3 = typeV === 'full_time' ? 'full' : typeV === 'part_time' ? 'part' : typeV === 'contract' ? 'contract' : '';
-    const statusV = String(u.employment_status || '').toLowerCase();
-    const statusCls3 = statusV === 'retired' ? 'retired' : statusV === 'inactive' ? 'inactive' : 'active';
-    const name3 = (u.username || u.email || '').trim();
-    const ini3 = name3 ? name3[0].toUpperCase() : '?';
-    let mgrName3 = '';
-    try {
-      let allUsers3 = role2 === 'manager' ? await api.get('/api/manager/users', { signal }) : await listUsers({ signal });
-      allUsers3 = (allUsers3 && allUsers3.rows) || allUsers3;
-      const mgr3 = allUsers3.find(x => String(x.id) === String(u.manager_id));
-      mgrName3 = mgr3 ? (mgr3.username || mgr3.email) : '';
-    } catch (e) { if (e && e.name === 'AbortError') return done; }
-    const avatarBlock3 = u.avatar_url ? `<img class="avatar-img" src="${u.avatar_url}" alt="avatar">` : `<div class="avatar">${ini3}</div>`;
-    panel.innerHTML = `
+        `;const l=a.querySelector("#brandMenuBtn"),i=a.querySelector("#brandDropdown");if(l&&i){l.addEventListener("click",()=>{!i.hasAttribute("hidden")?i.setAttribute("hidden",""):i.removeAttribute("hidden")});const r=n=>{if(!i)return;n.target.closest(".brand-menu")||i.setAttribute("hidden","")};document.addEventListener("click",r),T.add(()=>{try{document.removeEventListener("click",r)}catch{}}),i.addEventListener("click",async n=>{const s=n.target.closest("a.item");if(!s)return;n.preventDefault();const c=Array.from(document.querySelectorAll(".empSel:checked")).map(d=>d.value),o=s.getAttribute("href")||"#list";if(o==="#list"){try{history.pushState(null,"","/ui/admin?tab=employees#list")}catch{window.location.href="/ui/admin?tab=employees#list";return}await E()}else if(o==="#add"){try{history.pushState(null,"","/ui/admin?tab=employees#add")}catch{window.location.href="/ui/admin?tab=employees#add";return}await E()}else if(o==="#edit"){if(c.length===1){const d=c[0];try{history.pushState(null,"",`/ui/admin?tab=employees&edit=${d}`)}catch{window.location.href=`/ui/admin?tab=employees&edit=${d}`;return}}else try{history.pushState(null,"","/ui/admin?tab=employees#edit")}catch{window.location.href="/ui/admin?tab=employees#edit";return}await E()}else if(o==="#delete"){try{history.pushState(null,"","/ui/admin?tab=employees#delete")}catch{window.location.href="/ui/admin?tab=employees#delete";return}await E()}i.setAttribute("hidden","")})}}}catch{}}try{sessionStorage.getItem("navSpinner")==="1"&&J()}catch{}const M=++C,f=new URLSearchParams(location.search),O=f.get("detail"),R=f.get("edit"),se=f.get("create"),A=String(te&&te.role||"").toLowerCase(),W=location.hash||(O||R||se?"":"#list");let b="list";R?b="edit":se||W==="#add"?b="add":W==="#delete"?b="delete":W==="#edit"&&(b="edit");try{b==="list"&&location.hash!=="#list"&&history.replaceState(null,"","#list")}catch{}try{const e=document.querySelector("#adminContent");e&&(e.style.paddingTop=b==="delete"?"0":"",e.style.marginTop=b==="delete"?"-12px":"");const a=document.querySelector(".subbar");a&&(a.style.display=b==="delete"?"none":"flex");try{b==="delete"?(document.body.classList.add("emp-delete-mode"),document.documentElement.classList.add("emp-delete-mode")):(document.body.classList.remove("emp-delete-mode"),document.documentElement.classList.remove("emp-delete-mode"))}catch{}if(b==="delete")try{window.scrollTo({top:0,behavior:"instant"})}catch{window.scrollTo(0,0)}}catch{}if(O){const e=await ae(O,{signal:S});if(!k||M!==C)return x;let a=[];try{a=A==="manager"?await F.get("/api/manager/departments",{signal:S}):await ie({signal:S})}catch(y){if(y&&y.name==="AbortError")return x;a=[]}if(!k||M!==C)return x;const l=y=>{const q=a.find(D=>String(D.id)===String(y));return q?q.name:""},i=y=>{const q=String(y||"").toLowerCase();return q==="inactive"?"\u7121\u52B9":q==="retired"?"\u9000\u8077":"\u5728\u8077"},r=y=>{if(!y||String(y)==="-"||String(y)==="0000-00-00")return"\u672A\u767B\u9332";const q=String(y),D=q.match(/^(\d{4})-(\d{2})-(\d{2})/);if(D)return`${D[1]}/${D[2]}/${D[3]}`;try{const K=new Date(q);if(!isNaN(K.getTime()))return`${K.getFullYear()}/${String(K.getMonth()+1).padStart(2,"0")}/${String(K.getDate()).padStart(2,"0")}`}catch{}return q};h.innerHTML='<h3 class="excel-header">\u793E\u54E1\u8A73\u7D30</h3>';const n=document.createElement("div");n.className="card detail-card";const s=String(e.role||"").toLowerCase(),c=s==="admin"?"\u7BA1\u7406\u8005":s==="manager"?"\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC":s==="employee"?"\u5F93\u696D\u54E1":e.role||"",o=s==="admin"?"admin":s==="manager"?"manager":"employee",d=String(e.employment_type||"").toLowerCase(),u=d==="full_time"?"\u6B63\u793E\u54E1":d==="part_time"?"\u30D1\u30FC\u30C8\u30FB\u30A2\u30EB\u30D0\u30A4\u30C8":d==="contract"?"\u5951\u7D04\u793E\u54E1":e.employment_type||"",p=d==="full_time"?"full":d==="part_time"?"part":d==="contract"?"contract":"",g=String(e.employment_status||"").toLowerCase(),L=g==="retired"?"retired":g==="inactive"?"inactive":"active",$=(e.username||e.email||"").trim(),H=$?$[0].toUpperCase():"?";let z="";try{let y=A==="manager"?await F.get("/api/manager/users",{signal:S}):await G({signal:S});y=y&&y.rows||y;const q=y.find(D=>String(D.id)===String(e.manager_id));z=q?q.username||q.email:""}catch(y){if(y&&y.name==="AbortError")return x}const j=e.avatar_url?`<img class="avatar-img" src="${e.avatar_url}" alt="avatar">`:`<div class="avatar">${H}</div>`;n.innerHTML=`
       <div class="head">
-        ${avatarBlock3}
+        ${j}
         <div class="info">
-          <div class="title">${u.username || ''}</div>
-          <div class="subtitle">${u.email || ''}</div>
+          <div class="title">${e.username||""}</div>
+          <div class="subtitle">${e.email||""}</div>
         </div>
-        <span class="status-pill ${statusCls3}">${statusJa2(u.employment_status)}</span>
+        <span class="status-pill ${L}">${i(e.employment_status)}</span>
       </div>
-      <div class="detail-row"><div class="label">社員番号</div><div class="value">${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}</div></div>
-      <div class="detail-row"><div class="label">氏名</div><div class="value">${u.username || ''}</div></div>
-      <div class="detail-row"><div class="label">Email</div><div class="value">${u.email || ''}</div></div>
-      <div class="detail-row"><div class="label">電話番号</div><div class="value">${u.phone || ''}</div></div>
-      <div class="detail-row"><div class="label">生年月日</div><div class="value">${fmtDate2(u.birth_date)}</div></div>
-      <div class="detail-row"><div class="label">部署</div><div class="value">${deptName2(u.departmentId)}</div></div>
-      <div class="detail-row"><div class="label">直属マネージャー</div><div class="value">${mgrName3}</div></div>
-      <div class="detail-row"><div class="label">レベル</div><div class="value">${u.level || ''}</div></div>
-      <div class="detail-row"><div class="label">役割</div><div class="value"><span class="role-pill ${roleCls3}">${roleJa3}</span></div></div>
-      <div class="detail-row"><div class="label">雇用形態</div><div class="value"><span class="type-pill ${typeCls3}">${typeJa3}</span></div></div>
-      <div class="detail-row"><div class="label">入社日</div><div class="value">${fmtDate2(u.hire_date)}</div></div>
-      <div class="detail-row"><div class="label">試用開始</div><div class="value">${fmtDate2(u.probation_date)}</div></div>
-      <div class="detail-row"><div class="label">正社員化</div><div class="value">${fmtDate2(u.official_date)}</div></div>
-      <div class="detail-row"><div class="label">契約終了</div><div class="value">${fmtDate2(u.contract_end)}</div></div>
-      <div class="detail-row"><div class="label">基本給</div><div class="value">${u.base_salary == null ? '' : u.base_salary}</div></div>
-      <div class="detail-row"><div class="label">状態</div><div class="value"><span class="status-pill ${statusCls3}">${statusJa2(u.employment_status)}</span></div></div>
-      <div class="detail-actions form-actions"><a class="btn" href="/ui/admin?tab=employees&edit=${u.id}">編集</a><a class="btn" href="/ui/admin?tab=employees">一覧へ</a></div>
-    `;
-    content.appendChild(panel);
-    try {
-      const listKeys = ['q', 'dept', 'role', 'status', 'hireFrom', 'hireTo', 'sortKey', 'sortDir', 'page'];
-      const keep = new URLSearchParams();
-      for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
-      const qsKeep = keep.toString();
-      const backHref = `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`;
-      const editHref = `/ui/admin?tab=employees&edit=${u.id}${qsKeep ? '&' + qsKeep : ''}`;
-      const aEls = panel.querySelectorAll('a.btn');
-      if (aEls && aEls.length >= 2) {
-        aEls[0].setAttribute('href', editHref);
-        aEls[1].setAttribute('href', backHref);
-      }
-    } catch (e) { /* silently ignored */ }
-    hideNavSpinner();
-    return done;
-  }
-
-  content.innerHTML = ``;
-  renderEmployeesTopbar(mode);
-  let users = [];
-  let depts = [];
-  let errMsgs = [];
-  try {
-    let usersRes = role2 === 'manager' ? await api.get('/api/manager/users', { signal }) : await listEmployees({ signal });
-    users = Array.isArray(usersRes) ? usersRes : (usersRes && Array.isArray(usersRes.rows) ? usersRes.rows : []);
-  } catch (e1) {
-    if (e1 && e1.name === 'AbortError') return done;
-    errMsgs.push(`一覧: ${(e1 && e1.message) ? e1.message : 'unknown'}`);
-    if (role2 !== 'manager') {
-      try { users = await listUsers({ signal }); } catch (e2) { if (e2 && e2.name === 'AbortError') return done; errMsgs.push(`一覧(予備): ${(e2 && e2.message) ? e2.message : 'unknown'}`); users = []; }
-    } else {
-      users = [];
-    }
-  }
-  if (!isCurrent || seq !== employeesRenderSeq) return done;
-  try {
-    depts = role2 === 'manager' ? await api.get('/api/manager/departments', { signal }) : await listDepartments({ signal });
-  } catch (e3) {
-    if (e3 && e3.name === 'AbortError') return done;
-    errMsgs.push(`部署: ${(e3 && e3.message) ? e3.message : 'unknown'}`);
-    depts = [];
-  }
-  if (!isCurrent || seq !== employeesRenderSeq) return done;
-  if (errMsgs.length) {
-    const msg = document.createElement('div');
-    msg.style.color = '#b00020';
-    msg.style.margin = '8px 0';
-    msg.textContent = `読み込みエラー: ${errMsgs.join(' / ')}`;
-    content.appendChild(msg);
-  }
-  if (editId) {
-    const u = await getEmployee(editId, { signal });
-    if (!isCurrent || seq !== employeesRenderSeq) return done;
-    content.innerHTML = ``;
-    renderEmployeesTopbar('edit');
-    const formEdit = document.createElement('form');
-    formEdit.innerHTML = `
-      <div style="margin-bottom:8px;"><a id="editBack" class="btn" href="#list">← 社員一覧へ戻る</a></div>
-      <h4>社員編集（${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}）</h4>
+      <div class="detail-row"><div class="label">\u793E\u54E1\u756A\u53F7</div><div class="value">${e.employee_code||"EMP"+String(e.id).padStart(3,"0")}</div></div>
+      <div class="detail-row"><div class="label">\u6C0F\u540D</div><div class="value">${e.username||""}</div></div>
+      <div class="detail-row"><div class="label">Email</div><div class="value">${e.email||""}</div></div>
+      <div class="detail-row"><div class="label">\u96FB\u8A71\u756A\u53F7</div><div class="value">${e.phone||""}</div></div>
+      <div class="detail-row"><div class="label">\u751F\u5E74\u6708\u65E5</div><div class="value">${r(e.birth_date)}</div></div>
+      <div class="detail-row"><div class="label">\u90E8\u7F72</div><div class="value">${l(e.departmentId)}</div></div>
+      <div class="detail-row"><div class="label">\u76F4\u5C5E\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</div><div class="value">${z}</div></div>
+      <div class="detail-row"><div class="label">\u30EC\u30D9\u30EB</div><div class="value">${e.level||""}</div></div>
+      <div class="detail-row"><div class="label">\u5F79\u5272</div><div class="value"><span class="role-pill ${o}">${c}</span></div></div>
+      <div class="detail-row"><div class="label">\u96C7\u7528\u5F62\u614B</div><div class="value"><span class="type-pill ${p}">${u}</span></div></div>
+      <div class="detail-row"><div class="label">\u5165\u793E\u65E5</div><div class="value">${r(e.hire_date)}</div></div>
+      <div class="detail-row"><div class="label">\u8A66\u7528\u958B\u59CB</div><div class="value">${r(e.probation_date)}</div></div>
+      <div class="detail-row"><div class="label">\u6B63\u793E\u54E1\u5316</div><div class="value">${r(e.official_date)}</div></div>
+      <div class="detail-row"><div class="label">\u5951\u7D04\u7D42\u4E86</div><div class="value">${r(e.contract_end)}</div></div>
+      <div class="detail-row"><div class="label">\u57FA\u672C\u7D66</div><div class="value">${e.base_salary==null?"":e.base_salary}</div></div>
+      <div class="detail-row"><div class="label">\u72B6\u614B</div><div class="value"><span class="status-pill ${L}">${i(e.employment_status)}</span></div></div>
+      <div class="detail-actions form-actions"><a class="btn" href="/ui/admin?tab=employees&edit=${e.id}">\u7DE8\u96C6</a><a class="btn" href="/ui/admin?tab=employees">\u4E00\u89A7\u3078</a></div>
+    `,h.appendChild(n);try{const y=["q","dept","role","status","hireFrom","hireTo","sortKey","sortDir","page"],q=new URLSearchParams;for(const me of y){const ue=f.get(me);ue&&q.set(me,ue)}const D=q.toString(),K=`/ui/admin?tab=employees${D?"&"+D:""}#list`,Le=`/ui/admin?tab=employees&edit=${e.id}${D?"&"+D:""}`,V=n.querySelectorAll("a.btn");V&&V.length>=2&&(V[0].setAttribute("href",Le),V[1].setAttribute("href",K))}catch{}return P(),x}h.innerHTML="",oe(b);let _=[],B=[],I=[];try{let e=A==="manager"?await F.get("/api/manager/users",{signal:S}):await fe({signal:S});_=Array.isArray(e)?e:e&&Array.isArray(e.rows)?e.rows:[]}catch(e){if(e&&e.name==="AbortError")return x;if(I.push(`\u4E00\u89A7: ${e&&e.message?e.message:"unknown"}`),A!=="manager")try{_=await G({signal:S})}catch(a){if(a&&a.name==="AbortError")return x;I.push(`\u4E00\u89A7(\u4E88\u5099): ${a&&a.message?a.message:"unknown"}`),_=[]}else _=[]}if(!k||M!==C)return x;try{B=A==="manager"?await F.get("/api/manager/departments",{signal:S}):await ie({signal:S})}catch(e){if(e&&e.name==="AbortError")return x;I.push(`\u90E8\u7F72: ${e&&e.message?e.message:"unknown"}`),B=[]}if(!k||M!==C)return x;if(I.length){const e=document.createElement("div");e.style.color="#b00020",e.style.margin="8px 0",e.textContent=`\u8AAD\u307F\u8FBC\u307F\u30A8\u30E9\u30FC: ${I.join(" / ")}`,h.appendChild(e)}if(R){const e=await ae(R,{signal:S});if(!k||M!==C)return x;h.innerHTML="",oe("edit");const a=document.createElement("form");a.innerHTML=`
+      <div style="margin-bottom:8px;"><a id="editBack" class="btn" href="#list">\u2190 \u793E\u54E1\u4E00\u89A7\u3078\u623B\u308B</a></div>
+      <h4>\u793E\u54E1\u7DE8\u96C6\uFF08${e.employee_code||"EMP"+String(e.id).padStart(3,"0")}\uFF09</h4>
       <div class="emp-form-layout" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; margin-bottom: 20px;">
         <div class="emp-form-section">
-          <div class="emp-form-header">基本情報</div>
+          <div class="emp-form-header">\u57FA\u672C\u60C5\u5831</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>社員番号</label><div style="flex:1; padding:8px 12px; background:#fff; color:#0f172a; font-size:14px; border:1px solid transparent; box-sizing:border-box;">${u.employee_code || ('EMP' + String(u.id).padStart(3, '0'))}</div></div>
-            <div class="emp-form-group"><label>氏名</label><input id="empName" value="${u.username || ''}"></div>
-            <div class="emp-form-group"><label>メール</label><input id="empEmail" value="${u.email || ''}"></div>
-            <div class="emp-form-group"><label>パスワード</label><input id="empPw" type="password" placeholder="空欄なら変更なし"></div>
-            <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD" value="${u.birth_date || ''}"></div>
-            <div class="emp-form-group"><label>性別</label><select id="empGender"><option value="">未設定</option><option value="male" ${u.gender === 'male' ? 'selected' : ''}>男</option><option value="female" ${u.gender === 'female' ? 'selected' : ''}>女</option><option value="other" ${u.gender === 'other' ? 'selected' : ''}>その他</option></select></div>
-            <div class="emp-form-group"><label>電話番号</label><input id="empPhone" value="${u.phone || ''}"></div>
-            <div class="emp-form-group"><label>住所</label><input id="empAddr" value="${u.address || ''}"></div>
+            <div class="emp-form-group"><label>\u793E\u54E1\u756A\u53F7</label><div style="flex:1; padding:8px 12px; background:#fff; color:#0f172a; font-size:14px; border:1px solid transparent; box-sizing:border-box;">${e.employee_code||"EMP"+String(e.id).padStart(3,"0")}</div></div>
+            <div class="emp-form-group"><label>\u6C0F\u540D</label><input id="empName" value="${e.username||""}"></div>
+            <div class="emp-form-group"><label>\u30E1\u30FC\u30EB</label><input id="empEmail" value="${e.email||""}"></div>
+            <div class="emp-form-group"><label>\u30D1\u30B9\u30EF\u30FC\u30C9</label><input id="empPw" type="password" placeholder="\u7A7A\u6B04\u306A\u3089\u5909\u66F4\u306A\u3057"></div>
+            <div class="emp-form-group"><label>\u751F\u5E74\u6708\u65E5</label><input id="empBirth" placeholder="YYYY-MM-DD" value="${e.birth_date||""}"></div>
+            <div class="emp-form-group"><label>\u6027\u5225</label><select id="empGender"><option value="">\u672A\u8A2D\u5B9A</option><option value="male" ${e.gender==="male"?"selected":""}>\u7537</option><option value="female" ${e.gender==="female"?"selected":""}>\u5973</option><option value="other" ${e.gender==="other"?"selected":""}>\u305D\u306E\u4ED6</option></select></div>
+            <div class="emp-form-group"><label>\u96FB\u8A71\u756A\u53F7</label><input id="empPhone" value="${e.phone||""}"></div>
+            <div class="emp-form-group"><label>\u4F4F\u6240</label><input id="empAddr" value="${e.address||""}"></div>
           </div>
         </div>
         <div class="emp-form-section">
-          <div class="emp-form-header">職務情報</div>
+          <div class="emp-form-header">\u8077\u52D9\u60C5\u5831</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>部署</label><select id="empDept"><option value="">部署</option>${depts.map(d => `<option value="${d.id}" ${String(u.departmentId || '') === String(d.id) ? 'selected' : ''}>${d.name}</option>`).join('')}</select></div>
-            <div class="emp-form-group"><label>役割</label>
+            <div class="emp-form-group"><label>\u90E8\u7F72</label><select id="empDept"><option value="">\u90E8\u7F72</option>${B.map(i=>`<option value="${i.id}" ${String(e.departmentId||"")===String(i.id)?"selected":""}>${i.name}</option>`).join("")}</select></div>
+            <div class="emp-form-group"><label>\u5F79\u5272</label>
               <select id="empRole">
-                <option value="employee" ${u.role === 'employee' ? 'selected' : ''}>従業員</option>
-                <option value="manager" ${u.role === 'manager' ? 'selected' : ''}>マネージャー</option>
-                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>管理者</option>
+                <option value="employee" ${e.role==="employee"?"selected":""}>\u5F93\u696D\u54E1</option>
+                <option value="manager" ${e.role==="manager"?"selected":""}>\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</option>
+                <option value="admin" ${e.role==="admin"?"selected":""}>\u7BA1\u7406\u8005</option>
               </select>
             </div>
-            <div class="emp-form-group"><label>雇用形態</label>
+            <div class="emp-form-group"><label>\u96C7\u7528\u5F62\u614B</label>
               <select id="empType">
-                <option value="full_time" ${u.employment_type === 'full_time' ? 'selected' : ''}>正社員</option>
-                <option value="part_time" ${u.employment_type === 'part_time' ? 'selected' : ''}>パート・アルバイト</option>
-                <option value="contract" ${u.employment_type === 'contract' ? 'selected' : ''}>契約社員</option>
+                <option value="full_time" ${e.employment_type==="full_time"?"selected":""}>\u6B63\u793E\u54E1</option>
+                <option value="part_time" ${e.employment_type==="part_time"?"selected":""}>\u30D1\u30FC\u30C8\u30FB\u30A2\u30EB\u30D0\u30A4\u30C8</option>
+                <option value="contract" ${e.employment_type==="contract"?"selected":""}>\u5951\u7D04\u793E\u54E1</option>
               </select>
             </div>
-            <div class="emp-form-group"><label>状態</label>
+            <div class="emp-form-group"><label>\u72B6\u614B</label>
               <select id="empStatus">
-                <option value="active" ${String(u.employment_status || '') === 'active' ? 'selected' : ''}>在職</option>
-                <option value="inactive" ${String(u.employment_status || '') === 'inactive' ? 'selected' : ''}>無効/休職</option>
-                <option value="retired" ${String(u.employment_status || '') === 'retired' ? 'selected' : ''}>退職</option>
+                <option value="active" ${String(e.employment_status||"")==="active"?"selected":""}>\u5728\u8077</option>
+                <option value="inactive" ${String(e.employment_status||"")==="inactive"?"selected":""}>\u7121\u52B9/\u4F11\u8077</option>
+                <option value="retired" ${String(e.employment_status||"")==="retired"?"selected":""}>\u9000\u8077</option>
               </select>
             </div>
-            <div class="emp-form-group"><label>直属マネージャー</label><select id="empManager"><option value="">未設定</option>${users.filter(x => x.role === 'manager').map(m => `<option value="${m.id}" ${String(u.manager_id || '') === String(m.id) ? 'selected' : ''}>${m.username || m.email}</option>`).join('')}</select></div>
-            <div class="emp-form-group"><label>レベル</label><input id="empLevel" value="${u.level || ''}" placeholder="例: L1/L2/Senior"></div>
-            <div class="emp-form-group"><label>入社日</label><input id="empHireDate" placeholder="YYYY-MM-DD" value="${u.hire_date || u.join_date || ''}"></div>
-            <div class="emp-form-group"><label>試用開始</label><input id="empProbDate" placeholder="YYYY-MM-DD" value="${u.probation_date || ''}"></div>
-            <div class="emp-form-group"><label>正社員化</label><input id="empOfficialDate" placeholder="YYYY-MM-DD" value="${u.official_date || ''}"></div>
-            <div class="emp-form-group"><label>契約終了</label><input id="empContractEnd" placeholder="YYYY-MM-DD" value="${u.contract_end || ''}"></div>
-            <div class="emp-form-group"><label>基本給 (円)</label><input id="empBaseSalary" type="number" step="0.01" value="${u.base_salary == null ? '' : u.base_salary}" placeholder="円"></div>
+            <div class="emp-form-group"><label>\u76F4\u5C5E\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</label><select id="empManager"><option value="">\u672A\u8A2D\u5B9A</option>${_.filter(i=>i.role==="manager").map(i=>`<option value="${i.id}" ${String(e.manager_id||"")===String(i.id)?"selected":""}>${i.username||i.email}</option>`).join("")}</select></div>
+            <div class="emp-form-group"><label>\u30EC\u30D9\u30EB</label><input id="empLevel" value="${e.level||""}" placeholder="\u4F8B: L1/L2/Senior"></div>
+            <div class="emp-form-group"><label>\u5165\u793E\u65E5</label><input id="empHireDate" placeholder="YYYY-MM-DD" value="${e.hire_date||e.join_date||""}"></div>
+            <div class="emp-form-group"><label>\u8A66\u7528\u958B\u59CB</label><input id="empProbDate" placeholder="YYYY-MM-DD" value="${e.probation_date||""}"></div>
+            <div class="emp-form-group"><label>\u6B63\u793E\u54E1\u5316</label><input id="empOfficialDate" placeholder="YYYY-MM-DD" value="${e.official_date||""}"></div>
+            <div class="emp-form-group"><label>\u5951\u7D04\u7D42\u4E86</label><input id="empContractEnd" placeholder="YYYY-MM-DD" value="${e.contract_end||""}"></div>
+            <div class="emp-form-group"><label>\u57FA\u672C\u7D66 (\u5186)</label><input id="empBaseSalary" type="number" step="0.01" value="${e.base_salary==null?"":e.base_salary}" placeholder="\u5186"></div>
           </div>
         </div>
         <div class="emp-form-section">
-          <div class="emp-form-header">その他</div>
+          <div class="emp-form-header">\u305D\u306E\u4ED6</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><div style="flex:1; display:flex; gap:8px; align-items:center; padding:8px 12px;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1; border:1px solid #cbd5e1; border-radius:4px;"> <button type="button" class="btn" id="btnAvatarUpload">アップロード</button> <span id="avatarUploadStatus" style="color:#334155; font-size:13px;"></span></div></div>
+            <div class="emp-form-group"><label>\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u5199\u771F\uFF08\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\uFF09</label><div style="flex:1; display:flex; gap:8px; align-items:center; padding:8px 12px;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1; border:1px solid #cbd5e1; border-radius:4px;"> <button type="button" class="btn" id="btnAvatarUpload">\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9</button> <span id="avatarUploadStatus" style="color:#334155; font-size:13px;"></span></div></div>
           </div>
         </div>
       </div>
       <div class="form-actions" style="justify-content:flex-end;">
-        <button type="submit" class="btn-primary">更新</button>
-        <a class="btn" id="btnCancelEdit" href="#list">キャンセル</a>
+        <button type="submit" class="btn-primary">\u66F4\u65B0</button>
+        <a class="btn" id="btnCancelEdit" href="#list">\u30AD\u30E3\u30F3\u30BB\u30EB</a>
       </div>
-    `;
-    try {
-      const listKeys = ['q', 'dept', 'role', 'status', 'hireFrom', 'hireTo', 'sortKey', 'sortDir', 'page', 'code', 'showAll'];
-      const keep = new URLSearchParams();
-      for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
-      const qsKeep = keep.toString();
-      const backHref = `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`;
-      const backA = formEdit.querySelector('#editBack');
-      const cancelA = formEdit.querySelector('#btnCancelEdit');
-      if (backA) backA.setAttribute('href', backHref);
-      if (cancelA) cancelA.setAttribute('href', backHref);
-    } catch (e) { /* silently ignored */ }
-    formEdit.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const b = {
-        username: document.querySelector('#empName').value.trim(),
-        email: document.querySelector('#empEmail').value.trim(),
-        role: document.querySelector('#empRole').value,
-        departmentId: document.querySelector('#empDept').value ? parseInt(document.querySelector('#empDept').value, 10) : null,
-        level: (document.querySelector('#empLevel').value || '').trim() || null,
-        managerId: document.querySelector('#empManager').value ? parseInt(document.querySelector('#empManager').value, 10) : null,
-        employmentType: document.querySelector('#empType').value,
-        hireDate: document.querySelector('#empHireDate').value.trim() || null,
-        probationDate: document.querySelector('#empProbDate').value.trim() || null,
-        officialDate: document.querySelector('#empOfficialDate').value.trim() || null,
-        contractEnd: document.querySelector('#empContractEnd').value.trim() || null,
-        baseSalary: (document.querySelector('#empBaseSalary').value || '').trim() || null,
-        birthDate: document.querySelector('#empBirth').value.trim() || null,
-        gender: document.querySelector('#empGender').value || null,
-        phone: (document.querySelector('#empPhone').value || '').trim() || null,
-        employmentStatus: document.querySelector('#empStatus').value,
-        address: (document.querySelector('#empAddr').value || '').trim() || null
-      };
-      await updateEmployee(u.id, b, { signal });
-      const newPw = document.querySelector('#empPw').value;
-      if (newPw && newPw.length >= 6) {
-        await api.patch(`/api/admin/users/${u.id}/password`, { password: newPw }, { signal });
-      }
-      try {
-        const listKeys = ['q', 'dept', 'role', 'status', 'hireFrom', 'hireTo', 'sortKey', 'sortDir', 'page', 'code', 'showAll'];
-        const keep = new URLSearchParams();
-        for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
-        const qsKeep = keep.toString();
-        history.replaceState(null, '', `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`);
-      } catch (e) { /* silently ignored */ }
-      await renderEmployees();
-    });
-    const btnAvatar = formEdit.querySelector('#btnAvatarUpload');
-    if (btnAvatar) {
-      btnAvatar.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try {
-          const fileEl = formEdit.querySelector('#empAvatarFile');
-          const statusEl = formEdit.querySelector('#avatarUploadStatus');
-          if (!fileEl || !fileEl.files || !fileEl.files[0]) { if (statusEl) statusEl.textContent = 'ファイル未選択'; return; }
-          const fd = new FormData();
-          fd.append('file', fileEl.files[0]);
-          await api.upload(`/api/admin/employees/${encodeURIComponent(u.id)}/avatar`, fd, { signal });
-          if (statusEl) statusEl.textContent = 'アップロード完了';
-        } catch (err) { /* silently ignored */ }
-      });
-    }
-    formEdit.querySelector('#editBack').addEventListener('click', async (e) => {
-      e.preventDefault();
-      try {
-        const listKeys = ['q', 'dept', 'role', 'status', 'hireFrom', 'hireTo', 'sortKey', 'sortDir', 'page', 'code', 'showAll'];
-        const keep = new URLSearchParams();
-        for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
-        const qsKeep = keep.toString();
-        history.replaceState(null, '', `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`);
-      } catch (e) { /* silently ignored */ }
-      await renderEmployees();
-    });
-    formEdit.querySelector('#btnCancelEdit').addEventListener('click', async (e) => {
-      e.preventDefault();
-      try {
-        const listKeys = ['q', 'dept', 'role', 'status', 'hireFrom', 'hireTo', 'sortKey', 'sortDir', 'page', 'code', 'showAll'];
-        const keep = new URLSearchParams();
-        for (const k of listKeys) { const v = params.get(k); if (v) keep.set(k, v); }
-        const qsKeep = keep.toString();
-        history.replaceState(null, '', `/ui/admin?tab=employees${qsKeep ? '&' + qsKeep : ''}#list`);
-      } catch (e) { /* silently ignored */ }
-      await renderEmployees();
-    });
-    content.appendChild(formEdit);
-    hideNavSpinner();
-    return done;
-  }
-
-  if (mode === 'edit') {
-    content.innerHTML = ``;
-    const prompt = document.createElement('form');
-    prompt.innerHTML = `
+    `;try{const i=["q","dept","role","status","hireFrom","hireTo","sortKey","sortDir","page","code","showAll"],r=new URLSearchParams;for(const d of i){const u=f.get(d);u&&r.set(d,u)}const n=r.toString(),s=`/ui/admin?tab=employees${n?"&"+n:""}#list`,c=a.querySelector("#editBack"),o=a.querySelector("#btnCancelEdit");c&&c.setAttribute("href",s),o&&o.setAttribute("href",s)}catch{}a.addEventListener("submit",async i=>{i.preventDefault();const r={username:document.querySelector("#empName").value.trim(),email:document.querySelector("#empEmail").value.trim(),role:document.querySelector("#empRole").value,departmentId:document.querySelector("#empDept").value?parseInt(document.querySelector("#empDept").value,10):null,level:(document.querySelector("#empLevel").value||"").trim()||null,managerId:document.querySelector("#empManager").value?parseInt(document.querySelector("#empManager").value,10):null,employmentType:document.querySelector("#empType").value,hireDate:document.querySelector("#empHireDate").value.trim()||null,probationDate:document.querySelector("#empProbDate").value.trim()||null,officialDate:document.querySelector("#empOfficialDate").value.trim()||null,contractEnd:document.querySelector("#empContractEnd").value.trim()||null,baseSalary:(document.querySelector("#empBaseSalary").value||"").trim()||null,birthDate:document.querySelector("#empBirth").value.trim()||null,gender:document.querySelector("#empGender").value||null,phone:(document.querySelector("#empPhone").value||"").trim()||null,employmentStatus:document.querySelector("#empStatus").value,address:(document.querySelector("#empAddr").value||"").trim()||null};await be(e.id,r,{signal:S});const n=document.querySelector("#empPw").value;n&&n.length>=6&&await F.patch(`/api/admin/users/${e.id}/password`,{password:n},{signal:S});try{const s=["q","dept","role","status","hireFrom","hireTo","sortKey","sortDir","page","code","showAll"],c=new URLSearchParams;for(const d of s){const u=f.get(d);u&&c.set(d,u)}const o=c.toString();history.replaceState(null,"",`/ui/admin?tab=employees${o?"&"+o:""}#list`)}catch{}await E()});const l=a.querySelector("#btnAvatarUpload");return l&&l.addEventListener("click",async i=>{i.preventDefault();try{const r=a.querySelector("#empAvatarFile"),n=a.querySelector("#avatarUploadStatus");if(!r||!r.files||!r.files[0]){n&&(n.textContent="\u30D5\u30A1\u30A4\u30EB\u672A\u9078\u629E");return}const s=new FormData;s.append("file",r.files[0]),await F.upload(`/api/admin/employees/${encodeURIComponent(e.id)}/avatar`,s,{signal:S}),n&&(n.textContent="\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u5B8C\u4E86")}catch{}}),a.querySelector("#editBack").addEventListener("click",async i=>{i.preventDefault();try{const r=["q","dept","role","status","hireFrom","hireTo","sortKey","sortDir","page","code","showAll"],n=new URLSearchParams;for(const c of r){const o=f.get(c);o&&n.set(c,o)}const s=n.toString();history.replaceState(null,"",`/ui/admin?tab=employees${s?"&"+s:""}#list`)}catch{}await E()}),a.querySelector("#btnCancelEdit").addEventListener("click",async i=>{i.preventDefault();try{const r=["q","dept","role","status","hireFrom","hireTo","sortKey","sortDir","page","code","showAll"],n=new URLSearchParams;for(const c of r){const o=f.get(c);o&&n.set(c,o)}const s=n.toString();history.replaceState(null,"",`/ui/admin?tab=employees${s?"&"+s:""}#list`)}catch{}await E()}),h.appendChild(a),P(),x}if(b==="edit"){h.innerHTML="";const e=document.createElement("form");e.innerHTML=`
       <div class="form-card form-compact form-sm form-narrow">
-        <div class="form-title">【社員編集】</div>
+        <div class="form-title">\u3010\u793E\u54E1\u7DE8\u96C6\u3011</div>
         <div class="form-sep"></div>
         <div class="form-grid">
-          <div class="form-label">社員番号</div>
+          <div class="form-label">\u793E\u54E1\u756A\u53F7</div>
           <div class="form-input">
-            <span class="bracket"><input id="editKey" placeholder="EMP001 または ID 数字"></span>
+            <span class="bracket"><input id="editKey" placeholder="EMP001 \u307E\u305F\u306F ID \u6570\u5B57"></span>
           </div>
         </div>
         <div id="editKeyErr" style="color:#b00020;display:none;margin-top:8px;"></div>
         <div class="form-actions" style="margin-top:8px;">
-          <button type="submit">編集へ</button>
+          <button type="submit">\u7DE8\u96C6\u3078</button>
         </div>
       </div>
-    `;
-    prompt.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const errEl = prompt.querySelector('#editKeyErr');
-      const key = (document.querySelector('#editKey').value || '').trim();
-      if (!key) {
-        if (errEl) { errEl.style.display = 'block'; errEl.textContent = '社員番号を入力してください。'; }
-        try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
-        return;
-      }
-      if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
-      let id = null;
-      if (/^\d+$/.test(key)) {
-        id = parseInt(key, 10);
-      } else {
-        try {
-          showNavSpinner();
-          let list = await Promise.race([
-              api.get(role2 === 'manager' ? '/api/manager/users' : '/api/admin/employees', { signal }),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
-          ]);
-          list = (list && list.rows) || list;
-          const f = list.find(u => {
-            const code = String(u.employee_code || '').toUpperCase();
-            const gen = ('EMP' + String(u.id).padStart(3, '0')).toUpperCase();
-            return code === key.toUpperCase() || gen === key.toUpperCase();
-          });
-          if (f) id = f.id;
-        } catch (err) {
-          alert(String((err && err.message) ? err.message : '読み込みエラー'));
-        } finally {
-          hideNavSpinner();
-        }
-      }
-      if (!id) return alert('対象が見つかりません');
-      window.location.href = `/ui/admin?tab=employees&edit=${id}`;
-    });
-    content.appendChild(prompt);
-    try { const el = document.querySelector('#editKey'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
-    const tabsEl2 = content.querySelector('.tabs');
-    if (tabsEl2) {
-      tabsEl2.addEventListener('click', async (e) => {
-        const a = e.target.closest('.btn');
-        if (!a) return;
-        const target = a.getAttribute('href') || '#list';
-        if (a.id === 'btnGoHome') {
-          e.preventDefault();
-          try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
-          showNavSpinner();
-          setTimeout(() => { window.location.href = '/ui/portal'; }, 300);
-          return;
-        }
-        if (target.startsWith('#')) {
-          e.preventDefault();
-          try { history.pushState(null, '', `/ui/admin?tab=employees${target}`); } catch { window.location.href = `/ui/admin?tab=employees${target}`; return; }
-          await renderEmployees();
-        }
-      });
-    }
-    hideNavSpinner();
-    return done;
-  }
-
-  if (mode === 'add') {
-    const form = document.createElement('form');
-    form.id = 'add';
-    let managers = [];
-    if (role2 !== 'manager') {
-      try { managers = await listUsers({ signal }); } catch (e) { if (e && e.name === 'AbortError') return done; managers = []; }
-    }
-    if (!isCurrent || seq !== employeesRenderSeq) return done;
-    const managerOptions = (role2 !== 'manager' ? managers.filter(m => String(m.role) === 'manager') : []).map(m => `<option value="${m.id}">${m.username || m.email}</option>`).join('');
-    form.innerHTML = `
-      <div class="form-title" style="margin-bottom:16px;">【新規社員】</div>
+    `,e.addEventListener("submit",async l=>{l.preventDefault();const i=e.querySelector("#editKeyErr"),r=(document.querySelector("#editKey").value||"").trim();if(!r){i&&(i.style.display="block",i.textContent="\u793E\u54E1\u756A\u53F7\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002");try{const s=document.querySelector("#editKey");s&&s.focus&&s.focus()}catch{}return}i&&(i.style.display="none",i.textContent="");let n=null;if(/^\d+$/.test(r))n=parseInt(r,10);else try{J();let s=await Promise.race([F.get(A==="manager"?"/api/manager/users":"/api/admin/employees",{signal:S}),new Promise((o,d)=>setTimeout(()=>d(new Error("timeout")),8e3))]);s=s&&s.rows||s;const c=s.find(o=>{const d=String(o.employee_code||"").toUpperCase(),u=("EMP"+String(o.id).padStart(3,"0")).toUpperCase();return d===r.toUpperCase()||u===r.toUpperCase()});c&&(n=c.id)}catch(s){alert(String(s&&s.message?s.message:"\u8AAD\u307F\u8FBC\u307F\u30A8\u30E9\u30FC"))}finally{P()}if(!n)return alert("\u5BFE\u8C61\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093");window.location.href=`/ui/admin?tab=employees&edit=${n}`}),h.appendChild(e);try{const l=document.querySelector("#editKey");l&&l.focus&&l.focus()}catch{}const a=h.querySelector(".tabs");return a&&a.addEventListener("click",async l=>{const i=l.target.closest(".btn");if(!i)return;const r=i.getAttribute("href")||"#list";if(i.id==="btnGoHome"){l.preventDefault();try{sessionStorage.setItem("navSpinner","1")}catch{}J(),setTimeout(()=>{window.location.href="/ui/portal"},300);return}if(r.startsWith("#")){l.preventDefault();try{history.pushState(null,"",`/ui/admin?tab=employees${r}`)}catch{window.location.href=`/ui/admin?tab=employees${r}`;return}await E()}}),P(),x}if(b==="add"){const e=document.createElement("form");e.id="add";let a=[];if(A!=="manager")try{a=await G({signal:S})}catch(i){if(i&&i.name==="AbortError")return x;a=[]}if(!k||M!==C)return x;const l=(A!=="manager"?a.filter(i=>String(i.role)==="manager"):[]).map(i=>`<option value="${i.id}">${i.username||i.email}</option>`).join("");e.innerHTML=`
+      <div class="form-title" style="margin-bottom:16px;">\u3010\u65B0\u898F\u793E\u54E1\u3011</div>
       <div class="emp-form-layout" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; margin-bottom: 20px;">
         <div class="emp-form-section">
-          <div class="emp-form-header">基本情報</div>
+          <div class="emp-form-header">\u57FA\u672C\u60C5\u5831</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>社員番号</label><input id="empCode"></div>
-            <div class="emp-form-group"><label>氏名</label><input id="empName"></div>
-            <div class="emp-form-group"><label>メール</label><input id="empEmail"></div>
-            <div class="emp-form-group"><label>パスワード</label><input id="empPass" type="password" autocomplete="new-password"></div>
-            <div class="emp-form-group"><label>生年月日</label><input id="empBirth" placeholder="YYYY-MM-DD"></div>
-            <div class="emp-form-group"><label>性別</label>
+            <div class="emp-form-group"><label>\u793E\u54E1\u756A\u53F7</label><input id="empCode"></div>
+            <div class="emp-form-group"><label>\u6C0F\u540D</label><input id="empName"></div>
+            <div class="emp-form-group"><label>\u30E1\u30FC\u30EB</label><input id="empEmail"></div>
+            <div class="emp-form-group"><label>\u30D1\u30B9\u30EF\u30FC\u30C9</label><input id="empPass" type="password" autocomplete="new-password"></div>
+            <div class="emp-form-group"><label>\u751F\u5E74\u6708\u65E5</label><input id="empBirth" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>\u6027\u5225</label>
               <select id="empGender">
-                <option value="">未選択</option>
-                <option value="male">男性</option>
-                <option value="female">女性</option>
-                <option value="other">その他</option>
+                <option value="">\u672A\u9078\u629E</option>
+                <option value="male">\u7537\u6027</option>
+                <option value="female">\u5973\u6027</option>
+                <option value="other">\u305D\u306E\u4ED6</option>
               </select>
             </div>
-            <div class="emp-form-group"><label>電話番号</label><input id="empPhone"></div>
-            <div class="emp-form-group"><label>住所</label><input id="empAddr"></div>
+            <div class="emp-form-group"><label>\u96FB\u8A71\u756A\u53F7</label><input id="empPhone"></div>
+            <div class="emp-form-group"><label>\u4F4F\u6240</label><input id="empAddr"></div>
           </div>
         </div>
         <div class="emp-form-section">
-          <div class="emp-form-header">職務情報</div>
+          <div class="emp-form-header">\u8077\u52D9\u60C5\u5831</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>部署</label><select id="empDept"><option value="">部署</option>${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select></div>
-            <div class="emp-form-group"><label>役割</label>
+            <div class="emp-form-group"><label>\u90E8\u7F72</label><select id="empDept"><option value="">\u90E8\u7F72</option>${B.map(i=>`<option value="${i.id}">${i.name}</option>`).join("")}</select></div>
+            <div class="emp-form-group"><label>\u5F79\u5272</label>
               <select id="empRole">
-                <option value="employee">従業員</option>
-                <option value="manager">マネージャー</option>
-                <option value="admin">管理者</option>
+                <option value="employee">\u5F93\u696D\u54E1</option>
+                <option value="manager">\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</option>
+                <option value="admin">\u7BA1\u7406\u8005</option>
               </select>
             </div>
-            <div class="emp-form-group"><label>直属マネージャー</label><select id="empManager"><option value="">未設定</option>${managerOptions}</select></div>
-            <div class="emp-form-group"><label>レベル</label><input id="empLevel" placeholder="例: L1/L2/Senior"></div>
-            <div class="emp-form-group"><label>雇用形態</label>
+            <div class="emp-form-group"><label>\u76F4\u5C5E\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</label><select id="empManager"><option value="">\u672A\u8A2D\u5B9A</option>${l}</select></div>
+            <div class="emp-form-group"><label>\u30EC\u30D9\u30EB</label><input id="empLevel" placeholder="\u4F8B: L1/L2/Senior"></div>
+            <div class="emp-form-group"><label>\u96C7\u7528\u5F62\u614B</label>
               <select id="empType">
-                <option value="full_time">正社員</option>
-                <option value="part_time">パート・アルバイト</option>
-                <option value="contract">契約社員</option>
+                <option value="full_time">\u6B63\u793E\u54E1</option>
+                <option value="part_time">\u30D1\u30FC\u30C8\u30FB\u30A2\u30EB\u30D0\u30A4\u30C8</option>
+                <option value="contract">\u5951\u7D04\u793E\u54E1</option>
               </select>
             </div>
-            <div class="emp-form-group"><label>入社日</label><input id="empJoinDate" placeholder="YYYY-MM-DD"></div>
-            <div class="emp-form-group"><label>試用開始</label><input id="empProbDate" placeholder="YYYY-MM-DD"></div>
-            <div class="emp-form-group"><label>正社員化</label><input id="empOfficialDate" placeholder="YYYY-MM-DD"></div>
-            <div class="emp-form-group"><label>契約終了日（任意）</label><input id="empContractEnd" placeholder="YYYY-MM-DD"></div>
-            <div class="emp-form-group"><label>基本給 (円)</label><input id="empBaseSalary" type="number" step="0.01" placeholder="円"></div>
-            <div class="emp-form-group"><label>状態</label>
+            <div class="emp-form-group"><label>\u5165\u793E\u65E5</label><input id="empJoinDate" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>\u8A66\u7528\u958B\u59CB</label><input id="empProbDate" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>\u6B63\u793E\u54E1\u5316</label><input id="empOfficialDate" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>\u5951\u7D04\u7D42\u4E86\u65E5\uFF08\u4EFB\u610F\uFF09</label><input id="empContractEnd" placeholder="YYYY-MM-DD"></div>
+            <div class="emp-form-group"><label>\u57FA\u672C\u7D66 (\u5186)</label><input id="empBaseSalary" type="number" step="0.01" placeholder="\u5186"></div>
+            <div class="emp-form-group"><label>\u72B6\u614B</label>
               <select id="empStatus">
-                <option value="active">在職</option>
-                <option value="inactive">休職/無効</option>
-                <option value="retired">退職</option>
+                <option value="active">\u5728\u8077</option>
+                <option value="inactive">\u4F11\u8077/\u7121\u52B9</option>
+                <option value="retired">\u9000\u8077</option>
               </select>
             </div>
           </div>
         </div>
         <div class="emp-form-section">
-          <div class="emp-form-header">その他</div>
+          <div class="emp-form-header">\u305D\u306E\u4ED6</div>
           <div class="emp-form-grid">
-            <div class="emp-form-group"><label>プロフィール写真URL（任意）</label><input id="empAvatarUrl" placeholder="https://..."></div>
-            <div class="emp-form-group"><label>プロフィール写真（アップロード）</label><div style="flex:1; display:flex; gap:8px; align-items:center; padding:8px 12px;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1; border:1px solid #cbd5e1; border-radius:4px;"></div></div>
+            <div class="emp-form-group"><label>\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u5199\u771FURL\uFF08\u4EFB\u610F\uFF09</label><input id="empAvatarUrl" placeholder="https://..."></div>
+            <div class="emp-form-group"><label>\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u5199\u771F\uFF08\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\uFF09</label><div style="flex:1; display:flex; gap:8px; align-items:center; padding:8px 12px;"><input id="empAvatarFile" type="file" accept="image/*" style="flex:1; border:1px solid #cbd5e1; border-radius:4px;"></div></div>
           </div>
         </div>
       </div>
       <div class="form-actions" style="justify-content:flex-end;">
-        <button type="submit" class="btn-primary">作成</button>
+        <button type="submit" class="btn-primary">\u4F5C\u6210</button>
       </div>
       <div id="empCreateMsg" style="margin-top:10px;color:#0f172a;font-weight:600;"></div>
-    `;
-    try {
-      const subnav = document.querySelector('.subbar .subnav');
-      if (subnav) {
-        subnav.style.display = 'flex';
-        const params = new URLSearchParams(location.search);
-        const qInit = params.get('q') || '';
-        subnav.innerHTML = `
+    `;try{const i=document.querySelector(".subbar .subnav");if(i){i.style.display="flex";const n=new URLSearchParams(location.search).get("q")||"";i.innerHTML=`
           <div class="fi" style="display:flex;align-items:center;gap:8px;">
-            <input id="topEmpQ" placeholder="名前/メール" value="${qInit.replace(/"/g,'&quot;')}" style="height:32px;border:1px solid #cbd5e1;border-radius:0;padding:0 10px;">
-            <button id="topEmpGoList" class="btn" type="button">一覧</button>
-            <button id="topEmpGoSearch" class="btn" type="button">検索</button>
+            <input id="topEmpQ" placeholder="\u540D\u524D/\u30E1\u30FC\u30EB" value="${n.replace(/"/g,"&quot;")}" style="height:32px;border:1px solid #cbd5e1;border-radius:0;padding:0 10px;">
+            <button id="topEmpGoList" class="btn" type="button">\u4E00\u89A7</button>
+            <button id="topEmpGoSearch" class="btn" type="button">\u691C\u7D22</button>
           </div>
-        `;
-        const goList = subnav.querySelector('#topEmpGoList');
-        const goSearch = subnav.querySelector('#topEmpGoSearch');
-        const qEl = subnav.querySelector('#topEmpQ');
-        if (goList) {
-          goList.addEventListener('click', async (e) => {
-            e.preventDefault();
-            try { history.pushState(null, '', `/ui/admin?tab=employees#list`); } catch { window.location.href = `/ui/admin?tab=employees#list`; return; }
-            await renderEmployees();
-          });
-        }
-        if (goSearch) {
-          goSearch.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const qv = (qEl && qEl.value) ? qEl.value.trim() : '';
-            const sp = new URLSearchParams(location.search);
-            if (qv) sp.set('q', qv);
-            else sp.delete('q');
-            try { history.pushState(null, '', `/ui/admin?tab=employees&${sp.toString()}#list`); } catch { window.location.href = `/ui/admin?tab=employees&${sp.toString()}#list`; return; }
-            await renderEmployees();
-          });
-        }
-      }
-    } catch (e) { /* silently ignored */ }
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msgEl = form.querySelector('#empCreateMsg');
-      const btn = form.querySelector('button[type="submit"]');
-      const b = {
-        employeeCode: document.querySelector('#empCode').value.trim(),
-        username: document.querySelector('#empName').value.trim(),
-        email: document.querySelector('#empEmail').value.trim(),
-        password: document.querySelector('#empPass').value,
-        role: document.querySelector('#empRole').value,
-        departmentId: document.querySelector('#empDept').value ? parseInt(document.querySelector('#empDept').value, 10) : null,
-        level: (document.querySelector('#empLevel').value || '').trim() || null,
-        managerId: document.querySelector('#empManager').value ? parseInt(document.querySelector('#empManager').value, 10) : null,
-        employmentType: document.querySelector('#empType').value,
-        hireDate: document.querySelector('#empJoinDate').value.trim() || null,
-        probationDate: document.querySelector('#empProbDate').value.trim() || null,
-        officialDate: document.querySelector('#empOfficialDate').value.trim() || null,
-        contractEnd: document.querySelector('#empContractEnd').value.trim() || null,
-        baseSalary: (document.querySelector('#empBaseSalary').value || '').trim() || null,
-        birthDate: document.querySelector('#empBirth').value.trim() || null,
-        gender: document.querySelector('#empGender').value || null,
-        phone: (document.querySelector('#empPhone').value || '').trim() || null,
-        address: (document.querySelector('#empAddr').value || '').trim() || null,
-        employmentStatus: document.querySelector('#empStatus').value,
-        avatarUrl: (document.querySelector('#empAvatarUrl').value || '').trim() || null
-      };
-      if (!b.username || !b.email || !b.password) {
-        if (msgEl) { msgEl.style.color = '#b00020'; msgEl.textContent = '氏名・メール・パスワードは必須です。'; }
-        return;
-      }
-      const ok = window.confirm('保存しますか？');
-      if (!ok) return;
-      if (msgEl) { msgEl.style.color = '#0f172a'; msgEl.textContent = '保存中…'; }
-      if (btn) btn.disabled = true;
-      try {
-        const r = await createEmployee(b, { signal });
-        try {
-          const fileEl = document.querySelector('#empAvatarFile');
-          if (fileEl && fileEl.files && fileEl.files[0] && r && r.id) {
-            const fd = new FormData();
-            fd.append('file', fileEl.files[0]);
-              await api.upload(`/api/admin/employees/${encodeURIComponent(r.id)}/avatar`, fd, { signal });
-          }
-        } catch (e) { /* silently ignored */ }
-        if (msgEl) { msgEl.style.color = '#0f172a'; msgEl.textContent = '保存しました（1名追加）'; }
-        try { sessionStorage.setItem('navSpinner', '1'); } catch (e) { /* silently ignored */ }
-        setTimeout(() => { window.location.href = '/ui/admin?tab=employees#list'; }, 350);
-      } catch (err) {
-        const m = String((err && err.message) ? err.message : '');
-        const low = m.toLowerCase();
-        if (msgEl) {
-          msgEl.style.color = '#b00020';
-          if (m.includes('社員番号') || low.includes('uniq_employee_code') || low.includes('duplicate entry')) {
-            msgEl.textContent = '社員番号が既に存在します。別の番号を入力してください。';
-            try { const el = document.querySelector('#empCode'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
-          } else if (m.includes('Email') || low.includes('email')) {
-            msgEl.textContent = m;
-            try { const el = document.querySelector('#empEmail'); if (el && el.focus) el.focus(); } catch (e) { /* silently ignored */ }
-          } else {
-            msgEl.textContent = '保存失敗: ' + (m || 'error');
-          }
-        }
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    });
-    if (!isCurrent || seq !== employeesRenderSeq) return done;
-    content.appendChild(form);
-    hideNavSpinner();
-    return done;
-  }
-
-  const filterWrap = document.createElement('div');
-  filterWrap.style.margin = mode === 'delete' ? '0 0 8px' : '4px 0 12px';
-  filterWrap.className = mode === 'delete' ? 'emp-filters emp-del-wrap' : 'emp-filters filter-bar';
-  const deptOptions = `<option value="">全て</option>${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}`;
-  if (mode === 'delete') {
-    filterWrap.innerHTML = `
+        `;const s=i.querySelector("#topEmpGoList"),c=i.querySelector("#topEmpGoSearch"),o=i.querySelector("#topEmpQ");s&&s.addEventListener("click",async d=>{d.preventDefault();try{history.pushState(null,"","/ui/admin?tab=employees#list")}catch{window.location.href="/ui/admin?tab=employees#list";return}await E()}),c&&c.addEventListener("click",async d=>{d.preventDefault();const u=o&&o.value?o.value.trim():"",p=new URLSearchParams(location.search);u?p.set("q",u):p.delete("q");try{history.pushState(null,"",`/ui/admin?tab=employees&${p.toString()}#list`)}catch{window.location.href=`/ui/admin?tab=employees&${p.toString()}#list`;return}await E()})}}catch{}return e.addEventListener("submit",async i=>{i.preventDefault();const r=e.querySelector("#empCreateMsg"),n=e.querySelector('button[type="submit"]'),s={employeeCode:document.querySelector("#empCode").value.trim(),username:document.querySelector("#empName").value.trim(),email:document.querySelector("#empEmail").value.trim(),password:document.querySelector("#empPass").value,role:document.querySelector("#empRole").value,departmentId:document.querySelector("#empDept").value?parseInt(document.querySelector("#empDept").value,10):null,level:(document.querySelector("#empLevel").value||"").trim()||null,managerId:document.querySelector("#empManager").value?parseInt(document.querySelector("#empManager").value,10):null,employmentType:document.querySelector("#empType").value,hireDate:document.querySelector("#empJoinDate").value.trim()||null,probationDate:document.querySelector("#empProbDate").value.trim()||null,officialDate:document.querySelector("#empOfficialDate").value.trim()||null,contractEnd:document.querySelector("#empContractEnd").value.trim()||null,baseSalary:(document.querySelector("#empBaseSalary").value||"").trim()||null,birthDate:document.querySelector("#empBirth").value.trim()||null,gender:document.querySelector("#empGender").value||null,phone:(document.querySelector("#empPhone").value||"").trim()||null,address:(document.querySelector("#empAddr").value||"").trim()||null,employmentStatus:document.querySelector("#empStatus").value,avatarUrl:(document.querySelector("#empAvatarUrl").value||"").trim()||null};if(!s.username||!s.email||!s.password){r&&(r.style.color="#b00020",r.textContent="\u6C0F\u540D\u30FB\u30E1\u30FC\u30EB\u30FB\u30D1\u30B9\u30EF\u30FC\u30C9\u306F\u5FC5\u9808\u3067\u3059\u3002");return}if(window.confirm("\u4FDD\u5B58\u3057\u307E\u3059\u304B\uFF1F")){r&&(r.style.color="#0f172a",r.textContent="\u4FDD\u5B58\u4E2D\u2026"),n&&(n.disabled=!0);try{const o=await he(s,{signal:S});try{const d=document.querySelector("#empAvatarFile");if(d&&d.files&&d.files[0]&&o&&o.id){const u=new FormData;u.append("file",d.files[0]),await F.upload(`/api/admin/employees/${encodeURIComponent(o.id)}/avatar`,u,{signal:S})}}catch{}r&&(r.style.color="#0f172a",r.textContent="\u4FDD\u5B58\u3057\u307E\u3057\u305F\uFF081\u540D\u8FFD\u52A0\uFF09");try{sessionStorage.setItem("navSpinner","1")}catch{}setTimeout(()=>{window.location.href="/ui/admin?tab=employees#list"},350)}catch(o){const d=String(o&&o.message?o.message:""),u=d.toLowerCase();if(r)if(r.style.color="#b00020",d.includes("\u793E\u54E1\u756A\u53F7")||u.includes("uniq_employee_code")||u.includes("duplicate entry")){r.textContent="\u793E\u54E1\u756A\u53F7\u304C\u65E2\u306B\u5B58\u5728\u3057\u307E\u3059\u3002\u5225\u306E\u756A\u53F7\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002";try{const p=document.querySelector("#empCode");p&&p.focus&&p.focus()}catch{}}else if(d.includes("Email")||u.includes("email")){r.textContent=d;try{const p=document.querySelector("#empEmail");p&&p.focus&&p.focus()}catch{}}else r.textContent="\u4FDD\u5B58\u5931\u6557: "+(d||"error")}finally{n&&(n.disabled=!1)}}}),!k||M!==C||(h.appendChild(e),P()),x}const m=document.createElement("div");m.style.margin=b==="delete"?"0 0 8px":"4px 0 12px",m.className=b==="delete"?"emp-filters emp-del-wrap":"emp-filters filter-bar";const ne=`<option value="">\u5168\u3066</option>${B.map(e=>`<option value="${e.id}">${e.name}</option>`).join("")}`;b==="delete"?m.innerHTML=`
       <table class="excel-table emp-del-filter" style="margin:0 0 10px; width:720px; min-width:680px;">
         <thead>
           <tr>
             <th colspan="2">
-              <div class="del-head"><div class="form-title">【社員削除】</div></div>
+              <div class="del-head"><div class="form-title">\u3010\u793E\u54E1\u524A\u9664\u3011</div></div>
             </th>
           </tr>
           <tr>
             <th colspan="2">
               <div class="del-tabs">
-                <button type="button" id="tabSearch" class="tab active">社員検索</button>
-                <button type="button" id="tabShowAll" class="tab">全員表示</button>
+                <button type="button" id="tabSearch" class="tab active">\u793E\u54E1\u691C\u7D22</button>
+                <button type="button" id="tabShowAll" class="tab">\u5168\u54E1\u8868\u793A</button>
               </div>
             </th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style="width:120px;">社員番号</td>
-            <td><input id="empSearchCode" placeholder="EMP番号/コード" style="width: 240px;"></td>
+            <td style="width:120px;">\u793E\u54E1\u756A\u53F7</td>
+            <td><input id="empSearchCode" placeholder="EMP\u756A\u53F7/\u30B3\u30FC\u30C9" style="width: 240px;"></td>
           </tr>
           <tr>
-            <td style="width:120px;">名前</td>
-            <td><input id="empSearchName" placeholder="名前" style="width: 240px;"></td>
+            <td style="width:120px;">\u540D\u524D</td>
+            <td><input id="empSearchName" placeholder="\u540D\u524D" style="width: 240px;"></td>
           </tr>
           <tr>
-            <td>部署</td>
-            <td><select id="empDeptFilter">${deptOptions}</select></td>
+            <td>\u90E8\u7F72</td>
+            <td><select id="empDeptFilter">${ne}</select></td>
           </tr>
           <tr>
-            <td>役割</td>
-            <td><select id="empRoleFilter"><option value="">全て</option><option value="employee">従業員</option><option value="manager">マネージャー</option><option value="admin">管理者</option></select></td>
+            <td>\u5F79\u5272</td>
+            <td><select id="empRoleFilter"><option value="">\u5168\u3066</option><option value="employee">\u5F93\u696D\u54E1</option><option value="manager">\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</option><option value="admin">\u7BA1\u7406\u8005</option></select></td>
           </tr>
           <tr style="display:none;">
-            <td>状態</td>
-            <td><select id="empStatusFilter"><option value="">全て</option><option value="active">在職</option><option value="inactive">無効</option><option value="retired">退職</option></select></td>
+            <td>\u72B6\u614B</td>
+            <td><select id="empStatusFilter"><option value="">\u5168\u3066</option><option value="active">\u5728\u8077</option><option value="inactive">\u7121\u52B9</option><option value="retired">\u9000\u8077</option></select></td>
           </tr>
           <tr>
-            <td>入社日</td>
+            <td>\u5165\u793E\u65E5</td>
             <td>
               <div class="date-range">
                 <input id="empHireFrom" placeholder="YYYY-MM-DD">
-                <span class="tilde">〜</span>
+                <span class="tilde">\u301C</span>
                 <input id="empHireTo" placeholder="YYYY-MM-DD">
               </div>
             </td>
           </tr>
           <tr>
             <td></td>
-            <td class="actions"><button type="button" id="btnEmpSearch" class="btn btn-search">検索</button></td>
+            <td class="actions"><button type="button" id="btnEmpSearch" class="btn btn-search">\u691C\u7D22</button></td>
           </tr>
         </tbody>
       </table>
       <div id="empListBox" style="display:none"></div>
-    `;
-  } else {
-    filterWrap.innerHTML = `
+    `:m.innerHTML=`
       <div class="fi">
-        <div class="fi-label">検索</div>
-        <input id="empSearchName" class="fi-name" placeholder="名前">
+        <div class="fi-label">\u691C\u7D22</div>
+        <input id="empSearchName" class="fi-name" placeholder="\u540D\u524D">
       </div>
       <div class="fi">
-        <div class="fi-label">部署</div>
-        <select id="empDeptFilter" class="fi-dept">${deptOptions}</select>
+        <div class="fi-label">\u90E8\u7F72</div>
+        <select id="empDeptFilter" class="fi-dept">${ne}</select>
       </div>
       <div class="fi">
-        <button id="toggleAdv" class="toggle-adv" type="button">詳細フィルター</button>
+        <button id="toggleAdv" class="toggle-adv" type="button">\u8A73\u7D30\u30D5\u30A3\u30EB\u30BF\u30FC</button>
       </div>
       <div class="adv" hidden>
         <div class="fi">
-          <div class="fi-label">役割</div>
-          <select id="empRoleFilter" class="fi-role"><option value="">全て</option><option value="employee">従業員</option><option value="manager">マネージャー</option><option value="admin">管理者</option></select>
+          <div class="fi-label">\u5F79\u5272</div>
+          <select id="empRoleFilter" class="fi-role"><option value="">\u5168\u3066</option><option value="employee">\u5F93\u696D\u54E1</option><option value="manager">\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</option><option value="admin">\u7BA1\u7406\u8005</option></select>
         </div>
         <div class="fi">
-          <div class="fi-label">状態</div>
-          <select id="empStatusFilter" class="fi-status"><option value="">全て</option><option value="active">在職</option><option value="inactive">無効</option><option value="retired">退職</option></select>
+          <div class="fi-label">\u72B6\u614B</div>
+          <select id="empStatusFilter" class="fi-status"><option value="">\u5168\u3066</option><option value="active">\u5728\u8077</option><option value="inactive">\u7121\u52B9</option><option value="retired">\u9000\u8077</option></select>
         </div>
         <div class="fi fi-range">
-          <div class="fi-label">入社日</div>
+          <div class="fi-label">\u5165\u793E\u65E5</div>
           <input id="empHireFrom" class="fi-date" placeholder="YYYY-MM-DD">
-          <span class="fi-sep">〜</span>
+          <span class="fi-sep">\u301C</span>
           <input id="empHireTo" class="fi-date" placeholder="YYYY-MM-DD">
         </div>
       </div>
       <div class="fi fi-action">
-        <button type="button" id="btnEmpSearch" class="btn">検索</button>
+        <button type="button" id="btnEmpSearch" class="btn">\u691C\u7D22</button>
       </div>
-    `;
-  }
-
-  try {
-    const subnav = document.querySelector('.subbar .subnav');
-    if (subnav) {
-      if (mode === 'delete') {
-        subnav.innerHTML = '';
-        subnav.style.display = 'none';
-        filterWrap.style.position = 'static';
-        filterWrap.style.zIndex = 'auto';
-        content.appendChild(filterWrap);
-        try {
-          let style = document.querySelector('#empDelFilterStyle');
-          if (!style) {
-            style = document.createElement('style');
-            style.id = 'empDelFilterStyle';
-            style.textContent = `
+    `;try{const e=document.querySelector(".subbar .subnav");if(e)if(b==="delete"){e.innerHTML="",e.style.display="none",m.style.position="static",m.style.zIndex="auto",h.appendChild(m);try{let a=document.querySelector("#empDelFilterStyle");a||(a=document.createElement("style"),a.id="empDelFilterStyle",a.textContent=`
               html.emp-delete-mode, body.emp-delete-mode { height: 100%; overflow: hidden; }
               .admin.emp-delete-mode .content { height: 100vh; overflow: hidden; box-sizing: border-box; }
               .admin.emp-delete-mode #adminContent { height: calc(100vh - var(--topbar-height) - 24px); overflow: hidden; }
@@ -1030,655 +479,52 @@ async function mountEmployeesImpl({
                   position: static !important;
                 }
               }
-            `;
-            document.head.appendChild(style);
-          }
-        } catch (e) { /* silently ignored */ }
-      } else {
-        subnav.style.display = '';
-        subnav.innerHTML = '';
-        subnav.appendChild(filterWrap);
-      }
-    } else {
-      filterWrap.style.position = 'static';
-      filterWrap.style.zIndex = 'auto';
-      content.appendChild(filterWrap);
-    }
-  } catch {
-    filterWrap.style.position = 'static';
-    filterWrap.style.zIndex = 'auto';
-    content.appendChild(filterWrap);
-  }
-
-  const toggleBtn = filterWrap.querySelector('#toggleAdv');
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      const adv = filterWrap.querySelector('.adv');
-      if (!adv) return;
-      const hidden = adv.hasAttribute('hidden');
-      if (hidden) {
-        adv.removeAttribute('hidden');
-        filterWrap.classList.add('open');
-        toggleBtn.textContent = '簡易表示';
-      } else {
-        adv.setAttribute('hidden', '');
-        filterWrap.classList.remove('open');
-        toggleBtn.textContent = '詳細フィルター';
-      }
-    });
-  }
-
-  const state = { showAll: false, searchVisible: false, code: '', q: '', dept: '', role: '', status: '', hireFrom: '', hireTo: '', sortKey: 'hire_date', sortDir: 'asc', page: 1, pageSize: 10 };
-  try {
-    state.showAll = ((params.get('showAll') || '') === '1' || (params.get('showAll') || '').toLowerCase() === 'true');
-    state.searchVisible = ((params.get('search') || '') === '1' || (params.get('search') || '').toLowerCase() === 'true');
-    state.code = (params.get('code') || '').trim().toLowerCase();
-    state.q = (params.get('q') || '').trim().toLowerCase();
-    state.dept = params.get('dept') || '';
-    state.role = params.get('role') || '';
-    state.status = params.get('status') || '';
-    state.hireFrom = params.get('hireFrom') || '';
-    state.hireTo = params.get('hireTo') || '';
-    state.sortKey = params.get('sortKey') || state.sortKey;
-    state.sortDir = params.get('sortDir') || state.sortDir;
-    state.page = parseInt(params.get('page') || String(state.page), 10) || state.page;
-  } catch (e) { /* silently ignored */ }
-
-  const table = document.createElement('table');
-  table.id = 'list';
-  table.className = 'excel-table' + (mode === 'delete' ? ' emp-del-list' : '');
-  table.style.tableLayout = 'auto';
-  if (mode === 'delete') {
-    table.style.width = '100%';
-    table.style.minWidth = '100%';
-  } else {
-    table.style.width = '100%';
-    table.style.minWidth = '100%';
-  }
-  table.innerHTML = `
+            `,document.head.appendChild(a))}catch{}}else e.style.display="",e.innerHTML="",e.appendChild(m);else m.style.position="static",m.style.zIndex="auto",h.appendChild(m)}catch{m.style.position="static",m.style.zIndex="auto",h.appendChild(m)}const U=m.querySelector("#toggleAdv");U&&U.addEventListener("click",()=>{const e=m.querySelector(".adv");if(!e)return;e.hasAttribute("hidden")?(e.removeAttribute("hidden"),m.classList.add("open"),U.textContent="\u7C21\u6613\u8868\u793A"):(e.setAttribute("hidden",""),m.classList.remove("open"),U.textContent="\u8A73\u7D30\u30D5\u30A3\u30EB\u30BF\u30FC")});const t={showAll:!1,searchVisible:!1,code:"",q:"",dept:"",role:"",status:"",hireFrom:"",hireTo:"",sortKey:"hire_date",sortDir:"asc",page:1,pageSize:10};try{t.showAll=(f.get("showAll")||"")==="1"||(f.get("showAll")||"").toLowerCase()==="true",t.searchVisible=(f.get("search")||"")==="1"||(f.get("search")||"").toLowerCase()==="true",t.code=(f.get("code")||"").trim().toLowerCase(),t.q=(f.get("q")||"").trim().toLowerCase(),t.dept=f.get("dept")||"",t.role=f.get("role")||"",t.status=f.get("status")||"",t.hireFrom=f.get("hireFrom")||"",t.hireTo=f.get("hireTo")||"",t.sortKey=f.get("sortKey")||t.sortKey,t.sortDir=f.get("sortDir")||t.sortDir,t.page=parseInt(f.get("page")||String(t.page),10)||t.page}catch{}const v=document.createElement("table");v.id="list",v.className="excel-table"+(b==="delete"?" emp-del-list":""),v.style.tableLayout="auto",v.style.width="100%",v.style.minWidth="100%",v.innerHTML=`
     <thead>
       <tr>
-        ${mode === 'delete' ? '<th class="sel-col">選択</th>' : ''}
-        <th data-sort="id">社員番号</th>
-        <th data-sort="username">氏名</th>
-        <th data-sort="email">メール</th>
-        <th data-sort="department">部署</th>
-        <th data-sort="role">役割</th>
-        <th data-sort="employment_type">雇用形態</th>
-        <th data-sort="employment_status">状態</th>
-        <th data-sort="hire_date">入社日</th>
-        <th>操作</th>
+        ${b==="delete"?'<th class="sel-col">\u9078\u629E</th>':""}
+        <th data-sort="id">\u793E\u54E1\u756A\u53F7</th>
+        <th data-sort="username">\u6C0F\u540D</th>
+        <th data-sort="email">\u30E1\u30FC\u30EB</th>
+        <th data-sort="department">\u90E8\u7F72</th>
+        <th data-sort="role">\u5F79\u5272</th>
+        <th data-sort="employment_type">\u96C7\u7528\u5F62\u614B</th>
+        <th data-sort="employment_status">\u72B6\u614B</th>
+        <th data-sort="hire_date">\u5165\u793E\u65E5</th>
+        <th>\u64CD\u4F5C</th>
       </tr>
     </thead>
-  `;
-  const tbody = document.createElement('tbody');
-  table.appendChild(tbody);
-  const pager = document.createElement('div');
-  pager.style.margin = '8px 0';
-  pager.style.display = 'flex';
-  pager.style.alignItems = 'center';
-  pager.style.justifyContent = 'space-between';
-  pager.innerHTML = `
+  `;const Q=document.createElement("tbody");v.appendChild(Q);const w=document.createElement("div");if(w.style.margin="8px 0",w.style.display="flex",w.style.alignItems="center",w.style.justifyContent="space-between",w.innerHTML=`
     <div class="pager-left">
-      <button type="button" id="empPrev">前へ</button>
+      <button type="button" id="empPrev">\u524D\u3078</button>
       <span id="empPageInfo" style="margin:0 8px;"></span>
-      <button type="button" id="empNext">次へ</button>
+      <button type="button" id="empNext">\u6B21\u3078</button>
     </div>
-    ${mode === 'delete' ? '' : ''}
-  `;
-
-  if (mode === 'delete') {
-    if (!isCurrent || seq !== employeesRenderSeq) return done;
-    const toolbar = document.createElement('div');
-    toolbar.className = 'emp-del-toolbar';
-    toolbar.innerHTML = '<div class="pager-right" id="empBulkBox"><button type="button" id="empBulkDisable" class="emp-bulk-disable" aria-label="選択を無効化">選択を無効化</button></div>';
-    toolbar.style.display = '';
-    const listBox = filterWrap.querySelector('#empListBox');
-    if (listBox) {
-      listBox.appendChild(table);
-      listBox.appendChild(pager);
-      filterWrap.appendChild(toolbar);
-    } else {
-      filterWrap.appendChild(table);
-      filterWrap.appendChild(pager);
-      filterWrap.appendChild(toolbar);
-    }
-  } else {
-    if (!isCurrent || seq !== employeesRenderSeq) return done;
-    const hdr = document.createElement('div');
-    hdr.className = 'form-title';
-    hdr.textContent = '【社員一覧】';
-    content.appendChild(hdr);
-    content.appendChild(table);
-    content.appendChild(pager);
-  }
-
-  if (mode === 'delete') {
-    table.style.display = '';
-    if (!state.showAll && !state.searchVisible) { pager.style.display = 'none'; }
-    const alignBulk = () => {
-      try {
-        if (table.style.display === 'none') return;
-        const th = table.querySelector('thead th:last-child');
-        const box = filterWrap.querySelector('#empBulkBox');
-        if (!th || !box) return;
-        const tb = table.getBoundingClientRect();
-        const thb = th.getBoundingClientRect();
-        const left = Math.max(0, Math.round(thb.left - tb.left));
-        box.style.marginLeft = `${left}px`;
-      } catch (e) { /* silently ignored */ }
-    };
-    if (state.showAll || state.searchVisible) {
-      alignBulk();
-      try { window.addEventListener('resize', alignBulk, { once: true }); } catch (e) { /* silently ignored */ }
-    }
-  }
-
-  const fmtEmpNo = (id) => 'EMP' + String(id).padStart(3, '0');
-  const deptName = (id) => {
-    const d = depts.find(x => String(x.id) === String(id));
-    return d ? d.name : '';
-  };
-  const statusJa = (s) => {
-    const v = String(s || '').toLowerCase();
-    if (v === 'inactive') return '無効';
-    if (v === 'retired') return '退職';
-    return '在職';
-  };
-  const statusPill = (s) => {
-    const v = String(s || '').toLowerCase();
-    const cls = v === 'inactive' ? 'inactive' : (v === 'retired' ? 'retired' : 'active');
-    return `<span class="status-pill ${cls}">${statusJa(v)}</span>`;
-  };
-  const roleJa = (r) => {
-    const v = String(r || '').toLowerCase();
-    if (v === 'admin') return '管理者';
-    if (v === 'manager') return 'マネージャー';
-    if (v === 'employee') return '従業員';
-    return r || '';
-  };
-  const empTypeJa = (t) => {
-    const v = String(t || '').toLowerCase();
-    if (v === 'full_time') return '正社員';
-    if (v === 'part_time') return 'パート・アルバイト';
-    if (v === 'contract') return '契約社員';
-    return t || '';
-  };
-  const rolePill = (r) => {
-    const v = String(r || '').toLowerCase();
-    const cls = v === 'admin' ? 'admin' : (v === 'manager' ? 'manager' : 'employee');
-    return `<span class="role-pill ${cls}">${roleJa(v)}</span>`;
-  };
-  const typePill = (t) => {
-    const v = String(t || '').toLowerCase();
-    const cls = v === 'full_time' ? 'full' : (v === 'part_time' ? 'part' : (v === 'contract' ? 'contract' : 'other'));
-    return `<span class="type-pill ${cls}">${empTypeJa(v)}</span>`;
-  };
-  const normText = (v) => {
-    if (v === null || v === undefined) return '';
-    const s = String(v).trim();
-    return (s && s !== '-') ? s : '';
-  };
-  const dispOrUnreg = (v) => {
-    const s = normText(v);
-    return s ? s : `<span class="unreg" title="未登録">—</span>`;
-  };
-  const escAttr = (v) => String(v)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  const fmtDate = (d) => {
-    if (!d || String(d) === '-' || String(d) === '0000-00-00') return `<span class="unreg" title="未登録">—</span>`;
-    const raw = String(d);
-    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return `${m[1]}/${m[2]}/${m[3]}`;
-    try {
-      const x = new Date(raw);
-      if (!isNaN(x.getTime())) return `${x.getFullYear()}/${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getDate()).padStart(2, '0')}`;
-    } catch (e) { /* silently ignored */ }
-    return raw;
-  };
-
-  const applyFilterSort = () => {
-    let arr = users.slice();
-    if (state.code) {
-      arr = arr.filter(u => {
-        const raw = String(u.employee_code || '').toLowerCase();
-        const gen = ('emp' + String(u.id).padStart(3, '0')).toLowerCase();
-        return raw.includes(state.code) || gen.includes(state.code);
-      });
-    }
-    if (state.q) arr = arr.filter(u => String(u.username || '').toLowerCase().includes(state.q));
-    if (state.dept) arr = arr.filter(u => String(u.departmentId || '') === String(state.dept));
-    if (state.role) arr = arr.filter(u => String(u.role || '') === String(state.role));
-    if (state.status) arr = arr.filter(u => String(u.employment_status || '') === String(state.status));
-    if (state.hireFrom) {
-      arr = arr.filter(u => {
-        const d = u.hire_date;
-        return d && String(d) >= state.hireFrom;
-      });
-    }
-    if (state.hireTo) {
-      arr = arr.filter(u => {
-        const d = u.hire_date;
-        return d && String(d) <= state.hireTo;
-      });
-    }
-    const key = state.sortKey;
-    const dir = state.sortDir === 'asc' ? 1 : -1;
-    arr.sort((a, b) => {
-      const codeOf = (u) => String((u && (u.employee_code || fmtEmpNo(u.id))) || '').toUpperCase();
-      if (key === 'hire_date') {
-        const da = String((a && a.hire_date) || '');
-        const db = String((b && b.hire_date) || '');
-        if (da !== db) {
-          if (!da) return 1;
-          if (!db) return -1;
-          return da.localeCompare(db) * dir;
-        }
-        const codeCmp = codeOf(a).localeCompare(codeOf(b));
-        if (codeCmp !== 0) return codeCmp;
-        return Number(a?.id || 0) - Number(b?.id || 0);
-      }
-      const va = key === 'department' ? deptName(a.departmentId) : (key === 'id' ? codeOf(a) : (a[key] || ''));
-      const vb = key === 'department' ? deptName(b.departmentId) : (key === 'id' ? codeOf(b) : (b[key] || ''));
-      return String(va).localeCompare(String(vb)) * dir;
-    });
-    return arr;
-  };
-
-  const renderRows = () => {
-    const all = applyFilterSort();
-    const total = all.length;
-    const start = (state.page - 1) * state.pageSize;
-    const pageItems = all.slice(start, start + state.pageSize);
-    tbody.innerHTML = '';
-    for (const u of pageItems) {
-      const tr = document.createElement('tr');
-      const rowStatus = String(u.employment_status || '').toLowerCase();
-      tr.className = `emp-row ${rowStatus || 'active'}`;
-      const emailVal = normText(u.email);
-      const deptVal = normText(deptName(u.departmentId));
-      const detailBtn = `<a class="emp-action" href="/ui/admin?tab=employees&detail=${u.id}">👁 詳細</a>`;
-      const editBtn = `<a class="emp-action" href="/ui/admin?tab=employees&edit=${u.id}">✏️ 編集</a>`;
-      const disableBtn = role2 === 'admin' ? `<button type="button" class="emp-action danger" data-action="disable" data-id="${u.id}">🚫 無効化</button>` : ``;
-      const ops = mode === 'delete' ? `${detailBtn}${disableBtn}` : `${detailBtn}${editBtn}${disableBtn}`;
-      tr.innerHTML = `
-        ${mode === 'delete' ? `<td class="sel-col"><input type="checkbox" class="empSel" value="${u.id}"></td>` : ''}
-        <td class="col-code"><span class="text-pill neutral">${u.employee_code || fmtEmpNo(u.id)}</span></td>
-        <td class="col-name"><span class="text-pill"><a href="/ui/admin?tab=employees&detail=${u.id}">${u.username || ''}</a></span></td>
-        <td class="col-email"${emailVal ? ` title="${escAttr(emailVal)}"` : ''}><span class="text-pill neutral">${dispOrUnreg(emailVal)}</span></td>
-        <td class="col-dept"${deptVal ? ` title="${escAttr(deptVal)}"` : ''}><span class="text-pill neutral">${dispOrUnreg(deptVal)}</span></td>
-        <td>${rolePill(u.role)}</td>
-        <td>${typePill(u.employment_type)}</td>
-        <td>${statusPill(u.employment_status)}</td>
-        <td>${fmtDate(u.hire_date)}</td>
+    
+  `,b==="delete"){if(!k||M!==C)return x;const e=document.createElement("div");e.className="emp-del-toolbar",e.innerHTML='<div class="pager-right" id="empBulkBox"><button type="button" id="empBulkDisable" class="emp-bulk-disable" aria-label="\u9078\u629E\u3092\u7121\u52B9\u5316">\u9078\u629E\u3092\u7121\u52B9\u5316</button></div>',e.style.display="";const a=m.querySelector("#empListBox");a?(a.appendChild(v),a.appendChild(w),m.appendChild(e)):(m.appendChild(v),m.appendChild(w),m.appendChild(e))}else{if(!k||M!==C)return x;const e=document.createElement("div");e.className="form-title",e.textContent="\u3010\u793E\u54E1\u4E00\u89A7\u3011",h.appendChild(e),h.appendChild(v),h.appendChild(w)}if(b==="delete"){v.style.display="",!t.showAll&&!t.searchVisible&&(w.style.display="none");const e=()=>{try{if(v.style.display==="none")return;const a=v.querySelector("thead th:last-child"),l=m.querySelector("#empBulkBox");if(!a||!l)return;const i=v.getBoundingClientRect(),r=a.getBoundingClientRect(),n=Math.max(0,Math.round(r.left-i.left));l.style.marginLeft=`${n}px`}catch{}};if(t.showAll||t.searchVisible){e();try{window.addEventListener("resize",e,{once:!0})}catch{}}}const Z=e=>"EMP"+String(e).padStart(3,"0"),N=e=>{const a=B.find(l=>String(l.id)===String(e));return a?a.name:""},ve=e=>{const a=String(e||"").toLowerCase();return a==="inactive"?"\u7121\u52B9":a==="retired"?"\u9000\u8077":"\u5728\u8077"},ye=e=>{const a=String(e||"").toLowerCase();return`<span class="status-pill ${a==="inactive"?"inactive":a==="retired"?"retired":"active"}">${ve(a)}</span>`},ge=e=>{const a=String(e||"").toLowerCase();return a==="admin"?"\u7BA1\u7406\u8005":a==="manager"?"\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC":a==="employee"?"\u5F93\u696D\u54E1":e||""},xe=e=>{const a=String(e||"").toLowerCase();return a==="full_time"?"\u6B63\u793E\u54E1":a==="part_time"?"\u30D1\u30FC\u30C8\u30FB\u30A2\u30EB\u30D0\u30A4\u30C8":a==="contract"?"\u5951\u7D04\u793E\u54E1":e||""},Se=e=>{const a=String(e||"").toLowerCase();return`<span class="role-pill ${a==="admin"?"admin":a==="manager"?"manager":"employee"}">${ge(a)}</span>`},we=e=>{const a=String(e||"").toLowerCase();return`<span class="type-pill ${a==="full_time"?"full":a==="part_time"?"part":a==="contract"?"contract":"other"}">${xe(a)}</span>`},X=e=>{if(e==null)return"";const a=String(e).trim();return a&&a!=="-"?a:""},de=e=>{const a=X(e);return a||'<span class="unreg" title="\u672A\u767B\u9332">\u2014</span>'},ce=e=>String(e).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"),qe=e=>{if(!e||String(e)==="-"||String(e)==="0000-00-00")return'<span class="unreg" title="\u672A\u767B\u9332">\u2014</span>';const a=String(e),l=a.match(/^(\d{4})-(\d{2})-(\d{2})/);if(l)return`${l[1]}/${l[2]}/${l[3]}`;try{const i=new Date(a);if(!isNaN(i.getTime()))return`${i.getFullYear()}/${String(i.getMonth()+1).padStart(2,"0")}/${String(i.getDate()).padStart(2,"0")}`}catch{}return a},pe=()=>{let e=_.slice();t.code&&(e=e.filter(i=>{const r=String(i.employee_code||"").toLowerCase(),n=("emp"+String(i.id).padStart(3,"0")).toLowerCase();return r.includes(t.code)||n.includes(t.code)})),t.q&&(e=e.filter(i=>String(i.username||"").toLowerCase().includes(t.q))),t.dept&&(e=e.filter(i=>String(i.departmentId||"")===String(t.dept))),t.role&&(e=e.filter(i=>String(i.role||"")===String(t.role))),t.status&&(e=e.filter(i=>String(i.employment_status||"")===String(t.status))),t.hireFrom&&(e=e.filter(i=>{const r=i.hire_date;return r&&String(r)>=t.hireFrom})),t.hireTo&&(e=e.filter(i=>{const r=i.hire_date;return r&&String(r)<=t.hireTo}));const a=t.sortKey,l=t.sortDir==="asc"?1:-1;return e.sort((i,r)=>{const n=o=>String(o&&(o.employee_code||Z(o.id))||"").toUpperCase();if(a==="hire_date"){const o=String(i&&i.hire_date||""),d=String(r&&r.hire_date||"");if(o!==d)return o?d?o.localeCompare(d)*l:-1:1;const u=n(i).localeCompare(n(r));return u!==0?u:Number(i?.id||0)-Number(r?.id||0)}const s=a==="department"?N(i.departmentId):a==="id"?n(i):i[a]||"",c=a==="department"?N(r.departmentId):a==="id"?n(r):r[a]||"";return String(s).localeCompare(String(c))*l}),e},Y=()=>{const e=pe(),a=e.length,l=(t.page-1)*t.pageSize,i=e.slice(l,l+t.pageSize);Q.innerHTML="";for(const c of i){const o=document.createElement("tr"),d=String(c.employment_status||"").toLowerCase();o.className=`emp-row ${d||"active"}`;const u=X(c.email),p=X(N(c.departmentId)),g=`<a class="emp-action" href="/ui/admin?tab=employees&detail=${c.id}">\u{1F441} \u8A73\u7D30</a>`,L=`<a class="emp-action" href="/ui/admin?tab=employees&edit=${c.id}">\u270F\uFE0F \u7DE8\u96C6</a>`,$=A==="admin"?`<button type="button" class="emp-action danger" data-action="disable" data-id="${c.id}">\u{1F6AB} \u7121\u52B9\u5316</button>`:"",H=b==="delete"?`${g}${$}`:`${g}${L}${$}`;o.innerHTML=`
+        ${b==="delete"?`<td class="sel-col"><input type="checkbox" class="empSel" value="${c.id}"></td>`:""}
+        <td class="col-code"><span class="text-pill neutral">${c.employee_code||Z(c.id)}</span></td>
+        <td class="col-name"><span class="text-pill"><a href="/ui/admin?tab=employees&detail=${c.id}">${c.username||""}</a></span></td>
+        <td class="col-email"${u?` title="${ce(u)}"`:""}><span class="text-pill neutral">${de(u)}</span></td>
+        <td class="col-dept"${p?` title="${ce(p)}"`:""}><span class="text-pill neutral">${de(p)}</span></td>
+        <td>${Se(c.role)}</td>
+        <td>${we(c.employment_type)}</td>
+        <td>${ye(c.employment_status)}</td>
+        <td>${qe(c.hire_date)}</td>
         <td>
           <div class="emp-action-group">
-            ${ops}
+            ${H}
           </div>
         </td>
-      `;
-      tbody.appendChild(tr);
-    }
-    const from = Math.min(total, start + 1);
-    const to = Math.min(total, start + pageItems.length);
-    const pageInfo = content.querySelector('#empPageInfo');
-    if (pageInfo) {
-      const maxPage = Math.max(1, Math.ceil(total / state.pageSize));
-      pageInfo.textContent = `${from}-${to} / ${total}`;
-      if (maxPage <= 1) {
-        pageInfo.style.display = 'none';
-        const prevEl = content.querySelector('#empPrev');
-        const nextEl = content.querySelector('#empNext');
-        if (prevEl) prevEl.style.display = 'none';
-        if (nextEl) nextEl.style.display = 'none';
-      } else {
-        pageInfo.style.display = '';
-        const prevEl = content.querySelector('#empPrev');
-        const nextEl = content.querySelector('#empNext');
-        if (prevEl) prevEl.style.display = '';
-        if (nextEl) nextEl.style.display = '';
-      }
-    }
-  };
-
-  renderRows();
-
-  const updateBrandActions = () => {
-    try {
-      const dd = document.querySelector('.topbar .brand #brandDropdown');
-      if (!dd) return;
-      const sel = Array.from(content.querySelectorAll('.empSel:checked'));
-      const editBtn = document.querySelector('.topbar .brand #brandEdit');
-      if (editBtn) {
-        const ok = sel.length === 1;
-        editBtn.setAttribute('aria-disabled', ok ? 'false' : 'true');
-      }
-    } catch (e) { /* silently ignored */ }
-  };
-  table.addEventListener('change', (e) => {
-    if (e.target && e.target.classList && e.target.classList.contains('empSel')) {
-      updateBrandActions();
-    }
-  });
-  table.addEventListener('click', (e) => {
-    const t = e && e.target;
-    const td = (t && t.closest) ? t.closest('td') : null;
-    if (!td) return;
-    if (e.target.closest('.emp-action-group')) return;
-    if (e.target.closest('a')) return;
-    if (e.target.matches('input, button, select, label')) return;
-    const tr = td.closest('tr');
-    const cb = tr ? tr.querySelector('.empSel') : null;
-    if (cb) {
-      cb.checked = !cb.checked;
-      updateBrandActions();
-    }
-  });
-  updateBrandActions();
-
-  try {
-    const tabSearch = filterWrap.querySelector('#tabSearch');
-    const tabShowAll = filterWrap.querySelector('#tabShowAll');
-    if (tabSearch && tabShowAll) {
-      const setActive = () => {
-        const listBox = filterWrap.querySelector('#empListBox');
-        const formBody = filterWrap.querySelector('.emp-del-filter tbody');
-        const tb = filterWrap.querySelector('.emp-del-toolbar');
-        if (state.showAll) {
-          tabSearch.classList.remove('active');
-          tabShowAll.classList.add('active');
-          table.style.display = '';
-          pager.style.display = '';
-          if (formBody) formBody.style.display = 'none';
-          if (listBox) listBox.style.display = '';
-          if (tb) tb.style.display = '';
-        } else {
-          tabSearch.classList.add('active');
-          tabShowAll.classList.remove('active');
-          const showSearchList = !!state.searchVisible;
-          table.style.display = showSearchList ? '' : 'none';
-          pager.style.display = showSearchList ? '' : 'none';
-          if (formBody) formBody.style.display = '';
-          if (listBox) listBox.style.display = showSearchList ? '' : 'none';
-          if (tb) tb.style.display = showSearchList ? '' : 'none';
-        }
-      };
-      setActive();
-      tabSearch.addEventListener('click', () => {
-        state.showAll = false;
-        state.searchVisible = false;
-        setActive();
-        try {
-          const p = new URLSearchParams();
-          if (state.code) p.set('code', state.code);
-          if (state.q) p.set('q', state.q);
-          if (state.dept) p.set('dept', state.dept);
-          if (state.role) p.set('role', state.role);
-          if (state.status) p.set('status', state.status);
-          if (state.hireFrom) p.set('hireFrom', state.hireFrom);
-          if (state.hireTo) p.set('hireTo', state.hireTo);
-          if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
-          if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
-          if (state.page && state.page > 1) p.set('page', String(state.page));
-          const s = p.toString();
-          history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#delete');
-        } catch (e) { /* silently ignored */ }
-      });
-      tabShowAll.addEventListener('click', () => {
-        state.showAll = true;
-        state.searchVisible = false;
-        setActive();
-        renderRows();
-        try {
-          const p = new URLSearchParams();
-          if (state.code) p.set('code', state.code);
-          if (state.q) p.set('q', state.q);
-          if (state.dept) p.set('dept', state.dept);
-          if (state.role) p.set('role', state.role);
-          if (state.status) p.set('status', state.status);
-          if (state.hireFrom) p.set('hireFrom', state.hireFrom);
-          if (state.hireTo) p.set('hireTo', state.hireTo);
-          if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
-          if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
-          if (state.page && state.page > 1) p.set('page', String(state.page));
-          p.set('showAll', '1');
-          const s = p.toString();
-          history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#delete');
-        } catch (e) { /* silently ignored */ }
-      });
-    }
-    const tbEl = filterWrap.querySelector('.emp-del-toolbar'); if (tbEl) tbEl.style.display = (state.showAll || state.searchVisible) ? '' : 'none';
-    const codeEl = filterWrap.querySelector('#empSearchCode'); if (codeEl) codeEl.value = (params.get('code') || '');
-    const nameEl = filterWrap.querySelector('#empSearchName'); if (nameEl) nameEl.value = (params.get('q') || '');
-    const deptEl = filterWrap.querySelector('#empDeptFilter'); if (deptEl) deptEl.value = params.get('dept') || '';
-    const roleEl = filterWrap.querySelector('#empRoleFilter'); if (roleEl) roleEl.value = params.get('role') || '';
-    const statusEl = filterWrap.querySelector('#empStatusFilter'); if (statusEl) statusEl.value = params.get('status') || '';
-    const hireFromEl = filterWrap.querySelector('#empHireFrom'); if (hireFromEl) hireFromEl.value = params.get('hireFrom') || '';
-    const hireToEl = filterWrap.querySelector('#empHireTo'); if (hireToEl) hireToEl.value = params.get('hireTo') || '';
-  } catch (e) { /* silently ignored */ }
-
-  filterWrap.querySelector('#btnEmpSearch').addEventListener('click', () => {
-    const codeEl = filterWrap.querySelector('#empSearchCode');
-    state.code = String((codeEl && codeEl.value != null) ? codeEl.value : '').trim().toLowerCase();
-    state.q = (filterWrap.querySelector('#empSearchName').value || '').trim().toLowerCase();
-    state.dept = filterWrap.querySelector('#empDeptFilter').value || '';
-    state.role = filterWrap.querySelector('#empRoleFilter').value || '';
-    state.status = filterWrap.querySelector('#empStatusFilter').value || '';
-    state.hireFrom = (filterWrap.querySelector('#empHireFrom').value || '').trim();
-    state.hireTo = (filterWrap.querySelector('#empHireTo').value || '').trim();
-    state.page = 1;
-    const hasAny = !!(state.code || state.q || state.dept || state.role || state.status || state.hireFrom || state.hireTo);
-    state.searchVisible = hasAny;
-    if (!hasAny) {
-      try {
-        const listBox = filterWrap.querySelector('#empListBox');
-        if (listBox) {
-          table.style.display = 'none';
-          pager.style.display = 'none';
-          listBox.style.display = 'none';
-        }
-      } catch (e) { /* silently ignored */ }
-      alert('検索条件を入力してください');
-      return;
-    }
-    renderRows();
-    try {
-      const listBox = filterWrap.querySelector('#empListBox');
-      if (listBox) {
-        table.style.display = '';
-        pager.style.display = '';
-        listBox.style.display = '';
-      }
-    } catch (e) { /* silently ignored */ }
-    try {
-      const p = new URLSearchParams();
-      if (state.code) p.set('code', state.code);
-      if (state.showAll) p.set('showAll', '1');
-      if (state.searchVisible) p.set('search', '1');
-      if (state.q) p.set('q', state.q);
-      if (state.dept) p.set('dept', state.dept);
-      if (state.role) p.set('role', state.role);
-      if (state.status) p.set('status', state.status);
-      if (state.hireFrom) p.set('hireFrom', state.hireFrom);
-      if (state.hireTo) p.set('hireTo', state.hireTo);
-      if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
-      if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
-      if (state.page && state.page > 1) p.set('page', String(state.page));
-      const s = p.toString();
-      history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
-    } catch (e) { /* silently ignored */ }
-  });
-
-  if (mode === 'delete') {
-    const bulkHandler = async (e) => {
-      if (e.target && e.target.id === 'empBulkDisable') {
-        const ids = Array.from(content.querySelectorAll('.empSel:checked')).map(i => i.value);
-        if (!ids.length) { alert('対象を選択してください'); return; }
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        const listRows = ids.map(id => {
-          const u = users.find(x => String(x.id) === String(id));
-          const code = (u && u.employee_code) ? u.employee_code : fmtEmpNo(id);
-          const name = (u && u.username) ? u.username : '';
-          const dept = deptName(u && u.departmentId ? u.departmentId : null);
-          return `<div class="row"><div>${code}</div><div>${name}　${dept}</div></div>`;
-        }).join('');
-        modal.innerHTML = `
-          <div class="modal-head">⚠️　社員無効化の確認</div>
+      `,Q.appendChild(o)}const r=Math.min(a,l+1),n=Math.min(a,l+i.length),s=h.querySelector("#empPageInfo");if(s){const c=Math.max(1,Math.ceil(a/t.pageSize));if(s.textContent=`${r}-${n} / ${a}`,c<=1){s.style.display="none";const o=h.querySelector("#empPrev"),d=h.querySelector("#empNext");o&&(o.style.display="none"),d&&(d.style.display="none")}else{s.style.display="";const o=h.querySelector("#empPrev"),d=h.querySelector("#empNext");o&&(o.style.display=""),d&&(d.style.display="")}}};Y();const ee=()=>{try{if(!document.querySelector(".topbar .brand #brandDropdown"))return;const a=Array.from(h.querySelectorAll(".empSel:checked")),l=document.querySelector(".topbar .brand #brandEdit");if(l){const i=a.length===1;l.setAttribute("aria-disabled",i?"false":"true")}}catch{}};v.addEventListener("change",e=>{e.target&&e.target.classList&&e.target.classList.contains("empSel")&&ee()}),v.addEventListener("click",e=>{const a=e&&e.target,l=a&&a.closest?a.closest("td"):null;if(!l||e.target.closest(".emp-action-group")||e.target.closest("a")||e.target.matches("input, button, select, label"))return;const i=l.closest("tr"),r=i?i.querySelector(".empSel"):null;r&&(r.checked=!r.checked,ee())}),ee();try{const e=m.querySelector("#tabSearch"),a=m.querySelector("#tabShowAll");if(e&&a){const u=()=>{const p=m.querySelector("#empListBox"),g=m.querySelector(".emp-del-filter tbody"),L=m.querySelector(".emp-del-toolbar");if(t.showAll)e.classList.remove("active"),a.classList.add("active"),v.style.display="",w.style.display="",g&&(g.style.display="none"),p&&(p.style.display=""),L&&(L.style.display="");else{e.classList.add("active"),a.classList.remove("active");const $=!!t.searchVisible;v.style.display=$?"":"none",w.style.display=$?"":"none",g&&(g.style.display=""),p&&(p.style.display=$?"":"none"),L&&(L.style.display=$?"":"none")}};u(),e.addEventListener("click",()=>{t.showAll=!1,t.searchVisible=!1,u();try{const p=new URLSearchParams;t.code&&p.set("code",t.code),t.q&&p.set("q",t.q),t.dept&&p.set("dept",t.dept),t.role&&p.set("role",t.role),t.status&&p.set("status",t.status),t.hireFrom&&p.set("hireFrom",t.hireFrom),t.hireTo&&p.set("hireTo",t.hireTo),t.sortKey&&t.sortKey!=="hire_date"&&p.set("sortKey",t.sortKey),t.sortDir&&t.sortDir!=="asc"&&p.set("sortDir",t.sortDir),t.page&&t.page>1&&p.set("page",String(t.page));const g=p.toString();history.replaceState(null,"",(g?`?tab=employees&${g}`:"?tab=employees")+"#delete")}catch{}}),a.addEventListener("click",()=>{t.showAll=!0,t.searchVisible=!1,u(),Y();try{const p=new URLSearchParams;t.code&&p.set("code",t.code),t.q&&p.set("q",t.q),t.dept&&p.set("dept",t.dept),t.role&&p.set("role",t.role),t.status&&p.set("status",t.status),t.hireFrom&&p.set("hireFrom",t.hireFrom),t.hireTo&&p.set("hireTo",t.hireTo),t.sortKey&&t.sortKey!=="hire_date"&&p.set("sortKey",t.sortKey),t.sortDir&&t.sortDir!=="asc"&&p.set("sortDir",t.sortDir),t.page&&t.page>1&&p.set("page",String(t.page)),p.set("showAll","1");const g=p.toString();history.replaceState(null,"",(g?`?tab=employees&${g}`:"?tab=employees")+"#delete")}catch{}})}const l=m.querySelector(".emp-del-toolbar");l&&(l.style.display=t.showAll||t.searchVisible?"":"none");const i=m.querySelector("#empSearchCode");i&&(i.value=f.get("code")||"");const r=m.querySelector("#empSearchName");r&&(r.value=f.get("q")||"");const n=m.querySelector("#empDeptFilter");n&&(n.value=f.get("dept")||"");const s=m.querySelector("#empRoleFilter");s&&(s.value=f.get("role")||"");const c=m.querySelector("#empStatusFilter");c&&(c.value=f.get("status")||"");const o=m.querySelector("#empHireFrom");o&&(o.value=f.get("hireFrom")||"");const d=m.querySelector("#empHireTo");d&&(d.value=f.get("hireTo")||"")}catch{}if(m.querySelector("#btnEmpSearch").addEventListener("click",()=>{const e=m.querySelector("#empSearchCode");t.code=String(e&&e.value!=null?e.value:"").trim().toLowerCase(),t.q=(m.querySelector("#empSearchName").value||"").trim().toLowerCase(),t.dept=m.querySelector("#empDeptFilter").value||"",t.role=m.querySelector("#empRoleFilter").value||"",t.status=m.querySelector("#empStatusFilter").value||"",t.hireFrom=(m.querySelector("#empHireFrom").value||"").trim(),t.hireTo=(m.querySelector("#empHireTo").value||"").trim(),t.page=1;const a=!!(t.code||t.q||t.dept||t.role||t.status||t.hireFrom||t.hireTo);if(t.searchVisible=a,!a){try{const l=m.querySelector("#empListBox");l&&(v.style.display="none",w.style.display="none",l.style.display="none")}catch{}alert("\u691C\u7D22\u6761\u4EF6\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");return}Y();try{const l=m.querySelector("#empListBox");l&&(v.style.display="",w.style.display="",l.style.display="")}catch{}try{const l=new URLSearchParams;t.code&&l.set("code",t.code),t.showAll&&l.set("showAll","1"),t.searchVisible&&l.set("search","1"),t.q&&l.set("q",t.q),t.dept&&l.set("dept",t.dept),t.role&&l.set("role",t.role),t.status&&l.set("status",t.status),t.hireFrom&&l.set("hireFrom",t.hireFrom),t.hireTo&&l.set("hireTo",t.hireTo),t.sortKey&&t.sortKey!=="hire_date"&&l.set("sortKey",t.sortKey),t.sortDir&&t.sortDir!=="asc"&&l.set("sortDir",t.sortDir),t.page&&t.page>1&&l.set("page",String(t.page));const i=l.toString();history.replaceState(null,"",(i?`?tab=employees&${i}`:"?tab=employees")+"#list")}catch{}}),b==="delete"){const e=async a=>{if(a.target&&a.target.id==="empBulkDisable"){const l=Array.from(h.querySelectorAll(".empSel:checked")).map(c=>c.value);if(!l.length){alert("\u5BFE\u8C61\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044");return}const i=document.createElement("div");i.className="modal-overlay";const r=document.createElement("div");r.className="modal";const n=l.map(c=>{const o=_.find(g=>String(g.id)===String(c)),d=o&&o.employee_code?o.employee_code:Z(c),u=o&&o.username?o.username:"",p=N(o&&o.departmentId?o.departmentId:null);return`<div class="row"><div>${d}</div><div>${u}\u3000${p}</div></div>`}).join("");r.innerHTML=`
+          <div class="modal-head">\u26A0\uFE0F\u3000\u793E\u54E1\u7121\u52B9\u5316\u306E\u78BA\u8A8D</div>
           <div class="modal-body">
-            <div>以下の社員を無効化しますか？</div>
-            <div class="modal-list">${listRows}</div>
-            <div>この操作は取り消すことができません。</div>
+            <div>\u4EE5\u4E0B\u306E\u793E\u54E1\u3092\u7121\u52B9\u5316\u3057\u307E\u3059\u304B\uFF1F</div>
+            <div class="modal-list">${n}</div>
+            <div>\u3053\u306E\u64CD\u4F5C\u306F\u53D6\u308A\u6D88\u3059\u3053\u3068\u304C\u3067\u304D\u307E\u305B\u3093\u3002</div>
           </div>
           <div class="modal-actions">
-            <button type="button" class="btn" id="modalConfirmDisable">無効化する</button>
-            <button type="button" class="btn" id="modalCancelDisable">キャンセル</button>
+            <button type="button" class="btn" id="modalConfirmDisable">\u7121\u52B9\u5316\u3059\u308B</button>
+            <button type="button" class="btn" id="modalCancelDisable">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
           </div>
-        `;
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-        const close = () => { try { document.body.removeChild(overlay); } catch (e) { /* silently ignored */ } };
-        cleanup.add(close);
-        overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
-        modal.querySelector('#modalCancelDisable').addEventListener('click', close);
-        modal.querySelector('#modalConfirmDisable').addEventListener('click', async () => {
-          const btn = modal.querySelector('#modalConfirmDisable');
-          btn.disabled = true;
-          try {
-            for (const id of ids) {
-              try { await deleteEmployee(id, { signal }); } catch (e) { /* silently ignored */ }
-            }
-            for (const id of ids) {
-              const u = users.find(x => String(x.id) === String(id));
-              if (u) u.employment_status = 'inactive';
-            }
-            renderRows();
-          } finally {
-            close();
-            alert('無効化しました（状態: 無効/休職）');
-          }
-        });
-      }
-    };
-    pager.addEventListener('click', bulkHandler);
-    filterWrap.addEventListener('click', bulkHandler);
-  }
-
-  const prev = pager.querySelector('#empPrev');
-  const next = pager.querySelector('#empNext');
-  prev.addEventListener('click', () => {
-    if (state.page > 1) {
-      state.page -= 1;
-      renderRows();
-      try {
-        const p = new URLSearchParams();
-        if (state.q) p.set('q', state.q);
-        if (state.dept) p.set('dept', state.dept);
-        if (state.role) p.set('role', state.role);
-        if (state.status) p.set('status', state.status);
-        if (state.hireFrom) p.set('hireFrom', state.hireFrom);
-        if (state.hireTo) p.set('hireTo', state.hireTo);
-        if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
-        if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
-        if (state.page && state.page > 1) p.set('page', String(state.page));
-        const s = p.toString();
-        history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
-      } catch (e) { /* silently ignored */ }
-    }
-    try { const tb = filterWrap.querySelector('.emp-del-toolbar'); if (tb) tb.style.display = content.querySelectorAll('.empSel').length ? '' : 'none'; } catch (e) { /* silently ignored */ }
-  });
-  next.addEventListener('click', () => {
-    const total = applyFilterSort().length;
-    const maxPage = Math.max(1, Math.ceil(total / state.pageSize));
-    if (state.page < maxPage) {
-      state.page += 1;
-      renderRows();
-      try {
-        const p = new URLSearchParams();
-        if (state.q) p.set('q', state.q);
-        if (state.dept) p.set('dept', state.dept);
-        if (state.role) p.set('role', state.role);
-        if (state.status) p.set('status', state.status);
-        if (state.hireFrom) p.set('hireFrom', state.hireFrom);
-        if (state.hireTo) p.set('hireTo', state.hireTo);
-        if (state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
-        if (state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
-        if (state.page && state.page > 1) p.set('page', String(state.page));
-        const s = p.toString();
-        history.replaceState(null, '', (s ? `?tab=employees&${s}` : `?tab=employees`) + '#list');
-      } catch (e) { /* silently ignored */ }
-    }
-    try { const tb = filterWrap.querySelector('.emp-del-toolbar'); if (tb) tb.style.display = table.querySelectorAll('.empSel').length ? '' : 'none'; } catch (e) { /* silently ignored */ }
-  });
-
-  cleanup.add(delegate(table, 'button[data-action="disable"]', 'click', async (e, btn) => {
-    e.preventDefault();
-    try { e.stopPropagation(); } catch (e) { /* silently ignored */ }
-    const delId = btn.dataset.id || '';
-    if (!delId) return;
-    if (confirm('この社員を無効化しますか？')) {
-      try {
-        await deleteEmployee(delId, { signal });
-        if (!isCurrent) return;
-        const u = users.find(x => String(x.id) === String(delId));
-        if (u) u.employment_status = 'inactive';
-        alert('無効化しました（状態: 無効/休職）');
-        renderRows();
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-        alert(String((err && err.message) ? err.message : '無効化に失敗しました'));
-      }
-    }
-  }));
-
-  table.addEventListener('click', async (e) => {
-    const t = e && e.target;
-    const a = (t && t.closest) ? t.closest('a') : null;
-    if (a) {
-      const href = a.getAttribute('href') || '';
-      if (href.startsWith('/ui/admin?tab=employees&detail=') || href.startsWith('/ui/admin?tab=employees&edit=')) {
-        e.preventDefault();
-        const p = new URLSearchParams();
-        const nameEl = filterWrap.querySelector('#empSearchName');
-        const deptEl = filterWrap.querySelector('#empDeptFilter');
-        const roleEl = filterWrap.querySelector('#empRoleFilter');
-        const stEl = filterWrap.querySelector('#empStatusFilter');
-        const hfEl = filterWrap.querySelector('#empHireFrom');
-        const htEl = filterWrap.querySelector('#empHireTo');
-        const qv = String((nameEl && nameEl.value != null) ? nameEl.value : '').trim().toLowerCase();
-        const dv = (deptEl && deptEl.value != null) ? deptEl.value : '';
-        const rv = (roleEl && roleEl.value != null) ? roleEl.value : '';
-        const sv = (stEl && stEl.value != null) ? stEl.value : '';
-        const hf = (hfEl && hfEl.value != null) ? hfEl.value : '';
-        const ht = (htEl && htEl.value != null) ? htEl.value : '';
-        if (qv) p.set('q', qv);
-        if (dv) p.set('dept', dv);
-        if (rv) p.set('role', rv);
-        if (sv) p.set('status', sv);
-        if (hf) p.set('hireFrom', hf);
-        if (ht) p.set('hireTo', ht);
-        if (state && state.sortKey && state.sortKey !== 'hire_date') p.set('sortKey', state.sortKey);
-        if (state && state.sortDir && state.sortDir !== 'asc') p.set('sortDir', state.sortDir);
-        if (state && state.page && state.page > 1) p.set('page', String(state.page));
-        const s = p.toString();
-        const url = href + (s ? '&' + s : '');
-        window.location.href = url;
-        return;
-      }
-    }
-  });
-
-  hideNavSpinner();
-  return done;
-}
-
-export const employeesPage = createPage({ mount: mountEmployeesImpl });
-
-export async function mountEmployees(ctx) {
-  return employeesPage.mount(ctx);
-}
+        `,i.appendChild(r),document.body.appendChild(i);const s=()=>{try{document.body.removeChild(i)}catch{}};T.add(s),i.addEventListener("click",c=>{c.target===i&&s()}),r.querySelector("#modalCancelDisable").addEventListener("click",s),r.querySelector("#modalConfirmDisable").addEventListener("click",async()=>{const c=r.querySelector("#modalConfirmDisable");c.disabled=!0;try{for(const o of l)try{await le(o,{signal:S})}catch{}for(const o of l){const d=_.find(u=>String(u.id)===String(o));d&&(d.employment_status="inactive")}Y()}finally{s(),alert("\u7121\u52B9\u5316\u3057\u307E\u3057\u305F\uFF08\u72B6\u614B: \u7121\u52B9/\u4F11\u8077\uFF09")}})}};w.addEventListener("click",e),m.addEventListener("click",e)}const $e=w.querySelector("#empPrev"),De=w.querySelector("#empNext");return $e.addEventListener("click",()=>{if(t.page>1){t.page-=1,Y();try{const e=new URLSearchParams;t.q&&e.set("q",t.q),t.dept&&e.set("dept",t.dept),t.role&&e.set("role",t.role),t.status&&e.set("status",t.status),t.hireFrom&&e.set("hireFrom",t.hireFrom),t.hireTo&&e.set("hireTo",t.hireTo),t.sortKey&&t.sortKey!=="hire_date"&&e.set("sortKey",t.sortKey),t.sortDir&&t.sortDir!=="asc"&&e.set("sortDir",t.sortDir),t.page&&t.page>1&&e.set("page",String(t.page));const a=e.toString();history.replaceState(null,"",(a?`?tab=employees&${a}`:"?tab=employees")+"#list")}catch{}}try{const e=m.querySelector(".emp-del-toolbar");e&&(e.style.display=h.querySelectorAll(".empSel").length?"":"none")}catch{}}),De.addEventListener("click",()=>{const e=pe().length,a=Math.max(1,Math.ceil(e/t.pageSize));if(t.page<a){t.page+=1,Y();try{const l=new URLSearchParams;t.q&&l.set("q",t.q),t.dept&&l.set("dept",t.dept),t.role&&l.set("role",t.role),t.status&&l.set("status",t.status),t.hireFrom&&l.set("hireFrom",t.hireFrom),t.hireTo&&l.set("hireTo",t.hireTo),t.sortKey&&t.sortKey!=="hire_date"&&l.set("sortKey",t.sortKey),t.sortDir&&t.sortDir!=="asc"&&l.set("sortDir",t.sortDir),t.page&&t.page>1&&l.set("page",String(t.page));const i=l.toString();history.replaceState(null,"",(i?`?tab=employees&${i}`:"?tab=employees")+"#list")}catch{}}try{const l=m.querySelector(".emp-del-toolbar");l&&(l.style.display=v.querySelectorAll(".empSel").length?"":"none")}catch{}}),T.add(ke(v,'button[data-action="disable"]',"click",async(e,a)=>{e.preventDefault();try{e.stopPropagation()}catch{}const l=a.dataset.id||"";if(l&&confirm("\u3053\u306E\u793E\u54E1\u3092\u7121\u52B9\u5316\u3057\u307E\u3059\u304B\uFF1F"))try{if(await le(l,{signal:S}),!k)return;const i=_.find(r=>String(r.id)===String(l));i&&(i.employment_status="inactive"),alert("\u7121\u52B9\u5316\u3057\u307E\u3057\u305F\uFF08\u72B6\u614B: \u7121\u52B9/\u4F11\u8077\uFF09"),Y()}catch(i){if(i&&i.name==="AbortError")return;alert(String(i&&i.message?i.message:"\u7121\u52B9\u5316\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}})),v.addEventListener("click",async e=>{const a=e&&e.target,l=a&&a.closest?a.closest("a"):null;if(l){const i=l.getAttribute("href")||"";if(i.startsWith("/ui/admin?tab=employees&detail=")||i.startsWith("/ui/admin?tab=employees&edit=")){e.preventDefault();const r=new URLSearchParams,n=m.querySelector("#empSearchName"),s=m.querySelector("#empDeptFilter"),c=m.querySelector("#empRoleFilter"),o=m.querySelector("#empStatusFilter"),d=m.querySelector("#empHireFrom"),u=m.querySelector("#empHireTo"),p=String(n&&n.value!=null?n.value:"").trim().toLowerCase(),g=s&&s.value!=null?s.value:"",L=c&&c.value!=null?c.value:"",$=o&&o.value!=null?o.value:"",H=d&&d.value!=null?d.value:"",z=u&&u.value!=null?u.value:"";p&&r.set("q",p),g&&r.set("dept",g),L&&r.set("role",L),$&&r.set("status",$),H&&r.set("hireFrom",H),z&&r.set("hireTo",z),t&&t.sortKey&&t.sortKey!=="hire_date"&&r.set("sortKey",t.sortKey),t&&t.sortDir&&t.sortDir!=="asc"&&r.set("sortDir",t.sortDir),t&&t.page&&t.page>1&&r.set("page",String(t.page));const j=r.toString(),y=i+(j?"&"+j:"");window.location.href=y;return}}}),P(),x}const Me=Ee({mount:Te});async function Ke(h){return Me.mount(h)}export{Me as employeesPage,Ke as mountEmployees};

@@ -1,114 +1,4 @@
-import { requireAdmin } from '../_shared/require-admin.js';
-import { fetchJSONAuth } from '../../api/http.api.js';
-import { downloadWithAuth } from '../../shared/api/client.js';
-
-const $ = (sel) => document.querySelector(sel);
-const isYM = (s) => /^\d{4}-\d{2}$/.test(String(s || ''));
-const monthJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
-const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const fmtTime = (dt) => {
-  if (!dt) return '—';
-  const s = String(dt);
-  return s.length >= 16 ? s.slice(11, 16) : s;
-};
-const statusMeta = (status) => {
-  if (status === 'submitted') return { label: '提出済', style: 'background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;' };
-  if (status === 'checkout_missing') return { label: '退勤漏れ', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  if (status === 'checkout_missing_submitted') return { label: '退勤漏れ(入力済)', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  if (status === 'missing') return { label: '未提出', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  if (status === 'not_checked_in') return { label: '未出勤', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  if (status === 'not_punched') return { label: '未打刻', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  if (status === 'absence') return { label: '欠勤', style: 'background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  if (status === 'monthly_input_only') return { label: '月次入力済み（打刻なし）', style: 'background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;' };
-  if (status === 'off') return { label: '休日', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
-  if (status === 'unregistered') return { label: '未登録', style: 'background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;' };
-  if (status === 'paid_leave') return { label: '有給休暇', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
-  if (status === 'unpaid_leave') return { label: '無給休暇', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
-  if (status === 'working') return { label: '勤務中', style: 'background:#f0fdf4;color:#166534;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;' };
-  return { label: '—', style: 'background:#f8fafc;color:#475569;border-color:#e2e8f0;' };
-};
-const workTypeLabel = (value) => {
-  if (value === 'onsite') return '出社';
-  if (value === 'remote') return '在宅';
-  if (value === 'satellite') return '現場';
-  return '—';
-};
-const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-const effectiveStatus = (it) => {
-  const st = String(it?.status || '');
-  const hasContent = !!(String(it?.site || '').trim() || String(it?.work || '').trim());
-  if (st === 'checkout_missing' && hasContent) return 'checkout_missing_submitted';
-  if (st !== 'working') return st;
-  const d = String(it?.date || '').slice(0, 10);
-  const hasOut = !!it?.attendance?.checkOut;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d < todayJST() && !hasOut) {
-    return hasContent ? 'checkout_missing_submitted' : 'checkout_missing';
-  }
-  return st;
-};
-const dowClass = (w) => {
-  const s = String(w || '').trim();
-  if (s === '土') return 'wr-dow-sat';
-  if (s === '日') return 'wr-dow-sun';
-  if (s === '月' || s === '火' || s === '水' || s === '木' || s === '金') return 'wr-dow-weekday';
-  return '';
-};
-const weekdayJa = (dateStr) => {
-  const s = String(dateStr || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
-  const [y, m, d] = s.split('-').map(n => parseInt(n, 10));
-  const labels = ['日', '月', '火', '水', '木', '金', '土'];
-  const idx = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  return labels[idx] || '';
-};
-
-const showSpinner = () => {
-  try {
-    const el = document.querySelector('#pageSpinner');
-    if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch (e) { /* bỏ qua lỗi */ }
-};
-const hideSpinner = () => {
-  try {
-    const el = document.querySelector('#pageSpinner');
-    if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { /* bỏ qua lỗi */ }
-};
-
-export async function mount() {
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
-  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
-  const tableVhExpr = isStandalone ? 'calc(100vh - 120px)' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 120px)';
-
-  const content = document.getElementById('attendanceHubContent') || document.getElementById('adminContent');
-  if (content && content.id === 'attendanceHubContent') {
-    content.style.padding = window.innerWidth <= 768 ? '0' : '16px 24px';
-    content.style.boxSizing = 'border-box';
-    content.style.background = '#FFFFFF';
-  }
-
-  if (content) {
-    content.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
-  }
-
-  const profile = await requireAdmin();
-  if (!profile || !content) return;
-
-  const params = new URLSearchParams(window.location.search);
-  const initMonth = isYM(params.get('month')) ? String(params.get('month')) : monthJST();
-  const initSort = String(params.get('sort') || 'dateDesc');
-  const initDept = String(params.get('dept') || '');
-  const initQ = String(params.get('q') || '');
-  const initGroup = String(params.get('group') || '') === '1';
-  const state = { month: initMonth, sort: initSort, dept: initDept, q: initQ, group: initGroup, items: [] };
-
-  content.innerHTML = '';
-
-  const layout = document.createElement('div');
-  layout.className = 'wr-layout';
-  layout.style.cssText = `display: flex; flex-direction: column; background: #FFFFFF; font-family: Inter, 'Noto Sans JP', sans-serif; width: 100%;`;
-
-  const PAGE_CSS = `
+import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth as Nt}from"../../api/http.api.js";import{downloadWithAuth as Wt}from"../../shared/api/client.js";const c=d=>document.querySelector(d),j=d=>/^\d{4}-\d{2}$/.test(String(d||"")),Gt=()=>new Date(Date.now()+9*3600*1e3).toISOString().slice(0,7),m=d=>String(d||"").replace(/[&<>"']/g,g=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[g]),W=d=>{if(!d)return"\u2014";const g=String(d);return g.length>=16?g.slice(11,16):g},Ft=d=>d==="submitted"?{label:"\u63D0\u51FA\u6E08",style:"background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;"}:d==="checkout_missing"?{label:"\u9000\u52E4\u6F0F\u308C",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="checkout_missing_submitted"?{label:"\u9000\u52E4\u6F0F\u308C(\u5165\u529B\u6E08)",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="missing"?{label:"\u672A\u63D0\u51FA",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="not_checked_in"?{label:"\u672A\u51FA\u52E4",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="not_punched"?{label:"\u672A\u6253\u523B",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="absence"?{label:"\u6B20\u52E4",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="monthly_input_only"?{label:"\u6708\u6B21\u5165\u529B\u6E08\u307F\uFF08\u6253\u523B\u306A\u3057\uFF09",style:"background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;"}:d==="off"?{label:"\u4F11\u65E5",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="unregistered"?{label:"\u672A\u767B\u9332",style:"background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;"}:d==="paid_leave"?{label:"\u6709\u7D66\u4F11\u6687",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="unpaid_leave"?{label:"\u7121\u7D66\u4F11\u6687",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="working"?{label:"\u52E4\u52D9\u4E2D",style:"background:#f0fdf4;color:#166534;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:{label:"\u2014",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"},dt=d=>d==="onsite"?"\u51FA\u793E":d==="remote"?"\u5728\u5B85":d==="satellite"?"\u73FE\u5834":"\u2014",Jt=()=>new Date(Date.now()+9*3600*1e3).toISOString().slice(0,10),O=d=>{const g=String(d?.status||""),R=!!(String(d?.site||"").trim()||String(d?.work||"").trim());if(g==="checkout_missing"&&R)return"checkout_missing_submitted";if(g!=="working")return g;const k=String(d?.date||"").slice(0,10),G=!!d?.attendance?.checkOut;return/^\d{4}-\d{2}-\d{2}$/.test(k)&&k<Jt()&&!G?R?"checkout_missing_submitted":"checkout_missing":g},Dt=d=>{const g=String(d||"").trim();return g==="\u571F"?"wr-dow-sat":g==="\u65E5"?"wr-dow-sun":g==="\u6708"||g==="\u706B"||g==="\u6C34"||g==="\u6728"||g==="\u91D1"?"wr-dow-weekday":""},Vt=d=>{const g=String(d||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(g))return"";const[R,k,G]=g.split("-").map(lt=>parseInt(lt,10)),T=["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"],J=new Date(Date.UTC(R,k-1,G)).getUTCDay();return T[J]||""},Yt=()=>{try{const d=document.querySelector("#pageSpinner");d&&(d.removeAttribute("hidden"),d.style.display="grid")}catch{}},Kt=()=>{try{const d=document.querySelector("#pageSpinner");d&&(d.setAttribute("hidden",""),d.style.display="none")}catch{}};async function ee(){const d=new URLSearchParams(window.location.search).get("standalone")==="1",g=d?"100vh":"calc(100vh - var(--topbar-height) - var(--subbar-height))",R=d?"calc(100vh - 120px)":"calc(100vh - var(--topbar-height) - var(--subbar-height) - 120px)",k=document.getElementById("attendanceHubContent")||document.getElementById("adminContent");if(k&&k.id==="attendanceHubContent"&&(k.style.padding=window.innerWidth<=768?"0":"16px 24px",k.style.boxSizing="border-box",k.style.background="#FFFFFF"),k&&(k.innerHTML='<div style="color:#475569;font-weight:650;">\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>'),!await Qt()||!k)return;const T=new URLSearchParams(window.location.search),J=j(T.get("month"))?String(T.get("month")):Gt(),lt=String(T.get("sort")||"dateDesc"),qt=String(T.get("dept")||""),jt=String(T.get("q")||""),At=String(T.get("group")||"")==="1",i={month:J,sort:lt,dept:qt,q:jt,group:At,items:[]};k.innerHTML="";const V=document.createElement("div");V.className="wr-layout",V.style.cssText="display: flex; flex-direction: column; background: #FFFFFF; font-family: Inter, 'Noto Sans JP', sans-serif; width: 100%;";const Bt=`
       .wr-input { height: 30px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 13px; color: #0f172a; outline: none; background: #fff; box-sizing: border-box; }
       :root[data-theme='dark'] .wr-input { color: #e8eaed !important; background: #303134 !important; border-color: #3c4043 !important; }
       :root[data-theme='dark'] .wr-select { color: #e8eaed !important; background: #303134 !important; border-color: #3c4043 !important; }
@@ -132,7 +22,7 @@ export async function mount() {
       .attrec-btn { height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #cbd5e1; outline: none; transition: all .15s; background: #fff; color: #475569; }
       .attrec-btn:hover { background: #f8fafc; border-color: #94a3b8; }
 
-      .wr-layout { min-height: calc(${vhExpr} - 32px); display: flex; flex-direction: column; }
+      .wr-layout { min-height: calc(${g} - 32px); display: flex; flex-direction: column; }
       .wr-table-wrap { flex: 1 1 auto; position: relative; z-index: 1; min-width: 0; }
       .wr-table-container { width: 100%; overflow: auto; max-height: calc(100vh - 160px); }
 
@@ -148,8 +38,8 @@ export async function mount() {
         
         .hidden-on-mobile { display: none !important; }
         
-        /* Main Row: Month picker (prev/next), Search, Toggle — hiển thị ngay trong
-           nội dung trang vì slot header #attHubMobileActions không tồn tại ở admin.ejs. */
+        /* Main Row: Month picker (prev/next), Search, Toggle \u2014 hi\u1EC3n th\u1ECB ngay trong
+           n\u1ED9i dung trang v\xEC slot header #attHubMobileActions kh\xF4ng t\u1ED3n t\u1EA1i \u1EDF admin.ejs. */
         .wr-mobile-row.main-row { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; width: 100% !important; align-items: center !important; padding: 10px 12px !important; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; margin: 0 0 12px 0 !important; box-sizing: border-box !important; }
         .wr-mobile-row.main-row .wr-month.hidden-on-mobile { display: none !important; }
         .wr-mobile-row.main-row .wr-month-nav { display: flex !important; align-items: center !important; gap: 6px !important; flex: 1 1 100% !important; }
@@ -272,7 +162,7 @@ export async function mount() {
         .wr-table tbody td.group-hide { display: none !important; }
         
         /* Fix status pill in mobile */
-        .wr-table tbody td[data-label="状態"] .dash-pill {
+        .wr-table tbody td[data-label="\u72B6\u614B"] .dash-pill {
           display: inline-flex !important;
           padding: 4px 10px !important;
           border-radius: 4px !important;
@@ -319,23 +209,21 @@ export async function mount() {
         .wr-mobile-row { display: contents !important; }
         .search-row .wr-input { background-image: none !important; padding-left: 10px !important; }
       }
-`;
-
-  const getPageHtml = (state, esc) => `
+`,Pt=(t,a)=>`
     <style>
-      ${PAGE_CSS}
+      ${Bt}
     </style>
     <div class="wr-toolbar-wrapper" style="flex-shrink: 0; padding-bottom: 12px; position: relative; z-index: 50;">
       <div class="wr-toolbar" style="position: relative; z-index: 50;">
         <div class="wr-mobile-row main-row">
           <div class="wr-month-nav">
-            <button type="button" id="wrPrevMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="前月">‹</button>
-            <input id="wrMonthMobile" type="month" class="wr-input wr-month hidden-on-desktop" value="${state.month}">
-            <button type="button" id="wrNextMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="翌月">›</button>
+            <button type="button" id="wrPrevMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="\u524D\u6708">\u2039</button>
+            <input id="wrMonthMobile" type="month" class="wr-input wr-month hidden-on-desktop" value="${t.month}">
+            <button type="button" id="wrNextMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="\u7FCC\u6708">\u203A</button>
           </div>
-          <input id="wrMonth" type="month" class="wr-input wr-month hidden-on-mobile" value="${state.month}">
-          <input id="wrQuery" type="text" class="wr-input wr-text wr-query" placeholder="社員番号/氏名で検索" value="${esc(state.q)}">
-          <button type="button" id="wrFilterToggleMobile" class="wr-filter-toggle wr-mobile-only" aria-label="絞り込み">
+          <input id="wrMonth" type="month" class="wr-input wr-month hidden-on-mobile" value="${t.month}">
+          <input id="wrQuery" type="text" class="wr-input wr-text wr-query" placeholder="\u793E\u54E1\u756A\u53F7/\u6C0F\u540D\u3067\u691C\u7D22" value="${a(t.q)}">
+          <button type="button" id="wrFilterToggleMobile" class="wr-filter-toggle wr-mobile-only" aria-label="\u7D5E\u308A\u8FBC\u307F">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
           </button>
         </div>
@@ -343,24 +231,24 @@ export async function mount() {
         <div class="wr-mobile-row advanced-filters" id="wrAdvancedFilters">
           <div class="wr-mobile-row selects-row">
             <select id="wrDept" class="wr-input wr-select wr-dept">
-              <option value="">全部署</option>
+              <option value="">\u5168\u90E8\u7F72</option>
             </select>
             <select id="wrSort" class="wr-input wr-select wr-sort">
-              <option value="dateDesc" ${state.sort === 'dateDesc' ? 'selected' : ''}>並び順</option>
-              <option value="employee" ${state.sort === 'employee' ? 'selected' : ''}>社員↑ / 日付↓</option>
-              <option value="name" ${state.sort === 'name' ? 'selected' : ''}>氏名↑ / 日付↓</option>
-              <option value="department" ${state.sort === 'department' ? 'selected' : ''}>部署↑ / 社員↑ / 日付↓</option>
-              <option value="missingFirst" ${state.sort === 'missingFirst' ? 'selected' : ''}>未提出を上に</option>
+              <option value="dateDesc" ${t.sort==="dateDesc"?"selected":""}>\u4E26\u3073\u9806</option>
+              <option value="employee" ${t.sort==="employee"?"selected":""}>\u793E\u54E1\u2191 / \u65E5\u4ED8\u2193</option>
+              <option value="name" ${t.sort==="name"?"selected":""}>\u6C0F\u540D\u2191 / \u65E5\u4ED8\u2193</option>
+              <option value="department" ${t.sort==="department"?"selected":""}>\u90E8\u7F72\u2191 / \u793E\u54E1\u2191 / \u65E5\u4ED8\u2193</option>
+              <option value="missingFirst" ${t.sort==="missingFirst"?"selected":""}>\u672A\u63D0\u51FA\u3092\u4E0A\u306B</option>
             </select>
           </div>
           <div class="wr-mobile-row bottom-advanced-row">
             <div class="wr-mobile-row checkbox-row">
               <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:#334155;cursor:pointer;font-weight:500;">
-                <input type="checkbox" id="wrGroup" ${state.group ? 'checked' : ''} style="width:16px;height:16px;"> 社員ごとにまとめる
+                <input type="checkbox" id="wrGroup" ${t.group?"checked":""} style="width:16px;height:16px;"> \u793E\u54E1\u3054\u3068\u306B\u307E\u3068\u3081\u308B
               </label>
             </div>
             <div class="wr-mobile-row excel-row">
-              <button type="button" id="wrExport" class="attrec-btn excel-dropdown-btn">Excel出力</button>
+              <button type="button" id="wrExport" class="attrec-btn excel-dropdown-btn">Excel\u51FA\u529B</button>
             </div>
           </div>
           <div class="wr-mobile-row summary-row">
@@ -373,505 +261,116 @@ export async function mount() {
       <table class="wr-table" style="width:100%; min-width:1000px; border-collapse:collapse;">
         <thead>
           <tr>
-            <th style="width:110px;">日付</th>
-            <th style="width:60px;">曜</th>
-            <th style="width:100px;">社員番号</th>
-            <th style="width:120px;">氏名</th>
-            <th style="width:100px;">部署</th>
-            <th style="width:100px;">支店</th>
-            <th style="width:100px;">勤務区分</th>
-            <th style="width:80px;">出勤</th>
-            <th style="width:80px;">退勤</th>
-            <th style="width:100px;">勤務形態</th>
-            <th style="width:120px;">現場</th>
-            <th style="width:200px;">作業内容</th>
-            <th style="width:100px;">遅刻・早退等</th>
-            <th style="width:200px;">備考</th>
-            <th style="width:180px;">状態</th>
+            <th style="width:110px;">\u65E5\u4ED8</th>
+            <th style="width:60px;">\u66DC</th>
+            <th style="width:100px;">\u793E\u54E1\u756A\u53F7</th>
+            <th style="width:120px;">\u6C0F\u540D</th>
+            <th style="width:100px;">\u90E8\u7F72</th>
+            <th style="width:100px;">\u652F\u5E97</th>
+            <th style="width:100px;">\u52E4\u52D9\u533A\u5206</th>
+            <th style="width:80px;">\u51FA\u52E4</th>
+            <th style="width:80px;">\u9000\u52E4</th>
+            <th style="width:100px;">\u52E4\u52D9\u5F62\u614B</th>
+            <th style="width:120px;">\u73FE\u5834</th>
+            <th style="width:200px;">\u4F5C\u696D\u5185\u5BB9</th>
+            <th style="width:100px;">\u9045\u523B\u30FB\u65E9\u9000\u7B49</th>
+            <th style="width:200px;">\u5099\u8003</th>
+            <th style="width:180px;">\u72B6\u614B</th>
           </tr>
         </thead>
         <tbody id="wrTableBody">
         </tbody>
       </table>
     </div>
-  `;
-
-  layout.innerHTML = getPageHtml(state, esc);
-  content.appendChild(layout);
-
-  const setUrl = () => {
-    try {
-      const u = new URL(window.location.href);
-      u.searchParams.set('month', state.month);
-      u.searchParams.set('sort', state.sort);
-      if (state.dept) u.searchParams.set('dept', state.dept);
-      else u.searchParams.delete('dept');
-      if (state.q) u.searchParams.set('q', state.q);
-      else u.searchParams.delete('q');
-      if (state.group) u.searchParams.set('group', '1');
-      else u.searchParams.delete('group');
-      history.replaceState(null, '', u.pathname + u.search + u.hash);
-    } catch (e) { /* bỏ qua lỗi */ }
-  };
-
-  let currentPage = 1;
-  const isMobile = window.innerWidth <= 768;
-  // Mobile hiển thị ít dòng hơn (15) để không phải cuộn quá dài; dùng phân trang.
-  const pageSize = isMobile ? 15 : 10;
-
-  const formatDelay = (mins) => {
-    if (!mins || isNaN(mins)) return '';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h > 0 && m > 0) return `${h}時間${m}分`;
-    if (h > 0) return `${h}時間`;
-    return `${m}分`;
-  };
-
-  const renderRows = (items, resetPage = false) => {
-    if (resetPage) currentPage = 1;
-    const tableHost = $('#wrTable');
-    if (!tableHost) return;
-    if (!items.length) {
-      tableHost.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>出勤データがありません</div></div>';
-      return;
-    }
-
-    const tableBody = tableHost.querySelector('#wrTableBody') || tableHost;
-
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, items.length);
-    const pageItems = items.slice(startIndex, endIndex);
-
-    const rows = pageItems.map((it) => {
-      const dash = `<span style="color:#cbd5e1;">—</span>`;
-      const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
-      const stx = effectiveStatus(it);
-      const meta = statusMeta(stx);
-
-      // Xác định icon riêng theo trạng thái
-      let statusIcon = '';
-      if (stx === 'checkout_missing' || stx === 'missing' || stx === 'not_punched' || stx === 'absence') {
-        statusIcon = '⚠ ';
-      } else if (stx === 'submitted' || stx === 'checkout_missing_submitted') {
-        statusIcon = '✅ ';
-      }
-      meta.label = statusIcon + meta.label;
-
-      let kubunStr = String(it.kubun || '').trim();
-      if (kubunStr === '休日出勤' && !it.attendance?.checkIn && !it.attendance?.checkOut && (!it.site && !it.work)) {
-        kubunStr = '休日';
-      }
-      const kubun = kubunStr ? esc(kubunStr) : dash;
-      const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
-      const rawWork = String(it.work || '').trim();
-      const work = rawWork ? esc(rawWork).replace(/\n/g, '<br>') : dash;
-      const dept = String(it.departmentName || '').trim() ? esc(String(it.departmentName).trim()) : dash;
-      const branch = String(it.branchName || '').trim() ? esc(String(it.branchName).trim()) : dash;
-      const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
-      const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
-      const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
-
-      // Tự phát hiện đi trễ/về sớm theo giờ nếu DB chưa set thủ công
-      let autoLateStr = '';
-      if (it.attendance?.checkIn) {
-        const cin = fmtTime(it.attendance.checkIn);
-        const isPartTime = String(it.role || '').toLowerCase() === 'part_time' || String(it.employment_type || '').toLowerCase() === 'part_time' || String(it.employment_type || '') === 'アルバイト';
-        // Bộ phận công trình bắt đầu chuẩn lúc 08:00, nhưng part-time có thể có ca linh hoạt như 09:00.
-        // Cho đơn giản, dùng 09:00 làm mốc cho part-time ở bộ phận công trình trừ khi ca cụ thể quy định khác.
-        const threshold = (it.departmentName || '').includes('工事') && !isPartTime ? '08:00' : '09:00';
-        if (cin > threshold && it.status !== '休日出勤') {
-          const [h1, m1] = cin.split(':').map(Number);
-          const [h2, m2] = threshold.split(':').map(Number);
-          const diff = (h1 * 60 + m1) - (h2 * 60 + m2);
-          if (diff > 0 && !it.lateMinutes) it.lateMinutes = diff; // ghi đè để hiển thị
-        }
-      }
-
-      const lateStr = Number(it.lateMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 遅刻 ${formatDelay(it.lateMinutes)}</span>` : '';
-      const earlyStr = Number(it.earlyMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 早退 ${formatDelay(it.earlyMinutes)}</span>` : '';
-      let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join('<br>');
-
-      // Đọc dữ liệu từ cột 備考 (notes) của attendance_daily
-      const combinedReasonMemo = [it.notes].filter(Boolean).join(' - ');
-      const tooltip = combinedReasonMemo ? `title="${esc(combinedReasonMemo)}"` : '';
-      const displayReason = combinedReasonMemo.length > 20 ? combinedReasonMemo.substring(0, 20) + '...' : combinedReasonMemo;
-
-      const reasonHtml = ''; // Bỏ lý do khỏi lateEarlyHtml vì giờ nó có cột riêng
-
-      const lateEarlyHtml = lateEarlyCombo || '';
-
-      const dc = dowClass(it.weekday);
-      const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
-      // Tính ngày nghỉ từ cờ backend
-      const isPublicHoliday = !!it.holiday && it.weekday !== '土' && it.weekday !== '日';
-
-      const isOffRow = (dc === 'wr-dow-sun' || isPublicHoliday);
-      const isSatRow = (dc === 'wr-dow-sat' && !isPublicHoliday);
-
-      const rowClass = isOffRow ? 'wr-off-row' : (isSatRow ? 'wr-sat-row' : '');
-      const textColorClass = isOffRow ? 'wr-sun-row' : (isSatRow ? 'wr-sat-row' : '');
-      
-      const displayLateEarly = !it.isSecondary ? lateEarlyHtml : dash;
-      const displayNotes = !it.isSecondary ? (combinedReasonMemo ? esc(combinedReasonMemo) : dash) : dash;
-
-      return `
-        <tr class="${rowClass}">
-          <td data-label="日付" class="${dc} ${textColorClass}" style="text-align:center; font-weight:600;">${esc(displayDate)}</td>
-          <td data-label="曜" class="${dc} ${textColorClass}" style="text-align:center; font-weight:600;">${esc(isPublicHoliday ? '祝' : (it.weekday || ''))}</td>
-          <td data-label="社員番号" style="white-space:nowrap;">${esc(code)}</td>
-          <td data-label="氏名" style="font-weight:500; white-space:nowrap;">${esc(it.username || '')}</td>
-          <td data-label="部署" style="white-space:nowrap;">${dept}</td>
-          <td data-label="支店" style="white-space:nowrap;">${branch}</td>
-          <td data-label="勤務区分" style="white-space:nowrap;">${kubun}</td>
-          <td data-label="出勤" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${checkIn}</td>
-          <td data-label="退勤" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${checkOut}</td>
-          <td data-label="勤務形態" style="white-space:nowrap;">${wType}</td>
-          <td data-label="現場" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px;">${site}</td>
-          <td data-label="作業内容" style="white-space:pre-wrap; word-break:break-word; min-width:200px; max-width:400px; color:#475569;">${work}</td>
-          <td data-label="遅刻・早退等" style="white-space:nowrap;">${displayLateEarly}</td>
-          <td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; color:#475569;">${displayNotes}</td>
-          <td data-label="状態"><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>
+  `;V.innerHTML=Pt(i,m),k.appendChild(V);const U=()=>{try{const t=new URL(window.location.href);t.searchParams.set("month",i.month),t.searchParams.set("sort",i.sort),i.dept?t.searchParams.set("dept",i.dept):t.searchParams.delete("dept"),i.q?t.searchParams.set("q",i.q):t.searchParams.delete("q"),i.group?t.searchParams.set("group","1"):t.searchParams.delete("group"),history.replaceState(null,"",t.pathname+t.search+t.hash)}catch{}};let H=1;const Y=window.innerWidth<=768,K=Y?15:10,X=t=>{if(!t||isNaN(t))return"";const a=Math.floor(t/60),n=t%60;return a>0&&n>0?`${a}\u6642\u9593${n}\u5206`:a>0?`${a}\u6642\u9593`:`${n}\u5206`},D=(t,a=!1)=>{a&&(H=1);const n=c("#wrTable");if(!n)return;if(!t.length){n.innerHTML='<div class="empty-state"><div style="font-size:28px;">\u{1F5C2}\uFE0F</div><div>\u51FA\u52E4\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div></div>';return}const l=n.querySelector("#wrTableBody")||n,s=(H-1)*K,r=Math.min(s+K,t.length),f=t.slice(s,r).map(o=>{const p='<span style="color:#cbd5e1;">\u2014</span>',h=o.employeeCode||`EMP${String(o.userId).padStart(3,"0")}`,w=O(o),u=Ft(w);let S="";w==="checkout_missing"||w==="missing"||w==="not_punched"||w==="absence"?S="\u26A0 ":(w==="submitted"||w==="checkout_missing_submitted")&&(S="\u2705 "),u.label=S+u.label;let E=String(o.kubun||"").trim();E==="\u4F11\u65E5\u51FA\u52E4"&&!o.attendance?.checkIn&&!o.attendance?.checkOut&&!o.site&&!o.work&&(E="\u4F11\u65E5");const F=E?m(E):p,M=String(o.site||"").trim()?m(String(o.site).trim()):p,et=String(o.work||"").trim(),pt=et?m(et).replace(/\n/g,"<br>"):p,ct=String(o.departmentName||"").trim()?m(String(o.departmentName).trim()):p,mt=String(o.branchName||"").trim()?m(String(o.branchName).trim()):p,bt=o.attendance?.checkIn?m(W(o.attendance.checkIn)):p,ft=o.attendance?.checkOut?m(W(o.attendance.checkOut)):p,L=dt(o.workType)!=="\u2014"?m(dt(o.workType)):p;let Ct="";if(o.attendance?.checkIn){const nt=W(o.attendance.checkIn),kt=String(o.role||"").toLowerCase()==="part_time"||String(o.employment_type||"").toLowerCase()==="part_time"||String(o.employment_type||"")==="\u30A2\u30EB\u30D0\u30A4\u30C8",it=(o.departmentName||"").includes("\u5DE5\u4E8B")&&!kt?"08:00":"09:00";if(nt>it&&o.status!=="\u4F11\u65E5\u51FA\u52E4"){const[vt,$t]=nt.split(":").map(Number),[St,Mt]=it.split(":").map(Number),at=vt*60+$t-(St*60+Mt);at>0&&!o.lateMinutes&&(o.lateMinutes=at)}}const P=Number(o.lateMinutes)>0?`<span style="color:#ef4444;font-weight:bold;">\u26A0 \u9045\u523B ${X(o.lateMinutes)}</span>`:"",ot=Number(o.earlyMinutes)>0?`<span style="color:#ef4444;font-weight:bold;">\u26A0 \u65E9\u9000 ${X(o.earlyMinutes)}</span>`:"";let ht=[P,ot].filter(Boolean).join("<br>");const _=[o.notes].filter(Boolean).join(" - "),_t=_?`title="${m(_)}"`:"",gt=_.length>20?_.substring(0,20)+"...":_,Tt="",wt=ht||"",x=Dt(o.weekday),ut=o.date?o.date.replace(/-/g,"/"):"",q=!!o.holiday&&o.weekday!=="\u571F"&&o.weekday!=="\u65E5",v=x==="wr-dow-sun"||q,$=x==="wr-dow-sat"&&!q,z=v?"wr-off-row":$?"wr-sat-row":"",rt=v?"wr-sun-row":$?"wr-sat-row":"",xt=o.isSecondary?p:wt,yt=o.isSecondary?p:_?m(_):p;return`
+        <tr class="${z}">
+          <td data-label="\u65E5\u4ED8" class="${x} ${rt}" style="text-align:center; font-weight:600;">${m(ut)}</td>
+          <td data-label="\u66DC" class="${x} ${rt}" style="text-align:center; font-weight:600;">${m(q?"\u795D":o.weekday||"")}</td>
+          <td data-label="\u793E\u54E1\u756A\u53F7" style="white-space:nowrap;">${m(h)}</td>
+          <td data-label="\u6C0F\u540D" style="font-weight:500; white-space:nowrap;">${m(o.username||"")}</td>
+          <td data-label="\u90E8\u7F72" style="white-space:nowrap;">${ct}</td>
+          <td data-label="\u652F\u5E97" style="white-space:nowrap;">${mt}</td>
+          <td data-label="\u52E4\u52D9\u533A\u5206" style="white-space:nowrap;">${F}</td>
+          <td data-label="\u51FA\u52E4" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${bt}</td>
+          <td data-label="\u9000\u52E4" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${ft}</td>
+          <td data-label="\u52E4\u52D9\u5F62\u614B" style="white-space:nowrap;">${L}</td>
+          <td data-label="\u73FE\u5834" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px;">${M}</td>
+          <td data-label="\u4F5C\u696D\u5185\u5BB9" style="white-space:pre-wrap; word-break:break-word; min-width:200px; max-width:400px; color:#475569;">${pt}</td>
+          <td data-label="\u9045\u523B\u30FB\u65E9\u9000\u7B49" style="white-space:nowrap;">${xt}</td>
+          <td data-label="\u5099\u8003" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; color:#475569;">${yt}</td>
+          <td data-label="\u72B6\u614B"><span class="dash-pill" style="${u.style}; white-space:nowrap;">${m(u.label)}</span></td>
         </tr>
-      `;
-    }).join('');
-
-    let paginationHtml = '';
-    if (items.length > 0) {
-      const totalPages = Math.ceil(items.length / pageSize);
-      const prevDisabled = currentPage === 1 ? 'disabled' : '';
-      const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-      const prevBg = currentPage === 1 ? '#f1f5f9' : '#fff';
-      const nextBg = currentPage === totalPages ? '#f1f5f9' : '#fff';
-      const prevCursor = currentPage === 1 ? 'not-allowed' : 'pointer';
-      const nextCursor = currentPage === totalPages ? 'not-allowed' : 'pointer';
-      const paginationClass = isMobile ? 'wr-mobile-pagination' : '';
-
-      paginationHtml = `
-        <div class="${paginationClass}" style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding:8px 4px 0; clear:both;">
+      `}).join("");let e="";if(t.length>0){const o=Math.ceil(t.length/K),p=H===1?"disabled":"",h=H===o?"disabled":"",w=H===1?"#f1f5f9":"#fff",u=H===o?"#f1f5f9":"#fff",S=H===1?"not-allowed":"pointer",E=H===o?"not-allowed":"pointer";e=`
+        <div class="${Y?"wr-mobile-pagination":""}" style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding:8px 4px 0; clear:both;">
           <div style="color:#64748b; font-size:14px;">
-            全 <span style="font-weight:700; color:#0f172a;">${items.length}</span> 件中 <span style="font-weight:700; color:#0f172a;">${startIndex + 1}</span> - <span style="font-weight:700; color:#0f172a;">${endIndex}</span> 件を表示
+            \u5168 <span style="font-weight:700; color:#0f172a;">${t.length}</span> \u4EF6\u4E2D <span style="font-weight:700; color:#0f172a;">${s+1}</span> - <span style="font-weight:700; color:#0f172a;">${r}</span> \u4EF6\u3092\u8868\u793A
           </div>
           <div style="display:flex; gap:8px;">
-            <button id="btnWrPrev" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${prevBg}; color:#475569; cursor:${prevCursor}; font-size:14px;" ${prevDisabled}>前へ</button>
-            <button id="btnWrNext" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${nextBg}; color:#475569; cursor:${nextCursor}; font-size:14px;" ${nextDisabled}>次へ</button>
+            <button id="btnWrPrev" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${w}; color:#475569; cursor:${S}; font-size:14px;" ${p}>\u524D\u3078</button>
+            <button id="btnWrNext" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:4px; background:${u}; color:#475569; cursor:${E}; font-size:14px;" ${h}>\u6B21\u3078</button>
           </div>
         </div>
-      `;
-    }
-
-    tableHost.innerHTML = `
+      `}if(n.innerHTML=`
       <div class="wr-table-container" id="wrTableContainer" style="overflow:auto;max-height:calc(100vh - 160px);border-top:none;border-bottom:none;background:transparent;padding-bottom:0;width:100%;">
         <table class="wr-table" style="width:100%; table-layout:auto; border-collapse: collapse;">
               <thead style="position:sticky; top:0; z-index:10;">
                 <tr style="background:#e6f2ff; color:#0f172a; height:30px;">
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">日付</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">曜</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">社員番号</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">氏名</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">部署</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">支店</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務区分</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">出勤</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">退勤</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務形態</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">現場</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">作業内容</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">遅刻・早退等</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">備考</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">状態</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u65E5\u4ED8</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u66DC</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u793E\u54E1\u756A\u53F7</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u6C0F\u540D</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u90E8\u7F72</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u652F\u5E97</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u52E4\u52D9\u533A\u5206</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u51FA\u52E4</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9000\u52E4</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u52E4\u52D9\u5F62\u614B</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u73FE\u5834</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u4F5C\u696D\u5185\u5BB9</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9045\u523B\u30FB\u65E9\u9000\u7B49</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u5099\u8003</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u72B6\u614B</th>
                 </tr>
               </thead>
           <tbody>
-            ${rows}
+            ${f}
           </tbody>
         </table>
       </div>
-      ${paginationHtml}
-    `;
-
-    // Container cuộn được CSS xử lý (mẹo width:0; min-width:100%)
-
-    if (items.length > 0) {
-      const btnPrev = document.getElementById('btnWrPrev');
-      if (btnPrev) {
-        btnPrev.addEventListener('click', () => {
-          if (currentPage > 1) {
-            currentPage--;
-            renderRows(items);
-            if (isMobile) {
-              setTimeout(() => {
-                const tableHost = $('#wrTable');
-                if (tableHost) tableHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 50);
-            }
-          }
-        });
-      }
-      const btnNext = document.getElementById('btnWrNext');
-      if (btnNext) {
-        btnNext.addEventListener('click', () => {
-          const totalPages = Math.ceil(items.length / pageSize);
-          if (currentPage < totalPages) {
-            currentPage++;
-            renderRows(items);
-            if (isMobile) {
-              setTimeout(() => {
-                const tableHost = $('#wrTable');
-                if (tableHost) tableHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 50);
-            }
-          }
-        });
-      }
-    }
-  };
-
-  const normalize = (s) => String(s || '').trim().toLowerCase();
-  const cmpStr = (a, b) => {
-    const aa = normalize(a);
-    const bb = normalize(b);
-    if (aa === bb) return 0;
-    return aa < bb ? -1 : 1;
-  };
-  const statusRank = (st) => {
-    if (st === 'checkout_missing') return 0;
-    if (st === 'missing') return 0;
-    if (st === 'checkout_missing_submitted') return 1;
-    if (st === 'monthly_input_only') return 1;
-    if (st === 'working') return 1;
-    if (st === 'submitted') return 2;
-    return 3;
-  };
-
-  const employeeCodeOf = (x) => String(x?.employeeCode || `EMP${String(x?.userId || '').padStart(3, '0')}`);
-  const employeeNameOf = (x) => String(x?.username || '').trim();
-  const departmentNameOf = (x) => String(x?.departmentName || '').trim();
-
-  const filterAndSort = (items) => {
-    const dept = normalize(state.dept);
-    const q = normalize(state.q);
-    let out = Array.isArray(items) ? items.slice() : [];
-    if (dept) {
-      out = out.filter(x => normalize(x?.departmentName) === dept);
-    }
-    if (q) {
-      out = out.filter(x => {
-        const code = normalize(x?.employeeCode);
-        const name = normalize(x?.username);
-        return (code && code.includes(q)) || (name && name.includes(q));
-      });
-    }
-    out.sort((a, b) => {
-      if (state.sort === 'employee') {
-        const c1 = cmpStr(employeeCodeOf(a), employeeCodeOf(b));
-        if (c1) return c1;
-        const d1 = cmpStr(b?.date, a?.date);
-        if (d1) return d1;
-        return Number(a?.userId || 0) - Number(b?.userId || 0);
-      }
-      if (state.sort === 'name') {
-        const n1 = cmpStr(employeeNameOf(a), employeeNameOf(b));
-        if (n1) return n1;
-        const c1 = cmpStr(employeeCodeOf(a), employeeCodeOf(b));
-        if (c1) return c1;
-        const d1 = cmpStr(b?.date, a?.date);
-        if (d1) return d1;
-        return Number(a?.userId || 0) - Number(b?.userId || 0);
-      }
-      if (state.sort === 'department') {
-        const dep = cmpStr(departmentNameOf(a), departmentNameOf(b));
-        if (dep) return dep;
-        const c1 = cmpStr(employeeCodeOf(a), employeeCodeOf(b));
-        if (c1) return c1;
-        const d1 = cmpStr(b?.date, a?.date);
-        if (d1) return d1;
-        return Number(a?.userId || 0) - Number(b?.userId || 0);
-      }
-      if (state.sort === 'missingFirst') {
-        const r1 = statusRank(effectiveStatus(a)) - statusRank(effectiveStatus(b));
-        if (r1) return r1;
-        const d1 = cmpStr(b?.date, a?.date);
-        if (d1) return d1;
-        const c1 = cmpStr(employeeCodeOf(a), employeeCodeOf(b));
-        if (c1) return c1;
-        return Number(a?.userId || 0) - Number(b?.userId || 0);
-      }
-      const d1 = cmpStr(b?.date, a?.date);
-      if (d1) return d1;
-      const c1 = cmpStr(employeeCodeOf(a), employeeCodeOf(b));
-      if (c1) return c1;
-      return Number(a?.userId || 0) - Number(b?.userId || 0);
-    });
-    return out;
-  };
-
-  const renderGrouped = (items) => {
-    const tableHost = $('#wrTable');
-    if (!tableHost) return;
-    if (!items.length) {
-      tableHost.innerHTML = '<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>出勤データがありません</div></div>';
-      return;
-    }
-    const groups = new Map();
-    for (const it of items) {
-      const uid = Number(it?.userId || 0);
-      const key = uid ? String(uid) : `${employeeCodeOf(it)}|${employeeNameOf(it)}|${departmentNameOf(it)}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          userId: uid || null,
-          employeeCode: employeeCodeOf(it),
-          username: employeeNameOf(it),
-          departmentName: departmentNameOf(it) || '—',
-          items: []
-        });
-      }
-      groups.get(key).items.push(it);
-    }
-    const arr = Array.from(groups.values());
-    for (const g of arr) {
-      g.items.sort((a, b) => cmpStr(b?.date, a?.date));
-      g.missing = g.items.filter(x => {
-        const st = effectiveStatus(x);
-        return st === 'missing' || st === 'checkout_missing';
-      }).length;
-      g.submitted = g.items.filter(x => {
-        const st = effectiveStatus(x);
-        return st === 'submitted' || st === 'checkout_missing_submitted';
-      }).length;
-      g.total = g.items.length;
-    }
-    arr.sort((a, b) => {
-      if (state.sort === 'missingFirst') {
-        const d = Number(b.missing || 0) - Number(a.missing || 0);
-        if (d) return d;
-      }
-      if (state.sort === 'department') {
-        const dep = cmpStr(a.departmentName, b.departmentName);
-        if (dep) return dep;
-      }
-      if (state.sort === 'name') {
-        const n = cmpStr(a.username, b.username);
-        if (n) return n;
-      }
-      const c = cmpStr(a.employeeCode, b.employeeCode);
-      if (c) return c;
-      return Number(a.userId || 0) - Number(b.userId || 0);
-    });
-    const html = arr.map(g => {
-      const headerRight = `
+      ${e}
+    `,t.length>0){const o=document.getElementById("btnWrPrev");o&&o.addEventListener("click",()=>{H>1&&(H--,D(t),Y&&setTimeout(()=>{const h=c("#wrTable");h&&h.scrollIntoView({behavior:"smooth",block:"start"})},50))});const p=document.getElementById("btnWrNext");p&&p.addEventListener("click",()=>{const h=Math.ceil(t.length/K);H<h&&(H++,D(t),Y&&setTimeout(()=>{const w=c("#wrTable");w&&w.scrollIntoView({behavior:"smooth",block:"start"})},50))})}},C=t=>String(t||"").trim().toLowerCase(),y=(t,a)=>{const n=C(t),l=C(a);return n===l?0:n<l?-1:1},Ht=t=>t==="checkout_missing"||t==="missing"?0:t==="checkout_missing_submitted"||t==="monthly_input_only"||t==="working"?1:t==="submitted"?2:3,I=t=>String(t?.employeeCode||`EMP${String(t?.userId||"").padStart(3,"0")}`),Z=t=>String(t?.username||"").trim(),tt=t=>String(t?.departmentName||"").trim(),A=t=>{const a=C(i.dept),n=C(i.q);let l=Array.isArray(t)?t.slice():[];return a&&(l=l.filter(s=>C(s?.departmentName)===a)),n&&(l=l.filter(s=>{const r=C(s?.employeeCode),b=C(s?.username);return r&&r.includes(n)||b&&b.includes(n)})),l.sort((s,r)=>{if(i.sort==="employee"){const e=y(I(s),I(r));if(e)return e;const o=y(r?.date,s?.date);return o||Number(s?.userId||0)-Number(r?.userId||0)}if(i.sort==="name"){const e=y(Z(s),Z(r));if(e)return e;const o=y(I(s),I(r));if(o)return o;const p=y(r?.date,s?.date);return p||Number(s?.userId||0)-Number(r?.userId||0)}if(i.sort==="department"){const e=y(tt(s),tt(r));if(e)return e;const o=y(I(s),I(r));if(o)return o;const p=y(r?.date,s?.date);return p||Number(s?.userId||0)-Number(r?.userId||0)}if(i.sort==="missingFirst"){const e=Ht(O(s))-Ht(O(r));if(e)return e;const o=y(r?.date,s?.date);if(o)return o;const p=y(I(s),I(r));return p||Number(s?.userId||0)-Number(r?.userId||0)}const b=y(r?.date,s?.date);if(b)return b;const f=y(I(s),I(r));return f||Number(s?.userId||0)-Number(r?.userId||0)}),l},Q=t=>{const a=c("#wrTable");if(!a)return;if(!t.length){a.innerHTML='<div class="empty-state"><div style="font-size:28px;">\u{1F5C2}\uFE0F</div><div>\u51FA\u52E4\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div></div>';return}const n=new Map;for(const r of t){const b=Number(r?.userId||0),f=b?String(b):`${I(r)}|${Z(r)}|${tt(r)}`;n.has(f)||n.set(f,{userId:b||null,employeeCode:I(r),username:Z(r),departmentName:tt(r)||"\u2014",items:[]}),n.get(f).items.push(r)}const l=Array.from(n.values());for(const r of l)r.items.sort((b,f)=>y(f?.date,b?.date)),r.missing=r.items.filter(b=>{const f=O(b);return f==="missing"||f==="checkout_missing"}).length,r.submitted=r.items.filter(b=>{const f=O(b);return f==="submitted"||f==="checkout_missing_submitted"}).length,r.total=r.items.length;l.sort((r,b)=>{if(i.sort==="missingFirst"){const e=Number(b.missing||0)-Number(r.missing||0);if(e)return e}if(i.sort==="department"){const e=y(r.departmentName,b.departmentName);if(e)return e}if(i.sort==="name"){const e=y(r.username,b.username);if(e)return e}const f=y(r.employeeCode,b.employeeCode);return f||Number(r.userId||0)-Number(b.userId||0)});const s=l.map(r=>{const b=`
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <span class="dash-pill" style="background:#f8fafc;color:#475569;border-color:#e2e8f0;">合計 ${g.total}</span>
-          <span class="dash-pill" style="background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;">提出 ${g.submitted}</span>
-          <span class="dash-pill" style="background:#fff1f1;color:#991b1b;border-color:#ffcccc;">未提出 ${g.missing}</span>
+          <span class="dash-pill" style="background:#f8fafc;color:#475569;border-color:#e2e8f0;">\u5408\u8A08 ${r.total}</span>
+          <span class="dash-pill" style="background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;">\u63D0\u51FA ${r.submitted}</span>
+          <span class="dash-pill" style="background:#fff1f1;color:#991b1b;border-color:#ffcccc;">\u672A\u63D0\u51FA ${r.missing}</span>
         </div>
-      `;
-      const rows = g.items.map((it, idx) => {
-        const dash = `<span style="color:#cbd5e1;">—</span>`;
-        const stx = effectiveStatus(it);
-        const meta = statusMeta(stx);
-
-        // Xác định icon riêng theo trạng thái
-        let statusIcon = '';
-        if (stx === 'checkout_missing' || stx === 'missing' || stx === 'not_punched' || stx === 'absence') {
-          statusIcon = '⚠ ';
-        } else if (stx === 'submitted' || stx === 'checkout_missing_submitted') {
-          statusIcon = '✅ ';
-        }
-        meta.label = statusIcon + meta.label;
-
-        let kubunStr = String(it.kubun || '').trim();
-        if (kubunStr === '休日出勤' && !it.attendance?.checkIn && !it.attendance?.checkOut && (!it.site && !it.work)) {
-          kubunStr = '休日';
-        }
-        const kubun = kubunStr ? esc(kubunStr) : dash;
-        const site = String(it.site || '').trim() ? esc(String(it.site).trim()) : dash;
-        const work = String(it.work || '').trim() ? esc(String(it.work).trim()).replace(/\n/g, '<br>') : dash;
-        const checkIn = it.attendance?.checkIn ? esc(fmtTime(it.attendance.checkIn)) : dash;
-        const checkOut = it.attendance?.checkOut ? esc(fmtTime(it.attendance.checkOut)) : dash;
-        const wType = workTypeLabel(it.workType) !== '—' ? esc(workTypeLabel(it.workType)) : dash;
-        const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
-        const dept = String(it.departmentName || '').trim() ? esc(String(it.departmentName).trim()) : dash;
-        const branch = String(it.branchName || '').trim() ? esc(String(it.branchName).trim()) : dash;
-
-        const dc = dowClass(it.weekday);
-        const displayDate = it.date ? it.date.replace(/-/g, '/') : '';
-        // Tính ngày nghỉ từ cờ backend
-        const isHoliday = !!it.holiday && it.weekday !== '土' && it.weekday !== '日';
-        const dowColor = dc === 'wr-dow-sun' ? 'color:#ef4444; background:#fef2f2;' : (dc === 'wr-dow-sat' ? 'color:#d97706; background:#fffbeb;' : (isHoliday ? 'color:#ef4444; background:#fef2f2;' : 'color:#64748b;'));
-        const lateStr = Number(it.lateMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 遅刻 ${formatDelay(it.lateMinutes)}</span>` : '';
-        const earlyStr = Number(it.earlyMinutes) > 0 ? `<span style="color:#ef4444;font-weight:bold;">⚠ 早退 ${formatDelay(it.earlyMinutes)}</span>` : '';
-        let lateEarlyCombo = [lateStr, earlyStr].filter(Boolean).join('<br>');
-
-        // Đọc dữ liệu từ cột 備考 (notes) của attendance_daily
-        const combinedReasonMemo = [it.notes].filter(Boolean).join(' - ');
-
-        const lateEarlyHtml = lateEarlyCombo || '';
-
-        const rowBg = '';
-        const textColor = (dc === 'wr-dow-sun' || isHoliday) ? 'color:#ef4444;' : (dc === 'wr-dow-sat' ? 'color:#d97706;' : '');
-        const trClass = (dc === 'wr-dow-sun' || isHoliday) ? 'wr-off-row' : (dc === 'wr-dow-sat' ? 'wr-sat-row' : '');
-
-        // Logic gộp dòng cho nhiều ca trong cùng một ngày
-        const prev = idx > 0 ? g.items[idx - 1] : null;
-        // Sửa lỗi: Cần kiểm tra kĩ userId và date của các record trước đó để gộp đúng người, đúng ngày
-        const isSameUserDate = prev && prev.date === it.date && prev.userId === it.userId;
-
-        let rsHtml = '';
-        if (!isSameUserDate) {
-          let rs = 1;
-          for (let j = idx + 1; j < g.items.length; j++) {
-            if (g.items[j].date === it.date && g.items[j].userId === it.userId) rs++;
-            else break;
-          }
-          rsHtml = rs > 1 ? ` rowspan="${rs}"` : '';
-        }
-
-        // Căn giữa ngang và dọc cho các ô đã merge
-        const cellStyle = 'vertical-align: middle;';
-
-        // Nếu cùng ngày, ẩn viền của phần thông tin lặp lại
-        const displayDateHtml = !isSameUserDate ? `<td data-label="日付" class="${dc}" style="text-align:center; font-weight:600; ${cellStyle} ${dowColor}"${rsHtml}>${esc(displayDate)}</td>` : ``;
-        const dowHtml = !isSameUserDate ? `<td data-label="曜" class="${dc}" style="text-align:center; font-weight:600; ${cellStyle} ${dowColor}"${rsHtml}>${esc(isHoliday ? '祝' : (it.weekday || ''))}</td>` : ``;
-        const codeHtml = !isSameUserDate ? `<td data-label="社員番号" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${esc(code)}</td>` : ``;
-        const nameHtml = !isSameUserDate ? `<td data-label="氏名" class="group-hide" style="font-weight:500; white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${esc(it.username || '')}</td>` : ``;
-        const deptHtml = !isSameUserDate ? `<td data-label="部署" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${dept}</td>` : ``;
-        const branchHtml = !isSameUserDate ? `<td data-label="支店" class="group-hide" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${branch}</td>` : ``;
-        const kubunHtml = !isSameUserDate ? `<td data-label="勤務区分" style="${cellStyle} ${textColor}"${rsHtml}>${kubun}</td>` : ``;
-        const wTypeHtml = !isSameUserDate ? `<td data-label="勤務形態" style="${cellStyle} ${textColor}"${rsHtml}>${wType}</td>` : ``;
-        const lateEarlyHtmlCell = !isSameUserDate ? `<td data-label="遅刻・早退等" style="white-space:nowrap; ${cellStyle} ${textColor}"${rsHtml}>${lateEarlyHtml}</td>` : ``;
-        const memoHtml = !isSameUserDate ? `<td data-label="備考" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; ${cellStyle} ${textColor ? textColor : 'color:#475569;'}"${rsHtml}>${combinedReasonMemo ? esc(combinedReasonMemo) : dash}</td>` : ``;
-        const statusHtml = !isSameUserDate ? `<td data-label="状態" style="${cellStyle}"${rsHtml}><span class="dash-pill" style="${meta.style}; white-space:nowrap;">${esc(meta.label)}</span></td>` : ``;
-
-        return `
-        <tr class="${trClass}" style="${rowBg} ${textColor}">
-          ${displayDateHtml}
-          ${dowHtml}
-          ${codeHtml}
-          ${nameHtml}
-          ${deptHtml}
-          ${branchHtml}
-          ${kubunHtml}
-          <td data-label="出勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkIn}</td>
-          <td data-label="退勤" style="font-family:monospace; font-size:14px; ${textColor}">${checkOut}</td>
-          ${wTypeHtml}
-          <td data-label="現場" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px; ${textColor}">${site}</td>
-          <td data-label="作業内容" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${textColor ? textColor : 'color:#475569;'}">${work}</td>
-          ${lateEarlyHtmlCell}
-          ${memoHtml}
-          ${statusHtml}
+      `,f=r.items.map((e,o)=>{const p='<span style="color:#cbd5e1;">\u2014</span>',h=O(e),w=Ft(h);let u="";h==="checkout_missing"||h==="missing"||h==="not_punched"||h==="absence"?u="\u26A0 ":(h==="submitted"||h==="checkout_missing_submitted")&&(u="\u2705 "),w.label=u+w.label;let S=String(e.kubun||"").trim();S==="\u4F11\u65E5\u51FA\u52E4"&&!e.attendance?.checkIn&&!e.attendance?.checkOut&&!e.site&&!e.work&&(S="\u4F11\u65E5");const E=S?m(S):p,F=String(e.site||"").trim()?m(String(e.site).trim()):p,M=String(e.work||"").trim()?m(String(e.work).trim()).replace(/\n/g,"<br>"):p,et=e.attendance?.checkIn?m(W(e.attendance.checkIn)):p,pt=e.attendance?.checkOut?m(W(e.attendance.checkOut)):p,ct=dt(e.workType)!=="\u2014"?m(dt(e.workType)):p,mt=e.employeeCode||`EMP${String(e.userId).padStart(3,"0")}`,bt=String(e.departmentName||"").trim()?m(String(e.departmentName).trim()):p,ft=String(e.branchName||"").trim()?m(String(e.branchName).trim()):p,L=Dt(e.weekday),Ct=e.date?e.date.replace(/-/g,"/"):"",P=!!e.holiday&&e.weekday!=="\u571F"&&e.weekday!=="\u65E5",ot=L==="wr-dow-sun"?"color:#ef4444; background:#fef2f2;":L==="wr-dow-sat"?"color:#d97706; background:#fffbeb;":P?"color:#ef4444; background:#fef2f2;":"color:#64748b;",ht=Number(e.lateMinutes)>0?`<span style="color:#ef4444;font-weight:bold;">\u26A0 \u9045\u523B ${X(e.lateMinutes)}</span>`:"",_=Number(e.earlyMinutes)>0?`<span style="color:#ef4444;font-weight:bold;">\u26A0 \u65E9\u9000 ${X(e.earlyMinutes)}</span>`:"";let _t=[ht,_].filter(Boolean).join("<br>");const gt=[e.notes].filter(Boolean).join(" - "),Tt=_t||"",wt="",x=L==="wr-dow-sun"||P?"color:#ef4444;":L==="wr-dow-sat"?"color:#d97706;":"",ut=L==="wr-dow-sun"||P?"wr-off-row":L==="wr-dow-sat"?"wr-sat-row":"",q=o>0?r.items[o-1]:null,v=q&&q.date===e.date&&q.userId===e.userId;let $="";if(!v){let zt=1;for(let st=o+1;st<r.items.length&&(r.items[st].date===e.date&&r.items[st].userId===e.userId);st++)zt++;$=zt>1?` rowspan="${zt}"`:""}const z="vertical-align: middle;",rt=v?"":`<td data-label="\u65E5\u4ED8" class="${L}" style="text-align:center; font-weight:600; ${z} ${ot}"${$}>${m(Ct)}</td>`,xt=v?"":`<td data-label="\u66DC" class="${L}" style="text-align:center; font-weight:600; ${z} ${ot}"${$}>${m(P?"\u795D":e.weekday||"")}</td>`,yt=v?"":`<td data-label="\u793E\u54E1\u756A\u53F7" class="group-hide" style="white-space:nowrap; ${z} ${x}"${$}>${m(mt)}</td>`,nt=v?"":`<td data-label="\u6C0F\u540D" class="group-hide" style="font-weight:500; white-space:nowrap; ${z} ${x}"${$}>${m(e.username||"")}</td>`,kt=v?"":`<td data-label="\u90E8\u7F72" class="group-hide" style="white-space:nowrap; ${z} ${x}"${$}>${bt}</td>`,it=v?"":`<td data-label="\u652F\u5E97" class="group-hide" style="white-space:nowrap; ${z} ${x}"${$}>${ft}</td>`,vt=v?"":`<td data-label="\u52E4\u52D9\u533A\u5206" style="${z} ${x}"${$}>${E}</td>`,$t=v?"":`<td data-label="\u52E4\u52D9\u5F62\u614B" style="${z} ${x}"${$}>${ct}</td>`,St=v?"":`<td data-label="\u9045\u523B\u30FB\u65E9\u9000\u7B49" style="white-space:nowrap; ${z} ${x}"${$}>${Tt}</td>`,Mt=v?"":`<td data-label="\u5099\u8003" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; ${z} ${x||"color:#475569;"}"${$}>${gt?m(gt):p}</td>`,at=v?"":`<td data-label="\u72B6\u614B" style="${z}"${$}><span class="dash-pill" style="${w.style}; white-space:nowrap;">${m(w.label)}</span></td>`;return`
+        <tr class="${ut}" style="${wt} ${x}">
+          ${rt}
+          ${xt}
+          ${yt}
+          ${nt}
+          ${kt}
+          ${it}
+          ${vt}
+          <td data-label="\u51FA\u52E4" style="font-family:monospace; font-size:14px; ${x}">${et}</td>
+          <td data-label="\u9000\u52E4" style="font-family:monospace; font-size:14px; ${x}">${pt}</td>
+          ${$t}
+          <td data-label="\u73FE\u5834" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px; ${x}">${F}</td>
+          <td data-label="\u4F5C\u696D\u5185\u5BB9" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${x||"color:#475569;"}">${M}</td>
+          ${St}
+          ${Mt}
+          ${at}
         </tr>
-      `;
-      }).join('');
-      return `
+      `}).join("");return`
         <div style="margin-bottom:24px;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:12px;border-bottom:2px solid #e2e8f0;margin-bottom:12px;">
             <div style="font-weight:800;color:#0f172a;font-size:16px;display:flex;align-items:center;gap:8px;">
-              <span style="background:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:13px;color:#475569;">${esc(g.employeeCode)}</span>
-              ${esc(g.username)} 
-              <span style="color:#64748b;font-weight:600;font-size:14px;margin-left:4px;">${esc(g.departmentName)}</span>
+              <span style="background:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:13px;color:#475569;">${m(r.employeeCode)}</span>
+              ${m(r.username)} 
+              <span style="color:#64748b;font-weight:600;font-size:14px;margin-left:4px;">${m(r.departmentName)}</span>
             </div>
-            ${headerRight}
+            ${b}
           </div>
           <div class="wr-table-container" style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);background:#fff;padding-bottom:12px;">
             <table class="wr-table" style="min-width:1400px; width:100%; table-layout:fixed;">
@@ -894,387 +393,51 @@ export async function mount() {
               </colgroup>
               <thead>
                 <tr style="background:#e6f2ff; color:#0f172a; height:30px;">
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">日付</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">曜</th>
-                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">社員番号</th>
-                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">氏名</th>
-                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">部署</th>
-                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">支店</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務区分</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">出勤</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">退勤</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">勤務形態</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">現場</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">作業内容</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">遅刻・早退等</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">備考</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">状態</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u65E5\u4ED8</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u66DC</th>
+                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u793E\u54E1\u756A\u53F7</th>
+                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u6C0F\u540D</th>
+                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u90E8\u7F72</th>
+                  <th class="group-hide" style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u652F\u5E97</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u52E4\u52D9\u533A\u5206</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u51FA\u52E4</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9000\u52E4</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u52E4\u52D9\u5F62\u614B</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u73FE\u5834</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u4F5C\u696D\u5185\u5BB9</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9045\u523B\u30FB\u65E9\u9000\u7B49</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u5099\u8003</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u72B6\u614B</th>
                 </tr>
               </thead>
-              <tbody>${rows}</tbody>
+              <tbody>${f}</tbody>
             </table>
           </div>
         </div>
-      `;
-
-    }).join('');
-    tableHost.innerHTML = html;
-  };
-
-  const syncDeptOptions = (items) => {
-    const sel = $('#wrDept');
-    if (!sel) return;
-    const names = Array.from(new Set((items || []).map(x => String(x?.departmentName || '').trim()).filter(Boolean))).sort((a, b) => cmpStr(a, b));
-    const optHtml = ['<option value="">全部署</option>']
-      .concat(names.map(n => `<option value="${esc(n)}" ${normalize(n) === normalize(state.dept) ? 'selected' : ''}>${esc(n)}</option>`))
-      .join('');
-    sel.innerHTML = optHtml;
-  };
-
-  const normalizeMonthListResponse = (r) => {
-    const items = Array.isArray(r?.items) ? r.items : [];
-    const sum = r?.summary || {};
-    return {
-      summary: {
-        employees: sum.employees == null ? 0 : sum.employees,
-        workedDays: sum.workedDays == null ? items.length : sum.workedDays,
-        submitted: sum.submitted == null ? 0 : sum.submitted,
-        missing: sum.missing == null ? 0 : sum.missing
-      },
-      items
-    };
-  };
-
-  const toListFromLegacyMonthMatrix = (r) => {
-    const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-    const days = Array.isArray(r?.days) ? r.days : [];
-    const users = Array.isArray(r?.items) ? r.items : [];
-    const out = [];
-    const workingUsers = new Set();
-    let submitted = 0;
-    let missing = 0;
-    for (const u of users) {
-      const uid = u?.userId;
-      const dmap = u?.days || {};
-      for (const d of days) {
-        const entry = dmap?.[d] || null;
-        const st = String(entry?.status || '');
-        if (st !== 'checked_out' && st !== 'working' && st !== 'holiday_work' && st !== 'holiday_working' && st !== 'not_checked_in') continue;
-        const rep = entry?.report || null;
-        const site = String(rep?.site || '').trim() || null;
-        const work = String(rep?.work || '').trim() || null;
-        
-        let status = st;
-        if (st === 'not_checked_in') {
-          status = 'not_checked_in';
-        } else if (st === 'checked_out' || st === 'holiday_work') {
-           status = (site || work) ? 'submitted' : 'missing';
-        } else if (st === 'working' || st === 'holiday_working') {
-           status = (String(d).slice(0, 10) < today) ? ((site || work) ? 'checkout_missing_submitted' : 'checkout_missing') : 'working';
-        }
-        
-        if (status === 'submitted' || status === 'checkout_missing_submitted') submitted++;
-        else if (status === 'missing' || status === 'checkout_missing' || status === 'not_checked_in') missing++;
-        workingUsers.add(uid);
-        out.push({
-          userId: uid,
-          employeeCode: u?.employeeCode || null,
-          username: u?.username || null,
-          departmentId: u?.departmentId || null,
-          departmentName: u?.departmentName || null,
-          date: String(d).slice(0, 10),
-          weekday: weekdayJa(d),
-          attendance: { checkIn: null, checkOut: null },
-          kubun: entry?.kubun || null,
-          workType: null,
-          holiday: entry?.holiday || false,
-          site,
-          work,
-          status
-        });
-      }
-    }
-    out.sort((a, b) => {
-      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-      const ac = String(a.employeeCode || '').toUpperCase();
-      const bc = String(b.employeeCode || '').toUpperCase();
-      if (ac !== bc) return ac < bc ? -1 : 1;
-      return Number(a.userId || 0) - Number(b.userId || 0);
-    });
-    return {
-      summary: { employees: workingUsers.size, workedDays: out.length, submitted, missing },
-      items: out
-    };
-  };
-
-  const load = async () => {
-    const monthEl = $('#wrMonth');
-    state.month = isYM(monthEl?.value) ? monthEl.value : initMonth;
-    setUrl();
-    showSpinner();
-    try {
-      let r = null;
-      try {
-        r = await fetchJSONAuth(`/api/admin/work-reports/month/list?month=${encodeURIComponent(state.month)}`);
-        r = normalizeMonthListResponse(r);
-      } catch (e) {
-        const msg = String(e?.message || '');
-        if (msg.includes('Invalid userId') || msg.includes('404') || msg.includes('Not Found')) {
-          const legacy = await fetchJSONAuth(`/api/admin/work-reports/month?month=${encodeURIComponent(state.month)}`);
-          r = toListFromLegacyMonthMatrix(legacy);
-        } else {
-          throw e;
-        }
-      }
-      const summaryEl = $('#wrSummary');
-      state.items = Array.isArray(r?.items) ? r.items : [];
-      syncDeptOptions(state.items);
-      const sum = r?.summary || {};
-      const shown = filterAndSort(state.items).length;
-      if (summaryEl) {
-        summaryEl.innerHTML = `
+      `}).join("");a.innerHTML=s},Ot=t=>{const a=c("#wrDept");if(!a)return;const n=Array.from(new Set((t||[]).map(s=>String(s?.departmentName||"").trim()).filter(Boolean))).sort((s,r)=>y(s,r)),l=['<option value="">\u5168\u90E8\u7F72</option>'].concat(n.map(s=>`<option value="${m(s)}" ${C(s)===C(i.dept)?"selected":""}>${m(s)}</option>`)).join("");a.innerHTML=l},Rt=t=>{const a=Array.isArray(t?.items)?t.items:[],n=t?.summary||{};return{summary:{employees:n.employees==null?0:n.employees,workedDays:n.workedDays==null?a.length:n.workedDays,submitted:n.submitted==null?0:n.submitted,missing:n.missing==null?0:n.missing},items:a}},Ut=t=>{const a=new Date(Date.now()+324e5).toISOString().slice(0,10),n=Array.isArray(t?.days)?t.days:[],l=Array.isArray(t?.items)?t.items:[],s=[],r=new Set;let b=0,f=0;for(const e of l){const o=e?.userId,p=e?.days||{};for(const h of n){const w=p?.[h]||null,u=String(w?.status||"");if(u!=="checked_out"&&u!=="working"&&u!=="holiday_work"&&u!=="holiday_working"&&u!=="not_checked_in")continue;const S=w?.report||null,E=String(S?.site||"").trim()||null,F=String(S?.work||"").trim()||null;let M=u;u==="not_checked_in"?M="not_checked_in":u==="checked_out"||u==="holiday_work"?M=E||F?"submitted":"missing":(u==="working"||u==="holiday_working")&&(M=String(h).slice(0,10)<a?E||F?"checkout_missing_submitted":"checkout_missing":"working"),M==="submitted"||M==="checkout_missing_submitted"?b++:(M==="missing"||M==="checkout_missing"||M==="not_checked_in")&&f++,r.add(o),s.push({userId:o,employeeCode:e?.employeeCode||null,username:e?.username||null,departmentId:e?.departmentId||null,departmentName:e?.departmentName||null,date:String(h).slice(0,10),weekday:Vt(h),attendance:{checkIn:null,checkOut:null},kubun:w?.kubun||null,workType:null,holiday:w?.holiday||!1,site:E,work:F,status:M})}}return s.sort((e,o)=>{if(e.date!==o.date)return e.date<o.date?1:-1;const p=String(e.employeeCode||"").toUpperCase(),h=String(o.employeeCode||"").toUpperCase();return p!==h?p<h?-1:1:Number(e.userId||0)-Number(o.userId||0)}),{summary:{employees:r.size,workedDays:s.length,submitted:b,missing:f},items:s}},N=async()=>{const t=c("#wrMonth");i.month=j(t?.value)?t.value:J,U(),Yt();try{let a=null;try{a=await Nt(`/api/admin/work-reports/month/list?month=${encodeURIComponent(i.month)}`),a=Rt(a)}catch(b){const f=String(b?.message||"");if(f.includes("Invalid userId")||f.includes("404")||f.includes("Not Found")){const e=await Nt(`/api/admin/work-reports/month?month=${encodeURIComponent(i.month)}`);a=Ut(e)}else throw b}const n=c("#wrSummary");i.items=Array.isArray(a?.items)?a.items:[],Ot(i.items);const l=a?.summary||{},s=A(i.items).length;n&&(n.innerHTML=`
           <div style="display:flex; align-items:center; gap:12px; font-size:14px; background:#f8fafc; padding:4px 12px; border-radius:6px; border:1px solid #e2e8f0; height:32px; box-sizing:border-box;">
-            <span style="color:#0f172a; font-weight:600;"><span style="color:#64748b; font-weight:500; margin-right:4px;">出勤</span>${sum.workedDays == null ? 0 : sum.workedDays}</span>
-            <span style="color:#0f172a; font-weight:600;"><span style="color:#64748b; font-weight:500; margin-right:4px;">提出</span>${sum.submitted == null ? 0 : sum.submitted}</span>
-            <span style="color:#e11d48; font-weight:600;"><span style="color:#f43f5e; font-weight:500; margin-right:4px;">未提出</span>${sum.missing == null ? 0 : sum.missing}</span>
+            <span style="color:#0f172a; font-weight:600;"><span style="color:#64748b; font-weight:500; margin-right:4px;">\u51FA\u52E4</span>${l.workedDays==null?0:l.workedDays}</span>
+            <span style="color:#0f172a; font-weight:600;"><span style="color:#64748b; font-weight:500; margin-right:4px;">\u63D0\u51FA</span>${l.submitted==null?0:l.submitted}</span>
+            <span style="color:#e11d48; font-weight:600;"><span style="color:#f43f5e; font-weight:500; margin-right:4px;">\u672A\u63D0\u51FA</span>${l.missing==null?0:l.missing}</span>
           </div>
-        `;
-      }
-      const view = filterAndSort(state.items);
-      if (state.group) renderGrouped(view);
-      else renderRows(view, true);
-    } catch (e) {
-      const tableHost = $('#wrTable');
-      if (tableHost) {
-        tableHost.innerHTML = `<div class="empty-state"><div style="font-size:28px;">⚠️</div><div>読み込み失敗: ${esc((e && e.message) ? e.message : 'unknown')}</div></div>`;
-      }
-    } finally {
-      hideSpinner();
-    }
-  };
-
-  // Đồng bộ giá trị bộ chọn tháng khi thay đổi kích thước
-  window.addEventListener('resize', () => {
-    const mobileActions = document.getElementById('attHubMobileActions');
-    if (window.innerWidth <= 768 && mobileActions) {
-      if (!document.getElementById('wrMonthMobileHeader')) {
-        // Chèn lại nếu bị thiếu
-        mobileActions.style.flex = '1';
-        mobileActions.style.marginLeft = '8px';
-        mobileActions.innerHTML = `
+        `);const r=A(i.items);i.group?Q(r):D(r,!0)}catch(a){const n=c("#wrTable");n&&(n.innerHTML=`<div class="empty-state"><div style="font-size:28px;">\u26A0\uFE0F</div><div>\u8AAD\u307F\u8FBC\u307F\u5931\u6557: ${m(a&&a.message?a.message:"unknown")}</div></div>`)}finally{Kt()}};window.addEventListener("resize",()=>{const t=document.getElementById("attHubMobileActions");if(window.innerWidth<=768&&t)if(document.getElementById("wrMonthMobileHeader"))document.getElementById("wrMonthMobileHeader").value=i.month,document.getElementById("wrQueryMobileHeader").value=i.q;else{t.style.flex="1",t.style.marginLeft="8px",t.innerHTML=`
           <div style="display:flex; align-items:center; gap:6px; width:100%; justify-content: space-between;">
-            <input id="wrQueryMobileHeader" type="text" placeholder="検索..." value="${esc(state.q)}" style="flex: 1; min-width: 60px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; padding: 0 6px 0 24px; font-size: 13px; background: #fff url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2364748b\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\\'%3E%3C/path%3E%3C/svg%3E') no-repeat 6px center / 14px; color: #1f2937; outline: none; margin: 0;">
+            <input id="wrQueryMobileHeader" type="text" placeholder="\u691C\u7D22..." value="${m(i.q)}" style="flex: 1; min-width: 60px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; padding: 0 6px 0 24px; font-size: 13px; background: #fff url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2364748b\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\\'%3E%3C/path%3E%3C/svg%3E') no-repeat 6px center / 14px; color: #1f2937; outline: none; margin: 0;">
             <div style="display:flex; align-items:center; gap:6px; flex-shrink: 0;">
-              <input type="month" id="wrMonthMobileHeader" value="${state.month}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 120px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
+              <input type="month" id="wrMonthMobileHeader" value="${i.month}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 120px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
               <button type="button" id="wrFilterToggleHeader" style="height: 32px; width: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff; display: flex; align-items: center; justify-content: center; padding: 0; color: #475569; cursor: pointer; margin: 0; flex-shrink: 0;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
               </button>
             </div>
           </div>
-        `;
-        const queryHeader = document.getElementById('wrQueryMobileHeader');
-        queryHeader.addEventListener('change', async (e) => {
-          state.q = e.target.value;
-          const dQuery = $('#wrQuery');
-          if (dQuery) dQuery.value = state.q;
-          await load();
-        });
-        const monthHeader = document.getElementById('wrMonthMobileHeader');
-        monthHeader.addEventListener('change', async (e) => {
-          state.month = e.target.value;
-          const dMonth = $('#wrMonth');
-          if (dMonth) dMonth.value = state.month;
-          if (!isYM(state.month)) return;
-          await load();
-        });
-        const filterToggleHeader = document.getElementById('wrFilterToggleHeader');
-        const advancedFilters = $('#wrAdvancedFilters');
-        filterToggleHeader.addEventListener('click', () => {
-          if (advancedFilters) advancedFilters.classList.toggle('show');
-          filterToggleHeader.classList.toggle('active');
-          if (filterToggleHeader.classList.contains('active')) {
-            filterToggleHeader.style.background = '#f1f5f9';
-            filterToggleHeader.style.borderColor = '#94a3b8';
-            filterToggleHeader.style.color = '#0f172a';
-          } else {
-            filterToggleHeader.style.background = '#fff';
-            filterToggleHeader.style.borderColor = '#cbd5e1';
-            filterToggleHeader.style.color = '#475569';
-          }
-        });
-      } else {
-        document.getElementById('wrMonthMobileHeader').value = state.month;
-        document.getElementById('wrQueryMobileHeader').value = state.q;
-      }
-    } else if (mobileActions) {
-      mobileActions.innerHTML = '';
-    }
-  });
-
-  $('#wrMonth')?.addEventListener('change', async () => {
-    const monthEl = $('#wrMonth');
-    if (!isYM(monthEl?.value)) return;
-    await load();
-  });
-  $('#wrMonthMobile')?.addEventListener('change', async () => {
-    const monthEl = $('#wrMonthMobile');
-    state.month = monthEl.value;
-    const dMonth = $('#wrMonth');
-    if (dMonth) dMonth.value = state.month;
-    if (!isYM(state.month)) return;
-    await load();
-  });
-
-  // Prev/Next tháng cho mobile. Tính theo UTC để không lệch tháng do timezone.
-  const shiftMonth = (ym, delta) => {
-    const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ''));
-    if (!m) return ym;
-    const d = new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1 + delta, 1));
-    return d.toISOString().slice(0, 7);
-  };
-  const applyMonth = async (ym) => {
-    if (!isYM(ym)) return;
-    state.month = ym;
-    const dMonth = $('#wrMonth');
-    const mMonth = $('#wrMonthMobile');
-    if (dMonth) dMonth.value = ym;
-    if (mMonth) mMonth.value = ym;
-    await load();
-  };
-  $('#wrPrevMonthMobile')?.addEventListener('click', () => applyMonth(shiftMonth(state.month, -1)));
-  $('#wrNextMonthMobile')?.addEventListener('click', () => applyMonth(shiftMonth(state.month, 1)));
-
-  // Nút mở/đóng bộ lọc nâng cao (chung với nút toggle ở header nếu có).
-  $('#wrFilterToggleMobile')?.addEventListener('click', () => {
-    const adv = $('#wrAdvancedFilters');
-    const btn = $('#wrFilterToggleMobile');
-    if (adv) adv.classList.toggle('show');
-    if (btn) btn.classList.toggle('active');
-  });
-
-  $('#wrExport')?.addEventListener('click', async () => {
-    try {
-      // Truyền tham số lọc và sắp xếp xuống backend
-      const qParams = new URLSearchParams({
-        period: 'month',
-        month: state.month,
-        sort: state.sort,
-        dept: state.dept,
-        q: state.q,
-        group: state.group ? '1' : '0'
-      });
-      const url = `/api/admin/work-reports/export.xlsx?${qParams.toString()}`;
-      await downloadWithAuth(url, `work_reports_${state.month}.xlsx`);
-    } catch (e) {
-      alert(String(e?.message || 'エクスポートに失敗しました'));
-    }
-  });
-
-  // Nút toggle ở header xử lý việc bật/tắt bộ lọc, nhưng vẫn cần giữ logic này
-  const advancedFilters = $('#wrAdvancedFilters');
-  
-  // Xử lý chọn tháng và nút lọc trên header mobile
-  const mobileActions = document.getElementById('attHubMobileActions');
-  if (window.innerWidth <= 768 && mobileActions) {
-    mobileActions.style.flex = '1';
-    mobileActions.style.marginLeft = '8px';
-    mobileActions.innerHTML = `
+        `,document.getElementById("wrQueryMobileHeader").addEventListener("change",async r=>{i.q=r.target.value;const b=c("#wrQuery");b&&(b.value=i.q),await N()}),document.getElementById("wrMonthMobileHeader").addEventListener("change",async r=>{i.month=r.target.value;const b=c("#wrMonth");b&&(b.value=i.month),j(i.month)&&await N()});const l=document.getElementById("wrFilterToggleHeader"),s=c("#wrAdvancedFilters");l.addEventListener("click",()=>{s&&s.classList.toggle("show"),l.classList.toggle("active"),l.classList.contains("active")?(l.style.background="#f1f5f9",l.style.borderColor="#94a3b8",l.style.color="#0f172a"):(l.style.background="#fff",l.style.borderColor="#cbd5e1",l.style.color="#475569")})}else t&&(t.innerHTML="")}),c("#wrMonth")?.addEventListener("change",async()=>{const t=c("#wrMonth");j(t?.value)&&await N()}),c("#wrMonthMobile")?.addEventListener("change",async()=>{const t=c("#wrMonthMobile");i.month=t.value;const a=c("#wrMonth");a&&(a.value=i.month),j(i.month)&&await N()});const It=(t,a)=>{const n=/^(\d{4})-(\d{2})$/.exec(String(t||""));return n?new Date(Date.UTC(parseInt(n[1],10),parseInt(n[2],10)-1+a,1)).toISOString().slice(0,7):t},Et=async t=>{if(!j(t))return;i.month=t;const a=c("#wrMonth"),n=c("#wrMonthMobile");a&&(a.value=t),n&&(n.value=t),await N()};c("#wrPrevMonthMobile")?.addEventListener("click",()=>Et(It(i.month,-1))),c("#wrNextMonthMobile")?.addEventListener("click",()=>Et(It(i.month,1))),c("#wrFilterToggleMobile")?.addEventListener("click",()=>{const t=c("#wrAdvancedFilters"),a=c("#wrFilterToggleMobile");t&&t.classList.toggle("show"),a&&a.classList.toggle("active")}),c("#wrExport")?.addEventListener("click",async()=>{try{const a=`/api/admin/work-reports/export.xlsx?${new URLSearchParams({period:"month",month:i.month,sort:i.sort,dept:i.dept,q:i.q,group:i.group?"1":"0"}).toString()}`;await Wt(a,`work_reports_${i.month}.xlsx`)}catch(t){alert(String(t?.message||"\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}});const Lt=c("#wrAdvancedFilters"),B=document.getElementById("attHubMobileActions");if(window.innerWidth<=768&&B){B.style.flex="1",B.style.marginLeft="8px",B.innerHTML=`
       <div style="display:flex; align-items:center; gap:6px; width:100%; justify-content: space-between;">
-        <input id="wrQueryMobileHeader" type="text" placeholder="検索..." value="${esc(state.q)}" style="flex: 1; min-width: 60px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; padding: 0 6px 0 24px; font-size: 13px; background: #fff url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2364748b\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\\'%3E%3C/path%3E%3C/svg%3E') no-repeat 6px center / 14px; color: #1f2937; outline: none; margin: 0;">
+        <input id="wrQueryMobileHeader" type="text" placeholder="\u691C\u7D22..." value="${m(i.q)}" style="flex: 1; min-width: 60px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; padding: 0 6px 0 24px; font-size: 13px; background: #fff url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2364748b\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\\'%3E%3C/path%3E%3C/svg%3E') no-repeat 6px center / 14px; color: #1f2937; outline: none; margin: 0;">
         <div style="display:flex; align-items:center; gap:6px; flex-shrink: 0;">
-          <input type="month" id="wrMonthMobileHeader" value="${state.month}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 120px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
+          <input type="month" id="wrMonthMobileHeader" value="${i.month}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 120px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
           <button type="button" id="wrFilterToggleHeader" style="height: 32px; width: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff; display: flex; align-items: center; justify-content: center; padding: 0; color: #475569; cursor: pointer; margin: 0; flex-shrink: 0;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
           </button>
         </div>
       </div>
-    `;
-    
-    const queryHeader = document.getElementById('wrQueryMobileHeader');
-    queryHeader.addEventListener('change', async (e) => {
-      state.q = e.target.value;
-      const dQuery = $('#wrQuery');
-      if (dQuery) dQuery.value = state.q;
-      await load();
-    });
-
-    const monthHeader = document.getElementById('wrMonthMobileHeader');
-    monthHeader.addEventListener('change', async (e) => {
-      state.month = e.target.value;
-      const dMonth = $('#wrMonth');
-      if (dMonth) dMonth.value = state.month;
-      if (!isYM(state.month)) return;
-      await load();
-    });
-
-    const filterToggleHeader = document.getElementById('wrFilterToggleHeader');
-    filterToggleHeader.addEventListener('click', () => {
-      if (advancedFilters) advancedFilters.classList.toggle('show');
-      filterToggleHeader.classList.toggle('active');
-      if (filterToggleHeader.classList.contains('active')) {
-        filterToggleHeader.style.background = '#f1f5f9';
-        filterToggleHeader.style.borderColor = '#94a3b8';
-        filterToggleHeader.style.color = '#0f172a';
-      } else {
-        filterToggleHeader.style.background = '#fff';
-        filterToggleHeader.style.borderColor = '#cbd5e1';
-        filterToggleHeader.style.color = '#475569';
-      }
-    });
-  } else if (mobileActions) {
-    mobileActions.innerHTML = '';
-  }
-
-  $('#wrSort')?.addEventListener('change', async () => {
-    const sel = $('#wrSort');
-    state.sort = String(sel?.value || 'dateDesc');
-    setUrl();
-    const view = filterAndSort(state.items);
-    if (state.group) renderGrouped(view);
-    else renderRows(view, true);
-    try {
-      const summaryEl = $('#wrSummary');
-      if (summaryEl && summaryEl.innerHTML) {
-        // Tóm tắt giờ chỉ còn "出勤X 提出Y 未提出Z", không cần cập nhật "表示: N" nữa
-      }
-    } catch (e) { /* bỏ qua lỗi */ }
-  });
-  $('#wrDept')?.addEventListener('change', async () => {
-    const sel = $('#wrDept');
-    state.dept = String(sel?.value || '');
-    setUrl();
-    const view = filterAndSort(state.items);
-    if (state.group) renderGrouped(view);
-    else renderRows(view, true);
-    try {
-      const summaryEl = $('#wrSummary');
-      if (summaryEl && summaryEl.innerHTML) {
-        // Tóm tắt giờ chỉ còn "出勤X 提出Y 未提出Z", không cần cập nhật "表示: N" nữa
-      }
-    } catch (e) { /* bỏ qua lỗi */ }
-  });
-  $('#wrQuery')?.addEventListener('input', async () => {
-    const inp = $('#wrQuery');
-    state.q = String(inp?.value || '');
-    setUrl();
-    const view = filterAndSort(state.items);
-    if (state.group) renderGrouped(view);
-    else renderRows(view, true);
-    try {
-      const summaryEl = $('#wrSummary');
-      if (summaryEl && summaryEl.innerHTML) {
-        // Tóm tắt giờ chỉ còn "出勤X 提出Y 未提出Z", không cần cập nhật "表示: N" nữa
-      }
-    } catch (e) { /* bỏ qua lỗi */ }
-  });
-  $('#wrGroup')?.addEventListener('change', async () => {
-    const ck = $('#wrGroup');
-    state.group = !!ck?.checked;
-    setUrl();
-    const view = filterAndSort(state.items);
-    if (state.group) renderGrouped(view);
-    else renderRows(view, true);
-  });
-
-  await load();
-}
+    `,document.getElementById("wrQueryMobileHeader").addEventListener("change",async l=>{i.q=l.target.value;const s=c("#wrQuery");s&&(s.value=i.q),await N()}),document.getElementById("wrMonthMobileHeader").addEventListener("change",async l=>{i.month=l.target.value;const s=c("#wrMonth");s&&(s.value=i.month),j(i.month)&&await N()});const n=document.getElementById("wrFilterToggleHeader");n.addEventListener("click",()=>{Lt&&Lt.classList.toggle("show"),n.classList.toggle("active"),n.classList.contains("active")?(n.style.background="#f1f5f9",n.style.borderColor="#94a3b8",n.style.color="#0f172a"):(n.style.background="#fff",n.style.borderColor="#cbd5e1",n.style.color="#475569")})}else B&&(B.innerHTML="");c("#wrSort")?.addEventListener("change",async()=>{const t=c("#wrSort");i.sort=String(t?.value||"dateDesc"),U();const a=A(i.items);i.group?Q(a):D(a,!0);try{const n=c("#wrSummary");n&&n.innerHTML}catch{}}),c("#wrDept")?.addEventListener("change",async()=>{const t=c("#wrDept");i.dept=String(t?.value||""),U();const a=A(i.items);i.group?Q(a):D(a,!0);try{const n=c("#wrSummary");n&&n.innerHTML}catch{}}),c("#wrQuery")?.addEventListener("input",async()=>{const t=c("#wrQuery");i.q=String(t?.value||""),U();const a=A(i.items);i.group?Q(a):D(a,!0);try{const n=c("#wrSummary");n&&n.innerHTML}catch{}}),c("#wrGroup")?.addEventListener("change",async()=>{const t=c("#wrGroup");i.group=!!t?.checked,U();const a=A(i.items);i.group?Q(a):D(a,!0)}),await N()}export{ee as mount};

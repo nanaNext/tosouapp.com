@@ -1,102 +1,6 @@
-import { escapeHtml as esc, delegate } from '../admin/_shared/dom.js';
-import { api, downloadWithAuth } from '../shared/api/client.js';
-import { createPage } from '../shared/page/createPage.js';
-import { createCleanup } from '../shared/page/createCleanup.js';
-
-export async function mountAttendance(options) {
-  try { document.body.classList.remove('drawer-open', 'mobile-drawer-open'); } catch(e) {}
-  return await mountAttendanceImpl(options);
-}
-
-async function mountAttendanceImpl({
-  content,
-  listUsers,
-  getTimesheet,
-  getAttendanceDay,
-  updateAttendanceSegment,
-  buildTimesheetExportURL
-}) {
-  const cleanup = createCleanup();
-  let isCurrent = true;
-  const controller = new AbortController();
-  const signal = controller.signal;
-  cleanup.add(() => { isCurrent = false; });
-  cleanup.add(() => controller.abort());
-
-  let users = [];
-  try {
-    const isRecordsPage = window.location.pathname.includes('/ui/attendance-records');
-    if (!isRecordsPage && typeof listUsers === 'function') {
-      users = await listUsers({ signal });
-    }
-  } catch (e) {
-    console.warn('Could not fetch users for dropdown:', e);
-  }
-  content.innerHTML = '';
-
-  const fmtTime = (dt) => {
-    if (!dt) return '';
-    const s = String(dt);
-    if (s.includes('/')) return s; // Nếu đã gom nhóm nhiều ca, giữ nguyên
-    return s.length >= 16 ? s.slice(11, 16) : s;
-  };
-  const isWeekend = (dateStr) => {
-    try {
-      const s = String(dateStr || '').slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-      const [y, m, d] = s.split('-').map((n) => parseInt(n, 10));
-      const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-      return wd === 0 || wd === 6;
-    } catch {
-      return false;
-    }
-  };
-  const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // JST
-  const month = today.slice(0, 7);
-
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
-  
-  if (isStandalone) {
-    try {
-      const isMobile = window.innerWidth <= 768;
-      
-      const topbar = document.querySelector('.topbar');
-      const subbar = document.querySelector('.subbar');
-      
-      // Trên mobile, giữ nguyên Topbar như trang Home
-      if (topbar && !isMobile) topbar.style.display = 'none';
-      if (subbar && !isMobile) subbar.style.display = 'none';
-      
-      const adminChrome = document.querySelector('#adminChrome');
-      if (adminChrome && !isMobile) adminChrome.style.display = 'none';
-
-      // Không phá vỡ padding và biến CSS của hệ thống trên mobile
-      if (!isMobile) {
-        // Chỉ reset biến nếu đang ở trang độc lập và ĐÃ ẨN topbar thành công
-        if (topbar && topbar.style.display === 'none') {
-          // document.body.style.paddingTop = '0';
-          // const rootHtml = document.documentElement;
-          // rootHtml.style.setProperty('--topbar-height', '0px');
-          // rootHtml.style.setProperty('--subbar-height', '0px');
-        }
-      } else {
-         // document.body.style.setProperty('padding-top', '48px', 'important'); // Chỉ giữ lại 48px cho topbar hệ thống
-         
-         if (content) {
-           // content.style.setProperty('padding-top', '0px', 'important'); // Bỏ ghi đè padding-top ở đây
-         }
-      }
-    } catch(e) {}
-  }
-
-  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 24px)';
-
-  const rosterWrap = document.createElement('div');
-  rosterWrap.style.cssText = `margin: 0; padding: 0; width: 100%;`;
-  // Add mobile/desktop styles properly
-  rosterWrap.innerHTML = `
+import{escapeHtml as r,delegate as Et}from"../admin/_shared/dom.js";import{api as Mt,downloadWithAuth as at}from"../shared/api/client.js";import{createPage as Vt}from"../shared/page/createPage.js";import{createCleanup as Ft}from"../shared/page/createCleanup.js";async function oe($){try{document.body.classList.remove("drawer-open","mobile-drawer-open")}catch{}return await zt($)}async function zt({content:$,listUsers:X,getTimesheet:Tt,getAttendanceDay:Ct,updateAttendanceSegment:Dt,buildTimesheetExportURL:Lt}){const V=Ft();let D=!0;const it=new AbortController,L=it.signal;V.add(()=>{D=!1}),V.add(()=>it.abort());let rt=[];try{!window.location.pathname.includes("/ui/attendance-records")&&typeof X=="function"&&(rt=await X({signal:L}))}catch(t){console.warn("Could not fetch users for dropdown:",t)}$.innerHTML="";const lt=t=>{if(!t)return"";const e=String(t);return e.includes("/")?e:e.length>=16?e.slice(11,16):e},It=t=>{try{const e=String(t||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(e))return!1;const[o,a,n]=e.split("-").map(s=>parseInt(s,10)),c=new Date(Date.UTC(o,a-1,n)).getUTCDay();return c===0||c===6}catch{return!1}},v=new Date(Date.now()+9*3600*1e3).toISOString().slice(0,10),Ht=v.slice(0,7),dt=new URLSearchParams(window.location.search).get("standalone")==="1";if(dt)try{const t=window.innerWidth<=768,e=document.querySelector(".topbar"),o=document.querySelector(".subbar");e&&!t&&(e.style.display="none"),o&&!t&&(o.style.display="none");const a=document.querySelector("#adminChrome");a&&!t&&(a.style.display="none"),t||e&&e.style.display}catch{}const Kt=dt?"100vh":"calc(100vh - var(--topbar-height) - var(--subbar-height) - 24px)",k=document.createElement("div");k.style.cssText="margin: 0; padding: 0; width: 100%;",k.innerHTML=`
     <style>
-      /* Bỏ css can thiệp vào html, body, * để không làm hỏng thanh subnav */
+      /* B\u1ECF css can thi\u1EC7p v\xE0o html, body, * \u0111\u1EC3 kh\xF4ng l\xE0m h\u1ECFng thanh subnav */
       /* FULL WIDTH OVERRIDES */
       #attendanceRecordsHost { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
       
@@ -104,13 +8,13 @@ async function mountAttendanceImpl({
         .beautiful-table thead {
           display: none !important;
         }
-        /* Cưỡng chế xóa triệt để khoảng trắng bằng cách chèn tag ID nếu cần */
+        /* C\u01B0\u1EE1ng ch\u1EBF x\xF3a tri\u1EC7t \u0111\u1EC3 kho\u1EA3ng tr\u1EAFng b\u1EB1ng c\xE1ch ch\xE8n tag ID n\u1EBFu c\u1EA7n */
         #attendanceRecordsHost { background: transparent !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
         .attrec-fiori-override { background: transparent !important; padding: 0 !important; margin: 0 !important; min-height: 0 !important; height: auto !important; }
         
-        /* Bỏ background của thẻ dash-card trên mobile để nó không đè viền */
+        /* B\u1ECF background c\u1EE7a th\u1EBB dash-card tr\xEAn mobile \u0111\u1EC3 n\xF3 kh\xF4ng \u0111\xE8 vi\u1EC1n */
         .attrec-fiori-override.dash-card {
-          background: transparent !important; /* Màu xám nhạt để làm nổi bật các thẻ màu trắng */
+          background: transparent !important; /* M\xE0u x\xE1m nh\u1EA1t \u0111\u1EC3 l\xE0m n\u1ED5i b\u1EADt c\xE1c th\u1EBB m\xE0u tr\u1EAFng */
           border-radius: 0 !important;
           width: 100% !important;
           border: none !important;
@@ -265,7 +169,7 @@ async function mountAttendanceImpl({
         background: #f8fafc !important;
       }
       .excel-dropdown-btn::after {
-        content: "▼";
+        content: "\u25BC";
         font-size: 10px;
         margin-left: 4px;
       }
@@ -398,14 +302,14 @@ async function mountAttendanceImpl({
           display: none !important;
         }
         .attrec-fiori-override .attrec-control:nth-child(1) .mobile-row:nth-child(2)::before {
-          content: "日";
+          content: "\u65E5";
           font-weight: 700 !important;
           color: #475569 !important;
           font-size: 14px !important;
           margin-right: 2px !important;
         }
         .attrec-fiori-override .attrec-control:nth-child(2) .mobile-row:nth-child(2)::before {
-          content: "月";
+          content: "\u6708";
           font-weight: 700 !important;
           color: #475569 !important;
           font-size: 14px !important;
@@ -568,165 +472,44 @@ async function mountAttendanceImpl({
       </div>
       <div id="rosterTable" class="attrec-table" style="margin:0; padding:0;"></div>
     </div>
-  `;
-  content.appendChild(rosterWrap);
-  
-  // Inject mobile header controls - show date picker on mobile
-  const mobileActions = document.getElementById('attHubMobileActions');
-  if (window.innerWidth <= 768 && mobileActions) {
-    mobileActions.innerHTML = `
+  `,$.appendChild(k);const F=document.getElementById("attHubMobileActions");if(window.innerWidth<=768&&F&&(F.innerHTML=`
     <div style="display:flex; align-items:center; justify-content:center; padding: 8px 12px; background: #fff; margin: 0; border-bottom: 1px solid #e5e7eb;">
-      <input type="date" id="rosterDateMobile" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">
+      <input type="date" id="rosterDateMobile" value="${r(v)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">
     </div>
-    `;
-  }
-
-  // Also inject date picker at top of rosterWrap for mobile if no mobileActions slot.
-  // Trên trang 勤怠記録 của nhân viên (mobile ≤480px) thanh .subbar bị ẩn hoàn toàn
-  // (CSS: body:not(.admin) .subbar{display:none}), nên ô ngày desktop trong subbar
-  // không hiển thị. Vì vậy phải luôn chèn ô ngày mobile ở đầu nội dung, kèm nút
-  // lùi/tiến ngày để người dùng dễ xem các ngày trước.
-  if (window.innerWidth <= 768 && !mobileActions) {
-    const mobileDateDiv = document.createElement('div');
-    mobileDateDiv.id = 'rosterMobileDateBar';
-    mobileDateDiv.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb;';
-    mobileDateDiv.innerHTML = `
-      <button type="button" id="rosterPrevDayMobile" aria-label="前日" style="height:34px; min-width:38px; padding:0 10px; font-size:16px; line-height:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:700; cursor:pointer;">‹</button>
-      <input type="date" id="rosterDateMobile" value="${esc(today)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">
-      <button type="button" id="rosterNextDayMobile" aria-label="翌日" style="height:34px; min-width:38px; padding:0 10px; font-size:16px; line-height:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:700; cursor:pointer;">›</button>
-    `;
-    rosterWrap.insertBefore(mobileDateDiv, rosterWrap.firstChild);
-  }
-
-  // Restore Desktop controls - move date picker to subbar
-  const desktopControlsHtml = `
+    `),window.innerWidth<=768&&!F){const t=document.createElement("div");t.id="rosterMobileDateBar",t.style.cssText="display:flex; align-items:center; justify-content:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb;",t.innerHTML=`
+      <button type="button" id="rosterPrevDayMobile" aria-label="\u524D\u65E5" style="height:34px; min-width:38px; padding:0 10px; font-size:16px; line-height:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:700; cursor:pointer;">\u2039</button>
+      <input type="date" id="rosterDateMobile" value="${r(v)}" style="height:34px; padding:0 12px; font-size:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:600; text-align:center;">
+      <button type="button" id="rosterNextDayMobile" aria-label="\u7FCC\u65E5" style="height:34px; min-width:38px; padding:0 10px; font-size:16px; line-height:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a; font-weight:700; cursor:pointer;">\u203A</button>
+    `,k.insertBefore(t,k.firstChild)}const qt=`
     <div style="display:flex; gap:16px; align-items:center; justify-content:flex-end; width:100%;">
       <div id="rosterSummary" style="display:flex; gap:8px;"></div>
     </div>
-  `;
-  const controlsDiv = rosterWrap.querySelector('.attrec-controls');
-  if (controlsDiv) {
-    controlsDiv.innerHTML = desktopControlsHtml;
-    controlsDiv.style.display = 'none';
-  }
-
-  // Mount date picker into subbar slot
-  const subbarSlot = document.getElementById('subbarDateSlot');
-  if (subbarSlot) {
-    subbarSlot.innerHTML = `<input type="date" id="rosterDate" value="${esc(today)}" style="height:28px; padding:0 8px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#0f172a; font-weight:600;">`;
-    subbarSlot.style.display = '';
-  } else {
-    // Fallback: render in controls if slot not found
-    if (controlsDiv) {
-      controlsDiv.innerHTML = `<div style="display:flex;align-items:center;justify-content:flex-end;width:100%;"><input type="date" id="rosterDate" value="${esc(today)}" style="height:34px;padding:0 12px;font-size:14px;max-width:140px;min-width:140px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;"></div>`;
-      controlsDiv.style.display = 'block';
-    }
-  }
-  
-  // Resize listener to manage mobile header vs desktop header visibility
-  window.addEventListener('resize', () => {
-    const isMobile = window.innerWidth <= 768;
-    if (controlsDiv) {
-      controlsDiv.style.display = isMobile ? 'none' : 'block';
-    }
-  });
-  if (controlsDiv) {
-    controlsDiv.style.display = window.innerWidth <= 768 ? 'none' : 'block';
-  }
-
-  const renderSummary = (sum) => {
-    const s = sum && typeof sum === 'object' ? sum : {};
-    const required = Number(s.required == null ? 0 : s.required);
-    const submitted = Number(s.submitted == null ? 0 : s.submitted);
-    const missing = Number(s.missing == null ? 0 : s.missing);
-    const host = rosterWrap.querySelector('#rosterSummary');
-    if (!host) return;
-    
-    const basePill = "display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:22px; padding:0 8px; border-radius:12px; font-size:12px; font-weight:700; line-height:1; box-sizing:border-box;";
-    const styleNeutral = basePill + " background-color:#f1f5f9; color:#475569; border:1px solid #e2e8f0;";
-    const styleOk = basePill + " background-color:#f0fdf4; color:#166534; border:1px solid #bbf7d0;";
-    const styleDanger = basePill + " background-color:#fef2f2; color:#991b1b; border:1px solid #fecaca;";
-    
-    const missStyle = missing > 0 ? styleDanger : styleOk;
-    
-    host.innerHTML = `
+  `,S=k.querySelector(".attrec-controls");S&&(S.innerHTML=qt,S.style.display="none");const K=document.getElementById("subbarDateSlot");K?(K.innerHTML=`<input type="date" id="rosterDate" value="${r(v)}" style="height:28px; padding:0 8px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#0f172a; font-weight:600;">`,K.style.display=""):S&&(S.innerHTML=`<div style="display:flex;align-items:center;justify-content:flex-end;width:100%;"><input type="date" id="rosterDate" value="${r(v)}" style="height:34px;padding:0 12px;font-size:14px;max-width:140px;min-width:140px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;"></div>`,S.style.display="block"),window.addEventListener("resize",()=>{const t=window.innerWidth<=768;S&&(S.style.display=t?"none":"block")}),S&&(S.style.display=window.innerWidth<=768?"none":"block");const pt=t=>{const e=t&&typeof t=="object"?t:{},o=Number(e.required==null?0:e.required),a=Number(e.submitted==null?0:e.submitted),n=Number(e.missing==null?0:e.missing),c=k.querySelector("#rosterSummary");if(!c)return;const s="display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:22px; padding:0 8px; border-radius:12px; font-size:12px; font-weight:700; line-height:1; box-sizing:border-box;",b=s+" background-color:#f1f5f9; color:#475569; border:1px solid #e2e8f0;",u=s+" background-color:#f0fdf4; color:#166534; border:1px solid #bbf7d0;",yt=s+" background-color:#fef2f2; color:#991b1b; border:1px solid #fecaca;",C=n>0?yt:u;c.innerHTML=`
       <div style="display: none; gap:16px; align-items:center; font-size:14px; color:#475569; font-weight:500;">
         <div style="display:flex; align-items:center; gap:6px;">
-          <span>必要(退勤済)</span>
-          <span style="${styleNeutral}">${esc(required)}</span>
+          <span>\u5FC5\u8981(\u9000\u52E4\u6E08)</span>
+          <span style="${b}">${r(o)}</span>
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
-          <span>提出</span>
-          <span style="${styleOk}">${esc(submitted)}</span>
+          <span>\u63D0\u51FA</span>
+          <span style="${u}">${r(a)}</span>
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
-          <span>未提出</span>
-          <span style="${missStyle}">${esc(missing)}</span>
+          <span>\u672A\u63D0\u51FA</span>
+          <span style="${C}">${r(n)}</span>
         </div>
       </div>
-    `;
-  };
-
-  const loadRoster = async (date) => {
-    const host = rosterWrap.querySelector('#rosterTable');
-    if (host) {
-      host.innerHTML = `
+    `},st=async t=>{const e=k.querySelector("#rosterTable");e&&(e.innerHTML=`
         <div class="empty-state">
-          <div style="font-size:28px;">⏳</div>
-          <div>読み込み中…</div>
+          <div style="font-size:28px;">\u23F3</div>
+          <div>\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>
         </div>
-      `;
-    }
-    renderSummary(null);
-    try {
-      const r = await api.get(`/api/admin/work-reports?date=${encodeURIComponent(date)}`, { signal });
-      if (!isCurrent) return;
-      
-      let items = (r && Array.isArray(r.items)) ? r.items : [];
-      
-      // Lọc bỏ các tài khoản Admin và Manager, chỉ hiển thị nhân viên thường
-      items = items.filter(it => {
-        const role = String(it.role || '').toLowerCase();
-        return role !== 'admin' && role !== 'manager';
-      });
-      
-      // Tính toán lại summary sau khi đã lọc
-      const requiredItems = items.filter(i => i.status === 'checked_out');
-      const required = requiredItems.length;
-      const submitted = requiredItems.filter(i => !!i.report).length;
-      const missing = requiredItems.filter(i => !i.report).length;
-      
-      renderSummary({ required, submitted, missing });
-      
-      if (!host) return;
-      if (!items.length) {
-        host.innerHTML = `
+      `),pt(null);try{const o=await Mt.get(`/api/admin/work-reports?date=${encodeURIComponent(t)}`,{signal:L});if(!D)return;let a=o&&Array.isArray(o.items)?o.items:[];a=a.filter(m=>{const I=String(m.role||"").toLowerCase();return I!=="admin"&&I!=="manager"});const n=a.filter(m=>m.status==="checked_out"),c=n.length,s=n.filter(m=>!!m.report).length,b=n.filter(m=>!m.report).length;if(pt({required:c,submitted:s,missing:b}),!e)return;if(!a.length){e.innerHTML=`
           <div class="empty-state">
-            <div style="font-size:28px;">🗂️</div>
-            <div>データがありません</div>
+            <div style="font-size:28px;">\u{1F5C2}\uFE0F</div>
+            <div>\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>
           </div>
-        `;
-        return;
-      }
-      let currentPage = 1;
-      const isMobile = window.innerWidth <= 768;
-      const pageSize = isMobile ? 20 : 10;
-      const renderTablePage = () => {
-        if (!host) return;
-        host.innerHTML = '';
-        
-        const table = document.createElement('table');
-        table.id = 'attrecList';
-        
-        // Clean aesthetic table structure
-        table.className = 'beautiful-table';
-        table.style.tableLayout = 'fixed';
-        table.style.width = '100%';
-        table.style.minWidth = '1000px'; 
-        table.style.borderCollapse = 'collapse'; 
-        table.style.borderSpacing = '0'; 
-        
-        table.innerHTML = `
+        `;return}let u=1;const C=window.innerWidth<=768?20:10,et=()=>{if(!e)return;e.innerHTML="";const m=document.createElement("table");m.id="attrecList",m.className="beautiful-table",m.style.tableLayout="fixed",m.style.width="100%",m.style.minWidth="1000px",m.style.borderCollapse="collapse",m.style.borderSpacing="0",m.innerHTML=`
           <style>
             /* Standard Professional Grid Table Style */
             .beautiful-table {
@@ -818,9 +601,9 @@ async function mountAttendanceImpl({
             .attrec-pill.halfpaid { color: #0d9488; background: transparent; font-weight: bold; }
 
             /* Add Fiori-like icons to status */
-            .attrec-pill.ok::before { content: "✓"; margin-right: 4px; font-weight: normal; }
-            .attrec-pill.danger::before { content: "✕"; margin-right: 4px; font-weight: normal; }
-            .attrec-pill.warn::before { content: "！"; margin-right: 4px; font-weight: normal; }
+            .attrec-pill.ok::before { content: "\u2713"; margin-right: 4px; font-weight: normal; }
+            .attrec-pill.danger::before { content: "\u2715"; margin-right: 4px; font-weight: normal; }
+            .attrec-pill.warn::before { content: "\uFF01"; margin-right: 4px; font-weight: normal; }
 
             /* Parent container full width */
               .attrec-table {
@@ -896,21 +679,21 @@ async function mountAttendanceImpl({
            body.admin .topbar { padding: 0 16px !important; background-color: #0b2c66 !important; }
            body.admin .topbar .brand img { width: 32px !important; height: 32px !important; border-radius: 50% !important; object-fit: cover !important; }
            
-           /* Sửa lỗi z-index làm cho menu trượt bị thanh Topbar đè lên */
+           /* S\u1EEDa l\u1ED7i z-index l\xE0m cho menu tr\u01B0\u1EE3t b\u1ECB thanh Topbar \u0111\xE8 l\xEAn */
               #mobileDrawer { z-index: 2147483647 !important; }
               #drawerBackdrop { z-index: 2147483646 !important; }
               
-              /* Đảm bảo fallback offset nếu --drawer-offset chưa được set */
+              /* \u0110\u1EA3m b\u1EA3o fallback offset n\u1EBFu --drawer-offset ch\u01B0a \u0111\u01B0\u1EE3c set */
                 :root {
                   --drawer-offset: 280px;
                   --mobile-drawer-w: 280px;
                 }
                 
-                /* 1. Không can thiệp vào transform của .topbar và .content trên mobile nữa
-                   bởi vì css hệ thống (portal.css / attendance.css) ĐÃ CÓ SẴN hiệu ứng đẩy rồi. 
-                   Việc chúng ta ghi đè bằng !important vô tình làm hỏng logic gốc. */
+                /* 1. Kh\xF4ng can thi\u1EC7p v\xE0o transform c\u1EE7a .topbar v\xE0 .content tr\xEAn mobile n\u1EEFa
+                   b\u1EDFi v\xEC css h\u1EC7 th\u1ED1ng (portal.css / attendance.css) \u0110\xC3 C\xD3 S\u1EB4N hi\u1EC7u \u1EE9ng \u0111\u1EA9y r\u1ED3i. 
+                   Vi\u1EC7c ch\xFAng ta ghi \u0111\xE8 b\u1EB1ng !important v\xF4 t\xECnh l\xE0m h\u1ECFng logic g\u1ED1c. */
                 
-                /* 2. Chỉ cần đồng bộ hiệu ứng cho khối bảng dữ liệu của trang standalone này thôi */
+                /* 2. Ch\u1EC9 c\u1EA7n \u0111\u1ED3ng b\u1ED9 hi\u1EC7u \u1EE9ng cho kh\u1ED1i b\u1EA3ng d\u1EEF li\u1EC7u c\u1EE7a trang standalone n\xE0y th\xF4i */
                 body.mobile-drawer-open .topbar,
                 body.drawer-open .topbar,
                 body.mobile-drawer-open .content,
@@ -928,18 +711,18 @@ async function mountAttendanceImpl({
                   transition: transform 0.2s ease !important;
                 }
                 
-                /* Hiển thị lớp phủ tối màu (Backdrop) đè lên bảng dữ liệu */
+                /* Hi\u1EC3n th\u1ECB l\u1EDBp ph\u1EE7 t\u1ED1i m\xE0u (Backdrop) \u0111\xE8 l\xEAn b\u1EA3ng d\u1EEF li\u1EC7u */
                 body.mobile-drawer-open #drawerBackdrop,
                 body.drawer-open #drawerBackdrop {
                   display: block !important;
                   opacity: 1 !important;
-                  z-index: 2147483646 !important; /* Phải nằm dưới menu trượt nhưng trên bảng */
+                  z-index: 2147483646 !important; /* Ph\u1EA3i n\u1EB1m d\u01B0\u1EDBi menu tr\u01B0\u1EE3t nh\u01B0ng tr\xEAn b\u1EA3ng */
                 }
              
            .attrec-fiori-override.dash-card {
           padding: 0 !important;
           margin: 0 !important;
-          background: transparent !important; /* Đổi lại nền trắng cho phù hợp viền phẳng */
+          background: transparent !important; /* \u0110\u1ED5i l\u1EA1i n\u1EC1n tr\u1EAFng cho ph\xF9 h\u1EE3p vi\u1EC1n ph\u1EB3ng */
           box-shadow: none !important;
           border: none !important;
         }
@@ -973,8 +756,8 @@ async function mountAttendanceImpl({
         .beautiful-table tbody {
               display: flex !important;
               flex-direction: column !important;
-              gap: 8px !important; /* Khoảng cách dọc giữa các thẻ */
-              padding: 0 !important; /* Xóa padding hai bên để thẻ sát mép màn hình */
+              gap: 8px !important; /* Kho\u1EA3ng c\xE1ch d\u1ECDc gi\u1EEFa c\xE1c th\u1EBB */
+              padding: 0 !important; /* X\xF3a padding hai b\xEAn \u0111\u1EC3 th\u1EBB s\xE1t m\xE9p m\xE0n h\xECnh */
               margin: 0 !important; 
               width: 100% !important; 
               box-sizing: border-box !important;
@@ -989,19 +772,19 @@ async function mountAttendanceImpl({
                 background: #ffffff !important; 
                 border-top: 1px solid #e2e8f0 !important; 
                 border-bottom: 1px solid #e2e8f0 !important;
-                border-left: none !important; /* Xóa viền trái */
-                border-right: none !important; /* Xóa viền phải */
-                border-radius: 0 !important; /* Bỏ bo góc để vuông vức sát mép */
-                padding: 0 !important; /* Xóa padding gốc để dùng cho cell */
+                border-left: none !important; /* X\xF3a vi\u1EC1n tr\xE1i */
+                border-right: none !important; /* X\xF3a vi\u1EC1n ph\u1EA3i */
+                border-radius: 0 !important; /* B\u1ECF bo g\xF3c \u0111\u1EC3 vu\xF4ng v\u1EE9c s\xE1t m\xE9p */
+                padding: 0 !important; /* X\xF3a padding g\u1ED1c \u0111\u1EC3 d\xF9ng cho cell */
                 margin: 0 auto !important; /* Center the card */
                 box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; 
                 width: 100% !important; 
-                max-width: 100% !important; /* Đảm bảo không vượt quá */
+                max-width: 100% !important; /* \u0110\u1EA3m b\u1EA3o kh\xF4ng v\u01B0\u1EE3t qu\xE1 */
                 box-sizing: border-box !important;
                 position: relative !important;
               }
              
-            /* Định dạng Tiêu đề gắn trên thẻ */
+            /* \u0110\u1ECBnh d\u1EA1ng Ti\xEAu \u0111\u1EC1 g\u1EAFn tr\xEAn th\u1EBB */
               .beautiful-table .m-code-cell {
                 display: block !important;
                 background-color: #f8fafc !important;
@@ -1023,11 +806,11 @@ async function mountAttendanceImpl({
                 padding: 12px 16px !important;
               }
                  
-              /* Định dạng các dòng thông tin còn lại */
+              /* \u0110\u1ECBnh d\u1EA1ng c\xE1c d\xF2ng th\xF4ng tin c\xF2n l\u1EA1i */
                .beautiful-table td:not(.m-code-cell) {
                   display: flex !important;
                   justify-content: flex-start !important; 
-                  align-items: flex-start !important; /* Thay đổi từ center sang flex-start để text nhiều dòng bắt đầu từ trên cùng */
+                  align-items: flex-start !important; /* Thay \u0111\u1ED5i t\u1EEB center sang flex-start \u0111\u1EC3 text nhi\u1EC1u d\xF2ng b\u1EAFt \u0111\u1EA7u t\u1EEB tr\xEAn c\xF9ng */
                   padding: 6px 0 !important; 
                   border-bottom: none !important;
                   font-size: 15px !important; 
@@ -1037,36 +820,36 @@ async function mountAttendanceImpl({
                   box-sizing: border-box !important;
                 }
                    
-                /* Định dạng Nhãn (Tiêu đề) bên trái cho Desktop HTML */
+                /* \u0110\u1ECBnh d\u1EA1ng Nh\xE3n (Ti\xEAu \u0111\u1EC1) b\xEAn tr\xE1i cho Desktop HTML */
                 .beautiful-table td:not(.mobile-only)::before {
                   content: attr(data-label);
                   font-weight: 500 !important;
-                  color: #475569 !important; /* Đổi màu xám đậm hơn cho dễ đọc */
-                  width: 85px !important; /* Giảm nhẹ độ rộng nhãn để dữ liệu sang trái thêm */
+                  color: #475569 !important; /* \u0110\u1ED5i m\xE0u x\xE1m \u0111\u1EADm h\u01A1n cho d\u1EC5 \u0111\u1ECDc */
+                  width: 85px !important; /* Gi\u1EA3m nh\u1EB9 \u0111\u1ED9 r\u1ED9ng nh\xE3n \u0111\u1EC3 d\u1EEF li\u1EC7u sang tr\xE1i th\xEAm */
                   min-width: 85px !important;
                   text-align: left !important;
                   flex-shrink: 0 !important;
                 }
                   
-               /* Ép phần nội dung bên phải căn trái sát lại gần nhãn cho Desktop HTML */
+               /* \xC9p ph\u1EA7n n\u1ED9i dung b\xEAn ph\u1EA3i c\u0103n tr\xE1i s\xE1t l\u1EA1i g\u1EA7n nh\xE3n cho Desktop HTML */
                .beautiful-table td:not(.mobile-only) > *:not(.attrec-pill) {
                   flex-grow: 0 !important;
                   text-align: left !important;
-                  padding-left: 0 !important; /* Xóa khoảng trống thừa */
-                  color: #0f172a !important; /* Màu chữ đen đậm nhất */
+                  padding-left: 0 !important; /* X\xF3a kho\u1EA3ng tr\u1ED1ng th\u1EEBa */
+                  color: #0f172a !important; /* M\xE0u ch\u1EEF \u0111en \u0111\u1EADm nh\u1EA5t */
                   font-weight: 500 !important;
-                  display: inline-block !important; /* Bắt buộc để nhận text-align left */
-                  white-space: normal !important; /* Cho phép xuống dòng */
-                  word-break: break-word !important; /* Tự động bẻ chữ nếu quá dài */
-                  max-width: 100% !important; /* Tránh tràn khối */
+                  display: inline-block !important; /* B\u1EAFt bu\u1ED9c \u0111\u1EC3 nh\u1EADn text-align left */
+                  white-space: normal !important; /* Cho ph\xE9p xu\u1ED1ng d\xF2ng */
+                  word-break: break-word !important; /* T\u1EF1 \u0111\u1ED9ng b\u1EBB ch\u1EEF n\u1EBFu qu\xE1 d\xE0i */
+                  max-width: 100% !important; /* Tr\xE1nh tr\xE0n kh\u1ED1i */
                }
                
-               /* Riêng nội dung chữ trống (dấu -) */
+               /* Ri\xEAng n\u1ED9i dung ch\u1EEF tr\u1ED1ng (d\u1EA5u -) */
                .beautiful-table td .empty-dash {
                   text-align: left !important;
                   flex-grow: 0 !important;
                   padding-left: 0 !important;
-                  color: #475569 !important; /* Màu dấu gạch ngang đậm lên theo màu nhãn */
+                  color: #475569 !important; /* M\xE0u d\u1EA5u g\u1EA1ch ngang \u0111\u1EADm l\xEAn theo m\xE0u nh\xE3n */
                   display: inline-block !important;
                }
                
@@ -1077,11 +860,11 @@ async function mountAttendanceImpl({
                 margin: 0 !important;
                 margin-left: 0 !important; 
               }
-             /* Đã gỡ bỏ rule xóa padding/border thẻ đầu và thẻ cuối để tất cả các thẻ đều vuông vắn bằng nhau */
+             /* \u0110\xE3 g\u1EE1 b\u1ECF rule x\xF3a padding/border th\u1EBB \u0111\u1EA7u v\xE0 th\u1EBB cu\u1ED1i \u0111\u1EC3 t\u1EA5t c\u1EA3 c\xE1c th\u1EBB \u0111\u1EC1u vu\xF4ng v\u1EAFn b\u1EB1ng nhau */
               
-              /* Ẩn phần Code cũ làm hỏng layout */
+              /* \u1EA8n ph\u1EA7n Code c\u0169 l\xE0m h\u1ECFng layout */
               .beautiful-table td:not(:nth-child(1)) {
-                /* Đã được ghi đè ở trên bằng flex */
+                /* \u0110\xE3 \u0111\u01B0\u1EE3c ghi \u0111\xE8 \u1EDF tr\xEAn b\u1EB1ng flex */
               }
             }
             .pagination-btn {
@@ -1125,480 +908,49 @@ async function mountAttendanceImpl({
             <col style="width:14%;">
             <col style="width:13%;">
           </colgroup>
-          <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>勤務区分</th><th>状態</th><th>出勤</th><th>退勤</th><th>現場</th><th>作業内容</th><th>備考</th></tr></thead>
-        `;
-        const tbody = document.createElement('tbody');
-        const selectedDateIsOff = isWeekend(date);
-        const isPastDate = date < today;
-        
-        const startIndex = (currentPage - 1) * pageSize;
-        const endIndex = Math.min(startIndex + pageSize, items.length);
-        const pageItems = items.slice(startIndex, endIndex);
-        
-        for (const it of pageItems) {
-          const code = it.employeeCode || `EMP${String(it.userId).padStart(3, '0')}`;
-          const name = it.username || '';
-          const dept = it.departmentName || '—';
-          const st = it.status || '';
-          const kubunRaw = String(it.dailyKubun || '').trim();
-          const kubun = kubunRaw || ((selectedDateIsOff && (st === 'leave' || st === 'off')) ? '休日' : '');
-          const leaveSet = new Set(['欠勤', '有給休暇', '半休', '半休(有給)', '無給休暇']);
-          const holidaySet = new Set(['休日', '代替休日']);
-          const nonWorkingSet = new Set(['欠勤', '有給休暇', '半休', '半休(有給)', '無給休暇', '休日', '代替休日']);
-          const isHolidayKubun = holidaySet.has(kubun);
-          // Hàm trạng thái
-          // chức năng dùng để hiển thị trạng thái của nhân viên
-          // 1.checked_out
-          // 2.working
-        
-          let stLabel = '';
-          let stClass = '';
-          
-          if (st === 'checked_out') {
-            stLabel = '退勤済';
-            stClass = 'attrec-pill ok';
-          } else if (st === 'checkout_missing') {
-            stLabel = '退勤忘れ';
-            stClass = 'attrec-pill danger';
-          } else if (st === 'working' || st === 'holiday_working') {
-            if (isPastDate) {
-              stLabel = '退勤忘れ';
-              stClass = 'attrec-pill danger';
-            } else {
-              stLabel = st === 'working' ? '出勤中' : '休日出勤中';
-              stClass = 'attrec-pill warn';
-            }
-          } else if (st === 'holiday_work') {
-            stLabel = '休日出勤';
-            stClass = 'attrec-pill warn';
-          } else if ((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) {
-            stLabel = kubun || '休日';
-            stClass = kubun === '半休(有給)' ? 'attrec-pill halfpaid' : 'attrec-pill neutral';
-          } else if (st === 'off') {
-            stLabel = kubun || '休日';
-            stClass = 'attrec-pill neutral';
-          } else if (st === 'unregistered') {
-            stLabel = '未登録';
-            stClass = 'attrec-pill neutral';
-          } else if (st === 'not_punched') {
-            stLabel = '未打刻';
-            stClass = 'attrec-pill danger';
-          } else {
-            // not_checked_in or empty
-            if (isPastDate) {
-              stLabel = '未打刻';
-              stClass = 'attrec-pill danger';
-            } else {
-              stLabel = '未出勤';
-              stClass = 'attrec-pill neutral';
-            }
-          }
-
-          const cin = fmtTime(it.attendance ? it.attendance.checkIn : undefined);
-          const cout = fmtTime(it.attendance ? it.attendance.checkOut : undefined);
-          const site = (it.report && it.report.site) ? it.report.site : '';
-          const work = (it.report && it.report.work) ? it.report.work : '';
-          const dashOr = (v) => {
-            const s = String(v || '').trim();
-            return s ? s : '—';
-          };
-          const remark = String(it.notes || it.reason || '').trim();
-          const cinView = dashOr(cin);
-          const coutView = dashOr(cout);
-          const siteView = dashOr(site);
-          const workView = dashOr(work);
-          const remarkView = dashOr(remark);
-          const wt = String(it.workType || ((it.report && it.report.workType) ? it.report.workType : '') || '').trim();
-          const wtLabel = nonWorkingSet.has(kubun) ? kubun : (wt === 'onsite' ? '出社' : wt === 'remote' ? '在宅' : wt === 'satellite' ? '現場' : (st === 'off' ? '休日' : '—'));
-          const tr = document.createElement('tr');
-          tr.className = st === 'checked_out' ? 'attrec-row checkedout'
-            : (st === 'working' ? 'attrec-row working'
-              : (st === 'holiday_work' || st === 'holiday_working' ? 'attrec-row working'
-                : (((st === 'leave' && leaveSet.has(kubun)) || isHolidayKubun) ? 'attrec-row absent' : (st === 'off' ? 'attrec-row absent' : 'attrec-row absent'))));
-          
-          tr.setAttribute('data-emp-code', code);
-          tr.setAttribute('data-emp-name', name);
-          
-          const emptyDash = (label) => `<td data-label="${label}"><span class="empty-dash">—</span></td>`;
-            
-          // Add mobile-only layout to standard row via classes
-          let headerBgColor = '#f8fafc'; // Default gray
-          let headerTextColor = '#0f172a'; // Default text color
-
-          if (st === 'working' || st === 'holiday_working') {
-            headerBgColor = '#e0f2fe'; // Light blue for currently working
-            headerTextColor = '#1e40af';
-          } else if (st === 'checked_out') {
-            headerBgColor = '#dcfce7'; // Light green for checked out
-            headerTextColor = '#166534';
-          } else if (st === 'holiday_work') {
-            headerBgColor = '#fef3c7'; // Light yellow/orange for holiday work
-            headerTextColor = '#9a3412';
-          }
-
-          const mobileHtml = `
-            <td class="m-code-cell mobile-only" style="box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${headerBgColor} !important; transition: background-color 0.3s ease;">
-              <div class="m-code-label" style="display: none !important;">社員番号</div>
-              <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${headerTextColor} !important;">[${esc(code)}] ${esc(name)}</div>
+          <thead><tr><th>\u793E\u54E1\u756A\u53F7</th><th>\u6C0F\u540D</th><th>\u90E8\u7F72</th><th>\u52E4\u52D9\u533A\u5206</th><th>\u72B6\u614B</th><th>\u51FA\u52E4</th><th>\u9000\u52E4</th><th>\u73FE\u5834</th><th>\u4F5C\u696D\u5185\u5BB9</th><th>\u5099\u8003</th></tr></thead>
+        `;const I=document.createElement("tbody"),Rt=It(t),wt=t<v,vt=(u-1)*C,Bt=Math.min(vt+C,a.length),Nt=a.slice(vt,Bt);for(const d of Nt){const f=d.employeeCode||`EMP${String(d.userId).padStart(3,"0")}`,p=d.username||"",l=d.departmentName||"\u2014",i=d.status||"",E=String(d.dailyKubun||"").trim()||(Rt&&(i==="leave"||i==="off")?"\u4F11\u65E5":""),kt=new Set(["\u6B20\u52E4","\u6709\u7D66\u4F11\u6687","\u534A\u4F11","\u534A\u4F11(\u6709\u7D66)","\u7121\u7D66\u4F11\u6687"]),Pt=new Set(["\u4F11\u65E5","\u4EE3\u66FF\u4F11\u65E5"]),At=new Set(["\u6B20\u52E4","\u6709\u7D66\u4F11\u6687","\u534A\u4F11","\u534A\u4F11(\u6709\u7D66)","\u7121\u7D66\u4F11\u6687","\u4F11\u65E5","\u4EE3\u66FF\u4F11\u65E5"]),St=Pt.has(E);let g="",x="";i==="checked_out"?(g="\u9000\u52E4\u6E08",x="attrec-pill ok"):i==="checkout_missing"?(g="\u9000\u52E4\u5FD8\u308C",x="attrec-pill danger"):i==="working"||i==="holiday_working"?wt?(g="\u9000\u52E4\u5FD8\u308C",x="attrec-pill danger"):(g=i==="working"?"\u51FA\u52E4\u4E2D":"\u4F11\u65E5\u51FA\u52E4\u4E2D",x="attrec-pill warn"):i==="holiday_work"?(g="\u4F11\u65E5\u51FA\u52E4",x="attrec-pill warn"):i==="leave"&&kt.has(E)||St?(g=E||"\u4F11\u65E5",x=E==="\u534A\u4F11(\u6709\u7D66)"?"attrec-pill halfpaid":"attrec-pill neutral"):i==="off"?(g=E||"\u4F11\u65E5",x="attrec-pill neutral"):i==="unregistered"?(g="\u672A\u767B\u9332",x="attrec-pill neutral"):i==="not_punched"||wt?(g="\u672A\u6253\u523B",x="attrec-pill danger"):(g="\u672A\u51FA\u52E4",x="attrec-pill neutral");const _t=lt(d.attendance?d.attendance.checkIn:void 0),jt=lt(d.attendance?d.attendance.checkOut:void 0),Ot=d.report&&d.report.site?d.report.site:"",Ut=d.report&&d.report.work?d.report.work:"",H=nt=>{const $t=String(nt||"").trim();return $t||"\u2014"},Yt=String(d.notes||d.reason||"").trim(),P=H(_t),A=H(jt),_=H(Ot),j=H(Ut),O=H(Yt),ot=String(d.workType||(d.report&&d.report.workType?d.report.workType:"")||"").trim(),U=At.has(E)?E:ot==="onsite"?"\u51FA\u793E":ot==="remote"?"\u5728\u5B85":ot==="satellite"?"\u73FE\u5834":i==="off"?"\u4F11\u65E5":"\u2014",q=document.createElement("tr");q.className=i==="checked_out"?"attrec-row checkedout":i==="working"||i==="holiday_work"||i==="holiday_working"?"attrec-row working":(i==="leave"&&kt.has(E)||St,"attrec-row absent"),q.setAttribute("data-emp-code",f),q.setAttribute("data-emp-name",p);const R=nt=>`<td data-label="${nt}"><span class="empty-dash">\u2014</span></td>`;let Y="#f8fafc",W="#0f172a";i==="working"||i==="holiday_working"?(Y="#e0f2fe",W="#1e40af"):i==="checked_out"?(Y="#dcfce7",W="#166534"):i==="holiday_work"&&(Y="#fef3c7",W="#9a3412");const Wt=`
+            <td class="m-code-cell mobile-only" style="box-sizing: border-box !important; padding: 12px 16px !important; background-color: ${Y} !important; transition: background-color 0.3s ease;">
+              <div class="m-code-label" style="display: none !important;">\u793E\u54E1\u756A\u53F7</div>
+              <div class="m-code-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; color: ${W} !important;">[${r(f)}] ${r(p)}</div>
             </td>
             <td class="m-main-cell mobile-only" style="flex-direction: column; width: 100%; box-sizing: border-box;">
-              <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">部署</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${dept === '—' ? '<span class="empty-dash">—</span>' : esc(dept)}</div></div>
-              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">勤務区分</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : esc(wtLabel)}</div></div>
-              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px; align-items: center;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">状態</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;"><span class="${stClass}">${esc(stLabel)}</span></div></div>
-              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">出勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${cinView === '—' ? '<span class="empty-dash">—</span>' : esc(cinView)}</div></div>
-              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">退勤</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${coutView === '—' ? '<span class="empty-dash">—</span>' : esc(coutView)}</div></div>
-              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">現場</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${siteView === '—' ? '<span class="empty-dash">—</span>' : esc(siteView)}</div></div>
-              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">作業内容</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${workView === '—' ? '<span class="empty-dash">—</span>' : esc(workView)}</div></div>
-              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">備考</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${remarkView === '—' ? '<span class="empty-dash">—</span>' : esc(remarkView)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u90E8\u7F72</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${l==="\u2014"?'<span class="empty-dash">\u2014</span>':r(l)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u52E4\u52D9\u533A\u5206</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;">${U==="\u2014"?'<span class="empty-dash">\u2014</span>':r(U)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px; align-items: center;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u72B6\u614B</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1;"><span class="${x}">${r(g)}</span></div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u51FA\u52E4</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${P==="\u2014"?'<span class="empty-dash">\u2014</span>':r(P)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u9000\u52E4</div><div class="m-v" style="font-family:monospace; font-size:15px; padding-left: 16px; text-align: left; flex: 1;">${A==="\u2014"?'<span class="empty-dash">\u2014</span>':r(A)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u73FE\u5834</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${_==="\u2014"?'<span class="empty-dash">\u2014</span>':r(_)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u4F5C\u696D\u5185\u5BB9</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${j==="\u2014"?'<span class="empty-dash">\u2014</span>':r(j)}</div></div>
+              <div class="m-line" style="display: flex; width: 100%; margin-top: 4px;"><div class="m-k" style="width: 80px; min-width: 80px; text-align: left; padding-left: 12px; font-weight: 500; color: #475569;">\u5099\u8003</div><div class="m-v" style="padding-left: 16px; text-align: left; flex: 1; word-break: break-word;">${O==="\u2014"?'<span class="empty-dash">\u2014</span>':r(O)}</div></div>
             </td>
-          `;
-          
-          const desktopHtml = `
-              <td class="desktop-only" data-label="社員番号" style="text-align:left;"><span>${esc(code)}</span></td>
-              <td class="desktop-only" data-label="氏名" style="font-weight: 600; color: #0f172a;"><span>${esc(name)}</span></td>
-            <td class="desktop-only" data-label="部署">${dept === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(dept)}</span>`}</td>
-            <td class="desktop-only" data-label="勤務区分">${wtLabel === '—' ? '<span class="empty-dash">—</span>' : `<span>${esc(wtLabel)}</span>`}</td>
-            <td class="desktop-only" data-label="状態" style="text-align:left;"><span class="${stClass}">${esc(stLabel)}</span></td>
-            ${cinView === '—' ? emptyDash('出勤').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="出勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(cinView)}</span></td>`}
-            ${coutView === '—' ? emptyDash('退勤').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="退勤" style="text-align:left; font-family:monospace; font-size:15px;"><span>${esc(coutView)}</span></td>`}
-            ${siteView === '—' ? emptyDash('現場').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="現場"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${esc(siteView)}</div></td>`}
-            ${workView === '—' ? emptyDash('作業内容').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="作業内容"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:none; overflow:visible;">${esc(workView)}</div></td>`}
-            ${remarkView === '—' ? emptyDash('備考').replace('<td', '<td class="desktop-only"') : `<td class="desktop-only" data-label="備考"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:300px;">${esc(remarkView)}</div></td>`}
-          `;
-
-          tr.innerHTML = mobileHtml + desktopHtml;
-          table.classList.add('attrec-emp-like-table');
-          
-          tbody.appendChild(tr);
-        }
-        table.appendChild(tbody);
-        
-        const tableWrap = document.createElement('div');
-        tableWrap.className = 'emp-list-scroll-wrap attrec-list-scroll-wrap';
-        tableWrap.style.overflowX = 'auto';
-        tableWrap.style.overflowY = 'visible';
-        tableWrap.style.width = '100%';
-        tableWrap.style.position = 'relative';
-        tableWrap.appendChild(table);
-        host.appendChild(tableWrap);
-
-        // Pagination controls
-        if (items.length > pageSize) {
-          const totalPages = Math.ceil(items.length / pageSize);
-          const paginationDiv = document.createElement('div');
-          paginationDiv.className = 'pagination-controls';
-          paginationDiv.style.display = 'flex';
-          paginationDiv.style.alignItems = 'center';
-          paginationDiv.style.justifyContent = 'flex-end'; /* Fiori aligns to the right */
-          paginationDiv.style.gap = '8px';
-          paginationDiv.style.padding = '8px 16px';
-          paginationDiv.style.backgroundColor = '#ffffff';
-          paginationDiv.style.borderTop = '1px solid #d9d9d9';
-          
-          const prevBtn = document.createElement('button');
-          prevBtn.type = 'button';
-          prevBtn.innerHTML = '&#9664;'; /* Fiori uses icon/arrow */
-          prevBtn.className = 'pagination-btn';
-          prevBtn.style.background = 'transparent';
-          prevBtn.style.border = '1px solid transparent';
-          prevBtn.style.color = '#0854a0';
-          prevBtn.style.fontSize = '14px';
-          prevBtn.style.padding = '4px 8px';
-          prevBtn.style.cursor = 'pointer';
-          prevBtn.style.borderRadius = '4px';
-          prevBtn.disabled = currentPage === 1;
-          if (prevBtn.disabled) {
-             prevBtn.style.color = '#94a3b8';
-             prevBtn.style.cursor = 'not-allowed';
-          }
-          prevBtn.onmouseover = () => { if(!prevBtn.disabled) prevBtn.style.backgroundColor = '#f4f5f6'; };
-          prevBtn.onmouseout = () => { if(!prevBtn.disabled) prevBtn.style.backgroundColor = 'transparent'; };
-          prevBtn.onclick = () => {
-            if (currentPage > 1) {
-              currentPage--;
-              renderTablePage();
-            }
-          };
-
-          const nextBtn = document.createElement('button');
-          nextBtn.type = 'button';
-          nextBtn.innerHTML = '&#9654;';
-          nextBtn.className = 'pagination-btn';
-          nextBtn.style.background = 'transparent';
-          nextBtn.style.border = '1px solid transparent';
-          nextBtn.style.color = '#0854a0';
-          nextBtn.style.fontSize = '14px';
-          nextBtn.style.padding = '4px 8px';
-          nextBtn.style.cursor = 'pointer';
-          nextBtn.style.borderRadius = '4px';
-          nextBtn.disabled = currentPage === totalPages;
-          if (nextBtn.disabled) {
-             nextBtn.style.color = '#94a3b8';
-             nextBtn.style.cursor = 'not-allowed';
-          }
-          nextBtn.onmouseover = () => { if(!nextBtn.disabled) nextBtn.style.backgroundColor = '#f4f5f6'; };
-          nextBtn.onmouseout = () => { if(!nextBtn.disabled) nextBtn.style.backgroundColor = 'transparent'; };
-          nextBtn.onclick = () => {
-            if (currentPage < totalPages) {
-              currentPage++;
-              renderTablePage();
-            }
-          };
-
-          const infoSpan = document.createElement('span');
-          infoSpan.textContent = `ページ ${currentPage} / ${totalPages} (${items.length} 件)`; /* Fiori text style Japanese */
-          infoSpan.style.fontSize = '13px';
-          infoSpan.style.color = '#6a6d70';
-          infoSpan.style.marginRight = '8px';
-
-          paginationDiv.appendChild(infoSpan);
-          paginationDiv.appendChild(prevBtn);
-          paginationDiv.appendChild(nextBtn);
-          host.appendChild(paginationDiv);
-        }
-      };
-      
-      renderTablePage();
-    } catch (err) {
-      if (err && err.name === 'AbortError') return;
-      if (!isCurrent) return;
-      if (host) {
-        host.innerHTML = `
+          `,Xt=`
+              <td class="desktop-only" data-label="\u793E\u54E1\u756A\u53F7" style="text-align:left;"><span>${r(f)}</span></td>
+              <td class="desktop-only" data-label="\u6C0F\u540D" style="font-weight: 600; color: #0f172a;"><span>${r(p)}</span></td>
+            <td class="desktop-only" data-label="\u90E8\u7F72">${l==="\u2014"?'<span class="empty-dash">\u2014</span>':`<span>${r(l)}</span>`}</td>
+            <td class="desktop-only" data-label="\u52E4\u52D9\u533A\u5206">${U==="\u2014"?'<span class="empty-dash">\u2014</span>':`<span>${r(U)}</span>`}</td>
+            <td class="desktop-only" data-label="\u72B6\u614B" style="text-align:left;"><span class="${x}">${r(g)}</span></td>
+            ${P==="\u2014"?R("\u51FA\u52E4").replace("<td",'<td class="desktop-only"'):`<td class="desktop-only" data-label="\u51FA\u52E4" style="text-align:left; font-family:monospace; font-size:15px;"><span>${r(P)}</span></td>`}
+            ${A==="\u2014"?R("\u9000\u52E4").replace("<td",'<td class="desktop-only"'):`<td class="desktop-only" data-label="\u9000\u52E4" style="text-align:left; font-family:monospace; font-size:15px;"><span>${r(A)}</span></td>`}
+            ${_==="\u2014"?R("\u73FE\u5834").replace("<td",'<td class="desktop-only"'):`<td class="desktop-only" data-label="\u73FE\u5834"><div style="font-size:14px; color:#475569; word-break:break-word; max-width:200px;">${r(_)}</div></td>`}
+            ${j==="\u2014"?R("\u4F5C\u696D\u5185\u5BB9").replace("<td",'<td class="desktop-only"'):`<td class="desktop-only" data-label="\u4F5C\u696D\u5185\u5BB9"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:400px; max-height:none; overflow:visible;">${r(j)}</div></td>`}
+            ${O==="\u2014"?R("\u5099\u8003").replace("<td",'<td class="desktop-only"'):`<td class="desktop-only" data-label="\u5099\u8003"><div style="font-size:14px; color:#475569; word-break:break-word; white-space:pre-wrap; max-width:300px;">${r(O)}</div></td>`}
+          `;q.innerHTML=Wt+Xt,m.classList.add("attrec-emp-like-table"),I.appendChild(q)}m.appendChild(I);const M=document.createElement("div");if(M.className="emp-list-scroll-wrap attrec-list-scroll-wrap",M.style.overflowX="auto",M.style.overflowY="visible",M.style.width="100%",M.style.position="relative",M.appendChild(m),e.appendChild(M),a.length>C){const d=Math.ceil(a.length/C),f=document.createElement("div");f.className="pagination-controls",f.style.display="flex",f.style.alignItems="center",f.style.justifyContent="flex-end",f.style.gap="8px",f.style.padding="8px 16px",f.style.backgroundColor="#ffffff",f.style.borderTop="1px solid #d9d9d9";const p=document.createElement("button");p.type="button",p.innerHTML="&#9664;",p.className="pagination-btn",p.style.background="transparent",p.style.border="1px solid transparent",p.style.color="#0854a0",p.style.fontSize="14px",p.style.padding="4px 8px",p.style.cursor="pointer",p.style.borderRadius="4px",p.disabled=u===1,p.disabled&&(p.style.color="#94a3b8",p.style.cursor="not-allowed"),p.onmouseover=()=>{p.disabled||(p.style.backgroundColor="#f4f5f6")},p.onmouseout=()=>{p.disabled||(p.style.backgroundColor="transparent")},p.onclick=()=>{u>1&&(u--,et())};const l=document.createElement("button");l.type="button",l.innerHTML="&#9654;",l.className="pagination-btn",l.style.background="transparent",l.style.border="1px solid transparent",l.style.color="#0854a0",l.style.fontSize="14px",l.style.padding="4px 8px",l.style.cursor="pointer",l.style.borderRadius="4px",l.disabled=u===d,l.disabled&&(l.style.color="#94a3b8",l.style.cursor="not-allowed"),l.onmouseover=()=>{l.disabled||(l.style.backgroundColor="#f4f5f6")},l.onmouseout=()=>{l.disabled||(l.style.backgroundColor="transparent")},l.onclick=()=>{u<d&&(u++,et())};const i=document.createElement("span");i.textContent=`\u30DA\u30FC\u30B8 ${u} / ${d} (${a.length} \u4EF6)`,i.style.fontSize="13px",i.style.color="#6a6d70",i.style.marginRight="8px",f.appendChild(i),f.appendChild(p),f.appendChild(l),e.appendChild(f)}};et()}catch(o){if(o&&o.name==="AbortError"||!D)return;e&&(e.innerHTML=`
           <div class="empty-state" style="color:#b00020;">
-            <div style="font-size:28px;">⚠️</div>
-            <div>読み込みに失敗しました: ${esc((err && err.message) ? err.message : 'unknown')}</div>
+            <div style="font-size:28px;">\u26A0\uFE0F</div>
+            <div>\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${r(o&&o.message?o.message:"unknown")}</div>
           </div>
-        `;
-      }
-    }
-  };
-
-  /* Dropdown Menu Logic Removed */
-
-  // Date picker desktop được mount vào #subbarDateSlot (NGOÀI rosterWrap), nên phải
-  // dùng document.getElementById chứ không phải rosterWrap.querySelector — nếu không
-  // dateEl = null → event 'change' không được gắn → đổi ngày không reload bảng.
-  const dateEl = document.getElementById('rosterDate');
-  const dateElMobile = document.getElementById('rosterDateMobile');
-  
-  // Navigate Date Helpers
-  // Timezone-safe: parse the YYYY-MM-DD string as a UTC calendar date and use
-  // UTC getters/setters so no local/JST offset can shift the result by a day.
-  const addDays = (dateStr, days) => {
-    const s = String(dateStr || '').slice(0, 10);
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-    if (!m) return dateStr;
-    const d = new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10)));
-    if (isNaN(d.getTime())) return dateStr;
-    d.setUTCDate(d.getUTCDate() + days);
-    return d.toISOString().slice(0, 10);
-  };
-  
-  const updateDate = (newDate) => {
-    if (dateEl) dateEl.value = newDate;
-    if (dateElMobile) dateElMobile.value = newDate;
-    handleDateChange();
-  };
-
-  const handleDateChange = async (e) => {
-    // Ưu tiên giá trị từ input vừa phát sự kiện (event.target). Trên mobile cả
-    // #rosterDate (ẩn trong subbar) và #rosterDateMobile cùng tồn tại; nếu lấy
-    // #rosterDate trước thì luôn ra "hôm nay" và người dùng không lùi ngày được.
-    const fromTarget = (e && e.target && e.target.value) ? e.target.value : '';
-    const d = fromTarget
-      || (dateElMobile && dateElMobile.value ? dateElMobile.value : '')
-      || (dateEl && dateEl.value ? dateEl.value : '')
-      || today;
-    if (d) {
-      // Đồng bộ cả hai input để hai bản (mobile/desktop) không bị lệch ngày.
-      if (dateEl) dateEl.value = d;
-      if (dateElMobile) dateElMobile.value = d;
-      await loadRoster(d);
-    }
-  };
-  if (dateEl) dateEl.addEventListener('change', handleDateChange);
-  if (dateElMobile) dateElMobile.addEventListener('change', handleDateChange);
-
-  // Setup navigation buttons
-  const setupNavBtn = (id, action) => {
-    const btn = document.getElementById(id);
-    if (btn) btn.addEventListener('click', action);
-  };
-
-  // Lấy ngày hiện tại từ bất kỳ input nào đang có giá trị (mobile hoặc desktop).
-  const currentSelectedDate = () =>
-    (dateElMobile && dateElMobile.value) || (dateEl && dateEl.value) || today;
-
-  const goPrevDay = () => {
-    updateDate(addDays(currentSelectedDate(), -1));
-  };
-
-  const goNextDay = () => {
-    updateDate(addDays(currentSelectedDate(), 1));
-  };
-
-  const goToday = () => updateDate(today);
-
-  setupNavBtn('rosterPrevDay', goPrevDay);
-  setupNavBtn('rosterNextDay', goNextDay);
-  setupNavBtn('rosterToday', goToday);
-  
-  setupNavBtn('rosterPrevDayMobile', goPrevDay);
-  setupNavBtn('rosterNextDayMobile', goNextDay);
-  setupNavBtn('rosterTodayMobile', goToday);
-  let profile = null;
-  try {
-    profile = await api.get('/api/auth/me');
-  } catch (e) {
-    //
-  }
-
-  if (profile && profile.role === 'employee') {
-    const excelBtns = content.querySelectorAll('.excel-dropdown-container, #rosterExportXlsx, #rosterExportXlsxMobile');
-    excelBtns.forEach(btn => { if(btn) btn.style.display = 'none'; });
-  }
-
-  const checkExportPerm = () => {
-    if (profile && profile.role !== 'admin' && profile.role !== 'manager') {
-      alert('権限がありません。');
-      return false;
-    }
-    return true;
-  };
-
-  const btnExpMonth = rosterWrap.querySelector('#rosterExportMonthXlsx');
-  const btnExpMonthMobile = document.getElementById('rosterExportMonthXlsxMobile');
-  const handleExportMonth = async () => {
-    if (!checkExportPerm()) return;
-    const mEl = rosterWrap.querySelector('#rosterMonth');
-    const mElMobile = document.getElementById('rosterMonthMobile');
-    const m = (mEl && mEl.value) ? mEl.value : (mElMobile && mElMobile.value ? mElMobile.value : month);
-    const url = `/api/admin/work-reports/export.xlsx?period=month&month=${encodeURIComponent(m)}`;
-    try {
-      await downloadWithAuth(url, `attendance_month_${m}.xlsx`);
-    } catch (e) {
-      alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
-    }
-  };
-  if (btnExpMonth) btnExpMonth.addEventListener('click', handleExportMonth);
-  if (btnExpMonthMobile) btnExpMonthMobile.addEventListener('click', handleExportMonth);
-
-  await loadRoster(today);
-
-  const form = document.createElement('form');
-  const yNow = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 4);
-  form.innerHTML = `
-    <select id="tsUser">${users.map(u => `<option value="${u.id}">${u.id} ${u.username || u.email}</option>`).join('')}</select>
-    <input id="tsYear" placeholder="Year(YYYY)" value="${yNow}" style="width:110px">
+        `)}},y=document.getElementById("rosterDate"),w=document.getElementById("rosterDateMobile"),ct=(t,e)=>{const o=String(t||"").slice(0,10),a=/^(\d{4})-(\d{2})-(\d{2})$/.exec(o);if(!a)return t;const n=new Date(Date.UTC(parseInt(a[1],10),parseInt(a[2],10)-1,parseInt(a[3],10)));return isNaN(n.getTime())?t:(n.setUTCDate(n.getUTCDate()+e),n.toISOString().slice(0,10))},G=t=>{y&&(y.value=t),w&&(w.value=t),J()},J=async t=>{const o=(t&&t.target&&t.target.value?t.target.value:"")||(w&&w.value?w.value:"")||(y&&y.value?y.value:"")||v;o&&(y&&(y.value=o),w&&(w.value=o),await st(o))};y&&y.addEventListener("change",J),w&&w.addEventListener("change",J);const z=(t,e)=>{const o=document.getElementById(t);o&&o.addEventListener("click",e)},mt=()=>w&&w.value||y&&y.value||v,bt=()=>{G(ct(mt(),-1))},ft=()=>{G(ct(mt(),1))},ht=()=>G(v);z("rosterPrevDay",bt),z("rosterNextDay",ft),z("rosterToday",ht),z("rosterPrevDayMobile",bt),z("rosterNextDayMobile",ft),z("rosterTodayMobile",ht);let T=null;try{T=await Mt.get("/api/auth/me")}catch{}T&&T.role==="employee"&&$.querySelectorAll(".excel-dropdown-container, #rosterExportXlsx, #rosterExportXlsxMobile").forEach(e=>{e&&(e.style.display="none")});const Q=()=>T&&T.role!=="admin"&&T.role!=="manager"?(alert("\u6A29\u9650\u304C\u3042\u308A\u307E\u305B\u3093\u3002"),!1):!0,ut=k.querySelector("#rosterExportMonthXlsx"),gt=document.getElementById("rosterExportMonthXlsxMobile"),xt=async()=>{if(!Q())return;const t=k.querySelector("#rosterMonth"),e=document.getElementById("rosterMonthMobile"),o=t&&t.value?t.value:e&&e.value?e.value:Ht,a=`/api/admin/work-reports/export.xlsx?period=month&month=${encodeURIComponent(o)}`;try{await at(a,`attendance_month_${o}.xlsx`)}catch(n){alert(String(n&&n.message?n.message:"\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}};ut&&ut.addEventListener("click",xt),gt&&gt.addEventListener("click",xt),await st(v);const h=document.createElement("form"),Z=new Date(Date.now()+9*3600*1e3).toISOString().slice(0,4);h.innerHTML=`
+    <select id="tsUser">${rt.map(t=>`<option value="${t.id}">${t.id} ${t.username||t.email}</option>`).join("")}</select>
+    <input id="tsYear" placeholder="Year(YYYY)" value="${Z}" style="width:110px">
     <button type="button" id="tsExportXlsx">Excel</button>
     <input id="tsFrom" placeholder="From(YYYY-MM-DD)" style="width:150px">
     <input id="tsTo" placeholder="To(YYYY-MM-DD)" style="width:150px">
-    <button type="submit">表示</button>
+    <button type="submit">\u8868\u793A</button>
     <button type="button" id="tsExport">CSV</button>
-  `;
-  const resultDiv = document.createElement('div');
-  const detailDiv = document.createElement('div');
-
-  let currentUserId = null;
-  delegate(resultDiv, 'button[data-action="day-detail"]', 'click', async (_e, btn) => {
-    const date = btn.dataset.date || '';
-    if (!date) return;
-    if (!currentUserId) return;
-    const q = await getAttendanceDay(currentUserId, date, { signal });
-    if (!isCurrent) return;
-    detailDiv.innerHTML = `<h4>${date} 編集</h4>`;
-    const t2 = document.createElement('table');
-    t2.style.width = '100%';
-    t2.innerHTML = '<thead><tr><th>ID</th><th>出勤</th><th>退勤</th><th>保存</th></tr></thead>';
-    const b2 = document.createElement('tbody');
-    for (const seg of (q.segments || [])) {
-      const tr2 = document.createElement('tr');
-      tr2.innerHTML = `
-        <td>${seg.id}</td>
-        <td><input data-in="${seg.id}" value="${seg.checkIn || ''}"></td>
-        <td><input data-out="${seg.id}" value="${seg.checkOut || ''}"></td>
-        <td><button type="button" data-action="save-att" data-id="${seg.id}">保存</button></td>
-      `;
-      b2.appendChild(tr2);
-    }
-    t2.appendChild(b2);
-    detailDiv.appendChild(t2);
-  });
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const userId = parseInt(form.querySelector('#tsUser').value, 10);
-    const from = form.querySelector('#tsFrom').value.trim();
-    const to = form.querySelector('#tsTo').value.trim();
-    currentUserId = userId;
-    const r = await getTimesheet(userId, from, to, { signal });
-    if (!isCurrent) return;
-    resultDiv.innerHTML = '';
-    detailDiv.innerHTML = '';
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.innerHTML = '<thead><tr><th>日付</th><th>通常</th><th>残業</th><th>深夜</th><th>操作</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    for (const d of (r.days || [])) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${d.date}</td><td>${d.regularMinutes}</td><td>${d.overtimeMinutes}</td><td>${d.nightMinutes}</td><td><button type="button" data-action="day-detail" data-date="${d.date}">詳細</button></td>`;
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    resultDiv.appendChild(table);
-  });
-
-  form.querySelector('#tsExport').addEventListener('click', () => {
-    if (!checkExportPerm()) return;
-    const userId = parseInt(form.querySelector('#tsUser').value, 10);
-    const from = form.querySelector('#tsFrom').value.trim();
-    const to = form.querySelector('#tsTo').value.trim();
-    const url = buildTimesheetExportURL(String(userId), from, to);
-    downloadWithAuth(url, 'timesheet.csv');
-  });
-  form.querySelector('#tsExportXlsx').addEventListener('click', async () => {
-    if (!checkExportPerm()) return;
-    const userId = parseInt(form.querySelector('#tsUser').value, 10);
-    const yEl = form.querySelector('#tsYear');
-    const year = String((yEl && yEl.value) ? yEl.value : yNow).trim() || yNow;
-    const url = `/api/admin/employees/${encodeURIComponent(String(userId))}/export.xlsx?year=${encodeURIComponent(year)}`;
-    try {
-      const uEl = form.querySelector('#tsUser');
-      const uText = uEl && uEl.options && uEl.options[uEl.selectedIndex] ? uEl.options[uEl.selectedIndex].text : String(userId);
-      const parts = uText.split(' ');
-      const fallbackName = parts.length > 1 ? parts.slice(1).join('_') : String(userId);
-      await downloadWithAuth(url, `${fallbackName}_${year}.xlsx`);
-    } catch (e) {
-      alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
-    }
-  });
-
-  // Hide Personal Timesheet Detail if not in an admin context or if it's the records standalone page
-  const isRecordsPage = window.location.pathname.includes('/ui/attendance-records');
-  if (!isRecordsPage) {
-    const adv = document.createElement('details');
-    adv.open = false;
-    adv.innerHTML = `<summary style="cursor:pointer;font-weight:900;padding:10px 0;">個人タイムシート（詳細）</summary>`;
-    adv.appendChild(form);
-    adv.appendChild(resultDiv);
-    adv.appendChild(detailDiv);
-    content.appendChild(adv);
-    delegate(adv, 'button[data-action="save-att"]', 'click', async (_e, btn) => {
-      const id = btn.dataset.id || '';
-      if (!id) return;
-      const inEl = adv.querySelector(`input[data-in="${id}"]`);
-      const outEl = adv.querySelector(`input[data-out="${id}"]`);
-      const inVal = inEl && inEl.value ? inEl.value : null;
-      const outVal = outEl && outEl.value ? outEl.value : null;
-      await updateAttendanceSegment(id, { checkIn: inVal, checkOut: outVal }, { signal });
-      alert('保存しました');
-    });
-  }
-
-  return () => {
-    try { content.innerHTML = ''; } catch { }
-    cleanup.run();
-  };
-}
-
-export const attendancePage = createPage({ mount: mountAttendanceImpl });
+  `;const B=document.createElement("div"),N=document.createElement("div");let tt=null;if(Et(B,'button[data-action="day-detail"]',"click",async(t,e)=>{const o=e.dataset.date||"";if(!o||!tt)return;const a=await Ct(tt,o,{signal:L});if(!D)return;N.innerHTML=`<h4>${o} \u7DE8\u96C6</h4>`;const n=document.createElement("table");n.style.width="100%",n.innerHTML="<thead><tr><th>ID</th><th>\u51FA\u52E4</th><th>\u9000\u52E4</th><th>\u4FDD\u5B58</th></tr></thead>";const c=document.createElement("tbody");for(const s of a.segments||[]){const b=document.createElement("tr");b.innerHTML=`
+        <td>${s.id}</td>
+        <td><input data-in="${s.id}" value="${s.checkIn||""}"></td>
+        <td><input data-out="${s.id}" value="${s.checkOut||""}"></td>
+        <td><button type="button" data-action="save-att" data-id="${s.id}">\u4FDD\u5B58</button></td>
+      `,c.appendChild(b)}n.appendChild(c),N.appendChild(n)}),h.addEventListener("submit",async t=>{t.preventDefault();const e=parseInt(h.querySelector("#tsUser").value,10),o=h.querySelector("#tsFrom").value.trim(),a=h.querySelector("#tsTo").value.trim();tt=e;const n=await Tt(e,o,a,{signal:L});if(!D)return;B.innerHTML="",N.innerHTML="";const c=document.createElement("table");c.style.width="100%",c.innerHTML="<thead><tr><th>\u65E5\u4ED8</th><th>\u901A\u5E38</th><th>\u6B8B\u696D</th><th>\u6DF1\u591C</th><th>\u64CD\u4F5C</th></tr></thead>";const s=document.createElement("tbody");for(const b of n.days||[]){const u=document.createElement("tr");u.innerHTML=`<td>${b.date}</td><td>${b.regularMinutes}</td><td>${b.overtimeMinutes}</td><td>${b.nightMinutes}</td><td><button type="button" data-action="day-detail" data-date="${b.date}">\u8A73\u7D30</button></td>`,s.appendChild(u)}c.appendChild(s),B.appendChild(c)}),h.querySelector("#tsExport").addEventListener("click",()=>{if(!Q())return;const t=parseInt(h.querySelector("#tsUser").value,10),e=h.querySelector("#tsFrom").value.trim(),o=h.querySelector("#tsTo").value.trim(),a=Lt(String(t),e,o);at(a,"timesheet.csv")}),h.querySelector("#tsExportXlsx").addEventListener("click",async()=>{if(!Q())return;const t=parseInt(h.querySelector("#tsUser").value,10),e=h.querySelector("#tsYear"),o=String(e&&e.value?e.value:Z).trim()||Z,a=`/api/admin/employees/${encodeURIComponent(String(t))}/export.xlsx?year=${encodeURIComponent(o)}`;try{const n=h.querySelector("#tsUser"),s=(n&&n.options&&n.options[n.selectedIndex]?n.options[n.selectedIndex].text:String(t)).split(" "),b=s.length>1?s.slice(1).join("_"):String(t);await at(a,`${b}_${o}.xlsx`)}catch(n){alert(String(n&&n.message?n.message:"\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}}),!window.location.pathname.includes("/ui/attendance-records")){const t=document.createElement("details");t.open=!1,t.innerHTML='<summary style="cursor:pointer;font-weight:900;padding:10px 0;">\u500B\u4EBA\u30BF\u30A4\u30E0\u30B7\u30FC\u30C8\uFF08\u8A73\u7D30\uFF09</summary>',t.appendChild(h),t.appendChild(B),t.appendChild(N),$.appendChild(t),Et(t,'button[data-action="save-att"]',"click",async(e,o)=>{const a=o.dataset.id||"";if(!a)return;const n=t.querySelector(`input[data-in="${a}"]`),c=t.querySelector(`input[data-out="${a}"]`),s=n&&n.value?n.value:null,b=c&&c.value?c.value:null;await Dt(a,{checkIn:s,checkOut:b},{signal:L}),alert("\u4FDD\u5B58\u3057\u307E\u3057\u305F")})}return()=>{try{$.innerHTML=""}catch{}V.run()}}const ne=Vt({mount:zt});export{ne as attendancePage,oe as mountAttendance};

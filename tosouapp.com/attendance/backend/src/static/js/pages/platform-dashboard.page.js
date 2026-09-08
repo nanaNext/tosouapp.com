@@ -1,134 +1,13 @@
-/**
- * platform-dashboard.page.js
- * Giao diện quản lý nền tảng chỉ dành cho sysadmin.
- * Giao tiếp với các endpoint /api/platform/*.
- */
-
-const $ = (sel) => document.querySelector(sel);
-
-// ── Auth helpers ──────────────────────────────────────────────────────────────
-
-function getToken() { return sessionStorage.getItem('accessToken') || ''; }
-
-function getCookie(name) {
-  try {
-    return document.cookie.split(';').map(c => c.trim())
-      .find(c => c.startsWith(name + '='))?.split('=')[1] || '';
-  } catch (e) { return ''; }
-}
-
-async function apiFetch(url, opts = {}) {
-  const token = getToken();
-  const csrf = getCookie('csrfToken');
-  const res = await fetch(url, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
-      'X-CSRF-Token': csrf || '',
-      ...(opts.headers || {}),
-    },
-    credentials: 'include',
-  });
-  if (res.status === 401 || res.status === 403) {
-    window.location.href = '/ui/login';
-    throw new Error('Unauthorized');
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
-  return data;
-}
-
-// ── Error display ─────────────────────────────────────────────────────────────
-
-function showError(msg) {
-  const el = $('#pd-error');
-  if (!el) return;
-  el.textContent = msg || '';
-  el.style.display = msg ? 'block' : 'none';
-}
-
-// ── Panel navigation ──────────────────────────────────────────────────────────
-
-let currentPanel = 'tenants';
-
-function switchPanel(name) {
-  currentPanel = name;
-  document.querySelectorAll('.pd-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.pd-nav-item').forEach(b => b.classList.remove('active'));
-  const panel = $(`#panel-${name}`);
-  if (panel) panel.classList.add('active');
-  document.querySelectorAll(`[data-panel="${name}"]`).forEach(b => b.classList.add('active'));
-  // Stats cards chỉ hiện ở tab tenants/users
-  const stats = $('#pd-stats');
-  if (stats) stats.style.display = (name === 'tenants' || name === 'users') ? '' : 'none';
-
-  if (name === 'tenants') loadTenants();
-  if (name === 'users') {
-    // Đảm bảo tenant được tải trước (cần cho dropdown filter + tra cứu role)
-    if (tenantsCache.length === 0) {
-      loadTenants().then(() => loadAllUsers());
-    } else {
-      loadAllUsers();
-    }
-  }
-}
-
-// ── Stats ─────────────────────────────────────────────────────────────────────
-
-async function loadStats() {
-  try {
-    const data = await apiFetch('/api/platform/stats');
-    const sv = (id, val) => { const el = $(id); if (el) el.textContent = val ?? '—'; };
-    sv('#stat-tenants', data.total_tenants);
-    sv('#stat-users', data.total_users);
-    sv('#stat-checkins', data.total_checkins_today);
-  } catch (e) { /* bỏ qua lỗi */ }
-
-  // 全ユーザー card click → 一覧表示
-  const cardUsers = $('#card-users');
-  if (cardUsers && !cardUsers.dataset.bound) {
-    cardUsers.dataset.bound = '1';
-    cardUsers.addEventListener('click', async () => {
-      try {
-        const users = allUsersCache || [];
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease;';
-        const modal = document.createElement('div');
-        modal.style.cssText = 'background:#fff;border-radius:16px;padding:0;max-width:900px;width:94%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .2s ease;overflow:hidden;';
-
-        // Trạng thái tìm kiếm
-        let searchQuery = '';
-
-        const renderTable = (filtered) => {
-          const roleLabel = (r) => {
-            const map = { admin:'管理者', manager:'マネージャー', employee:'従業員', hr:'人事', payroll:'給与担当', sysadmin:'Sysadmin', owner:'取締役' };
-            return map[String(r||'').toLowerCase()] || r || '—';
-          };
-          return filtered.map(u => {
-            const tenantNames = Object.entries(u.tenantRoles || {}).map(([tid]) => {
-              const t = tenantsCache.find(x => x.id === parseInt(tid, 10));
-              return t?.name || '';
-            }).filter(Boolean).join(', ');
-            const initials = (u.username || u.email || '?').slice(0, 1).toUpperCase();
-            const colors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2'];
-            const bgColor = colors[u.id % colors.length];
-            const roleCls = { admin:'#dc2626', manager:'#7c3aed', employee:'#2563eb', hr:'#059669', payroll:'#d97706' };
-            const rColor = roleCls[String(u.role||'').toLowerCase()] || '#64748b';
-            return `<tr style="transition:background .1s;">
+const e=s=>document.querySelector(s);function N(){return sessionStorage.getItem("accessToken")||""}function U(s){try{return document.cookie.split(";").map(t=>t.trim()).find(t=>t.startsWith(s+"="))?.split("=")[1]||""}catch{return""}}async function x(s,t={}){const i=N(),r=U("csrfToken"),n=await fetch(s,{...t,headers:{"Content-Type":"application/json",Authorization:i?`Bearer ${i}`:"","X-CSRF-Token":r||"",...t.headers||{}},credentials:"include"});if(n.status===401||n.status===403)throw window.location.href="/ui/login",new Error("Unauthorized");const d=await n.json().catch(()=>({}));if(!n.ok)throw new Error(d?.message||`HTTP ${n.status}`);return d}function _(s){const t=e("#pd-error");t&&(t.textContent=s||"",t.style.display=s?"block":"none")}let R="tenants";function J(s){R=s,document.querySelectorAll(".pd-panel").forEach(r=>r.classList.remove("active")),document.querySelectorAll(".pd-nav-item").forEach(r=>r.classList.remove("active"));const t=e(`#panel-${s}`);t&&t.classList.add("active"),document.querySelectorAll(`[data-panel="${s}"]`).forEach(r=>r.classList.add("active"));const i=e("#pd-stats");i&&(i.style.display=s==="tenants"||s==="users"?"":"none"),s==="tenants"&&z(),s==="users"&&(S.length===0?z().then(()=>T()):T())}async function M(){try{const i=await x("/api/platform/stats"),r=(n,d)=>{const f=e(n);f&&(f.textContent=d??"\u2014")};r("#stat-tenants",i.total_tenants),r("#stat-users",i.total_users),r("#stat-checkins",i.total_checkins_today)}catch{}const s=e("#card-users");s&&!s.dataset.bound&&(s.dataset.bound="1",s.addEventListener("click",async()=>{try{const i=C||[],r=document.createElement("div");r.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease;";const n=document.createElement("div");n.style.cssText="background:#fff;border-radius:16px;padding:0;max-width:900px;width:94%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .2s ease;overflow:hidden;";let d="";const f=p=>{const m=g=>({admin:"\u7BA1\u7406\u8005",manager:"\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC",employee:"\u5F93\u696D\u54E1",hr:"\u4EBA\u4E8B",payroll:"\u7D66\u4E0E\u62C5\u5F53",sysadmin:"Sysadmin",owner:"\u53D6\u7DE0\u5F79"})[String(g||"").toLowerCase()]||g||"\u2014";return p.map(g=>{const w=Object.entries(g.tenantRoles||{}).map(([b])=>S.find(I=>I.id===parseInt(b,10))?.name||"").filter(Boolean).join(", "),E=(g.username||g.email||"?").slice(0,1).toUpperCase(),k=["#2563eb","#7c3aed","#059669","#d97706","#dc2626","#0891b2"],l=k[g.id%k.length],L={admin:"#dc2626",manager:"#7c3aed",employee:"#2563eb",hr:"#059669",payroll:"#d97706"}[String(g.role||"").toLowerCase()]||"#64748b";return`<tr style="transition:background .1s;">
               <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">
-                <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${bgColor};color:#fff;font-size:12px;font-weight:700;">${initials}</span>
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${l};color:#fff;font-size:12px;font-weight:700;">${E}</span>
               </td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#94a3b8;font-size:11px;font-weight:600;">${u.id}</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b;">${u.username || u.email || '—'}</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${u.employee_code || '—'}</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${rColor}15;color:${rColor};">${roleLabel(u.role)}</span></td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${tenantNames || '<span style="color:#94a3b8;">未割り当て</span>'}</td>
-            </tr>`;
-          }).join('');
-        };
-
-        modal.innerHTML = `
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#94a3b8;font-size:11px;font-weight:600;">${g.id}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b;">${g.username||g.email||"\u2014"}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${g.employee_code||"\u2014"}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${L}15;color:${L};">${m(g.role)}</span></td>
+              <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${w||'<span style="color:#94a3b8;">\u672A\u5272\u308A\u5F53\u3066</span>'}</td>
+            </tr>`}).join("")};n.innerHTML=`
           <style>
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
             @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -138,13 +17,13 @@ async function loadStats() {
           <div style="padding:20px 24px 16px;border-bottom:1px solid #e2e8f0;flex-shrink:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <div>
-                <h3 style="margin:0;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-.3px;">全ユーザー一覧</h3>
-                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">登録ユーザー <strong style="color:#2563eb;">${users.length}</strong> 名</p>
+                <h3 style="margin:0;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-.3px;">\u5168\u30E6\u30FC\u30B6\u30FC\u4E00\u89A7</h3>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">\u767B\u9332\u30E6\u30FC\u30B6\u30FC <strong style="color:#2563eb;">${i.length}</strong> \u540D</p>
               </div>
               <button type="button" id="closeUsersModal" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border:none;border-radius:8px;font-size:18px;cursor:pointer;color:#64748b;transition:background .15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">&times;</button>
             </div>
             <div style="position:relative;">
-              <input type="text" id="usersModalSearch" class="users-modal-search" placeholder="氏名・メール・社員番号で検索..." style="width:100%;height:38px;padding:0 12px 0 36px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#1e293b;background:#f8fafc;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;" />
+              <input type="text" id="usersModalSearch" class="users-modal-search" placeholder="\u6C0F\u540D\u30FB\u30E1\u30FC\u30EB\u30FB\u793E\u54E1\u756A\u53F7\u3067\u691C\u7D22..." style="width:100%;height:38px;padding:0 12px 0 36px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#1e293b;background:#f8fafc;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;" />
               <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#94a3b8;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
           </div>
@@ -153,1127 +32,109 @@ async function loadStats() {
               <thead><tr style="background:#f8fafc;position:sticky;top:0;z-index:1;">
                 <th style="padding:10px 12px;text-align:center;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;width:56px;"></th>
                 <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;width:40px;">ID</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">氏名</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">社員番号</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">ロール</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">会社</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">\u6C0F\u540D</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">\u793E\u54E1\u756A\u53F7</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">\u30ED\u30FC\u30EB</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;">\u4F1A\u793E</th>
               </tr></thead>
-              <tbody id="usersModalBody">${renderTable(users)}</tbody>
+              <tbody id="usersModalBody">${f(i)}</tbody>
             </table>
           </div>
           <div style="padding:12px 24px;border-top:1px solid #e2e8f0;flex-shrink:0;display:flex;justify-content:space-between;align-items:center;">
-            <span id="usersModalCount" style="font-size:12px;color:#64748b;">${users.length}件表示</span>
-            <button type="button" id="closeUsersModalBtn" style="height:32px;padding:0 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:600;color:#475569;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">閉じる</button>
+            <span id="usersModalCount" style="font-size:12px;color:#64748b;">${i.length}\u4EF6\u8868\u793A</span>
+            <button type="button" id="closeUsersModalBtn" style="height:32px;padding:0 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:600;color:#475569;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">\u9589\u3058\u308B</button>
           </div>
-        `;
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-
-        // Xử lý tìm kiếm
-        const searchInput = modal.querySelector('#usersModalSearch');
-        const tbody = modal.querySelector('#usersModalBody');
-        const countEl = modal.querySelector('#usersModalCount');
-        searchInput?.addEventListener('input', () => {
-          const q = searchInput.value.trim().toLowerCase();
-          const filtered = users.filter(u =>
-            !q ||
-            String(u.username || '').toLowerCase().includes(q) ||
-            String(u.email || '').toLowerCase().includes(q) ||
-            String(u.employee_code || '').toLowerCase().includes(q)
-          );
-          tbody.innerHTML = renderTable(filtered);
-          countEl.textContent = `${filtered.length}件表示`;
-        });
-        searchInput?.focus();
-
-        // Xử lý đóng
-        const closeModal = () => { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 100); };
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-        modal.querySelector('#closeUsersModal')?.addEventListener('click', closeModal);
-        modal.querySelector('#closeUsersModalBtn')?.addEventListener('click', closeModal);
-        // Phím ESC
-        const escHandler = (e) => { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', escHandler); } };
-        document.addEventListener('keydown', escHandler);
-      } catch (e) {
-        alert('エラー: ' + (e.message || ''));
-      }
-    });
-  }
-
-  // 本日の打刻 card click → 一覧表示
-  const cardCheckins = $('#card-checkins');
-  if (cardCheckins && !cardCheckins.dataset.bound) {
-    cardCheckins.dataset.bound = '1';
-    cardCheckins.addEventListener('click', async () => {
-      try {
-        const data = await apiFetch('/api/platform/today-checkins');
-        const items = data?.items || [];
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
-        const modal = document.createElement('div');
-        modal.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);';
-        const fmtTime = t => t ? String(t).slice(11, 16) : '—';
-        modal.innerHTML = `
+        `,r.appendChild(n),document.body.appendChild(r);const u=n.querySelector("#usersModalSearch"),y=n.querySelector("#usersModalBody"),a=n.querySelector("#usersModalCount");u?.addEventListener("input",()=>{const p=u.value.trim().toLowerCase(),m=i.filter(g=>!p||String(g.username||"").toLowerCase().includes(p)||String(g.email||"").toLowerCase().includes(p)||String(g.employee_code||"").toLowerCase().includes(p));y.innerHTML=f(m),a.textContent=`${m.length}\u4EF6\u8868\u793A`}),u?.focus();const o=()=>{r.style.opacity="0",setTimeout(()=>r.remove(),100)};r.addEventListener("click",p=>{p.target===r&&o()}),n.querySelector("#closeUsersModal")?.addEventListener("click",o),n.querySelector("#closeUsersModalBtn")?.addEventListener("click",o);const c=p=>{p.key==="Escape"&&(o(),document.removeEventListener("keydown",c))};document.addEventListener("keydown",c)}catch(i){alert("\u30A8\u30E9\u30FC: "+(i.message||""))}}));const t=e("#card-checkins");t&&!t.dataset.bound&&(t.dataset.bound="1",t.addEventListener("click",async()=>{try{const i=await x("/api/platform/today-checkins"),r=i?.items||[],n=document.createElement("div");n.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;";const d=document.createElement("div");d.style.cssText="background:#fff;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);";const f=u=>u?String(u).slice(11,16):"\u2014";d.innerHTML=`
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3 style="margin:0;font-size:18px;color:#0f172a;">本日の打刻一覧（${data.date}）</h3>
+            <h3 style="margin:0;font-size:18px;color:#0f172a;">\u672C\u65E5\u306E\u6253\u523B\u4E00\u89A7\uFF08${i.date}\uFF09</h3>
             <button type="button" id="closeCheckinModal" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748b;">&times;</button>
           </div>
-          <div style="font-size:13px;color:#64748b;margin-bottom:12px;">合計: ${items.length}名</div>
-          ${items.length === 0 ? '<p style="text-align:center;color:#64748b;">本日の打刻はありません</p>' : `
+          <div style="font-size:13px;color:#64748b;margin-bottom:12px;">\u5408\u8A08: ${r.length}\u540D</div>
+          ${r.length===0?'<p style="text-align:center;color:#64748b;">\u672C\u65E5\u306E\u6253\u523B\u306F\u3042\u308A\u307E\u305B\u3093</p>':`
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="background:#f1f5f9;">
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">氏名</th>
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">会社</th>
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">部署</th>
-              <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">出勤</th>
-              <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">退勤</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u6C0F\u540D</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u4F1A\u793E</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u90E8\u7F72</th>
+              <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">\u51FA\u52E4</th>
+              <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">\u9000\u52E4</th>
             </tr></thead>
-            <tbody>${items.map(r => `<tr>
-              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${r.username || r.email || '—'}</td>
-              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${r.tenantName || '—'}</td>
-              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${r.departmentName || '—'}</td>
-              <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#059669;font-weight:600;">${fmtTime(r.checkIn)}</td>
-              <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#dc2626;">${r.checkOut ? fmtTime(r.checkOut) : '勤務中'}</td>
-            </tr>`).join('')}</tbody>
+            <tbody>${r.map(u=>`<tr>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.username||u.email||"\u2014"}</td>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.tenantName||"\u2014"}</td>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.departmentName||"\u2014"}</td>
+              <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#059669;font-weight:600;">${f(u.checkIn)}</td>
+              <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#dc2626;">${u.checkOut?f(u.checkOut):"\u52E4\u52D9\u4E2D"}</td>
+            </tr>`).join("")}</tbody>
           </table>`}
-        `;
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-        modal.querySelector('#closeCheckinModal')?.addEventListener('click', () => overlay.remove());
-      } catch (e) {
-        alert('データの取得に失敗しました: ' + (e.message || ''));
-      }
-    });
-  }
-}
-
-// ── Tenants ───────────────────────────────────────────────────────────────────
-
-let tenantsCache = [];
-
-function planBadge(plan) {
-  const map = { trial: 'badge-trial', basic: 'badge-basic', pro: 'badge-pro', enterprise: 'badge-pro' };
-  return `<span class="badge ${map[plan] || 'badge-basic'}">${plan || 'basic'}</span>`;
-}
-
-function statusBadge(status) {
-  const map = { active: 'badge-active', suspended: 'badge-suspended', cancelled: 'badge-suspended' };
-  return `<span class="badge ${map[status] || 'badge-active'}">${status || 'active'}</span>`;
-}
-
-function renderTenants(tenants) {
-  const tbody = $('#pd-tenants-tbody');
-  const table = $('#pd-tenants-table');
-  const loading = $('#pd-tenants-loading');
-  if (!tbody) return;
-
-  if (loading) loading.style.display = 'none';
-  if (table) table.style.display = '';
-
-  tbody.innerHTML = tenants.map(t => {
-    const initial = (t.logo_name || t.name || '?').charAt(0).toUpperCase();
-    const logoHtml = t.logo_url
-      ? `<img src="${t.logo_url}?v=${Date.now()}" alt="${t.name}"
+        `,n.appendChild(d),document.body.appendChild(n),n.addEventListener("click",u=>{u.target===n&&n.remove()}),d.querySelector("#closeCheckinModal")?.addEventListener("click",()=>n.remove())}catch(i){alert("\u30C7\u30FC\u30BF\u306E\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+(i.message||""))}}))}let S=[];function G(s){return`<span class="badge ${{trial:"badge-trial",basic:"badge-basic",pro:"badge-pro",enterprise:"badge-pro"}[s]||"badge-basic"}">${s||"basic"}</span>`}function W(s){return`<span class="badge ${{active:"badge-active",suspended:"badge-suspended",cancelled:"badge-suspended"}[s]||"badge-active"}">${s||"active"}</span>`}function X(s){const t=e("#pd-tenants-tbody"),i=e("#pd-tenants-table"),r=e("#pd-tenants-loading");t&&(r&&(r.style.display="none"),i&&(i.style.display=""),t.innerHTML=s.map(n=>{const d=(n.logo_name||n.name||"?").charAt(0).toUpperCase(),f=n.logo_url?`<img src="${n.logo_url}?v=${Date.now()}" alt="${n.name}"
              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
-          ><div class="td-logo-placeholder" style="display:none">${initial}</div>`
-      : `<div class="td-logo-placeholder">${initial}</div>`;
-    const owners = (t.owners || []).map(o => o.username || o.email).join(', ') || '—';
-    const address = t.address ? `<div class="td-address">${t.address}</div>` : '';
-    const phone = t.phone ? `<div class="td-phone">📞 ${t.phone}${t.fax ? `  FAX: ${t.fax}` : ''}</div>` : '';
-    const license = t.license_number ? `<div class="td-license">🏛 ${t.license_number}</div>` : '';
-    return `
+          ><div class="td-logo-placeholder" style="display:none">${d}</div>`:`<div class="td-logo-placeholder">${d}</div>`,u=(n.owners||[]).map(c=>c.username||c.email).join(", ")||"\u2014",y=n.address?`<div class="td-address">${n.address}</div>`:"",a=n.phone?`<div class="td-phone">\u{1F4DE} ${n.phone}${n.fax?`  FAX: ${n.fax}`:""}</div>`:"",o=n.license_number?`<div class="td-license">\u{1F3DB} ${n.license_number}</div>`:"";return`
       <tr>
         <td>
           <div class="td-logo">
-            ${logoHtml}
+            ${f}
             <div>
-              <div class="td-name">${t.name}</div>
-              <div class="td-slug">${t.slug} · ${owners}</div>
-              ${address}${phone}${license}
+              <div class="td-name">${n.name}</div>
+              <div class="td-slug">${n.slug} \xB7 ${u}</div>
+              ${y}${a}${o}
             </div>
           </div>
         </td>
-        <td>${planBadge(t.plan)}</td>
-        <td>${statusBadge(t.status)}</td>
-        <td>${t.user_count ?? 0} 人</td>
+        <td>${G(n.plan)}</td>
+        <td>${W(n.status)}</td>
+        <td>${n.user_count??0} \u4EBA</td>
         <td style="white-space:nowrap">
-          <button class="pd-btn pd-btn-sm pd-btn-enter" data-action="enter" data-id="${t.id}" title="${t.name}に入る">
-            → 入る
+          <button class="pd-btn pd-btn-sm pd-btn-enter" data-action="enter" data-id="${n.id}" title="${n.name}\u306B\u5165\u308B">
+            \u2192 \u5165\u308B
           </button>
-          <button class="pd-btn pd-btn-sm pd-btn-ghost" data-action="edit" data-id="${t.id}" style="margin-left:6px">
-            編集
+          <button class="pd-btn pd-btn-sm pd-btn-ghost" data-action="edit" data-id="${n.id}" style="margin-left:6px">
+            \u7DE8\u96C6
           </button>
         </td>
-      </tr>`;
-  }).join('');
-
-  // Gắn sự kiện cho các nút
-  tbody.querySelectorAll('[data-action="enter"]').forEach(btn => {
-    btn.addEventListener('click', () => impersonateTenant(parseInt(btn.dataset.id, 10), btn.title));
-  });
-  tbody.querySelectorAll('[data-action="edit"]').forEach(btn => {
-    btn.addEventListener('click', () => openEditModal(parseInt(btn.dataset.id, 10)));
-  });
-}
-
-async function loadTenants() {
-  const loading = $('#pd-tenants-loading');
-  const table = $('#pd-tenants-table');
-  if (loading) loading.style.display = 'block';
-  if (table) table.style.display = 'none';
-  try {
-    const data = await apiFetch('/api/platform/tenants');
-    tenantsCache = data.tenants || [];
-    renderTenants(tenantsCache);
-  } catch (e) {
-    showError('テナント読み込みエラー: ' + e.message);
-  }
-}
-
-// ── Tất cả người dùng ────────────────────────────────────────────────────────
-
-let allUsersCache = [];  // danh sách phẳng toàn bộ user nền tảng kèm phân công tenant
-let usersFilterState = { q: '', tenantId: '', role: '' };
-
-function roleLabelJa(role) {
-  const map = { admin: '管理者', manager: 'マネージャー', employee: '従業員', hr: '人事', payroll: '給与担当', owner: '取締役', sysadmin: 'システム管理者' };
-  return map[String(role || '').toLowerCase()] || role || '—';
-}
-
-// Dựng HTML dropdown tag tenant bên trong một ô
-function tenantTagsHtml(user) {
-  if (!user.tenant_ids) return '<span style="color:#94a3b8;font-size:12px">未割り当て</span>';
-  const ids = String(user.tenant_ids).split(',');
-  const names = String(user.tenant_names || '').split('||');
-  // Lấy role từ map user.tenantAssignments (được loadAllUsers đổ vào)
-  return ids.map((tid, i) => {
-    const tname = names[i] || tid;
-    const tshort = tname.length > 10 ? tname.slice(0, 10) + '…' : tname;
-    const role = (user.tenantRoles || {})[tid] || '?';
-    return `<span class="pd-tenant-tag" title="${tname}">
-      ${tshort}
-      <select class="pd-role-inline" data-user="${user.id}" data-tenant="${tid}" style="font-size:10px;border:none;background:transparent;color:#1e40af;cursor:pointer;padding:0 2px">
-        <option value="employee" ${role==='employee'?'selected':''}>従業員</option>
-        <option value="manager" ${role==='manager'?'selected':''}>マネージャー</option>
-        <option value="admin" ${role==='admin'?'selected':''}>管理者</option>
-        <option value="hr" ${role==='hr'?'selected':''}>人事</option>
-        <option value="payroll" ${role==='payroll'?'selected':''}>給与</option>
+      </tr>`}).join(""),t.querySelectorAll('[data-action="enter"]').forEach(n=>{n.addEventListener("click",()=>te(parseInt(n.dataset.id,10),n.title))}),t.querySelectorAll('[data-action="edit"]').forEach(n=>{n.addEventListener("click",()=>se(parseInt(n.dataset.id,10)))}))}async function z(){const s=e("#pd-tenants-loading"),t=e("#pd-tenants-table");s&&(s.style.display="block"),t&&(t.style.display="none");try{S=(await x("/api/platform/tenants")).tenants||[],X(S)}catch(i){_("\u30C6\u30CA\u30F3\u30C8\u8AAD\u307F\u8FBC\u307F\u30A8\u30E9\u30FC: "+i.message)}}let C=[],$={q:"",tenantId:"",role:""};function Y(s){return{admin:"\u7BA1\u7406\u8005",manager:"\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC",employee:"\u5F93\u696D\u54E1",hr:"\u4EBA\u4E8B",payroll:"\u7D66\u4E0E\u62C5\u5F53",owner:"\u53D6\u7DE0\u5F79",sysadmin:"\u30B7\u30B9\u30C6\u30E0\u7BA1\u7406\u8005"}[String(s||"").toLowerCase()]||s||"\u2014"}function Q(s){if(!s.tenant_ids)return'<span style="color:#94a3b8;font-size:12px">\u672A\u5272\u308A\u5F53\u3066</span>';const t=String(s.tenant_ids).split(","),i=String(s.tenant_names||"").split("||");return t.map((r,n)=>{const d=i[n]||r,f=d.length>10?d.slice(0,10)+"\u2026":d,u=(s.tenantRoles||{})[r]||"?";return`<span class="pd-tenant-tag" title="${d}">
+      ${f}
+      <select class="pd-role-inline" data-user="${s.id}" data-tenant="${r}" style="font-size:10px;border:none;background:transparent;color:#1e40af;cursor:pointer;padding:0 2px">
+        <option value="employee" ${u==="employee"?"selected":""}>\u5F93\u696D\u54E1</option>
+        <option value="manager" ${u==="manager"?"selected":""}>\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC</option>
+        <option value="admin" ${u==="admin"?"selected":""}>\u7BA1\u7406\u8005</option>
+        <option value="hr" ${u==="hr"?"selected":""}>\u4EBA\u4E8B</option>
+        <option value="payroll" ${u==="payroll"?"selected":""}>\u7D66\u4E0E</option>
       </select>
-      <button class="pd-remove-tenant" data-user="${user.id}" data-tenant="${tid}" title="削除" type="button">×</button>
-    </span>`;
-  }).join('');
-}
-
-async function loadAllUsers() {
-  const loading = $('#pd-users-loading');
-  const table = $('#pd-users-table');
-  const empty = $('#pd-users-empty');
-  if (loading) loading.style.display = 'block';
-  if (table) table.style.display = 'none';
-  if (empty) empty.style.display = 'none';
-
-  try {
-    // Tải toàn bộ user trên toàn nền tảng
-    const data = await apiFetch('/api/platform/users');
-    const users = data.users || [];
-
-    // Tải luôn phân công theo từng tenant để lấy role_in_tenant
-    const tenantUserMap = {};  // { userId: { tenantId: role } }
-    if (tenantsCache.length > 0) {
-      const results = await Promise.all(
-        tenantsCache.map(t => apiFetch(`/api/platform/tenants/${t.id}/users`)
-          .then(d => ({ tenantId: t.id, users: d.users || [] }))
-          .catch(() => ({ tenantId: t.id, users: [] }))
-        )
-      );
-      for (const { tenantId, users: tUsers } of results) {
-        for (const u of tUsers) {
-          if (!tenantUserMap[u.id]) tenantUserMap[u.id] = {};
-          tenantUserMap[u.id][tenantId] = u.role_in_tenant || 'employee';
-        }
-      }
-    }
-
-    // Gắn map tenantRoles vào mỗi user
-    allUsersCache = users.map(u => ({
-      ...u,
-      tenantRoles: tenantUserMap[u.id] || {},
-    }));
-
-    if (loading) loading.style.display = 'none';
-
-    // Đổ dữ liệu vào dropdown filter tenant
-    const tenantFilter = $('#pd-users-tenant-filter');
-    if (tenantFilter && tenantsCache.length > 0) {
-      const current = tenantFilter.value;
-      tenantFilter.innerHTML = '<option value="">全テナント</option>' +
-        tenantsCache.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-      tenantFilter.value = current;
-    }
-
-    renderUsersTable();
-  } catch (e) {
-    if (loading) loading.style.display = 'none';
-    showError('ユーザー読み込みエラー: ' + e.message);
-  }
-}
-
-function renderUsersTable() {
-  const tbody = $('#pd-users-tbody');
-  const table = $('#pd-users-table');
-  const empty = $('#pd-users-empty');
-  if (!tbody) return;
-
-  const q = usersFilterState.q.toLowerCase();
-  const filterTenant = usersFilterState.tenantId ? parseInt(usersFilterState.tenantId, 10) : null;
-  const filterRole = usersFilterState.role;
-
-  let filtered = allUsersCache.filter(u => {
-    if (q && !String(u.username || '').toLowerCase().includes(q) && !String(u.email || '').toLowerCase().includes(q)) return false;
-    if (filterTenant) {
-      const hasInTenant = !!(u.tenantRoles || {})[filterTenant];
-      if (!hasInTenant) return false;
-    }
-    if (filterRole) {
-      const roles = Object.values(u.tenantRoles || {});
-      if (!roles.includes(filterRole)) return false;
-    }
-    return true;
-  });
-
-  if (filtered.length === 0) {
-    if (table) table.style.display = 'none';
-    if (empty) empty.style.display = 'block';
-    // Xóa phân trang
-    const existingPager = document.querySelector('#pd-users-pager');
-    if (existingPager) existingPager.remove();
-    return;
-  }
-
-  if (table) table.style.display = '';
-  if (empty) empty.style.display = 'none';
-
-  // Phân loại theo role group
-  const roleOrder = ['sysadmin', 'owner', 'admin', 'manager', 'employee'];
-  const roleLabel = { sysadmin: 'システム管理者', owner: 'オーナー', admin: '管理者', manager: 'マネージャー', employee: '従業員' };
-  const grouped = {};
-  for (const r of roleOrder) grouped[r] = [];
-  for (const u of filtered) {
-    const r = String(u.role || 'employee').toLowerCase();
-    if (grouped[r]) grouped[r].push(u);
-    else grouped['employee'].push(u);
-  }
-
-  // Phân trang: 20 user mỗi trang (phẳng trên tất cả các nhóm)
-  const PAGE_SIZE = 20;
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  if (!usersFilterState.page || usersFilterState.page > totalPages) usersFilterState.page = 1;
-  const page = usersFilterState.page;
-  const start = (page - 1) * PAGE_SIZE;
-  const pageItems = filtered.slice(start, start + PAGE_SIZE);
-
-  // Gom nhóm lại các mục trong trang
-  const pageGrouped = {};
-  for (const r of roleOrder) pageGrouped[r] = [];
-  for (const u of pageItems) {
-    const r = String(u.role || 'employee').toLowerCase();
-    if (pageGrouped[r]) pageGrouped[r].push(u);
-    else pageGrouped['employee'].push(u);
-  }
-
-  let html = '';
-  for (const r of roleOrder) {
-    const list = pageGrouped[r];
-    if (!list.length) continue;
-    const sectionId = `pd-role-section-${r}`;
-    html += `<tr class="pd-role-header" data-section="${sectionId}" style="cursor:pointer;user-select:none;">
+      <button class="pd-remove-tenant" data-user="${s.id}" data-tenant="${r}" title="\u524A\u9664" type="button">\xD7</button>
+    </span>`}).join("")}async function T(){const s=e("#pd-users-loading"),t=e("#pd-users-table"),i=e("#pd-users-empty");s&&(s.style.display="block"),t&&(t.style.display="none"),i&&(i.style.display="none");try{const n=(await x("/api/platform/users")).users||[],d={};if(S.length>0){const u=await Promise.all(S.map(y=>x(`/api/platform/tenants/${y.id}/users`).then(a=>({tenantId:y.id,users:a.users||[]})).catch(()=>({tenantId:y.id,users:[]}))));for(const{tenantId:y,users:a}of u)for(const o of a)d[o.id]||(d[o.id]={}),d[o.id][y]=o.role_in_tenant||"employee"}C=n.map(u=>({...u,tenantRoles:d[u.id]||{}})),s&&(s.style.display="none");const f=e("#pd-users-tenant-filter");if(f&&S.length>0){const u=f.value;f.innerHTML='<option value="">\u5168\u30C6\u30CA\u30F3\u30C8</option>'+S.map(y=>`<option value="${y.id}">${y.name}</option>`).join(""),f.value=u}q()}catch(r){s&&(s.style.display="none"),_("\u30E6\u30FC\u30B6\u30FC\u8AAD\u307F\u8FBC\u307F\u30A8\u30E9\u30FC: "+r.message)}}function q(){const s=e("#pd-users-tbody"),t=e("#pd-users-table"),i=e("#pd-users-empty");if(!s)return;const r=$.q.toLowerCase(),n=$.tenantId?parseInt($.tenantId,10):null,d=$.role;let f=C.filter(l=>!(r&&!String(l.username||"").toLowerCase().includes(r)&&!String(l.email||"").toLowerCase().includes(r)||n&&!!!(l.tenantRoles||{})[n]||d&&!Object.values(l.tenantRoles||{}).includes(d)));if(f.length===0){t&&(t.style.display="none"),i&&(i.style.display="block");const l=document.querySelector("#pd-users-pager");l&&l.remove();return}t&&(t.style.display=""),i&&(i.style.display="none");const u=["sysadmin","owner","admin","manager","employee"],y={sysadmin:"\u30B7\u30B9\u30C6\u30E0\u7BA1\u7406\u8005",owner:"\u30AA\u30FC\u30CA\u30FC",admin:"\u7BA1\u7406\u8005",manager:"\u30DE\u30CD\u30FC\u30B8\u30E3\u30FC",employee:"\u5F93\u696D\u54E1"},a={};for(const l of u)a[l]=[];for(const l of f){const h=String(l.role||"employee").toLowerCase();a[h]?a[h].push(l):a.employee.push(l)}const o=20,c=Math.ceil(f.length/o);(!$.page||$.page>c)&&($.page=1);const p=$.page,m=(p-1)*o,g=f.slice(m,m+o),w={};for(const l of u)w[l]=[];for(const l of g){const h=String(l.role||"employee").toLowerCase();w[h]?w[h].push(l):w.employee.push(l)}let E="";for(const l of u){const h=w[l];if(!h.length)continue;const L=`pd-role-section-${l}`;E+=`<tr class="pd-role-header" data-section="${L}" style="cursor:pointer;user-select:none;">
       <td colspan="6" style="background:#f1f5f9;padding:10px 12px;font-weight:700;font-size:12px;color:#334155;letter-spacing:.5px;border-top:2px solid #e2e8f0;">
-        <span class="pd-role-chevron" style="display:inline-block;transition:transform .15s;margin-right:6px;">▶</span>${roleLabel[r] || r}（${grouped[r].length}名）
+        <span class="pd-role-chevron" style="display:inline-block;transition:transform .15s;margin-right:6px;">\u25B6</span>${y[l]||l}\uFF08${a[l].length}\u540D\uFF09
       </td>
-    </tr>`;
-    for (const u of list) {
-      html += `<tr class="pd-role-row ${sectionId}">
-      <td><div style="font-weight:600;font-size:13px">${u.username || '—'}</div></td>
-      <td style="color:#64748b;font-size:12px">${u.email || '—'}</td>
-      <td><span class="badge badge-basic">${roleLabelJa(u.role)}</span></td>
-      <td style="max-width:280px">${tenantTagsHtml(u)}</td>
-      <td>${u.employment_status === 'active'
-        ? '<span class="badge badge-active">active</span>'
-        : `<span class="badge badge-suspended">${u.employment_status || '—'}</span>`}</td>
+    </tr>`;for(const b of h)E+=`<tr class="pd-role-row ${L}">
+      <td><div style="font-weight:600;font-size:13px">${b.username||"\u2014"}</div></td>
+      <td style="color:#64748b;font-size:12px">${b.email||"\u2014"}</td>
+      <td><span class="badge badge-basic">${Y(b.role)}</span></td>
+      <td style="max-width:280px">${Q(b)}</td>
+      <td>${b.employment_status==="active"?'<span class="badge badge-active">active</span>':`<span class="badge badge-suspended">${b.employment_status||"\u2014"}</span>`}</td>
       <td>
         <button class="pd-btn pd-btn-sm pd-btn-primary pd-assign-quick"
-          data-user-id="${u.id}" data-username="${u.username || u.email}"
-          type="button" title="テナントに追加">+ 割り当て</button>
+          data-user-id="${b.id}" data-username="${b.username||b.email}"
+          type="button" title="\u30C6\u30CA\u30F3\u30C8\u306B\u8FFD\u52A0">+ \u5272\u308A\u5F53\u3066</button>
       </td>
-    </tr>`;
-    }
-  }
-  tbody.innerHTML = html;
-
-  // Accordion: click header → bật/tắt các dòng
-  tbody.querySelectorAll('.pd-role-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const sectionId = header.dataset.section;
-      const rows = tbody.querySelectorAll(`.${sectionId}`);
-      const chevron = header.querySelector('.pd-role-chevron');
-      const isHidden = rows[0]?.style.display === 'none';
-      rows.forEach(row => { row.style.display = isHidden ? '' : 'none'; });
-      if (chevron) chevron.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
-    });
-    // Mặc định: mở rộng tất cả
-    const chevron = header.querySelector('.pd-role-chevron');
-    if (chevron) chevron.style.transform = 'rotate(90deg)';
-  });
-  // Giao diện phân trang
-  let pager = document.querySelector('#pd-users-pager');
-  if (!pager) {
-    pager = document.createElement('div');
-    pager.id = 'pd-users-pager';
-    pager.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;font-size:13px;';
-    table.parentElement.appendChild(pager);
-  }
-  pager.innerHTML = totalPages > 1 ? `
-    <button type="button" class="pd-btn pd-btn-sm" id="pd-pager-prev" ${page <= 1 ? 'disabled style="opacity:.4;cursor:not-allowed;"' : ''}>前へ</button>
-    <span style="color:#475569;">${page} / ${totalPages} ページ（全${filtered.length}件）</span>
-    <button type="button" class="pd-btn pd-btn-sm" id="pd-pager-next" ${page >= totalPages ? 'disabled style="opacity:.4;cursor:not-allowed;"' : ''}>次へ</button>
-  ` : `<span style="color:#64748b;">全${filtered.length}件</span>`;
-  pager.querySelector('#pd-pager-prev')?.addEventListener('click', () => { usersFilterState.page = Math.max(1, page - 1); renderUsersTable(); });
-  pager.querySelector('#pd-pager-next')?.addEventListener('click', () => { usersFilterState.page = Math.min(totalPages, page + 1); renderUsersTable(); });
-
-  // Gắn sự kiện: đổi role trực tiếp
-  tbody.querySelectorAll('.pd-role-inline').forEach(sel => {
-    sel.addEventListener('change', async () => {
-      const userId = parseInt(sel.dataset.user, 10);
-      const tenantId = parseInt(sel.dataset.tenant, 10);
-      const role = sel.value;
-      try {
-        await apiFetch(`/api/platform/tenants/${tenantId}/users/${userId}`, {
-          method: 'PATCH', body: JSON.stringify({ role_in_tenant: role })
-        });
-        // Cập nhật cache ngầm
-        const u = allUsersCache.find(x => x.id === userId);
-        if (u && u.tenantRoles) u.tenantRoles[tenantId] = role;
-      } catch (e) {
-        showError('ロール更新エラー: ' + e.message);
-        await loadAllUsers();
-      }
-    });
-  });
-
-  // Gắn sự kiện: xóa khỏi tenant
-  tbody.querySelectorAll('.pd-remove-tenant').forEach(btn => {
-    btn.addEventListener('click', () => removeUserFromTenant(
-      parseInt(btn.dataset.user, 10),
-      parseInt(btn.dataset.tenant, 10)
-    ));
-  });
-
-  // Gắn sự kiện: nút gán nhanh
-  tbody.querySelectorAll('.pd-assign-quick').forEach(btn => {
-    btn.addEventListener('click', () => openAssignModal(
-      parseInt(btn.dataset.userId, 10),
-      btn.dataset.username
-    ));
-  });
-}
-
-async function removeUserFromTenant(userId, tenantId) {
-  const u = allUsersCache.find(x => x.id === userId);
-  const t = tenantsCache.find(x => x.id === tenantId);
-  const uname = u?.username || u?.email || `User ${userId}`;
-  const tname = t?.name || `Tenant ${tenantId}`;
-  if (!confirm(`「${uname}」を「${tname}」から削除しますか？`)) return;
-  try {
-    await apiFetch(`/api/platform/tenants/${tenantId}/users/${userId}`, { method: 'DELETE' });
-    await loadAllUsers();
-    await loadStats();
-  } catch (e) {
-    showError('削除エラー: ' + e.message);
-  }
-}
-
-// ── Assign modal ──────────────────────────────────────────────────────────────
-
-let assignSearchTimer = null;
-let assignSelectedUser = null;
-
-function openAssignModal(prefillUserId = null, prefillUsername = '') {
-  const modal = $('#pd-assign-modal');
-  if (!modal) return;
-
-  // Đặt lại form
-  assignSelectedUser = null;
-  $('#pd-assign-user-search').value = '';
-  $('#pd-assign-user-results').style.display = 'none';
-  $('#pd-assign-user-results').innerHTML = '';
-  $('#pd-assign-selected-user').style.display = 'none';
-  $('#pd-assign-selected-user').innerHTML = '';
-  $('#pd-assign-user-id-hidden').value = '';
-  $('#pd-assign-role-select').value = 'employee';
-  $('#pd-assign-error').style.display = 'none';
-
-  // Đổ dữ liệu vào dropdown tenant
-  const tenantSel = $('#pd-assign-tenant-select');
-  tenantSel.innerHTML = '<option value="">選択してください</option>' +
-    tenantsCache.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-
-  // Điền sẵn user nếu được gọi từ nút gán nhanh
-  if (prefillUserId) {
-    const u = allUsersCache.find(x => x.id === prefillUserId);
-    if (u) {
-      assignSelectedUser = u;
-      $('#pd-assign-user-id-hidden').value = u.id;
-      showSelectedUser(u);
-    }
-  }
-
-  modal.removeAttribute('hidden');
-  if (!prefillUserId) setTimeout(() => $('#pd-assign-user-search')?.focus(), 80);
-}
-
-function showSelectedUser(u) {
-  const el = $('#pd-assign-selected-user');
-  const search = $('#pd-assign-user-search');
-  const results = $('#pd-assign-user-results');
-  if (el) {
-    el.innerHTML = `<span>✓ <strong>${u.username || u.email}</strong> <span style="color:#64748b">${u.email}</span></span>
-      <button type="button" id="pd-clear-user" title="クリア">×</button>`;
-    el.style.display = 'flex';
-    const clear = el.querySelector('#pd-clear-user');
-    if (clear) clear.addEventListener('click', () => {
-      assignSelectedUser = null;
-      $('#pd-assign-user-id-hidden').value = '';
-      el.style.display = 'none';
-      if (search) { search.value = ''; search.focus(); }
-    });
-  }
-  if (search) search.style.display = 'none';
-  if (results) results.style.display = 'none';
-}
-
-function closeAssignModal() {
-  const modal = $('#pd-assign-modal');
-  if (modal) modal.setAttribute('hidden', '');
-  assignSelectedUser = null;
-  const search = $('#pd-assign-user-search');
-  if (search) search.style.display = '';
-}
-
-// ── Create User modal ─────────────────────────────────────────────────────────
-
-function openCreateUserModal() {
-  const modal = $('#pd-create-user-modal');
-  if (!modal) return;
-
-  // Đặt lại form
-  $('#pd-cu-username').value = '';
-  $('#pd-cu-email').value = '';
-  $('#pd-cu-password').value = '';
-  $('#pd-cu-role').value = 'employee';
-  $('#pd-cu-phone').value = '';
-  $('#pd-cu-error').style.display = 'none';
-
-  // Đổ dữ liệu vào dropdown tenant
-  const tenantSel = $('#pd-cu-tenant-select');
-  tenantSel.innerHTML = '<option value="">選択してください</option>' +
-    tenantsCache.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-
-  modal.removeAttribute('hidden');
-  setTimeout(() => $('#pd-cu-username')?.focus(), 80);
-}
-
-function closeCreateUserModal() {
-  const modal = $('#pd-create-user-modal');
-  if (modal) modal.setAttribute('hidden', '');
-}
-
-async function handleCreateUserSubmit(e) {
-  e.preventDefault();
-  const errEl = $('#pd-cu-error');
-  if (errEl) errEl.style.display = 'none';
-
-  const tenantId = parseInt($('#pd-cu-tenant-select').value || '0', 10);
-  const username = ($('#pd-cu-username').value || '').trim();
-  const email = ($('#pd-cu-email').value || '').trim();
-  const password = ($('#pd-cu-password').value || '').trim();
-  const role = $('#pd-cu-role').value;
-  const phone = ($('#pd-cu-phone').value || '').trim();
-
-  if (!tenantId) {
-    if (errEl) { errEl.textContent = 'テナントを選択してください'; errEl.style.display = 'block'; }
-    return;
-  }
-  if (!username || !email || !password) {
-    if (errEl) { errEl.textContent = '氏名・メール・パスワードは必須です'; errEl.style.display = 'block'; }
-    return;
-  }
-
-  const submitBtn = $('#pd-cu-submit');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '作成中...'; }
-
-  try {
-    const result = await apiFetch(`/api/platform/tenants/${tenantId}/create-user`, {
-      method: 'POST',
-      body: JSON.stringify({ username, email, password, role, phone }),
-    });
-    closeCreateUserModal();
-    await loadAllUsers();
-    await loadStats();
-    // Hiện thông báo thành công
-    showError('');
-    alert(`ユーザーを作成しました: ${result.username} (${result.email}) → ${result.tenantName}`);
-  } catch (err) {
-    if (errEl) { errEl.textContent = err.message || '作成に失敗しました'; errEl.style.display = 'block'; }
-  } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '作成'; }
-  }
-}
-
-async function handleAssignSubmit(e) {
-  e.preventDefault();
-  const errEl = $('#pd-assign-error');
-  if (errEl) errEl.style.display = 'none';
-
-  const userId = parseInt($('#pd-assign-user-id-hidden').value || '0', 10);
-  const tenantId = parseInt($('#pd-assign-tenant-select').value || '0', 10);
-  const role = $('#pd-assign-role-select').value;
-
-  if (!userId) {
-    if (errEl) { errEl.textContent = 'ユーザーを選択してください'; errEl.style.display = 'block'; }
-    return;
-  }
-  if (!tenantId) {
-    if (errEl) { errEl.textContent = 'テナントを選択してください'; errEl.style.display = 'block'; }
-    return;
-  }
-
-  const submitBtn = $('#pd-assign-submit');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '処理中...'; }
-
-  try {
-    await apiFetch(`/api/platform/tenants/${tenantId}/users`, {
-      method: 'POST',
-      body: JSON.stringify({ user_id: userId, role_in_tenant: role }),
-    });
-    closeAssignModal();
-    await loadAllUsers();
-    await loadStats();
-    await loadTenants(); // làm mới user_count trong danh sách tenant
-  } catch (err) {
-    if (errEl) { errEl.textContent = err.message; errEl.style.display = 'block'; }
-  } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '割り当て'; }
-  }
-}
-
-// ── Impersonate (enter tenant as admin) ───────────────────────────────────────
-
-async function impersonateTenant(tenantId, tenantName) {
-  if (!confirm(`「${tenantName}」の管理者として入りますか？`)) return;
-  try {
-    const data = await apiFetch('/api/platform/impersonate', {
-      method: 'POST',
-      body: JSON.stringify({ tenant_id: tenantId }),
-    });
-
-    // Lưu token mới theo tenant vào CẢ sessionStorage và localStorage
-    // để tất cả auth guard của trang admin đều tìm thấy
-    sessionStorage.setItem('accessToken', data.accessToken);
-    try { localStorage.setItem('accessToken', data.accessToken); } catch (e) { /* bỏ qua lỗi */ }
-
-    // Cập nhật object user với context tenant + cờ impersonate
-    const newUser = {
-      role: 'admin',
-      tenantId: data.tenantId,
-      tenantName: data.tenantName,
-      tenantLogo: data.tenantLogo,
-      tenantLogoName: data.tenantLogoName,
-      _impersonate: true,
-      _sysadmin: true,
-      _platformReturn: '/platform/dashboard',
-    };
-    try {
-      const existing = JSON.parse(sessionStorage.getItem('user') || '{}');
-      const merged = JSON.stringify({ ...existing, ...newUser });
-      sessionStorage.setItem('user', merged);
-      localStorage.setItem('user', merged);
-    } catch (e) { /* bỏ qua lỗi */ }
-    // Context riêng theo tab: lưu tenantId riêng cho tab này (impersonate)
-    try {
-      const { setTabContext } = await import('/static/js/api/tab-context.js');
-      setTabContext({ tenantId: data.tenantId, tenantName: data.tenantName, role: 'admin', userId: null });
-    } catch (e) { /* bỏ qua */ }
-
-    // Chờ một chút để đảm bảo storage được ghi xong trước khi điều hướng
-    await new Promise(r => setTimeout(r, 80));
-    window.location.href = data.nextPath || '/admin/dashboard';
-  } catch (e) {
-    showError('エラー: ' + e.message);
-  }
-}
-
-// ── Tenant modal ──────────────────────────────────────────────────────────────
-
-function openCreateModal() {
-  const modal = $('#pd-tenant-modal');
-  if (!modal) return;
-  $('#pd-modal-title').textContent = '新規テナント';
-  $('#pd-tenant-id').value = '';
-  $('#pd-f-name').value = '';
-  $('#pd-f-slug').value = '';
-  $('#pd-f-logo-name').value = '';
-  $('#pd-f-logo-url').value = '';
-  $('#pd-f-plan').value = 'basic';
-  $('#pd-f-status').value = 'active';
-  const ferr = $('#pd-form-error');
-  if (ferr) ferr.style.display = 'none';
-  modal.removeAttribute('hidden');
-  $('#pd-f-name').focus();
-}
-
-function openEditModal(tenantId) {
-  const t = tenantsCache.find(x => x.id === tenantId);
-  if (!t) return;
-  const modal = $('#pd-tenant-modal');
-  if (!modal) return;
-  $('#pd-modal-title').textContent = 'テナント編集';
-  $('#pd-tenant-id').value = t.id;
-  $('#pd-f-name').value = t.name || '';
-  $('#pd-f-slug').value = t.slug || '';
-  $('#pd-f-logo-name').value = t.logo_name || '';
-  $('#pd-f-logo-url').value = t.logo_url || '';
-  $('#pd-f-plan').value = t.plan || 'basic';
-  $('#pd-f-status').value = t.status || 'active';
-  // Các trường liên hệ
-  $('#pd-f-contact-sys-dept').value = t.contact_system_dept || '';
-  $('#pd-f-contact-sys-email').value = t.contact_system_email || '';
-  $('#pd-f-contact-sys-tel').value = t.contact_system_tel || '';
-  $('#pd-f-contact-sys-hours').value = t.contact_system_hours || '';
-  $('#pd-f-contact-gen-dept').value = t.contact_general_dept || '';
-  $('#pd-f-contact-gen-email').value = t.contact_general_email || '';
-  $('#pd-f-contact-gen-tel').value = t.contact_general_tel || '';
-  $('#pd-f-contact-gen-hours').value = t.contact_general_hours || '';
-  const ferr = $('#pd-form-error');
-  if (ferr) ferr.style.display = 'none';
-  modal.removeAttribute('hidden');
-  $('#pd-f-name').focus();
-}
-
-function closeModal() {
-  const modal = $('#pd-tenant-modal');
-  if (modal) modal.setAttribute('hidden', '');
-}
-
-async function handleTenantFormSubmit(e) {
-  e.preventDefault();
-  const ferr = $('#pd-form-error');
-  if (ferr) ferr.style.display = 'none';
-
-  const id = $('#pd-tenant-id').value;
-  const body = {
-    name: $('#pd-f-name').value.trim(),
-    slug: $('#pd-f-slug').value.trim().toLowerCase(),
-    logo_name: $('#pd-f-logo-name').value.trim(),
-    logo_url: $('#pd-f-logo-url').value.trim(),
-    plan: $('#pd-f-plan').value,
-    status: $('#pd-f-status').value,
-    contact_system_dept: $('#pd-f-contact-sys-dept').value.trim(),
-    contact_system_email: $('#pd-f-contact-sys-email').value.trim(),
-    contact_system_tel: $('#pd-f-contact-sys-tel').value.trim(),
-    contact_system_hours: $('#pd-f-contact-sys-hours').value.trim(),
-    contact_general_dept: $('#pd-f-contact-gen-dept').value.trim(),
-    contact_general_email: $('#pd-f-contact-gen-email').value.trim(),
-    contact_general_tel: $('#pd-f-contact-gen-tel').value.trim(),
-    contact_general_hours: $('#pd-f-contact-gen-hours').value.trim(),
-  };
-
-  if (!body.name || !body.slug) {
-    if (ferr) { ferr.textContent = '会社名とスラッグは必須です'; ferr.style.display = 'block'; }
-    return;
-  }
-
-  const submitBtn = $('#pd-modal-submit');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '保存中...'; }
-
-  try {
-    if (id) {
-      await apiFetch(`/api/platform/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
-    } else {
-      await apiFetch('/api/platform/tenants', { method: 'POST', body: JSON.stringify(body) });
-    }
-    closeModal();
-    await loadTenants();
-    await loadStats();
-  } catch (err) {
-    if (ferr) { ferr.textContent = err.message; ferr.style.display = 'block'; }
-  } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '保存'; }
-  }
-}
-
-// ── Logout ────────────────────────────────────────────────────────────────────
-
-async function handleLogout() {
-  try {
-    const csrf = getCookie('csrfToken');
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
-      credentials: 'include',
-    });
-  } catch (e) { /* bỏ qua lỗi */ }
-  try { sessionStorage.clear(); } catch (e) { /* bỏ qua lỗi */ }
-  window.location.href = '/ui/login';
-}
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', async () => {
-  // Xác minh quyền sysadmin
-  const token = getToken();
-  if (!token) { window.location.href = '/ui/login'; return; }
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-    if (user.role !== 'sysadmin' && !user._sysadmin) { window.location.href = '/ui/login'; return; }
-    const nameEl = $('#pd-user-name');
-    if (nameEl) nameEl.textContent = user.username || user.email || 'Sysadmin';
-  } catch (e) { /* bỏ qua lỗi */ }
-
-  // Gắn sự kiện điều hướng sidebar
-  document.querySelectorAll('.pd-nav-item[data-panel]').forEach(btn => {
-    btn.addEventListener('click', () => switchPanel(btn.dataset.panel));
-  });
-
-  // Gắn sự kiện modal tenant
-  $('#pd-add-tenant-btn')?.addEventListener('click', openCreateModal);
-  $('#pd-modal-cancel')?.addEventListener('click', closeModal);
-  $('#pd-tenant-form')?.addEventListener('submit', handleTenantFormSubmit);
-  $('#pd-tenant-modal')?.addEventListener('click', (e) => {
-    if (e.target === $('#pd-tenant-modal')) closeModal();
-  });
-
-  // Gắn sự kiện modal gán
-  $('#pd-assign-user-btn')?.addEventListener('click', () => openAssignModal());
-  $('#pd-assign-cancel')?.addEventListener('click', closeAssignModal);
-  $('#pd-assign-form')?.addEventListener('submit', handleAssignSubmit);
-  $('#pd-assign-modal')?.addEventListener('click', (e) => {
-    if (e.target === $('#pd-assign-modal')) closeAssignModal();
-  });
-
-  // Gắn sự kiện modal tạo user
-  $('#pd-create-user-btn')?.addEventListener('click', openCreateUserModal);
-  $('#pd-cu-cancel')?.addEventListener('click', closeCreateUserModal);
-  $('#pd-create-user-form')?.addEventListener('submit', handleCreateUserSubmit);
-  $('#pd-create-user-modal')?.addEventListener('click', (e) => {
-    if (e.target === $('#pd-create-user-modal')) closeCreateUserModal();
-  });
-
-  // Gắn sự kiện tìm user trong modal gán
-  $('#pd-assign-user-search')?.addEventListener('input', (e) => {
-    clearTimeout(assignSearchTimer);
-    const q = e.target.value.trim().toLowerCase();
-    if (!q) { $('#pd-assign-user-results').style.display = 'none'; return; }
-    assignSearchTimer = setTimeout(() => {
-      const matches = allUsersCache.filter(u =>
-        String(u.username || '').toLowerCase().includes(q) ||
-        String(u.email || '').toLowerCase().includes(q)
-      ).slice(0, 8);
-      const results = $('#pd-assign-user-results');
-      if (!results) return;
-      if (matches.length === 0) {
-        results.innerHTML = '<div class="pd-assign-result-item" style="color:#94a3b8">該当なし</div>';
-      } else {
-        results.innerHTML = matches.map(u => `
-          <div class="pd-assign-result-item" data-id="${u.id}">
-            <span class="pd-assign-result-name">${u.username || '—'}</span>
-            <span class="pd-assign-result-email">${u.email}</span>
-          </div>`).join('');
-        results.querySelectorAll('[data-id]').forEach(item => {
-          item.addEventListener('click', () => {
-            const u = allUsersCache.find(x => x.id === parseInt(item.dataset.id, 10));
-            if (!u) return;
-            assignSelectedUser = u;
-            $('#pd-assign-user-id-hidden').value = u.id;
-            showSelectedUser(u);
-          });
-        });
-      }
-      results.style.display = 'block';
-    }, 200);
-  });
-
-  // Gắn sự kiện tìm kiếm/lọc trong panel user
-  $('#pd-users-search')?.addEventListener('input', (e) => {
-    usersFilterState.q = e.target.value.trim();
-    usersFilterState.page = 1;
-    renderUsersTable();
-  });
-  $('#pd-users-tenant-filter')?.addEventListener('change', (e) => {
-    usersFilterState.tenantId = e.target.value;
-    usersFilterState.page = 1;
-    renderUsersTable();
-  });
-  $('#pd-users-role-filter')?.addEventListener('change', (e) => {
-    usersFilterState.role = e.target.value;
-    usersFilterState.page = 1;
-    renderUsersTable();
-  });
-
-  // Gắn sự kiện đăng xuất
-  $('#pd-logout-btn')?.addEventListener('click', handleLogout);
-
-  // Tải lần đầu
-  await loadStats();
-  await loadTenants();
-  await loadAllUsers();
-
-  // ── Audit Log ─────────────────────────────────────────────────────────────
-  let auditPage = 1;
-  async function loadAuditLogs() {
-    const action = $('#audit-filter-action')?.value || '';
-    const from = $('#audit-filter-from')?.value || '';
-    const to = $('#audit-filter-to')?.value || '';
-    const loading = $('#audit-loading');
-    const tableEl = $('#audit-table');
-    const tbody = $('#audit-tbody');
-    const emptyEl = $('#audit-empty');
-    const pager = $('#audit-pager');
-    if (loading) loading.style.display = 'block';
-    if (tableEl) tableEl.style.display = 'none';
-    if (emptyEl) emptyEl.style.display = 'none';
-    try {
-      const params = new URLSearchParams({ page: auditPage, pageSize: 30 });
-      if (action) params.set('action', action);
-      if (from) params.set('from', from);
-      if (to) params.set('to', to);
-      const res = await apiFetch(`/api/platform/audit-logs?${params.toString()}`);
-      const rows = res?.data || [];
-      if (loading) loading.style.display = 'none';
-      if (!rows.length) { if (emptyEl) emptyEl.style.display = 'block'; if (pager) pager.innerHTML = ''; return; }
-      if (tableEl) tableEl.style.display = '';
-      const fmtDt = s => s ? String(s).replace('T', ' ').slice(0, 19) : '—';
-      tbody.innerHTML = rows.map(r => `<tr>
-        <td style="white-space:nowrap;font-size:12px;">${fmtDt(r.created_at)}</td>
-        <td>${r.userId || '—'}</td>
-        <td><span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${r.action || '—'}</span></td>
-        <td style="font-size:12px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.path || '—'}</td>
-        <td>${r.method || '—'}</td>
-        <td style="font-size:11px;color:#64748b;">${r.ip || '—'}</td>
-      </tr>`).join('');
-      // Pager
-      const totalPages = res.pages || 1;
-      if (pager) {
-        pager.innerHTML = totalPages > 1 ? `
-          <button type="button" class="pd-btn pd-btn-sm" id="audit-prev" ${auditPage <= 1 ? 'disabled style="opacity:.4"' : ''}>前へ</button>
-          <span>${auditPage} / ${totalPages}（全${res.total}件）</span>
-          <button type="button" class="pd-btn pd-btn-sm" id="audit-next" ${auditPage >= totalPages ? 'disabled style="opacity:.4"' : ''}>次へ</button>
-        ` : `<span style="color:#64748b;">全${res.total}件</span>`;
-        pager.querySelector('#audit-prev')?.addEventListener('click', () => { auditPage = Math.max(1, auditPage - 1); loadAuditLogs(); });
-        pager.querySelector('#audit-next')?.addEventListener('click', () => { auditPage = Math.min(totalPages, auditPage + 1); loadAuditLogs(); });
-      }
-    } catch (e) {
-      if (loading) loading.style.display = 'none';
-      if (emptyEl) { emptyEl.textContent = 'エラー: ' + (e.message || ''); emptyEl.style.display = 'block'; }
-    }
-  }
-  $('#audit-filter-btn')?.addEventListener('click', () => { auditPage = 1; loadAuditLogs(); });
-  // Auto-load when panel becomes visible
-  const auditPanel = $('#panel-audit');
-  if (auditPanel) {
-    const observer = new MutationObserver(() => {
-      if (auditPanel.classList.contains('active') && !auditPanel.dataset.loaded) {
-        auditPanel.dataset.loaded = '1';
-        loadAuditLogs();
-      }
-    });
-    observer.observe(auditPanel, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  // ── Settings Panel ────────────────────────────────────────────────────────
-  const settingsPanel = $('#panel-settings');
-
-  // Hàm hỗ trợ toggle - đồng thời cập nhật màu nền track qua JS
-  function pdSyncToggle(checkboxId, statusId) {
-    const cb = document.getElementById(checkboxId);
-    const st = document.getElementById(statusId);
-    if (!cb || !st) return;
-    const slider = cb.nextElementSibling;
-    const update = () => {
-      st.textContent = cb.checked ? 'ON' : 'OFF';
-      st.style.color = cb.checked ? '#16a34a' : '#94a3b8';
-      if (slider) {
-        slider.style.background = cb.checked ? '#2563eb' : '#cbd5e1';
-      }
-    };
-    update();
-    cb.addEventListener('change', update);
-  }
-  pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status');
-  pdSyncToggle('pd-toggle-maintenance', 'pd-maintenance-status');
-  pdSyncToggle('pd-toggle-lock-login', 'pd-lock-login-status');
-  pdSyncToggle('pd-toggle-gps', 'pd-gps-status');
-  pdSyncToggle('pd-toggle-note-remote', 'pd-note-remote-status');
-
-  // Tải các flag
-  async function pdLoadFlags() {
-    try {
-      const flags = await apiFetch('/api/admin/system/flags');
-      if (flags) {
-        const el = (id) => document.getElementById(id);
-        if (el('pd-toggle-maintenance')) el('pd-toggle-maintenance').checked = !!flags.maintenanceMode;
-        if (el('pd-toggle-lock-login')) el('pd-toggle-lock-login').checked = !!flags.lockLoginExceptSuper;
-        if (el('pd-toggle-gps')) el('pd-toggle-gps').checked = flags.requireGPS !== false;
-        if (el('pd-gps-accuracy')) el('pd-gps-accuracy').value = flags.minAccuracyMeters || 100;
-        if (el('pd-gps-countries')) el('pd-gps-countries').value = flags.countryWhitelist || '';
-        if (el('pd-remote-policy')) el('pd-remote-policy').value = flags.remotePolicy || 'anywhere';
-        if (el('pd-toggle-note-remote')) el('pd-toggle-note-remote').checked = !!flags.requireNoteOnRemote;
-        if (el('pd-max-devices')) el('pd-max-devices').value = flags.maxDevicesPerUser || 5;
-        // Re-sync status
-        pdSyncToggle('pd-toggle-maintenance', 'pd-maintenance-status');
-        pdSyncToggle('pd-toggle-lock-login', 'pd-lock-login-status');
-        pdSyncToggle('pd-toggle-gps', 'pd-gps-status');
-        pdSyncToggle('pd-toggle-note-remote', 'pd-note-remote-status');
-      }
-    } catch (e) { /* use defaults */ }
-  }
-
-  // Tải chính sách mật khẩu
-  async function pdLoadPasswordPolicy() {
-    try {
-      const res = await apiFetch('/api/admin/settings/password-policy');
-      if (res) {
-        const el = (id) => document.getElementById(id);
-        if (res.minLength && el('pd-pw-min')) el('pd-pw-min').value = res.minLength;
-        if (res.requireUpper != null && el('pd-pw-upper')) el('pd-pw-upper').checked = !!res.requireUpper;
-        if (res.requireLower != null && el('pd-pw-lower')) el('pd-pw-lower').checked = !!res.requireLower;
-        if (res.requireDigit != null && el('pd-pw-digit')) el('pd-pw-digit').checked = !!res.requireDigit;
-        if (res.requireSymbol != null && el('pd-pw-symbol')) el('pd-pw-symbol').checked = !!res.requireSymbol;
-        if (res.expiryDays != null && el('pd-pw-expiry')) el('pd-pw-expiry').value = res.expiryDays;
-      }
-    } catch (e) { /* defaults */ }
-  }
-
-  // Tải chính sách 2FA
-  async function pdLoad2FA() {
-    try {
-      const res = await apiFetch('/api/admin/settings/2fa-policy');
-      if (res) {
-        const cb = document.getElementById('pd-toggle-2fa');
-        if (cb) { cb.checked = !!res.enforced; pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status'); }
-      }
-    } catch (e) { /* default off */ }
-  }
-
-  // Lưu chính sách mật khẩu
-  $('#pd-form-pw-policy')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const resultEl = document.getElementById('pd-pw-result');
-    const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true; btn.textContent = '保存中...';
-    if (resultEl) { resultEl.textContent = ''; resultEl.style.color = ''; }
-    try {
-      const payload = {
-        minLength: Number(document.getElementById('pd-pw-min')?.value) || 8,
-        requireUpper: document.getElementById('pd-pw-upper')?.checked || false,
-        requireLower: document.getElementById('pd-pw-lower')?.checked || false,
-        requireDigit: document.getElementById('pd-pw-digit')?.checked || false,
-        requireSymbol: document.getElementById('pd-pw-symbol')?.checked || false,
-        expiryDays: Number(document.getElementById('pd-pw-expiry')?.value) || 0,
-      };
-      const res = await apiFetch('/api/admin/settings/password-policy', { method: 'POST', body: JSON.stringify(payload) });
-      if (res && (res.ok || res.success)) {
-        if (resultEl) { resultEl.textContent = '✅ 保存しました'; resultEl.style.color = '#16a34a'; }
-      } else {
-        throw new Error(res?.error || res?.message || '保存に失敗しました');
-      }
-    } catch (err) {
-      if (resultEl) { resultEl.textContent = '❌ ' + (err.message || ''); resultEl.style.color = '#dc2626'; }
-    } finally {
-      btn.disabled = false; btn.textContent = '保存';
-    }
-  });
-
-  // 2FA toggle
-  document.getElementById('pd-toggle-2fa')?.addEventListener('change', async (e) => {
-    const on = e.target.checked;
-    pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status');
-    try {
-      await apiFetch('/api/admin/settings/2fa-policy', { method: 'POST', body: JSON.stringify({ enforced: on }) });
-    } catch (err) {
-      e.target.checked = !on;
-      pdSyncToggle('pd-toggle-2fa', 'pd-2fa-status');
-      alert('2FA設定の更新に失敗しました: ' + (err.message || ''));
-    }
-  });
-
-  // Nút gửi mail thử
-  $('#pd-test-mail')?.addEventListener('click', async () => {
-    const btn = document.getElementById('pd-test-mail');
-    const resultEl = document.getElementById('pd-test-mail-result');
-    btn.disabled = true; btn.textContent = '送信中...';
-    if (resultEl) { resultEl.textContent = ''; resultEl.style.color = ''; }
-    try {
-      const res = await apiFetch('/api/test-mail');
-      if (res && res.ok) {
-        if (resultEl) { resultEl.textContent = '✅ 送信成功！'; resultEl.style.color = '#16a34a'; }
-      } else {
-        throw new Error(res?.error || '送信に失敗しました');
-      }
-    } catch (err) {
-      if (resultEl) { resultEl.textContent = '❌ ' + (err.message || '送信失敗'); resultEl.style.color = '#dc2626'; }
-    } finally {
-      btn.disabled = false; btn.textContent = 'テストメールを送信';
-    }
-  });
-
-  // Lưu các flag (bảo trì, GPS, chính sách làm việc từ xa)
-  $('#pd-save-flags')?.addEventListener('click', async () => {
-    const btn = document.getElementById('pd-save-flags');
-    const resultEl = document.getElementById('pd-flags-result');
-    btn.disabled = true; btn.textContent = '保存中...';
-    if (resultEl) { resultEl.textContent = ''; resultEl.style.color = ''; }
-    try {
-      const payload = {
-        maintenanceMode: String(document.getElementById('pd-toggle-maintenance')?.checked || false),
-        lockLoginExceptSuper: String(document.getElementById('pd-toggle-lock-login')?.checked || false),
-        requireGPS: String(document.getElementById('pd-toggle-gps')?.checked || false),
-        minAccuracyMeters: Number(document.getElementById('pd-gps-accuracy')?.value) || 100,
-        remotePolicy: document.getElementById('pd-remote-policy')?.value || 'anywhere',
-        requireNoteOnRemote: String(document.getElementById('pd-toggle-note-remote')?.checked || false),
-        countryWhitelist: document.getElementById('pd-gps-countries')?.value?.trim() || '',
-        maxDevicesPerUser: Number(document.getElementById('pd-max-devices')?.value) || 5,
-      };
-      const res = await apiFetch('/api/admin/system/flags', { method: 'POST', body: JSON.stringify(payload) });
-      if (res && res.ok) {
-        if (resultEl) { resultEl.textContent = '✅ 保存しました'; resultEl.style.color = '#16a34a'; }
-      } else {
-        throw new Error(res?.error || '保存に失敗しました');
-      }
-    } catch (err) {
-      if (resultEl) { resultEl.textContent = '❌ ' + (err.message || ''); resultEl.style.color = '#dc2626'; }
-    } finally {
-      btn.disabled = false; btn.textContent = 'フラグ設定を保存';
-    }
-  });
-
-  // Tải dữ liệu cài đặt khi panel hiển thị
-  if (settingsPanel) {
-    const settingsObserver = new MutationObserver(() => {
-      if (settingsPanel.classList.contains('active') && !settingsPanel.dataset.loaded) {
-        settingsPanel.dataset.loaded = '1';
-        pdLoadFlags();
-        pdLoadPasswordPolicy();
-        pdLoad2FA();
-      }
-    });
-    settingsObserver.observe(settingsPanel, { attributes: true, attributeFilter: ['class'] });
-    // Tải luôn nếu panel đã đang active
-    if (settingsPanel.classList.contains('active')) {
-      settingsPanel.dataset.loaded = '1';
-      pdLoadFlags();
-      pdLoadPasswordPolicy();
-      pdLoad2FA();
-    }
-  }
-});
+    </tr>`}s.innerHTML=E,s.querySelectorAll(".pd-role-header").forEach(l=>{l.addEventListener("click",()=>{const L=l.dataset.section,b=s.querySelectorAll(`.${L}`),v=l.querySelector(".pd-role-chevron"),I=b[0]?.style.display==="none";b.forEach(F=>{F.style.display=I?"":"none"}),v&&(v.style.transform=I?"rotate(90deg)":"rotate(0deg)")});const h=l.querySelector(".pd-role-chevron");h&&(h.style.transform="rotate(90deg)")});let k=document.querySelector("#pd-users-pager");k||(k=document.createElement("div"),k.id="pd-users-pager",k.style.cssText="display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;font-size:13px;",t.parentElement.appendChild(k)),k.innerHTML=c>1?`
+    <button type="button" class="pd-btn pd-btn-sm" id="pd-pager-prev" ${p<=1?'disabled style="opacity:.4;cursor:not-allowed;"':""}>\u524D\u3078</button>
+    <span style="color:#475569;">${p} / ${c} \u30DA\u30FC\u30B8\uFF08\u5168${f.length}\u4EF6\uFF09</span>
+    <button type="button" class="pd-btn pd-btn-sm" id="pd-pager-next" ${p>=c?'disabled style="opacity:.4;cursor:not-allowed;"':""}>\u6B21\u3078</button>
+  `:`<span style="color:#64748b;">\u5168${f.length}\u4EF6</span>`,k.querySelector("#pd-pager-prev")?.addEventListener("click",()=>{$.page=Math.max(1,p-1),q()}),k.querySelector("#pd-pager-next")?.addEventListener("click",()=>{$.page=Math.min(c,p+1),q()}),s.querySelectorAll(".pd-role-inline").forEach(l=>{l.addEventListener("change",async()=>{const h=parseInt(l.dataset.user,10),L=parseInt(l.dataset.tenant,10),b=l.value;try{await x(`/api/platform/tenants/${L}/users/${h}`,{method:"PATCH",body:JSON.stringify({role_in_tenant:b})});const v=C.find(I=>I.id===h);v&&v.tenantRoles&&(v.tenantRoles[L]=b)}catch(v){_("\u30ED\u30FC\u30EB\u66F4\u65B0\u30A8\u30E9\u30FC: "+v.message),await T()}})}),s.querySelectorAll(".pd-remove-tenant").forEach(l=>{l.addEventListener("click",()=>Z(parseInt(l.dataset.user,10),parseInt(l.dataset.tenant,10)))}),s.querySelectorAll(".pd-assign-quick").forEach(l=>{l.addEventListener("click",()=>H(parseInt(l.dataset.userId,10),l.dataset.username))})}async function Z(s,t){const i=C.find(f=>f.id===s),r=S.find(f=>f.id===t),n=i?.username||i?.email||`User ${s}`,d=r?.name||`Tenant ${t}`;if(confirm(`\u300C${n}\u300D\u3092\u300C${d}\u300D\u304B\u3089\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F`))try{await x(`/api/platform/tenants/${t}/users/${s}`,{method:"DELETE"}),await T(),await M()}catch(f){_("\u524A\u9664\u30A8\u30E9\u30FC: "+f.message)}}let j=null,B=null;function H(s=null,t=""){const i=e("#pd-assign-modal");if(!i)return;B=null,e("#pd-assign-user-search").value="",e("#pd-assign-user-results").style.display="none",e("#pd-assign-user-results").innerHTML="",e("#pd-assign-selected-user").style.display="none",e("#pd-assign-selected-user").innerHTML="",e("#pd-assign-user-id-hidden").value="",e("#pd-assign-role-select").value="employee",e("#pd-assign-error").style.display="none";const r=e("#pd-assign-tenant-select");if(r.innerHTML='<option value="">\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044</option>'+S.map(n=>`<option value="${n.id}">${n.name}</option>`).join(""),s){const n=C.find(d=>d.id===s);n&&(B=n,e("#pd-assign-user-id-hidden").value=n.id,D(n))}i.removeAttribute("hidden"),s||setTimeout(()=>e("#pd-assign-user-search")?.focus(),80)}function D(s){const t=e("#pd-assign-selected-user"),i=e("#pd-assign-user-search"),r=e("#pd-assign-user-results");if(t){t.innerHTML=`<span>\u2713 <strong>${s.username||s.email}</strong> <span style="color:#64748b">${s.email}</span></span>
+      <button type="button" id="pd-clear-user" title="\u30AF\u30EA\u30A2">\xD7</button>`,t.style.display="flex";const n=t.querySelector("#pd-clear-user");n&&n.addEventListener("click",()=>{B=null,e("#pd-assign-user-id-hidden").value="",t.style.display="none",i&&(i.value="",i.focus())})}i&&(i.style.display="none"),r&&(r.style.display="none")}function A(){const s=e("#pd-assign-modal");s&&s.setAttribute("hidden",""),B=null;const t=e("#pd-assign-user-search");t&&(t.style.display="")}function K(){const s=e("#pd-create-user-modal");if(!s)return;e("#pd-cu-username").value="",e("#pd-cu-email").value="",e("#pd-cu-password").value="",e("#pd-cu-role").value="employee",e("#pd-cu-phone").value="",e("#pd-cu-error").style.display="none";const t=e("#pd-cu-tenant-select");t.innerHTML='<option value="">\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044</option>'+S.map(i=>`<option value="${i.id}">${i.name}</option>`).join(""),s.removeAttribute("hidden"),setTimeout(()=>e("#pd-cu-username")?.focus(),80)}function O(){const s=e("#pd-create-user-modal");s&&s.setAttribute("hidden","")}async function V(s){s.preventDefault();const t=e("#pd-cu-error");t&&(t.style.display="none");const i=parseInt(e("#pd-cu-tenant-select").value||"0",10),r=(e("#pd-cu-username").value||"").trim(),n=(e("#pd-cu-email").value||"").trim(),d=(e("#pd-cu-password").value||"").trim(),f=e("#pd-cu-role").value,u=(e("#pd-cu-phone").value||"").trim();if(!i){t&&(t.textContent="\u30C6\u30CA\u30F3\u30C8\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044",t.style.display="block");return}if(!r||!n||!d){t&&(t.textContent="\u6C0F\u540D\u30FB\u30E1\u30FC\u30EB\u30FB\u30D1\u30B9\u30EF\u30FC\u30C9\u306F\u5FC5\u9808\u3067\u3059",t.style.display="block");return}const y=e("#pd-cu-submit");y&&(y.disabled=!0,y.textContent="\u4F5C\u6210\u4E2D...");try{const a=await x(`/api/platform/tenants/${i}/create-user`,{method:"POST",body:JSON.stringify({username:r,email:n,password:d,role:f,phone:u})});O(),await T(),await M(),_(""),alert(`\u30E6\u30FC\u30B6\u30FC\u3092\u4F5C\u6210\u3057\u307E\u3057\u305F: ${a.username} (${a.email}) \u2192 ${a.tenantName}`)}catch(a){t&&(t.textContent=a.message||"\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F",t.style.display="block")}finally{y&&(y.disabled=!1,y.textContent="\u4F5C\u6210")}}async function ee(s){s.preventDefault();const t=e("#pd-assign-error");t&&(t.style.display="none");const i=parseInt(e("#pd-assign-user-id-hidden").value||"0",10),r=parseInt(e("#pd-assign-tenant-select").value||"0",10),n=e("#pd-assign-role-select").value;if(!i){t&&(t.textContent="\u30E6\u30FC\u30B6\u30FC\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044",t.style.display="block");return}if(!r){t&&(t.textContent="\u30C6\u30CA\u30F3\u30C8\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044",t.style.display="block");return}const d=e("#pd-assign-submit");d&&(d.disabled=!0,d.textContent="\u51E6\u7406\u4E2D...");try{await x(`/api/platform/tenants/${r}/users`,{method:"POST",body:JSON.stringify({user_id:i,role_in_tenant:n})}),A(),await T(),await M(),await z()}catch(f){t&&(t.textContent=f.message,t.style.display="block")}finally{d&&(d.disabled=!1,d.textContent="\u5272\u308A\u5F53\u3066")}}async function te(s,t){if(confirm(`\u300C${t}\u300D\u306E\u7BA1\u7406\u8005\u3068\u3057\u3066\u5165\u308A\u307E\u3059\u304B\uFF1F`))try{const i=await x("/api/platform/impersonate",{method:"POST",body:JSON.stringify({tenant_id:s})});sessionStorage.setItem("accessToken",i.accessToken);try{localStorage.setItem("accessToken",i.accessToken)}catch{}const r={role:"admin",tenantId:i.tenantId,tenantName:i.tenantName,tenantLogo:i.tenantLogo,tenantLogoName:i.tenantLogoName,_impersonate:!0,_sysadmin:!0,_platformReturn:"/platform/dashboard"};try{const n=JSON.parse(sessionStorage.getItem("user")||"{}"),d=JSON.stringify({...n,...r});sessionStorage.setItem("user",d),localStorage.setItem("user",d)}catch{}try{const{setTabContext:n}=await import("/static/js/api/tab-context.js");n({tenantId:i.tenantId,tenantName:i.tenantName,role:"admin",userId:null})}catch{}await new Promise(n=>setTimeout(n,80)),window.location.href=i.nextPath||"/admin/dashboard"}catch(i){_("\u30A8\u30E9\u30FC: "+i.message)}}function ne(){const s=e("#pd-tenant-modal");if(!s)return;e("#pd-modal-title").textContent="\u65B0\u898F\u30C6\u30CA\u30F3\u30C8",e("#pd-tenant-id").value="",e("#pd-f-name").value="",e("#pd-f-slug").value="",e("#pd-f-logo-name").value="",e("#pd-f-logo-url").value="",e("#pd-f-plan").value="basic",e("#pd-f-status").value="active";const t=e("#pd-form-error");t&&(t.style.display="none"),s.removeAttribute("hidden"),e("#pd-f-name").focus()}function se(s){const t=S.find(n=>n.id===s);if(!t)return;const i=e("#pd-tenant-modal");if(!i)return;e("#pd-modal-title").textContent="\u30C6\u30CA\u30F3\u30C8\u7DE8\u96C6",e("#pd-tenant-id").value=t.id,e("#pd-f-name").value=t.name||"",e("#pd-f-slug").value=t.slug||"",e("#pd-f-logo-name").value=t.logo_name||"",e("#pd-f-logo-url").value=t.logo_url||"",e("#pd-f-plan").value=t.plan||"basic",e("#pd-f-status").value=t.status||"active",e("#pd-f-contact-sys-dept").value=t.contact_system_dept||"",e("#pd-f-contact-sys-email").value=t.contact_system_email||"",e("#pd-f-contact-sys-tel").value=t.contact_system_tel||"",e("#pd-f-contact-sys-hours").value=t.contact_system_hours||"",e("#pd-f-contact-gen-dept").value=t.contact_general_dept||"",e("#pd-f-contact-gen-email").value=t.contact_general_email||"",e("#pd-f-contact-gen-tel").value=t.contact_general_tel||"",e("#pd-f-contact-gen-hours").value=t.contact_general_hours||"";const r=e("#pd-form-error");r&&(r.style.display="none"),i.removeAttribute("hidden"),e("#pd-f-name").focus()}function P(){const s=e("#pd-tenant-modal");s&&s.setAttribute("hidden","")}async function ae(s){s.preventDefault();const t=e("#pd-form-error");t&&(t.style.display="none");const i=e("#pd-tenant-id").value,r={name:e("#pd-f-name").value.trim(),slug:e("#pd-f-slug").value.trim().toLowerCase(),logo_name:e("#pd-f-logo-name").value.trim(),logo_url:e("#pd-f-logo-url").value.trim(),plan:e("#pd-f-plan").value,status:e("#pd-f-status").value,contact_system_dept:e("#pd-f-contact-sys-dept").value.trim(),contact_system_email:e("#pd-f-contact-sys-email").value.trim(),contact_system_tel:e("#pd-f-contact-sys-tel").value.trim(),contact_system_hours:e("#pd-f-contact-sys-hours").value.trim(),contact_general_dept:e("#pd-f-contact-gen-dept").value.trim(),contact_general_email:e("#pd-f-contact-gen-email").value.trim(),contact_general_tel:e("#pd-f-contact-gen-tel").value.trim(),contact_general_hours:e("#pd-f-contact-gen-hours").value.trim()};if(!r.name||!r.slug){t&&(t.textContent="\u4F1A\u793E\u540D\u3068\u30B9\u30E9\u30C3\u30B0\u306F\u5FC5\u9808\u3067\u3059",t.style.display="block");return}const n=e("#pd-modal-submit");n&&(n.disabled=!0,n.textContent="\u4FDD\u5B58\u4E2D...");try{i?await x(`/api/platform/tenants/${i}`,{method:"PATCH",body:JSON.stringify(r)}):await x("/api/platform/tenants",{method:"POST",body:JSON.stringify(r)}),P(),await z(),await M()}catch(d){t&&(t.textContent=d.message,t.style.display="block")}finally{n&&(n.disabled=!1,n.textContent="\u4FDD\u5B58")}}async function oe(){try{const s=U("csrfToken");await fetch("/api/auth/logout",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":s||""},credentials:"include"})}catch{}try{sessionStorage.clear()}catch{}window.location.href="/ui/login"}document.addEventListener("DOMContentLoaded",async()=>{if(!N()){window.location.href="/ui/login";return}try{const a=JSON.parse(sessionStorage.getItem("user")||"{}");if(a.role!=="sysadmin"&&!a._sysadmin){window.location.href="/ui/login";return}const o=e("#pd-user-name");o&&(o.textContent=a.username||a.email||"Sysadmin")}catch{}document.querySelectorAll(".pd-nav-item[data-panel]").forEach(a=>{a.addEventListener("click",()=>J(a.dataset.panel))}),e("#pd-add-tenant-btn")?.addEventListener("click",ne),e("#pd-modal-cancel")?.addEventListener("click",P),e("#pd-tenant-form")?.addEventListener("submit",ae),e("#pd-tenant-modal")?.addEventListener("click",a=>{a.target===e("#pd-tenant-modal")&&P()}),e("#pd-assign-user-btn")?.addEventListener("click",()=>H()),e("#pd-assign-cancel")?.addEventListener("click",A),e("#pd-assign-form")?.addEventListener("submit",ee),e("#pd-assign-modal")?.addEventListener("click",a=>{a.target===e("#pd-assign-modal")&&A()}),e("#pd-create-user-btn")?.addEventListener("click",K),e("#pd-cu-cancel")?.addEventListener("click",O),e("#pd-create-user-form")?.addEventListener("submit",V),e("#pd-create-user-modal")?.addEventListener("click",a=>{a.target===e("#pd-create-user-modal")&&O()}),e("#pd-assign-user-search")?.addEventListener("input",a=>{clearTimeout(j);const o=a.target.value.trim().toLowerCase();if(!o){e("#pd-assign-user-results").style.display="none";return}j=setTimeout(()=>{const c=C.filter(m=>String(m.username||"").toLowerCase().includes(o)||String(m.email||"").toLowerCase().includes(o)).slice(0,8),p=e("#pd-assign-user-results");p&&(c.length===0?p.innerHTML='<div class="pd-assign-result-item" style="color:#94a3b8">\u8A72\u5F53\u306A\u3057</div>':(p.innerHTML=c.map(m=>`
+          <div class="pd-assign-result-item" data-id="${m.id}">
+            <span class="pd-assign-result-name">${m.username||"\u2014"}</span>
+            <span class="pd-assign-result-email">${m.email}</span>
+          </div>`).join(""),p.querySelectorAll("[data-id]").forEach(m=>{m.addEventListener("click",()=>{const g=C.find(w=>w.id===parseInt(m.dataset.id,10));g&&(B=g,e("#pd-assign-user-id-hidden").value=g.id,D(g))})})),p.style.display="block")},200)}),e("#pd-users-search")?.addEventListener("input",a=>{$.q=a.target.value.trim(),$.page=1,q()}),e("#pd-users-tenant-filter")?.addEventListener("change",a=>{$.tenantId=a.target.value,$.page=1,q()}),e("#pd-users-role-filter")?.addEventListener("change",a=>{$.role=a.target.value,$.page=1,q()}),e("#pd-logout-btn")?.addEventListener("click",oe),await M(),await z(),await T();let t=1;async function i(){const a=e("#audit-filter-action")?.value||"",o=e("#audit-filter-from")?.value||"",c=e("#audit-filter-to")?.value||"",p=e("#audit-loading"),m=e("#audit-table"),g=e("#audit-tbody"),w=e("#audit-empty"),E=e("#audit-pager");p&&(p.style.display="block"),m&&(m.style.display="none"),w&&(w.style.display="none");try{const k=new URLSearchParams({page:t,pageSize:30});a&&k.set("action",a),o&&k.set("from",o),c&&k.set("to",c);const l=await x(`/api/platform/audit-logs?${k.toString()}`),h=l?.data||[];if(p&&(p.style.display="none"),!h.length){w&&(w.style.display="block"),E&&(E.innerHTML="");return}m&&(m.style.display="");const L=v=>v?String(v).replace("T"," ").slice(0,19):"\u2014";g.innerHTML=h.map(v=>`<tr>
+        <td style="white-space:nowrap;font-size:12px;">${L(v.created_at)}</td>
+        <td>${v.userId||"\u2014"}</td>
+        <td><span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${v.action||"\u2014"}</span></td>
+        <td style="font-size:12px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.path||"\u2014"}</td>
+        <td>${v.method||"\u2014"}</td>
+        <td style="font-size:11px;color:#64748b;">${v.ip||"\u2014"}</td>
+      </tr>`).join("");const b=l.pages||1;E&&(E.innerHTML=b>1?`
+          <button type="button" class="pd-btn pd-btn-sm" id="audit-prev" ${t<=1?'disabled style="opacity:.4"':""}>\u524D\u3078</button>
+          <span>${t} / ${b}\uFF08\u5168${l.total}\u4EF6\uFF09</span>
+          <button type="button" class="pd-btn pd-btn-sm" id="audit-next" ${t>=b?'disabled style="opacity:.4"':""}>\u6B21\u3078</button>
+        `:`<span style="color:#64748b;">\u5168${l.total}\u4EF6</span>`,E.querySelector("#audit-prev")?.addEventListener("click",()=>{t=Math.max(1,t-1),i()}),E.querySelector("#audit-next")?.addEventListener("click",()=>{t=Math.min(b,t+1),i()}))}catch(k){p&&(p.style.display="none"),w&&(w.textContent="\u30A8\u30E9\u30FC: "+(k.message||""),w.style.display="block")}}e("#audit-filter-btn")?.addEventListener("click",()=>{t=1,i()});const r=e("#panel-audit");r&&new MutationObserver(()=>{r.classList.contains("active")&&!r.dataset.loaded&&(r.dataset.loaded="1",i())}).observe(r,{attributes:!0,attributeFilter:["class"]});const n=e("#panel-settings");function d(a,o){const c=document.getElementById(a),p=document.getElementById(o);if(!c||!p)return;const m=c.nextElementSibling,g=()=>{p.textContent=c.checked?"ON":"OFF",p.style.color=c.checked?"#16a34a":"#94a3b8",m&&(m.style.background=c.checked?"#2563eb":"#cbd5e1")};g(),c.addEventListener("change",g)}d("pd-toggle-2fa","pd-2fa-status"),d("pd-toggle-maintenance","pd-maintenance-status"),d("pd-toggle-lock-login","pd-lock-login-status"),d("pd-toggle-gps","pd-gps-status"),d("pd-toggle-note-remote","pd-note-remote-status");async function f(){try{const a=await x("/api/admin/system/flags");if(a){const o=c=>document.getElementById(c);o("pd-toggle-maintenance")&&(o("pd-toggle-maintenance").checked=!!a.maintenanceMode),o("pd-toggle-lock-login")&&(o("pd-toggle-lock-login").checked=!!a.lockLoginExceptSuper),o("pd-toggle-gps")&&(o("pd-toggle-gps").checked=a.requireGPS!==!1),o("pd-gps-accuracy")&&(o("pd-gps-accuracy").value=a.minAccuracyMeters||100),o("pd-gps-countries")&&(o("pd-gps-countries").value=a.countryWhitelist||""),o("pd-remote-policy")&&(o("pd-remote-policy").value=a.remotePolicy||"anywhere"),o("pd-toggle-note-remote")&&(o("pd-toggle-note-remote").checked=!!a.requireNoteOnRemote),o("pd-max-devices")&&(o("pd-max-devices").value=a.maxDevicesPerUser||5),d("pd-toggle-maintenance","pd-maintenance-status"),d("pd-toggle-lock-login","pd-lock-login-status"),d("pd-toggle-gps","pd-gps-status"),d("pd-toggle-note-remote","pd-note-remote-status")}}catch{}}async function u(){try{const a=await x("/api/admin/settings/password-policy");if(a){const o=c=>document.getElementById(c);a.minLength&&o("pd-pw-min")&&(o("pd-pw-min").value=a.minLength),a.requireUpper!=null&&o("pd-pw-upper")&&(o("pd-pw-upper").checked=!!a.requireUpper),a.requireLower!=null&&o("pd-pw-lower")&&(o("pd-pw-lower").checked=!!a.requireLower),a.requireDigit!=null&&o("pd-pw-digit")&&(o("pd-pw-digit").checked=!!a.requireDigit),a.requireSymbol!=null&&o("pd-pw-symbol")&&(o("pd-pw-symbol").checked=!!a.requireSymbol),a.expiryDays!=null&&o("pd-pw-expiry")&&(o("pd-pw-expiry").value=a.expiryDays)}}catch{}}async function y(){try{const a=await x("/api/admin/settings/2fa-policy");if(a){const o=document.getElementById("pd-toggle-2fa");o&&(o.checked=!!a.enforced,d("pd-toggle-2fa","pd-2fa-status"))}}catch{}}e("#pd-form-pw-policy")?.addEventListener("submit",async a=>{a.preventDefault();const o=document.getElementById("pd-pw-result"),c=a.target.querySelector('button[type="submit"]');c.disabled=!0,c.textContent="\u4FDD\u5B58\u4E2D...",o&&(o.textContent="",o.style.color="");try{const p={minLength:Number(document.getElementById("pd-pw-min")?.value)||8,requireUpper:document.getElementById("pd-pw-upper")?.checked||!1,requireLower:document.getElementById("pd-pw-lower")?.checked||!1,requireDigit:document.getElementById("pd-pw-digit")?.checked||!1,requireSymbol:document.getElementById("pd-pw-symbol")?.checked||!1,expiryDays:Number(document.getElementById("pd-pw-expiry")?.value)||0},m=await x("/api/admin/settings/password-policy",{method:"POST",body:JSON.stringify(p)});if(m&&(m.ok||m.success))o&&(o.textContent="\u2705 \u4FDD\u5B58\u3057\u307E\u3057\u305F",o.style.color="#16a34a");else throw new Error(m?.error||m?.message||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}catch(p){o&&(o.textContent="\u274C "+(p.message||""),o.style.color="#dc2626")}finally{c.disabled=!1,c.textContent="\u4FDD\u5B58"}}),document.getElementById("pd-toggle-2fa")?.addEventListener("change",async a=>{const o=a.target.checked;d("pd-toggle-2fa","pd-2fa-status");try{await x("/api/admin/settings/2fa-policy",{method:"POST",body:JSON.stringify({enforced:o})})}catch(c){a.target.checked=!o,d("pd-toggle-2fa","pd-2fa-status"),alert("2FA\u8A2D\u5B9A\u306E\u66F4\u65B0\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+(c.message||""))}}),e("#pd-test-mail")?.addEventListener("click",async()=>{const a=document.getElementById("pd-test-mail"),o=document.getElementById("pd-test-mail-result");a.disabled=!0,a.textContent="\u9001\u4FE1\u4E2D...",o&&(o.textContent="",o.style.color="");try{const c=await x("/api/test-mail");if(c&&c.ok)o&&(o.textContent="\u2705 \u9001\u4FE1\u6210\u529F\uFF01",o.style.color="#16a34a");else throw new Error(c?.error||"\u9001\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}catch(c){o&&(o.textContent="\u274C "+(c.message||"\u9001\u4FE1\u5931\u6557"),o.style.color="#dc2626")}finally{a.disabled=!1,a.textContent="\u30C6\u30B9\u30C8\u30E1\u30FC\u30EB\u3092\u9001\u4FE1"}}),e("#pd-save-flags")?.addEventListener("click",async()=>{const a=document.getElementById("pd-save-flags"),o=document.getElementById("pd-flags-result");a.disabled=!0,a.textContent="\u4FDD\u5B58\u4E2D...",o&&(o.textContent="",o.style.color="");try{const c={maintenanceMode:String(document.getElementById("pd-toggle-maintenance")?.checked||!1),lockLoginExceptSuper:String(document.getElementById("pd-toggle-lock-login")?.checked||!1),requireGPS:String(document.getElementById("pd-toggle-gps")?.checked||!1),minAccuracyMeters:Number(document.getElementById("pd-gps-accuracy")?.value)||100,remotePolicy:document.getElementById("pd-remote-policy")?.value||"anywhere",requireNoteOnRemote:String(document.getElementById("pd-toggle-note-remote")?.checked||!1),countryWhitelist:document.getElementById("pd-gps-countries")?.value?.trim()||"",maxDevicesPerUser:Number(document.getElementById("pd-max-devices")?.value)||5},p=await x("/api/admin/system/flags",{method:"POST",body:JSON.stringify(c)});if(p&&p.ok)o&&(o.textContent="\u2705 \u4FDD\u5B58\u3057\u307E\u3057\u305F",o.style.color="#16a34a");else throw new Error(p?.error||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}catch(c){o&&(o.textContent="\u274C "+(c.message||""),o.style.color="#dc2626")}finally{a.disabled=!1,a.textContent="\u30D5\u30E9\u30B0\u8A2D\u5B9A\u3092\u4FDD\u5B58"}}),n&&(new MutationObserver(()=>{n.classList.contains("active")&&!n.dataset.loaded&&(n.dataset.loaded="1",f(),u(),y())}).observe(n,{attributes:!0,attributeFilter:["class"]}),n.classList.contains("active")&&(n.dataset.loaded="1",f(),u(),y()))});

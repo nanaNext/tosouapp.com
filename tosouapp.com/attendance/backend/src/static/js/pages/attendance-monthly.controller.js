@@ -1980,6 +1980,10 @@
     if (ctx.picker2) ctx.picker2.value = ctx.initialYM;
     buildTargetDateSelect(ctx.initialYM);
 
+    if (ctx.role === 'employee') {
+      setMonth(ctx.initialYM, true, { spinner: false }).catch(()=>{});
+    }
+
     // Do not block first month rendering on employee-list fetch.
     initUserPicker().then(() => {
       try { root.Events?.bindUserPicker?.(); } catch (e) { /* silently ignored */ }

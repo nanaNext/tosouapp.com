@@ -1,12 +1,4 @@
-import { fetchJSONAuth } from '../../api/http.api.js';
-// Cái chỗ này dùng để render table 外出管理
-export async function mountGoOut({ content }) {
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
-  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
-
-  content.className = (content.className || '') + ' go-out-page-content';
-  content.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; flex: 1; min-width: 0;`;
-  content.innerHTML = `
+import{fetchJSONAuth as O}from"../../api/http.api.js";async function Y({content:k}){const U=new URLSearchParams(window.location.search).get("standalone")==="1"?"100vh":"calc(100vh - var(--topbar-height) - var(--subbar-height))";k.className=(k.className||"")+" go-out-page-content",k.style.cssText="margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; flex: 1; min-width: 0;",k.innerHTML=`
     <style>
       .go-out-page-content { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
       .go-out-table-wrapper { flex: 1 1 0%; min-height: 0; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -95,7 +87,7 @@ export async function mountGoOut({ content }) {
         
         /* Mobile Header Adjustments */
         .page-header-title {
-          display: none !important; /* Hide "外出管理" on mobile */
+          display: none !important; /* Hide "\u5916\u51FA\u7BA1\u7406" on mobile */
         }
         .page-header-container {
           display: none !important; /* Hide completely on mobile since we move date picker to top header */
@@ -120,7 +112,7 @@ export async function mountGoOut({ content }) {
     </style>
     <div class="go-out-root-container" style="padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0;">
       <div class="page-header-container" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 0px; padding: 16px 24px 8px 24px; flex-shrink: 0;">
-        <h2 class="page-header-title" style="display: none;">外出管理</h2>
+        <h2 class="page-header-title" style="display: none;">\u5916\u51FA\u7BA1\u7406</h2>
         
         <div style="display: flex; align-items: center; gap: 8px;">
           <input type="month" id="goOutAdminFilterMonth" style="height: 30px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 140px; color: #1f2937; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;">
@@ -132,19 +124,19 @@ export async function mountGoOut({ content }) {
           <table class="go-out-table" style="width: 100%; border-collapse: collapse;">
             <thead style="position: sticky; top: 0; z-index: 10;">
               <tr style="background: #e6f2ff; color: #0f172a; text-align: center; height: 30px;">
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">日付</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">社員名</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">外出</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">戻り</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">時間</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">区分</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">理由</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">状態</th>
-                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">アクション</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u65E5\u4ED8</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u793E\u54E1\u540D</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u5916\u51FA</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u623B\u308A</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u6642\u9593</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u533A\u5206</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u7406\u7531</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u72B6\u614B</th>
+                <th style="padding: 4px 8px; font-size: 13px; font-weight: 600; text-align: center; border: 1px solid #cbd5e1;">\u30A2\u30AF\u30B7\u30E7\u30F3</th>
               </tr>
             </thead>
           <tbody id="goOutAdminTableBody">
-            <tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">読み込み中...</td></tr>
+            <tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</td></tr>
           </tbody>
         </table>
       </div>
@@ -152,439 +144,119 @@ export async function mountGoOut({ content }) {
       <!-- Pagination Controls -->
       <div class="pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 13px; color: #475569; padding: 0 16px 16px 16px;">
         <div class="pagination-info">
-          表示件数: 
+          \u8868\u793A\u4EF6\u6570: 
           <select id="goOutAdminPageSize" style="padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 4px; margin-right: 12px;">
             <option value="10">10</option>
             <option value="20" selected>20</option>
             <option value="50">50</option>
           </select>
-          <span id="goOutAdminItemCount">全 0 件</span>
+          <span id="goOutAdminItemCount">\u5168 0 \u4EF6</span>
         </div>
         <div class="pagination-actions" style="display: flex; gap: 8px; align-items: center;">
-          <button id="goOutAdminPrevPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;" disabled>前へ</button>
-          <span id="goOutAdminPageInfo">ページ 1 / 1</span>
-          <button id="goOutAdminNextPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;" disabled>次へ</button>
+          <button id="goOutAdminPrevPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;" disabled>\u524D\u3078</button>
+          <span id="goOutAdminPageInfo">\u30DA\u30FC\u30B8 1 / 1</span>
+          <button id="goOutAdminNextPage" style="padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;" disabled>\u6B21\u3078</button>
         </div>
       </div>
     </div>
-  `;
-  // Cấu trúc này là một bảng với các cột và hàng để hiển thị thông tin 
-  // ngày, giờ vào giờ ra
-  const tbody = document.getElementById('goOutAdminTableBody');
-  const monthInput = document.getElementById('goOutAdminFilterMonth');
-  
-  // Chuyển bộ chọn tháng lên header trên cùng khi ở mobile (nếu có)
-  const mobileActions = document.getElementById('attHubMobileActions');
-  if (mobileActions && window.innerWidth <= 768) {
-    const monthClone = monthInput.cloneNode(true);
-    monthClone.id = 'goOutAdminFilterMonthMobile';
-    mobileActions.innerHTML = '';
-    mobileActions.appendChild(monthClone);
-    
-    monthClone.addEventListener('change', (e) => {
-      monthInput.value = e.target.value;
-      loadData();
-    });
-    monthClone.addEventListener('input', (e) => {
-      monthInput.value = e.target.value;
-      loadData();
-    });
-  }
-  
-  // Đặt tháng mặc định là tháng hiện tại
-  const today = new Date();
-  const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  monthInput.value = defaultMonth;
-  if (document.getElementById('goOutAdminFilterMonthMobile')) {
-    document.getElementById('goOutAdminFilterMonthMobile').value = defaultMonth;
-  }
-  
-  let allRecords = [];
-  let currentPage = 1;
-  
-  const fmtTime = (dtStr) => {
-    if (!dtStr) return '—';
-    const dt = new Date(dtStr);
-    if (isNaN(dt.getTime())) return '—';
-    return `${String(dt.getUTCHours() + 9).padStart(2, '0')}:${String(dt.getUTCMinutes()).padStart(2, '0')}`;
-  };
-
-  const diffMinutesAllowOvernight = (inHm, outHm) => {
-    if (!inHm || !outHm || inHm === '—' || outHm === '—') return null;
-    const parseHm = (hm) => {
-      const [h, m] = hm.split(':').map(Number);
-      return h * 60 + m;
-    };
-    const a = parseHm(inHm);
-    const b = parseHm(outHm);
-    if (a == null || b == null) return null;
-    if (a === b) return 0;
-    return b > a ? (b - a) : (b + 24 * 60 - a);
-  };
-
-  const fmtHm = (min) => {
-    const m = Math.max(0, Number(min || 0));
-    const h = Math.floor(m / 60);
-    const mm = Math.floor(m % 60);
-    return `${String(h)}:${String(mm).padStart(2, '0')}`;
-  };
-
-  const escapeHtml = (unsafe) => {
-    return String(unsafe || '').replace(/[&<"'>]/g, function (m) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
-    });
-  };
-
-  const loadData = async () => {
-    const filterMonth = document.getElementById('goOutAdminFilterMonth');
-    if (!filterMonth) return;
-    
-    // Lấy giá trị tháng (YYYY-MM)
-    const monthVal = filterMonth.value;
-    const tbodyEl = document.getElementById('goOutAdminTableBody');
-    if (tbodyEl) {
-      tbodyEl.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">読み込み中...</td></tr>`;
-    }
-
-    try {
-      const qs = new URLSearchParams();
-      // Chỉ thêm khi có YYYY-MM hợp lệ
-      if (monthVal && /^\d{4}-\d{2}$/.test(monthVal)) {
-        qs.append('month', monthVal);
-      }
-
-      const records = await fetchJSONAuth(`/api/attendance/go-out/admin-list?${qs.toString()}`);
-      allRecords = records || [];
-      currentPage = 1;
-      renderTable();
-    } catch (e) {
-      if (document.getElementById('goOutAdminTableBody')) {
-        document.getElementById('goOutAdminTableBody').innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #ef4444;">エラー: ${e.message}</td></tr>`;
-      }
-    }
-  };
-
-  const renderTable = () => {
-    // Trên mobile hiển thị toàn bộ bản ghi (bỏ phân trang)
-    const isMobile = window.innerWidth <= 768;
-    const pageSizeEl = document.getElementById('goOutAdminPageSize');
-    if (!pageSizeEl) return;
-    const pageSize = isMobile ? allRecords.length : parseInt(pageSizeEl.value, 10);
-    const totalItems = allRecords.length;
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-    
-    if (currentPage > totalPages) currentPage = totalPages;
-    
-    const countEl = document.getElementById('goOutAdminItemCount');
-    if (countEl) countEl.textContent = `全 ${totalItems} 件`;
-    
-    const infoEl = document.getElementById('goOutAdminPageInfo');
-    if (infoEl) infoEl.textContent = `ページ ${currentPage} / ${totalPages}`;
-    
-    const prevBtn = document.getElementById('goOutAdminPrevPage');
-    if (prevBtn) prevBtn.disabled = currentPage <= 1;
-    
-    const nextBtn = document.getElementById('goOutAdminNextPage');
-    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
-
-    const tbodyEl = document.getElementById('goOutAdminTableBody');
-    if (totalItems === 0) {
-      if (tbodyEl) tbodyEl.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">データがありません</td></tr>`;
-      return;
-    }
-
-    const startIdx = (currentPage - 1) * pageSize;
-    const pageRecords = allRecords.slice(startIdx, startIdx + pageSize);
-
-    let html = '';
-    pageRecords.forEach((r, index) => {
-      const goTime = fmtTime(r.go_out_time);
-      const retTime = fmtTime(r.return_time);
-      
-      let duration = '—';
-      if (goTime !== '—' && retTime !== '—') {
-        const mins = diffMinutesAllowOvernight(goTime, retTime);
-        if (mins != null) duration = fmtHm(mins);
-      }
-
-      const statusColor = r.status === '外出中' ? '#d97706' : (r.status === '修正済み' ? '#059669' : '#475569');
-      const statusBg = r.status === '外出中' ? '#fef3c7' : (r.status === '修正済み' ? '#d1fae5' : '#f1f5f9');
-      
-      const typeColor = r.type === '業務' ? 'white' : 'white';
-      const typeBg = r.type === '業務' ? '#3b82f6' : '#ef4444'; // Xanh cho 業務, đỏ cho 私用
-// hàm let actions để hiển thị các nút tác động cho mỗi dòng dữ liệu
-      let actions = '';
-      if (r.status === '外出中') {
-        actions += `
-          <button class="btn-force-end" data-id="${r.id}" data-date="${r.date}" data-gotime="${goTime}" style="background: transparent; color: #ef4444; border: none; padding: 0 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: underline;">
-            強制終了
+  `;const D=document.getElementById("goOutAdminTableBody"),g=document.getElementById("goOutAdminFilterMonth"),E=document.getElementById("attHubMobileActions");if(E&&window.innerWidth<=768){const n=g.cloneNode(!0);n.id="goOutAdminFilterMonthMobile",E.innerHTML="",E.appendChild(n),n.addEventListener("change",t=>{g.value=t.target.value,c()}),n.addEventListener("input",t=>{g.value=t.target.value,c()})}const S=new Date,B=`${S.getFullYear()}-${String(S.getMonth()+1).padStart(2,"0")}`;g.value=B,document.getElementById("goOutAdminFilterMonthMobile")&&(document.getElementById("goOutAdminFilterMonthMobile").value=B);let m=[],l=1;const x=n=>{if(!n)return"\u2014";const t=new Date(n);return isNaN(t.getTime())?"\u2014":`${String(t.getUTCHours()+9).padStart(2,"0")}:${String(t.getUTCMinutes()).padStart(2,"0")}`},L=(n,t)=>{if(!n||!t||n==="\u2014"||t==="\u2014")return null;const o=p=>{const[r,s]=p.split(":").map(Number);return r*60+s},e=o(n),d=o(t);return e==null||d==null?null:e===d?0:d>e?d-e:d+1440-e},N=n=>{const t=Math.max(0,Number(n||0)),o=Math.floor(t/60),e=Math.floor(t%60);return`${String(o)}:${String(e).padStart(2,"0")}`},a=n=>String(n||"").replace(/[&<"'>]/g,function(t){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[t]}),c=async()=>{const n=document.getElementById("goOutAdminFilterMonth");if(!n)return;const t=n.value,o=document.getElementById("goOutAdminTableBody");o&&(o.innerHTML='<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</td></tr>');try{const e=new URLSearchParams;t&&/^\d{4}-\d{2}$/.test(t)&&e.append("month",t),m=await O(`/api/attendance/go-out/admin-list?${e.toString()}`)||[],l=1,f()}catch(e){document.getElementById("goOutAdminTableBody")&&(document.getElementById("goOutAdminTableBody").innerHTML=`<tr><td colspan="9" style="text-align: center; padding: 20px; color: #ef4444;">\u30A8\u30E9\u30FC: ${e.message}</td></tr>`)}},f=()=>{const n=window.innerWidth<=768,t=document.getElementById("goOutAdminPageSize");if(!t)return;const o=n?m.length:parseInt(t.value,10),e=m.length,d=Math.max(1,Math.ceil(e/o));l>d&&(l=d);const p=document.getElementById("goOutAdminItemCount");p&&(p.textContent=`\u5168 ${e} \u4EF6`);const r=document.getElementById("goOutAdminPageInfo");r&&(r.textContent=`\u30DA\u30FC\u30B8 ${l} / ${d}`);const s=document.getElementById("goOutAdminPrevPage");s&&(s.disabled=l<=1);const h=document.getElementById("goOutAdminNextPage");h&&(h.disabled=l>=d);const b=document.getElementById("goOutAdminTableBody");if(e===0){b&&(b.innerHTML='<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</td></tr>');return}const z=(l-1)*o,T=m.slice(z,z+o);let u="";T.forEach((i,j)=>{const y=x(i.go_out_time),$=x(i.return_time);let A="\u2014";if(y!=="\u2014"&&$!=="\u2014"){const H=L(y,$);H!=null&&(A=N(H))}const G=i.status==="\u5916\u51FA\u4E2D"?"#d97706":i.status==="\u4FEE\u6B63\u6E08\u307F"?"#059669":"#475569",J=i.status==="\u5916\u51FA\u4E2D"?"#fef3c7":i.status==="\u4FEE\u6B63\u6E08\u307F"?"#d1fae5":"#f1f5f9",V=(i.type==="\u696D\u52D9","white"),W=i.type==="\u696D\u52D9"?"#3b82f6":"#ef4444";let M="";i.status==="\u5916\u51FA\u4E2D"&&(M+=`
+          <button class="btn-force-end" data-id="${i.id}" data-date="${i.date}" data-gotime="${y}" style="background: transparent; color: #ef4444; border: none; padding: 0 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: underline;">
+            \u5F37\u5236\u7D42\u4E86
           </button>
-        `;
-      }
-      // Hiển thị nút sửa khi trạng thái là 外出中
-      actions += `
-        <button class="btn-edit" data-id="${r.id}" data-json='${escapeHtml(JSON.stringify(r))}' style="background: transparent; color: #3b82f6; border: none; padding: 0 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: underline;">
-          編集
+        `),M+=`
+        <button class="btn-edit" data-id="${i.id}" data-json='${a(JSON.stringify(i))}' style="background: transparent; color: #3b82f6; border: none; padding: 0 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: underline;">
+          \u7DE8\u96C6
         </button>
-      `;
-
-      const rowBg = index % 2 === 0 ? 'white' : '#f8fafc';
-      
-      const fullReason = escapeHtml(r.reason || '');
-      const shortReason = fullReason.length > 15 ? fullReason.substring(0, 15) + '...' : fullReason;
-      
-      const fullAdminNote = escapeHtml(r.admin_note || '');
-      const shortAdminNote = fullAdminNote.length > 15 ? fullAdminNote.substring(0, 15) + '...' : fullAdminNote;
-
-      html += `
-        <tr class="go-out-row" data-bg="${rowBg}">
+      `;const F=j%2===0?"white":"#f8fafc",v=a(i.reason||""),R=v.length>15?v.substring(0,15)+"...":v,w=a(i.admin_note||""),_=w.length>15?w.substring(0,15)+"...":w;u+=`
+        <tr class="go-out-row" data-bg="${F}">
           <!-- Mobile View -->
           <td class="mobile-cell">
             <div class="td-date-status">
-              <span>${escapeHtml(r.date)}</span>
-              <span style="font-size: 12px; color: #1e293b;">${escapeHtml(r.status)}</span>
+              <span>${a(i.date)}</span>
+              <span style="font-size: 12px; color: #1e293b;">${a(i.status)}</span>
             </div>
-            <div class="td-employee">${escapeHtml(r.employeeName)}</div>
+            <div class="td-employee">${a(i.employeeName)}</div>
             <div class="td-time" style="display: flex; align-items: stretch;">
-              <span class="td-time-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 32px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">時間</span>
-              <span style="display: inline-flex; align-items: center; min-height: 32px;">${goTime} 〜 ${retTime} (経過: ${duration})</span>
+              <span class="td-time-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 32px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">\u6642\u9593</span>
+              <span style="display: inline-flex; align-items: center; min-height: 32px;">${y} \u301C ${$} (\u7D4C\u904E: ${A})</span>
             </div>
             <div class="td-type-reason" style="margin-top: 8px; display: flex; align-items: stretch;">
-              <span class="td-type-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 32px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">区分</span>
-              <span style="display: inline-flex; align-items: center; min-height: 32px; font-size: 12px;">${escapeHtml(r.type)}</span>
+              <span class="td-type-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 32px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">\u533A\u5206</span>
+              <span style="display: inline-flex; align-items: center; min-height: 32px; font-size: 12px;">${a(i.type)}</span>
             </div>
             <div class="td-type-reason" style="margin-top: 8px; display: flex; align-items: stretch;">
-              <span class="td-type-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 48px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">理由</span>
+              <span class="td-type-label" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; min-height: 48px; background: #e0f2fe; color: #1e3a8a; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid #bae6fd; margin-right: 12px; flex-shrink: 0;">\u7406\u7531</span>
               <span style="display: inline-flex; align-items: center; min-height: 48px; flex: 1;">
                 <div>
-                  <div style="line-height: 1.4;">${fullReason}</div>
-                  ${r.admin_note ? `<div style="font-size: 11px; color: #94a3b8; margin-top: 4px; line-height: 1.3;">(備考: ${fullAdminNote})</div>` : ''}
+                  <div style="line-height: 1.4;">${v}</div>
+                  ${i.admin_note?`<div style="font-size: 11px; color: #94a3b8; margin-top: 4px; line-height: 1.3;">(\u5099\u8003: ${w})</div>`:""}
                 </div>
               </span>
             </div>
             <div class="td-actions" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
-              ${actions}
+              ${M}
             </div>
           </td>
 
           <!-- Desktop View -->
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #1e293b; text-align: center;">${escapeHtml(r.date)}</td>
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #1e293b; font-weight: 500; text-align: center;">${escapeHtml(r.employeeName)}</td>
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center;">${goTime}</td>
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center;">${retTime}</td>
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center; color: #64748b;">${duration}</td>
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; text-align: center;">${escapeHtml(r.type)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #1e293b; text-align: center;">${a(i.date)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #1e293b; font-weight: 500; text-align: center;">${a(i.employeeName)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center;">${y}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center;">${$}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; font-family: monospace; text-align: center; color: #64748b;">${A}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; text-align: center;">${a(i.type)}</td>
           <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left;">
-            <div title="${fullReason}" style="line-height: 1.2;">${shortReason}</div>
-            ${r.admin_note ? `<div title="${fullAdminNote}" style="font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.1;">(備考: ${shortAdminNote})</div>` : ''}
+            <div title="${v}" style="line-height: 1.2;">${R}</div>
+            ${i.admin_note?`<div title="${w}" style="font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.1;">(\u5099\u8003: ${_})</div>`:""}
           </td>
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; text-align: center;">${escapeHtml(r.status)}</td>
-          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; white-space: nowrap; text-align: center;">${actions}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; text-align: center;">${a(i.status)}</td>
+          <td class="desktop-cell" style="padding: 2px 8px !important; font-size: 13px; white-space: nowrap; text-align: center;">${M}</td>
         </tr>
-      `;
-    });
-    if (tbodyEl) tbodyEl.innerHTML = html;
+      `}),b&&(b.innerHTML=u),document.querySelectorAll(".btn-force-end").forEach(i=>{i.addEventListener("click",P)}),document.querySelectorAll(".btn-edit").forEach(i=>{i.addEventListener("click",C)})},P=async n=>{const t=n.target.closest(".btn-force-end");if(!t)return;const o=t.dataset.id,e=t.dataset.date,d=t.dataset.gotime,p=prompt(`\u5916\u51FA\u4E2D\u306E\u8A18\u9332\u3092\u7D42\u4E86\u3057\u307E\u3059\u304B\uFF1F
+\u623B\u308A\u6642\u9593\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08HH:MM \u5F62\u5F0F\uFF09\u3002
 
-    // Gắn sự kiện
-    document.querySelectorAll('.btn-force-end').forEach(btn => {
-      btn.addEventListener('click', handleForceEnd);
-    });
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-      btn.addEventListener('click', handleEdit);
-    });
-  };
-
-  const handleForceEnd = async (e) => {
-    const btn = e.target.closest('.btn-force-end');
-    if (!btn) return;
-    const id = btn.dataset.id;
-    const date = btn.dataset.date;
-    const goTime = btn.dataset.gotime;
-    
-    const choice = prompt(`外出中の記録を終了しますか？\n戻り時間を入力してください（HH:MM 形式）。\n\n※日またぎの場合は「23:59」などを指定してください。`, '23:59');
-    if (choice === null) return;
-    
-    if (!/^\\d{2}:\\d{2}$/.test(choice)) {
-      alert('無効な時間形式です。HH:MM で入力してください。');
-      return;
-    }
-
-    const originalHtml = btn.innerHTML;
-    try {
-      btn.disabled = true;
-      btn.innerHTML = '処理中...';
-      const fullTime = `${date}T${choice}:00`;
-      
-      await fetchJSONAuth(`/api/attendance/go-out/admin/${id}/force-end`, {
-        method: 'PUT',
-        body: JSON.stringify({ returnTime: fullTime, adminNote: '管理者により修正（強制終了）' })
-      });
-      
-      await loadData();
-    } catch (err) {
-      alert(err.message || 'エラーが発生しました');
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
-    }
-  };
-
-  const handleEdit = (e) => {
-    // Truy ngược lên để lấy phần tử button nếu bấm trúng svg/path
-    const btn = e.target.closest('.btn-edit');
-    if (!btn) return;
-    const json = JSON.parse(btn.dataset.json);
-    
-    // Tạo modal
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
-    
-    const goTimeHm = fmtTime(json.go_out_time) === '—' ? '' : fmtTime(json.go_out_time);
-    const retTimeHm = fmtTime(json.return_time) === '—' ? '' : fmtTime(json.return_time);
-
-    modal.innerHTML = `
+\u203B\u65E5\u307E\u305F\u304E\u306E\u5834\u5408\u306F\u300C23:59\u300D\u306A\u3069\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,"23:59");if(p===null)return;if(!/^\\d{2}:\\d{2}$/.test(p)){alert("\u7121\u52B9\u306A\u6642\u9593\u5F62\u5F0F\u3067\u3059\u3002HH:MM \u3067\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}const r=t.innerHTML;try{t.disabled=!0,t.innerHTML="\u51E6\u7406\u4E2D...";const s=`${e}T${p}:00`;await O(`/api/attendance/go-out/admin/${o}/force-end`,{method:"PUT",body:JSON.stringify({returnTime:s,adminNote:"\u7BA1\u7406\u8005\u306B\u3088\u308A\u4FEE\u6B63\uFF08\u5F37\u5236\u7D42\u4E86\uFF09"})}),await c()}catch(s){alert(s.message||"\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F"),t.disabled=!1,t.innerHTML=r}},C=n=>{const t=n.target.closest(".btn-edit");if(!t)return;const o=JSON.parse(t.dataset.json),e=document.createElement("div");e.style.cssText="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;";const d=x(o.go_out_time)==="\u2014"?"":x(o.go_out_time),p=x(o.return_time)==="\u2014"?"":x(o.return_time);e.innerHTML=`
       <div style="background: white; border-radius: 8px; width: 400px; max-width: 90%; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <div style="background: #0f2c62; color: white; padding: 12px 16px; font-weight: bold; font-size: 16px;">外出記録の編集</div>
+        <div style="background: #0f2c62; color: white; padding: 12px 16px; font-weight: bold; font-size: 16px;">\u5916\u51FA\u8A18\u9332\u306E\u7DE8\u96C6</div>
         <div style="padding: 20px;">
           <div style="margin-bottom: 12px;">
-            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">社員名</label>
-            <div style="font-size: 14px; color: #1e293b;">${escapeHtml(json.employeeName)} (${escapeHtml(json.date)})</div>
+            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">\u793E\u54E1\u540D</label>
+            <div style="font-size: 14px; color: #1e293b;">${a(o.employeeName)} (${a(o.date)})</div>
           </div>
           
           <div style="display: flex; gap: 12px; margin-bottom: 12px;">
             <div style="flex: 1;">
-              <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">外出時間</label>
-              <input type="time" id="editGoTime" value="${goTimeHm}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+              <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">\u5916\u51FA\u6642\u9593</label>
+              <input type="time" id="editGoTime" value="${d}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
             </div>
             <div style="flex: 1;">
-              <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">戻り時間</label>
-              <input type="time" id="editRetTime" value="${retTimeHm}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+              <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">\u623B\u308A\u6642\u9593</label>
+              <input type="time" id="editRetTime" value="${p}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
             </div>
           </div>
 
           <div style="margin-bottom: 12px;">
-            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">区分</label>
+            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">\u533A\u5206</label>
             <select id="editType" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
-              <option value="業務" ${json.type === '業務' ? 'selected' : ''}>業務</option>
-              <option value="私用" ${json.type === '私用' ? 'selected' : ''}>私用</option>
+              <option value="\u696D\u52D9" ${o.type==="\u696D\u52D9"?"selected":""}>\u696D\u52D9</option>
+              <option value="\u79C1\u7528" ${o.type==="\u79C1\u7528"?"selected":""}>\u79C1\u7528</option>
             </select>
           </div>
 
           <div style="margin-bottom: 12px;">
-            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">理由</label>
-            <input type="text" id="editReason" value="${escapeHtml(json.reason || '')}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">\u7406\u7531</label>
+            <input type="text" id="editReason" value="${a(o.reason||"")}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
           </div>
 
           <div style="margin-bottom: 20px;">
-            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">備考 (管理者の修正理由など)</label>
-            <input type="text" id="editAdminNote" value="${escapeHtml(json.admin_note || '')}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;" placeholder="例：打刻忘れのため修正">
+            <label style="display: block; font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">\u5099\u8003 (\u7BA1\u7406\u8005\u306E\u4FEE\u6B63\u7406\u7531\u306A\u3069)</label>
+            <input type="text" id="editAdminNote" value="${a(o.admin_note||"")}" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;" placeholder="\u4F8B\uFF1A\u6253\u523B\u5FD8\u308C\u306E\u305F\u3081\u4FEE\u6B63">
           </div>
 
           <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button id="btnCancelEdit" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 4px; cursor: pointer;">キャンセル</button>
-            <button id="btnSaveEdit" style="background: #059669; border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">保存して修正済みにする</button>
+            <button id="btnCancelEdit" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 4px; cursor: pointer;">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
+            <button id="btnSaveEdit" style="background: #059669; border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">\u4FDD\u5B58\u3057\u3066\u4FEE\u6B63\u6E08\u307F\u306B\u3059\u308B</button>
           </div>
         </div>
       </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    modal.querySelector('#btnCancelEdit').addEventListener('click', () => {
-      document.body.removeChild(modal);
-    });
-
-    modal.querySelector('#btnSaveEdit').addEventListener('click', async (btnE) => {
-      const goTime = modal.querySelector('#editGoTime').value;
-      const retTime = modal.querySelector('#editRetTime').value;
-      const type = modal.querySelector('#editType').value;
-      const reason = modal.querySelector('#editReason').value;
-      const adminNote = modal.querySelector('#editAdminNote').value;
-
-      if (!goTime) {
-        alert('外出時間を入力してください');
-        return;
-      }
-
-      btnE.target.disabled = true;
-      btnE.target.textContent = '保存中...';
-
-      try {
-        const fullGoTime = `${json.date}T${goTime}:00`;
-        const fullRetTime = retTime ? `${json.date}T${retTime}:00` : null;
-
-        await fetchJSONAuth(`/api/attendance/go-out/admin/${json.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            goOutTime: fullGoTime,
-            returnTime: fullRetTime,
-            type,
-            reason,
-            adminNote: adminNote || '管理者により修正'
-          })
-        });
-
-        document.body.removeChild(modal);
-        await loadData();
-      } catch (err) {
-        alert(err.message || 'エラーが発生しました');
-        btnE.target.disabled = false;
-        btnE.target.textContent = '保存して修正済みにする';
-      }
-    });
-  };
-
-  document.getElementById('goOutAdminPageSize').addEventListener('change', () => {
-    currentPage = 1;
-    renderTable();
-  });
-
-  document.getElementById('goOutAdminPrevPage').addEventListener('click', () => {
-    if (currentPage > 1) {
-      currentPage--;
-      renderTable();
-    }
-  });
-
-  document.getElementById('goOutAdminNextPage').addEventListener('click', () => {
-    const pageSize = parseInt(document.getElementById('goOutAdminPageSize').value, 10);
-    const totalPages = Math.ceil(allRecords.length / pageSize);
-    if (currentPage < totalPages) {
-      currentPage++;
-      renderTable();
-    }
-  });
-
-  document.getElementById('goOutAdminFilterMonth').addEventListener('change', loadData);
-  document.getElementById('goOutAdminFilterMonth').addEventListener('input', loadData);
-  
-  // Render lại bảng khi đổi kích thước giữa mobile/desktop để chỉnh logic phân trang
-  const handleResize = () => {
-    if (allRecords.length > 0 && document.getElementById('goOutAdminItemCount')) {
-      renderTable();
-    }
-    
-    // Quản lý vị trí bộ chọn tháng theo kích thước màn hình
-    const mobileActions = document.getElementById('attHubMobileActions');
-    const mobileMonth = document.getElementById('goOutAdminFilterMonthMobile');
-    if (window.innerWidth <= 768) {
-      if (mobileActions && !mobileMonth) {
-        const monthClone = monthInput.cloneNode(true);
-        monthClone.id = 'goOutAdminFilterMonthMobile';
-        monthClone.value = monthInput.value;
-        mobileActions.innerHTML = '';
-        mobileActions.appendChild(monthClone);
-        monthClone.addEventListener('change', (e) => { monthInput.value = e.target.value; loadData(); });
-        monthClone.addEventListener('input', (e) => { monthInput.value = e.target.value; loadData(); });
-      }
-    } else {
-      if (mobileActions) mobileActions.innerHTML = '';
-    }
-  };
-  window.addEventListener('resize', handleResize);
-
-  loadData();
-
-  return () => {
-    window.removeEventListener('resize', handleResize);
-  };
-}
+    `,document.body.appendChild(e),e.querySelector("#btnCancelEdit").addEventListener("click",()=>{document.body.removeChild(e)}),e.querySelector("#btnSaveEdit").addEventListener("click",async r=>{const s=e.querySelector("#editGoTime").value,h=e.querySelector("#editRetTime").value,b=e.querySelector("#editType").value,z=e.querySelector("#editReason").value,T=e.querySelector("#editAdminNote").value;if(!s){alert("\u5916\u51FA\u6642\u9593\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");return}r.target.disabled=!0,r.target.textContent="\u4FDD\u5B58\u4E2D...";try{const u=`${o.date}T${s}:00`,i=h?`${o.date}T${h}:00`:null;await O(`/api/attendance/go-out/admin/${o.id}`,{method:"PUT",body:JSON.stringify({goOutTime:u,returnTime:i,type:b,reason:z,adminNote:T||"\u7BA1\u7406\u8005\u306B\u3088\u308A\u4FEE\u6B63"})}),document.body.removeChild(e),await c()}catch(u){alert(u.message||"\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F"),r.target.disabled=!1,r.target.textContent="\u4FDD\u5B58\u3057\u3066\u4FEE\u6B63\u6E08\u307F\u306B\u3059\u308B"}})};document.getElementById("goOutAdminPageSize").addEventListener("change",()=>{l=1,f()}),document.getElementById("goOutAdminPrevPage").addEventListener("click",()=>{l>1&&(l--,f())}),document.getElementById("goOutAdminNextPage").addEventListener("click",()=>{const n=parseInt(document.getElementById("goOutAdminPageSize").value,10),t=Math.ceil(m.length/n);l<t&&(l++,f())}),document.getElementById("goOutAdminFilterMonth").addEventListener("change",c),document.getElementById("goOutAdminFilterMonth").addEventListener("input",c);const I=()=>{m.length>0&&document.getElementById("goOutAdminItemCount")&&f();const n=document.getElementById("attHubMobileActions"),t=document.getElementById("goOutAdminFilterMonthMobile");if(window.innerWidth<=768){if(n&&!t){const o=g.cloneNode(!0);o.id="goOutAdminFilterMonthMobile",o.value=g.value,n.innerHTML="",n.appendChild(o),o.addEventListener("change",e=>{g.value=e.target.value,c()}),o.addEventListener("input",e=>{g.value=e.target.value,c()})}}else n&&(n.innerHTML="")};return window.addEventListener("resize",I),c(),()=>{window.removeEventListener("resize",I)}}export{Y as mountGoOut};

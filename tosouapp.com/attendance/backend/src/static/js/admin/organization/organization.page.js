@@ -1,10 +1,1 @@
-import { listDepartments } from '../../api/departments.api.js';
-import { listUsers } from '../../api/users.api.js';
-import { mountDepartments } from '../legacy/legacy-departments.page.js';
-
-export async function mount() {
-  const content = document.querySelector('#adminContent');
-  if (!content) return;
-  await mountDepartments({ content, listDepartments, listUsers });
-  return () => {};
-}
+import{listDepartments as n}from"../../api/departments.api.js";import{listUsers as r}from"../../api/users.api.js";import{mountDepartments as o}from"../legacy/legacy-departments.page.js";async function s(){const t=document.querySelector("#adminContent");if(t)return await o({content:t,listDepartments:n,listUsers:r}),()=>{}}export{s as mount};

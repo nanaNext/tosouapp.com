@@ -1,1265 +1,247 @@
-(function () {
-  const root = globalThis.AttendanceMonthly || {};
-  const core = root.Core || globalThis.MonthlyMonthlyCore || {};
-  const state = root.State || globalThis.MonthlyMonthlyState || {};
-  const api = root.Api || globalThis.MonthlyMonthlyApi || {};
-  const render = root.Render || globalThis.MonthlyMonthlyRender || {};
-
-  const {
-    esc,
-    fmtHm,
-    fromDateTime,
-    diffMinutesAllowOvernight,
-    fetchJSONAuth,
-    showErr
-  } = core;
-
-  const { renderTable } = render;
-  const { loadMonth } = api;
-
-  const renderContract = async (host, detail) => {
-    if (!host) return;
-    const rows0 = Array.isArray(detail?.shiftAssignments) ? detail.shiftAssignments : [];
-    const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '').slice(0, 10));
-    const addDaysISO = (ds, n) => {
-      const s = String(ds || '').slice(0, 10);
-      if (!isISODate(s)) return null;
-      const y = parseInt(s.slice(0, 4), 10);
-      const m = parseInt(s.slice(5, 7), 10) - 1;
-      const d = parseInt(s.slice(8, 10), 10);
-      const dt = new Date(Date.UTC(y, m, d, 0, 0, 0));
-      dt.setUTCDate(dt.getUTCDate() + Number(n || 0));
-      const y2 = dt.getUTCFullYear();
-      const m2 = String(dt.getUTCMonth() + 1).padStart(2, '0');
-      const d2 = String(dt.getUTCDate()).padStart(2, '0');
-      return `${y2}-${m2}-${d2}`;
-    };
-    const keyOf = (r) => {
-      const s = r?.shift || null;
-      return [
-        String((s && s.id != null) ? s.id : ''),
-        String((s && s.name != null) ? s.name : ''),
-        String((s && s.start_time != null) ? s.start_time : ''),
-        String((s && s.end_time != null) ? s.end_time : ''),
-        String((s && s.break_minutes != null) ? s.break_minutes : ''),
-        String((s && s.standard_minutes != null) ? s.standard_minutes : '')
-      ].join('|');
-    };
-    const normalized = (() => {
-      const list = rows0
-        .map(r => ({
-          ...r,
-          start_date: isISODate(r?.start_date) ? String(r.start_date).slice(0, 10) : null,
-          end_date: isISODate(r?.end_date) ? String(r.end_date).slice(0, 10) : null,
-          _k: keyOf(r)
-        }))
-        .filter(r => !!r.start_date)
-        .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)));
-      const out = [];
-      for (let i = 0; i < list.length; i++) {
-        const cur = { ...list[i] };
-        const next = list[i + 1] || null;
-        if (next?.start_date) {
-          if (!cur.end_date || cur.end_date >= next.start_date) {
-            cur.end_date = addDaysISO(next.start_date, -1);
-          }
-        }
-        if (cur.end_date && cur.end_date < cur.start_date) continue;
-        const last = out[out.length - 1] || null;
-        if (last && last._k === cur._k) {
-          const expected = last.end_date ? addDaysISO(last.end_date, 1) : null;
-          if (!last.end_date || expected === cur.start_date) {
-            last.end_date = last.end_date == null || cur.end_date == null ? null : (last.end_date > cur.end_date ? last.end_date : cur.end_date);
-            continue;
-          }
-        }
-        out.push(cur);
-      }
-      return out.map(({ _k, ...r }) => r);
-    })();
-    let rows = normalized.length ? normalized : rows0;
-    if (!rows.length) {
-      try {
-        const role = String(profile?.role || '').toLowerCase();
-        const uid = (role !== 'employee' && (state.currentViewingUserId || null)) ? String(state.currentViewingUserId) : '';
-        const ym = String((document.querySelector('#monthPicker2') || document.querySelector('#monthPicker'))?.value || '').trim();
-        const qp = [];
-        if (uid) qp.push(`userId=${encodeURIComponent(uid)}`);
-        if (/^\d{4}-\d{2}$/.test(ym)) qp.push(`ym=${encodeURIComponent(ym)}`);
-        const qs = qp.length ? ('?' + qp.join('&')) : '';
-        const prof = await fetchJSONAuth('/api/attendance/user-profile' + qs);
-        const s = prof?.contract?.shift || null;
-        if (s && (s.start_time || s.end_time)) {
-          rows = [{
-            shift: {
-              id: s.id || null,
-              name: s.name || '',
-              start_time: s.start_time || '',
-              end_time: s.end_time || '',
-              break_minutes: s.break_minutes || 0,
-              standard_minutes: s.standard_minutes || null
-            },
-            start_date: null,
-            end_date: null,
-            _suggest: true
-          }];
-          // Auto-apply shift assignment when month is empty and viewer is manager/admin
-          if ((role === 'admin' || role === 'manager') && s.id) {
-            try {
-              const ym = String((document.querySelector('#monthPicker2') || document.querySelector('#monthPicker'))?.value || '').trim();
-              const startDefault = /^\d{4}-\d{2}$/.test(ym) ? `${ym}-01` : null;
-              if (startDefault) {
-                await fetchJSONAuth('/api/attendance/shifts/assign', {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    userId: state.currentViewingUserId || undefined,
-                    shiftId: s.id,
-                    startDate: startDefault,
-                    endDate: null
-                  })
-                });
-                // reload month to reflect applied shift
-                const { detail, timesheet } = await loadMonth(ym, (role === 'employee') ? null : (state.currentViewingUserId || null));
-                state.currentMonthDetail = detail;
-                state.currentMonthTimesheet = timesheet;
-                rows = Array.isArray(detail?.shiftAssignments) ? detail.shiftAssignments : rows;
-              }
-            } catch (e) { /* silently ignored */ }
-          }
-        }
-      } catch (e) { /* silently ignored */ }
-    }
-    const fmtBreak = (min) => {
-      const m = Number(min);
-      if (!Number.isFinite(m) || m < 0) return '—';
-      return fmtHm(m);
-    };
-    const fmtStd = (min) => {
-      const m = Number(min);
-      if (!Number.isFinite(m) || m < 0) return '—';
-      return fmtHm(m);
-    };
-    
-    const table = document.createElement('table');
-    table.innerHTML = `
+(function(){const J=globalThis.AttendanceMonthly||{},W=J.Core||globalThis.MonthlyMonthlyCore||{},v=J.State||globalThis.MonthlyMonthlyState||{},Rt=J.Api||globalThis.MonthlyMonthlyApi||{},Yt=J.Render||globalThis.MonthlyMonthlyRender||{},{esc:e,fmtHm:H,fromDateTime:K,diffMinutesAllowOvernight:dt,fetchJSONAuth:V,showErr:ee}=W,{renderTable:Tt}=Yt,{loadMonth:rt}=Rt,ct=async(w,$)=>{if(!w)return;const _=Array.isArray($?.shiftAssignments)?$.shiftAssignments:[],D=c=>/^\d{4}-\d{2}-\d{2}$/.test(String(c||"").slice(0,10)),k=(c,t)=>{const n=String(c||"").slice(0,10);if(!D(n))return null;const s=parseInt(n.slice(0,4),10),u=parseInt(n.slice(5,7),10)-1,o=parseInt(n.slice(8,10),10),l=new Date(Date.UTC(s,u,o,0,0,0));l.setUTCDate(l.getUTCDate()+Number(t||0));const h=l.getUTCFullYear(),a=String(l.getUTCMonth()+1).padStart(2,"0"),p=String(l.getUTCDate()).padStart(2,"0");return`${h}-${a}-${p}`},d=c=>{const t=c?.shift||null;return[String(t&&t.id!=null?t.id:""),String(t&&t.name!=null?t.name:""),String(t&&t.start_time!=null?t.start_time:""),String(t&&t.end_time!=null?t.end_time:""),String(t&&t.break_minutes!=null?t.break_minutes:""),String(t&&t.standard_minutes!=null?t.standard_minutes:"")].join("|")},i=(()=>{const c=_.map(n=>({...n,start_date:D(n?.start_date)?String(n.start_date).slice(0,10):null,end_date:D(n?.end_date)?String(n.end_date).slice(0,10):null,_k:d(n)})).filter(n=>!!n.start_date).sort((n,s)=>String(n.start_date).localeCompare(String(s.start_date))),t=[];for(let n=0;n<c.length;n++){const s={...c[n]},u=c[n+1]||null;if(u?.start_date&&(!s.end_date||s.end_date>=u.start_date)&&(s.end_date=k(u.start_date,-1)),s.end_date&&s.end_date<s.start_date)continue;const o=t[t.length-1]||null;if(o&&o._k===s._k){const l=o.end_date?k(o.end_date,1):null;if(!o.end_date||l===s.start_date){o.end_date=o.end_date==null||s.end_date==null?null:o.end_date>s.end_date?o.end_date:s.end_date;continue}}t.push(s)}return t.map(({_k:n,...s})=>s)})();let x=i.length?i:_;if(!x.length)try{const c=String(profile?.role||"").toLowerCase(),t=c!=="employee"&&v.currentViewingUserId?String(v.currentViewingUserId):"",n=String((document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"").trim(),s=[];t&&s.push(`userId=${encodeURIComponent(t)}`),/^\d{4}-\d{2}$/.test(n)&&s.push(`ym=${encodeURIComponent(n)}`);const u=s.length?"?"+s.join("&"):"",l=(await V("/api/attendance/user-profile"+u))?.contract?.shift||null;if(l&&(l.start_time||l.end_time)&&(x=[{shift:{id:l.id||null,name:l.name||"",start_time:l.start_time||"",end_time:l.end_time||"",break_minutes:l.break_minutes||0,standard_minutes:l.standard_minutes||null},start_date:null,end_date:null,_suggest:!0}],(c==="admin"||c==="manager")&&l.id))try{const h=String((document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"").trim(),a=/^\d{4}-\d{2}$/.test(h)?`${h}-01`:null;if(a){await V("/api/attendance/shifts/assign",{method:"POST",body:JSON.stringify({userId:v.currentViewingUserId||void 0,shiftId:l.id,startDate:a,endDate:null})});const{detail:p,timesheet:m}=await rt(h,c==="employee"?null:v.currentViewingUserId||null);v.currentMonthDetail=p,v.currentMonthTimesheet=m,x=Array.isArray(p?.shiftAssignments)?p.shiftAssignments:x}}catch{}}catch{}const O=c=>{const t=Number(c);return!Number.isFinite(t)||t<0?"\u2014":H(t)},f=c=>{const t=Number(c);return!Number.isFinite(t)||t<0?"\u2014":H(t)},g=document.createElement("table");g.innerHTML=`
     <thead>
       <tr>
         <th>No</th>
-        <th>シフト</th>
-        <th>開始時刻</th>
-        <th>終了時刻</th>
-        <th>休憩時間</th>
-        <th>所定労働時間</th>
-        <th>適用開始日</th>
-        <th>適用終了日</th>
+        <th>\u30B7\u30D5\u30C8</th>
+        <th>\u958B\u59CB\u6642\u523B</th>
+        <th>\u7D42\u4E86\u6642\u523B</th>
+        <th>\u4F11\u61A9\u6642\u9593</th>
+        <th>\u6240\u5B9A\u52B4\u50CD\u6642\u9593</th>
+        <th>\u9069\u7528\u958B\u59CB\u65E5</th>
+        <th>\u9069\u7528\u7D42\u4E86\u65E5</th>
       </tr>
     </thead>
     <tbody>
-      ${
-        rows.length ? rows.map((r, i) => {
-          const s = r?.shift || null;
-          const name = s ? (s.name || '') : '—';
-          const st = s ? (s.start_time || '—') : '—';
-          const et = s ? (s.end_time || '—') : '—';
-          const br = s ? fmtBreak(s.break_minutes) : '—';
-          const std = s ? fmtStd(s.standard_minutes) : '—';
-          const sd = r?.start_date || '—';
-          const ed = r?.end_date || '—';
-          const sug = r?._suggest ? '（社員情報）' : '';
-          return `<tr>
-            <td>${esc(i + 1)}</td>
-            <td>${esc(name)}${esc(sug)}</td>
-            <td>${esc(st)}</td>
-            <td>${esc(et)}</td>
-            <td>${esc(br)}</td>
-            <td>${esc(std)}</td>
-            <td>${esc(sd)}</td>
-            <td>${esc(ed)}</td>
-          </tr>`;
-        }).join('') : `<tr><td colspan="8" style="text-align:center;color:#64748b;font-weight:800;">シフトが未設定です（管理者がシフトを割り当てしてください）</td></tr>`
-      }
+      ${x.length?x.map((c,t)=>{const n=c?.shift||null,s=n?n.name||"":"\u2014",u=n&&n.start_time||"\u2014",o=n&&n.end_time||"\u2014",l=n?O(n.break_minutes):"\u2014",h=n?f(n.standard_minutes):"\u2014",a=c?.start_date||"\u2014",p=c?.end_date||"\u2014",m=c?._suggest?"\uFF08\u793E\u54E1\u60C5\u5831\uFF09":"";return`<tr>
+            <td>${e(t+1)}</td>
+            <td>${e(s)}${e(m)}</td>
+            <td>${e(u)}</td>
+            <td>${e(o)}</td>
+            <td>${e(l)}</td>
+            <td>${e(h)}</td>
+            <td>${e(a)}</td>
+            <td>${e(p)}</td>
+          </tr>`}).join(""):'<tr><td colspan="8" style="text-align:center;color:#64748b;font-weight:800;">\u30B7\u30D5\u30C8\u304C\u672A\u8A2D\u5B9A\u3067\u3059\uFF08\u7BA1\u7406\u8005\u304C\u30B7\u30D5\u30C8\u3092\u5272\u308A\u5F53\u3066\u3057\u3066\u304F\u3060\u3055\u3044\uFF09</td></tr>'}
     </tbody>
-  `;
-    host.innerHTML = '';
-    host.appendChild(table);
-  };
-
-  const renderWorkDetail = async (host, detail, profile) => {
-    if (!host) return;
-    const role = String(profile?.role || '').toLowerCase();
-    // Keep monthly table read-only: hide add/edit/delete actions for all roles.
-    const canManage = false;
-    let rows = Array.isArray(detail?.workDetails) ? detail.workDetails : [];
-    if (!rows.length) {
-      try {
-        const uid = (role !== 'employee' && (state.currentViewingUserId || null)) ? String(state.currentViewingUserId) : '';
-        const ym = String((document.querySelector('#monthPicker2') || document.querySelector('#monthPicker'))?.value || '').trim();
-        const qp = [];
-        if (uid) qp.push(`userId=${encodeURIComponent(uid)}`);
-        if (/^\d{4}-\d{2}$/.test(ym)) qp.push(`ym=${encodeURIComponent(ym)}`);
-        const qs = qp.length ? ('?' + qp.join('&')) : '';
-        const prof = await fetchJSONAuth('/api/attendance/user-profile' + qs);
-        if (Array.isArray(prof?.workDetails) && prof.workDetails.length) {
-          const w = prof.workDetails[0];
-          rows = [{
-            id: null,
-            startDate: w.start_date || '',
-            endDate: w.end_date || '',
-            companyName: w.company_name || '',
-            workPlaceAddress: w.work_place_address || '',
-            workContent: w.work_content || '',
-            roleTitle: w.role_title || '',
-            responsibilityLevel: w.responsibility_level || '',
-            _suggest: true
-          }];
-          // Auto-apply first work detail when month is empty and viewer is manager/admin
-          if (role === 'admin' || role === 'manager') {
-            try {
-              const ym = String((document.querySelector('#monthPicker2') || document.querySelector('#monthPicker'))?.value || '').trim();
-              const startDefault = /^\d{4}-\d{2}$/.test(ym) ? `${ym}-01` : (rows[0].startDate || '');
-              await fetchJSONAuth('/api/attendance/work-details', {
-                method: 'POST',
-                body: JSON.stringify({
-                  userId: state.currentViewingUserId || undefined,
-                  startDate: startDefault || null,
-                  endDate: rows[0].endDate || null,
-                  companyName: rows[0].companyName || '',
-                  workPlaceAddress: rows[0].workPlaceAddress || '',
-                  workContent: rows[0].workContent || '',
-                  roleTitle: rows[0].roleTitle || '',
-                  responsibilityLevel: rows[0].responsibilityLevel || ''
-                })
-              });
-              // reload month to reflect applied work detail
-              const { detail, timesheet } = await loadMonth(ym, (role === 'employee') ? null : (state.currentViewingUserId || null));
-              state.currentMonthDetail = detail;
-              state.currentMonthTimesheet = timesheet;
-              rows = Array.isArray(detail?.workDetails) ? detail.workDetails : rows;
-            } catch (e) { /* silently ignored */ }
-          }
-        }
-      } catch (e) { /* silently ignored */ }
-    }
-    const esc2 = (v) => esc(v == null ? '' : v);
-    const table = document.createElement('table');
-    table.innerHTML = `
+  `,w.innerHTML="",w.appendChild(g)},ut=async(w,$,_)=>{if(!w)return;const D=String(_?.role||"").toLowerCase(),k=!1;let d=Array.isArray($?.workDetails)?$.workDetails:[];if(!d.length)try{const t=D!=="employee"&&v.currentViewingUserId?String(v.currentViewingUserId):"",n=String((document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"").trim(),s=[];t&&s.push(`userId=${encodeURIComponent(t)}`),/^\d{4}-\d{2}$/.test(n)&&s.push(`ym=${encodeURIComponent(n)}`);const u=s.length?"?"+s.join("&"):"",o=await V("/api/attendance/user-profile"+u);if(Array.isArray(o?.workDetails)&&o.workDetails.length){const l=o.workDetails[0];if(d=[{id:null,startDate:l.start_date||"",endDate:l.end_date||"",companyName:l.company_name||"",workPlaceAddress:l.work_place_address||"",workContent:l.work_content||"",roleTitle:l.role_title||"",responsibilityLevel:l.responsibility_level||"",_suggest:!0}],D==="admin"||D==="manager")try{const h=String((document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"").trim(),a=/^\d{4}-\d{2}$/.test(h)?`${h}-01`:d[0].startDate||"";await V("/api/attendance/work-details",{method:"POST",body:JSON.stringify({userId:v.currentViewingUserId||void 0,startDate:a||null,endDate:d[0].endDate||null,companyName:d[0].companyName||"",workPlaceAddress:d[0].workPlaceAddress||"",workContent:d[0].workContent||"",roleTitle:d[0].roleTitle||"",responsibilityLevel:d[0].responsibilityLevel||""})});const{detail:p,timesheet:m}=await rt(h,D==="employee"?null:v.currentViewingUserId||null);v.currentMonthDetail=p,v.currentMonthTimesheet=m,d=Array.isArray(p?.workDetails)?p.workDetails:d}catch{}}}catch{}const i=t=>e(t??""),x=document.createElement("table");if(x.innerHTML=`
     <thead>
       <tr>
-        <th>企業名</th>
-        <th>適用終了日</th>
-        <th>就業先住所</th>
-        <th>業務内容</th>
-        <th>役職</th>
-        <th>責任の程度</th>
-        ${canManage ? '<th>操作</th>' : ''}
+        <th>\u4F01\u696D\u540D</th>
+        <th>\u9069\u7528\u7D42\u4E86\u65E5</th>
+        <th>\u5C31\u696D\u5148\u4F4F\u6240</th>
+        <th>\u696D\u52D9\u5185\u5BB9</th>
+        <th>\u5F79\u8077</th>
+        <th>\u8CAC\u4EFB\u306E\u7A0B\u5EA6</th>
+        ${k?"<th>\u64CD\u4F5C</th>":""}
       </tr>
     </thead>
     <tbody>
-      ${
-        rows.length ? rows.map((r) => {
-          const id = r?.id;
-          const company = r?.companyName || '';
-          const endDate = r?.endDate || '—';
-          const addr = r?.workPlaceAddress || '';
-          const work = r?.workContent || '';
-          const roleTitle = r?.roleTitle || '';
-          const resp = r?.responsibilityLevel || '';
-          const ops = canManage ? `
+      ${d.length?d.map(t=>{const n=t?.id,s=t?.companyName||"",u=t?.endDate||"\u2014",o=t?.workPlaceAddress||"",l=t?.workContent||"",h=t?.roleTitle||"",a=t?.responsibilityLevel||"",p=k?`
             <td style="white-space:nowrap;">
-              ${r?._suggest ? `<button type="button" class="se-mini-btn" data-wd-action="apply" data-wd-id="suggest">適用</button>` : `
-                <button type="button" class="se-mini-btn" data-wd-action="edit" data-wd-id="${esc2(id)}">編集</button>
-                <button type="button" class="se-mini-btn" data-wd-action="del" data-wd-id="${esc2(id)}">削除</button>
+              ${t?._suggest?'<button type="button" class="se-mini-btn" data-wd-action="apply" data-wd-id="suggest">\u9069\u7528</button>':`
+                <button type="button" class="se-mini-btn" data-wd-action="edit" data-wd-id="${i(n)}">\u7DE8\u96C6</button>
+                <button type="button" class="se-mini-btn" data-wd-action="del" data-wd-id="${i(n)}">\u524A\u9664</button>
               `}
             </td>
-          ` : '';
-          return `<tr>
-            <td>${esc2(company)}</td>
-            <td>${esc2(endDate)}</td>
-            <td>${esc2(addr)}</td>
-            <td>${esc2(work)}</td>
-            <td>${esc2(roleTitle)}</td>
-            <td>${esc2(resp)}</td>
-            ${ops}
-          </tr>`;
-        }).join('') : `<tr><td colspan="${canManage ? 7 : 6}" style="text-align:center;color:#64748b;font-weight:800;">業務内容が未設定です（管理者が登録してください）</td></tr>`
-      }
+          `:"";return`<tr>
+            <td>${i(s)}</td>
+            <td>${i(u)}</td>
+            <td>${i(o)}</td>
+            <td>${i(l)}</td>
+            <td>${i(h)}</td>
+            <td>${i(a)}</td>
+            ${p}
+          </tr>`}).join(""):`<tr><td colspan="${k?7:6}" style="text-align:center;color:#64748b;font-weight:800;">\u696D\u52D9\u5185\u5BB9\u304C\u672A\u8A2D\u5B9A\u3067\u3059\uFF08\u7BA1\u7406\u8005\u304C\u767B\u9332\u3057\u3066\u304F\u3060\u3055\u3044\uFF09</td></tr>`}
     </tbody>
-  `;
-    host.innerHTML = '';
-    if (canManage) {
-      const bar = document.createElement('div');
-      bar.style.display = 'flex';
-      bar.style.alignItems = 'center';
-      bar.style.justifyContent = 'flex-end';
-      bar.style.gap = '8px';
-      bar.style.marginBottom = '8px';
-      bar.innerHTML = `<button type="button" class="se-btn small" id="btnWorkDetailAdd">追加</button>`;
-      host.appendChild(bar);
-    }
-    host.appendChild(table);
-    if (!canManage) return;
-
-    const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '').slice(0, 10));
-    const promptText = (label, v) => {
-      const x = window.prompt(label, String(v == null ? '' : v));
-      if (x == null) return null;
-      return String(x);
-    };
-    const promptDate = (label, v, allowEmpty) => {
-      const x = window.prompt(label, String(v == null ? '' : v));
-      if (x == null) return null;
-      const s = String(x).trim();
-      if (!s && allowEmpty) return '';
-      if (!isISODate(s)) { alert('日付はYYYY-MM-DD形式で入力してください'); return null; }
-      return s;
-    };
-
-    const saveNew = async () => {
-      const ym = String((document.querySelector('#monthPicker2') || document.querySelector('#monthPicker'))?.value || '').trim();
-      const startDefault = /^\d{4}-\d{2}$/.test(ym) ? `${ym}-01` : '';
-      const startDate = promptDate('適用開始日 (YYYY-MM-DD)', startDefault, false);
-      if (startDate == null) return;
-      const endDate = promptDate('適用終了日 (YYYY-MM-DD / 空欄=なし)', '', true);
-      if (endDate == null) return;
-      const companyName = promptText('企業名', '');
-      if (companyName == null) return;
-      const workPlaceAddress = promptText('就業先住所', '');
-      if (workPlaceAddress == null) return;
-      const workContent = promptText('業務内容', '');
-      if (workContent == null) return;
-      const roleTitle = promptText('役職', '');
-      if (roleTitle == null) return;
-      const responsibilityLevel = promptText('責任の程度', '');
-      if (responsibilityLevel == null) return;
-      await fetchJSONAuth('/api/attendance/work-details', {
-        method: 'POST',
-        body: JSON.stringify({
-          userId: state.currentViewingUserId || undefined,
-          startDate,
-          endDate: endDate || null,
-          companyName,
-          workPlaceAddress,
-          workContent,
-          roleTitle,
-          responsibilityLevel
-        })
-      });
-      const picker = document.querySelector('#monthPicker2') || document.querySelector('#monthPicker');
-      const ym2 = picker?.value || '';
-      if (/^\d{4}-\d{2}$/.test(ym2)) {
-        const { detail, timesheet } = await loadMonth(ym2, (role === 'employee') ? null : (state.currentViewingUserId || null));
-        state.currentMonthDetail = detail;
-        state.currentMonthTimesheet = timesheet;
-        renderContract(document.querySelector('#contractTable'), detail);
-        renderWorkDetail(document.querySelector('#workDetailTable'), detail, profile);
-        renderSummary(document.querySelector('#monthSummaryTable') || document.querySelector('#monthSummary'), detail, timesheet);
-        renderTable(document.querySelector('#monthTable'), detail, profile);
-      }
-    };
-
-    host.querySelector('#btnWorkDetailAdd')?.addEventListener('click', async () => {
-      try { await saveNew(); } catch (e) { alert(String(e?.message || '保存に失敗しました')); }
-    });
-
-    host.querySelectorAll('button[data-wd-action][data-wd-id]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const action = String(btn.getAttribute('data-wd-action') || '');
-        const idRaw = String(btn.getAttribute('data-wd-id') || '');
-        const id = parseInt(idRaw, 10);
-        if (action !== 'apply' && !id) return;
-        try {
-          const cur = action === 'apply' ? (rows.find(x => x?._suggest) || null) : (rows.find(x => String(x?.id) === String(id)) || null);
-          if (!cur) return;
-          if (action === 'del') {
-            if (!confirm('削除します。よろしいですか？')) return;
-            await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(String(id))}`, {
-              method: 'DELETE',
-              body: JSON.stringify({ userId: state.currentViewingUserId || undefined })
-            });
-          } else if (action === 'apply') {
-            const ym = String((document.querySelector('#monthPicker2') || document.querySelector('#monthPicker'))?.value || '').trim();
-            const startDefault = /^\d{4}-\d{2}$/.test(ym) ? `${ym}-01` : (cur.startDate || '');
-            await fetchJSONAuth('/api/attendance/work-details', {
-              method: 'POST',
-              body: JSON.stringify({
-                userId: state.currentViewingUserId || undefined,
-                startDate: startDefault || null,
-                endDate: cur.endDate || null,
-                companyName: cur.companyName || cur.company_name || '',
-                workPlaceAddress: cur.workPlaceAddress || cur.work_place_address || '',
-                workContent: cur.workContent || cur.work_content || '',
-                roleTitle: cur.roleTitle || cur.role_title || '',
-                responsibilityLevel: cur.responsibilityLevel || cur.responsibility_level || ''
-              })
-            });
-          } else if (action === 'edit') {
-            const startDate = promptDate('適用開始日 (YYYY-MM-DD)', cur.startDate || '', false);
-            if (startDate == null) return;
-            const endDate = promptDate('適用終了日 (YYYY-MM-DD / 空欄=なし)', cur.endDate || '', true);
-            if (endDate == null) return;
-            const companyName = promptText('企業名', cur.companyName || '');
-            if (companyName == null) return;
-            const workPlaceAddress = promptText('就業先住所', cur.workPlaceAddress || '');
-            if (workPlaceAddress == null) return;
-            const workContent = promptText('業務内容', cur.workContent || '');
-            if (workContent == null) return;
-            const roleTitle = promptText('役職', cur.roleTitle || '');
-            if (roleTitle == null) return;
-            const responsibilityLevel = promptText('責任の程度', cur.responsibilityLevel || '');
-            if (responsibilityLevel == null) return;
-            await fetchJSONAuth(`/api/attendance/work-details/${encodeURIComponent(String(id))}`, {
-              method: 'PUT',
-              body: JSON.stringify({
-                userId: state.currentViewingUserId || undefined,
-                startDate,
-                endDate: endDate || null,
-                companyName,
-                workPlaceAddress,
-                workContent,
-                roleTitle,
-                responsibilityLevel
-              })
-            });
-          }
-          const picker = document.querySelector('#monthPicker2') || document.querySelector('#monthPicker');
-          const ym2 = picker?.value || '';
-          if (/^\d{4}-\d{2}$/.test(ym2)) {
-            const { detail, timesheet } = await loadMonth(ym2, (role === 'employee') ? null : (state.currentViewingUserId || null));
-            state.currentMonthDetail = detail;
-            state.currentMonthTimesheet = timesheet;
-            renderContract(document.querySelector('#contractTable'), detail);
-            renderWorkDetail(document.querySelector('#workDetailTable'), detail, profile);
-            renderSummary(document.querySelector('#monthSummaryTable') || document.querySelector('#monthSummary'), detail, timesheet);
-            renderTable(document.querySelector('#monthTable'), detail, profile);
-          }
-        } catch (e) {
-          alert(String(e?.message || '保存に失敗しました'));
-        }
-      });
-    });
-  };
-
-  const renderGoOutHistory = (host, detail) => {
-    if (!host) return;
-    const days = Array.isArray(detail?.days) ? detail.days : [];
-    const allRows = [];
-    
-    for (const d of days) {
-      const goOutRecords = Array.isArray(d.goOutRecords) ? d.goOutRecords : [];
-      for (const g of goOutRecords) {
-        allRows.push({
-          date: d.date,
-          goOutTime: g.go_out_time,
-          returnTime: g.return_time,
-          type: g.type,
-          reason: g.reason
-        });
-      }
-    }
-    
-    // Sort by date and time
-    allRows.sort((a, b) => {
-      const timeA = new Date(a.goOutTime).getTime();
-      const timeB = new Date(b.goOutTime).getTime();
-      return timeA - timeB;
-    });
-
-    host.innerHTML = '';
-
-    const controlBar = document.createElement('div');
-    controlBar.className = 'goout-history-controls';
-    controlBar.style.display = 'flex';
-    controlBar.style.justifyContent = 'flex-end'; // Only summary is left, align it nicely
-    controlBar.style.alignItems = 'center';
-    controlBar.style.marginBottom = '12px';
-    controlBar.style.flexWrap = 'wrap';
-    controlBar.style.gap = '8px';
-    
-    const summaryDiv = document.createElement('div');
-    summaryDiv.className = 'goout-history-summary';
-    summaryDiv.style.fontSize = '14px';
-    summaryDiv.style.fontWeight = 'bold';
-    summaryDiv.style.color = '#1e293b';
-    
-    controlBar.appendChild(summaryDiv);
-    host.appendChild(controlBar);
-
-    const tableContainer = document.createElement('div');
-    tableContainer.style.maxHeight = '500px';
-    tableContainer.style.overflowY = 'auto';
-    tableContainer.style.overflowX = 'auto';
-    tableContainer.style.WebkitOverflowScrolling = 'touch';
-    tableContainer.style.border = '1px solid #dbe4f0';
-    host.appendChild(tableContainer);
-
-    const table = document.createElement('table');
-    table.className = 'excel-table'; // Sử dụng class của hệ thống để đồng bộ style
-    table.style.width = '100%';
-    table.style.minWidth = '400px'; // Ensure horizontal scrolling on very narrow screens
-    table.style.borderCollapse = 'collapse';
-    table.style.margin = '0';
-    tableContainer.appendChild(table);
-    
-    const renderTable = () => {
-      let filteredRows = allRows;
-      
-      let totalMin = 0;
-      let busMin = 0;
-      let priMin = 0;
-      
-      const tbodyHTML = filteredRows.length ? filteredRows.map((r, i) => {
-        const ds = String(r.date || '');
-        const dow = core.dowJa(ds);
-        const goHm = fromDateTime(r.goOutTime) || '—';
-        const retHm = fromDateTime(r.returnTime) || '—';
-        const type = r.type || '—';
-        const reason = r.reason || '';
-        let duration = '—';
-        
-        let returnDisplay = retHm;
-        if (retHm === '—') {
-          returnDisplay = `<span style="color: #d97706; font-weight: bold; font-size: 12px;"><span style="margin-right: 4px;">⏳</span>外出中</span>`;
-        }
-        
-        if (goHm !== '—' && retHm !== '—') {
-          const min = diffMinutesAllowOvernight(goHm, retHm);
-          if (min != null && min > 0) {
-            duration = fmtHm(min);
-            totalMin += min;
-            if (type === '業務') busMin += min;
-            else if (type === '私用') priMin += min;
-          }
-        }
-        
-        return `<tr class="goout-history-row" style="background-color: #ffffff; transition: background-color 0.2s;">
-          <td style="text-align: center; border: 1px solid #dbe4f0; color: #1e293b; white-space: nowrap;">${esc(ds.slice(5).replace('-', '/'))}(${esc(dow)})</td>
-          <td style="text-align: center; font-family: monospace, sans-serif; border: 1px solid #dbe4f0; color: #334155;">${esc(goHm)}</td>
-          <td style="text-align: center; font-family: monospace, sans-serif; border: 1px solid #dbe4f0; color: #334155;">${returnDisplay}</td>
-          <td style="text-align: center; font-family: monospace, sans-serif; font-weight: 500; border: 1px solid #dbe4f0; color: #334155;">${esc(duration)}</td>
+  `,w.innerHTML="",k){const t=document.createElement("div");t.style.display="flex",t.style.alignItems="center",t.style.justifyContent="flex-end",t.style.gap="8px",t.style.marginBottom="8px",t.innerHTML='<button type="button" class="se-btn small" id="btnWorkDetailAdd">\u8FFD\u52A0</button>',w.appendChild(t)}if(w.appendChild(x),!k)return;const O=t=>/^\d{4}-\d{2}-\d{2}$/.test(String(t||"").slice(0,10)),f=(t,n)=>{const s=window.prompt(t,String(n??""));return s==null?null:String(s)},g=(t,n,s)=>{const u=window.prompt(t,String(n??""));if(u==null)return null;const o=String(u).trim();return!o&&s?"":O(o)?o:(alert("\u65E5\u4ED8\u306FYYYY-MM-DD\u5F62\u5F0F\u3067\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044"),null)},c=async()=>{const t=String((document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"").trim(),n=/^\d{4}-\d{2}$/.test(t)?`${t}-01`:"",s=g("\u9069\u7528\u958B\u59CB\u65E5 (YYYY-MM-DD)",n,!1);if(s==null)return;const u=g("\u9069\u7528\u7D42\u4E86\u65E5 (YYYY-MM-DD / \u7A7A\u6B04=\u306A\u3057)","",!0);if(u==null)return;const o=f("\u4F01\u696D\u540D","");if(o==null)return;const l=f("\u5C31\u696D\u5148\u4F4F\u6240","");if(l==null)return;const h=f("\u696D\u52D9\u5185\u5BB9","");if(h==null)return;const a=f("\u5F79\u8077","");if(a==null)return;const p=f("\u8CAC\u4EFB\u306E\u7A0B\u5EA6","");if(p==null)return;await V("/api/attendance/work-details",{method:"POST",body:JSON.stringify({userId:v.currentViewingUserId||void 0,startDate:s,endDate:u||null,companyName:o,workPlaceAddress:l,workContent:h,roleTitle:a,responsibilityLevel:p})});const S=(document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"";if(/^\d{4}-\d{2}$/.test(S)){const{detail:I,timesheet:P}=await rt(S,D==="employee"?null:v.currentViewingUserId||null);v.currentMonthDetail=I,v.currentMonthTimesheet=P,ct(document.querySelector("#contractTable"),I),ut(document.querySelector("#workDetailTable"),I,_),mt(document.querySelector("#monthSummaryTable")||document.querySelector("#monthSummary"),I,P),Tt(document.querySelector("#monthTable"),I,_)}};w.querySelector("#btnWorkDetailAdd")?.addEventListener("click",async()=>{try{await c()}catch(t){alert(String(t?.message||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}}),w.querySelectorAll("button[data-wd-action][data-wd-id]").forEach(t=>{t.addEventListener("click",async()=>{const n=String(t.getAttribute("data-wd-action")||""),s=String(t.getAttribute("data-wd-id")||""),u=parseInt(s,10);if(!(n!=="apply"&&!u))try{const o=n==="apply"?d.find(a=>a?._suggest)||null:d.find(a=>String(a?.id)===String(u))||null;if(!o)return;if(n==="del"){if(!confirm("\u524A\u9664\u3057\u307E\u3059\u3002\u3088\u308D\u3057\u3044\u3067\u3059\u304B\uFF1F"))return;await V(`/api/attendance/work-details/${encodeURIComponent(String(u))}`,{method:"DELETE",body:JSON.stringify({userId:v.currentViewingUserId||void 0})})}else if(n==="apply"){const a=String((document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"").trim(),p=/^\d{4}-\d{2}$/.test(a)?`${a}-01`:o.startDate||"";await V("/api/attendance/work-details",{method:"POST",body:JSON.stringify({userId:v.currentViewingUserId||void 0,startDate:p||null,endDate:o.endDate||null,companyName:o.companyName||o.company_name||"",workPlaceAddress:o.workPlaceAddress||o.work_place_address||"",workContent:o.workContent||o.work_content||"",roleTitle:o.roleTitle||o.role_title||"",responsibilityLevel:o.responsibilityLevel||o.responsibility_level||""})})}else if(n==="edit"){const a=g("\u9069\u7528\u958B\u59CB\u65E5 (YYYY-MM-DD)",o.startDate||"",!1);if(a==null)return;const p=g("\u9069\u7528\u7D42\u4E86\u65E5 (YYYY-MM-DD / \u7A7A\u6B04=\u306A\u3057)",o.endDate||"",!0);if(p==null)return;const m=f("\u4F01\u696D\u540D",o.companyName||"");if(m==null)return;const S=f("\u5C31\u696D\u5148\u4F4F\u6240",o.workPlaceAddress||"");if(S==null)return;const I=f("\u696D\u52D9\u5185\u5BB9",o.workContent||"");if(I==null)return;const P=f("\u5F79\u8077",o.roleTitle||"");if(P==null)return;const F=f("\u8CAC\u4EFB\u306E\u7A0B\u5EA6",o.responsibilityLevel||"");if(F==null)return;await V(`/api/attendance/work-details/${encodeURIComponent(String(u))}`,{method:"PUT",body:JSON.stringify({userId:v.currentViewingUserId||void 0,startDate:a,endDate:p||null,companyName:m,workPlaceAddress:S,workContent:I,roleTitle:P,responsibilityLevel:F})})}const h=(document.querySelector("#monthPicker2")||document.querySelector("#monthPicker"))?.value||"";if(/^\d{4}-\d{2}$/.test(h)){const{detail:a,timesheet:p}=await rt(h,D==="employee"?null:v.currentViewingUserId||null);v.currentMonthDetail=a,v.currentMonthTimesheet=p,ct(document.querySelector("#contractTable"),a),ut(document.querySelector("#workDetailTable"),a,_),mt(document.querySelector("#monthSummaryTable")||document.querySelector("#monthSummary"),a,p),Tt(document.querySelector("#monthTable"),a,_)}}catch(o){alert(String(o?.message||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}})})},Vt=(w,$)=>{if(!w)return;const _=Array.isArray($?.days)?$.days:[],D=[];for(const f of _){const g=Array.isArray(f.goOutRecords)?f.goOutRecords:[];for(const c of g)D.push({date:f.date,goOutTime:c.go_out_time,returnTime:c.return_time,type:c.type,reason:c.reason})}D.sort((f,g)=>{const c=new Date(f.goOutTime).getTime(),t=new Date(g.goOutTime).getTime();return c-t}),w.innerHTML="";const k=document.createElement("div");k.className="goout-history-controls",k.style.display="flex",k.style.justifyContent="flex-end",k.style.alignItems="center",k.style.marginBottom="12px",k.style.flexWrap="wrap",k.style.gap="8px";const d=document.createElement("div");d.className="goout-history-summary",d.style.fontSize="14px",d.style.fontWeight="bold",d.style.color="#1e293b",k.appendChild(d),w.appendChild(k);const i=document.createElement("div");i.style.maxHeight="500px",i.style.overflowY="auto",i.style.overflowX="auto",i.style.WebkitOverflowScrolling="touch",i.style.border="1px solid #dbe4f0",w.appendChild(i);const x=document.createElement("table");x.className="excel-table",x.style.width="100%",x.style.minWidth="400px",x.style.borderCollapse="collapse",x.style.margin="0",i.appendChild(x),(()=>{let f=D,g=0,c=0,t=0;const n=f.length?f.map((o,l)=>{const h=String(o.date||""),a=W.dowJa(h),p=K(o.goOutTime)||"\u2014",m=K(o.returnTime)||"\u2014",S=o.type||"\u2014",I=o.reason||"";let P="\u2014",F=m;if(m==="\u2014"&&(F='<span style="color: #d97706; font-weight: bold; font-size: 12px;"><span style="margin-right: 4px;">\u23F3</span>\u5916\u51FA\u4E2D</span>'),p!=="\u2014"&&m!=="\u2014"){const z=dt(p,m);z!=null&&z>0&&(P=H(z),g+=z,S==="\u696D\u52D9"?c+=z:S==="\u79C1\u7528"&&(t+=z))}return`<tr class="goout-history-row" style="background-color: #ffffff; transition: background-color 0.2s;">
+          <td style="text-align: center; border: 1px solid #dbe4f0; color: #1e293b; white-space: nowrap;">${e(h.slice(5).replace("-","/"))}(${e(a)})</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; border: 1px solid #dbe4f0; color: #334155;">${e(p)}</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; border: 1px solid #dbe4f0; color: #334155;">${F}</td>
+          <td style="text-align: center; font-family: monospace, sans-serif; font-weight: 500; border: 1px solid #dbe4f0; color: #334155;">${e(P)}</td>
           <td style="text-align: center; border: 1px solid #dbe4f0; white-space: nowrap;">
-            <span class="goout-type-badge" style="display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 500; background: ${type === '業務' ? '#e0f2fe' : '#fee2e2'}; color: ${type === '業務' ? '#0369a1' : '#b91c1c'}; border: 1px solid ${type === '業務' ? '#bae6fd' : '#fecaca'};">
-              ${esc(type)}
+            <span class="goout-type-badge" style="display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 500; background: ${S==="\u696D\u52D9"?"#e0f2fe":"#fee2e2"}; color: ${S==="\u696D\u52D9"?"#0369a1":"#b91c1c"}; border: 1px solid ${S==="\u696D\u52D9"?"#bae6fd":"#fecaca"};">
+              ${e(S)}
             </span>
           </td>
-          <td class="goout-col-reason" style="text-align: left; border: 1px solid #dbe4f0; color: #475569; word-break: break-word;">${esc(reason)}</td>
-        </tr>`;
-      }).join('') : `<tr><td colspan="6" style="text-align:center; padding: 16px; color:#64748b; font-weight: 500; background: #fff; border: 1px solid #dbe4f0; font-size: 13px;">外出履歴がありません</td></tr>`;
-
-      const thStyle = "position: sticky; top: 0; z-index: 10; background: #0f2c62; color: #ffffff; text-align: center; font-weight: bold; border: 1px solid #dbe4f0; white-space: nowrap;";
-      
-      table.innerHTML = `
+          <td class="goout-col-reason" style="text-align: left; border: 1px solid #dbe4f0; color: #475569; word-break: break-word;">${e(I)}</td>
+        </tr>`}).join(""):'<tr><td colspan="6" style="text-align:center; padding: 16px; color:#64748b; font-weight: 500; background: #fff; border: 1px solid #dbe4f0; font-size: 13px;">\u5916\u51FA\u5C65\u6B74\u304C\u3042\u308A\u307E\u305B\u3093</td></tr>',s="position: sticky; top: 0; z-index: 10; background: #0f2c62; color: #ffffff; text-align: center; font-weight: bold; border: 1px solid #dbe4f0; white-space: nowrap;";x.innerHTML=`
       <thead>
         <tr>
-          <th style="${thStyle}">日付</th>
-          <th style="${thStyle}">外出時間</th>
-          <th style="${thStyle}">戻り時間</th>
-          <th style="${thStyle}">経過時間</th>
-          <th style="${thStyle}">区分</th>
-          <th class="goout-col-reason" style="${thStyle}">理由</th>
+          <th style="${s}">\u65E5\u4ED8</th>
+          <th style="${s}">\u5916\u51FA\u6642\u9593</th>
+          <th style="${s}">\u623B\u308A\u6642\u9593</th>
+          <th style="${s}">\u7D4C\u904E\u6642\u9593</th>
+          <th style="${s}">\u533A\u5206</th>
+          <th class="goout-col-reason" style="${s}">\u7406\u7531</th>
         </tr>
       </thead>
       <tbody>
-        ${tbodyHTML}
+        ${n}
       </tbody>
-      `;
-      
-      const formatJaTime = (mins) => {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return `${h}時間${m}分`;
-      };
-      
-      summaryDiv.innerHTML = `今月の合計外出時間：<span class="goout-summary-total" style="color:#0284c7; font-size: 16px;">${formatJaTime(totalMin)}</span> <span class="goout-summary-details" style="font-size:12px; color:#64748b; font-weight:normal; margin-left: 8px;">(業務: ${formatJaTime(busMin)} / 私用: ${formatJaTime(priMin)})</span>`;
-    };
-
-    renderTable();
-  };
-
-  const renderSummary = (host, detail, timesheet) => {
-    if (!host) return;
-    
-    // Bind Go Out History Toggle Button
-    const btnToggleGoOutHistory = document.querySelector('#btnToggleGoOutHistory');
-    const monthTable = document.querySelector('#monthTable');
-    const goOutHistoryTable = document.querySelector('#goOutHistoryTable');
-    
-    if (btnToggleGoOutHistory && monthTable && goOutHistoryTable) {
-      // Remove old listeners to prevent duplicates
-      const newBtn = btnToggleGoOutHistory.cloneNode(true);
-      btnToggleGoOutHistory.parentNode.replaceChild(newBtn, btnToggleGoOutHistory);
-      
-      newBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const mode = newBtn.dataset.mode;
-        
-        if (mode === 'daily') {
-          // Switch to Go Out History
-          monthTable.style.display = 'none';
-          goOutHistoryTable.style.display = 'block';
-          renderGoOutHistory(goOutHistoryTable, detail);
-          newBtn.dataset.mode = 'history';
-          newBtn.textContent = '日次実績に戻る';
-          newBtn.style.background = '#3b82f6'; // Blue for back button
-          newBtn.style.borderColor = '#3b82f6';
-        } else {
-          // Switch back to Daily Attendance
-          goOutHistoryTable.style.display = 'none';
-          monthTable.style.display = 'block';
-          newBtn.dataset.mode = 'daily';
-          newBtn.textContent = '外出履歴を表示';
-          newBtn.style.background = '#10b981'; // Green for show history
-          newBtn.style.borderColor = '#10b981';
-        }
-      });
-    }
-    
-    const mode = (() => {
-      try {
-        const sec = document.querySelector('#summarySection');
-        const tab = sec?.querySelector?.('.se-tab.active[data-tab]');
-        return String(tab?.dataset?.tab || tab?.getAttribute?.('data-tab') || '') || 'sumAll';
-      } catch (e) {
-        return 'sumAll';
-      }
-    })();
-
-    const days = Array.isArray(detail?.days) ? detail.days : [];
-    const isInhouse = (d) => {
-      const loc = String(d?.daily?.location || '').toLowerCase();
-      if (!loc) return false;
-      return loc.includes('社内') || loc.includes('内勤') || loc.includes('inhouse');
-    };
-    const hasAttend = (d) => (d?.segments || []).some(s => !!s?.checkIn);
-    const isHankyuu = (d) => {
-      const k = String(d?.daily?.kubun || '').trim();
-      return k === '半休' || k === '半休(有給)';
-    };
-    const workTypeOf = (d) => {
-      const dwt = String(d?.daily?.workType || '').trim();
-      if (dwt) return dwt;
-      const segs = Array.isArray(d?.segments) ? d.segments : [];
-      for (const s of segs) {
-        const wt = String(s?.workType || '').trim();
-        if (wt) return wt;
-      }
-      return '';
-    };
-    const scope = mode === 'sumInhouse' ? days.filter(isInhouse) : days;
-
-    const off = scope.filter(d => Number(d?.is_off || 0) === 1).length;
-    const working = scope.length ? (scope.length - off) : 0;
-    // 半休/半休(有給) counts as 0.5 attendance day
-    const hankyuuOnlyDays = scope.filter(d => !hasAttend(d) && isHankyuu(d)).length;
-    const attendDays = scope.filter(hasAttend).length + (hankyuuOnlyDays * 0.5);
-    const holidayWorkDays = scope.filter(d => Number(d?.is_off || 0) === 1 && hasAttend(d)).length;
-    const absent = Math.max(0, working - (attendDays - holidayWorkDays));
-
-    let totals = (mode === 'sumAll' && timesheet?.days) ? timesheet.days.reduce((acc, d) => {
-      acc.regular += Number(d?.regularMinutes || 0);
-      acc.overtime += Number(d?.overtimeMinutes || 0);
-      acc.night += Number(d?.nightMinutes || 0);
-      return acc;
-    }, { regular: 0, overtime: 0, night: 0 }) : { regular: 0, overtime: 0, night: 0 };
-    if (mode === 'sumInhouse') {
-      const t2 = { regular: 0, overtime: 0, night: 0 };
-      for (const d of scope) {
-        const segs = Array.isArray(d?.segments) ? d.segments : [];
-        let raw = 0;
-        for (const s of segs) {
-          const inHm = fromDateTime(s?.checkIn);
-          const outHm = fromDateTime(s?.checkOut);
-          if (!inHm || !outHm) continue;
-          const m = diffMinutesAllowOvernight(inHm, outHm);
-          if (m != null && m > 0) raw += m;
-        }
-        if (raw <= 0) continue;
-        const br = Number((d && d.daily && d.daily.breakMinutes != null) ? d.daily.breakMinutes : 60);
-        const workMin = Math.max(0, raw - (Number.isFinite(br) ? br : 60));
-        t2.regular += Math.min(8 * 60, workMin);
-        t2.overtime += Math.max(0, workMin - (8 * 60));
-      }
-      totals = t2;
-    }
-
-    const counts = scope.reduce((acc, d) => {
-      if (!hasAttend(d)) return acc;
-      const wt = workTypeOf(d);
-      if (wt === 'onsite') acc.onsite += 1;
-      else if (wt === 'remote') acc.remote += 1;
-      else if (wt === 'satellite') acc.satellite += 1;
-      return acc;
-    }, { onsite: 0, remote: 0, satellite: 0 });
-
-    const stored = mode === 'sumInhouse' ? (detail?.monthSummary?.inhouse || null) : (detail?.monthSummary?.all || null);
-    const leave = detail?.leaveSummary || {};
-    let paidDays = Number(mode === 'sumInhouse' ? 0 : (leave?.paidDays || 0));
-    let substituteDays = Number(mode === 'sumInhouse' ? 0 : (leave?.substituteDays || 0));
-    let unpaidDays = Number(mode === 'sumInhouse' ? 0 : (leave?.unpaidDays || 0));
-    let standbyDays = Number(mode === 'sumInhouse' ? 0 : (leave?.standbyDays || 0));
-    
-    // Tự động tính toán lại Giờ làm đêm (22:00 - 5:00) từ dữ liệu timesheet
-    let exactNightMins = 0;
-    if (timesheet?.days) {
-      timesheet.days.forEach(d => {
-         const segs = d.segments || [];
-         segs.forEach(s => {
-            const inHm = s.checkIn ? s.checkIn.slice(11, 16) : null;
-            const outHm = s.checkOut ? s.checkOut.slice(11, 16) : null;
-            if (inHm && outHm) {
-              const parseHmToMin = (hmStr) => {
-                const parts = String(hmStr).trim().split(':');
-                return parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : 0;
-              };
-              let start = parseHmToMin(inHm);
-              let end = parseHmToMin(outHm);
-              if (end < start) end += 24 * 60;
-              
-              let nightWork = 0;
-              const nightRanges = [[0, 300], [1320, 1740], [2760, 3180]]; // 0:00-5:00, 22:00-29:00
-              for (const [rStart, rEnd] of nightRanges) {
-                  const overlapStart = Math.max(start, rStart);
-                  const overlapEnd = Math.min(end, rEnd);
-                  if (overlapStart < overlapEnd) nightWork += (overlapEnd - overlapStart);
-              }
-              const breakNightStr = (d.daily && d.daily.nightBreakMinutes) ? `${Math.floor(d.daily.nightBreakMinutes/60)}:${d.daily.nightBreakMinutes%60}` : '0:00';
-              const nightBreakMins = parseHmToMin(breakNightStr);
-              exactNightMins += Math.max(0, nightWork - nightBreakMins);
-            }
-         });
-      });
-    }
-
-    let totalWork = Math.max(0, Number(totals.regular || 0) + Number(totals.overtime || 0));
-    let deductionTime = 0;
-    let legalOvertimeMin = (() => {
-      if (mode !== 'sumAll' || !Array.isArray(timesheet?.days)) return Number(totals.overtime || 0);
-      const isoWeekStartStr = (s) => {
-        const d = new Date(String(s || '').slice(0, 10) + 'T00:00:00Z');
-        const dow = d.getUTCDay();
-        const delta = (dow + 6) % 7;
-        const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - delta));
-        const y = start.getUTCFullYear();
-        const m2 = String(start.getUTCMonth() + 1).padStart(2, '0');
-        const d2 = String(start.getUTCDate()).padStart(2, '0');
-        return `${y}-${m2}-${d2}`;
-      };
-      let dailyOverTotal = 0;
-      let weeklyAdditional = 0;
-      const weeks = {};
-      for (const day of timesheet.days) {
-        const worked = Number(day?.regularMinutes || 0) + Number(day?.overtimeMinutes || 0);
-        const dOver = Math.max(0, worked - (8 * 60));
-        dailyOverTotal += dOver;
-        const w = isoWeekStartStr(day?.date);
-        if (!weeks[w]) weeks[w] = { total: 0, dailyOver: 0 };
-        weeks[w].total += worked;
-        weeks[w].dailyOver += dOver;
-      }
-      for (const k in weeks) {
-        const over = Math.max(0, (weeks[k].total || 0) - (40 * 60));
-        const add = Math.max(0, over - (weeks[k].dailyOver || 0));
-        weeklyAdditional += add;
-      }
-      return Math.max(0, dailyOverTotal + weeklyAdditional);
-    })();
-    
-    let plannedDays = working;
-    let attendDays2 = attendDays;
-    let holidayWorkDays2 = holidayWorkDays;
-    let absent2 = absent;
-    let onsiteDays2 = counts.onsite;
-    let remoteDays2 = counts.remote;
-    let satelliteDays2 = counts.satellite;
-    let usedFrontend = false;
-    
-    let privateGoOutMinTotal = 0;
-    let workGoOutMinTotal = 0;
-    for (const d of scope) {
-      if (Array.isArray(d.goOutRecords)) {
-        for (const g of d.goOutRecords) {
-          const m = diffMinutesAllowOvernight(fromDateTime(g.go_out_time), fromDateTime(g.return_time));
-          if (m > 0) {
-            if (g.type === '私用') privateGoOutMinTotal += m;
-            if (g.type === '業務') workGoOutMinTotal += m;
-          }
-        }
-      }
-    }
-    
-    const isPartTime = String(detail?.user?.employment_type || '').toLowerCase() === 'part_time' || String(detail?.user?.shift_id || '').includes('baito');
-    
-    // Auto re-calculate from frontend rows instead of using stored DB values
-    try {
-      const tableRows = Array.from(document.querySelectorAll('#monthTable [data-row="1"][data-date]'));
-      if (tableRows.length > 0) {
-        usedFrontend = true;
-        let frontendTotalWork = 0;
-        let frontendOvertime = 0;
-        let frontendNight = 0;
-        let frontendAttendDays = 0;
-        let frontendHolidayWorkDays = 0;
-        let frontendOnsite = 0;
-        let frontendRemote = 0;
-        let frontendSatellite = 0;
-        
-        for (const row of tableRows) {
-          const isOff = row.classList.contains('holiday') || row.classList.contains('sun') || row.classList.contains('sat') || String(row.dataset.baseOff) === '1';
-          const workText = String(row.querySelector('td[data-field="worked"]')?.textContent || '').trim();
-          const overText = String(row.querySelector('td[data-field="excess"]')?.textContent || '').trim();
-          const wt = String(row.dataset.workType || '');
-          const clsSel = row.querySelector('select[data-field="classification"]');
-          const kubunVal = clsSel ? String(clsSel.value || '').trim() : '';
-          
-          let workedThisRow = false;
-          
-          if (workText && workText !== '0:00' && workText !== '—' && !row.querySelector('td[data-field="worked"]')?.classList.contains('is-auto')) {
-             const pts = workText.split(':');
-             if (pts.length === 2) {
-               frontendTotalWork += (parseInt(pts[0], 10) * 60) + parseInt(pts[1], 10);
-               workedThisRow = true;
-             }
-          }
-          if (overText && overText !== '0:00' && overText !== '—' && !row.querySelector('td[data-field="excess"]')?.classList.contains('is-auto')) {
-             const pts = overText.split(':');
-             if (pts.length === 2) frontendOvertime += (parseInt(pts[0], 10) * 60) + parseInt(pts[1], 10);
-          }
-          
-          const inEl = row.querySelector('input.se-time[data-field="checkIn"]');
-          const outEl = row.querySelector('input.se-time[data-field="checkOut"]');
-          const nbSel = row.querySelector('select[data-field="nightBreak"]');
-          const inV = String(inEl?.value || '').trim();
-          const outV = String(outEl?.value || '').trim();
-          
-          if (inV && outV) {
-             const parseHmToMin = (hmStr) => {
-               if (!hmStr) return 0;
-               const parts = String(hmStr).trim().split(':');
-               return parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : 0;
-             };
-             let start = parseHmToMin(inV);
-             let end = parseHmToMin(outV);
-             if (end < start) end += 24 * 60;
-             let nightWork = 0;
-             const nightRanges = [[0, 300], [1320, 1740], [2760, 3180]];
-             for (const [rStart, rEnd] of nightRanges) {
-                 const overlapStart = Math.max(start, rStart);
-                 const overlapEnd = Math.min(end, rEnd);
-                 if (overlapStart < overlapEnd) nightWork += (overlapEnd - overlapStart);
-             }
-             const nightBreakMins = parseHmToMin(nbSel ? nbSel.value : '');
-             frontendNight += Math.max(0, nightWork - nightBreakMins);
-          }
-          
-          const inAuto = String(inEl?.dataset?.auto || '') === '1';
-          const outAuto = String(outEl?.dataset?.auto || '') === '1';
-          const hasManualTime = (!!inV && !inAuto) || (!!outV && !outAuto);
-          const hasEntry = row.classList.contains('has-entry') || !!String(row.dataset.id || '').trim();
-          const isHolidayWorkKubun = kubunVal === '休日出勤';
-          const isHankyuuKubun = kubunVal === '半休' || kubunVal === '半休(有給)';
-          const isAttendKubun = kubunVal === '出勤' || kubunVal === '代替出勤';
-          if (!kubunVal) continue; // chỉ đếm theo kubun đã chọn
-          if (isHolidayWorkKubun) frontendHolidayWorkDays++;
-          else if (isHankyuuKubun) frontendAttendDays += 0.5; // 半休 = 0.5 day attendance
-          else if (isAttendKubun) frontendAttendDays++;
-          else continue;
-            
-            // Re-check the UI checkboxes to get the absolute source of truth instead of dataset which might be delayed
-            const ckOn = row.querySelector('input[data-field="ckOnsite"]');
-            const ckRe = row.querySelector('input[data-field="ckRemote"]');
-            const ckSa = row.querySelector('input[data-field="ckSatellite"]');
-            
-            if (ckOn || ckRe || ckSa) {
-               if (ckOn?.checked) frontendOnsite++;
-               else if (ckRe?.checked) frontendRemote++;
-               else if (ckSa?.checked) frontendSatellite++;
-            } else {
-               if (wt === 'onsite') frontendOnsite++;
-               else if (wt === 'remote') frontendRemote++;
-               else if (wt === 'satellite') frontendSatellite++;
-            }
-        }
-        totalWork = frontendTotalWork;
-        totals.overtime = frontendOvertime;
-        legalOvertimeMin = frontendOvertime; // Approximation based on frontend
-        attendDays2 = frontendAttendDays;
-        holidayWorkDays2 = frontendHolidayWorkDays;
-        
-        // Calculate absent days: only count working days that are NOT attended AND have passed or have '欠勤' explicitly
-        // Since we don't strictly know if a day has passed without checking Date.now(), we'll count '欠勤' explicitly 
-        // OR days that are working days but have no attendance/entry (working - frontendAttendDays).
-        // Wait, working already excludes off days. So if working = 22, and attend = 18, absent could be 4.
-        // But if some days are future days, they shouldn't be counted as absent.
-        // Let's count explicitly: kubun is '欠勤' or (past working day with no attendance). 
-        // For simplicity to match standard logic: 
-        // If the table has explicitly selected '欠勤', count it. If not, only count if it's a past working day without attendance.
-        // A safer way: Just count how many rows have kubun === '欠勤'.
-        let explicitAbsent = 0;
-        let frontendPaidLeaveDays = 0;
-        for (const row of tableRows) {
-           const clsSel = row.querySelector('select[data-field="classification"]');
-           const kv = clsSel ? String(clsSel.value || '').trim() : '';
-           if (kv === '欠勤') explicitAbsent++;
-           if (kv === '有給休暇') frontendPaidLeaveDays++;
-           if (kv === '半休(有給)') frontendPaidLeaveDays += 0.5;
-        }
-        absent2 = explicitAbsent > 0 ? explicitAbsent : 0;
-        // Use frontend-counted paid leave if higher than backend leaveSummary
-        if (frontendPaidLeaveDays > paidDays) paidDays = frontendPaidLeaveDays;
-        
-        onsiteDays2 = frontendOnsite;
-        remoteDays2 = frontendRemote;
-        satelliteDays2 = frontendSatellite;
-      }
-    } catch (e) { /* silently ignored */ }
-    
-    // Ghi đè vào biến totals.night để sử dụng số liệu tính lại từ Frontend thay vì số liệu ảo của Backend
-    totals.night = exactNightMins;
-    
-    if (isPartTime) {
-      plannedDays = attendDays2 + absent2 + Number(paidDays || 0) + Number(unpaidDays || 0) + holidayWorkDays2;
-    }
-
-    // Optionally merge with stored if needed for things not calculatable
-    if (stored && typeof stored === 'object') {
-      if (plannedDays === 0) plannedDays = Number(stored.plannedDays == null ? plannedDays : stored.plannedDays) || 0;
-      if (!usedFrontend) {
-        attendDays2 = Number(stored.attendDays == null ? attendDays2 : stored.attendDays) || 0;
-        holidayWorkDays2 = Number(stored.holidayWorkDays == null ? holidayWorkDays2 : stored.holidayWorkDays) || 0;
-      }
-      standbyDays = Number(stored.standbyDays == null ? standbyDays : stored.standbyDays) || 0;
-      paidDays = Number(stored.paidDays == null ? paidDays : stored.paidDays) || 0;
-      substituteDays = Number(stored.substituteDays == null ? substituteDays : stored.substituteDays) || 0;
-      unpaidDays = Number(stored.unpaidDays == null ? unpaidDays : stored.unpaidDays) || 0;
-      deductionTime = Number(stored.deductionMinutes == null ? deductionTime : stored.deductionMinutes) || 0;
-      if (!usedFrontend) {
-        absent2 = Number(stored.absentDays == null ? absent2 : stored.absentDays) || 0;
-        onsiteDays2 = Number(stored.onsiteDays == null ? onsiteDays2 : stored.onsiteDays) || 0;
-        remoteDays2 = Number(stored.remoteDays == null ? remoteDays2 : stored.remoteDays) || 0;
-        satelliteDays2 = Number(stored.satelliteDays == null ? satelliteDays2 : stored.satelliteDays) || 0;
-      }
-    }
-    const paidText = Number.isFinite(paidDays) ? Number(paidDays).toFixed(1) : '0.0';
-    const grantedTotalFromSummary = Number(leave?.grantedDaysTotal || 0);
-    const grantedTotalFromUser = Number(detail?.user?.paidLeaveGrantedTotalDays || 0);
-    const grantedFromSummary = Number(leave?.grantedDays || 0);
-    const grantedFromUser = Number(detail?.user?.paidLeaveGrantedDays || 0);
-    const entitlementText = (Number.isFinite(grantedTotalFromSummary) && grantedTotalFromSummary > 0)
-      ? Number(grantedTotalFromSummary).toFixed(1)
-      : (Number.isFinite(grantedTotalFromUser) && grantedTotalFromUser > 0)
-        ? Number(grantedTotalFromUser).toFixed(1)
-      : (Number.isFinite(grantedFromSummary) && grantedFromSummary > 0)
-      ? Number(grantedFromSummary).toFixed(1)
-      : (Number.isFinite(grantedFromUser) && grantedFromUser > 0)
-        ? Number(grantedFromUser).toFixed(1)
-        : String(detail?.user?.paidLeaveEntitlement || '—');
-
-    const table = document.createElement('table');
-    const L = {
-      planned: '所定日数', attend: '出勤日数', holiday: '休日出勤日数', standby: '待機日数',
-      total: '総労働時間', night: '深夜時間', overtime: '総残業時間', legal: '法定外時間',
-      paid: '有休日数', entitlement: '有給付与', substitute: '代休日数', unpaid: '無給休暇',
-      absent: '欠勤日数', deduction: '控除時間', onsite: '出社日数', remote: '在宅日数', satellite: '現場日数',
-      workGoOut: '業務外出', privateGoOut: '私用外出'
-    };
-    if (mode === 'sumAll') {
-      table.innerHTML = `
+      `;const u=o=>{const l=Math.floor(o/60),h=o%60;return`${l}\u6642\u9593${h}\u5206`};d.innerHTML=`\u4ECA\u6708\u306E\u5408\u8A08\u5916\u51FA\u6642\u9593\uFF1A<span class="goout-summary-total" style="color:#0284c7; font-size: 16px;">${u(g)}</span> <span class="goout-summary-details" style="font-size:12px; color:#64748b; font-weight:normal; margin-left: 8px;">(\u696D\u52D9: ${u(c)} / \u79C1\u7528: ${u(t)})</span>`})()},mt=(w,$,_)=>{if(!w)return;const D=document.querySelector("#btnToggleGoOutHistory"),k=document.querySelector("#monthTable"),d=document.querySelector("#goOutHistoryTable");if(D&&k&&d){const r=D.cloneNode(!0);D.parentNode.replaceChild(r,D),r.addEventListener("click",y=>{y.preventDefault(),r.dataset.mode==="daily"?(k.style.display="none",d.style.display="block",Vt(d,$),r.dataset.mode="history",r.textContent="\u65E5\u6B21\u5B9F\u7E3E\u306B\u623B\u308B",r.style.background="#3b82f6",r.style.borderColor="#3b82f6"):(d.style.display="none",k.style.display="block",r.dataset.mode="daily",r.textContent="\u5916\u51FA\u5C65\u6B74\u3092\u8868\u793A",r.style.background="#10b981",r.style.borderColor="#10b981")})}const i=(()=>{try{const y=document.querySelector("#summarySection")?.querySelector?.(".se-tab.active[data-tab]");return String(y?.dataset?.tab||y?.getAttribute?.("data-tab")||"")||"sumAll"}catch{return"sumAll"}})(),x=Array.isArray($?.days)?$.days:[],O=r=>{const y=String(r?.daily?.location||"").toLowerCase();return y?y.includes("\u793E\u5185")||y.includes("\u5185\u52E4")||y.includes("inhouse"):!1},f=r=>(r?.segments||[]).some(y=>!!y?.checkIn),g=r=>{const y=String(r?.daily?.kubun||"").trim();return y==="\u534A\u4F11"||y==="\u534A\u4F11(\u6709\u7D66)"},c=r=>{const y=String(r?.daily?.workType||"").trim();if(y)return y;const T=Array.isArray(r?.segments)?r.segments:[];for(const C of T){const N=String(C?.workType||"").trim();if(N)return N}return""},t=i==="sumInhouse"?x.filter(O):x,n=t.filter(r=>Number(r?.is_off||0)===1).length,s=t.length?t.length-n:0,u=t.filter(r=>!f(r)&&g(r)).length,o=t.filter(f).length+u*.5,l=t.filter(r=>Number(r?.is_off||0)===1&&f(r)).length,h=Math.max(0,s-(o-l));let a=i==="sumAll"&&_?.days?_.days.reduce((r,y)=>(r.regular+=Number(y?.regularMinutes||0),r.overtime+=Number(y?.overtimeMinutes||0),r.night+=Number(y?.nightMinutes||0),r),{regular:0,overtime:0,night:0}):{regular:0,overtime:0,night:0};if(i==="sumInhouse"){const r={regular:0,overtime:0,night:0};for(const y of t){const T=Array.isArray(y?.segments)?y.segments:[];let C=0;for(const L of T){const q=K(L?.checkIn),E=K(L?.checkOut);if(!q||!E)continue;const R=dt(q,E);R!=null&&R>0&&(C+=R)}if(C<=0)continue;const N=Number(y&&y.daily&&y.daily.breakMinutes!=null?y.daily.breakMinutes:60),A=Math.max(0,C-(Number.isFinite(N)?N:60));r.regular+=Math.min(480,A),r.overtime+=Math.max(0,A-480)}a=r}const p=t.reduce((r,y)=>{if(!f(y))return r;const T=c(y);return T==="onsite"?r.onsite+=1:T==="remote"?r.remote+=1:T==="satellite"&&(r.satellite+=1),r},{onsite:0,remote:0,satellite:0}),m=i==="sumInhouse"?$?.monthSummary?.inhouse||null:$?.monthSummary?.all||null,S=$?.leaveSummary||{};let I=Number(i==="sumInhouse"?0:S?.paidDays||0),P=Number(i==="sumInhouse"?0:S?.substituteDays||0),F=Number(i==="sumInhouse"?0:S?.unpaidDays||0),z=Number(i==="sumInhouse"?0:S?.standbyDays||0),vt=0;_?.days&&_.days.forEach(r=>{(r.segments||[]).forEach(T=>{const C=T.checkIn?T.checkIn.slice(11,16):null,N=T.checkOut?T.checkOut.slice(11,16):null;if(C&&N){const A=j=>{const U=String(j).trim().split(":");return U.length===2?parseInt(U[0],10)*60+parseInt(U[1],10):0};let L=A(C),q=A(N);q<L&&(q+=1440);let E=0;const R=[[0,300],[1320,1740],[2760,3180]];for(const[j,U]of R){const B=Math.max(L,j),et=Math.min(q,U);B<et&&(E+=et-B)}const G=r.daily&&r.daily.nightBreakMinutes?`${Math.floor(r.daily.nightBreakMinutes/60)}:${r.daily.nightBreakMinutes%60}`:"0:00",M=A(G);vt+=Math.max(0,E-M)}})});let yt=Math.max(0,Number(a.regular||0)+Number(a.overtime||0)),ft=0,pt=(()=>{if(i!=="sumAll"||!Array.isArray(_?.days))return Number(a.overtime||0);const r=N=>{const A=new Date(String(N||"").slice(0,10)+"T00:00:00Z"),q=(A.getUTCDay()+6)%7,E=new Date(Date.UTC(A.getUTCFullYear(),A.getUTCMonth(),A.getUTCDate()-q)),R=E.getUTCFullYear(),G=String(E.getUTCMonth()+1).padStart(2,"0"),M=String(E.getUTCDate()).padStart(2,"0");return`${R}-${G}-${M}`};let y=0,T=0;const C={};for(const N of _.days){const A=Number(N?.regularMinutes||0)+Number(N?.overtimeMinutes||0),L=Math.max(0,A-480);y+=L;const q=r(N?.date);C[q]||(C[q]={total:0,dailyOver:0}),C[q].total+=A,C[q].dailyOver+=L}for(const N in C){const A=Math.max(0,(C[N].total||0)-2400),L=Math.max(0,A-(C[N].dailyOver||0));T+=L}return Math.max(0,y+T)})(),Q=s,X=o,Z=l,tt=h,st=p.onsite,at=p.remote,it=p.satellite,ht=!1,_t=0,Nt=0;for(const r of t)if(Array.isArray(r.goOutRecords))for(const y of r.goOutRecords){const T=dt(K(y.go_out_time),K(y.return_time));T>0&&(y.type==="\u79C1\u7528"&&(_t+=T),y.type==="\u696D\u52D9"&&(Nt+=T))}const Wt=String($?.user?.employment_type||"").toLowerCase()==="part_time"||String($?.user?.shift_id||"").includes("baito");try{const r=Array.from(document.querySelectorAll('#monthTable [data-row="1"][data-date]'));if(r.length>0){ht=!0;let y=0,T=0,C=0,N=0,A=0,L=0,q=0,E=0;for(const M of r){const j=M.classList.contains("holiday")||M.classList.contains("sun")||M.classList.contains("sat")||String(M.dataset.baseOff)==="1",U=String(M.querySelector('td[data-field="worked"]')?.textContent||"").trim(),B=String(M.querySelector('td[data-field="excess"]')?.textContent||"").trim(),et=String(M.dataset.workType||""),It=M.querySelector('select[data-field="classification"]'),nt=It?String(It.value||"").trim():"";let jt=!1;if(U&&U!=="0:00"&&U!=="\u2014"&&!M.querySelector('td[data-field="worked"]')?.classList.contains("is-auto")){const Y=U.split(":");Y.length===2&&(y+=parseInt(Y[0],10)*60+parseInt(Y[1],10),jt=!0)}if(B&&B!=="0:00"&&B!=="\u2014"&&!M.querySelector('td[data-field="excess"]')?.classList.contains("is-auto")){const Y=B.split(":");Y.length===2&&(T+=parseInt(Y[0],10)*60+parseInt(Y[1],10))}const Ct=M.querySelector('input.se-time[data-field="checkIn"]'),Ot=M.querySelector('input.se-time[data-field="checkOut"]'),qt=M.querySelector('select[data-field="nightBreak"]'),$t=String(Ct?.value||"").trim(),St=String(Ot?.value||"").trim();if($t&&St){const Y=lt=>{if(!lt)return 0;const ot=String(lt).trim().split(":");return ot.length===2?parseInt(ot[0],10)*60+parseInt(ot[1],10):0};let Pt=Y($t),Dt=Y(St);Dt<Pt&&(Dt+=1440);let Et=0;const Zt=[[0,300],[1320,1740],[2760,3180]];for(const[lt,ot]of Zt){const Ft=Math.max(Pt,lt),zt=Math.min(Dt,ot);Ft<zt&&(Et+=zt-Ft)}const te=Y(qt?qt.value:"");C+=Math.max(0,Et-te)}const Bt=String(Ct?.dataset?.auto||"")==="1",Jt=String(Ot?.dataset?.auto||"")==="1",re=!!$t&&!Bt||!!St&&!Jt,se=M.classList.contains("has-entry")||!!String(M.dataset.id||"").trim(),Kt=nt==="\u4F11\u65E5\u51FA\u52E4",Qt=nt==="\u534A\u4F11"||nt==="\u534A\u4F11(\u6709\u7D66)",Xt=nt==="\u51FA\u52E4"||nt==="\u4EE3\u66FF\u51FA\u52E4";if(!nt)continue;if(Kt)A++;else if(Qt)N+=.5;else if(Xt)N++;else continue;const Lt=M.querySelector('input[data-field="ckOnsite"]'),Ht=M.querySelector('input[data-field="ckRemote"]'),Ut=M.querySelector('input[data-field="ckSatellite"]');Lt||Ht||Ut?Lt?.checked?L++:Ht?.checked?q++:Ut?.checked&&E++:et==="onsite"?L++:et==="remote"?q++:et==="satellite"&&E++}yt=y,a.overtime=T,pt=T,X=N,Z=A;let R=0,G=0;for(const M of r){const j=M.querySelector('select[data-field="classification"]'),U=j?String(j.value||"").trim():"";U==="\u6B20\u52E4"&&R++,U==="\u6709\u7D66\u4F11\u6687"&&G++,U==="\u534A\u4F11(\u6709\u7D66)"&&(G+=.5)}tt=R>0?R:0,G>I&&(I=G),st=L,at=q,it=E}}catch{}a.night=vt,Wt&&(Q=X+tt+Number(I||0)+Number(F||0)+Z),m&&typeof m=="object"&&(Q===0&&(Q=Number(m.plannedDays==null?Q:m.plannedDays)||0),ht||(X=Number(m.attendDays==null?X:m.attendDays)||0,Z=Number(m.holidayWorkDays==null?Z:m.holidayWorkDays)||0),z=Number(m.standbyDays==null?z:m.standbyDays)||0,I=Number(m.paidDays==null?I:m.paidDays)||0,P=Number(m.substituteDays==null?P:m.substituteDays)||0,F=Number(m.unpaidDays==null?F:m.unpaidDays)||0,ft=Number(m.deductionMinutes==null?ft:m.deductionMinutes)||0,ht||(tt=Number(m.absentDays==null?tt:m.absentDays)||0,st=Number(m.onsiteDays==null?st:m.onsiteDays)||0,at=Number(m.remoteDays==null?at:m.remoteDays)||0,it=Number(m.satelliteDays==null?it:m.satelliteDays)||0));const At=Number.isFinite(I)?Number(I).toFixed(1):"0.0",gt=Number(S?.grantedDaysTotal||0),bt=Number($?.user?.paidLeaveGrantedTotalDays||0),wt=Number(S?.grantedDays||0),xt=Number($?.user?.paidLeaveGrantedDays||0),Gt=Number.isFinite(gt)&&gt>0?Number(gt).toFixed(1):Number.isFinite(bt)&&bt>0?Number(bt).toFixed(1):Number.isFinite(wt)&&wt>0?Number(wt).toFixed(1):Number.isFinite(xt)&&xt>0?Number(xt).toFixed(1):String($?.user?.paidLeaveEntitlement||"\u2014"),kt=document.createElement("table"),b={planned:"\u6240\u5B9A\u65E5\u6570",attend:"\u51FA\u52E4\u65E5\u6570",holiday:"\u4F11\u65E5\u51FA\u52E4\u65E5\u6570",standby:"\u5F85\u6A5F\u65E5\u6570",total:"\u7DCF\u52B4\u50CD\u6642\u9593",night:"\u6DF1\u591C\u6642\u9593",overtime:"\u7DCF\u6B8B\u696D\u6642\u9593",legal:"\u6CD5\u5B9A\u5916\u6642\u9593",paid:"\u6709\u4F11\u65E5\u6570",entitlement:"\u6709\u7D66\u4ED8\u4E0E",substitute:"\u4EE3\u4F11\u65E5\u6570",unpaid:"\u7121\u7D66\u4F11\u6687",absent:"\u6B20\u52E4\u65E5\u6570",deduction:"\u63A7\u9664\u6642\u9593",onsite:"\u51FA\u793E\u65E5\u6570",remote:"\u5728\u5B85\u65E5\u6570",satellite:"\u73FE\u5834\u65E5\u6570",workGoOut:"\u696D\u52D9\u5916\u51FA",privateGoOut:"\u79C1\u7528\u5916\u51FA"};i==="sumAll"?kt.innerHTML=`
       <thead>
         <tr>
-          <th>${esc(L.planned)}</th>
-          <th style="background:#1d4ed8;color:#fff;">${esc(L.attend)}</th>
-          <th>${esc(L.holiday)}</th>
-          <th>${esc(L.standby)}</th>
-          <th style="background:#1e40af;color:#fff;">${esc(L.total)}</th>
-          <th>${esc(L.night)}</th>
-          <th style="background:#ea580c;color:#fff;">${esc(L.overtime)}</th>
-          <th style="background:#dc2626;color:#fff;">${esc(L.legal)}</th>
-          <th>${esc(L.paid)}</th>
-          <th>${esc(L.entitlement)}</th>
-          <th>${esc(L.substitute)}</th>
-          <th>${esc(L.unpaid)}</th>
-          <th>${esc(L.absent)}</th>
-          <th>${esc(L.deduction)}</th>
-          <th>${esc(L.workGoOut)}</th>
-          <th>${esc(L.privateGoOut)}</th>
-          <th>${esc(L.onsite)}</th>
-          <th>${esc(L.remote)}</th>
-          <th>${esc(L.satellite)}</th>
+          <th>${e(b.planned)}</th>
+          <th style="background:#1d4ed8;color:#fff;">${e(b.attend)}</th>
+          <th>${e(b.holiday)}</th>
+          <th>${e(b.standby)}</th>
+          <th style="background:#1e40af;color:#fff;">${e(b.total)}</th>
+          <th>${e(b.night)}</th>
+          <th style="background:#ea580c;color:#fff;">${e(b.overtime)}</th>
+          <th style="background:#dc2626;color:#fff;">${e(b.legal)}</th>
+          <th>${e(b.paid)}</th>
+          <th>${e(b.entitlement)}</th>
+          <th>${e(b.substitute)}</th>
+          <th>${e(b.unpaid)}</th>
+          <th>${e(b.absent)}</th>
+          <th>${e(b.deduction)}</th>
+          <th>${e(b.workGoOut)}</th>
+          <th>${e(b.privateGoOut)}</th>
+          <th>${e(b.onsite)}</th>
+          <th>${e(b.remote)}</th>
+          <th>${e(b.satellite)}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>${esc(plannedDays)}日</td>
-          <td style="background:#dbeafe;font-weight:900;color:#1d4ed8;">${esc(attendDays2)}日</td>
-          <td>${esc(holidayWorkDays2)}日</td>
-          <td>${esc(standbyDays)}日</td>
-          <td style="background:#dbeafe;font-weight:900;color:#1e40af;">${esc(fmtHm(totalWork))}</td>
-          <td>${esc(fmtHm(totals.night))}</td>
-          <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${esc(fmtHm(totals.overtime))}</td>
-          <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${esc(fmtHm(legalOvertimeMin))}</td>
-          <td>${esc(paidText)}日</td>
-          <td>${esc(entitlementText)}日</td>
-          <td>${esc(substituteDays)}日</td>
-          <td>${esc(unpaidDays)}日</td>
-          <td>${esc(absent2)}日</td>
-          <td>${esc(fmtHm(deductionTime))}</td>
-          <td>${esc(fmtHm(workGoOutMinTotal))}</td>
-          <td>${esc(fmtHm(privateGoOutMinTotal))}</td>
-          <td>${esc(onsiteDays2)}日</td>
-          <td>${esc(remoteDays2)}日</td>
-          <td>${esc(satelliteDays2)}日</td>
+          <td>${e(Q)}\u65E5</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1d4ed8;">${e(X)}\u65E5</td>
+          <td>${e(Z)}\u65E5</td>
+          <td>${e(z)}\u65E5</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1e40af;">${e(H(yt))}</td>
+          <td>${e(H(a.night))}</td>
+          <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${e(H(a.overtime))}</td>
+          <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${e(H(pt))}</td>
+          <td>${e(At)}\u65E5</td>
+          <td>${e(Gt)}\u65E5</td>
+          <td>${e(P)}\u65E5</td>
+          <td>${e(F)}\u65E5</td>
+          <td>${e(tt)}\u65E5</td>
+          <td>${e(H(ft))}</td>
+          <td>${e(H(Nt))}</td>
+          <td>${e(H(_t))}</td>
+          <td>${e(st)}\u65E5</td>
+          <td>${e(at)}\u65E5</td>
+          <td>${e(it)}\u65E5</td>
         </tr>
       </tbody>
-    `;
-    } else {
-      table.innerHTML = `
+    `:kt.innerHTML=`
       <thead>
         <tr>
-          <th>${esc(L.planned)}</th>
-          <th style="background:#1d4ed8;color:#fff;">${esc(L.attend)}</th>
-          <th>${esc(L.holiday)}</th>
-          <th>${esc(L.standby)}</th>
-          <th style="background:#1e40af;color:#fff;">${esc(L.total)}</th>
-          <th>${esc(L.night)}</th>
-          <th style="background:#ea580c;color:#fff;">${esc(L.overtime)}</th>
-          <th style="background:#dc2626;color:#fff;">${esc(L.legal)}</th>
-          <th>${esc(L.paid)}</th>
-          <th>${esc(L.substitute)}</th>
-          <th>${esc(L.unpaid)}</th>
-          <th>${esc(L.absent)}</th>
+          <th>${e(b.planned)}</th>
+          <th style="background:#1d4ed8;color:#fff;">${e(b.attend)}</th>
+          <th>${e(b.holiday)}</th>
+          <th>${e(b.standby)}</th>
+          <th style="background:#1e40af;color:#fff;">${e(b.total)}</th>
+          <th>${e(b.night)}</th>
+          <th style="background:#ea580c;color:#fff;">${e(b.overtime)}</th>
+          <th style="background:#dc2626;color:#fff;">${e(b.legal)}</th>
+          <th>${e(b.paid)}</th>
+          <th>${e(b.substitute)}</th>
+          <th>${e(b.unpaid)}</th>
+          <th>${e(b.absent)}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>${esc(plannedDays)}日</td>
-          <td style="background:#dbeafe;font-weight:900;color:#1d4ed8;">${esc(attendDays2)}日</td>
-          <td>${esc(holidayWorkDays2)}日</td>
-          <td>${esc(standbyDays)}日</td>
-          <td style="background:#dbeafe;font-weight:900;color:#1e40af;">${esc(fmtHm(totalWork))}</td>
-          <td>${esc(fmtHm(totals.night))}</td>
-          <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${esc(fmtHm(totals.overtime))}</td>
-          <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${esc(fmtHm(legalOvertimeMin))}</td>
-          <td>${esc(paidText)}日</td>
-          <td>${esc(substituteDays)}日</td>
-          <td>${esc(unpaidDays)}日</td>
-          <td>${esc(absent2)}日</td>
+          <td>${e(Q)}\u65E5</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1d4ed8;">${e(X)}\u65E5</td>
+          <td>${e(Z)}\u65E5</td>
+          <td>${e(z)}\u65E5</td>
+          <td style="background:#dbeafe;font-weight:900;color:#1e40af;">${e(H(yt))}</td>
+          <td>${e(H(a.night))}</td>
+          <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${e(H(a.overtime))}</td>
+          <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${e(H(pt))}</td>
+          <td>${e(At)}\u65E5</td>
+          <td>${e(P)}\u65E5</td>
+          <td>${e(F)}\u65E5</td>
+          <td>${e(tt)}\u65E5</td>
         </tr>
       </tbody>
-    `;
-    }
-    host.innerHTML = '';
-    host.appendChild(table);
-  };
-
-  const renderPlan = (host, detail, profile) => {
-    if (!host) return;
-    const days = Array.isArray(detail?.days) ? detail.days : [];
-    const table = document.createElement('table');
-    table.innerHTML = `
+    `,w.innerHTML="",w.appendChild(kt)},Mt={renderContract:ct,renderWorkDetail:ut,renderSummary:mt,renderPlan:(w,$,_)=>{if(!w)return;const D=Array.isArray($?.days)?$.days:[],k=document.createElement("table");k.innerHTML=`
     <thead>
       <tr>
-        <th>日付</th>
-        <th>勤務区分</th>
-        <th>企業名</th>
-        <th>開始時刻</th>
-        <th>終了時刻</th>
-        <th>休憩時間</th>
-        <th>深夜休憩</th>
-        <th>勤務時間</th>
-        <th>勤務形態</th>
+        <th>\u65E5\u4ED8</th>
+        <th>\u52E4\u52D9\u533A\u5206</th>
+        <th>\u4F01\u696D\u540D</th>
+        <th>\u958B\u59CB\u6642\u523B</th>
+        <th>\u7D42\u4E86\u6642\u523B</th>
+        <th>\u4F11\u61A9\u6642\u9593</th>
+        <th>\u6DF1\u591C\u4F11\u61A9</th>
+        <th>\u52E4\u52D9\u6642\u9593</th>
+        <th>\u52E4\u52D9\u5F62\u614B</th>
       </tr>
     </thead>
     <tbody>
-      ${
-        days.map(d => {
-          const ds = String(d?.date || '');
-          const dow = core.dowJa(ds);
-          const isOff = Number(d?.is_off || 0) === 1;
-          const plan = d?.plan || null;
-          const shift = d?.shift || null;
-          
-          const kubun = isOff ? '休日' : '出勤';
-          const company = plan?.location || '';
-          const st = plan?.startTime || shift?.start_time || '';
-          const et = plan?.endTime || shift?.end_time || '';
-          const br = plan?.breakMinutes != null ? plan.breakMinutes : (shift?.break_minutes || 0);
-          const nb = plan?.nightBreakMinutes || 0;
-          const wt = plan?.workType || (isOff ? '' : '契約なし');
-          
-          let workMin = 0;
-          if (st && et) {
-            const sM = core.parseHm(st);
-            const eM = core.parseHm(et);
-            if (sM != null && eM != null) {
-              const raw = eM >= sM ? (eM - sM) : (eM + 1440 - sM);
-              workMin = Math.max(0, raw - br - nb);
-            }
-          }
-
-          return `<tr class="${isOff ? 'off' : ''}">
-            <td>${esc(ds.slice(5).replace('-', '/'))}(${esc(dow)})</td>
-            <td>${esc(kubun)}</td>
-            <td><input type="text" class="se-input plan-input" data-date="${ds}" data-field="location" value="${esc(company)}"></td>
-            <td><input type="time" class="se-input plan-input" data-date="${ds}" data-field="startTime" value="${esc(st)}"></td>
-            <td><input type="time" class="se-input plan-input" data-date="${ds}" data-field="endTime" value="${esc(et)}"></td>
+      ${D.map(d=>{const i=String(d?.date||""),x=W.dowJa(i),O=Number(d?.is_off||0)===1,f=d?.plan||null,g=d?.shift||null,c=O?"\u4F11\u65E5":"\u51FA\u52E4",t=f?.location||"",n=f?.startTime||g?.start_time||"",s=f?.endTime||g?.end_time||"",u=f?.breakMinutes!=null?f.breakMinutes:g?.break_minutes||0,o=f?.nightBreakMinutes||0,l=f?.workType||(O?"":"\u5951\u7D04\u306A\u3057");let h=0;if(n&&s){const a=W.parseHm(n),p=W.parseHm(s);if(a!=null&&p!=null){const m=p>=a?p-a:p+1440-a;h=Math.max(0,m-u-o)}}return`<tr class="${O?"off":""}">
+            <td>${e(i.slice(5).replace("-","/"))}(${e(x)})</td>
+            <td>${e(c)}</td>
+            <td><input type="text" class="se-input plan-input" data-date="${i}" data-field="location" value="${e(t)}"></td>
+            <td><input type="time" class="se-input plan-input" data-date="${i}" data-field="startTime" value="${e(n)}"></td>
+            <td><input type="time" class="se-input plan-input" data-date="${i}" data-field="endTime" value="${e(s)}"></td>
             <td>
-              <select class="se-select plan-input" data-date="${ds}" data-field="breakMinutes">
-                <option value="180" ${br === 180 ? 'selected' : ''}>3:00</option>
-                <option value="150" ${br === 150 ? 'selected' : ''}>2:30</option>
-                <option value="120" ${br === 120 ? 'selected' : ''}>2:00</option>
-                <option value="90" ${br === 90 ? 'selected' : ''}>1:30</option>
-                <option value="60" ${br === 60 ? 'selected' : ''}>1:00</option>
-                <option value="45" ${br === 45 ? 'selected' : ''}>0:45</option>
-                <option value="30" ${br === 30 ? 'selected' : ''}>0:30</option>
-                <option value="0" ${br === 0 ? 'selected' : ''}>0:00</option>
+              <select class="se-select plan-input" data-date="${i}" data-field="breakMinutes">
+                <option value="180" ${u===180?"selected":""}>3:00</option>
+                <option value="150" ${u===150?"selected":""}>2:30</option>
+                <option value="120" ${u===120?"selected":""}>2:00</option>
+                <option value="90" ${u===90?"selected":""}>1:30</option>
+                <option value="60" ${u===60?"selected":""}>1:00</option>
+                <option value="45" ${u===45?"selected":""}>0:45</option>
+                <option value="30" ${u===30?"selected":""}>0:30</option>
+                <option value="0" ${u===0?"selected":""}>0:00</option>
               </select>
             </td>
             <td>0:00</td>
-            <td>${esc(core.fmtHm(workMin))}</td>
-            <td><input type="text" class="se-input plan-input" data-date="${ds}" data-field="workType" value="${esc(wt)}"></td>
-          </tr>`;
-        }).join('')
-      }
+            <td>${e(W.fmtHm(h))}</td>
+            <td><input type="text" class="se-input plan-input" data-date="${i}" data-field="workType" value="${e(l)}"></td>
+          </tr>`}).join("")}
     </tbody>
-    `;
-    host.innerHTML = '';
-    host.appendChild(table);
-
-    // Bind inputs
-    host.querySelectorAll('.plan-input').forEach(el => {
-      el.addEventListener('change', async (e) => {
-        const date = el.dataset.date;
-        const field = el.dataset.field;
-        const val = el.value;
-        const row = el.closest('tr');
-        const plan = days.find(d => d.date === date)?.plan || {};
-        plan[field] = (field === 'breakMinutes') ? parseInt(val, 10) : val;
-        
-        try {
-          await fetchJSONAuth('/api/attendance/plan', {
-            method: 'PUT',
-            body: JSON.stringify({ date, plan })
-          });
-          // Recalculate work time locally
-          const st = row.querySelector('[data-field="startTime"]').value;
-          const et = row.querySelector('[data-field="endTime"]').value;
-          const br = parseInt(row.querySelector('[data-field="breakMinutes"]').value, 10);
-          if (st && et) {
-            const sM = core.parseHm(st);
-            const eM = core.parseHm(et);
-            const raw = eM >= sM ? (eM - sM) : (eM + 1440 - sM);
-            const wm = Math.max(0, raw - br);
-            row.children[7].textContent = core.fmtHm(wm);
-          }
-        } catch (err) {
-          console.error('Plan save failed:', err);
-        }
-      });
-    });
-  };
-
-  // ============================================================
-  // 年間サマリ (Annual Summary) — 36協定 Compliance Display
-  // ============================================================
-  const renderYearSummary = async (host, options = {}) => {
-    if (!host) return;
-    const userId = options.userId || state.currentViewingUserId || null;
-    const month = options.month || '';
-    const year = month ? parseInt(String(month).slice(0, 4), 10) : new Date(Date.now() + 9 * 3600 * 1000).getFullYear();
-
-    host.innerHTML = '<div style="text-align:center;padding:16px;color:#64748b;">読込中...</div>';
-
-    try {
-      const uidQ = userId ? `&userId=${encodeURIComponent(userId)}` : '';
-      const data = await fetchJSONAuth(`/api/attendance/annual-summary?year=${year}${uidQ}`);
-      if (!data) {
-        host.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;">データなし</div>';
-        return;
-      }
-
-      const ot = data.annualOvertime || {};
-      const m45 = data.monthsOver45h || {};
-      const recent = Array.isArray(data.recentMonths) ? data.recentMonths : [];
-      const leave = data.paidLeave || {};
-      const singleMax = data.singleMonthMax || {};
-
-      // Warning colors
-      const warnColor = '#dc2626';
-      const okColor = '#1e293b';
-      const otColor = ot.exceeds ? warnColor : okColor;
-      const m45Color = m45.exceeds ? warnColor : okColor;
-      const singleColor = singleMax.exceeds100h ? warnColor : okColor;
-
-      // Format month label: "2026/07~"
-      const fmtMonthLabel = (mk) => {
-        if (!mk) return '';
-        return mk.replace('-', '/') + '～';
-      };
-
-      // Recent months columns (reverse order: newest first)
-      const recentReversed = [...recent].reverse();
-      const recentHeaders = recentReversed.map(r => `<th style="padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #dbe4f0;background:#f1f5f9;">${fmtMonthLabel(r.month)}</th>`).join('');
-      const recentValues = recentReversed.map(r => `<td style="padding:6px 10px;text-align:center;font-weight:700;font-size:13px;border:1px solid #dbe4f0;">${r.formatted || '0:00'}</td>`).join('');
-
-      // Paid leave display
-      const grantDateStr = leave.grantDate ? `最終付与日：${leave.grantDate}` : '最終付与日：.....';
-
-      host.innerHTML = `
+    `,w.innerHTML="",w.appendChild(k),w.querySelectorAll(".plan-input").forEach(d=>{d.addEventListener("change",async i=>{const x=d.dataset.date,O=d.dataset.field,f=d.value,g=d.closest("tr"),c=D.find(t=>t.date===x)?.plan||{};c[O]=O==="breakMinutes"?parseInt(f,10):f;try{await V("/api/attendance/plan",{method:"PUT",body:JSON.stringify({date:x,plan:c})});const t=g.querySelector('[data-field="startTime"]').value,n=g.querySelector('[data-field="endTime"]').value,s=parseInt(g.querySelector('[data-field="breakMinutes"]').value,10);if(t&&n){const u=W.parseHm(t),o=W.parseHm(n),l=o>=u?o-u:o+1440-u,h=Math.max(0,l-s);g.children[7].textContent=W.fmtHm(h)}}catch(t){console.error("Plan save failed:",t)}})})},renderYearSummary:async(w,$={})=>{if(!w)return;const _=$.userId||v.currentViewingUserId||null,D=$.month||"",k=D?parseInt(String(D).slice(0,4),10):new Date(Date.now()+9*3600*1e3).getFullYear();w.innerHTML='<div style="text-align:center;padding:16px;color:#64748b;">\u8AAD\u8FBC\u4E2D...</div>';try{const d=_?`&userId=${encodeURIComponent(_)}`:"",i=await V(`/api/attendance/annual-summary?year=${k}${d}`);if(!i){w.innerHTML='<div style="text-align:center;padding:16px;color:#94a3b8;">\u30C7\u30FC\u30BF\u306A\u3057</div>';return}const x=i.annualOvertime||{},O=i.monthsOver45h||{},f=Array.isArray(i.recentMonths)?i.recentMonths:[],g=i.paidLeave||{},c=i.singleMonthMax||{},t="#dc2626",n="#1e293b",s=x.exceeds?t:n,u=O.exceeds?t:n,o=c.exceeds100h?t:n,l=S=>S?S.replace("-","/")+"\uFF5E":"",h=[...f].reverse(),a=h.map(S=>`<th style="padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #dbe4f0;background:#f1f5f9;">${l(S.month)}</th>`).join(""),p=h.map(S=>`<td style="padding:6px 10px;text-align:center;font-weight:700;font-size:13px;border:1px solid #dbe4f0;">${S.formatted||"0:00"}</td>`).join(""),m=g.grantDate?`\u6700\u7D42\u4ED8\u4E0E\u65E5\uFF1A${g.grantDate}`:"\u6700\u7D42\u4ED8\u4E0E\u65E5\uFF1A.....";w.innerHTML=`
         <div style="overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;border:1px solid #dbe4f0;font-size:13px;background:#fff;">
             <thead>
               <tr style="background:#f8fafc;">
-                <th colspan="2" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">年間超過時間</th>
-                <th style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">45時間超過回数</th>
-                <th colspan="${recentReversed.length}" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">直近複数月平均法定外労働時間</th>
-                <th colspan="3" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">有給休暇</th>
+                <th colspan="2" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">\u5E74\u9593\u8D85\u904E\u6642\u9593</th>
+                <th style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">45\u6642\u9593\u8D85\u904E\u56DE\u6570</th>
+                <th colspan="${h.length}" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">\u76F4\u8FD1\u8907\u6570\u6708\u5E73\u5747\u6CD5\u5B9A\u5916\u52B4\u50CD\u6642\u9593</th>
+                <th colspan="3" style="padding:6px 12px;text-align:center;border:1px solid #dbe4f0;font-weight:700;font-size:12px;">\u6709\u7D66\u4F11\u6687</th>
               </tr>
               <tr style="background:#f1f5f9;">
-                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">実績/上限</th>
-                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">単月最大</th>
-                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">回数/上限</th>
-                ${recentHeaders}
-                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;white-space:nowrap;">(${grantDateStr})</th>
-                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">最終付与からの取得</th>
-                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">残日数</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">\u5B9F\u7E3E/\u4E0A\u9650</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">\u5358\u6708\u6700\u5927</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">\u56DE\u6570/\u4E0A\u9650</th>
+                ${a}
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;white-space:nowrap;">(${m})</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">\u6700\u7D42\u4ED8\u4E0E\u304B\u3089\u306E\u53D6\u5F97</th>
+                <th style="padding:4px 8px;font-size:11px;border:1px solid #dbe4f0;">\u6B8B\u65E5\u6570</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${otColor};">
-                  ${ot.totalFormatted || '0:00'}/${ot.limitFormatted || '720:00'}
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${s};">
+                  ${x.totalFormatted||"0:00"}/${x.limitFormatted||"720:00"}
                 </td>
-                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${singleColor};">
-                  ${singleMax.maxFormatted || '0:00'}
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${o};">
+                  ${c.maxFormatted||"0:00"}
                 </td>
-                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${m45Color};">
-                  ${m45.count || 0}回/${m45.limit || 6}回
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;color:${u};">
+                  ${O.count||0}\u56DE/${O.limit||6}\u56DE
                 </td>
-                ${recentValues}
+                ${p}
                 <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;">
-                  ${leave.totalGranted != null ? Number(leave.totalGranted).toFixed(1) + '日' : '—'}
-                </td>
-                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;">
-                  ${leave.usedSinceGrant != null ? Number(leave.usedSinceGrant).toFixed(1) + '日' : '0.0日'}
+                  ${g.totalGranted!=null?Number(g.totalGranted).toFixed(1)+"\u65E5":"\u2014"}
                 </td>
                 <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;">
-                  ${leave.remaining != null ? Number(leave.remaining).toFixed(0) + '日' : '0日'}
+                  ${g.usedSinceGrant!=null?Number(g.usedSinceGrant).toFixed(1)+"\u65E5":"0.0\u65E5"}
+                </td>
+                <td style="padding:8px 12px;text-align:center;font-weight:700;font-size:14px;border:1px solid #dbe4f0;">
+                  ${g.remaining!=null?Number(g.remaining).toFixed(0)+"\u65E5":"0\u65E5"}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
         <div style="margin-top:6px;font-size:11px;color:#64748b;">
-          ※ 36協定上限: 年間720時間 / 月45時間超過は年6回まで / 単月100時間未満 / 複数月平均80時間以内
+          \u203B 36\u5354\u5B9A\u4E0A\u9650: \u5E74\u9593720\u6642\u9593 / \u670845\u6642\u9593\u8D85\u904E\u306F\u5E746\u56DE\u307E\u3067 / \u5358\u6708100\u6642\u9593\u672A\u6E80 / \u8907\u6570\u6708\u5E73\u574780\u6642\u9593\u4EE5\u5185
         </div>
-      `;
-    } catch (e) {
-      host.innerHTML = `<div style="text-align:center;padding:16px;color:#ef4444;">年間サマリの読込に失敗しました (${e?.message || e})</div>`;
-      console.error('[年間サマリ]', e);
-    }
-  };
-
-  const mod = { renderContract, renderWorkDetail, renderSummary, renderPlan, renderYearSummary };
-  root.SectionsRender = mod;
-  globalThis.AttendanceMonthly = root;
-  globalThis.MonthlyMonthlySectionsRender = mod;
-})();
+      `}catch(d){w.innerHTML=`<div style="text-align:center;padding:16px;color:#ef4444;">\u5E74\u9593\u30B5\u30DE\u30EA\u306E\u8AAD\u8FBC\u306B\u5931\u6557\u3057\u307E\u3057\u305F (${d?.message||d})</div>`,console.error("[\u5E74\u9593\u30B5\u30DE\u30EA]",d)}}};J.SectionsRender=Mt,globalThis.AttendanceMonthly=J,globalThis.MonthlyMonthlySectionsRender=Mt})();

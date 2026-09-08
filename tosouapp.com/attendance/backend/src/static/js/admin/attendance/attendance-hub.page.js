@@ -1,182 +1,25 @@
-export async function mount({ content, initialPath, profile }) {
-  let currentPath = initialPath || window.location.pathname;
-  if (currentPath === '/admin' || currentPath === '/admin/') {
-    currentPath = '/admin/dashboard';
-  }
-
-  let menuItems = [
-    { id: 'global-emp', label: '社員管理', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', href: '/admin/employees', hasSubmenu: true },
-    { id: 'emp-list', label: '社員一覧', href: '/admin/employees', parent: 'global-emp' },
-    { id: 'emp-add', label: '社員追加', href: '/admin/employees/add', parent: 'global-emp' },
-    { id: 'global-attendance', label: '勤怠管理', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', href: '/admin/attendance', hasSubmenu: true },
-    { id: 'att-records', label: '勤怠記録', href: '/admin/attendance', parent: 'global-attendance' },
-    { id: 'att-monthly', label: '月次勤怠入力(管理者)', href: '/admin/attendance/monthly', parent: 'global-attendance', newTab: true },
-    { id: 'att-go-out', label: '外出管理', href: '/admin/attendance/go-out', parent: 'global-attendance' },
-    { id: 'att-work-reports', label: '作業報告', href: '/admin/work-reports', parent: 'global-attendance' },
-    { id: 'att-shifts', label: 'シフト管理', href: '/admin/attendance/shifts', parent: 'global-attendance' },
-    { id: 'att-shifts-approvals', label: 'シフト承認', href: '/admin/attendance/shifts-approvals', parent: 'global-attendance' },
-    { id: 'att-holidays', label: '休日設定', href: '/admin/attendance/holidays', parent: 'global-attendance' },
-    { id: 'att-adjust', label: '調整申請一覧', href: '/admin/attendance/adjust-requests', parent: 'global-attendance' },
-    { id: 'global-branches', label: '支店管理', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', href: '/admin/branches' },
-    { id: 'global-org', label: '組織', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', href: '/admin/departments' },
-    { id: 'global-leave', label: '休暇管理', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', href: '/admin/leave', hasSubmenu: true },
-    { id: 'leave-requests', label: '休暇申請承認', href: '/admin/leave/requests', parent: 'global-leave' },
-    { id: 'leave-grants', label: '有給付与', href: '/admin/leave/grants', parent: 'global-leave' },
-    { id: 'leave-balance', label: '有給残日数一覧', href: '/admin/leave/balance', parent: 'global-leave' },
-    { id: 'global-payroll', label: '給与管理', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', href: '/admin/payroll' },
-    { id: 'global-faq', label: 'FAQ管理', icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', href: '/admin/faq' },
-    { id: 'global-expense', label: '交通費', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', href: '/admin/expenses?standalone=1', newTab: true },
-    { id: 'global-system', label: 'システム', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', href: '/admin/system', hasSubmenu: true },
-    { id: 'sys-notices', label: 'お知らせ', href: '/admin/notices', parent: 'global-system' },
-  ];
-
-  if (profile && profile.role === 'employee') {
-    menuItems = [
-      { id: 'att-records', label: '勤怠記録', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', href: '/ui/attendance-records' },
-    ];
-  }
-
-  // RBAC: Manager không thấy menu chỉ dành cho admin (chi nhánh, tổ chức, lương, hệ thống)
-  if (profile && String(profile.role || '').toLowerCase() === 'manager') {
-    const adminOnlyIds = new Set([
-      'global-branches',   // Quản lý chi nhánh
-      'global-org',        // Tổ chức
-      'global-payroll',    // Quản lý lương
-      'global-system',     // Hệ thống
-      'sys-notices',       // Thông báo
-      'emp-add',           // Thêm nhân viên
-      'att-holidays',      // Cài đặt ngày nghỉ
-    ]);
-    menuItems = menuItems.filter(item => !adminOnlyIds.has(item.id));
-  }
-
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
-  const qs = isStandalone ? '?standalone=1' : '';
-
-  // Tạo HTML menu theo định dạng <details>/<summary> chuẩn của admin.css
-  const generateMenuHtml = () => {
-    return menuItems.filter(m => !m.parent).map(item => {
-      if (item.isSeparator) return '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 8px 12px;">';
-      
-      const subItems = menuItems.filter(m => m.parent === item.id);
-      const isActive = currentPath === item.href || subItems.some(sub => currentPath === sub.href);
-      
-      if (subItems.length > 0) {
-        // Menu nhiều cấp
-        const subHtml = subItems.map(sub => {
-          const isSubActive = currentPath === sub.href;
-          const subTargetAttr = sub.newTab ? ' target="_blank" rel="noopener noreferrer"' : '';
-          return `<a href="${sub.href}${qs}" class="${isSubActive ? 'active' : ''}"${subTargetAttr}>${sub.label}</a>`;
-        }).join('');
-        
-        return `
-          <details ${isActive ? 'open class="active-section"' : ''}>
-            <summary class="${isActive ? 'selected' : ''}">
+async function M({content:o,initialPath:y,profile:l}){let s=y||window.location.pathname;(s==="/admin"||s==="/admin/")&&(s="/admin/dashboard");let d=[{id:"global-emp",label:"\u793E\u54E1\u7BA1\u7406",icon:"M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",href:"/admin/employees",hasSubmenu:!0},{id:"emp-list",label:"\u793E\u54E1\u4E00\u89A7",href:"/admin/employees",parent:"global-emp"},{id:"emp-add",label:"\u793E\u54E1\u8FFD\u52A0",href:"/admin/employees/add",parent:"global-emp"},{id:"global-attendance",label:"\u52E4\u6020\u7BA1\u7406",icon:"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",href:"/admin/attendance",hasSubmenu:!0},{id:"att-records",label:"\u52E4\u6020\u8A18\u9332",href:"/admin/attendance",parent:"global-attendance"},{id:"att-monthly",label:"\u6708\u6B21\u52E4\u6020\u5165\u529B(\u7BA1\u7406\u8005)",href:"/admin/attendance/monthly",parent:"global-attendance",newTab:!0},{id:"att-go-out",label:"\u5916\u51FA\u7BA1\u7406",href:"/admin/attendance/go-out",parent:"global-attendance"},{id:"att-work-reports",label:"\u4F5C\u696D\u5831\u544A",href:"/admin/work-reports",parent:"global-attendance"},{id:"att-shifts",label:"\u30B7\u30D5\u30C8\u7BA1\u7406",href:"/admin/attendance/shifts",parent:"global-attendance"},{id:"att-shifts-approvals",label:"\u30B7\u30D5\u30C8\u627F\u8A8D",href:"/admin/attendance/shifts-approvals",parent:"global-attendance"},{id:"att-holidays",label:"\u4F11\u65E5\u8A2D\u5B9A",href:"/admin/attendance/holidays",parent:"global-attendance"},{id:"att-adjust",label:"\u8ABF\u6574\u7533\u8ACB\u4E00\u89A7",href:"/admin/attendance/adjust-requests",parent:"global-attendance"},{id:"global-branches",label:"\u652F\u5E97\u7BA1\u7406",icon:"M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",href:"/admin/branches"},{id:"global-org",label:"\u7D44\u7E54",icon:"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",href:"/admin/departments"},{id:"global-leave",label:"\u4F11\u6687\u7BA1\u7406",icon:"M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",href:"/admin/leave",hasSubmenu:!0},{id:"leave-requests",label:"\u4F11\u6687\u7533\u8ACB\u627F\u8A8D",href:"/admin/leave/requests",parent:"global-leave"},{id:"leave-grants",label:"\u6709\u7D66\u4ED8\u4E0E",href:"/admin/leave/grants",parent:"global-leave"},{id:"leave-balance",label:"\u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7",href:"/admin/leave/balance",parent:"global-leave"},{id:"global-payroll",label:"\u7D66\u4E0E\u7BA1\u7406",icon:"M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",href:"/admin/payroll"},{id:"global-faq",label:"FAQ\u7BA1\u7406",icon:"M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",href:"/admin/faq"},{id:"global-expense",label:"\u4EA4\u901A\u8CBB",icon:"M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",href:"/admin/expenses?standalone=1",newTab:!0},{id:"global-system",label:"\u30B7\u30B9\u30C6\u30E0",icon:"M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",href:"/admin/system",hasSubmenu:!0},{id:"sys-notices",label:"\u304A\u77E5\u3089\u305B",href:"/admin/notices",parent:"global-system"}];if(l&&l.role==="employee"&&(d=[{id:"att-records",label:"\u52E4\u6020\u8A18\u9332",icon:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01",href:"/ui/attendance-records"}]),l&&String(l.role||"").toLowerCase()==="manager"){const e=new Set(["global-branches","global-org","global-payroll","global-system","sys-notices","emp-add","att-holidays"]);d=d.filter(n=>!e.has(n.id))}const b=new URLSearchParams(window.location.search).get("standalone")==="1"?"?standalone=1":"",p=d.filter(e=>!e.parent).map(e=>{if(e.isSeparator)return'<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 8px 12px;">';const n=d.filter(a=>a.parent===e.id),t=s===e.href||n.some(a=>s===a.href);if(n.length>0){const a=n.map(r=>{const g=s===r.href,h=r.newTab?' target="_blank" rel="noopener noreferrer"':"";return`<a href="${r.href}${b}" class="${g?"active":""}"${h}>${r.label}</a>`}).join("");return`
+          <details ${t?'open class="active-section"':""}>
+            <summary class="${t?"selected":""}">
               <span style="display:flex; align-items:center; gap:8px;">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${item.icon}"></path></svg>
-                ${item.label}
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${e.icon}"></path></svg>
+                ${e.label}
               </span>
               <span class="chev"></span>
             </summary>
-            ${subHtml}
+            ${a}
           </details>
-        `;
-      } else {
-        // Menu một cấp
-        const targetAttr = item.newTab ? ' target="_blank" rel="noopener noreferrer"' : '';
-        return `
-          <a href="${item.href}${qs}" class="standalone-link ${isActive ? 'selected active' : ''}"${targetAttr} style="display:flex; align-items:center; gap:8px; padding: 3px 12px; margin: 0 4px; border-radius: 0; text-decoration: none;">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${item.icon}"></path></svg>
-            ${item.label}
+        `}else{const a=e.newTab?' target="_blank" rel="noopener noreferrer"':"";return`
+          <a href="${e.href}${b}" class="standalone-link ${t?"selected active":""}"${a} style="display:flex; align-items:center; gap:8px; padding: 3px 12px; margin: 0 4px; border-radius: 0; text-decoration: none;">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${e.icon}"></path></svg>
+            ${e.label}
           </a>
-        `;
-      }
-    }).join('');
-  };
-
-  const menuHtml = generateMenuHtml();
-
-  // Chèn vào sidebar chung
-  const sidebarNav = document.querySelector('.sidebar .sidebar-nav');
-  if (sidebarNav) {
-    const displayName = (profile && (profile.username || profile.email)) || '';
-    sidebarNav.innerHTML = menuHtml + `
+        `}}).join(""),c=document.querySelector(".sidebar .sidebar-nav");if(c){const e=l&&(l.username||l.email)||"";c.innerHTML=p+`
       <div class="sidebar-footer" style="margin-top:auto;padding:12px 10px;border-top:1px solid #e2e8f0;">
-        <div style="font-size:12px;color:#0b2c66;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:8px;">${displayName}</div>
+        <div style="font-size:12px;color:#0b2c66;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:8px;">${e}</div>
         <a href="#" id="sidebarLogout" style="display:flex;align-items:center;gap:6px;color:#ef4444;font-size:13px;font-weight:500;text-decoration:none;padding:8px 10px;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          ログアウト
+          \u30ED\u30B0\u30A2\u30A6\u30C8
         </a>
       </div>
-    `;
-    // Xử lý đăng xuất
-    const logoutBtn = sidebarNav.querySelector('#sidebarLogout');
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try {
-          await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-        } catch (e) { /* bỏ qua lỗi */ }
-        window.location.href = '/login';
-      });
-    }
-
-    // Leave tab switching: khi đang ở trang leave, nhấn sub-link chỉ chuyển tab nội bộ (không chớp)
-    sidebarNav.addEventListener('click', (e) => {
-      const a = e.target.closest && e.target.closest('a[href]');
-      if (!a) return;
-      const href = a.getAttribute('href') || '';
-      const leaveTabMap = {
-        '/admin/leave/requests': 'tab-approvals',
-        '/admin/leave/grants': 'tab-grant',
-        '/admin/leave/balance': 'tab-balances',
-      };
-      const targetTab = leaveTabMap[href.split('?')[0]];
-      if (!targetTab) return;
-      // Chỉ xử lý nếu đang ở trang leave (tab container đã mount)
-      const tabContent = document.querySelector(`#${targetTab}`);
-      if (!tabContent) return;
-      e.preventDefault();
-      e.stopPropagation();
-      // Chuyển tab nội bộ
-      document.querySelectorAll('.leave-tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
-      tabContent.classList.add('active');
-      const tabBtn = document.querySelector(`.leave-tab[data-target="${targetTab}"]`);
-      if (tabBtn) tabBtn.classList.add('active');
-      // Cập nhật URL không reload
-      try { history.pushState(null, '', href); } catch (err) { /* bỏ qua */ }
-      // Cập nhật sidebar active state
-      sidebarNav.querySelectorAll('a').forEach(l => l.classList.remove('active'));
-      a.classList.add('active');
-    });
-  }
-
-  // Chèn vào drawer mobile
-  const drawerNavMount = document.querySelector('#drawerNavMount');
-  if (drawerNavMount) {
-    drawerNavMount.innerHTML = `<nav class="drawer-nav">${menuHtml}</nav>`;
-    drawerNavMount.dataset.filled = '1';
-  }
-
-  // Bỏ hẳn wrapper .att-hub-layout để dùng layout chung chuẩn
-  const existingLayout = content.querySelector('.att-hub-layout');
-  if (existingLayout) {
-    // Nếu đã mount trước đó thì thay content bằng nội dung hub bên trong
-    const hubContent = existingLayout.querySelector('#attendanceHubContent');
-    if (hubContent) {
-      content.innerHTML = '';
-      while (hubContent.firstChild) {
-        content.appendChild(hubContent.firstChild);
-      }
-    } else {
-      content.innerHTML = '';
-    }
-  } else {
-    // Nếu là mount mới thì content vốn chỉ là #adminContent
-    // Dọn cho chắc
-    content.innerHTML = '';
-  }
-
-  return content;
-}
+    `;const n=c.querySelector("#sidebarLogout");n&&n.addEventListener("click",async t=>{t.preventDefault();try{await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin"})}catch{}window.location.href="/login"}),c.addEventListener("click",t=>{const a=t.target.closest&&t.target.closest("a[href]");if(!a)return;const r=a.getAttribute("href")||"",h={"/admin/leave/requests":"tab-approvals","/admin/leave/grants":"tab-grant","/admin/leave/balance":"tab-balances"}[r.split("?")[0]];if(!h)return;const f=document.querySelector(`#${h}`);if(!f)return;t.preventDefault(),t.stopPropagation(),document.querySelectorAll(".leave-tab-content").forEach(i=>i.classList.remove("active")),document.querySelectorAll(".leave-tab").forEach(i=>i.classList.remove("active")),f.classList.add("active");const v=document.querySelector(`.leave-tab[data-target="${h}"]`);v&&v.classList.add("active");try{history.pushState(null,"",r)}catch{}c.querySelectorAll("a").forEach(i=>i.classList.remove("active")),a.classList.add("active")})}const m=document.querySelector("#drawerNavMount");m&&(m.innerHTML=`<nav class="drawer-nav">${p}</nav>`,m.dataset.filled="1");const u=o.querySelector(".att-hub-layout");if(u){const e=u.querySelector("#attendanceHubContent");if(e)for(o.innerHTML="";e.firstChild;)o.appendChild(e.firstChild);else o.innerHTML=""}else o.innerHTML="";return o}export{M as mount};

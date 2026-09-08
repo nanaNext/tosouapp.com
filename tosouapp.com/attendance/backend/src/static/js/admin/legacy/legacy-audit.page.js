@@ -1,9 +1,1 @@
-import { fetchJSONAuth } from '../../api/http.api.js';
-
-export async function mountAudit({ content }) {
-  const r = await fetchJSONAuth('/api/admin/audit');
-  content.innerHTML = '<h3>監査ログ</h3>';
-  const pre = document.createElement('pre');
-  pre.textContent = JSON.stringify(r, null, 2);
-  content.appendChild(pre);
-}
+import{fetchJSONAuth as i}from"../../api/http.api.js";async function a({content:t}){const e=await i("/api/admin/audit");t.innerHTML="<h3>\u76E3\u67FB\u30ED\u30B0</h3>";const n=document.createElement("pre");n.textContent=JSON.stringify(e,null,2),t.appendChild(n)}export{a as mountAudit};

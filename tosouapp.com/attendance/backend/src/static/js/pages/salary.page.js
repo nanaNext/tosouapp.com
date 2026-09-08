@@ -1,195 +1,4 @@
-import { me, logout, refresh } from '../api/auth.api.js';
-import { fetchJSONAuth } from '../api/http.api.js';
-import '/static/js/pages/employee-notify.sticky.js';
-
-const $ = (sel) => document.querySelector(sel);
-
-const prefillUserName = () => {
-  try {
-    const el = $('#userName');
-    if (!el) return;
-    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-    const u = raw ? JSON.parse(raw) : null;
-    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
-    if (name) el.textContent = name;
-  } catch (e) { /* bỏ qua lỗi */ }
-};
-
-const showErr = (msg) => {
-  const el = $('#error');
-  if (!el) return;
-  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
-  el.style.display = 'block';
-  el.textContent = msg;
-};
-
-const showSpinner = () => {
-  try {
-    const el = document.querySelector('#pageSpinner');
-    if (el) { el.removeAttribute('hidden'); el.style.display = 'grid'; }
-  } catch (e) { /* bỏ qua lỗi */ }
-};
-const hideSpinner = () => {
-  try {
-    const el = document.querySelector('#pageSpinner');
-    if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { /* bỏ qua lỗi */ }
-};
-
-const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const formatDateTime = (isoString) => {
-  if (!isoString) return '';
-  const d = new Date(isoString);
-  if (isNaN(d.getTime())) return String(isoString);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${y}/${m}/${day} ${h}:${min}`;
-};
-
-const getViewerId = () => {
-  try {
-    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-    const u = raw ? JSON.parse(raw) : null;
-    return String(u?.username || u?.email || 'anonymous');
-  } catch (e) {
-    return 'anonymous';
-  }
-};
-
-const viewedKey = () => `salaryViewedMonths:${getViewerId()}`;
-
-const getViewedMonths = () => {
-  try {
-    const raw = localStorage.getItem(viewedKey()) || '[]';
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr.map(v => String(v)) : []);
-  } catch (e) {
-    return new Set();
-  }
-};
-
-const markMonthViewed = (month) => {
-  const m = String(month || '');
-  if (!/^\d{4}-\d{2}$/.test(m)) return;
-  try {
-    const set = getViewedMonths();
-    set.add(m);
-    localStorage.setItem(viewedKey(), JSON.stringify(Array.from(set)));
-  } catch (e) { /* bỏ qua lỗi */ }
-  try {
-    fetchJSONAuth('/api/salary/my/read', {
-      method: 'POST',
-      body: JSON.stringify({ month: m })
-    }).catch(() => {});
-  } catch (e) { /* bỏ qua lỗi */ }
-};
-
-const ensureAuthProfile = async () => {
-  let accessToken = '';
-  try { accessToken = sessionStorage.getItem('accessToken') || ''; } catch (e) { /* bỏ qua lỗi */ }
-  if (!accessToken) {
-    const r = await refresh();
-    accessToken = r?.accessToken || '';
-    try {
-      if (accessToken) sessionStorage.setItem('accessToken', accessToken);
-    } catch (e) { /* bỏ qua lỗi */ }
-  }
-  if (!accessToken) throw new Error('Missing access token');
-  const profile = await me(accessToken);
-  try {
-    const s = JSON.stringify(profile || {});
-    sessionStorage.setItem('user', s);
-    localStorage.setItem('user', s);
-  } catch (e) { /* bỏ qua lỗi */ }
-  return profile;
-};
-
-const wireUserMenu = () => {
-  const btn = document.querySelector('.user-btn');
-  const dd = $('#userDropdown');
-  if (!btn || !dd) return;
-  btn.addEventListener('click', () => {
-    const open = !dd.hasAttribute('hidden');
-    if (open) dd.setAttribute('hidden', '');
-    else dd.removeAttribute('hidden');
-  });
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('.user-menu')) return;
-    try { dd.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ }
-  });
-  const logoutBtn = $('#btnLogout');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      try { await logout(); } catch (e) { /* bỏ qua lỗi */ }
-      try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
-      try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* bỏ qua lỗi */ }
-      window.location.replace('/ui/login');
-    });
-  }
-};
-
-const wireDrawer = () => {
-  const btn = $('#mobileMenuBtn');
-  const drawer = $('#mobileDrawer');
-  const backdrop = $('#drawerBackdrop');
-  const closeBtn = $('#mobileClose');
-  if (!btn || !drawer || !backdrop) return;
-  if (btn.dataset.bound === '1') return;
-  btn.dataset.bound = '1';
-  const close = () => {
-    try { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); } catch (e) { /* bỏ qua lỗi */ }
-    try {
-      drawer?.querySelectorAll?.('.drawer-group-btn[data-drawer-group]').forEach((b) => {
-        b.setAttribute('aria-expanded', 'false');
-        b.classList.remove('open');
-      });
-      drawer?.querySelectorAll?.('.drawer-group-list[data-drawer-panel]').forEach((p) => p.setAttribute('hidden', ''));
-    } catch (e) { /* bỏ qua lỗi */ }
-  };
-  const open = () => {
-    try { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); } catch (e) { /* bỏ qua lỗi */ }
-  };
-  if (btn) btn.addEventListener('click', () => { if (drawer?.hasAttribute('hidden')) open(); else close(); });
-  if (closeBtn) closeBtn.addEventListener('click', close);
-  if (backdrop) backdrop.addEventListener('click', close);
-  try {
-    drawer?.querySelectorAll?.('.drawer-item, a').forEach(el => el.addEventListener('click', close));
-    drawer?.querySelectorAll?.('.drawer-group-btn[data-drawer-group]').forEach((groupBtn) => {
-      groupBtn.addEventListener('click', () => {
-        const key = String(groupBtn.getAttribute('data-drawer-group') || '');
-        const panel = drawer.querySelector(`.drawer-group-list[data-drawer-panel="${key}"]`);
-        if (!panel) return;
-        const openNow = panel.hasAttribute('hidden');
-        drawer.querySelectorAll('.drawer-group-btn[data-drawer-group]').forEach((b) => {
-          b.setAttribute('aria-expanded', 'false');
-          b.classList.remove('open');
-        });
-        drawer.querySelectorAll('.drawer-group-list[data-drawer-panel]').forEach((p) => p.setAttribute('hidden', ''));
-        if (openNow) {
-          panel.removeAttribute('hidden');
-          groupBtn.setAttribute('aria-expanded', 'true');
-          groupBtn.classList.add('open');
-        }
-      });
-    });
-    drawer?.querySelectorAll?.('a.drawer-item[href]').forEach((a) => {
-      a.addEventListener('click', () => close());
-    });
-    drawer?.querySelectorAll?.('.drawer-item, a').forEach(el => el.addEventListener('click', close));
-  } catch (e) { /* bỏ qua lỗi */ }
-};
-
-const render = async () => {
-  const host = $('#salaryHost');
-  if (!host) return;
-  const params = new URLSearchParams(String(window.location.search || ''));
-  const monthFromQuery = String(params.get('month') || '').trim();
-  // Thêm style cho các nút và bảng
-  const style = document.createElement('style');
-  style.textContent = `
+import{me as C,logout as R,refresh as O}from"../api/auth.api.js";import{fetchJSONAuth as w}from"../api/http.api.js";import"/static/js/pages/employee-notify.sticky.js";const l=e=>document.querySelector(e),B=()=>{try{const e=l("#userName");if(!e)return;const t=sessionStorage.getItem("user")||localStorage.getItem("user")||"",a=t?JSON.parse(t):null,n=a&&(a.username||a.email)?String(a.username||a.email):"";n&&(e.textContent=n)}catch{}},h=e=>{const t=l("#error");if(t){if(!e){t.style.display="none",t.textContent="";return}t.style.display="block",t.textContent=e}},T=()=>{try{const e=document.querySelector("#pageSpinner");e&&(e.removeAttribute("hidden"),e.style.display="grid")}catch{}},z=()=>{try{const e=document.querySelector("#pageSpinner");e&&(e.setAttribute("hidden",""),e.style.display="none")}catch{}},m=e=>String(e||"").replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t]),D=e=>{if(!e)return"";const t=new Date(e);if(isNaN(t.getTime()))return String(e);const a=t.getFullYear(),n=String(t.getMonth()+1).padStart(2,"0"),c=String(t.getDate()).padStart(2,"0"),y=String(t.getHours()).padStart(2,"0"),r=String(t.getMinutes()).padStart(2,"0");return`${a}/${n}/${c} ${y}:${r}`},H=()=>{try{const e=sessionStorage.getItem("user")||localStorage.getItem("user")||"",t=e?JSON.parse(e):null;return String(t?.username||t?.email||"anonymous")}catch{return"anonymous"}},M=()=>`salaryViewedMonths:${H()}`,N=()=>{try{const e=localStorage.getItem(M())||"[]",t=JSON.parse(e);return new Set(Array.isArray(t)?t.map(a=>String(a)):[])}catch{return new Set}},q=e=>{const t=String(e||"");if(/^\d{4}-\d{2}$/.test(t)){try{const a=N();a.add(t),localStorage.setItem(M(),JSON.stringify(Array.from(a)))}catch{}try{w("/api/salary/my/read",{method:"POST",body:JSON.stringify({month:t})}).catch(()=>{})}catch{}}},U=async()=>{let e="";try{e=sessionStorage.getItem("accessToken")||""}catch{}if(!e){e=(await O())?.accessToken||"";try{e&&sessionStorage.setItem("accessToken",e)}catch{}}if(!e)throw new Error("Missing access token");const t=await C(e);try{const a=JSON.stringify(t||{});sessionStorage.setItem("user",a),localStorage.setItem("user",a)}catch{}return t},F=()=>{const e=document.querySelector(".user-btn"),t=l("#userDropdown");if(!e||!t)return;e.addEventListener("click",()=>{!t.hasAttribute("hidden")?t.setAttribute("hidden",""):t.removeAttribute("hidden")}),document.addEventListener("click",n=>{if(!n.target.closest(".user-menu"))try{t.setAttribute("hidden","")}catch{}});const a=l("#btnLogout");a&&a.addEventListener("click",async()=>{try{await R()}catch{}try{sessionStorage.removeItem("accessToken"),sessionStorage.removeItem("refreshToken"),sessionStorage.removeItem("user")}catch{}try{localStorage.removeItem("refreshToken"),localStorage.removeItem("user")}catch{}window.location.replace("/ui/login")})},J=()=>{const e=l("#mobileMenuBtn"),t=l("#mobileDrawer"),a=l("#drawerBackdrop"),n=l("#mobileClose");if(!e||!t||!a||e.dataset.bound==="1")return;e.dataset.bound="1";const c=()=>{try{t.setAttribute("hidden",""),a.setAttribute("hidden",""),e.setAttribute("aria-expanded","false")}catch{}try{t?.querySelectorAll?.(".drawer-group-btn[data-drawer-group]").forEach(r=>{r.setAttribute("aria-expanded","false"),r.classList.remove("open")}),t?.querySelectorAll?.(".drawer-group-list[data-drawer-panel]").forEach(r=>r.setAttribute("hidden",""))}catch{}},y=()=>{try{t.removeAttribute("hidden"),a.removeAttribute("hidden"),e.setAttribute("aria-expanded","true")}catch{}};e&&e.addEventListener("click",()=>{t?.hasAttribute("hidden")?y():c()}),n&&n.addEventListener("click",c),a&&a.addEventListener("click",c);try{t?.querySelectorAll?.(".drawer-item, a").forEach(r=>r.addEventListener("click",c)),t?.querySelectorAll?.(".drawer-group-btn[data-drawer-group]").forEach(r=>{r.addEventListener("click",()=>{const i=String(r.getAttribute("data-drawer-group")||""),o=t.querySelector(`.drawer-group-list[data-drawer-panel="${i}"]`);if(!o)return;const d=o.hasAttribute("hidden");t.querySelectorAll(".drawer-group-btn[data-drawer-group]").forEach(s=>{s.setAttribute("aria-expanded","false"),s.classList.remove("open")}),t.querySelectorAll(".drawer-group-list[data-drawer-panel]").forEach(s=>s.setAttribute("hidden","")),d&&(o.removeAttribute("hidden"),r.setAttribute("aria-expanded","true"),r.classList.add("open"))})}),t?.querySelectorAll?.("a.drawer-item[href]").forEach(r=>{r.addEventListener("click",()=>c())}),t?.querySelectorAll?.(".drawer-item, a").forEach(r=>r.addEventListener("click",c))}catch{}},j=async()=>{const e=l("#salaryHost");if(!e)return;const t=new URLSearchParams(String(window.location.search||"")),a=String(t.get("month")||"").trim(),n=document.createElement("style");n.textContent=`
     .sal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
     .sal-title{font-size:16px;font-weight:600;color:#0f172a}
     .sal-subtle{font-size:13px;color:#64748b}
@@ -404,152 +213,46 @@ const render = async () => {
         padding-right: 8px !important;
       }
     }
-  `;
-  document.head.appendChild(style);
-
-  const openPublishedFile = async (month) => {
-    showErr('');
-    if (!/^\d{4}-\d{2}$/.test(month)) return;
-
-    showSpinner();
-    try {
-      const y = month.slice(0, 4);
-      const mStr = month.slice(5, 7);
-      const dl = await fetchJSONAuth(`/api/salary/me/${encodeURIComponent(y)}/${encodeURIComponent(mStr)}/download`);
-      const secureUrl = String(dl?.secureUrl || '').trim();
-      if (!secureUrl) {
-        showErr('PDFが見つかりません');
-        return;
-      }
-      
-      // Chuyển hướng trình duyệt ở tab hiện tại để đảm bảo hoạt động tốt trên Mobile/Safari
-      window.location.href = secureUrl;
-    } catch (e) {
-      showErr(e?.message || 'PDF取得に失敗しました');
-    } finally {
-      hideSpinner();
-    }
-  };
-
-  const renderDetailPage = async (month) => {
-    markMonthViewed(month);
-    host.innerHTML = `
+  `,document.head.appendChild(n);const c=async i=>{if(h(""),!!/^\d{4}-\d{2}$/.test(i)){T();try{const o=i.slice(0,4),d=i.slice(5,7),s=await w(`/api/salary/me/${encodeURIComponent(o)}/${encodeURIComponent(d)}/download`),p=String(s?.secureUrl||"").trim();if(!p){h("PDF\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093");return}window.location.href=p}catch(o){h(o?.message||"PDF\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}finally{z()}}},y=async i=>{q(i),e.innerHTML=`
       <div class="sal-card" style="padding:16px">
-        <a class="sal-back" href="/ui/salary">← 配布物名一覧に戻る</a>
+        <a class="sal-back" href="/ui/salary">\u2190 \u914D\u5E03\u7269\u540D\u4E00\u89A7\u306B\u623B\u308B</a>
         <div id="salMeta" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div class="sal-subtle"></div>
         </div>
         <div id="salBody"></div>
       </div>
-    `;
-    const meta = $('#salMeta');
-    const body = $('#salBody');
-    showErr('');
-    if (!/^\d{4}-\d{2}$/.test(month)) {
-      showErr('月の指定が正しくありません');
-      return;
-    }
-    showSpinner();
-    try {
-      const r = await fetchJSONAuth(`/api/salary/my?month=${encodeURIComponent(month)}`);
-      if (r?.notPublished) {
-        if (body) body.innerHTML = `<div class="sal-empty">${esc(r.message || 'まだ公開されていません')}</div>`;
-        if (meta) meta.textContent = '';
-        return;
-      }
-      const y = month.slice(0, 4);
-      const mStr = month.slice(5, 7);
-      const title = `${y}年${mStr}月給与明細`;
-      const emp = Array.isArray(r?.employees) && r.employees.length ? r.employees[0] : null;
-      const owner = emp?.氏名 ? `${emp.氏名}${emp?.従業員コード ? `（${emp.従業員コード}）` : ''}` : 'あなた';
-      const pubRes = await fetchJSONAuth('/api/salary/my/published').catch(() => null);
-      const rel = Array.isArray(pubRes?.items) ? pubRes.items.find(it => String(it.month) === month) : null;
-      const fileName = rel?.fileName || `${title}.pdf`;
-      const publishedAt = rel?.publishedAt ? formatDateTime(rel.publishedAt) : '';
-      if (meta) {
-        const company = r?.companyName || '';
-        const issue = r?.issueDate || '';
-        meta.innerHTML = `<div><span class="sal-chip">${esc(company)}</span> <span class="sal-subtle" style="margin-left:8px;">発行日: ${esc(issue)}</span></div>`;
-      }
-      if (body) {
-        body.innerHTML = `
+    `;const o=l("#salMeta"),d=l("#salBody");if(h(""),!/^\d{4}-\d{2}$/.test(i)){h("\u6708\u306E\u6307\u5B9A\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093");return}T();try{const s=await w(`/api/salary/my?month=${encodeURIComponent(i)}`);if(s?.notPublished){d&&(d.innerHTML=`<div class="sal-empty">${m(s.message||"\u307E\u3060\u516C\u958B\u3055\u308C\u3066\u3044\u307E\u305B\u3093")}</div>`),o&&(o.textContent="");return}const p=i.slice(0,4),u=i.slice(5,7),b=`${p}\u5E74${u}\u6708\u7D66\u4E0E\u660E\u7D30`,g=Array.isArray(s?.employees)&&s.employees.length?s.employees[0]:null,L=g?.\u6C0F\u540D?`${g.\u6C0F\u540D}${g?.\u5F93\u696D\u54E1\u30B3\u30FC\u30C9?`\uFF08${g.\u5F93\u696D\u54E1\u30B3\u30FC\u30C9}\uFF09`:""}`:"\u3042\u306A\u305F",S=await w("/api/salary/my/published").catch(()=>null),k=Array.isArray(S?.items)?S.items.find(f=>String(f.month)===i):null,E=k?.fileName||`${b}.pdf`,P=k?.publishedAt?D(k.publishedAt):"";if(o){const f=s?.companyName||"",x=s?.issueDate||"";o.innerHTML=`<div><span class="sal-chip">${m(f)}</span> <span class="sal-subtle" style="margin-left:8px;">\u767A\u884C\u65E5: ${m(x)}</span></div>`}if(d){d.innerHTML=`
           <div class="sal-tabs">
             <div id="salTabDetails" class="sal-tab active">DETAILS</div>
             <div id="salTabRelated" class="sal-tab">RELATED</div>
           </div>
           <div id="salPaneDetails" class="sal-pane active">
             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;">
-              <div class="sal-detail-title">${esc(title)}</div>
+              <div class="sal-detail-title">${m(b)}</div>
               <button id="salOpenPdf" class="sal-btn sal-btn-primary" type="button" style="display:inline-flex;align-items:center;gap:6px;">
-                <span aria-hidden="true" style="font-size:16px;">👁️</span> 
-                <span>表示</span>
+                <span aria-hidden="true" style="font-size:16px;">\u{1F441}\uFE0F</span> 
+                <span>\u8868\u793A</span>
               </button>
             </div>
             <div class="sal-kv">
-              <div class="k">所有者</div><div class="v">${esc(owner)}</div>
+              <div class="k">\u6240\u6709\u8005</div><div class="v">${m(L)}</div>
             </div>
           </div>
           <div id="salPaneRelated" class="sal-pane">
             <div class="sal-related-group">
-              <div class="sal-related-head">メモ & 添付ファイル (1)</div>
+              <div class="sal-related-head">\u30E1\u30E2 & \u6DFB\u4ED8\u30D5\u30A1\u30A4\u30EB (1)</div>
               <div class="sal-related-item">
-                <div><a href="#" id="salFileLink">${esc(fileName)}</a></div>
-                <div class="sal-sub">${esc(publishedAt)} ・ 添付ファイル</div>
+                <div><a href="#" id="salFileLink">${m(E)}</a></div>
+                <div class="sal-sub">${m(P)} \u30FB \u6DFB\u4ED8\u30D5\u30A1\u30A4\u30EB</div>
               </div>
             </div>
           </div>
-        `;
-        const activate = (key) => {
-          const t1 = document.getElementById('salTabDetails');
-          const t2 = document.getElementById('salTabRelated');
-          const p1 = document.getElementById('salPaneDetails');
-          const p2 = document.getElementById('salPaneRelated');
-          if (!t1 || !t2 || !p1 || !p2) return;
-          if (key === 'details') {
-            t1.classList.add('active'); t2.classList.remove('active');
-            p1.classList.add('active'); p2.classList.remove('active');
-          } else {
-            t2.classList.add('active'); t1.classList.remove('active');
-            p2.classList.add('active'); p1.classList.remove('active');
-          }
-        };
-        document.getElementById('salTabDetails')?.addEventListener('click', () => activate('details'));
-        document.getElementById('salTabRelated')?.addEventListener('click', () => activate('related'));
-        document.querySelector('.sal-back')?.addEventListener('click', (e) => {
-          e.preventDefault();
-          try {
-            const ref = String(document.referrer || '');
-            const fromSalary = ref.includes('/ui/salary');
-            if (fromSalary && window.history.length > 1) {
-              window.history.back();
-              return;
-            }
-          } catch (e) { /* bỏ qua lỗi */ }
-          window.location.replace('/ui/salary');
-        });
-      }
-      document.getElementById('salOpenPdf')?.addEventListener('click', async () => {
-        await openPublishedFile(month);
-      });
-      document.getElementById('salFileLink')?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await openPublishedFile(month);
-      });
-    } catch (e) {
-      if (body) body.innerHTML = '';
-      showErr(e?.message || '取得に失敗しました');
-    } finally {
-      hideSpinner();
-    }
-  };
-
-  const renderListPage = async () => {
-    host.innerHTML = `
+        `;const f=x=>{const v=document.getElementById("salTabDetails"),A=document.getElementById("salTabRelated"),$=document.getElementById("salPaneDetails"),I=document.getElementById("salPaneRelated");!v||!A||!$||!I||(x==="details"?(v.classList.add("active"),A.classList.remove("active"),$.classList.add("active"),I.classList.remove("active")):(A.classList.add("active"),v.classList.remove("active"),I.classList.add("active"),$.classList.remove("active")))};document.getElementById("salTabDetails")?.addEventListener("click",()=>f("details")),document.getElementById("salTabRelated")?.addEventListener("click",()=>f("related")),document.querySelector(".sal-back")?.addEventListener("click",x=>{x.preventDefault();try{if(String(document.referrer||"").includes("/ui/salary")&&window.history.length>1){window.history.back();return}}catch{}window.location.replace("/ui/salary")})}document.getElementById("salOpenPdf")?.addEventListener("click",async()=>{await c(i)}),document.getElementById("salFileLink")?.addEventListener("click",async f=>{f.preventDefault(),await c(i)})}catch(s){d&&(d.innerHTML=""),h(s?.message||"\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}finally{z()}},r=async()=>{e.innerHTML=`
       <div class="sal-card" style="padding:16px">
         <div class="sal-header">
           <div>
-            <div class="sal-title">給与明細など</div>
-            <div class="sal-subtle">公開済みの給与明細から選択し、詳細ページを表示できます</div>
+            <div class="sal-title">\u7D66\u4E0E\u660E\u7D30\u306A\u3069</div>
+            <div class="sal-subtle">\u516C\u958B\u6E08\u307F\u306E\u7D66\u4E0E\u660E\u7D30\u304B\u3089\u9078\u629E\u3057\u3001\u8A73\u7D30\u30DA\u30FC\u30B8\u3092\u8868\u793A\u3067\u304D\u307E\u3059</div>
           </div>
         </div>
         <div class="sal-row">
@@ -558,83 +261,21 @@ const render = async () => {
           </div>
         </div>
       </div>
-    `;
-    const listEl = $('#salList');
-    if (!listEl) return;
-    if (!listEl) return [];
-    try {
-      const r = await fetchJSONAuth('/api/salary/my/published');
-      const items = Array.isArray(r?.items) ? r.items : [];
-      const viewed = getViewedMonths();
-      if (!items.length) {
-        listEl.innerHTML = `<div class="sal-sub">公開された給与明細がありません</div>`;
-        return;
-      }
-      listEl.innerHTML = `
+    `;const i=l("#salList");if(i){if(!i)return[];try{const o=await w("/api/salary/my/published"),d=Array.isArray(o?.items)?o.items:[],s=N();if(!d.length){i.innerHTML='<div class="sal-sub">\u516C\u958B\u3055\u308C\u305F\u7D66\u4E0E\u660E\u7D30\u304C\u3042\u308A\u307E\u305B\u3093</div>';return}i.innerHTML=`
         <table class="sal-table">
           <thead>
             <tr>
-              <th>配布物名</th>
-              <th style="width:180px">配信完了日</th>
+              <th>\u914D\u5E03\u7269\u540D</th>
+              <th style="width:180px">\u914D\u4FE1\u5B8C\u4E86\u65E5</th>
             </tr>
           </thead>
           <tbody>
-            ${items.map(it => {
-              const month = String(it.month || '');
-              const y = month.slice(0, 4);
-              const m = month.slice(5, 7);
-              const title = `${y}年${m}月給与明細`;
-              const pub = it.publishedAt ? formatDateTime(it.publishedAt) : '';
-              // Ưu tiên trạng thái từ server, fallback về local storage
-              const isRead = it.isRead || viewed.has(month);
-              const viewedCls = isRead ? ' is-hidden' : '';
-              return `
-                <tr data-month="${esc(month)}">
-                  <td><a href="#" data-month="${esc(month)}"><span class="dot${viewedCls}"></span><span>${esc(title)}</span></a></td>
-                  <td>${esc(pub)}</td>
+            ${d.map(p=>{const u=String(p.month||""),b=u.slice(0,4),g=u.slice(5,7),L=`${b}\u5E74${g}\u6708\u7D66\u4E0E\u660E\u7D30`,S=p.publishedAt?D(p.publishedAt):"",E=p.isRead||s.has(u)?" is-hidden":"";return`
+                <tr data-month="${m(u)}">
+                  <td><a href="#" data-month="${m(u)}"><span class="dot${E}"></span><span>${m(L)}</span></a></td>
+                  <td>${m(S)}</td>
                 </tr>
-              `;
-            }).join('')}
+              `}).join("")}
           </tbody>
         </table>
-      `;
-      listEl.querySelectorAll('a[data-month]').forEach(a => {
-        a.addEventListener('click', (e) => {
-          e.preventDefault();
-          const m = a.getAttribute('data-month') || '';
-          if (!m) return;
-          markMonthViewed(m);
-          window.location.href = `/ui/salary?month=${encodeURIComponent(m)}`;
-        });
-      });
-    } catch (e) {
-      listEl.innerHTML = `<div class="sal-sub">一覧の取得に失敗しました</div>`;
-    }
-  };
-  if (/^\d{4}-\d{2}$/.test(monthFromQuery)) {
-    await renderDetailPage(monthFromQuery);
-  } else {
-    await renderListPage();
-  }
-};
-
-document.addEventListener('DOMContentLoaded', async () => {
-  wireUserMenu();
-  wireDrawer();
-  prefillUserName();
-  try {
-    const profile = await ensureAuthProfile();
-    const role = String(profile?.role || '').toLowerCase();
-    if (!profile || !(role === 'employee' || role === 'manager' || role === 'admin')) {
-      window.location.replace('/ui/login');
-      return;
-    }
-    const name = profile.username || profile.email || 'ユーザー';
-    const el = $('#userName');
-    if (el) el.textContent = name;
-  } catch (e) {
-    window.location.replace('/ui/login');
-    return;
-  }
-  await render();
-});
+      `,i.querySelectorAll("a[data-month]").forEach(p=>{p.addEventListener("click",u=>{u.preventDefault();const b=p.getAttribute("data-month")||"";b&&(q(b),window.location.href=`/ui/salary?month=${encodeURIComponent(b)}`)})})}catch{i.innerHTML='<div class="sal-sub">\u4E00\u89A7\u306E\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F</div>'}}};/^\d{4}-\d{2}$/.test(a)?await y(a):await r()};document.addEventListener("DOMContentLoaded",async()=>{F(),J(),B();try{const e=await U(),t=String(e?.role||"").toLowerCase();if(!e||!(t==="employee"||t==="manager"||t==="admin")){window.location.replace("/ui/login");return}const a=e.username||e.email||"\u30E6\u30FC\u30B6\u30FC",n=l("#userName");n&&(n.textContent=a)}catch{window.location.replace("/ui/login");return}await j()});

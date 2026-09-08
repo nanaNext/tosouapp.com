@@ -1,46 +1,11 @@
-// @ts-nocheck
-import { delegate } from '../_shared/dom.js';
-import { downloadWithAuth } from '../../shared/api/client.js';
-
-export async function mountReports({ content }) {
-  content.innerHTML = '<h3>レポート</h3>';
-  const block = document.createElement('div');
-  block.innerHTML = `
-    <h4>勤怠CSV</h4>
+import{delegate as p}from"../_shared/dom.js";import{downloadWithAuth as n}from"../../shared/api/client.js";async function h({content:c}){c.innerHTML="<h3>\u30EC\u30DD\u30FC\u30C8</h3>";const t=document.createElement("div");t.innerHTML=`
+    <h4>\u52E4\u6020CSV</h4>
     <input id="repUserIds" placeholder="userIds (comma)">
     <input id="repFrom" placeholder="From(YYYY-MM-DD)">
     <input id="repTo" placeholder="To(YYYY-MM-DD)">
-    <button data-action="export-timesheet">エクスポート</button>
-    <h4>休日ICS/CSV</h4>
+    <button data-action="export-timesheet">\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8</button>
+    <h4>\u4F11\u65E5ICS/CSV</h4>
     <input id="repYear" placeholder="Year" value="${new Date().getUTCFullYear()}">
     <button data-action="export-ics">ICS</button>
     <button data-action="export-csv">CSV</button>
-  `;
-
-  delegate(block, '[data-action]', 'click', (e, el) => {
-    const action = el.dataset.action;
-    if (action === 'export-timesheet') {
-      const ids = block.querySelector('#repUserIds').value.trim();
-      const from = block.querySelector('#repFrom').value.trim();
-      const to = block.querySelector('#repTo').value.trim();
-      if (!ids || !from || !to) {
-        alert('userIds, From, To をすべて入力してください。');
-        return;
-      }
-      const url = `/api/admin/export/timesheet.csv?userIds=${encodeURIComponent(ids)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-      downloadWithAuth(url, 'timesheet.csv').catch(err => alert('エクスポート失敗: ' + err.message));
-    } else if (action === 'export-ics') {
-      const year = parseInt(block.querySelector('#repYear').value, 10);
-      if (!year) { alert('Year を入力してください。'); return; }
-      const url = `/api/admin/calendar/export?year=${year}`;
-      downloadWithAuth(url, `holidays_${year}.ics`).catch(err => alert('エクスポート失敗: ' + err.message));
-    } else if (action === 'export-csv') {
-      const year = parseInt(block.querySelector('#repYear').value, 10);
-      if (!year) { alert('Year を入力してください。'); return; }
-      const url = `/api/admin/calendar/export.csv?year=${year}`;
-      downloadWithAuth(url, `holidays_${year}.csv`).catch(err => alert('エクスポート失敗: ' + err.message));
-    }
-  });
-
-  content.appendChild(block);
-}
+  `,p(t,"[data-action]","click",(d,s)=>{const a=s.dataset.action;if(a==="export-timesheet"){const e=t.querySelector("#repUserIds").value.trim(),r=t.querySelector("#repFrom").value.trim(),o=t.querySelector("#repTo").value.trim();if(!e||!r||!o){alert("userIds, From, To \u3092\u3059\u3079\u3066\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}const i=`/api/admin/export/timesheet.csv?userIds=${encodeURIComponent(e)}&from=${encodeURIComponent(r)}&to=${encodeURIComponent(o)}`;n(i,"timesheet.csv").catch(l=>alert("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u5931\u6557: "+l.message))}else if(a==="export-ics"){const e=parseInt(t.querySelector("#repYear").value,10);if(!e){alert("Year \u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}const r=`/api/admin/calendar/export?year=${e}`;n(r,`holidays_${e}.ics`).catch(o=>alert("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u5931\u6557: "+o.message))}else if(a==="export-csv"){const e=parseInt(t.querySelector("#repYear").value,10);if(!e){alert("Year \u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}const r=`/api/admin/calendar/export.csv?year=${e}`;n(r,`holidays_${e}.csv`).catch(o=>alert("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u5931\u6557: "+o.message))}}),c.appendChild(t)}export{h as mountReports};

@@ -1,17 +1,4 @@
-import { delegate } from '../_shared/dom.js';
-import { api } from '../../shared/api/client.js';
-
-function normalizeUsers(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (payload && Array.isArray(payload.rows)) return payload.rows;
-  return [];
-}
-
-function ensureLeaveUiStyles() {
-  if (document.getElementById('leave-unified-style')) return;
-  const s = document.createElement('style');
-  s.id = 'leave-unified-style';
-  s.textContent = `
+import{delegate as V}from"../_shared/dom.js";import{api as M}from"../../shared/api/client.js";function oe(e){return Array.isArray(e)?e:e&&Array.isArray(e.rows)?e.rows:[]}function _(){if(document.getElementById("leave-unified-style"))return;const e=document.createElement("style");e.id="leave-unified-style",e.textContent=`
     .leave-page { 
       font-family: Inter, "Noto Sans JP", sans-serif;
       color: #111827; 
@@ -473,7 +460,7 @@ function ensureLeaveUiStyles() {
         max-width: 100% !important;
         overflow: visible !important;
       }
-      /* Bỏ lề ngang hoàn toàn để thẻ giãn SÁT hai mép màn hình */
+      /* B\u1ECF l\u1EC1 ngang ho\xE0n to\xE0n \u0111\u1EC3 th\u1EBB gi\xE3n S\xC1T hai m\xE9p m\xE0n h\xECnh */
       .leave-page {
         padding-left: 0 !important;
         padding-right: 0 !important;
@@ -485,1056 +472,225 @@ function ensureLeaveUiStyles() {
         gap: 12px !important;
       }
     }
-  `;
-  document.head.appendChild(s);
-}
-
-export async function mountApprovals({ host, content, opts, mountApprovalsFn }) {
-  const c = host || content;
-  const seq = Number(c.dataset.approvalsRenderSeq || 0) + 1;
-  c.dataset.approvalsRenderSeq = String(seq);
-  const stale = () => String(c.dataset.approvalsRenderSeq || '') !== String(seq);
-  ensureLeaveUiStyles();
-  c.innerHTML = '<h3>承認フロー</h3>';
-
-  const selectedStatus = String(
-    Object.prototype.hasOwnProperty.call(opts || {}, 'status')
-      ? (opts?.status || '')
-      : 'pending'
-  ).trim().toLowerCase();
-  const filter = document.createElement('div');
-  filter.className = 'leave-toolbar';
-  filter.innerHTML = `
+  `,document.head.appendChild(e)}async function pe({host:e,content:N,opts:s,mountApprovalsFn:z}){const l=e||N,D=Number(l.dataset.approvalsRenderSeq||0)+1;l.dataset.approvalsRenderSeq=String(D);const g=()=>String(l.dataset.approvalsRenderSeq||"")!==String(D);_(),l.innerHTML="<h3>\u627F\u8A8D\u30D5\u30ED\u30FC</h3>";const p=String(Object.prototype.hasOwnProperty.call(s||{},"status")?s?.status||"":"pending").trim().toLowerCase(),m=document.createElement("div");m.className="leave-toolbar",m.innerHTML=`
     <label style="display:inline-flex;align-items:center;gap:8px;">
-      <span class="leave-label">休暇申請フィルター</span>
+      <span class="leave-label">\u4F11\u6687\u7533\u8ACB\u30D5\u30A3\u30EB\u30BF\u30FC</span>
       <select id="leaveReqStatusFilter" class="leave-select">
-        <option value="">すべて</option>
-        <option value="pending">承認待ち</option>
-        <option value="approved">承認済み</option>
-        <option value="rejected">却下</option>
+        <option value="">\u3059\u3079\u3066</option>
+        <option value="pending">\u627F\u8A8D\u5F85\u3061</option>
+        <option value="approved">\u627F\u8A8D\u6E08\u307F</option>
+        <option value="rejected">\u5374\u4E0B</option>
       </select>
     </label>
     <label style="display:inline-flex;align-items:center;gap:8px;">
-      <span class="leave-label">月</span>
+      <span class="leave-label">\u6708</span>
       <input id="leaveReqMonthFilter" class="leave-input" type="month">
     </label>
-  `;
-  c.appendChild(filter);
-  const statusEl = filter.querySelector('#leaveReqStatusFilter');
-  if (statusEl) statusEl.value = selectedStatus;
-  const monthEl = filter.querySelector('#leaveReqMonthFilter');
-
-  // Hiển thị bảng skeleton ngay lập tức để user thấy trang đã sẵn sàng
-  const loadingPlaceholder = document.createElement('div');
-  loadingPlaceholder.innerHTML = '<div style="padding:16px;color:#64748b;text-align:center;">読み込み中...</div>';
-  c.appendChild(loadingPlaceholder);
-
-  const q = statusEl && statusEl.value ? `?status=${encodeURIComponent(statusEl.value)}` : '';
-  let rows = [];
-  let usingLegacyPending = false;
-  if (selectedStatus === 'pending') {
-    usingLegacyPending = true;
-    rows = await api.get('/api/leave/pending').catch(() => []);
-    if (stale()) return;
-  } else {
-    try {
-      rows = await api.get(`/api/leave/admin-requests${q}`);
-      if (stale()) return;
-    } catch {
-      rows = [];
-      if (stale()) return;
-    }
-  }
-  // Xóa loading text, tiếp tục render dữ liệu thật
-  loadingPlaceholder.remove();
-  const tableWrap = document.createElement('div');
-  tableWrap.className = 'leave-table-wrap';
-  const table = document.createElement('table');
-  table.className = 'leave-table leave-table-approvals';
-  const hasActions = selectedStatus === 'pending';
-  table.innerHTML = `<thead><tr><th>社員番号・氏名</th><th>期間</th><th>種類</th><th>状態</th><th>残数</th>${hasActions ? '<th>操作</th>' : ''}</tr></thead>`;
-  const tbody = document.createElement('tbody');
-  const pager = document.createElement('div');
-  pager.className = 'leave-pager';
-  let page = 1;
-  const pageSize = 10;
-  const allRows = Array.isArray(rows) ? rows : [];
-  const renderTableRows = () => {
-    const m = String(monthEl?.value || '').trim(); // YYYY-MM
-    const matched = allRows.filter((r) => {
-      const byM = !m || String(r.startDate || '').startsWith(m) || String(r.endDate || '').startsWith(m);
-      return byM;
-    });
-    const total = matched.length;
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    if (page > totalPages) page = totalPages;
-    const start = (page - 1) * pageSize;
-    const pageRows = matched.slice(start, start + pageSize);
-    const colCount = hasActions ? 6 : 5;
-
-    tbody.innerHTML = '';
-    let lastTenantKey = '';
-    let lastBranchKey = '';
-    for (const r of pageRows) {
-      const tId = String(r?.tenant_id ?? '0');
-      const bId = String(r?.branch_id ?? '0');
-      const tName = String(r?.tenant_name || '未設定').trim() || '未設定';
-      const bName = String(r?.branch_name || '').trim();
-      const tenantKey = tId;
-      const branchKey = `${tId}__${bId}`;
-      if (tenantKey !== lastTenantKey) {
-        const gtr = document.createElement('tr');
-        gtr.className = 'leave-group-header';
-        const branchHtml = bName ? `<span class="leave-group-branch">${bName}</span>` : '';
-        gtr.innerHTML = `<td colspan="${colCount}"><span class="leave-group-company">🏢 ${tName}</span>${branchHtml}</td>`;
-        tbody.appendChild(gtr);
-        lastTenantKey = tenantKey;
-        lastBranchKey = branchKey;
-      } else if (bName && branchKey !== lastBranchKey) {
-        const gtr = document.createElement('tr');
-        gtr.className = 'leave-group-header';
-        gtr.innerHTML = `<td colspan="${colCount}"><span class="leave-group-company">🏢 ${tName}</span><span class="leave-group-branch">${bName}</span></td>`;
-        tbody.appendChild(gtr);
-        lastBranchKey = branchKey;
-      }
-      const canReview = String(r?.status || '') === 'pending';
-      const empCode = r.employee_code || ('EMP' + String(r.userId).padStart(3, '0'));
-      const userLabel = `${empCode} ${r?.username || ''}`.trim();
-      const tr = document.createElement('tr');
-      const status = String(r.status || '').toLowerCase();
-      const statusClass = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending';
-      
-      let statusJa = '承認待ち';
-      if (status === 'approved') statusJa = '承認済み';
-      if (status === 'rejected') statusJa = '却下';
-      
-      let typeJa = r.type;
-      if (typeJa === 'paid') typeJa = '有給';
-      else if (typeJa === 'unpaid') typeJa = '欠勤';
-      
-      tr.innerHTML = `
-        <td data-label="社員番号・氏名">${userLabel}</td>
-        <td data-label="期間">${r.startDate}〜${r.endDate}</td>
-        <td data-label="種類">${typeJa}</td>
-        <td data-label="状態"><span class="leave-badge ${statusClass}">${statusJa}</span></td>
-        <td data-label="残数"><button type="button" class="leave-btn leave-btn-subtle" data-action="balance" data-user="${r.userId}">照会</button></td>
-        ${hasActions ? `<td data-label="操作">
-          <button type="button" class="leave-btn leave-btn-primary" data-action="approve" data-app="${r.id}">承認</button>
-          <button type="button" class="leave-btn leave-btn-danger" data-action="reject" data-app="${r.id}">却下</button>
-        </td>` : ''}`;
-      tbody.appendChild(tr);
-    }
-    if (!pageRows.length) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="${colCount}" style="text-align:center;color:#64748b;padding:20px 8px;">${usingLegacyPending ? '承認待ちの休暇申請はありません' : (selectedStatus ? 'この状態の休暇申請はありません' : '休暇申請はありません')}</td>`;
-      tbody.appendChild(tr);
-    }
-    pager.innerHTML = `
-      <button type="button" class="leave-btn" data-pg="prev">前へ</button>
-      <span class="leave-muted">${total} 件 / ${page} / ${totalPages} ページ</span>
-      <button type="button" class="leave-btn" data-pg="next">次へ</button>
-    `;
-    pager.querySelectorAll('[data-pg]').forEach((b) => {
-      b.addEventListener('click', () => {
-        const dir = b.getAttribute('data-pg');
-        if (dir === 'prev' && page > 1) page -= 1;
-        if (dir === 'next' && page < totalPages) page += 1;
-        renderTableRows();
-        bindActionButtons();
-      });
-    });
-  };
-
-  if (statusEl) {
-    statusEl.addEventListener('change', async () => {
-      await mountApprovalsFn(host || content, { ...(opts || {}), status: String(statusEl.value || '') });
-    });
-  }
-
-  table.appendChild(tbody);
-  tableWrap.appendChild(table);
-  c.appendChild(tableWrap);
-
-  const handleAction = async (el) => {
-    const action = el.dataset.action;
-    const setBusy = (flag) => {
-      try {
-        if (el && typeof el.disabled !== 'undefined') el.disabled = !!flag;
-      } catch (e) { /* bỏ qua lỗi */ }
-    };
-
-    if (action === 'balance') {
-      const u = el.dataset.user;
-      try {
-        setBusy(true);
-        const r = await api.get(`/api/leave/user-balance?userId=${encodeURIComponent(u)}`);
-        alert(`User ${u} 残数: ${r.totalAvailable}日`);
-      } catch (err) {
-        alert('残数取得失敗: ' + ((err && err.message) ? err.message : 'error'));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-
-    if (action === 'approve' || action === 'reject') {
-      const id = el.dataset.app;
-      const s = action === 'approve' ? 'approved' : 'rejected';
-      try {
-        setBusy(true);
-        await api.patch(`/api/leave/${id}/status`, { status: s });
-        if (typeof opts?.onDataChanged === 'function') await opts.onDataChanged();
-        // Vẽ lại: gọi lại với đúng dạng tham số
-        await mountApprovalsFn(host || content, { ...(opts || {}), status: selectedStatus });
-      } catch (err) {
-        alert('状態更新失敗: ' + ((err && err.message) ? err.message : 'error'));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-
-    if (action === 'pc-approve' || action === 'pc-reject') {
-      const pcId = el.dataset.pc;
-      const s = action === 'pc-approve' ? 'approved' : 'rejected';
-      try {
-        setBusy(true);
-        await api.patch(`/api/manager/profile-change/${pcId}/status`, { status: s });
-        if (typeof opts?.onDataChanged === 'function') await opts.onDataChanged();
-        // Vẽ lại
-        await mountApprovalsFn(host || content, opts || {});
-      } catch (err) {
-        alert('プロフィール申請更新失敗: ' + ((err && err.message) ? err.message : 'error'));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-  };
-
-  const bindActionButtons = () => {
-    c.querySelectorAll('[data-action]').forEach((btn) => {
-      btn.onclick = async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        await handleAction(btn);
-      };
-    });
-  };
-  renderTableRows();
-  bindActionButtons();
-  c.appendChild(pager);
-  if (monthEl) monthEl.addEventListener('change', () => { page = 1; renderTableRows(); bindActionButtons(); });
-
-  // Yêu cầu cập nhật hồ sơ
-  if (opts?.hideProfileSection) return;
-  const pcWrap = document.createElement('div');
-  pcWrap.innerHTML = '<h4>プロフィール更新申請</h4>';
-
-  const pcr = await api.get('/api/manager/profile-change/pending');
-  if (stale()) return;
-  const pcWrapTable = document.createElement('div');
-  pcWrapTable.className = 'leave-table-wrap';
-  const pcTable = document.createElement('table');
-  pcTable.className = 'leave-table';
-  pcTable.innerHTML =
-    '<thead><tr><th>ID</th><th>User</th><th>内容</th><th>送信日時</th><th>操作</th></tr></thead>';
-  const pcBody = document.createElement('tbody');
-
-  for (const r of pcr) {
-    const fields = r.fields || {};
-    const summary = Object.keys(fields)
-      .slice(0, 6)
-      .map(k => `${k}: ${String(fields[k]).slice(0, 20)}`)
-      .join(', ');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${r.id}</td>
-      <td>${r.userId} ${r.username || ''}</td>
-      <td>${summary}</td>
-      <td>${r.createdAt || ''}</td>
+  `,l.appendChild(m);const y=m.querySelector("#leaveReqStatusFilter");y&&(y.value=p);const w=m.querySelector("#leaveReqMonthFilter"),A=document.createElement("div");A.innerHTML='<div style="padding:16px;color:#64748b;text-align:center;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</div>',l.appendChild(A);const d=y&&y.value?`?status=${encodeURIComponent(y.value)}`:"";let u=[],n=!1;if(p==="pending"){if(n=!0,u=await M.get("/api/leave/pending").catch(()=>[]),g())return}else try{if(u=await M.get(`/api/leave/admin-requests${d}`),g())return}catch{if(u=[],g())return}A.remove();const c=document.createElement("div");c.className="leave-table-wrap";const t=document.createElement("table");t.className="leave-table leave-table-approvals";const i=p==="pending";t.innerHTML=`<thead><tr><th>\u793E\u54E1\u756A\u53F7\u30FB\u6C0F\u540D</th><th>\u671F\u9593</th><th>\u7A2E\u985E</th><th>\u72B6\u614B</th><th>\u6B8B\u6570</th>${i?"<th>\u64CD\u4F5C</th>":""}</tr></thead>`;const h=document.createElement("tbody"),f=document.createElement("div");f.className="leave-pager";let x=1;const C=10,r=Array.isArray(u)?u:[],F=()=>{const b=String(w?.value||"").trim(),L=r.filter(k=>!b||String(k.startDate||"").startsWith(b)||String(k.endDate||"").startsWith(b)),B=L.length,H=Math.max(1,Math.ceil(B/C));x>H&&(x=H);const T=(x-1)*C,I=L.slice(T,T+C),W=i?6:5;h.innerHTML="";let K="",O="";for(const k of I){const j=String(k?.tenant_id??"0"),ee=String(k?.branch_id??"0"),X=String(k?.tenant_name||"\u672A\u8A2D\u5B9A").trim()||"\u672A\u8A2D\u5B9A",G=String(k?.branch_name||"").trim(),Z=j,Y=`${j}__${ee}`;if(Z!==K){const U=document.createElement("tr");U.className="leave-group-header";const ne=G?`<span class="leave-group-branch">${G}</span>`:"";U.innerHTML=`<td colspan="${W}"><span class="leave-group-company">\u{1F3E2} ${X}</span>${ne}</td>`,h.appendChild(U),K=Z,O=Y}else if(G&&Y!==O){const U=document.createElement("tr");U.className="leave-group-header",U.innerHTML=`<td colspan="${W}"><span class="leave-group-company">\u{1F3E2} ${X}</span><span class="leave-group-branch">${G}</span></td>`,h.appendChild(U),O=Y}const ie=String(k?.status||"")==="pending",te=`${k.employee_code||"EMP"+String(k.userId).padStart(3,"0")} ${k?.username||""}`.trim(),Q=document.createElement("tr"),P=String(k.status||"").toLowerCase(),ae=P==="approved"?"approved":P==="rejected"?"rejected":"pending";let J="\u627F\u8A8D\u5F85\u3061";P==="approved"&&(J="\u627F\u8A8D\u6E08\u307F"),P==="rejected"&&(J="\u5374\u4E0B");let R=k.type;R==="paid"?R="\u6709\u7D66":R==="unpaid"&&(R="\u6B20\u52E4"),Q.innerHTML=`
+        <td data-label="\u793E\u54E1\u756A\u53F7\u30FB\u6C0F\u540D">${te}</td>
+        <td data-label="\u671F\u9593">${k.startDate}\u301C${k.endDate}</td>
+        <td data-label="\u7A2E\u985E">${R}</td>
+        <td data-label="\u72B6\u614B"><span class="leave-badge ${ae}">${J}</span></td>
+        <td data-label="\u6B8B\u6570"><button type="button" class="leave-btn leave-btn-subtle" data-action="balance" data-user="${k.userId}">\u7167\u4F1A</button></td>
+        ${i?`<td data-label="\u64CD\u4F5C">
+          <button type="button" class="leave-btn leave-btn-primary" data-action="approve" data-app="${k.id}">\u627F\u8A8D</button>
+          <button type="button" class="leave-btn leave-btn-danger" data-action="reject" data-app="${k.id}">\u5374\u4E0B</button>
+        </td>`:""}`,h.appendChild(Q)}if(!I.length){const k=document.createElement("tr");k.innerHTML=`<td colspan="${W}" style="text-align:center;color:#64748b;padding:20px 8px;">${n?"\u627F\u8A8D\u5F85\u3061\u306E\u4F11\u6687\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093":p?"\u3053\u306E\u72B6\u614B\u306E\u4F11\u6687\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093":"\u4F11\u6687\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093"}</td>`,h.appendChild(k)}f.innerHTML=`
+      <button type="button" class="leave-btn" data-pg="prev">\u524D\u3078</button>
+      <span class="leave-muted">${B} \u4EF6 / ${x} / ${H} \u30DA\u30FC\u30B8</span>
+      <button type="button" class="leave-btn" data-pg="next">\u6B21\u3078</button>
+    `,f.querySelectorAll("[data-pg]").forEach(k=>{k.addEventListener("click",()=>{const j=k.getAttribute("data-pg");j==="prev"&&x>1&&(x-=1),j==="next"&&x<H&&(x+=1),F(),a()})})};y&&y.addEventListener("change",async()=>{await z(e||N,{...s||{},status:String(y.value||"")})}),t.appendChild(h),c.appendChild(t),l.appendChild(c);const o=async b=>{const L=b.dataset.action,B=H=>{try{b&&typeof b.disabled<"u"&&(b.disabled=!!H)}catch{}};if(L==="balance"){const H=b.dataset.user;try{B(!0);const T=await M.get(`/api/leave/user-balance?userId=${encodeURIComponent(H)}`);alert(`User ${H} \u6B8B\u6570: ${T.totalAvailable}\u65E5`)}catch(T){alert("\u6B8B\u6570\u53D6\u5F97\u5931\u6557: "+(T&&T.message?T.message:"error"))}finally{B(!1)}return}if(L==="approve"||L==="reject"){const H=b.dataset.app,T=L==="approve"?"approved":"rejected";try{B(!0),await M.patch(`/api/leave/${H}/status`,{status:T}),typeof s?.onDataChanged=="function"&&await s.onDataChanged(),await z(e||N,{...s||{},status:p})}catch(I){alert("\u72B6\u614B\u66F4\u65B0\u5931\u6557: "+(I&&I.message?I.message:"error"))}finally{B(!1)}return}if(L==="pc-approve"||L==="pc-reject"){const H=b.dataset.pc,T=L==="pc-approve"?"approved":"rejected";try{B(!0),await M.patch(`/api/manager/profile-change/${H}/status`,{status:T}),typeof s?.onDataChanged=="function"&&await s.onDataChanged(),await z(e||N,s||{})}catch(I){alert("\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u7533\u8ACB\u66F4\u65B0\u5931\u6557: "+(I&&I.message?I.message:"error"))}finally{B(!1)}return}},a=()=>{l.querySelectorAll("[data-action]").forEach(b=>{b.onclick=async L=>{L.preventDefault(),L.stopPropagation(),await o(b)}})};if(F(),a(),l.appendChild(f),w&&w.addEventListener("change",()=>{x=1,F(),a()}),s?.hideProfileSection)return;const $=document.createElement("div");$.innerHTML="<h4>\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u66F4\u65B0\u7533\u8ACB</h4>";const S=await M.get("/api/manager/profile-change/pending");if(g())return;const v=document.createElement("div");v.className="leave-table-wrap";const E=document.createElement("table");E.className="leave-table",E.innerHTML="<thead><tr><th>ID</th><th>User</th><th>\u5185\u5BB9</th><th>\u9001\u4FE1\u65E5\u6642</th><th>\u64CD\u4F5C</th></tr></thead>";const q=document.createElement("tbody");for(const b of S){const L=b.fields||{},B=Object.keys(L).slice(0,6).map(T=>`${T}: ${String(L[T]).slice(0,20)}`).join(", "),H=document.createElement("tr");H.innerHTML=`
+      <td>${b.id}</td>
+      <td>${b.userId} ${b.username||""}</td>
+      <td>${B}</td>
+      <td>${b.createdAt||""}</td>
       <td>
-        <button type="button" class="leave-btn leave-btn-primary" data-action="pc-approve" data-pc="${r.id}">承認</button>
-        <button type="button" class="leave-btn leave-btn-danger" data-action="pc-reject" data-pc="${r.id}">却下</button>
-      </td>`;
-    pcBody.appendChild(tr);
-  }
-  if (!(Array.isArray(pcr) && pcr.length)) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="5" style="text-align:center;color:#64748b;padding:14px 8px;">承認待ちのプロフィール更新申請はありません</td>';
-    pcBody.appendChild(tr);
-  }
-
-  pcTable.appendChild(pcBody);
-  pcWrapTable.appendChild(pcTable);
-  pcWrap.appendChild(pcWrapTable);
-  c.appendChild(pcWrap);
-  bindActionButtons();
-}
-
-export async function mountLeaveAdmin({ content }) {
-  content.innerHTML = '<h3>有給休暇管理</h3>';
-  const data = await api.get('/api/leave/summary');
-
-  const table = document.createElement('table');
-  table.style.width = '100%';
-  table.innerHTML =
-    '<thead><tr><th>User</th><th>部門</th><th>付与合計</th><th>使用</th><th>残</th></tr></thead>';
-  const tbody = document.createElement('tbody');
-
-  for (const r of data) {
-    const fmtD = (n) => { const v = Math.round(Number(n || 0) * 10) / 10; return Number.isInteger(v) ? String(v) : v.toFixed(1); };
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${r.userId} ${r.name || ''}</td>
-      <td>${r.departmentId == null ? '' : r.departmentId}</td>
-      <td>${fmtD(r.totalGranted)}</td>
-      <td>${fmtD(r.usedDays)}</td>
-      <td>${fmtD(r.remainingDays)}</td>`;
-    tbody.appendChild(tr);
-  }
-
-  table.appendChild(tbody);
-  content.appendChild(table);
-}
-
-export async function mountLeaveGrant({
-  host,
-  content,
-  opts,
-  listUsers,
-  mountApprovalsFn,
-  mountLeaveBalanceFn,
-}) {
-  const c = host || content;
-  ensureLeaveUiStyles();
-
-  if (!(opts && opts.unified)) {
-    const nav = document.createElement('div');
-    if (opts && opts.hub) {
-      nav.innerHTML = `
-        <span class="btn">有給付与</span>
-        <button class="btn" data-action="go-approvals">有給申請承認</button>
-        <button class="btn" data-action="go-balance">有給残日数一覧</button>
-        <button class="btn" data-action="auto-grant">自動付与 実行</button>
-      `;
-    } else {
-      nav.innerHTML = `
-        <a class="btn" href="/ui/admin?tab=leave_grant">有給付与</a>
-        <a class="btn" href="/ui/admin?tab=approvals">有給申請承認</a>
-        <a class="btn" href="/ui/admin?tab=leave_balance">有給残日数一覧</a>
-        <button class="btn" data-action="auto-grant">自動付与 実行</button>
-      `;
-    }
-    c.appendChild(nav);
-  }
-
-  const eligibleWrap = document.createElement('div');
-  eligibleWrap.style.cssText = 'display:none;';
-  eligibleWrap.innerHTML = `
+        <button type="button" class="leave-btn leave-btn-primary" data-action="pc-approve" data-pc="${b.id}">\u627F\u8A8D</button>
+        <button type="button" class="leave-btn leave-btn-danger" data-action="pc-reject" data-pc="${b.id}">\u5374\u4E0B</button>
+      </td>`,q.appendChild(H)}if(!(Array.isArray(S)&&S.length)){const b=document.createElement("tr");b.innerHTML='<td colspan="5" style="text-align:center;color:#64748b;padding:14px 8px;">\u627F\u8A8D\u5F85\u3061\u306E\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u66F4\u65B0\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093</td>',q.appendChild(b)}E.appendChild(q),v.appendChild(E),$.appendChild(v),l.appendChild($),a()}async function ce({content:e}){e.innerHTML="<h3>\u6709\u7D66\u4F11\u6687\u7BA1\u7406</h3>";const N=await M.get("/api/leave/summary"),s=document.createElement("table");s.style.width="100%",s.innerHTML="<thead><tr><th>User</th><th>\u90E8\u9580</th><th>\u4ED8\u4E0E\u5408\u8A08</th><th>\u4F7F\u7528</th><th>\u6B8B</th></tr></thead>";const z=document.createElement("tbody");for(const l of N){const D=p=>{const m=Math.round(Number(p||0)*10)/10;return Number.isInteger(m)?String(m):m.toFixed(1)},g=document.createElement("tr");g.innerHTML=`
+      <td>${l.userId} ${l.name||""}</td>
+      <td>${l.departmentId==null?"":l.departmentId}</td>
+      <td>${D(l.totalGranted)}</td>
+      <td>${D(l.usedDays)}</td>
+      <td>${D(l.remainingDays)}</td>`,z.appendChild(g)}s.appendChild(z),e.appendChild(s)}async function me({host:e,content:N,opts:s,listUsers:z,mountApprovalsFn:l,mountLeaveBalanceFn:D}){const g=e||N;if(_(),!(s&&s.unified)){const r=document.createElement("div");s&&s.hub?r.innerHTML=`
+        <span class="btn">\u6709\u7D66\u4ED8\u4E0E</span>
+        <button class="btn" data-action="go-approvals">\u6709\u7D66\u7533\u8ACB\u627F\u8A8D</button>
+        <button class="btn" data-action="go-balance">\u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7</button>
+        <button class="btn" data-action="auto-grant">\u81EA\u52D5\u4ED8\u4E0E \u5B9F\u884C</button>
+      `:r.innerHTML=`
+        <a class="btn" href="/ui/admin?tab=leave_grant">\u6709\u7D66\u4ED8\u4E0E</a>
+        <a class="btn" href="/ui/admin?tab=approvals">\u6709\u7D66\u7533\u8ACB\u627F\u8A8D</a>
+        <a class="btn" href="/ui/admin?tab=leave_balance">\u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7</a>
+        <button class="btn" data-action="auto-grant">\u81EA\u52D5\u4ED8\u4E0E \u5B9F\u884C</button>
+      `,g.appendChild(r)}const p=document.createElement("div");p.style.cssText="display:none;",p.innerHTML=`
     <div class="leave-toolbar" style="margin:0 0 12px;display:flex;align-items:center;gap:12px;">
-      <strong style="color:#32363A;font-weight:normal;font-size:16px;margin-right:auto;">付与対象候補</strong>
-      <button class="leave-btn" data-action="load-eligible">候補を読込</button>
-      <button class="leave-btn leave-btn-primary" data-action="grant-eligible">候補を一括付与</button>
+      <strong style="color:#32363A;font-weight:normal;font-size:16px;margin-right:auto;">\u4ED8\u4E0E\u5BFE\u8C61\u5019\u88DC</strong>
+      <button class="leave-btn" data-action="load-eligible">\u5019\u88DC\u3092\u8AAD\u8FBC</button>
+      <button class="leave-btn leave-btn-primary" data-action="grant-eligible">\u5019\u88DC\u3092\u4E00\u62EC\u4ED8\u4E0E</button>
     </div>
     <div style="margin-bottom:8px;"><span id="eligibleInfo" style="color:#6A6D70;font-size:13px;"></span></div>
     <div id="eligibleTableHost"></div>
-  `;
-  c.appendChild(eligibleWrap);
-
-  const eligibleInfo = eligibleWrap.querySelector('#eligibleInfo');
-  const eligibleHost = eligibleWrap.querySelector('#eligibleTableHost');
-  let eligibleRowsCache = [];
-  const getEligibleKey = (r) => `${r.userId}|${r.grantDate}|${r.days}`;
-  const selectedEligible = new Set();
-  const renderEligible = (rows) => {
-    const list = Array.isArray(rows) ? rows : [];
-    eligibleRowsCache = list;
-    if (!list.length) {
-      eligibleHost.innerHTML = '<div class="leave-mini-note">付与候補はありません</div>';
-      return;
-    }
-    const w = document.createElement('div');
-    w.className = 'leave-table-wrap sticky';
-    const t = document.createElement('table');
-    t.className = 'leave-table';
-    t.innerHTML = '<thead><tr><th><input type="checkbox" id="eligibleCheckAll"></th><th>User</th><th>入社日</th><th>付与日</th><th>日数</th><th>出勤率</th><th>判定期間</th></tr></thead>';
-    const tb = document.createElement('tbody');
-    for (const r of list) {
-      const k = getEligibleKey(r);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><input type="checkbox" data-eligible-key="${k}" ${selectedEligible.has(k) ? 'checked' : ''}></td>
-        <td>${r.userId}${r.employeeCode ? ` (${r.employeeCode})` : ''} ${r.username || ''}</td>
-        <td>${r.hireDate || ''}</td>
-        <td>${r.grantDate || ''}</td>
-      <td class="num">${r.days || 0}</td>
-      <td class="num">${r.attendanceRate || 0}%</td>
-        <td>${r.periodStart || ''}〜${r.periodEnd || ''}</td>
-      `;
-      tb.appendChild(tr);
-    }
-    t.appendChild(tb);
-    eligibleHost.innerHTML = '';
-    w.appendChild(t);
-    eligibleHost.appendChild(w);
-    const allEl = eligibleHost.querySelector('#eligibleCheckAll');
-    if (allEl) {
-      allEl.addEventListener('change', () => {
-        const checked = !!allEl.checked;
-        eligibleHost.querySelectorAll('input[data-eligible-key]').forEach((ck) => {
-          ck.checked = checked;
-          const k = ck.getAttribute('data-eligible-key');
-          if (!k) return;
-          if (checked) selectedEligible.add(k);
-          else selectedEligible.delete(k);
-        });
-      });
-    }
-    eligibleHost.querySelectorAll('input[data-eligible-key]').forEach((ck) => {
-      ck.addEventListener('change', () => {
-        const k = ck.getAttribute('data-eligible-key');
-        if (!k) return;
-        if (ck.checked) selectedEligible.add(k);
-        else selectedEligible.delete(k);
-      });
-    });
-  };
-
-  delegate(c, '[data-action]', 'click', async (e, el) => {
-    const action = el.dataset.action;
-
-    if (action === 'auto-grant') {
-      try {
-        const r = await api.post('/api/leave/auto-grant/run');
-        alert(`自動付与 実行: ${r.ok || 0}/${r.processed || 0}`);
-        if (typeof opts?.onDataChanged === 'function') await opts.onDataChanged();
-      } catch (err) {
-        alert('自動付与失敗: ' + ((err && err.message) ? err.message : 'error'));
-      }
-    } else if (action === 'load-eligible') {
-      try {
-        const r = await api.get('/api/leave/eligible-list');
-        const rows = Array.isArray(r?.rows) ? r.rows : [];
-        if (eligibleInfo) eligibleInfo.textContent = `mode=${r?.mode || '-'} / 件数=${rows.length}`;
-        renderEligible(rows);
-      } catch (err) {
-        if (eligibleInfo) eligibleInfo.textContent = '候補読込に失敗しました';
-      }
-    } else if (action === 'grant-eligible') {
-      try {
-        const selected = eligibleRowsCache.filter((r) => selectedEligible.has(getEligibleKey(r)));
-        const targets = selected.length ? selected : eligibleRowsCache;
-        let ok = 0;
-        for (const r of targets) {
-          const gDate = String(r.grantDate || '').slice(0, 10);
-          if (!gDate) continue;
-          const dt = new Date(gDate + 'T00:00:00Z');
-          dt.setUTCFullYear(dt.getUTCFullYear() + 2);
-          dt.setUTCDate(dt.getUTCDate() - 1);
-          const expiry = dt.toISOString().slice(0, 10);
-          await api.post('/api/leave/grant', { userId: Number(r.userId), days: Number(r.days || 0), grantDate: gDate, expiryDate: expiry });
-          ok += 1;
-        }
-        if (eligibleInfo) eligibleInfo.textContent = `選択=${targets.length} / 付与=${ok}`;
-        const re = await api.get('/api/leave/eligible-list');
-        selectedEligible.clear();
-        renderEligible(re?.rows || []);
-        if (typeof opts?.onDataChanged === 'function') await opts.onDataChanged();
-      } catch (err) {
-        alert('一括付与失敗: ' + ((err && err.message) ? err.message : 'error'));
-      }
-    } else if (action === 'go-approvals' && opts && opts.hub) {
-      mountApprovalsFn(c, { hub: true });
-    } else if (action === 'go-balance' && opts && opts.hub) {
-      mountLeaveBalanceFn(c, { hub: true });
-    }
-  });
-
-  const users = normalizeUsers(await listUsers());
-  const form = document.createElement('form');
-  const today = new Date();
-  const fmt = d => d.toISOString().slice(0, 10);
-  const exp = new Date(
-    Date.UTC(today.getUTCFullYear() + 2, today.getUTCMonth(), today.getUTCDate() - 1),
-  );
-
-  form.className = 'leave-form-modern';
-  form.innerHTML = `
+  `,g.appendChild(p);const m=p.querySelector("#eligibleInfo"),y=p.querySelector("#eligibleTableHost");let w=[];const A=r=>`${r.userId}|${r.grantDate}|${r.days}`,d=new Set,u=r=>{const F=Array.isArray(r)?r:[];if(w=F,!F.length){y.innerHTML='<div class="leave-mini-note">\u4ED8\u4E0E\u5019\u88DC\u306F\u3042\u308A\u307E\u305B\u3093</div>';return}const o=document.createElement("div");o.className="leave-table-wrap sticky";const a=document.createElement("table");a.className="leave-table",a.innerHTML='<thead><tr><th><input type="checkbox" id="eligibleCheckAll"></th><th>User</th><th>\u5165\u793E\u65E5</th><th>\u4ED8\u4E0E\u65E5</th><th>\u65E5\u6570</th><th>\u51FA\u52E4\u7387</th><th>\u5224\u5B9A\u671F\u9593</th></tr></thead>';const $=document.createElement("tbody");for(const v of F){const E=A(v),q=document.createElement("tr");q.innerHTML=`
+        <td><input type="checkbox" data-eligible-key="${E}" ${d.has(E)?"checked":""}></td>
+        <td>${v.userId}${v.employeeCode?` (${v.employeeCode})`:""} ${v.username||""}</td>
+        <td>${v.hireDate||""}</td>
+        <td>${v.grantDate||""}</td>
+      <td class="num">${v.days||0}</td>
+      <td class="num">${v.attendanceRate||0}%</td>
+        <td>${v.periodStart||""}\u301C${v.periodEnd||""}</td>
+      `,$.appendChild(q)}a.appendChild($),y.innerHTML="",o.appendChild(a),y.appendChild(o);const S=y.querySelector("#eligibleCheckAll");S&&S.addEventListener("change",()=>{const v=!!S.checked;y.querySelectorAll("input[data-eligible-key]").forEach(E=>{E.checked=v;const q=E.getAttribute("data-eligible-key");q&&(v?d.add(q):d.delete(q))})}),y.querySelectorAll("input[data-eligible-key]").forEach(v=>{v.addEventListener("change",()=>{const E=v.getAttribute("data-eligible-key");E&&(v.checked?d.add(E):d.delete(E))})})};V(g,"[data-action]","click",async(r,F)=>{const o=F.dataset.action;if(o==="auto-grant")try{const a=await M.post("/api/leave/auto-grant/run");alert(`\u81EA\u52D5\u4ED8\u4E0E \u5B9F\u884C: ${a.ok||0}/${a.processed||0}`),typeof s?.onDataChanged=="function"&&await s.onDataChanged()}catch(a){alert("\u81EA\u52D5\u4ED8\u4E0E\u5931\u6557: "+(a&&a.message?a.message:"error"))}else if(o==="load-eligible")try{const a=await M.get("/api/leave/eligible-list"),$=Array.isArray(a?.rows)?a.rows:[];m&&(m.textContent=`mode=${a?.mode||"-"} / \u4EF6\u6570=${$.length}`),u($)}catch{m&&(m.textContent="\u5019\u88DC\u8AAD\u8FBC\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}else if(o==="grant-eligible")try{const a=w.filter(E=>d.has(A(E))),$=a.length?a:w;let S=0;for(const E of $){const q=String(E.grantDate||"").slice(0,10);if(!q)continue;const b=new Date(q+"T00:00:00Z");b.setUTCFullYear(b.getUTCFullYear()+2),b.setUTCDate(b.getUTCDate()-1);const L=b.toISOString().slice(0,10);await M.post("/api/leave/grant",{userId:Number(E.userId),days:Number(E.days||0),grantDate:q,expiryDate:L}),S+=1}m&&(m.textContent=`\u9078\u629E=${$.length} / \u4ED8\u4E0E=${S}`);const v=await M.get("/api/leave/eligible-list");d.clear(),u(v?.rows||[]),typeof s?.onDataChanged=="function"&&await s.onDataChanged()}catch(a){alert("\u4E00\u62EC\u4ED8\u4E0E\u5931\u6557: "+(a&&a.message?a.message:"error"))}else o==="go-approvals"&&s&&s.hub?l(g,{hub:!0}):o==="go-balance"&&s&&s.hub&&D(g,{hub:!0})});const n=oe(await z()),c=document.createElement("form"),t=new Date,i=r=>r.toISOString().slice(0,10),h=new Date(Date.UTC(t.getUTCFullYear()+2,t.getUTCMonth(),t.getUTCDate()-1));c.className="leave-form-modern",c.innerHTML=`
     <div style="margin-bottom:16px;">
-      <label class="leave-label">ユーザー</label>
+      <label class="leave-label">\u30E6\u30FC\u30B6\u30FC</label>
       <select id="grantUser"></select>
     </div>
     <div style="margin-bottom:16px;">
-      <label class="leave-label">日数</label>
+      <label class="leave-label">\u65E5\u6570</label>
       <input id="grantDays" type="number" min="1" value="10">
     </div>
     <div style="margin-bottom:16px;">
-      <label class="leave-label">付与日</label>
-      <input id="grantDate" type="date" value="${fmt(today)}">
+      <label class="leave-label">\u4ED8\u4E0E\u65E5</label>
+      <input id="grantDate" type="date" value="${i(t)}">
     </div>
     <div style="margin-bottom:16px;">
-      <label class="leave-label">有効期限</label>
-      <input id="expireDate" type="date" value="${fmt(exp)}">
+      <label class="leave-label">\u6709\u52B9\u671F\u9650</label>
+      <input id="expireDate" type="date" value="${i(h)}">
     </div>
     <div style="margin-top:20px;">
-      <button type="submit">付与</button>
+      <button type="submit">\u4ED8\u4E0E</button>
     </div>
-  `;
-
-  const sel = form.querySelector('#grantUser');
-  for (const u of users) {
-    const role = String(u?.role || '').toLowerCase();
-    if (role === 'admin' || role === 'manager') continue;
-    const opt = document.createElement('option');
-    opt.value = String(u.id);
-    const empCode = u.employee_code || ('EMP' + String(u.id).padStart(3, '0'));
-    opt.textContent = `${empCode} ${u.username || u.email}`;
-    sel.appendChild(opt);
-  }
-
-  form.querySelector('#grantDate').addEventListener('change', e => {
-    try {
-      const d = new Date(e.target.value + 'T00:00:00Z');
-      const tmp = new Date(
-        Date.UTC(d.getUTCFullYear() + 2, d.getUTCMonth(), d.getUTCDate() - 1),
-      );
-      form.querySelector('#expireDate').value = fmt(tmp);
-    } catch {
-      // bỏ qua
-    }
-  });
-
-  const result = document.createElement('div');
-  result.className = 'leave-mini-note';
-
-  form.addEventListener('submit', async ev => {
-    ev.preventDefault();
-    const userId = parseInt(sel.value, 10);
-    const days = parseInt(form.querySelector('#grantDays').value, 10);
-    const grantDate = form.querySelector('#grantDate').value;
-    const expiryDate = form.querySelector('#expireDate').value;
-
-    try {
-      await api.post('/api/leave/grant', { userId, days, grantDate, expiryDate });
-      result.textContent = '付与しました';
-      if (typeof opts?.onDataChanged === 'function') await opts.onDataChanged();
-    } catch (err) {
-      result.textContent = '付与失敗: ' + ((err && err.message) ? err.message : 'error');
-    }
-  });
-
-  const formCard = document.createElement('div');
-  formCard.className = 'leave-form-card';
-  formCard.innerHTML = `
+  `;const f=c.querySelector("#grantUser");for(const r of n){const F=String(r?.role||"").toLowerCase();if(F==="admin"||F==="manager")continue;const o=document.createElement("option");o.value=String(r.id);const a=r.employee_code||"EMP"+String(r.id).padStart(3,"0");o.textContent=`${a} ${r.username||r.email}`,f.appendChild(o)}c.querySelector("#grantDate").addEventListener("change",r=>{try{const F=new Date(r.target.value+"T00:00:00Z"),o=new Date(Date.UTC(F.getUTCFullYear()+2,F.getUTCMonth(),F.getUTCDate()-1));c.querySelector("#expireDate").value=i(o)}catch{}});const x=document.createElement("div");x.className="leave-mini-note",c.addEventListener("submit",async r=>{r.preventDefault();const F=parseInt(f.value,10),o=parseInt(c.querySelector("#grantDays").value,10),a=c.querySelector("#grantDate").value,$=c.querySelector("#expireDate").value;try{await M.post("/api/leave/grant",{userId:F,days:o,grantDate:a,expiryDate:$}),x.textContent="\u4ED8\u4E0E\u3057\u307E\u3057\u305F",typeof s?.onDataChanged=="function"&&await s.onDataChanged()}catch(S){x.textContent="\u4ED8\u4E0E\u5931\u6557: "+(S&&S.message?S.message:"error")}});const C=document.createElement("div");C.className="leave-form-card",C.innerHTML=`
     <h4 style="margin-top:16px;">Manual PTO Grant</h4>
-  `;
-  formCard.appendChild(form);
-  formCard.appendChild(result);
-  c.appendChild(formCard);
-}
-
-async function showEditPtoModal(userId, userName, onSaved) {
-  const overlay = document.createElement('div');
-  overlay.className = 'pto-modal-overlay';
-  
-  const modal = document.createElement('div');
-  modal.className = 'pto-modal';
-  
-  modal.innerHTML = `
+  `,C.appendChild(c),C.appendChild(x),g.appendChild(C)}async function re(e,N,s){const z=document.createElement("div");z.className="pto-modal-overlay";const l=document.createElement("div");l.className="pto-modal",l.innerHTML=`
     <div class="pto-modal-header">
-      <h3 class="pto-modal-title">${userName} - 有給休暇の編集</h3>
+      <h3 class="pto-modal-title">${N} - \u6709\u7D66\u4F11\u6687\u306E\u7DE8\u96C6</h3>
       <button class="pto-modal-close">&times;</button>
     </div>
     <div class="pto-modal-body">
-      <div id="ptoModalLoading" style="text-align:center; padding: 20px; color:#6B7280;">読み込み中...</div>
+      <div id="ptoModalLoading" style="text-align:center; padding: 20px; color:#6B7280;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</div>
       <div id="ptoGrantsList" style="display:none;"></div>
       <div id="ptoUsedSection" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E5E5E5;">
-        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: normal; color: #32363A;">取得済み有給休暇</h4>
-        <div id="ptoUsedList" style="font-size:13px; color:#32363A;">読み込み中...</div>
+        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: normal; color: #32363A;">\u53D6\u5F97\u6E08\u307F\u6709\u7D66\u4F11\u6687</h4>
+        <div id="ptoUsedList" style="font-size:13px; color:#32363A;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</div>
       </div>
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E5E5E5;">
-        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: normal; color: #32363A;">手動付与（追加）</h4>
+        <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: normal; color: #32363A;">\u624B\u52D5\u4ED8\u4E0E\uFF08\u8FFD\u52A0\uFF09</h4>
         <div class="pto-grant-row" style="background: #F4F4F4; box-shadow: none;">
           <div>
-            <label class="pto-grant-label">付与日 (Grant Date)</label>
+            <label class="pto-grant-label">\u4ED8\u4E0E\u65E5 (Grant Date)</label>
             <input type="date" id="newGrantDate" value="${new Date().toISOString().slice(0,10)}">
           </div>
           <div>
-            <label class="pto-grant-label">日数 (Days)</label>
-            <input type="number" id="newGrantDays" min="1" step="1" placeholder="日数">
+            <label class="pto-grant-label">\u65E5\u6570 (Days)</label>
+            <input type="number" id="newGrantDays" min="1" step="1" placeholder="\u65E5\u6570">
           </div>
           <div>
-            <label class="pto-grant-label">有効期限 (Expiry)</label>
+            <label class="pto-grant-label">\u6709\u52B9\u671F\u9650 (Expiry)</label>
             <input type="date" id="newGrantExpiry">
           </div>
           <div style="align-self: flex-end;">
-              <button class="leave-btn" id="btnAddGrant">追加</button>
+              <button class="leave-btn" id="btnAddGrant">\u8FFD\u52A0</button>
             </div>
         </div>
       </div>
     </div>
     <div class="pto-modal-footer">
-      <button class="leave-btn secondary pto-modal-close-btn">閉じる</button>
+      <button class="leave-btn secondary pto-modal-close-btn">\u9589\u3058\u308B</button>
     </div>
-  `;
-  
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-  
-  const closeBtns = modal.querySelectorAll('.pto-modal-close, .pto-modal-close-btn');
-  closeBtns.forEach(b => b.addEventListener('click', () => overlay.remove()));
-  
-  const loadingEl = modal.querySelector('#ptoModalLoading');
-  const listEl = modal.querySelector('#ptoGrantsList');
-  
-  // Đặt hạn dùng mặc định (2 năm trừ 1 ngày)
-  const today = new Date();
-  const defExpiry = new Date(today.getUTCFullYear() + 2, today.getUTCMonth(), today.getUTCDate() - 1);
-  modal.querySelector('#newGrantExpiry').value = defExpiry.toISOString().slice(0,10);
-  
-  async function loadGrants() {
-    loadingEl.style.display = 'block';
-    listEl.style.display = 'none';
-    try {
-      const res = await api.get('/api/leave/user-balance?userId=' + userId);
-      const grants = res.grants || [];
-      
-      if (grants.length === 0) {
-        listEl.innerHTML = '<div style="color:#6B7280; font-size:13px; text-align:center;">付与履歴がありません。</div>';
-      } else {
-        listEl.innerHTML = grants.map((g, idx) => `
-          <div class="pto-grant-row" data-grant-id="${g.id || ''}">
+  `,z.appendChild(l),document.body.appendChild(z),l.querySelectorAll(".pto-modal-close, .pto-modal-close-btn").forEach(d=>d.addEventListener("click",()=>z.remove()));const g=l.querySelector("#ptoModalLoading"),p=l.querySelector("#ptoGrantsList"),m=new Date,y=new Date(m.getUTCFullYear()+2,m.getUTCMonth(),m.getUTCDate()-1);l.querySelector("#newGrantExpiry").value=y.toISOString().slice(0,10);async function w(){g.style.display="block",p.style.display="none";try{const u=(await M.get("/api/leave/user-balance?userId="+e)).grants||[];u.length===0?p.innerHTML='<div style="color:#6B7280; font-size:13px; text-align:center;">\u4ED8\u4E0E\u5C65\u6B74\u304C\u3042\u308A\u307E\u305B\u3093\u3002</div>':p.innerHTML=u.map((n,c)=>`
+          <div class="pto-grant-row" data-grant-id="${n.id||""}">
             <div>
-              <label class="pto-grant-label">付与日</label>
-              <input type="date" value="${String(g.grantDate).slice(0,10)}" readonly style="background:#F3F4F6; cursor:not-allowed;">
+              <label class="pto-grant-label">\u4ED8\u4E0E\u65E5</label>
+              <input type="date" value="${String(n.grantDate).slice(0,10)}" readonly style="background:#F3F4F6; cursor:not-allowed;">
             </div>
             <div>
-              <label class="pto-grant-label">日数</label>
-              <input type="number" class="edit-grant-days" data-idx="${idx}" data-date="${String(g.grantDate).slice(0,10)}" data-expiry="${String(g.expiryDate).slice(0,10)}" value="${g.daysGranted}" step="1">
+              <label class="pto-grant-label">\u65E5\u6570</label>
+              <input type="number" class="edit-grant-days" data-idx="${c}" data-date="${String(n.grantDate).slice(0,10)}" data-expiry="${String(n.expiryDate).slice(0,10)}" value="${n.daysGranted}" step="1">
             </div>
             <div>
-              <label class="pto-grant-label">有効期限</label>
-              <input type="date" class="edit-grant-expiry" data-idx="${idx}" value="${String(g.expiryDate).slice(0,10)}">
+              <label class="pto-grant-label">\u6709\u52B9\u671F\u9650</label>
+              <input type="date" class="edit-grant-expiry" data-idx="${c}" value="${String(n.expiryDate).slice(0,10)}">
             </div>
             <div style="align-self: flex-end; display: flex; gap: 4px;">
-              <button class="leave-btn secondary btn-save-grant" data-idx="${idx}">保存</button>
-              <button class="leave-btn btn-delete-grant" style="background: #FEF2F2; color: #DC2626; border-color: #FCA5A5;" data-idx="${idx}">削除</button>
+              <button class="leave-btn secondary btn-save-grant" data-idx="${c}">\u4FDD\u5B58</button>
+              <button class="leave-btn btn-delete-grant" style="background: #FEF2F2; color: #DC2626; border-color: #FCA5A5;" data-idx="${c}">\u524A\u9664</button>
             </div>
           </div>
-        `).join('');
-      }
-      
-      // Gắn sự kiện lưu
-      listEl.querySelectorAll('.btn-save-grant').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const idx = btn.dataset.idx;
-          const daysInput = listEl.querySelector(`.edit-grant-days[data-idx="${idx}"]`);
-          const expiryInput = listEl.querySelector(`.edit-grant-expiry[data-idx="${idx}"]`);
-          
-          const grantDate = daysInput.dataset.date;
-          if (daysInput.value === '') return alert('日数を入力してください');
-          const days = Number(daysInput.value);
-          const expiryDate = expiryInput.value;
-          
-          btn.textContent = '...';
-          btn.disabled = true;
-          try {
-            await api.post('/api/leave/grant', { userId: Number(userId), days, grantDate, expiryDate });
-            if (onSaved) onSaved();
-            if (days <= 0) {
-              await loadGrants();
-              return;
-            }
-            btn.textContent = '保存済';
-            setTimeout(() => { btn.textContent = '保存'; btn.disabled = false; }, 2000);
-          } catch (err) {
-            alert('保存に失敗しました: ' + err.message);
-            btn.textContent = '保存';
-            btn.disabled = false;
-          }
-        });
-      });
-
-      // Gắn sự kiện xóa
-      listEl.querySelectorAll('.btn-delete-grant').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const idx = btn.dataset.idx;
-          const daysInput = listEl.querySelector(`.edit-grant-days[data-idx="${idx}"]`);
-          const grantDate = daysInput.dataset.date;
-          
-          if (!confirm('この付与履歴を削除してもよろしいですか？')) return;
-          
-          btn.textContent = '...';
-          btn.disabled = true;
-          try {
-            // Backend coi days = 0 là xóa thật cho ngày cấp này
-            await api.post('/api/leave/grant', { userId: Number(userId), days: 0, grantDate, expiryDate: daysInput.dataset.expiry });
-            if (onSaved) onSaved();
-            await loadGrants(); // tải lại danh sách để bỏ dòng vừa xóa
-          } catch (err) {
-            alert('削除に失敗しました: ' + err.message);
-            btn.textContent = '削除';
-            btn.disabled = false;
-          }
-        });
-      });
-      
-    } catch (err) {
-      listEl.innerHTML = '<div style="color:#DC2626;">エラー: ' + err.message + '</div>';
-    } finally {
-      loadingEl.style.display = 'none';
-      listEl.style.display = 'block';
-    }
-  }
-  
-  modal.querySelector('#btnAddGrant').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    const gDate = modal.querySelector('#newGrantDate').value;
-    const gDays = Number(modal.querySelector('#newGrantDays').value);
-    const gExp = modal.querySelector('#newGrantExpiry').value;
-    
-    if (!gDate || !gDays || !gExp) {
-      return alert('全ての項目を入力してください');
-    }
-    
-    btn.disabled = true;
-    btn.textContent = '...';
-    try {
-      await api.post('/api/leave/grant', { userId: Number(userId), days: gDays, grantDate: gDate, expiryDate: gExp });
-      modal.querySelector('#newGrantDays').value = '';
-      await loadGrants();
-      if (onSaved) onSaved();
-    } catch (err) {
-      alert('追加に失敗しました: ' + err.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '追加';
-    }
-  });
-
-  // Hiển thị danh sách phép đã dùng (cả ngày = 1.0 / nửa ngày có lương = 0.5)
-  async function loadUsedDays() {
-    const usedEl = modal.querySelector('#ptoUsedList');
-    if (!usedEl) return;
-    usedEl.innerHTML = '読み込み中...';
-    try {
-      const res = await api.get('/api/leave/used-days?userId=' + userId);
-      const days = Array.isArray(res.days) ? res.days : [];
-      const total = Number(res.total || 0);
-      if (!days.length) {
-        usedEl.innerHTML = '<div style="color:#6B7280;">取得済みの有給休暇はありません。</div>';
-        return;
-      }
-      const rowsHtml = days.map(d => {
-        const isHalf = Number(d.days) === 0.5;
-        const label = isHalf ? '半休（有給）' : '有給休暇';
-        const badgeColor = isHalf ? '#0E7490' : '#107E3E';
-        const badgeBg = isHalf ? '#ECFEFF' : '#F5FAFF';
-        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #F0F0F0;">
-          <span style="font-family:monospace; color:#32363A;">${String(d.date)}</span>
+        `).join(""),p.querySelectorAll(".btn-save-grant").forEach(n=>{n.addEventListener("click",async()=>{const c=n.dataset.idx,t=p.querySelector(`.edit-grant-days[data-idx="${c}"]`),i=p.querySelector(`.edit-grant-expiry[data-idx="${c}"]`),h=t.dataset.date;if(t.value==="")return alert("\u65E5\u6570\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");const f=Number(t.value),x=i.value;n.textContent="...",n.disabled=!0;try{if(await M.post("/api/leave/grant",{userId:Number(e),days:f,grantDate:h,expiryDate:x}),s&&s(),f<=0){await w();return}n.textContent="\u4FDD\u5B58\u6E08",setTimeout(()=>{n.textContent="\u4FDD\u5B58",n.disabled=!1},2e3)}catch(C){alert("\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+C.message),n.textContent="\u4FDD\u5B58",n.disabled=!1}})}),p.querySelectorAll(".btn-delete-grant").forEach(n=>{n.addEventListener("click",async()=>{const c=n.dataset.idx,t=p.querySelector(`.edit-grant-days[data-idx="${c}"]`),i=t.dataset.date;if(confirm("\u3053\u306E\u4ED8\u4E0E\u5C65\u6B74\u3092\u524A\u9664\u3057\u3066\u3082\u3088\u308D\u3057\u3044\u3067\u3059\u304B\uFF1F")){n.textContent="...",n.disabled=!0;try{await M.post("/api/leave/grant",{userId:Number(e),days:0,grantDate:i,expiryDate:t.dataset.expiry}),s&&s(),await w()}catch(h){alert("\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+h.message),n.textContent="\u524A\u9664",n.disabled=!1}}})})}catch(d){p.innerHTML='<div style="color:#DC2626;">\u30A8\u30E9\u30FC: '+d.message+"</div>"}finally{g.style.display="none",p.style.display="block"}}l.querySelector("#btnAddGrant").addEventListener("click",async d=>{const u=d.currentTarget,n=l.querySelector("#newGrantDate").value,c=Number(l.querySelector("#newGrantDays").value),t=l.querySelector("#newGrantExpiry").value;if(!n||!c||!t)return alert("\u5168\u3066\u306E\u9805\u76EE\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");u.disabled=!0,u.textContent="...";try{await M.post("/api/leave/grant",{userId:Number(e),days:c,grantDate:n,expiryDate:t}),l.querySelector("#newGrantDays").value="",await w(),s&&s()}catch(i){alert("\u8FFD\u52A0\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+i.message)}finally{u.disabled=!1,u.textContent="\u8FFD\u52A0"}});async function A(){const d=l.querySelector("#ptoUsedList");if(d){d.innerHTML="\u8AAD\u307F\u8FBC\u307F\u4E2D...";try{const u=await M.get("/api/leave/used-days?userId="+e),n=Array.isArray(u.days)?u.days:[],c=Number(u.total||0);if(!n.length){d.innerHTML='<div style="color:#6B7280;">\u53D6\u5F97\u6E08\u307F\u306E\u6709\u7D66\u4F11\u6687\u306F\u3042\u308A\u307E\u305B\u3093\u3002</div>';return}const t=n.map(i=>{const h=Number(i.days)===.5,f=h?"\u534A\u4F11\uFF08\u6709\u7D66\uFF09":"\u6709\u7D66\u4F11\u6687",x=h?"#0E7490":"#107E3E",C=h?"#ECFEFF":"#F5FAFF";return`<div style="display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #F0F0F0;">
+          <span style="font-family:monospace; color:#32363A;">${String(i.date)}</span>
           <span style="display:inline-flex; align-items:center; gap:8px;">
-            <span style="font-size:12px; font-weight:600; color:${badgeColor}; background:${badgeBg}; padding:2px 8px; border-radius:4px;">${label}</span>
-            <span style="min-width:36px; text-align:right; font-weight:700; color:#32363A;">${Number(d.days).toFixed(1)}日</span>
+            <span style="font-size:12px; font-weight:600; color:${x}; background:${C}; padding:2px 8px; border-radius:4px;">${f}</span>
+            <span style="min-width:36px; text-align:right; font-weight:700; color:#32363A;">${Number(i.days).toFixed(1)}\u65E5</span>
           </span>
-        </div>`;
-      }).join('');
-      usedEl.innerHTML = `
+        </div>`}).join("");d.innerHTML=`
         <div style="border:1px solid #EAECEE; border-radius:6px; overflow:hidden;">
-          ${rowsHtml}
+          ${t}
         </div>
-        <div style="text-align:right; margin-top:8px; font-weight:700; color:#32363A;">合計取得: ${total.toFixed(1)}日</div>
-      `;
-    } catch (err) {
-      usedEl.innerHTML = '<div style="color:#DC2626;">エラー: ' + (err && err.message ? err.message : 'error') + '</div>';
-    }
-  }
-
-  await loadGrants();
-  await loadUsedDays();
-}
-
-export async function mountLeaveBalance({
-  host,
-  content,
-  opts,
-  mountLeaveGrantFn,
-  mountApprovalsFn,
-}) {
-  const c = host || content;
-  ensureLeaveUiStyles();
-  c.innerHTML = '<h3 style="display:flex; align-items:center; gap:8px;"><span style="font-size:20px;">📊</span> 有給残日数一覧</h3>';
-
-  const toolbar = document.createElement('div');
-  toolbar.className = 'leave-toolbar';
-  toolbar.innerHTML = `
+        <div style="text-align:right; margin-top:8px; font-weight:700; color:#32363A;">\u5408\u8A08\u53D6\u5F97: ${c.toFixed(1)}\u65E5</div>
+      `}catch(u){d.innerHTML='<div style="color:#DC2626;">\u30A8\u30E9\u30FC: '+(u&&u.message?u.message:"error")+"</div>"}}}await w(),await A()}async function be({host:e,content:N,opts:s,mountLeaveGrantFn:z,mountApprovalsFn:l}){const D=e||N;_(),D.innerHTML='<h3 style="display:flex; align-items:center; gap:8px;"><span style="font-size:20px;">\u{1F4CA}</span> \u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7</h3>';const g=document.createElement("div");g.className="leave-toolbar",g.innerHTML=`
     <label style="display:inline-flex;align-items:center;gap:8px;">
-      <span class="leave-label">検索</span>
+      <span class="leave-label">\u691C\u7D22</span>
       <input id="leaveBalSearch" class="leave-input" type="text" placeholder="user/id">
     </label>
     <label style="display:inline-flex;align-items:center;gap:8px;">
-      <span class="leave-label">並び替え</span>
+      <span class="leave-label">\u4E26\u3073\u66FF\u3048</span>
       <select id="leaveBalSort" class="leave-select">
-        <option value="remainingDays:desc">残（日数）↓</option>
-        <option value="remainingDays:asc">残（日数）↑</option>
-        <option value="nearestExpiry:asc">有効期限 近い順</option>
-        <option value="obligationRemaining:desc">義務残 ↓</option>
-        <option value="userId:asc">User ID ↑</option>
+        <option value="remainingDays:desc">\u6B8B\uFF08\u65E5\u6570\uFF09\u2193</option>
+        <option value="remainingDays:asc">\u6B8B\uFF08\u65E5\u6570\uFF09\u2191</option>
+        <option value="nearestExpiry:asc">\u6709\u52B9\u671F\u9650 \u8FD1\u3044\u9806</option>
+        <option value="obligationRemaining:desc">\u7FA9\u52D9\u6B8B \u2193</option>
+        <option value="userId:asc">User ID \u2191</option>
       </select>
     </label>
     <label style="display:inline-flex;align-items:center;gap:8px;">
-      <span class="leave-label">件数</span>
+      <span class="leave-label">\u4EF6\u6570</span>
       <select id="leaveBalPageSize" class="leave-select">
         <option value="20">20</option>
         <option value="50" selected>50</option>
         <option value="100">100</option>
       </select>
     </label>
-  `;
-  c.appendChild(toolbar);
-
-  let data = [];
-  try {
-    data = await api.get('/api/leave/summary');
-  } catch {
-    data = [];
-    const note = document.createElement('div');
-    note.style.cssText = 'margin:2px 0 10px;color:#b45309;font-size:12px;';
-    note.textContent = '残日数データの取得に失敗しました。空データで表示します。';
-    c.appendChild(note);
-  }
-  const gridWrap = document.createElement('div');
-  gridWrap.className = 'leave-balance-grid';
-  
-  const pager = document.createElement('div');
-  pager.className = 'leave-pager';
-  const today = new Date();
-  const searchEl = toolbar.querySelector('#leaveBalSearch');
-  const sortEl = toolbar.querySelector('#leaveBalSort');
-  const sizeEl = toolbar.querySelector('#leaveBalPageSize');
-  let page = 1;
-  const render = () => {
-    const q = String(searchEl?.value || '').trim().toLowerCase();
-    const [sortBy, sortDir] = String(sortEl?.value || 'remainingDays:desc').split(':');
-    const pageSize = Number(sizeEl?.value || 20) || 20;
-    const list = (Array.isArray(data) ? data : []).filter((r) => {
-      const txt = `${r.employeeCode || r.userId} ${r.name || ''}`.toLowerCase();
-      return !q || txt.includes(q);
-    }).sort((a, b) => {
-      const av = a?.[sortBy];
-      const bv = b?.[sortBy];
-      if (sortBy === 'nearestExpiry') {
-        const aa = av ? new Date(av).getTime() : Number.MAX_SAFE_INTEGER;
-        const bb = bv ? new Date(bv).getTime() : Number.MAX_SAFE_INTEGER;
-        return sortDir === 'desc' ? (bb - aa) : (aa - bb);
-      }
-      const an = Number(av || 0);
-      const bn = Number(bv || 0);
-      return sortDir === 'desc' ? (bn - an) : (an - bn);
-    });
-    const total = list.length;
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    if (page > totalPages) page = totalPages;
-    const rows = list.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
-    
-    gridWrap.innerHTML = '';
-    
-    for (const r of rows) {
-      const card = document.createElement('div');
-      card.className = 'leave-balance-card';
-      
-      let isExpiringSoon = false;
-      if (r.nearestExpiry && new Date(r.nearestExpiry) - today < 1000 * 60 * 60 * 24 * 30) {
-        isExpiringSoon = true;
-        card.style.borderColor = '#FCD34D';
-        card.style.background = '#FFFBEB';
-      }
-      
-      // Nửa ngày (có lương) tính 0.5 ngày nên cho phép số lẻ. Bỏ phần .0 thừa khi hiển thị (ví dụ: 13.5 / 14).
-      const fmtDays = (n) => { const v = Math.round(Number(n || 0) * 10) / 10; return Number.isInteger(v) ? String(v) : v.toFixed(1); };
-      const totalG = fmtDays(r.totalGranted || 0);
-      const usedD = fmtDays(r.usedDays || 0);
-      const remainD = fmtDays(r.remainingDays || 0);
-      
-      // Tính toán cho thanh tiến trình
-      const pTotal = totalG > 0 ? totalG : 1;
-      const pctUsed = Math.min(100, Math.max(0, (usedD / pTotal) * 100));
-      
-      card.className = 'leave-balance-card pto-card-clickable';
-      card.dataset.userid = r.userId;
-      card.dataset.username = r.name || `User ${r.userId}`;
-      card.style.cursor = 'pointer';
-      
-      const initial = (r.name || 'U').charAt(0).toUpperCase();
-      
-      card.innerHTML = `
+  `,D.appendChild(g);let p=[];try{p=await M.get("/api/leave/summary")}catch{p=[];const t=document.createElement("div");t.style.cssText="margin:2px 0 10px;color:#b45309;font-size:12px;",t.textContent="\u6B8B\u65E5\u6570\u30C7\u30FC\u30BF\u306E\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u7A7A\u30C7\u30FC\u30BF\u3067\u8868\u793A\u3057\u307E\u3059\u3002",D.appendChild(t)}const m=document.createElement("div");m.className="leave-balance-grid";const y=document.createElement("div");y.className="leave-pager";const w=new Date,A=g.querySelector("#leaveBalSearch"),d=g.querySelector("#leaveBalSort"),u=g.querySelector("#leaveBalPageSize");let n=1;const c=()=>{const t=String(A?.value||"").trim().toLowerCase(),[i,h]=String(d?.value||"remainingDays:desc").split(":"),f=Number(u?.value||20)||20,x=(Array.isArray(p)?p:[]).filter(o=>{const a=`${o.employeeCode||o.userId} ${o.name||""}`.toLowerCase();return!t||a.includes(t)}).sort((o,a)=>{const $=o?.[i],S=a?.[i];if(i==="nearestExpiry"){const q=$?new Date($).getTime():Number.MAX_SAFE_INTEGER,b=S?new Date(S).getTime():Number.MAX_SAFE_INTEGER;return h==="desc"?b-q:q-b}const v=Number($||0),E=Number(S||0);return h==="desc"?E-v:v-E}),C=x.length,r=Math.max(1,Math.ceil(C/f));n>r&&(n=r);const F=x.slice((n-1)*f,(n-1)*f+f);m.innerHTML="";for(const o of F){const a=document.createElement("div");a.className="leave-balance-card";let $=!1;o.nearestExpiry&&new Date(o.nearestExpiry)-w<1e3*60*60*24*30&&($=!0,a.style.borderColor="#FCD34D",a.style.background="#FFFBEB");const S=H=>{const T=Math.round(Number(H||0)*10)/10;return Number.isInteger(T)?String(T):T.toFixed(1)},v=S(o.totalGranted||0),E=S(o.usedDays||0),q=S(o.remainingDays||0),b=v>0?v:1,L=Math.min(100,Math.max(0,E/b*100));a.className="leave-balance-card pto-card-clickable",a.dataset.userid=o.userId,a.dataset.username=o.name||`User ${o.userId}`,a.style.cursor="pointer";const B=(o.name||"U").charAt(0).toUpperCase();a.innerHTML=`
         <div style="display:flex; align-items:center; gap:8px; border-bottom:1px solid #F2F2F2; padding-bottom:8px;">
-          <div style="width:32px; height:32px; border-radius:50%; background:#0854A0; color:#FFF; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px;">${initial}</div>
+          <div style="width:32px; height:32px; border-radius:50%; background:#0854A0; color:#FFF; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px;">${B}</div>
           <div>
-            <h3 style="font-size:14px; font-weight:bold; color:#32363A; margin:0; line-height:1.2;">${r.name || `User ${r.userId}`}</h3>
-            <p style="font-size:11px; color:#6A6D70; margin:2px 0 0 0;">${r.employeeCode || r.userId}</p>
+            <h3 style="font-size:14px; font-weight:bold; color:#32363A; margin:0; line-height:1.2;">${o.name||`User ${o.userId}`}</h3>
+            <p style="font-size:11px; color:#6A6D70; margin:2px 0 0 0;">${o.employeeCode||o.userId}</p>
           </div>
         </div>
         
         <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:4px;">
           <div style="display:flex; flex-direction:column;">
-            <span style="font-size:24px; font-weight:300; color:#111827; line-height:1;">${remainD} <span style="font-size:12px; font-weight:normal;">days</span></span>
+            <span style="font-size:24px; font-weight:300; color:#111827; line-height:1;">${q} <span style="font-size:12px; font-weight:normal;">days</span></span>
             <span style="font-size:11px; color:#6A6D70; margin-top:2px;">Remaining</span>
           </div>
           <div style="text-align:right;">
-            <span style="color:#6A6D70; font-size:11px;">Used: <span style="font-weight:600; color:#32363A;">${usedD}/${totalG}</span></span>
+            <span style="color:#6A6D70; font-size:11px;">Used: <span style="font-weight:600; color:#32363A;">${E}/${v}</span></span>
           </div>
         </div>
         
         <div style="height:4px; background:#E5E5E5; border-radius:2px; overflow:hidden; margin-top:2px;">
-          <div style="height:100%; width:${pctUsed}%; background:#0854A0; border-radius:2px;"></div>
+          <div style="height:100%; width:${L}%; background:#0854A0; border-radius:2px;"></div>
         </div>
         
         <div style="font-size:11px; color:#6A6D70; display:flex; justify-content:space-between; margin-top:auto; border-top:1px solid #F2F2F2; padding-top:8px;">
           <div style="display:flex; flex-direction:column; gap:2px;">
             <span>Expiry</span>
-            <span style="${isExpiringSoon ? 'color:#BB0000;font-weight:bold;' : 'color:#32363A;'}">${r.nearestExpiry || 'N/A'}</span>
+            <span style="${$?"color:#BB0000;font-weight:bold;":"color:#32363A;"}">${o.nearestExpiry||"N/A"}</span>
           </div>
           <div style="display:flex; flex-direction:column; gap:2px; text-align:right;">
             <span>Obligation</span>
-            <span style="color:#32363A;">${r.obligationRemaining || 0}d</span>
+            <span style="color:#32363A;">${o.obligationRemaining||0}d</span>
           </div>
         </div>
-      `;
-      gridWrap.appendChild(card);
-    }
-    
-    if (!rows.length) {
-      gridWrap.innerHTML = '<div style="text-align:center; color:#6B7280; padding:40px; grid-column:1/-1;">データがありません (No data)</div>';
-    }
-    
-    pager.innerHTML = `
-      <button type="button" class="leave-btn" data-pg="prev">前へ</button>
-      <span class="leave-muted">${total} 件 / ${page} / ${totalPages} ページ</span>
-      <button type="button" class="leave-btn" data-pg="next">次へ</button>
-    `;
-    pager.querySelectorAll('[data-pg]').forEach((b) => {
-      b.addEventListener('click', () => {
-        const dir = b.getAttribute('data-pg');
-        if (dir === 'prev' && page > 1) page -= 1;
-        if (dir === 'next' && page < totalPages) page += 1;
-        render();
-      });
-    });
-
-    // Gắn sự kiện cho nút sửa SAU KHI đã thêm gridWrap vào DOM
-    setTimeout(() => {
-      gridWrap.querySelectorAll('.pto-card-clickable').forEach(cardEl => {
-        cardEl.addEventListener('click', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const userId = cardEl.dataset.userid;
-          const userName = cardEl.dataset.username;
-          await showEditPtoModal(userId, userName, async () => {
-            // tải lại dữ liệu
-            try {
-              data = await api.get('/api/leave/summary');
-              render();
-            } catch (e) {
-              console.error('Failed to reload data', e);
-            }
-          });
-        });
-      });
-      
-      // Vẫn giữ nút hoạt động, chỉ chặn lan sự kiện để không kích hoạt card hai lần
-      gridWrap.querySelectorAll('.leave-btn-edit').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        });
-      });
-    }, 0);
-  };
-
-  c.appendChild(gridWrap);
-  render();
-  if (searchEl) searchEl.addEventListener('input', () => { page = 1; render(); });
-  if (sortEl) sortEl.addEventListener('change', () => { page = 1; render(); });
-  if (sizeEl) sizeEl.addEventListener('change', () => { page = 1; render(); });
-}
-
-export async function mountLeaveHub({
-  content,
-  mountLeaveGrantFn,
-  mountApprovalsFn,
-  mountLeaveBalanceFn,
-}) {
-  const c = content;
-  c.innerHTML = '<h3>有給休暇</h3>';
-
-  const nav = document.createElement('div');
-  nav.innerHTML = `
-    <a class="btn" href="/ui/admin">戻る</a>
-    <button class="btn" data-action="nav-approve">有給申請承認</button>
-    <button class="btn" data-action="nav-balance">有給残日数一覧</button>
-  `;
-  c.appendChild(nav);
-
-  const body = document.createElement('div');
-  c.appendChild(body);
-
-  const showGrant = () => {
-    mountLeaveGrantFn(body, { hub: true });
-  };
-  const showApprove = () => {
-    mountApprovalsFn(body, { hub: true });
-  };
-  const showBalance = () => {
-    mountLeaveBalanceFn(body, { hub: true });
-  };
-
-  function setHashAndRender(hash) {
-    if (location.hash !== hash) location.hash = hash;
-    if (hash.includes('grant')) showGrant();
-    else if (hash.includes('approve')) showApprove();
-    else showBalance();
-  }
-
-  delegate(nav, '[data-action]', 'click', (e, el) => {
-    const action = el.dataset.action;
-    if (action === 'nav-grant') setHashAndRender('#leave=grant');
-    else if (action === 'nav-approve') setHashAndRender('#leave=approve');
-    else if (action === 'nav-balance') setHashAndRender('#leave=balance');
-  });
-
-  const initial = (location.hash || '').toLowerCase();
-  if (initial.includes('grant')) showGrant();
-  else if (initial.includes('approve')) showApprove();
-  else showBalance();
-
-  window.addEventListener(
-    'hashchange',
-    () => {
-      const h = (location.hash || '').toLowerCase();
-      if (h.includes('grant')) showGrant();
-      else if (h.includes('approve')) showApprove();
-      else showBalance();
-    },
-    { once: false },
-  );
-}
-
-export async function mountLeaveUnified({
-  content,
-  mountApprovalsFn,
-  mountLeaveGrantFn,
-  mountLeaveBalanceFn,
-}) {
-  ensureLeaveUiStyles();
-  content.classList.add('leave-page');
-  // Đánh dấu trên body để CSS bỏ padding các lớp cha (tương thích rộng, không cần :has()).
-  try { document.body.classList.add('leave-active'); } catch (e) { /* bỏ qua */ }
-
-  // Tính chiều cao chính xác, tính cả topbar lẫn subbar trong trang admin
-  const style = document.createElement('style');
-  style.id = 'leave-dynamic-height';
-  style.textContent = `
+      `,m.appendChild(a)}F.length||(m.innerHTML='<div style="text-align:center; color:#6B7280; padding:40px; grid-column:1/-1;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093 (No data)</div>'),y.innerHTML=`
+      <button type="button" class="leave-btn" data-pg="prev">\u524D\u3078</button>
+      <span class="leave-muted">${C} \u4EF6 / ${n} / ${r} \u30DA\u30FC\u30B8</span>
+      <button type="button" class="leave-btn" data-pg="next">\u6B21\u3078</button>
+    `,y.querySelectorAll("[data-pg]").forEach(o=>{o.addEventListener("click",()=>{const a=o.getAttribute("data-pg");a==="prev"&&n>1&&(n-=1),a==="next"&&n<r&&(n+=1),c()})}),setTimeout(()=>{m.querySelectorAll(".pto-card-clickable").forEach(o=>{o.addEventListener("click",async a=>{a.preventDefault(),a.stopPropagation();const $=o.dataset.userid,S=o.dataset.username;await re($,S,async()=>{try{p=await M.get("/api/leave/summary"),c()}catch(v){console.error("Failed to reload data",v)}})})}),m.querySelectorAll(".leave-btn-edit").forEach(o=>{o.addEventListener("click",a=>{a.stopPropagation(),a.preventDefault()})})},0)};D.appendChild(m),c(),A&&A.addEventListener("input",()=>{n=1,c()}),d&&d.addEventListener("change",()=>{n=1,c()}),u&&u.addEventListener("change",()=>{n=1,c()})}async function ge({content:e,mountLeaveGrantFn:N,mountApprovalsFn:s,mountLeaveBalanceFn:z}){const l=e;l.innerHTML="<h3>\u6709\u7D66\u4F11\u6687</h3>";const D=document.createElement("div");D.innerHTML=`
+    <a class="btn" href="/ui/admin">\u623B\u308B</a>
+    <button class="btn" data-action="nav-approve">\u6709\u7D66\u7533\u8ACB\u627F\u8A8D</button>
+    <button class="btn" data-action="nav-balance">\u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7</button>
+  `,l.appendChild(D);const g=document.createElement("div");l.appendChild(g);const p=()=>{N(g,{hub:!0})},m=()=>{s(g,{hub:!0})},y=()=>{z(g,{hub:!0})};function w(d){location.hash!==d&&(location.hash=d),d.includes("grant")?p():d.includes("approve")?m():y()}V(D,"[data-action]","click",(d,u)=>{const n=u.dataset.action;n==="nav-grant"?w("#leave=grant"):n==="nav-approve"?w("#leave=approve"):n==="nav-balance"&&w("#leave=balance")});const A=(location.hash||"").toLowerCase();A.includes("grant")?p():A.includes("approve")?m():y(),window.addEventListener("hashchange",()=>{const d=(location.hash||"").toLowerCase();d.includes("grant")?p():d.includes("approve")?m():y()},{once:!1})}async function ue({content:e,mountApprovalsFn:N,mountLeaveGrantFn:s,mountLeaveBalanceFn:z}){_(),e.classList.add("leave-page");try{document.body.classList.add("leave-active")}catch{}const l=document.createElement("style");if(l.id="leave-dynamic-height",l.textContent=`
     .leave-page-layout {
       width: 100%;
       max-width: 100%;
@@ -1591,221 +747,24 @@ export async function mountLeaveUnified({
       margin: 0 !important;
       padding: 0 !important;
     }
-  `;
-  document.head.appendChild(style);
-
-  // Reset các container cha để sát mép và không cho chúng cuộn
-  if (content.id === 'adminContent' || content.classList.contains('card')) {
-    content.classList.remove('card'); // Bỏ hẳn class card
-    content.style.padding = '0';
-    content.style.margin = '0';
-    content.style.maxWidth = 'none';
-    content.style.border = 'none';
-    content.style.boxShadow = 'none';
-    content.style.background = '#FFFFFF';
-    content.style.height = 'calc(100vh - var(--topbar-height, 48px))'; // Tính lại không kể subbar
-    content.style.overflow = 'hidden';
-    const body = document.body;
-    body.style.overflow = 'hidden'; // Chặn cả trang cuộn
-    
-    // Ẩn luôn các phần tử cùng cấp như #status hay #error nếu có để tránh khoảng hở phía trên
-    const parent = content.parentElement;
-    if (parent) {
-      parent.style.padding = '0';
-      parent.style.margin = '0';
-      const statusEl = parent.querySelector('#status');
-      if (statusEl) statusEl.style.display = 'none';
-      const errorEl = parent.querySelector('#error');
-      if (errorEl) errorEl.style.display = 'none';
-    }
-  }
-  
-  content.innerHTML = `
+  `,document.head.appendChild(l),e.id==="adminContent"||e.classList.contains("card")){e.classList.remove("card"),e.style.padding="0",e.style.margin="0",e.style.maxWidth="none",e.style.border="none",e.style.boxShadow="none",e.style.background="#FFFFFF",e.style.height="calc(100vh - var(--topbar-height, 48px))",e.style.overflow="hidden";const t=document.body;t.style.overflow="hidden";const i=e.parentElement;if(i){i.style.padding="0",i.style.margin="0";const h=i.querySelector("#status");h&&(h.style.display="none");const f=i.querySelector("#error");f&&(f.style.display="none")}}e.innerHTML=`
       <div class="leave-page-layout">
         <div class="leave-sidebar">
           <div class="leave-tabs-vertical">
             <button class="leave-tab active" data-target="tab-approvals">
               <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              休暇申請承認
+              \u4F11\u6687\u7533\u8ACB\u627F\u8A8D
             </button>
             <button class="leave-tab" data-target="tab-grant">
               <svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-              有給付与
+              \u6709\u7D66\u4ED8\u4E0E
             </button>
             <button class="leave-tab" data-target="tab-balances">
               <svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-              有給残日数一覧
+              \u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7
             </button>
           </div>
         </div>
         <div class="leave-content-area" id="leave-content-area"></div>
       </div>
-    `;
-
-  const contentArea = content.querySelector('#leave-content-area');
-
-  // Các container cho từng tab
-  const tabApprovals = document.createElement('div');
-  tabApprovals.className = 'leave-tab-content active';
-  tabApprovals.id = 'tab-approvals';
-
-  const tabGrant = document.createElement('div');
-  tabGrant.className = 'leave-tab-content';
-  tabGrant.id = 'tab-grant';
-  
-  const tabBalances = document.createElement('div');
-  tabBalances.className = 'leave-tab-content';
-  tabBalances.id = 'tab-balances';
-
-  contentArea.appendChild(tabApprovals);
-  contentArea.appendChild(tabGrant);
-  contentArea.appendChild(tabBalances);
-
-  const secA = document.createElement('section');
-  secA.className = 'leave-section';
-  tabApprovals.appendChild(secA);
-
-  const secG = document.createElement('section');
-  secG.className = 'leave-section';
-  secG.style.maxWidth = '400px';
-  secG.style.margin = '20px 0 0 0';
-  tabGrant.appendChild(secG);
-  
-  const secB = document.createElement('div');
-  secB.style.boxShadow = 'none';
-  secB.style.border = 'none';
-  secB.style.padding = '0';
-  secB.style.background = 'transparent';
-  tabBalances.appendChild(secB);
-  
-  const refreshBalance = async () => {
-    // Hiện tất cả bằng cách đặt limit rất lớn (ví dụ 1000)
-    await mountLeaveBalanceFn(secB, { unified: true, limit: 1000, onDataChanged: refreshBalance });
-    const h3 = secB.querySelector('h3');
-    if (h3) h3.remove();
-  };
-  
-  // Điều chỉnh chiều cao động cho vừa khít màn hình mà không bị cắt phần dưới
-  const adjustHeight = () => {
-    const layout = content.querySelector('.leave-page-layout');
-    if (layout) {
-      const top = layout.getBoundingClientRect().top;
-      const offset = top > 0 ? top : 56; // Giá trị dự phòng
-      const h = `calc(100vh - ${offset}px)`;
-      
-      layout.style.setProperty('height', h, 'important');
-      
-      const sidebar = content.querySelector('.leave-sidebar');
-      if (sidebar) sidebar.style.setProperty('height', h, 'important');
-      
-      const cArea = content.querySelector('.leave-content-area');
-      if (cArea) cArea.style.setProperty('height', h, 'important');
-      
-      content.style.setProperty('height', h, 'important');
-    }
-  };
-  
-  adjustHeight();
-  setTimeout(adjustHeight, 150);
-  window.addEventListener('resize', adjustHeight);
-  
-  await mountApprovalsFn(secA, { status: 'pending', hideProfileSection: true, onDataChanged: refreshBalance });
-  const aTitle = secA.querySelector('h3');
-  if (aTitle) aTitle.remove();
-
-  await mountLeaveGrantFn(secG, { unified: true, onDataChanged: refreshBalance });
-
-  // Dọn dẹp phần cấp phép
-  if (secG) {
-    // Bỏ thanh công cụ chứa các nút cấp phép hàng loạt
-    const batchToolbar = secG.querySelector('.leave-toolbar');
-    if (batchToolbar) batchToolbar.remove();
-    
-    // Bỏ tiêu đề "Manual PTO Grant"
-    const manualHeading = secG.querySelector('h4');
-    if (manualHeading) manualHeading.remove();
-
-    // Bỏ dòng mô tả thừa bên dưới tiêu đề
-    const gTitle = secG.querySelector('h3');
-    if (gTitle) {
-      gTitle.innerHTML = '有給付与';
-    }
-  }
-  
-  await refreshBalance();
-
-  // Xử lý chuyển tab
-  content.querySelectorAll('.leave-tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      content.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
-      content.querySelectorAll('.leave-tab-content').forEach(c => c.classList.remove('active'));
-      
-      const targetId = e.currentTarget.getAttribute('data-target');
-      e.currentTarget.classList.add('active');
-      content.querySelector(`#${targetId}`).classList.add('active');
-
-      // Cập nhật lịch sử URL theo tab hiện tại
-      if (targetId === 'tab-approvals') {
-        history.replaceState(null, '', '/admin/leave/requests');
-      } else if (targetId === 'tab-grant') {
-        history.replaceState(null, '', '/admin/leave/grants');
-      } else if (targetId === 'tab-balances') {
-        history.replaceState(null, '', '/admin/leave/balance');
-      }
-      
-      // Cập nhật trạng thái active của sidebar cho khớp với tab bên trong
-      const sidebarEl = document.querySelector('.att-hub-sidebar');
-      if (sidebarEl) {
-         sidebarEl.querySelectorAll('.att-sidebar-item').forEach(item => {
-            item.classList.remove('active');
-            item.style.borderLeftColor = 'transparent';
-            item.style.color = '#b0c4de';
-            item.style.background = 'transparent';
-            item.style.fontWeight = '400';
-            const svg = item.querySelector('svg');
-            if (svg) svg.style.opacity = '0.7';
-         });
-         const activePath = window.location.pathname;
-         const activeEl = sidebarEl.querySelector(`a[href="${activePath}"]`);
-         if (activeEl) {
-            activeEl.classList.add('active');
-            activeEl.style.color = '#ffffff';
-            activeEl.style.fontWeight = '600';
-            const parentEl = sidebarEl.querySelector(`a[href^="/admin/leave"]`);
-            if (parentEl) {
-               parentEl.classList.add('active');
-               parentEl.style.borderLeftColor = '#4ade80';
-               parentEl.style.color = '#ffffff';
-               parentEl.style.background = 'rgba(255,255,255,.06)';
-               parentEl.style.fontWeight = '600';
-               const pSvg = parentEl.querySelector('svg');
-               if (pSvg) pSvg.style.opacity = '1';
-            }
-         }
-      }
-    });
-  });
-
-  // Chọn tab active ban đầu dựa trên URL hiện tại
-  const currentPath = window.location.pathname;
-  content.querySelectorAll('.leave-tab').forEach(t => t.classList.remove('active'));
-  content.querySelectorAll('.leave-tab-content').forEach(c => c.classList.remove('active'));
-
-  if (currentPath === '/admin/leave/grants') {
-    const tab = content.querySelector('.leave-tab[data-target="tab-grant"]');
-    if (tab) tab.classList.add('active');
-    const contentTab = content.querySelector('#tab-grant');
-    if (contentTab) contentTab.classList.add('active');
-  } else if (currentPath === '/admin/leave/balance') {
-    const tab = content.querySelector('.leave-tab[data-target="tab-balances"]');
-    if (tab) tab.classList.add('active');
-    const contentTab = content.querySelector('#tab-balances');
-    if (contentTab) contentTab.classList.add('active');
-  } else {
-    // Mặc định về tab yêu cầu
-    const tab = content.querySelector('.leave-tab[data-target="tab-approvals"]');
-    if (tab) tab.classList.add('active');
-    const contentTab = content.querySelector('#tab-approvals');
-    if (contentTab) contentTab.classList.add('active');
-  }
-}
+    `;const D=e.querySelector("#leave-content-area"),g=document.createElement("div");g.className="leave-tab-content active",g.id="tab-approvals";const p=document.createElement("div");p.className="leave-tab-content",p.id="tab-grant";const m=document.createElement("div");m.className="leave-tab-content",m.id="tab-balances",D.appendChild(g),D.appendChild(p),D.appendChild(m);const y=document.createElement("section");y.className="leave-section",g.appendChild(y);const w=document.createElement("section");w.className="leave-section",w.style.maxWidth="400px",w.style.margin="20px 0 0 0",p.appendChild(w);const A=document.createElement("div");A.style.boxShadow="none",A.style.border="none",A.style.padding="0",A.style.background="transparent",m.appendChild(A);const d=async()=>{await z(A,{unified:!0,limit:1e3,onDataChanged:d});const t=A.querySelector("h3");t&&t.remove()},u=()=>{const t=e.querySelector(".leave-page-layout");if(t){const i=t.getBoundingClientRect().top,f=`calc(100vh - ${i>0?i:56}px)`;t.style.setProperty("height",f,"important");const x=e.querySelector(".leave-sidebar");x&&x.style.setProperty("height",f,"important");const C=e.querySelector(".leave-content-area");C&&C.style.setProperty("height",f,"important"),e.style.setProperty("height",f,"important")}};u(),setTimeout(u,150),window.addEventListener("resize",u),await N(y,{status:"pending",hideProfileSection:!0,onDataChanged:d});const n=y.querySelector("h3");if(n&&n.remove(),await s(w,{unified:!0,onDataChanged:d}),w){const t=w.querySelector(".leave-toolbar");t&&t.remove();const i=w.querySelector("h4");i&&i.remove();const h=w.querySelector("h3");h&&(h.innerHTML="\u6709\u7D66\u4ED8\u4E0E")}await d(),e.querySelectorAll(".leave-tab").forEach(t=>{t.addEventListener("click",i=>{e.querySelectorAll(".leave-tab").forEach(x=>x.classList.remove("active")),e.querySelectorAll(".leave-tab-content").forEach(x=>x.classList.remove("active"));const h=i.currentTarget.getAttribute("data-target");i.currentTarget.classList.add("active"),e.querySelector(`#${h}`).classList.add("active"),h==="tab-approvals"?history.replaceState(null,"","/admin/leave/requests"):h==="tab-grant"?history.replaceState(null,"","/admin/leave/grants"):h==="tab-balances"&&history.replaceState(null,"","/admin/leave/balance");const f=document.querySelector(".att-hub-sidebar");if(f){f.querySelectorAll(".att-sidebar-item").forEach(r=>{r.classList.remove("active"),r.style.borderLeftColor="transparent",r.style.color="#b0c4de",r.style.background="transparent",r.style.fontWeight="400";const F=r.querySelector("svg");F&&(F.style.opacity="0.7")});const x=window.location.pathname,C=f.querySelector(`a[href="${x}"]`);if(C){C.classList.add("active"),C.style.color="#ffffff",C.style.fontWeight="600";const r=f.querySelector('a[href^="/admin/leave"]');if(r){r.classList.add("active"),r.style.borderLeftColor="#4ade80",r.style.color="#ffffff",r.style.background="rgba(255,255,255,.06)",r.style.fontWeight="600";const F=r.querySelector("svg");F&&(F.style.opacity="1")}}}})});const c=window.location.pathname;if(e.querySelectorAll(".leave-tab").forEach(t=>t.classList.remove("active")),e.querySelectorAll(".leave-tab-content").forEach(t=>t.classList.remove("active")),c==="/admin/leave/grants"){const t=e.querySelector('.leave-tab[data-target="tab-grant"]');t&&t.classList.add("active");const i=e.querySelector("#tab-grant");i&&i.classList.add("active")}else if(c==="/admin/leave/balance"){const t=e.querySelector('.leave-tab[data-target="tab-balances"]');t&&t.classList.add("active");const i=e.querySelector("#tab-balances");i&&i.classList.add("active")}else{const t=e.querySelector('.leave-tab[data-target="tab-approvals"]');t&&t.classList.add("active");const i=e.querySelector("#tab-approvals");i&&i.classList.add("active")}}export{pe as mountApprovals,ce as mountLeaveAdmin,be as mountLeaveBalance,me as mountLeaveGrant,ge as mountLeaveHub,ue as mountLeaveUnified};

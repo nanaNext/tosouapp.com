@@ -1,30 +1,4 @@
-import { api } from '../../shared/api/client.js';
-
-export async function mount({ content }) {
-  await mountShifts({ content });
-}
-
-export async function mountShifts({ content }) {
-  // Kiểm tra có chạy standalone không
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
-  const vhExpr = isStandalone ? '100dvh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
-
-  content.className = (content.className || '') + ' shift-page-content';
-  content.style.cssText = `margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; background: #FFFFFF; flex: 1; min-width: 0;`;
-  content.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.className = 'admin-shifts shift-fiori-override';
-  wrap.style.cssText = `display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0;`;
-
-  const head = document.createElement('div');
-  head.className = 'form-title page-title';
-  head.textContent = 'シフト管理';
-  head.style.display = 'none'; // Ẩn cái này đi vì đã có tiêu đề ở dưới
-  wrap.appendChild(head);
-
-  const defCard = document.createElement('div');
-  defCard.className = 'form-card';
-  defCard.style.cssText = `
+import{api as h}from"../../shared/api/client.js";async function Q({content:l}){await R({content:l})}async function R({content:l}){const J=new URLSearchParams(window.location.search).get("standalone")==="1"?"100dvh":"calc(100vh - var(--topbar-height) - var(--subbar-height))";l.className=(l.className||"")+" shift-page-content",l.style.cssText="margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; background: #FFFFFF; flex: 1; min-width: 0;",l.innerHTML="";const y=document.createElement("div");y.className="admin-shifts shift-fiori-override",y.style.cssText="display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0;";const w=document.createElement("div");w.className="form-title page-title",w.textContent="\u30B7\u30D5\u30C8\u7BA1\u7406",w.style.display="none",y.appendChild(w);const u=document.createElement("div");u.className="form-card",u.style.cssText=`
     background: #fff;
     border: none;
     box-shadow: none;
@@ -35,320 +9,38 @@ export async function mountShifts({ content }) {
     flex: 1 1 0%;
     min-height: 0;
     margin: 0;
-  `;
-  const defTitle = document.createElement('div');
-  defTitle.className = 'form-title';
-  defTitle.textContent = 'シフト管理'; // Đổi từ シフト定義 thành シフト管理
-  defTitle.style.display = 'none';
-  defCard.appendChild(defTitle);
-  
-  const addWrap = document.createElement('div');
-  addWrap.className = 'form-actions shift-form-actions';
-  addWrap.style.borderTop = 'none';
-  addWrap.style.borderBottom = '1px solid #e2e8f0';
-  
-  // Tạo khung bọc cho các ô nhập
-  const inputsWrap = document.createElement('div');
-  inputsWrap.className = 'shift-inputs-wrap';
-  
-  const createField = (labelText, inputEl) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'shift-field-wrapper';
-    
-    const label = document.createElement('label');
-    label.className = 'shift-field-label';
-    label.textContent = labelText;
-    if (inputEl.id) {
-      label.htmlFor = inputEl.id;
-    }
-    
-    wrapper.appendChild(label);
-    wrapper.appendChild(inputEl);
-    return wrapper;
-  };
-  
-  let nameIn = document.createElement('input');
-  nameIn.type = 'text'; nameIn.name = 'shift_name'; nameIn.id = 'shiftNameInput'; nameIn.placeholder = '例: day_8_17'; nameIn.className = 'shift-input';
-  let sIn = document.createElement('input');
-  sIn.type = 'time'; sIn.name = 'shift_start'; sIn.id = 'shiftStartInput'; sIn.value = '08:00'; sIn.className = 'shift-input';
-  let eIn = document.createElement('input');
-  eIn.type = 'time'; eIn.name = 'shift_end'; eIn.id = 'shiftEndInput'; eIn.value = '17:00'; eIn.className = 'shift-input';
-  let brSel = document.createElement('select');
-  brSel.name = 'shift_break'; brSel.id = 'shiftBreakSelect'; brSel.className = 'shift-input';
-  brSel.innerHTML = '<option value="180">180分 (3時間)</option><option value="150">150分 (2時間半)</option><option value="120">120分 (2時間)</option><option value="90">90分</option><option value="60" selected>60分</option><option value="45">45分</option><option value="30">30分</option><option value="0">0分</option>';
-  
-  inputsWrap.appendChild(createField('名称', nameIn));
-  inputsWrap.appendChild(createField('開始時間', sIn));
-  inputsWrap.appendChild(createField('終了時間', eIn));
-  inputsWrap.appendChild(createField('休憩時間', brSel));
-  
-  // Tạo khung bọc cho các nút
-  const btnsWrap = document.createElement('div');
-  btnsWrap.className = 'shift-btns-wrap';
-  
-  let addBtn = document.createElement('button');
-  addBtn.type = 'button'; addBtn.className = 'shift-btn shift-btn-add'; addBtn.textContent = '追加';
-  let updateBtn = document.createElement('button');
-  updateBtn.type = 'button'; updateBtn.className = 'shift-btn shift-btn-update'; updateBtn.textContent = '更新';
-  updateBtn.disabled = true; // Mặc định vô hiệu hóa
-  updateBtn.style.opacity = '0.5'; // Làm mờ để báo hiệu đang bị khóa
-  updateBtn.style.cursor = 'not-allowed';
-  
-  btnsWrap.appendChild(addBtn);
-  btnsWrap.appendChild(updateBtn);
-  
-  const buildPayload = () => ({
-    name: normalizeName(nameIn.value),
-    start_time: String(sIn.value || '').trim(),
-    end_time: String(eIn.value || '').trim(),
-    break_minutes: parseInt(String(brSel.value || '0'), 10)
-  });
-  const validatePayload = (payload) => {
-    if (!payload.name) return false;
-    if (!/^\d{2}:\d{2}$/.test(payload.start_time)) return false;
-    if (!/^\d{2}:\d{2}$/.test(payload.end_time)) return false;
-    return true;
-  };
-  const refresh = async () => {
-    const rows = await api.get('/attendance/shifts/definitions');
-    defs = Array.isArray(rows) ? rows : [];
-    renderDefs(defs);
-    clearInputs();
-  };
-  const clearInputs = () => {
-    nameIn.value = '';
-    sIn.value = '08:00';
-    eIn.value = '17:00';
-    brSel.value = '60';
-    updateBtn.disabled = true;
-    updateBtn.style.opacity = '0.5';
-    updateBtn.style.cursor = 'not-allowed';
-    addBtn.disabled = false;
-    addBtn.style.opacity = '1';
-    addBtn.style.cursor = 'pointer';
-  };
-
-  const enableUpdate = () => {
-    updateBtn.disabled = false;
-    updateBtn.style.opacity = '1';
-    updateBtn.style.cursor = 'pointer';
-    addBtn.disabled = true;
-    addBtn.style.opacity = '0.5';
-    addBtn.style.cursor = 'not-allowed';
-  };
-
-  addBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const payload = buildPayload();
-    if (!validatePayload(payload)) {
-      alert('名称・開始・終了を入力してください');
-      return;
-    }
-    if (findDefByName(payload.name)) {
-      alert('同じ名称のシフトが既に存在します。更新する場合は「更新」を押してください。');
-      return;
-    }
-    await api.post('/attendance/shifts/definitions', payload);
-    await refresh();
-    clearInputs();
-  });
-
-  updateBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const payload = buildPayload();
-    if (!validatePayload(payload)) {
-      alert('名称・開始・終了を入力してください');
-      return;
-    }
-    if (!findDefByName(payload.name)) {
-      alert('更新できません: 対象のシフトが見つかりません。追加する場合は「追加」を押してください。');
-      return;
-    }
-    await api.post('/attendance/shifts/definitions', payload);
-    await refresh();
-  });
-  addWrap.appendChild(inputsWrap);
-  addWrap.appendChild(btnsWrap);
-  defCard.appendChild(addWrap);
-
-  const defTable = document.createElement('div');
-  defTable.className = 'shift-list-container';
-  
-  // Tạo bảng cho bản desktop bên trong container
-  const desktopTable = document.createElement('table');
-  desktopTable.className = 'excel-table shift-desktop-table';
-  desktopTable.innerHTML = `
+  `;const k=document.createElement("div");k.className="form-title",k.textContent="\u30B7\u30D5\u30C8\u7BA1\u7406",k.style.display="none",u.appendChild(k);const b=document.createElement("div");b.className="form-actions shift-form-actions",b.style.borderTop="none",b.style.borderBottom="1px solid #e2e8f0";const g=document.createElement("div");g.className="shift-inputs-wrap";const C=(e,n)=>{const t=document.createElement("div");t.className="shift-field-wrapper";const a=document.createElement("label");return a.className="shift-field-label",a.textContent=e,n.id&&(a.htmlFor=n.id),t.appendChild(a),t.appendChild(n),t};let c=document.createElement("input");c.type="text",c.name="shift_name",c.id="shiftNameInput",c.placeholder="\u4F8B: day_8_17",c.className="shift-input";let f=document.createElement("input");f.type="time",f.name="shift_start",f.id="shiftStartInput",f.value="08:00",f.className="shift-input";let m=document.createElement("input");m.type="time",m.name="shift_end",m.id="shiftEndInput",m.value="17:00",m.className="shift-input";let x=document.createElement("select");x.name="shift_break",x.id="shiftBreakSelect",x.className="shift-input",x.innerHTML='<option value="180">180\u5206 (3\u6642\u9593)</option><option value="150">150\u5206 (2\u6642\u9593\u534A)</option><option value="120">120\u5206 (2\u6642\u9593)</option><option value="90">90\u5206</option><option value="60" selected>60\u5206</option><option value="45">45\u5206</option><option value="30">30\u5206</option><option value="0">0\u5206</option>',g.appendChild(C("\u540D\u79F0",c)),g.appendChild(C("\u958B\u59CB\u6642\u9593",f)),g.appendChild(C("\u7D42\u4E86\u6642\u9593",m)),g.appendChild(C("\u4F11\u61A9\u6642\u9593",x));const E=document.createElement("div");E.className="shift-btns-wrap";let s=document.createElement("button");s.type="button",s.className="shift-btn shift-btn-add",s.textContent="\u8FFD\u52A0";let r=document.createElement("button");r.type="button",r.className="shift-btn shift-btn-update",r.textContent="\u66F4\u65B0",r.disabled=!0,r.style.opacity="0.5",r.style.cursor="not-allowed",E.appendChild(s),E.appendChild(r);const F=()=>({name:I(c.value),start_time:String(f.value||"").trim(),end_time:String(m.value||"").trim(),break_minutes:parseInt(String(x.value||"0"),10)}),j=e=>!(!e.name||!/^\d{2}:\d{2}$/.test(e.start_time)||!/^\d{2}:\d{2}$/.test(e.end_time)),P=async()=>{const e=await h.get("/attendance/shifts/definitions");p=Array.isArray(e)?e:[],A(p),Y()},Y=()=>{c.value="",f.value="08:00",m.value="17:00",x.value="60",r.disabled=!0,r.style.opacity="0.5",r.style.cursor="not-allowed",s.disabled=!1,s.style.opacity="1",s.style.cursor="pointer"},W=()=>{r.disabled=!1,r.style.opacity="1",r.style.cursor="pointer",s.disabled=!0,s.style.opacity="0.5",s.style.cursor="not-allowed"};s.addEventListener("click",async e=>{e.preventDefault();const n=F();if(!j(n)){alert("\u540D\u79F0\u30FB\u958B\u59CB\u30FB\u7D42\u4E86\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");return}if(U(n.name)){alert("\u540C\u3058\u540D\u79F0\u306E\u30B7\u30D5\u30C8\u304C\u65E2\u306B\u5B58\u5728\u3057\u307E\u3059\u3002\u66F4\u65B0\u3059\u308B\u5834\u5408\u306F\u300C\u66F4\u65B0\u300D\u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}await h.post("/attendance/shifts/definitions",n),await P(),Y()}),r.addEventListener("click",async e=>{e.preventDefault();const n=F();if(!j(n)){alert("\u540D\u79F0\u30FB\u958B\u59CB\u30FB\u7D42\u4E86\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");return}if(!U(n.name)){alert("\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093: \u5BFE\u8C61\u306E\u30B7\u30D5\u30C8\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002\u8FFD\u52A0\u3059\u308B\u5834\u5408\u306F\u300C\u8FFD\u52A0\u300D\u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}await h.post("/attendance/shifts/definitions",n),await P()}),b.appendChild(g),b.appendChild(E),u.appendChild(b);const N=document.createElement("div");N.className="shift-list-container";const S=document.createElement("table");S.className="excel-table shift-desktop-table",S.innerHTML=`
     <thead><tr>
-      <th style="width:160px;">名称</th>
-      <th style="width:120px; text-align:center;">開始時間</th>
-      <th style="width:120px; text-align:center;">終了時間</th>
-      <th style="width:100px; text-align:center;">休憩時間</th>
-      <th style="width:120px; text-align:center;">所定時間(分)</th>
-      <th style="width:80px; text-align:center;">削除</th>
+      <th style="width:160px;">\u540D\u79F0</th>
+      <th style="width:120px; text-align:center;">\u958B\u59CB\u6642\u9593</th>
+      <th style="width:120px; text-align:center;">\u7D42\u4E86\u6642\u9593</th>
+      <th style="width:100px; text-align:center;">\u4F11\u61A9\u6642\u9593</th>
+      <th style="width:120px; text-align:center;">\u6240\u5B9A\u6642\u9593(\u5206)</th>
+      <th style="width:80px; text-align:center;">\u524A\u9664</th>
     </tr></thead>
     <tbody></tbody>
-  `;
-  defTable.appendChild(desktopTable);
-  
-  // Tạo danh sách card cho bản mobile bên trong container
-  const mobileList = document.createElement('div');
-  mobileList.className = 'shift-mobile-list';
-  defTable.appendChild(mobileList);
-
-  // cái này có chức năng render list
-  let defs = [];
-  const normalizeName = (v) => String(v || '').trim();
-  const findDefByName = (name) => {
-    const n = normalizeName(name);
-    if (!n) return null;
-    return (Array.isArray(defs) ? defs : []).find(d => normalizeName(d?.name) === n) || null;
-  };
-  const formatTime = (s) => (s && s.length >= 5) ? s.substring(0,5) : '';
-
-  const renderDefs = (rows) => {
-    const tb = desktopTable.querySelector('tbody');
-    tb.innerHTML = '';
-    
-    // Vẽ danh sách bản mobile
-    mobileList.innerHTML = '';
-
-    for (const d of (Array.isArray(rows) ? rows : [])) {
-      const tr = document.createElement('tr');
-      const tdN = document.createElement('td'); tdN.textContent = d.name || ''; tdN.style.textAlign = 'center';
-      const tdS = document.createElement('td'); tdS.textContent = formatTime(d.start_time || ''); tdS.style.textAlign = 'center';
-      const tdE = document.createElement('td'); tdE.textContent = formatTime(d.end_time || ''); tdE.style.textAlign = 'center';
-      const tdB = document.createElement('td'); tdB.textContent = String(d.break_minutes ?? 0) + '分'; tdB.style.textAlign = 'center';
-      const tdM = document.createElement('td'); tdM.textContent = String(d.standard_minutes ?? ''); tdM.style.textAlign = 'center';
-      const tdDel = document.createElement('td'); tdDel.style.textAlign = 'center';
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn-danger';
-      delBtn.textContent = '削除';
-      delBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = Number(d.id);
-        if (!id) {
-          alert('削除できません: IDがありません');
-          return;
-        }
-        if (!confirm(`${d.name || ''} を削除しますか？`)) return;
-        try {
-          await api.del(`/attendance/shifts/definitions/${id}`);
-          const rows2 = await api.get('/attendance/shifts/definitions');
-          defs = Array.isArray(rows2) ? rows2 : [];
-          renderDefs(rows2);
-        } catch (err) {
-          const msg = String(err?.message || err || '');
-          if (msg.toLowerCase().includes('409')) {
-            alert('このシフトは使用中のため削除できません');
-            return;
-          }
-          alert('削除に失敗しました');
-        }
-      });
-      tdDel.appendChild(delBtn);
-      tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdE); tr.appendChild(tdB); tr.appendChild(tdM); tr.appendChild(tdDel);
-      tr.addEventListener('click', () => {
-        try {
-          const nameInput = document.querySelector('.form-actions input[type="text"]');
-          const timeInputs = document.querySelectorAll('.form-actions input[type="time"]');
-          const select = document.querySelector('.form-actions select');
-          
-          if (!nameInput || timeInputs.length < 2 || !select) return;
-          
-          nameInput.value = d.name || '';
-          timeInputs[0].value = d.start_time || '';
-          timeInputs[1].value = d.end_time || '';
-          select.value = String(d.break_minutes ?? 0);
-          enableUpdate();
-        } catch (e) { /* bỏ qua lỗi */ }
-      });
-      tb.appendChild(tr);
-
-      // Card cho bản mobile
-      const card = document.createElement('div');
-      card.className = 'shift-card';
-      card.innerHTML = `
+  `,N.appendChild(S);const _=document.createElement("div");_.className="shift-mobile-list",N.appendChild(_);let p=[];const I=e=>String(e||"").trim(),U=e=>{const n=I(e);return n&&(Array.isArray(p)?p:[]).find(t=>I(t?.name)===n)||null},z=e=>e&&e.length>=5?e.substring(0,5):"",A=e=>{const n=S.querySelector("tbody");n.innerHTML="",_.innerHTML="";for(const t of Array.isArray(e)?e:[]){const a=document.createElement("tr"),B=document.createElement("td");B.textContent=t.name||"",B.style.textAlign="center";const D=document.createElement("td");D.textContent=z(t.start_time||""),D.style.textAlign="center";const $=document.createElement("td");$.textContent=z(t.end_time||""),$.style.textAlign="center";const M=document.createElement("td");M.textContent=String(t.break_minutes??0)+"\u5206",M.style.textAlign="center";const H=document.createElement("td");H.textContent=String(t.standard_minutes??""),H.style.textAlign="center";const q=document.createElement("td");q.style.textAlign="center";const T=document.createElement("button");T.className="btn-danger",T.textContent="\u524A\u9664",T.addEventListener("click",async o=>{o.preventDefault(),o.stopPropagation();const d=Number(t.id);if(!d){alert("\u524A\u9664\u3067\u304D\u307E\u305B\u3093: ID\u304C\u3042\u308A\u307E\u305B\u3093");return}if(confirm(`${t.name||""} \u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F`))try{await h.del(`/attendance/shifts/definitions/${d}`);const i=await h.get("/attendance/shifts/definitions");p=Array.isArray(i)?i:[],A(i)}catch(i){if(String(i?.message||i||"").toLowerCase().includes("409")){alert("\u3053\u306E\u30B7\u30D5\u30C8\u306F\u4F7F\u7528\u4E2D\u306E\u305F\u3081\u524A\u9664\u3067\u304D\u307E\u305B\u3093");return}alert("\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}}),q.appendChild(T),a.appendChild(B),a.appendChild(D),a.appendChild($),a.appendChild(M),a.appendChild(H),a.appendChild(q),a.addEventListener("click",()=>{try{const o=document.querySelector('.form-actions input[type="text"]'),d=document.querySelectorAll('.form-actions input[type="time"]'),i=document.querySelector(".form-actions select");if(!o||d.length<2||!i)return;o.value=t.name||"",d[0].value=t.start_time||"",d[1].value=t.end_time||"",i.value=String(t.break_minutes??0),W()}catch{}}),n.appendChild(a);const v=document.createElement("div");v.className="shift-card",v.innerHTML=`
         <div class="shift-card-header">
-          <span class="shift-card-title">${d.name || ''}</span>
-          <button class="shift-card-del-btn" aria-label="削除">
+          <span class="shift-card-title">${t.name||""}</span>
+          <button class="shift-card-del-btn" aria-label="\u524A\u9664">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
           </button>
         </div>
         <div class="shift-card-body">
           <div class="shift-card-row">
-            <span class="shift-card-label">時間:</span>
-            <span class="shift-card-value">${formatTime(d.start_time || '')} - ${formatTime(d.end_time || '')}</span>
+            <span class="shift-card-label">\u6642\u9593:</span>
+            <span class="shift-card-value">${z(t.start_time||"")} - ${z(t.end_time||"")}</span>
           </div>
           <div class="shift-card-row">
-            <span class="shift-card-label">休憩:</span>
-            <span class="shift-card-value">${String(d.break_minutes ?? 0)}分</span>
+            <span class="shift-card-label">\u4F11\u61A9:</span>
+            <span class="shift-card-value">${String(t.break_minutes??0)}\u5206</span>
           </div>
           <div class="shift-card-row">
-            <span class="shift-card-label">所定:</span>
-            <span class="shift-card-value">${String(d.standard_minutes ?? '')}分</span>
+            <span class="shift-card-label">\u6240\u5B9A:</span>
+            <span class="shift-card-value">${String(t.standard_minutes??"")}\u5206</span>
           </div>
         </div>
-      `;
-      
-      const mobileDelBtn = card.querySelector('.shift-card-del-btn');
-      mobileDelBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = Number(d.id);
-        if (!id) {
-          alert('削除できません: IDがありません');
-          return;
-        }
-        if (!confirm(`${d.name || ''} を削除しますか？`)) return;
-        try {
-          await api.del(`/attendance/shifts/definitions/${id}`);
-          const rows2 = await api.get('/attendance/shifts/definitions');
-          defs = Array.isArray(rows2) ? rows2 : [];
-          renderDefs(rows2);
-        } catch (err) {
-          const msg = String(err?.message || err || '');
-          if (msg.toLowerCase().includes('409')) {
-            alert('このシフトは使用中のため削除できません');
-            return;
-          }
-          alert('削除に失敗しました');
-        }
-      });
-      
-      card.addEventListener('click', () => {
-        try {
-          const nameInput = document.querySelector('.form-actions input[type="text"]');
-          const timeInputs = document.querySelectorAll('.form-actions input[type="time"]');
-          const select = document.querySelector('.form-actions select');
-          
-          if (!nameInput || timeInputs.length < 2 || !select) return;
-          
-          nameInput.value = d.name || '';
-          timeInputs[0].value = d.start_time || '';
-          timeInputs[1].value = d.end_time || '';
-          select.value = String(d.break_minutes ?? 0);
-          enableUpdate();
-        } catch (e) { /* bỏ qua lỗi */ }
-      });
-
-      mobileList.appendChild(card);
-    }
-  };
-  try {
-    defs = await api.get('/attendance/shifts/definitions');
-  } catch { defs = []; }
-  renderDefs(defs);
-  const tableContainer = document.createElement('div');
-  tableContainer.className = 'table-container';
-  tableContainer.style.cssText = 'padding: 0 16px 24px 16px;';
-  tableContainer.appendChild(defTable);
-  defCard.appendChild(tableContainer);
-
-  wrap.appendChild(defCard);
-
-  content.innerHTML = '';
-  content.innerHTML = `
+      `,v.querySelector(".shift-card-del-btn").addEventListener("click",async o=>{o.preventDefault(),o.stopPropagation();const d=Number(t.id);if(!d){alert("\u524A\u9664\u3067\u304D\u307E\u305B\u3093: ID\u304C\u3042\u308A\u307E\u305B\u3093");return}if(confirm(`${t.name||""} \u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F`))try{await h.del(`/attendance/shifts/definitions/${d}`);const i=await h.get("/attendance/shifts/definitions");p=Array.isArray(i)?i:[],A(i)}catch(i){if(String(i?.message||i||"").toLowerCase().includes("409")){alert("\u3053\u306E\u30B7\u30D5\u30C8\u306F\u4F7F\u7528\u4E2D\u306E\u305F\u3081\u524A\u9664\u3067\u304D\u307E\u305B\u3093");return}alert("\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}}),v.addEventListener("click",()=>{try{const o=document.querySelector('.form-actions input[type="text"]'),d=document.querySelectorAll('.form-actions input[type="time"]'),i=document.querySelector(".form-actions select");if(!o||d.length<2||!i)return;o.value=t.name||"",d[0].value=t.start_time||"",d[1].value=t.end_time||"",i.value=String(t.break_minutes??0),W()}catch{}}),_.appendChild(v)}};try{p=await h.get("/attendance/shifts/definitions")}catch{p=[]}A(p);const L=document.createElement("div");L.className="table-container",L.style.cssText="padding: 0 16px 24px 16px;",L.appendChild(N),u.appendChild(L),y.appendChild(u),l.innerHTML="",l.innerHTML=`
     <style>
       .shift-page-content { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
       .table-container { flex: 1 1 0%; min-height: 0; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -561,6 +253,4 @@ export async function mountShifts({ content }) {
         .shift-mobile-list { display: block; }
       }
     </style>
-  `;
-  content.appendChild(wrap);
-}
+  `,l.appendChild(y)}export{Q as mount,R as mountShifts};
