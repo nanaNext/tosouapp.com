@@ -8,9 +8,13 @@
 
   const { $, setDirty, clearDirty, showErr, hideSpinner, wireUserMenu, wireTopNavDropdowns } = core;
   const { recomputeRow: _origRecomputeRow } = render;
+  const __blockRecalc = new WeakSet();
+  const _setBlockRecalc = (tr) => { try { if (tr) __blockRecalc.add(tr); } catch (e) {} };
+  const _clearBlockRecalc = (tr) => { try { if (tr) __blockRecalc.delete(tr); } catch (e) {} };
+  const _isBlockRecalc = (tr) => { try { return tr && __blockRecalc.has(tr); } catch (e) { return false; } };
   const recomputeRow = (tr) => {
     if (!tr) return;
-    if (tr.dataset.blockRecalc === '1') return; // Skip recalculation if blocked
+    if (_isBlockRecalc(tr)) return; // Skip recalculation if blocked
     if (_origRecomputeRow) return _origRecomputeRow(tr);
   };
   render.recomputeRow = recomputeRow;
@@ -151,7 +155,7 @@
                 if (outEl) outEl.value = row.dataset.origOut;
                 if (workedEl) workedEl.textContent = row.dataset.origWorked;
                 if (excessEl) excessEl.textContent = row.dataset.origExcess;
-                delete row.dataset.blockRecalc;
+                _clearBlockRecalc(row);
               }
               // Restore 当月サマリ
               try {
@@ -191,8 +195,8 @@
             };
             const fmtMin = (m) => m > 0 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : '';
             const allRows = document.querySelectorAll('#monthTableReal [data-row="1"]');
-            for (const row of allRows) {
-              row.dataset.blockRecalc = '1';
+              for (const row of allRows) {
+                _setBlockRecalc(row);
               const inEl = row.querySelector('input[data-field="checkIn"]');
               const outEl = row.querySelector('input[data-field="checkOut"]');
               const workedEl = row.querySelector('[data-field="worked"]');
@@ -292,7 +296,7 @@
             try {
               const allRows2 = document.querySelectorAll('#monthTableReal [data-row="1"]');
               for (const r2 of allRows2) {
-                if (r2 && r2.dataset && r2.dataset.blockRecalc) delete r2.dataset.blockRecalc;
+                _clearBlockRecalc(r2);
               }
             } catch (e) { /* silently ignored */ }
           }
@@ -1001,7 +1005,7 @@
                   }
                   
                   // Luôn luôn gán giá trị và gọi trigger change để UI cập nhật
-                  row.dataset.blockRecalc = '1';
+                  _setBlockRecalc(row);
                   
                   // Keep track of original break values so they don't get lost during change event
                   const brSel = row.querySelector('select[data-field="break"]');
@@ -1021,7 +1025,7 @@
                     brSel.dataset.manual = '1';
                   }
                   
-                  row.dataset.blockRecalc = '';
+                  _clearBlockRecalc(row);
                   
                   row.dataset.kubunConfirmed = '1';
                   applyHolidayLock(row);
