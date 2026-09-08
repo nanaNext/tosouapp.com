@@ -1,422 +1,46 @@
-import { fetchJSONAuth } from '../api/http.api.js';
-
-// Thêm hàm hỗ trợ esc ở đầu file
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
-let currentUser = null;
-let currentMonth = new Date();
-
-let shiftData = {}; // key: YYYY-MM-DD, value: object
-let serverStatus = null; // Theo dõi xem tháng đã được nộp hoặc duyệt chưa
-
-const SEISHAIN_LEAVE_TYPES = [
-  { value: 'paid', label: '有給休暇' },
-  { value: 'unpaid', label: '欠勤 / 無給休暇' },
-  { value: 'special', label: '特別休暇' }
-];
-
-const SEISHAIN_REASONS = [
-  { value: '私用のため', label: '私用のため' },
-  { value: '体調不良', label: '体調不良' },
-  { value: '定期健診', label: '定期健診' },
-  { value: 'other', label: 'その他' }
-];
-
-const BAITO_SHIFTS = [
-  { value: 'OFF', label: '休み' },
-  { value: 'WORKING', label: '出勤' }
-];
-
-async function init() {
-  const spinner = $('#pageSpinner');
-  if (spinner) spinner.removeAttribute('hidden');
-  
-  try {
-    const el = $('#userName');
-    if (el) {
-      const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-      const u = raw ? JSON.parse(raw) : null;
-      const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
-      if (name) el.textContent = name;
-    }
-  } catch (e) { /* bỏ qua lỗi */ }
-
-  try {
-    currentUser = await fetchJSONAuth('/api/auth/me');
-    if (!currentUser || currentUser.error) {
-      window.location.replace('/ui/login?next=/ui/shifts-all');
-      return;
-    }
-    
-    // Cập nhật luôn userName trên header phòng khi nó chưa có trong storage
-    const el = $('#userName');
-    if (el && currentUser) {
-      const name = currentUser.username || currentUser.email;
-      if (name) el.textContent = name;
-    }
-    
-    // Lưu thông tin user đã cập nhật vào storage
-    try {
-      sessionStorage.setItem('user', JSON.stringify(currentUser));
-      localStorage.setItem('user', JSON.stringify(currentUser));
-    } catch (e) { /* bỏ qua lỗi */ }
-    
-    // Hiển thị thông tin profile user trong khung shifts-header
-    const isSeishain = currentUser.employment_type === 'full_time' || currentUser.employment_type === '正社員';
-    
-    await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
-    renderApp();
-  } catch (err) {
-    console.error(err);
-    if (err.message && (err.message.includes('Invalid or expired token') || err.message.includes('No token provided'))) {
-      window.location.replace('/ui/login?next=/ui/shifts-all');
-      return;
-    }
-    alert('ユーザー情報の読み込みに失敗しました。\n' + err.message + '\n' + err.stack);
-  } finally {
-    if (spinner) spinner.setAttribute('hidden', '');
-    document.documentElement.classList.remove('portal-preboot');
-  }
-}
-
-function wireUserMenu() {
-  if (window.__employeeUserMenuDelegated) return;
-  window.__employeeUserMenuDelegated = true;
-  const btnLogout = document.querySelector('#btnLogout');
-  if (btnLogout) {
-    btnLogout.addEventListener('click', async () => {
-      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
-      sessionStorage.clear();
-      localStorage.clear();
-      window.location.replace('/ui/login');
-    });
-  }
-
-  document.addEventListener('click', (e) => {
-    const isBtn = e.target && e.target.closest && e.target.closest('.user .user-btn');
-    const isMenu = e.target && e.target.closest && e.target.closest('.user-menu');
-    const d = document.querySelector('#userDropdown');
-    const b = document.querySelector('.user .user-btn');
-    
-    if (isBtn) {
-      e.preventDefault();
-      if (d && b) {
-        const isHidden = d.hasAttribute('hidden');
-        if (isHidden) {
-          d.removeAttribute('hidden');
-          b.setAttribute('aria-expanded', 'true');
-        } else {
-          d.setAttribute('hidden', '');
-          b.setAttribute('aria-expanded', 'false');
-        }
-      }
-      return;
-    }
-
-    if (!isMenu && d && !d.hasAttribute('hidden')) {
-      d.setAttribute('hidden', '');
-      if (b) b.setAttribute('aria-expanded', 'false');
-    }
-  });
-}
-
-let allEmployeesShifts = [];
-let calendarDataMap = {};
-
-async function loadMonthData(year, month) {
-  try {
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const res = await fetchJSONAuth(`/api/attendance/shifts/all-employees?month=${monthStr}`);
-    allEmployeesShifts = Array.isArray(res) ? res : [];
-    
-    // Lấy dữ liệu lịch
-    calendarDataMap = {};
-    const daysInMonth = getDaysInMonth(year, month);
-    await Promise.all(daysInMonth.map(async (d) => {
-      const dateStr = formatDate(d);
-      const dow = d.getDay();
-      try {
-        const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(dateStr)}`);
-        calendarDataMap[dateStr] = Number(cal?.is_off || 0) === 1;
-      } catch (e) {
-        calendarDataMap[dateStr] = dow === 0 || dow === 6;
-      }
-    }));
-    
-    // Từ điển dự phòng cho Koujibu (工事部) (cho thứ Bảy tuần thứ 4)
-    daysInMonth.forEach(d => {
-      const dateStr = formatDate(d);
-      const dow = d.getDay();
-      const isSunday = dow === 0;
-      const is4thSaturday = dow === 6 && d.getDate() >= 22 && d.getDate() <= 28;
-      calendarDataMap[`${dateStr}_koujibu`] = isSunday || is4thSaturday;
-    });
-  } catch (err) {
-    console.error('Failed to load all employees shifts', err);
-    allEmployeesShifts = [];
-  }
-}
-
-function getDaysInMonth(year, month) {
-  const date = new Date(year, month, 1);
-  const days = [];
-  while (date.getMonth() === month) {
-    days.push(new Date(date));
-    date.setDate(date.getDate() + 1);
-  }
-  return days;
-}
-
-function formatDate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function getDayOfWeek(date) {
-  const days = ['日', '月', '火', '水', '木', '金', '土'];
-  return days[date.getDay()];
-}
-
-function renderApp() {
-  const app = $('#shiftsApp');
-  
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const days = getDaysInMonth(year, month);
-  
-  let theadHtml = `
+import{fetchJSONAuth as O}from"../api/http.api.js";const j=e=>String(e??"").replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t]),$=(e,t=document)=>t.querySelector(e),Z=(e,t=document)=>Array.from(t.querySelectorAll(e));let w=null,c=new Date,at={},st=null;const rt=[{value:"paid",label:"\u6709\u7D66\u4F11\u6687"},{value:"unpaid",label:"\u6B20\u52E4 / \u7121\u7D66\u4F11\u6687"},{value:"special",label:"\u7279\u5225\u4F11\u6687"}],lt=[{value:"\u79C1\u7528\u306E\u305F\u3081",label:"\u79C1\u7528\u306E\u305F\u3081"},{value:"\u4F53\u8ABF\u4E0D\u826F",label:"\u4F53\u8ABF\u4E0D\u826F"},{value:"\u5B9A\u671F\u5065\u8A3A",label:"\u5B9A\u671F\u5065\u8A3A"},{value:"other",label:"\u305D\u306E\u4ED6"}],dt=[{value:"OFF",label:"\u4F11\u307F"},{value:"WORKING",label:"\u51FA\u52E4"}];async function Q(){const e=$("#pageSpinner");e&&e.removeAttribute("hidden");try{const t=$("#userName");if(t){const n=sessionStorage.getItem("user")||localStorage.getItem("user")||"",i=n?JSON.parse(n):null,r=i&&(i.username||i.email)?String(i.username||i.email):"";r&&(t.textContent=r)}}catch{}try{if(w=await O("/api/auth/me"),!w||w.error){window.location.replace("/ui/login?next=/ui/shifts-all");return}const t=$("#userName");if(t&&w){const i=w.username||w.email;i&&(t.textContent=i)}try{sessionStorage.setItem("user",JSON.stringify(w)),localStorage.setItem("user",JSON.stringify(w))}catch{}const n=w.employment_type==="full_time"||w.employment_type==="\u6B63\u793E\u54E1";await _(c.getFullYear(),c.getMonth()),q()}catch(t){if(console.error(t),t.message&&(t.message.includes("Invalid or expired token")||t.message.includes("No token provided"))){window.location.replace("/ui/login?next=/ui/shifts-all");return}alert(`\u30E6\u30FC\u30B6\u30FC\u60C5\u5831\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002
+`+t.message+`
+`+t.stack)}finally{e&&e.setAttribute("hidden",""),document.documentElement.classList.remove("portal-preboot")}}function tt(){if(window.__employeeUserMenuDelegated)return;window.__employeeUserMenuDelegated=!0;const e=document.querySelector("#btnLogout");e&&e.addEventListener("click",async()=>{try{await fetch("/api/auth/logout",{method:"POST"})}catch{}sessionStorage.clear(),localStorage.clear(),window.location.replace("/ui/login")}),document.addEventListener("click",t=>{const n=t.target&&t.target.closest&&t.target.closest(".user .user-btn"),i=t.target&&t.target.closest&&t.target.closest(".user-menu"),r=document.querySelector("#userDropdown"),a=document.querySelector(".user .user-btn");if(n){t.preventDefault(),r&&a&&(r.hasAttribute("hidden")?(r.removeAttribute("hidden"),a.setAttribute("aria-expanded","true")):(r.setAttribute("hidden",""),a.setAttribute("aria-expanded","false")));return}!i&&r&&!r.hasAttribute("hidden")&&(r.setAttribute("hidden",""),a&&a.setAttribute("aria-expanded","false"))})}let A=[],z={};async function _(e,t){try{const n=`${e}-${String(t+1).padStart(2,"0")}`,i=await O(`/api/attendance/shifts/all-employees?month=${n}`);A=Array.isArray(i)?i:[],z={};const r=Y(e,t);await Promise.all(r.map(async a=>{const p=F(a),v=a.getDay();try{const u=await O(`/api/attendance/calendar/day/${encodeURIComponent(p)}`);z[p]=Number(u?.is_off||0)===1}catch{z[p]=v===0||v===6}})),r.forEach(a=>{const p=F(a),v=a.getDay(),u=v===0,o=v===6&&a.getDate()>=22&&a.getDate()<=28;z[`${p}_koujibu`]=u||o})}catch(n){console.error("Failed to load all employees shifts",n),A=[]}}function Y(e,t){const n=new Date(e,t,1),i=[];for(;n.getMonth()===t;)i.push(new Date(n)),n.setDate(n.getDate()+1);return i}function F(e){const t=e.getFullYear(),n=String(e.getMonth()+1).padStart(2,"0"),i=String(e.getDate()).padStart(2,"0");return`${t}-${n}-${i}`}function R(e){return["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"][e.getDay()]}function q(){const e=$("#shiftsApp"),t=c.getFullYear(),n=c.getMonth(),i=Y(t,n);let r=`
     <tr>
-      <th style="min-width: 150px; position: sticky; left: 0; background: #334155; z-index: 10;">従業員名</th>
-      <th style="min-width: 100px;">部署</th>
-      <th style="min-width: 100px;">雇用形態</th>
-      ${days.map(d => {
-        const dow = d.getDay();
-        const dowStr = getDayOfWeek(d);
-        let color = '#fff';
-        if (dow === 0) color = '#fca5a5';
-        else if (dow === 6) color = '#93c5fd';
-        
-        let lunarText = '';
-        try {
-          if (typeof window.Lunar !== 'undefined') {
-            const lunarDate = window.Lunar.fromDate(d);
-            const lDay = lunarDate.getDay();
-            const lMonth = lunarDate.getMonth();
-            if (lDay === 1) {
-              lunarText = `${lMonth}/${lDay}`;
-            } else {
-              lunarText = `${lDay}`;
-            }
-          }
-        } catch (e) {}
-        
-        const lunarHtml = lunarText ? `<br><span style="font-size: 10px; color: #94a3b8; font-weight: normal;">${esc(lunarText)}</span>` : '';
-        
-        return `<th style="min-width: 40px; color: ${color};">${d.getDate()}<br><span style="font-size: 10px;">${dowStr}</span>${lunarHtml}</th>`;
-      }).join('')}
+      <th style="min-width: 150px; position: sticky; left: 0; background: #334155; z-index: 10;">\u5F93\u696D\u54E1\u540D</th>
+      <th style="min-width: 100px;">\u90E8\u7F72</th>
+      <th style="min-width: 100px;">\u96C7\u7528\u5F62\u614B</th>
+      ${i.map(o=>{const h=o.getDay(),l=R(o);let g="#fff";h===0?g="#fca5a5":h===6&&(g="#93c5fd");let f="";try{if(typeof window.Lunar<"u"){const x=window.Lunar.fromDate(o),d=x.getDay(),L=x.getMonth();d===1?f=`${L}/${d}`:f=`${d}`}}catch{}const E=f?`<br><span style="font-size: 10px; color: #94a3b8; font-weight: normal;">${j(f)}</span>`:"";return`<th style="min-width: 40px; color: ${g};">${o.getDate()}<br><span style="font-size: 10px;">${l}</span>${E}</th>`}).join("")}
     </tr>
-  `;
-
-  let tbodyHtml = '';
-  let mobileHtml = '<div class="shift-mobile-list">';
-  
-  if (allEmployeesShifts.length === 0) {
-    tbodyHtml = `<tr><td colspan="${3 + days.length}" style="text-align: center; padding: 20px;">データがありません</td></tr>`;
-    mobileHtml += `<div style="padding: 20px; text-align: center; color: #94a3b8;">データがありません</div>`;
-  } else {
-    allEmployeesShifts.forEach(emp => {
-      const isSeishain = emp.employment_type === 'full_time' || emp.employment_type === '正社員' || emp.employment_type === '正';
-      const typeStr = isSeishain ? '正' : 'パート';
-      
-      let rowHtml = `
+  `,a="",p='<div class="shift-mobile-list">';A.length===0?(a=`<tr><td colspan="${3+i.length}" style="text-align: center; padding: 20px;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</td></tr>`,p+='<div style="padding: 20px; text-align: center; color: #94a3b8;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>'):A.forEach(o=>{const h=o.employment_type==="full_time"||o.employment_type==="\u6B63\u793E\u54E1"||o.employment_type==="\u6B63",l=h?"\u6B63":"\u30D1\u30FC\u30C8";let g=`
         <tr>
           <td style="position: sticky; left: 0; background: #fff; z-index: 5; font-weight: bold;">
-            <a href="/ui/shifts?userId=${emp.id}" style="color: #2563eb; text-decoration: none;" title="この従業員のシフトを編集する">${esc(emp.username)}</a>
+            <a href="/ui/shifts?userId=${o.id}" style="color: #2563eb; text-decoration: none;" title="\u3053\u306E\u5F93\u696D\u54E1\u306E\u30B7\u30D5\u30C8\u3092\u7DE8\u96C6\u3059\u308B">${j(o.username)}</a>
           </td>
-          <td>${esc(emp.departmentName || '')}</td>
-          <td>${typeStr}</td>
-      `;
-      
-      let workCount = 0;
-      
-      // Tìm thứ trong tuần của ngày mùng 1 để thêm các ô đệm trống
-      const firstDayOfMonth = new Date(year, month, 1).getDay();
-      let mobileDaysHtml = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0;">';
-      
-      // Thêm các ô trống cho những ngày trước mùng 1
-      for (let i = 0; i < firstDayOfMonth; i++) {
-        mobileDaysHtml += `<div class="sac-day-item empty" style="border: none; background: transparent;"></div>`;
-      }
-
-      days.forEach(d => {
-        const dowStr = getDayOfWeek(d);
-        const dateStr = formatDate(d);
-        const shift = emp.schedule && emp.schedule[dateStr];
-        let cellHtml = '';
-        let cellMobileHtml = '-';
-        
-        const dow = d.getDay();
-        const isKoujibu = String(emp.departmentName || '').includes('工事部');
-        const isRedDay = calendarDataMap[dateStr] === true;
-        
-        // Xác định thứ 7 tuần thứ 4
-        const is4thSaturday = dow === 6 && Math.ceil(d.getDate() / 7) === 4;
-
-        // Kiểm tra xem user có lịch riêng theo phòng ban hay không
-        let isHolidayForUser = false;
-        if (isKoujibu) {
-          isHolidayForUser = calendarDataMap[`${dateStr}_koujibu`] === true || isRedDay;
-        } else {
-          if (isSeishain) {
-            // Nhân viên chính thức: Chủ nhật, Lễ, và Thứ 7 tuần thứ 4 là ngày nghỉ
-            // Các thứ 7 khác được tính là ngày đi làm bình thường
-            isHolidayForUser = dow === 0 || isRedDay || is4thSaturday;
-          } else {
-            // Part-time: Nghỉ Thứ 7, Chủ nhật, Lễ
-            isHolidayForUser = dow === 0 || dow === 6 || isRedDay;
-          }
-        }
-        const isWeekendOrHoliday = isHolidayForUser;
-        
-        let cellText = '';
-        let cellClass = '';
-        let cellTextColor = '';
-        
-        if (shift && shift.status === 'LEAVE') {
-          if (shift.leaveType === 'paid') {
-            cellText = '有休';
-            cellClass = 'status-paid';
-            cellTextColor = '#d97706'; // Vàng hổ phách
-          } else if (shift.leaveType === 'unpaid') {
-            cellText = '欠';
-            cellClass = 'status-unpaid';
-            cellTextColor = '#9333ea'; // Tím
-          } else {
-            cellText = '休';
-            cellClass = 'status-holiday';
-            cellTextColor = '#dc2626'; // Đỏ
-          }
-        } else if (isWeekendOrHoliday && (!shift || shift.status !== 'WORKING')) {
-          cellText = '休';
-          cellClass = 'status-holiday';
-          cellTextColor = '#dc2626'; // Đỏ
-        } else if (shift && shift.status === 'WORKING') {
-          if (isWeekendOrHoliday) {
-            cellText = '出'; // 休日出勤 (đi làm ngày nghỉ)
-            cellClass = 'status-holiday-work';
-            cellTextColor = '#0284c7'; // Xanh dương/xanh mòng két
-          } else {
-            cellText = '出勤';
-            cellClass = 'status-working';
-            cellTextColor = '#16a34a'; // Xanh lá
-          }
-          workCount++;
-        } else if (shift && shift.status === 'OFF') {
-          // Part-time đăng ký nghỉ rõ ràng → hiển thị đỏ (休日), không phải xám
-          cellText = '休';
-          cellClass = 'status-holiday';
-          cellTextColor = '#dc2626'; // Đỏ
-        } else {
-          cellText = '-'; // Chưa đăng ký gì
-          cellClass = 'status-empty';
-          cellTextColor = '#94a3b8'; // Xám
-        }
-
-        // Thêm chỉ báo trực quan nếu có lý do hoặc chi tiết
-        let indicator = '';
-        if (shift && shift.status === 'LEAVE') {
-          const hasReason = shift.reason && shift.reason !== '' && shift.reason !== 'other';
-          const hasDetail = shift.detail && shift.detail.trim() !== '';
-          if (hasReason || hasDetail) {
-            indicator = '<div style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; position: absolute; top: 2px; right: 2px;" title="理由あり"></div>';
-          }
-        }
-        
-        const tooltipTitle = (shift && shift.status === 'LEAVE') ? `理由: ${shift.reason || 'なし'}${shift.detail ? ` - ${shift.detail}` : ''}` : '';
-        const titleAttr = tooltipTitle ? `title="${tooltipTitle}"` : '';
-        const cursorStyle = tooltipTitle ? 'cursor: help;' : '';
-        
-        cellHtml = `<div class="shift-cell ${cellClass}" style="color: ${cellTextColor}; font-weight: bold; font-size: 12px; position: relative; width: 100%; height: 100%; min-height: 20px; display: flex; align-items: center; justify-content: center;" ${titleAttr}><span class="shift-text">${cellText}</span><div class="shift-line"></div>${indicator}</div>`;
-        cellMobileHtml = cellText;
-        
-        rowHtml += `<td class="print-cell ${cellClass}" style="text-align: center; vertical-align: middle; padding: 4px;">${cellHtml}</td>`;
-        
-        let headerColor = '#0f172a';
-        if (dow === 0) headerColor = '#dc2626';
-        else if (dow === 6) headerColor = '#2563eb';
-        
-        const st = shift || {};
-        let statusLabel = '';
-        let statusColor = '#0f172a'; // Màu chữ tối mặc định
-        
-        if (st.status === 'WORKING') {
-          statusLabel = '出';
-          statusColor = '#1e40af'; // Xanh dương cho ngày đi làm
-        } else if (st.status === 'OFF') {
-          statusLabel = '休';
-          statusColor = '#ef4444'; // Đỏ cho ngày nghỉ
-        } else if (st.status === 'LEAVE') {
-          if (st.leaveType && st.leaveType !== 'paid' && st.leaveType !== 'special' && st.leaveType !== 'absence') {
-            statusLabel = '休'; // Xử lý các kiểu chuỗi cũ (legacy)
-          } else if (st.leaveType === 'paid') {
-            statusLabel = '有休';
-          } else if (st.leaveType === 'special') {
-            statusLabel = '特休';
-          } else if (st.leaveType === 'absence') {
-            statusLabel = '欠勤';
-          } else {
-            statusLabel = '休';
-          }
-          statusColor = '#ef4444'; // Đỏ cho ngày nghỉ phép
-        } else {
-          statusLabel = '未';
-          statusColor = '#94a3b8'; // Xám cho ngày chưa gán
-        }
-        
-        mobileDaysHtml += `
-          <div class="sac-day-item" style="border: 1px solid #e2e8f0; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 42px; background: ${statusColor === '#ef4444' ? '#fef2f2' : '#fff'}; box-sizing: border-box;">
-            <div style="font-size: 11px; color: ${headerColor}; font-weight: bold; line-height: 1.2;">${d.getDate()}</div>
-            <div style="font-size: 12px; font-weight: bold; color: ${statusColor}; margin-top: 2px;">${statusLabel}</div>
+          <td>${j(o.departmentName||"")}</td>
+          <td>${l}</td>
+      `,f=0;const E=new Date(t,n,1).getDay();let x='<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0;">';for(let d=0;d<E;d++)x+='<div class="sac-day-item empty" style="border: none; background: transparent;"></div>';i.forEach(d=>{const L=R(d),N=F(d),s=o.schedule&&o.schedule[N];let B="",W="-";const M=d.getDay(),K=String(o.departmentName||"").includes("\u5DE5\u4E8B\u90E8"),C=z[N]===!0,U=M===6&&Math.ceil(d.getDate()/7)===4;let T=!1;K?T=z[`${N}_koujibu`]===!0||C:h?T=M===0||C||U:T=M===0||M===6||C;const P=T;let b="",y="",k="";s&&s.status==="LEAVE"?s.leaveType==="paid"?(b="\u6709\u4F11",y="status-paid",k="#d97706"):s.leaveType==="unpaid"?(b="\u6B20",y="status-unpaid",k="#9333ea"):(b="\u4F11",y="status-holiday",k="#dc2626"):P&&(!s||s.status!=="WORKING")?(b="\u4F11",y="status-holiday",k="#dc2626"):s&&s.status==="WORKING"?(P?(b="\u51FA",y="status-holiday-work",k="#0284c7"):(b="\u51FA\u52E4",y="status-working",k="#16a34a"),f++):s&&s.status==="OFF"?(b="\u4F11",y="status-holiday",k="#dc2626"):(b="-",y="status-empty",k="#94a3b8");let V="";if(s&&s.status==="LEAVE"){const J=s.reason&&s.reason!==""&&s.reason!=="other",X=s.detail&&s.detail.trim()!=="";(J||X)&&(V='<div style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; position: absolute; top: 2px; right: 2px;" title="\u7406\u7531\u3042\u308A"></div>')}const H=s&&s.status==="LEAVE"?`\u7406\u7531: ${s.reason||"\u306A\u3057"}${s.detail?` - ${s.detail}`:""}`:"",G=H?`title="${H}"`:"",nt=H?"cursor: help;":"";B=`<div class="shift-cell ${y}" style="color: ${k}; font-weight: bold; font-size: 12px; position: relative; width: 100%; height: 100%; min-height: 20px; display: flex; align-items: center; justify-content: center;" ${G}><span class="shift-text">${b}</span><div class="shift-line"></div>${V}</div>`,W=b,g+=`<td class="print-cell ${y}" style="text-align: center; vertical-align: middle; padding: 4px;">${B}</td>`;let I="#0f172a";M===0?I="#dc2626":M===6&&(I="#2563eb");const m=s||{};let S="",D="#0f172a";m.status==="WORKING"?(S="\u51FA",D="#1e40af"):m.status==="OFF"?(S="\u4F11",D="#ef4444"):m.status==="LEAVE"?(m.leaveType&&m.leaveType!=="paid"&&m.leaveType!=="special"&&m.leaveType!=="absence"?S="\u4F11":m.leaveType==="paid"?S="\u6709\u4F11":m.leaveType==="special"?S="\u7279\u4F11":m.leaveType==="absence"?S="\u6B20\u52E4":S="\u4F11",D="#ef4444"):(S="\u672A",D="#94a3b8"),x+=`
+          <div class="sac-day-item" style="border: 1px solid #e2e8f0; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 42px; background: ${D==="#ef4444"?"#fef2f2":"#fff"}; box-sizing: border-box;">
+            <div style="font-size: 11px; color: ${I}; font-weight: bold; line-height: 1.2;">${d.getDate()}</div>
+            <div style="font-size: 12px; font-weight: bold; color: ${D}; margin-top: 2px;">${S}</div>
           </div>
-        `;
-      });
-      mobileDaysHtml += `</div>`; // Đóng container grid
-      
-      rowHtml += `</tr>`;
-      tbodyHtml += rowHtml;
-      
-      mobileHtml += `
+        `}),x+="</div>",g+="</tr>",a+=g,p+=`
         <div class="sac-card">
           <div class="sac-header">
             <div class="sac-name-wrap">
-              <a href="/ui/shifts?userId=${emp.id}" style="color: #2563eb; text-decoration: none; font-weight: bold; font-size: 14px;">${esc(emp.username)}</a>
-              <span class="${isSeishain ? 'badge-sei' : 'badge-bai'}">${typeStr}</span>
+              <a href="/ui/shifts?userId=${o.id}" style="color: #2563eb; text-decoration: none; font-weight: bold; font-size: 14px;">${j(o.username)}</a>
+              <span class="${h?"badge-sei":"badge-bai"}">${l}</span>
             </div>
           </div>
           <div class="sac-summary">
-            <span class="sac-total-label">月計 (出勤日数):</span>
-            <span class="sac-total-val" style="font-weight:700; color:#0f172a;">${workCount}日</span>
+            <span class="sac-total-label">\u6708\u8A08 (\u51FA\u52E4\u65E5\u6570):</span>
+            <span class="sac-total-val" style="font-weight:700; color:#0f172a;">${f}\u65E5</span>
           </div>
           <div class="sac-days-scroll" style="overflow-x: hidden; display: flex; justify-content: center; padding-bottom: 8px;">
             <div style="width: 100%; max-width: 350px;">
               <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 4px 0 2px 0;">
-                ${['日', '月', '火', '水', '木', '金', '土'].map((d, i) => `<div style="text-align: center; font-size: 11px; font-weight: bold; color: ${i===0?'#ef4444':i===6?'#3b82f6':'#64748b'};">${d}</div>`).join('')}
+                ${["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"].map((d,L)=>`<div style="text-align: center; font-size: 11px; font-weight: bold; color: ${L===0?"#ef4444":L===6?"#3b82f6":"#64748b"};">${d}</div>`).join("")}
               </div>
-              ${mobileDaysHtml}
+              ${x}
             </div>
           </div>
         </div>
-      `;
-    });
-  }
-  mobileHtml += `</div>`;
-
-  const html = `
+      `}),p+="</div>";const v=`
     <style>
       .shift-line { display: none; }
       .badge-sei { background: #eff6ff; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid #bfdbfe; }
@@ -507,19 +131,19 @@ function renderApp() {
           <div class="shifts-top-nav-left">
             <a href="/ui/shifts" style="padding: 8px 16px; border: 1px solid #d1d5db; background: #f8fafc; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #334155; display: flex; align-items: center; gap: 6px; text-decoration: none; transition: all 0.2s;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-              戻る
+              \u623B\u308B
             </a>
           </div>
           <div class="shifts-top-nav-right" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
             <div class="modern-month-picker" style="display: flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); height: 38px;">
-              <button id="prevMonth" class="modern-btn-nav" title="先月" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
+              <button id="prevMonth" class="modern-btn-nav" title="\u5148\u6708" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
               </button>
               <div class="modern-month-display" style="padding: 0 16px; font-weight: bold; font-size: 15px; color: #0f172a; min-width: 120px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; height: 100%;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                ${year}年 ${String(month + 1).padStart(2, '0')}月
+                ${t}\u5E74 ${String(n+1).padStart(2,"0")}\u6708
               </div>
-              <button id="nextMonth" class="modern-btn-nav" title="来月" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
+              <button id="nextMonth" class="modern-btn-nav" title="\u6765\u6708" style="padding: 0 12px; background: transparent; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; height: 100%;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
             </div>
@@ -531,16 +155,16 @@ function renderApp() {
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <div style="font-weight: bold; font-size: 16px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            全員のシフト状況
+            \u5168\u54E1\u306E\u30B7\u30D5\u30C8\u72B6\u6CC1
           </div>
           <div style="display: flex; gap: 8px;">
             <button id="btnPrint" class="modern-btn" style="background: #64748b; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-              印刷
+              \u5370\u5237
             </button>
             <button id="btnExportExcel" class="modern-btn" style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              Excel出力
+              Excel\u51FA\u529B
             </button>
           </div>
         </div>
@@ -549,108 +173,25 @@ function renderApp() {
       <div class="shifts-desktop-table" style="overflow-x: auto; border: 1px solid #d1d5db; border-radius: 4px; background: white;">
         <table style="width: 100%; border-collapse: collapse; min-width: 800px; font-size: 13px;">
           <thead style="background: #334155; color: white;">
-            ${theadHtml}
+            ${r}
           </thead>
           <tbody>
-            ${tbodyHtml}
+            ${a}
           </tbody>
         </table>
       </div>
-      ${mobileHtml}
+      ${p}
     </div>
-  `;
-  
-  app.innerHTML = html;
-  
-  // Phân trang trên mobile cho các thẻ ca làm
-  const mobileList = app.querySelector('.shift-mobile-list');
-  if (mobileList) {
-    const cards = Array.from(mobileList.querySelectorAll('.sac-card'));
-    const MOBILE_PAGE_SIZE = 20;
-    if (cards.length > MOBILE_PAGE_SIZE) {
-      let mobilePage = 1;
-      const totalMobilePages = Math.ceil(cards.length / MOBILE_PAGE_SIZE);
-      const pagDiv = document.createElement('div');
-      pagDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;font-size:13px;color:#475569;font-weight:600;';
-      mobileList.parentNode.insertBefore(pagDiv, mobileList.nextSibling);
-      const showPage = () => {
-        cards.forEach((c, i) => { c.style.display = (i >= (mobilePage-1)*MOBILE_PAGE_SIZE && i < mobilePage*MOBILE_PAGE_SIZE) ? '' : 'none'; });
-        pagDiv.innerHTML = `ページ ${mobilePage} / ${totalMobilePages} (${cards.length}名)　<button id="shiftMobilePrev" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${mobilePage<=1?'disabled':''}>◀</button> <button id="shiftMobileNext" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${mobilePage>=totalMobilePages?'disabled':''}>▶</button>`;
-        pagDiv.querySelector('#shiftMobilePrev')?.addEventListener('click', () => { if(mobilePage>1){mobilePage--;showPage();window.scrollTo({top:0,behavior:'instant'});} });
-        pagDiv.querySelector('#shiftMobileNext')?.addEventListener('click', () => { if(mobilePage<totalMobilePages){mobilePage++;showPage();window.scrollTo({top:0,behavior:'instant'});} });
-      };
-      showPage();
-    }
-  }
-
-  // Gán style cho các ô của bảng một cách động
-  $$('.shifts-desktop-table td, .shifts-desktop-table th', app).forEach(cell => {
-    cell.style.border = '1px solid #e2e8f0';
-    cell.style.padding = '8px 4px';
-  });
-
-  attachEvents();
-}
-
-function attachEvents() {
-  $('#prevMonth').addEventListener('click', async () => {
-    currentMonth.setMonth(currentMonth.getMonth() - 1);
-    await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
-    renderApp();
-  });
-  $('#nextMonth').addEventListener('click', async () => {
-    currentMonth.setMonth(currentMonth.getMonth() + 1);
-    await loadMonthData(currentMonth.getFullYear(), currentMonth.getMonth());
-    renderApp();
-  });
-
-  const btnExportExcel = $('#btnExportExcel');
-  if (btnExportExcel) {
-    btnExportExcel.addEventListener('click', () => {
-      const year = currentMonth.getFullYear();
-      const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
-      // Chuyển hướng trình duyệt để tải file
-      window.location.href = `/api/attendance/shifts/all-employees/export?year=${year}&month=${month}`;
-    });
-  }
-
-  const btnPrint = $('#btnPrint');
-  if (btnPrint) {
-    btnPrint.addEventListener('click', () => {
-      const tableDiv = document.querySelector('.shifts-desktop-table');
-      if (!tableDiv) return;
-      
-      const year = currentMonth.getFullYear();
-      const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
-
-      // Tính tổng hợp theo phòng ban cho phần header khi in
-      const deptCounts = {};
-      allEmployeesShifts.forEach(emp => {
-        const dept = emp.departmentName || '未配属';
-        deptCounts[dept] = (deptCounts[dept] || 0) + 1;
-      });
-      const deptSummaryStr = Object.entries(deptCounts).map(([k, v]) => `${k}: ${v}名`).join('　');
-      const allEmployees = allEmployeesShifts;
-
-      // Mở một cửa sổ mới để in, tránh bị xung đột CSS với trang hiện tại
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        alert('ポップアップがブロックされました。ブラウザの設定で許可してください。');
-        return;
-      }
-      
-      const tableHtml = tableDiv.innerHTML;
-      
-      printWindow.document.write(`
+  `;e.innerHTML=v;const u=e.querySelector(".shift-mobile-list");if(u){const o=Array.from(u.querySelectorAll(".sac-card")),h=20;if(o.length>h){let l=1;const g=Math.ceil(o.length/h),f=document.createElement("div");f.style.cssText="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;font-size:13px;color:#475569;font-weight:600;",u.parentNode.insertBefore(f,u.nextSibling);const E=()=>{o.forEach((x,d)=>{x.style.display=d>=(l-1)*h&&d<l*h?"":"none"}),f.innerHTML=`\u30DA\u30FC\u30B8 ${l} / ${g} (${o.length}\u540D)\u3000<button id="shiftMobilePrev" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${l<=1?"disabled":""}>\u25C0</button> <button id="shiftMobileNext" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${l>=g?"disabled":""}>\u25B6</button>`,f.querySelector("#shiftMobilePrev")?.addEventListener("click",()=>{l>1&&(l--,E(),window.scrollTo({top:0,behavior:"instant"}))}),f.querySelector("#shiftMobileNext")?.addEventListener("click",()=>{l<g&&(l++,E(),window.scrollTo({top:0,behavior:"instant"}))})};E()}}Z(".shifts-desktop-table td, .shifts-desktop-table th",e).forEach(o=>{o.style.border="1px solid #e2e8f0",o.style.padding="8px 4px"}),et()}function et(){$("#prevMonth").addEventListener("click",async()=>{c.setMonth(c.getMonth()-1),await _(c.getFullYear(),c.getMonth()),q()}),$("#nextMonth").addEventListener("click",async()=>{c.setMonth(c.getMonth()+1),await _(c.getFullYear(),c.getMonth()),q()});const e=$("#btnExportExcel");e&&e.addEventListener("click",()=>{const n=c.getFullYear(),i=String(c.getMonth()+1).padStart(2,"0");window.location.href=`/api/attendance/shifts/all-employees/export?year=${n}&month=${i}`});const t=$("#btnPrint");t&&t.addEventListener("click",()=>{const n=document.querySelector(".shifts-desktop-table");if(!n)return;const i=c.getFullYear(),r=String(c.getMonth()+1).padStart(2,"0"),a={};A.forEach(h=>{const l=h.departmentName||"\u672A\u914D\u5C5E";a[l]=(a[l]||0)+1});const p=Object.entries(a).map(([h,l])=>`${h}: ${l}\u540D`).join("\u3000"),v=A,u=window.open("","_blank");if(!u){alert("\u30DD\u30C3\u30D7\u30A2\u30C3\u30D7\u304C\u30D6\u30ED\u30C3\u30AF\u3055\u308C\u307E\u3057\u305F\u3002\u30D6\u30E9\u30A6\u30B6\u306E\u8A2D\u5B9A\u3067\u8A31\u53EF\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}const o=n.innerHTML;u.document.write(`
         <!DOCTYPE html>
         <html lang="ja">
           <head>
             <meta charset="utf-8">
-            <title>シフト印刷</title>
+            <title>\u30B7\u30D5\u30C8\u5370\u5237</title>
             <style>
               @page { 
-                size: landscape; /* Cho phép người dùng tự do chọn A3, A4... trên hộp thoại in */
-                margin: 15mm 10mm; /* Tăng lề trên để không bị mất tiêu đề */
+                size: landscape; /* Cho ph\xE9p ng\u01B0\u1EDDi d\xF9ng t\u1EF1 do ch\u1ECDn A3, A4... tr\xEAn h\u1ED9p tho\u1EA1i in */
+                margin: 15mm 10mm; /* T\u0103ng l\u1EC1 tr\xEAn \u0111\u1EC3 kh\xF4ng b\u1ECB m\u1EA5t ti\xEAu \u0111\u1EC1 */
               }
               body { 
                 font-family: "Noto Sans JP", sans-serif; 
@@ -664,7 +205,7 @@ function attachEvents() {
                 margin: 0 0 20px 0; 
                 font-size: 20px; 
                 color: #0f172a;
-                padding-top: 10px; /* Thêm padding để chắc chắn tiêu đề không dính mép giấy */
+                padding-top: 10px; /* Th\xEAm padding \u0111\u1EC3 ch\u1EAFc ch\u1EAFn ti\xEAu \u0111\u1EC1 kh\xF4ng d\xEDnh m\xE9p gi\u1EA5y */
               }
               .print-container {
                 width: 100%;
@@ -672,11 +213,11 @@ function attachEvents() {
               table { 
                 width: 100% !important; 
                 border-collapse: collapse; 
-                table-layout: fixed !important; /* Đổi thành fixed để ép nhỏ các cột ngày */
+                table-layout: fixed !important; /* \u0110\u1ED5i th\xE0nh fixed \u0111\u1EC3 \xE9p nh\u1ECF c\xE1c c\u1ED9t ng\xE0y */
               }
               th, td { 
                 border: 1px solid #94a3b8 !important; 
-                padding: 1px !important; /* Thu nhỏ padding để tiết kiệm diện tích tối đa */
+                padding: 1px !important; /* Thu nh\u1ECF padding \u0111\u1EC3 ti\u1EBFt ki\u1EC7m di\u1EC7n t\xEDch t\u1ED1i \u0111a */
                 text-align: center !important; 
                 font-size: 10px !important; 
                 word-break: keep-all !important; 
@@ -691,11 +232,11 @@ function attachEvents() {
               th span, th div, td div {
                 font-size: 10px !important;
               }
-              /* Ẩn toàn bộ chữ khi in, chỉ hiển thị màu nền */
+              /* \u1EA8n to\xE0n b\u1ED9 ch\u1EEF khi in, ch\u1EC9 hi\u1EC3n th\u1ECB m\xE0u n\u1EC1n */
               .shift-text { 
                 display: none !important; 
               }
-              /* Vẽ một vạch ngang ở giữa ô thay vì tô full nền */
+              /* V\u1EBD m\u1ED9t v\u1EA1ch ngang \u1EDF gi\u1EEFa \xF4 thay v\xEC t\xF4 full n\u1EC1n */
               .shift-line {
                 display: block !important;
                 width: 70% !important;
@@ -712,23 +253,23 @@ function attachEvents() {
                 min-height: 18px !important; 
               }
               
-              /* Định nghĩa màu sắc cho các vạch ngang khi in */
-              td.status-working .shift-line { background-color: #22c55e !important; } /* Xanh lá: 出勤 */
-              td.status-holiday .shift-line { background-color: #f97316 !important; } /* Cam nhạt: 休 (thay cho đỏ tươi) */
-              td.status-paid .shift-line { background-color: #eab308 !important; } /* Vàng: 有休 */
-              td.status-unpaid .shift-line { background-color: #a855f7 !important; } /* Tím: 欠 */
-              td.status-holiday-work .shift-line { background-color: #06b6d4 !important; } /* Xanh lơ: 休日出勤 */
-              td.status-empty .shift-line { background-color: #cbd5e1 !important; } /* Xám nhạt: Không có lịch */
+              /* \u0110\u1ECBnh ngh\u0129a m\xE0u s\u1EAFc cho c\xE1c v\u1EA1ch ngang khi in */
+              td.status-working .shift-line { background-color: #22c55e !important; } /* Xanh l\xE1: \u51FA\u52E4 */
+              td.status-holiday .shift-line { background-color: #f97316 !important; } /* Cam nh\u1EA1t: \u4F11 (thay cho \u0111\u1ECF t\u01B0\u01A1i) */
+              td.status-paid .shift-line { background-color: #eab308 !important; } /* V\xE0ng: \u6709\u4F11 */
+              td.status-unpaid .shift-line { background-color: #a855f7 !important; } /* T\xEDm: \u6B20 */
+              td.status-holiday-work .shift-line { background-color: #06b6d4 !important; } /* Xanh l\u01A1: \u4F11\u65E5\u51FA\u52E4 */
+              td.status-empty .shift-line { background-color: #cbd5e1 !important; } /* X\xE1m nh\u1EA1t: Kh\xF4ng c\xF3 l\u1ECBch */
 
-              /* Thu hẹp tối đa các cột ngày tháng */
+              /* Thu h\u1EB9p t\u1ED1i \u0111a c\xE1c c\u1ED9t ng\xE0y th\xE1ng */
               th:nth-child(n+4), td:nth-child(n+4) {
                 width: 15px !important;
               }
-              th:nth-child(1) { width: 80px !important; } /* Tên NV */
-              th:nth-child(2) { width: 40px !important; } /* Bộ phận */
-              th:nth-child(3) { width: 30px !important; } /* Chức vụ */
+              th:nth-child(1) { width: 80px !important; } /* T\xEAn NV */
+              th:nth-child(2) { width: 40px !important; } /* B\u1ED9 ph\u1EADn */
+              th:nth-child(3) { width: 30px !important; } /* Ch\u1EE9c v\u1EE5 */
 
-              /* Bắt buộc in màu nền */
+              /* B\u1EAFt bu\u1ED9c in m\xE0u n\u1EC1n */
               * { 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
@@ -737,21 +278,21 @@ function attachEvents() {
           </head>
           <body>
             <div class="print-container">
-              <h2 style="margin-bottom:4px;">飯塚塗研株式会社</h2>
-              <h3 style="text-align:center;margin:0 0 4px 0;font-size:16px;color:#334155;">全員のシフト状況 - ${year}年${month}月</h3>
-              <p style="text-align:center;margin:0 0 12px 0;font-size:11px;color:#64748b;">総人数: ${allEmployees.length}名　　${deptSummaryStr}</p>
-              ${tableHtml}
+              <h2 style="margin-bottom:4px;">\u98EF\u585A\u5857\u7814\u682A\u5F0F\u4F1A\u793E</h2>
+              <h3 style="text-align:center;margin:0 0 4px 0;font-size:16px;color:#334155;">\u5168\u54E1\u306E\u30B7\u30D5\u30C8\u72B6\u6CC1 - ${i}\u5E74${r}\u6708</h3>
+              <p style="text-align:center;margin:0 0 12px 0;font-size:11px;color:#64748b;">\u7DCF\u4EBA\u6570: ${v.length}\u540D\u3000\u3000${p}</p>
+              ${o}
               <div style="margin-top:16px;padding:8px 0;border-top:1px solid #e2e8f0;">
-                <p style="font-weight:bold;font-size:11px;margin:0 0 6px 0;">【凡例】色の説明</p>
+                <p style="font-weight:bold;font-size:11px;margin:0 0 6px 0;">\u3010\u51E1\u4F8B\u3011\u8272\u306E\u8AAC\u660E</p>
                 <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:10px;">
-                  <span><span style="display:inline-block;width:20px;height:6px;background:#22c55e;border-radius:2px;vertical-align:middle;"></span> 出勤（通常勤務）</span>
-                  <span><span style="display:inline-block;width:20px;height:6px;background:#f97316;border-radius:2px;vertical-align:middle;"></span> 休日（会社カレンダー休日）</span>
-                  <span><span style="display:inline-block;width:20px;height:6px;background:#eab308;border-radius:2px;vertical-align:middle;"></span> 有休（有給休暇）</span>
-                  <span><span style="display:inline-block;width:20px;height:6px;background:#a855f7;border-radius:2px;vertical-align:middle;"></span> 欠勤（無給）</span>
-                  <span><span style="display:inline-block;width:20px;height:6px;background:#06b6d4;border-radius:2px;vertical-align:middle;"></span> 休日出勤</span>
-                  <span><span style="display:inline-block;width:20px;height:6px;background:#cbd5e1;border-radius:2px;vertical-align:middle;"></span> 未登録</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#22c55e;border-radius:2px;vertical-align:middle;"></span> \u51FA\u52E4\uFF08\u901A\u5E38\u52E4\u52D9\uFF09</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#f97316;border-radius:2px;vertical-align:middle;"></span> \u4F11\u65E5\uFF08\u4F1A\u793E\u30AB\u30EC\u30F3\u30C0\u30FC\u4F11\u65E5\uFF09</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#eab308;border-radius:2px;vertical-align:middle;"></span> \u6709\u4F11\uFF08\u6709\u7D66\u4F11\u6687\uFF09</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#a855f7;border-radius:2px;vertical-align:middle;"></span> \u6B20\u52E4\uFF08\u7121\u7D66\uFF09</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#06b6d4;border-radius:2px;vertical-align:middle;"></span> \u4F11\u65E5\u51FA\u52E4</span>
+                  <span><span style="display:inline-block;width:20px;height:6px;background:#cbd5e1;border-radius:2px;vertical-align:middle;"></span> \u672A\u767B\u9332</span>
                 </div>
-                <p style="font-size:9px;color:#64748b;margin:6px 0 0 0;">※ パート社員は固定休日なし。登録した日のみ「出勤」扱い。</p>
+                <p style="font-size:9px;color:#64748b;margin:6px 0 0 0;">\u203B \u30D1\u30FC\u30C8\u793E\u54E1\u306F\u56FA\u5B9A\u4F11\u65E5\u306A\u3057\u3002\u767B\u9332\u3057\u305F\u65E5\u306E\u307F\u300C\u51FA\u52E4\u300D\u6271\u3044\u3002</p>
               </div>
             </div>
             <script>
@@ -761,46 +302,7 @@ function attachEvents() {
                   window.close();
                 }, 300);
               };
-            </script>
+            <\/script>
           </body>
         </html>
-      `);
-      printWindow.document.close();
-    });
-  }
-}
-
-function wireDrawer() {
-  const btn = document.querySelector('#mobileMenuBtn');
-  const drawer = document.querySelector('#mobileDrawer');
-  const close = document.querySelector('#mobileClose');
-  const backdrop = document.querySelector('#drawerBackdrop');
-  if (!btn || !drawer) return;
-  if (btn.dataset.bound === '1') return;
-  btn.dataset.bound = '1';
-  const open = () => {
-    drawer.removeAttribute('hidden');
-    btn.setAttribute('aria-expanded', 'true');
-    if (backdrop) backdrop.removeAttribute('hidden');
-    document.body.classList.add('drawer-open');
-  };
-  const shut = () => {
-    drawer.setAttribute('hidden', '');
-    btn.setAttribute('aria-expanded', 'false');
-    if (backdrop) backdrop.setAttribute('hidden', '');
-    document.body.classList.remove('drawer-open');
-  };
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (drawer.hasAttribute('hidden')) open();
-    else shut();
-  });
-  if (close) close.addEventListener('click', shut);
-  if (backdrop) backdrop.addEventListener('click', shut);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  init();
-  wireUserMenu();
-  wireDrawer();
-});
+      `),u.document.close()})}function it(){const e=document.querySelector("#mobileMenuBtn"),t=document.querySelector("#mobileDrawer"),n=document.querySelector("#mobileClose"),i=document.querySelector("#drawerBackdrop");if(!e||!t||e.dataset.bound==="1")return;e.dataset.bound="1";const r=()=>{t.removeAttribute("hidden"),e.setAttribute("aria-expanded","true"),i&&i.removeAttribute("hidden"),document.body.classList.add("drawer-open")},a=()=>{t.setAttribute("hidden",""),e.setAttribute("aria-expanded","false"),i&&i.setAttribute("hidden",""),document.body.classList.remove("drawer-open")};e.addEventListener("click",p=>{p.preventDefault(),t.hasAttribute("hidden")?r():a()}),n&&n.addEventListener("click",a),i&&i.addEventListener("click",a)}document.addEventListener("DOMContentLoaded",()=>{Q(),tt(),it()});
