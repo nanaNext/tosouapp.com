@@ -288,6 +288,13 @@
                 }
               } catch (er) { /* silently ignored */ }
             } catch (e) { /* silently ignored */ }
+            // Clear blockRecalc flags so future user edits trigger recomputeRow
+            try {
+              const allRows2 = document.querySelectorAll('#monthTableReal [data-row="1"]');
+              for (const r2 of allRows2) {
+                if (r2 && r2.dataset && r2.dataset.blockRecalc) delete r2.dataset.blockRecalc;
+              }
+            } catch (e) { /* silently ignored */ }
           }
           for (const x of tabs) {
             x.classList.toggle('active', x === t);
