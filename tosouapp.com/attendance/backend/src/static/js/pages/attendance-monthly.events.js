@@ -209,82 +209,104 @@
             };
             const fmtMin = (m) => m > 0 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : '';
             const allRows = document.querySelectorAll('#monthTableReal [data-row="1"]');
-              for (const row of allRows) {
-                _setBlockRecalc(row);
-              const inEl = row.querySelector('input[data-field="checkIn"]');
-              const outEl = row.querySelector('input[data-field="checkOut"]');
-              const workedEl = row.querySelector('[data-field="worked"]');
-              const excessEl = row.querySelector('[data-field="excess"]');
-              // Save originals into row dataset (always update to capture latest edits)
-              row.dataset.origIn = inEl ? inEl.value : '';
-              row.dataset.origOut = outEl ? outEl.value : '';
-              row.dataset.origWorked = workedEl ? workedEl.textContent : '';
-              row.dataset.origExcess = excessEl ? excessEl.textContent : '';
-              const brSel = row.querySelector('select[data-field="break"]');
-              // Skip rows without actual data
-              const hasActualIn = !!(row.dataset.actualIn || (inEl && !inEl.classList.contains('is-auto') && inEl.value && inEl.value !== '--:--'));
-              const hasActualOut = !!(row.dataset.actualOut || (outEl && !outEl.classList.contains('is-auto') && outEl.value && outEl.value !== '--:--'));
-              if (!hasActualIn && !hasActualOut) continue;
-              const shiftStart = row.dataset.shiftStart || '08:00';
-              const shiftEnd = row.dataset.shiftEnd || '17:00';
-              const shiftStartMin = toMin(shiftStart);
-              const shiftEndMin = toMin(shiftEnd);
-              const rawIn = row.dataset.origIn || (inEl ? inEl.value : '');
-              const rawOut = row.dataset.origOut || (outEl ? outEl.value : '');
-              // Clock-in: round UP to nearest 30 minutes (do not clamp to shift start)
-              // e.g. 07:17 -> 07:30, 07:31 -> 08:00, 06:59 -> 07:00
-              let rIn = '';
-              const rawInMin = toMin(rawIn);
-              if (rawInMin >= 0) {
-                const rInMin = Math.ceil(rawInMin / rStep) * rStep;
-                rIn = fromMin(rInMin);
-              }
-              // Clock-out: round DOWN OT portion after shift end
-              let rOut = '';
-              const rawOutMin = toMin(rawOut);
-              if (rawOutMin >= 0) {
-                if (rawOutMin <= shiftEndMin) {
-                  rOut = rawOut;
-                } else {
-                  const otRaw = rawOutMin - shiftEndMin;
-                  const otRounded = Math.floor(otRaw / rStep) * rStep;
-                  rOut = fromMin(shiftEndMin + otRounded);
+            // Process rows in small async batches to avoid blocking the UI
+            (async () => {
+              try {
+                const rows = Array.from(allRows);
+                const batchSize = 60;
+                for (let i = 0; i < rows.length; i += batchSize) {
+                  const chunk = rows.slice(i, i + batchSize);
+                  for (const row of chunk) {
+                    _setBlockRecalc(row);
+                    const inEl = row.querySelector('input[data-field="checkIn"]');
+                    const outEl = row.querySelector('input[data-field="checkOut"]');
+                    const workedEl = row.querySelector('[data-field="worked"]');
+                    const excessEl = row.querySelector('[data-field="excess"]');
+                    // Save originals into row dataset (always update to capture latest edits)
+                    row.dataset.origIn = inEl ? inEl.value : '';
+                    row.dataset.origOut = outEl ? outEl.value : '';
+                    row.dataset.origWorked = workedEl ? workedEl.textContent : '';
+                    row.dataset.origExcess = excessEl ? excessEl.textContent : '';
+                    const brSel = row.querySelector('select[data-field="break"]');
+                    // Skip rows without actual data
+                    const hasActualIn = !!(row.dataset.actualIn || (inEl && !inEl.classList.contains('is-auto') && inEl.value && inEl.value !== '--:--'));
+                    const hasActualOut = !!(row.dataset.actualOut || (outEl && !outEl.classList.contains('is-auto') && outEl.value && outEl.value !== '--:--'));
+                    if (!hasActualIn && !hasActualOut) continue;
+                    const shiftStart = row.dataset.shiftStart || '08:00';
+                    const shiftEnd = row.dataset.shiftEnd || '17:00';
+                    const shiftStartMin = toMin(shiftStart);
+                    const shiftEndMin = toMin(shiftEnd);
+                    const rawIn = row.dataset.origIn || (inEl ? inEl.value : '');
+                    const rawOut = row.dataset.origOut || (outEl ? outEl.value : '');
+                    // Clock-in: round UP to nearest 30 minutes (do not clamp to shift start)
+                    let rIn = '';
+                    const rawInMin = toMin(rawIn);
+                    if (rawInMin >= 0) {
+                      const rInMin = Math.ceil(rawInMin / rStep) * rStep;
+                      rIn = fromMin(rInMin);
+                    }
+                    // Clock-out: round DOWN OT portion after shift end
+                    let rOut = '';
+                    const rawOutMin = toMin(rawOut);
+                    if (rawOutMin >= 0) {
+                      if (rawOutMin <= shiftEndMin) {
+                        rOut = rawOut;
+                      } else {
+                        const otRaw = rawOutMin - shiftEndMin;
+                        const otRounded = Math.floor(otRaw / rStep) * rStep;
+                        rOut = fromMin(shiftEndMin + otRounded);
+                      }
+                    }
+                    if (inEl) inEl.value = rIn;
+                    if (outEl) outEl.value = rOut;
+                    // Recalculate worked/excess
+                    if (rIn && rOut) {
+                      const brRaw = brSel ? String(brSel.value || '0:00').trim() : '0:00';
+                      const brVal = toMin(brRaw) >= 0 ? toMin(brRaw) : 60;
+                      const totalWorked = Math.max(0, (toMin(rOut) - toMin(rIn)) - brVal);
+                      if (workedEl) workedEl.textContent = fmtMin(totalWorked);
+                      const scheduled = Math.max(0, shiftEndMin - shiftStartMin - brVal);
+                      const excess = Math.max(0, totalWorked - scheduled);
+                      if (excessEl) excessEl.textContent = fmtMin(excess);
+                    }
+                    row.classList.add('is-rounded');
+                  }
+                  // yield to the event loop so the browser can update UI
+                  await new Promise(r => setTimeout(r, 0));
                 }
-              }
-              if (inEl) inEl.value = rIn;
-              if (outEl) outEl.value = rOut;
-              // Recalculate worked/excess
-              if (rIn && rOut) {
-                const brRaw = brSel ? String(brSel.value || '0:00').trim() : '0:00';
-                const brVal = toMin(brRaw) >= 0 ? toMin(brRaw) : 60;
-                const totalWorked = Math.max(0, (toMin(rOut) - toMin(rIn)) - brVal);
-                if (workedEl) workedEl.textContent = fmtMin(totalWorked);
-                const scheduled = Math.max(0, shiftEndMin - shiftStartMin - brVal);
-                const excess = Math.max(0, totalWorked - scheduled);
-                if (excessEl) excessEl.textContent = fmtMin(excess);
-              }
-              row.classList.add('is-rounded');
-            }
+              } catch (e) { /* silently ignored */ }
+            })();
             // Update 当月サマリ with rounded totals
             try {
               let totalWorkMin = 0, totalOtMin = 0, attendDays = 0;
               const roundedRows = document.querySelectorAll('#monthTableReal [data-row="1"].is-rounded');
-              for (const rr of roundedRows) {
-                // Only count rows with BOTH checkIn AND checkOut (completed shifts)
-                // AND not auto/planned rows
-                const rrIn = rr.querySelector('input[data-field="checkIn"]');
-                const rrOut = rr.querySelector('input[data-field="checkOut"]');
-                if (!rrIn?.value || !rrOut?.value || rrIn.value === '--:--' || rrOut.value === '--:--') continue;
-                if (rrIn.classList.contains('is-auto') || rrOut.classList.contains('is-auto')) continue;
-                const w = rr.querySelector('[data-field="worked"]');
-                const e = rr.querySelector('[data-field="excess"]');
-                const wText = w ? w.textContent.trim() : '';
-                const eText = e ? e.textContent.trim() : '';
-                const wMin = toMin(wText) > 0 ? toMin(wText) : 0;
-                const eMin = toMin(eText) > 0 ? toMin(eText) : 0;
-                if (wMin > 0) { totalWorkMin += wMin; attendDays++; }
-                if (eMin > 0) totalOtMin += eMin;
-              }
+              // Summation also in batches to avoid long main-thread blocks
+              (async () => {
+                try {
+                  const rrows = Array.from(roundedRows);
+                  const batch = 80;
+                  for (let j = 0; j < rrows.length; j += batch) {
+                    const chunk = rrows.slice(j, j + batch);
+                    for (const rr of chunk) {
+                      // Only count rows with BOTH checkIn AND checkOut (completed shifts)
+                      // AND not auto/planned rows
+                      const rrIn = rr.querySelector('input[data-field="checkIn"]');
+                      const rrOut = rr.querySelector('input[data-field="checkOut"]');
+                      if (!rrIn?.value || !rrOut?.value || rrIn.value === '--:--' || rrOut.value === '--:--') continue;
+                      if (rrIn.classList.contains('is-auto') || rrOut.classList.contains('is-auto')) continue;
+                      const w = rr.querySelector('[data-field="worked"]');
+                      const e = rr.querySelector('[data-field="excess"]');
+                      const wText = w ? w.textContent.trim() : '';
+                      const eText = e ? e.textContent.trim() : '';
+                      const wMin = toMin(wText) > 0 ? toMin(wText) : 0;
+                      const eMin = toMin(eText) > 0 ? toMin(eText) : 0;
+                      if (wMin > 0) { totalWorkMin += wMin; attendDays++; }
+                      if (eMin > 0) totalOtMin += eMin;
+                    }
+                    await new Promise(r => setTimeout(r, 0));
+                  }
+                } catch (e) { /* silently ignored */ }
+              })();
               const sumRow = document.querySelector('#monthSummaryTable table tbody tr, #monthSummary table tbody tr');
               if (sumRow) {
                 const cells = sumRow.querySelectorAll('td');
