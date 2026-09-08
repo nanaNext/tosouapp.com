@@ -277,6 +277,16 @@
                 if (cells[6]) cells[6].textContent = fmtMin(totalOtMin);
                 if (cells[7]) cells[7].textContent = fmtMin(totalOtMin);
               }
+              // Also sync the top-of-page month summary host (if present)
+              try {
+                const top = controller?.ctx?.summaryHost;
+                if (top) {
+                  const topCells = top.querySelectorAll('td');
+                  if (topCells[4]) topCells[4].textContent = fmtMin(totalWorkMin);
+                  if (topCells[6]) topCells[6].textContent = fmtMin(totalOtMin);
+                  if (topCells[7]) topCells[7].textContent = fmtMin(totalOtMin);
+                }
+              } catch (er) { /* silently ignored */ }
             } catch (e) { /* silently ignored */ }
           }
           for (const x of tabs) {
