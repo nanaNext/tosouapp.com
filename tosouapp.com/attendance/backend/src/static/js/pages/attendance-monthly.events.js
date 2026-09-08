@@ -99,6 +99,7 @@
       cSec.dataset.tabsWired = '1';
       const tabs = Array.from(cSec.querySelectorAll('.se-tab[data-tab]'));
       for (const t of tabs) {
+        if (t.dataset.tabListenerWired === '1') continue;
         t.addEventListener('click', (e) => {
           e.preventDefault();
           try { console.debug('attendance:tab-click', { section: 'contract', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
@@ -108,6 +109,7 @@
           for (const x of tabs) x.classList.toggle('active', x === t);
           try { controller.ctx.applyContractTab?.(); } catch (e) { /* silently ignored */ }
         });
+        try { t.dataset.tabListenerWired = '1'; } catch (err) {}
       }
     }
     const sSec = $('#summarySection');
@@ -115,6 +117,7 @@
       sSec.dataset.tabsWired = '1';
       const tabs = Array.from(sSec.querySelectorAll('.se-tab[data-tab]'));
       for (const t of tabs) {
+        if (t.dataset.tabListenerWired === '1') continue;
         t.addEventListener('click', (e) => {
           e.preventDefault();
           try { console.debug('attendance:tab-click', { section: 'summary', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
@@ -124,6 +127,7 @@
           for (const x of tabs) x.classList.toggle('active', x === t);
           try { controller.ctx.applySummaryTab?.(); } catch (e) { /* silently ignored */ }
         });
+        try { t.dataset.tabListenerWired = '1'; } catch (err) {}
       }
     }
     
@@ -132,6 +136,7 @@
       dSec.dataset.tabsWired = '1';
       const tabs = Array.from(dSec.querySelectorAll('.se-tab[data-tab]'));
       for (const t of tabs) {
+        if (t.dataset.tabListenerWired === '1') continue;
         t.addEventListener('click', (e) => {
           e.preventDefault();
           try { console.debug('attendance:tab-click', { section: 'daily', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
