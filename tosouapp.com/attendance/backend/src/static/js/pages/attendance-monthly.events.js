@@ -213,12 +213,13 @@
               const shiftEndMin = toMin(shiftEnd);
               const rawIn = row.dataset.origIn || (inEl ? inEl.value : '');
               const rawOut = row.dataset.origOut || (outEl ? outEl.value : '');
-              // Clock-in: keep actual time (Japanese labor law requires 1-minute precision)
-              // If before shift start → use shift start (no pay before shift)
+              // Clock-in: round UP to nearest 30 minutes (do not clamp to shift start)
+              // e.g. 07:17 -> 07:30, 07:31 -> 08:00, 06:59 -> 07:00
               let rIn = '';
               const rawInMin = toMin(rawIn);
               if (rawInMin >= 0) {
-                rIn = rawInMin < shiftStartMin ? shiftStart : rawIn;
+                const rInMin = Math.ceil(rawInMin / rStep) * rStep;
+                rIn = fromMin(rInMin);
               }
               // Clock-out: round DOWN OT portion after shift end
               let rOut = '';
@@ -1356,9 +1357,11 @@
             const minToHm = (m) => `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
             const shiftStartMin = hmToMin(shiftStartStr);
             const shiftEndMin = hmToMin(shiftEndStr);
-            // Clock-in: before shift → shift start, otherwise keep actual
+            // Clock-in: round UP to nearest 30 minutes (do not clamp to shift start)
+            // e.g. 07:17 -> 07:30, 07:31 -> 08:00, 06:59 -> 07:00
             const rawInMin = hmToMin(inHm);
-            inHm = rawInMin < shiftStartMin ? shiftStartStr : inHm;
+            const rInMin2 = Math.ceil(rawInMin / rStep) * rStep;
+            inHm = minToHm(rInMin2);
             // Clock-out: round DOWN OT after shift end
             const rawOutMin = hmToMin(outHm);
             if (rawOutMin > shiftEndMin) {
@@ -2188,19 +2191,26 @@
           const cell = emp.days[d];
           let cellText = '';
           if (cell) {
+            const halfHourDisplay = (min) => (min && min > 0) ? (min / 60).toFixed(1) : '';
             if (currentMode === 'time') {
               if (cell.checkIn && cell.checkOut) cellText = `${cell.checkIn}<br>${cell.checkOut}`;
               else if (cell.checkIn) cellText = cell.checkIn;
             } else if (currentMode === 'round') {
               if (cell.roundedIn && cell.roundedOut) cellText = `${cell.roundedIn}<br>${cell.roundedOut}`;
             } else {
-              cellText = cell.worked != null && cell.worked > 0 ? cell.worked.toFixed(2) : '';
+              // 勤務時間: show half-hour formatted values (0.0, 0.5, 1.0...)
+              const useMin = (cell.roundedWorkedMin != null && cell.roundedWorkedMin > 0) ? cell.roundedWorkedMin : cell.workedMin;
+              cellText = useMin && useMin > 0 ? halfHourDisplay(useMin) : '';
             }
-            if (cell.workedMin > 0) totalMin += (currentMode === 'round' ? (cell.roundedWorkedMin || 0) : cell.workedMin);
+            // For totals, prefer roundedWorkedMin when available (to reflect half-hour rounding)
+            if (cell.workedMin > 0) {
+              const addMin = (cell.roundedWorkedMin != null && cell.roundedWorkedMin > 0) ? cell.roundedWorkedMin : cell.workedMin;
+              totalMin += addMin;
+            }
           }
           html += `<td style="border:1px solid #ddd;padding:0 1px;text-align:center;font-size:7px;line-height:1.1;overflow:hidden;">${cellText}</td>`;
         }
-        const totalH = (totalMin / 60).toFixed(2);
+        const totalH = (totalMin / 60).toFixed(1);
         html += `<td style="border:1px solid #ccc;padding:2px 4px;text-align:center;font-weight:700;font-size:9px;">${totalMin > 0 ? totalH : ''}</td></tr>`;
       }
 
@@ -2221,9 +2231,9 @@
         const s = matrixData.dailySummary[d];
         const h = s?.totalWorkedHours || 0;
         grandTotalH += h;
-        html += `<td style="border:1px solid #ddd;text-align:center;">${h > 0 ? h.toFixed(2) : '-'}</td>`;
+        html += `<td style="border:1px solid #ddd;text-align:center;">${h > 0 ? h.toFixed(1) : '-'}</td>`;
       }
-      html += `<td style="border:1px solid #ccc;text-align:center;">${grandTotalH.toFixed(2)}</td></tr>`;
+      html += `<td style="border:1px solid #ccc;text-align:center;">${grandTotalH.toFixed(1)}</td></tr>`;
 
       html += `</tbody></table>`;
       content.innerHTML = html;
@@ -2318,12 +2328,18 @@
                   if(cell){
                     if(mode==='time'){if(cell.checkIn&&cell.checkOut)t=cell.checkIn+'<br>'+cell.checkOut;else if(cell.checkIn)t=cell.checkIn;}
                     else if(mode==='round'){if(cell.roundedIn&&cell.roundedOut)t=cell.roundedIn+'<br>'+cell.roundedOut;}
-                    else{t=cell.worked!=null&&cell.worked>0?cell.worked.toFixed(2):'';}
-                    if(cell.workedMin>0)totalMin+=(mode==='round'?(cell.roundedWorkedMin||0):cell.workedMin);
+                    else{
+                      const useMin = (cell.roundedWorkedMin != null && cell.roundedWorkedMin > 0) ? cell.roundedWorkedMin : cell.workedMin;
+                      t = useMin && useMin > 0 ? (useMin / 60).toFixed(1) : '';
+                    }
+                    if (cell.workedMin > 0) {
+                      const addMin = (cell.roundedWorkedMin != null && cell.roundedWorkedMin > 0) ? cell.roundedWorkedMin : cell.workedMin;
+                      totalMin += addMin;
+                    }
                   }
                   h+='<td style="text-align:center;font-size:9px;line-height:1.2;">'+t+'</td>';
                 }
-                h+='<td style="text-align:center;font-weight:700;font-size:10px;">'+(totalMin>0?(totalMin/60).toFixed(2):'')+'</td></tr>';
+                h+='<td style="text-align:center;font-weight:700;font-size:10px;">'+(totalMin>0?(totalMin/60).toFixed(1):'')+'</td></tr>';
               }
               h+='<tr style="font-weight:700;font-size:10px;"><td>出勤人数</td>';
               for(let d=1;d<=lastDay;d++){const s=dailySummary[d];h+='<td style="text-align:center;">'+(s&&s.attendCount?s.attendCount:'-')+'</td>';}
