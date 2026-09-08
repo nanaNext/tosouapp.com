@@ -101,6 +101,7 @@
       for (const t of tabs) {
         t.addEventListener('click', (e) => {
           e.preventDefault();
+          try { console.debug('attendance:tab-click', { section: 'contract', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
           // Ignore additional click events (double/triple clicks)
           if (e && e.detail && e.detail > 1) return;
           if (t.hasAttribute('disabled')) return;
@@ -116,6 +117,7 @@
       for (const t of tabs) {
         t.addEventListener('click', (e) => {
           e.preventDefault();
+          try { console.debug('attendance:tab-click', { section: 'summary', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
           // Ignore additional click events (double/triple clicks)
           if (e && e.detail && e.detail > 1) return;
           if (t.hasAttribute('disabled')) return;
@@ -132,6 +134,7 @@
       for (const t of tabs) {
         t.addEventListener('click', (e) => {
           e.preventDefault();
+          try { console.debug('attendance:tab-click', { section: 'daily', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
           // Ignore additional click events (double/triple clicks)
           if (e && e.detail && e.detail > 1) return;
           if (t.hasAttribute('disabled')) return;
