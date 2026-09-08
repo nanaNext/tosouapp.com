@@ -101,6 +101,8 @@
       for (const t of tabs) {
         t.addEventListener('click', (e) => {
           e.preventDefault();
+          // Ignore additional click events (double/triple clicks)
+          if (e && e.detail && e.detail > 1) return;
           if (t.hasAttribute('disabled')) return;
           for (const x of tabs) x.classList.toggle('active', x === t);
           try { controller.ctx.applyContractTab?.(); } catch (e) { /* silently ignored */ }
@@ -114,6 +116,8 @@
       for (const t of tabs) {
         t.addEventListener('click', (e) => {
           e.preventDefault();
+          // Ignore additional click events (double/triple clicks)
+          if (e && e.detail && e.detail > 1) return;
           if (t.hasAttribute('disabled')) return;
           for (const x of tabs) x.classList.toggle('active', x === t);
           try { controller.ctx.applySummaryTab?.(); } catch (e) { /* silently ignored */ }
@@ -128,6 +132,8 @@
       for (const t of tabs) {
         t.addEventListener('click', (e) => {
           e.preventDefault();
+          // Ignore additional click events (double/triple clicks)
+          if (e && e.detail && e.detail > 1) return;
           if (t.hasAttribute('disabled')) return;
           if (t.dataset.tab === 'plan') {
             document.body.classList.add('view-plan');
