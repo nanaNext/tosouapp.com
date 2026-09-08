@@ -1,7 +1,1 @@
-import { fetchJSONAuth } from './http.api.js';
-
-const BASE = '/api/admin/departments';
-
-export async function listDepartments(options) {
-  return fetchJSONAuth(`${BASE}`, options);
-}
+import{fetchJSONAuth as n}from"./http.api.js";const e="/api/admin/departments";async function a(t){return n(`${e}`,t)}export{a as listDepartments};

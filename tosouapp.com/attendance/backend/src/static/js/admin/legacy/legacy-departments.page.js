@@ -1,95 +1,21 @@
-import { delegate, $ } from '../_shared/dom.js';
-import { api } from '../../shared/api/client.js';
-
-export async function mountDepartments({ content, listDepartments, listUsers }) {
-  if (!content) return;
-  const rows = await listDepartments();
-  const users = await listUsers();
-  content.innerHTML = '';
-  const page = document.createElement('div');
-  page.className = 'dept-page';
-  page.innerHTML = `
+import{delegate as C,$ as y}from"../_shared/dom.js";import{api as b}from"../../shared/api/client.js";async function $({content:l,listDepartments:u,listUsers:m}){if(!l)return;const E=await u(),w=await m();l.innerHTML="";const e=document.createElement("div");e.className="dept-page",e.innerHTML=`
     <div class="dept-head">
-      <h3 class="dept-title">部門管理</h3>
+      <h3 class="dept-title">\u90E8\u9580\u7BA1\u7406</h3>
       <form id="deptCreateForm" class="dept-create">
-        <label class="dept-label" for="deptName">新規</label>
-        <input id="deptName" class="dept-input" placeholder="例: 総務部">
-        <button type="submit" class="dept-btn primary">作成</button>
+        <label class="dept-label" for="deptName">\u65B0\u898F</label>
+        <input id="deptName" class="dept-input" placeholder="\u4F8B: \u7DCF\u52D9\u90E8">
+        <button type="submit" class="dept-btn primary">\u4F5C\u6210</button>
       </form>
     </div>
-  `;
-  content.appendChild(page);
-
-  const form = page.querySelector('#deptCreateForm');
-  if (form) form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nameEl = page.querySelector('#deptName');
-    const name = String((nameEl && nameEl.value != null) ? nameEl.value : '').trim();
-    if (!name) return;
-    await api.post('/api/admin/departments', { name });
-    await mountDepartments({ content, listDepartments, listUsers });
-  });
-
-  const table = document.createElement('table');
-  table.className = 'dept-table';
-  table.innerHTML = '<thead><tr><th style="width:80px;">ID</th><th style="width:160px;">コード</th><th>名前</th><th style="width:260px;">操作</th></tr></thead>';
-  const tbody = document.createElement('tbody');
-  for (const d of rows) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${d.id}</td>
-      <td><input class="dept-input dept-input-sm" data-dept-code="${d.id}" value="${d.code || ''}" placeholder="例: HR, ENG"></td>
-      <td><input class="dept-input" data-dept-name="${d.id}" value="${d.name}"></td>
+  `,l.appendChild(e);const f=e.querySelector("#deptCreateForm");f&&f.addEventListener("submit",async t=>{t.preventDefault();const a=e.querySelector("#deptName"),i=String(a&&a.value!=null?a.value:"").trim();i&&(await b.post("/api/admin/departments",{name:i}),await $({content:l,listDepartments:u,listUsers:m}))});const c=document.createElement("table");c.className="dept-table",c.innerHTML='<thead><tr><th style="width:80px;">ID</th><th style="width:160px;">\u30B3\u30FC\u30C9</th><th>\u540D\u524D</th><th style="width:260px;">\u64CD\u4F5C</th></tr></thead>';const v=document.createElement("tbody");for(const t of E){const a=document.createElement("tr");a.innerHTML=`
+      <td>${t.id}</td>
+      <td><input class="dept-input dept-input-sm" data-dept-code="${t.id}" value="${t.code||""}" placeholder="\u4F8B: HR, ENG"></td>
+      <td><input class="dept-input" data-dept-name="${t.id}" value="${t.name}"></td>
       <td>
         <div class="dept-actions">
-          <button class="dept-btn" type="button" data-action="save" data-id="${d.id}">保存</button>
-          <button class="dept-btn danger" type="button" data-action="delete" data-id="${d.id}">削除</button>
-          <button class="dept-btn" type="button" data-action="users" data-id="${d.id}">社員一覧</button>
+          <button class="dept-btn" type="button" data-action="save" data-id="${t.id}">\u4FDD\u5B58</button>
+          <button class="dept-btn danger" type="button" data-action="delete" data-id="${t.id}">\u524A\u9664</button>
+          <button class="dept-btn" type="button" data-action="users" data-id="${t.id}">\u793E\u54E1\u4E00\u89A7</button>
         </div>
       </td>
-    `;
-    tbody.appendChild(tr);
-  }
-  table.appendChild(tbody);
-  const tableWrap = document.createElement('div');
-  tableWrap.className = 'dept-table-wrap';
-  tableWrap.appendChild(table);
-  page.appendChild(tableWrap);
-
-  const listDiv = document.createElement('div');
-  listDiv.className = 'dept-users';
-  page.appendChild(listDiv);
-
-  delegate(page, 'button[data-action]', 'click', async (_e, btn) => {
-    const action = btn.dataset.action || '';
-    const id = btn.dataset.id || '';
-    if (action === 'save') {
-      const nameEl = $(`input[data-dept-name="${id}"]`, page);
-      const codeEl = $(`input[data-dept-code="${id}"]`, page);
-      const name = String((nameEl && nameEl.value != null) ? nameEl.value : '').trim();
-      const code = String((codeEl && codeEl.value != null) ? codeEl.value : '').trim() || null;
-      await api.patch(`/api/admin/departments/${id}`, { name, code });
-      alert('保存しました');
-      return;
-    }
-    if (action === 'delete') {
-      if (confirm('削除しますか？')) {
-        await api.del(`/api/admin/departments/${id}`);
-        await mountDepartments({ content, listDepartments, listUsers });
-      }
-      return;
-    }
-    if (action === 'users') {
-      const list = users.filter(u => String(u.departmentId || '') === String(id));
-      listDiv.innerHTML = '<h4 class="dept-users-title">所属社員</h4>';
-      const ul = document.createElement('ul');
-      ul.className = 'dept-users-list';
-      for (const u of list) {
-        const li = document.createElement('li');
-        li.textContent = `${u.id} ${u.username || u.email}`;
-        ul.appendChild(li);
-      }
-      listDiv.appendChild(ul);
-    }
-  });
-}
+    `,v.appendChild(a)}c.appendChild(v);const h=document.createElement("div");h.className="dept-table-wrap",h.appendChild(c),e.appendChild(h);const o=document.createElement("div");o.className="dept-users",e.appendChild(o),C(e,"button[data-action]","click",async(t,a)=>{const i=a.dataset.action||"",s=a.dataset.id||"";if(i==="save"){const p=y(`input[data-dept-name="${s}"]`,e),d=y(`input[data-dept-code="${s}"]`,e),n=String(p&&p.value!=null?p.value:"").trim(),r=String(d&&d.value!=null?d.value:"").trim()||null;await b.patch(`/api/admin/departments/${s}`,{name:n,code:r}),alert("\u4FDD\u5B58\u3057\u307E\u3057\u305F");return}if(i==="delete"){confirm("\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F")&&(await b.del(`/api/admin/departments/${s}`),await $({content:l,listDepartments:u,listUsers:m}));return}if(i==="users"){const p=w.filter(n=>String(n.departmentId||"")===String(s));o.innerHTML='<h4 class="dept-users-title">\u6240\u5C5E\u793E\u54E1</h4>';const d=document.createElement("ul");d.className="dept-users-list";for(const n of p){const r=document.createElement("li");r.textContent=`${n.id} ${n.username||n.email}`,d.appendChild(r)}o.appendChild(d)}})}export{$ as mountDepartments};

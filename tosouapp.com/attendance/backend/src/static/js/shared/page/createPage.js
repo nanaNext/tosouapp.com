@@ -1,16 +1,1 @@
-export function createPage({ mount }) {
-  let cleanup = () => {};
-
-  return {
-    async mount(ctx) {
-      cleanup();
-      const result = await mount(ctx);
-      cleanup = typeof result === 'function' ? result : () => {};
-    },
-
-    unmount() {
-      cleanup();
-      cleanup = () => {};
-    }
-  };
-}
+function o({mount:e}){let t=()=>{};return{async mount(u){t();const n=await e(u);t=typeof n=="function"?n:()=>{}},unmount(){t(),t=()=>{}}}}export{o as createPage};

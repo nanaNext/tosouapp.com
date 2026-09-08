@@ -1,151 +1,16 @@
-import { fetchJSONAuth } from '../../api/http.api.js';
-
-let currentMonth = '';
-let allRows = [];
-let localHost = null;
-let searchQuery = '';
-let statusFilter = 'ALL';
-let departmentFilter = '';
-
-// Xử lý resize để ẩn/hiện bộ chọn tháng trên mobile theo thời gian thực
-window.addEventListener('resize', () => {
-  if (localHost && document.getElementById('monthFilter')) {
-    const mobileActions = document.getElementById('attHubMobileActions');
-    if (window.innerWidth <= 768 && mobileActions) {
-      let mobileMonth = document.getElementById('monthFilterMobile');
-      if (!mobileMonth) {
-        mobileMonth = document.createElement('input');
-        mobileMonth.type = 'month';
-        mobileMonth.id = 'monthFilterMobile';
-        mobileMonth.style.cssText = 'height: 32px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 130px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;';
-        mobileActions.innerHTML = '';
-        mobileActions.appendChild(mobileMonth);
-        mobileMonth.addEventListener('change', (e) => {
-          currentMonth = e.target.value;
-          renderList();
-        });
-      }
-      mobileMonth.value = currentMonth;
-    } else if (mobileActions) {
-      mobileActions.innerHTML = '';
-    }
-  }
-});
-
-export async function mount({ content }) {
-  localHost = content;
-  localHost.style.visibility = '';
-  
-  const nowDate = new Date();
-  nowDate.setMonth(nowDate.getMonth() + 1);
-  currentMonth = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}`;
-  
-  await renderList();
-}
-
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function getStatusLabel(status) {
-  switch(status) {
-    case 'PENDING': return '<span style="color:#ea580c;font-weight:normal;font-size:12px;">未承認</span>';
-    case 'APPROVED': return '<span style="color:#16a34a;font-weight:normal;font-size:12px;">承認済</span>';
-    case 'REJECTED': return '<span style="color:#dc2626;font-weight:normal;font-size:12px;">差戻し</span>';
-    case 'UNSUBMITTED': return '<span style="color:#94a3b8;font-size:12px;">未提出</span>';
-    default: return esc(status);
-  }
-}
-
-function wireSubbarMenus() {
-  try {
-    const menus = Array.from(document.querySelectorAll('.subbar .menu'));
-    if (!menus.length) return;
-    const closeAll = () => menus.forEach((m) => m.classList.remove('open'));
-    menus.forEach((m) => {
-      const btn = m.querySelector('.menu-btn');
-      if (!btn || btn.dataset.bound === '1') return;
-      btn.dataset.bound = '1';
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const isOpen = m.classList.contains('open');
-        closeAll();
-        if (!isOpen) m.classList.add('open');
-      });
-    });
-    document.addEventListener('click', () => closeAll());
-  } catch (e) { /* bỏ qua lỗi */ }
-}
-
-async function renderList() {
-  if (localHost) localHost.innerHTML = '<div style="padding: 20px; color: #64748b;">読み込み中...</div>';
-  
-  try {
-    const [year, monthStr] = currentMonth.split('-');
-    const monthNum = parseInt(monthStr, 10);
-    const res = await fetchJSONAuth(`/api/attendance/shifts/matrix?month=${currentMonth}${departmentFilter ? '&department=' + encodeURIComponent(departmentFilter) : ''}`);
-    allRows = Array.isArray(res) ? res : [];
-    renderTable();
-  } catch (e) {
-    if (localHost) localHost.innerHTML = `<div style="padding: 20px; color: #dc2626;">取得失敗: ${esc(e.message)}</div>`;
-  }
-}
-
-function renderTable() {
-  if (!localHost) return;
-
-  const [year, monthStr] = currentMonth.split('-');
-  const monthNum = parseInt(monthStr, 10);
-  const daysInMonth = new Date(year, monthNum, 0).getDate();
-
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
-  const vhExpr = isStandalone ? '100vh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
-  const tableVhExpr = isStandalone ? 'calc(100vh - 62px)' : 'calc(100vh - var(--topbar-height) - var(--subbar-height) - 62px)';
-
-  // Tính workCount cho từng nhân viên
-  allRows.forEach(emp => {
-    const isSeishain = emp.employment_type === 'full_time';
-    const schedule = emp.schedule || {};
-    let workCount = 0;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateKey = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dayData = schedule[dateKey];
-      if (dayData && ['WORKING', 'CA_NGAY', 'CA_CHIEU', 'CA_DEM', '09:00-14:00'].includes(dayData.status)) {
-        workCount++;
-      }
-    }
-    emp._workCount = workCount;
-  });
-
-  const filteredRows = allRows.filter(emp => {
-    if (statusFilter !== 'ALL') {
-      const st = emp.submission_status || 'UNSUBMITTED';
-      if (st !== statusFilter) return false;
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const name = (emp.username || '').toLowerCase();
-      const code = (emp.employee_code || '').toLowerCase();
-      if (!name.includes(q) && !code.includes(q)) return false;
-    }
-    return true;
-  });
-
-  const styles = `
+import{fetchJSONAuth as G}from"../../api/http.api.js";let g="",O=[],l=null,q="",M="ALL",H="";window.addEventListener("resize",()=>{if(l&&document.getElementById("monthFilter")){const o=document.getElementById("attHubMobileActions");if(window.innerWidth<=768&&o){let d=document.getElementById("monthFilterMobile");d||(d=document.createElement("input"),d.type="month",d.id="monthFilterMobile",d.style.cssText="height: 32px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 130px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;",o.innerHTML="",o.appendChild(d),d.addEventListener("change",r=>{g=r.target.value,I()})),d.value=g}else o&&(o.innerHTML="")}});async function te({content:o}){l=o,l.style.visibility="";const d=new Date;d.setMonth(d.getMonth()+1),g=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,await I()}function h(o){return o==null?"":String(o).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}function Q(o){switch(o){case"PENDING":return'<span style="color:#ea580c;font-weight:normal;font-size:12px;">\u672A\u627F\u8A8D</span>';case"APPROVED":return'<span style="color:#16a34a;font-weight:normal;font-size:12px;">\u627F\u8A8D\u6E08</span>';case"REJECTED":return'<span style="color:#dc2626;font-weight:normal;font-size:12px;">\u5DEE\u623B\u3057</span>';case"UNSUBMITTED":return'<span style="color:#94a3b8;font-size:12px;">\u672A\u63D0\u51FA</span>';default:return h(o)}}function ae(){try{const o=Array.from(document.querySelectorAll(".subbar .menu"));if(!o.length)return;const d=()=>o.forEach(r=>r.classList.remove("open"));o.forEach(r=>{const m=r.querySelector(".menu-btn");!m||m.dataset.bound==="1"||(m.dataset.bound="1",m.addEventListener("click",k=>{k.preventDefault(),k.stopPropagation();const z=r.classList.contains("open");d(),z||r.classList.add("open")}))}),document.addEventListener("click",()=>d())}catch{}}async function I(){l&&(l.innerHTML='<div style="padding: 20px; color: #64748b;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</div>');try{const[o,d]=g.split("-"),r=parseInt(d,10),m=await G(`/api/attendance/shifts/matrix?month=${g}${H?"&department="+encodeURIComponent(H):""}`);O=Array.isArray(m)?m:[],V()}catch(o){l&&(l.innerHTML=`<div style="padding: 20px; color: #dc2626;">\u53D6\u5F97\u5931\u6557: ${h(o.message)}</div>`)}}function V(){if(!l)return;const[o,d]=g.split("-"),r=parseInt(d,10),m=new Date(o,r,0).getDate(),k=new URLSearchParams(window.location.search).get("standalone")==="1",z=k?"100vh":"calc(100vh - var(--topbar-height) - var(--subbar-height))",P=k?"calc(100vh - 62px)":"calc(100vh - var(--topbar-height) - var(--subbar-height) - 62px)";O.forEach(t=>{const e=t.employment_type==="full_time",a=t.schedule||{};let f=0;for(let u=1;u<=m;u++){const w=`${o}-${String(r).padStart(2,"0")}-${String(u).padStart(2,"0")}`,c=a[w];c&&["WORKING","CA_NGAY","CA_CHIEU","CA_DEM","09:00-14:00"].includes(c.status)&&f++}t._workCount=f});const A=O.filter(t=>{if(M!=="ALL"&&(t.submission_status||"UNSUBMITTED")!==M)return!1;if(q){const e=q.toLowerCase(),a=(t.username||"").toLowerCase(),f=(t.employee_code||"").toLowerCase();if(!a.includes(e)&&!f.includes(e))return!1}return!0}),D=`
     /* Force absolute full width for the parent elements */
     #adminContent { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }
     .admin-main { padding: 0 !important; margin: 0 !important; width: 100% !important; overflow-x: hidden !important; }
     body, html { margin: 0 !important; padding: 0 !important; overflow: auto !important; width: 100% !important; height: 100% !important; }
     .portal-main, .portal-layout, .admin-layout { padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important; }
 
-    .shift-container { padding: 0 !important; margin: 0 !important; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; min-height: ${vhExpr}; height: ${vhExpr}; display: flex; flex-direction: column; width: 100% !important; max-width: 100% !important; box-sizing: border-box; }
+    .shift-container { padding: 0 !important; margin: 0 !important; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background: #FFFFFF; min-height: ${z}; height: ${z}; display: flex; flex-direction: column; width: 100% !important; max-width: 100% !important; box-sizing: border-box; }
     .page-header-container { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 0px; padding: 16px 24px 8px 24px; flex-shrink: 0; }
     .page-header-title { display: none; }
     @media (max-width: 768px) { .page-header-container { display: none !important; } .page-header-title { display: none !important; } }
 
-    .shift-table-wrapper { flex: 1; overflow-y: auto; overflow-x: auto; border-top: 1px solid #e2e8f0; border-bottom: none; box-shadow: none; background: white; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; max-height: ${tableVhExpr}; }
+    .shift-table-wrapper { flex: 1; overflow-y: auto; overflow-x: auto; border-top: 1px solid #e2e8f0; border-bottom: none; box-shadow: none; background: white; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; max-height: ${P}; }
     .shift-table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
     .shift-table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; }
     .shift-table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -213,7 +78,7 @@ function renderTable() {
     .reason-modal-btn:hover { background: #475569; }
     
     /* Mobile specific styles */
-    .shift-mobile-list { display: none; flex-direction: column; gap: 12px; padding: 16px; padding-bottom: 32px; background: #f1f5f9; overflow-y: auto; max-height: ${tableVhExpr}; }
+    .shift-mobile-list { display: none; flex-direction: column; gap: 12px; padding: 16px; padding-bottom: 32px; background: #f1f5f9; overflow-y: auto; max-height: ${P}; }
     .sac-card { background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 12px; }
     .sac-header { display: flex; justify-content: space-between; align-items: flex-start; }
     .sac-name-wrap { display: flex; flex-direction: column; gap: 4px; }
@@ -225,547 +90,124 @@ function renderTable() {
     .sac-day-header { width: 100%; text-align: center; font-size: 10px; background: #f8fafc; padding: 2px 0; border-bottom: 1px solid #e2e8f0; font-weight: 600; }
     .sac-day-val { width: 100%; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
     @media (max-width: 768px) { .shift-table-wrapper { display: none !important; } .shift-mobile-list { display: flex !important; } }
-  `;
-
-  const getDayColor = (d) => {
-    const date = new Date(year, monthNum - 1, d);
-    const day = date.getDay();
-    if (day === 0) return 'color: #dc2626;'; // Chủ nhật
-    if (day === 6) return 'color: #2563eb;'; // Thứ bảy
-    return '';
-  };
-  const getDayStr = (d) => {
-    const date = new Date(year, monthNum - 1, d);
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    return days[date.getDay()];
-  };
-
-  let html = `
-    <style>${styles}</style>
+  `,_=t=>{const a=new Date(o,r-1,t).getDay();return a===0?"color: #dc2626;":a===6?"color: #2563eb;":""},R=t=>{const e=new Date(o,r-1,t);return["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"][e.getDay()]};let b=`
+    <style>${D}</style>
     <div class="shift-container">
       <div class="page-header-container" style="padding-right: 8px;">
-        <h2 class="page-header-title">\u30b7\u30d5\u30c8\u627f\u8a8d</h2>
+        <h2 class="page-header-title">\u30B7\u30D5\u30C8\u627F\u8A8D</h2>
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-          <input type="text" id="empSearch" value="${esc(searchQuery)}" placeholder="名前・番号で検索..." style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 160px; outline: none; box-sizing: border-box;" />
+          <input type="text" id="empSearch" value="${h(q)}" placeholder="\u540D\u524D\u30FB\u756A\u53F7\u3067\u691C\u7D22..." style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 160px; outline: none; box-sizing: border-box;" />
           <select id="statusFilter" style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; background: white; cursor: pointer;">
-            <option value="ALL" ${statusFilter === 'ALL' ? 'selected' : ''}>全て (Tất cả)</option>
-            <option value="PENDING" ${statusFilter === 'PENDING' ? 'selected' : ''}>未承認 (Chờ duyệt)</option>
-            <option value="APPROVED" ${statusFilter === 'APPROVED' ? 'selected' : ''}>承認済 (Đã duyệt)</option>
-            <option value="UNSUBMITTED" ${statusFilter === 'UNSUBMITTED' ? 'selected' : ''}>未提出 (Chưa nộp)</option>
+            <option value="ALL" ${M==="ALL"?"selected":""}>\u5168\u3066 (T\u1EA5t c\u1EA3)</option>
+            <option value="PENDING" ${M==="PENDING"?"selected":""}>\u672A\u627F\u8A8D (Ch\u1EDD duy\u1EC7t)</option>
+            <option value="APPROVED" ${M==="APPROVED"?"selected":""}>\u627F\u8A8D\u6E08 (\u0110\xE3 duy\u1EC7t)</option>
+            <option value="UNSUBMITTED" ${M==="UNSUBMITTED"?"selected":""}>\u672A\u63D0\u51FA (Ch\u01B0a n\u1ED9p)</option>
           </select>
           <select id="deptFilter" style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; background: white; cursor: pointer;">
-            <option value="" ${!departmentFilter ? 'selected' : ''}>全部署</option>
+            <option value="" ${H?"":"selected"}>\u5168\u90E8\u7F72</option>
           </select>
-          <input type="month" id="monthFilter" value="${currentMonth}" style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 140px; color: #1f2937; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;" />
+          <input type="month" id="monthFilter" value="${g}" style="height: 34px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 140px; color: #1f2937; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;" />
         </div>
       </div>
       <div class="shift-table-wrapper" style="padding: 0 !important; margin: 0 !important;">
         <table class="sap-dense-table">
           <thead>
             <tr>
-              <th class="col-fixed-1">日付</th>
-              <th class="col-fixed-2">曜日</th>
-  `;
-
-  if (filteredRows.length === 0) {
-    html += `</tr></thead><tbody><tr><td colspan="2" style="padding: 20px; color: #94a3b8;">データがありません</td></tr></tbody></table></div>`;
-    let mobileHtml = `<div class="shift-mobile-list"><div style="padding: 20px; text-align: center; color: #94a3b8;">データがありません</div></div>`;
-    html += mobileHtml;
-  } else {
-    // Tạo header cho từng nhân viên
-    filteredRows.forEach(emp => {
-      const isSeishain = emp.employment_type === 'full_time';
-      let statusHtml = getStatusLabel(emp.submission_status || 'UNSUBMITTED');
-      let actionHtml = `<button class="btn-xs btn-proxy" data-id="${emp.id}" data-name="${esc(emp.username)}" style="background:#2563eb;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">代理入力</button>`;
-      if (emp.submission_status === 'PENDING') {
-        actionHtml += ` <button class="btn-xs btn-ok btn-approve" data-id="${emp.id}">承認</button>`;
-      }
-      
-      html += `
+              <th class="col-fixed-1">\u65E5\u4ED8</th>
+              <th class="col-fixed-2">\u66DC\u65E5</th>
+  `;if(A.length===0)b+='</tr></thead><tbody><tr><td colspan="2" style="padding: 20px; color: #94a3b8;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</td></tr></tbody></table></div>',b+='<div class="shift-mobile-list"><div style="padding: 20px; text-align: center; color: #94a3b8;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div></div>';else{A.forEach(e=>{const a=e.employment_type==="full_time";let f=Q(e.submission_status||"UNSUBMITTED"),u=`<button class="btn-xs btn-proxy" data-id="${e.id}" data-name="${h(e.username)}" style="background:#2563eb;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">\u4EE3\u7406\u5165\u529B</button>`;e.submission_status==="PENDING"&&(u+=` <button class="btn-xs btn-ok btn-approve" data-id="${e.id}">\u627F\u8A8D</button>`),b+=`
         <th class="emp-col">
           <div class="emp-col-inner">
-            <div class="emp-name-row" title="${esc(emp.username)} ${emp.employee_code ? `(${esc(emp.employee_code)})` : ''}">
-              <div class="emp-name">${esc(emp.username)}</div>
-              ${emp.employee_code ? `<div class="emp-code">${esc(emp.employee_code)}</div>` : ''}
-              <div class="emp-type"><span class="${isSeishain ? 'badge-sei' : 'badge-bai'}">${isSeishain ? '正' : 'パート'}</span></div>
+            <div class="emp-name-row" title="${h(e.username)} ${e.employee_code?`(${h(e.employee_code)})`:""}">
+              <div class="emp-name">${h(e.username)}</div>
+              ${e.employee_code?`<div class="emp-code">${h(e.employee_code)}</div>`:""}
+              <div class="emp-type"><span class="${a?"badge-sei":"badge-bai"}">${a?"\u6B63":"\u30D1\u30FC\u30C8"}</span></div>
             </div>
             <div class="emp-info-row">
-              <div class="emp-total">計: <span style="font-weight:normal; color:#0284c7;">${emp._workCount}</span></div>
-              <div class="emp-status">${statusHtml}</div>
-              <div class="emp-action">${actionHtml}</div>
+              <div class="emp-total">\u8A08: <span style="font-weight:normal; color:#0284c7;">${e._workCount}</span></div>
+              <div class="emp-status">${f}</div>
+              <div class="emp-action">${u}</div>
             </div>
           </div>
         </th>
-      `;
-    });
-    
-    html += `
+      `}),b+=`
             </tr>
           </thead>
           <tbody>
-    `;
-
-    // Tạo dòng cho từng ngày
-    for (let d = 1; d <= daysInMonth; d++) {
-      html += `<tr>`;
-      html += `<td class="col-fixed-1" style="${getDayColor(d)} font-size: 10px; letter-spacing: -0.5px;">${monthNum}月${d}日</td>`;
-      html += `<td class="col-fixed-2" style="${getDayColor(d)}">${getDayStr(d)}</td>`;
-      
-      filteredRows.forEach(emp => {
-        const isSeishain = emp.employment_type === 'full_time';
-        const schedule = emp.schedule || {};
-        const dateKey = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const dayData = schedule[dateKey];
-        let cellContent = '<div class="cell-empty">-</div>';
-        
-        if (dayData) {
-          switch(dayData.status) {
-            case 'WORKING': cellContent = `<div class="cell-work">出</div>`; break;
-            case 'CA_NGAY': cellContent = `<div class="cell-day">日</div>`; break;
-            case 'CA_CHIEU': cellContent = `<div class="cell-afternoon">午</div>`; break;
-            case 'CA_DEM': cellContent = `<div class="cell-night">夜</div>`; break;
-            case '09:00-14:00': cellContent = `<div class="cell-work" style="font-size:8px; line-height:1; flex-direction:column;"><span>09:00</span><br><span>-14:00</span></div>`; break;
-            case 'LEAVE': {
-              const leaveTypeMap = { paid: '有休', unpaid: '欠', special: '特休' };
-              const lTxt = leaveTypeMap[dayData.leaveType] || '休';
-              const leaveTypeLabel = { paid: '有給休暇', unpaid: '欠勤 / 無給休暇', special: '特別休暇' }[dayData.leaveType] || '';
-              const isSystemHoliday = !dayData.leaveType;
-              const reasonText = dayData.reason || dayData.detail || '';
-              const modalContent = [leaveTypeLabel, reasonText].filter(Boolean).join('\n') || '理由なし';
-              const cellClass = dayData.leaveType === 'paid' ? 'cell-leave-paid'
-                : dayData.leaveType === 'special' ? 'cell-leave-special'
-                : 'cell-leave';
-              if (isSystemHoliday) {
-                cellContent = `<div class="${cellClass}" title="休日">${lTxt}</div>`;
-              } else {
-                cellContent = `<div class="${cellClass} clickable-leave" style="cursor:pointer;" data-leave-label="${esc(leaveTypeLabel)}" data-reason="${esc(reasonText)}" title="${esc(modalContent)}">${lTxt}</div>`;
-              }
-              break;
-            }
-            case 'OFF': cellContent = `<div class="cell-off">休</div>`; break;
-          }
-        } else if (!isSeishain) {
-          cellContent = `<div class="cell-off">休</div>`;
-        }
-        
-        html += `<td>${cellContent}</td>`;
-      });
-      html += `</tr>`;
-    }
-
-    html += `
+    `;for(let e=1;e<=m;e++)b+="<tr>",b+=`<td class="col-fixed-1" style="${_(e)} font-size: 10px; letter-spacing: -0.5px;">${r}\u6708${e}\u65E5</td>`,b+=`<td class="col-fixed-2" style="${_(e)}">${R(e)}</td>`,A.forEach(a=>{const f=a.employment_type==="full_time",u=a.schedule||{},w=`${o}-${String(r).padStart(2,"0")}-${String(e).padStart(2,"0")}`,c=u[w];let s='<div class="cell-empty">-</div>';if(c)switch(c.status){case"WORKING":s='<div class="cell-work">\u51FA</div>';break;case"CA_NGAY":s='<div class="cell-day">\u65E5</div>';break;case"CA_CHIEU":s='<div class="cell-afternoon">\u5348</div>';break;case"CA_DEM":s='<div class="cell-night">\u591C</div>';break;case"09:00-14:00":s='<div class="cell-work" style="font-size:8px; line-height:1; flex-direction:column;"><span>09:00</span><br><span>-14:00</span></div>';break;case"LEAVE":{const v={paid:"\u6709\u4F11",unpaid:"\u6B20",special:"\u7279\u4F11"}[c.leaveType]||"\u4F11",K={paid:"\u6709\u7D66\u4F11\u6687",unpaid:"\u6B20\u52E4 / \u7121\u7D66\u4F11\u6687",special:"\u7279\u5225\u4F11\u6687"}[c.leaveType]||"",Y=!c.leaveType,C=c.reason||c.detail||"",W=[K,C].filter(Boolean).join(`
+`)||"\u7406\u7531\u306A\u3057",U=c.leaveType==="paid"?"cell-leave-paid":c.leaveType==="special"?"cell-leave-special":"cell-leave";Y?s=`<div class="${U}" title="\u4F11\u65E5">${v}</div>`:s=`<div class="${U} clickable-leave" style="cursor:pointer;" data-leave-label="${h(K)}" data-reason="${h(C)}" title="${h(W)}">${v}</div>`;break}case"OFF":s='<div class="cell-off">\u4F11</div>';break}else f||(s='<div class="cell-off">\u4F11</div>');b+=`<td>${s}</td>`}),b+="</tr>";b+=`
           </tbody>
         </table>
       </div>
-    `;
-    
-    // Dựng HTML cho mobile
-    let mobileHtml = `<div class="shift-mobile-list">`;
-    filteredRows.forEach(emp => {
-      const isSeishain = emp.employment_type === 'full_time';
-      const schedule = emp.schedule || {};
-      
-      let mobileDaysHtml = '';
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateKey = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const dayData = schedule[dateKey];
-        let cellContent = '<div class="cell-empty">-</div>';
-        if (dayData) {
-          switch(dayData.status) {
-            case 'WORKING': cellContent = `<div class="cell-work">出</div>`; break;
-            case 'CA_NGAY': cellContent = `<div class="cell-day">日</div>`; break;
-            case 'CA_CHIEU': cellContent = `<div class="cell-afternoon">午</div>`; break;
-            case 'CA_DEM': cellContent = `<div class="cell-night">夜</div>`; break;
-            case '09:00-14:00': cellContent = `<div class="cell-work" style="font-size:8px; line-height:1; flex-direction:column;"><span>09:00</span><br><span>-14:00</span></div>`; break;
-            case 'LEAVE': {
-              const leaveTypeMap = { paid: '有休', unpaid: '欠', special: '特休' };
-              const lTxt = leaveTypeMap[dayData.leaveType] || '休';
-              const leaveTypeLabel = { paid: '有給休暇', unpaid: '欠勤 / 無給休暇', special: '特別休暇' }[dayData.leaveType] || '';
-              const reasonText = dayData.reason || dayData.detail || '';
-              const cellClass = dayData.leaveType === 'paid' ? 'cell-leave-paid'
-                : dayData.leaveType === 'special' ? 'cell-leave-special'
-                : 'cell-leave';
-              if (!dayData.leaveType) cellContent = `<div class="${cellClass}">${lTxt}</div>`;
-              else cellContent = `<div class="${cellClass} clickable-leave" style="cursor:pointer;" data-leave-label="${esc(leaveTypeLabel)}" data-reason="${esc(reasonText)}">${lTxt}</div>`;
-              break;
-            }
-            case 'OFF': cellContent = `<div class="cell-off">休</div>`; break;
-          }
-        } else if (!isSeishain) {
-          cellContent = `<div class="cell-off">休</div>`;
-        }
-        
-        const mobileDayColor = getDayColor(d);
-        mobileDaysHtml += `
+    `;let t='<div class="shift-mobile-list">';A.forEach(e=>{const a=e.employment_type==="full_time",f=e.schedule||{};let u="";for(let c=1;c<=m;c++){const s=`${o}-${String(r).padStart(2,"0")}-${String(c).padStart(2,"0")}`,x=f[s];let v='<div class="cell-empty">-</div>';if(x)switch(x.status){case"WORKING":v='<div class="cell-work">\u51FA</div>';break;case"CA_NGAY":v='<div class="cell-day">\u65E5</div>';break;case"CA_CHIEU":v='<div class="cell-afternoon">\u5348</div>';break;case"CA_DEM":v='<div class="cell-night">\u591C</div>';break;case"09:00-14:00":v='<div class="cell-work" style="font-size:8px; line-height:1; flex-direction:column;"><span>09:00</span><br><span>-14:00</span></div>';break;case"LEAVE":{const C={paid:"\u6709\u4F11",unpaid:"\u6B20",special:"\u7279\u4F11"}[x.leaveType]||"\u4F11",W={paid:"\u6709\u7D66\u4F11\u6687",unpaid:"\u6B20\u52E4 / \u7121\u7D66\u4F11\u6687",special:"\u7279\u5225\u4F11\u6687"}[x.leaveType]||"",U=x.reason||x.detail||"",J=x.leaveType==="paid"?"cell-leave-paid":x.leaveType==="special"?"cell-leave-special":"cell-leave";x.leaveType?v=`<div class="${J} clickable-leave" style="cursor:pointer;" data-leave-label="${h(W)}" data-reason="${h(U)}">${C}</div>`:v=`<div class="${J}">${C}</div>`;break}case"OFF":v='<div class="cell-off">\u4F11</div>';break}else a||(v='<div class="cell-off">\u4F11</div>');const K=_(c);u+=`
           <div class="sac-day-item">
-            <div class="sac-day-header" style="${mobileDayColor}">${d}</div>
-            <div class="sac-day-val">${cellContent}</div>
+            <div class="sac-day-header" style="${K}">${c}</div>
+            <div class="sac-day-val">${v}</div>
           </div>
-        `;
-      }
-      
-      let mobileActionHtml = '';
-      if (emp.submission_status === 'PENDING') {
-        mobileActionHtml = `<button class="btn-xs btn-ok btn-approve" data-id="${emp.id}" style="width:100%; padding:8px 0; font-size:13px; border-radius: 6px;">承認する</button>`;
-      } else {
-        mobileActionHtml = getStatusLabel(emp.submission_status || 'UNSUBMITTED');
-      }
-      
-      mobileHtml += `
+        `}let w="";e.submission_status==="PENDING"?w=`<button class="btn-xs btn-ok btn-approve" data-id="${e.id}" style="width:100%; padding:8px 0; font-size:13px; border-radius: 6px;">\u627F\u8A8D\u3059\u308B</button>`:w=Q(e.submission_status||"UNSUBMITTED"),t+=`
         <div class="sac-card">
           <div class="sac-header">
             <div class="sac-name-wrap">
-              <span class="sac-name">${esc(emp.username)}</span>
-              <span class="${isSeishain ? 'badge-sei' : 'badge-bai'}">${isSeishain ? '正' : 'パート'}</span>
+              <span class="sac-name">${h(e.username)}</span>
+              <span class="${a?"badge-sei":"badge-bai"}">${a?"\u6B63":"\u30D1\u30FC\u30C8"}</span>
             </div>
-            <div class="sac-status">${mobileActionHtml}</div>
+            <div class="sac-status">${w}</div>
           </div>
           <div class="sac-summary">
-            <span class="sac-total-label">月計 (出勤日数):</span>
-            <span class="sac-total-val" style="font-weight:700; color:#0f172a;">${emp._workCount}日</span>
+            <span class="sac-total-label">\u6708\u8A08 (\u51FA\u52E4\u65E5\u6570):</span>
+            <span class="sac-total-val" style="font-weight:700; color:#0f172a;">${e._workCount}\u65E5</span>
           </div>
           <div class="sac-days-scroll">
-            ${mobileDaysHtml}
+            ${u}
           </div>
         </div>
-      `;
-    });
-    mobileHtml += `</div>`;
-    html += mobileHtml;
-  }
-  
-  html += `
+      `}),t+="</div>",b+=t}b+=`
     </div>
     <!-- Custom Modal HTML -->
      <div id="reasonModal" class="reason-modal-overlay">
        <div class="reason-modal-content">
-         <div id="reasonModalHeader" class="reason-modal-header">休みの理由</div>
+         <div id="reasonModalHeader" class="reason-modal-header">\u4F11\u307F\u306E\u7406\u7531</div>
          <div id="reasonModalText" class="reason-modal-body"></div>
          <div class="reason-modal-footer">
-           <button id="closeReasonModalBtn" class="reason-modal-btn">閉じる</button>
+           <button id="closeReasonModalBtn" class="reason-modal-btn">\u9589\u3058\u308B</button>
          </div>
        </div>
      </div>
-  `;
-
-  const activeEl = document.activeElement;
-  const activeId = activeEl ? activeEl.id : null;
-  let selStart = 0, selEnd = 0;
-  if (activeId === 'empSearch') {
-    selStart = activeEl.selectionStart;
-    selEnd = activeEl.selectionEnd;
-  }
-
-  localHost.innerHTML = html;
-
-  if (activeId === 'empSearch') {
-    const newEl = localHost.querySelector('#empSearch');
-    if (newEl) {
-      newEl.focus();
-      try { newEl.setSelectionRange(selStart, selEnd); } catch(e){}
-    }
-  }
-
-  // Gắn các event listener
-  const empSearch = localHost.querySelector('#empSearch');
-  if (empSearch) {
-    empSearch.addEventListener('input', (e) => {
-      searchQuery = e.target.value;
-      renderTable();
-    });
-  }
-
-  const statusFilterEl = localHost.querySelector('#statusFilter');
-  if (statusFilterEl) {
-    statusFilterEl.addEventListener('change', (e) => {
-      statusFilter = e.target.value;
-      renderTable();
-    });
-  }
-
-  // Bộ lọc phòng ban — đổ dữ liệu từ data đã tải + gắn sự kiện change
-  const deptFilterEl = localHost.querySelector('#deptFilter');
-  if (deptFilterEl) {
-    const depts = [...new Set(allRows.map(r => r.departmentName).filter(Boolean))].sort();
-    depts.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d;
-      opt.textContent = d;
-      if (d === departmentFilter) opt.selected = true;
-      deptFilterEl.appendChild(opt);
-    });
-    deptFilterEl.addEventListener('change', (e) => {
-      departmentFilter = e.target.value;
-      renderList(); // Tải lại từ server theo bộ lọc phòng ban
-    });
-  }
-
-  const monthFilter = localHost.querySelector('#monthFilter');
-  if (monthFilter) {
-    monthFilter.addEventListener('change', () => {
-      currentMonth = monthFilter.value;
-      renderList();
-    });
-  }
-
-  // Xử lý bộ chọn tháng trên header mobile
-  const mobileActions = document.getElementById('attHubMobileActions');
-  if (window.innerWidth <= 768 && mobileActions) {
-    let mobileMonth = document.getElementById('monthFilterMobile');
-    if (!mobileMonth) {
-      mobileMonth = document.createElement('input');
-      mobileMonth.type = 'month';
-      mobileMonth.id = 'monthFilterMobile';
-      mobileMonth.style.cssText = 'height: 32px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 130px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;';
-      mobileActions.innerHTML = '';
-      mobileActions.appendChild(mobileMonth);
-      mobileMonth.addEventListener('change', (e) => {
-        currentMonth = e.target.value;
-        renderList();
-      });
-    }
-    mobileMonth.value = currentMonth;
-  } else if (mobileActions) {
-    mobileActions.innerHTML = '';
-  }
-
-  // Xử lý modal
-  const modal = localHost.querySelector('#reasonModal');
-  const modalText = localHost.querySelector('#reasonModalText');
-  const closeBtn = localHost.querySelector('#closeReasonModalBtn');
-  
-  const closeModal = () => {
-    if (modal) modal.classList.remove('show');
-  };
-
-  if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  if (modal) modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeModal();
-  });
-
-  localHost.querySelectorAll('.clickable-leave').forEach(cell => {
-    cell.addEventListener('click', (e) => {
-      const target = e.currentTarget;
-      const leaveLabel = target.getAttribute('data-leave-label') || '';
-      const reason = target.getAttribute('data-reason') || '';
-      const modalHeader = localHost.querySelector('#reasonModalHeader');
-      if (modalHeader) {
-        modalHeader.textContent = leaveLabel || '休みの理由';
-      }
-      if (modalText && modal) {
-        if (reason) {
-          modalText.textContent = reason;
-        } else {
-          modalText.innerHTML = '<span style="color:#94a3b8;">理由の記載なし</span>';
-        }
-        modal.classList.add('show');
-      }
-    });
-  });
-
-  localHost.querySelectorAll('.btn-approve').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const userId = e.target.getAttribute('data-id');
-      if (confirm('このシフトを承認しますか？')) updateStatus(userId, 'APPROVED');
-    });
-  });
-
-  localHost.querySelectorAll('.btn-reject').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const userId = e.target.getAttribute('data-id');
-      if (confirm('このシフトを差戻しますか？')) updateStatus(userId, 'REJECTED');
-    });
-  });
-
-  // 代理入力 (Proxy Input) button handler
-  localHost.querySelectorAll('.btn-proxy').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const userId = e.target.getAttribute('data-id');
-      const empName = e.target.getAttribute('data-name') || '';
-      await openProxyModal(userId, empName);
-    });
-  });
-}
-
-async function updateStatus(userId, status) {
-  try {
-    const res = await fetchJSONAuth('/api/attendance/shifts/submissions/approve', {
-      method: 'POST',
-      body: JSON.stringify({ userId, month: currentMonth, status })
-    });
-    if (res.success) {
-      renderList();
-    } else {
-      alert('エラー: ' + (res.message || 'Unknown error'));
-    }
-  } catch (e) {
-    alert('エラー: ' + e.message);
-  }
-}
-
-
-
-// ─── 代理入力 Modal ──────────────────────────────────────────────────────────
-
-async function openProxyModal(userId, empName) {
-  const [year, monthStr] = currentMonth.split('-');
-  const monthNum = parseInt(monthStr, 10);
-  const daysInMonth = new Date(year, monthNum, 0).getDate();
-  const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
-
-  // Tải ca hiện tại của nhân viên này
-  let existingShifts = [];
-  try {
-    const res = await fetchJSONAuth(`/api/attendance/shifts/user-month?userId=${userId}&month=${currentMonth}`);
-    existingShifts = Array.isArray(res) ? res : [];
-  } catch (e) { /* bỏ qua lỗi */ }
-
-  // Xác định là nhân viên chính thức hay bán thời gian
-  const emp = allRows.find(r => String(r.id) === String(userId));
-  const isPartTime = emp && emp.employment_type !== 'full_time';
-
-  const scheduleMap = {};
-  existingShifts.forEach(s => {
-    const d = String(s.date).slice(0, 10);
-    scheduleMap[d] = { status: s.status || 'OFF', leaveType: s.leaveType || null };
-  });
-
-  // Dựng HTML cho modal
-  let daysHtml = '';
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const date = new Date(year, monthNum - 1, d);
-    const dow = daysOfWeek[date.getDay()];
-    const isSun = date.getDay() === 0;
-    const isSat = date.getDay() === 6;
-    const dayColor = isSun ? 'color:#dc2626;' : (isSat ? 'color:#2563eb;' : '');
-    const current = scheduleMap[dateStr] || {};
-    const curStatus = current.status || '';
-    const curLeave = current.leaveType || '';
-
-    // Xác định ngày này có phải ngày nghỉ (nghỉ công ty) không
-    const isKouji = emp && String(emp.departmentName || '').includes('工事部');
-    const is4thSat = isSat && Math.ceil(d / 7) === 4;
-    const isOffDay = isSun || (isKouji ? is4thSat : isSat);
-
-    // Xác định giá trị được chọn
-    let selected = '';
-    if (curStatus === 'WORKING') selected = 'WORKING';
-    else if (curStatus === 'LEAVE' && curLeave === 'paid') selected = 'PAID';
-    else if (curStatus === 'LEAVE' && curLeave === 'unpaid') selected = 'ABSENT';
-    else if (curStatus === 'OFF') selected = 'OFF';
-
-    let optionsHtml = '';
-    if (isPartTime) {
-      optionsHtml = `
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="WORKING" ${selected === 'WORKING' ? 'checked' : ''}> 出勤</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="OFF" ${selected === 'OFF' ? 'checked' : ''}> 休日</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="" ${!selected ? 'checked' : ''}> 未設定</label>
-      `;
-    } else if (isOffDay) {
-      // 正社員 + ngày nghỉ → options ngày nghỉ
-      optionsHtml = `
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="FURIKAE" ${curStatus === 'WORKING' ? 'checked' : ''}> 振替出勤</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="HOLIDAY_WORK" ${selected === 'HOLIDAY_WORK' ? 'checked' : ''}> 休日出勤</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="OFF" ${selected === 'OFF' || !selected ? 'checked' : ''}> 休日</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="" ${false ? 'checked' : ''}> 未設定</label>
-      `;
-    } else {
-      // 正社員 + ngày thường
-      optionsHtml = `
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="WORKING" ${selected === 'WORKING' ? 'checked' : ''}> 出勤</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="OFF" ${selected === 'OFF' ? 'checked' : ''}> 休日</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="PAID" ${selected === 'PAID' ? 'checked' : ''}> 有休</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="ABSENT" ${selected === 'ABSENT' ? 'checked' : ''}> 欠勤</label>
-        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${dateStr}" value="" ${!selected ? 'checked' : ''}> 未設定</label>
-      `;
-    }
-
-    daysHtml += `
-      <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f1f5f9;${isOffDay ? 'background:#fef2f2;' : ''}">
-        <span style="width:65px;font-size:11px;font-weight:600;${dayColor}">${monthNum}/${d}(${dow})</span>
-        ${optionsHtml}
+  `;const F=document.activeElement,N=F?F.id:null;let T=0,B=0;if(N==="empSearch"&&(T=F.selectionStart,B=F.selectionEnd),l.innerHTML=b,N==="empSearch"){const t=l.querySelector("#empSearch");if(t){t.focus();try{t.setSelectionRange(T,B)}catch{}}}const j=l.querySelector("#empSearch");j&&j.addEventListener("input",t=>{q=t.target.value,V()});const $=l.querySelector("#statusFilter");$&&$.addEventListener("change",t=>{M=t.target.value,V()});const S=l.querySelector("#deptFilter");S&&([...new Set(O.map(e=>e.departmentName).filter(Boolean))].sort().forEach(e=>{const a=document.createElement("option");a.value=e,a.textContent=e,e===H&&(a.selected=!0),S.appendChild(a)}),S.addEventListener("change",e=>{H=e.target.value,I()}));const n=l.querySelector("#monthFilter");n&&n.addEventListener("change",()=>{g=n.value,I()});const i=document.getElementById("attHubMobileActions");if(window.innerWidth<=768&&i){let t=document.getElementById("monthFilterMobile");t||(t=document.createElement("input"),t.type="month",t.id="monthFilterMobile",t.style.cssText="height: 32px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 130px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;",i.innerHTML="",i.appendChild(t),t.addEventListener("change",e=>{g=e.target.value,I()})),t.value=g}else i&&(i.innerHTML="");const p=l.querySelector("#reasonModal"),L=l.querySelector("#reasonModalText"),y=l.querySelector("#closeReasonModalBtn"),E=()=>{p&&p.classList.remove("show")};y&&y.addEventListener("click",E),p&&p.addEventListener("click",t=>{t.target===p&&E()}),l.querySelectorAll(".clickable-leave").forEach(t=>{t.addEventListener("click",e=>{const a=e.currentTarget,f=a.getAttribute("data-leave-label")||"",u=a.getAttribute("data-reason")||"",w=l.querySelector("#reasonModalHeader");w&&(w.textContent=f||"\u4F11\u307F\u306E\u7406\u7531"),L&&p&&(u?L.textContent=u:L.innerHTML='<span style="color:#94a3b8;">\u7406\u7531\u306E\u8A18\u8F09\u306A\u3057</span>',p.classList.add("show"))})}),l.querySelectorAll(".btn-approve").forEach(t=>{t.addEventListener("click",e=>{const a=e.target.getAttribute("data-id");confirm("\u3053\u306E\u30B7\u30D5\u30C8\u3092\u627F\u8A8D\u3057\u307E\u3059\u304B\uFF1F")&&X(a,"APPROVED")})}),l.querySelectorAll(".btn-reject").forEach(t=>{t.addEventListener("click",e=>{const a=e.target.getAttribute("data-id");confirm("\u3053\u306E\u30B7\u30D5\u30C8\u3092\u5DEE\u623B\u3057\u307E\u3059\u304B\uFF1F")&&X(a,"REJECTED")})}),l.querySelectorAll(".btn-proxy").forEach(t=>{t.addEventListener("click",async e=>{const a=e.target.getAttribute("data-id"),f=e.target.getAttribute("data-name")||"";await Z(a,f)})})}async function X(o,d){try{const r=await G("/api/attendance/shifts/submissions/approve",{method:"POST",body:JSON.stringify({userId:o,month:g,status:d})});r.success?I():alert("\u30A8\u30E9\u30FC: "+(r.message||"Unknown error"))}catch(r){alert("\u30A8\u30E9\u30FC: "+r.message)}}async function Z(o,d){const[r,m]=g.split("-"),k=parseInt(m,10),z=new Date(r,k,0).getDate(),P=["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"];let A=[];try{const n=await G(`/api/attendance/shifts/user-month?userId=${o}&month=${g}`);A=Array.isArray(n)?n:[]}catch{}const D=O.find(n=>String(n.id)===String(o)),_=D&&D.employment_type!=="full_time",R={};A.forEach(n=>{const i=String(n.date).slice(0,10);R[i]={status:n.status||"OFF",leaveType:n.leaveType||null}});let b="";for(let n=1;n<=z;n++){const i=`${r}-${String(k).padStart(2,"0")}-${String(n).padStart(2,"0")}`,p=new Date(r,k-1,n),L=P[p.getDay()],y=p.getDay()===0,E=p.getDay()===6,t=y?"color:#dc2626;":E?"color:#2563eb;":"",e=R[i]||{},a=e.status||"",f=e.leaveType||"",u=D&&String(D.departmentName||"").includes("\u5DE5\u4E8B\u90E8"),w=E&&Math.ceil(n/7)===4,c=y||(u?w:E);let s="";a==="WORKING"?s="WORKING":a==="LEAVE"&&f==="paid"?s="PAID":a==="LEAVE"&&f==="unpaid"?s="ABSENT":a==="OFF"&&(s="OFF");let x="";_?x=`
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="WORKING" ${s==="WORKING"?"checked":""}> \u51FA\u52E4</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="OFF" ${s==="OFF"?"checked":""}> \u4F11\u65E5</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="" ${s?"":"checked"}> \u672A\u8A2D\u5B9A</label>
+      `:c?x=`
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="FURIKAE" ${a==="WORKING"?"checked":""}> \u632F\u66FF\u51FA\u52E4</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="HOLIDAY_WORK" ${s==="HOLIDAY_WORK"?"checked":""}> \u4F11\u65E5\u51FA\u52E4</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="OFF" ${s==="OFF"||!s?"checked":""}> \u4F11\u65E5</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="" > \u672A\u8A2D\u5B9A</label>
+      `:x=`
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="WORKING" ${s==="WORKING"?"checked":""}> \u51FA\u52E4</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="OFF" ${s==="OFF"?"checked":""}> \u4F11\u65E5</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="PAID" ${s==="PAID"?"checked":""}> \u6709\u4F11</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="ABSENT" ${s==="ABSENT"?"checked":""}> \u6B20\u52E4</label>
+        <label style="font-size:11px;cursor:pointer;"><input type="radio" name="day_${i}" value="" ${s?"":"checked"}> \u672A\u8A2D\u5B9A</label>
+      `,b+=`
+      <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f1f5f9;${c?"background:#fef2f2;":""}">
+        <span style="width:65px;font-size:11px;font-weight:600;${t}">${k}/${n}(${L})</span>
+        ${x}
       </div>
-    `;
-  }
-
-  const modalHtml = `
+    `}const F=`
     <div id="proxyModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
       <div style="background:#fff;border-radius:8px;width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
         <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
-          <h3 style="margin:0;font-size:15px;font-weight:700;">代理入力: ${esc(empName)}</h3>
-          <button id="closeProxyModal" style="border:none;background:none;font-size:20px;cursor:pointer;color:#64748b;">✕</button>
+          <h3 style="margin:0;font-size:15px;font-weight:700;">\u4EE3\u7406\u5165\u529B: ${h(d)}</h3>
+          <button id="closeProxyModal" style="border:none;background:none;font-size:20px;cursor:pointer;color:#64748b;">\u2715</button>
         </div>
         <div style="padding:16px 20px;overflow-y:auto;flex:1;">
-          <div style="margin-bottom:8px;font-size:11px;color:#64748b;">対象月: ${year}年${monthStr}月 ・ 各日の出勤/休みを選択してください</div>
-          <div id="proxyDaysList">${daysHtml}</div>
+          <div style="margin-bottom:8px;font-size:11px;color:#64748b;">\u5BFE\u8C61\u6708: ${r}\u5E74${m}\u6708 \u30FB \u5404\u65E5\u306E\u51FA\u52E4/\u4F11\u307F\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044</div>
+          <div id="proxyDaysList">${b}</div>
         </div>
         <div style="padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end;">
-          <button id="cancelProxy" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;">キャンセル</button>
-          <button id="saveProxy" style="padding:8px 16px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">保存</button>
+          <button id="cancelProxy" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
+          <button id="saveProxy" style="padding:8px 16px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">\u4FDD\u5B58</button>
         </div>
       </div>
     </div>
-  `;
-
-  // Chèn modal vào trang
-  const existing = document.getElementById('proxyModal');
-  if (existing) existing.remove();
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-  const modal = document.getElementById('proxyModal');
-  const closeBtn = document.getElementById('closeProxyModal');
-  const cancelBtn = document.getElementById('cancelProxy');
-  const saveBtn = document.getElementById('saveProxy');
-
-  const closeModal = () => { if (modal) modal.remove(); };
-  closeBtn.addEventListener('click', closeModal);
-  cancelBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-
-  saveBtn.addEventListener('click', async () => {
-    saveBtn.disabled = true;
-    saveBtn.textContent = '保存中...';
-
-    // Gom lựa chọn của tất cả các ngày
-    const shifts = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const radios = document.querySelectorAll(`input[name="day_${dateStr}"]`);
-      let selected = '';
-      radios.forEach(r => { if (r.checked) selected = r.value; });
-      if (selected) {
-        if (selected === 'PAID') {
-          shifts.push({ date: dateStr, status: 'LEAVE', leaveType: 'paid' });
-        } else if (selected === 'ABSENT') {
-          shifts.push({ date: dateStr, status: 'LEAVE', leaveType: 'unpaid' });
-        } else if (selected === 'FURIKAE') {
-          shifts.push({ date: dateStr, status: 'WORKING', detail: '振替出勤' });
-        } else if (selected === 'HOLIDAY_WORK') {
-          shifts.push({ date: dateStr, status: 'WORKING', detail: '休日出勤' });
-        } else {
-          shifts.push({ date: dateStr, status: selected });
-        }
-      }
-    }
-
-    try {
-      const res = await fetchJSONAuth('/api/attendance/shifts/bulk', {
-        method: 'POST',
-        body: JSON.stringify({ userId, month: currentMonth, shifts })
-      });
-      if (res.success) {
-        closeModal();
-        await renderList(); // Tải lại ma trận
-      } else {
-        alert('保存失敗: ' + (res.message || ''));
-        saveBtn.disabled = false;
-        saveBtn.textContent = '保存';
-      }
-    } catch (e) {
-      alert('エラー: ' + e.message);
-      saveBtn.disabled = false;
-      saveBtn.textContent = '保存';
-    }
-  });
-}
+  `,N=document.getElementById("proxyModal");N&&N.remove(),document.body.insertAdjacentHTML("beforeend",F);const T=document.getElementById("proxyModal"),B=document.getElementById("closeProxyModal"),j=document.getElementById("cancelProxy"),$=document.getElementById("saveProxy"),S=()=>{T&&T.remove()};B.addEventListener("click",S),j.addEventListener("click",S),T.addEventListener("click",n=>{n.target===T&&S()}),$.addEventListener("click",async()=>{$.disabled=!0,$.textContent="\u4FDD\u5B58\u4E2D...";const n=[];for(let i=1;i<=z;i++){const p=`${r}-${String(k).padStart(2,"0")}-${String(i).padStart(2,"0")}`,L=document.querySelectorAll(`input[name="day_${p}"]`);let y="";L.forEach(E=>{E.checked&&(y=E.value)}),y&&(y==="PAID"?n.push({date:p,status:"LEAVE",leaveType:"paid"}):y==="ABSENT"?n.push({date:p,status:"LEAVE",leaveType:"unpaid"}):y==="FURIKAE"?n.push({date:p,status:"WORKING",detail:"\u632F\u66FF\u51FA\u52E4"}):y==="HOLIDAY_WORK"?n.push({date:p,status:"WORKING",detail:"\u4F11\u65E5\u51FA\u52E4"}):n.push({date:p,status:y}))}try{const i=await G("/api/attendance/shifts/bulk",{method:"POST",body:JSON.stringify({userId:o,month:g,shifts:n})});i.success?(S(),await I()):(alert("\u4FDD\u5B58\u5931\u6557: "+(i.message||"")),$.disabled=!1,$.textContent="\u4FDD\u5B58")}catch(i){alert("\u30A8\u30E9\u30FC: "+i.message),$.disabled=!1,$.textContent="\u4FDD\u5B58"}})}export{te as mount};

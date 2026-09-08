@@ -1,468 +1,31 @@
-import { logout } from '/static/js/api/auth.api.js?v=20260416-1';
-import { fetchJSONAuth } from '/static/js/api/http.api.js?v=20260416-1';
-import '/static/js/pages/employee-notify.sticky.js';
-const $ = (sel) => document.querySelector(sel);
-const prefillUserName = () => {
-  try {
-    // Lấy thông tin người dùng từ sessionStorage
-    // Nếu không có thông tin người dùng thì sẽ lấy từ localStorage
-    // tiếp theo sẽ là lấy từ server
-
-    const el = $('#userName');
-    const standaloneNameEl = $('#expHeaderName');
-    const standaloneInitEl = $('#expHeaderInitial');
-    const toggleBtn = $('#expUserToggleBtn');
-    const dropdown = $('#expUserDropdown');
-    const logoutBtn = $('#expLogoutBtn');
-    const toggleSidebarBtn = $('#expToggleSidebarBtn');
-    const mobileCloseDrawerBtn = $('#expMobileCloseDrawer');
-    const mobileBackdrop = $('#expMobileBackdrop');
-    const layoutEl = $('.expense-layout');
-
-    if (toggleSidebarBtn && layoutEl) {
-      toggleSidebarBtn.addEventListener('click', () => {
-        layoutEl.classList.toggle('sidebar-collapsed');
-        if (window.innerWidth <= 768) {
-          document.body.classList.toggle('exp-drawer-open', layoutEl.classList.contains('sidebar-collapsed'));
-        }
-      });
-    }
-
-    if (mobileBackdrop && layoutEl) {
-      mobileBackdrop.addEventListener('click', () => {
-        layoutEl.classList.remove('sidebar-collapsed');
-        document.body.classList.remove('exp-drawer-open');
-      });
-    }
-
-    if (mobileCloseDrawerBtn && layoutEl) {
-      mobileCloseDrawerBtn.addEventListener('click', () => {
-        layoutEl.classList.remove('sidebar-collapsed');
-        document.body.classList.remove('exp-drawer-open');
-      });
-    }
-
-    if (toggleBtn && dropdown) {
-      toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('show');
-      });
-      document.addEventListener('click', (e) => {
-        if (!dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
-          dropdown.classList.remove('show');
-        }
-      });
-    }
-
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
-        try { await logout(); } catch (e) { /* silently ignored */ }
-        try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-        try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ }
-        try { localStorage.setItem('auth-logout-event', Date.now()); } catch (e) { /* silently ignored */ }
-        window.location.replace('/ui/login');
-      });
-    }
-
-    const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-    const u = raw ? JSON.parse(raw) : null;
-    const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
-    if (name) {
-      if (el) el.textContent = name;
-      if (standaloneNameEl) standaloneNameEl.textContent = name;
-      if (standaloneInitEl) standaloneInitEl.textContent = name.charAt(0).toUpperCase();
-    }
-  } catch (e) { /* silently ignored */ }
-};
-let _errTimer = null;
-const showErr = (m) => {
-  const el = $('#error');
-  if (!el) return;
-  if (_errTimer) { clearTimeout(_errTimer); _errTimer = null; }
-  if (!m) { el.style.display = 'none'; el.textContent = ''; return; }
-  el.style.display = 'block';
-  el.textContent = String(m);
-  _errTimer = setTimeout(() => {
-    try { el.style.display = 'none'; el.textContent = ''; } catch (e) { /* silently ignored */ }
-  }, 10_000);
-};
-let sc = 0;
-let spinnerTimer = null;
-const showSpinner = () => {
-  try {
-    const el = $('#pageSpinner');
-    sc++;
-    if (!el) return;
-    if (sc === 1) {
-      try { clearTimeout(spinnerTimer); } catch (e) { /* silently ignored */ }
-      spinnerTimer = setTimeout(() => {
-        try {
-          if (sc > 0) {
-            el.removeAttribute('hidden');
-            el.style.display = 'grid';
-          }
-        } catch (e) { /* silently ignored */ }
-      }, 180);
-    }
-  } catch (e) { /* silently ignored */ }
-};
-const hideSpinner = () => {
-  try {
-    const el = $('#pageSpinner');
-    sc = Math.max(0, sc - 1);
-    if (sc !== 0) return;
-    try { clearTimeout(spinnerTimer); } catch (e) { /* silently ignored */ }
-    spinnerTimer = null;
-    if (el) { el.setAttribute('hidden', ''); el.style.display = 'none'; }
-  } catch (e) { /* silently ignored */ }
-};
-const todayISO = () => new Date().toLocaleDateString('sv-SE');
-const currentYM = () => todayISO().slice(0, 7);
-const recentMonths = (count = 6, baseYM = currentYM()) => {
-  const out = [];
-  const y = Number(String(baseYM).slice(0, 4));
-  const m = Number(String(baseYM).slice(5, 7));
-  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return out;
-  const d = new Date(y, m - 1, 1);
-  for (let i = 0; i < count; i++) {
-    const yy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    out.push(`${yy}-${mm}`);
-    d.setMonth(d.getMonth() - 1);
-  }
-  return out;
-};
-const fmtDT = (v) => {
-  if (!v) return '';
-  try {
-    const d = typeof v === 'string' ? new Date(v) : v;
-    if (!d || isNaN(d.getTime())) return String(v).replace('T', ' ').slice(0, 16);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${y}-${m}-${day} ${hh}:${mm}`;
-  } catch (e) { return String(v).replace('T', ' ').slice(0, 16); }
-};
-const fmtDateOnly = (v) => {
-  const s = String(v || '');
-  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-  return m ? m[1] : s;
-};
-const normalizeVia = (v) => {
-  const s = String(v || '').trim();
-  if (!s) return '';
-  // Ignore obvious test noise like "pppp", "aaaaa".
-  if (/^[a-z]+$/i.test(s) && /(.)\1{2,}/i.test(s)) return '';
-  return s;
-};
-const parseAmount = (v) => {
-  const s = String(v == null ? '' : v).replace(/[^\d.-]/g, '').trim();
-  if (!s) return 0;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
-};
-const formatAmount = (v) => {
-  const n = parseAmount(v);
-  return n ? n.toLocaleString('ja-JP') : '';
-};
-const bindAmountFormatter = (input) => {
-  if (!input || input.dataset.amountFmt === '1') return;
-  input.dataset.amountFmt = '1';
-  input.addEventListener('focus', () => {
-    const n = parseAmount(input.value);
-    input.value = n ? String(n) : '';
-  });
-  input.addEventListener('blur', () => {
-    input.value = formatAmount(input.value);
-  });
-};
-const renderFilePreview = (input, hostId) => {
-  const host = document.getElementById(hostId);
-  if (!host) return;
-  const f = input?.files?.[0];
-  if (!f) {
-    host.innerHTML = '';
-    return;
-  }
-  if ((f.type || '').startsWith('image/')) {
-    const url = URL.createObjectURL(f);
-    host.innerHTML = `<img src="${url}" alt="" class="upload-thumb"><div style="margin-top:4px;">${String(f.name || '')}</div>`;
-    return;
-  }
-  host.innerHTML = `<div class="upload-file-chip">📄 <span>${String(f.name || '')}</span></div>`;
-};
-const renderMultiFilePreview = (input, hostId) => {
-  const host = document.getElementById(hostId);
-  if (!host) return;
-  const files = Array.from(input?.files || []);
-  if (!files.length) {
-    host.innerHTML = '';
-    return;
-  }
-  host.innerHTML = files.slice(0, 4).map((f) => {
-    if ((f.type || '').startsWith('image/')) {
-      const url = URL.createObjectURL(f);
-      return `<img src="${url}" alt="" class="upload-thumb" style="margin-right:6px;">`;
-    }
-    return `<span class="upload-file-chip" style="margin-right:6px;">📄 <span>${String(f.name || '')}</span></span>`;
-  }).join('') + (files.length > 4 ? `<div style="margin-top:4px;">+${files.length - 4} files</div>` : '');
-};
-const clearFieldErrors = () => {
-  try {
-    document.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
-    document.querySelectorAll('.field-msg').forEach((el) => el.remove());
-  } catch (e) { /* silently ignored */ }
-};
-const setFieldError = (fieldId, message) => {
-  try {
-    const el = document.getElementById(fieldId);
-    if (!el) return;
-    el.classList.add('field-error');
-    const old = document.getElementById(`${fieldId}Err`);
-    if (old) old.remove();
-    const msg = document.createElement('div');
-    msg.className = 'field-msg';
-    msg.id = `${fieldId}Err`;
-    msg.textContent = String(message || '');
-    const host = el.closest('div') || el.parentElement;
-    host?.appendChild(msg);
-  } catch (e) { /* silently ignored */ }
-};
-let formActive = false;
-let navBusy = false;
-let renderListBusy = false;
-let renderListPending = false;
-let listRateLimitedUntilMs = 0;
-let listRetryTimer = null;
-let noticeUnreadCount = 0;
-let noticeLatestIncomingAtMs = 0;
-let noticeSeenAtMs = 0;
-let noticeSeenKey = '';
-let noticePollTimer = null;
-let expensesPageMounted = false;
-let createTargetMonth = currentYM();
-let meProfile = null;
-let activeHistoryTab = 'new';
-let selectedHistoryMonth = '';
-let monthDeletePick = '';
-let continueCreateForMonth = null;
-let showMonthProgressInNewMode = false;
-let monthMetaByYm = new Map();
-let activeSummaryCard = ''; // Set default to empty so it doesn't show 'all' by default
-let currentDraftsForConfirm = [];
-let currentTotalForConfirm = 0;
-const EXPENSES_ACTIVE_TAB_KEY = 'expenses.activeTab';
-const fmtYmJa = (ym) => {
-  const s = String(ym || '');
-  if (!/^\d{4}-\d{2}$/.test(s)) return '';
-  return `${s.slice(0, 4)}年${s.slice(5, 7)}月`;
-};
-const firstDayOfYm = (ym) => (/^\d{4}-\d{2}$/.test(String(ym || '')) ? `${String(ym)}-01` : '-');
-const isSubmittedStatus = (v) => {
-  const s = String(v || '').toLowerCase();
-  return s === 'applied' || s === 'approved' || s === 'paid' || s === 'rejected';
-};
-const isNoticeFeedbackStatus = (v) => {
-  const s = String(v || '').toLowerCase();
-  return s === 'approved' || s === 'rejected';
-};
-const toMs = (v) => {
-  try {
-    const t = new Date(v).getTime();
-    return Number.isFinite(t) ? t : 0;
-  } catch (e) { return 0; }
-};
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms || 0))));
-const isTooManyReqErr = (e) => {
-  const msg = String(e?.message || '').toLowerCase();
-  return msg.includes('too many requests') || msg.includes('操作が多すぎます') || msg.includes('http 429') || msg.includes('429');
-};
-const isNotFoundErr = (e) => {
-  const msg = String(e?.message || '').toLowerCase();
-  return msg.includes('not found') || msg.includes('http 404') || msg.includes('404');
-};
-const fetchJSONAuthSafe = async (url, options, retry = 1) => {
-  try {
-    return await fetchJSONAuth(url, options);
-  } catch (e) {
-    if (retry > 0 && isTooManyReqErr(e)) {
-      await sleep(1200);
-      return fetchJSONAuthSafe(url, options, retry - 1);
-    }
-    throw e;
-  }
-};
-const _getCache = new Map();
-const fetchJSONAuthSafeCached = async (url, ttlMs = 8000) => {
-  const u = String(url || '');
-  const now = Date.now();
-  const hit = _getCache.get(u);
-  if (hit && hit.value !== undefined && hit.exp > now) return hit.value;
-  if (hit && hit.promise) return hit.promise;
-  const p = fetchJSONAuthSafe(u).then((v) => {
-    _getCache.set(u, { value: v, exp: Date.now() + Math.max(0, Number(ttlMs || 0)) });
-    return v;
-  }).catch((e) => {
-    _getCache.delete(u);
-    throw e;
-  });
-  _getCache.set(u, { promise: p, exp: now + 500 });
-  return p;
-};
-const setNoticeBadge = (n) => {
-  const badge = document.getElementById('noticeBadge');
-  if (!badge) return;
-  const c = Math.max(0, Number(n || 0));
-  if (!c) {
-    badge.setAttribute('hidden', '');
-    badge.textContent = '0';
-    return;
-  }
-  badge.textContent = c > 99 ? '99+' : String(c);
-  badge.removeAttribute('hidden');
-};
-const markNoticeSeen = () => {
-  noticeSeenAtMs = Math.max(noticeSeenAtMs || 0, noticeLatestIncomingAtMs || Date.now());
-  if (noticeSeenKey) {
-    try { localStorage.setItem(noticeSeenKey, String(noticeSeenAtMs)); } catch (e) { /* silently ignored */ }
-  }
-  noticeUnreadCount = 0;
-  setNoticeBadge(0);
-};
-const refreshNoticeMessages = async () => {
-  try {
-    const rows = await fetchJSONAuthSafeCached('/api/expenses/my/messages', 8000);
-    const list = Array.isArray(rows) ? rows : [];
-    const myId = String(window.MY_ID || '');
-    const incoming = list.filter((m) => String(m?.sender_user_id || '') !== myId);
-    let latest = 0;
-    for (const m of incoming) latest = Math.max(latest, toMs(m?.created_at));
-    noticeLatestIncomingAtMs = latest;
-    noticeUnreadCount = incoming.filter((m) => toMs(m?.created_at) > (noticeSeenAtMs || 0)).length;
-    setNoticeBadge(noticeUnreadCount);
-  } catch (e) { /* silently ignored */ }
-};
-const renderSummary = async () => {
-    try {
-      const m = currentYM();
-      const rows = await fetchJSONAuthSafeCached(`/api/expenses/my?month=${encodeURIComponent(m)}`, 8000);
-      const a = Array.isArray(rows) ? rows.filter(r => String(r.status) === 'applied').length : 0;
-      const sA = document.getElementById('empSumApplied');
-      if (sA) sA.textContent = String(a);
-      try {
-        const latest = await fetchJSONAuthSafe('/api/expenses/months/applied');
-        const label = latest && latest.month ? String(latest.month) : '';
-        const cnt = latest && latest.count != null ? Number(latest.count || 0) : null;
-        const elM = document.getElementById('empAppliedMonth');
-        if (elM) elM.textContent = label ? (label.slice(0, 4) + '年' + label.slice(5, 7) + '月') : '-';
-        if (cnt != null && sA) sA.textContent = String(cnt);
-      } catch (e) { /* silently ignored */ }
-    } catch (e) { /* silently ignored */ }
-  };
-
-  // Add event listener for global year filter
-  const globalYearFilter = document.getElementById('exFilterYearGlobal');
-  if (globalYearFilter) {
-    if (!globalYearFilter.value) {
-      globalYearFilter.value = currentYM().slice(0, 4);
-    }
-    globalYearFilter.addEventListener('change', async (e) => {
-      const yy = e.target.value;
-      if (yy) {
-        // window.createTargetMonth = ym; // We don't set createTargetMonth on year change
-        activeSummaryCard = ''; // Ẩn bảng khi đổi năm
-        
-        // Cập nhật lại UI của các thẻ trạng thái (Summary Cards) - bỏ chọn tất cả
-        document.querySelectorAll('.summary-card').forEach(card => {
-          card.style.border = '1px solid var(--border)';
-          card.style.boxShadow = 'none';
-          card.style.background = '#fff';
-        });
-        
-        await renderList();
-      }
-    });
-  }
-const renderNotices = async () => {
-  try {
-    // Avoid unnecessary /api/expenses/my calls while user is not on notice tab.
-    if (activeHistoryTab !== 'notice') return;
-    const m = currentYM();
-    const rows = await fetchJSONAuthSafeCached(`/api/expenses/my?month=${encodeURIComponent(m)}&status=rejected`, 8000);
-    const n = Array.isArray(rows) ? rows.length : 0;
-    const c = document.getElementById('empNoticeCount');
-    if (c) c.textContent = String(n);
-  } catch (e) { /* silently ignored */ }
-};
-const wireUserMenu = () => {
-  const btn = $('.user-btn'); const dd = $('#userDropdown'); if (!btn || !dd || btn.dataset.bound === '1') return; btn.dataset.bound = '1';
-  btn.addEventListener('click', (e) => { e.preventDefault(); const open = !dd.hasAttribute('hidden'); if (open) dd.setAttribute('hidden', ''); else dd.removeAttribute('hidden'); btn.setAttribute('aria-expanded', open ? 'false' : 'true'); });
-  document.addEventListener('click', (e) => { if (e.target.closest('.user-menu')) return; dd.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); });
-  const logoutBtn = $('#btnLogout'); if (logoutBtn) logoutBtn.addEventListener('click', async () => { try { await logout(); } catch (e) { /* silently ignored */ } try { sessionStorage.removeItem('accessToken'); sessionStorage.removeItem('refreshToken'); sessionStorage.removeItem('user'); } catch (e) { /* silently ignored */ } try { localStorage.removeItem('refreshToken'); localStorage.removeItem('user'); } catch (e) { /* silently ignored */ } window.location.replace('/ui/login'); });
-
-};
-const wireDrawer = () => {
-  const btn = $('#mobileMenuBtn'); const drawer = $('#mobileDrawer'); const backdrop = $('#drawerBackdrop'); const closeBtn = $('#mobileClose');
-  if (!btn || !drawer || !backdrop || btn.dataset.bound === '1') return; btn.dataset.bound = '1';
-  const close = () => { drawer.setAttribute('hidden', ''); backdrop.setAttribute('hidden', ''); btn.setAttribute('aria-expanded', 'false'); document.body.classList.remove('drawer-open'); };
-  const open = () => { drawer.removeAttribute('hidden'); backdrop.removeAttribute('hidden'); btn.setAttribute('aria-expanded', 'true'); document.body.classList.add('drawer-open'); };
-  btn.addEventListener('click', (e) => { e.preventDefault(); if (drawer.hasAttribute('hidden')) open(); else close(); });
-  closeBtn?.addEventListener('click', (e) => { e.preventDefault(); close(); });
-  backdrop.addEventListener('click', (e) => { e.preventDefault(); close(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-  drawer.querySelectorAll('.drawer-item, a').forEach(el => el.addEventListener('click', close));
-};
-const openQuickEditExpense = async (recId) => {
-  const id = String(recId || '');
-  if (!id) return false;
-  let rec = null;
-  try {
-    rec = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`);
-  } catch (e) {
-    showErr(e?.message || 'データ取得に失敗しました');
-    return false;
-  }
-  const backdrop = document.createElement('div');
-  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1200;';
-  const modal = document.createElement('div');
-  modal.className = 'qe-modal';
-  modal.style.cssText = 'position:fixed;left:50%;top:84px;transform:translateX(-50%);width:min(860px,95vw);max-height:82vh;overflow:auto;background:#fff;border:1px solid #dbe3ef;border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,.18);padding:14px;z-index:1210;';
-  modal.innerHTML = `
+import{logout as Mt}from"/static/js/api/auth.api.js?v=20260416-1";import{fetchJSONAuth as U}from"/static/js/api/http.api.js?v=20260416-1";import"/static/js/pages/employee-notify.sticky.js";const b=t=>document.querySelector(t),Jt=()=>{try{const t=b("#userName"),o=b("#expHeaderName"),s=b("#expHeaderInitial"),d=b("#expUserToggleBtn"),r=b("#expUserDropdown"),y=b("#expLogoutBtn"),S=b("#expToggleSidebarBtn"),de=b("#expMobileCloseDrawer"),h=b("#expMobileBackdrop"),A=b(".expense-layout");S&&A&&S.addEventListener("click",()=>{A.classList.toggle("sidebar-collapsed"),window.innerWidth<=768&&document.body.classList.toggle("exp-drawer-open",A.classList.contains("sidebar-collapsed"))}),h&&A&&h.addEventListener("click",()=>{A.classList.remove("sidebar-collapsed"),document.body.classList.remove("exp-drawer-open")}),de&&A&&de.addEventListener("click",()=>{A.classList.remove("sidebar-collapsed"),document.body.classList.remove("exp-drawer-open")}),d&&r&&(d.addEventListener("click",W=>{W.stopPropagation(),r.classList.toggle("show")}),document.addEventListener("click",W=>{!r.contains(W.target)&&!d.contains(W.target)&&r.classList.remove("show")})),y&&y.addEventListener("click",async()=>{try{await Mt()}catch{}try{sessionStorage.removeItem("accessToken"),sessionStorage.removeItem("refreshToken"),sessionStorage.removeItem("user")}catch{}try{localStorage.removeItem("refreshToken"),localStorage.removeItem("user")}catch{}try{localStorage.setItem("auth-logout-event",Date.now())}catch{}window.location.replace("/ui/login")});const _=sessionStorage.getItem("user")||localStorage.getItem("user")||"",ae=_?JSON.parse(_):null,be=ae&&(ae.username||ae.email)?String(ae.username||ae.email):"";be&&(t&&(t.textContent=be),o&&(o.textContent=be),s&&(s.textContent=be.charAt(0).toUpperCase()))}catch{}};let tt=null;const G=t=>{const o=b("#error");if(o){if(tt&&(clearTimeout(tt),tt=null),!t){o.style.display="none",o.textContent="";return}o.style.display="block",o.textContent=String(t),tt=setTimeout(()=>{try{o.style.display="none",o.textContent=""}catch{}},1e4)}};let Oe=0,nt=null;const Wt=()=>{try{const t=b("#pageSpinner");if(Oe++,!t)return;if(Oe===1){try{clearTimeout(nt)}catch{}nt=setTimeout(()=>{try{Oe>0&&(t.removeAttribute("hidden"),t.style.display="grid")}catch{}},180)}}catch{}},Gt=()=>{try{const t=b("#pageSpinner");if(Oe=Math.max(0,Oe-1),Oe!==0)return;try{clearTimeout(nt)}catch{}nt=null,t&&(t.setAttribute("hidden",""),t.style.display="none")}catch{}},Ye=()=>new Date().toLocaleDateString("sv-SE"),Z=()=>Ye().slice(0,7),Yt=(t=6,o=Z())=>{const s=[],d=Number(String(o).slice(0,4)),r=Number(String(o).slice(5,7));if(!Number.isFinite(d)||!Number.isFinite(r)||r<1||r>12)return s;const y=new Date(d,r-1,1);for(let S=0;S<t;S++){const de=y.getFullYear(),h=String(y.getMonth()+1).padStart(2,"0");s.push(`${de}-${h}`),y.setMonth(y.getMonth()-1)}return s},ct=t=>{if(!t)return"";try{const o=typeof t=="string"?new Date(t):t;if(!o||isNaN(o.getTime()))return String(t).replace("T"," ").slice(0,16);const s=o.getFullYear(),d=String(o.getMonth()+1).padStart(2,"0"),r=String(o.getDate()).padStart(2,"0"),y=String(o.getHours()).padStart(2,"0"),S=String(o.getMinutes()).padStart(2,"0");return`${s}-${d}-${r} ${y}:${S}`}catch{return String(t).replace("T"," ").slice(0,16)}},pt=t=>{const o=String(t||""),s=o.match(/^(\d{4}-\d{2}-\d{2})/);return s?s[1]:o},Kt=t=>{const o=String(t||"").trim();return!o||/^[a-z]+$/i.test(o)&&/(.)\1{2,}/i.test(o)?"":o},ut=t=>{const o=String(t??"").replace(/[^\d.-]/g,"").trim();if(!o)return 0;const s=Number(o);return Number.isFinite(s)?s:0},_t=t=>{const o=ut(t);return o?o.toLocaleString("ja-JP"):""},Qt=t=>{!t||t.dataset.amountFmt==="1"||(t.dataset.amountFmt="1",t.addEventListener("focus",()=>{const o=ut(t.value);t.value=o?String(o):""}),t.addEventListener("blur",()=>{t.value=_t(t.value)}))},Nt=(t,o)=>{const s=document.getElementById(o);if(!s)return;const d=t?.files?.[0];if(!d){s.innerHTML="";return}if((d.type||"").startsWith("image/")){const r=URL.createObjectURL(d);s.innerHTML=`<img src="${r}" alt="" class="upload-thumb"><div style="margin-top:4px;">${String(d.name||"")}</div>`;return}s.innerHTML=`<div class="upload-file-chip">\u{1F4C4} <span>${String(d.name||"")}</span></div>`},Xt=(t,o)=>{const s=document.getElementById(o);if(!s)return;const d=Array.from(t?.files||[]);if(!d.length){s.innerHTML="";return}s.innerHTML=d.slice(0,4).map(r=>(r.type||"").startsWith("image/")?`<img src="${URL.createObjectURL(r)}" alt="" class="upload-thumb" style="margin-right:6px;">`:`<span class="upload-file-chip" style="margin-right:6px;">\u{1F4C4} <span>${String(r.name||"")}</span></span>`).join("")+(d.length>4?`<div style="margin-top:4px;">+${d.length-4} files</div>`:"")},Zt=()=>{try{document.querySelectorAll(".field-error").forEach(t=>t.classList.remove("field-error")),document.querySelectorAll(".field-msg").forEach(t=>t.remove())}catch{}},Ue=(t,o)=>{try{const s=document.getElementById(t);if(!s)return;s.classList.add("field-error");const d=document.getElementById(`${t}Err`);d&&d.remove();const r=document.createElement("div");r.className="field-msg",r.id=`${t}Err`,r.textContent=String(o||""),(s.closest("div")||s.parentElement)?.appendChild(r)}catch{}};let xe=!1,_e=!1,mt=!1,yt=!1,gt=0,ft=null,xt=0,jt=0,Ke=0,ot="",Ve=null,ht=!1,me=Z(),R=null,q="new",H="",mn="",en=null,he=!1,it=new Map,ie="",at=[],bt=0;const qt="expenses.activeTab",tn=t=>{const o=String(t||"");return/^\d{4}-\d{2}$/.test(o)?`${o.slice(0,4)}\u5E74${o.slice(5,7)}\u6708`:""},Dt=t=>/^\d{4}-\d{2}$/.test(String(t||""))?`${String(t)}-01`:"-",vt=t=>{const o=String(t||"").toLowerCase();return o==="applied"||o==="approved"||o==="paid"||o==="rejected"},nn=t=>{const o=String(t||"").toLowerCase();return o==="approved"||o==="rejected"},Pt=t=>{try{const o=new Date(t).getTime();return Number.isFinite(o)?o:0}catch{return 0}},on=t=>new Promise(o=>setTimeout(o,Math.max(0,Number(t||0)))),Ft=t=>{const o=String(t?.message||"").toLowerCase();return o.includes("too many requests")||o.includes("\u64CD\u4F5C\u304C\u591A\u3059\u304E\u307E\u3059")||o.includes("http 429")||o.includes("429")},wt=t=>{const o=String(t?.message||"").toLowerCase();return o.includes("not found")||o.includes("http 404")||o.includes("404")},Ce=async(t,o,s=1)=>{try{return await U(t,o)}catch(d){if(s>0&&Ft(d))return await on(1200),Ce(t,o,s-1);throw d}},st=new Map,Qe=async(t,o=8e3)=>{const s=String(t||""),d=Date.now(),r=st.get(s);if(r&&r.value!==void 0&&r.exp>d)return r.value;if(r&&r.promise)return r.promise;const y=Ce(s).then(S=>(st.set(s,{value:S,exp:Date.now()+Math.max(0,Number(o||0))}),S)).catch(S=>{throw st.delete(s),S});return st.set(s,{promise:y,exp:d+500}),y},Ht=t=>{const o=document.getElementById("noticeBadge");if(!o)return;const s=Math.max(0,Number(t||0));if(!s){o.setAttribute("hidden",""),o.textContent="0";return}o.textContent=s>99?"99+":String(s),o.removeAttribute("hidden")},an=()=>{if(Ke=Math.max(Ke||0,jt||Date.now()),ot)try{localStorage.setItem(ot,String(Ke))}catch{}xt=0,Ht(0)},zt=async()=>{try{const t=await Qe("/api/expenses/my/messages",8e3),o=Array.isArray(t)?t:[],s=String(window.MY_ID||""),d=o.filter(y=>String(y?.sender_user_id||"")!==s);let r=0;for(const y of d)r=Math.max(r,Pt(y?.created_at));jt=r,xt=d.filter(y=>Pt(y?.created_at)>(Ke||0)).length,Ht(xt)}catch{}},Rt=async()=>{try{const t=Z(),o=await Qe(`/api/expenses/my?month=${encodeURIComponent(t)}`,8e3),s=Array.isArray(o)?o.filter(r=>String(r.status)==="applied").length:0,d=document.getElementById("empSumApplied");d&&(d.textContent=String(s));try{const r=await Ce("/api/expenses/months/applied"),y=r&&r.month?String(r.month):"",S=r&&r.count!=null?Number(r.count||0):null,de=document.getElementById("empAppliedMonth");de&&(de.textContent=y?y.slice(0,4)+"\u5E74"+y.slice(5,7)+"\u6708":"-"),S!=null&&d&&(d.textContent=String(S))}catch{}}catch{}},rt=document.getElementById("exFilterYearGlobal");rt&&(rt.value||(rt.value=Z().slice(0,4)),rt.addEventListener("change",async t=>{t.target.value&&(ie="",document.querySelectorAll(".summary-card").forEach(s=>{s.style.border="1px solid var(--border)",s.style.boxShadow="none",s.style.background="#fff"}),await ne())}));const sn=async()=>{try{if(q!=="notice")return;const t=Z(),o=await Qe(`/api/expenses/my?month=${encodeURIComponent(t)}&status=rejected`,8e3),s=Array.isArray(o)?o.length:0,d=document.getElementById("empNoticeCount");d&&(d.textContent=String(s))}catch{}},rn=()=>{const t=b(".user-btn"),o=b("#userDropdown");if(!t||!o||t.dataset.bound==="1")return;t.dataset.bound="1",t.addEventListener("click",d=>{d.preventDefault();const r=!o.hasAttribute("hidden");r?o.setAttribute("hidden",""):o.removeAttribute("hidden"),t.setAttribute("aria-expanded",r?"false":"true")}),document.addEventListener("click",d=>{d.target.closest(".user-menu")||(o.setAttribute("hidden",""),t.setAttribute("aria-expanded","false"))});const s=b("#btnLogout");s&&s.addEventListener("click",async()=>{try{await Mt()}catch{}try{sessionStorage.removeItem("accessToken"),sessionStorage.removeItem("refreshToken"),sessionStorage.removeItem("user")}catch{}try{localStorage.removeItem("refreshToken"),localStorage.removeItem("user")}catch{}window.location.replace("/ui/login")})},ln=()=>{const t=b("#mobileMenuBtn"),o=b("#mobileDrawer"),s=b("#drawerBackdrop"),d=b("#mobileClose");if(!t||!o||!s||t.dataset.bound==="1")return;t.dataset.bound="1";const r=()=>{o.setAttribute("hidden",""),s.setAttribute("hidden",""),t.setAttribute("aria-expanded","false"),document.body.classList.remove("drawer-open")},y=()=>{o.removeAttribute("hidden"),s.removeAttribute("hidden"),t.setAttribute("aria-expanded","true"),document.body.classList.add("drawer-open")};t.addEventListener("click",S=>{S.preventDefault(),o.hasAttribute("hidden")?y():r()}),d?.addEventListener("click",S=>{S.preventDefault(),r()}),s.addEventListener("click",S=>{S.preventDefault(),r()}),document.addEventListener("keydown",S=>{S.key==="Escape"&&r()}),o.querySelectorAll(".drawer-item, a").forEach(S=>S.addEventListener("click",r))},Ot=async t=>{const o=String(t||"");if(!o)return!1;let s=null;try{s=await U(`/api/expenses/${encodeURIComponent(o)}`)}catch(h){return G(h?.message||"\u30C7\u30FC\u30BF\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F"),!1}const d=document.createElement("div");d.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1200;";const r=document.createElement("div");if(r.className="qe-modal",r.style.cssText="position:fixed;left:50%;top:84px;transform:translateX(-50%);width:min(860px,95vw);max-height:82vh;overflow:auto;background:#fff;border:1px solid #dbe3ef;border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,.18);padding:14px;z-index:1210;",r.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <div style="font-weight:800;color:#0b2c66;">申請内容を編集</div>
-      <button id="qeClose" type="button" aria-label="閉じる" style="width:32px;height:32px;border:none;background:transparent;color:#64748b;font-size:22px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;">&times;</button>
+      <div style="font-weight:800;color:#0b2c66;">\u7533\u8ACB\u5185\u5BB9\u3092\u7DE8\u96C6</div>
+      <button id="qeClose" type="button" aria-label="\u9589\u3058\u308B" style="width:32px;height:32px;border:none;background:transparent;color:#64748b;font-size:22px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;">&times;</button>
     </div>
     <div class="adjust-grid qe-grid" style="grid-template-columns:110px minmax(0,1fr) 110px minmax(0,1fr);gap:8px;">
-      <div class="adjust-label">日付</div><div><input id="qeDate" type="date" class="adjust-input"></div>
-      <div class="adjust-label">種別</div><div><select id="qeType" class="adjust-input"><option value="train">電車</option><option value="bus">バス</option><option value="taxi">タクシー</option><option value="car">自家用車</option><option value="parking">駐車場代</option><option value="highway">高速料金</option><option value="goods">物品購入</option></select></div>
-      <div class="adjust-label" id="qeItemNameLabel">購入物品名</div><div id="qeItemNameWrap"><input id="qeItemName" class="adjust-input"></div>
-      <div class="adjust-label" id="qeVendorLabel">購入先</div><div id="qeVendorWrap"><input id="qeVendor" class="adjust-input"></div>
-      <div class="adjust-label">出発地</div><div><input id="qeOrigin" class="adjust-input"></div>
-      <div class="adjust-label">経由</div><div><input id="qeVia" class="adjust-input"></div>
-      <div class="adjust-label">到着地</div><div><input id="qeDestination" class="adjust-input"></div>
-      <div class="adjust-label">片道/往復</div><div><select id="qeTripType" class="adjust-input"><option value="one_way">片道</option><option value="round_trip">往復</option><option value="multi">複数</option></select></div>
-      <div class="adjust-label">回数</div><div><input id="qeTripCount" type="number" min="1" step="1" class="adjust-input"></div>
-      <div class="adjust-label">距離(km)</div><div><input id="qeKm" type="number" step="0.1" min="0" class="adjust-input"></div>
-      <div class="adjust-label">単価(円/km)</div><div><input id="qeUnitPrice" type="number" step="1" min="0" class="adjust-input"></div>
-      <div class="adjust-label">用途</div><div><input id="qePurpose" class="adjust-input"></div>
-      <div class="adjust-label">金額</div><div><input id="qeAmount" type="number" step="1" min="0" class="adjust-input"></div>
-      <div class="adjust-label">現場名</div><div><input id="qeSiteName" class="adjust-input"></div>
-      <div class="adjust-label" id="qeTeikiLabel">定期</div><div id="qeTeikiWrap"><label style="display:flex;align-items:center;gap:8px;"><input id="qeTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
-      <div class="adjust-label full-row">メモ</div><div class="full-row"><input id="qeMemo" class="adjust-input"></div>
+      <div class="adjust-label">\u65E5\u4ED8</div><div><input id="qeDate" type="date" class="adjust-input"></div>
+      <div class="adjust-label">\u7A2E\u5225</div><div><select id="qeType" class="adjust-input"><option value="train">\u96FB\u8ECA</option><option value="bus">\u30D0\u30B9</option><option value="taxi">\u30BF\u30AF\u30B7\u30FC</option><option value="car">\u81EA\u5BB6\u7528\u8ECA</option><option value="parking">\u99D0\u8ECA\u5834\u4EE3</option><option value="highway">\u9AD8\u901F\u6599\u91D1</option><option value="goods">\u7269\u54C1\u8CFC\u5165</option></select></div>
+      <div class="adjust-label" id="qeItemNameLabel">\u8CFC\u5165\u7269\u54C1\u540D</div><div id="qeItemNameWrap"><input id="qeItemName" class="adjust-input"></div>
+      <div class="adjust-label" id="qeVendorLabel">\u8CFC\u5165\u5148</div><div id="qeVendorWrap"><input id="qeVendor" class="adjust-input"></div>
+      <div class="adjust-label">\u51FA\u767A\u5730</div><div><input id="qeOrigin" class="adjust-input"></div>
+      <div class="adjust-label">\u7D4C\u7531</div><div><input id="qeVia" class="adjust-input"></div>
+      <div class="adjust-label">\u5230\u7740\u5730</div><div><input id="qeDestination" class="adjust-input"></div>
+      <div class="adjust-label">\u7247\u9053/\u5F80\u5FA9</div><div><select id="qeTripType" class="adjust-input"><option value="one_way">\u7247\u9053</option><option value="round_trip">\u5F80\u5FA9</option><option value="multi">\u8907\u6570</option></select></div>
+      <div class="adjust-label">\u56DE\u6570</div><div><input id="qeTripCount" type="number" min="1" step="1" class="adjust-input"></div>
+      <div class="adjust-label">\u8DDD\u96E2(km)</div><div><input id="qeKm" type="number" step="0.1" min="0" class="adjust-input"></div>
+      <div class="adjust-label">\u5358\u4FA1(\u5186/km)</div><div><input id="qeUnitPrice" type="number" step="1" min="0" class="adjust-input"></div>
+      <div class="adjust-label">\u7528\u9014</div><div><input id="qePurpose" class="adjust-input"></div>
+      <div class="adjust-label">\u91D1\u984D</div><div><input id="qeAmount" type="number" step="1" min="0" class="adjust-input"></div>
+      <div class="adjust-label">\u73FE\u5834\u540D</div><div><input id="qeSiteName" class="adjust-input"></div>
+      <div class="adjust-label" id="qeTeikiLabel">\u5B9A\u671F</div><div id="qeTeikiWrap"><label style="display:flex;align-items:center;gap:8px;"><input id="qeTeiki" type="checkbox"><span>\u5B9A\u671F\u533A\u9593\u3092\u9664\u5916</span></label></div>
+      <div class="adjust-label full-row">\u30E1\u30E2</div><div class="full-row"><input id="qeMemo" class="adjust-input"></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
-      <button id="qeCancel" class="btn" type="button" style="height:34px;">キャンセル</button>
-      <button id="qeSave" class="btn btn-primary" type="button" style="height:34px;">保存</button>
+      <button id="qeCancel" class="btn" type="button" style="height:34px;">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
+      <button id="qeSave" class="btn btn-primary" type="button" style="height:34px;">\u4FDD\u5B58</button>
     </div>
-  `;
-  // CSS thu gọn modal sửa trên mobile: xếp 1 cột (nhãn trên, ô nhập full width),
-  // không còn bị chật/cắt chữ như lưới 4 cột của desktop.
-  if (!document.getElementById('qe-modal-mobile-style')) {
-    const qeStyle = document.createElement('style');
-    qeStyle.id = 'qe-modal-mobile-style';
-    qeStyle.textContent = `
+  `,!document.getElementById("qe-modal-mobile-style")){const h=document.createElement("style");h.id="qe-modal-mobile-style",h.textContent=`
       @media (max-width: 768px) {
         .qe-modal {
           left: 8px !important;
@@ -493,287 +56,26 @@ const openQuickEditExpense = async (recId) => {
           font-size: 16px !important;
         }
       }
-    `;
-    document.head.appendChild(qeStyle);
-  }
-  document.body.appendChild(backdrop);
-  document.body.appendChild(modal);
-  const setVal = (id2, v) => { const el = document.getElementById(id2); if (el) el.value = v == null ? '' : String(v); };
-  setVal('qeDate', rec?.date ? String(rec.date).slice(0, 10) : todayISO());
-  setVal('qeType', rec?.type || rec?.category || 'train');
-  setVal('qeOrigin', rec?.origin || '');
-  setVal('qeVia', rec?.via || '');
-  setVal('qeDestination', rec?.destination || '');
-  setVal('qeTripType', rec?.trip_type || 'one_way');
-  setVal('qeTripCount', rec?.trip_count != null ? rec.trip_count : 1);
-  setVal('qeKm', rec?.distance_km != null ? rec.distance_km : '');
-  setVal('qeUnitPrice', rec?.unit_price_per_km != null ? rec.unit_price_per_km : '');
-  setVal('qePurpose', rec?.purpose || '');
-  setVal('qeAmount', rec?.amount != null ? rec.amount : '');
-  setVal('qeSiteName', rec?.site_name || '');
-  setVal('qeItemName', rec?.item_name || '');
-  setVal('qeVendor', rec?.vendor || '');
-  setVal('qeMemo', rec?.memo || '');
-  try { const c = document.getElementById('qeTeiki'); if (c) c.checked = !!rec?.teiki_flag; } catch (e) { /* silently ignored */ }
-  // Ẩn/hiện field theo 種別 trong modal sửa (goods -> hiện 購入物品名/購入先, ẩn giao thông).
-  const qeToggleByType = () => {
-    const isGoods = (document.getElementById('qeType')?.value || '') === 'goods';
-    const setQeRow = (id, visible) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const wrap = el.parentElement;
-      const label = wrap ? wrap.previousElementSibling : null;
-      if (wrap) wrap.style.display = visible ? '' : 'none';
-      if (label) label.style.display = visible ? '' : 'none';
-    };
-    ['qeOrigin', 'qeVia', 'qeDestination', 'qeTripType', 'qeTripCount', 'qeKm', 'qeUnitPrice', 'qeTeiki']
-      .forEach((id) => setQeRow(id, !isGoods));
-    setQeRow('qeItemName', isGoods);
-    setQeRow('qeVendor', isGoods);
-  };
-  try { document.getElementById('qeType')?.addEventListener('change', qeToggleByType); qeToggleByType(); } catch (e) { /* silently ignored */ }
-  const close = () => { try { modal.remove(); } catch (e) { /* silently ignored */ } try { backdrop.remove(); } catch (e) { /* silently ignored */ } };
-  return await new Promise((resolve) => {
-    const cancelBtn = document.getElementById('qeCancel');
-    const saveBtn = document.getElementById('qeSave');
-    const onCancel = () => { close(); resolve(false); };
-    const onSave = async () => {
-      saveBtn.disabled = true;
-      const payload = {
-        date: document.getElementById('qeDate')?.value || '',
-        type: document.getElementById('qeType')?.value || 'train',
-        origin: document.getElementById('qeOrigin')?.value || '',
-        via: document.getElementById('qeVia')?.value || '',
-        destination: document.getElementById('qeDestination')?.value || '',
-        trip_type: document.getElementById('qeTripType')?.value || 'one_way',
-        trip_count: Number(document.getElementById('qeTripCount')?.value || 1) || 1,
-        distance_km: (() => { const n = Number(document.getElementById('qeKm')?.value || ''); return Number.isFinite(n) ? n : null; })(),
-        unit_price_per_km: (() => { const n = Number(document.getElementById('qeUnitPrice')?.value || ''); return Number.isFinite(n) ? n : null; })(),
-        purpose: document.getElementById('qePurpose')?.value || '',
-        amount: Number(document.getElementById('qeAmount')?.value || 0) || 0,
-        teiki_flag: !!document.getElementById('qeTeiki')?.checked,
-        site_name: document.getElementById('qeSiteName')?.value || '',
-        item_name: document.getElementById('qeItemName')?.value || '',
-        vendor: document.getElementById('qeVendor')?.value || '',
-        memo: document.getElementById('qeMemo')?.value || ''
-      };
-      try {
-        await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) });
-        close();
-        resolve(true);
-      } catch (e) {
-        showErr(e?.message || '保存に失敗しました');
-        saveBtn.disabled = false;
-      }
-    };
-    const closeBtn = document.getElementById('qeClose');
-    cancelBtn?.addEventListener('click', onCancel);
-    closeBtn?.addEventListener('click', onCancel);
-    backdrop.addEventListener('click', onCancel);
-    saveBtn?.addEventListener('click', onSave);
-  });
-};
-const renderList = async () => {
-  if (renderListBusy) { renderListPending = true; return; }
-  const host = $('#exListHost');
-  if (!host) return;
-  const now = Date.now();
-  if (now < listRateLimitedUntilMs) {
-    const waitSec = Math.max(1, Math.ceil((listRateLimitedUntilMs - now) / 1000));
-    host.innerHTML = `<div style="color:#b45309;font-weight:700;">アクセスが集中しています。${waitSec}秒後に再試行してください。</div>`;
-    return;
-  }
-  renderListBusy = true;
-  host.innerHTML = '<div style="color:#475569;font-weight:650;">読み込み中…</div>';
-  const boardHost = $('#exMonthlyBoardHost');
-
-  const renderDashboardCards = (months) => {
-    const list = Array.isArray(months) ? months : [];
-    let all = 0, allAmt = 0;
-    let pending = 0, pendingAmt = 0;
-    let approved = 0, approvedAmt = 0;
-    let paid = 0, paidAmt = 0;
-    let rejected = 0, rejectedAmt = 0;
-
-    for (const r of list) {
-      const st = String(r.status || '').toLowerCase();
-      if (st === 'draft') continue;
-      const amt = Number(r.amount) || 0;
-      
-      // "すべて" (All) tab ignores "paid" (支給済み) items to keep the view clean
-      if (st !== 'paid') {
-        all++;
-        allAmt += amt;
-      }
-      
-      if (st === 'applied') { pending++; pendingAmt += amt; }
-      else if (st === 'approved') { approved++; approvedAmt += amt; }
-      else if (st === 'paid') { paid++; paidAmt += amt; }
-      else if (st === 'rejected') { rejected++; rejectedAmt += amt; }
-    }
-
-    const fmtMoney = (v) => '¥' + Number(v).toLocaleString('ja-JP');
-    const setCard = (idPfx, count, amount) => {
-      const c = document.getElementById(`${idPfx}Count`);
-      if (c) c.textContent = count;
-      const a = document.getElementById(`${idPfx}Amount`);
-      if (a) a.textContent = fmtMoney(amount);
-    };
-
-    setCard('sumAll', all, allAmt);
-    setCard('sumPending', pending, pendingAmt);
-    setCard('sumApproved', approved, approvedAmt);
-    setCard('sumPaid', paid, paidAmt);
-    setCard('sumRejected', rejected, rejectedAmt);
-
-    document.querySelectorAll('.summary-card').forEach(card => {
-      if (card.dataset.type === activeSummaryCard) {
-        card.style.border = '2px solid var(--brand)';
-        card.style.boxShadow = '0 4px 12px rgba(37,99,235,0.15)';
-        card.style.background = '#f8fafc';
-      } else {
-        card.style.border = '1px solid var(--border)';
-        card.style.boxShadow = 'none';
-        card.style.background = '#fff';
-      }
-      card.style.cursor = 'pointer';
-    });
-  };
-
-  const renderMonthlyBoard = (monthRows, rows) => {
-    if (!boardHost) return;
-    const list = Array.isArray(rows) ? rows : [];
-    const monthList = Array.isArray(monthRows) ? monthRows : [];
-    const g = new Map();
-    for (const m of monthList) {
-      const ym = String(m?.month || '');
-      if (!/^\d{4}-\d{2}$/.test(ym)) continue;
-      
-      // Filter by global year if selected
-      const globalYear = document.getElementById('exFilterYearGlobal')?.value;
-      if (globalYear && !ym.startsWith(globalYear)) continue;
-
-      const prev = g.get(ym) || { ym, count: 0, amount: 0, status: m.status || 'draft', updated: m.updated_at || m.created_at || '' };
-      g.set(ym, prev);
-    }
-    for (const r of list) {
-      const st = String(r.status || '').toLowerCase();
-      if (activeHistoryTab === 'applied' && !isSubmittedStatus(st)) continue;
-      const ym = String(r.date || '').slice(0, 7);
-      if (!/^\d{4}-\d{2}$/.test(ym)) continue;
-      
-      // Filter by global year if selected
-      const globalYear = document.getElementById('exFilterYearGlobal')?.value;
-      if (globalYear && !ym.startsWith(globalYear)) continue;
-
-      const prev = g.get(ym) || { ym, count: 0, amount: 0, status: st, updated: '' };
-      prev.count += 1;
-      prev.amount += Number(r.amount) || 0;
-
-      if (!prev._claims) prev._claims = [];
-      prev._claims.push(st);
-
-      g.set(ym, prev);
-    }
-
-    for (const prev of g.values()) {
-      if (prev._claims && prev._claims.length > 0) {
-        if (prev._claims.includes('rejected')) prev.status = 'rejected';
-        else if (prev._claims.includes('applied')) prev.status = 'applied';
-        else if (prev._claims.includes('approved')) prev.status = 'approved';
-        else if (prev._claims.includes('paid')) prev.status = 'paid';
-      }
-    }
-
-    const allMonths = Array.from(g.values()).sort((a, b) => String(b.ym).localeCompare(String(a.ym)));
-    
-    const filteredMonths = activeSummaryCard === 'all' 
-      ? allMonths.filter(m => m.status !== 'paid') 
-      : allMonths.filter(m => {
-          if (activeSummaryCard === 'pending') return m.status === 'applied';
-          return m.status === activeSummaryCard;
-        });
-
-    if (activeSummaryCard === '') {
-      boardHost.style.display = 'none';
-      return allMonths;
-    }
-
-    if (filteredMonths.length === 0) {
-      boardHost.style.display = 'block';
-      const selectedGlobalYear = document.getElementById('exFilterYearGlobal')?.value;
-      let msg = '該当する申請履歴がありません。';
-      if (selectedGlobalYear) {
-        msg = `${selectedGlobalYear}年の交通費申請履歴はありません。`;
-      }
-      boardHost.innerHTML = `
+    `,document.head.appendChild(h)}document.body.appendChild(d),document.body.appendChild(r);const y=(h,A)=>{const _=document.getElementById(h);_&&(_.value=A==null?"":String(A))};y("qeDate",s?.date?String(s.date).slice(0,10):Ye()),y("qeType",s?.type||s?.category||"train"),y("qeOrigin",s?.origin||""),y("qeVia",s?.via||""),y("qeDestination",s?.destination||""),y("qeTripType",s?.trip_type||"one_way"),y("qeTripCount",s?.trip_count!=null?s.trip_count:1),y("qeKm",s?.distance_km!=null?s.distance_km:""),y("qeUnitPrice",s?.unit_price_per_km!=null?s.unit_price_per_km:""),y("qePurpose",s?.purpose||""),y("qeAmount",s?.amount!=null?s.amount:""),y("qeSiteName",s?.site_name||""),y("qeItemName",s?.item_name||""),y("qeVendor",s?.vendor||""),y("qeMemo",s?.memo||"");try{const h=document.getElementById("qeTeiki");h&&(h.checked=!!s?.teiki_flag)}catch{}const S=()=>{const h=(document.getElementById("qeType")?.value||"")==="goods",A=(_,ae)=>{const be=document.getElementById(_);if(!be)return;const W=be.parentElement,Ne=W?W.previousElementSibling:null;W&&(W.style.display=ae?"":"none"),Ne&&(Ne.style.display=ae?"":"none")};["qeOrigin","qeVia","qeDestination","qeTripType","qeTripCount","qeKm","qeUnitPrice","qeTeiki"].forEach(_=>A(_,!h)),A("qeItemName",h),A("qeVendor",h)};try{document.getElementById("qeType")?.addEventListener("change",S),S()}catch{}const de=()=>{try{r.remove()}catch{}try{d.remove()}catch{}};return await new Promise(h=>{const A=document.getElementById("qeCancel"),_=document.getElementById("qeSave"),ae=()=>{de(),h(!1)},be=async()=>{_.disabled=!0;const Ne={date:document.getElementById("qeDate")?.value||"",type:document.getElementById("qeType")?.value||"train",origin:document.getElementById("qeOrigin")?.value||"",via:document.getElementById("qeVia")?.value||"",destination:document.getElementById("qeDestination")?.value||"",trip_type:document.getElementById("qeTripType")?.value||"one_way",trip_count:Number(document.getElementById("qeTripCount")?.value||1)||1,distance_km:(()=>{const Ie=Number(document.getElementById("qeKm")?.value||"");return Number.isFinite(Ie)?Ie:null})(),unit_price_per_km:(()=>{const Ie=Number(document.getElementById("qeUnitPrice")?.value||"");return Number.isFinite(Ie)?Ie:null})(),purpose:document.getElementById("qePurpose")?.value||"",amount:Number(document.getElementById("qeAmount")?.value||0)||0,teiki_flag:!!document.getElementById("qeTeiki")?.checked,site_name:document.getElementById("qeSiteName")?.value||"",item_name:document.getElementById("qeItemName")?.value||"",vendor:document.getElementById("qeVendor")?.value||"",memo:document.getElementById("qeMemo")?.value||""};try{await U(`/api/expenses/${encodeURIComponent(o)}`,{method:"PATCH",body:JSON.stringify(Ne)}),de(),h(!0)}catch(Ie){G(Ie?.message||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F"),_.disabled=!1}},W=document.getElementById("qeClose");A?.addEventListener("click",ae),W?.addEventListener("click",ae),d.addEventListener("click",ae),_?.addEventListener("click",be)})},ne=async()=>{if(mt){yt=!0;return}const t=b("#exListHost");if(!t)return;const o=Date.now();if(o<gt){const L=Math.max(1,Math.ceil((gt-o)/1e3));t.innerHTML=`<div style="color:#b45309;font-weight:700;">\u30A2\u30AF\u30BB\u30B9\u304C\u96C6\u4E2D\u3057\u3066\u3044\u307E\u3059\u3002${L}\u79D2\u5F8C\u306B\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002</div>`;return}mt=!0,t.innerHTML='<div style="color:#475569;font-weight:650;">\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>';const s=b("#exMonthlyBoardHost"),d=L=>{const Y=Array.isArray(L)?L:[];let ce=0,ee=0,M=0,N=0,O=0,z=0,ye=0,ve=0,B=0,l=0;for(const g of Y){const I=String(g.status||"").toLowerCase();if(I==="draft")continue;const x=Number(g.amount)||0;I!=="paid"&&(ce++,ee+=x),I==="applied"?(M++,N+=x):I==="approved"?(O++,z+=x):I==="paid"?(ye++,ve+=x):I==="rejected"&&(B++,l+=x)}const i=g=>"\xA5"+Number(g).toLocaleString("ja-JP"),p=(g,I,x)=>{const K=document.getElementById(`${g}Count`);K&&(K.textContent=I);const le=document.getElementById(`${g}Amount`);le&&(le.textContent=i(x))};p("sumAll",ce,ee),p("sumPending",M,N),p("sumApproved",O,z),p("sumPaid",ye,ve),p("sumRejected",B,l),document.querySelectorAll(".summary-card").forEach(g=>{g.dataset.type===ie?(g.style.border="2px solid var(--brand)",g.style.boxShadow="0 4px 12px rgba(37,99,235,0.15)",g.style.background="#f8fafc"):(g.style.border="1px solid var(--border)",g.style.boxShadow="none",g.style.background="#fff"),g.style.cursor="pointer"})},r=(L,Y)=>{if(!s)return;const ce=Array.isArray(Y)?Y:[],ee=Array.isArray(L)?L:[],M=new Map;for(const i of ee){const p=String(i?.month||"");if(!/^\d{4}-\d{2}$/.test(p))continue;const g=document.getElementById("exFilterYearGlobal")?.value;if(g&&!p.startsWith(g))continue;const I=M.get(p)||{ym:p,count:0,amount:0,status:i.status||"draft",updated:i.updated_at||i.created_at||""};M.set(p,I)}for(const i of ce){const p=String(i.status||"").toLowerCase();if(q==="applied"&&!vt(p))continue;const g=String(i.date||"").slice(0,7);if(!/^\d{4}-\d{2}$/.test(g))continue;const I=document.getElementById("exFilterYearGlobal")?.value;if(I&&!g.startsWith(I))continue;const x=M.get(g)||{ym:g,count:0,amount:0,status:p,updated:""};x.count+=1,x.amount+=Number(i.amount)||0,x._claims||(x._claims=[]),x._claims.push(p),M.set(g,x)}for(const i of M.values())i._claims&&i._claims.length>0&&(i._claims.includes("rejected")?i.status="rejected":i._claims.includes("applied")?i.status="applied":i._claims.includes("approved")?i.status="approved":i._claims.includes("paid")&&(i.status="paid"));const N=Array.from(M.values()).sort((i,p)=>String(p.ym).localeCompare(String(i.ym))),O=ie==="all"?N.filter(i=>i.status!=="paid"):N.filter(i=>ie==="pending"?i.status==="applied":i.status===ie);if(ie==="")return s.style.display="none",N;if(O.length===0){s.style.display="block";const i=document.getElementById("exFilterYearGlobal")?.value;let p="\u8A72\u5F53\u3059\u308B\u7533\u8ACB\u5C65\u6B74\u304C\u3042\u308A\u307E\u305B\u3093\u3002";i&&(p=`${i}\u5E74\u306E\u4EA4\u901A\u8CBB\u7533\u8ACB\u5C65\u6B74\u306F\u3042\u308A\u307E\u305B\u3093\u3002`),s.innerHTML=`
         <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--border);">
-            <div style="font-weight: 700; color: #475569; font-size: 14px;">月別一覧</div>
+            <div style="font-weight: 700; color: #475569; font-size: 14px;">\u6708\u5225\u4E00\u89A7</div>
             <button type="button" class="btn" data-action="close-monthly-board" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
-              <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
+              <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">\u9589\u3058\u308B</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
           <div style="padding: 40px 20px; text-align: center; color: #64748b; font-weight: 700;">
-            <div style="margin-bottom: 16px;">${msg}</div>
-            <button type="button" onclick="document.getElementById('expNavNew')?.click()" style="background: #2563eb; color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;">＋ 新規作成</button>
+            <div style="margin-bottom: 16px;">${p}</div>
+            <button type="button" onclick="document.getElementById('expNavNew')?.click()" style="background: #2563eb; color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;">\uFF0B \u65B0\u898F\u4F5C\u6210</button>
           </div>
-        </div>`;
-      // Gắn handler đóng bảng 月別一覧 -> quay về summary cards (nhánh rỗng return sớm
-      // nên handler chung phía dưới chưa chạy; gắn trực tiếp ở đây).
-      const closeEmptyBoard = boardHost.querySelector('button[data-action="close-monthly-board"]');
-      if (closeEmptyBoard) {
-        closeEmptyBoard.addEventListener('click', () => {
-          boardHost.style.display = 'none';
-          activeSummaryCard = '';
-          document.querySelectorAll('.summary-card').forEach(card => {
-            card.style.border = '1px solid var(--border)';
-            card.style.boxShadow = 'none';
-            card.style.background = '#fff';
-          });
-          const summaryCards = document.getElementById('exSummaryCards');
-          if (summaryCards) summaryCards.style.display = 'grid';
-        });
-      }
-      return allMonths;
-    }
-
-    // Default to hide the table, only show if activeSummaryCard is NOT empty
-      if (activeSummaryCard === '') {
-        boardHost.style.display = 'none';
-        const summaryCards = document.getElementById('exSummaryCards');
-        if (summaryCards) summaryCards.style.display = 'grid';
-        return allMonths;
-      }
-
-      // Hiển thị bảng tháng chi phí theo tháng
-      boardHost.style.display = 'block';
-      const summaryCards = document.getElementById('exSummaryCards');
-      if (summaryCards) summaryCards.style.display = 'none';
-// hiển thị trạng thái chi phí
-    const getStatusHtml = (st) => {
-      // hiển thị trạng thái chi phí theo tháng
-      const s = String(st).toLowerCase();
-      
-      if (s === 'applied') return '<span style="background: #fff7ed; color: #ea580c; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">申請中</span>';
-      if (s === 'approved') return '<span style="background: #f0fdf4; color: #16a34a; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">承認済み</span>';
-      if (s === 'paid') return '<span style="background: #faf5ff; color: #9333ea; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">支給済み</span>';
-      if (s === 'rejected') return '<span style="background: #fef2f2; color: #dc2626; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">差戻し</span>';
-      return '<span style="background: #f1f5f9; color: #64748b; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">未申請</span>';
-    };
-// hiển thị số tiền chi phí theo tháng
-    const fmtMoney = (v) => '¥' + Number(v).toLocaleString('ja-JP');
-    // hiển thị ngày cuối cùng cập nhật theo tháng
-    const fmtDate = (v) => v ? String(v).slice(0, 10).replace(/-/g, '/') : '-';
-// hàm này hiển thị bảng tháng chi phí theo tháng
-    const tableHtml = `
+        </div>`;const g=s.querySelector('button[data-action="close-monthly-board"]');return g&&g.addEventListener("click",()=>{s.style.display="none",ie="",document.querySelectorAll(".summary-card").forEach(x=>{x.style.border="1px solid var(--border)",x.style.boxShadow="none",x.style.background="#fff"});const I=document.getElementById("exSummaryCards");I&&(I.style.display="grid")}),N}if(ie===""){s.style.display="none";const i=document.getElementById("exSummaryCards");return i&&(i.style.display="grid"),N}s.style.display="block";const z=document.getElementById("exSummaryCards");z&&(z.style.display="none");const ye=i=>{const p=String(i).toLowerCase();return p==="applied"?'<span style="background: #fff7ed; color: #ea580c; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">\u7533\u8ACB\u4E2D</span>':p==="approved"?'<span style="background: #f0fdf4; color: #16a34a; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">\u627F\u8A8D\u6E08\u307F</span>':p==="paid"?'<span style="background: #faf5ff; color: #9333ea; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">\u652F\u7D66\u6E08\u307F</span>':p==="rejected"?'<span style="background: #fef2f2; color: #dc2626; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">\u5DEE\u623B\u3057</span>':'<span style="background: #f1f5f9; color: #64748b; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;">\u672A\u7533\u8ACB</span>'},ve=i=>"\xA5"+Number(i).toLocaleString("ja-JP"),B=i=>i?String(i).slice(0,10).replace(/-/g,"/"):"-",l=`
   
       <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; position: relative;">
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--border);">
-          <div style="font-weight: 700; color: #475569; font-size: 14px;">月別一覧</div>
+          <div style="font-weight: 700; color: #475569; font-size: 14px;">\u6708\u5225\u4E00\u89A7</div>
           <button type="button" class="btn" data-action="close-monthly-board" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
-            <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
+            <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">\u9589\u3058\u308B</span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
@@ -783,2200 +85,266 @@ const renderList = async () => {
             <table class="adj-table" style="width: 100%; border-collapse: collapse; background: #fff; border: none; min-width: 600px;">
               <thead>
                 <tr style="background: #f8fafc;">
-                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">申請月</th>
-                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">申請番号</th>
-                  <th style="padding: 14px 12px; text-align: right; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">合計金額</th>
-                  <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">ステータス</th>
-                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">最終更新日</th>
-                  <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">操作</th>
+                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">\u7533\u8ACB\u6708</th>
+                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">\u7533\u8ACB\u756A\u53F7</th>
+                  <th style="padding: 14px 12px; text-align: right; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">\u5408\u8A08\u91D1\u984D</th>
+                  <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">\u30B9\u30C6\u30FC\u30BF\u30B9</th>
+                  <th style="padding: 14px 12px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; display: none;">\u6700\u7D42\u66F4\u65B0\u65E5</th>
+                  <th style="padding: 14px 12px; text-align: center; color: #475569; font-weight: 800; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap;">\u64CD\u4F5C</th>
                 </tr>
               </thead>
               <tbody>
-                ${filteredMonths.map(m => `
+                ${O.map(i=>`
                   <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;">
-                    <td style="padding: 14px 12px; color: var(--brand); font-weight: 800; font-size: 14px; white-space: nowrap;">${m.ym.replace('-', '年')}月</td>
-                    <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">TRF-${m.ym.replace('-', '')}-001</td>
-                    <td style="padding: 14px 12px; text-align: right; font-weight: 800; color: #0f172a; font-size: 14px; white-space: nowrap;">${fmtMoney(m.amount)}</td>
-                    <td style="padding: 14px 12px; text-align: center; white-space: nowrap;">${getStatusHtml(m.status)}</td>
-                    <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">${fmtDate(m.updated)}</td>
+                    <td style="padding: 14px 12px; color: var(--brand); font-weight: 800; font-size: 14px; white-space: nowrap;">${i.ym.replace("-","\u5E74")}\u6708</td>
+                    <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">TRF-${i.ym.replace("-","")}-001</td>
+                    <td style="padding: 14px 12px; text-align: right; font-weight: 800; color: #0f172a; font-size: 14px; white-space: nowrap;">${ve(i.amount)}</td>
+                    <td style="padding: 14px 12px; text-align: center; white-space: nowrap;">${ye(i.status)}</td>
+                    <td style="padding: 14px 12px; color: #475569; font-size: 13px; display: none;">${B(i.updated)}</td>
                     <td style="padding: 14px 12px; text-align: center; white-space: nowrap;">
                       <div style="display: flex; gap: 6px; justify-content: center;">
-                        <button type="button" class="btn" data-action="open-month" data-month="${m.ym}" data-status="${m.status}" style="background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px; transition: all 0.2s; white-space: nowrap;">詳細</button>
-                        ${(m.status === 'applied' || m.status === 'approved' || m.status === 'rejected') ? `<button type="button" class="btn" data-action="add-more" data-month="${m.ym}" style="background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px; transition: all 0.2s; white-space: nowrap;">追加</button>` : ''}
+                        <button type="button" class="btn" data-action="open-month" data-month="${i.ym}" data-status="${i.status}" style="background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px; transition: all 0.2s; white-space: nowrap;">\u8A73\u7D30</button>
+                        ${i.status==="applied"||i.status==="approved"||i.status==="rejected"?`<button type="button" class="btn" data-action="add-more" data-month="${i.ym}" style="background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 6px; padding: 0 12px; height: 32px; font-size: 12px; transition: all 0.2s; white-space: nowrap;">\u8FFD\u52A0</button>`:""}
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                `).join("")}
               </tbody>
             </table>
           </div>
           <!-- Mobile Card View -->
           <div class="expense-mobile-only" style="padding: 12px; background: #f1f5f9; display: flex; flex-direction: column; gap: 12px;">
-            ${filteredMonths.map(m => `
+            ${O.map(i=>`
               <div style="background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                  <div style="color: var(--brand); font-weight: 800; font-size: 16px;">${m.ym.replace('-', '年')}月</div>
-                  <div>${getStatusHtml(m.status)}</div>
+                  <div style="color: var(--brand); font-weight: 800; font-size: 16px;">${i.ym.replace("-","\u5E74")}\u6708</div>
+                  <div>${ye(i.status)}</div>
                 </div>
                 <div style="text-align: center; margin-bottom: 16px;">
-                  <div style="font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 4px;">合計金額</div>
-                  <div style="font-size: 24px; font-weight: 800; color: #0f172a;">${fmtMoney(m.amount)}</div>
+                  <div style="font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 4px;">\u5408\u8A08\u91D1\u984D</div>
+                  <div style="font-size: 24px; font-weight: 800; color: #0f172a;">${ve(i.amount)}</div>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                  <button type="button" class="btn" data-action="open-month" data-month="${m.ym}" data-status="${m.status}" style="flex: 1; background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 8px; height: 40px; font-size: 14px;">詳細を見る</button>
-                  ${(m.status === 'applied' || m.status === 'approved' || m.status === 'rejected') ? `<button type="button" class="btn" data-action="add-more" data-month="${m.ym}" style="flex: 1; background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 8px; height: 40px; font-size: 14px;">追加する</button>` : ''}
+                  <button type="button" class="btn" data-action="open-month" data-month="${i.ym}" data-status="${i.status}" style="flex: 1; background: #fff; border: 1px solid var(--border); color: var(--brand); font-weight: 700; border-radius: 8px; height: 40px; font-size: 14px;">\u8A73\u7D30\u3092\u898B\u308B</button>
+                  ${i.status==="applied"||i.status==="approved"||i.status==="rejected"?`<button type="button" class="btn" data-action="add-more" data-month="${i.ym}" style="flex: 1; background: var(--brand); border: none; color: #fff; font-weight: 700; border-radius: 8px; height: 40px; font-size: 14px;">\u8FFD\u52A0\u3059\u308B</button>`:""}
                 </div>
               </div>
-            `).join('')}
+            `).join("")}
           </div>
         </div>
       </div>
-    `;
-
-    boardHost.innerHTML = tableHtml;
-
-    if (boardHost.dataset.boundOpenMonth !== '1') {
-      boardHost.dataset.boundOpenMonth = '1';
-      boardHost.addEventListener('click', async (e) => {
-        const closeBtn = e.target.closest('button[data-action="close-monthly-board"]');
-        if (closeBtn) {
-            boardHost.style.display = 'none';
-            activeSummaryCard = '';
-            document.querySelectorAll('.summary-card').forEach(card => {
-              card.style.border = '1px solid var(--border)';
-              card.style.boxShadow = 'none';
-              card.style.background = '#fff';
-            });
-            const summaryCards = document.getElementById('exSummaryCards');
-            if (summaryCards) summaryCards.style.display = 'grid';
-            return;
-          }
-
-        const addBtn = e.target.closest('button[data-action="add-more"]');
-        if (addBtn) {
-          const m = String(addBtn.getAttribute('data-month') || '');
-          if (!/^\d{4}-\d{2}$/.test(m)) return;
-          window.createTargetMonth = m;
-          if (typeof window.startNewForMonth === 'function') {
-            window.startNewForMonth(m, { showProgress: false });
-          }
-          return;
-        }
-
-        const b = e.target.closest('button[data-action="open-month"]');
-        if (!b) return;
-        const m = String(b.getAttribute('data-month') || '');
-        if (!/^\d{4}-\d{2}$/.test(m)) return;
-
-        // Nếu status là draft/pending (chưa nộp) thì mở form tạo mới
-        const st = b.getAttribute('data-status') || '';
-        if (st === 'draft' || st === 'pending') {
-          window.createTargetMonth = m;
-          if (typeof window.startNewForMonth === 'function') {
-            window.startNewForMonth(m, { showProgress: false });
-          }
-          return;
-        }
-
-        selectedHistoryMonth = m;
-        const mf = document.getElementById('exFilterMonth');
-        if (mf) mf.value = selectedHistoryMonth;
-
-        // Ẩn bảng danh sách các tháng
-        if (boardHost) {
-          boardHost.style.display = 'none';
-        }
-
-        const summaryCards = document.getElementById('exSummaryCards');
-        if (summaryCards) summaryCards.style.display = 'none';
-
-        const listHost = document.getElementById('exListHost');
-        const listWrapper = document.getElementById('exListWrapper');
-        if (listHost) listHost.style.display = 'block';
-        if (listWrapper) listWrapper.style.display = 'block';
-        await renderList();
-      });
-    }
-    return allMonths;
-  };
-
-  const exAppMonth = document.getElementById('exAppMonth');
-  const exAppMemo = document.getElementById('exAppMemo');
-  const exAppItemsEmpty = document.getElementById('exAppItemsEmpty');
-  const exAppItemsList = document.getElementById('exAppItemsList');
-  const exAppTotalAmount = document.getElementById('exAppTotalAmount');
-  const exAppAddItemBtn = document.getElementById('exAppAddItemBtn');
-  const exAppCancelBtn = document.getElementById('exAppCancelBtn');
-  const exAppToConfirmBtn = document.getElementById('exAppToConfirmBtn');
-  const exAppBackToInputBtn = document.getElementById('exAppBackToInputBtn');
-  const exAppConfirmBtn = document.getElementById('exAppConfirmBtn');
-
-  const step1Input = document.getElementById('step1Input');
-  const step2Confirm = document.getElementById('step2Confirm');
-  const step3Complete = document.getElementById('step3Complete');
-
-  const progStep1 = document.getElementById('progStep1');
-  const progStep2 = document.getElementById('progStep2');
-  const progStep3 = document.getElementById('progStep3');
-  const progNum2 = document.getElementById('progNum2');
-  const progNum3 = document.getElementById('progNum3');
-
-  const confAppMonth = document.getElementById('confAppMonth');
-  const confAppItemsList = document.getElementById('confAppItemsList');
-  const confTotalAmount = document.getElementById('confTotalAmount');
-
-  const compAppNumber = document.getElementById('compAppNumber');
-  const compAppMonth = document.getElementById('compAppMonth');
-  const compTotalAmount = document.getElementById('compTotalAmount');
-
-  const exAppGoListBtn = document.getElementById('exAppGoListBtn');
-  const exAppContinueBtn = document.getElementById('exAppContinueBtn');
-  const exItemModal = document.getElementById('exItemModal');
-  const exItemModalClose = document.getElementById('exItemModalClose');
-  const exItemModalCancel = document.getElementById('exItemModalCancel');
-
-  const setProgressState = (step) => {
-    const progStep1 = document.getElementById('progStep1');
-    const progStep2 = document.getElementById('progStep2');
-    const progStep3 = document.getElementById('progStep3');
-    const progNum2 = document.getElementById('progNum2');
-    const progNum3 = document.getElementById('progNum3');
-    if (progStep1) {
-      progStep1.style.color = step >= 1 ? '#2563eb' : '#94a3b8';
-      progStep1.querySelector('div').style.background = step >= 1 ? '#2563eb' : '#f1f5f9';
-      progStep1.querySelector('div').style.color = step >= 1 ? '#fff' : '#94a3b8';
-    }
-    if (progStep2 && progNum2) {
-      progStep2.style.color = step >= 2 ? '#2563eb' : '#94a3b8';
-      progNum2.style.background = step >= 2 ? '#2563eb' : '#f1f5f9';
-      progNum2.style.color = step >= 2 ? '#fff' : '#94a3b8';
-    }
-    if (progStep3 && progNum3) {
-      progStep3.style.color = step >= 3 ? '#2563eb' : '#94a3b8';
-      progNum3.style.background = step >= 3 ? '#2563eb' : '#f1f5f9';
-      progNum3.style.color = step >= 3 ? '#fff' : '#94a3b8';
-    }
-  };
-
-  window.renderAppItemsList = async () => {
-    // Luôn lấy target month từ bộ nhớ tạm thay vì từ DOM vì form nhập không có thẻ exFilterMonth
-    const ym = window.createTargetMonth || document.getElementById('exFilterMonth')?.value || currentYM();
-    if (!ym) return;
-    try {
-      const q = `/api/expenses/my?month=${encodeURIComponent(ym)}&status=pending`;
-      // Use timestamp query param to completely bust browser cache
-      const cacheBuster = `&_t=${Date.now()}`;
-      const rawRows = await fetchJSONAuthSafe(q + cacheBuster);
-      const rows = Array.isArray(rawRows) ? rawRows.filter(r => {
-        const st = String(r?.status || '').toLowerCase();
-        return st === 'draft' || st === 'pending';
-      }) : [];
-
-      currentDraftsForConfirm = rows;
-      let total = 0;
-
-      const exAppItemsEmpty = document.getElementById('exAppItemsEmpty');
-      const exAppToConfirmBtn = document.getElementById('exAppToConfirmBtn');
-      const exAppTotalAmount = document.getElementById('exAppTotalAmount');
-
-      if (rows.length === 0) {
-        if (exAppItemsEmpty) exAppItemsEmpty.style.display = 'block';
-        if (exAppItemsList) exAppItemsList.style.display = 'none';
-        if (exAppToConfirmBtn) exAppToConfirmBtn.disabled = true;
-      } else {
-        if (exAppItemsEmpty) exAppItemsEmpty.style.display = 'none';
-        if (exAppItemsList) {
-          exAppItemsList.style.display = 'table-row-group';
-          if (exAppToConfirmBtn) exAppToConfirmBtn.disabled = false;
-
-          const typeMap = {
-            train: '電車', bus: 'バス', taxi: 'タクシー', car: '自家用車', parking: '駐車場', highway: '高速道路', goods: '物品購入'
-          };
-
-          const html = rows.map(r => {
-            const a = Number(r.amount || 0);
-            total += a;
-            const d = String(r.date || '').slice(0, 10).replace(/-/g, '/');
-            const isGoodsRow = String(r.type || r.category || '') === 'goods';
-            // Với 物品購入: hiển thị 購入物品名 (・購入先) thay cho lộ trình đi lại.
-            const route = isGoodsRow
-              ? ([r.item_name, r.vendor].filter(Boolean).join(' / ') || '-')
-              : ([r.origin, r.destination].filter(Boolean).join(' → ') || '-');
-            const purpose = r.purpose ? ` (${r.purpose})` : '';
-            const typeLabel = typeMap[r.type || r.category] || '電車';
-            const memo = r.memo || (r.teiki_flag ? '定期区間内' : '定期区間外');
-
-            return `
+    `;return s.innerHTML=l,s.dataset.boundOpenMonth!=="1"&&(s.dataset.boundOpenMonth="1",s.addEventListener("click",async i=>{if(i.target.closest('button[data-action="close-monthly-board"]')){s.style.display="none",ie="",document.querySelectorAll(".summary-card").forEach(we=>{we.style.border="1px solid var(--border)",we.style.boxShadow="none",we.style.background="#fff"});const se=document.getElementById("exSummaryCards");se&&(se.style.display="grid");return}const g=i.target.closest('button[data-action="add-more"]');if(g){const se=String(g.getAttribute("data-month")||"");if(!/^\d{4}-\d{2}$/.test(se))return;window.createTargetMonth=se,typeof window.startNewForMonth=="function"&&window.startNewForMonth(se,{showProgress:!1});return}const I=i.target.closest('button[data-action="open-month"]');if(!I)return;const x=String(I.getAttribute("data-month")||"");if(!/^\d{4}-\d{2}$/.test(x))return;const K=I.getAttribute("data-status")||"";if(K==="draft"||K==="pending"){window.createTargetMonth=x,typeof window.startNewForMonth=="function"&&window.startNewForMonth(x,{showProgress:!1});return}H=x;const le=document.getElementById("exFilterMonth");le&&(le.value=H),s&&(s.style.display="none");const Ae=document.getElementById("exSummaryCards");Ae&&(Ae.style.display="none");const Se=document.getElementById("exListHost"),$e=document.getElementById("exListWrapper");Se&&(Se.style.display="block"),$e&&($e.style.display="block"),await ne()})),N},y=document.getElementById("exAppMonth"),S=document.getElementById("exAppMemo"),de=document.getElementById("exAppItemsEmpty"),h=document.getElementById("exAppItemsList"),A=document.getElementById("exAppTotalAmount"),_=document.getElementById("exAppAddItemBtn"),ae=document.getElementById("exAppCancelBtn"),be=document.getElementById("exAppToConfirmBtn"),W=document.getElementById("exAppBackToInputBtn"),Ne=document.getElementById("exAppConfirmBtn"),Ie=document.getElementById("step1Input"),lt=document.getElementById("step2Confirm"),St=document.getElementById("step3Complete"),dt=document.getElementById("progStep1"),Bt=document.getElementById("progStep2"),Vt=document.getElementById("progStep3"),re=document.getElementById("progNum2"),Re=document.getElementById("progNum3"),It=document.getElementById("confAppMonth"),Je=document.getElementById("confAppItemsList"),kt=document.getElementById("confTotalAmount"),$t=document.getElementById("compAppNumber"),Pe=document.getElementById("compAppMonth"),ke=document.getElementById("compTotalAmount"),Ct=document.getElementById("exAppGoListBtn"),Xe=document.getElementById("exAppContinueBtn"),je=document.getElementById("exItemModal"),We=document.getElementById("exItemModalClose"),Ge=document.getElementById("exItemModalCancel"),Fe=L=>{const Y=document.getElementById("progStep1"),ce=document.getElementById("progStep2"),ee=document.getElementById("progStep3"),M=document.getElementById("progNum2"),N=document.getElementById("progNum3");Y&&(Y.style.color=L>=1?"#2563eb":"#94a3b8",Y.querySelector("div").style.background=L>=1?"#2563eb":"#f1f5f9",Y.querySelector("div").style.color=L>=1?"#fff":"#94a3b8"),ce&&M&&(ce.style.color=L>=2?"#2563eb":"#94a3b8",M.style.background=L>=2?"#2563eb":"#f1f5f9",M.style.color=L>=2?"#fff":"#94a3b8"),ee&&N&&(ee.style.color=L>=3?"#2563eb":"#94a3b8",N.style.background=L>=3?"#2563eb":"#f1f5f9",N.style.color=L>=3?"#fff":"#94a3b8")};if(window.renderAppItemsList=async()=>{const L=window.createTargetMonth||document.getElementById("exFilterMonth")?.value||Z();if(L)try{const Y=`/api/expenses/my?month=${encodeURIComponent(L)}&status=pending`,ce=`&_t=${Date.now()}`,ee=await Ce(Y+ce),M=Array.isArray(ee)?ee.filter(ve=>{const B=String(ve?.status||"").toLowerCase();return B==="draft"||B==="pending"}):[];at=M;let N=0;const O=document.getElementById("exAppItemsEmpty"),z=document.getElementById("exAppToConfirmBtn"),ye=document.getElementById("exAppTotalAmount");if(M.length===0)O&&(O.style.display="block"),h&&(h.style.display="none"),z&&(z.disabled=!0);else if(O&&(O.style.display="none"),h){h.style.display="table-row-group",z&&(z.disabled=!1);const ve={train:"\u96FB\u8ECA",bus:"\u30D0\u30B9",taxi:"\u30BF\u30AF\u30B7\u30FC",car:"\u81EA\u5BB6\u7528\u8ECA",parking:"\u99D0\u8ECA\u5834",highway:"\u9AD8\u901F\u9053\u8DEF",goods:"\u7269\u54C1\u8CFC\u5165"},B=M.map(l=>{const i=Number(l.amount||0);N+=i;const p=String(l.date||"").slice(0,10).replace(/-/g,"/"),I=String(l.type||l.category||"")==="goods"?[l.item_name,l.vendor].filter(Boolean).join(" / ")||"-":[l.origin,l.destination].filter(Boolean).join(" \u2192 ")||"-",x=l.purpose?` (${l.purpose})`:"",K=ve[l.type||l.category]||"\u96FB\u8ECA",le=l.memo||(l.teiki_flag?"\u5B9A\u671F\u533A\u9593\u5185":"\u5B9A\u671F\u533A\u9593\u5916");return`
                 <tr style="border-bottom: 1px solid #e2e8f0;">
                   <td style="padding: 12px 16px;">
                     <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; width: fit-content; gap: 8px;">
-                      <span>${d}</span>
+                      <span>${p}</span>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                     </div>
                   </td>
                 <td style="padding: 12px 16px;">
                   <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                    ${route}${purpose}
+                    ${I}${x}
                   </div>
                 </td>
                 <td style="padding: 12px 16px;">
                   <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; width: 100px;">
-                    <span>${typeLabel}</span>
+                    <span>${K}</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                   </div>
                 </td>
                 <td style="padding: 12px 16px; text-align: center;">
                   <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; display: inline-block; width: 80px; text-align: right;">
-                    ${a.toLocaleString('ja-JP')}
+                    ${i.toLocaleString("ja-JP")}
                   </div>
                 </td>
                 <td style="padding: 12px 16px;">
                   <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #fff; width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                    ${memo}
+                    ${le}
                   </div>
                 </td>
                 <td style="padding: 12px 16px; text-align: center; white-space: nowrap;">
-                  <button type="button" class="icon-btn" data-edit-draft="${r.id}" aria-label="編集" style="width:32px;height:32px;border:none;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#2563eb;cursor:pointer;margin-right:2px;">
+                  <button type="button" class="icon-btn" data-edit-draft="${l.id}" aria-label="\u7DE8\u96C6" style="width:32px;height:32px;border:none;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#2563eb;cursor:pointer;margin-right:2px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                   </button>
-                  <button type="button" class="icon-btn" data-del-draft="${r.id}" aria-label="削除" style="width:32px;height:32px;border:none;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#ef4444;cursor:pointer;">
+                  <button type="button" class="icon-btn" data-del-draft="${l.id}" aria-label="\u524A\u9664" style="width:32px;height:32px;border:none;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#ef4444;cursor:pointer;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                   </button>
                 </td>
               </tr>
-            `;
-          }).join('');
-          exAppItemsList.innerHTML = html;
-        }
-      }
-      currentTotalForConfirm = total;
-      if (exAppTotalAmount) exAppTotalAmount.textContent = `${total.toLocaleString('ja-JP')}`;
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  if (!window._expensesNewFlowBound) {
-    window._expensesNewFlowBound = true;
-    exAppItemsList?.addEventListener('click', async (e) => {
-      // Nút chỉnh sửa: mở modal sửa nhanh, lưu xong thì tải lại danh sách.
-      const editBtn = e.target.closest('button[data-edit-draft]');
-      if (editBtn) {
-        const editId = editBtn.getAttribute('data-edit-draft');
-        if (!editId) return;
-        try {
-          const changed = await openQuickEditExpense(editId);
-          if (changed) await renderAppItemsList();
-        } catch (err) {
-          showErr(err?.message || '編集に失敗しました');
-        }
-        return;
-      }
-      const btn = e.target.closest('button[data-del-draft]');
-      if (!btn) return;
-      const id = btn.getAttribute('data-del-draft');
-      if (!id || !window.confirm('この明細を削除しますか？')) return;
-      btn.disabled = true;
-      try {
-        await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
-        await renderAppItemsList();
-      } catch (err) {
-        showErr(err?.message || '削除に失敗しました');
-      }
-    });
-
-    exAppMonth?.addEventListener('change', renderAppItemsList);
-
-    const closeItemModal = () => {
-      if (exItemModal) exItemModal.style.display = 'none';
-    };
-
-    exAppAddItemBtn?.addEventListener('click', () => {
-      const m = document.getElementById('exFilterMonth')?.value || window.createTargetMonth || currentYM();
-      const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-      setVal('exDate', m + '-01');
-      setVal('exType', 'train');
-      setVal('exOrigin', '');
-      setVal('exVia', '');
-      setVal('exDestination', '');
-      setVal('exTripType', 'one_way');
-      setVal('exTripCount', '1');
-      setVal('exKm', '');
-      setVal('exUnitPrice', '');
-      setVal('exPurpose', '');
-      const teikiEl = document.getElementById('exTeiki'); if (teikiEl) teikiEl.checked = false;
-      setVal('exAmount', '');
-      setVal('exMemo', '');
-      setVal('exSiteName', '');
-      setVal('exItemName', '');
-      setVal('exVendor', '');
-      try { document.getElementById('exType')?.dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ }
-      if (exItemModal) exItemModal.style.display = 'flex';
-    });
-
-    exItemModalClose?.addEventListener('click', closeItemModal);
-    exItemModalCancel?.addEventListener('click', closeItemModal);
-
-    exAppCancelBtn?.addEventListener('click', async () => {
-    // go back to applied list
-    const m = document.getElementById('exFilterMonth');
-    const s = document.getElementById('exFilterStatus');
-    if (s) s.value = '';
-    formActive = false;
-    if (m) m.value = '';
-    
-    const navBtn = document.getElementById('expNavApplied') || document.getElementById('topNavApplied');
-    if (navBtn) {
-      navBtn.click();
-    } else {
-      window.location.reload();
-    }
-  });
-
-    const renderConfirmList = () => {
-      if (!confAppItemsList) return;
-      if (currentDraftsForConfirm.length === 0) {
-        confAppItemsList.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:#64748b;">明細がありません</td></tr>';
-        return;
-      }
-      const typeMap = {
-        train: '電車', bus: 'バス', taxi: 'タクシー', car: '自家用車', parking: '駐車場', highway: '高速道路'
-      };
-      confAppItemsList.innerHTML = currentDraftsForConfirm.map(r => {
-        const a = Number(r.amount || 0);
-        const d = String(r.date || '').slice(0, 10).replace(/-/g, '/');
-        const route = [r.origin, r.destination].filter(Boolean).join(' → ') || '-';
-        const purpose = r.purpose ? ` (${r.purpose})` : '';
-        const typeLabel = typeMap[r.type || r.category] || '電車';
-        const memo = r.memo || (r.teiki_flag ? '定期区間内' : '定期区間外');
-
-        return `
+            `}).join("");h.innerHTML=B}bt=N,ye&&(ye.textContent=`${N.toLocaleString("ja-JP")}`)}catch(Y){console.error(Y)}},!window._expensesNewFlowBound){window._expensesNewFlowBound=!0,h?.addEventListener("click",async B=>{const l=B.target.closest("button[data-edit-draft]");if(l){const g=l.getAttribute("data-edit-draft");if(!g)return;try{await Ot(g)&&await renderAppItemsList()}catch(I){G(I?.message||"\u7DE8\u96C6\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}return}const i=B.target.closest("button[data-del-draft]");if(!i)return;const p=i.getAttribute("data-del-draft");if(!(!p||!window.confirm("\u3053\u306E\u660E\u7D30\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F"))){i.disabled=!0;try{await U(`/api/expenses/${encodeURIComponent(p)}`,{method:"DELETE"}),await renderAppItemsList()}catch(g){G(g?.message||"\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}}}),y?.addEventListener("change",renderAppItemsList);const L=()=>{je&&(je.style.display="none")};_?.addEventListener("click",()=>{const B=document.getElementById("exFilterMonth")?.value||window.createTargetMonth||Z(),l=(p,g)=>{const I=document.getElementById(p);I&&(I.value=g)};l("exDate",B+"-01"),l("exType","train"),l("exOrigin",""),l("exVia",""),l("exDestination",""),l("exTripType","one_way"),l("exTripCount","1"),l("exKm",""),l("exUnitPrice",""),l("exPurpose","");const i=document.getElementById("exTeiki");i&&(i.checked=!1),l("exAmount",""),l("exMemo",""),l("exSiteName",""),l("exItemName",""),l("exVendor","");try{document.getElementById("exType")?.dispatchEvent(new Event("change"))}catch{}je&&(je.style.display="flex")}),We?.addEventListener("click",L),Ge?.addEventListener("click",L),ae?.addEventListener("click",async()=>{const B=document.getElementById("exFilterMonth"),l=document.getElementById("exFilterStatus");l&&(l.value=""),xe=!1,B&&(B.value="");const i=document.getElementById("expNavApplied")||document.getElementById("topNavApplied");i?i.click():window.location.reload()});const Y=()=>{if(!Je)return;if(at.length===0){Je.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:#64748b;">\u660E\u7D30\u304C\u3042\u308A\u307E\u305B\u3093</td></tr>';return}const B={train:"\u96FB\u8ECA",bus:"\u30D0\u30B9",taxi:"\u30BF\u30AF\u30B7\u30FC",car:"\u81EA\u5BB6\u7528\u8ECA",parking:"\u99D0\u8ECA\u5834",highway:"\u9AD8\u901F\u9053\u8DEF"};Je.innerHTML=at.map(l=>{const i=Number(l.amount||0),p=String(l.date||"").slice(0,10).replace(/-/g,"/"),g=[l.origin,l.destination].filter(Boolean).join(" \u2192 ")||"-",I=l.purpose?` (${l.purpose})`:"",x=B[l.type||l.category]||"\u96FB\u8ECA",K=l.memo||(l.teiki_flag?"\u5B9A\u671F\u533A\u9593\u5185":"\u5B9A\u671F\u533A\u9593\u5916");return`
         <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 12px 16px;">${d}</td>
-          <td style="padding: 12px 16px;">${route}${purpose}</td>
-          <td style="padding: 12px 16px;">${typeLabel}</td>
-          <td style="padding: 12px 16px; text-align: right;">${a.toLocaleString('ja-JP')}</td>
-          <td style="padding: 12px 16px;">${memo}</td>
+          <td style="padding: 12px 16px;">${p}</td>
+          <td style="padding: 12px 16px;">${g}${I}</td>
+          <td style="padding: 12px 16px;">${x}</td>
+          <td style="padding: 12px 16px; text-align: right;">${i.toLocaleString("ja-JP")}</td>
+          <td style="padding: 12px 16px;">${K}</td>
         </tr>
-      `;
-      }).join('');
-    };
-
-    const exAppToConfirmBtn = document.getElementById('exAppToConfirmBtn');
-    exAppToConfirmBtn?.addEventListener('click', () => {
-      if (currentDraftsForConfirm.length === 0) {
-        alert('申請する明細がありません。明細を追加してください。');
-        return;
-      }
-      const ym = window.createTargetMonth || document.getElementById('exFilterMonth')?.value || currentYM();
-      const confAppMonth = document.getElementById('confAppMonth');
-      const confTotalAmount = document.getElementById('confTotalAmount');
-      if (confAppMonth) confAppMonth.textContent = ym ? `${ym.slice(0, 4)}年${ym.slice(5, 7)}月` : '';
-      if (confTotalAmount) confTotalAmount.textContent = currentTotalForConfirm.toLocaleString('ja-JP');
-
-      renderConfirmList();
-
-      const step1Input = document.getElementById('step1Input');
-      const step2Confirm = document.getElementById('step2Confirm');
-      const step3Complete = document.getElementById('step3Complete');
-
-      if (step1Input) step1Input.style.display = 'none';
-      if (step2Confirm) step2Confirm.style.display = 'block';
-      if (step3Complete) step3Complete.style.display = 'none';
-      setProgressState(2);
-    });
-
-    const exAppBackToInputBtn = document.getElementById('exAppBackToInputBtn');
-    exAppBackToInputBtn?.addEventListener('click', () => {
-      const step1Input = document.getElementById('step1Input');
-      const step2Confirm = document.getElementById('step2Confirm');
-      const step3Complete = document.getElementById('step3Complete');
-      if (step1Input) step1Input.style.display = 'block';
-      if (step2Confirm) step2Confirm.style.display = 'none';
-      if (step3Complete) step3Complete.style.display = 'none';
-      setProgressState(1);
-    });
-
-    // Handle global files selection
-    const globalFilesInput = document.getElementById('exAppGlobalFiles');
-    const confFilesList = document.getElementById('confFilesList');
-    let selectedGlobalFiles = [];
-
-    globalFilesInput?.addEventListener('change', () => {
-      const files = Array.from(globalFilesInput.files || []);
-      selectedGlobalFiles = [...selectedGlobalFiles, ...files];
-
-      if (selectedGlobalFiles.length === 0) {
-        if (confFilesList) confFilesList.innerHTML = '添付ファイルはありません';
-        return;
-      }
-
-      if (confFilesList) {
-        confFilesList.innerHTML = selectedGlobalFiles.map((f, i) => {
-          const size = (f.size / 1024 / 1024).toFixed(1);
-          return `
+      `}).join("")};document.getElementById("exAppToConfirmBtn")?.addEventListener("click",()=>{if(at.length===0){alert("\u7533\u8ACB\u3059\u308B\u660E\u7D30\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u660E\u7D30\u3092\u8FFD\u52A0\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}const B=window.createTargetMonth||document.getElementById("exFilterMonth")?.value||Z(),l=document.getElementById("confAppMonth"),i=document.getElementById("confTotalAmount");l&&(l.textContent=B?`${B.slice(0,4)}\u5E74${B.slice(5,7)}\u6708`:""),i&&(i.textContent=bt.toLocaleString("ja-JP")),Y();const p=document.getElementById("step1Input"),g=document.getElementById("step2Confirm"),I=document.getElementById("step3Complete");p&&(p.style.display="none"),g&&(g.style.display="block"),I&&(I.style.display="none"),Fe(2)}),document.getElementById("exAppBackToInputBtn")?.addEventListener("click",()=>{const B=document.getElementById("step1Input"),l=document.getElementById("step2Confirm"),i=document.getElementById("step3Complete");B&&(B.style.display="block"),l&&(l.style.display="none"),i&&(i.style.display="none"),Fe(1)});const M=document.getElementById("exAppGlobalFiles"),N=document.getElementById("confFilesList");let O=[];M?.addEventListener("change",()=>{const B=Array.from(M.files||[]);if(O=[...O,...B],O.length===0){N&&(N.innerHTML="\u6DFB\u4ED8\u30D5\u30A1\u30A4\u30EB\u306F\u3042\u308A\u307E\u305B\u3093");return}N&&(N.innerHTML=O.map((l,i)=>{const p=(l.size/1024/1024).toFixed(1);return`
           <div style="display:flex;align-items:center;gap:8px;background:#f8fafc;padding:6px 12px;border-radius:4px;border:1px solid #e2e8f0;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            <span style="color:#0f172a;">${f.name}</span>
-            <span style="color:#64748b;font-size:12px;">(${size}MB)</span>
+            <span style="color:#0f172a;">${l.name}</span>
+            <span style="color:#64748b;font-size:12px;">(${p}MB)</span>
             <button type="button" data-rm-file="${i}" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:0;display:flex;align-items:center;margin-left:4px;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
-        `;
-        }).join('');
-      }
-
-      // Reset input so same file can be selected again if needed
-      globalFilesInput.value = '';
-    });
-
-    confFilesList?.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-rm-file]');
-      if (!btn) return;
-      const idx = parseInt(btn.getAttribute('data-rm-file'), 10);
-      if (!isNaN(idx)) {
-        selectedGlobalFiles.splice(idx, 1);
-        if (selectedGlobalFiles.length === 0) {
-          confFilesList.innerHTML = '添付ファイルはありません';
-        } else {
-          // re-render by triggering a fake change event
-          const evt = new Event('change');
-          globalFilesInput.dispatchEvent(evt);
-        }
-      }
-    });
-
-    const exAppConfirmBtn = document.getElementById('exAppConfirmBtn');
-    exAppConfirmBtn?.addEventListener('click', async () => {
-      // Apply all drafts for this month
-      const ym = document.getElementById('exFilterMonth')?.value || window.createTargetMonth || currentYM();
-      if (!ym) return;
-
-      // Check if there are any drafts
-      try {
-        const ym = window.createTargetMonth || document.getElementById('exFilterMonth')?.value || currentYM();
-        const q = `/api/expenses/my?month=${encodeURIComponent(ym)}&status=pending`;
-        const cacheBuster = `&_t=${Date.now()}`;
-        const rawRows = await fetchJSONAuthSafe(q + cacheBuster);
-        const rows = Array.isArray(rawRows) ? rawRows.filter(r => {
-          const st = String(r?.status || '').toLowerCase();
-          return st === 'draft' || st === 'pending';
-        }) : [];
-        if (rows.length === 0) {
-          showErr('申請する明細がありません。');
-          return;
-        }
-
-        exAppConfirmBtn.disabled = true;
-        exAppConfirmBtn.textContent = '申請中...';
-
-        // Use bulk apply endpoint
-        await fetchJSONAuth('/api/expenses/months/apply', {
-          method: 'POST',
-          body: JSON.stringify({ month: ym })
-        });
-
-        // Success! Move to Step 3.
-        const step1Input = document.getElementById('step1Input');
-        const step2Confirm = document.getElementById('step2Confirm');
-        const step3Complete = document.getElementById('step3Complete');
-
-        if (step1Input) step1Input.style.display = 'none';
-        if (step2Confirm) step2Confirm.style.display = 'none';
-        if (step3Complete) step3Complete.style.display = 'block';
-        setProgressState(3);
-
-        // Populate step 3 info
-        const compAppNumber = document.getElementById('compAppNumber');
-        const compAppMonth = document.getElementById('compAppMonth');
-        const compTotalAmount = document.getElementById('compTotalAmount');
-        if (compAppNumber) compAppNumber.textContent = `TRF-${ym.replace('-', '')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
-        if (compAppMonth) compAppMonth.textContent = `${ym.slice(0, 4)}年${ym.slice(5, 7)}月`;
-        if (compTotalAmount) compTotalAmount.textContent = currentTotalForConfirm.toLocaleString('ja-JP');
-
-      } catch (e) {
-        showErr(e?.message || '申請に失敗しました');
-      } finally {
-        exAppConfirmBtn.disabled = false;
-        exAppConfirmBtn.textContent = '申請する';
-      }
-    });
-
-    const exAppGoListBtn = document.getElementById('exAppGoListBtn');
-    exAppGoListBtn?.addEventListener('click', async () => {
-    const ym = document.getElementById('exFilterMonth')?.value || window.createTargetMonth || currentYM();
-    const m = document.getElementById('exFilterMonth');
-    const s = document.getElementById('exFilterStatus');
-    if (s) s.value = '';
-    formActive = false;
-    if (m && ym) m.value = ym;
-    
-    // Instead of calling showTab which is local to bootExpensesPage, simulate a click on the navigation tab
-    const navBtn = document.getElementById('expNavApplied') || document.getElementById('topNavApplied');
-    if (navBtn) {
-      navBtn.click();
-    } else {
-      window.location.reload();
-    }
-  });
-
-    const exAppContinueBtn = document.getElementById('exAppContinueBtn');
-    exAppContinueBtn?.addEventListener('click', () => {
-      document.getElementById('exHistoryNewBtn')?.click();
-    });
-  }
-
-  try {
-    const statusRaw = document.getElementById('exFilterStatus')?.value || '';
-    const status = activeHistoryTab === 'applied' ? '' : statusRaw;
-    const sf = document.getElementById('exFilterStatus');
-    if (activeHistoryTab === 'applied' && sf) sf.value = '';
-    if (activeHistoryTab === 'applied' || activeHistoryTab === 'notice') {
-      let months = [];
-      let monthlyRows = [];
-      try {
-        const r = await fetchJSONAuthSafe('/api/expenses/months/my');
-        months = Array.isArray(r) ? r : [];
-      } catch (e) {
-        // Backward compatibility: if backend route is not deployed yet, keep old flow.
-        if (!isNotFoundErr(e)) throw e;
-      }
-      try {
-        const active = await fetchJSONAuthSafe('/api/expenses/months/active');
-        const ym = String(active?.month || '');
-        if (/^\d{4}-\d{2}$/.test(ym) && !months.some((m) => String(m?.month || '') === ym)) {
-          months.push({ month: ym, is_active: 1, status: String(active?.status || 'draft') });
-        }
-      } catch (e) { /* silently ignored */ }
-      monthMetaByYm = new Map();
-      for (const m of (Array.isArray(months) ? months : [])) {
-        const ym = String(m?.month || '');
-        if (/^\d{4}-\d{2}$/.test(ym)) monthMetaByYm.set(ym, m);
-      }
-      monthlyRows = await fetchJSONAuthSafeCached('/api/expenses/my', 8000);
-      const generatedMonths = renderMonthlyBoard(months, monthlyRows);
-      renderDashboardCards(generatedMonths || []);
-    } else {
-      monthMetaByYm = new Map();
-      renderMonthlyBoard([], []);
-      renderDashboardCards([]);
-    }
-
-    const month = selectedHistoryMonth || document.getElementById('exFilterMonth')?.value || currentYM();
-      const monthJa = fmtYmJa(month);
-
-      const summaryCards = document.getElementById('exSummaryCards');
-      if (summaryCards && activeHistoryTab === 'applied' && !selectedHistoryMonth) {
-        summaryCards.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
-      }
-
-      window.goBackToAppliedList = async () => {
-      showMonthProgressInNewMode = false;
-      formActive = false;
-      selectedHistoryMonth = '';
-      activeSummaryCard = ''; // Đổi thành chuỗi rỗng để không hiển thị bảng theo mặc định
-      const m = document.getElementById('exFilterMonth');
-      if (m) m.value = '';
-      const s = document.getElementById('exFilterStatus');
-      if (s) s.value = '';
-      
-      // Bỏ chọn tất cả các thẻ thống kê khi quay lại tab
-      document.querySelectorAll('.summary-card').forEach(card => {
-        card.style.border = '1px solid var(--border)';
-        card.style.boxShadow = 'none';
-        card.style.background = '#fff';
-      });
-
-      try {
-        await showTab('applied');
-        await renderList();
-      } catch (e) {
-        window.location.reload();
-      }
-    };
-
-    if (activeHistoryTab === 'applied' && !selectedHistoryMonth) {
-      host.innerHTML = '';
-      return;
-    }
-
-    const mf = document.getElementById('exFilterMonth');
-    if (mf && month && activeHistoryTab !== 'notice') mf.value = month;
-    let monthProfile = null;
-    if ((activeHistoryTab === 'applied' || showMonthProgressInNewMode) && /^\d{4}-\d{2}$/.test(String(month || ''))) {
-      try {
-        monthProfile = await fetchJSONAuthSafe(`/api/expenses/months/profile?month=${encodeURIComponent(String(month))}`);
-      } catch (e) {
-        if (!isNotFoundErr(e)) throw e;
-      }
-    }
-    const monthMeta = monthMetaByYm.get(String(month || '')) || null;
-    const creatorName = String(
-      monthProfile?.employee_name ||
-      meProfile?.full_name ||
-      meProfile?.name ||
-      meProfile?.username ||
-      meProfile?.email ||
-      '-'
-    );
-    const employeeCode = String(
-      monthProfile?.employee_code ||
-      meProfile?.employee_code ||
-      meProfile?.emp_code ||
-      meProfile?.code ||
-      '-'
-    );
-    const birthDate = fmtDateOnly(
-      monthProfile?.birth_date ||
-      meProfile?.birth_date ||
-      meProfile?.birthday ||
-      meProfile?.date_of_birth ||
-      meProfile?.dob ||
-      '-'
-    );
-    const createdDate = fmtDateOnly(
-      monthProfile?.start_date ||
-      monthMeta?.created_at ||
-      firstDayOfYm(month)
-    );
-    const shouldShowProfile = (activeHistoryTab === 'applied' || showMonthProgressInNewMode);
-    const profileTableInner = shouldShowProfile
-      ? `<div style="display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12px;line-height:1.2;">
-           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">作成者:</span><strong style="color:#0f172a;">${creatorName}</strong></span>
-           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">社員コード:</span><strong style="color:#0f172a;">${employeeCode}</strong></span>
-           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">生年月日:</span><strong style="color:#0f172a;">${birthDate}</strong></span>
-           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">作成日:</span><strong style="color:#0f172a;">${createdDate}</strong></span>
-         </div>`
-      : '';
-    const profileBlock = shouldShowProfile
-      ? `<div class="history-profile-bar"><div class="history-profile-title" style="margin-bottom:2px;">情報</div>${profileTableInner}</div>`
-      : '';
-    try {
-      const profileHost = document.getElementById('exMonthlyProfileHost');
-      if (profileHost) profileHost.innerHTML = profileBlock || '';
-    } catch (e) { /* silently ignored */ }
-    let rows = [];
-    if (activeHistoryTab === 'notice') {
-      const allRows = await fetchJSONAuthSafeCached('/api/expenses/my', 8000);
-      rows = (Array.isArray(allRows) ? allRows : []).filter((r) => isNoticeFeedbackStatus(r?.status));
-      if (/^\d{4}-\d{2}$/.test(String(selectedHistoryMonth || ''))) {
-        rows = rows.filter((r) => String(r?.date || '').slice(0, 7) === String(selectedHistoryMonth));
-      }
-    } else {
-      // Khi xem chi tiết (selectedHistoryMonth có giá trị), gọi API lấy dữ liệu của THÁNG ĐÓ
-      // Khi chưa xem chi tiết, lấy theo bộ lọc NĂM (exFilterYearGlobal) để tính tổng các tháng
-      let queryMonth = '';
-      if (selectedHistoryMonth) {
-        queryMonth = selectedHistoryMonth; // Xem chi tiết: Lọc đúng tháng đó
-      } else {
-        const globalYear = document.getElementById('exFilterYearGlobal')?.value;
-        if (globalYear) {
-          queryMonth = globalYear; // Xem danh sách: Lọc theo năm
-        } else {
-          queryMonth = currentYM().slice(0,4); // Default năm nay
-        }
-      }
-      
-      const q = `/api/expenses/my?month=${encodeURIComponent(queryMonth)}&status=${encodeURIComponent(status)}`;
-      const cacheBuster = `&_t=${Date.now()}`;
-      const rawRows = await fetchJSONAuthSafe(q + cacheBuster);
-      rows = activeHistoryTab === 'applied'
-        ? (Array.isArray(rawRows) ? rawRows.filter((r) => isSubmittedStatus(r?.status)) : [])
-        : (Array.isArray(rawRows) ? rawRows : []);
-        
-      // Lọc lại một lần nữa ở client side để đảm bảo chỉ có dữ liệu của tháng được chọn
-      if (selectedHistoryMonth) {
-         rows = rows.filter((r) => String(r?.date || '').slice(0, 7) === String(selectedHistoryMonth));
-      }
-      
-      if (activeHistoryTab === 'new' && showMonthProgressInNewMode) {
-        rows = rows.filter((r) => isSubmittedStatus(r?.status));
-      }
-    }
-    try { await renderSummary(); } catch (e) { /* silently ignored */ }
-    if (!Array.isArray(rows) || rows.length === 0) {
-      const emptyText = activeHistoryTab === 'notice'
-        ? '通知・確認事項はありません'
-        : (monthJa ? `${monthJa}の交通費提出履歴はありません` : '当月の交通費提出履歴はありません');
-      // Khi đang XEM CHI TIẾT 1 tháng (selectedHistoryMonth) mà không có dữ liệu,
-      // vẫn hiển thị header + nút 閉じる để người dùng đóng quay lại 月別一覧.
-      if (selectedHistoryMonth) {
-        host.innerHTML = `
+        `}).join("")),M.value=""}),N?.addEventListener("click",B=>{const l=B.target.closest("button[data-rm-file]");if(!l)return;const i=parseInt(l.getAttribute("data-rm-file"),10);if(!isNaN(i))if(O.splice(i,1),O.length===0)N.innerHTML="\u6DFB\u4ED8\u30D5\u30A1\u30A4\u30EB\u306F\u3042\u308A\u307E\u305B\u3093";else{const p=new Event("change");M.dispatchEvent(p)}});const z=document.getElementById("exAppConfirmBtn");z?.addEventListener("click",async()=>{if(document.getElementById("exFilterMonth")?.value||window.createTargetMonth||Z())try{const l=window.createTargetMonth||document.getElementById("exFilterMonth")?.value||Z(),i=`/api/expenses/my?month=${encodeURIComponent(l)}&status=pending`,p=`&_t=${Date.now()}`,g=await Ce(i+p);if((Array.isArray(g)?g.filter(se=>{const we=String(se?.status||"").toLowerCase();return we==="draft"||we==="pending"}):[]).length===0){G("\u7533\u8ACB\u3059\u308B\u660E\u7D30\u304C\u3042\u308A\u307E\u305B\u3093\u3002");return}z.disabled=!0,z.textContent="\u7533\u8ACB\u4E2D...",await U("/api/expenses/months/apply",{method:"POST",body:JSON.stringify({month:l})});const x=document.getElementById("step1Input"),K=document.getElementById("step2Confirm"),le=document.getElementById("step3Complete");x&&(x.style.display="none"),K&&(K.style.display="none"),le&&(le.style.display="block"),Fe(3);const Ae=document.getElementById("compAppNumber"),Se=document.getElementById("compAppMonth"),$e=document.getElementById("compTotalAmount");Ae&&(Ae.textContent=`TRF-${l.replace("-","")}-${String(Math.floor(Math.random()*1e3)).padStart(3,"0")}`),Se&&(Se.textContent=`${l.slice(0,4)}\u5E74${l.slice(5,7)}\u6708`),$e&&($e.textContent=bt.toLocaleString("ja-JP"))}catch(l){G(l?.message||"\u7533\u8ACB\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}finally{z.disabled=!1,z.textContent="\u7533\u8ACB\u3059\u308B"}}),document.getElementById("exAppGoListBtn")?.addEventListener("click",async()=>{const B=document.getElementById("exFilterMonth")?.value||window.createTargetMonth||Z(),l=document.getElementById("exFilterMonth"),i=document.getElementById("exFilterStatus");i&&(i.value=""),xe=!1,l&&B&&(l.value=B);const p=document.getElementById("expNavApplied")||document.getElementById("topNavApplied");p?p.click():window.location.reload()}),document.getElementById("exAppContinueBtn")?.addEventListener("click",()=>{document.getElementById("exHistoryNewBtn")?.click()})}try{const L=document.getElementById("exFilterStatus")?.value||"",Y=q==="applied"?"":L,ce=document.getElementById("exFilterStatus");if(q==="applied"&&ce&&(ce.value=""),q==="applied"||q==="notice"){let e=[],a=[];try{const c=await Ce("/api/expenses/months/my");e=Array.isArray(c)?c:[]}catch(c){if(!wt(c))throw c}try{const c=await Ce("/api/expenses/months/active"),f=String(c?.month||"");/^\d{4}-\d{2}$/.test(f)&&!e.some(v=>String(v?.month||"")===f)&&e.push({month:f,is_active:1,status:String(c?.status||"draft")})}catch{}it=new Map;for(const c of Array.isArray(e)?e:[]){const f=String(c?.month||"");/^\d{4}-\d{2}$/.test(f)&&it.set(f,c)}a=await Qe("/api/expenses/my",8e3);const u=r(e,a);d(u||[])}else it=new Map,r([],[]),d([]);const ee=H||document.getElementById("exFilterMonth")?.value||Z(),M=tn(ee),N=document.getElementById("exSummaryCards");if(N&&q==="applied"&&!H&&(N.style.display=ie===""?"grid":"none"),window.goBackToAppliedList=async()=>{he=!1,xe=!1,H="",ie="";const e=document.getElementById("exFilterMonth");e&&(e.value="");const a=document.getElementById("exFilterStatus");a&&(a.value=""),document.querySelectorAll(".summary-card").forEach(u=>{u.style.border="1px solid var(--border)",u.style.boxShadow="none",u.style.background="#fff"});try{await showTab("applied"),await ne()}catch{window.location.reload()}},q==="applied"&&!H){t.innerHTML="";return}const O=document.getElementById("exFilterMonth");O&&ee&&q!=="notice"&&(O.value=ee);let z=null;if((q==="applied"||he)&&/^\d{4}-\d{2}$/.test(String(ee||"")))try{z=await Ce(`/api/expenses/months/profile?month=${encodeURIComponent(String(ee))}`)}catch(e){if(!wt(e))throw e}const ye=it.get(String(ee||""))||null,ve=String(z?.employee_name||R?.full_name||R?.name||R?.username||R?.email||"-"),B=String(z?.employee_code||R?.employee_code||R?.emp_code||R?.code||"-"),l=pt(z?.birth_date||R?.birth_date||R?.birthday||R?.date_of_birth||R?.dob||"-"),i=pt(z?.start_date||ye?.created_at||Dt(ee)),p=q==="applied"||he,g=p?`<div style="display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12px;line-height:1.2;">
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">\u4F5C\u6210\u8005:</span><strong style="color:#0f172a;">${ve}</strong></span>
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">\u793E\u54E1\u30B3\u30FC\u30C9:</span><strong style="color:#0f172a;">${B}</strong></span>
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">\u751F\u5E74\u6708\u65E5:</span><strong style="color:#0f172a;">${l}</strong></span>
+           <span style="display:inline-flex;gap:4px;align-items:center;"><span style="color:#64748b;">\u4F5C\u6210\u65E5:</span><strong style="color:#0f172a;">${i}</strong></span>
+         </div>`:"",I=p?`<div class="history-profile-bar"><div class="history-profile-title" style="margin-bottom:2px;">\u60C5\u5831</div>${g}</div>`:"";try{const e=document.getElementById("exMonthlyProfileHost");e&&(e.innerHTML=I||"")}catch{}let x=[];if(q==="notice"){const e=await Qe("/api/expenses/my",8e3);x=(Array.isArray(e)?e:[]).filter(a=>nn(a?.status)),/^\d{4}-\d{2}$/.test(String(H||""))&&(x=x.filter(a=>String(a?.date||"").slice(0,7)===String(H)))}else{let e="";if(H)e=H;else{const f=document.getElementById("exFilterYearGlobal")?.value;f?e=f:e=Z().slice(0,4)}const a=`/api/expenses/my?month=${encodeURIComponent(e)}&status=${encodeURIComponent(Y)}`,u=`&_t=${Date.now()}`,c=await Ce(a+u);x=q==="applied"?Array.isArray(c)?c.filter(f=>vt(f?.status)):[]:Array.isArray(c)?c:[],H&&(x=x.filter(f=>String(f?.date||"").slice(0,7)===String(H))),q==="new"&&he&&(x=x.filter(f=>vt(f?.status)))}try{await Rt()}catch{}if(!Array.isArray(x)||x.length===0){const e=q==="notice"?"\u901A\u77E5\u30FB\u78BA\u8A8D\u4E8B\u9805\u306F\u3042\u308A\u307E\u305B\u3093":M?`${M}\u306E\u4EA4\u901A\u8CBB\u63D0\u51FA\u5C65\u6B74\u306F\u3042\u308A\u307E\u305B\u3093`:"\u5F53\u6708\u306E\u4EA4\u901A\u8CBB\u63D0\u51FA\u5C65\u6B74\u306F\u3042\u308A\u307E\u305B\u3093";H?t.innerHTML=`
           <div style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-            <div style="font-weight: 800; color: #0f172a; font-size: 16px;">${monthJa}の詳細</div>
+            <div style="font-weight: 800; color: #0f172a; font-size: 16px;">${M}\u306E\u8A73\u7D30</div>
             <button type="button" class="btn" data-action="go-back-monthly" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
-              <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
+              <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">\u9589\u3058\u308B</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
-          <div class="empty-state"><div style="font-size:28px;">🗂️</div><div>${emptyText}</div></div>
-        `;
-      } else {
-        host.innerHTML = `<div class="empty-state"><div style="font-size:28px;">🗂️</div><div>${emptyText}</div></div>`;
-      }
-      // Gắn handler đóng (không phụ thuộc hàm định nghĩa ở nhánh có dữ liệu).
-      const closeBtnEmpty = host.querySelector('button[data-action="go-back-monthly"]');
-      if (closeBtnEmpty) {
-        closeBtnEmpty.addEventListener('click', () => {
-          selectedHistoryMonth = '';
-          const listHost = document.getElementById('exListHost');
-          const listWrapper = document.getElementById('exListWrapper');
-          if (listHost) listHost.style.display = 'none';
-          if (listWrapper) listWrapper.style.display = 'none';
-          const boardHost2 = document.getElementById('exMonthlyBoardHost');
-          if (boardHost2) boardHost2.style.display = (activeSummaryCard === '') ? 'none' : 'block';
-          const summaryCards2 = document.getElementById('exSummaryCards');
-          if (summaryCards2) summaryCards2.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
-        });
-      }
-      return;
-    }
-    const isCompactSplit = showMonthProgressInNewMode && (activeHistoryTab === 'new' || activeHistoryTab === 'applied');
-    const colSpan = isCompactSplit ? 6 : 7;
-    const detailHeadRow = isCompactSplit
-      ? '<tr><th style="min-width:40px; white-space:nowrap;">日</th><th style="min-width:60px; white-space:nowrap;">種別</th><th style="min-width:120px; white-space:nowrap;">経路</th><th style="min-width:60px; white-space:nowrap;">用途</th><th style="min-width:60px; white-space:nowrap;">金額</th><th style="min-width:90px; white-space:nowrap;">ステータス</th><th style="min-width:60px; white-space:nowrap;">領収書</th><th style="min-width:80px; white-space:nowrap;">操作</th></tr>'
-      : '<tr><th style="min-width:60px; white-space:nowrap;">日付</th><th style="min-width:60px; white-space:nowrap;">種別</th><th style="min-width:140px; white-space:nowrap;">経路</th><th style="min-width:60px; white-space:nowrap;">用途</th><th style="min-width:60px; white-space:nowrap;">金額</th><th style="min-width:90px; white-space:nowrap;">ステータス</th><th style="min-width:120px; white-space:nowrap;">メモ</th><th style="min-width:60px; white-space:nowrap;">領収書</th><th style="min-width:80px; white-space:nowrap;">操作</th></tr>';
-    if (!Array.isArray(rows) || rows.length === 0) {
-      const emptyText = activeHistoryTab === 'notice'
-        ? '通知・確認事項はありません'
-        : (monthJa ? `${monthJa}の交通費提出履歴はありません` : '当月の交通費提出履歴はありません');
-      host.innerHTML = `
+          <div class="empty-state"><div style="font-size:28px;">\u{1F5C2}\uFE0F</div><div>${e}</div></div>
+        `:t.innerHTML=`<div class="empty-state"><div style="font-size:28px;">\u{1F5C2}\uFE0F</div><div>${e}</div></div>`;const a=t.querySelector('button[data-action="go-back-monthly"]');a&&a.addEventListener("click",()=>{H="";const u=document.getElementById("exListHost"),c=document.getElementById("exListWrapper");u&&(u.style.display="none"),c&&(c.style.display="none");const f=document.getElementById("exMonthlyBoardHost");f&&(f.style.display=ie===""?"none":"block");const v=document.getElementById("exSummaryCards");v&&(v.style.display=ie===""?"grid":"none")});return}const K=he&&(q==="new"||q==="applied"),le=K?6:7,Ae=K?'<tr><th style="min-width:40px; white-space:nowrap;">\u65E5</th><th style="min-width:60px; white-space:nowrap;">\u7A2E\u5225</th><th style="min-width:120px; white-space:nowrap;">\u7D4C\u8DEF</th><th style="min-width:60px; white-space:nowrap;">\u7528\u9014</th><th style="min-width:60px; white-space:nowrap;">\u91D1\u984D</th><th style="min-width:90px; white-space:nowrap;">\u30B9\u30C6\u30FC\u30BF\u30B9</th><th style="min-width:60px; white-space:nowrap;">\u9818\u53CE\u66F8</th><th style="min-width:80px; white-space:nowrap;">\u64CD\u4F5C</th></tr>':'<tr><th style="min-width:60px; white-space:nowrap;">\u65E5\u4ED8</th><th style="min-width:60px; white-space:nowrap;">\u7A2E\u5225</th><th style="min-width:140px; white-space:nowrap;">\u7D4C\u8DEF</th><th style="min-width:60px; white-space:nowrap;">\u7528\u9014</th><th style="min-width:60px; white-space:nowrap;">\u91D1\u984D</th><th style="min-width:90px; white-space:nowrap;">\u30B9\u30C6\u30FC\u30BF\u30B9</th><th style="min-width:120px; white-space:nowrap;">\u30E1\u30E2</th><th style="min-width:60px; white-space:nowrap;">\u9818\u53CE\u66F8</th><th style="min-width:80px; white-space:nowrap;">\u64CD\u4F5C</th></tr>';if(!Array.isArray(x)||x.length===0){const e=q==="notice"?"\u901A\u77E5\u30FB\u78BA\u8A8D\u4E8B\u9805\u306F\u3042\u308A\u307E\u305B\u3093":M?`${M}\u306E\u4EA4\u901A\u8CBB\u63D0\u51FA\u5C65\u6B74\u306F\u3042\u308A\u307E\u305B\u3093`:"\u5F53\u6708\u306E\u4EA4\u901A\u8CBB\u63D0\u51FA\u5C65\u6B74\u306F\u3042\u308A\u307E\u305B\u3093";t.innerHTML=`
         <div class="adj-table-card expense-desktop-only">
           <table class="adj-table">
             <tbody>
-              ${detailHeadRow}
-              <tr><td colspan="${colSpan}" style="text-align:center;color:#334155;padding:18px 10px;">${emptyText}</td></tr>
+              ${Ae}
+              <tr><td colspan="${le}" style="text-align:center;color:#334155;padding:18px 10px;">${e}</td></tr>
             </tbody>
           </table>
         </div>
         <div class="expense-mobile-only" style="background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 24px 16px; text-align: center; color: #64748b;">
-          ${emptyText}
+          ${e}
         </div>
-      `;
-      return;
-    }
-    const totalAmount = rows.reduce((sum, r) => sum + Number(r?.amount || 0), 0);
-    let noticeSummary = '';
-    if (activeHistoryTab === 'notice') {
-      const monthly = new Map();
-      for (const r of rows) {
-        const ym = String(r?.date || '').slice(0, 7);
-        if (!/^\d{4}-\d{2}$/.test(ym)) continue;
-        const prev = monthly.get(ym) || { ym, count: 0, amount: 0 };
-        prev.count += 1;
-        prev.amount += Number(r?.amount || 0);
-        monthly.set(ym, prev);
-      }
-      const role = String(meProfile?.role || '').toLowerCase();
-      const canCloseMonth = (role === 'manager' || role === 'admin');
-      const uid = String(meProfile?.id || window.MY_ID || '').trim();
-      const chips = Array.from(monthly.values())
-        .sort((a, b) => String(b.ym).localeCompare(String(a.ym)))
-        .map((m) => {
-          const closeBtn = canCloseMonth
-            ? `<button class="btn" type="button" data-action="close-month" data-month="${m.ym}" data-user-id="${uid}" style="height:24px;padding:0 8px;font-size:11px;">月次確認</button>`
-            : '';
-          return `<div class="notice-month-summary-item"><strong>${m.ym}</strong><span>${m.count}件</span><span>¥${Number(m.amount || 0).toLocaleString('ja-JP')}</span>${closeBtn}</div>`;
-        }).join('');
-      noticeSummary = chips ? `<div class="notice-month-summary">${chips}</div>` : '';
-    }
-    let tr = '';
-    let cardsHtml = '';
-    rows.forEach(r => {
-      const dFull = String(r.date || '').slice(0, 10);
-      const d = (() => {
-        if (!isCompactSplit) return dFull;
-        const m = dFull.match(/^\d{4}-\d{2}-(\d{2})$/);
-        return m ? m[1] : dFull;
-      })();
-      const a = '¥' + Number(r.amount || 0).toLocaleString('ja-JP');
-      const origin = String(r.origin || '').trim();
-      const destination = String(r.destination || '').trim();
-      const via = normalizeVia(r.via);
-      const shortStation = (v) => String(v || '').trim().replace(/駅$/u, '');
-      const routeDisplay = [shortStation(origin), shortStation(destination)].filter(Boolean).join('→') || '-';
-      const routeMain = [origin, destination].filter(Boolean).join('→') || '-';
-      const routeFull = via ? `${routeMain}（経由: ${via}）` : routeMain;
-      const st = String(r.status || 'pending');
-      const stClass = (st === 'applied' || st === 'approved' || st === 'paid' || st === 'rejected' || st === 'draft') ? st : 'draft';
-      const stLabelMap = {
-        draft: '未申請',
-        pending: '未申請',
-        applied: '申請中',
-        approved: '承認済み',
-        paid: '支給済み',
-        rejected: '差戻し'
-      };
-      const stLabel = stLabelMap[st] || st;
-      const applied = fmtDT(r.applied_at || r.updated_at || r.created_at);
-      const approved = fmtDT(r.approved_at);
-      const approver = r.approver_name ? String(r.approver_name) : '';
-      const timeHtml =
-        st === 'applied' ? (applied ? `<div style="color:#6b7280;font-size:12px;">申請: ${applied}</div>` : '') :
-          st === 'approved' ? (approved ? `<div style="color:#6b7280;font-size:12px;">承認: ${approved}</div>` : '') :
-            st === 'rejected' ? (approved ? `<div style="color:#6b7280;font-size:12px;">却下: ${approved}</div>` : '') : '';
-      const whoHtml = (st === 'approved' || st === 'rejected') && approver ? `<div style="color:#6b7280;font-size:12px;">担当: ${approver}</div>` : '';
-      const noteHtml = st === 'rejected' && r.manager_note ? `<div style="color:#ef4444;font-size:12px;">理由: ${r.manager_note}</div>` : '';
-      const isNoticeOnly = activeHistoryTab === 'notice';
-      const replyBtn = (!isNoticeOnly && st === 'rejected') ? `<button class="btn" data-action="reply" style="height:28px;margin-right:6px;">取り戻し理由</button>` : '';
-      const editBtn = (!isNoticeOnly && st !== 'paid') ? `<button class="btn" data-action="edit" style="height:28px;margin-right:6px;">編集</button>` : '';
-      const delBtn = (!isNoticeOnly && st !== 'paid') ? `<button class="icon-btn" data-action="delete" aria-label="削除"><img src="/static/images/xoa.png" alt=""></button>` : '';
-      const ru = r.receipt_url ? String(r.receipt_url) : (r.first_file_path ? String(r.first_file_path) : '');
-      const ruAttr = ru ? ` data-url="${ru}"` : '';
-      const count = Number(r.file_count || 0);
-      const ruInline = ru ? `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;">表示${count > 1 ? `(${count}件)` : ''}</a>` : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:24px;">表示(${count}件)</button>` : '<span style="color:#64748b;font-size:12px;">なし</span>');
-      const typeMap = {
-        train: '電車',
-        bus: 'バス',
-        taxi: 'タクシー',
-        car: '社用車',
-        private_car: '自家用車',
-        parking: '駐車場',
-        highway: '高速道路',
-        hotel: '宿泊',
-        other: 'その他'
-      };
-      const typeDisplay = typeMap[String(r.category || r.type || '')] || (r.category || r.type || '-');
-      
-      const purposeDisplay = String(r.purpose || '').trim() || '-';
-      
-      const tripType = String(r.trip_type || '');
-      const tripTypeDisplay = tripType === 'round_trip' ? '往復' : (tripType === 'one_way' ? '片道' : '');
-      const tripBadge = tripTypeDisplay ? `<span style="font-size:10px; background:#e2e8f0; padding:2px 4px; border-radius:4px; margin-left:4px;">${tripTypeDisplay}</span>` : '';
-      
-      // Desktop Table Row
-      if (isCompactSplit) {
-        const routeCell = routeDisplay + tripBadge;
-        const statusCell = `<span class="status-pill status-${stClass}">${stLabel}</span>`;
-        const receiptCell = ru
-          ? (count > 1
-            ? `<button class="btn" data-action="files" data-url="${ru}" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>`
-            : `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:11px;color:#1e40af;text-decoration:none;">表示</a>`)
-          : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:22px;font-size:11px;padding:0 8px;">表示(${count})</button>` : '<span style="color:#64748b;font-size:11px;">-</span>');
-        tr += `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeCell}</span></td><td>${purposeDisplay}</td><td style="white-space:nowrap;">${a}</td><td>${statusCell}</td><td style="text-align:center;">${receiptCell}</td><td><div class="row-actions">${editBtn}</div></td></tr>`;
-      } else {
-        tr += `<tr data-id="${String(r.id || '')}"><td>${d}</td><td>${typeDisplay}</td><td title="${routeFull.replace(/"/g, '&quot;')}"><span class="history-route-chip">${routeDisplay}${tripBadge}</span></td><td>${purposeDisplay}</td><td style="white-space:nowrap;">${a}</td><td><span class="status-pill status-${stClass}">${stLabel}</span>${timeHtml}${whoHtml}</td><td style="white-space:pre-wrap; word-break:break-word; min-width:120px;">${r.memo || ''}${noteHtml}</td><td style="text-align:center;"><button class="icon-btn" data-action="files"${ruAttr} aria-label="領収書"><span aria-hidden="true">📎</span></button>${ruInline}</td><td><div class="row-actions">${replyBtn}${editBtn}${delBtn}</div></td></tr>`;
-      }
-
-      // Mobile Card HTML
-      const receiptCardCell = ru
-        ? (count > 1
-          ? `<button class="btn" data-action="files" data-url="${ru}" type="button" style="height:24px;font-size:12px;padding:0 8px;">表示(${count})</button>`
-          : `<a href="${ru.startsWith('/') ? ru : '/' + ru}" class="receipt-link" data-count="${String(count)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;background:#f1f5f9;padding:4px 8px;border-radius:4px;">表示</a>`)
-        : (count > 0 ? `<button class="btn" data-action="files" type="button" style="height:24px;font-size:12px;padding:0 8px;">表示(${count})</button>` : '<span style="color:#64748b;font-size:12px;">なし</span>');
-
-      cardsHtml += `
-        <div data-id="${String(r.id || '')}" style="background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+      `;return}const Se=x.reduce((e,a)=>e+Number(a?.amount||0),0);let $e="";if(q==="notice"){const e=new Map;for(const v of x){const C=String(v?.date||"").slice(0,7);if(!/^\d{4}-\d{2}$/.test(C))continue;const T=e.get(C)||{ym:C,count:0,amount:0};T.count+=1,T.amount+=Number(v?.amount||0),e.set(C,T)}const a=String(R?.role||"").toLowerCase(),u=a==="manager"||a==="admin",c=String(R?.id||window.MY_ID||"").trim(),f=Array.from(e.values()).sort((v,C)=>String(C.ym).localeCompare(String(v.ym))).map(v=>{const C=u?`<button class="btn" type="button" data-action="close-month" data-month="${v.ym}" data-user-id="${c}" style="height:24px;padding:0 8px;font-size:11px;">\u6708\u6B21\u78BA\u8A8D</button>`:"";return`<div class="notice-month-summary-item"><strong>${v.ym}</strong><span>${v.count}\u4EF6</span><span>\xA5${Number(v.amount||0).toLocaleString("ja-JP")}</span>${C}</div>`}).join("");$e=f?`<div class="notice-month-summary">${f}</div>`:""}let se="",we="";x.forEach(e=>{const a=String(e.date||"").slice(0,10),u=(()=>{if(!K)return a;const De=a.match(/^\d{4}-\d{2}-(\d{2})$/);return De?De[1]:a})(),c="\xA5"+Number(e.amount||0).toLocaleString("ja-JP"),f=String(e.origin||"").trim(),v=String(e.destination||"").trim(),C=Kt(e.via),T=De=>String(De||"").trim().replace(/駅$/u,""),D=[T(f),T(v)].filter(Boolean).join("\u2192")||"-",V=[f,v].filter(Boolean).join("\u2192")||"-",Le=C?`${V}\uFF08\u7D4C\u7531: ${C}\uFF09`:V,j=String(e.status||"pending"),Ee=j==="applied"||j==="approved"||j==="paid"||j==="rejected"||j==="draft"?j:"draft",P={draft:"\u672A\u7533\u8ACB",pending:"\u672A\u7533\u8ACB",applied:"\u7533\u8ACB\u4E2D",approved:"\u627F\u8A8D\u6E08\u307F",paid:"\u652F\u7D66\u6E08\u307F",rejected:"\u5DEE\u623B\u3057"}[j]||j,ge=ct(e.applied_at||e.updated_at||e.created_at),ue=ct(e.approved_at),Te=e.approver_name?String(e.approver_name):"",Be=j==="applied"?ge?`<div style="color:#6b7280;font-size:12px;">\u7533\u8ACB: ${ge}</div>`:"":j==="approved"?ue?`<div style="color:#6b7280;font-size:12px;">\u627F\u8A8D: ${ue}</div>`:"":j==="rejected"&&ue?`<div style="color:#6b7280;font-size:12px;">\u5374\u4E0B: ${ue}</div>`:"",Me=(j==="approved"||j==="rejected")&&Te?`<div style="color:#6b7280;font-size:12px;">\u62C5\u5F53: ${Te}</div>`:"",m=j==="rejected"&&e.manager_note?`<div style="color:#ef4444;font-size:12px;">\u7406\u7531: ${e.manager_note}</div>`:"",k=q==="notice",J=!k&&j==="rejected"?'<button class="btn" data-action="reply" style="height:28px;margin-right:6px;">\u53D6\u308A\u623B\u3057\u7406\u7531</button>':"",Q=!k&&j!=="paid"?'<button class="btn" data-action="edit" style="height:28px;margin-right:6px;">\u7DE8\u96C6</button>':"",te=!k&&j!=="paid"?'<button class="icon-btn" data-action="delete" aria-label="\u524A\u9664"><img src="/static/images/xoa.png" alt=""></button>':"",F=e.receipt_url?String(e.receipt_url):e.first_file_path?String(e.first_file_path):"",fe=F?` data-url="${F}"`:"",X=Number(e.file_count||0),He=F?`<a href="${F.startsWith("/")?F:"/"+F}" class="receipt-link" data-count="${String(X)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;">\u8868\u793A${X>1?`(${X}\u4EF6)`:""}</a>`:X>0?`<button class="btn" data-action="files" type="button" style="height:24px;">\u8868\u793A(${X}\u4EF6)</button>`:'<span style="color:#64748b;font-size:12px;">\u306A\u3057</span>',w={train:"\u96FB\u8ECA",bus:"\u30D0\u30B9",taxi:"\u30BF\u30AF\u30B7\u30FC",car:"\u793E\u7528\u8ECA",private_car:"\u81EA\u5BB6\u7528\u8ECA",parking:"\u99D0\u8ECA\u5834",highway:"\u9AD8\u901F\u9053\u8DEF",hotel:"\u5BBF\u6CCA",other:"\u305D\u306E\u4ED6"}[String(e.category||e.type||"")]||e.category||e.type||"-",$=String(e.purpose||"").trim()||"-",pe=String(e.trip_type||""),oe=pe==="round_trip"?"\u5F80\u5FA9":pe==="one_way"?"\u7247\u9053":"",qe=oe?`<span style="font-size:10px; background:#e2e8f0; padding:2px 4px; border-radius:4px; margin-left:4px;">${oe}</span>`:"";if(K){const De=D+qe,Ze=`<span class="status-pill status-${Ee}">${P}</span>`,et=F?X>1?`<button class="btn" data-action="files" data-url="${F}" type="button" style="height:22px;font-size:11px;padding:0 8px;">\u8868\u793A(${X})</button>`:`<a href="${F.startsWith("/")?F:"/"+F}" class="receipt-link" data-count="${String(X)}" target="_blank" rel="noopener" style="font-size:11px;color:#1e40af;text-decoration:none;">\u8868\u793A</a>`:X>0?`<button class="btn" data-action="files" type="button" style="height:22px;font-size:11px;padding:0 8px;">\u8868\u793A(${X})</button>`:'<span style="color:#64748b;font-size:11px;">-</span>';se+=`<tr data-id="${String(e.id||"")}"><td>${u}</td><td>${w}</td><td title="${Le.replace(/"/g,"&quot;")}"><span class="history-route-chip">${De}</span></td><td>${$}</td><td style="white-space:nowrap;">${c}</td><td>${Ze}</td><td style="text-align:center;">${et}</td><td><div class="row-actions">${Q}</div></td></tr>`}else se+=`<tr data-id="${String(e.id||"")}"><td>${u}</td><td>${w}</td><td title="${Le.replace(/"/g,"&quot;")}"><span class="history-route-chip">${D}${qe}</span></td><td>${$}</td><td style="white-space:nowrap;">${c}</td><td><span class="status-pill status-${Ee}">${P}</span>${Be}${Me}</td><td style="white-space:pre-wrap; word-break:break-word; min-width:120px;">${e.memo||""}${m}</td><td style="text-align:center;"><button class="icon-btn" data-action="files"${fe} aria-label="\u9818\u53CE\u66F8"><span aria-hidden="true">\u{1F4CE}</span></button>${He}</td><td><div class="row-actions">${J}${Q}${te}</div></td></tr>`;const At=F?X>1?`<button class="btn" data-action="files" data-url="${F}" type="button" style="height:24px;font-size:12px;padding:0 8px;">\u8868\u793A(${X})</button>`:`<a href="${F.startsWith("/")?F:"/"+F}" class="receipt-link" data-count="${String(X)}" target="_blank" rel="noopener" style="font-size:12px;color:#1e40af;text-decoration:none;background:#f1f5f9;padding:4px 8px;border-radius:4px;">\u8868\u793A</a>`:X>0?`<button class="btn" data-action="files" type="button" style="height:24px;font-size:12px;padding:0 8px;">\u8868\u793A(${X})</button>`:'<span style="color:#64748b;font-size:12px;">\u306A\u3057</span>';we+=`
+        <div data-id="${String(e.id||"")}" style="background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-weight: 800; color: #0f172a; font-size: 14px;">${d}</span>
-              <span style="font-size: 12px; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px;">${typeDisplay}</span>
+              <span style="font-weight: 800; color: #0f172a; font-size: 14px;">${u}</span>
+              <span style="font-size: 12px; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px;">${w}</span>
             </div>
-            <span class="status-pill status-${stClass}">${stLabel}</span>
+            <span class="status-pill status-${Ee}">${P}</span>
           </div>
           
           <div style="display: flex; flex-direction: column; gap: 4px;">
             <div style="font-size: 13px; color: #334155;">
-              <span style="color: #64748b; margin-right: 4px;">経路:</span>${routeDisplay}${tripBadge}
+              <span style="color: #64748b; margin-right: 4px;">\u7D4C\u8DEF:</span>${D}${qe}
             </div>
-            ${purposeDisplay !== '-' ? `<div style="font-size: 13px; color: #334155;"><span style="color: #64748b; margin-right: 4px;">用途:</span>${purposeDisplay}</div>` : ''}
-            ${r.memo ? `<div style="font-size: 13px; color: #334155;"><span style="color: #64748b; margin-right: 4px;">メモ:</span>${r.memo}</div>` : ''}
-            ${noteHtml}
+            ${$!=="-"?`<div style="font-size: 13px; color: #334155;"><span style="color: #64748b; margin-right: 4px;">\u7528\u9014:</span>${$}</div>`:""}
+            ${e.memo?`<div style="font-size: 13px; color: #334155;"><span style="color: #64748b; margin-right: 4px;">\u30E1\u30E2:</span>${e.memo}</div>`:""}
+            ${m}
           </div>
           
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 8px; border-top: 1px dashed #f1f5f9;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="color: #64748b; font-size: 12px;">領収書:</span>
-              ${receiptCardCell}
+              <span style="color: #64748b; font-size: 12px;">\u9818\u53CE\u66F8:</span>
+              ${At}
             </div>
             <div style="font-weight: 800; color: #0f172a; font-size: 15px;">
-              ${a}
+              ${c}
             </div>
           </div>
           
-          ${(editBtn || delBtn || replyBtn) ? `
+          ${Q||te||J?`
           <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
-            ${replyBtn}${editBtn}${delBtn}
+            ${J}${Q}${te}
           </div>
-          ` : ''}
+          `:""}
         </div>
-      `;
-    });
-    const totalRow = `<tr class="total-row"><td colspan="${colSpan}" style="font-weight:800;text-align:left;padding-bottom:20px;">合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}</td></tr>`;
-    window.goBackToMonthlyList = async () => {
-      selectedHistoryMonth = '';
-      const listHost = document.getElementById('exListHost');
-      const listWrapper = document.getElementById('exListWrapper');
-      if (listHost) listHost.style.display = 'none';
-      if (listWrapper) listWrapper.style.display = 'none';
-      const boardHost = document.getElementById('exMonthlyBoardHost');
-      if (boardHost) boardHost.style.display = (activeSummaryCard === '') ? 'none' : 'block';
-      const summaryCards = document.getElementById('exSummaryCards');
-      if (summaryCards) {
-        summaryCards.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
-      }
-    };
-
-    // Attach event listener directly to host to handle back button click
-    if (!host.dataset.boundBackBtn) {
-      host.dataset.boundBackBtn = '1';
-      host.addEventListener('click', (e) => {
-        const backBtn = e.target.closest('button[data-action="go-back-monthly"]');
-        if (backBtn && typeof window.goBackToMonthlyList === 'function') {
-          window.goBackToMonthlyList();
-        }
-      });
-    }
-
-    if (selectedHistoryMonth) {
-      // Ẩn bảng monthly board nếu đang ở mode xem chi tiết
-      if (boardHost) boardHost.style.display = 'none';
-
-      const isCompactSplit = showMonthProgressInNewMode && (activeHistoryTab === 'new' || activeHistoryTab === 'applied');
-      const colSpan = isCompactSplit ? 6 : 7;
-      
-      host.innerHTML = `
+      `});const n=`<tr class="total-row"><td colspan="${le}" style="font-weight:800;text-align:left;padding-bottom:20px;">\u5408\u8A08: ${Number(Se||0).toLocaleString("ja-JP")}</td></tr>`;if(window.goBackToMonthlyList=async()=>{H="";const e=document.getElementById("exListHost"),a=document.getElementById("exListWrapper");e&&(e.style.display="none"),a&&(a.style.display="none");const u=document.getElementById("exMonthlyBoardHost");u&&(u.style.display=ie===""?"none":"block");const c=document.getElementById("exSummaryCards");c&&(c.style.display=ie===""?"grid":"none")},t.dataset.boundBackBtn||(t.dataset.boundBackBtn="1",t.addEventListener("click",e=>{e.target.closest('button[data-action="go-back-monthly"]')&&typeof window.goBackToMonthlyList=="function"&&window.goBackToMonthlyList()})),H){s&&(s.style.display="none");const a=he&&(q==="new"||q==="applied")?6:7;t.innerHTML=`
         <div style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-          <div style="font-weight: 800; color: #0f172a; font-size: 16px;">${monthJa}の詳細</div>
+          <div style="font-weight: 800; color: #0f172a; font-size: 16px;">${M}\u306E\u8A73\u7D30</div>
           <button type="button" class="btn" data-action="go-back-monthly" style="background: transparent; border: none; color: #64748b; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;">
-            <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">閉じる</span>
+            <span style="font-size: 13px; font-weight: 700; margin-right: 4px;">\u9589\u3058\u308B</span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
-        ${noticeSummary}
+        ${$e}
         <div class="adj-table-card expense-desktop-only">
           <table class="adj-table">
-            <tbody>${detailHeadRow}${tr}${totalRow}</tbody>
+            <tbody>${Ae}${se}${n}</tbody>
           </table>
         </div>
         <div class="expense-mobile-only" style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px;">
-          ${cardsHtml}
+          ${we}
           <div style="background: #fff; padding: 16px; border-radius: 8px; border: 1px solid var(--border); font-weight: 800; text-align: right; color: #0f172a; font-size: 16px;">
-            合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}
+            \u5408\u8A08: ${Number(Se||0).toLocaleString("ja-JP")}
           </div>
         </div>
-      `;
-    } else {
-      host.innerHTML = `
-        ${noticeSummary}
+      `}else t.innerHTML=`
+        ${$e}
         <div class="adj-table-card expense-desktop-only">
           <table class="adj-table">
-            <tbody>${detailHeadRow}${tr}${totalRow}</tbody>
+            <tbody>${Ae}${se}${n}</tbody>
           </table>
         </div>
         <div class="expense-mobile-only" style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px;">
-          ${cardsHtml}
+          ${we}
           <div style="background: #fff; padding: 16px; border-radius: 8px; border: 1px solid var(--border); font-weight: 800; text-align: right; color: #0f172a; font-size: 16px;">
-            合計: ${Number(totalAmount || 0).toLocaleString('ja-JP')}
+            \u5408\u8A08: ${Number(Se||0).toLocaleString("ja-JP")}
           </div>
         </div>
-      `;
-    }
-    if (activeHistoryTab === 'notice') {
-      host.querySelectorAll('button[data-action="close-month"]').forEach((btn) => {
-        if (btn.dataset.bound === '1') return;
-        btn.dataset.bound = '1';
-        btn.addEventListener('click', async () => {
-          const m = String(btn.getAttribute('data-month') || '');
-          const uid = String(btn.getAttribute('data-user-id') || '').trim();
-          if (!/^\d{4}-\d{2}$/.test(m)) return;
-          const ok = window.confirm(`${m} の月次を manager として確認しますか？`);
-          if (!ok) return;
-          btn.disabled = true;
-          try {
-            await fetchJSONAuth('/api/expenses/admin/monthly-close', {
-              method: 'POST',
-              body: JSON.stringify({ month: m, userId: uid || null })
-            });
-            await renderList();
-          } catch (eClose) {
-            showErr(eClose?.message || '月次確認に失敗しました');
-          } finally {
-            btn.disabled = false;
-          }
-        });
-      });
-    }
-    if (!host.dataset.bindDel) {
-      host.dataset.bindDel = '1';
-      host.addEventListener('click', async (e) => {
-        const link = e.target.closest('a.receipt-link');
-        const row = e.target.closest('[data-id]');
-        if (link && row) {
-          const c = parseInt(String(link.getAttribute('data-count') || '0'), 10);
-          if (c > 1) {
-            e.preventDefault();
-            const filesBtn = row.querySelector('button[data-action="files"]');
-            filesBtn?.click();
-            return;
-          }
-        }
-        // 
-        const btn = e.target.closest('button[data-action]');
-        if (!btn) return;
-        const row2 = btn.closest('[data-id]');
-        const id = row2 ? row2.getAttribute('data-id') : '';
-        if (!id) return;
-        const action = btn.getAttribute('data-action');
-        btn.disabled = true;
-        try {
-          if (action === 'edit') {
-            const changed = await openQuickEditExpense(id);
-            if (changed) await renderList();
-          } else if (action === 'delete') {
-            const ok = window.confirm('削除しますか？');
-            if (!ok) { btn.disabled = false; return; }
-            try {
-              await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
-            } catch (errDel) {
-              showErr(errDel?.message || '削除に失敗しました'); btn.disabled = false; return;
-            }
-            await renderList();
-          } else if (action === 'files') {
-            let rows = [];
-            const isTr = row2.tagName.toLowerCase() === 'tr';
-            try { rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (errGet) {
-              const warn = document.createElement(isTr ? 'tr' : 'div'); warn.className = 'files-row';
-              warn.innerHTML = isTr ? `<td colspan="7"><div style="color:#b00020;">領収書の読み込みに失敗しました：${String(errGet?.message || 'unknown')}</div></td>` : `<div style="color:#b00020;padding:8px;font-size:12px;">領収書の読み込みに失敗しました：${String(errGet?.message || 'unknown')}</div>`;
-              row2.after(warn);
-              btn.disabled = false; return;
-            }
-            const next = row2.nextElementSibling;
-            if (next && next.classList.contains('files-row')) {
-              next.remove();
-              btn.disabled = false;
-              return;
-            }
-            if (Array.isArray(rows) && rows.length === 1) {
-              const f = rows[0];
-              const url = String(f.path || f.url || f.file_path || '').startsWith('/') ? String(f.path || f.url || f.file_path) : '/' + String(f.path || f.url || f.file_path || '');
-              try { window.open(url, '_blank'); } catch (e) { window.location.href = url; }
-            }
-            if ((!rows || rows.length === 0) && btn.hasAttribute('data-url')) {
-              const url = btn.getAttribute('data-url') || '';
-              if (url) { try { window.open(url.startsWith('/') ? url : '/' + url, '_blank'); } catch (e) { window.location.href = (url.startsWith('/') ? url : '/' + url); } }
-            }
-            const filesHtml = Array.isArray(rows) && rows.length
-              ? rows.map((f, idx) => {
-                const isImg = String(f.mime || '').startsWith('image/');
-                const url = String(f.path || f.url || f.file_path || '').startsWith('/') ? String(f.path || f.url || f.file_path) : '/' + String(f.path || f.url || f.file_path || '');
-                const thumb = isImg
-                  ? `<img src="${url}" alt="${f.name || ''}" style="width:40px;height:28px;object-fit:cover;border:1px solid #e5e7eb;border-radius:6px;" />`
-                  : `<span style="font-weight:700;color:#1e40af;font-size:11px;">PDF</span>`;
-                const ext = (String(url).match(/\.([a-zA-Z0-9]+)(?:\?|$)/) || [, 'file'])[1];
-                const name = `ファイル ${idx + 1}.${ext}`;
-                const deco = isImg ? 'none' : 'underline';
-                return `<li data-file-id="${String(f.id)}" style="display:flex;align-items:center;gap:6px;min-width:0;">
-                    <a href="${url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;text-decoration:${deco};min-width:0;max-width:260px;">
-                      ${thumb}
-                      <span style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</span>
+      `;q==="notice"&&t.querySelectorAll('button[data-action="close-month"]').forEach(e=>{e.dataset.bound!=="1"&&(e.dataset.bound="1",e.addEventListener("click",async()=>{const a=String(e.getAttribute("data-month")||""),u=String(e.getAttribute("data-user-id")||"").trim();if(!(!/^\d{4}-\d{2}$/.test(a)||!window.confirm(`${a} \u306E\u6708\u6B21\u3092 manager \u3068\u3057\u3066\u78BA\u8A8D\u3057\u307E\u3059\u304B\uFF1F`))){e.disabled=!0;try{await U("/api/expenses/admin/monthly-close",{method:"POST",body:JSON.stringify({month:a,userId:u||null})}),await ne()}catch(f){G(f?.message||"\u6708\u6B21\u78BA\u8A8D\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}finally{e.disabled=!1}}}))}),t.dataset.bindDel||(t.dataset.bindDel="1",t.addEventListener("click",async e=>{const a=e.target.closest("a.receipt-link"),u=e.target.closest("[data-id]");if(a&&u&&parseInt(String(a.getAttribute("data-count")||"0"),10)>1){e.preventDefault(),u.querySelector('button[data-action="files"]')?.click();return}const c=e.target.closest("button[data-action]");if(!c)return;const f=c.closest("[data-id]"),v=f?f.getAttribute("data-id"):"";if(!v)return;const C=c.getAttribute("data-action");c.disabled=!0;try{if(C==="edit")await Ot(v)&&await ne();else if(C==="delete"){if(!window.confirm("\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F")){c.disabled=!1;return}try{await U(`/api/expenses/${encodeURIComponent(v)}`,{method:"DELETE"})}catch(D){G(D?.message||"\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F"),c.disabled=!1;return}await ne()}else if(C==="files"){let T=[];const D=f.tagName.toLowerCase()==="tr";try{T=await U(`/api/expenses/${encodeURIComponent(v)}/files`)}catch(E){const P=document.createElement(D?"tr":"div");P.className="files-row",P.innerHTML=D?`<td colspan="7"><div style="color:#b00020;">\u9818\u53CE\u66F8\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F\uFF1A${String(E?.message||"unknown")}</div></td>`:`<div style="color:#b00020;padding:8px;font-size:12px;">\u9818\u53CE\u66F8\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F\uFF1A${String(E?.message||"unknown")}</div>`,f.after(P),c.disabled=!1;return}const V=f.nextElementSibling;if(V&&V.classList.contains("files-row")){V.remove(),c.disabled=!1;return}if(Array.isArray(T)&&T.length===1){const E=T[0],P=String(E.path||E.url||E.file_path||"").startsWith("/")?String(E.path||E.url||E.file_path):"/"+String(E.path||E.url||E.file_path||"");try{window.open(P,"_blank")}catch{window.location.href=P}}if((!T||T.length===0)&&c.hasAttribute("data-url")){const E=c.getAttribute("data-url")||"";if(E)try{window.open(E.startsWith("/")?E:"/"+E,"_blank")}catch{window.location.href=E.startsWith("/")?E:"/"+E}}const Le=Array.isArray(T)&&T.length?T.map((E,P)=>{const ge=String(E.mime||"").startsWith("image/"),ue=String(E.path||E.url||E.file_path||"").startsWith("/")?String(E.path||E.url||E.file_path):"/"+String(E.path||E.url||E.file_path||""),Te=ge?`<img src="${ue}" alt="${E.name||""}" style="width:40px;height:28px;object-fit:cover;border:1px solid #e5e7eb;border-radius:6px;" />`:'<span style="font-weight:700;color:#1e40af;font-size:11px;">PDF</span>',Be=(String(ue).match(/\.([a-zA-Z0-9]+)(?:\?|$)/)||[,"file"])[1],Me=`\u30D5\u30A1\u30A4\u30EB ${P+1}.${Be}`,m=ge?"none":"underline";return`<li data-file-id="${String(E.id)}" style="display:flex;align-items:center;gap:6px;min-width:0;">
+                    <a href="${ue}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;text-decoration:${m};min-width:0;max-width:260px;">
+                      ${Te}
+                      <span style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Me}</span>
                     </a>
-                    <button class="icon-btn" data-action="file-delete" aria-label="ファイル削除" style="width:24px;height:24px;"><img src="/static/images/xoa.png" alt="" style="width:14px;height:14px;"></button>
-                  </li>`;
-              }).join('')
-              : '<li style="font-size:11px;color:#64748b;">ファイルなし</li>';
-            
-            const expand = document.createElement(isTr ? 'tr' : 'div');
-            expand.className = 'files-row';
-            expand.innerHTML = isTr ? `<td colspan="7"><ul style="list-style:none;padding:0;margin:4px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${filesHtml}</ul></td>` : `<ul style="list-style:none;padding:8px;margin:0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;margin-top:8px;">${filesHtml}</ul>`;
-            row2.after(expand);
-            const ul = expand.querySelector('ul');
-            ul?.addEventListener('click', async (ev) => {
-              const b2 = ev.target.closest('button[data-action="file-delete"]');
-              if (!b2) return;
-              const li = b2.closest('li[data-file-id]');
-              const fid = li ? li.getAttribute('data-file-id') : '';
-              if (!fid) return;
-              b2.disabled = true;
-              try {
-                const ok2 = window.confirm('ファイルを削除しますか？');
-                if (!ok2) { b2.disabled = false; return; }
-                try {
-                  await fetchJSONAuth(`/api/expenses/files/${encodeURIComponent(fid)}`, { method: 'DELETE' });
-                } catch (errFd) {
-                  showErr(errFd?.message || 'ファイル削除に失敗しました'); b2.disabled = false; return;
-                }
-                let newRows = [];
-                try { newRows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/files`); } catch (e) { /* silently ignored */ }
-                const newHtml = Array.isArray(newRows) && newRows.length
-                  ? newRows.map((f, idx) => {
-                    const url = String(f.path || f.url || f.file_path || '').startsWith('/') ? String(f.path || f.url || f.file_path) : '/' + String(f.path || f.url || f.file_path || '');
-                    const ext = (String(url).match(/\.([a-zA-Z0-9]+)(?:\?|$)/) || [, 'file'])[1];
-                    const name = `ファイル ${idx + 1}.${ext}`;
-                    const isPdf = /\.pdf($|\?)/i.test(url) || /\.pdf$/i.test(String(name || ''));
-                    const deco = isPdf ? 'underline' : 'none';
-                    return `<li data-file-id="${String(f.id)}"><a href="${url}" target="_blank" rel="noopener" style="text-decoration:${deco};">${name}</a> <button class="icon-btn" data-action="file-delete" aria-label="ファイル削除"><img src="/static/images/xoa.png" alt=""></button></li>`;
-                  }).join('')
-                  : '<li>ファイルなし</li>';
-                ul.innerHTML = newHtml;
-              } catch (e) { /* silently ignored */ }
-              b2.disabled = false;
-            });
-          } else if (action === 'reply') {
-            const isTr = row2.tagName.toLowerCase() === 'tr';
-            const next = row2.nextElementSibling;
-            if (next && next.classList.contains('chat-row')) {
-              next.remove();
-              btn.disabled = false;
-              return;
-            }
-            const chat = document.createElement(isTr ? 'tr' : 'div');
-            chat.className = 'chat-row';
-            chat.innerHTML = isTr ? `<td colspan="7">
+                    <button class="icon-btn" data-action="file-delete" aria-label="\u30D5\u30A1\u30A4\u30EB\u524A\u9664" style="width:24px;height:24px;"><img src="/static/images/xoa.png" alt="" style="width:14px;height:14px;"></button>
+                  </li>`}).join(""):'<li style="font-size:11px;color:#64748b;">\u30D5\u30A1\u30A4\u30EB\u306A\u3057</li>',j=document.createElement(D?"tr":"div");j.className="files-row",j.innerHTML=D?`<td colspan="7"><ul style="list-style:none;padding:0;margin:4px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${Le}</ul></td>`:`<ul style="list-style:none;padding:8px;margin:0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;margin-top:8px;">${Le}</ul>`,f.after(j);const Ee=j.querySelector("ul");Ee?.addEventListener("click",async E=>{const P=E.target.closest('button[data-action="file-delete"]');if(!P)return;const ge=P.closest("li[data-file-id]"),ue=ge?ge.getAttribute("data-file-id"):"";if(ue){P.disabled=!0;try{if(!window.confirm("\u30D5\u30A1\u30A4\u30EB\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F")){P.disabled=!1;return}try{await U(`/api/expenses/files/${encodeURIComponent(ue)}`,{method:"DELETE"})}catch(m){G(m?.message||"\u30D5\u30A1\u30A4\u30EB\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F"),P.disabled=!1;return}let Be=[];try{Be=await U(`/api/expenses/${encodeURIComponent(v)}/files`)}catch{}const Me=Array.isArray(Be)&&Be.length?Be.map((m,k)=>{const J=String(m.path||m.url||m.file_path||"").startsWith("/")?String(m.path||m.url||m.file_path):"/"+String(m.path||m.url||m.file_path||""),Q=(String(J).match(/\.([a-zA-Z0-9]+)(?:\?|$)/)||[,"file"])[1],te=`\u30D5\u30A1\u30A4\u30EB ${k+1}.${Q}`,fe=/\.pdf($|\?)/i.test(J)||/\.pdf$/i.test(String(te||""))?"underline":"none";return`<li data-file-id="${String(m.id)}"><a href="${J}" target="_blank" rel="noopener" style="text-decoration:${fe};">${te}</a> <button class="icon-btn" data-action="file-delete" aria-label="\u30D5\u30A1\u30A4\u30EB\u524A\u9664"><img src="/static/images/xoa.png" alt=""></button></li>`}).join(""):"<li>\u30D5\u30A1\u30A4\u30EB\u306A\u3057</li>";Ee.innerHTML=Me}catch{}P.disabled=!1}})}else if(C==="reply"){const T=f.tagName.toLowerCase()==="tr",D=f.nextElementSibling;if(D&&D.classList.contains("chat-row")){D.remove(),c.disabled=!1;return}const V=document.createElement(T?"tr":"div");V.className="chat-row",V.innerHTML=T?`<td colspan="7">
               <div class="chat-box" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;">
-                <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">やり取り</div>
+                <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">\u3084\u308A\u53D6\u308A</div>
                 <div class="chat-reason" style="margin-bottom:8px;color:#7f1d1d;font-weight:700;"></div>
                 <div class="chat-messages" style="max-height:220px;overflow:auto;padding:6px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;"></div>
                 <div class="chat-input" style="display:flex;gap:8px;margin-top:8px;">
-                  <input type="text" class="chat-text" placeholder="メッセージを入力…" style="flex:1;height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;">
-                  <button class="btn chat-send" type="button" style="height:36px;">送信</button>
+                  <input type="text" class="chat-text" placeholder="\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B\u2026" style="flex:1;height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;">
+                  <button class="btn chat-send" type="button" style="height:36px;">\u9001\u4FE1</button>
                 </div>
                 <div class="chat-actions" style="display:flex;gap:8px;margin-top:8px;">
-                  <button class="btn chat-edit" type="button" style="height:32px;">編集</button>
-                  <button class="btn chat-new" type="button" style="height:32px;">新規作成</button>
+                  <button class="btn chat-edit" type="button" style="height:32px;">\u7DE8\u96C6</button>
+                  <button class="btn chat-new" type="button" style="height:32px;">\u65B0\u898F\u4F5C\u6210</button>
                 </div>
               </div>
-            </td>` : `
+            </td>`:`
               <div class="chat-box" style="border:1px solid #e5e7eb;border-radius:8px;padding:10px;background:#fff;margin-top:8px;">
-                <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">やり取り</div>
+                <div class="chat-header" style="font-weight:700;color:#1f2937;margin-bottom:8px;">\u3084\u308A\u53D6\u308A</div>
                 <div class="chat-reason" style="margin-bottom:8px;color:#7f1d1d;font-weight:700;"></div>
                 <div class="chat-messages" style="max-height:220px;overflow:auto;padding:6px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;"></div>
                 <div class="chat-input" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-                  <input type="text" class="chat-text" placeholder="メッセージを入力…" style="flex:1;height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;">
-                  <button class="btn chat-send" type="button" style="height:36px;width:100%;">送信</button>
+                  <input type="text" class="chat-text" placeholder="\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B\u2026" style="flex:1;height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;">
+                  <button class="btn chat-send" type="button" style="height:36px;width:100%;">\u9001\u4FE1</button>
                 </div>
                 <div class="chat-actions" style="display:flex;gap:8px;margin-top:8px;">
-                  <button class="btn chat-edit" type="button" style="flex:1;height:32px;">編集</button>
-                  <button class="btn chat-new" type="button" style="flex:1;height:32px;">新規作成</button>
+                  <button class="btn chat-edit" type="button" style="flex:1;height:32px;">\u7DE8\u96C6</button>
+                  <button class="btn chat-new" type="button" style="flex:1;height:32px;">\u65B0\u898F\u4F5C\u6210</button>
                 </div>
               </div>
-            `;
-            row2.after(chat);
-            const box = chat.querySelector('.chat-messages');
-            const text = chat.querySelector('.chat-text');
-            const send = chat.querySelector('.chat-send');
-            const reasonEl = chat.querySelector('.chat-reason');
-            try {
-              const rec = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}`);
-              const reason = rec && rec.manager_note ? String(rec.manager_note) : '';
-              if (reasonEl) reasonEl.textContent = reason ? ('差戻し理由: ' + reason) : '';
-            } catch (e) { /* silently ignored */ }
-            const load = async () => {
-              try {
-                const rows = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/messages`);
-                box.innerHTML = Array.isArray(rows) && rows.length
-                  ? rows.map(m => {
-                    const me = String(m.sender_user_id) === String(window.MY_ID || '');
-                    const who = m.sender_name || '';
-                    const when = fmtDT(m.created_at);
-                    return `<div style="display:flex;margin:6px 0;${me ? 'justify-content:flex-end' : ''}">
-                        <div style="max-width:70%;padding:8px 10px;border-radius:12px;${me ? 'background:#dbeafe;color:#1e3a8a;' : 'background:#e2e8f0;color:#111827;'}">
-                          <div style="font-size:12px;color:#334155;font-weight:700;display:flex;justify-content:space-between;gap:8px;"><span>${who}</span><span style="color:#64748b;">${when}</span></div>
-                          <div>${m.message}</div>
+            `,f.after(V);const Le=V.querySelector(".chat-messages"),j=V.querySelector(".chat-text"),Ee=V.querySelector(".chat-send"),E=V.querySelector(".chat-reason");try{const m=await U(`/api/expenses/${encodeURIComponent(v)}`),k=m&&m.manager_note?String(m.manager_note):"";E&&(E.textContent=k?"\u5DEE\u623B\u3057\u7406\u7531: "+k:"")}catch{}const P=async()=>{try{const m=await U(`/api/expenses/${encodeURIComponent(v)}/messages`);Le.innerHTML=Array.isArray(m)&&m.length?m.map(k=>{const J=String(k.sender_user_id)===String(window.MY_ID||""),Q=k.sender_name||"",te=ct(k.created_at);return`<div style="display:flex;margin:6px 0;${J?"justify-content:flex-end":""}">
+                        <div style="max-width:70%;padding:8px 10px;border-radius:12px;${J?"background:#dbeafe;color:#1e3a8a;":"background:#e2e8f0;color:#111827;"}">
+                          <div style="font-size:12px;color:#334155;font-weight:700;display:flex;justify-content:space-between;gap:8px;"><span>${Q}</span><span style="color:#64748b;">${te}</span></div>
+                          <div>${k.message}</div>
                         </div>
-                      </div>`;
-                  }).join('')
-                  : '<div style="color:#64748b;">メッセージはありません</div>';
-              } catch (e) {
-                box.innerHTML = '<div style="color:#b00020;">読み込みに失敗しました</div>';
-              }
-            };
-            await load();
-            const doSend = async () => {
-              const val = String(text.value || '').trim();
-              if (!val) return;
-              send.disabled = true;
-              try {
-                await fetchJSONAuth(`/api/expenses/${encodeURIComponent(id)}/messages`, { method: 'POST', body: JSON.stringify({ message: val }) });
-                text.value = '';
-                await load();
-              } catch (errSend) {
-                showErr(errSend?.message || '送信に失敗しました');
-              }
-              send.disabled = false;
-            };
-            send.addEventListener('click', doSend);
-            text.addEventListener('keydown', async (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); await doSend(); } });
-            const btnEdit = chat.querySelector('.chat-edit');
-            const btnNew = chat.querySelector('.chat-new');
-            const ensureEditModal = () => {
-              let modal = document.getElementById('editModal');
-              if (modal) return modal;
-              modal = document.createElement('div');
-              modal.id = 'editModal';
-              modal.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);width:720px;max-width:95%;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 24px 48px rgba(0,0,0,.16);padding:16px;display:none;z-index:1000;';
-              modal.innerHTML = `
-                <div style="font-weight:800;color:#0b2c66;margin-bottom:8px;">編集</div>
+                      </div>`}).join(""):'<div style="color:#64748b;">\u30E1\u30C3\u30BB\u30FC\u30B8\u306F\u3042\u308A\u307E\u305B\u3093</div>'}catch{Le.innerHTML='<div style="color:#b00020;">\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F</div>'}};await P();const ge=async()=>{const m=String(j.value||"").trim();if(m){Ee.disabled=!0;try{await U(`/api/expenses/${encodeURIComponent(v)}/messages`,{method:"POST",body:JSON.stringify({message:m})}),j.value="",await P()}catch(k){G(k?.message||"\u9001\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}Ee.disabled=!1}};Ee.addEventListener("click",ge),j.addEventListener("keydown",async m=>{m.key==="Enter"&&(m.preventDefault(),await ge())});const ue=V.querySelector(".chat-edit"),Te=V.querySelector(".chat-new"),Be=()=>{let m=document.getElementById("editModal");return m||(m=document.createElement("div"),m.id="editModal",m.style.cssText="position:fixed;top:80px;left:50%;transform:translateX(-50%);width:720px;max-width:95%;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 24px 48px rgba(0,0,0,.16);padding:16px;display:none;z-index:1000;",m.innerHTML=`
+                <div style="font-weight:800;color:#0b2c66;margin-bottom:8px;">\u7DE8\u96C6</div>
                 <div class="adjust-grid" style="grid-template-columns: 120px 1fr;">
-                  <div class="adjust-label">日付</div><div><input id="edDate" type="date"></div>
-                  <div class="adjust-label">費目</div><div><select id="edType" class="adjust-input"><option value="train">電車</option><option value="bus">バス</option><option value="taxi">タクシー</option><option value="private_car">自家用車</option><option value="parking">駐車場</option><option value="highway">高速道路</option></select></div>
-                  <div class="adjust-label">出発</div><div><input id="edOrigin" class="adjust-input"></div>
-                  <div class="adjust-label">経由</div><div><input id="edVia" class="adjust-input"></div>
-                  <div class="adjust-label">到着</div><div><input id="edDestination" class="adjust-input"></div>
-                  <div class="adjust-label">片道/往復</div><div><select id="edTripType" class="adjust-input"><option value="one_way">片道</option><option value="round_trip">往復</option></select></div>
-                  <div class="adjust-label">回数</div><div><input id="edTripCount" type="number" min="1" class="adjust-input"></div>
-                  <div class="adjust-label">距離(km)</div><div><input id="edKm" type="number" step="0.1" class="adjust-input"></div>
-                  <div class="adjust-label">単価</div><div><input id="edUnitPrice" type="number" step="1" class="adjust-input"></div>
-                  <div class="adjust-label">目的</div><div><input id="edPurpose" class="adjust-input"></div>
-                  <div class="adjust-label">定期</div><div><label style="display:flex;align-items:center;gap:8px;"><input id="edTeiki" type="checkbox"><span>定期区間内</span></label></div>
-                  <div class="adjust-label">通勤</div><div><label style="display:flex;align-items:center;gap:8px;"><input id="edCommuter" type="checkbox"><span>通勤パス</span></label></div>
-                  <div class="adjust-label">金額</div><div><input id="edAmount" type="number" step="1" class="adjust-input"></div>
-                  <div class="adjust-label">メモ</div><div><input id="edMemo" class="adjust-input"></div>
+                  <div class="adjust-label">\u65E5\u4ED8</div><div><input id="edDate" type="date"></div>
+                  <div class="adjust-label">\u8CBB\u76EE</div><div><select id="edType" class="adjust-input"><option value="train">\u96FB\u8ECA</option><option value="bus">\u30D0\u30B9</option><option value="taxi">\u30BF\u30AF\u30B7\u30FC</option><option value="private_car">\u81EA\u5BB6\u7528\u8ECA</option><option value="parking">\u99D0\u8ECA\u5834</option><option value="highway">\u9AD8\u901F\u9053\u8DEF</option></select></div>
+                  <div class="adjust-label">\u51FA\u767A</div><div><input id="edOrigin" class="adjust-input"></div>
+                  <div class="adjust-label">\u7D4C\u7531</div><div><input id="edVia" class="adjust-input"></div>
+                  <div class="adjust-label">\u5230\u7740</div><div><input id="edDestination" class="adjust-input"></div>
+                  <div class="adjust-label">\u7247\u9053/\u5F80\u5FA9</div><div><select id="edTripType" class="adjust-input"><option value="one_way">\u7247\u9053</option><option value="round_trip">\u5F80\u5FA9</option></select></div>
+                  <div class="adjust-label">\u56DE\u6570</div><div><input id="edTripCount" type="number" min="1" class="adjust-input"></div>
+                  <div class="adjust-label">\u8DDD\u96E2(km)</div><div><input id="edKm" type="number" step="0.1" class="adjust-input"></div>
+                  <div class="adjust-label">\u5358\u4FA1</div><div><input id="edUnitPrice" type="number" step="1" class="adjust-input"></div>
+                  <div class="adjust-label">\u76EE\u7684</div><div><input id="edPurpose" class="adjust-input"></div>
+                  <div class="adjust-label">\u5B9A\u671F</div><div><label style="display:flex;align-items:center;gap:8px;"><input id="edTeiki" type="checkbox"><span>\u5B9A\u671F\u533A\u9593\u5185</span></label></div>
+                  <div class="adjust-label">\u901A\u52E4</div><div><label style="display:flex;align-items:center;gap:8px;"><input id="edCommuter" type="checkbox"><span>\u901A\u52E4\u30D1\u30B9</span></label></div>
+                  <div class="adjust-label">\u91D1\u984D</div><div><input id="edAmount" type="number" step="1" class="adjust-input"></div>
+                  <div class="adjust-label">\u30E1\u30E2</div><div><input id="edMemo" class="adjust-input"></div>
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-                  <button id="edCancel" class="btn" type="button" style="height:32px;">キャンセル</button>
-                  <button id="edSave" class="btn btn-primary" type="button" style="height:32px;">保存</button>
-                  <button id="edApply" class="btn" type="button" style="height:32px;">申請</button>
+                  <button id="edCancel" class="btn" type="button" style="height:32px;">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
+                  <button id="edSave" class="btn btn-primary" type="button" style="height:32px;">\u4FDD\u5B58</button>
+                  <button id="edApply" class="btn" type="button" style="height:32px;">\u7533\u8ACB</button>
                 </div>
-              `;
-              document.body.appendChild(modal);
-              return modal;
-            };
-            const openEdit = async (recId) => {
-              const modal = ensureEditModal();
-              const backdrop = document.getElementById('drawerBackdrop');
-              try {
-                const r = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(recId)}`);
-                const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-                set('edDate', r.date ? String(r.date).slice(0, 10) : todayISO());
-                set('edType', r.type || (r.category || 'train'));
-                set('edOrigin', r.origin || '');
-                set('edVia', r.via || '');
-                set('edDestination', r.destination || '');
-                set('edTripType', r.trip_type || 'one_way');
-                set('edTripCount', r.trip_count != null ? String(r.trip_count) : '1');
-                set('edKm', r.distance_km != null ? String(r.distance_km) : '');
-                set('edUnitPrice', r.unit_price_per_km != null ? String(r.unit_price_per_km) : '');
-                set('edPurpose', r.purpose || '');
-                try { const c1 = document.getElementById('edTeiki'); if (c1) c1.checked = !!r.teiki_flag; } catch (e) { /* silently ignored */ }
-                try { const c2 = document.getElementById('edCommuter'); if (c2) c2.checked = !!r.commuter_pass; } catch (e) { /* silently ignored */ }
-                set('edAmount', r.amount != null ? String(r.amount) : '');
-                set('edMemo', r.memo || '');
-              } catch (errR) { /* silently ignored */ }
-              if (backdrop) { backdrop.removeAttribute('hidden'); backdrop.style.display = 'block'; }
-              modal.style.display = 'block';
-              try { document.getElementById('edOrigin')?.focus(); } catch (e) { /* silently ignored */ }
-              const onCancel = () => { modal.style.display = 'none'; if (backdrop) { backdrop.setAttribute('hidden', ''); backdrop.style.display = 'none'; } cleanup(); };
-              const onSave = async () => {
-                const payload = {
-                  date: document.getElementById('edDate')?.value,
-                  type: document.getElementById('edType')?.value,
-                  origin: document.getElementById('edOrigin')?.value,
-                  via: document.getElementById('edVia')?.value,
-                  destination: document.getElementById('edDestination')?.value,
-                  trip_type: document.getElementById('edTripType')?.value,
-                  trip_count: parseInt(String(document.getElementById('edTripCount')?.value || '1'), 10),
-                  distance_km: parseFloat(String(document.getElementById('edKm')?.value || '')),
-                  unit_price_per_km: parseFloat(String(document.getElementById('edUnitPrice')?.value || '')),
-                  purpose: document.getElementById('edPurpose')?.value,
-                  teiki_flag: !!document.getElementById('edTeiki')?.checked,
-                  commuter_pass: !!document.getElementById('edCommuter')?.checked,
-                  amount: parseFloat(String(document.getElementById('edAmount')?.value || '')),
-                  memo: document.getElementById('edMemo')?.value
-                };
-                try {
-                  const current = await fetchJSONAuth(`/api/expenses/${encodeURIComponent(recId)}`);
-                  const changed = [];
-                  const cmp = (k, nv, ov) => { const n = nv == null ? '' : String(nv); const o = ov == null ? '' : String(ov); if (n !== o) changed.push(`${k}: ${o} → ${n}`); };
-                  cmp('日付', payload.date, current.date ? String(current.date).slice(0, 10) : '');
-                  cmp('費目', payload.type, current.type || current.category);
-                  cmp('出発', payload.origin, current.origin);
-                  cmp('経由', payload.via, current.via);
-                  cmp('到着', payload.destination, current.destination);
-                  cmp('片道/往復', payload.trip_type, current.trip_type);
-                  cmp('回数', payload.trip_count, current.trip_count);
-                  cmp('距離(km)', payload.distance_km, current.distance_km);
-                  cmp('単価', payload.unit_price_per_km, current.unit_price_per_km);
-                  cmp('目的', payload.purpose, current.purpose);
-                  cmp('定期', payload.teiki_flag, current.teiki_flag);
-                  cmp('通勤', payload.commuter_pass, current.commuter_pass);
-                  cmp('金額', payload.amount, current.amount);
-                  cmp('メモ', payload.memo, current.memo);
-                  const msg = changed.length ? ('変更内容:\n' + changed.join('\n') + '\n保存しますか？') : '変更はありません。保存しますか？';
-                  const ok = window.confirm(msg);
-                  if (!ok) return;
-                } catch (e) { /* silently ignored */ }
-                try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(recId)}`, { method: 'PATCH', body: JSON.stringify(payload) }); await renderList(); onCancel(); } catch (errU) { showErr(errU?.message || '保存に失敗しました'); }
-              };
-              const onApply = async () => {
-                try { await fetchJSONAuth(`/api/expenses/${encodeURIComponent(recId)}/apply`, { method: 'POST' }); await renderList(); onCancel(); } catch (errA) { showErr(errA?.message || '申請に失敗しました'); }
-              };
-              const cancelBtn = document.getElementById('edCancel');
-              const saveBtn = document.getElementById('edSave');
-              const applyBtn = document.getElementById('edApply');
-              cancelBtn?.addEventListener('click', onCancel);
-              saveBtn?.addEventListener('click', onSave);
-              applyBtn?.addEventListener('click', onApply);
-              const cleanup = () => {
-                cancelBtn?.removeEventListener('click', onCancel);
-                saveBtn?.removeEventListener('click', onSave);
-                applyBtn?.removeEventListener('click', onApply);
-              };
-            };
-            btnEdit?.addEventListener('click', async () => { try { await openEdit(id); } catch (e) { /* silently ignored */ } });
-            btnNew?.addEventListener('click', async () => {
-              try {
-                const m = currentYM();
-                try { await fetchJSONAuth('/api/expenses/months/start', { method: 'POST', body: JSON.stringify({ month: m }) }); } catch (e) { /* silently ignored */ }
-                const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-                setVal('exDate', m + '-01');
-                setVal('exType', 'train');
-                setVal('exOrigin', '');
-                setVal('exVia', '');
-                setVal('exDestination', '');
-                setVal('exTripType', 'one_way');
-                setVal('exTripCount', '1');
-                setVal('exKm', '');
-                setVal('exUnitPrice', '');
-                setVal('exPurpose', '');
-                const teikiEl = document.getElementById('exTeiki'); if (teikiEl) teikiEl.checked = false;
-                setVal('exAmount', '');
-                setVal('exMemo', '');
-                setVal('exSiteName', '');
-                setVal('exItemName', '');
-                setVal('exVendor', '');
-                try { document.getElementById('exType')?.dispatchEvent(new Event('change')); } catch (e) { /* silently ignored */ }
-                formActive = true;
-                const navBtn = document.getElementById('expNavNew') || document.getElementById('topNavNew');
-                if (navBtn) {
-                  navBtn.click();
-                } else {
-                  window.location.reload();
-                }
-              } catch (e) { /* silently ignored */ }
-            });
-          }
-        } finally {
-          btn.disabled = false;
-        }
-      });
-    }
-  } catch (e) {
-    const msg = String(e?.message || 'unknown');
-    if (isTooManyReqErr(e)) {
-      listRateLimitedUntilMs = Date.now() + 65000;
-      host.innerHTML = '<div style="color:#b45309;font-weight:700;">アクセスが集中しています（Too many requests）。1分ほど待ってから自動再試行します。</div>';
-      try { if (listRetryTimer) clearTimeout(listRetryTimer); } catch (e) { /* silently ignored */ }
-      listRetryTimer = setTimeout(() => { renderList().catch(() => { }); }, 65000);
-    } else {
-      host.innerHTML = `<div style="color:#b00020;font-weight:650;">取得失敗: ${msg}</div>`;
-    }
-  } finally {
-    renderListBusy = false;
-    if (renderListPending) {
-      renderListPending = false;
-      setTimeout(() => { renderList().catch(() => { }); }, 0);
-    }
-  }
-};// Cái này dùng để render list - 
-const renderHistoryTitle = () => {
-  // no-op: history controls are now on the toolbar row
-};
-export async function bootExpensesPage() {
-  const pageMarker = document.getElementById('historySection') || document.getElementById('homeSection') || document.getElementById('exDate');
-  if (!pageMarker) return;
-  if (pageMarker.dataset.booted === '1') return;
-  pageMarker.dataset.booted = '1';
-  expensesPageMounted = true;
-  wireUserMenu(); wireDrawer();
-  // Register per-page cleanup so router can stop background polling when leaving this page.
-  try {
-    window.__employeePageCleanup = () => {
-      expensesPageMounted = false;
-      try { if (noticePollTimer) clearInterval(noticePollTimer); } catch (e) { /* silently ignored */ }
-      noticePollTimer = null;
-    };
-  } catch (e) { /* silently ignored */ }
-  prefillUserName();
-  try {
-    const p = await fetchJSONAuthSafe('/api/auth/me', undefined, 1);
-    meProfile = p || null;
-    const role = String(p.role || '').toLowerCase();
-    if (!p || (role !== 'employee' && role !== 'manager')) {
-      if (role === 'admin') {
-        showErr('このページへのアクセス権限がありません（管理者は管理画面をご利用ください）');
-        window.location.href = '/admin/expenses';
-        return;
-      }
-      window.location.href = '/ui/login'; return;
-    }
-    const name = p.username || p.email || 'ユーザー'; const el = $('#userName'); if (el) el.textContent = name;
-    try { window.MY_ID = p.id; } catch (e) { /* silently ignored */ }
-    try {
-      noticeSeenKey = `expenses_notice_seen_at:${String(p.id || '')}`;
-      noticeSeenAtMs = Number(localStorage.getItem(noticeSeenKey) || '0') || 0;
-    } catch (e) { /* silently ignored */ }
-    try {
-      const params = new URLSearchParams(String(window.location.search || ''));
-      const m = params.get('month');
-      if (m && /^\d{4}-\d{2}$/.test(String(m))) {
-        createTargetMonth = String(m);
-        const d = document.getElementById('exDate'); if (d) d.value = String(m) + '-01';
-        const mf = document.getElementById('exFilterMonth'); if (mf) mf.value = String(m);
-        try { await fetchJSONAuth('/api/expenses/months/start', { method: 'POST', body: JSON.stringify({ month: String(m) }) }); } catch (e) { /* silently ignored */ }
-        formActive = true;
-      } else {
-        try {
-          const active = await fetchJSONAuthSafe('/api/expenses/months/active', undefined, 1);
-          const ym = String(active?.month || '').slice(0, 7);
-          if (/^\d{4}-\d{2}$/.test(ym)) {
-            createTargetMonth = ym;
-            const mf = document.getElementById('exFilterMonth'); if (mf) mf.value = ym;
-            const d = document.getElementById('exDate');
-            if (d && (!d.value || String(d.value).slice(0, 7) !== ym)) {
-              const t = todayISO();
-              d.value = (String(t).slice(0, 7) === ym) ? t : `${ym}-01`;
-            }
-            formActive = true;
-          }
-        } catch (e) {
-          if (!isNotFoundErr(e)) throw e;
-        }
-      }
-    } catch (e) { /* silently ignored */ }
-  } catch (e) {
-    const msg = String(e?.message || '');
-    if (/401|403|invalid token|expired token/i.test(msg)) {
-      window.location.href = '/ui/login';
-      return;
-    }
-    showErr('通信エラーが発生しました。少し待ってから再度お試しください。');
-    return;
-  }
-  const back = document.getElementById('expBackBtn');
-  if (back && !back.dataset.bound) {
-    back.dataset.bound = '1';
-    back.addEventListener('click', (e) => {
-      e.preventDefault();
-      const goSoft = window.__employeeSoftNavigate;
-      if (typeof goSoft === 'function') {
-        goSoft('/ui/portal', true).then((ok) => {
-          if (!ok) window.location.href = '/ui/portal';
-        }).catch(() => { window.location.href = '/ui/portal'; });
-        return;
-      }
-      try { window.location.href = '/ui/portal'; } catch (e) { /* silently ignored */ }
-    });
-  }
-  const d = $('#exDate'); if (d && !d.value) d.value = todayISO();
-  const typeSel = document.getElementById('exType');
-  const kmEl = document.getElementById('exKm');
-  const unitEl = document.getElementById('exUnitPrice');
-  const amtEl = document.getElementById('exAmount');
-  const tripSel = document.getElementById('exTripType');
-  const tripCountEl = document.getElementById('exTripCount');
-  const toggleCarFields = () => {
-    const isCar = (typeSel?.value || '') === 'car';
-    const kmRow = kmEl?.parentElement?.previousElementSibling ? kmEl.parentElement.previousElementSibling : null;
-    const unitRow = unitEl?.parentElement?.previousElementSibling ? unitEl.parentElement.previousElementSibling : null;
-    if (kmEl && unitEl) {
-      kmEl.parentElement.style.display = isCar ? '' : 'none';
-      unitEl.parentElement.style.display = isCar ? '' : 'none';
-      if (kmRow) kmRow.style.display = isCar ? '' : 'none';
-      if (unitRow) unitRow.style.display = isCar ? '' : 'none';
-    }
-  };
-  const toggleTripCount = () => {
-    const isMulti = (tripSel?.value || '') === 'multi';
-    const cntRowLabel = tripCountEl?.parentElement?.previousElementSibling ? tripCountEl.parentElement.previousElementSibling : null;
-    if (tripCountEl) {
-      tripCountEl.parentElement.style.display = isMulti ? '' : 'none';
-      if (cntRowLabel) cntRowLabel.style.display = isMulti ? '' : 'none';
-    }
-  };
-  // Ẩn/hiện cả cặp (label + ô input) trong lưới .adjust-grid theo id của input.
-  const setFieldRowVisible = (inputId, visible) => {
-    const el = document.getElementById(inputId);
-    if (!el) return;
-    const wrap = el.parentElement;             // ô chứa input
-    const label = wrap ? wrap.previousElementSibling : null; // ô label bên trái
-    if (wrap) wrap.style.display = visible ? '' : 'none';
-    if (label) label.style.display = visible ? '' : 'none';
-  };
-  // Loại 物品購入 (goods): ẩn các trường giao thông, hiện 購入物品名/購入先.
-  const toggleGoodsFields = () => {
-    const isGoods = (typeSel?.value || '') === 'goods';
-    // Field giao thông: ẩn khi goods
-    ['exOrigin', 'exVia', 'exDestination', 'exTripType', 'exTripCount', 'exKm', 'exUnitPrice', 'exTeiki']
-      .forEach((id) => setFieldRowVisible(id, !isGoods));
-    // Field mua vật tư: hiện khi goods
-    setFieldRowVisible('exItemName', isGoods);
-    setFieldRowVisible('exVendor', isGoods);
-  };
-  const recomputeAmountPreview = () => {
-    const type = typeSel?.value || '';
-    if (type === 'car') {
-      const dist = Number(kmEl?.value || '0') || 0;
-      const unit = Number(unitEl?.value || '0') || 0;
-      if (dist > 0 && unit > 0) {
-        const base = Math.round(dist * unit);
-        if (amtEl) amtEl.value = base ? base.toLocaleString('ja-JP') : '';
-      }
-    }
-    // No auto-multiplication for round_trip or multi - employee enters total amount manually
-  };
-  typeSel?.addEventListener('change', () => { toggleCarFields(); toggleTripCount(); toggleGoodsFields(); recomputeAmountPreview(); });
-  kmEl?.addEventListener('input', recomputeAmountPreview);
-  unitEl?.addEventListener('input', recomputeAmountPreview);
-  tripSel?.addEventListener('change', () => { toggleTripCount(); recomputeAmountPreview(); });
-  tripCountEl?.addEventListener('input', recomputeAmountPreview);
-  toggleCarFields();
-  toggleTripCount();
-  toggleGoodsFields();
-  bindAmountFormatter(amtEl);
-  try { if (amtEl && amtEl.value) amtEl.value = formatAmount(amtEl.value); } catch (e) { /* silently ignored */ }
-  const frontInput = document.getElementById('exReceiptFront');
-  const backInput = document.getElementById('exReceiptBack');
-  const imagesInput = document.getElementById('exImages');
-  frontInput?.addEventListener('change', () => renderFilePreview(frontInput, 'exReceiptFrontPreview'));
-  backInput?.addEventListener('change', () => renderFilePreview(backInput, 'exReceiptBackPreview'));
-  imagesInput?.addEventListener('change', () => renderMultiFilePreview(imagesInput, 'exImagesPreview'));
-  const validateExpenseForm = () => {
-    clearFieldErrors();
-    showErr('');
-    const exErrMsg = document.getElementById('exErrMsg');
-    if (exErrMsg) exErrMsg.style.display = 'none';
-
-    let ok = true;
-    let date = String($('#exDate')?.value || '');
-    date = date.replace(/\//g, '-');
-    const origin = String($('#exOrigin')?.value || '').trim();
-    const destination = String($('#exDestination')?.value || '').trim();
-    const purpose = String($('#exPurpose')?.value || '').trim();
-    const type = $('#exType')?.value || 'train';
-    const teiki = !!$('#exTeiki')?.checked;
-    const itemName = String($('#exItemName')?.value || '').trim();
-    const rawAmount = String($('#exAmount')?.value || '').trim();
-    const isGoods = type === 'goods';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setFieldError('exDate', '日付を正しく入力してください。'); ok = false; }
-    if (isGoods) {
-      // 物品購入: cần tên vật tư; không bắt buộc 出発地/到着地.
-      if (!itemName) { setFieldError('exItemName', '購入物品名は必須です。'); ok = false; }
-    } else {
-      if (!origin) { setFieldError('exOrigin', '出発地は必須です。'); ok = false; }
-      if (!destination) { setFieldError('exDestination', '到着地は必須です。'); ok = false; }
-    }
-    if (!purpose) { setFieldError('exPurpose', '用途は必須です。'); ok = false; }
-    if (!rawAmount && !(type === 'train' && teiki)) { setFieldError('exAmount', '金額は必須です。'); ok = false; }
-    if (!ok) {
-      if (exErrMsg) {
-        exErrMsg.textContent = '入力内容をご確認ください。';
-        exErrMsg.style.display = 'block';
-      } else {
-        showErr('入力内容をご確認ください。');
-      }
-    }
-    return ok;
-  };
-  const applyBtn = $('#exApply');
-
-  const handleSaveItem = async (isDraftOnly) => {
-    if (!validateExpenseForm()) return;
-    showErr('');
-    const exErrMsg = document.getElementById('exErrMsg');
-    if (exErrMsg) exErrMsg.style.display = 'none';
-
-    const btn = applyBtn;
-    if (!btn || btn.disabled) return;
-    const origText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '保存中…';
-
-    const clientToken = 'ct_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-    let date = $('#exDate')?.value || '';
-    date = date.replace(/\//g, '-');
-    const type = $('#exType')?.value || 'train';
-    const origin = $('#exOrigin')?.value || '';
-    const via = $('#exVia')?.value || '';
-    const destination = $('#exDestination')?.value || '';
-    const tripType = $('#exTripType')?.value || 'one_way';
-    const tripCount = Number($('#exTripCount')?.value || '1');
-    const purpose = $('#exPurpose')?.value || '';
-    const teiki = !!$('#exTeiki')?.checked;
-    const km = $('#exKm')?.value || '';
-    const unitPricePerKm = $('#exUnitPrice')?.value || '';
-    const memo = $('#exMemo')?.value || '';
-    const siteName = $('#exSiteName')?.value || '';
-    const itemName = $('#exItemName')?.value || '';
-    const vendor = $('#exVendor')?.value || '';
-    const rawAmount = String($('#exAmount')?.value || '').trim();
-    let amount = parseAmount(rawAmount);
-    if (type === 'train' && teiki) amount = 0;
-
-    showSpinner();
-    try {
-      const create = await fetchJSONAuth('/api/expenses', {
-        method: 'POST', body: JSON.stringify({
-          date, type, origin, via, destination, tripType, tripCount, purpose, teiki,
-          km: km ? Number(km) : null, unitPricePerKm: unitPricePerKm ? Number(unitPricePerKm) : null,
-          amount: Number(amount), memo, siteName, itemName, vendor, clientToken
-        })
-      });
-      const newId = create?.id;
-      const fFront = document.getElementById('exReceiptFront')?.files?.[0] || null;
-      const fBack = document.getElementById('exReceiptBack')?.files?.[0] || null;
-      const imgs = document.getElementById('exImages')?.files || [];
-      if (newId && (fFront || fBack || (imgs && imgs.length))) {
-        const fd = new FormData();
-        if (fFront) fd.append('files', fFront, (fFront.name || 'front'));
-        if (fBack) fd.append('files', fBack, (fBack.name || 'back'));
-        for (const f of imgs) fd.append('files', f, f.name || 'image');
-        await fetch(`/api/expenses/${encodeURIComponent(newId)}/files`, { method: 'POST', body: fd, credentials: 'include' });
-      }
-
-      // Reload month filter if we're in new flow
-      const exFilterMonth = document.getElementById('exFilterMonth');
-      const createTargetMonth = window.createTargetMonth || currentYM();
-      if (exFilterMonth && (!exFilterMonth.value || exFilterMonth.value !== createTargetMonth)) {
-        exFilterMonth.value = createTargetMonth;
-      }
-
-      // Successfully saved
-      const modal = document.getElementById('exItemModal');
-      if (modal) modal.style.display = 'none';
-      if (typeof window.renderAppItemsList === 'function') {
-        await window.renderAppItemsList();
-      }
-      showErr('');
-    } catch (e) {
-      if (exErrMsg) {
-        exErrMsg.textContent = e?.message || '保存に失敗しました';
-        exErrMsg.style.display = 'block';
-      } else {
-        showErr(e?.message || '保存に失敗しました');
-      }
-    } finally {
-      hideSpinner();
-      btn.disabled = false;
-      btn.textContent = origText;
-    }
-  };
-
-  applyBtn?.addEventListener('click', async () => handleSaveItem(true));
-  // do not auto-render history list; wait for user to press "検索"
-
-  const typesSel = document.getElementById('exFilterType');
-  try {
-    const types = await fetchJSONAuth('/api/expenses/types');
-    if (Array.isArray(types) && types.length) {
-      // optional enhancement: populate type filter dynamically if needed
-    }
-  } catch (e) { /* silently ignored */ }
-
-  const monthFilter = document.getElementById('exFilterMonth');
-  const statusFilter = document.getElementById('exFilterStatus');
-  const btnSearch = document.getElementById('exSearch');
-  const btnClear = document.getElementById('exClear');
-  const btnCsv = document.getElementById('exCsv');
-  const btnShowHistory = document.getElementById('exShowHistory');
-  const createMonthGrid = document.getElementById('exCreateMonthGrid');
-  const createMonthInput = document.getElementById('exCreateMonthInput');
-  const createMonthStartBtn = document.getElementById('exCreateMonthStart');
-  const profileNameEl = document.getElementById('exCreateProfileName');
-  const profileCodeEl = document.getElementById('exCreateProfileCode');
-  const profileDobEl = document.getElementById('exCreateProfileDob');
-  const profileStartEl = document.getElementById('exCreateProfileStart');
-  const profileStatusEl = document.getElementById('exCreateProfileStatus');
-  const setProfileStatus = (text, isError = false) => {
-    if (!profileStatusEl) return;
-    profileStatusEl.textContent = String(text || '');
-    profileStatusEl.style.color = isError ? '#b91c1c' : '#334155';
-  };
-  const profileDefaults = (ym) => ({
-    employeeName: String(
-      meProfile?.full_name ||
-      meProfile?.name ||
-      meProfile?.username ||
-      meProfile?.email ||
-      document.getElementById('userName')?.textContent ||
-      ''
-    ).trim(),
-    employeeCode: String(
-      meProfile?.employee_code ||
-      meProfile?.emp_code ||
-      meProfile?.code ||
-      ''
-    ).trim(),
-    birthDate: fmtDateOnly(
-      meProfile?.birth_date ||
-      meProfile?.birthday ||
-      meProfile?.date_of_birth ||
-      meProfile?.dob ||
-      ''
-    ),
-    startDate: firstDayOfYm(ym)
-  });
-  const fillCreateProfile = (row, ym) => {
-    const d = profileDefaults(ym);
-    if (profileNameEl) profileNameEl.value = String(row?.employee_name || d.employeeName || '');
-    if (profileCodeEl) profileCodeEl.value = String(row?.employee_code || d.employeeCode || '');
-    if (profileDobEl) profileDobEl.value = String(row?.birth_date || d.birthDate || '').slice(0, 10);
-    if (profileStartEl) profileStartEl.value = String(row?.start_date || d.startDate || '').slice(0, 10);
-  };
-  const loadMonthProfile = async (ym) => {
-    if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) return;
-    // Profile inputs were removed from the New flow; keep default data preparation only.
-    fillCreateProfile(null, ym);
-  };
-  const validateCreateProfile = (ym) => {
-    const employeeName = String(profileNameEl?.value || '').trim();
-    const employeeCode = String(profileCodeEl?.value || '').trim();
-    const birthDate = String(profileDobEl?.value || '').trim();
-    const startDate = String(profileStartEl?.value || '').trim();
-    if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) return { ok: false, message: '対象年月を選択してください。' };
-    if (!employeeName) return { ok: false, message: '社員情報を取得できませんでした（社員名）。' };
-    if (!employeeCode) return { ok: false, message: '社員情報を取得できませんでした（社員コード）。' };
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return { ok: false, message: '社員情報を取得できませんでした（生年月日）。' };
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { ok: false, message: '作成開始日を入力してください。' };
-    return { ok: true, payload: { month: String(ym), employeeName, employeeCode, birthDate, startDate } };
-  };
-  const saveMonthProfile = async (ym) => {
-    const vr = validateCreateProfile(ym);
-    if (!vr.ok) throw new Error(vr.message || '入力内容をご確認ください。');
-    setProfileStatus('入力情報を保存中…');
-    const row = await fetchJSONAuth('/api/expenses/months/profile', { method: 'POST', body: JSON.stringify(vr.payload) });
-    setProfileStatus('入力情報を保存しました。');
-    return row;
-  };
-  if (monthFilter && !monthFilter.value) {
-    monthFilter.value = currentYM();
-  }
-  if (createMonthInput && !createMonthInput.value) {
-    createMonthInput.value = createTargetMonth;
-  }
-  btnSearch?.addEventListener('click', async () => {
-    const ym = String(monthFilter?.value || '');
-    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
-    await renderList();
-  });
-  btnShowHistory?.addEventListener('click', async () => {
-    const ym = String(monthFilter?.value || '');
-    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
-    await renderList();
-  });
-  btnClear?.addEventListener('click', async () => {
-    if (monthFilter) monthFilter.value = '';
-    if (statusFilter) statusFilter.value = (activeHistoryTab === 'applied') ? 'applied' : '';
-    selectedHistoryMonth = '';
-    await renderList();
-  });
-  monthFilter?.addEventListener('change', () => {
-    const ym = String(monthFilter.value || '');
-    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
-    renderHistoryTitle();
-  });
-  monthFilter?.addEventListener('input', () => {
-    const ym = String(monthFilter.value || '');
-    selectedHistoryMonth = /^\d{4}-\d{2}$/.test(ym) ? ym : '';
-    renderHistoryTitle();
-  });
-  btnCsv?.addEventListener('click', async () => {
-    const m = monthFilter?.value || '';
-    const s = statusFilter?.value || '';
-    const u = `/api/expenses/export.csv?month=${encodeURIComponent(m)}&status=${encodeURIComponent(s)}`;
-    window.location.href = u;
-  });
-  const navNewBtns = [document.getElementById('topNavNew'), document.getElementById('expNavNew')].filter(Boolean);
-  const navAppliedBtns = [document.getElementById('topNavApplied'), document.getElementById('expNavApplied')].filter(Boolean);
-  const navNoticeBtns = [document.getElementById('topNavNotice'), document.getElementById('expNavNotice')].filter(Boolean);
-
-  const expNavHelp = document.getElementById('expNavHelp');
-  const navHelpBtns = [expNavHelp].filter(Boolean);
-  const homeSection = document.getElementById('homeSection');
-  const historySection = document.getElementById('historySection');
-  const helpSection = document.getElementById('helpSection');
-  const historyModeLabel = document.getElementById('historyModeLabel');
-  const setNavActive = (name) => {
-    navNewBtns.forEach((el) => el.classList.toggle('active', name === 'new'));
-    navAppliedBtns.forEach((el) => el.classList.toggle('active', name === 'applied'));
-    navNoticeBtns.forEach((el) => el.classList.toggle('active', name === 'notice'));
-    navHelpBtns.forEach((el) => el.classList.toggle('active', name === 'help'));
-  };
-  const showTab = async (name) => {
-    let tab = (name === 'new' || name === 'applied' || name === 'notice' || name === 'help') ? name : 'new';
-    if (tab === 'new' && !formActive) {
-      tab = 'applied';
-    }
-    const mainHost = document.querySelector('.expense-main');
-    activeHistoryTab = tab;
-    try { sessionStorage.setItem(EXPENSES_ACTIVE_TAB_KEY, activeHistoryTab); } catch (e) { /* silently ignored */ }
-
-    if (tab === 'applied') {
-        selectedHistoryMonth = '';
-        const listHost = document.getElementById('exListHost');
-        const listWrapper = document.getElementById('exListWrapper');
-        if (listHost) listHost.style.display = 'none';
-        if (listWrapper) listWrapper.style.display = 'none';
-        const boardHost = document.getElementById('exMonthlyBoardHost');
-        if (boardHost) {
-          boardHost.style.display = (activeSummaryCard === '') ? 'none' : 'block';
-        }
-        const summaryCards = document.getElementById('exSummaryCards');
-        if (summaryCards) {
-          summaryCards.style.display = (activeSummaryCard === '') ? 'grid' : 'none';
-        }
-      }
-
-    const pageTitle = $('#expPageTitle');
-    if (pageTitle) {
-      if (tab === 'new') {
-        pageTitle.textContent = formActive ? '新規作成' : '交通費申請';
-      } else if (tab === 'applied') {
-        pageTitle.textContent = '申請履歴';
-      } else if (tab === 'notice') {
-        pageTitle.textContent = 'お知らせ';
-      } else if (tab === 'help') {
-        pageTitle.textContent = 'ヘルプ';
-      }
-    }
-
-    if (tab === 'new') {
-      if (homeSection) homeSection.style.display = formActive ? '' : 'none';
-      if (historySection) historySection.style.display = showMonthProgressInNewMode ? '' : 'none';
-      if (helpSection) helpSection.style.display = 'none';
-      if (historySection) historySection.classList.remove('notice-mode');
-      if (historyModeLabel) historyModeLabel.textContent = showMonthProgressInNewMode ? '申請済み日付（当月）' : '交通費提出履歴（月次）';
-      if (mainHost) mainHost.classList.toggle('new-progress-split', !!showMonthProgressInNewMode);
-
-      if (formActive) {
-        if (step1Input) step1Input.style.display = 'block';
-        if (step2Confirm) step2Confirm.style.display = 'none';
-        if (step3Complete) step3Complete.style.display = 'none';
-        if (typeof setProgressState === 'function') setProgressState(1);
-      }
-    } else if (tab === 'help') {
-      if (homeSection) homeSection.style.display = 'none';
-      if (historySection) historySection.style.display = 'none';
-      if (helpSection) helpSection.style.display = '';
-      if (mainHost) mainHost.classList.remove('new-progress-split');
-    } else {
-      if (homeSection) homeSection.style.display = 'none';
-      if (helpSection) helpSection.style.display = 'none';
-      if (historySection) historySection.style.display = '';
-      if (historySection) historySection.classList.toggle('applied-month-mode', tab === 'applied');
-      if (historySection) historySection.classList.toggle('notice-mode', tab === 'notice');
-      if (historyModeLabel) historyModeLabel.textContent = (tab === 'notice')
-        ? 'お知らせ（差戻し）'
-        : ((tab === 'applied' && showMonthProgressInNewMode) ? '申請済み日付（当月）' : '交通費提出履歴（月次）');
-      if (mainHost) mainHost.classList.toggle('new-progress-split', tab === 'applied' && showMonthProgressInNewMode);
-      renderHistoryTitle();
-    }
-    setNavActive(tab);
-  };
-  const renderCreateMonthGrid = () => {
-    if (!createMonthGrid) return;
-    const target = createTargetMonth || currentYM();
-    const months = recentMonths(6, currentYM());
-    if (!months.includes(target)) {
-      months.unshift(target);
-    }
-    createMonthGrid.innerHTML = months.map((ym) => {
-      const active = ym === target ? ' active' : '';
-      return `<button class="month-chip${active}" type="button" data-month="${ym}">${ym.slice(0, 4)}年${ym.slice(5, 7)}月</button>`;
-    }).join('');
-  };
-  const startNewForMonth = async (ym, opts = {}) => {
-    const showProgress = !!opts.showProgress || !!opts.switchToAppliedAfterCreate;
-    const stayOnApplied = !!opts.stayOnApplied;
-    const switchToAppliedAfterCreate = !!opts.switchToAppliedAfterCreate;
-    const openAppliedListAfterCreate = !!opts.openAppliedListAfterCreate;
-    if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) {
-      showErr('対象年月を選択してください。');
-      return;
-    }
-    createTargetMonth = String(ym);
-    window.createTargetMonth = createTargetMonth; // Đảm bảo gán vào window để renderAppItemsList lấy được
-    if (createMonthInput) createMonthInput.value = createTargetMonth;
-    try {
-      await fetchJSONAuth('/api/expenses/months/start', { method: 'POST', body: JSON.stringify({ month: createTargetMonth }) });
-    } catch (e) {
-      const msg = String(e?.message || '月の開始に失敗しました');
-      showErr(msg);
-      setProfileStatus(msg, true);
-      return;
-    }
-    const d = document.getElementById('exDate');
-    if (d) d.value = `${createTargetMonth}-01`;
-    const exAppMonth = document.getElementById('exAppMonth');
-    if (exAppMonth) {
-      exAppMonth.value = createTargetMonth;
-    }
-    if (typeof window.renderAppItemsList === 'function') {
-      window.renderAppItemsList();
-    }
-    if (monthFilter) monthFilter.value = createTargetMonth;
-    if (statusFilter) statusFilter.value = '';
-    selectedHistoryMonth = createTargetMonth;
-    showMonthProgressInNewMode = showProgress;
-    formActive = true;
-    showErr('');
-    if (openAppliedListAfterCreate) {
-      showMonthProgressInNewMode = false;
-      formActive = false;
-      selectedHistoryMonth = '';
-      if (monthFilter) monthFilter.value = '';
-      await showTab('applied');
-      await renderList();
-      return;
-    }
-    await showTab((stayOnApplied || switchToAppliedAfterCreate) ? 'applied' : 'new');
-    if (showProgress) {
-      await renderList();
-    } else if (switchToAppliedAfterCreate) {
-      await renderList();
-    }
-  };
-  window.startNewForMonth = startNewForMonth;
-  continueCreateForMonth = async (ym, opts = {}) => startNewForMonth(ym, { showProgress: true, stayOnApplied: !!opts.stayOnApplied, skipProfile: true });
-  if (createMonthGrid && !createMonthGrid.dataset.bound) {
-    createMonthGrid.dataset.bound = '1';
-    createMonthGrid.addEventListener('click', async (e) => {
-      const btn = e.target.closest('button[data-month]');
-      if (!btn) return;
-      const ym = String(btn.getAttribute('data-month') || '');
-      createTargetMonth = ym;
-      window.createTargetMonth = ym;
-      if (createMonthInput) createMonthInput.value = ym;
-      renderCreateMonthGrid();
-    });
-  }
-  createMonthInput?.addEventListener('change', () => {
-    const ym = String(createMonthInput.value || '');
-    if (/^\d{4}-\d{2}$/.test(ym)) {
-      createTargetMonth = ym;
-      window.createTargetMonth = ym;
-      renderCreateMonthGrid();
-    }
-  });
-  createMonthStartBtn?.addEventListener('click', async () => {
-    document.getElementById('monthSelectModal').style.display = 'none';
-    const ym = String(createMonthInput?.value || createTargetMonth || '');
-    await startNewForMonth(ym, { showProgress: false });
-  });
-  document.getElementById('exCreateMonthCancel')?.addEventListener('click', () => {
-    document.getElementById('monthSelectModal').style.display = 'none';
-  });
-  renderCreateMonthGrid();
-  const exHistoryNewBtn = document.getElementById('exHistoryNewBtn');
-  exHistoryNewBtn?.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const modal = document.getElementById('monthSelectModal');
-    if (modal) {
-      modal.style.display = 'flex';
-      const createMonthInput = document.getElementById('exCreateMonthInput');
-      if (createMonthInput) {
-        createMonthInput.value = currentYM();
-      }
-    }
-  });
-
-  const exSummaryCards = document.getElementById('exSummaryCards');
-  if (exSummaryCards) {
-      exSummaryCards.addEventListener('click', async (e) => {
-        const card = e.target.closest('.summary-card');
-        if (!card) return;
-        activeSummaryCard = card.dataset.type || 'all';
-
-        await renderList();
-      });
-    }
-
-  const closeSidebarOnMobile = () => {
-    if (window.innerWidth <= 768) {
-      const layoutEl = document.querySelector('.expense-layout');
-      if (layoutEl) layoutEl.classList.remove('sidebar-collapsed');
-      document.body.classList.remove('exp-drawer-open');
-    }
-  };
-  const bindTabClick = (els, handler) => {
-    els.forEach((el) => {
-      if (!el) return;
-      el.addEventListener('click', (e) => {
-        closeSidebarOnMobile();
-        handler(e);
-      });
-    });
-  };
-  bindTabClick(navNewBtns, async (e) => {
-    e.preventDefault();
-    const modal = document.getElementById('monthSelectModal');
-    if (modal) {
-      modal.style.display = 'flex';
-      const createMonthInput = document.getElementById('exCreateMonthInput');
-      if (createMonthInput) {
-        createMonthInput.value = currentYM();
-      }
-    }
-  });
-  bindTabClick(navAppliedBtns, async (e) => {
-    e.preventDefault();
-    if (navBusy) return;
-    navBusy = true;
-    
-    // Luôn luôn reset mọi trạng thái khi click vào tab 申請一覧
-    activeSummaryCard = '';
-    const m = document.getElementById('exFilterMonth');
-    const s = document.getElementById('exFilterStatus');
-    if (s) s.value = ''; 
-    showMonthProgressInNewMode = false;
-    formActive = false;
-    selectedHistoryMonth = '';
-    if (m) m.value = '';
-    
-    // Bỏ chọn thẻ thống kê
-    document.querySelectorAll('.summary-card').forEach(card => {
-      card.style.border = '1px solid var(--border)';
-      card.style.boxShadow = 'none';
-      card.style.background = '#fff';
-    });
-
-    try {
-      await showTab('applied');
-      await renderList();
-    } finally {
-      navBusy = false;
-    }
-  });
-  bindTabClick(navNoticeBtns, async (e) => {
-    e.preventDefault();
-    if (activeHistoryTab === 'notice') return;
-    if (navBusy) return;
-    navBusy = true;
-    const s = document.getElementById('exFilterStatus');
-    if (s) s.value = '';
-    selectedHistoryMonth = '';
-    const m = document.getElementById('exFilterMonth');
-    if (m) m.value = '';
-    try {
-      markNoticeSeen();
-      await showTab('notice');
-      await renderList();
-    } finally {
-      navBusy = false;
-    }
-  });
-  bindTabClick(navHelpBtns, async (e) => {
-    e.preventDefault();
-    if (activeHistoryTab === 'help') return;
-    if (navBusy) return;
-    navBusy = true;
-    try {
-      await showTab('help');
-    } finally {
-      navBusy = false;
-    }
-  });
-  const initialTab = (() => {
-    try {
-      const qs = new URLSearchParams(String(window.location.search || ''));
-      const qTab = String(qs.get('tab') || '').toLowerCase();
-      if (qTab === 'new' || qTab === 'applied' || qTab === 'notice' || qTab === 'help') return qTab;
-      const saved = String(sessionStorage.getItem(EXPENSES_ACTIVE_TAB_KEY) || '').toLowerCase();
-      if (saved === 'new' || saved === 'applied' || saved === 'notice' || saved === 'help') return saved;
-    } catch (e) { /* silently ignored */ }
-    return 'applied';
-  })();
-  await showTab(initialTab);
-
-  if (initialTab === 'new' && !formActive) {
-    const modal = document.getElementById('monthSelectModal');
-    if (modal) {
-      modal.style.display = 'flex';
-      const createMonthInput = document.getElementById('exCreateMonthInput');
-      if (createMonthInput) {
-        createMonthInput.value = currentYM();
-      }
-    }
-  }
-
-  await renderList();
-
-  try { await renderSummary(); } catch (e) { /* silently ignored */ }
-  try {
-    await renderNotices();
-  } catch (e) { /* silently ignored */ }
-  try {
-    await refreshNoticeMessages();
-  } catch (e) { /* silently ignored */ }
-  try {
-    if (noticePollTimer) clearInterval(noticePollTimer);
-    noticePollTimer = setInterval(async () => {
-      if (!expensesPageMounted) return;
-      // Keep polling lightweight to avoid 429 bursts from /api/expenses/my.
-      try { await refreshNoticeMessages(); } catch (e) { /* silently ignored */ }
-    }, 30000);
-  } catch (e) { /* silently ignored */ }
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-  await bootExpensesPage();
-});
-
-function setupAutocomplete(inputId) {
-  const el = document.getElementById(inputId);
-  if (!el || el.dataset.autocomplete === '1') return;
-  el.dataset.autocomplete = '1';
-  const wrap = document.createElement('div');
-  wrap.style.position = 'relative';
-  const parent = el.parentElement;
-  if (parent) {
-    parent.style.position = 'relative';
-  }
-  const list = document.createElement('div');
-  list.style.position = 'absolute';
-  list.style.left = '0';
-  list.style.right = '0';
-  list.style.top = '100%';
-  list.style.zIndex = '1000';
-  list.style.background = '#fff';
-  list.style.border = '1px solid #cbd5e1';
-  list.style.borderRadius = '8px';
-  list.style.boxShadow = '0 6px 16px rgba(0,0,0,.08)';
-  list.style.padding = '4px';
-  list.style.display = 'none';
-  list.style.maxHeight = '180px';
-  list.style.overflowY = 'auto';
-  (parent || el).appendChild(list);
-  let lastQ = ''; let tid = 0;
-  const render = (rows) => {
-    list.innerHTML = '';
-    if (!rows || !rows.length) { list.style.display = 'none'; return; }
-    for (const r of rows.slice(0, 20)) {
-      const item = document.createElement('div');
-      item.textContent = r.name + (r.line_name ? ` (${r.line_name})` : '');
-      item.style.padding = '6px 8px';
-      item.style.cursor = 'pointer';
-      item.addEventListener('click', () => { el.value = r.name; list.style.display = 'none'; });
-      item.addEventListener('mouseover', () => { item.style.background = '#eef5ff'; });
-      item.addEventListener('mouseout', () => { item.style.background = 'transparent'; });
-      list.appendChild(item);
-    }
-    list.style.display = 'block';
-  };
-  el.addEventListener('input', () => {
-    const q = String(el.value || '').trim();
-    if (q.length < 2) { list.style.display = 'none'; lastQ = ''; return; }
-    if (q === lastQ) return;
-    lastQ = q;
-    clearTimeout(tid);
-    tid = setTimeout(async () => {
-      try {
-        const rows = await fetchJSONAuth('/api/stations?search=' + encodeURIComponent(q));
-        render(Array.isArray(rows) ? rows : []);
-      } catch (e) {
-        list.style.display = 'none';
-      }
-    }, 200);
-  });
-  document.addEventListener('click', (e) => {
-    const t = e.target;
-    if (!t.closest || !t.closest('#' + inputId)) {
-      if (list) list.style.display = 'none';
-    }
-  });
-}
-document.addEventListener('DOMContentLoaded', () => {
-  setupAutocomplete('exOrigin');
-  setupAutocomplete('exDestination');
-});
+              `,document.body.appendChild(m),m)},Me=async m=>{const k=Be(),J=document.getElementById("drawerBackdrop");try{const w=await U(`/api/expenses/${encodeURIComponent(m)}`),$=(pe,oe)=>{const qe=document.getElementById(pe);qe&&(qe.value=oe)};$("edDate",w.date?String(w.date).slice(0,10):Ye()),$("edType",w.type||w.category||"train"),$("edOrigin",w.origin||""),$("edVia",w.via||""),$("edDestination",w.destination||""),$("edTripType",w.trip_type||"one_way"),$("edTripCount",w.trip_count!=null?String(w.trip_count):"1"),$("edKm",w.distance_km!=null?String(w.distance_km):""),$("edUnitPrice",w.unit_price_per_km!=null?String(w.unit_price_per_km):""),$("edPurpose",w.purpose||"");try{const pe=document.getElementById("edTeiki");pe&&(pe.checked=!!w.teiki_flag)}catch{}try{const pe=document.getElementById("edCommuter");pe&&(pe.checked=!!w.commuter_pass)}catch{}$("edAmount",w.amount!=null?String(w.amount):""),$("edMemo",w.memo||"")}catch{}J&&(J.removeAttribute("hidden"),J.style.display="block"),k.style.display="block";try{document.getElementById("edOrigin")?.focus()}catch{}const Q=()=>{k.style.display="none",J&&(J.setAttribute("hidden",""),J.style.display="none"),ze()},te=async()=>{const w={date:document.getElementById("edDate")?.value,type:document.getElementById("edType")?.value,origin:document.getElementById("edOrigin")?.value,via:document.getElementById("edVia")?.value,destination:document.getElementById("edDestination")?.value,trip_type:document.getElementById("edTripType")?.value,trip_count:parseInt(String(document.getElementById("edTripCount")?.value||"1"),10),distance_km:parseFloat(String(document.getElementById("edKm")?.value||"")),unit_price_per_km:parseFloat(String(document.getElementById("edUnitPrice")?.value||"")),purpose:document.getElementById("edPurpose")?.value,teiki_flag:!!document.getElementById("edTeiki")?.checked,commuter_pass:!!document.getElementById("edCommuter")?.checked,amount:parseFloat(String(document.getElementById("edAmount")?.value||"")),memo:document.getElementById("edMemo")?.value};try{const $=await U(`/api/expenses/${encodeURIComponent(m)}`),pe=[],oe=(De,Ze,et)=>{const Lt=Ze==null?"":String(Ze),Tt=et==null?"":String(et);Lt!==Tt&&pe.push(`${De}: ${Tt} \u2192 ${Lt}`)};oe("\u65E5\u4ED8",w.date,$.date?String($.date).slice(0,10):""),oe("\u8CBB\u76EE",w.type,$.type||$.category),oe("\u51FA\u767A",w.origin,$.origin),oe("\u7D4C\u7531",w.via,$.via),oe("\u5230\u7740",w.destination,$.destination),oe("\u7247\u9053/\u5F80\u5FA9",w.trip_type,$.trip_type),oe("\u56DE\u6570",w.trip_count,$.trip_count),oe("\u8DDD\u96E2(km)",w.distance_km,$.distance_km),oe("\u5358\u4FA1",w.unit_price_per_km,$.unit_price_per_km),oe("\u76EE\u7684",w.purpose,$.purpose),oe("\u5B9A\u671F",w.teiki_flag,$.teiki_flag),oe("\u901A\u52E4",w.commuter_pass,$.commuter_pass),oe("\u91D1\u984D",w.amount,$.amount),oe("\u30E1\u30E2",w.memo,$.memo);const qe=pe.length?`\u5909\u66F4\u5185\u5BB9:
+`+pe.join(`
+`)+`
+\u4FDD\u5B58\u3057\u307E\u3059\u304B\uFF1F`:"\u5909\u66F4\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u4FDD\u5B58\u3057\u307E\u3059\u304B\uFF1F";if(!window.confirm(qe))return}catch{}try{await U(`/api/expenses/${encodeURIComponent(m)}`,{method:"PATCH",body:JSON.stringify(w)}),await ne(),Q()}catch($){G($?.message||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}},F=async()=>{try{await U(`/api/expenses/${encodeURIComponent(m)}/apply`,{method:"POST"}),await ne(),Q()}catch(w){G(w?.message||"\u7533\u8ACB\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}},fe=document.getElementById("edCancel"),X=document.getElementById("edSave"),He=document.getElementById("edApply");fe?.addEventListener("click",Q),X?.addEventListener("click",te),He?.addEventListener("click",F);const ze=()=>{fe?.removeEventListener("click",Q),X?.removeEventListener("click",te),He?.removeEventListener("click",F)}};ue?.addEventListener("click",async()=>{try{await Me(v)}catch{}}),Te?.addEventListener("click",async()=>{try{const m=Z();try{await U("/api/expenses/months/start",{method:"POST",body:JSON.stringify({month:m})})}catch{}const k=(te,F)=>{const fe=document.getElementById(te);fe&&(fe.value=F)};k("exDate",m+"-01"),k("exType","train"),k("exOrigin",""),k("exVia",""),k("exDestination",""),k("exTripType","one_way"),k("exTripCount","1"),k("exKm",""),k("exUnitPrice",""),k("exPurpose","");const J=document.getElementById("exTeiki");J&&(J.checked=!1),k("exAmount",""),k("exMemo",""),k("exSiteName",""),k("exItemName",""),k("exVendor","");try{document.getElementById("exType")?.dispatchEvent(new Event("change"))}catch{}xe=!0;const Q=document.getElementById("expNavNew")||document.getElementById("topNavNew");Q?Q.click():window.location.reload()}catch{}})}}finally{c.disabled=!1}}))}catch(L){const Y=String(L?.message||"unknown");if(Ft(L)){gt=Date.now()+65e3,t.innerHTML='<div style="color:#b45309;font-weight:700;">\u30A2\u30AF\u30BB\u30B9\u304C\u96C6\u4E2D\u3057\u3066\u3044\u307E\u3059\uFF08Too many requests\uFF09\u30021\u5206\u307B\u3069\u5F85\u3063\u3066\u304B\u3089\u81EA\u52D5\u518D\u8A66\u884C\u3057\u307E\u3059\u3002</div>';try{ft&&clearTimeout(ft)}catch{}ft=setTimeout(()=>{ne().catch(()=>{})},65e3)}else t.innerHTML=`<div style="color:#b00020;font-weight:650;">\u53D6\u5F97\u5931\u6557: ${Y}</div>`}finally{mt=!1,yt&&(yt=!1,setTimeout(()=>{ne().catch(()=>{})},0))}},Et=()=>{};async function dn(){const t=document.getElementById("historySection")||document.getElementById("homeSection")||document.getElementById("exDate");if(!t||t.dataset.booted==="1")return;t.dataset.booted="1",ht=!0,rn(),ln();try{window.__employeePageCleanup=()=>{ht=!1;try{Ve&&clearInterval(Ve)}catch{}Ve=null}}catch{}Jt();try{const n=await Ce("/api/auth/me",void 0,1);R=n||null;const e=String(n.role||"").toLowerCase();if(!n||e!=="employee"&&e!=="manager"){if(e==="admin"){G("\u3053\u306E\u30DA\u30FC\u30B8\u3078\u306E\u30A2\u30AF\u30BB\u30B9\u6A29\u9650\u304C\u3042\u308A\u307E\u305B\u3093\uFF08\u7BA1\u7406\u8005\u306F\u7BA1\u7406\u753B\u9762\u3092\u3054\u5229\u7528\u304F\u3060\u3055\u3044\uFF09"),window.location.href="/admin/expenses";return}window.location.href="/ui/login";return}const a=n.username||n.email||"\u30E6\u30FC\u30B6\u30FC",u=b("#userName");u&&(u.textContent=a);try{window.MY_ID=n.id}catch{}try{ot=`expenses_notice_seen_at:${String(n.id||"")}`,Ke=Number(localStorage.getItem(ot)||"0")||0}catch{}try{const f=new URLSearchParams(String(window.location.search||"")).get("month");if(f&&/^\d{4}-\d{2}$/.test(String(f))){me=String(f);const v=document.getElementById("exDate");v&&(v.value=String(f)+"-01");const C=document.getElementById("exFilterMonth");C&&(C.value=String(f));try{await U("/api/expenses/months/start",{method:"POST",body:JSON.stringify({month:String(f)})})}catch{}xe=!0}else try{const v=await Ce("/api/expenses/months/active",void 0,1),C=String(v?.month||"").slice(0,7);if(/^\d{4}-\d{2}$/.test(C)){me=C;const T=document.getElementById("exFilterMonth");T&&(T.value=C);const D=document.getElementById("exDate");if(D&&(!D.value||String(D.value).slice(0,7)!==C)){const V=Ye();D.value=String(V).slice(0,7)===C?V:`${C}-01`}xe=!0}}catch(v){if(!wt(v))throw v}}catch{}}catch(n){const e=String(n?.message||"");if(/401|403|invalid token|expired token/i.test(e)){window.location.href="/ui/login";return}G("\u901A\u4FE1\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F\u3002\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002");return}const o=document.getElementById("expBackBtn");o&&!o.dataset.bound&&(o.dataset.bound="1",o.addEventListener("click",n=>{n.preventDefault();const e=window.__employeeSoftNavigate;if(typeof e=="function"){e("/ui/portal",!0).then(a=>{a||(window.location.href="/ui/portal")}).catch(()=>{window.location.href="/ui/portal"});return}try{window.location.href="/ui/portal"}catch{}}));const s=b("#exDate");s&&!s.value&&(s.value=Ye());const d=document.getElementById("exType"),r=document.getElementById("exKm"),y=document.getElementById("exUnitPrice"),S=document.getElementById("exAmount"),de=document.getElementById("exTripType"),h=document.getElementById("exTripCount"),A=()=>{const n=(d?.value||"")==="car",e=r?.parentElement?.previousElementSibling?r.parentElement.previousElementSibling:null,a=y?.parentElement?.previousElementSibling?y.parentElement.previousElementSibling:null;r&&y&&(r.parentElement.style.display=n?"":"none",y.parentElement.style.display=n?"":"none",e&&(e.style.display=n?"":"none"),a&&(a.style.display=n?"":"none"))},_=()=>{const n=(de?.value||"")==="multi",e=h?.parentElement?.previousElementSibling?h.parentElement.previousElementSibling:null;h&&(h.parentElement.style.display=n?"":"none",e&&(e.style.display=n?"":"none"))},ae=(n,e)=>{const a=document.getElementById(n);if(!a)return;const u=a.parentElement,c=u?u.previousElementSibling:null;u&&(u.style.display=e?"":"none"),c&&(c.style.display=e?"":"none")},be=()=>{const n=(d?.value||"")==="goods";["exOrigin","exVia","exDestination","exTripType","exTripCount","exKm","exUnitPrice","exTeiki"].forEach(e=>ae(e,!n)),ae("exItemName",n),ae("exVendor",n)},W=()=>{if((d?.value||"")==="car"){const e=Number(r?.value||"0")||0,a=Number(y?.value||"0")||0;if(e>0&&a>0){const u=Math.round(e*a);S&&(S.value=u?u.toLocaleString("ja-JP"):"")}}};d?.addEventListener("change",()=>{A(),_(),be(),W()}),r?.addEventListener("input",W),y?.addEventListener("input",W),de?.addEventListener("change",()=>{_(),W()}),h?.addEventListener("input",W),A(),_(),be(),Qt(S);try{S&&S.value&&(S.value=_t(S.value))}catch{}const Ne=document.getElementById("exReceiptFront"),Ie=document.getElementById("exReceiptBack"),lt=document.getElementById("exImages");Ne?.addEventListener("change",()=>Nt(Ne,"exReceiptFrontPreview")),Ie?.addEventListener("change",()=>Nt(Ie,"exReceiptBackPreview")),lt?.addEventListener("change",()=>Xt(lt,"exImagesPreview"));const St=()=>{Zt(),G("");const n=document.getElementById("exErrMsg");n&&(n.style.display="none");let e=!0,a=String(b("#exDate")?.value||"");a=a.replace(/\//g,"-");const u=String(b("#exOrigin")?.value||"").trim(),c=String(b("#exDestination")?.value||"").trim(),f=String(b("#exPurpose")?.value||"").trim(),v=b("#exType")?.value||"train",C=!!b("#exTeiki")?.checked,T=String(b("#exItemName")?.value||"").trim(),D=String(b("#exAmount")?.value||"").trim(),V=v==="goods";return/^\d{4}-\d{2}-\d{2}$/.test(a)||(Ue("exDate","\u65E5\u4ED8\u3092\u6B63\u3057\u304F\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002"),e=!1),V?T||(Ue("exItemName","\u8CFC\u5165\u7269\u54C1\u540D\u306F\u5FC5\u9808\u3067\u3059\u3002"),e=!1):(u||(Ue("exOrigin","\u51FA\u767A\u5730\u306F\u5FC5\u9808\u3067\u3059\u3002"),e=!1),c||(Ue("exDestination","\u5230\u7740\u5730\u306F\u5FC5\u9808\u3067\u3059\u3002"),e=!1)),f||(Ue("exPurpose","\u7528\u9014\u306F\u5FC5\u9808\u3067\u3059\u3002"),e=!1),!D&&!(v==="train"&&C)&&(Ue("exAmount","\u91D1\u984D\u306F\u5FC5\u9808\u3067\u3059\u3002"),e=!1),e||(n?(n.textContent="\u5165\u529B\u5185\u5BB9\u3092\u3054\u78BA\u8A8D\u304F\u3060\u3055\u3044\u3002",n.style.display="block"):G("\u5165\u529B\u5185\u5BB9\u3092\u3054\u78BA\u8A8D\u304F\u3060\u3055\u3044\u3002")),e},dt=b("#exApply"),Bt=async n=>{if(!St())return;G("");const e=document.getElementById("exErrMsg");e&&(e.style.display="none");const a=dt;if(!a||a.disabled)return;const u=a.textContent;a.disabled=!0,a.textContent="\u4FDD\u5B58\u4E2D\u2026";const c="ct_"+Date.now()+"_"+Math.random().toString(36).slice(2,8);let f=b("#exDate")?.value||"";f=f.replace(/\//g,"-");const v=b("#exType")?.value||"train",C=b("#exOrigin")?.value||"",T=b("#exVia")?.value||"",D=b("#exDestination")?.value||"",V=b("#exTripType")?.value||"one_way",Le=Number(b("#exTripCount")?.value||"1"),j=b("#exPurpose")?.value||"",Ee=!!b("#exTeiki")?.checked,E=b("#exKm")?.value||"",P=b("#exUnitPrice")?.value||"",ge=b("#exMemo")?.value||"",ue=b("#exSiteName")?.value||"",Te=b("#exItemName")?.value||"",Be=b("#exVendor")?.value||"",Me=String(b("#exAmount")?.value||"").trim();let m=ut(Me);v==="train"&&Ee&&(m=0),Wt();try{const J=(await U("/api/expenses",{method:"POST",body:JSON.stringify({date:f,type:v,origin:C,via:T,destination:D,tripType:V,tripCount:Le,purpose:j,teiki:Ee,km:E?Number(E):null,unitPricePerKm:P?Number(P):null,amount:Number(m),memo:ge,siteName:ue,itemName:Te,vendor:Be,clientToken:c})}))?.id,Q=document.getElementById("exReceiptFront")?.files?.[0]||null,te=document.getElementById("exReceiptBack")?.files?.[0]||null,F=document.getElementById("exImages")?.files||[];if(J&&(Q||te||F&&F.length)){const ze=new FormData;Q&&ze.append("files",Q,Q.name||"front"),te&&ze.append("files",te,te.name||"back");for(const w of F)ze.append("files",w,w.name||"image");await fetch(`/api/expenses/${encodeURIComponent(J)}/files`,{method:"POST",body:ze,credentials:"include"})}const fe=document.getElementById("exFilterMonth"),X=window.createTargetMonth||Z();fe&&(!fe.value||fe.value!==X)&&(fe.value=X);const He=document.getElementById("exItemModal");He&&(He.style.display="none"),typeof window.renderAppItemsList=="function"&&await window.renderAppItemsList(),G("")}catch(k){e?(e.textContent=k?.message||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F",e.style.display="block"):G(k?.message||"\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}finally{Gt(),a.disabled=!1,a.textContent=u}};dt?.addEventListener("click",async()=>Bt(!0));const Vt=document.getElementById("exFilterType");try{const n=await U("/api/expenses/types");Array.isArray(n)&&n.length}catch{}const re=document.getElementById("exFilterMonth"),Re=document.getElementById("exFilterStatus"),It=document.getElementById("exSearch"),Je=document.getElementById("exClear"),kt=document.getElementById("exCsv"),$t=document.getElementById("exShowHistory"),Pe=document.getElementById("exCreateMonthGrid"),ke=document.getElementById("exCreateMonthInput"),Ct=document.getElementById("exCreateMonthStart"),Xe=document.getElementById("exCreateProfileName"),je=document.getElementById("exCreateProfileCode"),We=document.getElementById("exCreateProfileDob"),Ge=document.getElementById("exCreateProfileStart"),Fe=document.getElementById("exCreateProfileStatus"),L=(n,e=!1)=>{Fe&&(Fe.textContent=String(n||""),Fe.style.color=e?"#b91c1c":"#334155")},Y=n=>({employeeName:String(R?.full_name||R?.name||R?.username||R?.email||document.getElementById("userName")?.textContent||"").trim(),employeeCode:String(R?.employee_code||R?.emp_code||R?.code||"").trim(),birthDate:pt(R?.birth_date||R?.birthday||R?.date_of_birth||R?.dob||""),startDate:Dt(n)}),ce=(n,e)=>{const a=Y(e);Xe&&(Xe.value=String(n?.employee_name||a.employeeName||"")),je&&(je.value=String(n?.employee_code||a.employeeCode||"")),We&&(We.value=String(n?.birth_date||a.birthDate||"").slice(0,10)),Ge&&(Ge.value=String(n?.start_date||a.startDate||"").slice(0,10))},ee=async n=>{/^\d{4}-\d{2}$/.test(String(n||""))&&ce(null,n)},M=n=>{const e=String(Xe?.value||"").trim(),a=String(je?.value||"").trim(),u=String(We?.value||"").trim(),c=String(Ge?.value||"").trim();return/^\d{4}-\d{2}$/.test(String(n||""))?e?a?/^\d{4}-\d{2}-\d{2}$/.test(u)?/^\d{4}-\d{2}-\d{2}$/.test(c)?{ok:!0,payload:{month:String(n),employeeName:e,employeeCode:a,birthDate:u,startDate:c}}:{ok:!1,message:"\u4F5C\u6210\u958B\u59CB\u65E5\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002"}:{ok:!1,message:"\u793E\u54E1\u60C5\u5831\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u751F\u5E74\u6708\u65E5\uFF09\u3002"}:{ok:!1,message:"\u793E\u54E1\u60C5\u5831\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u793E\u54E1\u30B3\u30FC\u30C9\uFF09\u3002"}:{ok:!1,message:"\u793E\u54E1\u60C5\u5831\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u793E\u54E1\u540D\uFF09\u3002"}:{ok:!1,message:"\u5BFE\u8C61\u5E74\u6708\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002"}},N=async n=>{const e=M(n);if(!e.ok)throw new Error(e.message||"\u5165\u529B\u5185\u5BB9\u3092\u3054\u78BA\u8A8D\u304F\u3060\u3055\u3044\u3002");L("\u5165\u529B\u60C5\u5831\u3092\u4FDD\u5B58\u4E2D\u2026");const a=await U("/api/expenses/months/profile",{method:"POST",body:JSON.stringify(e.payload)});return L("\u5165\u529B\u60C5\u5831\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002"),a};re&&!re.value&&(re.value=Z()),ke&&!ke.value&&(ke.value=me),It?.addEventListener("click",async()=>{const n=String(re?.value||"");H=/^\d{4}-\d{2}$/.test(n)?n:"",await ne()}),$t?.addEventListener("click",async()=>{const n=String(re?.value||"");H=/^\d{4}-\d{2}$/.test(n)?n:"",await ne()}),Je?.addEventListener("click",async()=>{re&&(re.value=""),Re&&(Re.value=q==="applied"?"applied":""),H="",await ne()}),re?.addEventListener("change",()=>{const n=String(re.value||"");H=/^\d{4}-\d{2}$/.test(n)?n:"",Et()}),re?.addEventListener("input",()=>{const n=String(re.value||"");H=/^\d{4}-\d{2}$/.test(n)?n:"",Et()}),kt?.addEventListener("click",async()=>{const n=re?.value||"",e=Re?.value||"",a=`/api/expenses/export.csv?month=${encodeURIComponent(n)}&status=${encodeURIComponent(e)}`;window.location.href=a});const O=[document.getElementById("topNavNew"),document.getElementById("expNavNew")].filter(Boolean),z=[document.getElementById("topNavApplied"),document.getElementById("expNavApplied")].filter(Boolean),ye=[document.getElementById("topNavNotice"),document.getElementById("expNavNotice")].filter(Boolean),B=[document.getElementById("expNavHelp")].filter(Boolean),l=document.getElementById("homeSection"),i=document.getElementById("historySection"),p=document.getElementById("helpSection"),g=document.getElementById("historyModeLabel"),I=n=>{O.forEach(e=>e.classList.toggle("active",n==="new")),z.forEach(e=>e.classList.toggle("active",n==="applied")),ye.forEach(e=>e.classList.toggle("active",n==="notice")),B.forEach(e=>e.classList.toggle("active",n==="help"))},x=async n=>{let e=n==="new"||n==="applied"||n==="notice"||n==="help"?n:"new";e==="new"&&!xe&&(e="applied");const a=document.querySelector(".expense-main");q=e;try{sessionStorage.setItem(qt,q)}catch{}if(e==="applied"){H="";const c=document.getElementById("exListHost"),f=document.getElementById("exListWrapper");c&&(c.style.display="none"),f&&(f.style.display="none");const v=document.getElementById("exMonthlyBoardHost");v&&(v.style.display=ie===""?"none":"block");const C=document.getElementById("exSummaryCards");C&&(C.style.display=ie===""?"grid":"none")}const u=b("#expPageTitle");u&&(e==="new"?u.textContent=xe?"\u65B0\u898F\u4F5C\u6210":"\u4EA4\u901A\u8CBB\u7533\u8ACB":e==="applied"?u.textContent="\u7533\u8ACB\u5C65\u6B74":e==="notice"?u.textContent="\u304A\u77E5\u3089\u305B":e==="help"&&(u.textContent="\u30D8\u30EB\u30D7")),e==="new"?(l&&(l.style.display=xe?"":"none"),i&&(i.style.display=he?"":"none"),p&&(p.style.display="none"),i&&i.classList.remove("notice-mode"),g&&(g.textContent=he?"\u7533\u8ACB\u6E08\u307F\u65E5\u4ED8\uFF08\u5F53\u6708\uFF09":"\u4EA4\u901A\u8CBB\u63D0\u51FA\u5C65\u6B74\uFF08\u6708\u6B21\uFF09"),a&&a.classList.toggle("new-progress-split",!!he),xe&&(step1Input&&(step1Input.style.display="block"),step2Confirm&&(step2Confirm.style.display="none"),step3Complete&&(step3Complete.style.display="none"),typeof setProgressState=="function"&&setProgressState(1))):e==="help"?(l&&(l.style.display="none"),i&&(i.style.display="none"),p&&(p.style.display=""),a&&a.classList.remove("new-progress-split")):(l&&(l.style.display="none"),p&&(p.style.display="none"),i&&(i.style.display=""),i&&i.classList.toggle("applied-month-mode",e==="applied"),i&&i.classList.toggle("notice-mode",e==="notice"),g&&(g.textContent=e==="notice"?"\u304A\u77E5\u3089\u305B\uFF08\u5DEE\u623B\u3057\uFF09":e==="applied"&&he?"\u7533\u8ACB\u6E08\u307F\u65E5\u4ED8\uFF08\u5F53\u6708\uFF09":"\u4EA4\u901A\u8CBB\u63D0\u51FA\u5C65\u6B74\uFF08\u6708\u6B21\uFF09"),a&&a.classList.toggle("new-progress-split",e==="applied"&&he),Et()),I(e)},K=()=>{if(!Pe)return;const n=me||Z(),e=Yt(6,Z());e.includes(n)||e.unshift(n),Pe.innerHTML=e.map(a=>`<button class="month-chip${a===n?" active":""}" type="button" data-month="${a}">${a.slice(0,4)}\u5E74${a.slice(5,7)}\u6708</button>`).join("")},le=async(n,e={})=>{const a=!!e.showProgress||!!e.switchToAppliedAfterCreate,u=!!e.stayOnApplied,c=!!e.switchToAppliedAfterCreate,f=!!e.openAppliedListAfterCreate;if(!/^\d{4}-\d{2}$/.test(String(n||""))){G("\u5BFE\u8C61\u5E74\u6708\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002");return}me=String(n),window.createTargetMonth=me,ke&&(ke.value=me);try{await U("/api/expenses/months/start",{method:"POST",body:JSON.stringify({month:me})})}catch(T){const D=String(T?.message||"\u6708\u306E\u958B\u59CB\u306B\u5931\u6557\u3057\u307E\u3057\u305F");G(D),L(D,!0);return}const v=document.getElementById("exDate");v&&(v.value=`${me}-01`);const C=document.getElementById("exAppMonth");if(C&&(C.value=me),typeof window.renderAppItemsList=="function"&&window.renderAppItemsList(),re&&(re.value=me),Re&&(Re.value=""),H=me,he=a,xe=!0,G(""),f){he=!1,xe=!1,H="",re&&(re.value=""),await x("applied"),await ne();return}await x(u||c?"applied":"new"),a?await ne():c&&await ne()};window.startNewForMonth=le,en=async(n,e={})=>le(n,{showProgress:!0,stayOnApplied:!!e.stayOnApplied,skipProfile:!0}),Pe&&!Pe.dataset.bound&&(Pe.dataset.bound="1",Pe.addEventListener("click",async n=>{const e=n.target.closest("button[data-month]");if(!e)return;const a=String(e.getAttribute("data-month")||"");me=a,window.createTargetMonth=a,ke&&(ke.value=a),K()})),ke?.addEventListener("change",()=>{const n=String(ke.value||"");/^\d{4}-\d{2}$/.test(n)&&(me=n,window.createTargetMonth=n,K())}),Ct?.addEventListener("click",async()=>{document.getElementById("monthSelectModal").style.display="none";const n=String(ke?.value||me||"");await le(n,{showProgress:!1})}),document.getElementById("exCreateMonthCancel")?.addEventListener("click",()=>{document.getElementById("monthSelectModal").style.display="none"}),K(),document.getElementById("exHistoryNewBtn")?.addEventListener("click",async n=>{n.preventDefault();const e=document.getElementById("monthSelectModal");if(e){e.style.display="flex";const a=document.getElementById("exCreateMonthInput");a&&(a.value=Z())}});const Se=document.getElementById("exSummaryCards");Se&&Se.addEventListener("click",async n=>{const e=n.target.closest(".summary-card");e&&(ie=e.dataset.type||"all",await ne())});const $e=()=>{if(window.innerWidth<=768){const n=document.querySelector(".expense-layout");n&&n.classList.remove("sidebar-collapsed"),document.body.classList.remove("exp-drawer-open")}},se=(n,e)=>{n.forEach(a=>{a&&a.addEventListener("click",u=>{$e(),e(u)})})};se(O,async n=>{n.preventDefault();const e=document.getElementById("monthSelectModal");if(e){e.style.display="flex";const a=document.getElementById("exCreateMonthInput");a&&(a.value=Z())}}),se(z,async n=>{if(n.preventDefault(),_e)return;_e=!0,ie="";const e=document.getElementById("exFilterMonth"),a=document.getElementById("exFilterStatus");a&&(a.value=""),he=!1,xe=!1,H="",e&&(e.value=""),document.querySelectorAll(".summary-card").forEach(u=>{u.style.border="1px solid var(--border)",u.style.boxShadow="none",u.style.background="#fff"});try{await x("applied"),await ne()}finally{_e=!1}}),se(ye,async n=>{if(n.preventDefault(),q==="notice"||_e)return;_e=!0;const e=document.getElementById("exFilterStatus");e&&(e.value=""),H="";const a=document.getElementById("exFilterMonth");a&&(a.value="");try{an(),await x("notice"),await ne()}finally{_e=!1}}),se(B,async n=>{if(n.preventDefault(),q!=="help"&&!_e){_e=!0;try{await x("help")}finally{_e=!1}}});const we=(()=>{try{const n=new URLSearchParams(String(window.location.search||"")),e=String(n.get("tab")||"").toLowerCase();if(e==="new"||e==="applied"||e==="notice"||e==="help")return e;const a=String(sessionStorage.getItem(qt)||"").toLowerCase();if(a==="new"||a==="applied"||a==="notice"||a==="help")return a}catch{}return"applied"})();if(await x(we),we==="new"&&!xe){const n=document.getElementById("monthSelectModal");if(n){n.style.display="flex";const e=document.getElementById("exCreateMonthInput");e&&(e.value=Z())}}await ne();try{await Rt()}catch{}try{await sn()}catch{}try{await zt()}catch{}try{Ve&&clearInterval(Ve),Ve=setInterval(async()=>{if(ht)try{await zt()}catch{}},3e4)}catch{}}document.addEventListener("DOMContentLoaded",async()=>{await dn()});function Ut(t){const o=document.getElementById(t);if(!o||o.dataset.autocomplete==="1")return;o.dataset.autocomplete="1";const s=document.createElement("div");s.style.position="relative";const d=o.parentElement;d&&(d.style.position="relative");const r=document.createElement("div");r.style.position="absolute",r.style.left="0",r.style.right="0",r.style.top="100%",r.style.zIndex="1000",r.style.background="#fff",r.style.border="1px solid #cbd5e1",r.style.borderRadius="8px",r.style.boxShadow="0 6px 16px rgba(0,0,0,.08)",r.style.padding="4px",r.style.display="none",r.style.maxHeight="180px",r.style.overflowY="auto",(d||o).appendChild(r);let y="",S=0;const de=h=>{if(r.innerHTML="",!h||!h.length){r.style.display="none";return}for(const A of h.slice(0,20)){const _=document.createElement("div");_.textContent=A.name+(A.line_name?` (${A.line_name})`:""),_.style.padding="6px 8px",_.style.cursor="pointer",_.addEventListener("click",()=>{o.value=A.name,r.style.display="none"}),_.addEventListener("mouseover",()=>{_.style.background="#eef5ff"}),_.addEventListener("mouseout",()=>{_.style.background="transparent"}),r.appendChild(_)}r.style.display="block"};o.addEventListener("input",()=>{const h=String(o.value||"").trim();if(h.length<2){r.style.display="none",y="";return}h!==y&&(y=h,clearTimeout(S),S=setTimeout(async()=>{try{const A=await U("/api/stations?search="+encodeURIComponent(h));de(Array.isArray(A)?A:[])}catch{r.style.display="none"}},200))}),document.addEventListener("click",h=>{const A=h.target;(!A.closest||!A.closest("#"+t))&&r&&(r.style.display="none")})}document.addEventListener("DOMContentLoaded",()=>{Ut("exOrigin"),Ut("exDestination")});export{dn as bootExpensesPage};

@@ -1,122 +1,10 @@
-import { requireAdmin } from '../_shared/require-admin.js';
-import { fetchJSONAuth } from '../../api/http.api.js';
-
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-
-const fmtTarget = (r) => {
-  const uid = parseInt(String((r && r.target_user_id) ? r.target_user_id : 0), 10) || 0;
-  if (uid) return '個人';
-  const d = (r && r.target_date) ? String(r.target_date).slice(0, 10) : '';
-  const m = (r && r.target_month) ? String(r.target_month).slice(0, 7) : '';
-  if (d) return d;
-  if (m) return m;
-  return '全体';
-};
-
-const fmtCreated = (r) => {
-  const s = String((r && r.created_at) ? r.created_at : '');
-  if (s.length >= 16) return s.slice(0, 16).replace('T', ' ');
-  return s || '—';
-};
-
-export async function mount() {
-  const profile = await requireAdmin();
-  if (!profile) return;
-
-  try {
-    const userName = document.querySelector('#userName');
-    if (userName) userName.textContent = profile.username || profile.email || '管理者';
-  } catch (e) { /* bỏ qua lỗi */ }
-  try {
-    const status = document.querySelector('#status');
-    if (status) status.textContent = '';
-  } catch (e) { /* bỏ qua lỗi */ }
-
-  const host = document.querySelector('#adminContent');
-  if (!host) return;
-
-  const role = String((profile && profile.role) ? profile.role : '').toLowerCase();
-  let targetsCache = null;
-  const loadTargets = async () => {
-    if (targetsCache) return targetsCache;
-    const endpoint = role === 'manager' ? '/api/manager/users' : '/api/admin/users';
-    const rows = await fetchJSONAuth(endpoint).catch(() => []);
-    const arr = Array.isArray(rows) ? rows : ((rows && Array.isArray(rows.rows)) ? rows.rows : []);
-    const cleaned = arr
-      .map(u => ({
-        id: parseInt(String((u && u.id) ? u.id : 0), 10) || 0,
-        username: String((u && (u.username || u.email)) ? (u.username || u.email) : '').trim(),
-        employeeCode: String((u && (u.employee_code || u.employeeCode)) ? (u.employee_code || u.employeeCode) : '').trim(),
-        role: String((u && u.role) ? u.role : '').toLowerCase()
-      }))
-      .filter(u => u.id);
-    targetsCache = role === 'manager' ? cleaned : cleaned.filter(u => u.role === 'employee');
-    return targetsCache;
-  };
-
-  const render = async () => {
-    const apiListPath = '/api/notices/admin?limit=80';
-    const apiPostPath = '/api/notices/admin';
-    let rows = [];
-    let apiError = '';
-    try {
-      const list = await fetchJSONAuth(apiListPath);
-      rows = (list && Array.isArray(list.rows)) ? list.rows : [];
-    } catch (e) {
-      apiError = String((e && e.message) ? e.message : (e || ''));
-      rows = [];
-    }
-    let targets = [];
-    try { targets = await loadTargets(); } catch (e) { /* bỏ qua lỗi */ }
-    const isMobileView = (() => {
-      try { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); } catch { return false; }
-    })();
-    const composerKey = 'adminNotices.composer.visible';
-    const composerVisible = (() => {
-      try {
-        const v = localStorage.getItem(composerKey);
-        if (v === '0') return false;
-        if (v === '1') return true;
-      } catch (e) { /* bỏ qua lỗi */ }
-      return true;
-    })();
-    const tableKey = 'adminNotices.table.visible';
-    const tableVisible = (() => {
-      try {
-        const v = localStorage.getItem(tableKey);
-        if (v === '0') return false;
-        if (v === '1') return true;
-      } catch (e) { /* bỏ qua lỗi */ }
-      return true;
-    })();
-    const fmtRecipient = (r) => {
-      const tid = parseInt(String((r && r.target_user_id) ? r.target_user_id : 0), 10) || 0;
-      if (!tid) return '全社員';
-      const code = String((r && r.target_employee_code) ? r.target_employee_code : '').trim();
-      const name = String((r && (r.target_username || r.target_email)) ? (r.target_username || r.target_email) : '').trim();
-      return [code, name].filter(Boolean).join(' ') || `ID:${tid}`;
-    };
-    const fmtRead = (r) => {
-      const tid = parseInt(String((r && r.target_user_id) ? r.target_user_id : 0), 10) || 0;
-      const tr = String((r && r.target_read_at) ? r.target_read_at : '').trim();
-      if (tid) {
-        if (!tr) return '未読';
-        const s = tr.includes('T') ? tr.replace('T', ' ') : tr;
-        const hhmm = s.length >= 16 ? s.slice(11, 16) : s;
-        return `既読 ${hhmm}`;
-      }
-      const c = parseInt(String((r && r.read_count) ? r.read_count : 0), 10) || 0;
-      return c ? `既読 ${c}` : '未読';
-    };
-    const tableColgroup = isMobileView
-      ? `
+import{requireAdmin as K}from"../_shared/require-admin.js";import{fetchJSONAuth as $}from"../../api/http.api.js";const c=i=>String(i??"").replace(/[&<>"']/g,o=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[o]),O=i=>{if(parseInt(String(i&&i.target_user_id?i.target_user_id:0),10)||0)return"\u500B\u4EBA";const x=i&&i.target_date?String(i.target_date).slice(0,10):"",u=i&&i.target_month?String(i.target_month).slice(0,7):"";return x||u||"\u5168\u4F53"},X=i=>{const o=String(i&&i.created_at?i.created_at:"");return o.length>=16?o.slice(0,16).replace("T"," "):o||"\u2014"};async function W(){const i=await K();if(!i)return;try{const d=document.querySelector("#userName");d&&(d.textContent=i.username||i.email||"\u7BA1\u7406\u8005")}catch{}try{const d=document.querySelector("#status");d&&(d.textContent="")}catch{}const o=document.querySelector("#adminContent");if(!o)return;const x=String(i&&i.role?i.role:"").toLowerCase();let u=null;const V=async()=>{if(u)return u;const p=await $(x==="manager"?"/api/manager/users":"/api/admin/users").catch(()=>[]),m=(Array.isArray(p)?p:p&&Array.isArray(p.rows)?p.rows:[]).map(n=>({id:parseInt(String(n&&n.id?n.id:0),10)||0,username:String(n&&(n.username||n.email)?n.username||n.email:"").trim(),employeeCode:String(n&&(n.employee_code||n.employeeCode)?n.employee_code||n.employeeCode:"").trim(),role:String(n&&n.role?n.role:"").toLowerCase()})).filter(n=>n.id);return u=x==="manager"?m:m.filter(n=>n.role==="employee"),u},_=async()=>{const d="/api/notices/admin?limit=80",p="/api/notices/admin";let l=[],m="";try{const t=await $(d);l=t&&Array.isArray(t.rows)?t.rows:[]}catch(t){m=String(t&&t.message?t.message:t||""),l=[]}let n=[];try{n=await V()}catch{}const P=(()=>{try{return!!(window.matchMedia&&window.matchMedia("(max-width: 768px)").matches)}catch{return!1}})(),q="adminNotices.composer.visible",C=(()=>{try{const t=localStorage.getItem(q);if(t==="0")return!1;if(t==="1")return!0}catch{}return!0})(),N="adminNotices.table.visible",A=(()=>{try{const t=localStorage.getItem(N);if(t==="0")return!1;if(t==="1")return!0}catch{}return!0})(),G=t=>{const e=parseInt(String(t&&t.target_user_id?t.target_user_id:0),10)||0;if(!e)return"\u5168\u793E\u54E1";const a=String(t&&t.target_employee_code?t.target_employee_code:"").trim(),r=String(t&&(t.target_username||t.target_email)?t.target_username||t.target_email:"").trim();return[a,r].filter(Boolean).join(" ")||`ID:${e}`},L=t=>{const e=parseInt(String(t&&t.target_user_id?t.target_user_id:0),10)||0,a=String(t&&t.target_read_at?t.target_read_at:"").trim();if(e){if(!a)return"\u672A\u8AAD";const b=a.includes("T")?a.replace("T"," "):a;return`\u65E2\u8AAD ${b.length>=16?b.slice(11,16):b}`}const r=parseInt(String(t&&t.read_count?t.read_count:0),10)||0;return r?`\u65E2\u8AAD ${r}`:"\u672A\u8AAD"},U=P?`
             <colgroup>
               <col style="width:78px;">
               <col style="width:auto;">
               <col style="width:74px;">
             </colgroup>
-        `
-      : `
+        `:`
             <colgroup>
               <col style="width:120px;">
               <col style="width:auto;">
@@ -125,57 +13,39 @@ export async function mount() {
               <col style="width:150px;">
               <col style="width:90px;">
             </colgroup>
-        `;
-    const tableHead = isMobileView
-      ? `
+        `,F=P?`
               <tr>
-                <th>対象</th>
-                <th>内容</th>
-                <th>既読</th>
+                <th>\u5BFE\u8C61</th>
+                <th>\u5185\u5BB9</th>
+                <th>\u65E2\u8AAD</th>
               </tr>
-        `
-      : `
+        `:`
               <tr>
-                <th>対象</th>
-                <th>内容</th>
-                <th>宛先</th>
-                <th>既読</th>
-                <th>作成</th>
-                <th style="text-align:right;">操作</th>
+                <th>\u5BFE\u8C61</th>
+                <th>\u5185\u5BB9</th>
+                <th>\u5B9B\u5148</th>
+                <th>\u65E2\u8AAD</th>
+                <th>\u4F5C\u6210</th>
+                <th style="text-align:right;">\u64CD\u4F5C</th>
               </tr>
-        `;
-    const PAGE_SIZE = 20;
-    let currentPage = 1;
-    const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-    const getPageRows = () => rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-    const buildTableRows = (pageRows) => pageRows.length
-      ? pageRows.map((r) => (
-        isMobileView
-          ? `
+        `,y=20;let s=1;const w=Math.max(1,Math.ceil(l.length/y)),z=()=>l.slice((s-1)*y,s*y),I=t=>t.length?t.map(e=>P?`
                     <tr>
-                      <td class="notice-target">${esc(fmtTarget(r))}</td>
-                      <td class="notice-message">${esc((r && r.message) ? r.message : '')}</td>
-                      <td class="notice-created">${esc(fmtRead(r))}</td>
+                      <td class="notice-target">${c(O(e))}</td>
+                      <td class="notice-message">${c(e&&e.message?e.message:"")}</td>
+                      <td class="notice-created">${c(L(e))}</td>
                     </tr>
-                  `
-          : `
+                  `:`
                     <tr>
-                      <td class="notice-target">${esc(fmtTarget(r))}</td>
-                      <td class="notice-message">${esc((r && r.message) ? r.message : '')}</td>
-                      <td class="notice-created">${esc(fmtRecipient(r))}</td>
-                      <td class="notice-created">${esc(fmtRead(r))}</td>
-                      <td class="notice-created">${esc(fmtCreated(r))}</td>
+                      <td class="notice-target">${c(O(e))}</td>
+                      <td class="notice-message">${c(e&&e.message?e.message:"")}</td>
+                      <td class="notice-created">${c(G(e))}</td>
+                      <td class="notice-created">${c(L(e))}</td>
+                      <td class="notice-created">${c(X(e))}</td>
                       <td class="notice-actions">
-                        <button type="button" class="se-mini-btn" data-notice-del="${esc((r && r.id != null) ? r.id : '')}">削除</button>
+                        <button type="button" class="se-mini-btn" data-notice-del="${c(e&&e.id!=null?e.id:"")}">\u524A\u9664</button>
                       </td>
                     </tr>
-                  `
-      )).join('')
-      : `<tr><td colspan="${isMobileView ? 3 : 6}" class="notice-empty">まだお知らせがありません</td></tr>`;
-    const tableRows = buildTableRows(getPageRows());
-
-    host.innerHTML = `
+                  `).join(""):`<tr><td colspan="${P?3:6}" class="notice-empty">\u307E\u3060\u304A\u77E5\u3089\u305B\u304C\u3042\u308A\u307E\u305B\u3093</td></tr>`,J=I(z());o.innerHTML=`
       <style>
         .notice-page h3 { font-weight: 900; letter-spacing: .2px; }
         .notice-card {
@@ -432,177 +302,58 @@ export async function mount() {
 
       <div style="margin-top:12px;display:grid;grid-template-columns:1fr;gap:10px;">
         <div class="notice-card">
-          ${apiError ? `
+          ${m?`
             <div style="border:1px solid #fecaca;background:#fff1f2;color:#7f1d1d;border-radius:12px;padding:10px 12px;font-weight:900;margin-bottom:10px;">
-              APIエラー: ${esc(apiError)}
+              API\u30A8\u30E9\u30FC: ${c(m)}
               <div style="margin-top:6px;font-weight:800;font-size:12px;opacity:.9;">
-                origin: ${esc(window.location.origin)} / GET ${esc(apiListPath)} / POST ${esc(apiPostPath)}
+                origin: ${c(window.location.origin)} / GET ${c(d)} / POST ${c(p)}
               </div>
             </div>
-          ` : ``}
+          `:""}
           <div class="notice-controls">
             <select id="noticeRecipient" class="notice-select" style="min-width:240px;">
-              <option value="">全社員</option>
-              ${targets.map(t => `<option value="${esc(t.id)}">${esc([t.employeeCode, t.username].filter(Boolean).join(' '))}</option>`).join('')}
+              <option value="">\u5168\u793E\u54E1</option>
+              ${n.map(t=>`<option value="${c(t.id)}">${c([t.employeeCode,t.username].filter(Boolean).join(" "))}</option>`).join("")}
             </select>
             <select id="noticeScope" class="notice-select">
-              <option value="global">全体</option>
-              <option value="date">日付</option>
-              <option value="month">月</option>
+              <option value="global">\u5168\u4F53</option>
+              <option value="date">\u65E5\u4ED8</option>
+              <option value="month">\u6708</option>
             </select>
             <input id="noticeDate" type="date" class="notice-input" style="display:none;">
             <input id="noticeMonth" type="month" class="notice-input" style="display:none;">
-            <button id="btnNoticePost" type="button" class="notice-btn primary">登録</button>
-            <button id="btnNoticeComposerToggle" type="button" class="notice-btn">${composerVisible ? '入力欄を隠す' : '入力欄を表示'}</button>
+            <button id="btnNoticePost" type="button" class="notice-btn primary">\u767B\u9332</button>
+            <button id="btnNoticeComposerToggle" type="button" class="notice-btn">${C?"\u5165\u529B\u6B04\u3092\u96A0\u3059":"\u5165\u529B\u6B04\u3092\u8868\u793A"}</button>
           </div>
-          <div id="noticeComposerBody" ${composerVisible ? '' : 'hidden'}>
-            <textarea id="noticeMessage" class="notice-textarea" placeholder="通知内容を入力"></textarea>
+          <div id="noticeComposerBody" ${C?"":"hidden"}>
+            <textarea id="noticeMessage" class="notice-textarea" placeholder="\u901A\u77E5\u5185\u5BB9\u3092\u5165\u529B"></textarea>
             <div id="noticeError" style="display:none;margin-top:8px;color:#b00020;font-weight:800;"></div>
           </div>
         </div>
 
         <div class="notice-listbar">
-          <div class="notice-sub">一覧</div>
-          <label class="notice-switch" title="一覧を表示/非表示">
-            <input id="toggleNoticeTable" type="checkbox" ${tableVisible ? 'checked' : ''}>
+          <div class="notice-sub">\u4E00\u89A7</div>
+          <label class="notice-switch" title="\u4E00\u89A7\u3092\u8868\u793A/\u975E\u8868\u793A">
+            <input id="toggleNoticeTable" type="checkbox" ${A?"checked":""}>
             <span class="notice-switch-track"></span>
           </label>
         </div>
-        <div id="noticeTableSection" ${tableVisible ? '' : 'hidden'}>
+        <div id="noticeTableSection" ${A?"":"hidden"}>
         <div class="notice-table-wrap">
           <table class="notice-table">
-            ${tableColgroup}
+            ${U}
             <thead>
-              ${tableHead}
+              ${F}
             </thead>
             <tbody id="noticeTableBody">
-              ${tableRows}
+              ${J}
             </tbody>
           </table>
         </div>
         <div id="noticePagination" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;padding:4px 12px;font-size:13px;color:#475569;font-weight:600;">
-          ${rows.length > PAGE_SIZE ? `ページ ${currentPage} / ${totalPages} (${rows.length}件)　<button id="noticePrevPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">◀</button> <button id="noticeNextPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">▶</button>` : `${rows.length}件`}
+          ${l.length>y?`\u30DA\u30FC\u30B8 ${s} / ${w} (${l.length}\u4EF6)\u3000<button id="noticePrevPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">\u25C0</button> <button id="noticeNextPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">\u25B6</button>`:`${l.length}\u4EF6`}
         </div>
         </div>
       </div>
       </div>
-    `;
-
-    // Xử lý phân trang
-    const updatePagination = () => {
-      const tbody = host.querySelector('#noticeTableBody');
-      const pagDiv = host.querySelector('#noticePagination');
-      if (tbody) tbody.innerHTML = buildTableRows(getPageRows());
-      if (pagDiv && rows.length > PAGE_SIZE) {
-        pagDiv.innerHTML = `ページ ${currentPage} / ${totalPages} (${rows.length}件)　<button id="noticePrevPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${currentPage <= 1 ? 'disabled' : ''}>◀</button> <button id="noticeNextPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${currentPage >= totalPages ? 'disabled' : ''}>▶</button>`;
-        pagDiv.querySelector('#noticePrevPage')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
-        pagDiv.querySelector('#noticeNextPage')?.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; updatePagination(); } });
-      }
-      // Gắn lại sự kiện cho nút xóa
-      host.querySelectorAll('[data-notice-del]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const nid = btn.dataset.noticeDel;
-          if (!nid || !confirm('この通知を削除しますか？')) return;
-          try {
-            await fetchJSONAuth(`/api/notices/admin/${nid}`, { method: 'DELETE' });
-            await render();
-          } catch (e) { /* bỏ qua lỗi */ }
-        });
-      });
-    };
-    host.querySelector('#noticePrevPage')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
-    host.querySelector('#noticeNextPage')?.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; updatePagination(); } });
-
-    const showErr = (msg) => {
-      const el = host.querySelector('#noticeError');
-      if (!el) return;
-      if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
-      el.style.display = 'block';
-      el.textContent = msg;
-    };
-
-    const btnToggleComposer = host.querySelector('#btnNoticeComposerToggle');
-    if (btnToggleComposer) btnToggleComposer.addEventListener('click', () => {
-      const body = host.querySelector('#noticeComposerBody');
-      const curHidden = !!(body && body.hasAttribute && body.hasAttribute('hidden'));
-      const nextHidden = !curHidden;
-      if (nextHidden) { try { if (body) body.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ } }
-      else { try { if (body) body.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ } }
-      try { localStorage.setItem(composerKey, nextHidden ? '0' : '1'); } catch (e) { /* bỏ qua lỗi */ }
-      try { host.querySelector('#btnNoticeComposerToggle').textContent = nextHidden ? '入力欄を表示' : '入力欄を隠す'; } catch (e) { /* bỏ qua lỗi */ }
-    });
-    const toggleNoticeTable = host.querySelector('#toggleNoticeTable');
-    if (toggleNoticeTable) toggleNoticeTable.addEventListener('change', () => {
-      const chk = toggleNoticeTable;
-      const sec = host.querySelector('#noticeTableSection');
-      const vis = !!chk.checked;
-      if (vis) { try { if (sec) sec.removeAttribute('hidden'); } catch (e) { /* bỏ qua lỗi */ } }
-      else { try { if (sec) sec.setAttribute('hidden', ''); } catch (e) { /* bỏ qua lỗi */ } }
-      try { localStorage.setItem(tableKey, vis ? '1' : '0'); } catch (e) { /* bỏ qua lỗi */ }
-    });
-
-    const recipient = host.querySelector('#noticeRecipient');
-    const scope = host.querySelector('#noticeScope');
-    const date = host.querySelector('#noticeDate');
-    const month = host.querySelector('#noticeMonth');
-    const msg = host.querySelector('#noticeMessage');
-
-    const autoGrow = () => {
-      if (!msg) return;
-      try {
-        msg.style.height = '0px';
-        const h = Math.max(120, msg.scrollHeight);
-        msg.style.height = `${h}px`;
-      } catch (e) { /* bỏ qua lỗi */ }
-    };
-
-    const applyScope = () => {
-      const v = String((scope && scope.value != null) ? scope.value : 'global');
-      if (date) date.style.display = v === 'date' ? '' : 'none';
-      if (month) month.style.display = v === 'month' ? '' : 'none';
-    };
-    if (scope) scope.addEventListener('change', applyScope);
-    applyScope();
-    if (msg) msg.addEventListener('input', autoGrow);
-    autoGrow();
-
-    const btnPost = host.querySelector('#btnNoticePost');
-    if (btnPost) btnPost.addEventListener('click', async () => {
-      showErr('');
-      const targetUserId = recipient ? String(recipient.value || '').trim() : '';
-      const scopeV = String((scope && scope.value != null) ? scope.value : 'global');
-      const targetDate = scopeV === 'date' ? String((date && date.value) ? date.value : '').slice(0, 10) : null;
-      const targetMonth = scopeV === 'month' ? String((month && month.value) ? month.value : '').slice(0, 7) : null;
-      const message = String((msg && msg.value != null) ? msg.value : '').trim();
-      if (!message) { showErr('内容を入力してください'); return; }
-      try {
-        await fetchJSONAuth(apiPostPath, { method: 'POST', body: JSON.stringify({ targetUserId: targetUserId || null, targetDate, targetMonth, message }) });
-        await render();
-      } catch (e) {
-        const m = String((e && e.message) ? e.message : (e || ''));
-        if (m === 'Not Found') {
-          showErr(`Not Found: ${window.location.origin}${apiPostPath}`);
-        } else {
-          showErr(m || '登録に失敗しました');
-        }
-      }
-    });
-
-    host.querySelectorAll('[data-notice-del]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        showErr('');
-        const id = btn.getAttribute('data-notice-del');
-        const ok = window.confirm('削除しますか？');
-        if (!ok) return;
-        try {
-          await fetchJSONAuth(`/api/notices/admin/${encodeURIComponent(String(id || ''))}`, { method: 'DELETE' });
-          await render();
-        } catch (e) {
-          showErr((e && e.message) ? e.message : '削除に失敗しました');
-        }
-      });
-    });
-  };
-
-  await render();
-}
+    `;const E=()=>{const t=o.querySelector("#noticeTableBody"),e=o.querySelector("#noticePagination");t&&(t.innerHTML=I(z())),e&&l.length>y&&(e.innerHTML=`\u30DA\u30FC\u30B8 ${s} / ${w} (${l.length}\u4EF6)\u3000<button id="noticePrevPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${s<=1?"disabled":""}>\u25C0</button> <button id="noticeNextPage" type="button" style="padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;" ${s>=w?"disabled":""}>\u25B6</button>`,e.querySelector("#noticePrevPage")?.addEventListener("click",()=>{s>1&&(s--,E())}),e.querySelector("#noticeNextPage")?.addEventListener("click",()=>{s<w&&(s++,E())})),o.querySelectorAll("[data-notice-del]").forEach(a=>{a.addEventListener("click",async()=>{const r=a.dataset.noticeDel;if(!(!r||!confirm("\u3053\u306E\u901A\u77E5\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F")))try{await $(`/api/notices/admin/${r}`,{method:"DELETE"}),await _()}catch{}})})};o.querySelector("#noticePrevPage")?.addEventListener("click",()=>{s>1&&(s--,E())}),o.querySelector("#noticeNextPage")?.addEventListener("click",()=>{s<w&&(s++,E())});const f=t=>{const e=o.querySelector("#noticeError");if(e){if(!t){e.style.display="none",e.textContent="";return}e.style.display="block",e.textContent=t}},M=o.querySelector("#btnNoticeComposerToggle");M&&M.addEventListener("click",()=>{const t=o.querySelector("#noticeComposerBody"),a=!!!(t&&t.hasAttribute&&t.hasAttribute("hidden"));if(a)try{t&&t.setAttribute("hidden","")}catch{}else try{t&&t.removeAttribute("hidden")}catch{}try{localStorage.setItem(q,a?"0":"1")}catch{}try{o.querySelector("#btnNoticeComposerToggle").textContent=a?"\u5165\u529B\u6B04\u3092\u8868\u793A":"\u5165\u529B\u6B04\u3092\u96A0\u3059"}catch{}});const T=o.querySelector("#toggleNoticeTable");T&&T.addEventListener("change",()=>{const t=T,e=o.querySelector("#noticeTableSection"),a=!!t.checked;if(a)try{e&&e.removeAttribute("hidden")}catch{}else try{e&&e.setAttribute("hidden","")}catch{}try{localStorage.setItem(N,a?"1":"0")}catch{}});const D=o.querySelector("#noticeRecipient"),h=o.querySelector("#noticeScope"),v=o.querySelector("#noticeDate"),S=o.querySelector("#noticeMonth"),g=o.querySelector("#noticeMessage"),j=()=>{if(g)try{g.style.height="0px";const t=Math.max(120,g.scrollHeight);g.style.height=`${t}px`}catch{}},H=()=>{const t=String(h&&h.value!=null?h.value:"global");v&&(v.style.display=t==="date"?"":"none"),S&&(S.style.display=t==="month"?"":"none")};h&&h.addEventListener("change",H),H(),g&&g.addEventListener("input",j),j();const R=o.querySelector("#btnNoticePost");R&&R.addEventListener("click",async()=>{f("");const t=D?String(D.value||"").trim():"",e=String(h&&h.value!=null?h.value:"global"),a=e==="date"?String(v&&v.value?v.value:"").slice(0,10):null,r=e==="month"?String(S&&S.value?S.value:"").slice(0,7):null,b=String(g&&g.value!=null?g.value:"").trim();if(!b){f("\u5185\u5BB9\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");return}try{await $(p,{method:"POST",body:JSON.stringify({targetUserId:t||null,targetDate:a,targetMonth:r,message:b})}),await _()}catch(k){const B=String(k&&k.message?k.message:k||"");f(B==="Not Found"?`Not Found: ${window.location.origin}${p}`:B||"\u767B\u9332\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}}),o.querySelectorAll("[data-notice-del]").forEach(t=>{t.addEventListener("click",async()=>{f("");const e=t.getAttribute("data-notice-del");if(window.confirm("\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F"))try{await $(`/api/notices/admin/${encodeURIComponent(String(e||""))}`,{method:"DELETE"}),await _()}catch(r){f(r&&r.message?r.message:"\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}})})};await _()}export{W as mount};

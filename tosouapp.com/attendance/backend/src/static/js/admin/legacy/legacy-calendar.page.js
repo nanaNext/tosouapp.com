@@ -1,72 +1,4 @@
-import { escapeHtml as esc } from '../_shared/dom.js';
-import { api, downloadWithAuth } from '../../shared/api/client.js';
-
-let controller = null;
-
-export async function mount({ content }) {
-  await mountCalendar({ content });
-}
-
-export async function mountCalendar({ content }) {
-  // Tạo AbortController mới mỗi lần mount
-  controller = new AbortController();
-  const { signal } = controller;
-
-  const pad2 = (n) => String(n).padStart(2, '0');
-  const monthOf = (date) => String(date || '').slice(0, 7);
-  const splitLabel = (name) => {
-    const parts = String(name || '').split(' / ');
-    return { ja: parts[0] || '', en: parts.length > 1 ? parts.slice(1).join(' / ') : '' };
-  };
-  const dowJa = (dateStr) => {
-    try {
-      const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(x => parseInt(x, 10));
-      const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
-      return ['日','月','火','水','木','金','土'][dt.getUTCDay()];
-    } catch {
-      return '';
-    }
-  };
-  const isWeekend = (dateStr) => {
-    try {
-      const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(x => parseInt(x, 10));
-      const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
-      const w = dt.getUTCDay();
-      return w === 0 || w === 6;
-    } catch {
-      return false;
-    }
-  };
-  const typeLabel = (t) => {
-    const s = String(t || '');
-    if (s === 'jp_auto') return '祝日';
-    if (s === 'jp_substitute') return '振替';
-    if (s === 'jp_bridge') return '国民の休日';
-    if (s === 'fixed') return '会社';
-    if (s === 'custom') return '任意';
-    return s || '—';
-  };
-
-  const now = new Date(Date.now() + 9 * 3600 * 1000);
-  const year0 = now.getUTCFullYear();
-  const month0 = `${year0}-${pad2(now.getUTCMonth() + 1)}`;
-
-  // Kiểm tra có chạy ở chế độ standalone không
-  const isStandalone = new URLSearchParams(window.location.search).get('standalone') === '1';
-  const vhExpr = isStandalone ? '100dvh' : 'calc(100vh - var(--topbar-height) - var(--subbar-height))';
-
-  // Vẽ giao diện
-  content.style.margin = '0';
-  content.style.padding = '0'; // Reset padding ở cấp độ host container để nhường padding cho thẻ con
-  content.style.width = '100%';
-  content.style.height = vhExpr;
-  content.style.display = 'flex';
-  content.style.flexDirection = 'column';
-  content.style.overflow = 'hidden'; // Đóng khung host lại để không bị trào ngang
-  content.style.flex = '1';
-  content.style.minWidth = '0';
-  content.style.boxSizing = 'border-box';
-  content.innerHTML = `
+import{escapeHtml as i}from"../_shared/dom.js";import{api as x,downloadWithAuth as T}from"../../shared/api/client.js";let g=null;async function B({content:n}){await D({content:n})}async function D({content:n}){g=new AbortController;const{signal:f}=g,v=e=>String(e).padStart(2,"0"),M=e=>String(e||"").slice(0,7),L=e=>{const a=String(e||"").split(" / ");return{ja:a[0]||"",en:a.length>1?a.slice(1).join(" / "):""}},S=e=>{try{const[a,o,l]=String(e).slice(0,10).split("-").map(t=>parseInt(t,10)),p=new Date(Date.UTC(a,(o||1)-1,l||1));return["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"][p.getUTCDay()]}catch{return""}},q=e=>{try{const[a,o,l]=String(e).slice(0,10).split("-").map(c=>parseInt(c,10)),t=new Date(Date.UTC(a,(o||1)-1,l||1)).getUTCDay();return t===0||t===6}catch{return!1}},w=e=>{const a=String(e||"");return a==="jp_auto"?"\u795D\u65E5":a==="jp_substitute"?"\u632F\u66FF":a==="jp_bridge"?"\u56FD\u6C11\u306E\u4F11\u65E5":a==="fixed"?"\u4F1A\u793E":a==="custom"?"\u4EFB\u610F":a||"\u2014"},$=new Date(Date.now()+9*3600*1e3),m=$.getUTCFullYear(),H=`${m}-${v($.getUTCMonth()+1)}`,O=new URLSearchParams(window.location.search).get("standalone")==="1"?"100dvh":"calc(100vh - var(--topbar-height) - var(--subbar-height))";n.style.margin="0",n.style.padding="0",n.style.width="100%",n.style.height=O,n.style.display="flex",n.style.flexDirection="column",n.style.overflow="hidden",n.style.flex="1",n.style.minWidth="0",n.style.boxSizing="border-box",n.innerHTML=`
     <style>
       .cal-page-content { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow: visible; padding: 24px; box-sizing: border-box; width: 100%; }
       .cal-table-wrap { flex: 1 1 0%; min-height: 0; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
@@ -154,25 +86,21 @@ export async function mountCalendar({ content }) {
       <div class="attrec-controls">
         <div class="filter-group">
           <select id="calMonth" class="se-time" style="width:120px;height:32px;">
-            <option value="">${esc(year0)}年 (全て)</option>
-            ${Array.from({ length: 12 }).map((_, i) => {
-              const m = pad2(i + 1);
-              const v = `${year0}-${m}`;
-              return `<option value="${esc(v)}" ${v === month0 ? 'selected' : ''}>${esc(year0)}年${m}月</option>`;
-            }).join('')}
+            <option value="">${i(m)}\u5E74 (\u5168\u3066)</option>
+            ${Array.from({length:12}).map((e,a)=>{const o=v(a+1),l=`${m}-${o}`;return`<option value="${i(l)}" ${l===H?"selected":""}>${i(m)}\u5E74${o}\u6708</option>`}).join("")}
           </select>
           <div class="cal-checkbox-wrap">
             <label style="display:flex;align-items:center;font-weight:800;color:#475569;">
               <input id="calOnlyOff" type="checkbox" checked>
-              休日のみ
+              \u4F11\u65E5\u306E\u307F
             </label>
           </div>
         </div>
         <div class="cal-actions">
           <button id="calExportCsv" type="button" class="se-btn small default" style="height:32px;background:#fff;border:1px solid #cbd5e1;color:#0b2c66;">Excel</button>
           <input type="file" id="calImportFile" accept=".xlsx, .xls" style="display:none;">
-          <button id="calImportCsv" type="button" class="se-btn small default" style="height:32px;background:#fff;border:1px solid #cbd5e1;color:#0b2c66;">インポート</button>
-          <button id="calReset" type="button" class="se-btn small default" style="height:32px;background:#fff;border:1px solid #fecaca;color:#ef4444;">リセット</button>
+          <button id="calImportCsv" type="button" class="se-btn small default" style="height:32px;background:#fff;border:1px solid #cbd5e1;color:#0b2c66;">\u30A4\u30F3\u30DD\u30FC\u30C8</button>
+          <button id="calReset" type="button" class="se-btn small default" style="height:32px;background:#fff;border:1px solid #fecaca;color:#ef4444;">\u30EA\u30BB\u30C3\u30C8</button>
         </div>
       </div>
       <div id="calInfo" class="attrec-summary" aria-live="polite" style="margin-bottom:12px;"></div>
@@ -180,91 +108,49 @@ export async function mountCalendar({ content }) {
         <div id="calTable" class="attrec-table"></div>
       </div>
     </div>
-  `;
-
-  const infoHost = content.querySelector('#calInfo');
-  const tableHost = content.querySelector('#calTable');
-
-  const render = (rows, meta) => {
-    if (!tableHost) return;
-    const list = Array.isArray(rows) ? rows : [];
-
-    const byType = list.reduce((acc, r) => {
-      const k = String((r && r.type) ? r.type : '');
-      acc[k] = (acc[k] || 0) + 1;
-      return acc;
-    }, {});
-
-    if (infoHost) {
-      const pingTxt = (meta && meta.ping) ? `Ping: ${esc(meta.ping)}` : 'OK';
-      const total = list.length;
-      const pills = Object.keys(byType).sort().map(k => 
-        `<span class="attrec-pill neutral">${esc(typeLabel(k))}: ${esc(byType[k])}</span>`
-      ).join(' ');
-
-      infoHost.innerHTML = `
-        <span class="attrec-pill ok">${pingTxt}</span>
-        <span class="attrec-pill neutral">件数: ${esc(total)}</span>
-        ${pills}
-      `;
-    }
-
-    if (!list.length) {
-      tableHost.innerHTML = `
+  `;const b=n.querySelector("#calInfo"),u=n.querySelector("#calTable"),U=(e,a)=>{if(!u)return;const o=Array.isArray(e)?e:[],l=o.reduce((t,c)=>{const s=String(c&&c.type?c.type:"");return t[s]=(t[s]||0)+1,t},{});if(b){const t=a&&a.ping?`Ping: ${i(a.ping)}`:"OK",c=o.length,s=Object.keys(l).sort().map(r=>`<span class="attrec-pill neutral">${i(w(r))}: ${i(l[r])}</span>`).join(" ");b.innerHTML=`
+        <span class="attrec-pill ok">${t}</span>
+        <span class="attrec-pill neutral">\u4EF6\u6570: ${i(c)}</span>
+        ${s}
+      `}if(!o.length){u.innerHTML=`
         <div class="empty-state">
-          <div style="font-size:28px;">🗂️</div>
-          <div>データがありません</div>
+          <div style="font-size:28px;">\u{1F5C2}\uFE0F</div>
+          <div>\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>
         </div>
-      `;
-      return;
-    }
-
-    const tableHtml = list.map(r => {
-      const dt = String((r && r.date) ? r.date : '').slice(0, 10);
-      const nm = splitLabel((r && r.name) ? r.name : '');
-      const off = Number((r && r.is_off) ? r.is_off : 0) ? '休' : '';
-      const offCls = Number((r && r.is_off) ? r.is_off : 0) ? 'attrec-pill ok' : 'attrec-pill neutral';
-      const isWk = isWeekend(dt);
-      const isOff = Number((r && r.is_off) ? r.is_off : 0);
-      const rowCls = isOff ? 'cal-row off' : (isWk ? 'cal-row weekend' : 'cal-row');
-
-      return `
-        <tr class="cal-desktop-row ${rowCls}">
-          <td>${esc(dt)}</td>
-          <td>${esc(dowJa(dt))}</td>
-          <td>${esc(typeLabel((r && r.type) ? r.type : ''))}</td>
-          <td><span class="${offCls}">${esc(off || '—')}</span></td>
-          <td title="${esc(nm.ja)}">${esc(nm.ja || '')}</td>
-          <td title="${esc(nm.en)}">${esc(nm.en || '')}</td>
+      `;return}const p=o.map(t=>{const c=String(t&&t.date?t.date:"").slice(0,10),s=L(t&&t.name?t.name:""),r=Number(t&&t.is_off?t.is_off:0)?"\u4F11":"",d=Number(t&&t.is_off?t.is_off:0)?"attrec-pill ok":"attrec-pill neutral",z=q(c);return`
+        <tr class="cal-desktop-row ${Number(t&&t.is_off?t.is_off:0)?"cal-row off":z?"cal-row weekend":"cal-row"}">
+          <td>${i(c)}</td>
+          <td>${i(S(c))}</td>
+          <td>${i(w(t&&t.type?t.type:""))}</td>
+          <td><span class="${d}">${i(r||"\u2014")}</span></td>
+          <td title="${i(s.ja)}">${i(s.ja||"")}</td>
+          <td title="${i(s.en)}">${i(s.en||"")}</td>
         </tr>
         <tr class="cal-mobile-row">
           <td colspan="6" class="cal-mobile-cell">
             <div class="cal-card">
               <div class="cal-card-header">
-                <div class="cal-card-date">${esc(dt)} (${esc(dowJa(dt))})</div>
-                <span class="${offCls}">${esc(off || '—')}</span>
+                <div class="cal-card-date">${i(c)} (${i(S(c))})</div>
+                <span class="${d}">${i(r||"\u2014")}</span>
               </div>
               <div class="cal-card-body">
                 <div class="cal-card-row">
-                  <span class="cal-card-label">名称</span>
-                  <span class="cal-card-value">${esc(nm.ja || '')}</span>
+                  <span class="cal-card-label">\u540D\u79F0</span>
+                  <span class="cal-card-value">${i(s.ja||"")}</span>
                 </div>
                 <div class="cal-card-row">
                   <span class="cal-card-label">English</span>
-                  <span class="cal-card-value">${esc(nm.en || '')}</span>
+                  <span class="cal-card-value">${i(s.en||"")}</span>
                 </div>
                 <div class="cal-card-row">
-                  <span class="cal-card-label">種別</span>
-                  <span class="cal-card-value">${esc(typeLabel((r && r.type) ? r.type : ''))}</span>
+                  <span class="cal-card-label">\u7A2E\u5225</span>
+                  <span class="cal-card-value">${i(w(t&&t.type?t.type:""))}</span>
                 </div>
               </div>
             </div>
           </td>
         </tr>
-      `;
-    }).join('');
-
-    tableHost.innerHTML = `
+      `}).join("");u.innerHTML=`
       <style>
         .cal-desktop-row { display: table-row; }
         .cal-mobile-row { display: none; }
@@ -286,132 +172,17 @@ export async function mountCalendar({ content }) {
       <table class="dash-table cal-dash-table" style="width:100%; border-collapse:collapse;">
         <thead>
           <tr>
-            <th>日付</th><th>曜日</th><th>種別</th><th>休日</th><th>名称</th><th>English</th>
+            <th>\u65E5\u4ED8</th><th>\u66DC\u65E5</th><th>\u7A2E\u5225</th><th>\u4F11\u65E5</th><th>\u540D\u79F0</th><th>English</th>
           </tr>
         </thead>
         <tbody>
-          ${tableHtml}
+          ${p}
         </tbody>
       </table>
-    `;
-  };
-
-  const load = async () => {
-    if (!tableHost) return;
-
-    tableHost.innerHTML = `
+    `},y=async()=>{if(!u)return;u.innerHTML=`
       <div class="empty-state">
-        <div style="font-size:28px;">⏳</div>
-        <div>読み込み中…</div>
+        <div style="font-size:28px;">\u23F3</div>
+        <div>\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>
       </div>
-    `;
-    if (infoHost) infoHost.innerHTML = '';
-
-    const mEl = content.querySelector('#calMonth');
-    const onlyEl = content.querySelector('#calOnlyOff');
-    const mSel = String((mEl && mEl.value) ? mEl.value : '');
-    const y = mSel ? parseInt(mSel.split('-')[0], 10) : year0;
-    const onlyOff = !!(onlyEl && onlyEl.checked);
-
-    const ping = await api.get(`/api/admin/calendar/ping?year=${encodeURIComponent(y)}`).catch(() => null);
-    const raw = await api.get(`/api/admin/calendar/raw?year=${encodeURIComponent(y)}`).catch(() => null);
-
-    let rows = (raw && Array.isArray(raw.rows)) ? raw.rows : [];
-    if (mSel && mSel.includes('-')) rows = rows.filter(r => monthOf(r && r.date ? r.date : '') === mSel);
-    if (onlyOff) rows = rows.filter(r => Number((r && r.is_off) ? r.is_off : 0) === 1);
-
-    rows.sort((a, b) =>
-      String((a && a.date) ? a.date : '').localeCompare(String((b && b.date) ? b.date : '')) ||
-      String((a && a.type) ? a.type : '').localeCompare(String((b && b.type) ? b.type : ''))
-    );
-
-    render(rows, { ping: (ping && ping.version) ? ping.version : null });
-  };
-
-  // Gắn sự kiện (có signal để tự dọn dẹp)
-  const mEl = content.querySelector('#calMonth');
-  const onlyEl = content.querySelector('#calOnlyOff');
-  if (mEl) mEl.addEventListener('change', load, { signal });
-  if (onlyEl) onlyEl.addEventListener('change', load, { signal });
-
-  const btnCsv = content.querySelector('#calExportCsv');
-  if (btnCsv) btnCsv.addEventListener('click', async () => {
-    const mEl2 = content.querySelector('#calMonth');
-    const mSel2 = String((mEl2 && mEl2.value) ? mEl2.value : '');
-    const y = mSel2 ? parseInt(mSel2.split('-')[0], 10) : year0;
-    const url = `/api/admin/calendar/export.xlsx?year=${encodeURIComponent(y)}&type=jp_auto,jp_substitute,jp_bridge,fixed,custom&include_nonoff=false`;
-    try {
-      await downloadWithAuth(url, `company_holidays_${y}.xlsx`);
-    } catch (e) {
-      alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
-    }
-  }, { signal });
-
-  const btnIcs = content.querySelector('#calExportIcs');
-  if (btnIcs) btnIcs.addEventListener('click', async () => {
-    const mEl3 = content.querySelector('#calMonth');
-    const mSel3 = String((mEl3 && mEl3.value) ? mEl3.value : '');
-    const y = mSel3 ? parseInt(mSel3.split('-')[0], 10) : year0;
-    const url = `/api/admin/calendar/export?year=${encodeURIComponent(y)}&include_nonoff=false&lang=ja`;
-    try {
-      await downloadWithAuth(url, `company_holidays_${y}.xlsx`);
-    } catch (e) {
-      alert(String((e && e.message) ? e.message : 'エクスポートに失敗しました'));
-    }
-  }, { signal });
-
-  const btnImport = content.querySelector('#calImportCsv');
-  const fileInput = content.querySelector('#calImportFile');
-  if (btnImport && fileInput) {
-    btnImport.addEventListener('click', () => {
-      fileInput.click();
-    }, { signal });
-
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const res = await api.upload('/api/admin/calendar/import', formData);
-        alert('カレンダーをインポートしました。');
-        load();
-      } catch (err) {
-        alert('インポートに失敗しました。: ' + String((err && err.message) ? err.message : ''));
-      } finally {
-        fileInput.value = '';
-      }
-    }, { signal });
-  }
-
-  const btnReset = content.querySelector('#calReset');
-  if (btnReset) {
-    btnReset.addEventListener('click', async () => {
-      const mElReset = content.querySelector('#calMonth');
-      const mSelReset = String((mElReset && mElReset.value) ? mElReset.value : '');
-      const y = mSelReset ? parseInt(mSelReset.split('-')[0], 10) : year0;
-      
-      if (!confirm(`${y}年のカスタム休日（インポートしたデータ）をすべて削除してリセットしますか？\n※国民の祝日は削除されません。`)) return;
-      
-      try {
-        await api.del(`/api/admin/calendar/jp?year=${encodeURIComponent(y)}`);
-        alert('リセットしました。');
-        load();
-      } catch (err) {
-        alert('リセットに失敗しました。: ' + String((err && err.message) ? err.message : ''));
-      }
-    }, { signal });
-  }
-
-  await load();
-}
-
-// Dọn dẹp khi rời tab
-export function unmountCalendar() {
-  if (controller) {
-    controller.abort();
-    controller = null;
-  }
-}
+    `,b&&(b.innerHTML="");const e=n.querySelector("#calMonth"),a=n.querySelector("#calOnlyOff"),o=String(e&&e.value?e.value:""),l=o?parseInt(o.split("-")[0],10):m,p=!!(a&&a.checked),t=await x.get(`/api/admin/calendar/ping?year=${encodeURIComponent(l)}`).catch(()=>null),c=await x.get(`/api/admin/calendar/raw?year=${encodeURIComponent(l)}`).catch(()=>null);let s=c&&Array.isArray(c.rows)?c.rows:[];o&&o.includes("-")&&(s=s.filter(r=>M(r&&r.date?r.date:"")===o)),p&&(s=s.filter(r=>Number(r&&r.is_off?r.is_off:0)===1)),s.sort((r,d)=>String(r&&r.date?r.date:"").localeCompare(String(d&&d.date?d.date:""))||String(r&&r.type?r.type:"").localeCompare(String(d&&d.type?d.type:""))),U(s,{ping:t&&t.version?t.version:null})},k=n.querySelector("#calMonth"),C=n.querySelector("#calOnlyOff");k&&k.addEventListener("change",y,{signal:f}),C&&C.addEventListener("change",y,{signal:f});const E=n.querySelector("#calExportCsv");E&&E.addEventListener("click",async()=>{const e=n.querySelector("#calMonth"),a=String(e&&e.value?e.value:""),o=a?parseInt(a.split("-")[0],10):m,l=`/api/admin/calendar/export.xlsx?year=${encodeURIComponent(o)}&type=jp_auto,jp_substitute,jp_bridge,fixed,custom&include_nonoff=false`;try{await T(l,`company_holidays_${o}.xlsx`)}catch(p){alert(String(p&&p.message?p.message:"\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}},{signal:f});const j=n.querySelector("#calExportIcs");j&&j.addEventListener("click",async()=>{const e=n.querySelector("#calMonth"),a=String(e&&e.value?e.value:""),o=a?parseInt(a.split("-")[0],10):m,l=`/api/admin/calendar/export?year=${encodeURIComponent(o)}&include_nonoff=false&lang=ja`;try{await T(l,`company_holidays_${o}.xlsx`)}catch(p){alert(String(p&&p.message?p.message:"\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}},{signal:f});const I=n.querySelector("#calImportCsv"),h=n.querySelector("#calImportFile");I&&h&&(I.addEventListener("click",()=>{h.click()},{signal:f}),h.addEventListener("change",async e=>{const a=e.target.files[0];if(!a)return;const o=new FormData;o.append("file",a);try{const l=await x.upload("/api/admin/calendar/import",o);alert("\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u307E\u3057\u305F\u3002"),y()}catch(l){alert("\u30A4\u30F3\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002: "+String(l&&l.message?l.message:""))}finally{h.value=""}},{signal:f}));const _=n.querySelector("#calReset");_&&_.addEventListener("click",async()=>{const e=n.querySelector("#calMonth"),a=String(e&&e.value?e.value:""),o=a?parseInt(a.split("-")[0],10):m;if(confirm(`${o}\u5E74\u306E\u30AB\u30B9\u30BF\u30E0\u4F11\u65E5\uFF08\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u305F\u30C7\u30FC\u30BF\uFF09\u3092\u3059\u3079\u3066\u524A\u9664\u3057\u3066\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3059\u304B\uFF1F
+\u203B\u56FD\u6C11\u306E\u795D\u65E5\u306F\u524A\u9664\u3055\u308C\u307E\u305B\u3093\u3002`))try{await x.del(`/api/admin/calendar/jp?year=${encodeURIComponent(o)}`),alert("\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F\u3002"),y()}catch(l){alert("\u30EA\u30BB\u30C3\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002: "+String(l&&l.message?l.message:""))}},{signal:f}),await y()}function P(){g&&(g.abort(),g=null)}export{B as mount,D as mountCalendar,P as unmountCalendar};

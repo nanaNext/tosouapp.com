@@ -247,25 +247,62 @@ async function computeRecord(rec, ctx = null) {
   
   // Trừ đi thời gian đi việc riêng và thời gian nghỉ
   worked = Math.max(0, worked - privateGoOutMinutes - breakMin);
-
   // ─── Làm tròn ────────────────────────────────────────────────────────────
-  // 1. Giờ vào trước ca → chỉ tính từ giờ ca bắt đầu
-  // 2. OT → làm tròn xuống theo bước 30 phút
+  // Quy tắc:
+  // - Giờ vào: nếu trước ca -> tính từ giờ ca, nếu trong/ sau -> làm tròn LÊN 30 phút
+  // - Giờ ra: nếu sau ca -> phần OT làm tròn XUỐNG 30 phút; nếu trong ca -> làm tròn XUỐNG 30 phút
   const ROUND_STEP = 30; // phút
-  if (inJ && shift.start && inJ < shift.start) {
-    // Trừ đi số phút đến sớm (đã cộng vào worked nhưng không nên tính)
-    const earlyMinutes = minutesBetween(inJ, shift.start);
-    worked = Math.max(0, worked - earlyMinutes);
+  // Hàm làm tròn
+  const ceilToStep = (v, step) => {
+    const n = Number(v || 0);
+    if (!Number.isFinite(n)) return 0;
+    return Math.ceil(n / step) * step;
+  };
+  const floorToStep = (v, step) => {
+    const n = Number(v || 0);
+    if (!Number.isFinite(n)) return 0;
+    return Math.floor(n / step) * step;
+  };
+
+  // Tính phút trong ngày (JST) cho in/out và shift
+  const inMin = inJ ? (inJ.getUTCHours() * 60 + inJ.getUTCMinutes()) : null;
+  const outMin = outJ ? (outJ.getUTCHours() * 60 + outJ.getUTCMinutes()) : null;
+  const shiftStartMin = shift.start ? (shift.start.getUTCHours() * 60 + shift.start.getUTCMinutes()) : null;
+  const shiftEndMin = shift.end ? (shift.end.getUTCHours() * 60 + shift.end.getUTCMinutes()) : null;
+
+  // Tính giá trị làm tròn
+  let rInMin = null;
+  let rOutMin = null;
+  if (inMin != null) {
+    // Luôn làm tròn LÊN theo bước 30 phút, không ép về giờ bắt đầu ca
+    rInMin = ceilToStep(inMin, ROUND_STEP);
+  }
+  if (outMin != null) {
+    if (shiftEndMin != null && outMin > shiftEndMin) {
+      const otRaw = outMin - shiftEndMin;
+      const otRounded = floorToStep(otRaw, ROUND_STEP);
+      rOutMin = shiftEndMin + otRounded;
+    } else {
+      rOutMin = floorToStep(outMin, ROUND_STEP);
+      if (shiftStartMin != null && rOutMin < shiftStartMin) rOutMin = shiftStartMin;
+    }
   }
 
   let isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
   if (dailyRec && dailyRec.kubun) {
     isOff = ['休日', '法定休日', '欠勤'].includes(dailyRec.kubun);
   }
+
   const scheduled = isOff ? 0 : Math.max(0, minutesBetween(shift.start, shift.end) - breakMin);
-  const regular = Math.min(worked, scheduled);
-  // OT làm tròn xuống bước 30 phút
-  const rawOvertime = Math.max(0, worked - scheduled);
+
+  // Dựa trên giá trị đã làm tròn để tính công chuẩn và tăng ca
+  let workedRounded = 0;
+  if (rInMin != null && rOutMin != null) {
+    workedRounded = Math.max(0, rOutMin - rInMin - breakMin);
+  }
+
+  const regular = Math.min(workedRounded, scheduled);
+  const rawOvertime = Math.max(0, (rOutMin != null && shiftEndMin != null) ? (rOutMin - shiftEndMin) : 0);
   const overtime = Math.floor(rawOvertime / ROUND_STEP) * ROUND_STEP;
 
   // Dùng CoreRules để lấy thêm thông tin bất thường

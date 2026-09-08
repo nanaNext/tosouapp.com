@@ -1,17 +1,1 @@
-window.addEventListener('error', (e) => {
-  try {
-    const el = document.querySelector('#error');
-    if (el) {
-      el.style.display = 'block';
-      el.textContent = 'エラーが発生しました: ' + (e.error?.message || e.message || 'unknown');
-    }
-    const st = document.querySelector('#status');
-    if (st) st.textContent = 'Error';
-  } catch (e) { /* bỏ qua lỗi */ }
-});
-window.addEventListener('DOMContentLoaded', () => {
-  try {
-    const st = document.querySelector('#status');
-    if (st) st.textContent = '';
-  } catch (e) { /* bỏ qua lỗi */ }
-});
+window.addEventListener("error",t=>{try{const e=document.querySelector("#error");e&&(e.style.display="block",e.textContent="\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F: "+(t.error?.message||t.message||"unknown"));const n=document.querySelector("#status");n&&(n.textContent="Error")}catch{}}),window.addEventListener("DOMContentLoaded",()=>{try{const t=document.querySelector("#status");t&&(t.textContent="")}catch{}});

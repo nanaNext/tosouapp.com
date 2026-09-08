@@ -1,9 +1,1 @@
-import { fetchJSONAuth } from '../../api/http.api.js';
-
-export async function mountRefresh({ content, profile }) {
-  content.innerHTML = '<h3>トークン管理</h3>';
-  const q = await fetchJSONAuth(`/api/admin/auth/refresh/list?userId=${encodeURIComponent(profile.id)}&page=1&pageSize=20`);
-  const pre = document.createElement('pre');
-  pre.textContent = JSON.stringify(q, null, 2);
-  content.appendChild(pre);
-}
+import{fetchJSONAuth as r}from"../../api/http.api.js";async function a({content:e,profile:n}){e.innerHTML="<h3>\u30C8\u30FC\u30AF\u30F3\u7BA1\u7406</h3>";const i=await r(`/api/admin/auth/refresh/list?userId=${encodeURIComponent(n.id)}&page=1&pageSize=20`),t=document.createElement("pre");t.textContent=JSON.stringify(i,null,2),e.appendChild(t)}export{a as mountRefresh};

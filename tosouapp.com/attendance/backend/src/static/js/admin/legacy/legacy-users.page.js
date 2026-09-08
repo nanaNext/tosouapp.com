@@ -1,87 +1,16 @@
-import { delegate } from '../_shared/dom.js';
-import { api } from '../../shared/api/client.js';
-
-const rowsByContent = new WeakMap();
-const depsByContent = new WeakMap();
-
-function ensureUserClickHandler(content) {
-  try {
-    if (!content || content.dataset.usersBound === '1') return;
-    content.dataset.usersBound = '1';
-    delegate(content, '[data-action]', 'click', async (_e, btn) => {
-      const action = btn.dataset.action || '';
-      const id = btn.dataset.id || '';
-      const rows = rowsByContent.get(content) || [];
-      const deps = depsByContent.get(content) || {};
-      const { listUsers, deleteUserAccount, resetUserPassword } = deps;
-
-      if (action === 'delete') {
-        if (confirm('削除しますか？')) {
-          await deleteUserAccount(id);
-          await mountUsers({ content, fetchJSONAuth, listUsers, deleteUserAccount, resetUserPassword });
-        }
-        return;
-      }
-      if (action === 'resetpw') {
-        const newPw = prompt('新しいパスワードを入力');
-        if (newPw && newPw.length >= 6) {
-          await resetUserPassword(id, newPw);
-          alert('PW更新しました');
-        }
-        return;
-      }
-      if (action === 'lock') {
-        const minsStr = prompt('ロック分数 (既定: 60)');
-        const minutes = parseInt(minsStr || '60', 10);
-        await api.patch(`/api/admin/users/${id}/lock`, { minutes });
-        alert('ロックしました');
-        return;
-      }
-      if (action === 'unlock') {
-        await api.patch(`/api/admin/users/${id}/unlock`);
-        alert('ロック解除しました');
-        return;
-      }
-      if (action === 'detail') {
-        const u = rows.find(x => String(x.id) === String(id));
-        if (u) {
-          alert(`ID: ${u.id}\n名前: ${u.username || ''}\nEmail: ${u.email || ''}\nRole: ${u.role || ''}`);
-        }
-      }
-    });
-  } catch (e) { /* bỏ qua lỗi */ }
-}
-
-export async function mountUsers({ content, listUsers, deleteUserAccount, resetUserPassword }) {
-  if (!content) return;
-  const rows = await listUsers();
-  depsByContent.set(content, { listUsers, deleteUserAccount, resetUserPassword });
-  rowsByContent.set(content, rows);
-  ensureUserClickHandler(content);
-  content.innerHTML = '<h3>ユーザー一覧</h3>';
-  const table = document.createElement('table');
-  table.style.width = 'auto';
-  table.style.minWidth = '880px';
-  table.style.tableLayout = 'auto';
-  table.innerHTML = '<thead><tr><th>ID</th><th>名前</th><th>Email</th><th>Role</th><th>操作</th></tr></thead>';
-  const tbody = document.createElement('tbody');
-  for (const r of rows) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${r.id}</td>
-      <td>${r.username || ''}</td>
-      <td>${r.email || ''}</td>
-      <td>${r.role || ''}</td>
+import{delegate as f}from"../_shared/dom.js";import{api as p}from"../../shared/api/client.js";const h=new WeakMap,m=new WeakMap;function w(t){try{if(!t||t.dataset.usersBound==="1")return;t.dataset.usersBound="1",f(t,"[data-action]","click",async(r,s)=>{const n=s.dataset.action||"",i=s.dataset.id||"",d=h.get(t)||[],u=m.get(t)||{},{listUsers:a,deleteUserAccount:o,resetUserPassword:l}=u;if(n==="delete"){confirm("\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F")&&(await o(i),await $({content:t,fetchJSONAuth,listUsers:a,deleteUserAccount:o,resetUserPassword:l}));return}if(n==="resetpw"){const e=prompt("\u65B0\u3057\u3044\u30D1\u30B9\u30EF\u30FC\u30C9\u3092\u5165\u529B");e&&e.length>=6&&(await l(i,e),alert("PW\u66F4\u65B0\u3057\u307E\u3057\u305F"));return}if(n==="lock"){const e=prompt("\u30ED\u30C3\u30AF\u5206\u6570 (\u65E2\u5B9A: 60)"),c=parseInt(e||"60",10);await p.patch(`/api/admin/users/${i}/lock`,{minutes:c}),alert("\u30ED\u30C3\u30AF\u3057\u307E\u3057\u305F");return}if(n==="unlock"){await p.patch(`/api/admin/users/${i}/unlock`),alert("\u30ED\u30C3\u30AF\u89E3\u9664\u3057\u307E\u3057\u305F");return}if(n==="detail"){const e=d.find(c=>String(c.id)===String(i));e&&alert(`ID: ${e.id}
+\u540D\u524D: ${e.username||""}
+Email: ${e.email||""}
+Role: ${e.role||""}`)}})}catch{}}async function $({content:t,listUsers:r,deleteUserAccount:s,resetUserPassword:n}){if(!t)return;const i=await r();m.set(t,{listUsers:r,deleteUserAccount:s,resetUserPassword:n}),h.set(t,i),w(t),t.innerHTML="<h3>\u30E6\u30FC\u30B6\u30FC\u4E00\u89A7</h3>";const d=document.createElement("table");d.style.width="auto",d.style.minWidth="880px",d.style.tableLayout="auto",d.innerHTML="<thead><tr><th>ID</th><th>\u540D\u524D</th><th>Email</th><th>Role</th><th>\u64CD\u4F5C</th></tr></thead>";const u=document.createElement("tbody");for(const a of i){const o=document.createElement("tr");o.innerHTML=`
+      <td>${a.id}</td>
+      <td>${a.username||""}</td>
+      <td>${a.email||""}</td>
+      <td>${a.role||""}</td>
       <td>
-        <button data-action="detail" data-id="${r.id}">詳細</button>
-        <button data-action="resetpw" data-id="${r.id}">PWリセット</button>
-        <button data-action="lock" data-id="${r.id}">ロック</button>
-        <button data-action="unlock" data-id="${r.id}">ロック解除</button>
-        <button data-action="delete" data-id="${r.id}">削除</button>
+        <button data-action="detail" data-id="${a.id}">\u8A73\u7D30</button>
+        <button data-action="resetpw" data-id="${a.id}">PW\u30EA\u30BB\u30C3\u30C8</button>
+        <button data-action="lock" data-id="${a.id}">\u30ED\u30C3\u30AF</button>
+        <button data-action="unlock" data-id="${a.id}">\u30ED\u30C3\u30AF\u89E3\u9664</button>
+        <button data-action="delete" data-id="${a.id}">\u524A\u9664</button>
       </td>
-    `;
-    tbody.appendChild(tr);
-  }
-  table.appendChild(tbody);
-  content.appendChild(table);
-}
+    `,u.appendChild(o)}d.appendChild(u),t.appendChild(d)}export{$ as mountUsers};

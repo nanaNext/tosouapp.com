@@ -1,18 +1,1 @@
-import { fetchJSONAuth } from '../../api/http.api.js';
-
-export async function mountRoutes({ content }) {
-  const r = await fetchJSONAuth('/api/debug/routes');
-  content.innerHTML = '<h3>API一覧</h3>';
-  const table = document.createElement('table');
-  table.style.width = '100%';
-  table.innerHTML = '<thead><tr><th>Path</th><th>Methods</th></tr></thead>';
-  const tbody = document.createElement('tbody');
-  for (const it of (r.routes || [])) {
-    const tr = document.createElement('tr');
-    const methods = Array.isArray(it.methods) ? it.methods.join(', ').toUpperCase() : Object.keys(it.methods || {}).join(', ').toUpperCase();
-    tr.innerHTML = `<td>${it.path}</td><td>${methods}</td>`;
-    tbody.appendChild(tr);
-  }
-  table.appendChild(tbody);
-  content.appendChild(table);
-}
+import{fetchJSONAuth as a}from"../../api/http.api.js";async function c({content:o}){const r=await a("/api/debug/routes");o.innerHTML="<h3>API\u4E00\u89A7</h3>";const t=document.createElement("table");t.style.width="100%",t.innerHTML="<thead><tr><th>Path</th><th>Methods</th></tr></thead>";const n=document.createElement("tbody");for(const e of r.routes||[]){const d=document.createElement("tr"),h=Array.isArray(e.methods)?e.methods.join(", ").toUpperCase():Object.keys(e.methods||{}).join(", ").toUpperCase();d.innerHTML=`<td>${e.path}</td><td>${h}</td>`,n.appendChild(d)}t.appendChild(n),o.appendChild(t)}export{c as mountRoutes};
