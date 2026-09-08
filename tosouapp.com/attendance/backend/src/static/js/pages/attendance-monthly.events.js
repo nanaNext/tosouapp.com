@@ -100,7 +100,7 @@
       const tabs = Array.from(cSec.querySelectorAll('.se-tab[data-tab]'));
       for (const t of tabs) {
         if (t.dataset.tabListenerWired === '1') continue;
-        t.addEventListener('click', (e) => {
+        t.addEventListener('click', async (e) => {
           e.preventDefault();
           try { console.debug('attendance:tab-click', { section: 'contract', tab: t.dataset.tab, detail: e?.detail }); console.trace(); } catch (err) {}
           // Ignore additional click events (double/triple clicks)
@@ -194,7 +194,7 @@
           } else if (t.dataset.tab === 'round') {
             document.body.classList.remove('view-plan');
             document.body.classList.add('view-round');
-            // Apply rounding to existing table values
+            // Apply rounding to existing table values (run batches sequentially)
             const rStep = 30; // 30 minute rounding
             const toMin = (hm) => {
               if (!hm || hm === '--:--') return -1;
@@ -209,79 +209,82 @@
             };
             const fmtMin = (m) => m > 0 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : '';
             const allRows = document.querySelectorAll('#monthTableReal [data-row="1"]');
-            // Process rows in small async batches to avoid blocking the UI
-            (async () => {
-              try {
-                const rows = Array.from(allRows);
-                const batchSize = 60;
-                for (let i = 0; i < rows.length; i += batchSize) {
-                  const chunk = rows.slice(i, i + batchSize);
-                  for (const row of chunk) {
-                    _setBlockRecalc(row);
-                    const inEl = row.querySelector('input[data-field="checkIn"]');
-                    const outEl = row.querySelector('input[data-field="checkOut"]');
-                    const workedEl = row.querySelector('[data-field="worked"]');
-                    const excessEl = row.querySelector('[data-field="excess"]');
-                    // Save originals into row dataset (always update to capture latest edits)
-                    row.dataset.origIn = inEl ? inEl.value : '';
-                    row.dataset.origOut = outEl ? outEl.value : '';
-                    row.dataset.origWorked = workedEl ? workedEl.textContent : '';
-                    row.dataset.origExcess = excessEl ? excessEl.textContent : '';
-                    const brSel = row.querySelector('select[data-field="break"]');
-                    // Skip rows without actual data
-                    const hasActualIn = !!(row.dataset.actualIn || (inEl && !inEl.classList.contains('is-auto') && inEl.value && inEl.value !== '--:--'));
-                    const hasActualOut = !!(row.dataset.actualOut || (outEl && !outEl.classList.contains('is-auto') && outEl.value && outEl.value !== '--:--'));
-                    if (!hasActualIn && !hasActualOut) continue;
-                    const shiftStart = row.dataset.shiftStart || '08:00';
-                    const shiftEnd = row.dataset.shiftEnd || '17:00';
-                    const shiftStartMin = toMin(shiftStart);
-                    const shiftEndMin = toMin(shiftEnd);
-                    const rawIn = row.dataset.origIn || (inEl ? inEl.value : '');
-                    const rawOut = row.dataset.origOut || (outEl ? outEl.value : '');
-                    // Clock-in: round UP to nearest 30 minutes (do not clamp to shift start)
-                    let rIn = '';
-                    const rawInMin = toMin(rawIn);
-                    if (rawInMin >= 0) {
-                      const rInMin = Math.ceil(rawInMin / rStep) * rStep;
-                      rIn = fromMin(rInMin);
-                    }
-                    // Clock-out: round DOWN OT portion after shift end
-                    let rOut = '';
-                    const rawOutMin = toMin(rawOut);
-                    if (rawOutMin >= 0) {
-                      if (rawOutMin <= shiftEndMin) {
-                        rOut = rawOut;
-                      } else {
-                        const otRaw = rawOutMin - shiftEndMin;
-                        const otRounded = Math.floor(otRaw / rStep) * rStep;
-                        rOut = fromMin(shiftEndMin + otRounded);
-                      }
-                    }
-                    if (inEl) inEl.value = rIn;
-                    if (outEl) outEl.value = rOut;
-                    // Recalculate worked/excess
-                    if (rIn && rOut) {
-                      const brRaw = brSel ? String(brSel.value || '0:00').trim() : '0:00';
-                      const brVal = toMin(brRaw) >= 0 ? toMin(brRaw) : 60;
-                      const totalWorked = Math.max(0, (toMin(rOut) - toMin(rIn)) - brVal);
-                      if (workedEl) workedEl.textContent = fmtMin(totalWorked);
-                      const scheduled = Math.max(0, shiftEndMin - shiftStartMin - brVal);
-                      const excess = Math.max(0, totalWorked - scheduled);
-                      if (excessEl) excessEl.textContent = fmtMin(excess);
-                    }
-                    row.classList.add('is-rounded');
+            const doRounding = async () => {
+              const rows = Array.from(allRows);
+              const batchSize = 60;
+              for (let i = 0; i < rows.length; i += batchSize) {
+                const chunk = rows.slice(i, i + batchSize);
+                for (const row of chunk) {
+                  _setBlockRecalc(row);
+                  const inEl = row.querySelector('input[data-field="checkIn"]');
+                  const outEl = row.querySelector('input[data-field="checkOut"]');
+                  const workedEl = row.querySelector('[data-field="worked"]');
+                  const excessEl = row.querySelector('[data-field="excess"]');
+                  // Save originals into row dataset (always update to capture latest edits)
+                  row.dataset.origIn = inEl ? inEl.value : '';
+                  row.dataset.origOut = outEl ? outEl.value : '';
+                  row.dataset.origWorked = workedEl ? workedEl.textContent : '';
+                  row.dataset.origExcess = excessEl ? excessEl.textContent : '';
+                  const brSel = row.querySelector('select[data-field="break"]');
+                  // Skip rows without actual data
+                  const hasActualIn = !!(row.dataset.actualIn || (inEl && !inEl.classList.contains('is-auto') && inEl.value && inEl.value !== '--:--'));
+                  const hasActualOut = !!(row.dataset.actualOut || (outEl && !outEl.classList.contains('is-auto') && outEl.value && outEl.value !== '--:--'));
+                  if (!hasActualIn && !hasActualOut) { _clearBlockRecalc(row); continue; }
+                  const shiftStart = row.dataset.shiftStart || '08:00';
+                  const shiftEnd = row.dataset.shiftEnd || '17:00';
+                  const shiftStartMin = toMin(shiftStart);
+                  const shiftEndMin = toMin(shiftEnd);
+                  const rawIn = row.dataset.origIn || (inEl ? inEl.value : '');
+                  const rawOut = row.dataset.origOut || (outEl ? outEl.value : '');
+                  // Clock-in: round UP to nearest 30 minutes (do not clamp to shift start)
+                  let rIn = '';
+                  const rawInMin = toMin(rawIn);
+                  if (rawInMin >= 0) {
+                    const rInMin = Math.ceil(rawInMin / rStep) * rStep;
+                    rIn = fromMin(rInMin);
                   }
-                  // yield to the event loop so the browser can update UI
-                  await new Promise(r => setTimeout(r, 0));
+                  // Clock-out: round DOWN OT portion after shift end
+                  let rOut = '';
+                  const rawOutMin = toMin(rawOut);
+                  if (rawOutMin >= 0) {
+                    if (rawOutMin <= shiftEndMin) {
+                      rOut = rawOut;
+                    } else {
+                      const otRaw = rawOutMin - shiftEndMin;
+                      const otRounded = Math.floor(otRaw / rStep) * rStep;
+                      rOut = fromMin(shiftEndMin + otRounded);
+                    }
+                  }
+                  if (inEl) inEl.value = rIn;
+                  if (outEl) outEl.value = rOut;
+                  // Recalculate worked/excess
+                  if (rIn && rOut) {
+                    const brRaw = brSel ? String(brSel.value || '0:00').trim() : '0:00';
+                    const brVal = toMin(brRaw) >= 0 ? toMin(brRaw) : 60;
+                    const totalWorked = Math.max(0, (toMin(rOut) - toMin(rIn)) - brVal);
+                    if (workedEl) workedEl.textContent = fmtMin(totalWorked);
+                    const scheduled = Math.max(0, shiftEndMin - shiftStartMin - brVal);
+                    const excess = Math.max(0, totalWorked - scheduled);
+                    if (excessEl) excessEl.textContent = fmtMin(excess);
+                  }
+                  row.classList.add('is-rounded');
+                  // allow recomputeRow to run for this row now
+                  _clearBlockRecalc(row);
                 }
-              } catch (e) { /* silently ignored */ }
-            })();
+                // yield to the event loop so the browser can update UI
+                await new Promise(r => setTimeout(r, 0));
+              }
+            };
+            // run rounding and wait for completion before recomputing summary
+            try {
+              await doRounding();
+            } catch (e) { /* silently ignored */ }
             // Update 当月サマリ with rounded totals
             try {
               let totalWorkMin = 0, totalOtMin = 0, attendDays = 0;
               const roundedRows = document.querySelectorAll('#monthTableReal [data-row="1"].is-rounded');
               // Summation also in batches to avoid long main-thread blocks
-              (async () => {
+              await (async () => {
                 try {
                   const rrows = Array.from(roundedRows);
                   const batch = 80;
@@ -328,13 +331,7 @@
                 }
               } catch (er) { /* silently ignored */ }
             } catch (e) { /* silently ignored */ }
-            // Clear blockRecalc flags so future user edits trigger recomputeRow
-            try {
-              const allRows2 = document.querySelectorAll('#monthTableReal [data-row="1"]');
-              for (const r2 of allRows2) {
-                _clearBlockRecalc(r2);
-              }
-            } catch (e) { /* silently ignored */ }
+            // all rows were cleared during rounding; nothing more to do here
           }
           for (const x of tabs) {
             x.classList.toggle('active', x === t);
