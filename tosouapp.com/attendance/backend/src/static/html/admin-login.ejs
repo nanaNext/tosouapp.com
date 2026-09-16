@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>管理者ログイン</title>
+  <link rel="icon" href="/static/images/logo1.png" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(150deg, #0f172a 0%, #1e2d45 50%, #0f1f35 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 15% 50%, rgba(14,165,233,0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 20%, rgba(59,130,246,0.06) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.2);
+    }
+
+    /* Colored top bar */
+    .card-top {
+      background: linear-gradient(90deg, #1d4ed8 0%, #1e40af 100%);
+      padding: 24px 28px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-logo {
+      height: 72px;
+      object-fit: contain;
+      display: block;
+      background: #fff;
+      border-radius: 16px;
+      padding: 10px 18px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #bfdbfe;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .admin-badge svg {
+      width: 12px; height: 12px;
+      stroke: #93c5fd; fill: none; stroke-width: 2.5;
+    }
+
+    /* Card body */
+    .card-body { padding: 28px 28px 24px; }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+    .card-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 22px;
+    }
+
+    /* Error */
+    #error {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #dc2626;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    /* Fields */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+    .input-wrap { position: relative; }
+    .field input {
+      width: 100%;
+      height: 44px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 0 44px 0 12px;
+      font-size: 14px;
+      color: #0f172a;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .field input:focus {
+      background: #fff;
+      border-color: #1d4ed8;
+      box-shadow: 0 0 0 3px rgba(29,78,216,0.1);
+    }
+    .toggle-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      color: #94a3b8;
+      transition: color 0.15s;
+    }
+    .toggle-btn:hover { color: #64748b; }
+    .toggle-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    /* Submit */
+    #loginBtn {
+      width: 100%;
+      height: 46px;
+      background: #1d4ed8;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 2px 10px rgba(29,78,216,0.3);
+    }
+    #loginBtn:hover:not(:disabled) {
+      background: #1e40af;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(29,78,216,0.4);
+    }
+    #loginBtn:active:not(:disabled) { transform: translateY(0); }
+    #loginBtn:disabled { background: #93c5fd; cursor: default; box-shadow: none; }
+
+    /* Status */
+    #status {
+      min-height: 24px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 8px;
+    }
+
+    /* Card footer */
+    .card-footer-links {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card-footer-links a {
+      font-size: 12px;
+      color: #1d4ed8;
+      text-decoration: none;
+      text-align: center;
+      display: block;
+      transition: opacity 0.15s;
+    }
+    .card-footer-links a:hover { opacity: 0.7; text-decoration: underline; }
+
+    /* Bottom link */
+    .page-footer {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .page-footer a {
+      font-size: 12px;
+      color: #475569;
+      text-decoration: none;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    }
+    .page-footer a:hover { opacity: 1; }
+
+    /* Spinner */
+    .page-spinner {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.75);
+      display: grid; place-items: center; z-index: 3000;
+    }
+    .page-spinner[hidden] { display: none; }
+    .lds-spinner { display: inline-block; position: relative; width: 48px; height: 48px; }
+    .lds-spinner div { transform-origin: 24px 24px; animation: lds-sp 1.2s linear infinite; }
+    .lds-spinner div:after {
+      content: ''; display: block; position: absolute;
+      top: 2px; left: 22px; width: 4px; height: 10px;
+      border-radius: 20%; background: #1d4ed8;
+    }
+    .lds-spinner div:nth-child(1){transform:rotate(0);animation-delay:-1.1s}
+    .lds-spinner div:nth-child(2){transform:rotate(30deg);animation-delay:-1s}
+    .lds-spinner div:nth-child(3){transform:rotate(60deg);animation-delay:-.9s}
+    .lds-spinner div:nth-child(4){transform:rotate(90deg);animation-delay:-.8s}
+    .lds-spinner div:nth-child(5){transform:rotate(120deg);animation-delay:-.7s}
+    .lds-spinner div:nth-child(6){transform:rotate(150deg);animation-delay:-.6s}
+    .lds-spinner div:nth-child(7){transform:rotate(180deg);animation-delay:-.5s}
+    .lds-spinner div:nth-child(8){transform:rotate(210deg);animation-delay:-.4s}
+    .lds-spinner div:nth-child(9){transform:rotate(240deg);animation-delay:-.3s}
+    .lds-spinner div:nth-child(10){transform:rotate(270deg);animation-delay:-.2s}
+    .lds-spinner div:nth-child(11){transform:rotate(300deg);animation-delay:-.1s}
+    .lds-spinner div:nth-child(12){transform:rotate(330deg);animation-delay:0s}
+    @keyframes lds-sp { 0%{opacity:1} to{opacity:0} }
+
+    @media (max-width: 480px) {
+      .card-top { padding: 20px 20px 16px; }
+      .card-body { padding: 20px 20px 18px; }
+      .card-logo { height: 52px; }
+    }
+  </style>
+  <script type="module" src="/static/js/pages/login.page.js?v=navy-20260904-mobile-simple2"></script>
+</head>
+<body>
+  <div id="pageSpinner" class="page-spinner" hidden>
+    <div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+  </div>
+
+  <div class="login-wrap">
+    <div class="card">
+      <div class="card-top">
+        <img src="/static/images/izuk%20(1).png" alt="飯塚グループ・エンジニアリング" class="card-logo">
+        <span class="admin-badge">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          管理者ポータル
+        </span>
+      </div>
+
+      <div class="card-body">
+        <div class="card-title">管理者ログイン</div>
+        <div class="card-subtitle">Admin / Manager アカウントでログインしてください</div>
+
+        <div id="error" role="alert" aria-live="assertive"></div>
+
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="email">メールアドレス</label>
+            <div class="input-wrap">
+              <input id="email" name="login_email" type="email"
+                autocomplete="off" autocapitalize="none" spellcheck="false" required>
+            </div>
+          </div>
+          <div class="field">
+            <label for="password">パスワード</label>
+            <div class="input-wrap">
+              <input id="password" name="login_password" type="password"
+                autocomplete="off" required>
+              <button type="button" id="togglePassword" class="toggle-btn" aria-label="パスワードを表示"></button>
+            </div>
+          </div>
+          <button type="submit" id="loginBtn" disabled>ログイン</button>
+        </form>
+        <div id="status"></div>
+
+        <div class="card-footer-links">
+          <a href="/forgot-password">パスワードをお忘れの方はこちら</a>
+          <a href="/ui/terms">利用規約</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <a href="/ui/login">← 従業員ログイン画面へ</a>
+    </div>
+  </div>
+</body>
+</html>

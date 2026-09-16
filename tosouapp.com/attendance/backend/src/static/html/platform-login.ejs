@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Platform Admin — システム管理</title>
+  <link rel="icon" href="/static/images/logo1.png" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #0a0812;
+      position: relative;
+      overflow: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(124,58,237,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 80%, rgba(99,102,241,0.09) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.06) 0%, transparent 40%);
+      pointer-events: none;
+    }
+    /* Grid decoration */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,58,237,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,58,237,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Top badge */
+    .sys-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .sys-badge-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(124,58,237,0.5), 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .sys-badge-icon svg { width: 24px; height: 24px; stroke: #fff; fill: none; stroke-width: 1.8; }
+    .sys-badge-label {
+      display: flex;
+      flex-direction: column;
+    }
+    .sys-badge-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #e2e8f0;
+      letter-spacing: 0.5px;
+    }
+    .sys-badge-sub {
+      font-size: 10px;
+      font-weight: 600;
+      color: #7c3aed;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* Card */
+    .card {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(124,58,237,0.18);
+      border-radius: 18px;
+      padding: 32px 28px 28px;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 24px 64px rgba(0,0,0,0.5),
+        0 0 40px rgba(124,58,237,0.06);
+    }
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .card-subtitle {
+      font-size: 12px;
+      color: #475569;
+      text-align: center;
+      letter-spacing: 0.5px;
+      margin-bottom: 24px;
+    }
+
+    /* Error */
+    #error {
+      display: none;
+      background: rgba(220,38,38,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fca5a5;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    /* Fields */
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .input-wrap { position: relative; }
+    .field input {
+      width: 100%;
+      height: 46px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 0 44px 0 14px;
+      font-size: 14px;
+      color: #e2e8f0;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .field input::placeholder { color: #334155; }
+    .field input:focus {
+      background: rgba(124,58,237,0.08);
+      border-color: rgba(124,58,237,0.5);
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    }
+    .toggle-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      transition: color 0.15s;
+    }
+    .toggle-btn:hover { color: #94a3b8; }
+    .toggle-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    /* Submit */
+    #loginBtn {
+      width: 100%;
+      height: 48px;
+      background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(124,58,237,0.4);
+      letter-spacing: 0.3px;
+    }
+    #loginBtn:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(124,58,237,0.5);
+    }
+    #loginBtn:active:not(:disabled) { transform: translateY(0); }
+    #loginBtn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+
+    /* Status / footer */
+    #status {
+      min-height: 28px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: #475569;
+      margin-top: 10px;
+    }
+    .card-footer {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .card-footer a {
+      font-size: 12px;
+      color: #4f46e5;
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.15s;
+    }
+    .card-footer a:hover { opacity: 1; }
+
+    /* Warning box */
+    .access-warning {
+      margin-top: 18px;
+      background: rgba(239,68,68,0.07);
+      border: 1px solid rgba(239,68,68,0.18);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .access-warning svg {
+      width: 16px; height: 16px; flex-shrink: 0;
+      stroke: #f87171; fill: none; stroke-width: 2;
+      margin-top: 1px;
+    }
+    .access-warning-body { font-size: 11px; color: #94a3b8; line-height: 1.6; }
+    .access-warning-body strong { display: block; color: #f87171; font-size: 11px; margin-bottom: 2px; letter-spacing: 0.3px; }
+    .access-warning-ip {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(239,68,68,0.12);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .access-warning-ip span {
+      font-family: monospace;
+      color: #a78bfa;
+      background: rgba(124,58,237,0.1);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Spinner */
+    .page-spinner {
+      position: fixed; inset: 0;
+      background: rgba(10,8,18,0.88);
+      display: grid; place-items: center; z-index: 3000;
+    }
+    .page-spinner[hidden] { display: none; }
+    .lds-spinner { display: inline-block; position: relative; width: 48px; height: 48px; }
+    .lds-spinner div { transform-origin: 24px 24px; animation: lds-sp 1.2s linear infinite; }
+    .lds-spinner div:after {
+      content: ''; display: block; position: absolute;
+      top: 2px; left: 22px; width: 4px; height: 10px;
+      border-radius: 20%; background: #7c3aed;
+    }
+    .lds-spinner div:nth-child(1){transform:rotate(0);animation-delay:-1.1s}
+    .lds-spinner div:nth-child(2){transform:rotate(30deg);animation-delay:-1s}
+    .lds-spinner div:nth-child(3){transform:rotate(60deg);animation-delay:-.9s}
+    .lds-spinner div:nth-child(4){transform:rotate(90deg);animation-delay:-.8s}
+    .lds-spinner div:nth-child(5){transform:rotate(120deg);animation-delay:-.7s}
+    .lds-spinner div:nth-child(6){transform:rotate(150deg);animation-delay:-.6s}
+    .lds-spinner div:nth-child(7){transform:rotate(180deg);animation-delay:-.5s}
+    .lds-spinner div:nth-child(8){transform:rotate(210deg);animation-delay:-.4s}
+    .lds-spinner div:nth-child(9){transform:rotate(240deg);animation-delay:-.3s}
+    .lds-spinner div:nth-child(10){transform:rotate(270deg);animation-delay:-.2s}
+    .lds-spinner div:nth-child(11){transform:rotate(300deg);animation-delay:-.1s}
+    .lds-spinner div:nth-child(12){transform:rotate(330deg);animation-delay:0s}
+    @keyframes lds-sp { 0%{opacity:1} to{opacity:0} }
+
+    @media (max-width: 480px) {
+      .card { padding: 24px 20px; border-radius: 14px; }
+      .login-wrap { padding: 16px 12px; }
+    }
+  </style>
+  <script type="module" src="/static/js/pages/platform-login.page.js?v=20260916-1"></script>
+</head>
+<body>
+  <div id="pageSpinner" class="page-spinner" hidden>
+    <div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+  </div>
+
+  <div class="login-wrap">
+    <div class="sys-badge">
+      <div class="sys-badge-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="sys-badge-label">
+        <span class="sys-badge-name">TosouApp</span>
+        <span class="sys-badge-sub">Platform Admin</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">システム管理ポータル</div>
+      <div class="card-subtitle">AUTHORIZED ACCESS ONLY</div>
+
+      <div id="error" role="alert" aria-live="assertive"></div>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="email">メールアドレス</label>
+          <div class="input-wrap">
+            <input id="email" name="login_email" type="email"
+              placeholder="admin@example.com"
+              autocomplete="off" autocapitalize="none" spellcheck="false" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="password">パスワード</label>
+          <div class="input-wrap">
+            <input id="password" name="login_password" type="password"
+              placeholder="••••••••"
+              autocomplete="off" required>
+            <button type="button" id="togglePassword" class="toggle-btn" aria-label="パスワードを表示"></button>
+          </div>
+        </div>
+        <button type="submit" id="loginBtn" disabled>ログイン</button>
+      </form>
+      <div id="status"></div>
+    </div>
+
+    <div class="access-warning">
+      <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div class="access-warning-body">
+        <strong>AUTHORIZED ACCESS ONLY</strong>
+        このページへのアクセスおよびログイン操作はすべて記録されます。不正アクセスは法的措置の対象となります。
+        <div class="access-warning-ip">
+          接続元IP:
+          <span><%= clientIp || '取得中...' %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <a href="/ui/login">← 通常ログイン画面へ</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -81,7 +81,7 @@
                         </span>
                         <span class="form-label-ja"><img src="/static/images/hinhuse.png?v=20260509-login1" alt="" class="label-icon-img label-icon-img-user">ユーザ名</span>
                         <div class="input-with-icon">
-                            <input id="email" name="login_email" type="email" placeholder="" autocomplete="off" autocapitalize="none" spellcheck="false" class="short-input" required>
+                            <input id="email" name="login_email" type="email" placeholder="" autocomplete="off" autocapitalize="none" spellcheck="false" class="short-input" required readonly>
                         </div>
                     </div>
                     <div class="form-row">
@@ -93,7 +93,7 @@
                         </span>
                         <span class="form-label-ja"><img src="/static/images/pasword.png?v=<%= appVersion %>" alt="" class="label-icon-img label-icon-img-pass">パスワード</span>
                         <div class="input-with-icon">
-                            <input id="password" name="login_password" type="password" placeholder="" autocomplete="off" class="short-input" required>
+                            <input id="password" name="login_password" type="password" placeholder="" autocomplete="new-password" class="short-input" required readonly>
                             <button type="button" id="togglePassword" class="icon-btn" aria-label="toggle"></button>
                         </div>
                     </div>

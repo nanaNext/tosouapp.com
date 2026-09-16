@@ -20,7 +20,14 @@ function nextUrl(req) {
 
 function redirectToLogin(req, res) {
   const next = nextUrl(req);
-  const target = '/ui/login' + (next ? ('?next=' + encodeURIComponent(next)) : '');
+  const path = String(req.path || req.url || '');
+  // Redirect về đúng login page theo context
+  const loginBase = path.startsWith('/platform')
+    ? '/platform/login'
+    : (path.startsWith('/admin') || path.startsWith('/ui/admin'))
+      ? '/admin/login'
+      : '/ui/login';
+  const target = loginBase + (next ? ('?next=' + encodeURIComponent(next)) : '');
   return res.redirect(302, target);
 }
 

@@ -69,6 +69,17 @@ const authorizePage = (...roles) => (req, res, next) => {
 router.get('/ui/login', sendPageNoCache('login.html'));
 router.get('/login', sendPageNoCache('login.html'));
 router.get('/login.html', sendPageNoCache('login.html'));
+// Admin / Manager login (dark slate theme)
+router.get('/admin/login', sendPageNoCache('admin-login.html'));
+// Sysadmin platform login (dark purple theme) — pass client IP for warning display
+router.get('/platform/login', (req, res) => {
+  setNoStore(res);
+  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || req.ip
+    || req.socket?.remoteAddress
+    || '';
+  res.render('platform-login', { user: req.user || null, clientIp });
+});
 // Multi-tenant: company selection page (after login, before entering app)
 router.get('/ui/select-company', sendPageNoCache('select-company.html'));
 // Sysadmin platform panel
