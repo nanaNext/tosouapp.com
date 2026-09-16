@@ -66,7 +66,7 @@ const e=s=>document.querySelector(s);function N(){return sessionStorage.getItem(
               <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.tenantName||"\u2014"}</td>
               <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.departmentName||"\u2014"}</td>
               <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:#0891b2;">${u.workCompanyName||"\u2014"}</td>
-              <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${u.workContent||"\u2014"}</td>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;white-space:normal;word-break:break-all;min-width:160px;max-width:260px;">${u.workContent||"\u2014"}</td>
               <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#059669;font-weight:600;">${f(u.checkIn)}</td>
               <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#dc2626;">${u.checkOut?f(u.checkOut):"\u52E4\u52D9\u4E2D"}</td>
             </tr>`).join("")}</tbody>
