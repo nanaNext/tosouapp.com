@@ -12,6 +12,7 @@ const { authenticate, authorize } = require('../../core/middleware/authMiddlewar
 const tenantRepo = require('../tenants/tenant.repository');
 const userRepo = require('../users/user.repository');
 const db = require('../../core/database/mysql');
+const { invalidateTenantCache } = require('../../core/middleware/tenantMiddleware');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { jwtSecretCurrent, accessTokenExpires } = require('../../config/env');
@@ -89,6 +90,8 @@ router.patch('/tenants/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ message: 'Invalid tenant id' });
     await tenantRepo.updateTenant(id, req.body || {});
+    // Xóa cache tức thì để thay đổi status (suspend) có hiệu lực ngay
+    invalidateTenantCache(id);
     try {
       await auditRepo.writeLog({
         userId: req.user.id, action: 'platform_update_tenant',
@@ -171,7 +174,7 @@ router.post('/tenants/:id/create-user', async (req, res) => {
     const userRole = validRoles.includes(role) ? role : 'employee';
 
     // Create user with tenantId
-    const hashed = bcrypt.hashSync(password, bcryptRounds);
+    const hashed = await bcrypt.hash(password, bcryptRounds);
     const userId = await userRepo.createUser({
       username,
       email,
@@ -337,12 +340,59 @@ router.patch('/tenants/:id/users/:userId', async (req, res) => {
     const tenantId = parseInt(req.params.id, 10);
     const userId = parseInt(req.params.userId, 10);
     const { role_in_tenant } = req.body || {};
-    if (!role_in_tenant) return res.status(400).json({ message: 'role_in_tenant required' });
+    const validRoles = ['owner', 'admin', 'manager', 'payroll', 'employee'];
+    if (!role_in_tenant || !validRoles.includes(role_in_tenant)) {
+      return res.status(400).json({ message: `role_in_tenant must be one of: ${validRoles.join(', ')}` });
+    }
     await db.query(
       'UPDATE tenant_users SET role_in_tenant = ? WHERE user_id = ? AND tenant_id = ?',
       [role_in_tenant, userId, tenantId]
     );
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/platform/tenants/:id/offboarding-preview ────────────────────────
+// Returns a dry-run count of all data that would be removed during offboarding
+router.get('/tenants/:id/offboarding-preview', async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.id, 10);
+    if (!tenantId) return res.status(400).json({ message: 'Invalid tenant id' });
+    const offboardingSvc = require('./tenant-offboarding.service');
+    const preview = await offboardingSvc.previewOffboarding(tenantId);
+    res.json(preview);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── DELETE /api/platform/tenants/:id ─────────────────────────────────────────
+// Offboard (decommission) a tenant.
+// Requires ?confirm=true query param as a safety gate.
+// Add ?hardDelete=true to permanently delete all data (irreversible!).
+router.delete('/tenants/:id', async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.id, 10);
+    if (!tenantId) return res.status(400).json({ message: 'Invalid tenant id' });
+
+    // Safety gate: caller must explicitly confirm
+    if (req.query.confirm !== 'true') {
+      return res.status(400).json({
+        message: 'Add ?confirm=true to proceed. Use GET /offboarding-preview to review what will be removed.',
+        hint: 'DELETE /api/platform/tenants/:id?confirm=true'
+      });
+    }
+
+    const hardDelete = req.query.hardDelete === 'true';
+    const offboardingSvc = require('./tenant-offboarding.service');
+    const result = await offboardingSvc.offboardTenant(tenantId, {
+      hardDelete,
+      actorId: req.user.id,
+    });
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -403,12 +453,17 @@ router.get('/today-checkins', async (req, res) => {
         d.name AS departmentName,
         t.name AS tenantName,
         a.checkIn AS checkIn,
-        a.checkOut AS checkOut
+        a.checkOut AS checkOut,
+        uwd.company_name AS workCompanyName,
+        uwd.work_content AS workContent
       FROM attendance a
       INNER JOIN users u ON u.id = a.userId
       LEFT JOIN departments d ON d.id = u.departmentId
       LEFT JOIN tenant_users tu ON tu.user_id = u.id
       LEFT JOIN tenants t ON t.id = tu.tenant_id
+      LEFT JOIN user_work_details uwd ON uwd.userId = u.id
+        AND uwd.start_date <= CURDATE()
+        AND (uwd.end_date IS NULL OR uwd.end_date >= CURDATE())
       WHERE DATE(a.checkIn) = CURDATE()
       ORDER BY a.checkIn DESC
     `);

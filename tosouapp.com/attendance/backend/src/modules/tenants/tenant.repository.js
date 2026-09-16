@@ -125,6 +125,7 @@ module.exports = {
   async updateTenant(tenantId, fields) {
     const allowed = ['name', 'slug', 'logo_url', 'logo_name', 'primary_color',
                      'plan', 'status', 'mail_from', 'app_url', 'max_users',
+                     'plan_expires_at', 'billing_email', 'notes',
                      'contact_system_dept', 'contact_system_email', 'contact_system_tel', 'contact_system_hours',
                      'contact_general_dept', 'contact_general_email', 'contact_general_tel', 'contact_general_hours'];
     const updates = {};

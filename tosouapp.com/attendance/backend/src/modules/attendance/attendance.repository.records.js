@@ -556,12 +556,20 @@ module.exports = {
       }
 
       // 2. Xử lý dailyUpdates — lúc này các segment đã nằm trong cùng transaction
+      // ⚠️ QUAN TRỌNG: Phải MERGE existing giống repo.upsertDaily, KHÔNG được ghi đè toàn bộ
+      //    field không có trong payload bằng null (gây mất 作業内容, 現場, giờ làm thực tế...)
       if (Array.isArray(dailyUpdates)) {
-        // Lấy sẵn giờ checkIn cho những ngày chưa có trong map payload
-        const datesToLookup = [];
+        // Chuẩn hóa, lọc date hợp lệ
+        const validDaily = [];
         for (const d of dailyUpdates) {
           const date = String(d?.date || '').slice(0, 10);
           if (!date) continue;
+          validDaily.push({ raw: d, date });
+        }
+
+        // Lấy sẵn giờ checkIn cho những ngày chưa có trong map payload
+        const datesToLookup = [];
+        for (const { date, raw: d } of validDaily) {
           if (checkInByDate.has(date)) continue;
           if (d.checkInTime) continue;
           datesToLookup.push(date);
@@ -580,24 +588,159 @@ module.exports = {
                 dbCheckInByDate.set(ds, String(row.checkIn).slice(11, 16));
               }
             }
-          } catch (e) { /* bỏ qua — không cần fallback sang query từng cái */ }
+          } catch (e) { /* bỏ qua */ }
         }
 
-        for (const d of dailyUpdates) {
-          const date = String(d?.date || '').slice(0, 10);
-          if (!date) continue;
+        // Batch fetch existing attendance_daily để merge (1 câu SELECT thay vì N câu)
+        const existingByDate = new Map();
+        if (validDaily.length) {
+          const allDates = validDaily.map(v => v.date);
+          const ph = allDates.map(() => '?').join(',');
+          const tenantSql = tid != null ? ' AND tenant_id = ? ' : '';
+          const tenantParams = tid != null ? [tid] : [];
+          try {
+            const [existRows] = await conn.query(
+              `SELECT date, kubun, kubun_confirmed, work_type, location, reason, memo, notes,
+                      late_minutes, early_minutes, break_minutes, night_break_minutes,
+                      furikae_holiday_date
+               FROM attendance_daily
+               WHERE userId = ? ${tenantSql} AND date IN (${ph})`,
+              [userId, ...tenantParams, ...allDates]
+            );
+            for (const r of (existRows || [])) {
+              const ds = String(r.date || '').slice(0, 10);
+              if (ds) existingByDate.set(ds, r);
+            }
+          } catch (e) { /* bỏ qua */ }
+        }
+
+        const allowedKubunSet = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休日', '休日出勤', '代替出勤']);
+        const protectedKubunSet = new Set([
+          '出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤',
+          '有給休暇', '欠勤', '無給休暇', '代替休日'
+        ]);
+        const sameStr = (a, b) => String(a ?? '') === String(b ?? '');
+
+        for (const { raw: d, date } of validDaily) {
+          const existing = existingByDate.get(date) || null;
+
+          // === MERGE từng field: chỉ ghi đè nếu field CÓ MẶT (được định nghĩa) trong payload ===
+          let kubun = existing?.kubun ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'kubun')) {
+            const k = String(d.kubun || '').trim();
+            if (allowedKubunSet.has(k)) {
+              const newKubun = k || null;
+              // Guard: nếu incoming = 休日 nhưng existing đã có kubun được bảo vệ → giữ nguyên existing
+              if (newKubun === '休日') {
+                const exK = String(existing?.kubun || '').trim();
+                if (exK !== '' && exK !== '休日' && protectedKubunSet.has(exK)) {
+                  // skip override, keep existing kubun
+                } else {
+                  kubun = newKubun;
+                }
+              } else {
+                kubun = newKubun;
+              }
+            }
+          }
+
+          let kubunConfirmed = existing?.kubun_confirmed ?? 0;
+          if (Object.prototype.hasOwnProperty.call(d, 'kubunConfirmed')) {
+            kubunConfirmed = Number(d.kubunConfirmed || 0) ? 1 : 0;
+          } else if (kubun != null && kubun !== '') {
+            kubunConfirmed = 1;
+          }
+
+          let workType = existing?.work_type ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'workType')) {
+            const wt = String(d.workType || '').trim();
+            workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
+          }
+
+          let location = existing?.location ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'location')) {
+            location = d.location != null ? String(d.location).slice(0, 120) : null;
+          }
+
+          let reason = existing?.reason ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'reason')) {
+            reason = d.reason != null ? String(d.reason).slice(0, 32) : null;
+          }
+
+          let memo = existing?.memo ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'memo')) {
+            memo = d.memo != null ? String(d.memo).slice(0, 60000) : null;
+          }
+
+          let notes = existing?.notes ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'notes')) {
+            notes = d.notes != null ? String(d.notes).slice(0, 60000) : null;
+          }
+
+          let late_minutes = existing?.late_minutes ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'late_minutes')) {
+            late_minutes = d.late_minutes == null ? null : Number(d.late_minutes);
+          } else if (Object.prototype.hasOwnProperty.call(d, 'lateMinutes')) {
+            late_minutes = d.lateMinutes == null ? null : Number(d.lateMinutes);
+          }
+
+          let early_minutes = existing?.early_minutes ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'early_minutes')) {
+            early_minutes = d.early_minutes == null ? null : Number(d.early_minutes);
+          } else if (Object.prototype.hasOwnProperty.call(d, 'earlyMinutes')) {
+            early_minutes = d.earlyMinutes == null ? null : Number(d.earlyMinutes);
+          }
+
+          let breakMin = existing?.break_minutes ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'break_minutes')) {
+            breakMin = d.break_minutes == null ? null : Number(d.break_minutes);
+          } else if (Object.prototype.hasOwnProperty.call(d, 'breakMinutes')) {
+            breakMin = d.breakMinutes == null ? null : Number(d.breakMinutes);
+          }
+
+          let nightBreakMin = existing?.night_break_minutes ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'night_break_minutes')) {
+            nightBreakMin = d.night_break_minutes == null ? null : Number(d.night_break_minutes);
+          } else if (Object.prototype.hasOwnProperty.call(d, 'nightBreakMinutes')) {
+            nightBreakMin = d.nightBreakMinutes == null ? null : Number(d.nightBreakMinutes);
+          }
+
+          let furikaeHolidayDate = existing?.furikae_holiday_date ?? null;
+          if (Object.prototype.hasOwnProperty.call(d, 'furikae_holiday_date')) {
+            const fv = String(d.furikae_holiday_date || '').slice(0, 10);
+            furikaeHolidayDate = /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null;
+          } else if (Object.prototype.hasOwnProperty.call(d, 'furikaeHolidayDate')) {
+            const fv = String(d.furikaeHolidayDate || '').slice(0, 10);
+            furikaeHolidayDate = /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null;
+          }
+
+          // Skip INSERT/UPDATE nếu existing tồn tại và KHÔNG có field nào thay đổi (performance)
+          if (existing) {
+            const unchanged =
+              sameStr(existing.kubun, kubun) &&
+              Number(existing.kubun_confirmed || 0) === Number(kubunConfirmed || 0) &&
+              sameStr(existing.work_type, workType) &&
+              sameStr(existing.location, location) &&
+              sameStr(existing.reason, reason) &&
+              sameStr(existing.memo, memo) &&
+              sameStr(existing.notes, notes) &&
+              String(existing.late_minutes ?? '') === String(late_minutes ?? '') &&
+              String(existing.early_minutes ?? '') === String(early_minutes ?? '') &&
+              String(existing.break_minutes ?? '') === String(breakMin ?? '') &&
+              String(existing.night_break_minutes ?? '') === String(nightBreakMin ?? '');
+            if (unchanged) { dailySaved++; continue; }
+          }
 
           // Ưu tiên checkIn từ payload; nếu không có thì dùng kết quả lấy từ DB
           let checkInTime = checkInByDate.get(date) || null;
           if (!checkInTime && d.checkInTime) {
-            checkInTime = String(d.checkInTime).slice(0, 5); // "HH:MM"
+            checkInTime = String(d.checkInTime).slice(0, 5);
           }
           if (!checkInTime) {
             checkInTime = dbCheckInByDate.get(date) || null;
           }
-
           const shiftStart = String(d.shiftStart || '08:00').trim();
-          const status = deriveStatus(d.kubun, checkInTime, shiftStart);
+          const status = deriveStatus(kubun, checkInTime, shiftStart);
 
           await conn.query(
             `
@@ -619,22 +762,11 @@ module.exports = {
               furikae_holiday_date = VALUES(furikae_holiday_date)
           `,
             [
-              userId,
-              date,
-              d.kubun || null,
-              d.kubunConfirmed ? 1 : 0,
-              d.workType || null,
-              d.location != null ? String(d.location) : null,
-              d.reason != null ? String(d.reason) : null,
-              d.memo != null ? String(d.memo) : null,
-              d.notes != null ? String(d.notes) : null,
-              d.lateMinutes != null ? d.lateMinutes : null,
-              d.earlyMinutes != null ? d.earlyMinutes : null,
-              d.breakMinutes !== null && d.breakMinutes !== undefined ? d.breakMinutes : null,
-              d.nightBreakMinutes !== null && d.nightBreakMinutes !== undefined ? d.nightBreakMinutes : null,
-              status,
-              (() => { const fv = String(d.furikaeHolidayDate || d.furikae_holiday_date || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(fv) ? fv : null; })(),
-              tid
+              userId, date, kubun, kubunConfirmed, workType, location, reason, memo, notes,
+              late_minutes, early_minutes,
+              Number.isFinite(breakMin) ? breakMin : null,
+              Number.isFinite(nightBreakMin) ? nightBreakMin : null,
+              status, furikaeHolidayDate, tid
             ]
           );
           dailySaved++;

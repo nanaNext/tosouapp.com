@@ -79,6 +79,14 @@ async function start() {
     // Initialize health monitor (all environments except test)
     initHealthMonitor();
 
+    // Plan expiry checker — suspend tenants with expired plans, send 7-day warnings
+    try {
+      const { initPlanExpiryCheckerCron } = require('./cron/planExpiryCheckerCron');
+      initPlanExpiryCheckerCron();
+    } catch (e) {
+      console.error('[PlanExpiryCron] init error', e && e.message);
+    }
+
     // Graceful shutdown — finish in-flight requests before stopping
     const shutdown = (signal) => {
       console.log(`${signal} received. Shutting down gracefully...`);

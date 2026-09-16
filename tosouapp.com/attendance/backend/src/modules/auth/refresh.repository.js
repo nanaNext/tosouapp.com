@@ -10,6 +10,7 @@ async function ensureTable() {
     CREATE TABLE IF NOT EXISTS refresh_tokens (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
       userId BIGINT UNSIGNED NOT NULL,
+      tenant_id BIGINT UNSIGNED NULL,
       token_hash VARCHAR(64) NOT NULL UNIQUE,
       expires_at DATETIME NOT NULL,
       user_agent VARCHAR(255),
@@ -17,6 +18,7 @@ async function ensureTable() {
       revoked_at DATETIME NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_user (userId),
+      INDEX idx_tenant (tenant_id),
       INDEX idx_expires (expires_at),
       INDEX idx_revoked (revoked_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -34,11 +36,18 @@ async function ensureTable() {
   } catch (e) { /* silently ignored */ }
   try {
     const [cols] = await db.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
+      SELECT column_name
+      FROM information_schema.columns
       WHERE table_schema = DATABASE() AND table_name = 'refresh_tokens'
     `);
     const set = new Set((cols || []).map(c => String(c.column_name)));
+    // Add tenant_id column if missing (idempotent migration)
+    if (!set.has('tenant_id')) {
+      try {
+        await db.query(`ALTER TABLE refresh_tokens ADD COLUMN tenant_id BIGINT UNSIGNED NULL`);
+        await db.query(`ALTER TABLE refresh_tokens ADD INDEX idx_rt_tenant (tenant_id)`);
+      } catch (e) { /* silently ignored */ }
+    }
     if (!set.has('token_hash')) {
       await db.query(`ALTER TABLE refresh_tokens ADD COLUMN token_hash VARCHAR(64) NULL`);
       if (set.has('token')) {
@@ -62,24 +71,29 @@ module.exports = {
   ensureTable,
   async createToken({ userId, token, expiresAt, userAgent, ip, tenantId = null }) {
     const tokenHash = hashToken(token);
+    const tid = _tid(tenantId);
     const sql = `
-      INSERT INTO refresh_tokens (userId, token_hash, expires_at, user_agent, ip)
-      VALUES (?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE userId = VALUES(userId), expires_at = VALUES(expires_at), user_agent = VALUES(user_agent), ip = VALUES(ip), revoked_at = NULL
+      INSERT INTO refresh_tokens (userId, tenant_id, token_hash, expires_at, user_agent, ip)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE userId = VALUES(userId), tenant_id = VALUES(tenant_id), expires_at = VALUES(expires_at), user_agent = VALUES(user_agent), ip = VALUES(ip), revoked_at = NULL
     `;
-    await db.query(sql, [userId, tokenHash, expiresAt, userAgent || null, ip || null]);
+    await db.query(sql, [userId, tid, tokenHash, expiresAt, userAgent || null, ip || null]);
     return { ok: true };
   },
 
-  async findToken(token) {
+  async findToken(token, tenantId = null) {
     const tokenHash = hashToken(token);
+    const tid = _tid(tenantId);
+    // Scope by tenant when provided: prevents cross-tenant refresh token reuse
+    const tenantClause = tid != null ? ' AND (tenant_id = ? OR tenant_id IS NULL)' : '';
+    const params = tid != null ? [tokenHash, tid] : [tokenHash];
     const sql = `
-      SELECT id, userId, expires_at, revoked_at
+      SELECT id, userId, tenant_id, expires_at, revoked_at
       FROM refresh_tokens
-      WHERE token_hash = ? AND (revoked_at IS NULL)
+      WHERE token_hash = ? AND (revoked_at IS NULL)${tenantClause}
       LIMIT 1
     `;
-    const [rows] = await db.query(sql, [tokenHash]);
+    const [rows] = await db.query(sql, params);
     return rows[0];
   },
 

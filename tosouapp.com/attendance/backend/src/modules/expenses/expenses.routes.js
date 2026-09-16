@@ -9,6 +9,8 @@ const noticesRepo = require('../notices/notices.repository');
 const expenseTypesRepo = require('./expenseTypes.repository');
 const s3Service = require('../../core/services/s3.service');
 const metrics = require('../../core/metrics');
+const db = require('../../core/database/mysql');
+const { companyName } = require('../../config/env');
 
 function recordEndpointPerf(endpoint, startedAt, meta = {}) {
   const durationMs = Date.now() - startedAt;
@@ -347,6 +349,126 @@ router.get('/admin/export.csv',
       }
 
       res.status(200).send(csvOutput);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/admin/export.xlsx',
+  rateLimitNamed('expenses_admin_export_xlsx', { windowMs: 60_000, max: 10 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const ExcelJS = require('exceljs');
+      const month = String(req.query.month || '').slice(0, 7);
+      const result = await repo.listAllPaged({
+        month: (month && /^\d{4}-\d{2}$/.test(month)) ? month : null,
+        page: 1, limit: 1000,
+        departmentId: req.query.departmentId,
+        userId: req.query.userId,
+        status: req.query.status,
+        tenantId: req.tenantId || null
+      });
+      const rows = Array.isArray(result?.rows) ? result.rows : [];
+
+      const statusMap = { applied:'承認待ち', approved:'承認済', rejected:'差戻し', draft:'下書き', pending:'未申請', soumu_checked:'総務確認済', paid:'支給済' };
+      const catMap = { transport:'交通費', meal:'食費', accommodation:'宿泊費', other:'その他' };
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'スマートE勤怠';
+      wb.created = new Date();
+      const label = month || 'all';
+      const ws = wb.addWorksheet(`経費申請_${label}`);
+
+      ws.columns = [
+        { header: 'No',       key: 'no',        width: 6  },
+        { header: '日付',     key: 'date',       width: 13 },
+        { header: '氏名',     key: 'username',   width: 16 },
+        { header: '社員番号', key: 'emp_code',   width: 14 },
+        { header: '部署',     key: 'dept',       width: 14 },
+        { header: 'カテゴリ', key: 'category',   width: 12 },
+        { header: '区間 / 品名', key: 'route',   width: 30 },
+        { header: '現場名',   key: 'site_name',  width: 18 },
+        { header: '金額(円)', key: 'amount',     width: 12 },
+        { header: '状態',     key: 'status',     width: 12 },
+        { header: '申請日',   key: 'created_at', width: 18 },
+        { header: '備考',     key: 'memo',       width: 24 },
+      ];
+
+      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1e4d8c' } };
+      const headerFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      ws.getRow(1).eachCell(cell => {
+        cell.fill = headerFill; cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
+      });
+      ws.getRow(1).height = 22;
+
+      const statusColors = { approved:'FFd1fae5', paid:'FFd1fae5', rejected:'FFffe4e6', draft:'FFf1f5f9', applied:'FFfff7ed', soumu_checked:'FFe0f2fe' };
+
+      let totalAmount = 0;
+      rows.forEach((r, idx) => {
+        const route = r.item_name || [r.origin||'', r.destination||''].filter(Boolean).join(' → ') || '—';
+        const st = String(r.status || '').toLowerCase();
+        const amount = Number(r.amount || 0);
+        totalAmount += amount;
+        const row = ws.addRow({
+          no:         idx + 1,
+          date:       String(r.date || '').slice(0, 10),
+          username:   r.user_name || r.user_email || '—',
+          emp_code:   r.employee_code || '—',
+          dept:       r.department_name || '—',
+          category:   catMap[String(r.category || r.type || '').toLowerCase()] || r.category || r.type || '—',
+          route,
+          site_name:  r.site_name || '—',
+          amount,
+          status:     statusMap[st] || r.status || '—',
+          created_at: String(r.created_at || '').slice(0, 16).replace('T', ' '),
+          memo:       r.memo || '',
+        });
+        const bgColor = statusColors[st] || 'FFFFFFFF';
+        row.eachCell(cell => {
+          cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: bgColor } };
+          cell.alignment = { vertical:'middle', wrapText: true };
+          cell.border = { top:{style:'hair'}, bottom:{style:'hair'}, left:{style:'thin'}, right:{style:'thin'} };
+        });
+        row.getCell('amount').numFmt = '#,##0';
+        row.getCell('amount').alignment = { horizontal:'right', vertical:'middle' };
+        row.getCell('status').alignment = { horizontal:'center', vertical:'middle' };
+        row.height = 18;
+      });
+
+      if (rows.length === 0) {
+        const r = ws.addRow({ no:'', username:'データなし' });
+        r.getCell('username').font = { italic:true, color:{ argb:'FF64748b' } };
+      } else {
+        // 合計行
+        const totalRow = ws.addRow({ no:'', date:'', username:'合計', emp_code:'', dept:'', category:'', route:'', site_name:'', amount: totalAmount, status:'', created_at:'', memo:'' });
+        totalRow.getCell('username').font = { bold:true };
+        totalRow.getCell('amount').numFmt = '#,##0';
+        totalRow.getCell('amount').font = { bold:true };
+        totalRow.getCell('amount').alignment = { horizontal:'right', vertical:'middle' };
+        totalRow.eachCell(cell => {
+          cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFe2e8f0' } };
+          cell.border = { top:{style:'medium'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
+        });
+      }
+
+      ws.views = [{ state:'frozen', xSplit:0, ySplit:1 }];
+      ws.autoFilter = { from:'A1', to:'L1' };
+
+      const filename = `expenses_admin_${label}.xlsx`;
+      const encoded  = encodeURIComponent(filename);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encoded}`);
+
+      const buf = await wb.xlsx.writeBuffer();
+      if (s3Service.isR2Configured()) {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        s3Service.uploadToR2(`exports/xlsx/expenses/${ts}_${filename}`, Buffer.from(buf), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+          .catch(e => console.error('R2 upload failed:', e));
+      }
+      res.status(200).end(buf);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -876,4 +998,40 @@ router.post('/:id/messages',
     }
   }
 );
+// 交通費精算書 印刷用ページ (サーバーサイドレンダリング)
+router.get('/admin/monthly-detail/print',
+  authorize('manager', 'admin'),
+  async (req, res) => {
+    try {
+      const userId = String(req.query.userId || '').trim();
+      const month = String(req.query.month || '').slice(0, 7);
+      if (!userId || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).send('userId と month (YYYY-MM) は必須です');
+      }
+      const tenantId = req.tenantId || null;
+      const tenantClause = tenantId != null ? ' AND ec.tenant_id = ?' : '';
+      const params = [userId, month];
+      if (tenantId != null) params.push(tenantId);
+      const [expenses] = await db.query(`
+        SELECT * FROM expense_claims ec
+        WHERE ec.userId = ? AND DATE_FORMAT(ec.date, '%Y-%m') = ?${tenantClause}
+        ORDER BY ec.date ASC, ec.created_at ASC
+        LIMIT 1000
+      `, params);
+      const [[userRow]] = await db.query(
+        'SELECT id, username, email, employee_code, birth_date FROM users WHERE id = ? LIMIT 1',
+        [userId]
+      );
+      res.render('expenses-monthly-print', {
+        user: userRow || {},
+        month,
+        expenses: expenses || [],
+        companyName: companyName || ''
+      });
+    } catch (err) {
+      res.status(500).send(`エラー: ${err.message}`);
+    }
+  }
+);
+
 module.exports = router;

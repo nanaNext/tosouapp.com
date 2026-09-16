@@ -135,14 +135,31 @@
       position: fixed; inset: 0; background: rgba(0,0,0,.4);
       display: flex; align-items: center; justify-content: center;
       z-index: 1000; padding: 16px;
+      overflow-y: auto;
     }
     .pd-modal-backdrop[hidden] { display: none; }
     .pd-modal {
       background: #fff; border-radius: 12px; padding: 28px;
       width: 100%; max-width: 480px;
       box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      margin: auto;
     }
     .pd-modal-title { font-size: 17px; font-weight: 700; margin: 0 0 20px; }
+    .pd-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 0 0 20px;
+    }
+    .pd-modal-header .pd-modal-title { margin: 0; }
+    .pd-modal-close {
+      width: 32px; height: 32px; border-radius: 8px;
+      border: none; background: #f1f5f9; cursor: pointer;
+      font-size: 18px; color: #64748b; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s;
+    }
+    .pd-modal-close:hover { background: #fee2e2; color: #dc2626; }
     .pd-form-row { margin-bottom: 14px; }
     .pd-form-row label { display: block; font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 5px; }
     .pd-form-row input, .pd-form-row select {
@@ -232,9 +249,101 @@
     .pd-panel { display: none; }
     .pd-panel.active { display: block; }
 
+    /* ── Bottom nav (mobile only) ── */
+    .pd-bottom-nav {
+      display: none;
+    }
+
     @media (max-width: 640px) {
       .pd-sidebar { display: none; }
       .pd-stats { grid-template-columns: 1fr 1fr; }
+      .pd-main { padding: 16px 12px 76px; }
+
+      /* Section header: title + buttons xuống hàng */
+      .pd-section-header { flex-wrap: wrap; gap: 10px; }
+      .pd-section-header > div[style] { width: 100%; }
+      .pd-section-header > div[style] .pd-btn {
+        flex: 1; font-size: 11px; padding: 7px 6px; text-align: center;
+      }
+
+      /* Users table: ẩn cột ít quan trọng, giữ Tên + Email + Tenant + Thao tác */
+      #pd-users-table th:nth-child(3), #pd-users-table td:nth-child(3), /* DB ロール */
+      #pd-users-table th:nth-child(5), #pd-users-table td:nth-child(5)  /* 状態 */
+      { display: none; }
+      #pd-users-table th:nth-child(4), #pd-users-table td:nth-child(4)  /* 所属テナント */
+      { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #pd-users-table { font-size: 12px; }
+
+      /* Audit table: ẩn UserID + Method + IP, giữ Thời gian + Action + Path */
+      #audit-table th:nth-child(2), #audit-table td:nth-child(2), /* ユーザーID */
+      #audit-table th:nth-child(5), #audit-table td:nth-child(5), /* メソッド */
+      #audit-table th:nth-child(6), #audit-table td:nth-child(6)  /* IP */
+      { display: none; }
+      #audit-table td:nth-child(1) { font-size: 11px; white-space: nowrap; }
+      #audit-table td:nth-child(4) { /* パス */
+        max-width: 80px; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap; font-size: 11px;
+      }
+      #audit-table { font-size: 12px; }
+
+      /* Bottom nav */
+      .pd-bottom-nav {
+        display: flex;
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+        background: #1e293b;
+        border-top: 1px solid #334155;
+        height: 60px;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .pd-bottom-nav-item {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 3px;
+        background: none; border: none; cursor: pointer;
+        color: #64748b; font-size: 10px; font-weight: 600;
+        padding: 6px 4px; transition: color .15s;
+        letter-spacing: .3px;
+      }
+      .pd-bottom-nav-item .nav-icon { font-size: 18px; line-height: 1; }
+      .pd-bottom-nav-item:hover { color: #94a3b8; }
+      .pd-bottom-nav-item.active { color: #60a5fa; }
+
+      /* Tenant table → cards on mobile */
+      #pd-tenants-table thead { display: none; }
+      #pd-tenants-table,
+      #pd-tenants-table tbody { display: block; }
+      #pd-tenants-table tr {
+        display: flex; flex-wrap: wrap;
+        background: #fff; border-radius: 12px;
+        margin-bottom: 10px; padding: 14px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.08);
+        border: 1px solid #e2e8f0;
+        gap: 0;
+      }
+      /* Cell 1: logo + info — chiếm full width */
+      #pd-tenants-table td:nth-child(1) {
+        width: 100%; padding: 0 0 10px;
+        border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;
+      }
+      /* Cell 2 (plan) + Cell 3 (status) + Cell 4 (user count) — cùng hàng */
+      #pd-tenants-table td:nth-child(2),
+      #pd-tenants-table td:nth-child(3) {
+        padding: 0 8px 0 0; display: flex; align-items: center;
+      }
+      #pd-tenants-table td:nth-child(4) {
+        flex: 1; padding: 0; display: flex; align-items: center;
+        justify-content: flex-end;
+        font-size: 12px; color: #64748b; font-weight: 600;
+      }
+      /* Cell 5: action buttons — full width, bottom */
+      #pd-tenants-table td:nth-child(5) {
+        width: 100%; padding: 10px 0 0;
+        border-top: 1px solid #f1f5f9; margin-top: 8px;
+        display: flex; gap: 8px;
+      }
+      #pd-tenants-table td:nth-child(5) .pd-btn {
+        flex: 1; text-align: center; padding: 8px 12px;
+        font-size: 13px;
+      }
     }
   </style>
 </head>
@@ -571,10 +680,33 @@
     </main>
   </div>
 
+  <!-- Bottom nav (mobile only) -->
+  <nav class="pd-bottom-nav" aria-label="ナビゲーション">
+    <button class="pd-bottom-nav-item pd-nav-item active" data-panel="tenants" type="button">
+      <span class="nav-icon">🏢</span>
+      <span>テナント</span>
+    </button>
+    <button class="pd-bottom-nav-item pd-nav-item" data-panel="users" type="button">
+      <span class="nav-icon">👥</span>
+      <span>ユーザー</span>
+    </button>
+    <button class="pd-bottom-nav-item pd-nav-item" data-panel="audit" type="button">
+      <span class="nav-icon">📋</span>
+      <span>監査</span>
+    </button>
+    <button class="pd-bottom-nav-item pd-nav-item" data-panel="settings" type="button">
+      <span class="nav-icon">⚙</span>
+      <span>設定</span>
+    </button>
+  </nav>
+
   <!-- Modal: Assign User to Tenant -->
   <div class="pd-modal-backdrop" id="pd-assign-modal" hidden>
     <div class="pd-modal">
-      <h2 class="pd-modal-title">ユーザーをテナントに割り当て</h2>
+      <div class="pd-modal-header">
+        <h2 class="pd-modal-title">ユーザーをテナントに割り当て</h2>
+        <button class="pd-modal-close" id="pd-assign-close" type="button" aria-label="閉じる">&times;</button>
+      </div>
       <form id="pd-assign-form" novalidate>
         <input type="hidden" id="pd-assign-existing-tenant-id">
         <input type="hidden" id="pd-assign-user-id-hidden">
@@ -612,7 +744,10 @@
   <!-- Modal: Create / Edit Tenant -->
   <div class="pd-modal-backdrop" id="pd-create-user-modal" hidden>
     <div class="pd-modal">
-      <h2 class="pd-modal-title">新規ユーザー作成</h2>
+      <div class="pd-modal-header">
+        <h2 class="pd-modal-title">新規ユーザー作成</h2>
+        <button class="pd-modal-close" id="pd-cu-close" type="button" aria-label="閉じる">&times;</button>
+      </div>
       <form id="pd-create-user-form" novalidate>
         <div class="pd-form-row">
           <label>テナント（会社）*</label>
@@ -657,7 +792,10 @@
   <!-- Modal: Create / Edit Tenant -->
   <div class="pd-modal-backdrop" id="pd-tenant-modal" hidden>
     <div class="pd-modal">
-      <h2 class="pd-modal-title" id="pd-modal-title">新規テナント</h2>
+      <div class="pd-modal-header">
+        <h2 class="pd-modal-title" id="pd-modal-title">新規テナント</h2>
+        <button class="pd-modal-close" id="pd-tenant-close" type="button" aria-label="閉じる">&times;</button>
+      </div>
       <form id="pd-tenant-form" novalidate>
         <input type="hidden" id="pd-tenant-id">
         <div class="pd-form-row">
@@ -736,5 +874,20 @@
       </form>
     </div>
   </div>
+  <script>
+    // Wire X buttons → corresponding cancel buttons (JS file is minified so easier to do here)
+    document.addEventListener('DOMContentLoaded', () => {
+      const pairs = [
+        ['pd-tenant-close', 'pd-modal-cancel'],
+        ['pd-assign-close',  'pd-assign-cancel'],
+        ['pd-cu-close',      'pd-cu-cancel'],
+      ];
+      pairs.forEach(([closeId, cancelId]) => {
+        document.getElementById(closeId)?.addEventListener('click', () => {
+          document.getElementById(cancelId)?.click();
+        });
+      });
+    });
+  </script>
 </body>
 </html>

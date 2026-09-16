@@ -158,6 +158,37 @@ async function runMigrations() {
           // attendance records: speed up user+date range queries
           try { await conn.query(`CREATE INDEX idx_attendance_records_user_checkin ON attendance_records(userId, checkIn)`); } catch (e) { /* already exists */ }
         }
+      },
+      {
+        // Backfill tenant_id = 1 cho tất cả records NULL.
+        // Sinh ra do các route thiếu resolveTenant middleware trước bản fix này.
+        // Chỉ chạy 1 lần nhờ schema_migrations tracking — an toàn khi redeploy.
+        id: '20260916_01_backfill_tenant_id_1',
+        up: async () => {
+          const tables = [
+            'attendance',
+            'attendance_daily',
+            'attendance_month_status',
+            'attendance_plan',
+            'attendance_month_summary',
+            'user_shift_assignments',
+            'shift_definitions',
+          ];
+          for (const table of tables) {
+            try {
+              // Chỉ chạy nếu bảng và cột tồn tại
+              const [hasTid] = await conn.query(
+                `SELECT COUNT(*) AS c FROM information_schema.columns
+                 WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'tenant_id'`,
+                [table]
+              );
+              if (!hasTid[0].c) continue;
+              await conn.query(
+                `UPDATE \`${table}\` SET tenant_id = 1 WHERE tenant_id IS NULL`
+              );
+            } catch (e) { /* bảng chưa tồn tại hoặc không có cột — bỏ qua */ }
+          }
+        }
       }
     ];
     for (const m of migrations) {

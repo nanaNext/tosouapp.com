@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>交通費精算書 <%= month %></title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Meiryo", "Yu Gothic", "Hiragino Sans", sans-serif; color: #000; background: #fff; padding: 32px 40px; }
+
+    h1 { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #000; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 24px; font-size: 13px; }
+    .info-item { display: flex; align-items: baseline; }
+    .info-label { width: 90px; font-weight: bold; flex-shrink: 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    th, td { border: 1px solid #555; padding: 6px 8px; }
+    th { background: #e0e0e0; text-align: center; font-weight: bold; white-space: nowrap; }
+    .right { text-align: right; }
+    .center { text-align: center; white-space: nowrap; }
+    .total-row td { background: #f0f0f0; font-weight: bold; }
+
+    .no-print { margin-top: 28px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    button { padding: 8px 20px; cursor: pointer; border: 1px solid #aaa; background: #fff; font-size: 13px; border-radius: 2px; }
+    button.primary { background: #1e4d8c; color: #fff; border-color: #1e4d8c; }
+    button.primary:hover { background: #163d72; }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .hint { font-size: 12px; color: #666; }
+
+    @page { size: A4 portrait; margin: 20mm 25mm; }
+    @media print {
+      body { padding: 0; background: #fff; }
+      .no-print { display: none !important; }
+      th { background: #e0e0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .total-row td { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div id="printMeta" data-month="<%= month %>" data-user="<%= (user.username || user.email || '').replace(/"/g, '') %>" style="display:none;"></div>
+
+  <h1>交通費精算書</h1>
+
+  <div class="info-grid">
+    <div class="info-item"><span class="info-label">会社名</span><span><%= companyName %></span></div>
+    <div class="info-item"><span class="info-label">対象月</span><span><%= month %></span></div>
+    <div class="info-item"><span class="info-label">社員番号</span><span><%= user.employee_code || '' %></span></div>
+    <div class="info-item"><span class="info-label">氏名</span><span><%= user.username || user.email || '' %></span></div>
+    <% if (user.birth_date) { %>
+    <div class="info-item"><span class="info-label">生年月日</span><span><%= String(user.birth_date).slice(0,10) %></span></div>
+    <% } %>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>用途</th>
+        <th>経路</th>
+        <th>交通機関</th>
+        <th>種別</th>
+        <th>備考</th>
+        <th>金額</th>
+        <th>状態</th>
+        <th>申請日時</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% let grandTotal = 0; %>
+      <% expenses.forEach(function(e) {
+        const route = [e.origin || '', e.destination || ''].filter(Boolean).join(' → ') || '-';
+        const transport = e.type || '電車';
+        const tripType = e.trip_type === 'round_trip' ? '往復' : '片道';
+        const amount = Number(e.amount || 0);
+        grandTotal += amount;
+        const statusMap = {applied:'承認待ち',soumu_checked:'総務確認済',approved:'承認済み',rejected:'差戻し',draft:'下書き',pending:'未申請',denied:'却下',paid:'支給済み'};
+        const statusLabel = statusMap[String(e.status||'').toLowerCase()] || String(e.status||'-');
+        const createdAt = e.created_at ? String(e.created_at).replace('T',' ').slice(0,16) : '-';
+      %>
+      <tr>
+        <td class="center"><%= String(e.date||'').slice(0,10) %></td>
+        <td><%= e.purpose || '' %></td>
+        <td><%= route %></td>
+        <td class="center"><%= transport %></td>
+        <td class="center"><%= tripType %></td>
+        <td><%= e.memo || '' %></td>
+        <td class="right">¥<%= amount.toLocaleString('ja-JP') %></td>
+        <td class="center"><%= statusLabel %></td>
+        <td class="center"><%= createdAt %></td>
+      </tr>
+      <% }); %>
+      <% if (expenses.length === 0) { %>
+      <tr><td colspan="9" style="text-align:center;color:#888;padding:16px;">データがありません</td></tr>
+      <% } %>
+      <tr class="total-row">
+        <td colspan="6" class="right">合計</td>
+        <td class="right">¥<%= grandTotal.toLocaleString('ja-JP') %></td>
+        <td colspan="2"></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="no-print">
+    <button class="primary" id="btnDownload">⬇ PDFダウンロード</button>
+    <button id="btnPrint">🖨 印刷</button>
+    <button onclick="window.close()">閉じる</button>
+    <span class="hint">※ ボタンが効かない場合は Ctrl+P で印刷できます</span>
+  </div>
+
+  <script src="/static/vendor/pdfgen/html2canvas.min.js?v=1.4.1"></script>
+  <script src="/static/vendor/pdfgen/jspdf.umd.min.js?v=2.5.1"></script>
+  <script src="/static/js/expenses-monthly-print.js?v=20260916-1"></script>
+</body>
+</html>

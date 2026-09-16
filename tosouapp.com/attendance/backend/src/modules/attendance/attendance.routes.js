@@ -14,9 +14,16 @@ const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const controller   = require('./attendance.controller');
 const calendarCtrl = require('./attendance.calendar.controller'); // GET /calendar/*
 const annualCtrl   = require('./attendance.annual.controller');   // GET /annual-summary, /month/report-matrix
+const { exportGoOutPdf }  = require('./goout.export.pdf');
+const { exportShiftsPdf } = require('./shifts.export.pdf');
 
 // BẢO MẬT: route debug chỉ bật khi không phải môi trường production.
 const allowDebugRoutes = process.env.NODE_ENV !== 'production';
+
+// Multi-tenant: đảm bảo req.tenantId được set cho TẤT CẢ routes trong file này.
+// Các route đã có resolveTenant riêng sẽ gọi lại lần 2 (idempotent, không gây lỗi).
+// Quan trọng: phải để TRƯỚC các route definitions.
+router.use(authenticate, resolveTenant);
 
 // ─── Chấm công vào / ra ───────────────────────────────────────────────────────
 
@@ -49,6 +56,11 @@ router.post('/return',
 router.get('/go-out/admin-list',
   authenticate, resolveTenant, authorize('manager', 'admin'),
   controller.adminListGoOutRecords);
+
+router.get('/go-out/export.pdf',
+  rateLimitNamed('goout_export_pdf', { windowMs: 60_000, max: 10 }),
+  authenticate, resolveTenant, authorize('manager', 'admin'),
+  exportGoOutPdf);
 
 router.put('/go-out/admin/:id/force-end',
   authenticate, resolveTenant, authorize('manager', 'admin'),
@@ -266,6 +278,11 @@ router.get('/shifts/submissions',
 router.get('/shifts/matrix',
   authenticate, resolveTenant, authorize('manager', 'admin'),
   controller.getShiftMatrix);
+
+router.get('/shifts/export.pdf',
+  rateLimitNamed('shifts_export_pdf', { windowMs: 60_000, max: 10 }),
+  authenticate, resolveTenant, authorize('manager', 'admin'),
+  exportShiftsPdf);
 
 router.get('/shifts/all-employees',
   authenticate, resolveTenant, authorize('employee', 'manager', 'admin'),

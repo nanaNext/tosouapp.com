@@ -4,6 +4,11 @@ require('../../config/loadEnv');
 
 const sslEnabled = String(process.env.DB_SSL || '').toLowerCase() === 'true';
 const sslStrict = String(process.env.DB_SSL_STRICT || '').toLowerCase() === 'true';
+const _connLimit = parseInt(process.env.DB_CONN_LIMIT || '20', 10);
+// Default queue limit to 2× connection limit — prevents unbounded memory growth
+// from request bursts. Set DB_QUEUE_LIMIT=0 to disable (not recommended).
+const _queueLimit = parseInt(process.env.DB_QUEUE_LIMIT || String(_connLimit * 2), 10);
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -11,8 +16,9 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   port: parseInt(process.env.DB_PORT || '3306', 10),
   waitForConnections: true,
-  connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '20', 10),
-  queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '0', 10),
+  connectionLimit: _connLimit,
+  queueLimit: _queueLimit,
+  connectTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '10000', 10),
   dateStrings: true,
   charset: 'utf8mb4',
   timezone: '+09:00',
@@ -87,13 +93,33 @@ pool.getConnection = async function() {
  */
 pool.getPoolStats = () => {
   const p = pool.pool;
-  return {
+  const queueLen = p?._connectionQueue?.length || 0;
+  const stats = {
     totalConnections: p?._allConnections?.length || 0,
     freeConnections: p?._freeConnections?.length || 0,
     activeConnections: (p?._allConnections?.length || 0) - (p?._freeConnections?.length || 0),
-    queuedRequests: p?._connectionQueue?.length || 0,
-    connectionLimit: parseInt(process.env.DB_CONN_LIMIT || '20', 10)
+    queuedRequests: queueLen,
+    connectionLimit: _connLimit,
+    queueLimit: _queueLimit,
   };
+  // Warn when queue exceeds 50% of queue limit — noisy-neighbor early signal
+  if (_queueLimit > 0 && queueLen > _queueLimit * 0.5) {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      type: 'db_pool_queue_high',
+      queuedRequests: queueLen,
+      queueLimit: _queueLimit,
+      pct: Math.round((queueLen / _queueLimit) * 100),
+    }));
+  }
+  return stats;
 };
+
+// Periodic pool health check — logs warning when connections are under pressure
+if (String(process.env.NODE_ENV || '').toLowerCase() !== 'test') {
+  setInterval(() => {
+    pool.getPoolStats(); // triggers warn log if queue is high
+  }, 30000);
+}
 
 module.exports = pool;

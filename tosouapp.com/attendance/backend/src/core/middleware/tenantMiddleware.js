@@ -55,20 +55,23 @@ async function resolveTenant(req, res, next) {
   const tidFromJWT = (req.user?.tid || req.user?.tenant_id) ? parseInt(String(req.user.tid || req.user.tenant_id), 10) : null;
 
   // Tab-scoped context: ưu tiên X-Tenant-Id header từ frontend (mỗi tab gửi riêng)
-  // Nếu header khớp với tenant trong JWT hoặc user có quyền sysadmin/owner → dùng header
+  // Chỉ sysadmin mới được dùng header để override tenant context.
+  // Admin/owner chỉ được dùng tenant từ JWT (tid) để tránh cross-tenant hopping.
   const headerTid = req.headers['x-tenant-id'] ? parseInt(String(req.headers['x-tenant-id']), 10) : null;
   const userRole = String(req.user?.role || '').toLowerCase();
-  const canOverrideTenant = userRole === 'sysadmin' || userRole === 'owner' || userRole === 'admin';
+  // Security: chỉ sysadmin được phép override tenant qua header.
+  // Admin/owner phải dùng platform impersonate (có audit log) để làm việc trên tenant khác.
+  const canOverrideTenant = userRole === 'sysadmin';
 
   // Quyết định tenantId cuối cùng:
-  // 1. Nếu header X-Tenant-Id hợp lệ VÀ (khớp JWT hoặc user có quyền override) → dùng header
+  // 1. Nếu header X-Tenant-Id hợp lệ VÀ (khớp JWT hoặc user là sysadmin) → dùng header
   // 2. Nếu không → dùng từ JWT như cũ
   let effectiveTid = tidFromJWT;
   if (headerTid && headerTid > 0) {
     if (headerTid === tidFromJWT || canOverrideTenant) {
       effectiveTid = headerTid;
     }
-    // Nếu user không có quyền override và header khác JWT → bỏ qua header, dùng JWT
+    // Nếu user không phải sysadmin và header khác JWT → bỏ qua header, dùng JWT
   }
 
   if (!effectiveTid) {
@@ -144,7 +147,7 @@ async function injectTenantLocals(req, res, next) {
   try {
     const jwt = require('jsonwebtoken');
     const token = req.cookies?.session_token || '';
-    if (!token) { console.log('[injectTenantLocals] NO session_token cookie'); return next(); }
+    if (!token) return next();
     const secrets = [
       process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET,
       process.env.JWT_SECRET_PREVIOUS || '',
@@ -153,9 +156,8 @@ async function injectTenantLocals(req, res, next) {
     for (const s of secrets) {
       try { decoded = jwt.verify(token, s); break; } catch (e) { /* silently ignored */ }
     }
-    if (!decoded) { console.log('[injectTenantLocals] JWT verify FAILED'); return next(); }
+    if (!decoded) return next();
     const tid = (decoded?.tid || decoded?.tenant_id) ? parseInt(String(decoded.tid || decoded.tenant_id), 10) : null;
-    console.log('[injectTenantLocals] decoded.tid=', decoded?.tid, 'decoded.tenant_id=', decoded?.tenant_id, '→ tid=', tid);
     if (!tid) return next();
     const tenant = await getTenantCached(tid);
     if (tenant && tenant.status === 'active') {
@@ -186,4 +188,13 @@ async function injectTenantLocals(req, res, next) {
   next();
 }
 
-module.exports = { resolveTenant, requireTenant, injectTenantLocals };
+/**
+ * Xóa tenant cache tức thì (dùng khi suspend / update tenant).
+ * Gọi từ platform routes sau khi thay đổi trạng thái tenant.
+ * @param {number} tenantId
+ */
+function invalidateTenantCache(tenantId) {
+  if (tenantId) _tenantCache.delete(tenantId);
+}
+
+module.exports = { resolveTenant, requireTenant, injectTenantLocals, invalidateTenantCache };

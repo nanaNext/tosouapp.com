@@ -1,4 +1,4 @@
-import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth as Nt}from"../../api/http.api.js";import{downloadWithAuth as Wt}from"../../shared/api/client.js";const c=d=>document.querySelector(d),j=d=>/^\d{4}-\d{2}$/.test(String(d||"")),Gt=()=>new Date(Date.now()+9*3600*1e3).toISOString().slice(0,7),m=d=>String(d||"").replace(/[&<>"']/g,g=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[g]),W=d=>{if(!d)return"\u2014";const g=String(d);return g.length>=16?g.slice(11,16):g},Ft=d=>d==="submitted"?{label:"\u63D0\u51FA\u6E08",style:"background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;"}:d==="checkout_missing"?{label:"\u9000\u52E4\u6F0F\u308C",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="checkout_missing_submitted"?{label:"\u9000\u52E4\u6F0F\u308C(\u5165\u529B\u6E08)",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="missing"?{label:"\u672A\u63D0\u51FA",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="not_checked_in"?{label:"\u672A\u51FA\u52E4",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="not_punched"?{label:"\u672A\u6253\u523B",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="absence"?{label:"\u6B20\u52E4",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="monthly_input_only"?{label:"\u6708\u6B21\u5165\u529B\u6E08\u307F\uFF08\u6253\u523B\u306A\u3057\uFF09",style:"background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;"}:d==="off"?{label:"\u4F11\u65E5",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="unregistered"?{label:"\u672A\u767B\u9332",style:"background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;"}:d==="paid_leave"?{label:"\u6709\u7D66\u4F11\u6687",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="unpaid_leave"?{label:"\u7121\u7D66\u4F11\u6687",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="working"?{label:"\u52E4\u52D9\u4E2D",style:"background:#f0fdf4;color:#166534;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:{label:"\u2014",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"},dt=d=>d==="onsite"?"\u51FA\u793E":d==="remote"?"\u5728\u5B85":d==="satellite"?"\u73FE\u5834":"\u2014",Jt=()=>new Date(Date.now()+9*3600*1e3).toISOString().slice(0,10),O=d=>{const g=String(d?.status||""),R=!!(String(d?.site||"").trim()||String(d?.work||"").trim());if(g==="checkout_missing"&&R)return"checkout_missing_submitted";if(g!=="working")return g;const k=String(d?.date||"").slice(0,10),G=!!d?.attendance?.checkOut;return/^\d{4}-\d{2}-\d{2}$/.test(k)&&k<Jt()&&!G?R?"checkout_missing_submitted":"checkout_missing":g},Dt=d=>{const g=String(d||"").trim();return g==="\u571F"?"wr-dow-sat":g==="\u65E5"?"wr-dow-sun":g==="\u6708"||g==="\u706B"||g==="\u6C34"||g==="\u6728"||g==="\u91D1"?"wr-dow-weekday":""},Vt=d=>{const g=String(d||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(g))return"";const[R,k,G]=g.split("-").map(lt=>parseInt(lt,10)),T=["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"],J=new Date(Date.UTC(R,k-1,G)).getUTCDay();return T[J]||""},Yt=()=>{try{const d=document.querySelector("#pageSpinner");d&&(d.removeAttribute("hidden"),d.style.display="grid")}catch{}},Kt=()=>{try{const d=document.querySelector("#pageSpinner");d&&(d.setAttribute("hidden",""),d.style.display="none")}catch{}};async function ee(){const d=new URLSearchParams(window.location.search).get("standalone")==="1",g=d?"100vh":"calc(100vh - var(--topbar-height) - var(--subbar-height))",R=d?"calc(100vh - 120px)":"calc(100vh - var(--topbar-height) - var(--subbar-height) - 120px)",k=document.getElementById("attendanceHubContent")||document.getElementById("adminContent");if(k&&k.id==="attendanceHubContent"&&(k.style.padding=window.innerWidth<=768?"0":"16px 24px",k.style.boxSizing="border-box",k.style.background="#FFFFFF"),k&&(k.innerHTML='<div style="color:#475569;font-weight:650;">\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>'),!await Qt()||!k)return;const T=new URLSearchParams(window.location.search),J=j(T.get("month"))?String(T.get("month")):Gt(),lt=String(T.get("sort")||"dateDesc"),qt=String(T.get("dept")||""),jt=String(T.get("q")||""),At=String(T.get("group")||"")==="1",i={month:J,sort:lt,dept:qt,q:jt,group:At,items:[]};k.innerHTML="";const V=document.createElement("div");V.className="wr-layout",V.style.cssText="display: flex; flex-direction: column; background: #FFFFFF; font-family: Inter, 'Noto Sans JP', sans-serif; width: 100%;";const Bt=`
+import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth as Nt}from"../../api/http.api.js";import{downloadWithAuth as Wt}from"../../shared/api/client.js";import{createMonthPicker as _createMonthPicker}from"../../shared/ui/month-picker.js";const c=d=>document.querySelector(d),j=d=>/^\d{4}-\d{2}$/.test(String(d||"")),Gt=()=>new Date(Date.now()+9*3600*1e3).toISOString().slice(0,7),m=d=>String(d||"").replace(/[&<>"']/g,g=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[g]),W=d=>{if(!d)return"\u2014";const g=String(d);return g.length>=16?g.slice(11,16):g},Ft=d=>d==="submitted"?{label:"\u63D0\u51FA\u6E08",style:"background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;"}:d==="checkout_missing"?{label:"\u9000\u52E4\u6F0F\u308C",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="checkout_missing_submitted"?{label:"\u9000\u52E4\u6F0F\u308C(\u5165\u529B\u6E08)",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="missing"?{label:"\u672A\u63D0\u51FA",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="not_checked_in"?{label:"\u672A\u51FA\u52E4",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="not_punched"?{label:"\u672A\u6253\u523B",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="absence"?{label:"\u6B20\u52E4",style:"background:#fef2f2;color:#991b1b;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:d==="monthly_input_only"?{label:"\u6708\u6B21\u5165\u529B\u6E08\u307F\uFF08\u6253\u523B\u306A\u3057\uFF09",style:"background:#eef5ff;color:#0b2c66;border-color:#bfd7ff;"}:d==="off"?{label:"\u4F11\u65E5",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="unregistered"?{label:"\u672A\u767B\u9332",style:"background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;"}:d==="paid_leave"?{label:"\u6709\u7D66\u4F11\u6687",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="unpaid_leave"?{label:"\u7121\u7D66\u4F11\u6687",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"}:d==="working"?{label:"\u52E4\u52D9\u4E2D",style:"background:#f0fdf4;color:#166534;font-weight:600;font-size:13px;border:none;padding:4px 8px;border-radius:6px;"}:{label:"\u2014",style:"background:#f8fafc;color:#475569;border-color:#e2e8f0;"},dt=d=>d==="onsite"?"\u51FA\u793E":d==="remote"?"\u5728\u5B85":d==="satellite"?"\u73FE\u5834":"\u2014",Jt=()=>new Date(Date.now()+9*3600*1e3).toISOString().slice(0,10),O=d=>{const g=String(d?.status||""),R=!!(String(d?.site||"").trim()||String(d?.work||"").trim());if(g==="checkout_missing"&&R)return"checkout_missing_submitted";if(g!=="working")return g;const k=String(d?.date||"").slice(0,10),G=!!d?.attendance?.checkOut;return/^\d{4}-\d{2}-\d{2}$/.test(k)&&k<Jt()&&!G?R?"checkout_missing_submitted":"checkout_missing":g},Dt=d=>{const g=String(d||"").trim();return g==="\u571F"?"wr-dow-sat":g==="\u65E5"?"wr-dow-sun":g==="\u6708"||g==="\u706B"||g==="\u6C34"||g==="\u6728"||g==="\u91D1"?"wr-dow-weekday":""},Vt=d=>{const g=String(d||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(g))return"";const[R,k,G]=g.split("-").map(lt=>parseInt(lt,10)),T=["\u65E5","\u6708","\u706B","\u6C34","\u6728","\u91D1","\u571F"],J=new Date(Date.UTC(R,k-1,G)).getUTCDay();return T[J]||""},Yt=()=>{try{const d=document.querySelector("#pageSpinner");d&&(d.removeAttribute("hidden"),d.style.display="grid")}catch{}},Kt=()=>{try{const d=document.querySelector("#pageSpinner");d&&(d.setAttribute("hidden",""),d.style.display="none")}catch{}};async function ee(){const d=new URLSearchParams(window.location.search).get("standalone")==="1",g=d?"100vh":"calc(100vh - var(--topbar-height) - var(--subbar-height))",R=d?"calc(100vh - 120px)":"calc(100vh - var(--topbar-height) - var(--subbar-height) - 120px)",k=document.getElementById("attendanceHubContent")||document.getElementById("adminContent");if(k&&k.id==="attendanceHubContent"&&(k.style.padding=window.innerWidth<=768?"0":"16px 24px",k.style.boxSizing="border-box",k.style.background="#FFFFFF"),k&&(k.innerHTML='<div style="color:#475569;font-weight:650;">\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>'),!await Qt()||!k)return;const T=new URLSearchParams(window.location.search),J=j(T.get("month"))?String(T.get("month")):Gt(),lt=String(T.get("sort")||"dateDesc"),qt=String(T.get("dept")||""),jt=String(T.get("q")||""),At=String(T.get("group")||"")==="1",i={month:J,sort:lt,dept:qt,q:jt,group:At,items:[]};k.innerHTML="";const V=document.createElement("div");V.className="wr-layout",V.style.cssText="display: flex; flex-direction: column; background: #FFFFFF; font-family: Inter, 'Noto Sans JP', sans-serif; width: 100%;";const Bt=`
       .wr-input { height: 30px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 10px; font-size: 13px; color: #0f172a; outline: none; background: #fff; box-sizing: border-box; }
       :root[data-theme='dark'] .wr-input { color: #e8eaed !important; background: #303134 !important; border-color: #3c4043 !important; }
       :root[data-theme='dark'] .wr-select { color: #e8eaed !important; background: #303134 !important; border-color: #3c4043 !important; }
@@ -209,6 +209,12 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
         .wr-mobile-row { display: contents !important; }
         .search-row .wr-input { background-image: none !important; padding-left: 10px !important; }
       }
+      .wr-work-td { position:relative; min-width:240px; cursor:pointer; vertical-align:top !important; padding:6px 10px 20px !important; }
+      .wr-work-td .wr-work-preview { max-height:3.6em; overflow:hidden; color:#475569; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+      .wr-work-td.wr-expanded .wr-work-preview { max-height:none; overflow:visible; }
+      .wr-work-td:after { content:"\u25bc \u8A73\u7D30"; position:absolute; bottom:3px; right:6px; font-size:9px; color:#94a3b8; line-height:1; }
+      .wr-work-td.wr-expanded:after { content:"\u25b2 \u9589\u3058\u308B"; color:#3b82f6; }
+      .wr-site-td { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
 `,Pt=(t,a)=>`
     <style>
       ${Bt}
@@ -218,42 +224,20 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
         <div class="wr-mobile-row main-row">
           <div class="wr-month-nav">
             <button type="button" id="wrPrevMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="\u524D\u6708">\u2039</button>
-            <input id="wrMonthMobile" type="month" class="wr-input wr-month hidden-on-desktop" value="${t.month}">
+            <span id="wrMonthMobileSlot" class="hidden-on-desktop"></span>
             <button type="button" id="wrNextMonthMobile" class="wr-month-btn wr-mobile-only" aria-label="\u7FCC\u6708">\u203A</button>
           </div>
-          <input id="wrMonth" type="month" class="wr-input wr-month hidden-on-mobile" value="${t.month}">
+          <span id="wrMonthSlot" class="hidden-on-mobile"></span>
           <input id="wrQuery" type="text" class="wr-input wr-text wr-query" placeholder="\u793E\u54E1\u756A\u53F7/\u6C0F\u540D\u3067\u691C\u7D22" value="${a(t.q)}">
           <button type="button" id="wrFilterToggleMobile" class="wr-filter-toggle wr-mobile-only" aria-label="\u7D5E\u308A\u8FBC\u307F">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
           </button>
+          <button type="button" id="wrExportPdfSelect" class="attrec-btn hidden-on-mobile" style="display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-left:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> PDF\u51FA\u529B</button>
+
         </div>
         
-        <div class="wr-mobile-row advanced-filters" id="wrAdvancedFilters">
-          <div class="wr-mobile-row selects-row">
-            <select id="wrDept" class="wr-input wr-select wr-dept">
-              <option value="">\u5168\u90E8\u7F72</option>
-            </select>
-            <select id="wrSort" class="wr-input wr-select wr-sort">
-              <option value="dateDesc" ${t.sort==="dateDesc"?"selected":""}>\u4E26\u3073\u9806</option>
-              <option value="employee" ${t.sort==="employee"?"selected":""}>\u793E\u54E1\u2191 / \u65E5\u4ED8\u2193</option>
-              <option value="name" ${t.sort==="name"?"selected":""}>\u6C0F\u540D\u2191 / \u65E5\u4ED8\u2193</option>
-              <option value="department" ${t.sort==="department"?"selected":""}>\u90E8\u7F72\u2191 / \u793E\u54E1\u2191 / \u65E5\u4ED8\u2193</option>
-              <option value="missingFirst" ${t.sort==="missingFirst"?"selected":""}>\u672A\u63D0\u51FA\u3092\u4E0A\u306B</option>
-            </select>
-          </div>
-          <div class="wr-mobile-row bottom-advanced-row">
-            <div class="wr-mobile-row checkbox-row">
-              <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:#334155;cursor:pointer;font-weight:500;">
-                <input type="checkbox" id="wrGroup" ${t.group?"checked":""} style="width:16px;height:16px;"> \u793E\u54E1\u3054\u3068\u306B\u307E\u3068\u3081\u308B
-              </label>
-            </div>
-            <div class="wr-mobile-row excel-row">
-              <button type="button" id="wrExport" class="attrec-btn excel-dropdown-btn">Excel\u51FA\u529B</button>
-            </div>
-          </div>
-          <div class="wr-mobile-row summary-row">
-            <div id="wrSummary" class="wr-summary-container"></div>
-          </div>
+        <div class="wr-mobile-row summary-row">
+          <div id="wrSummary" class="wr-summary-container"></div>
         </div>
       </div>
     </div>
@@ -271,8 +255,8 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
             <th style="width:80px;">\u51FA\u52E4</th>
             <th style="width:80px;">\u9000\u52E4</th>
             <th style="width:100px;">\u52E4\u52D9\u5F62\u614B</th>
-            <th style="width:120px;">\u73FE\u5834</th>
-            <th style="width:200px;">\u4F5C\u696D\u5185\u5BB9</th>
+            <th style="width:140px;">\u73FE\u5834</th>
+            <th style="width:300px;">\u4F5C\u696D\u5185\u5BB9</th>
             <th style="width:100px;">\u9045\u523B\u30FB\u65E9\u9000\u7B49</th>
             <th style="width:200px;">\u5099\u8003</th>
             <th style="width:180px;">\u72B6\u614B</th>
@@ -281,6 +265,40 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
         <tbody id="wrTableBody">
         </tbody>
       </table>
+    </div>
+    <div id="wrPdfSelectModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.55);align-items:center;justify-content:center;">
+      <div style="width:min(720px,92vw);max-height:88vh;background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.25);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <div id="wrPdfSelTitle" style="font-size:16px;font-weight:700;color:#0f172a;">\u793E\u54E1\u3092\u9078\u629E\u3057\u3066PDF\u3092\u51FA\u529B</div>
+            <div id="wrPdfSelSubtitle" style="font-size:12px;color:#64748b;">\u6708\u3092\u9078\u3073\u3001\u51FA\u529B\u3059\u308B\u793E\u54E1\u306B\u30C1\u30A7\u30C3\u30AF\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044</div>
+          </div>
+          <button type="button" id="wrPdfSelectClose" style="width:32px;height:32px;border:none;background:transparent;cursor:pointer;font-size:20px;color:#64748b;border-radius:6px;display:flex;align-items:center;justify-content:center;" title="\u9589\u3058\u308B">&times;</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:14px 20px;border-bottom:1px solid #e2e8f0;background:#fff;">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;min-width:180px;">
+              <label style="font-size:13px;color:#334155;font-weight:600;white-space:nowrap;">\u5BFE\u8C61\u6708:</label>
+              <span id="wrPdfSelectMonthSlot"></span>
+            </div>
+            <div style="flex:1;min-width:180px;">
+              <input id="wrPdfSelectSearch" type="text" placeholder="\u793E\u54E1\u756A\u53F7 / \u6C0F\u540D / \u90E8\u7F72\u3067\u691C\u7D22" style="width:100%;height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px 0 32px;font-size:13px;outline:none;box-sizing:border-box;background:#fff url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2364748b\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\\'%3E%3C/p%3E%3C/svg%3E') no-repeat 10px center / 14px;">
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button type="button" id="wrPdfSelectAll" style="height:30px;padding:0 12px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#334155;font-weight:500;">\u4E00\u89A7\u30C1\u30A7\u30C3\u30AF</button>
+              <button type="button" id="wrPdfClearAll" style="height:30px;padding:0 12px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#334155;font-weight:500;">\u30AF\u30EA\u30A2</button>
+            </div>
+            <div id="wrPdfSelectCount" style="font-size:13px;color:#475569;font-weight:500;">0 \u540D\u9078\u629E\u4E2D</div>
+          </div>
+        </div>
+        <div id="wrPdfSelectList" style="flex:1 1 auto;overflow:auto;padding:4px 10px 12px;"></div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;border-top:1px solid #e2e8f0;background:#f8fafc;">
+          <button type="button" id="wrPdfSelectCancel" style="height:36px;padding:0 16px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;color:#334155;font-weight:600;">\u30AD\u30E3\u30F3\u30BB\u30EB</button>
+          <button type="button" id="wrPdfSelectRun" disabled style="height:36px;padding:0 18px;border:none;border-radius:6px;background:#991b1b;color:#fff;cursor:not-allowed;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;opacity:0.6;transition:all .15s;"><svg id="wrPdfSelRunIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4z"/></svg><span id="wrPdfSelRunText">PDF\u51FA\u529B\u5B9F\u884C</span></button>
+        </div>
+      </div>
     </div>
   `;V.innerHTML=Pt(i,m),k.appendChild(V);const U=()=>{try{const t=new URL(window.location.href);t.searchParams.set("month",i.month),t.searchParams.set("sort",i.sort),i.dept?t.searchParams.set("dept",i.dept):t.searchParams.delete("dept"),i.q?t.searchParams.set("q",i.q):t.searchParams.delete("q"),i.group?t.searchParams.set("group","1"):t.searchParams.delete("group"),history.replaceState(null,"",t.pathname+t.search+t.hash)}catch{}};let H=1;const Y=window.innerWidth<=768,K=Y?15:10,X=t=>{if(!t||isNaN(t))return"";const a=Math.floor(t/60),n=t%60;return a>0&&n>0?`${a}\u6642\u9593${n}\u5206`:a>0?`${a}\u6642\u9593`:`${n}\u5206`},D=(t,a=!1)=>{a&&(H=1);const n=c("#wrTable");if(!n)return;if(!t.length){n.innerHTML='<div class="empty-state"><div style="font-size:28px;">\u{1F5C2}\uFE0F</div><div>\u51FA\u52E4\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div></div>';return}const l=n.querySelector("#wrTableBody")||n,s=(H-1)*K,r=Math.min(s+K,t.length),f=t.slice(s,r).map(o=>{const p='<span style="color:#cbd5e1;">\u2014</span>',h=o.employeeCode||`EMP${String(o.userId).padStart(3,"0")}`,w=O(o),u=Ft(w);let S="";w==="checkout_missing"||w==="missing"||w==="not_punched"||w==="absence"?S="\u26A0 ":(w==="submitted"||w==="checkout_missing_submitted")&&(S="\u2705 "),u.label=S+u.label;let E=String(o.kubun||"").trim();E==="\u4F11\u65E5\u51FA\u52E4"&&!o.attendance?.checkIn&&!o.attendance?.checkOut&&!o.site&&!o.work&&(E="\u4F11\u65E5");const F=E?m(E):p,M=String(o.site||"").trim()?m(String(o.site).trim()):p,et=String(o.work||"").trim(),pt=et?m(et).replace(/\n/g,"<br>"):p,ct=String(o.departmentName||"").trim()?m(String(o.departmentName).trim()):p,mt=String(o.branchName||"").trim()?m(String(o.branchName).trim()):p,bt=o.attendance?.checkIn?m(W(o.attendance.checkIn)):p,ft=o.attendance?.checkOut?m(W(o.attendance.checkOut)):p,L=dt(o.workType)!=="\u2014"?m(dt(o.workType)):p;let Ct="";if(o.attendance?.checkIn){const nt=W(o.attendance.checkIn),kt=String(o.role||"").toLowerCase()==="part_time"||String(o.employment_type||"").toLowerCase()==="part_time"||String(o.employment_type||"")==="\u30A2\u30EB\u30D0\u30A4\u30C8",it=(o.departmentName||"").includes("\u5DE5\u4E8B")&&!kt?"08:00":"09:00";if(nt>it&&o.status!=="\u4F11\u65E5\u51FA\u52E4"){const[vt,$t]=nt.split(":").map(Number),[St,Mt]=it.split(":").map(Number),at=vt*60+$t-(St*60+Mt);at>0&&!o.lateMinutes&&(o.lateMinutes=at)}}const P=Number(o.lateMinutes)>0?`<span style="color:#ef4444;font-weight:bold;">\u26A0 \u9045\u523B ${X(o.lateMinutes)}</span>`:"",ot=Number(o.earlyMinutes)>0?`<span style="color:#ef4444;font-weight:bold;">\u26A0 \u65E9\u9000 ${X(o.earlyMinutes)}</span>`:"";let ht=[P,ot].filter(Boolean).join("<br>");const _=[o.notes].filter(Boolean).join(" - "),_t=_?`title="${m(_)}"`:"",gt=_.length>20?_.substring(0,20)+"...":_,Tt="",wt=ht||"",x=Dt(o.weekday),ut=o.date?o.date.replace(/-/g,"/"):"",q=!!o.holiday&&o.weekday!=="\u571F"&&o.weekday!=="\u65E5",v=x==="wr-dow-sun"||q,$=x==="wr-dow-sat"&&!q,z=v?"wr-off-row":$?"wr-sat-row":"",rt=v?"wr-sun-row":$?"wr-sat-row":"",xt=o.isSecondary?p:wt,yt=o.isSecondary?p:_?m(_):p;return`
         <tr class="${z}">
@@ -294,8 +312,8 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
           <td data-label="\u51FA\u52E4" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${bt}</td>
           <td data-label="\u9000\u52E4" style="font-family:monospace; font-size:14px; white-space:nowrap; text-align:center;">${ft}</td>
           <td data-label="\u52E4\u52D9\u5F62\u614B" style="white-space:nowrap;">${L}</td>
-          <td data-label="\u73FE\u5834" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px;">${M}</td>
-          <td data-label="\u4F5C\u696D\u5185\u5BB9" style="white-space:pre-wrap; word-break:break-word; min-width:200px; max-width:400px; color:#475569;">${pt}</td>
+          <td data-label="\u73FE\u5834" class="wr-site-td">${M}</td>
+          <td data-label="\u4F5C\u696D\u5185\u5BB9" class="wr-work-td" onclick="this.classList.toggle('wr-expanded')"><div class="wr-work-preview">${pt}</div></td>
           <td data-label="\u9045\u523B\u30FB\u65E9\u9000\u7B49" style="white-space:nowrap;">${xt}</td>
           <td data-label="\u5099\u8003" style="white-space:pre-wrap; word-break:break-word; min-width:150px; max-width:300px; color:#475569;">${yt}</td>
           <td data-label="\u72B6\u614B"><span class="dash-pill" style="${u.style}; white-space:nowrap;">${m(u.label)}</span></td>
@@ -325,8 +343,8 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u51FA\u52E4</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9000\u52E4</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u52E4\u52D9\u5F62\u614B</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u73FE\u5834</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u4F5C\u696D\u5185\u5BB9</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1; width:140px;">\u73FE\u5834</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1; width:360px;">\u4F5C\u696D\u5185\u5BB9</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9045\u523B\u30FB\u65E9\u9000\u7B49</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u5099\u8003</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u72B6\u614B</th>
@@ -356,8 +374,8 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
           <td data-label="\u51FA\u52E4" style="font-family:monospace; font-size:14px; ${x}">${et}</td>
           <td data-label="\u9000\u52E4" style="font-family:monospace; font-size:14px; ${x}">${pt}</td>
           ${$t}
-          <td data-label="\u73FE\u5834" style="white-space:pre-wrap; word-break:break-word; min-width:120px; max-width:200px; ${x}">${F}</td>
-          <td data-label="\u4F5C\u696D\u5185\u5BB9" style="white-space:pre-wrap; word-break:break-word; min-width:300px; max-width:600px; ${x||"color:#475569;"}">${M}</td>
+          <td data-label="\u73FE\u5834" class="wr-site-td" style="${x}">${F}</td>
+          <td data-label="\u4F5C\u696D\u5185\u5BB9" class="wr-work-td" onclick="this.classList.toggle('wr-expanded')" style="${x}"><div class="wr-work-preview">${M}</div></td>
           ${St}
           ${Mt}
           ${at}
@@ -385,8 +403,8 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
                 <col style="width:70px;">
                 <col style="width:70px;">
                 <col style="width:110px;">
-                <col style="width:200px;">
-                <col style="width:300px;">
+                <col style="width:140px;">
+                <col style="width:360px;">
                 <col style="width:180px;">
                 <col style="width:200px;">
                 <col style="width:180px;">
@@ -403,8 +421,8 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u51FA\u52E4</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9000\u52E4</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u52E4\u52D9\u5F62\u614B</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u73FE\u5834</th>
-                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u4F5C\u696D\u5185\u5BB9</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1; width:140px;">\u73FE\u5834</th>
+                  <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1; width:360px;">\u4F5C\u696D\u5185\u5BB9</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u9045\u523B\u30FB\u65E9\u9000\u7B49</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u5099\u8003</th>
                   <th style="padding:4px 8px; font-size:13px; font-weight:600; text-align:center; border:1px solid #cbd5e1;">\u72B6\u614B</th>
@@ -414,30 +432,494 @@ import{requireAdmin as Qt}from"../_shared/require-admin.js";import{fetchJSONAuth
             </table>
           </div>
         </div>
-      `}).join("");a.innerHTML=s},Ot=t=>{const a=c("#wrDept");if(!a)return;const n=Array.from(new Set((t||[]).map(s=>String(s?.departmentName||"").trim()).filter(Boolean))).sort((s,r)=>y(s,r)),l=['<option value="">\u5168\u90E8\u7F72</option>'].concat(n.map(s=>`<option value="${m(s)}" ${C(s)===C(i.dept)?"selected":""}>${m(s)}</option>`)).join("");a.innerHTML=l},Rt=t=>{const a=Array.isArray(t?.items)?t.items:[],n=t?.summary||{};return{summary:{employees:n.employees==null?0:n.employees,workedDays:n.workedDays==null?a.length:n.workedDays,submitted:n.submitted==null?0:n.submitted,missing:n.missing==null?0:n.missing},items:a}},Ut=t=>{const a=new Date(Date.now()+324e5).toISOString().slice(0,10),n=Array.isArray(t?.days)?t.days:[],l=Array.isArray(t?.items)?t.items:[],s=[],r=new Set;let b=0,f=0;for(const e of l){const o=e?.userId,p=e?.days||{};for(const h of n){const w=p?.[h]||null,u=String(w?.status||"");if(u!=="checked_out"&&u!=="working"&&u!=="holiday_work"&&u!=="holiday_working"&&u!=="not_checked_in")continue;const S=w?.report||null,E=String(S?.site||"").trim()||null,F=String(S?.work||"").trim()||null;let M=u;u==="not_checked_in"?M="not_checked_in":u==="checked_out"||u==="holiday_work"?M=E||F?"submitted":"missing":(u==="working"||u==="holiday_working")&&(M=String(h).slice(0,10)<a?E||F?"checkout_missing_submitted":"checkout_missing":"working"),M==="submitted"||M==="checkout_missing_submitted"?b++:(M==="missing"||M==="checkout_missing"||M==="not_checked_in")&&f++,r.add(o),s.push({userId:o,employeeCode:e?.employeeCode||null,username:e?.username||null,departmentId:e?.departmentId||null,departmentName:e?.departmentName||null,date:String(h).slice(0,10),weekday:Vt(h),attendance:{checkIn:null,checkOut:null},kubun:w?.kubun||null,workType:null,holiday:w?.holiday||!1,site:E,work:F,status:M})}}return s.sort((e,o)=>{if(e.date!==o.date)return e.date<o.date?1:-1;const p=String(e.employeeCode||"").toUpperCase(),h=String(o.employeeCode||"").toUpperCase();return p!==h?p<h?-1:1:Number(e.userId||0)-Number(o.userId||0)}),{summary:{employees:r.size,workedDays:s.length,submitted:b,missing:f},items:s}},N=async()=>{const t=c("#wrMonth");i.month=j(t?.value)?t.value:J,U(),Yt();try{let a=null;try{a=await Nt(`/api/admin/work-reports/month/list?month=${encodeURIComponent(i.month)}`),a=Rt(a)}catch(b){const f=String(b?.message||"");if(f.includes("Invalid userId")||f.includes("404")||f.includes("Not Found")){const e=await Nt(`/api/admin/work-reports/month?month=${encodeURIComponent(i.month)}`);a=Ut(e)}else throw b}const n=c("#wrSummary");i.items=Array.isArray(a?.items)?a.items:[],Ot(i.items);const l=a?.summary||{},s=A(i.items).length;n&&(n.innerHTML=`
+      `}).join("");a.innerHTML=s},Ot=t=>{const a=c("#wrDept");if(!a)return;const n=Array.from(new Set((t||[]).map(s=>String(s?.departmentName||"").trim()).filter(Boolean))).sort((s,r)=>y(s,r)),l=['<option value="">\u5168\u90E8\u7F72</option>'].concat(n.map(s=>`<option value="${m(s)}" ${C(s)===C(i.dept)?"selected":""}>${m(s)}</option>`)).join("");a.innerHTML=l},Rt=t=>{const a=Array.isArray(t?.items)?t.items:[],n=t?.summary||{};return{summary:{employees:n.employees==null?0:n.employees,workedDays:n.workedDays==null?a.length:n.workedDays,submitted:n.submitted==null?0:n.submitted,missing:n.missing==null?0:n.missing},items:a}},Ut=t=>{const a=new Date(Date.now()+324e5).toISOString().slice(0,10),n=Array.isArray(t?.days)?t.days:[],l=Array.isArray(t?.items)?t.items:[],s=[],r=new Set;let b=0,f=0;for(const e of l){const o=e?.userId,p=e?.days||{};for(const h of n){const w=p?.[h]||null,u=String(w?.status||"");if(u!=="checked_out"&&u!=="working"&&u!=="holiday_work"&&u!=="holiday_working"&&u!=="not_checked_in")continue;const S=w?.report||null,E=String(S?.site||"").trim()||null,F=String(S?.work||"").trim()||null;let M=u;u==="not_checked_in"?M="not_checked_in":u==="checked_out"||u==="holiday_work"?M=E||F?"submitted":"missing":(u==="working"||u==="holiday_working")&&(M=String(h).slice(0,10)<a?E||F?"checkout_missing_submitted":"checkout_missing":"working"),M==="submitted"||M==="checkout_missing_submitted"?b++:(M==="missing"||M==="checkout_missing"||M==="not_checked_in")&&f++,r.add(o),s.push({userId:o,employeeCode:e?.employeeCode||null,username:e?.username||null,departmentId:e?.departmentId||null,departmentName:e?.departmentName||null,date:String(h).slice(0,10),weekday:Vt(h),attendance:{checkIn:null,checkOut:null},kubun:w?.kubun||null,workType:null,holiday:w?.holiday||!1,site:E,work:F,status:M})}}return s.sort((e,o)=>{if(e.date!==o.date)return e.date<o.date?1:-1;const p=String(e.employeeCode||"").toUpperCase(),h=String(o.employeeCode||"").toUpperCase();return p!==h?p<h?-1:1:Number(e.userId||0)-Number(o.userId||0)}),{summary:{employees:r.size,workedDays:s.length,submitted:b,missing:f},items:s}},N=async()=>{const _mpv=_wrPickerDesktop?.getValue()||_wrPickerMobile?.getValue();i.month=j(_mpv)?_mpv:i.month||J,U(),Yt();try{let a=null;try{a=await Nt(`/api/admin/work-reports/month/list?month=${encodeURIComponent(i.month)}`),a=Rt(a)}catch(b){const f=String(b?.message||"");if(f.includes("Invalid userId")||f.includes("404")||f.includes("Not Found")){const e=await Nt(`/api/admin/work-reports/month?month=${encodeURIComponent(i.month)}`);a=Ut(e)}else throw b}const n=c("#wrSummary");i.items=Array.isArray(a?.items)?a.items:[],Ot(i.items);const l=a?.summary||{},s=A(i.items).length;n&&(n.innerHTML=`
           <div style="display:flex; align-items:center; gap:12px; font-size:14px; background:#f8fafc; padding:4px 12px; border-radius:6px; border:1px solid #e2e8f0; height:32px; box-sizing:border-box;">
             <span style="color:#0f172a; font-weight:600;"><span style="color:#64748b; font-weight:500; margin-right:4px;">\u51FA\u52E4</span>${l.workedDays==null?0:l.workedDays}</span>
             <span style="color:#0f172a; font-weight:600;"><span style="color:#64748b; font-weight:500; margin-right:4px;">\u63D0\u51FA</span>${l.submitted==null?0:l.submitted}</span>
             <span style="color:#e11d48; font-weight:600;"><span style="color:#f43f5e; font-weight:500; margin-right:4px;">\u672A\u63D0\u51FA</span>${l.missing==null?0:l.missing}</span>
           </div>
-        `);const r=A(i.items);i.group?Q(r):D(r,!0)}catch(a){const n=c("#wrTable");n&&(n.innerHTML=`<div class="empty-state"><div style="font-size:28px;">\u26A0\uFE0F</div><div>\u8AAD\u307F\u8FBC\u307F\u5931\u6557: ${m(a&&a.message?a.message:"unknown")}</div></div>`)}finally{Kt()}};window.addEventListener("resize",()=>{const t=document.getElementById("attHubMobileActions");if(window.innerWidth<=768&&t)if(document.getElementById("wrMonthMobileHeader"))document.getElementById("wrMonthMobileHeader").value=i.month,document.getElementById("wrQueryMobileHeader").value=i.q;else{t.style.flex="1",t.style.marginLeft="8px",t.innerHTML=`
+        `);
+        const r = A(i.items);
+        if (i.group) Q(r); else D(r, true);
+      } catch (a) {
+        const n = c("#wrTable");
+        if (n) {
+          n.innerHTML = `<div class="empty-state"><div style="font-size:28px;">\u26A0\uFE0F</div><div>\u8AAD\u307F\u8FBC\u307F\u5931\u6557: ${m(a && a.message ? a.message : "unknown")}</div></div>`;
+        }
+      } finally {
+        Kt();
+      }
+    };
+
+    window.addEventListener("resize", () => {
+      const t = document.getElementById("attHubMobileActions");
+      if (window.innerWidth <= 768 && t) {
+        if (document.getElementById("wrMonthMobileHeaderSlot") || document.getElementById("wrMonthMobileHeaderSlot2")) {
+          if (_wrPickerMobHdr) _wrPickerMobHdr.setValue(i.month);
+          if (_wrPickerMobHdr2) _wrPickerMobHdr2.setValue(i.month);
+          const qm = document.getElementById("wrQueryMobileHeader");
+          if (qm) qm.value = i.q;
+        } else {
+          t.style.flex = "1";
+          t.style.marginLeft = "8px";
+          t.innerHTML = `
           <div style="display:flex; align-items:center; gap:6px; width:100%; justify-content: space-between;">
             <input id="wrQueryMobileHeader" type="text" placeholder="\u691C\u7D22..." value="${m(i.q)}" style="flex: 1; min-width: 60px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; padding: 0 6px 0 24px; font-size: 13px; background: #fff url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2364748b\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\\'%3E%3C/path%3E%3C/svg%3E') no-repeat 6px center / 14px; color: #1f2937; outline: none; margin: 0;">
             <div style="display:flex; align-items:center; gap:6px; flex-shrink: 0;">
-              <input type="month" id="wrMonthMobileHeader" value="${i.month}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 120px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
+              <span id="wrMonthMobileHeaderSlot"></span>
               <button type="button" id="wrFilterToggleHeader" style="height: 32px; width: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff; display: flex; align-items: center; justify-content: center; padding: 0; color: #475569; cursor: pointer; margin: 0; flex-shrink: 0;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
               </button>
             </div>
           </div>
-        `,document.getElementById("wrQueryMobileHeader").addEventListener("change",async r=>{i.q=r.target.value;const b=c("#wrQuery");b&&(b.value=i.q),await N()}),document.getElementById("wrMonthMobileHeader").addEventListener("change",async r=>{i.month=r.target.value;const b=c("#wrMonth");b&&(b.value=i.month),j(i.month)&&await N()});const l=document.getElementById("wrFilterToggleHeader"),s=c("#wrAdvancedFilters");l.addEventListener("click",()=>{s&&s.classList.toggle("show"),l.classList.toggle("active"),l.classList.contains("active")?(l.style.background="#f1f5f9",l.style.borderColor="#94a3b8",l.style.color="#0f172a"):(l.style.background="#fff",l.style.borderColor="#cbd5e1",l.style.color="#475569")})}else t&&(t.innerHTML="")}),c("#wrMonth")?.addEventListener("change",async()=>{const t=c("#wrMonth");j(t?.value)&&await N()}),c("#wrMonthMobile")?.addEventListener("change",async()=>{const t=c("#wrMonthMobile");i.month=t.value;const a=c("#wrMonth");a&&(a.value=i.month),j(i.month)&&await N()});const It=(t,a)=>{const n=/^(\d{4})-(\d{2})$/.exec(String(t||""));return n?new Date(Date.UTC(parseInt(n[1],10),parseInt(n[2],10)-1+a,1)).toISOString().slice(0,7):t},Et=async t=>{if(!j(t))return;i.month=t;const a=c("#wrMonth"),n=c("#wrMonthMobile");a&&(a.value=t),n&&(n.value=t),await N()};c("#wrPrevMonthMobile")?.addEventListener("click",()=>Et(It(i.month,-1))),c("#wrNextMonthMobile")?.addEventListener("click",()=>Et(It(i.month,1))),c("#wrFilterToggleMobile")?.addEventListener("click",()=>{const t=c("#wrAdvancedFilters"),a=c("#wrFilterToggleMobile");t&&t.classList.toggle("show"),a&&a.classList.toggle("active")}),c("#wrExport")?.addEventListener("click",async()=>{try{const a=`/api/admin/work-reports/export.xlsx?${new URLSearchParams({period:"month",month:i.month,sort:i.sort,dept:i.dept,q:i.q,group:i.group?"1":"0"}).toString()}`;await Wt(a,`work_reports_${i.month}.xlsx`)}catch(t){alert(String(t?.message||"\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"))}});const Lt=c("#wrAdvancedFilters"),B=document.getElementById("attHubMobileActions");if(window.innerWidth<=768&&B){B.style.flex="1",B.style.marginLeft="8px",B.innerHTML=`
+        `;
+          document.getElementById("wrQueryMobileHeader").addEventListener("change", async r => {
+            i.q = r.target.value;
+            const b = c("#wrQuery");
+            if (b) b.value = i.q;
+            await N();
+          });
+          const l = document.getElementById("wrFilterToggleHeader");
+          const s = c("#wrAdvancedFilters");
+          l.addEventListener("click", () => {
+            if (s) s.classList.toggle("show");
+            l.classList.toggle("active");
+            if (l.classList.contains("active")) {
+              l.style.background = "#f1f5f9";
+              l.style.borderColor = "#94a3b8";
+              l.style.color = "#0f172a";
+            } else {
+              l.style.background = "#fff";
+              l.style.borderColor = "#cbd5e1";
+              l.style.color = "#475569";
+            }
+          });
+        }
+      } else {
+        if (t) {
+          t.innerHTML = "";
+        }
+      }
+    });
+
+    const It = (t, a) => {
+      const n = /^(\d{4})-(\d{2})$/.exec(String(t || ""));
+      return n ? new Date(Date.UTC(parseInt(n[1], 10), parseInt(n[2], 10) - 1 + a, 1)).toISOString().slice(0, 7) : t;
+    };
+
+    const Et = async t => {
+      if (!j(t)) return;
+      i.month = t;
+      if (_wrPickerDesktop) _wrPickerDesktop.setValue(t);
+      if (_wrPickerMobile) _wrPickerMobile.setValue(t);
+      if (_wrPickerMobHdr) _wrPickerMobHdr.setValue(t);
+      if (_wrPickerMobHdr2) _wrPickerMobHdr2.setValue(t);
+      await N();
+    };
+
+    let _wrPickerDesktop = null,
+        _wrPickerMobile = null,
+        _wrPickerMobHdr = null,
+        _wrPickerMobHdr2 = null;
+    const _wrDesktopSlot = document.getElementById("wrMonthSlot");
+    const _wrMobileSlot = document.getElementById("wrMonthMobileSlot");
+    const _wrMobHdrSlot = document.getElementById("wrMonthMobileHeaderSlot");
+    const _wrMobHdrSlot2 = document.getElementById("wrMonthMobileHeaderSlot2");
+    const _mpOnChange = async t => { await Et(t); };
+
+    if (_wrDesktopSlot) {
+      _wrPickerDesktop = _createMonthPicker({ value: i.month, onChange: _mpOnChange });
+      if (_wrPickerDesktop.el?.classList && _wrPickerDesktop.el?.className) {
+        _wrPickerDesktop.el.className += " hidden-on-mobile";
+      }
+      _wrDesktopSlot.replaceWith(_wrPickerDesktop.el);
+    }
+    if (_wrMobileSlot) {
+      _wrPickerMobile = _createMonthPicker({ value: i.month, onChange: _mpOnChange });
+      _wrPickerMobile.el.className += " hidden-on-desktop";
+      _wrMobileSlot.replaceWith(_wrPickerMobile.el);
+    }
+    if (_wrMobHdrSlot) {
+      _wrPickerMobHdr = _createMonthPicker({ value: i.month, onChange: _mpOnChange });
+      _wrMobHdrSlot.replaceWith(_wrPickerMobHdr.el);
+    }
+    if (_wrMobHdrSlot2) {
+      _wrPickerMobHdr2 = _createMonthPicker({ value: i.month, onChange: _mpOnChange });
+      _wrMobHdrSlot2.replaceWith(_wrPickerMobHdr2.el);
+    }
+
+    c("#wrPrevMonthMobile")?.addEventListener("click", () => Et(It(i.month, -1)));
+    c("#wrNextMonthMobile")?.addEventListener("click", () => Et(It(i.month, 1)));
+    c("#wrFilterToggleMobile")?.addEventListener("click", () => {
+      const t = c("#wrAdvancedFilters");
+      const a = c("#wrFilterToggleMobile");
+      if (t) t.classList.toggle("show");
+      if (a) a.classList.toggle("active");
+    });
+
+    c("#wrExport")?.addEventListener("click", async () => {
+      try {
+        const a = `/api/admin/work-reports/export.xlsx?${new URLSearchParams({
+          period: "month",
+          month: i.month,
+          sort: i.sort,
+          dept: i.dept,
+          q: i.q,
+          group: i.group ? "1" : "0"
+        }).toString()}`;
+        await Wt(a, `work_reports_${i.month}.xlsx`);
+      } catch (t) {
+        alert(String(t?.message || "\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"));
+      }
+    });
+
+    c("#wrExportPdf")?.addEventListener("click", async () => {
+      const btn = document.getElementById("wrExportPdf");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "\u51FA\u529B\u4E2D...";
+      }
+      try {
+        const a = `/api/admin/work-reports/export.pdf?${new URLSearchParams({
+          period: "month",
+          month: i.month,
+          sort: i.sort,
+          dept: i.dept,
+          q: i.q,
+          group: i.group ? "1" : "0"
+        }).toString()}`;
+        const resp = await fetch(a, { credentials: "include" });
+        if (!resp.ok) {
+          const e = await resp.json().catch(() => ({}));
+          throw new Error(e.message || `HTTP ${resp.status}`);
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const lnk = document.createElement("a");
+        lnk.href = url;
+        lnk.download = `work_reports_${i.month}.pdf`;
+        document.body.appendChild(lnk);
+        lnk.click();
+        document.body.removeChild(lnk);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } catch (t) {
+        alert(String(t?.message || "\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u306B\u5931\u6557\u3057\u307E\u3057\u305F"));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4z"/></svg> PDF\u51FA\u529B';
+        }
+      }
+    });
+
+    // ── 社員を選択してPDF/Excel出力モーダル ──────────────────────────────
+    let _wrPdfSelPicker = null;
+    let _wrPdfSelUsers = [];
+    let _wrPdfSelChecked = new Set();
+    let _wrPdfSelSearch = '';
+    let _wrPdfSelFormat = 'pdf';
+
+    function _wrBuildPdfSelList() {
+      const listEl = document.getElementById('wrPdfSelectList');
+      const cntEl = document.getElementById('wrPdfSelectCount');
+      const runBtn = document.getElementById('wrPdfSelectRun');
+      if (!listEl) return;
+      const q = _wrPdfSelSearch.trim().toLowerCase();
+      const filtered = _wrPdfSelUsers.filter(u => {
+        if (!q) return true;
+        return (
+          (u.employeeCode || '').toLowerCase().includes(q) ||
+          (u.username || '').toLowerCase().includes(q) ||
+          (u.departmentName || '').toLowerCase().includes(q)
+        );
+      });
+      if (!filtered.length) {
+        listEl.innerHTML = `<div style="padding:40px 16px;text-align:center;color:#94a3b8;font-size:13px;">該当する社員がいません</div>`;
+      } else {
+        listEl.innerHTML = filtered.map(u => {
+          const cid = `wrpsel_${u.userId}`;
+          const chk = _wrPdfSelChecked.has(u.userId) ? 'checked' : '';
+          return `
+            <label for="${cid}" style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background .12s;margin:1px 0;">
+              <input type="checkbox" id="${cid}" class="wr-psel-cb" data-uid="${u.userId}" ${chk} style="width:16px;height:16px;flex-shrink:0;">
+              <div style="display:flex;flex-direction:column;flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="background:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#475569;">${m(u.employeeCode || `EMP${String(u.userId).padStart(3,'0')}`)}</span>
+                  <span style="font-size:13px;font-weight:600;color:#0f172a;">${m(u.username || '')}</span>
+                </div>
+                <div style="font-size:11px;color:#64748b;margin-top:2px;">${m(u.departmentName || '')}${u.branchName ? ` / ${m(u.branchName)}` : ''}</div>
+              </div>
+            </label>`;
+        }).join('');
+        listEl.querySelectorAll('.wr-psel-cb').forEach(cb => {
+          cb.addEventListener('change', ev => {
+            const uid = parseInt(ev.target.dataset.uid, 10);
+            if (ev.target.checked) _wrPdfSelChecked.add(uid); else _wrPdfSelChecked.delete(uid);
+            _wrUpdatePdfSelCount();
+          });
+        });
+        listEl.querySelectorAll('label').forEach(lab => {
+          lab.addEventListener('mouseenter', () => { lab.style.background = '#f8fafc'; });
+          lab.addEventListener('mouseleave', () => { lab.style.background = ''; });
+        });
+      }
+      _wrUpdatePdfSelCount();
+    }
+
+    function _wrUpdatePdfSelCount() {
+      const cntEl = document.getElementById('wrPdfSelectCount');
+      const runBtn = document.getElementById('wrPdfSelectRun');
+      const n = _wrPdfSelChecked.size;
+      if (cntEl) cntEl.textContent = `${n} 名選択中`;
+      if (runBtn) {
+        if (n > 0) {
+          runBtn.disabled = false;
+          runBtn.style.opacity = '1';
+          runBtn.style.cursor = 'pointer';
+          runBtn.style.background = '#991b1b';
+        } else {
+          runBtn.disabled = true;
+          runBtn.style.opacity = '0.6';
+          runBtn.style.cursor = 'not-allowed';
+        }
+      }
+    }
+
+    async function _wrOpenPdfSelModal() {
+      const md = document.getElementById('wrPdfSelectModal');
+      if (!md) return;
+      md.style.display = 'flex';
+      if (!_wrPdfSelPicker) {
+        const slot = document.getElementById('wrPdfSelectMonthSlot');
+        if (slot) {
+          _wrPdfSelPicker = _createMonthPicker({ value: i.month, onChange: async v => { if (_wrPdfSelPicker) _wrPdfSelPicker.setValue(v); } });
+          slot.replaceWith(_wrPdfSelPicker.el);
+        }
+      } else {
+        _wrPdfSelPicker.setValue(i.month);
+      }
+      _wrPdfSelChecked = new Set();
+      _wrPdfSelSearch = '';
+      const sch = document.getElementById('wrPdfSelectSearch');
+      if (sch) sch.value = '';
+      const listEl = document.getElementById('wrPdfSelectList');
+      if (listEl) listEl.innerHTML = `<div style="padding:40px 16px;text-align:center;color:#64748b;font-size:13px;">読み込み中...</div>`;
+      try {
+        const r = await Nt(`/api/admin/users?employmentStatus=active&role=employee&limit=5000`);
+        const rows = Array.isArray(r?.rows) ? r.rows : (Array.isArray(r) ? r : []);
+        const _isEmployeeRole = u => {
+          const rl = String(u?.role || u?.roleName || '').trim().toLowerCase();
+          if (!rl) return true;
+          if (rl === 'employee' || rl === '3') return true;
+          if (['admin','manager','sysadmin','super_admin','super','owner','payroll'].includes(rl)) return false;
+          return true;
+        };
+        _wrPdfSelUsers = rows.filter(u => _isEmployeeRole(u)).map(u => {
+          const uid = Number(u.id ?? u.userId ?? 0);
+          return {
+            userId: uid,
+            employeeCode: String(u.employeeCode || u.employee_code || `EMP${String(uid).padStart(3,'0')}`),
+            username: String(u.username || u.name || ''),
+            departmentName: String(u.departmentName || u.department_name || u.department || ''),
+            branchName: String(u.branchName || u.branch_name || u.branch || '')
+          };
+        }).filter(u => u.userId > 0).sort((a,b) => (a.employeeCode||'').localeCompare(b.employeeCode||'') || a.userId - b.userId);
+        if (!_wrPdfSelUsers.length) {
+          if (listEl) listEl.innerHTML = `<div style="padding:40px 16px;text-align:center;color:#94a3b8;font-size:13px;">有効な社員がいません</div>`;
+          return;
+        }
+      } catch (err) {
+        const _isEmployeeRole = u => {
+          const rl = String(u?.role || '').trim().toLowerCase();
+          if (!rl) return true;
+          return !['admin','manager','sysadmin','super_admin','super','owner','payroll'].includes(rl);
+        };
+        _wrPdfSelUsers = Array.from(new Map((i.items || []).filter(r => _isEmployeeRole(r)).map(r => {
+          const uid = Number(r.userId);
+          return [uid, {
+            userId: uid,
+            employeeCode: r.employeeCode || `EMP${String(uid).padStart(3,'0')}`,
+            username: r.username || '',
+            departmentName: r.departmentName || '',
+            branchName: r.branchName || ''
+          }];
+        })).values()).sort((a,b) => (a.employeeCode||'').localeCompare(b.employeeCode||'') || a.userId - b.userId);
+      }
+      _wrBuildPdfSelList();
+    }
+    function _wrClosePdfSelModal() { const md = document.getElementById('wrPdfSelectModal'); if (md) md.style.display = 'none'; }
+
+    c("#wrExportPdfSelect")?.addEventListener("click", () => { _wrSetSelFormat('pdf'); _wrOpenPdfSelModal(); });
+    c("#wrExportPdfSelectMobile")?.addEventListener("click", () => { _wrSetSelFormat('pdf'); _wrOpenPdfSelModal(); });
+    c("#wrExport")?.addEventListener("click", async () => {
+      const withSel = !!(window.event && window.event.detail === 999);
+      if (withSel) { _wrSetSelFormat('xlsx'); _wrOpenPdfSelModal(); return; }
+      _wrSetSelFormat('xlsx'); _wrOpenPdfSelModal(); return;
+    });
+    c("#wrExportMobile")?.addEventListener("click", () => { _wrSetSelFormat('xlsx'); _wrOpenPdfSelModal(); });
+    c("#wrPdfSelectClose")?.addEventListener("click", () => _wrClosePdfSelModal());
+    c("#wrPdfSelectCancel")?.addEventListener("click", () => _wrClosePdfSelModal());
+    document.getElementById("wrPdfSelectModal")?.addEventListener("click", ev => { if (ev.target.id === "wrPdfSelectModal") _wrClosePdfSelModal(); });
+    c("#wrPdfSelectSearch")?.addEventListener("input", ev => { _wrPdfSelSearch = ev.target.value; _wrBuildPdfSelList(); });
+    c("#wrPdfSelectAll")?.addEventListener("click", () => {
+      const q = _wrPdfSelSearch.trim().toLowerCase();
+      _wrPdfSelUsers.forEach(u => {
+        if (q && !( (u.employeeCode||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || (u.departmentName||'').toLowerCase().includes(q) )) return;
+        _wrPdfSelChecked.add(u.userId);
+      });
+      _wrBuildPdfSelList();
+    });
+    c("#wrPdfClearAll")?.addEventListener("click", () => { _wrPdfSelChecked.clear(); _wrBuildPdfSelList(); });
+
+    function _wrSetSelFormat(fmt) {
+      _wrPdfSelFormat = String(fmt || 'pdf').toLowerCase() === 'xlsx' ? 'xlsx' : 'pdf';
+      const titleEl = document.getElementById('wrPdfSelTitle');
+      const subEl = document.getElementById('wrPdfSelSubtitle');
+      const runBtn = document.getElementById('wrPdfSelectRun');
+      const runText = document.getElementById('wrPdfSelRunText');
+      const runIcon = document.getElementById('wrPdfSelRunIcon');
+      if (titleEl) titleEl.textContent = _wrPdfSelFormat === 'xlsx' ? '社員を選択してExcelを出力' : '社員を選択してPDFを出力';
+      if (subEl) subEl.textContent = _wrPdfSelFormat === 'xlsx' ? '月を選び、出力する社員にチェックを入れてください' : '月を選び、出力する社員にチェックを入れてください';
+      if (runText) runText.textContent = _wrPdfSelFormat === 'xlsx' ? 'Excel出力実行' : 'PDF出力実行';
+      if (runBtn) {
+        if (_wrPdfSelFormat === 'xlsx') {
+          runBtn.style.background = '#1d4ed8';
+        } else {
+          runBtn.style.background = '#991b1b';
+        }
+      }
+      if (runIcon) {
+        if (_wrPdfSelFormat === 'xlsx') {
+          runIcon.innerHTML = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M14 13l-4 4-4-4"/><polyline points="10 9 10 17 10 9"/>';
+        } else {
+          runIcon.innerHTML = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4z"/>';
+        }
+      }
+    }
+
+    c("#wrPdfSelectRun")?.addEventListener("click", async () => {
+      const runBtn = document.getElementById("wrPdfSelectRun");
+      const uids = Array.from(_wrPdfSelChecked).sort((a,b) => a-b);
+      if (!uids.length) return;
+      const pm = _wrPdfSelPicker ? _wrPdfSelPicker.getValue() : i.month;
+      const orig = runBtn.innerHTML;
+      try {
+        runBtn.disabled = true; runBtn.style.opacity = '0.7';
+        const runText = document.getElementById('wrPdfSelRunText');
+        if (runText) runText.textContent = '出力中...';
+        const isXlsx = _wrPdfSelFormat === 'xlsx';
+        const endpoint = isXlsx ? '/api/admin/work-reports/export.xlsx' : '/api/admin/work-reports/export.pdf';
+        const qp = new URLSearchParams({
+          period: 'month', month: pm, sort: 'employee', dept: '', q: '', group: '1', userIds: uids.join(',')
+        }).toString();
+        const a = `${endpoint}?${qp}`;
+        // ファイル名: 月_社員コード_氏名 (1名) または 月_N名 (複数)
+        const selUsers = _wrPdfSelUsers.filter(u => _wrPdfSelChecked.has(u.userId));
+        const fileSuffix = selUsers.length === 1
+          ? `${selUsers[0].employeeCode || selUsers[0].userId}_${(selUsers[0].username||'').replace(/[\\/:*?"<>|]/g,'_')}`
+          : `${selUsers.length}名`;
+        const ext = isXlsx ? 'xlsx' : 'pdf';
+        const dlName = `work_reports_${pm}_${fileSuffix}.${ext}`;
+        if (isXlsx) {
+          const lnk = document.createElement('a');
+          lnk.href = a;
+          lnk.download = dlName;
+          document.body.appendChild(lnk); lnk.click(); document.body.removeChild(lnk);
+          setTimeout(() => _wrClosePdfSelModal(), 600);
+        } else {
+          const resp = await fetch(a, { credentials: 'include' });
+          if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.message || `HTTP ${resp.status}`); }
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const lnk = document.createElement('a');
+          lnk.href = url;
+          lnk.download = dlName;
+          document.body.appendChild(lnk); lnk.click(); document.body.removeChild(lnk);
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+          _wrClosePdfSelModal();
+        }
+      } catch (t) {
+        alert(String(t?.message || 'エクスポートに失敗しました'));
+      } finally {
+        runBtn.disabled = false; runBtn.style.opacity = ''; runBtn.innerHTML = orig;
+        _wrUpdatePdfSelCount();
+      }
+    });
+
+    const Lt = c("#wrAdvancedFilters");
+    const B = document.getElementById("attHubMobileActions");
+
+    if (window.innerWidth <= 768 && B) {
+      B.style.flex = "1";
+      B.style.marginLeft = "8px";
+      B.innerHTML = `
       <div style="display:flex; align-items:center; gap:6px; width:100%; justify-content: space-between;">
         <input id="wrQueryMobileHeader" type="text" placeholder="\u691C\u7D22..." value="${m(i.q)}" style="flex: 1; min-width: 60px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; padding: 0 6px 0 24px; font-size: 13px; background: #fff url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2364748b\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\\'%3E%3C/path%3E%3C/svg%3E') no-repeat 6px center / 14px; color: #1f2937; outline: none; margin: 0;">
         <div style="display:flex; align-items:center; gap:6px; flex-shrink: 0;">
-          <input type="month" id="wrMonthMobileHeader" value="${i.month}" style="height: 32px; padding: 0 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 120px; color: #1f2937; outline: none; margin: 0; box-sizing: border-box; background: white;">
+          <span id="wrMonthMobileHeaderSlot2"></span>
           <button type="button" id="wrFilterToggleHeader" style="height: 32px; width: 32px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff; display: flex; align-items: center; justify-content: center; padding: 0; color: #475569; cursor: pointer; margin: 0; flex-shrink: 0;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
           </button>
         </div>
       </div>
-    `,document.getElementById("wrQueryMobileHeader").addEventListener("change",async l=>{i.q=l.target.value;const s=c("#wrQuery");s&&(s.value=i.q),await N()}),document.getElementById("wrMonthMobileHeader").addEventListener("change",async l=>{i.month=l.target.value;const s=c("#wrMonth");s&&(s.value=i.month),j(i.month)&&await N()});const n=document.getElementById("wrFilterToggleHeader");n.addEventListener("click",()=>{Lt&&Lt.classList.toggle("show"),n.classList.toggle("active"),n.classList.contains("active")?(n.style.background="#f1f5f9",n.style.borderColor="#94a3b8",n.style.color="#0f172a"):(n.style.background="#fff",n.style.borderColor="#cbd5e1",n.style.color="#475569")})}else B&&(B.innerHTML="");c("#wrSort")?.addEventListener("change",async()=>{const t=c("#wrSort");i.sort=String(t?.value||"dateDesc"),U();const a=A(i.items);i.group?Q(a):D(a,!0);try{const n=c("#wrSummary");n&&n.innerHTML}catch{}}),c("#wrDept")?.addEventListener("change",async()=>{const t=c("#wrDept");i.dept=String(t?.value||""),U();const a=A(i.items);i.group?Q(a):D(a,!0);try{const n=c("#wrSummary");n&&n.innerHTML}catch{}}),c("#wrQuery")?.addEventListener("input",async()=>{const t=c("#wrQuery");i.q=String(t?.value||""),U();const a=A(i.items);i.group?Q(a):D(a,!0);try{const n=c("#wrSummary");n&&n.innerHTML}catch{}}),c("#wrGroup")?.addEventListener("change",async()=>{const t=c("#wrGroup");i.group=!!t?.checked,U();const a=A(i.items);i.group?Q(a):D(a,!0)}),await N()}export{ee as mount};
+    `;
+        document.getElementById("wrQueryMobileHeader").addEventListener("change", async l => {
+          i.q = l.target.value;
+          const s = c("#wrQuery");
+          if (s) s.value = i.q;
+          await N();
+        });
+        const n = document.getElementById("wrFilterToggleHeader");
+        n.addEventListener("click", () => {
+          if (Lt) Lt.classList.toggle("show");
+          n.classList.toggle("active");
+          if (n.classList.contains("active")) {
+            n.style.background = "#f1f5f9";
+            n.style.borderColor = "#94a3b8";
+            n.style.color = "#0f172a";
+          } else {
+            n.style.background = "#fff";
+            n.style.borderColor = "#cbd5e1";
+            n.style.color = "#475569";
+          }
+        });
+      } else if (B) {
+        B.innerHTML = "";
+      }
+
+      c("#wrSort")?.addEventListener("change", async () => {
+        const t = c("#wrSort");
+        i.sort = String(t?.value || "dateDesc");
+        U();
+        const a = A(i.items);
+        if (i.group) Q(a); else D(a, true);
+      });
+
+      c("#wrDept")?.addEventListener("change", async () => {
+        const t = c("#wrDept");
+        i.dept = String(t?.value || "");
+        U();
+        const a = A(i.items);
+        if (i.group) Q(a); else D(a, true);
+      });
+
+      c("#wrQuery")?.addEventListener("input", async () => {
+        const t = c("#wrQuery");
+        i.q = String(t?.value || "");
+        U();
+        const a = A(i.items);
+        if (i.group) Q(a); else D(a, true);
+      });
+
+      c("#wrGroup")?.addEventListener("change", async () => {
+        const t = c("#wrGroup");
+        i.group = !!(t?.checked);
+        U();
+        const a = A(i.items);
+        if (i.group) Q(a); else D(a, true);
+      });
+
+      await N();
+    }
+
+    export { ee as mount };

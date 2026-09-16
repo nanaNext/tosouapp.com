@@ -76,8 +76,11 @@ router.post('/admin/upload',
       keyVersion = payslipKeyVersion;
     }
 
+    // Build S3 key with tenant prefix for isolation between companies
+    const uploadTenantId = req.tenantId || 0;
+    const s3Key = `payslips/${uploadTenantId}/${filename}`;
     if (s3Service.isR2Configured()) {
-      await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
+      await s3Service.uploadToR2(s3Key, outBuf, 'application/pdf');
     } else {
       const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
       fs.mkdirSync(path.dirname(dstPath), { recursive: true });
@@ -270,7 +273,10 @@ router.delete('/admin/:id',
     const deleted = await repo.deleteById(id);
     try {
       if (s3Service.isR2Configured() && deleted.filename) {
-        await s3Service.deleteFromR2(`payslips/${deleted.filename}`);
+        const deleteTenantId = req.tenantId || 0;
+        // Try tenant-prefixed key first; fall back to legacy flat key
+        const deleted1 = await s3Service.deleteFromR2(`payslips/${deleteTenantId}/${deleted.filename}`).catch(() => null);
+        if (!deleted1) await s3Service.deleteFromR2(`payslips/${deleted.filename}`).catch(() => null);
       } else {
         const p = path.join(__dirname, '../../', 'uploads', 'payslips', deleted.filename);
         if (fs.existsSync(p)) fs.unlinkSync(p);
@@ -336,9 +342,15 @@ router.post('/admin/replace/:id',
       keyVersion = payslipKeyVersion;
     }
 
+    const replaceTenantId = req.tenantId || 0;
     if (s3Service.isR2Configured()) {
-      await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
+      await s3Service.uploadToR2(`payslips/${replaceTenantId}/${filename}`, outBuf, 'application/pdf');
       try { fs.unlinkSync(srcPath); } catch (e) { /* silently ignored */ }
+      // Delete old file from S3 (try tenant-prefixed, then legacy)
+      if (target.filename) {
+        await s3Service.deleteFromR2(`payslips/${replaceTenantId}/${target.filename}`).catch(() => null);
+        await s3Service.deleteFromR2(`payslips/${target.filename}`).catch(() => null);
+      }
     } else {
       if (payslipEncKey) {
         const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
@@ -404,9 +416,15 @@ router.post('/admin/replace-by-month',
       keyVersion = payslipKeyVersion;
     }
 
+    const replaceByMonthTenantId = req.tenantId || 0;
     if (s3Service.isR2Configured()) {
-      await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
+      await s3Service.uploadToR2(`payslips/${replaceByMonthTenantId}/${filename}`, outBuf, 'application/pdf');
       try { fs.unlinkSync(srcPath); } catch (e) { /* silently ignored */ }
+      // Delete old file from S3 (try tenant-prefixed, then legacy)
+      if (target.filename) {
+        await s3Service.deleteFromR2(`payslips/${replaceByMonthTenantId}/${target.filename}`).catch(() => null);
+        await s3Service.deleteFromR2(`payslips/${target.filename}`).catch(() => null);
+      }
     } else {
       if (payslipEncKey) {
         const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
@@ -454,11 +472,14 @@ router.get('/me/file/:id',
     }
     const filePath = path.join(__dirname, '../../', 'uploads', 'payslips', row.filename);
     let fileBuffer = null;
-    
+
     if (s3Service.isR2Configured()) {
-      fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`);
+      const meDownloadTenantId = req.tenantId || 0;
+      // Try tenant-prefixed key first; fall back to legacy flat key for existing files
+      fileBuffer = await s3Service.downloadFromR2(`payslips/${meDownloadTenantId}/${row.filename}`).catch(() => null);
+      if (!fileBuffer) fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`).catch(() => null);
     }
-    
+
     if (!fileBuffer && fs.existsSync(filePath)) {
       fileBuffer = fs.readFileSync(filePath);
     }
@@ -466,16 +487,16 @@ router.get('/me/file/:id',
     if (!fileBuffer) {
       return res.status(404).json({ message: 'File missing' });
     }
-    
+
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
     } catch (e) { /* silently ignored */ }
-    
+
     res.setHeader('Content-Type', 'application/pdf');
     setAttachmentFilename(res, row.original_name || row.filename);
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     res.setHeader('Pragma', 'no-cache');
-    
+
     if (row.iv && row.auth_tag && payslipEncKey && String(row.filename || '').endsWith('.enc')) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
       const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;
@@ -522,11 +543,14 @@ router.get('/admin/file/:id',
     }
     const filePath = path.join(__dirname, '../../', 'uploads', 'payslips', row.filename);
     let fileBuffer = null;
-    
+
     if (s3Service.isR2Configured()) {
-      fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`);
+      const adminDownloadTenantId = req.tenantId || 0;
+      // Try tenant-prefixed key first; fall back to legacy flat key for existing files
+      fileBuffer = await s3Service.downloadFromR2(`payslips/${adminDownloadTenantId}/${row.filename}`).catch(() => null);
+      if (!fileBuffer) fileBuffer = await s3Service.downloadFromR2(`payslips/${row.filename}`).catch(() => null);
     }
-    
+
     if (!fileBuffer && fs.existsSync(filePath)) {
       fileBuffer = fs.readFileSync(filePath);
     }
@@ -534,16 +558,16 @@ router.get('/admin/file/:id',
     if (!fileBuffer) {
       return res.status(404).json({ message: 'File missing' });
     }
-    
+
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
     } catch (e) { /* silently ignored */ }
-    
+
     res.setHeader('Content-Type', 'application/pdf');
     setAttachmentFilename(res, row.original_name || row.filename);
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     res.setHeader('Pragma', 'no-cache');
-    
+
     if (row.iv && row.auth_tag && payslipEncKey && String(row.filename || '').endsWith('.enc')) {
       const keyBuf = Buffer.from(payslipEncKey, payslipEncKey.startsWith('base64:') ? 'base64' : 'hex');
       const key = payslipEncKey.startsWith('base64:') ? keyBuf.slice(7) : keyBuf;

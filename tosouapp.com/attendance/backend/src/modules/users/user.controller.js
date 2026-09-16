@@ -80,6 +80,23 @@ exports.create = async (req, res) => {
     if (existing) {
       return res.status(409).json({ message: 'Email đã tồn tại!' });
     }
+    // Enforce per-tenant user limit
+    if (req.tenantId) {
+      try {
+        const tenantRepo = require('../tenants/tenant.repository');
+        const tenant = await tenantRepo.getTenantById(req.tenantId);
+        if (tenant && tenant.max_users && tenant.max_users > 0) {
+          const db = require('../../core/database/mysql');
+          const [[{ cnt } = { cnt: 0 }]] = await db.query(
+            `SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = ? AND (employment_status IS NULL OR employment_status != 'terminated')`,
+            [req.tenantId]
+          );
+          if (Number(cnt) >= tenant.max_users) {
+            return res.status(403).json({ message: `ユーザー上限 (${tenant.max_users}名) に達しました。プランをアップグレードしてください。` });
+          }
+        }
+      } catch (e) { /* limit check failure should not block user creation */ }
+    }
     const hashed = bcrypt.hashSync(password, bcryptRounds);
     const id = await repo.createUser({ employeeCode, username, email, password: hashed, role, departmentId, branchId, employmentType, hireDate, level, managerId, phone, birthDate, gender, avatarUrl, probationDate, officialDate, contractEnd, baseSalary, shiftId, tenantId: req.tenantId || null });
 

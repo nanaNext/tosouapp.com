@@ -138,7 +138,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign({ id: user.id, role, v: tokenVersion }, jwtSecretCurrent, { expiresIn: accessTokenExpires });
     const rt = crypto.randomBytes(48).toString('base64url');
     const expires = new Date(Date.now() + refreshTokenExpiresDays * 24 * 60 * 60 * 1000);
-    await refreshRepo.createToken({ userId: user.id, token: rt, expiresAt: expires.toISOString().slice(0,19).replace('T',' '), userAgent: req.headers['user-agent'], ip: req.ip });
+    await refreshRepo.createToken({ userId: user.id, token: rt, expiresAt: expires.toISOString().slice(0,19).replace('T',' '), userAgent: req.headers['user-agent'], ip: req.ip, tenantId: user.tenant_id || null });
     try { await userRepo.updateUser(user.id, { lastLogin: new Date().toISOString().slice(0,19).replace('T',' ') }); } catch (e) { log.warn('update_last_login_failed', { userId: user.id, error_message: e.message }); }
     try { await userRepo.touchLastActive(user.id); } catch (e) { log.warn('touch_last_active_failed', { userId: user.id, error_message: e.message }); }
     const isHttps = isHttpsRequest(req);
@@ -318,7 +318,8 @@ exports.forgotPassword = async (req, res) => {
       token,
       expiresAt: expires.toISOString().slice(0,19).replace('T',' '),
       userAgent: req.headers['user-agent'],
-      ip: req.ip
+      ip: req.ip,
+      tenantId: user.tenant_id || null
     });
     const resetUrl = buildResetUrl(req, token);
     try {
@@ -355,7 +356,9 @@ exports.resetPassword = async (req, res) => {
     const { token, newPassword } = req.body || {};
     if (!token || !newPassword) return res.status(400).json({ message: 'Missing token/newPassword' });
     const pr = require('./password_reset.repository');
-    const row = await pr.findValid(token);
+    // Pass tenantId for scoped validation when available (from X-Tenant-Id header or req.tenantId)
+    const tenantIdForReset = req.tenantId || null;
+    const row = await pr.findValid(token, tenantIdForReset);
     if (!row) {
       return res.status(401).json({ message: 'Invalid token' });
     }
@@ -532,7 +535,19 @@ exports.refresh = async (req, res) => {
         }
       } catch (e) { /* silently ignored */ }
     }
-    const row = await refreshRepo.findToken(refreshToken);
+    // Scope refresh token lookup by tenant (from current session) to prevent cross-tenant reuse
+    const refreshTenantId = (() => {
+      try {
+        const sessionToken = req.cookies?.session_token || '';
+        if (!sessionToken) return null;
+        const secrets = [jwtSecretCurrent, process.env.JWT_SECRET_PREVIOUS].filter(Boolean);
+        for (const s of secrets) {
+          try { const d = require('jsonwebtoken').verify(sessionToken, s); if (d?.tid) return d.tid; } catch (e) { /* silently ignored */ }
+        }
+      } catch (e) { /* silently ignored */ }
+      return null;
+    })();
+    const row = await refreshRepo.findToken(refreshToken, refreshTenantId);
     if (!row) {
       const any = await refreshRepo.findAnyToken(refreshToken);
       if (any && any.revoked_at) {
@@ -595,7 +610,7 @@ exports.refresh = async (req, res) => {
     const newRt = crypto.randomBytes(48).toString('base64url');
     const expires = new Date(Date.now() + refreshTokenExpiresDays * 24 * 60 * 60 * 1000);
     await refreshRepo.revokeToken(refreshToken);
-    await refreshRepo.createToken({ userId: row.userId, token: newRt, expiresAt: expires.toISOString().slice(0,19).replace('T',' '), userAgent: req.headers['user-agent'], ip: req.ip });
+    await refreshRepo.createToken({ userId: row.userId, token: newRt, expiresAt: expires.toISOString().slice(0,19).replace('T',' '), userAgent: req.headers['user-agent'], ip: req.ip, tenantId: row.tenant_id || null });
     try { await userRepo.touchLastActive(row.userId); } catch (e) { /* silently ignored */ }
     res.cookie('refreshToken', newRt, {
       httpOnly: true,

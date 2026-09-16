@@ -4,6 +4,7 @@ const { authenticate, authorize } = require('../../core/middleware/authMiddlewar
 const { permit } = require('../../core/middleware/rbac');
 const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const controller = require('./leave.controller');
+const exportCtrl = require('./leave.export.controller');
 
 // Apply resolveTenant to ALL leave routes for tenant isolation
 router.use(authenticate, resolveTenant);
@@ -29,6 +30,7 @@ router.get('/used-days', authenticate, authorize('manager','admin'), controller.
 router.get('/', authenticate, authorize('manager','admin'), controller.listUser);
 router.get('/admin-requests', authenticate, authorize('manager','admin'), controller.listAdminRequests);
 router.get('/pending', authenticate, authorize('manager','admin'), controller.listPending);
+router.get('/export.xlsx', authorize('manager','admin'), exportCtrl.exportLeaveXlsx);
 router.patch('/:id/status', authenticate, authorize('manager','admin'), controller.updateStatus);
 
 module.exports = router;

@@ -2,6 +2,10 @@
   "name": "attendance-backend",
   "version": "1.0.0",
   "main": "attendance/backend/src/server.js",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "start": "node attendance/backend/src/server.js",
     "start:prod:local": "set NODE_ENV=production&& set APP_ENV=production&& set PORT=3000&& set DISABLE_SCHEDULERS=true&& set DISABLE_CANONICAL_HOST=true&& set ENFORCE_CANONICAL_HOST=false&& node attendance/backend/src/server.js",

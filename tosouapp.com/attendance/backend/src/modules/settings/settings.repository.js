@@ -15,6 +15,7 @@ module.exports = {
           workEnd CHAR(5) NULL,
           breakMinutes INT NULL,
           rounding VARCHAR(16) NULL,
+          timezone VARCHAR(64) DEFAULT 'Asia/Tokyo',
           MAINTENANCE_MODE TINYINT(1) DEFAULT 0,
           DISABLE_PAYSLIP_UPLOAD TINYINT(1) DEFAULT 0,
           DISABLE_PAYSLIP_DOWNLOAD TINYINT(1) DEFAULT 0,
@@ -48,6 +49,7 @@ module.exports = {
       if (!set.has('REQUIRE_NOTE_ON_REMOTE')) alters.push(`ADD COLUMN REQUIRE_NOTE_ON_REMOTE TINYINT(1) DEFAULT 0`);
       if (!set.has('COUNTRY_WHITELIST')) alters.push(`ADD COLUMN COUNTRY_WHITELIST VARCHAR(255) NULL`);
       if (!set.has('MAX_DEVICES_PER_USER')) alters.push(`ADD COLUMN MAX_DEVICES_PER_USER INT DEFAULT 5`);
+      if (!set.has('timezone')) alters.push(`ADD COLUMN timezone VARCHAR(64) DEFAULT 'Asia/Tokyo'`);
       if (alters.length) {
         await db.query(`ALTER TABLE settings ${alters.join(', ')}`);
       }
@@ -84,6 +86,20 @@ module.exports = {
     return null;
   },
 
+  /**
+   * Returns the IANA timezone string for the given tenant.
+   * Defaults to 'Asia/Tokyo' when not configured.
+   * @param {number|null} tenantId
+   * @returns {Promise<string>}
+   */
+  async getTimezone(tenantId = null) {
+    const tid = _tid(tenantId);
+    const where = tid != null ? `WHERE tenant_id = ?` : `WHERE id = 1`;
+    const params = tid != null ? [tid] : [];
+    const [rows] = await db.query(`SELECT timezone FROM settings ${where} LIMIT 1`, params);
+    return (rows && rows[0] && rows[0].timezone) ? String(rows[0].timezone) : 'Asia/Tokyo';
+  },
+
   async updateSettings(data, tenantId = null) {
     const tid = _tid(tenantId);
     if (tid != null) {
@@ -92,8 +108,8 @@ module.exports = {
     const where = tid != null ? `tenant_id = ?` : `id = 1`;
     const params = tid != null ? [tid] : [];
     const sql = `
-      UPDATE settings 
-      SET workStart = ?, workEnd = ?, breakMinutes = ?, rounding = ?
+      UPDATE settings
+      SET workStart = ?, workEnd = ?, breakMinutes = ?, rounding = ?, timezone = ?
       WHERE ${where}
     `;
     await db.query(sql, [
@@ -101,6 +117,7 @@ module.exports = {
       data.workEnd,
       data.breakMinutes,
       data.rounding,
+      data.timezone || 'Asia/Tokyo',
       ...params
     ]);
   },

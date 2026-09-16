@@ -309,9 +309,12 @@ exports.approveShiftMonth = async (req, res) => {
     }
     await db.query(`UPDATE shift_month_status SET status = ? WHERE userId = ? AND month = ?`, [status, userId, month]);
 
-    // Khi APPROVED: tự động lưu kubun '休日' cho ngày OFF và gửi thông báo cho nhân viên
+    // ⚠️ QUY TẮC CỨNG: Hành động APPROVED シフト CHỈ cập nhật trạng thái lịch (shift_month_status / shift_requests)
+    //                     Tuyệt đối KHÔNG được tác động gì vào bảng attendance_daily (bảng tháng nhân viên).
+    //                     Dữ liệu bảng tháng nhân viên chỉ được sửa trực tiếp tại màn hình bảng tháng (putMonthBulk / putDay).
     if (status === 'APPROVED') {
       try {
+        // Lấy danh sách ngày OFF để hiển thị trong thông báo gửi cho nhân viên
         const [shifts] = await db.query(
           `SELECT date, status, leaveType FROM shift_requests WHERE userId = ? AND date LIKE ?`,
           [userId, `${month}-%`]
@@ -321,8 +324,6 @@ exports.approveShiftMonth = async (req, res) => {
           if (s.status === 'OFF') {
             const d = String(s.date).slice(0, 10);
             offDates.push(d);
-            // Upsert kubun = '休日' cho ngày OFF
-            await repo.upsertDaily(userId, d, { kubun: '休日' });
           }
         }
         // Gửi thông báo cho nhân viên nếu có ngày OFF

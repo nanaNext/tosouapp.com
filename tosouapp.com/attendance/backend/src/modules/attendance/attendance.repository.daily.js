@@ -270,7 +270,25 @@ module.exports = {
     if (Object.prototype.hasOwnProperty.call(incoming, 'kubun')) {
       const k = String(incoming.kubun || '').trim();
       const allowed = new Set(['', '出勤', '半休', '半休(有給)', '欠勤', '有給休暇', '無給休暇', '代替休日', '振替出勤', '休日', '休日出勤', '代替出勤']);
-      kubun = allowed.has(k) ? (k || null) : kubun;
+      if (allowed.has(k)) {
+        const newKubun = k || null;
+        // Bảo vệ: Nếu incoming muốn set '休日' nhưng existing đã có kubun cụ thể (khác null/'' và khác '休日')
+        //         → giữ nguyên existing, tránh ghi đè dữ liệu đi làm / nghỉ phép bằng 休日
+        if (newKubun === '休日') {
+          const exK = String(existing?.kubun || '').trim();
+          const protectedKubun = new Set([
+            '出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤',
+            '有給休暇', '欠勤', '無給休暇', '代替休日'
+          ]);
+          if (exK !== '' && exK !== '休日' && protectedKubun.has(exK)) {
+            // keep existing kubun (skip override)
+          } else {
+            kubun = newKubun;
+          }
+        } else {
+          kubun = newKubun;
+        }
+      }
     }
 
     let kubunConfirmed = existing?.kubun_confirmed ?? 0;

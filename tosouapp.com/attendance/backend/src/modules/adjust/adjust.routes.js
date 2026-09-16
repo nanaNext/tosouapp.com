@@ -3,8 +3,10 @@ const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const controller = require('./adjust.controller');
-console.log('🔧 adjust.routes.js loaded, controller.listAll exists:', typeof controller.listAll);
+const exportCtrl = require('./adjust.export.controller');
 router.use(authenticate, resolveTenant);
+// export phải trước /admin để không bị param route bắt nhầm
+router.get('/admin/export', authorize('admin','manager'), exportCtrl.exportAdjust);
 router.get('/admin', authorize('admin','manager'), controller.listAll);
 router.get('/my', authorize('employee','manager','admin'), controller.listMine);
 router.get('/:id/messages', authorize('employee','manager','admin'), controller.listMessages);

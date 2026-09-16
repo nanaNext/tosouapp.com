@@ -24,14 +24,21 @@ function redirectToLogin(req, res) {
   return res.redirect(302, target);
 }
 
-async function getCachedUser(id) {
+function _cacheKey(id, tenantId = null) {
+  // Include tenantId in cache key to prevent cross-tenant cache pollution.
+  // Two users with the same ID in different tenants must not share a cache entry.
+  const tid = tenantId != null ? String(tenantId) : '0';
+  return `auth:user:${tid}:${id}`;
+}
+
+async function getCachedUser(id, tenantId = null) {
   const now = Date.now();
-  
+  const key = _cacheKey(id, tenantId);
+
   // Dùng Redis nếu có
   if (redisClient && redisClient.status === 'ready') {
-    const redisKey = `auth:user:${id}`;
     try {
-      const cachedData = await redisClient.get(redisKey);
+      const cachedData = await redisClient.get(key);
       if (cachedData) {
         return JSON.parse(cachedData);
       }
@@ -40,14 +47,14 @@ async function getCachedUser(id) {
     }
   } else {
     // In-memory fallback
-    const cached = tokenVersionCache.get(id);
+    const cached = tokenVersionCache.get(key);
     if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
       return cached.user;
     }
   }
 
   const user = await userRepo.getUserById(id);
-  
+
   if (user) {
     const userDataToCache = {
       id: user.id,
@@ -61,16 +68,16 @@ async function getCachedUser(id) {
 
     if (redisClient && redisClient.status === 'ready') {
       try {
-        await redisClient.setex(`auth:user:${id}`, Math.floor(CACHE_TTL_MS / 1000), JSON.stringify(userDataToCache));
+        await redisClient.setex(key, Math.floor(CACHE_TTL_MS / 1000), JSON.stringify(userDataToCache));
       } catch (err) {
         console.error('[AuthCache] Lỗi khi lưu Redis:', err.message);
       }
     } else {
-      tokenVersionCache.set(id, { 
-        user: userDataToCache, 
-        timestamp: now 
+      tokenVersionCache.set(key, {
+        user: userDataToCache,
+        timestamp: now
       });
-      
+
       if (tokenVersionCache.size > 2000) {
         for (const [k, v] of tokenVersionCache.entries()) {
           if (now - v.timestamp >= CACHE_TTL_MS) tokenVersionCache.delete(k);
@@ -78,7 +85,7 @@ async function getCachedUser(id) {
       }
     }
   }
-  
+
   return user;
 }
 
@@ -88,14 +95,18 @@ async function getCachedUser(id) {
  * revoke, role change) so the revocation takes effect without waiting for TTL.
  * @param {number|string} id
  */
-async function invalidateUserCache(id) {
+async function invalidateUserCache(id, tenantId = null) {
   if (!id) return;
   const uid = String(id);
-  // Clear in-memory fallback
-  tokenVersionCache.delete(uid);
+  const key = _cacheKey(uid, tenantId);
+  // Clear in-memory fallback — remove both tenant-specific and any legacy key
+  tokenVersionCache.delete(key);
+  tokenVersionCache.delete(uid); // legacy key (no tenant prefix) for backward compat
   // Clear Redis cache
   if (redisClient && redisClient.status === 'ready') {
     try {
+      await redisClient.del(key);
+      // Also delete legacy key format in case it exists from before this fix
       await redisClient.del(`auth:user:${uid}`);
     } catch (err) {
       console.error('[AuthCache] Failed to invalidate Redis cache for user', uid, err.message);
@@ -120,7 +131,7 @@ async function authenticateToken(token) {
     err.status = 403;
     throw err;
   }
-  const user = await getCachedUser(decoded.id);
+  const user = await getCachedUser(decoded.id, decoded?.tid ?? null);
   const dbVersion = user?.token_version || 1;
   const tokenVersion = decoded?.v || 1;
   if (!user || dbVersion !== tokenVersion) {

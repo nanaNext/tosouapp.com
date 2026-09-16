@@ -1,7 +1,7 @@
-import{requireAdmin as j}from"../_shared/require-admin.js";import{fetchJSONAuth as y}from"../../api/http.api.js";const d=e=>document.querySelector(e),_=()=>new Date().toLocaleDateString("sv-SE"),z=()=>_().slice(0,7),I=e=>{const i=String(e||"").toLowerCase();return i==="applied"?"\u627F\u8A8D\u5F85\u3061":i==="approved"?"\u627F\u8A8D\u6E08\u307F":i==="rejected"?"\u5DEE\u623B\u3057":i==="draft"?"\u4E0B\u66F8\u304D":i==="pending"?"\u672A\u7533\u8ACB":i==="denied"?"\u5374\u4E0B":i==="paid"?"\u652F\u7D66\u6E08\u307F":i||"-"},R=async()=>{const e=d("#adminContent");if(!e)return;const i=new URLSearchParams(window.location.search||""),p=i.get("month")||z(),c=i.get("userId")||"";e.className="",e.style.maxWidth="1000px",e.style.width="100%",e.style.margin="20px auto",e.style.padding="0 16px",e.innerHTML=`
+import{requireAdmin as j}from"../_shared/require-admin.js";import{fetchJSONAuth as y}from"../../api/http.api.js";const d=e=>document.querySelector(e),_=()=>new Date().toLocaleDateString("sv-SE"),z=()=>_().slice(0,7),I=e=>{const i=String(e||"").toLowerCase();return i==="applied"?"\u627F\u8A8D\u5F85\u3061":i==="approved"?"\u627F\u8A8D\u6E08\u307F":i==="rejected"?"\u5DEE\u623B\u3057":i==="draft"?"\u4E0B\u66F8\u304D":i==="pending"?"\u672A\u7533\u8ACB":i==="denied"?"\u5374\u4E0B":i==="paid"?"\u652F\u7D66\u6E08\u307F":i||"-"},R=async()=>{const e=d("#adminContent");if(!e)return;const i=new URLSearchParams(window.location.search||""),p=i.get("month")||z(),c=i.get("userId")||"";e.className="",e.style.maxWidth="1000px",e.style.width="100%",e.style.margin="20px auto",e.style.padding="20px 48px",e.innerHTML=`
     <div class="exp-month-detail">
       <style>
-        .exp-month-detail { display:grid; gap:10px; color:#0f172a; }
+        .exp-month-detail { display:grid; gap:10px; color:#0f172a; padding: 24px 32px; }
         .exp-month-detail .head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
         .exp-month-detail .title { margin:0; font-size:20px; font-weight:700; }
         .exp-month-detail .meta { color:#475569; font-size:13px; }
@@ -13,18 +13,18 @@ import{requireAdmin as j}from"../_shared/require-admin.js";import{fetchJSONAuth 
         .exp-month-detail th { background:#f8fafc; text-align:left; }
         .print-header { display: none; }
         @media print {
-          @page { size: A4 portrait; margin: 15mm; }
+          @page { size: A4 portrait; margin: 18mm 28mm; }
           body * { visibility: hidden; }
           .exp-month-detail, .exp-month-detail * { visibility: visible; }
-          .exp-month-detail { position: absolute; left: 0; top: 0; width: 100%; }
+          .exp-month-detail { position: fixed; left: 0; top: 0; width: 100%; padding: 0; }
           .no-print { display: none !important; }
           .print-header { display: block; margin-bottom: 20px; }
           .print-header h2 { text-align: center; margin: 0 0 20px 0; font-size: 24px; border-bottom: 2px solid #000; padding-bottom: 10px; }
           .print-header .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; margin-bottom: 15px; }
           .print-header .info-item { display: flex; }
           .print-header .info-label { width: 120px; font-weight: bold; }
-          .exp-month-detail .table-wrap { border: none; }
-          .exp-month-detail table { border: 1px solid #000; }
+          .exp-month-detail .table-wrap { border: none; overflow: visible; }
+          .exp-month-detail table { border: 1px solid #000; min-width: 0 !important; width: 100%; table-layout: auto; }
           .exp-month-detail th, .exp-month-detail td { border: 1px solid #000; padding: 6px 8px; font-size: 11px; }
           .exp-month-detail th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .exp-month-detail .head .title { display: none; }
@@ -54,7 +54,7 @@ import{requireAdmin as j}from"../_shared/require-admin.js";import{fetchJSONAuth 
         <td style="text-align:right;">\xA5${C}</td>
         <td>${H}</td>
         <td>${T}</td>
-      </tr>`}).join(""),v=d("#downloadPdf");v&&v.addEventListener("click",()=>{window.print()}),a&&(a.innerHTML=`\u5BFE\u8C61: ${f} / ${p} <span style="margin-left:16px; font-weight:bold; font-size:16px; color:#b91c1c;">\u5408\u8A08: \xA5${b.toLocaleString("ja-JP")}</span>`);const S=d("#printHeader");if(S){const t=s.find(u=>String(u.id)===String(c))||{},g=t.employee_code||t.employeeCode||"",x=t.birth_date||t.birthDate?String(t.birth_date||t.birthDate).slice(0,10):"";S.innerHTML=`
+      </tr>`}).join(""),v=d("#downloadPdf");v&&v.addEventListener("click",()=>{const u=`/api/expenses/admin/monthly-detail/print?userId=${encodeURIComponent(c)}&month=${encodeURIComponent(p)}`;window.open(u,"_blank","noopener,noreferrer")}),a&&(a.innerHTML=`\u5BFE\u8C61: ${f} / ${p} <span style="margin-left:16px; font-weight:bold; font-size:16px; color:#b91c1c;">\u5408\u8A08: \xA5${b.toLocaleString("ja-JP")}</span>`);const S=d("#printHeader");if(S){const t=s.find(u=>String(u.id)===String(c))||{},g=t.employee_code||t.employeeCode||"",x=t.birth_date||t.birthDate?String(t.birth_date||t.birthDate).slice(0,10):"";S.innerHTML=`
         <h2>\u4EA4\u901A\u8CBB\u7CBE\u7B97\u66F8</h2>
         <div class="info-grid">
           <div class="info-item"><span class="info-label">\u4F1A\u793E\u540D</span><span>\u98EF\u585A\u5857\u7814\u682A\u5F0F\u4F1A\u793E</span></div>

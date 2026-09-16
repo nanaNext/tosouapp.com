@@ -27,8 +27,8 @@ const e=s=>document.querySelector(s);function N(){return sessionStorage.getItem(
               <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#94a3b8;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
           </div>
-          <div style="flex:1;overflow-y:auto;padding:0;">
-            <table class="users-modal-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+          <div style="flex:1;overflow-y:auto;overflow-x:auto;padding:0;">
+            <table class="users-modal-table" style="width:auto;min-width:100%;white-space:nowrap;border-collapse:collapse;font-size:13px;">
               <thead><tr style="background:#f8fafc;position:sticky;top:0;z-index:1;">
                 <th style="padding:10px 12px;text-align:center;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;width:56px;"></th>
                 <th style="padding:10px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0;width:40px;">ID</th>
@@ -51,11 +51,13 @@ const e=s=>document.querySelector(s);function N(){return sessionStorage.getItem(
           </div>
           <div style="font-size:13px;color:#64748b;margin-bottom:12px;">\u5408\u8A08: ${r.length}\u540D</div>
           ${r.length===0?'<p style="text-align:center;color:#64748b;">\u672C\u65E5\u306E\u6253\u523B\u306F\u3042\u308A\u307E\u305B\u3093</p>':`
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <div style="overflow-x:auto;"><table style="width:auto;min-width:100%;white-space:nowrap;border-collapse:collapse;font-size:13px;">
             <thead><tr style="background:#f1f5f9;">
               <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u6C0F\u540D</th>
               <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u4F1A\u793E</th>
               <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u90E8\u7F72</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u5DE5\u4E8B\u540D</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">\u4F5C\u696D</th>
               <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">\u51FA\u52E4</th>
               <th style="padding:8px;text-align:center;border-bottom:1px solid #e2e8f0;">\u9000\u52E4</th>
             </tr></thead>
@@ -63,10 +65,12 @@ const e=s=>document.querySelector(s);function N(){return sessionStorage.getItem(
               <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.username||u.email||"\u2014"}</td>
               <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.tenantName||"\u2014"}</td>
               <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${u.departmentName||"\u2014"}</td>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:#0891b2;">${u.workCompanyName||"\u2014"}</td>
+              <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:12px;">${u.workContent||"\u2014"}</td>
               <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#059669;font-weight:600;">${f(u.checkIn)}</td>
               <td style="padding:8px;text-align:center;border-bottom:1px solid #f1f5f9;color:#dc2626;">${u.checkOut?f(u.checkOut):"\u52E4\u52D9\u4E2D"}</td>
             </tr>`).join("")}</tbody>
-          </table>`}
+          </table></div>`}
         `,n.appendChild(d),document.body.appendChild(n),n.addEventListener("click",u=>{u.target===n&&n.remove()}),d.querySelector("#closeCheckinModal")?.addEventListener("click",()=>n.remove())}catch(i){alert("\u30C7\u30FC\u30BF\u306E\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F: "+(i.message||""))}}))}let S=[];function G(s){return`<span class="badge ${{trial:"badge-trial",basic:"badge-basic",pro:"badge-pro",enterprise:"badge-pro"}[s]||"badge-basic"}">${s||"basic"}</span>`}function W(s){return`<span class="badge ${{active:"badge-active",suspended:"badge-suspended",cancelled:"badge-suspended"}[s]||"badge-active"}">${s||"active"}</span>`}function X(s){const t=e("#pd-tenants-tbody"),i=e("#pd-tenants-table"),r=e("#pd-tenants-loading");t&&(r&&(r.style.display="none"),i&&(i.style.display=""),t.innerHTML=s.map(n=>{const d=(n.logo_name||n.name||"?").charAt(0).toUpperCase(),f=n.logo_url?`<img src="${n.logo_url}?v=${Date.now()}" alt="${n.name}"
              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
           ><div class="td-logo-placeholder" style="display:none">${d}</div>`:`<div class="td-logo-placeholder">${d}</div>`,u=(n.owners||[]).map(c=>c.username||c.email).join(", ")||"\u2014",y=n.address?`<div class="td-address">${n.address}</div>`:"",a=n.phone?`<div class="td-phone">\u{1F4DE} ${n.phone}${n.fax?`  FAX: ${n.fax}`:""}</div>`:"",o=n.license_number?`<div class="td-license">\u{1F3DB} ${n.license_number}</div>`:"";return`
