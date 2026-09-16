@@ -454,16 +454,13 @@ router.get('/today-checkins', async (req, res) => {
         t.name AS tenantName,
         a.checkIn AS checkIn,
         a.checkOut AS checkOut,
-        uwd.company_name AS workCompanyName,
-        uwd.work_content AS workContent
+        a.location AS workCompanyName,
+        a.memo AS workContent
       FROM attendance a
       INNER JOIN users u ON u.id = a.userId
       LEFT JOIN departments d ON d.id = u.departmentId
       LEFT JOIN tenant_users tu ON tu.user_id = u.id
       LEFT JOIN tenants t ON t.id = tu.tenant_id
-      LEFT JOIN user_work_details uwd ON uwd.userId = u.id
-        AND uwd.start_date <= CURDATE()
-        AND (uwd.end_date IS NULL OR uwd.end_date >= CURDATE())
       WHERE DATE(a.checkIn) = CURDATE()
       ORDER BY a.checkIn DESC
     `);
