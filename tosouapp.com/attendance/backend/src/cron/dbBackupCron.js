@@ -13,7 +13,12 @@ try {
   mysqldump = async () => { throw new Error('mysqldump module is not installed'); };
 }
 
-const BACKUP_DIR = path.join(__dirname, '../uploads');
+// QUAN TRỌNG: app.js serve /uploads công khai qua express.static (chỉ chặn
+// riêng /uploads/payslips). Backup phải nằm trong một thư mục con RIÊNG,
+// bị chặn tường minh (xem app.js) trước khi tới static middleware — tuyệt
+// đối không được ghi thẳng vào gốc uploads/, nếu không ai đoán được tên file
+// (tosouapp_backup_<timestamp>.sql) cũng tải được nguyên database.
+const BACKUP_DIR = path.join(__dirname, '../uploads/db-backups-internal');
 // Gmail/most SMTP relays reject attachments above ~25MB; stay well under that.
 const MAX_EMAIL_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 // Giữ lại vài bản gần nhất trên ổ đĩa persistent (uploads/) làm lớp dự phòng

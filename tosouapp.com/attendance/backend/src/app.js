@@ -293,6 +293,13 @@ try {
 app.use('/uploads/payslips', (req, res) => {
   res.status(403).json({ message: 'Use secureUrl endpoints to download payslips' });
 });
+// Block public access to DB backups (dbBackupCron.js writes full database
+// dumps here so they survive on the persistent disk). Filenames are
+// predictable (tosouapp_backup_<timestamp>.sql) so this must never be
+// reachable through the generic /uploads static handler below.
+app.use('/uploads/db-backups-internal', (req, res) => {
+  res.status(403).json({ message: 'Forbidden' });
+});
 
 // We remove the insecure backward-compatible resolver for /uploads/:name
 // because it bypasses the payslips block if someone knows the filename.
