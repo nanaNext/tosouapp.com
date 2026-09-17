@@ -82,7 +82,7 @@ import{requireAdmin as lt}from"../_shared/require-admin.js";import{listEmployees
         </div>
       </div>
       <div class="sap-section">
-        <div class="sap-section-title">\u66F8\u985E</div>
+        <div class="sap-section-title">\u5199\u771F</div>
         <div style="padding:8px 16px;"><div id="detailAvatarGallery" style="display:flex;gap:8px;flex-wrap:wrap;min-height:32px;"><span style="color:#6a6d70;font-size:12px;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</span></div></div>
       </div>
       <div class="sap-actions">

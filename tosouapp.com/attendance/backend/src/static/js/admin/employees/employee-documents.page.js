@@ -1,5 +1,32 @@
 import { requireAdmin } from '../_shared/require-admin.js';
-import { fetchJSONAuth } from '../../api/http.api.js';
+import { fetchJSONAuth, fetchResponseAuth } from '../../api/http.api.js';
+
+async function downloadWithAuth(url, fallbackName) {
+  const res = await fetchResponseAuth(url);
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try { message = (await res.json()).message || message; } catch { /* ignore */ }
+    throw new Error(message);
+  }
+  let filename = fallbackName || 'download';
+  const disposition = res.headers.get('content-disposition');
+  if (disposition) {
+    const utf8Match = /filename\*=UTF-8''([^;\n]*)/i.exec(disposition);
+    if (utf8Match && utf8Match[1]) {
+      filename = decodeURIComponent(utf8Match[1]);
+    } else {
+      const plainMatch = /filename[^;=\n]*=(['"]?)([^;\n]*)\1/.exec(disposition);
+      if (plainMatch && plainMatch[2]) filename = plainMatch[2];
+    }
+  }
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  a.click();
+  setTimeout(() => { try { URL.revokeObjectURL(objectUrl); } catch { /* ignore */ } }, 1000);
+}
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({
@@ -25,7 +52,7 @@ async function loadDocuments(userId) {
   return (res && Array.isArray(res.data)) ? res.data : [];
 }
 
-function renderList(listEl, docs, onDelete) {
+function renderList(listEl, docs, onDelete, onDownload) {
   if (!docs.length) {
     listEl.innerHTML = '<div style="padding:16px;color:#6a6d70;">まだ書類がありません。</div>';
     return;
@@ -49,7 +76,7 @@ function renderList(listEl, docs, onDelete) {
             <td style="padding:8px 12px;border:1px solid #edeff0;">${formatSize(d.size)}</td>
             <td style="padding:8px 12px;border:1px solid #edeff0;">${formatDate(d.createdAt)}</td>
             <td style="padding:8px 12px;border:1px solid #edeff0;white-space:nowrap;">
-              <a href="${d.secureUrl}" target="_blank" rel="noopener noreferrer" style="margin-right:10px;color:#0b2c66;font-weight:700;text-decoration:none;">ダウンロード</a>
+              <button type="button" class="btn-doc-download" data-id="${d.id}" style="border:none;background:none;color:#0b2c66;font-weight:700;text-decoration:underline;cursor:pointer;padding:0;margin-right:14px;">ダウンロード</button>
               <button type="button" class="btn-doc-delete" data-id="${d.id}" style="border:1px solid #fecaca;background:#fff1f2;color:#b91c1c;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:700;">削除</button>
             </td>
           </tr>
@@ -59,6 +86,9 @@ function renderList(listEl, docs, onDelete) {
   `;
   listEl.querySelectorAll('.btn-doc-delete').forEach((btn) => {
     btn.addEventListener('click', () => onDelete(btn.getAttribute('data-id')));
+  });
+  listEl.querySelectorAll('.btn-doc-download').forEach((btn) => {
+    btn.addEventListener('click', () => onDownload(btn.getAttribute('data-id')));
   });
 }
 
@@ -109,14 +139,24 @@ async function mount({ content }) {
 
   const listEl = container.querySelector('#docList');
   const statusEl = container.querySelector('#docUploadStatus');
+  let currentDocs = [];
 
   const refresh = async () => {
     listEl.innerHTML = '<div style="padding:16px;color:#6a6d70;">読み込み中...</div>';
     try {
-      const docs = await loadDocuments(userId);
-      renderList(listEl, docs, handleDelete);
+      currentDocs = await loadDocuments(userId);
+      renderList(listEl, currentDocs, handleDelete, handleDownload);
     } catch (err) {
       listEl.innerHTML = `<div style="padding:16px;color:#b91c1c;">読み込み失敗: ${escapeHtml(err?.message || 'unknown')}</div>`;
+    }
+  };
+
+  const handleDownload = async (id) => {
+    const doc = currentDocs.find((d) => String(d.id) === String(id));
+    try {
+      await downloadWithAuth(`/api/employee/documents/${encodeURIComponent(id)}/download`, doc?.title || doc?.filename);
+    } catch (err) {
+      window.alert(String(err?.message || 'ダウンロードに失敗しました'));
     }
   };
 
