@@ -103,6 +103,7 @@ exports.deleteShiftDefinition   = shiftsCtrl.deleteShiftDefinition;
 exports.getShiftAssignments     = shiftsCtrl.getShiftAssignments;
 exports.postShiftAssignment     = shiftsCtrl.postShiftAssignment;
 exports.deleteShiftAssignment   = shiftsCtrl.deleteShiftAssignment;
+exports.postShiftAssignmentBulk = shiftsCtrl.postShiftAssignmentBulk;
 exports.postShiftsBulk          = shiftsCtrl.postShiftsBulk;
 exports.getShiftApprovals       = shiftsCtrl.getShiftApprovals;
 exports.getShiftMatrix          = shiftsCtrl.getShiftMatrix;
