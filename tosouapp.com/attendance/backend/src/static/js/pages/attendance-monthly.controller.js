@@ -343,29 +343,21 @@
     const inner = bar.querySelector('.se-hscroll-inner');
     if (!inner) return;
     const main = document.querySelector('.kintai-main');
-    const applyHeadTranslate = (headTables, scrollLeft) => {
-      const x = Number(scrollLeft) || 0;
-      for (const ht of headTables) {
-        try { ht.style.transform = `translateX(${-x}px)`; } catch (e) { /* silently ignored */ }
-      }
-    };
 
     const refresh = (attempt = 0) => {
       const host = getHost();
       const rootEl = getRoot();
-      const headTables = Array.from(rootEl?.querySelectorAll?.('.se-sticky-month-head table') || []);
       const cw = host?.clientWidth || 0;
       // Nếu host là .kintai-main, scrollWidth phải tính theo bảng thực tế bên trong
       const tableWrap = rootEl?.querySelector?.('.se-month-table-wrap');
       const sw = (host === main && tableWrap) ? tableWrap.scrollWidth : (host?.scrollWidth || 0);
-      
+
       if ((cw === 0 || sw === 0) && attempt < 20) {
         requestAnimationFrame(() => refresh(attempt + 1));
         return;
       }
       try { inner.style.width = `${sw}px`; } catch (e) { /* silently ignored */ }
       try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { /* silently ignored */ }
-      applyHeadTranslate(headTables, host?.scrollLeft || 0);
       try {
         const need = (sw > cw + 1);
         const inView = (() => {
@@ -387,31 +379,40 @@
           else rootEl.classList.remove('hide-xscroll');
         }
       } catch (e) { /* silently ignored */ }
-      try { syncFooterVars(); } catch (e) { /* silently ignored */ }
+      // 直前の書き込み（display/class変更）と同フレームで syncFooterVars() の読み取りを
+      // 行うと強制リフローになるため、次フレームにずらす。
+      requestAnimationFrame(() => { try { syncFooterVars(); } catch (e) { /* silently ignored */ } });
     };
 
     if (bar.dataset.wired !== '1') {
-      let syncing = false;
+      // rAF-throttle + so sánh giá trị trước khi ghi (idempotent): gom nhiều sự kiện scroll
+      // liên tiếp thành 1 lần đọc/ghi DOM mỗi frame, và bỏ qua nếu giá trị đã khớp — tránh
+      // vòng lặp "tiếng vọng" 2 chiều (set scrollLeft phía này lại tự bắn scroll phía kia).
+      let barTicking = false;
       bar.addEventListener('scroll', () => {
-        if (syncing) return;
-        syncing = true;
-        const host = getHost();
-        const rootEl = getRoot();
-        const headTables = Array.from(rootEl?.querySelectorAll?.('.se-sticky-month-head table') || []);
-        try { if (host) host.scrollLeft = bar.scrollLeft; } catch (e) { /* silently ignored */ }
-        applyHeadTranslate(headTables, host?.scrollLeft || 0);
-        syncing = false;
+        if (barTicking) return;
+        barTicking = true;
+        requestAnimationFrame(() => {
+          barTicking = false;
+          const host = getHost();
+          if (host && host.scrollLeft !== bar.scrollLeft) {
+            try { host.scrollLeft = bar.scrollLeft; } catch (e) { /* silently ignored */ }
+          }
+        });
       }, { passive: true });
       // Gán sự kiện cuộn cho host (kintai-main hoặc se-month-scroll)
       const hostNow = getHost();
+      let hostTicking = false;
       hostNow?.addEventListener('scroll', () => {
-        if (syncing) return;
-        syncing = true;
-        const host = getHost();
-        const headTables = Array.from(getRoot()?.querySelectorAll?.('.se-sticky-month-head table') || []);
-        try { if (host) bar.scrollLeft = host.scrollLeft; } catch (e) { /* silently ignored */ }
-        applyHeadTranslate(headTables, host?.scrollLeft || 0);
-        syncing = false;
+        if (hostTicking) return;
+        hostTicking = true;
+        requestAnimationFrame(() => {
+          hostTicking = false;
+          const host = getHost();
+          if (host && bar.scrollLeft !== host.scrollLeft) {
+            try { bar.scrollLeft = host.scrollLeft; } catch (e) { /* silently ignored */ }
+          }
+        });
       }, { passive: true });
       window.addEventListener('resize', () => { refresh(); }, { passive: true });
       bar.dataset.wired = '1';
@@ -445,21 +446,30 @@
     };
 
     if (bar.dataset.wired !== '1') {
-      let syncing = false;
+      let barTicking = false;
       bar.addEventListener('scroll', () => {
-        if (syncing) return;
-        syncing = true;
-        const host = getHost();
-        try { if (host) host.scrollTop = bar.scrollTop; } catch (e) { /* silently ignored */ }
-        syncing = false;
+        if (barTicking) return;
+        barTicking = true;
+        requestAnimationFrame(() => {
+          barTicking = false;
+          const host = getHost();
+          if (host && host.scrollTop !== bar.scrollTop) {
+            try { host.scrollTop = bar.scrollTop; } catch (e) { /* silently ignored */ }
+          }
+        });
       }, { passive: true });
       const hostNow = getHost();
+      let hostTicking = false;
       hostNow?.addEventListener('scroll', () => {
-        if (syncing) return;
-        syncing = true;
-        const host = getHost();
-        try { if (host) bar.scrollTop = host.scrollTop; } catch (e) { /* silently ignored */ }
-        syncing = false;
+        if (hostTicking) return;
+        hostTicking = true;
+        requestAnimationFrame(() => {
+          hostTicking = false;
+          const host = getHost();
+          if (host && bar.scrollTop !== host.scrollTop) {
+            try { bar.scrollTop = host.scrollTop; } catch (e) { /* silently ignored */ }
+          }
+        });
       }, { passive: true });
       window.addEventListener('resize', () => { refresh(); }, { passive: true });
       bar.dataset.wired = '1';
@@ -475,6 +485,7 @@
     if (!host || !bar) return;
     const main = document.querySelector('.kintai-main');
     let raf = 0;
+    let lastVisible = null;
     const apply = () => {
       raf = 0;
       try {
@@ -491,13 +502,21 @@
             return true;
           }
         })();
-        bar.style.display = (need && inView) ? '' : 'none';
+        const visible = need && inView;
+        bar.style.display = visible ? '' : 'none';
         if (rootEl) {
           if (need) rootEl.classList.add('hide-xscroll');
           else rootEl.classList.remove('hide-xscroll');
         }
+        // syncFooterVars() は offsetHeight/getComputedStyle を読むため、直前の書き込み
+        // （display/class変更）と同フレームで呼ぶと強制リフローが発生する（Chrome DevTools
+        // で "Forced reflow" として計測、~80-140ms）。表示状態が実際に変化した時だけ、
+        // 次フレームにずらして呼ぶことで、スクロール毎の強制リフローを回避する。
+        if (visible !== lastVisible) {
+          lastVisible = visible;
+          requestAnimationFrame(() => { try { syncFooterVars(); } catch (e) { /* silently ignored */ } });
+        }
       } catch (e) { /* silently ignored */ }
-      try { syncFooterVars(); } catch (e) { /* silently ignored */ }
     };
     const schedule = () => {
       if (raf) return;
