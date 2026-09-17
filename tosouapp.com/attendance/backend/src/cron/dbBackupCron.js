@@ -3,6 +3,7 @@ const cron = require('node-cron');
 const path = require('path');
 const fs = require('fs');
 const mailService = require('../core/notifications/email.service');
+const s3Service = require('../core/services/s3.service');
 
 // Only require mysqldump if it's actually installed, otherwise create a mock
 let mysqldump;
@@ -18,11 +19,20 @@ try {
 // bị chặn tường minh (xem app.js) trước khi tới static middleware — tuyệt
 // đối không được ghi thẳng vào gốc uploads/, nếu không ai đoán được tên file
 // (tosouapp_backup_<timestamp>.sql) cũng tải được nguyên database.
+//
+// Thư mục này CHỈ là nơi tạm để mysqldump ghi ra và để đính kèm email — nó
+// KHÔNG phải nơi lưu trữ lâu dài đáng tin cậy: service này chạy trên Render
+// mà không có ổ đĩa persistent thật (đã kiểm tra: `mount`/`df -h` không thấy
+// volume nào, thư mục uploads/ thậm chí chưa tồn tại trước khi tạo lần đầu).
+// Mỗi lần deploy lại là một filesystem mới — file ở đây có thể biến mất bất
+// cứ lúc nào. Bản lưu trữ THẬT là R2 (uploadToR2 bên dưới), giống cách
+// payslip/expense/notice đã dùng từ trước.
 const BACKUP_DIR = path.join(__dirname, '../uploads/db-backups-internal');
+const R2_BACKUP_PREFIX = 'db-backups';
 // Gmail/most SMTP relays reject attachments above ~25MB; stay well under that.
 const MAX_EMAIL_ATTACHMENT_BYTES = 15 * 1024 * 1024;
-// Giữ lại vài bản gần nhất trên ổ đĩa persistent (uploads/) làm lớp dự phòng
-// thứ hai, độc lập với việc gửi email có thành công hay không.
+// Chỉ áp dụng khi R2 KHÔNG được cấu hình (fallback yếu hơn nhiều, vì đĩa có
+// thể không sống sót qua lần deploy tiếp theo).
 const RETAIN_BACKUPS = 4;
 const ALERT_EMAIL = 'iizuka_token@tosouapp.com';
 
@@ -74,8 +84,35 @@ async function runAutoBackup() {
 
         console.log(`[Cron Job] Backup tạo thành công tại: ${backupFilePath}`);
 
-        // 2. File đã được tạo thành công trên ổ đĩa persistent — đây là lớp dự
-        // phòng chính, tồn tại độc lập với việc gửi email có thành công hay không.
+        // 2. Đẩy lên R2 ngay — đây là lớp lưu trữ THẬT, sống sót qua mọi lần
+        // deploy (không như ổ đĩa local của service). Làm trước bước email để
+        // dù email có thất bại, bản backup vẫn đã an toàn ở nơi khác.
+        let uploadedToR2 = false;
+        if (s3Service.isR2Configured()) {
+            try {
+                const fileBuffer = fs.readFileSync(backupFilePath);
+                uploadedToR2 = await s3Service.uploadToR2(`${R2_BACKUP_PREFIX}/${backupFileName}`, fileBuffer, 'application/sql');
+                if (uploadedToR2) {
+                    console.log(`[Cron Job] Đã lưu backup lên R2: ${R2_BACKUP_PREFIX}/${backupFileName}`);
+                } else {
+                    console.error('[Cron Job] uploadToR2 trả về false — backup CHƯA được lưu bền.');
+                }
+            } catch (r2Error) {
+                console.error('[Cron Job] Lỗi khi đẩy backup lên R2:', r2Error);
+            }
+        } else {
+            console.warn('[Cron Job] R2 chưa được cấu hình (thiếu R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY) — backup CHỈ nằm trên ổ đĩa tạm của service, có thể mất khi deploy lại.');
+        }
+        if (!uploadedToR2) {
+            await sendAlertEmail(
+                `[Cảnh báo] Backup TosouApp chưa được lưu bền - ${new Date().toLocaleDateString('vi-VN')}`,
+                `<p>Backup hôm nay tạo thành công nhưng KHÔNG lưu được lên R2 (${s3Service.isR2Configured() ? 'upload lỗi' : 'R2 chưa cấu hình'}).</p>
+                 <p>File tạm hiện nằm tại <code>${backupFilePath}</code> trên ổ đĩa service — có thể biến mất ở lần deploy tiếp theo. Cần kiểm tra cấu hình R2 sớm.</p>`
+            );
+        }
+
+        // 3. File đã được tạo thành công trên ổ đĩa — dùng cho bước email đính
+        // kèm bên dưới, sau đó sẽ được dọn (xem pruneOldBackups).
         const sizeBytes = fs.statSync(backupFilePath).size;
         if (sizeBytes > MAX_EMAIL_ATTACHMENT_BYTES) {
             console.warn(`[Cron Job] Backup ${(sizeBytes / 1024 / 1024).toFixed(1)}MB vượt ngưỡng gửi email, bỏ qua bước email.`);
@@ -85,7 +122,7 @@ async function runAutoBackup() {
                  <p>File vẫn được giữ trên server tại <code>${backupFilePath}</code> (giữ lại ${RETAIN_BACKUPS} bản gần nhất). Cần thiết lập nơi lưu trữ ngoài (S3/Drive...) trước khi dữ liệu lớn hơn nữa.</p>`
             );
         } else {
-            // 3. Gửi Email đính kèm file
+            // 4. Gửi Email đính kèm file
             const subject = `[Tự động] Bản sao lưu Dữ liệu Nhân sự TosouApp - ${new Date().toLocaleDateString('vi-VN')}`;
             const html = `
                 <h3>Kính gửi Quản lý,</h3>
@@ -114,7 +151,8 @@ async function runAutoBackup() {
             }
         }
 
-        // 4. Dọn các bản backup cũ hơn RETAIN_BACKUPS bản gần nhất (không đụng bản vừa tạo).
+        // 5. Dọn các bản backup cũ hơn RETAIN_BACKUPS bản gần nhất (không đụng bản vừa tạo).
+        // Chỉ còn là dọn dẹp đĩa tạm — bản lưu trữ thật đã ở R2 từ bước 2.
         pruneOldBackups();
 
     } catch (error) {
