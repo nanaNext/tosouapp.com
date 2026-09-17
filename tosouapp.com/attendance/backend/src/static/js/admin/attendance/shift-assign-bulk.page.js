@@ -39,8 +39,10 @@ async function mount({ content }) {
       <button type="button" id="btnBulkAssign" style="height:34px;padding:0 16px;border-radius:6px;border:none;background:#0b2c66;color:#fff;font-weight:700;cursor:pointer;">選択した従業員に一括割当</button>
     </div>
     <div id="bulkStatus" style="padding:0 20px;margin-top:10px;font-weight:700;"></div>
-    <div style="padding:8px 20px;">
-      <label style="font-size:13px;"><input type="checkbox" id="bulkSelectAll"> 全て選択</label>
+    <div style="padding:8px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="bulkSearch" placeholder="氏名・社員番号・部署で検索" style="padding:6px 10px;border:1px solid #d0d7de;border-radius:6px;min-width:240px;">
+      <label style="font-size:13px;"><input type="checkbox" id="bulkSelectAll"> 表示中を全て選択</label>
+      <span id="bulkSelectedCount" style="font-size:12px;color:#6a6d70;"></span>
     </div>
     <div id="bulkEmpList" style="padding:0 20px 20px;">読み込み中...</div>
   `;
@@ -78,14 +80,20 @@ async function mount({ content }) {
             </tr>
           </thead>
           <tbody>
-            ${employees.map(u => `
-              <tr>
+            ${employees.map(u => {
+              const code = u.employee_code || u.employeeCode || '';
+              const name = u.username || u.email || '';
+              const dept = u.departmentName || '';
+              const searchKey = `${code} ${name} ${dept}`.toLowerCase();
+              return `
+              <tr class="bulk-emp-row" data-search="${escapeHtml(searchKey)}">
                 <td style="padding:6px;border:1px solid #edeff0;text-align:center;"><input type="checkbox" class="bulk-emp-cb" value="${u.id}"></td>
-                <td style="padding:6px 10px;border:1px solid #edeff0;">${escapeHtml(u.employee_code || u.employeeCode || '')}</td>
-                <td style="padding:6px 10px;border:1px solid #edeff0;">${escapeHtml(u.username || u.email || '')}</td>
-                <td style="padding:6px 10px;border:1px solid #edeff0;">${escapeHtml(u.departmentName || '')}</td>
+                <td style="padding:6px 10px;border:1px solid #edeff0;">${escapeHtml(code)}</td>
+                <td style="padding:6px 10px;border:1px solid #edeff0;">${escapeHtml(name)}</td>
+                <td style="padding:6px 10px;border:1px solid #edeff0;">${escapeHtml(dept)}</td>
               </tr>
-            `).join('')}
+            `;
+            }).join('')}
           </tbody>
         </table>
       `;
@@ -94,8 +102,32 @@ async function mount({ content }) {
     empListEl.innerHTML = `<div style="color:#b91c1c;">読み込み失敗: ${escapeHtml(err?.message || 'unknown')}</div>`;
   }
 
+  const selectedCountEl = container.querySelector('#bulkSelectedCount');
+  const updateSelectedCount = () => {
+    const n = container.querySelectorAll('.bulk-emp-cb:checked').length;
+    selectedCountEl.textContent = n ? `${n}人選択中` : '';
+  };
+  container.addEventListener('change', (ev) => {
+    if (ev.target.classList && ev.target.classList.contains('bulk-emp-cb')) updateSelectedCount();
+  });
+
   container.querySelector('#bulkSelectAll').addEventListener('change', (ev) => {
-    container.querySelectorAll('.bulk-emp-cb').forEach((cb) => { cb.checked = ev.target.checked; });
+    // Chỉ chọn/bỏ chọn những dòng đang HIỂN THỊ (sau khi lọc tìm kiếm),
+    // không đụng tới lựa chọn của những dòng đang bị ẩn.
+    container.querySelectorAll('.bulk-emp-row').forEach((row) => {
+      if (row.style.display === 'none') return;
+      const cb = row.querySelector('.bulk-emp-cb');
+      if (cb) cb.checked = ev.target.checked;
+    });
+    updateSelectedCount();
+  });
+
+  container.querySelector('#bulkSearch').addEventListener('input', (ev) => {
+    const q = ev.target.value.trim().toLowerCase();
+    container.querySelectorAll('.bulk-emp-row').forEach((row) => {
+      const match = !q || (row.dataset.search || '').includes(q);
+      row.style.display = match ? '' : 'none';
+    });
   });
 
   container.querySelector('#btnBulkAssign').addEventListener('click', async () => {
