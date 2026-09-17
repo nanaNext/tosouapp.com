@@ -300,6 +300,13 @@ app.use('/uploads/payslips', (req, res) => {
 app.use('/uploads/db-backups-internal', (req, res) => {
   res.status(403).json({ message: 'Forbidden' });
 });
+// Block public access to employee documents; there's already an
+// authenticated, rate-limited download route (GET /api/employee/documents/:id/download)
+// that resolves the real filename from the DB — the raw static path must not
+// be a way around it, same reasoning as the /uploads/payslips block above.
+app.use('/uploads/documents', (req, res) => {
+  res.status(403).json({ message: 'Use the authenticated document download endpoint' });
+});
 
 // We remove the insecure backward-compatible resolver for /uploads/:name
 // because it bypasses the payslips block if someone knows the filename.
