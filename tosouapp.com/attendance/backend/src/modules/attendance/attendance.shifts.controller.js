@@ -220,11 +220,15 @@ exports.postShiftAssignmentBulk = async (req, res) => {
 
     for (const userId of userIds) {
       try {
-        if (role === 'manager') {
-          const target = await userRepo.getUserById(userId, tid);
-          if (!target || String(target.role || '').toLowerCase() !== 'employee') {
-            throw Object.assign(new Error('Forbidden'), { status: 403 });
-          }
+        // Luôn xác minh user thuộc đúng tenant, kể cả với admin — tránh
+        // gán nhầm/gán vào tài khoản của công ty (tenant) khác nếu userId
+        // bị đoán trúng. Với manager, giới hạn thêm chỉ nhân viên (employee).
+        const target = await userRepo.getUserById(userId, tid);
+        if (!target) {
+          throw Object.assign(new Error('User not found'), { status: 404 });
+        }
+        if (role === 'manager' && String(target.role || '').toLowerCase() !== 'employee') {
+          throw Object.assign(new Error('Forbidden'), { status: 403 });
         }
         const overlaps = await repo.findOverlappingAssignments(userId, startDate, endDate, { tenantId: tid });
         if (overlaps.length) {

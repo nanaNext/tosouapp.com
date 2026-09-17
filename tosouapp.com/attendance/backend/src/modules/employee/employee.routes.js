@@ -14,9 +14,13 @@ const s3Service = require('../../core/services/s3.service');
 router.use(authenticate);
 
 async function ensureManagerSameDepartment(req, targetUserId) {
+  // Luôn xác minh targetUserId thực sự tồn tại và thuộc đúng tenant trước —
+  // kể cả admin, để tránh upload/xóa hồ sơ gán vào userId không tồn tại
+  // hoặc thuộc công ty (tenant) khác. Manager thì giới hạn thêm theo phòng ban.
+  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
+  if (!target) return false;
   if (req.user.role !== 'manager') return true;
   const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
-  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
   return !!(me?.departmentId && target?.departmentId && String(me.departmentId) === String(target.departmentId));
 }
 
