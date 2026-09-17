@@ -45,8 +45,11 @@ const PERMS = {
     employee: new Set(['request'])
   },
   salary: {
+    // Manager view/input access is enforced inline in admin.salary.routes.js
+    // (role==='admin'||'manager' + ensureSameDepartmentIfManager), not via
+    // permit('salary', ...). Kept in sync here so this table reflects reality.
     admin: new Set(['full']),
-    manager: new Set([]),
+    manager: new Set(['manage', 'view']),
     employee: new Set([])
   },
   payroll: {
