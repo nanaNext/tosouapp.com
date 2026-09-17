@@ -122,12 +122,28 @@ async function mount({ content }) {
     updateSelectedCount();
   });
 
-  container.querySelector('#bulkSearch').addEventListener('input', (ev) => {
-    const q = ev.target.value.trim().toLowerCase();
+  const applySearch = (q) => {
     container.querySelectorAll('.bulk-emp-row').forEach((row) => {
       const match = !q || (row.dataset.search || '').includes(q);
       row.style.display = match ? '' : 'none';
     });
+    // Đổi bộ lọc thì bỏ trạng thái "đã chọn tất cả" cũ — tránh checkbox vẫn
+    // hiện đã tick trong khi danh sách hiển thị đã khác hẳn tập đã chọn.
+    container.querySelector('#bulkSelectAll').checked = false;
+  };
+  let searchTimer = null;
+  let isComposing = false;
+  const searchInput = container.querySelector('#bulkSearch');
+  searchInput.addEventListener('compositionstart', () => { isComposing = true; });
+  searchInput.addEventListener('compositionend', (ev) => {
+    isComposing = false;
+    applySearch(ev.target.value.trim().toLowerCase());
+  });
+  searchInput.addEventListener('input', (ev) => {
+    if (isComposing) return; // Bỏ qua trạng thái gõ dở của IME (chưa xác nhận kanji)
+    const value = ev.target.value.trim().toLowerCase();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => applySearch(value), 200);
   });
 
   container.querySelector('#btnBulkAssign').addEventListener('click', async () => {
