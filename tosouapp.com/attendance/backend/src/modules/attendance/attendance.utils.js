@@ -86,21 +86,27 @@ async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendan
 async function resolveTargetUserId(req) {
   const role = String(req.user?.role || '').toLowerCase();
   const meId = req.user?.id;
+  const tid = req.tenantId || null;
   const raw = (req.query?.userId ?? req.body?.userId ?? null);
   const targetId = raw == null || raw === '' ? meId : parseInt(String(raw), 10);
   if (!meId || !targetId) return null;
   if (role === 'employee') return meId;
-  if (role === 'manager' && String(targetId) !== String(meId)) {
-    const target = await userRepo.getUserById(targetId);
+  if (String(targetId) !== String(meId)) {
+    // Xác minh target thực sự tồn tại và thuộc đúng tenant — trước đây chỉ
+    // manager mới gọi getUserById (và còn thiếu tenantId), nên admin có
+    // thể target một userId thuộc tenant khác mà không bị chặn.
+    const target = await userRepo.getUserById(targetId, tid);
     if (!target) return null;
-    if (String(target.role || '').toLowerCase() !== 'employee') {
-      return '__forbidden__';
-    }
-    const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
-    if (strictDept) {
-      const me = await userRepo.getUserById(meId);
-      if (me?.departmentId && target?.departmentId && String(me.departmentId) !== String(target.departmentId)) {
+    if (role === 'manager') {
+      if (String(target.role || '').toLowerCase() !== 'employee') {
         return '__forbidden__';
+      }
+      const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
+      if (strictDept) {
+        const me = await userRepo.getUserById(meId, tid);
+        if (me?.departmentId && target?.departmentId && String(me.departmentId) !== String(target.departmentId)) {
+          return '__forbidden__';
+        }
       }
     }
   }
