@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const fs = require('fs');
 const { mailProvider, mailApiKey, mailFrom, smtpHost, smtpPort, smtpUser, smtpPass, companyName, companySupportEmail } = require('../../config/env');
 
 function canSendMail() {
@@ -103,8 +104,50 @@ async function sendPasswordResetEmail({ to, resetUrl, expiresMinutes }) {
   return true;
 }
 
+// Generic sender used by crons (db backups, plan-expiry notices) that need
+// plain HTML mail and, for backups, a file attachment. sendViaResend() doesn't
+// forward attachments, so this handles both providers explicitly.
+async function sendMail({ to, subject, html, text, attachments, from }) {
+  if (!canSendMail()) throw new Error('Mail provider not configured');
+  const provider = String(mailProvider || '').toLowerCase();
+  const sender = from || mailFrom;
+
+  if (provider === 'smtp') {
+    if (!smtpTransporter) throw new Error('SMTP transporter not initialized');
+    await smtpTransporter.sendMail({ from: sender, to, subject, text, html, attachments });
+    return;
+  }
+
+  if (provider === 'resend') {
+    let resendAttachments;
+    if (Array.isArray(attachments) && attachments.length) {
+      resendAttachments = attachments.map((a) => {
+        const buf = a.content ? Buffer.from(a.content) : fs.readFileSync(a.path);
+        return { filename: a.filename, content: buf.toString('base64') };
+      });
+    }
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${mailApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ from: sender, to: [to], subject, html, text, attachments: resendAttachments })
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`mail_send_failed_${res.status}${body ? `: ${body}` : ''}`);
+    }
+    return;
+  }
+
+  throw new Error('No valid mail provider configured');
+}
+
 module.exports = {
   canSendMail,
   sendPasswordResetEmail,
-  sendViaResend
+  sendViaResend,
+  sendMail,
+  sendGenericEmail: sendMail
 };

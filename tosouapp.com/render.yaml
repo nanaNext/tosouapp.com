@@ -20,10 +20,14 @@ services:
         value: production
       - key: TRUST_PROXY_HOPS
         value: "2"
-      - key: ENFORCE_CSRF
-        value: "true"
-      - key: ENABLE_HSTS
-        value: "true"
+      # NOTE: app.js/security.js actually read DISABLE_CSRF / DISABLE_HSTS
+      # (both default to protection ON). The old ENFORCE_CSRF/ENABLE_HSTS keys
+      # here were never read by the code — kept them "true" by coincidence,
+      # but they did nothing. Renamed to the real toggles for accuracy.
+      - key: DISABLE_CSRF
+        value: "false"
+      - key: DISABLE_HSTS
+        value: "false"
       - key: COMPANY_NAME
         value: Iizuka Token
       - key: ACCESS_TOKEN_EXPIRES
@@ -83,9 +87,11 @@ services:
         value: staging
       - key: TRUST_PROXY_HOPS
         value: "2"
-      - key: ENFORCE_CSRF
+      # See note on the production block above — these are the real toggles
+      # the app reads (both default to protection ON when unset/false).
+      - key: DISABLE_CSRF
         value: "false"
-      - key: ENABLE_HSTS
+      - key: DISABLE_HSTS
         value: "false"
       - key: DISABLE_SCHEDULERS
         value: "true"
