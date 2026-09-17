@@ -1,25 +1,11 @@
-node_modules/
-.vscode/
-.DS_Store
-*.log
-logs/
-coverage/
-dist/
-build/
+# Chi theo doi nhung gi thuoc du an that (tosouapp.com/) va cac file can o goc
+# cho GitHub (Actions, README, Pages). Moi thu khac tren o C bi bo qua vinh vien
+# de tranh lap lai viec lo commit file he thong/IDE (da tung xay ra voi
+# AppData/Users) hoac bi mat (SSH key, AWS credentials, .npmrc...).
+/*
 
-# Environment files
-.env
-.env.*
-attendance/**/.env
-
-# Local databases and cache
-*.sqlite
-*.db
-.cache/
-
-# Uploads and generated files
-attendance/backend/src/uploads/
-
-# Docker artifacts
-**/.dockerignore
-
+!/.github
+!/.gitignore
+!/README.md
+!/CNAME
+!/tosouapp.com

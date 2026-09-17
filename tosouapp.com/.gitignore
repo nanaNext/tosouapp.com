@@ -33,3 +33,11 @@ debug_*.js
 
 # npm cache (local only)
 .npm-cache/
+
+# DB backups/dumps must never be committed (leaked real user/salary data
+# and password hashes before via `attendance/backup_*.sql` — see git history
+# cleanup). Backups belong in BACKUP_DIR / off-site storage, not the repo.
+*.sql
+attendance/backend/backups/
+test-results/
+.idea/
