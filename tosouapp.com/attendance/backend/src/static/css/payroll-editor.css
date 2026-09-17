@@ -2,7 +2,12 @@
    (thay cho khối <style> tự chèn runtime trong editor.page.js).
    Cấu trúc/ID DOM không đổi — chỉ đổi giá trị màu/viền/bo góc. */
 
-.pe-wrap{width:100%;max-width:1200px;margin:0 auto !important;padding:24px 28px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;overflow-y:auto !important;overflow-x:hidden;}
+/* height:100vh (không phải min-height) + overflow-y riêng của chính .pe-wrap
+   để nó luôn tự cuộn được, không phụ thuộc chiều cao của #adminContent/
+   main.content phía trên — 2 phần tử đó không có chiều cao cố định khi
+   body.has-sidebar bị ép overflow:hidden lúc mở ở chế độ ?standalone=1,
+   nên trước đây nội dung dài hơn màn hình bị cắt mất, không cuộn được. */
+.pe-wrap{width:100%;max-width:1200px;margin:0 auto !important;padding:24px 28px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;height:100vh;box-sizing:border-box;overflow-y:auto !important;overflow-x:hidden;}
 .pe-wrap *{box-sizing:border-box;font-family:inherit;font-weight:400}
 .pe-card{background:#fff;border:1px solid #edeff0;border-radius:6px;padding:22px 24px;margin-bottom:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);min-width:0}
 .pe-title{font-size:15px;line-height:1.4;font-weight:700;color:#0f172a;margin:0 0 18px 0;border-bottom:2px solid #edeff0;padding-bottom:10px;display:flex;align-items:center;gap:8px;letter-spacing:-0.2px}
