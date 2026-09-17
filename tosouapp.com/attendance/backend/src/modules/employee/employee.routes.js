@@ -9,7 +9,67 @@ const docRepo = require('../documents/documents.repository');
 const path = require('path');
 const fs = require('fs');
 const db = require('../../core/database/mysql');
+const uploadDocumentMemory = require('../../core/middleware/uploadDocumentMemory');
+const s3Service = require('../../core/services/s3.service');
 router.use(authenticate);
+
+async function ensureManagerSameDepartment(req, targetUserId) {
+  if (req.user.role !== 'manager') return true;
+  const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
+  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
+  return !!(me?.departmentId && target?.departmentId && String(me.departmentId) === String(target.departmentId));
+}
+
+router.post('/documents',
+  rateLimitNamed('employee_documents_upload', { windowMs: 60_000, max: 10 }),
+  authorize('admin','manager'),
+  uploadDocumentMemory.single('file'),
+  async (req, res) => {
+  try {
+    const { userId, type, title, description } = req.body;
+    if (!userId || !type || !req.file) {
+      return res.status(400).json({ message: 'Missing userId/type/file' });
+    }
+    if (!(await ensureManagerSameDepartment(req, userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department upload' });
+    }
+    const safeOriginalName = String(req.file.originalname || 'file').replace(/[\\/]+/g, '_').replace(/\s+/g, '_');
+    const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeOriginalName}`;
+
+    const uploadTenantId = req.tenantId || 0;
+    const r2Key = `documents/${uploadTenantId}/${filename}`;
+    let storedOnR2 = false;
+    if (s3Service.isR2Configured()) {
+      storedOnR2 = await s3Service.uploadToR2(r2Key, req.file.buffer, req.file.mimetype);
+    }
+    if (!storedOnR2) {
+      // Fallback nếu R2 chưa cấu hình — không phải nơi lưu bền, chỉ để không
+      // chặn tính năng khi thiếu R2 credentials ở môi trường dev/test.
+      const dstDir = path.join(__dirname, '../../', 'uploads', 'documents');
+      fs.mkdirSync(dstDir, { recursive: true });
+      fs.writeFileSync(path.join(dstDir, filename), req.file.buffer);
+    }
+
+    const createdId = await docRepo.create({
+      userId: parseInt(userId, 10),
+      type,
+      title: title || req.file.originalname,
+      description: description || null,
+      filename,
+      mime: req.file.mimetype,
+      size: req.file.size,
+      uploadedBy: req.user.id
+    });
+
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: 'employee_document_upload', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id: createdId, userId: parseInt(userId, 10), type, filename }) });
+    } catch (e) { /* silently ignored */ }
+
+    res.status(201).json({ id: createdId, userId: parseInt(userId, 10), type, secureUrl: `/api/employee/documents/${createdId}/download` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 router.get('/documents', authorize('employee','manager','admin'), async (req, res) => {
   try {
     const page = parseInt(String(req.query.page || 1), 10);
@@ -93,14 +153,54 @@ router.get('/documents/:id/download',
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'employee_document_download', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId }), afterData: null });
     } catch (e) { /* silently ignored */ }
-    const baseDir = path.join(__dirname, '../../', 'uploads', 'documents');
-    const filePath = path.join(baseDir, row.filename);
-    if (!fs.existsSync(filePath)) {
+
+    let fileBuffer = null;
+    if (s3Service.isR2Configured()) {
+      const downloadTenantId = req.tenantId || 0;
+      fileBuffer = await s3Service.downloadFromR2(`documents/${downloadTenantId}/${row.filename}`).catch(() => null);
+      if (!fileBuffer) fileBuffer = await s3Service.downloadFromR2(`documents/${row.filename}`).catch(() => null);
+    }
+    if (!fileBuffer) {
+      const baseDir = path.join(__dirname, '../../', 'uploads', 'documents');
+      const filePath = path.join(baseDir, row.filename);
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+      }
+    }
+    if (!fileBuffer) {
       return res.status(404).json({ message: 'File missing' });
     }
     res.setHeader('Content-Type', row.mime || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(row.title || row.filename)}"`);
-    return res.sendFile(filePath);
+    return res.status(200).send(fileBuffer);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+router.delete('/documents/:id', authorize('admin','manager'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const row = await docRepo.getById(id, req.tenantId || null);
+    if (!row) {
+      return res.status(404).json({ message: 'Not found' });
+    }
+    if (!(await ensureManagerSameDepartment(req, row.userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department access' });
+    }
+    const deleteTenantId = req.tenantId || 0;
+    if (s3Service.isR2Configured()) {
+      const removed = await s3Service.deleteFromR2(`documents/${deleteTenantId}/${row.filename}`).catch(() => null);
+      if (!removed) await s3Service.deleteFromR2(`documents/${row.filename}`).catch(() => null);
+    }
+    try {
+      const filePath = path.join(__dirname, '../../', 'uploads', 'documents', row.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (e) { /* silently ignored */ }
+    await docRepo.remove(id);
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: 'employee_document_delete', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id: row.id, userId: row.userId, filename: row.filename }), afterData: null });
+    } catch (e) { /* silently ignored */ }
+    res.status(200).json({ message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

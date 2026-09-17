@@ -89,4 +89,26 @@ async function getById(id, tenantId = null) {
   return rows && rows[0] ? rows[0] : null;
 }
 
-module.exports = { ensureTable, listFiltered, getById };
+async function create({ userId, type, title, description, filename, mime, size, uploadedBy }) {
+  const sql = `
+    INSERT INTO employee_documents (user_id, type, title, description, filename, mime, size, uploaded_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const [res] = await db.query(sql, [
+    parseInt(userId, 10),
+    String(type),
+    title || null,
+    description || null,
+    filename,
+    mime || null,
+    size || null,
+    uploadedBy || null
+  ]);
+  return res.insertId;
+}
+
+async function remove(id) {
+  await db.query('DELETE FROM employee_documents WHERE id = ?', [parseInt(id, 10)]);
+}
+
+module.exports = { ensureTable, listFiltered, getById, create, remove };
