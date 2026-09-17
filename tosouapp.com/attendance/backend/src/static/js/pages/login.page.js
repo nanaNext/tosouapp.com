@@ -205,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   } catch (e) { /* silently ignored */ }
   const form = $('#loginForm');
-  if (form) { try { form.setAttribute('autocomplete', 'off'); } catch (e) { /* silently ignored */ } }
   const emailInput = $('#email');
   const passwordInput = $('#password');
   const btn = $('#loginBtn');
@@ -223,25 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) { /* silently ignored */ }
   };
-  // readonly trick: inputs have readonly in HTML so Chrome skips autofill on page load.
-  // Remove readonly after 100ms (after Chrome's autofill window has passed) and clear values.
-  try {
-    if (emailInput) { emailInput.setAttribute('autocomplete', 'off'); emailInput.name = 'login_email'; }
-    if (passwordInput) { passwordInput.setAttribute('autocomplete', 'new-password'); passwordInput.name = 'login_password'; }
-    setTimeout(() => {
-      try {
-        if (emailInput) {
-          emailInput.readOnly = false;
-          if (localStorage.getItem('remember') !== '1') { emailInput.value = ''; }
-        }
-        if (passwordInput) {
-          passwordInput.readOnly = false;
-          passwordInput.value = '';
-        }
-        updateBtnState();
-      } catch (e) { /* silently ignored */ }
-    }, 100);
-  } catch (e) { /* silently ignored */ }
   form.addEventListener('submit', handleSubmit);
   updateBtnState();
   if (emailInput) emailInput.addEventListener('input', updateBtnState);
