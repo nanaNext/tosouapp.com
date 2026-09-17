@@ -4,6 +4,7 @@ const repo = require('./attendance.repository');
 const db = require('../../core/database/mysql');
 const noticesRepo = require('../notices/notices.repository');
 const userRepo = require('../users/user.repository');
+const auditRepo = require('../audit/audit.repository');
 const log = require('../../core/logger');
 const { nowJSTMySQL } = require('../../utils/dateTime');
 const { timesheetMaxDays } = require('../../config/env');
@@ -12,6 +13,28 @@ const {
   getMonthStatusValue,
   assertMonthWritable,
 } = require('./attendance.utils');
+
+// Liệt kê các (year, month) mà khoảng ngày [startDate, endDate] đi qua, để
+// kiểm tra từng tháng có đang bị khóa (attendance_month_status='approved')
+// không trước khi cho tạo/xóa phân ca. endDate=null (chưa xác định ngày kết
+// thúc) chỉ cần kiểm tra tới tháng hiện tại — tháng tương lai chưa thể
+// 'approved' nên không có gì để khóa.
+function enumerateMonths(startDate, endDate) {
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
+  const end = endDate ? new Date(`${endDate}T00:00:00Z`) : nowJST;
+  const months = [];
+  let y = start.getUTCFullYear();
+  let m = start.getUTCMonth() + 1;
+  const endY = end.getUTCFullYear();
+  const endM = end.getUTCMonth() + 1;
+  while (y < endY || (y === endY && m <= endM)) {
+    months.push({ year: y, month: m });
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return months;
+}
 
 // ─── Định nghĩa ca làm việc ──────────────────────────────────────────────────
 
@@ -40,11 +63,39 @@ exports.postShiftDefinition = async (req, res) => {
     if (!name || !/^\d{2}:\d{2}$/.test(start_time) || !/^\d{2}:\d{2}$/.test(end_time)) {
       return res.status(400).json({ message: 'Invalid name/start_time/end_time' });
     }
+    if (start_time === end_time) {
+      return res.status(400).json({ message: 'start_time and end_time must differ' });
+    }
     const tid = req.tenantId || null;
+
+    // upsertShiftDefinition ghép theo `name` — nếu đã tồn tại và giờ/nghỉ
+    // giải lao thay đổi, đây là một EDIT có thể làm sai lệch công/lương đã
+    // tính cho những tháng đã chốt (attendance_month_status='approved'),
+    // vì giờ ca được tính "live" mỗi lần xem chứ không lưu cố định theo
+    // từng bản ghi chấm công. Chặn lại, yêu cầu mở khóa tháng trước.
+    const existing = await repo.getShiftByName(name, { tenantId: tid }).catch(() => null);
+    const isTimingChange = existing && (
+      existing.start_time !== start_time ||
+      existing.end_time !== end_time ||
+      Number(existing.break_minutes) !== Number(break_minutes || 0)
+    );
+    if (isTimingChange) {
+      const conflicts = await repo.findLockedMonthConflictsForShift(existing.id, { tenantId: tid });
+      if (conflicts.length) {
+        return res.status(423).json({
+          message: 'このシフトは確定済みの月に使用されています。編集する前に対象の月を解除してください。',
+          lockedMonths: conflicts.map(c => ({ userId: c.userId, username: c.username, email: c.email, year: c.year, month: c.month }))
+        });
+      }
+    }
+
     const row = await repo.upsertShiftDefinition({ name, start_time, end_time, break_minutes, working_days, tenantId: tid });
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: existing ? 'shift_definition_update' : 'shift_definition_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: existing ? JSON.stringify(existing) : null, afterData: JSON.stringify(row) });
+    } catch (e) { /* silently ignored */ }
     res.status(200).json(row);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(Number(err?.status) || 500).json({ message: err.message });
   }
 };
 
@@ -59,6 +110,9 @@ exports.deleteShiftDefinition = async (req, res) => {
     if (r?.notFound) return res.status(404).json({ message: 'Not found' });
     if (r?.inUse) return res.status(409).json({ message: 'Shift is in use', assignedCount: r.assignedCount ?? null });
     if (!r || !r.deleted) return res.status(500).json({ message: 'Delete failed' });
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: 'shift_definition_delete', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id }), afterData: null });
+    } catch (e) { /* silently ignored */ }
     res.status(200).json({ ok: true, deleted: r.deleted });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -107,11 +161,35 @@ exports.postShiftAssignment = async (req, res) => {
     if (!userId || !shiftId || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
       return res.status(400).json({ message: 'Missing userId/shiftId/startDate' });
     }
+    if (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return res.status(400).json({ message: 'Invalid endDate' });
+    }
+    if (endDate && endDate < startDate) {
+      return res.status(400).json({ message: 'endDate must be on or after startDate' });
+    }
     const tid = req.tenantId || null;
+
+    // Không cho gán ca chồng lên khoảng ngày đã có ca khác của cùng nhân viên.
+    const overlaps = await repo.findOverlappingAssignments(userId, startDate, endDate, { tenantId: tid });
+    if (overlaps.length) {
+      return res.status(409).json({
+        message: 'この従業員は既にこの期間にシフトが割り当てられています',
+        conflicts: overlaps.map(o => ({ id: o.id, shiftId: o.shiftId, start_date: o.start_date, end_date: o.end_date }))
+      });
+    }
+
+    // Không cho tạo/đổi phân ca chạm vào tháng đã chốt (attendance_month_status='approved').
+    for (const { year, month } of enumerateMonths(startDate, endDate)) {
+      await assertMonthWritable(req, userId, year, month);
+    }
+
     await repo.assignShiftToUser(userId, shiftId, startDate, endDate, { tenantId: tid });
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: 'shift_assignment_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ userId, shiftId, startDate, endDate }) });
+    } catch (e) { /* silently ignored */ }
     res.status(201).json({ ok: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(Number(err?.status) || 500).json({ message: err.message });
   }
 };
 
@@ -124,11 +202,21 @@ exports.deleteShiftAssignment = async (req, res) => {
     const id = parseInt(String(req.params.id), 10);
     if (!userId || !id) return res.status(400).json({ message: 'Missing userId/id' });
     const tid = req.tenantId || null;
+
+    const existing = await repo.getAssignmentById(id, userId, { tenantId: tid });
+    if (!existing) return res.status(404).json({ message: 'Not found' });
+    for (const { year, month } of enumerateMonths(String(existing.start_date).slice(0, 10), existing.end_date ? String(existing.end_date).slice(0, 10) : null)) {
+      await assertMonthWritable(req, userId, year, month);
+    }
+
     const r = await repo.deleteShiftAssignment(id, userId, { tenantId: tid });
     if (!r?.ok) return res.status(404).json({ message: 'Not found' });
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: 'shift_assignment_delete', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(existing), afterData: null });
+    } catch (e) { /* silently ignored */ }
     res.status(200).json(r);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(Number(err?.status) || 500).json({ message: err.message });
   }
 };
 

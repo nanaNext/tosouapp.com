@@ -68,7 +68,12 @@ module.exports = {
     const tid = _tid(tenantId);
     const s = String(start_time || '').split(':').map(Number);
     const e = String(end_time || '').split(':').map(Number);
-    const std = Math.max(0, (e[0]*60+e[1]) - (s[0]*60+s[1]) - (break_minutes || 0));
+    const startMin = s[0] * 60 + s[1];
+    let endMin = e[0] * 60 + e[1];
+    // Ca qua đêm (VD 22:00-06:00): end_time nhỏ hơn start_time nghĩa là kết
+    // thúc vào ngày hôm sau, cộng thêm 24h thay vì để ra số âm bị kẹp về 0.
+    if (endMin <= startMin) endMin += 24 * 60;
+    const std = Math.max(0, endMin - startMin - (break_minutes || 0));
     await db.query(`
       INSERT INTO shift_definitions (name, start_time, end_time, break_minutes, standard_minutes, working_days, tenant_id)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -267,6 +272,78 @@ module.exports = {
       vals
     );
     return { ok: true, updated: Number(res?.affectedRows || 0) };
+  },
+  async getAssignmentById(id, userId, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const xid = parseInt(String(id), 10);
+    const uid = parseInt(String(userId), 10);
+    if (!xid || !uid) return null;
+    const where = ['id = ?', 'userId = ?'];
+    const params = [xid, uid];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(`SELECT * FROM user_shift_assignments WHERE ${where.join(' AND ')} LIMIT 1`, params);
+    return rows && rows[0] ? rows[0] : null;
+  },
+  async findOverlappingAssignments(userId, startDate, endDate, { tenantId = null, excludeId = null } = {}) {
+    const tid = _tid(tenantId);
+    const uid = parseInt(String(userId), 10);
+    const where = ['userId = ?', '(end_date IS NULL OR end_date >= ?)'];
+    const params = [uid, startDate];
+    if (endDate) {
+      where.push('start_date <= ?');
+      params.push(endDate);
+    }
+    if (excludeId) {
+      where.push('id != ?');
+      params.push(parseInt(String(excludeId), 10));
+    }
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [rows] = await db.query(
+      `SELECT id, shiftId, start_date, end_date FROM user_shift_assignments WHERE ${where.join(' AND ')}`,
+      params
+    );
+    return rows || [];
+  },
+  async findLockedMonthConflictsForShift(shiftId, { tenantId = null } = {}) {
+    const tid = _tid(tenantId);
+    const where = ['shiftId = ?'];
+    const params = [parseInt(String(shiftId), 10)];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const [assigns] = await db.query(
+      `SELECT userId, start_date, end_date FROM user_shift_assignments WHERE ${where.join(' AND ')}`,
+      params
+    );
+    if (!assigns || !assigns.length) return [];
+    const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
+    const pairs = new Map();
+    for (const a of assigns) {
+      const start = new Date(a.start_date);
+      const end = a.end_date ? new Date(a.end_date) : nowJST;
+      let y = start.getUTCFullYear();
+      let m = start.getUTCMonth() + 1;
+      const endY = end.getUTCFullYear();
+      const endM = end.getUTCMonth() + 1;
+      while (y < endY || (y === endY && m <= endM)) {
+        pairs.set(`${a.userId}-${y}-${m}`, { userId: a.userId, year: y, month: m });
+        m += 1;
+        if (m > 12) { m = 1; y += 1; }
+      }
+    }
+    const pairList = Array.from(pairs.values());
+    if (!pairList.length) return [];
+    const conds = pairList.map(() => '(userId = ? AND year = ? AND month = ?)');
+    const condParams = [];
+    for (const p of pairList) condParams.push(p.userId, p.year, p.month);
+    const whereAms = [`(${conds.join(' OR ')})`, `status = 'approved'`];
+    if (tid != null) { whereAms.push('tenant_id = ?'); condParams.push(tid); }
+    const [rows] = await db.query(
+      `SELECT ams.userId, ams.year, ams.month, u.username, u.email
+       FROM attendance_month_status ams
+       LEFT JOIN users u ON u.id = ams.userId
+       WHERE ${whereAms.join(' AND ')}`,
+      condParams
+    );
+    return rows || [];
   },
   async deleteShiftAssignment(id, userId, { tenantId = null } = {}) {
     const tid = _tid(tenantId);

@@ -131,7 +131,15 @@ async function computeRecord(rec, ctx = null) {
     if (def) {
       const [sH, sM] = String(def.start_time).split(':').map(n => parseInt(n, 10));
       const [eH, eM] = String(def.end_time).split(':').map(n => parseInt(n, 10));
-      shift = { name: def.name, start: jst(sH, sM || 0), end: jst(eH, eM || 0), breakMinutes: def.break_minutes ?? baseBreak };
+      const shiftStartDate = jst(sH, sM || 0);
+      let shiftEndDate = jst(eH, eM || 0);
+      // Ca qua đêm (VD 22:00-06:00): end_time <= start_time nghĩa là kết thúc
+      // vào ngày hôm sau — cộng thêm 24h, tránh minutesBetween() ra số âm rồi
+      // bị Math.max(0, ...) kẹp về 0 giờ công (xem dòng ~296).
+      if (shiftEndDate.getTime() <= shiftStartDate.getTime()) {
+        shiftEndDate = new Date(shiftEndDate.getTime() + 24 * 3600 * 1000);
+      }
+      shift = { name: def.name, start: shiftStartDate, end: shiftEndDate, breakMinutes: def.break_minutes ?? baseBreak };
       try {
         const wt = String(rec.work_type || rec.workType || '').trim();
         const labels = String(rec.labels || '').trim();
