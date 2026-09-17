@@ -35,39 +35,39 @@ function recordEndpointPerf(endpoint, startedAt, meta = {}) {
 
 // ─── Đồng bộ nghỉ phép / kubun ───────────────────────────────────────────────
 
-async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attendance') {
+async function ensurePaidLeaveRequestForDate(userId, date, reason = 'from_attendance', tenantId = null) {
   try {
     const ds = String(date || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) return;
     const existed = await leaveRepo.findExactRequest({
-      userId, startDate: ds, endDate: ds, type: 'paid', statuses: ['pending', 'approved']
+      userId, startDate: ds, endDate: ds, type: 'paid', statuses: ['pending', 'approved'], tenantId
     });
     if (existed) return;
-    await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid', reason });
+    await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid', reason, tenantId });
   } catch (e) {
     log.warn('ensure_paid_leave_error', { userId, date, error_message: e.message });
   }
 }
 
-async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendance') {
+async function syncPaidLeaveByKubun(userId, date, kubun, reason = 'from_attendance', tenantId = null) {
   try {
     const ds = String(date || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) return;
     const k = String(kubun || '').trim();
     if (k === '有給休暇') {
-      await ensurePaidLeaveRequestForDate(userId, ds, reason);
+      await ensurePaidLeaveRequestForDate(userId, ds, reason, tenantId);
       return;
     }
     if (k === '半休(有給)') {
       const existed = await leaveRepo.findExactRequest({
-        userId, startDate: ds, endDate: ds, type: 'paid_half', statuses: ['pending', 'approved']
+        userId, startDate: ds, endDate: ds, type: 'paid_half', statuses: ['pending', 'approved'], tenantId
       });
       if (!existed) {
-        await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid_half', reason: reason || 'half_day_paid' });
+        await leaveRepo.create({ userId, startDate: ds, endDate: ds, type: 'paid_half', reason: reason || 'half_day_paid', tenantId });
       }
       return;
     }
-    await leaveRepo.cancelOwnPaidByDate(userId, ds);
+    await leaveRepo.cancelOwnPaidByDate(userId, ds, tenantId);
   } catch (e) {
     log.warn('sync_paid_leave_error', { userId, date, kubun, error_message: e.message });
   }

@@ -220,7 +220,7 @@ exports.putMonthBulk = async (req, res) => {
         latestByDate.set(ds, kubun);
       }
       for (const [ds, kubun] of latestByDate.entries()) {
-        await syncPaidLeaveByKubun(userId, ds, kubun);
+        await syncPaidLeaveByKubun(userId, ds, kubun, 'from_attendance', req.tenantId || null);
       }
     } catch (e) { /* bỏ qua lỗi */ }
 

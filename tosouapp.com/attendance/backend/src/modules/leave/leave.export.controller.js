@@ -6,9 +6,10 @@
  */
 const db = require('../../core/database/mysql');
 const s3Service = require('../../core/services/s3.service');
+const { resolveManagerBranchScope } = require('./leave.access');
 
 const TYPE_MAP = {
-  paid: '有給休暇', sick: '病気休暇', special: '特別休暇',
+  paid: '有給休暇', paid_half: '半休(有給)', sick: '病気休暇', special: '特別休暇',
   absence: '欠勤', unpaid: '無給休暇', other: 'その他',
 };
 const STATUS_MAP = { pending: '確認待ち', approved: '承認済み', rejected: '却下' };
@@ -96,41 +97,56 @@ async function buildExcel(rows, month) {
   return wb;
 }
 
+// Dùng chung cho xlsx/csv/pdf export. Manager chỉ lấy được dữ liệu cùng chi nhánh (nếu đã gán chi nhánh).
+async function fetchLeaveExportRows(req) {
+  const month    = String(req.query.month  || '').slice(0, 7);
+  const status   = String(req.query.status || '').toLowerCase();
+  const tenantId = req.tenantId || null;
+  const branchId = await resolveManagerBranchScope(req);
+
+  const conditions = [];
+  const params = [];
+
+  if (month && /^\d{4}-\d{2}$/.test(month)) {
+    conditions.push(`DATE_FORMAT(lr.startDate, '%Y-%m') = ?`);
+    params.push(month);
+  }
+  if (['pending', 'approved', 'rejected'].includes(status)) {
+    conditions.push('lr.status = ?');
+    params.push(status);
+  }
+  if (tenantId != null) {
+    conditions.push('u.tenant_id = ?');
+    params.push(parseInt(String(tenantId), 10));
+  }
+  if (branchId != null) {
+    conditions.push('u.branch_id = ?');
+    params.push(branchId);
+  }
+  // Không xuất phép của admin/manager để giữ nhất quán với admin list
+  conditions.push(`u.role NOT IN ('admin', 'manager')`);
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const [rows] = await db.query(`
+    SELECT lr.*, u.username, u.email, u.employee_code,
+           COALESCE(t.name, '未設定') AS tenant_name,
+           COALESCE(b.name, '') AS branch_name
+    FROM leave_requests lr
+    LEFT JOIN users u ON u.id = lr.userId
+    LEFT JOIN tenants t ON t.id = u.tenant_id
+    LEFT JOIN branches b ON b.id = u.branch_id
+    ${where}
+    ORDER BY lr.startDate DESC, lr.created_at DESC
+    LIMIT 2000
+  `, params);
+  return { rows: rows || [], month, status };
+}
+
 async function exportLeaveXlsx(req, res) {
   try {
-    const month    = String(req.query.month  || '').slice(0, 7);
-    const status   = String(req.query.status || '').toLowerCase();
-    const tenantId = req.tenantId || null;
+    const { rows, month } = await fetchLeaveExportRows(req);
 
-    const conditions = [];
-    const params = [];
-
-    if (month && /^\d{4}-\d{2}$/.test(month)) {
-      conditions.push(`DATE_FORMAT(lr.startDate, '%Y-%m') = ?`);
-      params.push(month);
-    }
-    if (['pending', 'approved', 'rejected'].includes(status)) {
-      conditions.push('lr.status = ?');
-      params.push(status);
-    }
-    if (tenantId != null) {
-      conditions.push('u.tenant_id = ?');
-      params.push(parseInt(String(tenantId), 10));
-    }
-    // Không xuất phép của admin/manager để giữ nhất quán với admin list
-    conditions.push(`u.role NOT IN ('admin', 'manager')`);
-
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const [rows] = await db.query(`
-      SELECT lr.*, u.username, u.email, u.employee_code
-      FROM leave_requests lr
-      LEFT JOIN users u ON u.id = lr.userId
-      ${where}
-      ORDER BY lr.startDate DESC, lr.created_at DESC
-      LIMIT 2000
-    `, params);
-
-    const wb = await buildExcel(rows || [], month);
+    const wb = await buildExcel(rows, month);
     const label    = month || 'all';
     const filename = `leave_requests_${label}.xlsx`;
     const encoded  = encodeURIComponent(filename);
@@ -154,4 +170,54 @@ async function exportLeaveXlsx(req, res) {
   }
 }
 
-module.exports = { exportLeaveXlsx };
+async function exportLeaveCsv(req, res) {
+  try {
+    const { rows, month } = await fetchLeaveExportRows(req);
+
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // Chống CSV Injection cho các trường nhập tự do (理由)
+    const safeText = (v) => {
+      const s = String(v ?? '');
+      return /^[=+\-@]/.test(s) ? `'${s}` : s;
+    };
+
+    const csvHead = ['開始日', '終了日', '日数', '氏名', '社員番号', '会社', '支店', '種別', '理由', '状態', '申請日時'].join(',');
+    const csvBody = rows.map(r => {
+      const start = String(r.startDate || '').slice(0, 10);
+      const end   = String(r.endDate   || '').slice(0, 10);
+      return [
+        esc(start),
+        esc(end),
+        esc(daysBetween(start, end)),
+        esc(r.username || r.email || '—'),
+        esc(r.employee_code || '—'),
+        esc(r.tenant_name || ''),
+        esc(r.branch_name || ''),
+        esc(TYPE_MAP[String(r.type || '').toLowerCase()] || r.type || '—'),
+        esc(safeText(r.reason || '')),
+        esc(STATUS_MAP[String(r.status || '').toLowerCase()] || r.status || '—'),
+        esc(String(r.created_at || '').slice(0, 16).replace('T', ' '))
+      ].join(',');
+    }).join('\n');
+
+    const label = month || 'all';
+    const filename = `leave_requests_${label}.csv`;
+    const csvOutput = '﻿' + csvHead + '\n' + csvBody;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    if (s3Service.isR2Configured()) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const r2Key = `exports/csv/leave/${ts}_${filename}`;
+      s3Service.uploadToR2(r2Key, Buffer.from(csvOutput, 'utf8'), 'text/csv')
+        .catch(e => console.error('R2 upload failed:', e));
+    }
+
+    res.status(200).send(csvOutput);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+module.exports = { exportLeaveXlsx, exportLeaveCsv, fetchLeaveExportRows, daysBetween, TYPE_MAP, STATUS_MAP };

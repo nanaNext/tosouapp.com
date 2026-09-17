@@ -472,95 +472,736 @@ import{delegate as V}from"../_shared/dom.js";import{api as M}from"../../shared/a
         gap: 12px !important;
       }
     }
-  `,document.head.appendChild(e)}async function pe({host:e,content:N,opts:s,mountApprovalsFn:z}){const l=e||N,D=Number(l.dataset.approvalsRenderSeq||0)+1;l.dataset.approvalsRenderSeq=String(D);const g=()=>String(l.dataset.approvalsRenderSeq||"")!==String(D);_(),l.innerHTML="<h3>\u627F\u8A8D\u30D5\u30ED\u30FC</h3>";const p=String(Object.prototype.hasOwnProperty.call(s||{},"status")?s?.status||"":"pending").trim().toLowerCase(),m=document.createElement("div");m.className="leave-toolbar",m.innerHTML=`
+  `,document.head.appendChild(e)}async function pe({host:e,content:N,opts:s,mountApprovalsFn:z}){
+  const l=e||N, D=Number(l.dataset.approvalsRenderSeq||0)+1;
+  l.dataset.approvalsRenderSeq=String(D);
+  const g=()=>String(l.dataset.approvalsRenderSeq||"")!==String(D);
+  _();
+  l.innerHTML="<h3>承認フロー</h3>";
+  const p=String(Object.prototype.hasOwnProperty.call(s||{},"status")?s?.status||"":"pending").trim().toLowerCase();
+
+  const TYPE_LABELS={paid:"有給休暇",paid_half:"半休(有給)",sick:"病気休暇",special:"特別休暇",absence:"欠勤",unpaid:"無給休暇",other:"その他"};
+  const typeLabel=t=>TYPE_LABELS[String(t||"").toLowerCase()]||String(t||"");
+  const daysBetween=(start,end)=>{
+    try{
+      const sd=new Date(String(start).slice(0,10)), ed=new Date(String(end).slice(0,10));
+      return Math.max(1, Math.round((ed-sd)/86400000)+1);
+    }catch{return 1;}
+  };
+  const displayDays=k=>{
+    const start=String(k.startDate||"").slice(0,10), end=String(k.endDate||"").slice(0,10);
+    if(String(k.type||"").toLowerCase()==="paid_half" && start && start===end) return "0.5";
+    return String(daysBetween(start,end));
+  };
+
+  const m=document.createElement("div");
+  m.className="leave-toolbar";
+  m.innerHTML=`
     <label style="display:inline-flex;align-items:center;gap:8px;">
-      <span class="leave-label">\u4F11\u6687\u7533\u8ACB\u30D5\u30A3\u30EB\u30BF\u30FC</span>
+      <span class="leave-label">休暇申請フィルター</span>
       <select id="leaveReqStatusFilter" class="leave-select">
-        <option value="">\u3059\u3079\u3066</option>
-        <option value="pending">\u627F\u8A8D\u5F85\u3061</option>
-        <option value="approved">\u627F\u8A8D\u6E08\u307F</option>
-        <option value="rejected">\u5374\u4E0B</option>
+        <option value="">すべて</option>
+        <option value="pending">承認待ち</option>
+        <option value="approved">承認済み</option>
+        <option value="rejected">却下</option>
       </select>
     </label>
     <label style="display:inline-flex;align-items:center;gap:8px;">
-      <span class="leave-label">\u6708</span>
+      <span class="leave-label">月</span>
       <input id="leaveReqMonthFilter" class="leave-input" type="month">
     </label>
-  `,l.appendChild(m);const y=m.querySelector("#leaveReqStatusFilter");y&&(y.value=p);const w=m.querySelector("#leaveReqMonthFilter"),A=document.createElement("div");A.innerHTML='<div style="padding:16px;color:#64748b;text-align:center;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</div>',l.appendChild(A);const d=y&&y.value?`?status=${encodeURIComponent(y.value)}`:"";let u=[],n=!1;if(p==="pending"){if(n=!0,u=await M.get("/api/leave/pending").catch(()=>[]),g())return}else try{if(u=await M.get(`/api/leave/admin-requests${d}`),g())return}catch{if(u=[],g())return}A.remove();const c=document.createElement("div");c.className="leave-table-wrap";const t=document.createElement("table");t.className="leave-table leave-table-approvals";const i=p==="pending";t.innerHTML=`<thead><tr><th>\u793E\u54E1\u756A\u53F7\u30FB\u6C0F\u540D</th><th>\u671F\u9593</th><th>\u7A2E\u985E</th><th>\u72B6\u614B</th><th>\u6B8B\u6570</th>${i?"<th>\u64CD\u4F5C</th>":""}</tr></thead>`;const h=document.createElement("tbody"),f=document.createElement("div");f.className="leave-pager";let x=1;const C=10,r=Array.isArray(u)?u:[],F=()=>{const b=String(w?.value||"").trim(),L=r.filter(k=>!b||String(k.startDate||"").startsWith(b)||String(k.endDate||"").startsWith(b)),B=L.length,H=Math.max(1,Math.ceil(B/C));x>H&&(x=H);const T=(x-1)*C,I=L.slice(T,T+C),W=i?6:5;h.innerHTML="";let K="",O="";for(const k of I){const j=String(k?.tenant_id??"0"),ee=String(k?.branch_id??"0"),X=String(k?.tenant_name||"\u672A\u8A2D\u5B9A").trim()||"\u672A\u8A2D\u5B9A",G=String(k?.branch_name||"").trim(),Z=j,Y=`${j}__${ee}`;if(Z!==K){const U=document.createElement("tr");U.className="leave-group-header";const ne=G?`<span class="leave-group-branch">${G}</span>`:"";U.innerHTML=`<td colspan="${W}"><span class="leave-group-company">\u{1F3E2} ${X}</span>${ne}</td>`,h.appendChild(U),K=Z,O=Y}else if(G&&Y!==O){const U=document.createElement("tr");U.className="leave-group-header",U.innerHTML=`<td colspan="${W}"><span class="leave-group-company">\u{1F3E2} ${X}</span><span class="leave-group-branch">${G}</span></td>`,h.appendChild(U),O=Y}const ie=String(k?.status||"")==="pending",te=`${k.employee_code||"EMP"+String(k.userId).padStart(3,"0")} ${k?.username||""}`.trim(),Q=document.createElement("tr"),P=String(k.status||"").toLowerCase(),ae=P==="approved"?"approved":P==="rejected"?"rejected":"pending";let J="\u627F\u8A8D\u5F85\u3061";P==="approved"&&(J="\u627F\u8A8D\u6E08\u307F"),P==="rejected"&&(J="\u5374\u4E0B");let R=k.type;R==="paid"?R="\u6709\u7D66":R==="unpaid"&&(R="\u6B20\u52E4"),Q.innerHTML=`
-        <td data-label="\u793E\u54E1\u756A\u53F7\u30FB\u6C0F\u540D">${te}</td>
-        <td data-label="\u671F\u9593">${k.startDate}\u301C${k.endDate}</td>
-        <td data-label="\u7A2E\u985E">${R}</td>
-        <td data-label="\u72B6\u614B"><span class="leave-badge ${ae}">${J}</span></td>
-        <td data-label="\u6B8B\u6570"><button type="button" class="leave-btn leave-btn-subtle" data-action="balance" data-user="${k.userId}">\u7167\u4F1A</button></td>
-        ${i?`<td data-label="\u64CD\u4F5C">
-          <button type="button" class="leave-btn leave-btn-primary" data-action="approve" data-app="${k.id}">\u627F\u8A8D</button>
-          <button type="button" class="leave-btn leave-btn-danger" data-action="reject" data-app="${k.id}">\u5374\u4E0B</button>
-        </td>`:""}`,h.appendChild(Q)}if(!I.length){const k=document.createElement("tr");k.innerHTML=`<td colspan="${W}" style="text-align:center;color:#64748b;padding:20px 8px;">${n?"\u627F\u8A8D\u5F85\u3061\u306E\u4F11\u6687\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093":p?"\u3053\u306E\u72B6\u614B\u306E\u4F11\u6687\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093":"\u4F11\u6687\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093"}</td>`,h.appendChild(k)}f.innerHTML=`
-      <button type="button" class="leave-btn" data-pg="prev">\u524D\u3078</button>
-      <span class="leave-muted">${B} \u4EF6 / ${x} / ${H} \u30DA\u30FC\u30B8</span>
-      <button type="button" class="leave-btn" data-pg="next">\u6B21\u3078</button>
-    `,f.querySelectorAll("[data-pg]").forEach(k=>{k.addEventListener("click",()=>{const j=k.getAttribute("data-pg");j==="prev"&&x>1&&(x-=1),j==="next"&&x<H&&(x+=1),F(),a()})})};y&&y.addEventListener("change",async()=>{await z(e||N,{...s||{},status:String(y.value||"")})}),t.appendChild(h),c.appendChild(t),l.appendChild(c);const o=async b=>{const L=b.dataset.action,B=H=>{try{b&&typeof b.disabled<"u"&&(b.disabled=!!H)}catch{}};if(L==="balance"){const H=b.dataset.user;try{B(!0);const T=await M.get(`/api/leave/user-balance?userId=${encodeURIComponent(H)}`);alert(`User ${H} \u6B8B\u6570: ${T.totalAvailable}\u65E5`)}catch(T){alert("\u6B8B\u6570\u53D6\u5F97\u5931\u6557: "+(T&&T.message?T.message:"error"))}finally{B(!1)}return}if(L==="approve"||L==="reject"){const H=b.dataset.app,T=L==="approve"?"approved":"rejected";try{B(!0),await M.patch(`/api/leave/${H}/status`,{status:T}),typeof s?.onDataChanged=="function"&&await s.onDataChanged(),await z(e||N,{...s||{},status:p})}catch(I){alert("\u72B6\u614B\u66F4\u65B0\u5931\u6557: "+(I&&I.message?I.message:"error"))}finally{B(!1)}return}if(L==="pc-approve"||L==="pc-reject"){const H=b.dataset.pc,T=L==="pc-approve"?"approved":"rejected";try{B(!0),await M.patch(`/api/manager/profile-change/${H}/status`,{status:T}),typeof s?.onDataChanged=="function"&&await s.onDataChanged(),await z(e||N,s||{})}catch(I){alert("\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u7533\u8ACB\u66F4\u65B0\u5931\u6557: "+(I&&I.message?I.message:"error"))}finally{B(!1)}return}},a=()=>{l.querySelectorAll("[data-action]").forEach(b=>{b.onclick=async L=>{L.preventDefault(),L.stopPropagation(),await o(b)}})};if(F(),a(),l.appendChild(f),w&&w.addEventListener("change",()=>{x=1,F(),a()}),s?.hideProfileSection)return;const $=document.createElement("div");$.innerHTML="<h4>\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u66F4\u65B0\u7533\u8ACB</h4>";const S=await M.get("/api/manager/profile-change/pending");if(g())return;const v=document.createElement("div");v.className="leave-table-wrap";const E=document.createElement("table");E.className="leave-table",E.innerHTML="<thead><tr><th>ID</th><th>User</th><th>\u5185\u5BB9</th><th>\u9001\u4FE1\u65E5\u6642</th><th>\u64CD\u4F5C</th></tr></thead>";const q=document.createElement("tbody");for(const b of S){const L=b.fields||{},B=Object.keys(L).slice(0,6).map(T=>`${T}: ${String(L[T]).slice(0,20)}`).join(", "),H=document.createElement("tr");H.innerHTML=`
+    <span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;">
+      <button id="leaveExportCsv" type="button" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border:1px solid #a7f3d0;background:#ecfdf5;color:#065f46;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;white-space:nowrap;">CSV出力</button>
+      <button id="leaveExportPdf" type="button" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;white-space:nowrap;">PDF出力</button>
+      <button id="leaveExportXlsx" type="button" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border:1px solid #fcd34d;background:#fffbeb;color:#92400e;font-size:13px;font-weight:600;cursor:pointer;border-radius:4px;white-space:nowrap;">Excel出力</button>
+    </span>
+  `;
+  l.appendChild(m);
+  const y=m.querySelector("#leaveReqStatusFilter");
+  y && (y.value=p);
+  const w=m.querySelector("#leaveReqMonthFilter"), A=document.createElement("div");
+
+  (()=>{
+    const dl=async(kind,ext,btn)=>{
+      const orig=btn.innerHTML;
+      const st=String(y?.value||"").trim(), mo=String(w?.value||"").trim();
+      const qs=[];
+      st && qs.push(`status=${encodeURIComponent(st)}`);
+      mo && qs.push(`month=${encodeURIComponent(mo)}`);
+      btn.disabled=!0; btn.textContent="出力中...";
+      try{
+        const resp=await fetch(`/api/leave/export.${ext}${qs.length?"?"+qs.join("&"):""}`,{credentials:"include"});
+        if(!resp.ok){ const e2=await resp.json().catch(()=>({})); throw new Error(e2.message||`HTTP ${resp.status}`); }
+        const blob=await resp.blob(), url=URL.createObjectURL(blob), lnk=document.createElement("a");
+        lnk.href=url; lnk.download=`休暇申請_${mo||"all"}.${ext}`;
+        document.body.appendChild(lnk); lnk.click(); document.body.removeChild(lnk);
+        setTimeout(()=>URL.revokeObjectURL(url),1e4);
+      }catch(err){
+        alert(`${kind}出力に失敗しました: `+(err&&err.message?err.message:err));
+      }finally{
+        btn.disabled=!1; btn.innerHTML=orig;
+      }
+    };
+    const bc=m.querySelector("#leaveExportCsv"), bp=m.querySelector("#leaveExportPdf"), bx=m.querySelector("#leaveExportXlsx");
+    bc && bc.addEventListener("click",()=>dl("CSV","csv",bc));
+    bp && bp.addEventListener("click",()=>dl("PDF","pdf",bp));
+    bx && bx.addEventListener("click",()=>dl("Excel","xlsx",bx));
+  })();
+
+  const su=document.createElement("div");
+  su.id="leaveUsageSummary";
+  su.style.cssText="margin:0 0 12px;padding:10px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;font-size:13px;color:#0c4a6e;";
+  su.textContent="実績を読み込み中...";
+  l.appendChild(su);
+  (()=>{
+    const loadSummary=async()=>{
+      const mo=(w&&w.value)||new Date().toISOString().slice(0,7);
+      if(g()) return;
+      su.textContent="実績を読み込み中...";
+      try{
+        const data=await M.get(`/api/leave/monthly-usage-summary?month=${encodeURIComponent(mo)}`);
+        if(g()) return;
+        const pd=data&&data.paid||{userCount:0,days:0}, ph=data&&data.paidHalf||{userCount:0,days:0};
+        su.innerHTML=`<strong>${mo} 取得実績（勤怠実績ベース）：</strong> 有給休暇 ${pd.userCount}名・${pd.days}日　／　半休（有給） ${ph.userCount}名・${ph.days}日`;
+      }catch(e){
+        if(g()) return;
+        su.textContent="実績の取得に失敗しました";
+      }
+    };
+    loadSummary();
+    w && w.addEventListener("change", loadSummary);
+  })();
+
+  A.innerHTML='<div style="padding:16px;color:#64748b;text-align:center;">読み込み中...</div>';
+  l.appendChild(A);
+
+  const qStatus=y&&y.value?`?status=${encodeURIComponent(y.value)}`:"";
+  let u=[], isPendingView=!1;
+  if(p==="pending"){
+    isPendingView=!0;
+    u=await M.get("/api/leave/pending").catch(()=>[]);
+    if(g()) return;
+  } else {
+    try{
+      u=await M.get(`/api/leave/admin-requests${qStatus}`);
+      if(g()) return;
+    }catch{
+      u=[];
+      if(g()) return;
+    }
+  }
+  A.remove();
+
+  const i=p==="pending"; // 操作列/一括承認バーを表示するか
+  const balanceCache=new Map();
+  const selected=new Set();
+
+  // ── 一括承認バー（承認待ちビューのみ） ──
+  const bulkBar=document.createElement("div");
+  if(i){
+    bulkBar.style.cssText="display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;";
+    bulkBar.innerHTML=`
+      <span id="leaveBulkCount" style="font-size:13px;color:#475569;">選択: 0件</span>
+      <button type="button" id="leaveBulkApprove" class="leave-btn leave-btn-primary" disabled>選択した申請を一括承認</button>
+      <button type="button" id="leaveBulkReject" class="leave-btn leave-btn-danger" disabled>選択した申請を一括却下</button>
+    `;
+    l.appendChild(bulkBar);
+  }
+  const bulkCountEl=bulkBar.querySelector("#leaveBulkCount");
+  const bulkApproveBtn=bulkBar.querySelector("#leaveBulkApprove");
+  const bulkRejectBtn=bulkBar.querySelector("#leaveBulkReject");
+  const refreshBulkBar=()=>{
+    if(!i) return;
+    bulkCountEl.textContent=`選択: ${selected.size}件`;
+    const disabled=selected.size===0;
+    bulkApproveBtn.disabled=disabled;
+    bulkRejectBtn.disabled=disabled;
+  };
+  const runBulkAction=async(status)=>{
+    const ids=Array.from(selected);
+    if(!ids.length) return;
+    const label=status==="approved"?"承認":"却下";
+    if(!confirm(`選択した ${ids.length} 件を一括${label}します。よろしいですか？`)) return;
+    bulkApproveBtn.disabled=!0; bulkRejectBtn.disabled=!0;
+    let ok=0, fail=0;
+    for(const id of ids){
+      try{
+        await M.patch(`/api/leave/${id}/status`,{status});
+        ok+=1;
+      }catch(err){
+        fail+=1;
+      }
+    }
+    selected.clear();
+    if(fail>0){
+      alert(`一括${label}: 成功 ${ok}件 / 失敗 ${fail}件`);
+    }
+    typeof s?.onDataChanged=="function" && await s.onDataChanged();
+    await z(e||N,{...s||{},status:p});
+  };
+  if(i){
+    bulkApproveBtn.addEventListener("click",()=>runBulkAction("approved"));
+    bulkRejectBtn.addEventListener("click",()=>runBulkAction("rejected"));
+  }
+
+  const c=document.createElement("div");
+  c.className="leave-table-wrap";
+  const t=document.createElement("table");
+  t.className="leave-table leave-table-approvals";
+  const colCount=i?9:7;
+  t.innerHTML=`<thead><tr>
+    ${i?'<th style="width:32px;"><input type="checkbox" id="leaveSelectAllPage"></th>':""}
+    <th>社員番号・氏名</th>
+    <th>期間</th>
+    <th>日数</th>
+    <th>種類</th>
+    <th>理由</th>
+    <th>状態</th>
+    <th>残数</th>
+    ${i?"<th>操作</th>":""}
+  </tr></thead>`;
+
+  const h=document.createElement("tbody");
+  const f=document.createElement("div");
+  f.className="leave-pager";
+  let x=1;
+  const PAGE_SIZE=10;
+  const r=Array.isArray(u)?u:[];
+
+  const loadBalanceCell=async(cellEl, userId)=>{
+    if(!userId) return;
+    try{
+      let data=balanceCache.get(userId);
+      if(!data){
+        data=await M.get(`/api/leave/user-balance?userId=${encodeURIComponent(userId)}`);
+        balanceCache.set(userId, data);
+      }
+      if(g()) return;
+      const grants=Array.isArray(data?.grants)?data.grants:[];
+      const tip=grants.length
+        ? grants.map(gr=>`付与日 ${gr.grantDate}: 残${gr.daysRemaining}/${gr.daysGranted}日（期限 ${gr.expiryDate}）`).join("\n")
+        : "付与履歴なし";
+      cellEl.textContent=`${data?.totalAvailable ?? 0}日`;
+      cellEl.title=tip;
+    }catch(err){
+      cellEl.textContent="取得失敗";
+    }
+  };
+
+  const F=()=>{
+    const b=String(w?.value||"").trim();
+    const L=r.filter(k=>!b || String(k.startDate||"").startsWith(b) || String(k.endDate||"").startsWith(b));
+    const B=L.length, H=Math.max(1, Math.ceil(B/PAGE_SIZE));
+    if(x>H) x=H;
+    const T=(x-1)*PAGE_SIZE, I=L.slice(T, T+PAGE_SIZE);
+    h.innerHTML="";
+    let K="", O="";
+    const balanceTargets=[];
+    for(const k of I){
+      const j=String(k?.tenant_id??"0"), ee=String(k?.branch_id??"0");
+      const X=String(k?.tenant_name||"未設定").trim()||"未設定";
+      const G=String(k?.branch_name||"").trim();
+      const Z=j, Y=`${j}__${ee}`;
+      if(Z!==K){
+        const U=document.createElement("tr");
+        U.className="leave-group-header";
+        const ne=G?`<span class="leave-group-branch">${G}</span>`:"";
+        U.innerHTML=`<td colspan="${colCount}"><span class="leave-group-company">🏢 ${X}</span>${ne}</td>`;
+        h.appendChild(U); K=Z; O=Y;
+      } else if(G && Y!==O){
+        const U=document.createElement("tr");
+        U.className="leave-group-header";
+        U.innerHTML=`<td colspan="${colCount}"><span class="leave-group-company">🏢 ${X}</span><span class="leave-group-branch">${G}</span></td>`;
+        h.appendChild(U); O=Y;
+      }
+      const te=`${k.employee_code||"EMP"+String(k.userId).padStart(3,"0")} ${k?.username||""}`.trim();
+      const Q=document.createElement("tr");
+      const P=String(k.status||"").toLowerCase();
+      const ae=P==="approved"?"approved":P==="rejected"?"rejected":"pending";
+      let J="承認待ち";
+      if(P==="approved") J="承認済み";
+      if(P==="rejected") J="却下";
+      const reasonFull=String(k.reason||"").trim();
+      const reasonShort=reasonFull.length>18?reasonFull.slice(0,18)+"…":(reasonFull||"—");
+      Q.innerHTML=`
+        ${i?`<td data-label="選択"><input type="checkbox" class="leave-row-select" data-app="${k.id}" ${selected.has(String(k.id))?"checked":""}></td>`:""}
+        <td data-label="社員番号・氏名">${te}</td>
+        <td data-label="期間">${k.startDate}〜${k.endDate}</td>
+        <td data-label="日数" class="num">${displayDays(k)}</td>
+        <td data-label="種類">${typeLabel(k.type)}</td>
+        <td data-label="理由" title="${reasonFull.replace(/"/g,"&quot;")}">${reasonShort}</td>
+        <td data-label="状態"><span class="leave-badge ${ae}">${J}</span></td>
+        <td data-label="残数"><span class="leave-muted leave-balance-cell">読込中…</span></td>
+        ${i?`<td data-label="操作">
+          <button type="button" class="leave-btn leave-btn-primary" data-action="approve" data-app="${k.id}">承認</button>
+          <button type="button" class="leave-btn leave-btn-danger" data-action="reject" data-app="${k.id}">却下</button>
+        </td>`:""}
+      `;
+      h.appendChild(Q);
+      const balanceCellEl=Q.querySelector(".leave-balance-cell");
+      if(balanceCellEl) balanceTargets.push({el:balanceCellEl, userId:k.userId});
+    }
+    if(!I.length){
+      const k=document.createElement("tr");
+      k.innerHTML=`<td colspan="${colCount}" style="text-align:center;color:#64748b;padding:20px 8px;">${isPendingView?"承認待ちの休暇申請はありません":p?"この状態の休暇申請はありません":"休暇申請はありません"}</td>`;
+      h.appendChild(k);
+    }
+    f.innerHTML=`
+      <button type="button" class="leave-btn" data-pg="prev">前へ</button>
+      <span class="leave-muted">${B} 件 / ${x} / ${H} ページ</span>
+      <button type="button" class="leave-btn" data-pg="next">次へ</button>
+    `;
+    f.querySelectorAll("[data-pg]").forEach(k=>{
+      k.addEventListener("click",()=>{
+        const j=k.getAttribute("data-pg");
+        if(j==="prev" && x>1) x-=1;
+        if(j==="next" && x<H) x+=1;
+        F(); a();
+      });
+    });
+
+    // 残数を非同期でまとめて取得（同一ユーザーはキャッシュ再利用）
+    for(const bt of balanceTargets){
+      loadBalanceCell(bt.el, bt.userId);
+    }
+
+    // チェックボックス配線（承認待ちビューのみ）
+    if(i){
+      const selectAll=t.querySelector("#leaveSelectAllPage");
+      const rowChecks=()=>Array.from(h.querySelectorAll(".leave-row-select"));
+      if(selectAll){
+        selectAll.checked = I.length>0 && I.every(k=>selected.has(String(k.id)));
+        selectAll.onchange=()=>{
+          const checked=!!selectAll.checked;
+          rowChecks().forEach(cb=>{
+            cb.checked=checked;
+            const id=cb.getAttribute("data-app");
+            if(id){ checked?selected.add(id):selected.delete(id); }
+          });
+          refreshBulkBar();
+        };
+      }
+      rowChecks().forEach(cb=>{
+        cb.addEventListener("change",()=>{
+          const id=cb.getAttribute("data-app");
+          if(id){ cb.checked?selected.add(id):selected.delete(id); }
+          refreshBulkBar();
+        });
+      });
+      refreshBulkBar();
+    }
+  };
+
+  y && y.addEventListener("change", async()=>{
+    await z(e||N, {...s||{}, status:String(y.value||"")});
+  });
+
+  t.appendChild(h);
+  c.appendChild(t);
+  l.appendChild(c);
+
+  const o=async b=>{
+    const L=b.dataset.action;
+    const setBusy=H=>{ try{ b && typeof b.disabled<"u" && (b.disabled=!!H); }catch{} };
+    if(L==="approve"||L==="reject"){
+      const H=b.dataset.app, T=L==="approve"?"approved":"rejected";
+      try{
+        setBusy(!0);
+        await M.patch(`/api/leave/${H}/status`,{status:T});
+        typeof s?.onDataChanged=="function" && await s.onDataChanged();
+        await z(e||N,{...s||{},status:p});
+      }catch(I){
+        alert("状態更新失敗: "+(I&&I.message?I.message:"error"));
+      }finally{
+        setBusy(!1);
+      }
+      return;
+    }
+    if(L==="pc-approve"||L==="pc-reject"){
+      const H=b.dataset.pc, T=L==="pc-approve"?"approved":"rejected";
+      try{
+        setBusy(!0);
+        await M.patch(`/api/manager/profile-change/${H}/status`,{status:T});
+        typeof s?.onDataChanged=="function" && await s.onDataChanged();
+        await z(e||N, s||{});
+      }catch(I){
+        alert("プロフィール申請更新失敗: "+(I&&I.message?I.message:"error"));
+      }finally{
+        setBusy(!1);
+      }
+      return;
+    }
+  };
+  const a=()=>{
+    l.querySelectorAll("[data-action]").forEach(b=>{
+      b.onclick=async L=>{
+        L.preventDefault(); L.stopPropagation();
+        await o(b);
+      };
+    });
+  };
+
+  F(); a();
+  l.appendChild(f);
+  w && w.addEventListener("change",()=>{ x=1; F(); a(); });
+
+  if(s?.hideProfileSection) return;
+
+  const $=document.createElement("div");
+  $.innerHTML="<h4>プロフィール更新申請</h4>";
+  const S=await M.get("/api/manager/profile-change/pending");
+  if(g()) return;
+  const v=document.createElement("div");
+  v.className="leave-table-wrap";
+  const E=document.createElement("table");
+  E.className="leave-table";
+  E.innerHTML="<thead><tr><th>ID</th><th>ユーザー</th><th>内容</th><th>送信日時</th><th>操作</th></tr></thead>";
+  const q=document.createElement("tbody");
+  for(const b of S){
+    const L=b.fields||{};
+    const B=Object.keys(L).slice(0,6).map(T=>`${T}: ${String(L[T]).slice(0,20)}`).join(", ");
+    const H=document.createElement("tr");
+    H.innerHTML=`
       <td>${b.id}</td>
       <td>${b.userId} ${b.username||""}</td>
       <td>${B}</td>
       <td>${b.createdAt||""}</td>
       <td>
-        <button type="button" class="leave-btn leave-btn-primary" data-action="pc-approve" data-pc="${b.id}">\u627F\u8A8D</button>
-        <button type="button" class="leave-btn leave-btn-danger" data-action="pc-reject" data-pc="${b.id}">\u5374\u4E0B</button>
-      </td>`,q.appendChild(H)}if(!(Array.isArray(S)&&S.length)){const b=document.createElement("tr");b.innerHTML='<td colspan="5" style="text-align:center;color:#64748b;padding:14px 8px;">\u627F\u8A8D\u5F85\u3061\u306E\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u66F4\u65B0\u7533\u8ACB\u306F\u3042\u308A\u307E\u305B\u3093</td>',q.appendChild(b)}E.appendChild(q),v.appendChild(E),$.appendChild(v),l.appendChild($),a()}async function ce({content:e}){e.innerHTML="<h3>\u6709\u7D66\u4F11\u6687\u7BA1\u7406</h3>";const N=await M.get("/api/leave/summary"),s=document.createElement("table");s.style.width="100%",s.innerHTML="<thead><tr><th>User</th><th>\u90E8\u9580</th><th>\u4ED8\u4E0E\u5408\u8A08</th><th>\u4F7F\u7528</th><th>\u6B8B</th></tr></thead>";const z=document.createElement("tbody");for(const l of N){const D=p=>{const m=Math.round(Number(p||0)*10)/10;return Number.isInteger(m)?String(m):m.toFixed(1)},g=document.createElement("tr");g.innerHTML=`
+        <button type="button" class="leave-btn leave-btn-primary" data-action="pc-approve" data-pc="${b.id}">承認</button>
+        <button type="button" class="leave-btn leave-btn-danger" data-action="pc-reject" data-pc="${b.id}">却下</button>
+      </td>`;
+    q.appendChild(H);
+  }
+  if(!(Array.isArray(S) && S.length)){
+    const b=document.createElement("tr");
+    b.innerHTML='<td colspan="5" style="text-align:center;color:#64748b;padding:14px 8px;">承認待ちのプロフィール更新申請はありません</td>';
+    q.appendChild(b);
+  }
+  E.appendChild(q);
+  v.appendChild(E);
+  $.appendChild(v);
+  l.appendChild($);
+  a();
+}
+async function ce({content:e}){e.innerHTML="<h3>\u6709\u7D66\u4F11\u6687\u7BA1\u7406</h3>";const N=await M.get("/api/leave/summary"),s=document.createElement("table");s.style.width="100%",s.innerHTML="<thead><tr><th>\u30E6\u30FC\u30B6\u30FC</th><th>\u90E8\u9580</th><th>\u4ED8\u4E0E\u5408\u8A08</th><th>\u4F7F\u7528</th><th>\u6B8B</th></tr></thead>";const z=document.createElement("tbody");for(const l of N){const D=p=>{const m=Math.round(Number(p||0)*10)/10;return Number.isInteger(m)?String(m):m.toFixed(1)},g=document.createElement("tr");g.innerHTML=`
       <td>${l.userId} ${l.name||""}</td>
       <td>${l.departmentId==null?"":l.departmentId}</td>
       <td>${D(l.totalGranted)}</td>
       <td>${D(l.usedDays)}</td>
-      <td>${D(l.remainingDays)}</td>`,z.appendChild(g)}s.appendChild(z),e.appendChild(s)}async function me({host:e,content:N,opts:s,listUsers:z,mountApprovalsFn:l,mountLeaveBalanceFn:D}){const g=e||N;if(_(),!(s&&s.unified)){const r=document.createElement("div");s&&s.hub?r.innerHTML=`
-        <span class="btn">\u6709\u7D66\u4ED8\u4E0E</span>
-        <button class="btn" data-action="go-approvals">\u6709\u7D66\u7533\u8ACB\u627F\u8A8D</button>
-        <button class="btn" data-action="go-balance">\u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7</button>
-        <button class="btn" data-action="auto-grant">\u81EA\u52D5\u4ED8\u4E0E \u5B9F\u884C</button>
-      `:r.innerHTML=`
-        <a class="btn" href="/ui/admin?tab=leave_grant">\u6709\u7D66\u4ED8\u4E0E</a>
-        <a class="btn" href="/ui/admin?tab=approvals">\u6709\u7D66\u7533\u8ACB\u627F\u8A8D</a>
-        <a class="btn" href="/ui/admin?tab=leave_balance">\u6709\u7D66\u6B8B\u65E5\u6570\u4E00\u89A7</a>
-        <button class="btn" data-action="auto-grant">\u81EA\u52D5\u4ED8\u4E0E \u5B9F\u884C</button>
-      `,g.appendChild(r)}const p=document.createElement("div");p.style.cssText="display:none;",p.innerHTML=`
-    <div class="leave-toolbar" style="margin:0 0 12px;display:flex;align-items:center;gap:12px;">
-      <strong style="color:#32363A;font-weight:normal;font-size:16px;margin-right:auto;">\u4ED8\u4E0E\u5BFE\u8C61\u5019\u88DC</strong>
-      <button class="leave-btn" data-action="load-eligible">\u5019\u88DC\u3092\u8AAD\u8FBC</button>
-      <button class="leave-btn leave-btn-primary" data-action="grant-eligible">\u5019\u88DC\u3092\u4E00\u62EC\u4ED8\u4E0E</button>
+      <td>${D(l.remainingDays)}</td>`,z.appendChild(g)}s.appendChild(z),e.appendChild(s)}async function me({host:e,content:N,opts:s,listUsers:z,mountApprovalsFn:l,mountLeaveBalanceFn:D}){
+  const g=e||N;
+  _();
+  if(!(s&&s.unified)){
+    const nav=document.createElement("div");
+    if(s&&s.hub){
+      nav.innerHTML=`
+        <span class="btn">有給付与</span>
+        <button class="btn" data-action="go-approvals">有給申請承認</button>
+        <button class="btn" data-action="go-balance">有給残日数一覧</button>
+        <button class="btn" data-action="auto-grant">自動付与 実行</button>
+      `;
+    } else {
+      nav.innerHTML=`
+        <a class="btn" href="/ui/admin?tab=leave_grant">有給付与</a>
+        <a class="btn" href="/ui/admin?tab=approvals">有給申請承認</a>
+        <a class="btn" href="/ui/admin?tab=leave_balance">有給残日数一覧</a>
+        <button class="btn" data-action="auto-grant">自動付与 実行</button>
+      `;
+    }
+    g.appendChild(nav);
+  }
+
+  // ── モード切替（個別付与 ⇄ 一括付与）：セグメントコントロール風 ──
+  const modeBar=document.createElement("div");
+  modeBar.className="leave-mode-toggle";
+  modeBar.style.cssText="display:inline-flex;gap:2px;padding:3px;background:#f1f5f9;border-radius:10px;margin:0 0 20px;";
+  const modeBtnStyle="border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#475569;transition:background .15s,color .15s;";
+  modeBar.innerHTML=`
+    <button type="button" data-mode="single" style="${modeBtnStyle}">個別付与</button>
+    <button type="button" data-mode="bulk" style="${modeBtnStyle}">一括付与（候補）</button>
+  `;
+  g.appendChild(modeBar);
+
+  const singleWrap=document.createElement("div");
+  const bulkWrap=document.createElement("div");
+  bulkWrap.style.display="none";
+  g.appendChild(singleWrap);
+  g.appendChild(bulkWrap);
+
+  const setMode=(mode)=>{
+    singleWrap.style.display = mode==="bulk" ? "none" : "";
+    bulkWrap.style.display = mode==="bulk" ? "" : "none";
+    modeBar.querySelectorAll("[data-mode]").forEach(btn=>{
+      const active = btn.getAttribute("data-mode")===mode;
+      btn.style.background = active ? "#1e40af" : "transparent";
+      btn.style.color = active ? "#ffffff" : "#475569";
+      btn.style.boxShadow = active ? "0 1px 2px rgba(0,0,0,.12)" : "none";
+    });
+  };
+  modeBar.querySelectorAll("[data-mode]").forEach(btn=>{
+    btn.addEventListener("click",()=>setMode(btn.getAttribute("data-mode")));
+  });
+  setMode("single");
+
+  // ── 一括付与（候補）パネル：既存ロジックをそのまま流用 ──
+  bulkWrap.innerHTML=`
+    <div style="margin:0 0 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <strong style="color:#32363A;font-weight:normal;font-size:16px;margin-right:auto;">付与対象候補（勤続年数・出勤率から自動判定）</strong>
+      <button class="leave-btn" data-action="load-eligible">候補を読込</button>
+      <button class="leave-btn leave-btn-primary" data-action="grant-eligible">候補を一括付与</button>
     </div>
     <div style="margin-bottom:8px;"><span id="eligibleInfo" style="color:#6A6D70;font-size:13px;"></span></div>
     <div id="eligibleTableHost"></div>
-  `,g.appendChild(p);const m=p.querySelector("#eligibleInfo"),y=p.querySelector("#eligibleTableHost");let w=[];const A=r=>`${r.userId}|${r.grantDate}|${r.days}`,d=new Set,u=r=>{const F=Array.isArray(r)?r:[];if(w=F,!F.length){y.innerHTML='<div class="leave-mini-note">\u4ED8\u4E0E\u5019\u88DC\u306F\u3042\u308A\u307E\u305B\u3093</div>';return}const o=document.createElement("div");o.className="leave-table-wrap sticky";const a=document.createElement("table");a.className="leave-table",a.innerHTML='<thead><tr><th><input type="checkbox" id="eligibleCheckAll"></th><th>User</th><th>\u5165\u793E\u65E5</th><th>\u4ED8\u4E0E\u65E5</th><th>\u65E5\u6570</th><th>\u51FA\u52E4\u7387</th><th>\u5224\u5B9A\u671F\u9593</th></tr></thead>';const $=document.createElement("tbody");for(const v of F){const E=A(v),q=document.createElement("tr");q.innerHTML=`
-        <td><input type="checkbox" data-eligible-key="${E}" ${d.has(E)?"checked":""}></td>
-        <td>${v.userId}${v.employeeCode?` (${v.employeeCode})`:""} ${v.username||""}</td>
-        <td>${v.hireDate||""}</td>
-        <td>${v.grantDate||""}</td>
-      <td class="num">${v.days||0}</td>
-      <td class="num">${v.attendanceRate||0}%</td>
-        <td>${v.periodStart||""}\u301C${v.periodEnd||""}</td>
-      `,$.appendChild(q)}a.appendChild($),y.innerHTML="",o.appendChild(a),y.appendChild(o);const S=y.querySelector("#eligibleCheckAll");S&&S.addEventListener("change",()=>{const v=!!S.checked;y.querySelectorAll("input[data-eligible-key]").forEach(E=>{E.checked=v;const q=E.getAttribute("data-eligible-key");q&&(v?d.add(q):d.delete(q))})}),y.querySelectorAll("input[data-eligible-key]").forEach(v=>{v.addEventListener("change",()=>{const E=v.getAttribute("data-eligible-key");E&&(v.checked?d.add(E):d.delete(E))})})};V(g,"[data-action]","click",async(r,F)=>{const o=F.dataset.action;if(o==="auto-grant")try{const a=await M.post("/api/leave/auto-grant/run");alert(`\u81EA\u52D5\u4ED8\u4E0E \u5B9F\u884C: ${a.ok||0}/${a.processed||0}`),typeof s?.onDataChanged=="function"&&await s.onDataChanged()}catch(a){alert("\u81EA\u52D5\u4ED8\u4E0E\u5931\u6557: "+(a&&a.message?a.message:"error"))}else if(o==="load-eligible")try{const a=await M.get("/api/leave/eligible-list"),$=Array.isArray(a?.rows)?a.rows:[];m&&(m.textContent=`mode=${a?.mode||"-"} / \u4EF6\u6570=${$.length}`),u($)}catch{m&&(m.textContent="\u5019\u88DC\u8AAD\u8FBC\u306B\u5931\u6557\u3057\u307E\u3057\u305F")}else if(o==="grant-eligible")try{const a=w.filter(E=>d.has(A(E))),$=a.length?a:w;let S=0;for(const E of $){const q=String(E.grantDate||"").slice(0,10);if(!q)continue;const b=new Date(q+"T00:00:00Z");b.setUTCFullYear(b.getUTCFullYear()+2),b.setUTCDate(b.getUTCDate()-1);const L=b.toISOString().slice(0,10);await M.post("/api/leave/grant",{userId:Number(E.userId),days:Number(E.days||0),grantDate:q,expiryDate:L}),S+=1}m&&(m.textContent=`\u9078\u629E=${$.length} / \u4ED8\u4E0E=${S}`);const v=await M.get("/api/leave/eligible-list");d.clear(),u(v?.rows||[]),typeof s?.onDataChanged=="function"&&await s.onDataChanged()}catch(a){alert("\u4E00\u62EC\u4ED8\u4E0E\u5931\u6557: "+(a&&a.message?a.message:"error"))}else o==="go-approvals"&&s&&s.hub?l(g,{hub:!0}):o==="go-balance"&&s&&s.hub&&D(g,{hub:!0})});const n=oe(await z()),c=document.createElement("form"),t=new Date,i=r=>r.toISOString().slice(0,10),h=new Date(Date.UTC(t.getUTCFullYear()+2,t.getUTCMonth(),t.getUTCDate()-1));c.className="leave-form-modern",c.innerHTML=`
+  `;
+  const eligibleInfo=bulkWrap.querySelector("#eligibleInfo");
+  const eligibleTableHost=bulkWrap.querySelector("#eligibleTableHost");
+  let eligibleRows=[];
+  const eligibleKey=r=>`${r.userId}|${r.grantDate}|${r.days}`;
+  const selectedKeys=new Set();
+  const renderEligible=(rows)=>{
+    const list=Array.isArray(rows)?rows:[];
+    eligibleRows=list;
+    if(!list.length){
+      eligibleTableHost.innerHTML='<div class="leave-mini-note">付与候補はありません</div>';
+      return;
+    }
+    const wrap=document.createElement("div");
+    wrap.className="leave-table-wrap sticky";
+    const table=document.createElement("table");
+    table.className="leave-table";
+    table.innerHTML='<thead><tr><th><input type="checkbox" id="eligibleCheckAll"></th><th>ユーザー</th><th>入社日</th><th>付与日</th><th>日数</th><th>出勤率</th><th>判定期間</th></tr></thead>';
+    const tbody=document.createElement("tbody");
+    for(const row of list){
+      const key=eligibleKey(row);
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td><input type="checkbox" data-eligible-key="${key}" ${selectedKeys.has(key)?"checked":""}></td>
+        <td>${row.userId}${row.employeeCode?` (${row.employeeCode})`:""} ${row.username||""}</td>
+        <td>${row.hireDate||""}</td>
+        <td>${row.grantDate||""}</td>
+        <td class="num">${row.days||0}</td>
+        <td class="num">${row.attendanceRate||0}%</td>
+        <td>${row.periodStart||""}〜${row.periodEnd||""}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    eligibleTableHost.innerHTML="";
+    wrap.appendChild(table);
+    eligibleTableHost.appendChild(wrap);
+    const checkAll=eligibleTableHost.querySelector("#eligibleCheckAll");
+    checkAll && checkAll.addEventListener("change",()=>{
+      const checked=!!checkAll.checked;
+      eligibleTableHost.querySelectorAll("input[data-eligible-key]").forEach(cb=>{
+        cb.checked=checked;
+        const k=cb.getAttribute("data-eligible-key");
+        if(k){ checked ? selectedKeys.add(k) : selectedKeys.delete(k); }
+      });
+    });
+    eligibleTableHost.querySelectorAll("input[data-eligible-key]").forEach(cb=>{
+      cb.addEventListener("change",()=>{
+        const k=cb.getAttribute("data-eligible-key");
+        if(k){ cb.checked ? selectedKeys.add(k) : selectedKeys.delete(k); }
+      });
+    });
+  };
+
+  V(g,"[data-action]","click",async(evt,btn)=>{
+    const action=btn.dataset.action;
+    if(action==="auto-grant"){
+      try{
+        const res=await M.post("/api/leave/auto-grant/run");
+        alert(`自動付与 実行: ${res.ok||0}/${res.processed||0}`);
+        typeof s?.onDataChanged=="function" && await s.onDataChanged();
+      }catch(err){
+        alert("自動付与失敗: "+(err&&err.message?err.message:"error"));
+      }
+    } else if(action==="load-eligible"){
+      try{
+        const res=await M.get("/api/leave/eligible-list");
+        const rows=Array.isArray(res?.rows)?res.rows:[];
+        eligibleInfo && (eligibleInfo.textContent=`mode=${res?.mode||"-"} / 件数=${rows.length}`);
+        renderEligible(rows);
+      }catch{
+        eligibleInfo && (eligibleInfo.textContent="候補読込に失敗しました");
+      }
+    } else if(action==="grant-eligible"){
+      const chosen=eligibleRows.filter(r=>selectedKeys.has(eligibleKey(r)));
+      const targets=chosen.length?chosen:eligibleRows;
+      if(!targets.length){ alert("付与候補がありません。先に「候補を読込」してください。"); return; }
+      const confirmMsg = chosen.length
+        ? `選択した ${targets.length} 件に付与します。よろしいですか？`
+        : `候補が選択されていません。表示中の全 ${targets.length} 件に付与します。よろしいですか？`;
+      if(!confirm(confirmMsg)) return;
+      try{
+        let granted=0;
+        for(const row of targets){
+          const grantDate=String(row.grantDate||"").slice(0,10);
+          if(!grantDate) continue;
+          const d=new Date(grantDate+"T00:00:00Z");
+          d.setUTCFullYear(d.getUTCFullYear()+2);
+          d.setUTCDate(d.getUTCDate()-1);
+          const expiryDate=d.toISOString().slice(0,10);
+          await M.post("/api/leave/grant",{
+            userId:Number(row.userId),
+            days:Number(row.days||0),
+            grantDate,
+            expiryDate
+          });
+          granted+=1;
+        }
+        eligibleInfo && (eligibleInfo.textContent=`選択=${targets.length} / 付与=${granted}`);
+        const refreshed=await M.get("/api/leave/eligible-list");
+        selectedKeys.clear();
+        renderEligible(refreshed?.rows||[]);
+        typeof s?.onDataChanged=="function" && await s.onDataChanged();
+      }catch(err){
+        alert("一括付与失敗: "+(err&&err.message?err.message:"error"));
+      }
+    } else if(action==="go-approvals" && s && s.hub){
+      l(g,{hub:!0});
+    } else if(action==="go-balance" && s && s.hub){
+      D(g,{hub:!0});
+    }
+  });
+
+  // ── 個別付与（手動） ──
+  const users=oe(await z());
+  const today=new Date();
+  const toISO=d=>d.toISOString().slice(0,10);
+  const defaultExpiry=new Date(Date.UTC(today.getUTCFullYear()+2, today.getUTCMonth(), today.getUTCDate()-1));
+
+  const layout=document.createElement("div");
+  layout.style.cssText="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;";
+
+  const form=document.createElement("form");
+  form.className="leave-form-modern";
+  form.style.cssText="flex:1 1 340px;max-width:480px;";
+  form.innerHTML=`
     <div style="margin-bottom:16px;">
-      <label class="leave-label">\u30E6\u30FC\u30B6\u30FC</label>
+      <label class="leave-label">ユーザー</label>
       <select id="grantUser"></select>
     </div>
     <div style="margin-bottom:16px;">
-      <label class="leave-label">\u65E5\u6570</label>
+      <label class="leave-label">日数</label>
       <input id="grantDays" type="number" min="1" value="10">
     </div>
-    <div style="margin-bottom:16px;">
-      <label class="leave-label">\u4ED8\u4E0E\u65E5</label>
-      <input id="grantDate" type="date" value="${i(t)}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div>
+        <label class="leave-label">付与日</label>
+        <input id="grantDate" type="date" value="${toISO(today)}">
+      </div>
+      <div>
+        <label class="leave-label">有効期限</label>
+        <input id="expireDate" type="date" value="${toISO(defaultExpiry)}">
+      </div>
     </div>
-    <div style="margin-bottom:16px;">
-      <label class="leave-label">\u6709\u52B9\u671F\u9650</label>
-      <input id="expireDate" type="date" value="${i(h)}">
+    <div>
+      <button type="submit">付与</button>
     </div>
-    <div style="margin-top:20px;">
-      <button type="submit">\u4ED8\u4E0E</button>
-    </div>
-  `;const f=c.querySelector("#grantUser");for(const r of n){const F=String(r?.role||"").toLowerCase();if(F==="admin"||F==="manager")continue;const o=document.createElement("option");o.value=String(r.id);const a=r.employee_code||"EMP"+String(r.id).padStart(3,"0");o.textContent=`${a} ${r.username||r.email}`,f.appendChild(o)}c.querySelector("#grantDate").addEventListener("change",r=>{try{const F=new Date(r.target.value+"T00:00:00Z"),o=new Date(Date.UTC(F.getUTCFullYear()+2,F.getUTCMonth(),F.getUTCDate()-1));c.querySelector("#expireDate").value=i(o)}catch{}});const x=document.createElement("div");x.className="leave-mini-note",c.addEventListener("submit",async r=>{r.preventDefault();const F=parseInt(f.value,10),o=parseInt(c.querySelector("#grantDays").value,10),a=c.querySelector("#grantDate").value,$=c.querySelector("#expireDate").value;try{await M.post("/api/leave/grant",{userId:F,days:o,grantDate:a,expiryDate:$}),x.textContent="\u4ED8\u4E0E\u3057\u307E\u3057\u305F",typeof s?.onDataChanged=="function"&&await s.onDataChanged()}catch(S){x.textContent="\u4ED8\u4E0E\u5931\u6557: "+(S&&S.message?S.message:"error")}});const C=document.createElement("div");C.className="leave-form-card",C.innerHTML=`
-    <h4 style="margin-top:16px;">Manual PTO Grant</h4>
-  `,C.appendChild(c),C.appendChild(x),g.appendChild(C)}async function re(e,N,s){const z=document.createElement("div");z.className="pto-modal-overlay";const l=document.createElement("div");l.className="pto-modal",l.innerHTML=`
+  `;
+  const userSelect=form.querySelector("#grantUser");
+  for(const u of users){
+    const role=String(u?.role||"").toLowerCase();
+    if(role==="admin"||role==="manager") continue;
+    const opt=document.createElement("option");
+    opt.value=String(u.id);
+    const code=u.employee_code||"EMP"+String(u.id).padStart(3,"0");
+    opt.textContent=`${code} ${u.username||u.email}`;
+    userSelect.appendChild(opt);
+  }
+
+  // ── 残日数プレビュー（右カラムの独立カード） ──
+  const balanceCard=document.createElement("div");
+  balanceCard.style.cssText="flex:1 1 280px;max-width:320px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;";
+  balanceCard.innerHTML=`
+    <div style="font-size:12px;font-weight:600;color:#64748b;letter-spacing:.02em;margin-bottom:4px;">選択中のユーザーの残日数</div>
+    <div id="grantBalanceHeadline" style="font-size:32px;font-weight:800;color:#0c4a6e;line-height:1.1;">—</div>
+    <div id="grantBalanceHistory" style="margin-top:14px;"></div>
+  `;
+  const balanceHeadline=balanceCard.querySelector("#grantBalanceHeadline");
+  const balanceHistory=balanceCard.querySelector("#grantBalanceHistory");
+  const loadBalancePreview=async()=>{
+    const userId=parseInt(userSelect.value,10);
+    if(!userId){ balanceHeadline.textContent="—"; balanceHistory.innerHTML=""; return; }
+    balanceHeadline.textContent="…";
+    balanceHistory.innerHTML='<div class="leave-mini-note">読み込み中...</div>';
+    try{
+      const data=await M.get(`/api/leave/user-balance?userId=${encodeURIComponent(userId)}`);
+      const grants=Array.isArray(data?.grants)?data.grants:[];
+      const rowsHtml=grants.length
+        ? grants.map(gr=>`<tr><td>${gr.grantDate||""}</td><td class="num">${gr.daysGranted||0}</td><td class="num">${gr.daysRemaining||0}</td><td>${gr.expiryDate||""}</td></tr>`).join("")
+        : '<tr><td colspan="4" style="color:#94a3b8;">付与履歴なし</td></tr>';
+      balanceHeadline.textContent=`${data?.totalAvailable ?? 0}日`;
+      balanceHistory.innerHTML = `
+        <table class="leave-table" style="font-size:12px;background:transparent;">
+          <thead><tr><th>付与日</th><th>日数</th><th>残</th><th>期限</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      `;
+    }catch(e){
+      balanceHeadline.textContent="—";
+      balanceHistory.innerHTML='<div style="color:#b91c1c;">残日数の取得に失敗しました</div>';
+    }
+  };
+  userSelect.addEventListener("change", loadBalancePreview);
+  if(userSelect.options.length){
+    userSelect.selectedIndex=0;
+    loadBalancePreview();
+  } else {
+    balanceHeadline.textContent="—";
+    balanceHistory.innerHTML='<div class="leave-mini-note">対象ユーザーがいません</div>';
+  }
+
+  form.querySelector("#grantDate").addEventListener("change",evt=>{
+    try{
+      const base=new Date(evt.target.value+"T00:00:00Z");
+      const exp=new Date(Date.UTC(base.getUTCFullYear()+2, base.getUTCMonth(), base.getUTCDate()-1));
+      form.querySelector("#expireDate").value=toISO(exp);
+    }catch{}
+  });
+
+  // ── 結果バナー（成功=緑／失敗=赤） ──
+  const statusMsg=document.createElement("div");
+  statusMsg.style.cssText="display:none;align-items:center;gap:8px;margin-top:16px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;";
+  const showStatus=(kind,text)=>{
+    const ok=kind==="success";
+    statusMsg.style.display="flex";
+    statusMsg.style.background = ok ? "#ecfdf5" : "#fef2f2";
+    statusMsg.style.color = ok ? "#065f46" : "#991b1b";
+    statusMsg.style.border = `1px solid ${ok?"#a7f3d0":"#fecaca"}`;
+    statusMsg.innerHTML = `<span>${ok?"✓":"⚠"}</span><span>${text}</span>`;
+  };
+
+  form.addEventListener("submit",async evt=>{
+    evt.preventDefault();
+    const userId=parseInt(userSelect.value,10);
+    const days=parseInt(form.querySelector("#grantDays").value,10);
+    const grantDate=form.querySelector("#grantDate").value;
+    const expireDate=form.querySelector("#expireDate").value;
+    if(!userId || !Number.isFinite(days) || days<=0){
+      showStatus("error","ユーザーと有効な日数を指定してください");
+      return;
+    }
+    const empLabel=userSelect.options[userSelect.selectedIndex]?.textContent||`ユーザーID ${userId}`;
+    const ok=confirm(`${empLabel} に ${days}日 を付与します。\n付与日: ${grantDate}　有効期限: ${expireDate}\nよろしいですか？`);
+    if(!ok) return;
+    try{
+      await M.post("/api/leave/grant",{userId,days,grantDate,expiryDate:expireDate});
+      showStatus("success","付与しました");
+      await loadBalancePreview();
+      typeof s?.onDataChanged=="function" && await s.onDataChanged();
+    }catch(err){
+      showStatus("error","付与失敗: "+(err&&err.message?err.message:"error"));
+    }
+  });
+  form.appendChild(statusMsg);
+
+  layout.appendChild(form);
+  layout.appendChild(balanceCard);
+  singleWrap.appendChild(layout);
+}
+async function re(e,N,s){const z=document.createElement("div");z.className="pto-modal-overlay";const l=document.createElement("div");l.className="pto-modal",l.innerHTML=`
     <div class="pto-modal-header">
       <h3 class="pto-modal-title">${N} - \u6709\u7D66\u4F11\u6687\u306E\u7DE8\u96C6</h3>
       <button class="pto-modal-close">&times;</button>
@@ -649,40 +1290,40 @@ import{delegate as V}from"../_shared/dom.js";import{api as M}from"../../shared/a
         <option value="100">100</option>
       </select>
     </label>
-  `,D.appendChild(g);let p=[];try{p=await M.get("/api/leave/summary")}catch{p=[];const t=document.createElement("div");t.style.cssText="margin:2px 0 10px;color:#b45309;font-size:12px;",t.textContent="\u6B8B\u65E5\u6570\u30C7\u30FC\u30BF\u306E\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u7A7A\u30C7\u30FC\u30BF\u3067\u8868\u793A\u3057\u307E\u3059\u3002",D.appendChild(t)}const m=document.createElement("div");m.className="leave-balance-grid";const y=document.createElement("div");y.className="leave-pager";const w=new Date,A=g.querySelector("#leaveBalSearch"),d=g.querySelector("#leaveBalSort"),u=g.querySelector("#leaveBalPageSize");let n=1;const c=()=>{const t=String(A?.value||"").trim().toLowerCase(),[i,h]=String(d?.value||"remainingDays:desc").split(":"),f=Number(u?.value||20)||20,x=(Array.isArray(p)?p:[]).filter(o=>{const a=`${o.employeeCode||o.userId} ${o.name||""}`.toLowerCase();return!t||a.includes(t)}).sort((o,a)=>{const $=o?.[i],S=a?.[i];if(i==="nearestExpiry"){const q=$?new Date($).getTime():Number.MAX_SAFE_INTEGER,b=S?new Date(S).getTime():Number.MAX_SAFE_INTEGER;return h==="desc"?b-q:q-b}const v=Number($||0),E=Number(S||0);return h==="desc"?E-v:v-E}),C=x.length,r=Math.max(1,Math.ceil(C/f));n>r&&(n=r);const F=x.slice((n-1)*f,(n-1)*f+f);m.innerHTML="";for(const o of F){const a=document.createElement("div");a.className="leave-balance-card";let $=!1;o.nearestExpiry&&new Date(o.nearestExpiry)-w<1e3*60*60*24*30&&($=!0,a.style.borderColor="#FCD34D",a.style.background="#FFFBEB");const S=H=>{const T=Math.round(Number(H||0)*10)/10;return Number.isInteger(T)?String(T):T.toFixed(1)},v=S(o.totalGranted||0),E=S(o.usedDays||0),q=S(o.remainingDays||0),b=v>0?v:1,L=Math.min(100,Math.max(0,E/b*100));a.className="leave-balance-card pto-card-clickable",a.dataset.userid=o.userId,a.dataset.username=o.name||`User ${o.userId}`,a.style.cursor="pointer";const B=(o.name||"U").charAt(0).toUpperCase();a.innerHTML=`
+  `,D.appendChild(g);let p=[];try{p=await M.get("/api/leave/summary")}catch{p=[];const t=document.createElement("div");t.style.cssText="margin:2px 0 10px;color:#b45309;font-size:12px;",t.textContent="\u6B8B\u65E5\u6570\u30C7\u30FC\u30BF\u306E\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u7A7A\u30C7\u30FC\u30BF\u3067\u8868\u793A\u3057\u307E\u3059\u3002",D.appendChild(t)}const m=document.createElement("div");m.className="leave-balance-grid";const y=document.createElement("div");y.className="leave-pager";const w=new Date,A=g.querySelector("#leaveBalSearch"),d=g.querySelector("#leaveBalSort"),u=g.querySelector("#leaveBalPageSize");let n=1;const c=()=>{const t=String(A?.value||"").trim().toLowerCase(),[i,h]=String(d?.value||"remainingDays:desc").split(":"),f=Number(u?.value||20)||20,x=(Array.isArray(p)?p:[]).filter(o=>{const a=`${o.employeeCode||o.userId} ${o.name||""}`.toLowerCase();return!t||a.includes(t)}).sort((o,a)=>{const $=o?.[i],S=a?.[i];if(i==="nearestExpiry"){const q=$?new Date($).getTime():Number.MAX_SAFE_INTEGER,b=S?new Date(S).getTime():Number.MAX_SAFE_INTEGER;return h==="desc"?b-q:q-b}const v=Number($||0),E=Number(S||0);return h==="desc"?E-v:v-E}),C=x.length,r=Math.max(1,Math.ceil(C/f));n>r&&(n=r);const F=x.slice((n-1)*f,(n-1)*f+f);m.innerHTML="";for(const o of F){const a=document.createElement("div");a.className="leave-balance-card";let $=!1;o.nearestExpiry&&new Date(o.nearestExpiry)-w<1e3*60*60*24*30&&($=!0,a.style.borderColor="#FCD34D",a.style.background="#FFFBEB");const S=H=>{const T=Math.round(Number(H||0)*10)/10;return Number.isInteger(T)?String(T):T.toFixed(1)},v=S(o.totalGranted||0),E=S(o.usedDays||0),q=S(o.remainingDays||0),b=v>0?v:1,L=Math.min(100,Math.max(0,E/b*100));a.className="leave-balance-card pto-card-clickable",a.dataset.userid=o.userId,a.dataset.username=o.name||`ユーザー${o.userId}`,a.style.cursor="pointer";const B=(o.name||"U").charAt(0).toUpperCase();a.innerHTML=`
         <div style="display:flex; align-items:center; gap:8px; border-bottom:1px solid #F2F2F2; padding-bottom:8px;">
           <div style="width:32px; height:32px; border-radius:50%; background:#0854A0; color:#FFF; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px;">${B}</div>
           <div>
-            <h3 style="font-size:14px; font-weight:bold; color:#32363A; margin:0; line-height:1.2;">${o.name||`User ${o.userId}`}</h3>
+            <h3 style="font-size:14px; font-weight:bold; color:#32363A; margin:0; line-height:1.2;">${o.name||`ユーザー${o.userId}`}</h3>
             <p style="font-size:11px; color:#6A6D70; margin:2px 0 0 0;">${o.employeeCode||o.userId}</p>
           </div>
         </div>
         
         <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:4px;">
           <div style="display:flex; flex-direction:column;">
-            <span style="font-size:24px; font-weight:300; color:#111827; line-height:1;">${q} <span style="font-size:12px; font-weight:normal;">days</span></span>
-            <span style="font-size:11px; color:#6A6D70; margin-top:2px;">Remaining</span>
+            <span style="font-size:24px; font-weight:300; color:#111827; line-height:1;">${q} <span style="font-size:12px; font-weight:normal;">\u65E5</span></span>
+            <span style="font-size:11px; color:#6A6D70; margin-top:2px;">\u6B8B\u65E5\u6570</span>
           </div>
           <div style="text-align:right;">
-            <span style="color:#6A6D70; font-size:11px;">Used: <span style="font-weight:600; color:#32363A;">${E}/${v}</span></span>
+            <span style="color:#6A6D70; font-size:11px;">\u4F7F\u7528: <span style="font-weight:600; color:#32363A;">${E}/${v}</span></span>
           </div>
         </div>
-        
+
         <div style="height:4px; background:#E5E5E5; border-radius:2px; overflow:hidden; margin-top:2px;">
           <div style="height:100%; width:${L}%; background:#0854A0; border-radius:2px;"></div>
         </div>
-        
+
         <div style="font-size:11px; color:#6A6D70; display:flex; justify-content:space-between; margin-top:auto; border-top:1px solid #F2F2F2; padding-top:8px;">
           <div style="display:flex; flex-direction:column; gap:2px;">
-            <span>Expiry</span>
-            <span style="${$?"color:#BB0000;font-weight:bold;":"color:#32363A;"}">${o.nearestExpiry||"N/A"}</span>
+            <span>\u6709\u52B9\u671F\u9650</span>
+            <span style="${$?"color:#BB0000;font-weight:bold;":"color:#32363A;"}">${o.nearestExpiry||"\u2014"}</span>
           </div>
           <div style="display:flex; flex-direction:column; gap:2px; text-align:right;">
-            <span>Obligation</span>
-            <span style="color:#32363A;">${o.obligationRemaining||0}d</span>
+            <span>\u7FA9\u52D9\u53D6\u5F97\u6B8B</span>
+            <span style="color:#32363A;">${o.obligationRemaining||0}\u65E5</span>
           </div>
         </div>
-      `,m.appendChild(a)}F.length||(m.innerHTML='<div style="text-align:center; color:#6B7280; padding:40px; grid-column:1/-1;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093 (No data)</div>'),y.innerHTML=`
+      `,m.appendChild(a)}F.length||(m.innerHTML='<div style="text-align:center; color:#6B7280; padding:40px; grid-column:1/-1;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>'),y.innerHTML=`
       <button type="button" class="leave-btn" data-pg="prev">\u524D\u3078</button>
       <span class="leave-muted">${C} \u4EF6 / ${n} / ${r} \u30DA\u30FC\u30B8</span>
       <button type="button" class="leave-btn" data-pg="next">\u6B21\u3078</button>
@@ -767,4 +1408,4 @@ import{delegate as V}from"../_shared/dom.js";import{api as M}from"../../shared/a
         </div>
         <div class="leave-content-area" id="leave-content-area"></div>
       </div>
-    `;const D=e.querySelector("#leave-content-area"),g=document.createElement("div");g.className="leave-tab-content active",g.id="tab-approvals";const p=document.createElement("div");p.className="leave-tab-content",p.id="tab-grant";const m=document.createElement("div");m.className="leave-tab-content",m.id="tab-balances",D.appendChild(g),D.appendChild(p),D.appendChild(m);const y=document.createElement("section");y.className="leave-section",g.appendChild(y);const w=document.createElement("section");w.className="leave-section",w.style.maxWidth="400px",w.style.margin="20px 0 0 0",p.appendChild(w);const A=document.createElement("div");A.style.boxShadow="none",A.style.border="none",A.style.padding="0",A.style.background="transparent",m.appendChild(A);const d=async()=>{await z(A,{unified:!0,limit:1e3,onDataChanged:d});const t=A.querySelector("h3");t&&t.remove()},u=()=>{const t=e.querySelector(".leave-page-layout");if(t){const i=t.getBoundingClientRect().top,f=`calc(100vh - ${i>0?i:56}px)`;t.style.setProperty("height",f,"important");const x=e.querySelector(".leave-sidebar");x&&x.style.setProperty("height",f,"important");const C=e.querySelector(".leave-content-area");C&&C.style.setProperty("height",f,"important"),e.style.setProperty("height",f,"important")}};u(),setTimeout(u,150),window.addEventListener("resize",u),await N(y,{status:"pending",hideProfileSection:!0,onDataChanged:d});const n=y.querySelector("h3");if(n&&n.remove(),await s(w,{unified:!0,onDataChanged:d}),w){const t=w.querySelector(".leave-toolbar");t&&t.remove();const i=w.querySelector("h4");i&&i.remove();const h=w.querySelector("h3");h&&(h.innerHTML="\u6709\u7D66\u4ED8\u4E0E")}await d(),e.querySelectorAll(".leave-tab").forEach(t=>{t.addEventListener("click",i=>{e.querySelectorAll(".leave-tab").forEach(x=>x.classList.remove("active")),e.querySelectorAll(".leave-tab-content").forEach(x=>x.classList.remove("active"));const h=i.currentTarget.getAttribute("data-target");i.currentTarget.classList.add("active"),e.querySelector(`#${h}`).classList.add("active"),h==="tab-approvals"?history.replaceState(null,"","/admin/leave/requests"):h==="tab-grant"?history.replaceState(null,"","/admin/leave/grants"):h==="tab-balances"&&history.replaceState(null,"","/admin/leave/balance");const f=document.querySelector(".att-hub-sidebar");if(f){f.querySelectorAll(".att-sidebar-item").forEach(r=>{r.classList.remove("active"),r.style.borderLeftColor="transparent",r.style.color="#b0c4de",r.style.background="transparent",r.style.fontWeight="400";const F=r.querySelector("svg");F&&(F.style.opacity="0.7")});const x=window.location.pathname,C=f.querySelector(`a[href="${x}"]`);if(C){C.classList.add("active"),C.style.color="#ffffff",C.style.fontWeight="600";const r=f.querySelector('a[href^="/admin/leave"]');if(r){r.classList.add("active"),r.style.borderLeftColor="#4ade80",r.style.color="#ffffff",r.style.background="rgba(255,255,255,.06)",r.style.fontWeight="600";const F=r.querySelector("svg");F&&(F.style.opacity="1")}}}})});const c=window.location.pathname;if(e.querySelectorAll(".leave-tab").forEach(t=>t.classList.remove("active")),e.querySelectorAll(".leave-tab-content").forEach(t=>t.classList.remove("active")),c==="/admin/leave/grants"){const t=e.querySelector('.leave-tab[data-target="tab-grant"]');t&&t.classList.add("active");const i=e.querySelector("#tab-grant");i&&i.classList.add("active")}else if(c==="/admin/leave/balance"){const t=e.querySelector('.leave-tab[data-target="tab-balances"]');t&&t.classList.add("active");const i=e.querySelector("#tab-balances");i&&i.classList.add("active")}else{const t=e.querySelector('.leave-tab[data-target="tab-approvals"]');t&&t.classList.add("active");const i=e.querySelector("#tab-approvals");i&&i.classList.add("active")}}export{pe as mountApprovals,ce as mountLeaveAdmin,be as mountLeaveBalance,me as mountLeaveGrant,ge as mountLeaveHub,ue as mountLeaveUnified};
+    `;const D=e.querySelector("#leave-content-area"),g=document.createElement("div");g.className="leave-tab-content active",g.id="tab-approvals";const p=document.createElement("div");p.className="leave-tab-content",p.id="tab-grant";const m=document.createElement("div");m.className="leave-tab-content",m.id="tab-balances",D.appendChild(g),D.appendChild(p),D.appendChild(m);const y=document.createElement("section");y.className="leave-section",g.appendChild(y);const w=document.createElement("section");w.className="leave-section",w.style.maxWidth="960px",w.style.margin="20px 0 0 0",p.appendChild(w);const A=document.createElement("div");A.style.boxShadow="none",A.style.border="none",A.style.padding="0",A.style.background="transparent",m.appendChild(A);const d=async()=>{await z(A,{unified:!0,limit:1e3,onDataChanged:d});const t=A.querySelector("h3");t&&t.remove()},u=()=>{const t=e.querySelector(".leave-page-layout");if(t){const i=t.getBoundingClientRect().top,f=`calc(100vh - ${i>0?i:56}px)`;t.style.setProperty("height",f,"important");const x=e.querySelector(".leave-sidebar");x&&x.style.setProperty("height",f,"important");const C=e.querySelector(".leave-content-area");C&&C.style.setProperty("height",f,"important"),e.style.setProperty("height",f,"important")}};u(),setTimeout(u,150),window.addEventListener("resize",u),await N(y,{status:"pending",hideProfileSection:!0,onDataChanged:d});const n=y.querySelector("h3");if(n&&n.remove(),await s(w,{unified:!0,onDataChanged:d}),w){const t=w.querySelector(".leave-toolbar");t&&t.remove();const i=w.querySelector("h4");i&&i.remove();const h=w.querySelector("h3");h&&(h.innerHTML="\u6709\u7D66\u4ED8\u4E0E")}await d(),e.querySelectorAll(".leave-tab").forEach(t=>{t.addEventListener("click",i=>{e.querySelectorAll(".leave-tab").forEach(x=>x.classList.remove("active")),e.querySelectorAll(".leave-tab-content").forEach(x=>x.classList.remove("active"));const h=i.currentTarget.getAttribute("data-target");i.currentTarget.classList.add("active"),e.querySelector(`#${h}`).classList.add("active"),h==="tab-approvals"?history.replaceState(null,"","/admin/leave/requests"):h==="tab-grant"?history.replaceState(null,"","/admin/leave/grants"):h==="tab-balances"&&history.replaceState(null,"","/admin/leave/balance");const f=document.querySelector(".att-hub-sidebar");if(f){f.querySelectorAll(".att-sidebar-item").forEach(r=>{r.classList.remove("active"),r.style.borderLeftColor="transparent",r.style.color="#b0c4de",r.style.background="transparent",r.style.fontWeight="400";const F=r.querySelector("svg");F&&(F.style.opacity="0.7")});const x=window.location.pathname,C=f.querySelector(`a[href="${x}"]`);if(C){C.classList.add("active"),C.style.color="#ffffff",C.style.fontWeight="600";const r=f.querySelector('a[href^="/admin/leave"]');if(r){r.classList.add("active"),r.style.borderLeftColor="#4ade80",r.style.color="#ffffff",r.style.background="rgba(255,255,255,.06)",r.style.fontWeight="600";const F=r.querySelector("svg");F&&(F.style.opacity="1")}}}})});const c=window.location.pathname;if(e.querySelectorAll(".leave-tab").forEach(t=>t.classList.remove("active")),e.querySelectorAll(".leave-tab-content").forEach(t=>t.classList.remove("active")),c==="/admin/leave/grants"){const t=e.querySelector('.leave-tab[data-target="tab-grant"]');t&&t.classList.add("active");const i=e.querySelector("#tab-grant");i&&i.classList.add("active")}else if(c==="/admin/leave/balance"){const t=e.querySelector('.leave-tab[data-target="tab-balances"]');t&&t.classList.add("active");const i=e.querySelector("#tab-balances");i&&i.classList.add("active")}else{const t=e.querySelector('.leave-tab[data-target="tab-approvals"]');t&&t.classList.add("active");const i=e.querySelector("#tab-approvals");i&&i.classList.add("active")}}export{pe as mountApprovals,ce as mountLeaveAdmin,be as mountLeaveBalance,me as mountLeaveGrant,ge as mountLeaveHub,ue as mountLeaveUnified};

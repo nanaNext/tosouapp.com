@@ -106,7 +106,7 @@ exports.putDaily = async (req, res) => {
     const daily = await repo.getDaily(userId, date);
     // Đồng bộ phép năm nếu kubun thay đổi sang 有給休暇
     try {
-      await syncPaidLeaveByKubun(userId, date, String(daily?.kubun || req.body?.kubun || '').trim());
+      await syncPaidLeaveByKubun(userId, date, String(daily?.kubun || req.body?.kubun || '').trim(), 'from_attendance', req.tenantId || null);
     } catch (e) { /* không bắt buộc, bỏ qua lỗi */ }
     await touchMonthStatus(userId, y, m, req.user?.id);
     res.status(200).json({ date, daily });

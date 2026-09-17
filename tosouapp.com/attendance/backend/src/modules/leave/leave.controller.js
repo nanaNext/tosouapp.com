@@ -46,10 +46,39 @@ function overlapDays(aStart, aEnd, bStart, bEnd) {
   if (s > e) return 0;
   return daysBetweenInclusive(s, e);
 }
+// 承認済みだった有給申請が勤怠実績との不一致で自動的に却下された場合、
+// 申請者本人に通知する（従来は無言で却下されるだけだった）。
+async function notifyAutoReconciled(affectedRequests) {
+  if (!Array.isArray(affectedRequests) || !affectedRequests.length) return;
+  for (const row of affectedRequests) {
+    try {
+      await noticesRepo.createNotice({
+        targetUserId: row.userId,
+        targetDate: row.startDate ? String(row.startDate).slice(0, 10) : null,
+        targetMonth: row.startDate ? String(row.startDate).slice(0, 7) : null,
+        message: `承認済みだった有給申請（${String(row.startDate || '').slice(0, 10)}）は、勤怠実績の区分と一致しないため自動的に取り消されました。内容をご確認のうえ、必要であれば再度申請してください。`,
+        createdBy: null,
+        kind: 'approval',
+        title: '休暇申請の自動取消'
+      });
+    } catch (e) { /* silently ignored */ }
+  }
+}
 async function tryReconcileAttendance(tenantId = null) {
   try {
-    await repo.reconcileApprovedPaidWithAttendance(tenantId);
+    const affected = await repo.reconcileApprovedPaidWithAttendance(tenantId);
+    await notifyAutoReconciled(affected);
   } catch (e) { /* silently ignored */ }
+}
+const { resolveManagerBranchScope } = require('./leave.access');
+// Kiểm tra manager có quyền thao tác (duyệt/từ chối) trên đơn nghỉ của user khác chi nhánh hay không.
+async function assertLeaveRequestInManagerBranch(req, leaveRequestRow) {
+  const branchId = await resolveManagerBranchScope(req);
+  if (branchId == null || !leaveRequestRow) return true;
+  const targetUser = await userRepo.getUserById(leaveRequestRow.userId, req.tenantId || null);
+  const targetBranchId = targetUser?.branch_id != null ? Number(targetUser.branch_id) : null;
+  if (targetBranchId == null) return true;
+  return targetBranchId === branchId;
 }
 function scheduleGrants(hireDate, untilDate) {
   const grants = [];
@@ -177,8 +206,10 @@ function allocateUsageByDays(grants, usedDays) {
     const d = String(u.date || '').slice(0, 10);
     for (const g of out) {
       if (need <= 0) break;
-      // その日が付与枠の有効期間内か
-      if (d < String(g.grantDate).slice(0, 10) || d > String(g.expiryDate).slice(0, 10)) continue;
+      // 有効期限内であれば按分対象とする。grantDate（付与記録日）より前の取得日でも除外しない —
+      // 勤怠実績への区分入力が、正式な付与レコード登録より先に行われるケースがあるため、
+      // grantDate を下限にすると実際に取得した日数が按分先を失い、残数が過大表示される。
+      if (d > String(g.expiryDate).slice(0, 10)) continue;
       const take = Math.min(need, g.daysRemaining);
       if (take > 0) {
         g.daysRemaining -= take;
@@ -301,8 +332,9 @@ exports.cancelMyPaid = async (req, res) => {
 };
 exports.reconcileAttendance = async (req, res) => {
   try {
-    const updated = await repo.reconcileApprovedPaidWithAttendance(req.tenantId || null);
-    return res.status(200).json({ ok: true, updated });
+    const affected = await repo.reconcileApprovedPaidWithAttendance(req.tenantId || null);
+    await notifyAutoReconciled(affected);
+    return res.status(200).json({ ok: true, updated: affected.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -374,7 +406,8 @@ exports.listUser = async (req, res) => {
 // API: Quản lý/Admin lấy danh sách yêu cầu nghỉ phép đang chờ duyệt
 exports.listPending = async (req, res) => {
   try {
-    const rows = await repo.listAllPending(req.tenantId);
+    const branchId = await resolveManagerBranchScope(req);
+    const rows = await repo.listAllPending(req.tenantId, branchId);
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -386,8 +419,9 @@ exports.listAdminRequests = async (req, res) => {
     await tryReconcileAttendance(req.tenantId || null);
     const statusRaw = String(req.query?.status || '').trim().toLowerCase();
     const status = ['pending', 'approved', 'rejected'].includes(statusRaw) ? statusRaw : null;
+    const branchId = await resolveManagerBranchScope(req);
     // Stable path: always use simple query so FE never falls back to legacy pending.
-    const rows = await repo.listAllRequestsSimple({ status, limit: 2000, tenantId: req.tenantId });
+    const rows = await repo.listAllRequestsSimple({ status, limit: 2000, tenantId: req.tenantId, branchId });
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -401,7 +435,23 @@ exports.updateStatus = async (req, res) => {
     if (!id || !status || !['approved','rejected','pending'].includes(status)) {
       return res.status(400).json({ message: 'Missing id/status' });
     }
+    const beforeRow = await repo.getById(id, req.tenantId);
+    if (!beforeRow) return res.status(404).json({ message: 'Not found' });
+    const allowed = await assertLeaveRequestInManagerBranch(req, beforeRow);
+    if (!allowed) return res.status(403).json({ message: 'Forbidden: different branch' });
     await repo.updateStatus(id, status, req.tenantId);
+    try {
+      await auditRepo.writeLog({
+        userId: req.user?.id,
+        action: 'leave_request_status_update',
+        path: req.path,
+        method: req.method,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        beforeData: JSON.stringify({ id: beforeRow.id, status: beforeRow.status }),
+        afterData: JSON.stringify({ id: beforeRow.id, status, targetUserId: beforeRow.userId })
+      });
+    } catch (e) { /* silently ignored */ }
     try {
       const row = await repo.getById(id, req.tenantId);
       if (row && row.userId && status !== 'pending') {
@@ -664,7 +714,23 @@ exports.approve = async (req, res) => {
     if (!id) return res.status(400).json({ message: 'Missing id' });
     const s = status || 'approved';
     if (!['approved','rejected','pending'].includes(s)) return res.status(400).json({ message: 'Invalid status' });
+    const beforeRow = await repo.getById(id, req.tenantId || null);
+    if (!beforeRow) return res.status(404).json({ message: 'Not found' });
+    const allowed = await assertLeaveRequestInManagerBranch(req, beforeRow);
+    if (!allowed) return res.status(403).json({ message: 'Forbidden: different branch' });
     await repo.updateStatus(id, s, req.tenantId || null);
+    try {
+      await auditRepo.writeLog({
+        userId: req.user?.id,
+        action: 'leave_request_status_update',
+        path: req.path,
+        method: req.method,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        beforeData: JSON.stringify({ id: beforeRow.id, status: beforeRow.status }),
+        afterData: JSON.stringify({ id: beforeRow.id, status: s, targetUserId: beforeRow.userId })
+      });
+    } catch (e) { /* silently ignored */ }
     try {
       const row = await repo.getById(id, req.tenantId || null);
       if (row && row.userId && s !== 'pending') {
@@ -751,6 +817,20 @@ exports.summary = async (req, res) => {
 };
 // Cái hàm này dùng để cấp nagfy nghỉ cho tất cả người dùng
 
+// API: 指定月の 有給休暇/半休(有給) 取得実績（人数・日数）を集計して返す（勤怠実績ベース、残数と同じ基準）。
+exports.monthlyUsageSummary = async (req, res) => {
+  try {
+    const month = String(req.query.month || '').slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ message: 'Missing/invalid month (YYYY-MM)' });
+    }
+    const branchId = await resolveManagerBranchScope(req);
+    const data = await repo.getMonthlyPaidLeaveUsageSummary(month, req.tenantId || null, branchId);
+    res.status(200).json({ month, ...data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 exports.autoGrantNow = async (req, res) => {
   try {
     const mode = getLeaveGrantMode();

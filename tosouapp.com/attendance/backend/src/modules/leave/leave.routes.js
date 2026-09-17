@@ -3,8 +3,10 @@ const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const { permit } = require('../../core/middleware/rbac');
 const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
+const { rateLimitNamed } = require('../../core/middleware/rateLimit');
 const controller = require('./leave.controller');
 const exportCtrl = require('./leave.export.controller');
+const { exportLeavePdf } = require('./leave.export.pdf');
 
 // Apply resolveTenant to ALL leave routes for tenant isolation
 router.use(authenticate, resolveTenant);
@@ -29,8 +31,17 @@ router.get('/my-used-days', authenticate, authorize('employee','manager','admin'
 router.get('/used-days', authenticate, authorize('manager','admin'), controller.usedPaidLeaveDays);
 router.get('/', authenticate, authorize('manager','admin'), controller.listUser);
 router.get('/admin-requests', authenticate, authorize('manager','admin'), controller.listAdminRequests);
+router.get('/monthly-usage-summary', authenticate, authorize('manager','admin'), controller.monthlyUsageSummary);
 router.get('/pending', authenticate, authorize('manager','admin'), controller.listPending);
-router.get('/export.xlsx', authorize('manager','admin'), exportCtrl.exportLeaveXlsx);
+router.get('/export.xlsx',
+  rateLimitNamed('leave_export_xlsx', { windowMs: 60_000, max: 12 }),
+  authorize('manager','admin'), exportCtrl.exportLeaveXlsx);
+router.get('/export.csv',
+  rateLimitNamed('leave_export_csv', { windowMs: 60_000, max: 12 }),
+  authorize('manager','admin'), exportCtrl.exportLeaveCsv);
+router.get('/export.pdf',
+  rateLimitNamed('leave_export_pdf', { windowMs: 60_000, max: 10 }),
+  authorize('manager','admin'), exportLeavePdf);
 router.patch('/:id/status', authenticate, authorize('manager','admin'), controller.updateStatus);
 
 module.exports = router;

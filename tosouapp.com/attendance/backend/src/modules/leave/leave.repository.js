@@ -239,11 +239,13 @@ module.exports = {
     const [rows] = await db.query(sql, params);
     return rows;
   },
-  async listAllPending(tenantId = null) {
+  async listAllPending(tenantId = null, branchId = null) {
     const hasTid = tenantId != null && Number.isFinite(Number(tenantId));
+    const hasBid = branchId != null && Number.isFinite(Number(branchId));
     const params = [];
     const where = ['lr.status = \'pending\''];
     if (hasTid) { where.push('u.tenant_id = ?'); params.push(parseInt(String(tenantId), 10)); }
+    if (hasBid) { where.push('u.branch_id = ?'); params.push(parseInt(String(branchId), 10)); }
     const sql = `
       SELECT
         lr.*,
@@ -362,14 +364,16 @@ module.exports = {
       return rows;
     }
   },
-  async listAllRequestsSimple({ status = null, limit = 1000, tenantId = null } = {}) {
+  async listAllRequestsSimple({ status = null, limit = 1000, tenantId = null, branchId = null } = {}) {
     const lim = Math.max(1, Math.min(5000, Number(limit || 1000)));
     const hasStatus = ['pending', 'approved', 'rejected'].includes(String(status || '').toLowerCase());
     const hasTid = tenantId != null && Number.isFinite(Number(tenantId));
+    const hasBid = branchId != null && Number.isFinite(Number(branchId));
     const whereParts = [`u.role NOT IN ('admin', 'manager')`];
     const params = [];
     if (hasStatus) { whereParts.push('lr.status = ?'); params.push(String(status).toLowerCase()); }
     if (hasTid) { whereParts.push('u.tenant_id = ?'); params.push(parseInt(String(tenantId), 10)); }
+    if (hasBid) { whereParts.push('u.branch_id = ?'); params.push(parseInt(String(branchId), 10)); }
     params.push(lim);
     const sql = `
       SELECT
@@ -464,6 +468,8 @@ module.exports = {
     const [res] = await db.query(sql, params);
     return Number(res?.affectedRows || 0);
   },
+  // Trả về danh sách các đơn bị tự động từ chối (không chỉ số lượng), để controller
+  // có thể thông báo cho từng nhân viên bị ảnh hưởng.
   async reconcileApprovedPaidWithAttendance(tenantId = null) {
     const tid = _tid(tenantId);
     // Safety scope: reconcile only one-day paid requests to avoid changing multi-day requests unexpectedly.
@@ -471,21 +477,15 @@ module.exports = {
       const params = [];
       let tenantFilter = '';
       if (tid != null) { tenantFilter = 'AND lr.tenant_id = ?'; params.push(tid); }
-      const sql = `
-        UPDATE leave_requests lr
+      const selectSql = `
+        SELECT lr.id, lr.userId, lr.startDate, lr.endDate
+        FROM leave_requests lr
         LEFT JOIN attendance_daily ad
           ON ad.userId = lr.userId
          AND ad.date = lr.startDate
         LEFT JOIN attendance a
           ON a.userId = lr.userId
          AND DATE(COALESCE(a.checkIn, a.checkOut)) = lr.startDate
-        SET
-          lr.status = 'rejected',
-          lr.reason = CASE
-            WHEN COALESCE(lr.reason, '') = '' THEN '[AUTO_RECONCILE] attendance kubun is not 有給休暇'
-            WHEN lr.reason LIKE '%[AUTO_RECONCILE]%' THEN lr.reason
-            ELSE CONCAT(lr.reason, ' / [AUTO_RECONCILE] attendance kubun is not 有給休暇')
-          END
         WHERE lr.type = 'paid'
           AND lr.status = 'approved'
           AND lr.startDate = lr.endDate
@@ -495,33 +495,55 @@ module.exports = {
           )
           ${tenantFilter}
       `;
-      const [res] = await db.query(sql, params);
-      return Number(res?.affectedRows || 0);
+      const [candidates] = await db.query(selectSql, params);
+      if (!candidates || !candidates.length) return [];
+      const ids = candidates.map(c => c.id);
+      const marks = ids.map(() => '?').join(',');
+      await db.query(`
+        UPDATE leave_requests
+        SET
+          status = 'rejected',
+          reason = CASE
+            WHEN COALESCE(reason, '') = '' THEN '[AUTO_RECONCILE] attendance kubun is not 有給休暇'
+            WHEN reason LIKE '%[AUTO_RECONCILE]%' THEN reason
+            ELSE CONCAT(reason, ' / [AUTO_RECONCILE] attendance kubun is not 有給休暇')
+          END
+        WHERE id IN (${marks})
+      `, ids);
+      return candidates;
     } catch {
       // Fallback for environments where attendance table/join may fail.
       const params2 = [];
       let tenantFilter2 = '';
       if (tid != null) { tenantFilter2 = 'AND lr.tenant_id = ?'; params2.push(tid); }
-      const sql2 = `
-        UPDATE leave_requests lr
+      const selectSql2 = `
+        SELECT lr.id, lr.userId, lr.startDate, lr.endDate
+        FROM leave_requests lr
         INNER JOIN attendance_daily ad
           ON ad.userId = lr.userId
          AND ad.date = lr.startDate
-        SET
-          lr.status = 'rejected',
-          lr.reason = CASE
-            WHEN COALESCE(lr.reason, '') = '' THEN '[AUTO_RECONCILE] attendance kubun is not 有給休暇'
-            WHEN lr.reason LIKE '%[AUTO_RECONCILE]%' THEN lr.reason
-            ELSE CONCAT(lr.reason, ' / [AUTO_RECONCILE] attendance kubun is not 有給休暇')
-          END
         WHERE lr.type = 'paid'
           AND lr.status = 'approved'
           AND lr.startDate = lr.endDate
           AND REPLACE(TRIM(COALESCE(ad.kubun, '')), '　', '') <> '有給休暇'
           ${tenantFilter2}
       `;
-      const [res2] = await db.query(sql2, params2);
-      return Number(res2?.affectedRows || 0);
+      const [candidates2] = await db.query(selectSql2, params2);
+      if (!candidates2 || !candidates2.length) return [];
+      const ids2 = candidates2.map(c => c.id);
+      const marks2 = ids2.map(() => '?').join(',');
+      await db.query(`
+        UPDATE leave_requests
+        SET
+          status = 'rejected',
+          reason = CASE
+            WHEN COALESCE(reason, '') = '' THEN '[AUTO_RECONCILE] attendance kubun is not 有給休暇'
+            WHEN reason LIKE '%[AUTO_RECONCILE]%' THEN reason
+            ELSE CONCAT(reason, ' / [AUTO_RECONCILE] attendance kubun is not 有給休暇')
+          END
+        WHERE id IN (${marks2})
+      `, ids2);
+      return candidates2;
     }
   },
   async upsertGrant({ userId, type = 'paid', grantDate, daysGranted, expiryDate, tenantId = null }) {
@@ -652,6 +674,39 @@ module.exports = {
       const days = kubun === '半休(有給)' ? 0.5 : 1.0;
       return { date: String(r.date).slice(0, 10), kubun, days };
     });
+  },
+  // 指定月の 有給休暇/半休(有給) 取得実績を全社員分集計する（attendance_daily を正とし、残数計算と同じ基準）。
+  // ad.tenant_id は欠損データがあり得るため、users.tenant_id で絞り込む（listPaidLeaveUsedDaysより堅牢）。
+  async getMonthlyPaidLeaveUsageSummary(month, tenantId = null, branchId = null) {
+    const tid = _tid(tenantId);
+    const bid = branchId != null && Number.isFinite(Number(branchId)) ? parseInt(String(branchId), 10) : null;
+    const params = [month];
+    const extra = [];
+    if (tid != null) { extra.push('u.tenant_id = ?'); params.push(tid); }
+    if (bid != null) { extra.push('u.branch_id = ?'); params.push(bid); }
+    const sql = `
+      SELECT
+        REPLACE(TRIM(COALESCE(ad.kubun, '')), '　', '') AS kubun,
+        COUNT(DISTINCT ad.userId) AS userCount,
+        COUNT(*) AS occurrenceCount
+      FROM attendance_daily ad
+      INNER JOIN users u ON u.id = ad.userId
+      WHERE DATE_FORMAT(ad.date, '%Y-%m') = ?
+        AND REPLACE(TRIM(COALESCE(ad.kubun, '')), '　', '') IN ('有給休暇', '半休(有給)')
+        AND u.role NOT IN ('admin', 'manager')
+        ${extra.length ? 'AND ' + extra.join(' AND ') : ''}
+      GROUP BY kubun
+    `;
+    const [rows] = await db.query(sql, params);
+    const out = { paid: { userCount: 0, days: 0 }, paidHalf: { userCount: 0, days: 0 } };
+    for (const r of (rows || [])) {
+      const k = String(r.kubun || '');
+      const userCount = Number(r.userCount || 0);
+      const occurrenceCount = Number(r.occurrenceCount || 0);
+      if (k === '有給休暇') out.paid = { userCount, days: occurrenceCount };
+      else if (k === '半休(有給)') out.paidHalf = { userCount, days: occurrenceCount * 0.5 };
+    }
+    return out;
   },
   async getAttendanceStats(userId, fromDate, toDate, tenantId = null) {
     const tid = _tid(tenantId);
