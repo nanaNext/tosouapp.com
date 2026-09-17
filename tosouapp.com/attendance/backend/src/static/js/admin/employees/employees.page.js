@@ -87,6 +87,7 @@ import{requireAdmin as lt}from"../_shared/require-admin.js";import{listEmployees
       </div>
       <div class="sap-actions">
         <a class="sap-btn sap-btn-primary" id="btnDetailEdit" href="/admin/employees?edit=${e.id}">\u270F\uFE0F \u7DE8\u96C6</a>
+        <a class="sap-btn" id="btnDetailDocuments" href="/admin/employees/documents?userId=${e.id}&name=${encodeURIComponent(e.username||e.email||"")}">\u{1F4C4} \u66F8\u985E</a>
         ${j==="admin"?`<button type="button" class="sap-btn sap-btn-danger" id="btnDetailDisable" data-uid="${e.id}">\u{1F6AB} \u7121\u52B9\u5316</button>`:""}
         ${j==="admin"?`<button type="button" class="sap-btn sap-btn-del" id="btnDetailDelete" data-uid="${e.id}">\u{1F5D1}\uFE0F \u524A\u9664</button>`:""}
         <a class="sap-btn sap-btn-ghost" id="btnDetailBack" href="/admin/employees#list">\u2190 \u4E00\u89A7\u3078</a>
