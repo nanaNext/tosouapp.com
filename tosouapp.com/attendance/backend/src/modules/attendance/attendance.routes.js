@@ -248,6 +248,11 @@ router.post('/shifts/assign',
   authenticate, resolveTenant, authorize('admin', 'manager'),
   controller.postShiftAssignment);
 
+router.post('/shifts/assign-bulk',
+  rateLimitNamed('attendance_shift_assign_bulk', { windowMs: 60_000, max: 10 }),
+  authenticate, resolveTenant, authorize('admin', 'manager'),
+  controller.postShiftAssignmentBulk);
+
 router.post('/shifts/backfill',
   authenticate, resolveTenant, authorize('admin'),
   async (req, res) => {

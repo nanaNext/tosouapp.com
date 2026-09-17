@@ -193,6 +193,64 @@ exports.postShiftAssignment = async (req, res) => {
   }
 };
 
+// Gán 1 ca cho nhiều nhân viên cùng lúc. Áp dụng đúng các kiểm tra như gán
+// từng người (trùng ca, tháng đã chốt) — một người bị lỗi không chặn các
+// người còn lại, kết quả trả về theo từng userId để biết ai thành công/lỗi.
+exports.postShiftAssignmentBulk = async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const b = req.body || {};
+    const userIds = Array.isArray(b.userIds) ? b.userIds.map(v => parseInt(String(v), 10)).filter(Boolean) : [];
+    const shiftId = parseInt(String(b.shiftId || ''), 10);
+    const startDate = String(b.startDate || '').slice(0, 10);
+    const endDate = b.endDate == null || b.endDate === '' ? null : String(b.endDate).slice(0, 10);
+    if (!userIds.length || !shiftId || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      return res.status(400).json({ message: 'Missing userIds/shiftId/startDate' });
+    }
+    if (endDate && (!/^\d{4}-\d{2}-\d{2}$/.test(endDate) || endDate < startDate)) {
+      return res.status(400).json({ message: 'Invalid endDate' });
+    }
+    if (userIds.length > 200) {
+      return res.status(400).json({ message: 'Too many userIds (max 200)' });
+    }
+    const tid = req.tenantId || null;
+    const months = enumerateMonths(startDate, endDate);
+    const results = [];
+
+    for (const userId of userIds) {
+      try {
+        if (role === 'manager') {
+          const target = await userRepo.getUserById(userId, tid);
+          if (!target || String(target.role || '').toLowerCase() !== 'employee') {
+            throw Object.assign(new Error('Forbidden'), { status: 403 });
+          }
+        }
+        const overlaps = await repo.findOverlappingAssignments(userId, startDate, endDate, { tenantId: tid });
+        if (overlaps.length) {
+          throw Object.assign(new Error('Overlapping assignment'), { status: 409 });
+        }
+        for (const { year, month } of months) {
+          await assertMonthWritable(req, userId, year, month);
+        }
+        await repo.assignShiftToUser(userId, shiftId, startDate, endDate, { tenantId: tid });
+        results.push({ userId, ok: true });
+      } catch (e) {
+        results.push({ userId, ok: false, message: e.message, status: e.status || 500 });
+      }
+    }
+
+    const okCount = results.filter(r => r.ok).length;
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: 'shift_assignment_bulk_create', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ shiftId, startDate, endDate, userIds, okCount }) });
+    } catch (e) { /* silently ignored */ }
+
+    res.status(200).json({ ok: true, succeeded: okCount, failed: results.length - okCount, results });
+  } catch (err) {
+    res.status(Number(err?.status) || 500).json({ message: err.message });
+  }
+};
+
 exports.deleteShiftAssignment = async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
