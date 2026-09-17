@@ -2,18 +2,12 @@
    (thay cho khối <style> tự chèn runtime trong editor.page.js).
    Cấu trúc/ID DOM không đổi — chỉ đổi giá trị màu/viền/bo góc. */
 
-/* Ghi đè trực tiếp: admin.ejs tự chèn `body.has-sidebar{overflow:hidden!important;
-   height:100%!important}` khi URL có ?standalone=1 (áp dụng cho MỌI trang standalone,
-   kể cả 交通費) — nguồn gốc thật của việc không cuộn được, bất kể phần tử con bên
-   trong (.pe-page-root/#adminContent) có tự set overflow-y:auto hay không, vì scroll
-   ở cấp con không lộ ra được nếu cấp cha (body) đã bị khóa cứng overflow:hidden.
-   File CSS này chỉ được nạp khi trang lương mount, nên chỉ ảnh hưởng đúng trang này. */
-body.has-sidebar{overflow-y:auto !important;height:auto !important;min-height:100vh !important;}
-
-/* Gắn trên phần tử k trong editor.page.js. Không tự set overflow-y/height
-   riêng nữa — để body (đã mở khóa cuộn ở trên) làm nơi cuộn duy nhất,
-   tránh 2 lớp cuộn lồng nhau (con cuộn trước, cha cuộn sau) gây giật/khó dùng. */
-.pe-page-root{width:100%;max-width:1200px;margin:0 auto !important;padding:24px 28px;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;min-height:100vh;box-sizing:border-box;overflow-x:hidden;}
+/* Đã thử ghi đè body.has-sidebar nhưng không ăn thua (có thể do thứ tự nạp
+   CSS/timing không như dự tính). Cách chắc chắn hơn: cho .pe-page-root thoát
+   hẳn khỏi luồng bố cục cha bằng position:fixed + inset:0 — lúc này nó tự
+   thiết lập vùng chứa dựa trên VIEWPORT, không phụ thuộc chiều cao/overflow
+   của #adminContent/main.content/body phía trên nữa, nên chắc chắn cuộn được. */
+.pe-page-root{position:fixed !important;inset:0;overflow-y:auto !important;overflow-x:hidden;z-index:20;padding:24px 28px;box-sizing:border-box;font-family:"Noto Sans JP","Noto Sans","Yu Gothic UI","Meiryo UI","Segoe UI",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;letter-spacing:.2px;font-weight:400;font-synthesis:none;color:#0f172a;background:#f8fafc;}
 .pe-page-root *{box-sizing:border-box;font-family:inherit;font-weight:400}
 .pe-card{background:#fff;border:1px solid #edeff0;border-radius:6px;padding:22px 24px;margin-bottom:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);min-width:0}
 .pe-title{font-size:15px;line-height:1.4;font-weight:700;color:#0f172a;margin:0 0 18px 0;border-bottom:2px solid #edeff0;padding-bottom:10px;display:flex;align-items:center;gap:8px;letter-spacing:-0.2px}
