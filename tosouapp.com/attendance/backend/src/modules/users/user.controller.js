@@ -169,7 +169,8 @@ exports.update = async (req, res) => {
       allowanceTransport: body.allowanceTransport,
       dependentsCount: body.dependentsCount,
       taxCategory: body.taxCategory,
-      qualificationAllowance: body.qualificationAllowance
+      qualificationAllowance: body.qualificationAllowance,
+      tenantId: req.tenantId || null
     });
     res.status(200).json({ id });
   } catch (err) {

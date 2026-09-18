@@ -104,7 +104,7 @@ function summarizeApprovedLeaveDays(list, fromDate, toDate) {
 // fromDate đến toDate  
  
 // Hàm này là dùng để tính lương cho người dùng trong tháng month
-async function computePayslipForUser(userId, month, options = null) {
+async function computePayslipForUser(userId, month, options = null, tenantId = null) {
   const pad = n => String(n).padStart(2, '0');
   const y = parseInt(String(month).split('-')[0], 10);
   const m = parseInt(String(month).split('-')[1], 10);
@@ -118,7 +118,7 @@ async function computePayslipForUser(userId, month, options = null) {
     attendanceRepo.listDailyBetween(userId, from, to).catch(() => []),
     attendanceRepo.listByUserBetween(userId, from, to).catch(() => []),
     leaveRepo.listApprovedByUserOverlap(userId, from, to).catch(() => []),
-    salaryRepo.getConfigByYear(year),
+    salaryRepo.getConfigByYear(year, tenantId),
     salaryRepo.getUserCompensation(userId)
   ]);
   const dept = user?.departmentId ? await userRepo.getDepartmentById(user.departmentId).catch(() => null) : null;
@@ -614,18 +614,18 @@ async function computePayslipForUser(userId, month, options = null) {
   };
 }
 
-async function computePayslips(userIds, month) {
+async function computePayslips(userIds, month, tenantId = null) {
   const employees = [];
   const chunkSize = 10;
-  
+
   for (let i = 0; i < userIds.length; i += chunkSize) {
     const chunk = userIds.slice(i, i + chunkSize);
     const chunkResults = await Promise.all(
-      chunk.map(id => computePayslipForUser(id, month))
+      chunk.map(id => computePayslipForUser(id, month, null, tenantId))
     );
     employees.push(...chunkResults);
   }
-  
+
   return { employees };
 }
 

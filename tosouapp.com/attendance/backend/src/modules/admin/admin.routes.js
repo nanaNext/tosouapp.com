@@ -1841,7 +1841,7 @@ router.post('/salary/close-month', authorize('admin'), async (req, res) => {
       return res.status(400).json({ message: 'Missing userIds/month' });
     }
     const ids = String(userIds).split(',').map(s => s.trim()).filter(Boolean);
-    const { employees } = await salaryService.computePayslips(ids, month);
+    const { employees } = await salaryService.computePayslips(ids, month, req.tenantId || null);
     for (const e of employees) {
       await salaryRepo.saveHistory(e.userId, month, e);
     }

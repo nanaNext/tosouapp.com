@@ -1,7 +1,8 @@
-import { fetchJSONAuth, fetchResponseAuth } from '../../api/http.api.js';
+import { fetchJSONAuth } from '../../api/http.api.js';
 import { listUsers } from '../../api/users.api.js';
 import { listDepartments } from '../../api/departments.api.js';
 import { createPayrollService } from './editor.service.js';
+import { escapeHtml, employeeCode, yenPlain as yen, ensureStylesheet as ensurePayrollStylesheet, openPdf } from './shared.js';
 
 // Dùng /api/admin/employees/:id (permit('employees','manage'), cho phép cả
 // admin lẫn manager) thay vì /api/admin/users/:id (chỉ authorize('admin'))
@@ -12,20 +13,6 @@ function updateEmployee(id, data) {
     body: JSON.stringify(data)
   });
 }
-
-const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-})[c]);
-
-const yen = (n) => {
-  const v = Math.round(Number(n) || 0);
-  try { return new Intl.NumberFormat('ja-JP').format(v); }
-  catch { return String(v); }
-};
-
-const employeeCode = (u) => String(
-  (u && (u.employee_code || u.employeeCode)) || ('EMP' + String(u?.id || '').padStart(3, '0'))
-).trim();
 
 const taxCategoryLabel = (v) => (String(v || 'kou') === 'otsu' ? '乙欄' : '甲欄');
 
@@ -40,20 +27,8 @@ const currentMonth = () => {
 };
 
 function ensureStylesheet() {
-  if (!document.getElementById('payrollEditorStyle')) {
-    const link = document.createElement('link');
-    link.id = 'payrollEditorStyle';
-    link.rel = 'stylesheet';
-    link.href = '/static/css/payroll-editor.css?v=6';
-    document.head.appendChild(link);
-  }
-  if (!document.getElementById('payrollLedgerStyle')) {
-    const link = document.createElement('link');
-    link.id = 'payrollLedgerStyle';
-    link.rel = 'stylesheet';
-    link.href = '/static/css/payroll-ledger.css?v=1';
-    document.head.appendChild(link);
-  }
+  ensurePayrollStylesheet('payrollEditorStyle', '/static/css/payroll-editor.css?v=6');
+  ensurePayrollStylesheet('payrollLedgerStyle', '/static/css/payroll-ledger.css?v=4');
 }
 
 function hideAdminChrome() {
@@ -66,28 +41,6 @@ function hideAdminChrome() {
     const main = document.querySelector('main.content');
     if (main) { main.style.setProperty('padding', '0', 'important'); main.style.setProperty('margin', '0', 'important'); }
   } catch { /* ignore */ }
-}
-
-async function openPdf(url) {
-  const newTab = window.open('about:blank', '_blank');
-  if (!newTab) { window.alert('ポップアップがブロックされました。許可してください。'); return; }
-  try {
-    const res = await fetchResponseAuth(url);
-    if (!String(res.headers.get('content-type') || '').toLowerCase().includes('application/pdf')) {
-      let text = '';
-      try { text = await res.clone().text(); } catch { /* ignore */ }
-      newTab.close();
-      window.alert(text || 'PDFの取得に失敗しました。');
-      return;
-    }
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    newTab.location.href = objectUrl;
-    setTimeout(() => { try { URL.revokeObjectURL(objectUrl); } catch { /* ignore */ } }, 30000);
-  } catch (err) {
-    try { newTab.close(); } catch { /* ignore */ }
-    window.alert(String(err?.message || 'エラーが発生しました'));
-  }
 }
 
 async function deactivateEmployee(id) {
@@ -149,7 +102,7 @@ async function mount({ content } = {}) {
     <nav class="pl-nav">
       <div class="pl-brand">
         <div class="t">給与元帳</div>
-        <div class="s">PAYROLL LEDGER · JAPAN</div>
+        <div class="s">${escapeHtml(config?.companyName || '')}</div>
       </div>
       <div class="pl-navlist">
         ${SECTIONS.map((s) => `
@@ -218,7 +171,6 @@ function renderEmployeesSection(mainEl, ctx, rerender) {
         <h1>従業員</h1>
         <p>給与計算の対象となる従業員を登録します</p>
       </div>
-      <button type="button" class="pl-btn primary" id="btnAddEmp">+ 従業員を追加</button>
     </div>
     <div class="pl-card" style="padding:14px 16px;margin-bottom:12px;">
       <input type="text" class="pl-input" id="empSearch" placeholder="氏名・社員番号・部署で検索" style="width:100%;" autocomplete="off">
@@ -304,26 +256,15 @@ function renderEmployeesSection(mainEl, ctx, rerender) {
     }));
   });
 
-  mainEl.querySelector('#btnAddEmp').addEventListener('click', () => {
-    window.open('/admin/employees/add', '_blank', 'noopener');
-  });
 }
 
 function openEmployeeEditModal(emp, ctx, rerender) {
   const overlay = document.createElement('div');
   overlay.className = 'pl-overlay';
-  const initial = String(emp.username || '?').trim().charAt(0).toUpperCase();
   overlay.innerHTML = `
     <div class="pl-modal">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px;">
-        <div style="flex:0 0 auto;width:44px;height:44px;border-radius:50%;background:#1c2b45;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;">${escapeHtml(initial)}</div>
-        <div>
-          <h2 style="margin:0;">従業員を編集</h2>
-          <div class="pl-modal-sub" style="margin:2px 0 0;">${escapeHtml(emp.username || '')}（${escapeHtml(employeeCode(emp))}）</div>
-        </div>
-      </div>
+      <h2 style="margin:0 0 22px;">従業員を編集</h2>
       <div class="pl-form-grid">
-        <div class="pl-form-section">基本情報</div>
         <div class="pl-field"><label>氏名 *</label><input class="pl-input" id="fUsername" value="${escapeHtml(emp.username || '')}"></div>
         <div class="pl-field"><label>社員番号</label><input class="pl-input" id="fCode" value="${escapeHtml(employeeCode(emp))}"></div>
         <div class="pl-field">
@@ -340,13 +281,11 @@ function openEmployeeEditModal(emp, ctx, rerender) {
             <option value="otsu" ${emp.tax_category === 'otsu' ? 'selected' : ''}>乙欄（複数勤務先など）</option>
           </select>
         </div>
-        <div class="pl-field full"><label>生年月日（介護保険40～64歳判定用）</label><input class="pl-input" id="fBirth" type="date" value="${emp.birth_date ? String(emp.birth_date).slice(0, 10) : ''}"></div>
-
-        <div class="pl-form-section">給与情報</div>
         <div class="pl-field"><label>基礎給（月額・円）*</label><input class="pl-input" id="fBase" type="number" min="0" value="${Number(emp.base_salary || 0)}"></div>
         <div class="pl-field"><label>就業手当（月額・円）</label><input class="pl-input" id="fQual" type="number" min="0" value="${Number(emp.qualification_allowance || 0)}"></div>
         <div class="pl-field"><label>通勤手当（月額・円）</label><input class="pl-input" id="fCommute" type="number" min="0" value="${Number(emp.allowance_transport || 0)}"></div>
         <div class="pl-field"><label>扶養人数</label><input class="pl-input" id="fDep" type="number" min="0" value="${Number(emp.dependents_count || 0)}"></div>
+        <div class="pl-field full"><label>生年月日（介護保険40～64歳判定用）</label><input class="pl-input" id="fBirth" type="date" value="${emp.birth_date ? String(emp.birth_date).slice(0, 10) : ''}"></div>
       </div>
       <div id="modalMsg" style="margin-top:10px;font-size:12.5px;color:#a13c2e;"></div>
       <div class="pl-modal-actions">
@@ -456,9 +395,9 @@ async function renderCalcSection(mainEl, ctx) {
           const input = await service.loadInput({ userId: u.id, month }).catch(() => null);
           const payload = input && input.payload ? input.payload : {};
           const emp = await service.computeEmp({ userId: u.id, month, payload });
-          return { u, emp, ok: true };
+          return { u, emp, ok: true, autoCalc: payload.autoCalcDeductions !== false };
         } catch {
-          return { u, emp: null, ok: false };
+          return { u, emp: null, ok: false, autoCalc: true };
         }
       }));
       results.forEach((r, idx) => { rows[i + idx] = r; });
@@ -468,7 +407,7 @@ async function renderCalcSection(mainEl, ctx) {
   };
 
   function renderCalcRow(r, deptName) {
-    const { u, emp, ok } = r;
+    const { u, emp, ok, autoCalc } = r;
     const gross = ok ? emp?.合計?.総支給額 : null;
     const deduct = ok ? emp?.合計?.総控除額 : null;
     const net = ok ? emp?.合計?.差引支給額 : null;
@@ -478,7 +417,7 @@ async function renderCalcSection(mainEl, ctx) {
       <tr data-id="${escapeHtml(u.id)}">
         <td>${escapeHtml(u.username || u.email || '')}</td>
         <td>${escapeHtml(deptName(u.departmentId) || '—')}</td>
-        <td class="center"><span class="pl-badge green">自動計算ON</span></td>
+        <td class="center">${autoCalc ? '<span class="pl-badge green">自動計算ON</span>' : '<span class="pl-badge tan">自動計算OFF</span>'}</td>
         <td class="num">${ok ? Number(emp?.勤怠?.出勤日数 || 0) : '—'}</td>
         <td class="num">${ok ? Number(emp?.勤怠?.欠勤日数 || 0) : '—'}</td>
         <td class="num">${ok ? '¥' + yen(gross) : '—'}</td>
@@ -579,7 +518,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
             <div class="pl-modal-sub" style="margin:2px 0 0;">${monthLabel(month)} ／ ${escapeHtml(user.username || '')}（${escapeHtml(employeeCode(user))}）</div>
           </div>
         </div>
-        <label class="pl-toggle"><input type="checkbox" id="fAutoCalc" ${autoCalc ? 'checked' : ''} ${isPublished ? 'disabled' : ''}> 自動計算${autoCalc ? 'ON' : 'OFF'}</label>
+        <label class="pl-toggle"><input type="checkbox" id="fAutoCalc" ${autoCalc ? 'checked' : ''} ${isPublished ? 'disabled' : ''}><span class="pl-toggle-label">自動計算${autoCalc ? 'ON' : 'OFF'}</span><span class="pl-toggle-switch"></span></label>
       </div>
       ${isPublished ? `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fdecec;border:1px solid #e6b3ad;border-radius:8px;padding:10px 14px;margin-bottom:16px;">
@@ -719,6 +658,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
       setK('出勤日数', Number(modal.querySelector('#kAttend').value) || 0);
       setK('休日出勤日数', Number(modal.querySelector('#kHolidayAttend').value) || 0);
       setK('半日出勤日数', Number(modal.querySelector('#kHalf').value) || 0);
+      setK('欠勤日数', Number(modal.querySelector('#kAbsent').value) || 0);
       setK('有給休暇付与', Number(modal.querySelector('#kPaidLeave').value) || 0);
       setK('法外時間外', textOrUndef('#kOt'));
       setK('週40超時間', textOrUndef('#kW40'));
@@ -1018,6 +958,8 @@ function renderSettingsSection(mainEl, ctx) {
     msg.textContent = '保存中...';
     try {
       const val = (id) => Number(mainEl.querySelector(id).value) || 0;
+      const companyName = mainEl.querySelector('#sCompany').value.trim();
+      const prefecture = mainEl.querySelector('#sPref').value.trim();
       await service.updateConfig({
         year,
         healthInsuranceRate: val('#sHealth') / 100,
@@ -1031,10 +973,27 @@ function renderSettingsSection(mainEl, ctx) {
         workingMinutesPerMonth: val('#sHours') * 60,
         standardDaysPerMonth: val('#sDays'),
         commuteAllowanceTaxFreeLimit: val('#sCommuteLimit'),
-        companyName: mainEl.querySelector('#sCompany').value.trim(),
-        prefecture: mainEl.querySelector('#sPref').value.trim()
+        companyName,
+        prefecture
       });
-      ctx.config = { ...c, isDefault: false };
+      ctx.config = {
+        ...c,
+        isDefault: false,
+        companyName,
+        prefecture,
+        healthInsuranceRate: val('#sHealth') / 100,
+        careInsuranceRate: val('#sCare') / 100,
+        pensionRate: val('#sPension') / 100,
+        employmentInsuranceRate: val('#sEmp') / 100,
+        overtimeRate: val('#sOtRate'),
+        holidayRate: val('#sHolRate'),
+        lateNightRate: val('#sNightRate'),
+        workingMinutesPerMonth: val('#sHours') * 60,
+        standardDaysPerMonth: val('#sDays'),
+        commuteAllowanceTaxFreeLimit: val('#sCommuteLimit')
+      };
+      const brandSub = document.querySelector('.pl-brand .s');
+      if (brandSub) brandSub.textContent = companyName || '';
       msg.style.color = '#3f6b2c';
       msg.textContent = '保存しました';
     } catch (err) {

@@ -42,7 +42,7 @@ router.get('/payslip', authorize('admin'), async (req, res) => {
       return res.status(400).json({ message: 'Missing userIds/month' });
     }
     const ids = String(userIds).split(',').map(s => s.trim()).filter(Boolean);
-    const result = await salaryService.computePayslips(ids, month);
+    const result = await salaryService.computePayslips(ids, month, req.tenantId || null);
     res.status(200).json({ month, employees: result.employees });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -72,7 +72,7 @@ router.get('/salary', async (req, res) => {
     } else if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden' });
     }
-    const { employees } = await salaryService.computePayslips(ids, month);
+    const { employees } = await salaryService.computePayslips(ids, month, req.tenantId || null);
     res.status(200).json({
       companyName,
       issueDate,
@@ -209,24 +209,29 @@ router.get('/salary/input/history', async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: cross-department access' });
     }
     const rows = await salaryInputRepo.listByUser(userId, req.tenantId || null);
+    const chunkSize = 4;
     const items = [];
-    for (const row of rows) {
-      const options = normalizeJsonPayload(row.payload);
-      let net = null, gross = null, deduct = null;
-      try {
-        const emp = await salaryService.computePayslipForUser(userId, row.month, options || null);
-        net = emp?.合計?.差引支給額 ?? null;
-        gross = emp?.合計?.総支給額 ?? null;
-        deduct = emp?.合計?.総控除額 ?? null;
-      } catch (e) { /* keep nulls if a given month fails to compute */ }
-      items.push({
-        month: row.month,
-        isPublished: Boolean(row.is_published),
-        updatedAt: row.updated_at || null,
-        net,
-        gross,
-        deduct
-      });
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
+      const chunkItems = await Promise.all(chunk.map(async (row) => {
+        const options = normalizeJsonPayload(row.payload);
+        let net = null, gross = null, deduct = null;
+        try {
+          const emp = await salaryService.computePayslipForUser(userId, row.month, options || null, req.tenantId || null);
+          net = emp?.合計?.差引支給額 ?? null;
+          gross = emp?.合計?.総支給額 ?? null;
+          deduct = emp?.合計?.総控除額 ?? null;
+        } catch (e) { /* keep nulls if a given month fails to compute */ }
+        return {
+          month: row.month,
+          isPublished: Boolean(row.is_published),
+          updatedAt: row.updated_at || null,
+          net,
+          gross,
+          deduct
+        };
+      }));
+      items.push(...chunkItems);
     }
     res.status(200).json({ userId, items });
   } catch (err) {
@@ -352,7 +357,7 @@ router.get('/salary/preview', async (req, res) => {
     const input = await salaryInputRepo.getByUserMonth(userId, month);
     const options = normalizeJsonPayload(input?.payload);
     console.log('PDF GENERATE OPTIONS KINTAI:', JSON.stringify(options?.kintai));
-    const emp = await salaryService.computePayslipForUser(userId, month, options || null);
+    const emp = await salaryService.computePayslipForUser(userId, month, options || null, req.tenantId || null);
     res.status(200).json(emp);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -378,7 +383,7 @@ router.post('/salary/preview-live', async (req, res) => {
     }
     const payload0 = body.payload && typeof body.payload === 'object' ? body.payload : {};
     const payload = normalizeSalaryPayload(payload0);
-    const emp = await salaryService.computePayslipForUser(userId, month, payload || null);
+    const emp = await salaryService.computePayslipForUser(userId, month, payload || null, req.tenantId || null);
     res.status(200).json(emp);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -517,7 +522,7 @@ router.post('/salary/payslip/generate', async (req, res) => {
     }
     const input = await salaryInputRepo.getByUserMonth(userId, month);
     const options = normalizeJsonPayload(input?.payload);
-    const emp = await salaryService.computePayslipForUser(userId, month, options || null);
+    const emp = await salaryService.computePayslipForUser(userId, month, options || null, req.tenantId || null);
     try {
       emp._bankAccountParts = normalizeBankAccountParts(options?.bankAccountParts);
     } catch (e) { /* silently ignored */ }

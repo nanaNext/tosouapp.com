@@ -126,7 +126,7 @@ exports.salaryPreviewDepartment = async (req, res) => {
       ? await userRepo.listUsersByTenant(req.tenantId)
       : [];
     const ids = all.filter(u => String(u.role).toLowerCase() === 'employee').map(u => u.id);
-    const { employees } = await salaryService.computePayslips(ids, month);
+    const { employees } = await salaryService.computePayslips(ids, month, req.tenantId || null);
     res.status(200).json({ month, employees });
   } catch (err) {
     res.status(500).json({ message: err.message });

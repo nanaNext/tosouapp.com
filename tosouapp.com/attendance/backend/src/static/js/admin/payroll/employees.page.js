@@ -1,17 +1,7 @@
-import { fetchJSONAuth, fetchResponseAuth } from '../../api/http.api.js';
+import { fetchJSONAuth } from '../../api/http.api.js';
 import { listUsers } from '../../api/users.api.js';
 import { createPayrollService } from './editor.service.js';
-
-const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-})[c]);
-
-const yen = (n) => {
-  if (n === null || n === undefined || Number.isNaN(Number(n))) return '—';
-  const rounded = Math.round(Number(n));
-  try { return `${new Intl.NumberFormat('ja-JP').format(rounded)} 円`; }
-  catch { return `${rounded} 円`; }
-};
+import { escapeHtml, employeeCode, yenWithUnit as yen, ensureStylesheet as ensurePayrollStylesheet, openPdf } from './shared.js';
 
 const formatMonth = (m) => {
   const s = String(m || '');
@@ -27,33 +17,6 @@ const formatDateTime = (v) => {
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-const employeeCode = (u) => String(
-  (u && (u.employee_code || u.employeeCode)) || ('EMP' + String(u?.id || '').padStart(3, '0'))
-).trim();
-
-async function openPdf(url) {
-  const newTab = window.open('about:blank', '_blank');
-  if (!newTab) { window.alert('ポップアップがブロックされました。許可してください。'); return; }
-  try {
-    const res = await fetchResponseAuth(url);
-    const contentType = String(res.headers.get('content-type') || '').toLowerCase();
-    if (!contentType.includes('application/pdf')) {
-      let text = '';
-      try { text = await res.clone().text(); } catch { /* ignore */ }
-      newTab.close();
-      window.alert(text || 'PDFの取得に失敗しました。');
-      return;
-    }
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    newTab.location.href = objectUrl;
-    setTimeout(() => { try { URL.revokeObjectURL(objectUrl); } catch { /* ignore */ } }, 30000);
-  } catch (err) {
-    try { newTab.close(); } catch { /* ignore */ }
-    window.alert(String(err?.message || 'エラーが発生しました'));
-  }
-}
-
 const isStandalone = () => {
   try { return window.location.search.includes('standalone=1') || window.location.search.includes('standalone=true'); }
   catch { return false; }
@@ -64,15 +27,6 @@ const withStandalone = (path) => {
   if (path.includes('standalone=')) return path;
   return `${path}${path.includes('?') ? '&' : '?'}standalone=1`;
 };
-
-function ensureStylesheet() {
-  if (document.getElementById('payrollEditorStyle')) return;
-  const link = document.createElement('link');
-  link.id = 'payrollEditorStyle';
-  link.rel = 'stylesheet';
-  link.href = '/static/css/payroll-editor.css?v=6';
-  document.head.appendChild(link);
-}
 
 function goToEditorFor(userId) {
   try {
@@ -289,7 +243,7 @@ async function renderEmployeeDetail(container, user, service) {
 }
 
 async function mount({ content } = {}) {
-  ensureStylesheet();
+  ensurePayrollStylesheet('payrollEditorStyle', '/static/css/payroll-editor.css?v=6');
   const container = content || document.querySelector('#adminContent');
   if (!container) return;
 
