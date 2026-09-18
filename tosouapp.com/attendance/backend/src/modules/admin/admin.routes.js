@@ -25,7 +25,8 @@ const salaryInputRepo = require('../salary/salaryInput.repository');
 const payslipRepo = require('../payslip/payslip.repository');
 const noticesRepo = require('../notices/notices.repository');
 const db = require('../../core/database/mysql');
-const upload = require('../../core/middleware/upload');
+const { uploadMemory, safeFilename } = require('../../core/middleware/uploadR2');
+const fileStore = require('../../core/services/fileStore.service');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -63,7 +64,7 @@ function tenantClause(req, alias = '') {
 }
 
 const uploadEmployeePhotos = (req, res, next) => {
-  upload.array('files', 12)(req, res, (err) => {
+  uploadMemory.array('files', 12)(req, res, (err) => {
     if (!err) return next();
     const msg = String(err?.message || 'Upload failed');
     const code = /file too large/i.test(msg) ? 413 : 400;
@@ -558,25 +559,56 @@ router.post('/employees/:id/avatar', permit('employees','manage'), async (req, r
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
-}, upload.single('file'), async (req, res) => {
+}, uploadMemory.single('file'), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!req.file || !id) {
       return res.status(400).json({ message: 'Missing file or id' });
     }
-    const url = `/uploads/${req.file.filename}`;
-    await userRepo.updateUser(id, { avatarUrl: url });
+    // Target must belong to the caller's tenant — otherwise an admin in tenant A
+    // could overwrite the avatar of a user in tenant B just by guessing their id.
+    const target = await userRepo.getUserById(id, req.tenantId || null);
+    if (!target) return res.status(404).json({ message: 'Employee not found' });
+    const filename = safeFilename(req.file);
+    await fileStore.storeUploadedFile({ buffer: req.file.buffer, mimetype: req.file.mimetype, tenantId: req.tenantId || null, category: 'avatars', filename });
+    const url = `/uploads/${filename}`;
+    await userRepo.updateUser(id, { avatarUrl: url, tenantId: req.tenantId || null });
+    const downloadUrl = `/api/admin/employees/${id}/avatar/download`;
     try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_employee_avatar_upload', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ id, avatarUrl: url, originalName: req.file.originalname }) }); } catch (e) { /* silently ignored */ }
-    res.status(201).json({ id, url, originalName: req.file.originalname });
+    res.status(201).json({ id, url: downloadUrl, originalName: req.file.originalname });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+// 生の /uploads パスを直接返さない — 認証済みダウンロードエンドポイント経由でのみアクセスさせる
+// (アバター画像は静的配信 /uploads では誰でも認証なしで取得できてしまうため)。
+// R2 が設定されていればそこから読み、無ければローカル uploads/ にフォールバック
+// (core/services/fileStore.service.js 参照) — Render は永続ディスクを持たないため。
+router.get('/employees/:id/avatar/download',
+  rateLimitNamed('admin_employee_avatar_download', { windowMs: 60_000, max: 60 }),
+  permit('employees','view'),
+  async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!id) return res.status(400).json({ message: 'Missing id' });
+      const target = await userRepo.getUserById(id, req.tenantId || null);
+      if (!target || !target.avatar_url) return res.status(404).json({ message: 'Not found' });
+      const buffer = await fileStore.readUploadedFile({ tenantId: req.tenantId || null, category: 'avatars', filename: target.avatar_url });
+      if (!buffer) return res.status(404).json({ message: 'File not found' });
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).send(buffer);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 router.get('/employees/:id/photos', permit('employees','view'), async (req, res) => {
   try {
     await ensureEmployeeProfilePhotosSchema();
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ message: 'Missing id' });
+    const target = await userRepo.getUserById(id, req.tenantId || null);
+    if (!target) return res.status(404).json({ message: 'Employee not found' });
     const [rows] = await db.query(
       `SELECT id, userId, url, original_name AS originalName, mime_type AS mimeType, size_bytes AS sizeBytes, created_at AS createdAt
        FROM employee_profile_photos
@@ -584,7 +616,8 @@ router.get('/employees/:id/photos', permit('employees','view'), async (req, res)
        ORDER BY created_at DESC, id DESC`,
       [id]
     );
-    res.status(200).json(Array.isArray(rows) ? rows : []);
+    const items = (rows || []).map(r => ({ ...r, url: `/api/admin/employees/photos/${r.id}/download` }));
+    res.status(200).json(items);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -594,17 +627,21 @@ router.post('/employees/:id/photos', permit('employees','manage'), uploadEmploye
     await ensureEmployeeProfilePhotosSchema();
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ message: 'Missing id' });
+    const target = await userRepo.getUserById(id, req.tenantId || null);
+    if (!target) return res.status(404).json({ message: 'Employee not found' });
     const files = Array.isArray(req.files) ? req.files : [];
     if (!files.length) return res.status(400).json({ message: 'No files uploaded' });
     const items = [];
     for (const f of files) {
-      const url = `/uploads/${f.filename}`;
-      await db.query(
+      const filename = safeFilename(f);
+      await fileStore.storeUploadedFile({ buffer: f.buffer, mimetype: f.mimetype, tenantId: req.tenantId || null, category: 'employee-photos', filename });
+      const url = `/uploads/${filename}`;
+      const [ins] = await db.query(
         `INSERT INTO employee_profile_photos (userId, url, original_name, mime_type, size_bytes)
          VALUES (?, ?, ?, ?, ?)`,
         [id, url, String(f.originalname || ''), String(f.mimetype || ''), Number(f.size || 0)]
       );
-      items.push({ url, originalName: f.originalname, mimeType: f.mimetype, sizeBytes: f.size });
+      items.push({ id: ins.insertId, url: `/api/admin/employees/photos/${ins.insertId}/download`, originalName: f.originalname, mimeType: f.mimetype, sizeBytes: f.size });
     }
     try {
       await auditRepo.writeLog({
@@ -623,22 +660,49 @@ router.post('/employees/:id/photos', permit('employees','manage'), uploadEmploye
     res.status(500).json({ message: err.message });
   }
 });
+router.get('/employees/photos/:photoId/download',
+  rateLimitNamed('admin_employee_photo_download', { windowMs: 60_000, max: 60 }),
+  permit('employees','view'),
+  async (req, res) => {
+    try {
+      const photoId = parseInt(req.params.photoId, 10);
+      if (!photoId) return res.status(400).json({ message: 'Missing photoId' });
+      await ensureEmployeeProfilePhotosSchema();
+      const tid = req.tenantId ? parseInt(String(req.tenantId), 10) : null;
+      const [[row]] = await db.query(
+        `SELECT ep.id, ep.url, ep.mime_type AS mimeType
+         FROM employee_profile_photos ep
+         JOIN users u ON u.id = ep.userId
+         WHERE ep.id = ?${tid != null ? ' AND u.tenant_id = ?' : ''}
+         LIMIT 1`,
+        tid != null ? [photoId, tid] : [photoId]
+      );
+      if (!row) return res.status(404).json({ message: 'Not found' });
+      const buffer = await fileStore.readUploadedFile({ tenantId: tid, category: 'employee-photos', filename: row.url });
+      if (!buffer) return res.status(404).json({ message: 'File not found' });
+      res.setHeader('Cache-Control', 'no-store');
+      if (row.mimeType) res.setHeader('Content-Type', row.mimeType);
+      res.status(200).send(buffer);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 router.delete('/employees/:id/photos/:photoId', permit('employees','manage'), async (req, res) => {
   try {
     await ensureEmployeeProfilePhotosSchema();
     const id = parseInt(req.params.id, 10);
     const photoId = parseInt(req.params.photoId, 10);
     if (!id || !photoId) return res.status(400).json({ message: 'Missing id/photoId' });
+    const target = await userRepo.getUserById(id, req.tenantId || null);
+    if (!target) return res.status(404).json({ message: 'Employee not found' });
     const [[row]] = await db.query(
       `SELECT id, userId, url FROM employee_profile_photos WHERE id = ? AND userId = ? LIMIT 1`,
       [photoId, id]
     );
     if (!row) return res.status(404).json({ message: 'Photo not found' });
     await db.query(`DELETE FROM employee_profile_photos WHERE id = ? AND userId = ?`, [photoId, id]);
-    try {
-      const p = path.join(__dirname, '..', '..', String(row.url || '').replace(/^\/+uploads\//, 'uploads' + path.sep));
-      if (fs.existsSync(p)) fs.unlinkSync(p);
-    } catch (e) { /* silently ignored */ }
+    await fileStore.deleteUploadedFile({ tenantId: req.tenantId || null, category: 'employee-photos', filename: row.url });
     res.status(200).json({ ok: true, id, photoId });
   } catch (err) {
     res.status(500).json({ message: err.message });

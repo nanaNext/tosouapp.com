@@ -289,28 +289,21 @@ try {
 } catch (e) {
   console.warn('Route listing failed: ' + (e?.message || String(e)));
 }
-// Block public access to payslips; must use secure endpoints
-app.use('/uploads/payslips', (req, res) => {
-  res.status(403).json({ message: 'Use secureUrl endpoints to download payslips' });
+// Block ALL public access to /uploads (payslips, DB backups, employee documents,
+// avatars/profile photos, expense receipts, ...). Filenames under this directory
+// are either predictable (tosouapp_backup_<timestamp>.sql) or only obscured by a
+// timestamp+random suffix (see core/middleware/upload.js) — obscurity is not real
+// access control. Anyone who ever sees a link (screenshot, log, shared URL) could
+// otherwise fetch it forever with no login and no tenant check. Every file type
+// under /uploads has its own authenticated, tenant-scoped download route instead:
+//   - payslips            → secureUrl endpoints
+//   - documents           → GET /api/employee/documents/:id/download
+//   - avatars             → GET /api/admin/employees/:id/avatar/download
+//   - employee photos     → GET /api/admin|manager/employees/photos/:photoId/download
+//   - expense receipts    → GET /api/expenses/files/:fileId/download
+app.use('/uploads', (req, res) => {
+  res.status(403).json({ message: 'Use the authenticated download endpoints instead of static /uploads' });
 });
-// Block public access to DB backups (dbBackupCron.js writes full database
-// dumps here so they survive on the persistent disk). Filenames are
-// predictable (tosouapp_backup_<timestamp>.sql) so this must never be
-// reachable through the generic /uploads static handler below.
-app.use('/uploads/db-backups-internal', (req, res) => {
-  res.status(403).json({ message: 'Forbidden' });
-});
-// Block public access to employee documents; there's already an
-// authenticated, rate-limited download route (GET /api/employee/documents/:id/download)
-// that resolves the real filename from the DB — the raw static path must not
-// be a way around it, same reasoning as the /uploads/payslips block above.
-app.use('/uploads/documents', (req, res) => {
-  res.status(403).json({ message: 'Use the authenticated document download endpoint' });
-});
-
-// We remove the insecure backward-compatible resolver for /uploads/:name
-// because it bypasses the payslips block if someone knows the filename.
-// If legacy uploads need to be served, they should be done via authenticated endpoints.
 
 // PDF.js ビューア専用の CSP 上書き（このサブツリー限定で緩和）。
 // PDF.js は Web Worker / WASM を使用するため、worker-src(blob) と wasm-unsafe-eval を許可する。
@@ -333,8 +326,6 @@ app.use('/static/vendor/pdfjs', (req, res, next) => {
   next();
 });
 
-// Serve other static uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } }));
 app.use('/static', express.static(path.join(__dirname, 'static'), {
   setHeaders: (res, p) => {
     const ext = String(p || '').toLowerCase();

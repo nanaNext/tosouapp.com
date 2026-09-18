@@ -23,6 +23,23 @@ function _tid(tenantId) {
   return tenantId != null ? parseInt(String(tenantId), 10) : null;
 }
 
+// これらの関数は SELECT * FROM users の結果をそのまま API レスポンスとして返す
+// 呼び出し元が多数存在するため、ここで一度だけ加工しておけば全箇所を守れる。
+// - password: bcrypt ハッシュを絶対にクライアントへ渡さない。
+// - avatar_url: 生の /uploads パスの代わりに認証必須のダウンロードURLを返す
+//   (静的配信 /uploads は認証なしで誰でも取得できてしまうため)。
+function _sanitizeUserRow(row) {
+  if (!row) return row;
+  delete row.password;
+  if (row.avatar_url) {
+    row.avatar_url = `/api/admin/employees/${row.id}/avatar/download`;
+  }
+  return row;
+}
+function _sanitizeUserRows(rows) {
+  return (rows || []).map(_sanitizeUserRow);
+}
+
 /**
  * @typedef {Object} User
  * @property {number} id
@@ -68,10 +85,10 @@ module.exports = {
         `SELECT * FROM users WHERE tenant_id = ? ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC`,
         [tid]
       );
-      return rows;
+      return _sanitizeUserRows(rows);
     }
     const [rows] = await db.query(`SELECT * FROM users ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code, '') ASC, id ASC`);
-    return rows;
+    return _sanitizeUserRows(rows);
   },
 
   async listUsersByTenant(tenantId) {
@@ -79,7 +96,7 @@ module.exports = {
       `SELECT * FROM users WHERE tenant_id = ? ORDER BY (hire_date IS NULL) ASC, hire_date ASC, COALESCE(employee_code,'') ASC, id ASC`,
       [tenantId]
     );
-    return rows;
+    return _sanitizeUserRows(rows);
   },
   /**
    * List users with pagination, filtering by role/department/status/search.
@@ -137,7 +154,7 @@ module.exports = {
       params
     );
     const total = Number(cntRows?.[0]?.total || 0);
-    return { rows, total, limit: lim, offset: off };
+    return { rows: _sanitizeUserRows(rows), total, limit: lim, offset: off };
   },
   /**
    * Get a single user by ID.
@@ -149,10 +166,10 @@ module.exports = {
     const tid = _tid(tenantId);
     if (tid != null) {
       const [rows] = await db.query(`SELECT * FROM users WHERE id = ? AND tenant_id = ? LIMIT 1`, [id, tid]);
-      return rows[0];
+      return _sanitizeUserRow(rows[0]);
     }
     const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [id]);
-    return rows[0];
+    return _sanitizeUserRow(rows[0]);
   },
   async createUser({ employeeCode = null, username, email, password, role = 'employee', departmentId = null, branchId = null, employmentType = 'full_time', hireDate = null, level = null, managerId = null, phone = null, birthDate = null, gender = null, avatarUrl = null, probationDate = null, officialDate = null, contractEnd = null, baseSalary = null, shiftId = null, employmentStatus = null, joinDate = null, tenantId = null }) {
     const today = new Date().toISOString().slice(0, 10);

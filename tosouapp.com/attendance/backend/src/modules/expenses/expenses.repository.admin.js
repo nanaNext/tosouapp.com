@@ -102,7 +102,7 @@ exports.listAllPaged = async function(filters = {}) {
       SELECT ec.*, u.username AS user_name, u.email AS user_email, u.employee_code, u.departmentId, u.employment_type,
         (SELECT name FROM departments d WHERE d.id = u.departmentId) AS department_name,
         (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
-        (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
+        (SELECT ef.id FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_id,
         (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
       FROM expense_claims ec
       JOIN users u ON u.id = ec.userId
@@ -119,8 +119,13 @@ exports.listAllPaged = async function(filters = {}) {
      WHERE ${where.join(' AND ')}`,
     args
   );
+  // 生の /uploads パスを直接返さない — 認証済みダウンロードエンドポイント経由でのみアクセスさせる。
+  const mappedRows = (rows || []).map(r => ({
+    ...r,
+    first_file_path: r.first_file_id ? `/api/expenses/files/${r.first_file_id}/download` : null
+  }));
   return {
-    rows: rows || [],
+    rows: mappedRows,
     total: Number(countRow?.total || 0),
     page,
     limit
@@ -190,10 +195,10 @@ exports.getAdminDashboard = async function({ month, months = 6, tenantId = null 
       DATE_FORMAT(ec.date, '%Y-%m') AS month,
       COALESCE(SUM(CASE WHEN ec.status = 'applied' THEN ec.amount ELSE 0 END), 0) AS applied_amount,
       COALESCE(SUM(CASE WHEN ec.status = 'approved' THEN ec.amount ELSE 0 END), 0) AS approved_amount,
-      COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved') THEN ec.amount ELSE 0 END), 0) AS total_amount,
+      COALESCE(SUM(CASE WHEN ec.status IN ('applied','approved','paid') THEN ec.amount ELSE 0 END), 0) AS total_amount,
       COALESCE(SUM(ec.status = 'applied'), 0) AS applied_count,
       COALESCE(SUM(ec.status = 'approved'), 0) AS approved_count,
-      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved') THEN ec.userId END) AS applicant_users
+      COUNT(DISTINCT CASE WHEN ec.status IN ('applied','approved','paid') THEN ec.userId END) AS applicant_users
     FROM expense_claims ec${tenantJoin}
     WHERE DATE_FORMAT(ec.date, '%Y-%m') BETWEEN ? AND ?${tenantWhere}
     GROUP BY DATE_FORMAT(ec.date, '%Y-%m')
@@ -226,7 +231,7 @@ exports.getAdminDashboard = async function({ month, months = 6, tenantId = null 
     FROM expense_claims ec
     JOIN users u ON u.id = ec.userId
     WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?
-      AND ec.status IN ('applied','approved')${tenantDeptWhere}
+      AND ec.status IN ('applied','approved','paid')${tenantDeptWhere}
     GROUP BY u.departmentId
     ORDER BY total_amount DESC
     LIMIT 30

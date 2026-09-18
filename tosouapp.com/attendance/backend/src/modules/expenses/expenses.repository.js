@@ -4,6 +4,12 @@ function _tid(tenantId) {
   return tenantId != null ? parseInt(String(tenantId), 10) : null;
 }
 
+// 生の /uploads パスを直接返さない — 認証済みダウンロードエンドポイント
+// (GET /api/expenses/files/:fileId/download) 経由でのみアクセスさせる。
+function mapFirstFilePath(rows) {
+  return (rows || []).map(r => ({ ...r, first_file_path: r.first_file_id ? `/api/expenses/files/${r.first_file_id}/download` : null }));
+}
+
 module.exports = {
   async create({ userId, date, origin, via, destination, amount, memo, type, purpose, teiki, receiptUrl, km, category, tripType, tripCount, unitPricePerKm, commuterPass, siteName, paymentMethod, itemName, vendor, clientToken, tenantId = null }) {
     const tid = _tid(tenantId);
@@ -93,13 +99,13 @@ module.exports = {
     if (type) {
       where.push(`category = ?`); args.push(String(type).toLowerCase());
     }
-    const sql = `SELECT ec.*, 
+    const sql = `SELECT ec.*,
       (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
-      (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
+      (SELECT ef.id FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_id,
       (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
       FROM expense_claims ec WHERE ${where.join(' AND ')} ORDER BY ec.date DESC, ec.created_at DESC`;
     const [rows] = await db.query(sql, args);
-    return rows;
+    return mapFirstFilePath(rows);
   },
   async getById(id, tenantId = null) {
     const tid = _tid(tenantId);
@@ -142,34 +148,34 @@ module.exports = {
       const params = [String(month)];
       if (tid != null) params.push(tid);
       const [rows] = await db.query(
-        `SELECT ec.*, 
+        `SELECT ec.*,
           (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
-          (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
+          (SELECT ef.id FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_id,
           (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
          FROM expense_claims ec WHERE DATE_FORMAT(ec.date,'%Y-%m') = ?${tenantClause} ORDER BY ec.date DESC, ec.created_at DESC`,
         params
       );
-      return rows;
+      return mapFirstFilePath(rows);
     }
     if (tid != null) {
       const [rows] = await db.query(
-        `SELECT ec.*, 
+        `SELECT ec.*,
           (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
-          (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
+          (SELECT ef.id FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_id,
           (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
          FROM expense_claims ec WHERE ec.tenant_id = ? ORDER BY ec.date DESC, ec.created_at DESC`,
         [tid]
       );
-      return rows;
+      return mapFirstFilePath(rows);
     }
     const [rows] = await db.query(
-      `SELECT ec.*, 
+      `SELECT ec.*,
         (SELECT COALESCE(u.username, u.email) FROM users u WHERE u.id = COALESCE(ec.approver_id, ec.approved_by)) AS approver_name,
-        (SELECT ef.file_path FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_path,
+        (SELECT ef.id FROM expense_files ef WHERE ef.expense_id = ec.id ORDER BY ef.id ASC LIMIT 1) AS first_file_id,
         (SELECT COUNT(*) FROM expense_files ef WHERE ef.expense_id = ec.id) AS file_count
        FROM expense_claims ec ORDER BY ec.date DESC, ec.created_at DESC`
     );
-    return rows;
+    return mapFirstFilePath(rows);
   },
   async updateStatus(id, status, note, managerId, tenantId = null) {
     const tid = _tid(tenantId);
@@ -215,19 +221,51 @@ module.exports = {
   },
   async addFiles(id, files, tenantId = null) {
     if (!Array.isArray(files) || !files.length) return [];
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND tenant_id = ?' : '';
+    const checkParams = [id];
+    if (tid != null) checkParams.push(tid);
+    const [claimRows] = await db.query(`SELECT id FROM expense_claims WHERE id = ?${tenantClause} LIMIT 1`, checkParams);
+    if (!claimRows || !claimRows.length) return [];
     const rows = [];
     for (const f of files) {
       const [res] = await db.query(
         `INSERT INTO expense_files (expense_id, file_path, original_name, mime_type, size) VALUES (?, ?, ?, ?, ?)`,
         [id, f.path, f.originalName || null, f.mimeType || null, Number(f.size || 0)]
       );
-      rows.push({ id: res.insertId, path: f.path });
+      rows.push({ id: res.insertId, path: `/api/expenses/files/${res.insertId}/download` });
     }
     return rows;
   },
-  async listFiles(id) {
-    const [rows] = await db.query(`SELECT id, file_path AS path, original_name AS name, mime_type AS mime, size FROM expense_files WHERE expense_id = ? ORDER BY id ASC`, [id]);
-    return rows || [];
+  async listFiles(id, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND ec.tenant_id = ?' : '';
+    const params = [id];
+    if (tid != null) params.push(tid);
+    const [rows] = await db.query(`
+      SELECT ef.id, ef.file_path AS path, ef.original_name AS name, ef.mime_type AS mime, ef.size
+      FROM expense_files ef
+      JOIN expense_claims ec ON ec.id = ef.expense_id
+      WHERE ef.expense_id = ?${tenantClause}
+      ORDER BY ef.id ASC
+    `, params);
+    // 生の /uploads パスを直接返さない — 認証済みダウンロードエンドポイント
+    // (GET /api/expenses/files/:fileId/download) 経由でのみアクセスさせる。
+    return (rows || []).map(r => ({ ...r, path: `/api/expenses/files/${r.id}/download` }));
+  },
+  async getFileForDownload(fileId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const tenantClause = tid != null ? ' AND ec.tenant_id = ?' : '';
+    const params = [fileId];
+    if (tid != null) params.push(tid);
+    const [rows] = await db.query(`
+      SELECT ef.id, ef.file_path AS path, ef.mime_type AS mime, ec.userId
+      FROM expense_files ef
+      JOIN expense_claims ec ON ec.id = ef.expense_id
+      WHERE ef.id = ?${tenantClause}
+      LIMIT 1
+    `, params);
+    return rows && rows[0] ? rows[0] : null;
   },
   async deleteFile(fileId, userId, tenantId = null) {
     const tid = _tid(tenantId);
@@ -594,7 +632,7 @@ module.exports.approveMonthByAdmin = async function({ userId, month, approverId,
         updated_at = CURRENT_TIMESTAMP
       WHERE userId = ?
         AND DATE_FORMAT(date, '%Y-%m') = ?
-        AND status IN ('applied','soumu_checked')${tenantClause}
+        AND status = 'soumu_checked'${tenantClause}
       `,
       updParams
     );
@@ -708,7 +746,7 @@ module.exports.deleteMonth = async function(userId, month, tenantId = null) {
      FROM expense_claims
      WHERE userId = ?
        AND DATE_FORMAT(date,'%Y-%m') = ?
-       AND status IN ('applied','approved')${tenantClause}`,
+       AND status IN ('applied','soumu_checked','approved','paid')${tenantClause}`,
     checkParams
   );
   const lockedCnt = Number(lockedRows?.[0]?.cnt || 0);

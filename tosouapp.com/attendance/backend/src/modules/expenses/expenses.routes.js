@@ -8,6 +8,8 @@ const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
 const expenseTypesRepo = require('./expenseTypes.repository');
 const s3Service = require('../../core/services/s3.service');
+const fileStore = require('../../core/services/fileStore.service');
+const { uploadMemory, safeFilename } = require('../../core/middleware/uploadR2');
 const metrics = require('../../core/metrics');
 const db = require('../../core/database/mysql');
 const { companyName } = require('../../config/env');
@@ -171,21 +173,6 @@ router.get('/export.csv',
       }
 
       res.status(200).send('\uFEFF' + csv);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-router.post('/receipt',
-  rateLimitNamed('expenses_receipt_upload', { windowMs: 60_000, max: 6 }),
-  authorize('employee','manager','admin'),
-  require('../../core/middleware/upload').single('file'),
-  async (req, res) => {
-    try {
-      const f = req.file;
-      if (!f) return res.status(400).json({ message: 'No file' });
-      const url = `/uploads/${f.filename}`;
-      res.status(201).json({ url });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -519,7 +506,9 @@ router.post('/admin/monthly-close',
 );
 router.post('/admin/months/approve',
   rateLimitNamed('expenses_admin_months_approve', { windowMs: 60_000, max: 20 }),
-  authorize('manager','admin'),
+  // 社長承認(approved)は管理者のみ可能 — PATCH /:id/status の validateStatusTransition と同じ規則。
+  // ここに manager を含めると、総務確認を経ずに一括で社長承認まで進めてしまう。
+  authorize('admin'),
   async (req, res) => {
     try {
       const { userId, month } = req.body || {};
@@ -755,12 +744,23 @@ router.get('/:id',
 router.post('/:id/files',
   rateLimitNamed('expenses_receipts_multi', { windowMs: 60_000, max: 12 }),
   authorize('employee','manager','admin'),
-  require('../../core/middleware/upload').array('files', 8),
+  uploadMemory.array('files', 8),
   async (req, res) => {
     try {
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id) return res.status(400).json({ message: 'Invalid id' });
-      const files = (req.files || []).map(f => ({ path: `/uploads/${f.filename}`, originalName: f.originalname, mimeType: f.mimetype, size: f.size }));
+      const claim = await repo.getById(id, req.tenantId || null);
+      if (!claim) return res.status(404).json({ message: 'Not Found' });
+      const role = String(req.user.role || '').toLowerCase();
+      if (String(claim.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const files = [];
+      for (const f of (req.files || [])) {
+        const filename = safeFilename(f);
+        await fileStore.storeUploadedFile({ buffer: f.buffer, mimetype: f.mimetype, tenantId: req.tenantId || null, category: 'expenses', filename });
+        files.push({ path: `/uploads/${filename}`, originalName: f.originalname, mimeType: f.mimetype, size: f.size });
+      }
       const rows = await repo.addFiles(id, files, req.tenantId || null);
       res.status(201).json({ files: rows });
     } catch (err) {
@@ -775,8 +775,37 @@ router.get('/:id/files',
     try {
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id) return res.status(400).json({ message: 'Invalid id' });
-      const rows = await repo.listFiles(id);
+      const claim = await repo.getById(id, req.tenantId || null);
+      if (!claim) return res.status(404).json({ message: 'Not Found' });
+      const role = String(req.user.role || '').toLowerCase();
+      if (String(claim.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const rows = await repo.listFiles(id, req.tenantId || null);
       res.status(200).json(rows || []);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.get('/files/:fileId/download',
+  rateLimitNamed('expenses_receipt_download', { windowMs: 60_000, max: 60 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const fileId = parseInt(String(req.params.fileId || '0'), 10);
+      if (!fileId) return res.status(400).json({ message: 'Invalid id' });
+      const file = await repo.getFileForDownload(fileId, req.tenantId || null);
+      if (!file) return res.status(404).json({ message: 'Not Found' });
+      const role = String(req.user.role || '').toLowerCase();
+      if (String(file.userId) !== String(req.user.id) && !(role === 'manager' || role === 'admin')) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const buffer = await fileStore.readUploadedFile({ tenantId: req.tenantId || null, category: 'expenses', filename: file.path });
+      if (!buffer) return res.status(404).json({ message: 'File not found' });
+      res.setHeader('Cache-Control', 'no-store');
+      if (file.mime) res.setHeader('Content-Type', file.mime);
+      res.status(200).send(buffer);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -791,6 +820,7 @@ router.delete('/files/:fileId',
       if (!fileId) return res.status(400).json({ message: 'Invalid id' });
       const r = await repo.deleteFile(fileId, req.user.id, req.tenantId || null);
       if (!r.ok) return res.status(404).json({ message: 'Not Found' });
+      if (r.path) await fileStore.deleteUploadedFile({ tenantId: req.tenantId || null, category: 'expenses', filename: r.path });
       res.status(200).json({ ok: true });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -943,6 +973,13 @@ router.patch('/:id',
     try {
       const id = parseInt(String(req.params.id || '0'), 10);
       if (!id || !(id > 0)) return res.status(400).json({ message: 'Invalid id' });
+      const cur = await repo.getById(id, req.tenantId || null);
+      if (!cur) return res.status(404).json({ message: 'Not Found' });
+      // 支給済み(paid)のデータは会計上確定済みのため、修正には新しい承認サイクルが必要。
+      // DELETE /:id と同じ理由でここでも編集をブロックする。
+      if (String(cur.status || '').toLowerCase() === 'paid') {
+        return res.status(409).json({ message: '支給済みの申請は編集できません。' });
+      }
       const role = String(req.user.role || '').toLowerCase();
       const ok = role === 'manager' || role === 'admin'
         ? await repo.updateByAdmin(id, req.body || {}, req.tenantId || null)

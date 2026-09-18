@@ -5,10 +5,11 @@ const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit');
 const controller = require('./manager.controller');
 const db = require('../../core/database/mysql');
-const upload = require('../../core/middleware/upload');
+const { uploadMemory, safeFilename } = require('../../core/middleware/uploadR2');
+const fileStore = require('../../core/services/fileStore.service');
 const userRepo = require('../users/user.repository');
 const uploadEmployeePhotos = (req, res, next) => {
-  upload.array('files', 12)(req, res, (err) => {
+  uploadMemory.array('files', 12)(req, res, (err) => {
     if (!err) return next();
     const msg = String(err?.message || 'Upload failed');
     const code = /file too large/i.test(msg) ? 413 : 400;
@@ -55,11 +56,17 @@ async function ensureEmployeeProfilePhotosSchema() {
 
 async function ensureManagerDepartmentScope(req, targetUserId) {
   const role = String(req.user?.role || '').toLowerCase();
+  // Tenant boundary is not optional (unlike the department check below, which
+  // is gated by MANAGER_STRICT_DEPT) — a target that doesn't resolve inside
+  // the caller's own tenant must always be treated as not found/forbidden,
+  // otherwise a manager could view/upload/delete another company's photos
+  // just by guessing a user id.
+  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
+  if (!target) return false;
   if (role === 'admin') return true;
   if (role !== 'manager') return false;
   if (String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() !== 'true') return true;
-  const me = await userRepo.getUserById(req.user.id);
-  const target = await userRepo.getUserById(targetUserId);
+  const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
   if (!me?.departmentId || !target?.departmentId) return false;
   return String(me.departmentId) === String(target.departmentId);
 }
@@ -77,7 +84,8 @@ router.get('/employees/:id/photos', authenticate, resolveTenant, authorize('mana
        ORDER BY created_at DESC, id DESC`,
       [id]
     );
-    res.status(200).json(Array.isArray(rows) ? rows : []);
+    const items = (rows || []).map(r => ({ ...r, url: `/api/manager/employees/photos/${r.id}/download` }));
+    res.status(200).json(items);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -93,19 +101,48 @@ router.post('/employees/:id/photos', authenticate, resolveTenant, authorize('man
     if (!files.length) return res.status(400).json({ message: 'No files uploaded' });
     const items = [];
     for (const f of files) {
-      const url = `/uploads/${f.filename}`;
-      await db.query(
+      const filename = safeFilename(f);
+      await fileStore.storeUploadedFile({ buffer: f.buffer, mimetype: f.mimetype, tenantId: req.tenantId || null, category: 'employee-photos', filename });
+      const url = `/uploads/${filename}`;
+      const [ins] = await db.query(
         `INSERT INTO employee_profile_photos (userId, url, original_name, mime_type, size_bytes)
          VALUES (?, ?, ?, ?, ?)`,
         [id, url, String(f.originalname || ''), String(f.mimetype || ''), Number(f.size || 0)]
       );
-      items.push({ url, originalName: f.originalname, mimeType: f.mimetype, sizeBytes: f.size });
+      items.push({ id: ins.insertId, url: `/api/manager/employees/photos/${ins.insertId}/download`, originalName: f.originalname, mimeType: f.mimetype, sizeBytes: f.size });
     }
     res.status(201).json({ id, count: items.length, items });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
+// 生の /uploads パスを直接返さない — 静的配信 /uploads は認証なしで誰でも取得できて
+// しまうため、部署スコープ確認済みの認証エンドポイント経由でのみ配信する。
+router.get('/employees/photos/:photoId/download',
+  rateLimitNamed('manager_employee_photo_download', { windowMs: 60_000, max: 60 }),
+  authenticate, resolveTenant, authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      await ensureEmployeeProfilePhotosSchema();
+      const photoId = parseInt(req.params.photoId, 10);
+      if (!photoId) return res.status(400).json({ message: 'Missing photoId' });
+      const [[row]] = await db.query(
+        `SELECT id, userId, url, mime_type AS mimeType FROM employee_profile_photos WHERE id = ? LIMIT 1`,
+        [photoId]
+      );
+      if (!row) return res.status(404).json({ message: 'Not found' });
+      if (!(await ensureManagerDepartmentScope(req, row.userId))) return res.status(403).json({ message: 'Forbidden' });
+      const buffer = await fileStore.readUploadedFile({ tenantId: req.tenantId || null, category: 'employee-photos', filename: row.url });
+      if (!buffer) return res.status(404).json({ message: 'File not found' });
+      res.setHeader('Cache-Control', 'no-store');
+      if (row.mimeType) res.setHeader('Content-Type', row.mimeType);
+      res.status(200).send(buffer);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 
 router.delete('/employees/:id/photos/:photoId', authenticate, resolveTenant, authorize('manager','admin'), async (req, res) => {
   try {
@@ -120,6 +157,7 @@ router.delete('/employees/:id/photos/:photoId', authenticate, resolveTenant, aut
     );
     if (!row) return res.status(404).json({ message: 'Photo not found' });
     await db.query(`DELETE FROM employee_profile_photos WHERE id = ? AND userId = ?`, [photoId, id]);
+    await fileStore.deleteUploadedFile({ tenantId: req.tenantId || null, category: 'employee-photos', filename: row.url });
     res.status(200).json({ ok: true, id, photoId });
   } catch (err) {
     res.status(500).json({ message: err.message });
