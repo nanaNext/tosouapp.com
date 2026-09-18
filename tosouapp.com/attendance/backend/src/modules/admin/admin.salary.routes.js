@@ -11,6 +11,7 @@ const { rateLimitNamed, rateLimit } = require('../../core/middleware/rateLimit')
 const userRepo = require('../users/user.repository');
 const salaryService = require('../salary/salary.service');
 const salaryInputRepo = require('../salary/salaryInput.repository');
+const salaryRepo = require('../salary/salary.repository');
 const payslipRepo = require('../payslip/payslip.repository');
 const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
@@ -198,6 +199,114 @@ router.get('/salary/input', async (req, res) => {
   }
 });
 
+router.get('/salary/input/history', async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const userId = parseInt(String(req.query?.userId || ''), 10);
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    if (!(await ensureSameDepartmentIfManager(req, userId))) {
+      return res.status(403).json({ message: 'Forbidden: cross-department access' });
+    }
+    const rows = await salaryInputRepo.listByUser(userId, req.tenantId || null);
+    const items = [];
+    for (const row of rows) {
+      const options = normalizeJsonPayload(row.payload);
+      let net = null, gross = null, deduct = null;
+      try {
+        const emp = await salaryService.computePayslipForUser(userId, row.month, options || null);
+        net = emp?.合計?.差引支給額 ?? null;
+        gross = emp?.合計?.総支給額 ?? null;
+        deduct = emp?.合計?.総控除額 ?? null;
+      } catch (e) { /* keep nulls if a given month fails to compute */ }
+      items.push({
+        month: row.month,
+        isPublished: Boolean(row.is_published),
+        updatedAt: row.updated_at || null,
+        net,
+        gross,
+        deduct
+      });
+    }
+    res.status(200).json({ userId, items });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/salary/config', async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const year = parseInt(String(req.query?.year || ''), 10) || new Date().getFullYear();
+    const row = await salaryRepo.getConfigByYear(year, req.tenantId || null);
+    if (row) {
+      return res.status(200).json({
+        year,
+        healthInsuranceRate: Number(row.health_insurance_rate),
+        careInsuranceRate: Number(row.care_insurance_rate),
+        pensionRate: Number(row.pension_rate),
+        employmentInsuranceRate: Number(row.employment_insurance_rate),
+        taxRate: Number(row.tax_rate),
+        overtimeRate: Number(row.overtime_rate),
+        holidayRate: Number(row.holiday_rate),
+        lateNightRate: Number(row.late_night_rate),
+        workingMinutesPerMonth: Number(row.working_minutes_per_month),
+        standardDaysPerMonth: Number(row.standard_days_per_month),
+        baseHourlyRate: row.base_hourly_rate != null ? Number(row.base_hourly_rate) : null,
+        roundingMinutes: Number(row.rounding_minutes),
+        roundingMode: String(row.rounding_mode || 'half_up'),
+        commuteAllowanceTaxFreeLimit: Number(row.commute_allowance_tax_free_limit),
+        companyName: row.company_name || '',
+        prefecture: row.prefecture || '',
+        updatedAt: row.updated_at || null,
+        isDefault: false
+      });
+    }
+    // Chưa cấu hình — trả về giá trị mặc định (số liệu Tokyo/協会けんぽ 2026年3月分)
+    // để admin có điểm khởi đầu hợp lý thay vì toàn số 0.
+    return res.status(200).json({
+      year,
+      healthInsuranceRate: 0.0991,
+      careInsuranceRate: 0.0162,
+      pensionRate: 0.183,
+      employmentInsuranceRate: 0.005,
+      taxRate: 0,
+      overtimeRate: 1.25,
+      holidayRate: 1.35,
+      lateNightRate: 1.25,
+      workingMinutesPerMonth: 160 * 60,
+      standardDaysPerMonth: 21.75,
+      baseHourlyRate: null,
+      roundingMinutes: 5,
+      roundingMode: 'half_up',
+      commuteAllowanceTaxFreeLimit: 150000,
+      companyName: '',
+      prefecture: '東京都',
+      updatedAt: null,
+      isDefault: true
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.put('/salary/config', async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const body = req.body || {};
+    const year = parseInt(String(body.year || ''), 10) || new Date().getFullYear();
+    const row = await salaryRepo.upsertConfig(req.tenantId || null, year, { ...body, updatedBy: req.user.id });
+    try {
+      await auditRepo.writeLog({ userId: req.user.id, action: 'salary_config_upsert', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ year }) });
+    } catch (e) { /* silently ignored */ }
+    res.status(200).json({ ok: true, row });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.put('/salary/input', async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
@@ -208,6 +317,10 @@ router.put('/salary/input', async (req, res) => {
     if (!userId || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Missing userId/month' });
     if (!(await ensureSameDepartmentIfManager(req, userId))) {
       return res.status(403).json({ message: 'Forbidden: cross-department access' });
+    }
+    const existing = await salaryInputRepo.getByUserMonth(userId, month);
+    if (existing?.is_published) {
+      return res.status(409).json({ message: 'この月の給与明細は送信済みのため編集がロックされています。修正するには先に送信を取り消してください。', locked: true });
     }
     const payload0 = body.payload && typeof body.payload === 'object' ? body.payload : {};
     const payload = normalizeSalaryPayload(payload0);

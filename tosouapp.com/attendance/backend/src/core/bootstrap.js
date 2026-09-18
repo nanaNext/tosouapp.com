@@ -189,6 +189,52 @@ async function runMigrations() {
             } catch (e) { /* bảng chưa tồn tại hoặc không có cột — bỏ qua */ }
           }
         }
+      },
+      {
+        // salary_config: bảng cấu hình tỷ lệ bảo hiểm/thuế theo năm — trước đây
+        // salary.repository.js đã gọi SELECT tới bảng này nhưng chưa từng có
+        // migration nào tạo nó, nên mọi lần auto-calc bảo hiểm/thuế đều fallback
+        // về biến môi trường (mặc định = 0). Migration này vá đúng lỗ hổng đó.
+        id: '20260918_01_salary_config_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS salary_config (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              tenant_id BIGINT UNSIGNED NOT NULL,
+              year INT NOT NULL,
+              health_insurance_rate DECIMAL(7,5) NOT NULL DEFAULT 0,
+              care_insurance_rate DECIMAL(7,5) NOT NULL DEFAULT 0,
+              pension_rate DECIMAL(7,5) NOT NULL DEFAULT 0,
+              employment_insurance_rate DECIMAL(7,5) NOT NULL DEFAULT 0,
+              tax_rate DECIMAL(7,5) NOT NULL DEFAULT 0,
+              overtime_rate DECIMAL(4,2) NOT NULL DEFAULT 1.25,
+              holiday_rate DECIMAL(4,2) NOT NULL DEFAULT 1.35,
+              late_night_rate DECIMAL(4,2) NOT NULL DEFAULT 1.25,
+              working_minutes_per_month INT NOT NULL DEFAULT 9600,
+              standard_days_per_month DECIMAL(5,2) NOT NULL DEFAULT 21.75,
+              base_hourly_rate DECIMAL(10,2) NULL,
+              rounding_minutes INT NOT NULL DEFAULT 5,
+              rounding_mode VARCHAR(16) NOT NULL DEFAULT 'half_up',
+              commute_allowance_tax_free_limit DECIMAL(10,2) NOT NULL DEFAULT 150000,
+              company_name VARCHAR(255) NULL,
+              prefecture VARCHAR(64) NULL,
+              updated_by BIGINT UNSIGNED NULL,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uniq_tenant_year (tenant_id, year)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
+      },
+      {
+        // Mở rộng users với các trường phục vụ tính lương chính xác hơn sau này
+        // (扶養人数, 甲欄/乙欄, 就業手当) — hiện tại thuế vẫn tính theo % phẳng
+        // trong salary_config, các cột này chỉ để lưu/hiển thị trước.
+        id: '20260918_02_users_payroll_columns',
+        up: async () => {
+          try { await conn.query(`ALTER TABLE users ADD COLUMN dependents_count TINYINT UNSIGNED NOT NULL DEFAULT 0`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN tax_category VARCHAR(8) NOT NULL DEFAULT 'kou'`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN qualification_allowance DECIMAL(12,2) NULL`); } catch (e) { /* silently ignored */ }
+        }
       }
     ];
     for (const m of migrations) {

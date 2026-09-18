@@ -128,4 +128,30 @@ async function listPublishedByUser(userId, tenantId = null) {
   return rows || [];
 }
 
-module.exports = { ensureTable, getByUserMonth, upsert, setPublished, listPublishedByUser };
+async function listByUser(userId, tenantId = null) {
+  const tid = _tid(tenantId);
+  let sql;
+  let params;
+  if (tid !== null) {
+    sql = `
+      SELECT si.id, si.userId, si.month, si.payload, si.is_published, si.updated_by, si.updated_at
+      FROM salary_inputs si
+      JOIN users u ON u.id = si.userId
+      WHERE si.userId = ? AND u.tenant_id = ?
+      ORDER BY si.month DESC
+    `;
+    params = [userId, tid];
+  } else {
+    sql = `
+      SELECT id, userId, month, payload, is_published, updated_by, updated_at
+      FROM salary_inputs
+      WHERE userId = ?
+      ORDER BY month DESC
+    `;
+    params = [userId];
+  }
+  const [rows] = await db.query(sql, params);
+  return rows || [];
+}
+
+module.exports = { ensureTable, getByUserMonth, upsert, setPublished, listPublishedByUser, listByUser };

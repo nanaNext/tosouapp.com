@@ -165,7 +165,11 @@ exports.update = async (req, res) => {
       contractEnd: body.contractEnd,
       baseSalary: body.baseSalary,
       shiftId: body.shiftId,
-      joinDate: body.joinDate
+      joinDate: body.joinDate,
+      allowanceTransport: body.allowanceTransport,
+      dependentsCount: body.dependentsCount,
+      taxCategory: body.taxCategory,
+      qualificationAllowance: body.qualificationAllowance
     });
     res.status(200).json({ id });
   } catch (err) {

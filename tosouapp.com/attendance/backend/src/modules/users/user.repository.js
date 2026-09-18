@@ -219,7 +219,7 @@ module.exports = {
     }
     return id;
   },
-  async updateUser(id, { employeeCode, username, email, role, branchId, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin, tenantId = null }) {
+  async updateUser(id, { employeeCode, username, email, role, branchId, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin, allowanceTransport, dependentsCount, taxCategory, qualificationAllowance, tenantId = null }) {
     const tid = _tid(tenantId);
     const whereClause = tid != null ? `WHERE id = ? AND tenant_id = ?` : `WHERE id = ?`;
     const whereParams = tid != null ? [id, tid] : [id];
@@ -257,6 +257,10 @@ module.exports = {
           join_date = COALESCE(?, join_date)
           ${'' /* keep last_login separate to avoid MySQL syntax issues */}
           , last_login = COALESCE(?, last_login)
+          , allowance_transport = COALESCE(?, allowance_transport)
+          , dependents_count = COALESCE(?, dependents_count)
+          , tax_category = COALESCE(?, tax_category)
+          , qualification_allowance = COALESCE(?, qualification_allowance)
       ${whereClause}
     `;
     await db.query(sql, [
@@ -291,6 +295,10 @@ module.exports = {
       shiftId || null,
       joinDate || null,
       lastLogin || null,
+      allowanceTransport !== undefined && allowanceTransport !== null && allowanceTransport !== '' ? allowanceTransport : null,
+      dependentsCount !== undefined && dependentsCount !== null && dependentsCount !== '' ? dependentsCount : null,
+      taxCategory || null,
+      qualificationAllowance !== undefined && qualificationAllowance !== null && qualificationAllowance !== '' ? qualificationAllowance : null,
       ...whereParams
     ]);
   },

@@ -6,15 +6,67 @@ function _tid(tenantId) {
 
 //Lấy cấu hình lương theo năm (salary_config), chạy query với tham số year
 async function getConfigByYear(year, tenantId = null) {
-  const tid = _tid(tenantId);
+  const tid = _tid(tenantId) ?? 1;
   try {
-    // salary_config is global/shared; tenantId accepted for future use
-    const sql = `SELECT * FROM salary_config WHERE year = ? LIMIT 1`;
-    const [rows] = await db.query(sql, [year]);
+    const sql = `SELECT * FROM salary_config WHERE tenant_id = ? AND year = ? LIMIT 1`;
+    const [rows] = await db.query(sql, [tid, year]);
     return rows[0] || null;
   } catch {
     return null;
   }
+}
+
+async function upsertConfig(tenantId, year, data) {
+  const tid = _tid(tenantId) ?? 1;
+  const y = parseInt(year, 10);
+  const d = data || {};
+  const sql = `
+    INSERT INTO salary_config (
+      tenant_id, year, health_insurance_rate, care_insurance_rate, pension_rate,
+      employment_insurance_rate, tax_rate, overtime_rate, holiday_rate, late_night_rate,
+      working_minutes_per_month, standard_days_per_month, base_hourly_rate, rounding_minutes, rounding_mode,
+      commute_allowance_tax_free_limit, company_name, prefecture, updated_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      health_insurance_rate = VALUES(health_insurance_rate),
+      care_insurance_rate = VALUES(care_insurance_rate),
+      pension_rate = VALUES(pension_rate),
+      employment_insurance_rate = VALUES(employment_insurance_rate),
+      tax_rate = VALUES(tax_rate),
+      overtime_rate = VALUES(overtime_rate),
+      holiday_rate = VALUES(holiday_rate),
+      late_night_rate = VALUES(late_night_rate),
+      working_minutes_per_month = VALUES(working_minutes_per_month),
+      standard_days_per_month = VALUES(standard_days_per_month),
+      base_hourly_rate = VALUES(base_hourly_rate),
+      rounding_minutes = VALUES(rounding_minutes),
+      rounding_mode = VALUES(rounding_mode),
+      commute_allowance_tax_free_limit = VALUES(commute_allowance_tax_free_limit),
+      company_name = VALUES(company_name),
+      prefecture = VALUES(prefecture),
+      updated_by = VALUES(updated_by)
+  `;
+  await db.query(sql, [
+    tid, y,
+    Number(d.healthInsuranceRate) || 0,
+    Number(d.careInsuranceRate) || 0,
+    Number(d.pensionRate) || 0,
+    Number(d.employmentInsuranceRate) || 0,
+    Number(d.taxRate) || 0,
+    Number(d.overtimeRate) || 1.25,
+    Number(d.holidayRate) || 1.35,
+    Number(d.lateNightRate) || 1.25,
+    parseInt(d.workingMinutesPerMonth, 10) || (160 * 60),
+    Number(d.standardDaysPerMonth) || 21.75,
+    d.baseHourlyRate != null && d.baseHourlyRate !== '' ? Number(d.baseHourlyRate) : null,
+    parseInt(d.roundingMinutes, 10) || 5,
+    String(d.roundingMode || 'half_up'),
+    Number(d.commuteAllowanceTaxFreeLimit) || 150000,
+    d.companyName != null ? String(d.companyName).trim() : null,
+    d.prefecture != null ? String(d.prefecture).trim() : null,
+    d.updatedBy || null
+  ]);
+  return getConfigByYear(y, tid);
 }
 
 async function getUserCompensation(userId, tenantId = null) {
@@ -98,4 +150,4 @@ async function listHistory({ userId, month, page = 1, pageSize = 20, tenantId = 
   return { data: rows, page: p, pageSize: ps, total, pages: Math.ceil(total / ps) };
 }
 
-module.exports = { getConfigByYear, getUserCompensation, saveHistory, listHistory };
+module.exports = { getConfigByYear, upsertConfig, getUserCompensation, saveHistory, listHistory };

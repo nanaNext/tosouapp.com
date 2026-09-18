@@ -97,7 +97,8 @@
 #btnSavePayroll:hover{background:#f8fafc !important;border-color:#94a3b8 !important;color:#0f172a !important}
 #btnPreviewPayroll{color:#6a6d70 !important;background:#fff !important;border-color:#d0d7de !important}
 #btnPreviewPayroll:hover{background:#f8fafc !important;border-color:#94a3b8 !important;color:#0f172a !important}
-#btnCreatePdf{color:#6a6d70 !important;background:#fff !important;border-color:#d0d7de !important}
+#btnCreatePdf{color:#6a6d70 !important;background:#fff !important;border-color:#d0d7de !important;position:relative !important;margin-left:22px !important}
+#btnCreatePdf::before{content:'';position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:1px;height:24px;background:#cbd5e1}
 #btnCreatePdf:hover{background:#f8fafc !important;border-color:#94a3b8 !important;color:#0f172a !important}
 #btnDownloadPdf{color:#6a6d70 !important;background:#fff !important;border-color:#d0d7de !important}
 #btnDownloadPdf:hover{background:#f8fafc !important;border-color:#94a3b8 !important;color:#0f172a !important}
