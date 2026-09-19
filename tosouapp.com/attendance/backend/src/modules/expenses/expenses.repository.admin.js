@@ -302,3 +302,52 @@ exports.closeMonthlyApprovedTotals = async function({ month, closedBy, forceReca
   }
   return { month: String(month), affectedUsers: rows.length };
 };
+
+// 「総務確認済み」等のキュー画面は既に申請した人しか出ないため、管理者が「誰がまだ出していないか」を
+// 把握できない。ここでは在籍中の全社員(employee/manager)を起点に対象月の expense_claims を
+// LEFT JOIN し、1件も無ければ「未申請」として返す(expenses.repository.js#listAppliedMonthsForAdmin は
+// expense_months 駆動のため未申請者が漏れる — この関数は users 駆動にすることで解決する)。
+const STATUS_PRIORITY = ['rejected', 'applied', 'soumu_checked', 'approved', 'paid'];
+function pickOverallStatus(statusesCsv) {
+  const set = new Set(String(statusesCsv || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+  for (const s of STATUS_PRIORITY) {
+    if (set.has(s)) return s;
+  }
+  return 'not_submitted';
+}
+
+exports.getEmployeeMonthlyOverview = async function(month, tenantId = null) {
+  if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
+  const tid = _tid(tenantId);
+  const tenantClause = tid != null ? ' AND u.tenant_id = ?' : '';
+  const params = [String(month)];
+  if (tid != null) params.push(tid);
+  const [rows] = await db.query(
+    `SELECT
+       u.id AS user_id,
+       COALESCE(u.username, u.email) AS user_name,
+       u.employee_code,
+       u.departmentId AS department_id,
+       d.name AS department_name,
+       COUNT(ec.id) AS item_count,
+       COALESCE(SUM(ec.amount), 0) AS total_amount,
+       GROUP_CONCAT(DISTINCT ec.status) AS statuses
+     FROM users u
+     LEFT JOIN departments d ON d.id = u.departmentId
+     LEFT JOIN expense_claims ec ON ec.userId = u.id AND DATE_FORMAT(ec.date, '%Y-%m') = ?
+     WHERE u.employment_status = 'active' AND u.role IN ('employee','manager')${tenantClause}
+     GROUP BY u.id, u.username, u.email, u.employee_code, u.departmentId, d.name
+     ORDER BY COALESCE(u.username, u.email) ASC`,
+    params
+  );
+  return (rows || []).map(r => ({
+    userId: r.user_id,
+    userName: r.user_name,
+    employeeCode: r.employee_code,
+    departmentId: r.department_id,
+    departmentName: r.department_name,
+    itemCount: Number(r.item_count || 0),
+    totalAmount: Number(r.total_amount || 0),
+    status: pickOverallStatus(r.statuses)
+  }));
+};

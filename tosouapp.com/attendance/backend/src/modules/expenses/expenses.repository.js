@@ -1027,3 +1027,4 @@ const adminRepo = require('./expenses.repository.admin');
 module.exports.listAllPaged = adminRepo.listAllPaged;
 module.exports.getAdminDashboard = adminRepo.getAdminDashboard;
 module.exports.closeMonthlyApprovedTotals = adminRepo.closeMonthlyApprovedTotals;
+module.exports.getEmployeeMonthlyOverview = adminRepo.getEmployeeMonthlyOverview;

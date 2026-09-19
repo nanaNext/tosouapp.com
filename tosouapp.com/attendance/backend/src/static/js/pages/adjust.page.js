@@ -498,6 +498,11 @@ const renderForm = async () => {
       }
       .adj-time-input::-webkit-calendar-picker-indicator { margin-left: 0; }
       .adj-time-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+      /* flatpickr が altInput 用に元の input を type="hidden" に変えるはずだが、
+         端末によって反映タイミングがずれて一瞬(または稀に継続的に)二重表示に
+         見えることがあるための保険。flatpickr が付与する .flatpickr-input クラスを
+         目印に、hidden 化された元の input を確実に非表示にする。 */
+      input.flatpickr-input[type="hidden"] { display: none !important; }
       .adj-reason-label {
         display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
         color: #b45309; margin-bottom: 6px;
@@ -611,8 +616,8 @@ const renderForm = async () => {
           <span>履歴</span>
         </div>
       </div>
-      <div id="actionRequiredHost" style="display: none;"></div>
     </div>
+    <div id="actionRequiredHost" style="display: none;"></div>
 
     <div id="newAdjustFormCard" style="display: block;">
 
@@ -696,6 +701,51 @@ const renderForm = async () => {
     status: $('#adjStatus')
   };
 
+  // 端末(PC/スマホ/iPhone/Android)ごとにバラバラなネイティブ日付・時刻ピッカーの代わりに、
+  // flatpickr で見た目を統一する。既存コードは els.date/in/out.value を直接読み書きしている
+  // ため、dateFormat はネイティブ input と同じ形式(date: Y-m-d、datetime-local: Y-m-d\TH:i)
+  // に合わせ、altInput でユーザー向けの見やすい表示だけを別に用意する。
+  // (flatpickr が読み込まれていない環境ではネイティブ input のまま動作する)
+  function setDateTimeValue(el, val) {
+    if (!el) return;
+    el.value = val || '';
+    try {
+      if (el._flatpickr) {
+        if (val) el._flatpickr.setDate(val, false);
+        else el._flatpickr.clear();
+      }
+    } catch (e) { /* silently ignored */ }
+  }
+  try {
+    if (window.flatpickr) {
+      if (window.flatpickr.l10ns && window.flatpickr.l10ns.ja) {
+        window.flatpickr.localize(window.flatpickr.l10ns.ja);
+      }
+      if (els.date) {
+        flatpickr(els.date, {
+          dateFormat: 'Y-m-d',
+          altInput: true,
+          altInputClass: 'adj-date-native',
+          altFormat: 'Y年n月j日(D)',
+          allowInput: false,
+          disableMobile: true
+        });
+      }
+      const timeOpts = {
+        enableTime: true,
+        dateFormat: 'Y-m-d\\TH:i',
+        altInput: true,
+        altInputClass: 'adj-time-input',
+        altFormat: 'Y年n月j日 H:i',
+        time_24hr: true,
+        allowInput: false,
+        disableMobile: true
+      };
+      if (els.in) flatpickr(els.in, timeOpts);
+      if (els.out) flatpickr(els.out, timeOpts);
+    }
+  } catch (e) { /* flatpickr 未読み込み時はネイティブ input のまま */ }
+
   // Tìm đơn 調整申請 đang chờ duyệt (pending) của ngày đang chọn để cho phép hủy
   let pendingRequestId = null;
   const refreshPendingForDate = (dateStr) => {
@@ -722,8 +772,8 @@ const renderForm = async () => {
     const outHint = $('#adjOutHint');
     const cin = seg ? String(seg.checkIn || '').slice(11, 16) : '';
     const cout = seg ? String(seg.checkOut || '').slice(11, 16) : '';
-    if (inHint) inHint.textContent = cin ? `現在: ${cin}` : 'データ未登録 →';
-    if (outHint) outHint.textContent = cout ? `現在: ${cout}` : 'データ未登録 →';
+    if (inHint) inHint.textContent = cin ? `現在: ${cin}` : 'まだ出勤の打刻がありません';
+    if (outHint) outHint.textContent = cout ? `現在: ${cout}` : 'まだ退勤の打刻がありません（未退勤）';
     // Giữ phần tử ẩn cũ để không phá vỡ tham chiếu khác (nếu có)
     const el = els.current;
     if (el) {
@@ -752,8 +802,8 @@ const renderForm = async () => {
       
       attendanceId = seg?.id || null;
       setCurrent(seg);
-      try { if (els.in) els.in.value = seg?.checkIn ? String(seg.checkIn).slice(0, 16) : ''; } catch (e) { /* silently ignored */ }
-      try { if (els.out) els.out.value = seg?.checkOut ? String(seg.checkOut).slice(0, 16) : ''; } catch (e) { /* silently ignored */ }
+      try { setDateTimeValue(els.in, seg?.checkIn ? String(seg.checkIn).slice(0, 16) : ''); } catch (e) { /* silently ignored */ }
+      try { setDateTimeValue(els.out, seg?.checkOut ? String(seg.checkOut).slice(0, 16) : ''); } catch (e) { /* silently ignored */ }
 
       // Cập nhật nút "勤怠を削除" theo đơn pending của ngày này
       try {
@@ -827,7 +877,7 @@ const renderForm = async () => {
   const pType = urlParams.get('type');
 
   if (pType === 'time_adjust' && pDate && isISODate(pDate) && els.date) {
-    els.date.value = pDate;
+    setDateTimeValue(els.date, pDate);
     if (els.reason) els.reason.value = '打刻し忘れ';
   }
 
@@ -889,8 +939,8 @@ const renderForm = async () => {
         showToast('勤怠修正を申請しました');
       }
       try { delete els.submit.dataset.editId; } catch (e) { /* silently ignored */ }
-      if (els.in) els.in.value = '';
-      if (els.out) els.out.value = '';
+      setDateTimeValue(els.in, '');
+      setDateTimeValue(els.out, '');
       if (els.reason) els.reason.value = '';
       // Cập nhật lại cache + trạng thái nút "勤怠を削除" cho ngày đang chọn
       window.requestsCache = await fetchJSONAuth('/api/adjust/my').catch(() => []);

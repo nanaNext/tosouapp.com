@@ -35,6 +35,7 @@
       overflow-x: hidden;
       width: 100%;
       max-width: 100%;
+      scrollbar-gutter: auto;
     }
 
     body {
@@ -113,7 +114,10 @@
     /* Đảm bảo khoảng cách sát với thanh tiêu đề */
     main.content {
       margin-top: 0 !important;
-      padding: 0 16px 16px;
+      padding-top: 0;
+      padding-bottom: 16px;
+      /* trái/phải: để nguyên 0 (đã ép !important ở trên) — không đặt lại 16px ở đây
+         nữa vì nó từng làm main.content hẹp hơn 32px so với màn hình trên mobile. */
     }
 
     .card {
@@ -1890,7 +1894,35 @@
       .expense-main {
         height: auto;
         overflow: visible;
-        padding: 12px;
+        /* 親の .content が既に左右12pxの余白を持つため、ここで更に左右を足すと
+           合計24pxの二重余白になり、上部の固定ヘッダー(端まで表示)と横幅がズレて
+           「中央に寄っていない」ように見える原因になっていた。左右は0にする。 */
+        padding: 12px 0;
+      }
+
+      /* html の overflow-y:scroll が常時スクロールバー分の幅を確保してしまい、
+         DevTools のモバイル表示で expense-main の実幅が440pxではなく420pxになる
+         (=左右のどちらかに余分な20pxの隙間ができる)原因になっていた。
+         モバイル幅では必要な時だけスクロールバーを出す auto に切り替える。 */
+      html {
+        overflow-y: auto !important;
+      }
+
+      /* 何箇所にも散らばった .content / main.content / .expense-layout の左右
+         padding・margin 指定(16px, 6px 等)がどれか1つでも勝ってしまうと、画面端と
+         中身の間隔が左右で食い違って見える。原因の切り分けが難しいため、モバイル幅
+         ではこのチェーン全体の左右を確実に0へ強制する。 */
+      body:not(.admin) .content,
+      body:not(.admin) main.content,
+      .expense-layout,
+      .expense-main {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
       }
 
       body:not(.admin) .subbar~.content,
@@ -2675,6 +2707,7 @@
     @media (max-width: 768px) {
       .expense-standalone-header {
         margin: -12px -12px 12px -12px;
+        width: calc(100% + 24px);
         top: 0;
       }
       
@@ -3003,6 +3036,14 @@
 
                 <!-- Step 1: Input -->
                 <div id="step1Input">
+                  <div id="exMonthCalHeader" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                    <h3 style="font-size: 14px; font-weight: 800; color: #0f172a; margin: 0;">今月の提出状況</h3>
+                    <div style="font-size:11px; color:#64748b; display:flex; gap:12px; flex-wrap:wrap;">
+                      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:4px;"></span>提出済み</span>
+                      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#2563eb;margin-right:4px;"></span>今回追加分</span>
+                    </div>
+                  </div>
+                  <div id="exMonthCalGrid" style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; font-size:11px; margin-bottom:20px; box-sizing:border-box;"></div>
                   <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 16px;">明細一覧</h3>
                   <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
                     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
@@ -3344,6 +3385,11 @@
           <div><input id="exSiteName" type="text" class="adjust-input" placeholder="例）〇〇邸 新築工事"></div>
           <div class="adjust-label" id="exTeikiLabel">定期</div>
           <div id="exTeikiWrap"><label class="checkbox-row"><input id="exTeiki" type="checkbox"><span>定期区間を除外</span></label></div>
+          <div class="full-row" id="exTaxSummaryBox" style="background:#f1f5f9; border-radius:8px; padding:12px 16px; font-size:13px; color:#334155; display:flex; gap:24px; flex-wrap:wrap;">
+            <span>支給額目安：<strong id="exTaxGross">¥0</strong></span>
+            <span>非課税：<strong id="exTaxFree" style="color:#16a34a;">¥0</strong></span>
+            <span>課税：<strong id="exTaxable" style="color:#dc2626;">¥0</strong></span>
+          </div>
           <div class="upload-sections full-row">
             <div class="upload-section-title">添付ファイル（任意）</div>
             <div class="upload-section-help">必要な場合のみ、ICカード / 定期券の写真またはPDFを添付してください</div>
@@ -3404,6 +3450,12 @@
       }
       /* Tiêu đề 明細一覧 vẫn cần chút lề trái cho đẹp */
       #step1Input > h3 { padding-left: 12px !important; }
+      /* カレンダー(今月の提出状況)も画面端に張り付かないよう左右に余白を戻す */
+      #exMonthCalHeader { padding: 0 12px !important; }
+      #exMonthCalHeader h3 { font-size: 13px !important; }
+      #exMonthCalHeader > div { font-size: 10px !important; gap: 8px !important; }
+      #exMonthCalGrid { padding: 0 8px !important; gap: 2px !important; }
+      #exMonthCalGrid span[style*="border-radius:50%"] { width: 26px !important; height: 26px !important; line-height: 26px !important; font-size: 12px !important; }
       /* Khung ngoài: bỏ viền + bo góc để thẻ sát mép */
       #step1Input > div {
         border: none !important;

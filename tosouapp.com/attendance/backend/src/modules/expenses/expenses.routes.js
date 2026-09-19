@@ -550,6 +550,44 @@ router.get('/admin/monthly-history',
     }
   }
 );
+router.get('/admin/employee-overview',
+  rateLimitNamed('expenses_admin_employee_overview', { windowMs: 60_000, max: 30 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const month = String(req.query.month || '').slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Invalid month' });
+      const rows = await repo.getEmployeeMonthlyOverview(month, req.tenantId || null);
+      res.status(200).json({ month, rows });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+// 社員が明細入力中に非課税/課税の目安をその場で確認できるよう、設定値だけを読み取り専用で公開する。
+// 書き込みは admin/settings (admin限定) のみ — ここは GET のみで社員にも許可する。
+router.get('/settings',
+  rateLimitNamed('expenses_settings', { windowMs: 60_000, max: 60 }),
+  authorize('employee','manager','admin'),
+  async (req, res) => {
+    try {
+      const year = new Date().getFullYear();
+      const [salaryConfig, settings] = await Promise.all([
+        salaryRepo.getConfigByYear(year, req.tenantId || null),
+        expenseSettingsRepo.getSettings(req.tenantId || null)
+      ]);
+      const commuteAllowanceTaxFreeLimit = salaryConfig && salaryConfig.commute_allowance_tax_free_limit != null
+        ? Number(salaryConfig.commute_allowance_tax_free_limit)
+        : 150000;
+      res.status(200).json({
+        commuteAllowanceTaxFreeLimit,
+        mileageTiers: settings.mileageTiers
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 router.get('/admin/settings',
   rateLimitNamed('expenses_admin_settings', { windowMs: 60_000, max: 30 }),
   authorize('manager','admin'),
