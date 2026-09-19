@@ -785,6 +785,7 @@ router.get('/audit', authorize('admin'), async (req, res) => {
     const result = await auditRepo.listLogs({
       userId: req.query.userId,
       action: req.query.action,
+      actionPrefix: req.query.actionPrefix,
       from: req.query.from,
       to: req.query.to,
       page: req.query.page,

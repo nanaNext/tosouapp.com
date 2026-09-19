@@ -345,7 +345,10 @@ exports.approveReadyMonth = async (req, res) => {
 
     const y = parseInt(ym.slice(0, 4), 10);
     const m = parseInt(ym.slice(5, 7), 10);
-    const rows = await repo.getActiveUserIds(effectiveDeptId, { tenantId: req.tenantId || null });
+    // 対象月の月末時点で在籍していた部署で絞り込む (承認操作をした「今日」の部署ではない) —
+    // 対象月の後に他部署へ異動した人も、この月の承認対象からは外れない。
+    const monthEndDate = `${y}-${String(m).padStart(2, '0')}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
+    const rows = await repo.getActiveUserIds(effectiveDeptId, { tenantId: req.tenantId || null, asOfDate: monthEndDate });
     let approved = 0, submitted = 0, skipped = 0;
     const results = [];
     for (const r of (rows || [])) {

@@ -18,4 +18,31 @@ router.patch('/:id',
 router.delete('/:id',
   rateLimit({ windowMs: 60_000, max: 10 }),
   authenticate, resolveTenant, permit('departments', 'full'), controller.remove);
+
+router.get('/:id/users', authenticate, resolveTenant, permit('departments', 'view'), controller.listDepartmentUsers);
+
+// 異動 (transfer history)
+router.get('/assignments', authenticate, resolveTenant, permit('departments', 'view'), controller.listAssignments);
+router.post('/assignments',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  authenticate, resolveTenant, permit('departments', 'full'), controller.createAssignment);
+router.patch('/assignments/:id',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  authenticate, resolveTenant, permit('departments', 'full'), controller.updateAssignment);
+router.delete('/assignments/:id',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  authenticate, resolveTenant, permit('departments', 'full'), controller.deleteAssignment);
+
+// 月次締め
+router.get('/month-locks', authenticate, resolveTenant, permit('departments', 'view'), controller.getMonthLocks);
+router.post('/month-locks/close',
+  rateLimit({ windowMs: 60_000, max: 10 }),
+  authenticate, resolveTenant, permit('departments', 'full'), controller.closeMonth);
+router.post('/month-locks/reopen',
+  rateLimit({ windowMs: 60_000, max: 10 }),
+  authenticate, resolveTenant, permit('departments', 'full'), controller.reopenMonth);
+
+// 部署別集計 (当時 vs 現在)
+router.get('/report', authenticate, resolveTenant, permit('departments', 'view'), controller.getReport);
+
 module.exports = router;

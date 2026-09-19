@@ -222,20 +222,33 @@ exports.getAdminDashboard = async function({ month, months = 6, tenantId = null 
   const deptParams = [ym];
   if (tid != null) deptParams.push(tid);
   const tenantDeptWhere = tid != null ? ' AND u.tenant_id = ?' : '';
-  const [deptRows] = await db.query(`
-    SELECT
-      u.departmentId AS department_id,
-      COUNT(*) AS item_count,
-      COUNT(DISTINCT ec.userId) AS user_count,
-      COALESCE(SUM(ec.amount), 0) AS total_amount
+  const [deptClaimRows] = await db.query(`
+    SELECT ec.userId AS user_id, ec.date AS claim_date, ec.amount AS amount
     FROM expense_claims ec
     JOIN users u ON u.id = ec.userId
     WHERE DATE_FORMAT(ec.date, '%Y-%m') = ?
       AND ec.status IN ('applied','approved','paid')${tenantDeptWhere}
-    GROUP BY u.departmentId
-    ORDER BY total_amount DESC
-    LIMIT 30
   `, deptParams);
+
+  // 各申請日 (ec.date) 時点で所属していた部署に計上する。承認や集計の時点ではなく "当時" の部署に
+  // 紐づけないと、月をまたいで異動した人の交通費が異動後の部署に付け替わってしまう。
+  const historyService = require('../departments/department.history.service');
+  const deptPairs = (deptClaimRows || []).map(r => ({ userId: r.user_id, dateStr: String(r.claim_date).slice(0, 10) }));
+  const deptMap = await historyService.getDepartmentAsOfBatch(deptPairs, { tenantId: tid });
+  const deptAgg = new Map();
+  for (const r of (deptClaimRows || [])) {
+    const key = `${r.user_id}|${String(r.claim_date).slice(0, 10)}`;
+    const departmentId = deptMap.get(key) ?? null;
+    const bucket = deptAgg.get(departmentId) || { totalAmount: 0, itemCount: 0, userIds: new Set() };
+    bucket.totalAmount += Number(r.amount || 0);
+    bucket.itemCount += 1;
+    bucket.userIds.add(r.user_id);
+    deptAgg.set(departmentId, bucket);
+  }
+  const deptRows = [...deptAgg.entries()]
+    .map(([departmentId, v]) => ({ department_id: departmentId, total_amount: v.totalAmount, item_count: v.itemCount, user_count: v.userIds.size }))
+    .sort((a, b) => b.total_amount - a.total_amount)
+    .slice(0, 30);
 
   const monthStats = {
     month: ym,
@@ -327,27 +340,36 @@ exports.getEmployeeMonthlyOverview = async function(month, tenantId = null) {
        u.id AS user_id,
        COALESCE(u.username, u.email) AS user_name,
        u.employee_code,
-       u.departmentId AS department_id,
-       d.name AS department_name,
        COUNT(ec.id) AS item_count,
        COALESCE(SUM(ec.amount), 0) AS total_amount,
        GROUP_CONCAT(DISTINCT ec.status) AS statuses
      FROM users u
-     LEFT JOIN departments d ON d.id = u.departmentId
      LEFT JOIN expense_claims ec ON ec.userId = u.id AND DATE_FORMAT(ec.date, '%Y-%m') = ?
      WHERE u.employment_status = 'active' AND u.role IN ('employee','manager')${tenantClause}
-     GROUP BY u.id, u.username, u.email, u.employee_code, u.departmentId, d.name
+     GROUP BY u.id, u.username, u.email, u.employee_code
      ORDER BY COALESCE(u.username, u.email) ASC`,
     params
   );
-  return (rows || []).map(r => ({
-    userId: r.user_id,
-    userName: r.user_name,
-    employeeCode: r.employee_code,
-    departmentId: r.department_id,
-    departmentName: r.department_name,
-    itemCount: Number(r.item_count || 0),
-    totalAmount: Number(r.total_amount || 0),
-    status: pickOverallStatus(r.statuses)
-  }));
+
+  // 表示する部署は「今の部署」ではなく対象月の月末時点の部署 (異動後にこの月を見返しても当時のまま出す)
+  const historyService = require('../departments/department.history.service');
+  const [yy, mm] = String(month).split('-').map(n => parseInt(n, 10));
+  const lastDay = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+  const asOf = `${month}-${String(lastDay).padStart(2, '0')}`;
+  const result = [];
+  for (const r of (rows || [])) {
+    const departmentId = await historyService.getDepartmentAsOf(r.user_id, asOf, { tenantId: tid });
+    const deptInfo = await historyService.getDepartmentNameAsOf(departmentId, asOf, { tenantId: tid });
+    result.push({
+      userId: r.user_id,
+      userName: r.user_name,
+      employeeCode: r.employee_code,
+      departmentId,
+      departmentName: deptInfo.name,
+      itemCount: Number(r.item_count || 0),
+      totalAmount: Number(r.total_amount || 0),
+      status: pickOverallStatus(r.statuses)
+    });
+  }
+  return result;
 };

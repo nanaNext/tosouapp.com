@@ -141,8 +141,21 @@ module.exports = {
     `, [date, ...tidParam]);
     return rows || [];
   },
-  async getActiveUserIds(departmentId = null, { tenantId = null } = {}) {
+  // asOfDate があれば「その日時点で在籍していた部署」で絞り込む (異動履歴ベース) —
+  // 月次の一括承認 (approveReadyMonth) はこれを渡すことで、承認する頃には他部署へ異動済みの人も
+  // 正しく対象月の部署の一員として扱える。省略時は今の users.departmentId で絞り込む (現状の一覧・通知用途)。
+  async getActiveUserIds(departmentId = null, { tenantId = null, asOfDate = null } = {}) {
     const tid = _tid(tenantId);
+    if (departmentId != null && asOfDate) {
+      const historyService = require('../departments/department.history.service');
+      const historicUserIds = await historyService.getUsersInDepartmentAsOf(departmentId, asOfDate, { tenantId: tid });
+      if (!historicUserIds.length) return [];
+      const [rows] = await db.query(
+        `SELECT id AS userId FROM users WHERE employment_status = 'active' AND role IN ('employee','manager') AND id IN (?)`,
+        [historicUserIds]
+      );
+      return rows || [];
+    }
     const params = [];
     let sql = `
       SELECT u.id AS userId

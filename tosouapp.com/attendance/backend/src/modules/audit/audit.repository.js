@@ -57,12 +57,13 @@ module.exports = {
       data.afterData
     ]);
   },
-  async listLogs({ userId, action, from, to, page = 1, pageSize = 50, tenantId = null }) {
+  async listLogs({ userId, action, actionPrefix, from, to, page = 1, pageSize = 50, tenantId = null }) {
     const tid = _tid(tenantId);
     const where = [];
     const params = [];
     if (userId) { where.push('a.userId = ?'); params.push(userId); }
     if (action) { where.push('a.action = ?'); params.push(action); }
+    if (actionPrefix) { where.push('a.action LIKE ?'); params.push(`${actionPrefix}%`); }
     if (from) { where.push('a.created_at >= ?'); params.push(from + ' 00:00:00'); }
     if (to) { where.push('a.created_at <= ?'); params.push(to + ' 23:59:59'); }
     if (tid != null) { where.push('u.tenant_id = ?'); params.push(tid); }
@@ -72,7 +73,7 @@ module.exports = {
     const joinSql = tid != null ? `INNER JOIN users u ON u.id = a.userId` : '';
     const wsql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const sql = `
-      SELECT a.id, a.userId, a.action, a.path, a.method, a.ip, a.userAgent, a.created_at
+      SELECT a.id, a.userId, a.action, a.path, a.method, a.ip, a.userAgent, a.beforeData, a.afterData, a.created_at
       FROM audit_logs a
       ${joinSql}
       ${wsql}
