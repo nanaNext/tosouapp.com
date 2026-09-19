@@ -968,6 +968,7 @@ module.exports.getMonthlyClosures = async function(month, userId = null, tenantI
        c.month,
        c.total_amount,
        c.approved_count,
+       c.taxable_amount,
        c.closed_at,
        c.closed_by,
        (SELECT COALESCE(u2.username, u2.email) FROM users u2 WHERE u2.id = c.closed_by) AS closed_by_name

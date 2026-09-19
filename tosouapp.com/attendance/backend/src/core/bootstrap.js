@@ -235,6 +235,51 @@ async function runMigrations() {
           try { await conn.query(`ALTER TABLE users ADD COLUMN tax_category VARCHAR(8) NOT NULL DEFAULT 'kou'`); } catch (e) { /* silently ignored */ }
           try { await conn.query(`ALTER TABLE users ADD COLUMN qualification_allowance DECIMAL(12,2) NULL`); } catch (e) { /* silently ignored */ }
         }
+      },
+      {
+        // 交通費の「設定」画面: 期限アラート日数（何日前から表示するか）をテナントごとに保存。
+        // 電車・バス通勤の非課税上限は salary_config.commute_allowance_tax_free_limit を
+        // そのまま共用するため、ここでは重複して持たない。
+        id: '20260919_01_expense_settings_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS expense_settings (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              tenant_id BIGINT UNSIGNED NOT NULL,
+              deadline_alert_days INT NOT NULL DEFAULT 30,
+              updated_by BIGINT UNSIGNED NULL,
+              updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uniq_tenant (tenant_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
+      },
+      {
+        // マイカー等通勤の片道距離別 非課税額（国税庁の目安値）— テナントごとに編集可能。
+        // 行が無いテナントは expenseSettings.repository.js 側のハードコード既定値にフォールバックする。
+        id: '20260919_02_expense_mileage_tiers_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS expense_mileage_tiers (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              tenant_id BIGINT UNSIGNED NOT NULL,
+              min_km DECIMAL(6,2) NOT NULL,
+              max_km DECIMAL(6,2) NULL,
+              tax_free_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+              sort_order INT NOT NULL DEFAULT 0,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_tenant_sort (tenant_id, sort_order)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
+      },
+      {
+        // 月次締め（expense_monthly_closures）に、非課税限度額を超えた分の課税対象額を記録する。
+        id: '20260919_03_expense_monthly_closures_taxable',
+        up: async () => {
+          try { await conn.query(`ALTER TABLE expense_monthly_closures ADD COLUMN taxable_amount DECIMAL(12,2) NOT NULL DEFAULT 0`); } catch (e) { /* silently ignored */ }
+        }
       }
     ];
     for (const m of migrations) {

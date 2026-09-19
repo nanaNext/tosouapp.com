@@ -172,6 +172,12 @@
     #loginBtn:active:not(:disabled) { transform: translateY(0); }
     #loginBtn:disabled { background: #93c5fd; cursor: default; box-shadow: none; }
 
+    /* ブラウザのパスワードマネージャ自動入力は input イベントを発火しないことがあり、
+       ボタンが disabled のまま残るバグの原因になる。:-webkit-autofill に空のアニメーションを
+       付与し、JS 側で animationstart を検知してボタン状態を再評価する(login.page.js 参照)。 */
+    input:-webkit-autofill { animation-name: onAutoFillStart; animation-duration: 0.001s; }
+    @keyframes onAutoFillStart { from {} to {} }
+
     /* Status */
     #status {
       min-height: 24px;
@@ -277,14 +283,14 @@
             <label for="email">メールアドレス</label>
             <div class="input-wrap">
               <input id="email" name="login_email" type="email"
-                autocomplete="off" autocapitalize="none" spellcheck="false" required>
+                autocomplete="email" autocapitalize="none" spellcheck="false" required>
             </div>
           </div>
           <div class="field">
             <label for="password">パスワード</label>
             <div class="input-wrap">
               <input id="password" name="login_password" type="password"
-                autocomplete="off" required>
+                autocomplete="current-password" required>
               <button type="button" id="togglePassword" class="toggle-btn" aria-label="パスワードを表示"></button>
             </div>
           </div>

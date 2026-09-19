@@ -266,6 +266,7 @@ exports.getAdminDashboard = async function({ month, months = 6, tenantId = null 
 exports.closeMonthlyApprovedTotals = async function({ month, closedBy, forceRecalc, userId = null, tenantId = null }) {
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('Invalid month');
   const mainRepo = require('./expenses.repository');
+  const taxRepo = require('./expenses.tax');
   const rows = await mainRepo.getMonthlyApprovedTotals(month, userId, tenantId);
   if (!rows.length) return { month: String(month), affectedUsers: 0 };
   const doForce = !!forceRecalc;
@@ -273,22 +274,29 @@ exports.closeMonthlyApprovedTotals = async function({ month, closedBy, forceReca
     const uid = Number(r.user_id);
     const total = Number(r.total_amount || 0);
     const count = Number(r.approved_count || 0);
+    // 非課税限度額（電車・バスの月額上限 + マイカー等の距離別非課税額）を超えた分を課税対象として記録する。
+    let taxableAmount = 0;
+    try {
+      const tax = await taxRepo.computeTaxableForUserMonth(uid, month, tenantId);
+      taxableAmount = Number(tax.taxableAmount || 0);
+    } catch (e) { /* 設定未整備などで計算に失敗しても月次締め自体は続行する */ }
     if (doForce) {
       await db.query(
-        `INSERT INTO expense_monthly_closures (userId, month, total_amount, approved_count, closed_by, closed_at)
-         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `INSERT INTO expense_monthly_closures (userId, month, total_amount, approved_count, taxable_amount, closed_by, closed_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
          ON DUPLICATE KEY UPDATE
            total_amount = VALUES(total_amount),
            approved_count = VALUES(approved_count),
+           taxable_amount = VALUES(taxable_amount),
            closed_by = VALUES(closed_by),
            closed_at = CURRENT_TIMESTAMP`,
-        [uid, String(month), total, count, closedBy || null]
+        [uid, String(month), total, count, taxableAmount, closedBy || null]
       );
     } else {
       await db.query(
-        `INSERT IGNORE INTO expense_monthly_closures (userId, month, total_amount, approved_count, closed_by, closed_at)
-         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-        [uid, String(month), total, count, closedBy || null]
+        `INSERT IGNORE INTO expense_monthly_closures (userId, month, total_amount, approved_count, taxable_amount, closed_by, closed_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        [uid, String(month), total, count, taxableAmount, closedBy || null]
       );
     }
   }

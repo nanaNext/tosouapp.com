@@ -70,7 +70,8 @@
       <% let grandTotal = 0; %>
       <% expenses.forEach(function(e) {
         const route = [e.origin || '', e.destination || ''].filter(Boolean).join(' → ') || '-';
-        const transport = e.type || '電車';
+        const transportMap = {train:'電車',bus:'バス',taxi:'タクシー',car:'自家用車',private_car:'自家用車',parking:'駐車場',highway:'高速料金',goods:'物品購入'};
+        const transport = transportMap[String(e.type || e.category || '').toLowerCase()] || e.type || '電車';
         const tripType = e.trip_type === 'round_trip' ? '往復' : '片道';
         const amount = Number(e.amount || 0);
         grandTotal += amount;

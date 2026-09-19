@@ -224,8 +224,25 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   form.addEventListener('submit', handleSubmit);
   updateBtnState();
-  if (emailInput) emailInput.addEventListener('input', updateBtnState);
-  if (passwordInput) passwordInput.addEventListener('input', updateBtnState);
+  // ブラウザのパスワードマネージャ自動入力は 'input'/'change' を発火しないことがあり、
+  // ログインボタンが disabled のまま残る。:-webkit-autofill の CSS アニメーションを
+  // animationstart で検知して再評価する(CSS に onAutoFillStart がなければ何も起こらず安全)。
+  [emailInput, passwordInput].forEach(el => {
+    if (!el) return;
+    el.addEventListener('input', updateBtnState);
+    el.addEventListener('change', updateBtnState);
+    el.addEventListener('animationstart', e => { if (e.animationName === 'onAutoFillStart') updateBtnState(); });
+  });
+  try {
+    // パスワードマネージャ(ブラウザ内蔵/拡張機能問わず)の自動入力タイミングは一定しないため、
+    // 数秒間は定期的に値を直接読み直してボタン状態を強制的に正す(イベント発火に依存しない)。
+    let ticks = 0;
+    const iv = setInterval(() => {
+      updateBtnState();
+      ticks += 1;
+      if (ticks >= 15) clearInterval(iv);
+    }, 200);
+  } catch (e) { /* silently ignored */ }
   const toggle = $('#togglePassword');
   const EYE_ON = `<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const EYE_OFF = `<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.73 5.08A10.47 10.47 0 0 1 12 5c7 0 11 7 11 7a19.54 19.54 0 0 1-4.21 4.62"/><path d="M6.11 6.11A19.45 19.45 0 0 0 1 12s4 7 11 7a10.65 10.65 0 0 0 3.89-.73"/><circle cx="12" cy="12" r="3"/></svg>`;

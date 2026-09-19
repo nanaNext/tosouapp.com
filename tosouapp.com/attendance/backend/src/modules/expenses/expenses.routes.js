@@ -7,6 +7,8 @@ const repo = require('./expenses.repository');
 const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
 const expenseTypesRepo = require('./expenseTypes.repository');
+const expenseSettingsRepo = require('./expenseSettings.repository');
+const salaryRepo = require('../salary/salary.repository');
 const s3Service = require('../../core/services/s3.service');
 const fileStore = require('../../core/services/fileStore.service');
 const { uploadMemory, safeFilename } = require('../../core/middleware/uploadR2');
@@ -548,6 +550,89 @@ router.get('/admin/monthly-history',
     }
   }
 );
+router.get('/admin/settings',
+  rateLimitNamed('expenses_admin_settings', { windowMs: 60_000, max: 30 }),
+  authorize('manager','admin'),
+  async (req, res) => {
+    try {
+      const year = new Date().getFullYear();
+      const [salaryConfig, settings] = await Promise.all([
+        salaryRepo.getConfigByYear(year, req.tenantId || null),
+        expenseSettingsRepo.getSettings(req.tenantId || null)
+      ]);
+      const commuteAllowanceTaxFreeLimit = salaryConfig && salaryConfig.commute_allowance_tax_free_limit != null
+        ? Number(salaryConfig.commute_allowance_tax_free_limit)
+        : 150000;
+      res.status(200).json({
+        commuteAllowanceTaxFreeLimit,
+        deadlineAlertDays: settings.deadlineAlertDays,
+        mileageTiers: settings.mileageTiers
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+router.post('/admin/settings',
+  rateLimitNamed('expenses_admin_settings_update', { windowMs: 60_000, max: 20 }),
+  authorize('admin'),
+  async (req, res) => {
+    try {
+      const body = req.body || {};
+      const year = new Date().getFullYear();
+      const tasks = [];
+      if (body.commuteAllowanceTaxFreeLimit != null) {
+        // salaryRepo.upsertConfig は camelCase の完全なデータを期待し、渡さなかった項目は
+        // デフォルト値で上書きされてしまう(=既存の保険料率などが消える)ため、DB の生の行
+        // (snake_case) を camelCase にマッピングしてから通勤費上限だけ差し替える。
+        const row = await salaryRepo.getConfigByYear(year, req.tenantId || null);
+        const current = row ? {
+          healthInsuranceRate: row.health_insurance_rate,
+          careInsuranceRate: row.care_insurance_rate,
+          pensionRate: row.pension_rate,
+          employmentInsuranceRate: row.employment_insurance_rate,
+          taxRate: row.tax_rate,
+          overtimeRate: row.overtime_rate,
+          holidayRate: row.holiday_rate,
+          lateNightRate: row.late_night_rate,
+          workingMinutesPerMonth: row.working_minutes_per_month,
+          standardDaysPerMonth: row.standard_days_per_month,
+          baseHourlyRate: row.base_hourly_rate,
+          roundingMinutes: row.rounding_minutes,
+          roundingMode: row.rounding_mode,
+          companyName: row.company_name,
+          prefecture: row.prefecture
+        } : {};
+        tasks.push(salaryRepo.upsertConfig(req.tenantId || null, year, {
+          ...current,
+          commuteAllowanceTaxFreeLimit: body.commuteAllowanceTaxFreeLimit,
+          updatedBy: req.user.id
+        }));
+      }
+      if (body.deadlineAlertDays != null) {
+        tasks.push(expenseSettingsRepo.upsertDeadlineAlertDays(req.tenantId || null, body.deadlineAlertDays, req.user.id));
+      }
+      if (Array.isArray(body.mileageTiers)) {
+        tasks.push(expenseSettingsRepo.replaceMileageTiers(req.tenantId || null, body.mileageTiers));
+      }
+      await Promise.all(tasks);
+      try {
+        await auditRepo.writeLog({ userId: req.user.id, action: 'expenses_settings_upsert', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ year }) });
+      } catch (e) { /* silently ignored */ }
+      const [salaryConfig, settings] = await Promise.all([
+        salaryRepo.getConfigByYear(year, req.tenantId || null),
+        expenseSettingsRepo.getSettings(req.tenantId || null)
+      ]);
+      res.status(200).json({
+        commuteAllowanceTaxFreeLimit: salaryConfig ? Number(salaryConfig.commute_allowance_tax_free_limit) : 150000,
+        deadlineAlertDays: settings.deadlineAlertDays,
+        mileageTiers: settings.mileageTiers
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 router.get('/months/active',
   rateLimitNamed('expenses_active_month', { windowMs: 60_000, max: 30 }),
   authorize('employee','manager','admin'),
@@ -1044,6 +1129,42 @@ router.get('/admin/monthly-detail/print',
       const month = String(req.query.month || '').slice(0, 7);
       if (!userId || !/^\d{4}-\d{2}$/.test(month)) {
         return res.status(400).send('userId と month (YYYY-MM) は必須です');
+      }
+      const tenantId = req.tenantId || null;
+      const tenantClause = tenantId != null ? ' AND ec.tenant_id = ?' : '';
+      const params = [userId, month];
+      if (tenantId != null) params.push(tenantId);
+      const [expenses] = await db.query(`
+        SELECT * FROM expense_claims ec
+        WHERE ec.userId = ? AND DATE_FORMAT(ec.date, '%Y-%m') = ?${tenantClause}
+        ORDER BY ec.date ASC, ec.created_at ASC
+        LIMIT 1000
+      `, params);
+      const [[userRow]] = await db.query(
+        'SELECT id, username, email, employee_code, birth_date FROM users WHERE id = ? LIMIT 1',
+        [userId]
+      );
+      res.render('expenses-monthly-print', {
+        user: userRow || {},
+        month,
+        expenses: expenses || [],
+        companyName: companyName || ''
+      });
+    } catch (err) {
+      res.status(500).send(`エラー: ${err.message}`);
+    }
+  }
+);
+// 交通費精算書 印刷用ページ (社員本人分のみ) — userId はクエリから受け取らず、必ず req.user.id を使う。
+// 他人の userId を指定して覗き見できないようにするための唯一の安全策。
+router.get('/my/monthly-detail/print',
+  authorize('employee', 'manager', 'admin'),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const month = String(req.query.month || '').slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).send('month (YYYY-MM) は必須です');
       }
       const tenantId = req.tenantId || null;
       const tenantClause = tenantId != null ? ' AND ec.tenant_id = ?' : '';
