@@ -682,7 +682,7 @@ router.get('/auth/refresh/list', authorize('admin'), async (req, res) => {
   try {
     const { userId, page, pageSize } = req.query;
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
-    const r = await refreshRepo.listByUser(userId, { page, pageSize });
+    const r = await refreshRepo.listByUser(userId, { page, pageSize, tenantId: req.tenantId || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -108,19 +108,22 @@ exports.timesheet = async (req, res) => {
     if (req.user?.role === 'employee' && String(userId) !== String(requesterId)) {
       return res.status(403).json({ message: 'Forbidden: employees can only view their own timesheet' });
     }
-    // Manager chỉ xem được timesheet của employee trong phòng ban
-    if (req.user?.role === 'manager' && String(userId) !== String(requesterId)) {
-      const targetUser = await userRepo.getUserById(userId);
+    // Admin/manager xem timesheet của người khác: phải cùng công ty (tenant).
+    // Manager thêm điều kiện: chỉ xem được employee (và cùng phòng ban nếu bật strict mode).
+    if (String(userId) !== String(requesterId)) {
+      const targetUser = await userRepo.getUserById(userId, req.tenantId || null);
       if (!targetUser) return res.status(404).json({ message: 'User not found' });
-      if (String(targetUser.role || '').toLowerCase() !== 'employee') {
-        return res.status(403).json({ message: 'Forbidden: managers can only view employee timesheets' });
-      }
-      const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
-      if (strictDept && req.user.departmentId && String(targetUser.departmentId) !== String(req.user.departmentId)) {
-        return res.status(403).json({ message: 'Forbidden: can only view employees in your department' });
+      if (req.user?.role === 'manager') {
+        if (String(targetUser.role || '').toLowerCase() !== 'employee') {
+          return res.status(403).json({ message: 'Forbidden: managers can only view employee timesheets' });
+        }
+        const strictDept = String(process.env.MANAGER_STRICT_DEPT || '').toLowerCase() === 'true';
+        if (strictDept && req.user.departmentId && String(targetUser.departmentId) !== String(req.user.departmentId)) {
+          return res.status(403).json({ message: 'Forbidden: can only view employees in your department' });
+        }
       }
     }
-    const result = await service.timesheet(userId, fromDate, toDate);
+    const result = await service.timesheet(userId, fromDate, toDate, req.tenantId || null);
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });

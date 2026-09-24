@@ -699,6 +699,7 @@ router.patch('/users/:id/department', async (req, res, next) => {
 router.patch('/users/:id/password', async (req, res, next) => {
   try {
     const before = await userRepo.getUserById(req.params.id, req.tenantId || null);
+    if (!before) return res.status(404).json({ message: 'Not found' });
     const superEmail = process.env.SUPER_ADMIN_EMAIL;
     if (before?.email === superEmail && String(req.user.id) !== String(req.params.id)) {
       return res.status(403).json({ message: 'Only SUPER_ADMIN can change own password' });
@@ -881,13 +882,14 @@ router.get('/export/timesheet.csv', authorize('admin'), async (req, res) => {
 
     for (const id of ids) {
       const u = await userRepo.getUserById(id, req.tenantId || null).catch(() => null);
+      if (!u) continue; // 他社(別テナント)のIDは無視 — 存在確認できないものは出力しない
       const empCode = u?.employee_code || '';
       const uName = String(u?.full_name || u?.fullName || u?.username || u?.email || `ID:${id}`);
       if (ids.length === 1) {
         singleUserName = uName;
         singleEmpCode = empCode;
       }
-      const r = await attendanceService.timesheet(id, from, to);
+      const r = await attendanceService.timesheet(id, from, to, req.tenantId || null);
       for (const d of r.days) {
         csv += `"${empCode}","${uName}",${d.date},${d.regularMinutes},${d.overtimeMinutes},${d.nightMinutes}\n`;
       }
@@ -939,8 +941,7 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
     const next = new Date(Date.UTC(y, m, 1));
     const nextStart = `${next.getUTCFullYear()}-${pad2(next.getUTCMonth() + 1)}-${pad2(next.getUTCDate())}`;
     const whereDept = deptId ? 'AND u.departmentId = ?' : '';
-    const params1 = [start + ' 00:00:00', nextStart + ' 00:00:00'];
-    if (deptId) params1.push(deptId);
+    const whereTenant = req.tenantId ? 'AND u.tenant_id = ?' : '';
     const [rows1] = await db.query(`
       SELECT
         u.id AS userId,
@@ -962,12 +963,18 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
       WHERE u.employment_status = 'active'
         AND u.role IN ('employee','manager')
         ${whereDept}
+        ${whereTenant}
       GROUP BY u.id, DATE(COALESCE(a.checkIn, a.checkOut))
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC, date ASC
-    `, [start + ' 00:00:00', nextStart + ' 00:00:00', start + ' 00:00:00', nextStart + ' 00:00:00', ...(deptId ? [deptId] : [])]);
+    `, [
+      start + ' 00:00:00', nextStart + ' 00:00:00', start + ' 00:00:00', nextStart + ' 00:00:00',
+      ...(deptId ? [deptId] : []),
+      ...(req.tenantId ? [req.tenantId] : [])
+    ]);
 
     const params2 = [start, nextStart];
     if (deptId) params2.push(deptId);
+    if (req.tenantId) params2.push(req.tenantId);
     const [rows2] = await db.query(`
       SELECT
         u.id AS userId,
@@ -989,6 +996,7 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
         AND u.employment_status = 'active'
         AND u.role IN ('employee','manager')
         ${whereDept}
+        ${whereTenant}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC, date ASC
     `, params2);
 

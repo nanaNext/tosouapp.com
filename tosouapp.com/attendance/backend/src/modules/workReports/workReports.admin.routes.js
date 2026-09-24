@@ -47,10 +47,12 @@ const roleScopeSql = (req, alias = 'u') => {
 };
 
 const canManagerAccessUser = async (req, userId) => {
+  const [[u]] = await db.query(`SELECT id, role, tenant_id FROM users WHERE id = ? LIMIT 1`, [Number(userId)]);
+  if (!u) return false;
+  if (req.tenantId != null && String(u.tenant_id) !== String(req.tenantId)) return false;
   const role = String(req.user?.role || '').toLowerCase();
   if (role !== 'manager') return true;
-  const [[u]] = await db.query(`SELECT id, role FROM users WHERE id = ? LIMIT 1`, [Number(userId)]);
-  return String(u?.role || '').toLowerCase() === 'employee';
+  return String(u.role || '').toLowerCase() === 'employee';
 };
 
 const _logAudit = (req, action, beforeData, afterData) => {

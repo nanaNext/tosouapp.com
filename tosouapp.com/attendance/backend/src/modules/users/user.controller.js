@@ -228,7 +228,7 @@ exports.setPassword = async (req, res) => {
       if (!valid) return res.status(400).json({ message });
     }
     const hashed = isHash ? password : bcrypt.hashSync(password, bcryptRounds);
-    await repo.setPassword(id, hashed);
+    await repo.setPassword(id, hashed, req.tenantId || null);
     await refreshRepo.deleteUserTokens(id);
     await invalidateUserCache(id);
     res.status(200).json({ id });

@@ -384,6 +384,51 @@ async function runMigrations() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
         }
+      },
+      {
+        id: '20260924_01_users_tenant_scoped_employee_code',
+        up: async () => {
+          // 社員番号(employee_code)は今までテナント全体でグローバル一意だった。
+          // 新しい会社を追加すると、その会社も「001」から社員番号を振りたがるが、
+          // 既存の会社が同じ番号を使っていると重複エラーで登録できなくなる。
+          // (tenant_id, employee_code) の複合ユニークキーに変更し、会社ごとに
+          // 独立した採番を許可する。
+          try { await conn.query(`UPDATE users SET tenant_id = 1 WHERE tenant_id IS NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users DROP INDEX uniq_employee_code`); } catch (e) { /* already dropped */ }
+          try { await conn.query(`ALTER TABLE users ADD UNIQUE KEY uniq_tenant_employee_code (tenant_id, employee_code)`); } catch (e) { /* already exists */ }
+        }
+      },
+      {
+        id: '20260924_02_departments_tenant_scoped_unique',
+        up: async () => {
+          // 部署名(name)とコード(code)が今までテナント全体でグローバル一意だった。
+          // 新しい会社が「総務部」「営業部」のような一般的な部署名を付けるとほぼ確実に
+          // 既存の会社と衝突して作成できなくなる。(tenant_id, name)/(tenant_id, code) の
+          // 複合ユニークキーに変更し、会社ごとに独立させる (shift_definitions と同じ修正パターン)。
+          try { await conn.query(`UPDATE departments SET tenant_id = 1 WHERE tenant_id IS NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE departments DROP INDEX name`); } catch (e) { /* already dropped */ }
+          try { await conn.query(`ALTER TABLE departments DROP INDEX uniq_departments_code`); } catch (e) { /* already dropped */ }
+          try { await conn.query(`ALTER TABLE departments ADD UNIQUE KEY uniq_tenant_dept_name (tenant_id, name)`); } catch (e) { /* already exists */ }
+          try { await conn.query(`ALTER TABLE departments ADD UNIQUE KEY uniq_tenant_dept_code (tenant_id, code)`); } catch (e) { /* already exists */ }
+        }
+      },
+      {
+        id: '20260924_03_corporations_tenant_scoped_code',
+        up: async () => {
+          // corporations.code も同じ理由でテナントごとに一意にする。
+          try { await conn.query(`UPDATE corporations SET tenant_id = 1 WHERE tenant_id IS NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE corporations DROP INDEX uniq_corp_code`); } catch (e) { /* already dropped */ }
+          try { await conn.query(`ALTER TABLE corporations ADD UNIQUE KEY uniq_tenant_corp_code (tenant_id, code)`); } catch (e) { /* already exists */ }
+        }
+      },
+      {
+        id: '20260924_04_branches_tenant_scoped_code',
+        up: async () => {
+          // branches.code も同じ理由でテナントごとに一意にする。
+          try { await conn.query(`UPDATE branches SET tenant_id = 1 WHERE tenant_id IS NULL`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE branches DROP INDEX code`); } catch (e) { /* already dropped */ }
+          try { await conn.query(`ALTER TABLE branches ADD UNIQUE KEY uniq_tenant_branch_code (tenant_id, code)`); } catch (e) { /* already exists */ }
+        }
       }
     ];
     for (const m of migrations) {

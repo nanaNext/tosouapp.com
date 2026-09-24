@@ -184,7 +184,14 @@ module.exports = {
     ]);
     return res.affectedRows > 0;
   },
-  async getById(id) {
+  async getById(id, tenantId = null) {
+    if (tenantId != null) {
+      const [[row]] = await db.query(
+        `SELECT wr.* FROM work_reports wr JOIN users u ON u.id = wr.userId WHERE wr.id = ? AND u.tenant_id = ? LIMIT 1`,
+        [id, tenantId]
+      );
+      return row || null;
+    }
     const [[row]] = await db.query(`SELECT * FROM work_reports WHERE id = ? LIMIT 1`, [id]);
     return row || null;
   },
