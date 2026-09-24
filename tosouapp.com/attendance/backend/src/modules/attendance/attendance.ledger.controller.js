@@ -123,12 +123,20 @@ async function buildLedgerRows({ tenantId, month, departmentId }) {
           kubun: isOff ? (kubun || '休日') : (kubun || '通常'),
           checkIn: computed ? fmtHm(computed.checkIn) : (openCheckIn ? fmtHm(openCheckIn) : ''),
           checkOut: computed ? fmtHm(computed.checkOut) : '',
-          breakMinutes: daily?.break_minutes ?? null,
+          // daily.break_minutes chỉ có giá trị khi ai đó từng NHẬP TAY (admin sửa,
+          // hoặc nhân viên tự lưu qua 簡易登録画面) — nếu chưa ai đụng tới thì vẫn
+          // NULL dù giờ công (実働) đã trừ đúng giờ nghỉ mặc định của ca. Hiện fallback
+          // sang computed.breakMinutes (giờ nghỉ THẬT đã dùng để tính 実働) thay vì để
+          // trống, tránh hiểu nhầm "chưa nghỉ trưa" trong khi thực ra đã trừ rồi.
+          breakMinutes: daily?.break_minutes ?? computed?.breakMinutes ?? null,
           regularMinutes: computed?.regularMinutes || 0,
           overtimeMinutes: computed?.overtimeMinutes || 0,
           nightMinutes: computed?.nightMinutes || 0,
           isHolidayWork,
-          memo: computed?.memo || computed?.notes || null
+          // 備考は「遅刻・早退・体調不良」などの理由(attendance_daily.reason)専用 —
+          // 作業内容の自由記述(attendance.memo)は別欄(作業報告)で管理するため、ここには
+          // 出さない(以前はmemoを出していたため作業内容が混ざって見えていた)。
+          memo: daily?.reason || null
         });
       }
     }

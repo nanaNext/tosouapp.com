@@ -334,6 +334,7 @@ async function computeRecord(rec, ctx = null) {
     template,
     regularMinutes: regular,
     overtimeMinutes: overtime,
+    breakMinutes: breakMin,
     nightMinutes: metrics.nightMinutes,
     isAnomaly: metrics.isAnomaly,
     anomalyType: metrics.anomalyType,
