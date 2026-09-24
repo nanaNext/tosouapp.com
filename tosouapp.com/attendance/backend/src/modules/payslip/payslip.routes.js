@@ -91,7 +91,13 @@ router.post('/admin/upload',
     const uploadTenantId = req.tenantId || 0;
     const s3Key = `payslips/${uploadTenantId}/${filename}`;
     if (s3Service.isR2Configured()) {
-      await s3Service.uploadToR2(s3Key, outBuf, 'application/pdf');
+      // uploadToR2 không throw khi lỗi (chỉ trả về false) — PHẢI kiểm tra kết quả,
+      // nếu không sẽ tạo bản ghi payslip_files trỏ tới 1 file không hề tồn tại
+      // (đây chính là nguyên nhân lỗi "File missing" phát hiện với dữ liệu cũ).
+      const uploaded = await s3Service.uploadToR2(s3Key, outBuf, 'application/pdf');
+      if (!uploaded) {
+        return res.status(502).json({ message: 'ファイルの保存に失敗しました。もう一度お試しください。' });
+      }
     } else {
       const dstPath = path.join(__dirname, '../../', 'uploads', 'payslips', filename);
       fs.mkdirSync(path.dirname(dstPath), { recursive: true });
@@ -355,7 +361,11 @@ router.post('/admin/replace/:id',
 
     const replaceTenantId = req.tenantId || 0;
     if (s3Service.isR2Configured()) {
-      await s3Service.uploadToR2(`payslips/${replaceTenantId}/${filename}`, outBuf, 'application/pdf');
+      const uploaded = await s3Service.uploadToR2(`payslips/${replaceTenantId}/${filename}`, outBuf, 'application/pdf');
+      if (!uploaded) {
+        try { fs.unlinkSync(srcPath); } catch (e) { /* silently ignored */ }
+        return res.status(502).json({ message: 'ファイルの保存に失敗しました。もう一度お試しください。' });
+      }
       try { fs.unlinkSync(srcPath); } catch (e) { /* silently ignored */ }
       // Delete old file from S3 (try tenant-prefixed, then legacy)
       if (target.filename) {
@@ -429,7 +439,11 @@ router.post('/admin/replace-by-month',
 
     const replaceByMonthTenantId = req.tenantId || 0;
     if (s3Service.isR2Configured()) {
-      await s3Service.uploadToR2(`payslips/${replaceByMonthTenantId}/${filename}`, outBuf, 'application/pdf');
+      const uploaded = await s3Service.uploadToR2(`payslips/${replaceByMonthTenantId}/${filename}`, outBuf, 'application/pdf');
+      if (!uploaded) {
+        try { fs.unlinkSync(srcPath); } catch (e) { /* silently ignored */ }
+        return res.status(502).json({ message: 'ファイルの保存に失敗しました。もう一度お試しください。' });
+      }
       try { fs.unlinkSync(srcPath); } catch (e) { /* silently ignored */ }
       // Delete old file from S3 (try tenant-prefixed, then legacy)
       if (target.filename) {

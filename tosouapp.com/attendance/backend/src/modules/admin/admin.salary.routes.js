@@ -477,12 +477,14 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName, 
   if (s3Service.isR2Configured()) {
     const success = await s3Service.uploadToR2(`payslips/${filename}`, outBuf, 'application/pdf');
     if (!success) {
-      // Fallback to local disk if R2 upload fails
-      console.error('[Payslip] R2 upload failed, falling back to local storage');
-      const dir = path.join(__dirname, '../../', 'uploads', 'payslips');
-      fs.mkdirSync(dir, { recursive: true });
-      const filePath = path.join(dir, filename);
-      fs.writeFileSync(filePath, outBuf);
+      // KHÔNG fallback về local disk khi R2 lỗi: trên Render (và các host tương tự)
+      // đĩa cục bộ là ephemeral — bị xóa sạch ở lần deploy/restart tiếp theo. File
+      // "fallback" đó sẽ mất, nhưng bản ghi DB (payslip_files/payslip_deliveries)
+      // vẫn còn mãi, tạo ra đúng lỗi "File missing"/"PDFが見つかりません" đã gặp
+      // với dữ liệu cũ. Phải báo lỗi ngay để admin thử lại, không được âm thầm
+      // coi như đã lưu thành công.
+      console.error('[Payslip] R2 upload failed');
+      throw new Error('ファイルの保存に失敗しました（R2アップロードエラー）。もう一度お試しください。');
     }
   } else {
     // Fallback to local fs if R2 not configured

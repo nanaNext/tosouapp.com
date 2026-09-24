@@ -47,19 +47,25 @@ router.get('/my/published', authenticate, authorize('employee','manager','admin'
       if (!latestByMonth.has(m)) latestByMonth.set(m, row);
     }
     
-    const items = publishedInputs.map(input => {
-      const m = String(input.month);
-      const r = latestByMonth.get(m);
-      return {
-        id: r?.id || null,
-        month: m,
-        publishedAt: r?.sent_at || input.updated_at || null,
-        publishedBy: r?.sent_by || input.updated_by || null,
-        hasPdf: true,
-        fileName: r?.original_name || null,
-        isRead: !!r?.is_read
-      };
-    });
+    // is_published=1 chỉ đánh dấu "đã公開", KHÔNG đảm bảo có file thật đi kèm
+    // (VD dữ liệu cũ set thẳng vào DB, hoặc publish rồi sau đó payslip_deliveries
+    // bị xóa) — nếu không có bản ghi payslipDeliveries thật (r) thì bỏ qua, tránh
+    // hiện link "PDFが見つかりません" cho nhân viên.
+    const items = publishedInputs
+      .map(input => {
+        const m = String(input.month);
+        const r = latestByMonth.get(m);
+        return {
+          id: r?.id || null,
+          month: m,
+          publishedAt: r?.sent_at || input.updated_at || null,
+          publishedBy: r?.sent_by || input.updated_by || null,
+          hasPdf: !!r,
+          fileName: r?.original_name || null,
+          isRead: !!r?.is_read
+        };
+      })
+      .filter(item => item.hasPdf);
     
     // Sort by month descending
     items.sort((a, b) => b.month.localeCompare(a.month));
