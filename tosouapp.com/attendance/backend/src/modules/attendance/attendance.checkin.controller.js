@@ -62,10 +62,15 @@ exports.checkIn = async (req, res) => {
     try {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const startTime = String(result?.checkIn || '').slice(11, 19) || null;
-      await workReportsRepo.create({
-        userId, date: dtStr, startTime, endTime: null, workType,
-        site: '', work: '', status: 'pending', attendanceId: result?.id || null
-      });
+      // 同じ日に複数回出勤打刻すると重複行が量産されるバグがあったため、
+      // その日に既に作業報告がある場合は新規作成しない（2回目以降の出勤は既存行を使う）。
+      const existingReports = await workReportsRepo.listByUserDate(userId, dtStr);
+      if (!existingReports.length) {
+        await workReportsRepo.create({
+          userId, date: dtStr, startTime, endTime: null, workType,
+          site: '', work: '', status: 'pending', attendanceId: result?.id || null
+        });
+      }
     } catch (err) {
       log.warn('auto_create_work_report_failed', { userId, error_message: err.message });
     }

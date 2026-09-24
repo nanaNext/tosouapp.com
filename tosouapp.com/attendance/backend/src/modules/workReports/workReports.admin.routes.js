@@ -116,10 +116,30 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       LEFT JOIN attendance_daily ad
         ON ad.userId = u.id
        AND ad.date = ?
-      LEFT JOIN attendance a
-        ON a.userId = u.id AND DATE(COALESCE(a.checkIn, a.checkOut)) = ?
-      LEFT JOIN work_reports wr
-        ON wr.userId = u.id AND wr.date = ?
+      LEFT JOIN (
+        SELECT
+          userId,
+          MIN(id) AS id,
+          MIN(checkIn) AS checkIn,
+          CASE WHEN SUM(checkOut IS NULL) > 0 THEN NULL ELSE MAX(checkOut) END AS checkOut
+        FROM attendance
+        WHERE DATE(COALESCE(checkIn, checkOut)) = ?
+        GROUP BY userId
+      ) a ON a.userId = u.id
+      LEFT JOIN (
+        SELECT userId, work_type, site, work, updated_at
+        FROM (
+          SELECT userId, work_type, site, work, updated_at,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY userId
+                   ORDER BY (CASE WHEN (site IS NOT NULL AND site <> '') OR (work IS NOT NULL AND work <> '') THEN 1 ELSE 0 END) DESC,
+                            updated_at DESC
+                 ) AS rn
+          FROM work_reports
+          WHERE date = ?
+        ) ranked
+        WHERE rn = 1
+      ) wr ON wr.userId = u.id
       WHERE u.employment_status = 'active'
         ${roleScopeSql(req, 'u')}
         ${req.tenantId ? `AND u.tenant_id = ${parseInt(String(req.tenantId), 10)}` : ''}

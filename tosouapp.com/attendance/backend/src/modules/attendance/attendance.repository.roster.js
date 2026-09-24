@@ -84,27 +84,39 @@ module.exports = {
         a.shiftId AS shiftId,
         a.checkIn AS checkIn,
         a.checkOut AS checkOut,
-        a.location AS site,
-        a.memo AS work,
+        a.site AS site,
+        a.work AS work,
         ad.kubun AS dailyKubun,
         sr.status AS shiftStatus,
         sr.leaveType AS shiftLeaveType
       FROM users u
       LEFT JOIN departments d
         ON d.id = u.departmentId
-      LEFT JOIN leave_requests lr
-        ON lr.userId = u.id
-       AND lr.status = 'approved'
-       AND ? BETWEEN lr.startDate AND lr.endDate
       LEFT JOIN attendance_daily ad
         ON ad.userId = u.id AND ad.date = ?
       LEFT JOIN shift_requests sr
         ON sr.userId = u.id AND sr.date = ?
-      LEFT JOIN attendance a
-        ON a.userId = u.id AND (DATE(a.checkIn) = ? OR (a.checkIn IS NULL AND DATE(a.checkOut) = ?))
+      LEFT JOIN (
+        SELECT
+          userId,
+          MIN(id) AS id,
+          MIN(shiftId) AS shiftId,
+          MIN(checkIn) AS checkIn,
+          CASE WHEN SUM(checkOut IS NULL) > 0 THEN NULL ELSE MAX(checkOut) END AS checkOut,
+          MAX(CASE WHEN (location IS NOT NULL AND location <> '') OR (memo IS NOT NULL AND memo <> '') THEN location END) AS site,
+          MAX(CASE WHEN (location IS NOT NULL AND location <> '') OR (memo IS NOT NULL AND memo <> '') THEN memo END) AS work
+        FROM attendance
+        WHERE DATE(checkIn) = ? OR (checkIn IS NULL AND DATE(checkOut) = ?)
+        GROUP BY userId
+      ) a ON a.userId = u.id
       WHERE u.employment_status = 'active'
         AND u.role IN ('employee','manager')
-        AND lr.id IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM leave_requests lr
+          WHERE lr.userId = u.id
+            AND lr.status = 'approved'
+            AND ? BETWEEN lr.startDate AND lr.endDate
+        )
         ${tidClause}
       ORDER BY
         COALESCE(u.employee_code, '') ASC,
