@@ -39,5 +39,6 @@ debug_*.js
 # cleanup). Backups belong in BACKUP_DIR / off-site storage, not the repo.
 *.sql
 attendance/backend/backups/
+attendance/backups/
 test-results/
 .idea/
