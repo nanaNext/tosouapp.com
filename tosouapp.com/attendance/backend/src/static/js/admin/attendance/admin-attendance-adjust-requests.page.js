@@ -14,7 +14,7 @@ function currentMonth() {
 
 const STATUS_META = {
   pending: { label: '申請中', style: 'background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;' },
-  approved: { label: '承認', style: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;' },
+  approved: { label: '承認済み', style: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;' },
   rejected: { label: '却下', style: 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;' }
 };
 
