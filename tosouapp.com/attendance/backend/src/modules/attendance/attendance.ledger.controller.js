@@ -133,10 +133,11 @@ async function buildLedgerRows({ tenantId, month, departmentId }) {
           overtimeMinutes: computed?.overtimeMinutes || 0,
           nightMinutes: computed?.nightMinutes || 0,
           isHolidayWork,
-          // 備考は「遅刻・早退・体調不良」などの理由(attendance_daily.reason)専用 —
-          // 作業内容の自由記述(attendance.memo)は別欄(作業報告)で管理するため、ここには
-          // 出さない(以前はmemoを出していたため作業内容が混ざって見えていた)。
-          memo: daily?.reason || null
+          // 備考は月次勤怠入力画面の「備考」欄(attendance_daily.memo)と同じソースを表示する。
+          // 同画面の「理由」欄(attendance_daily.reason、遅刻/早退の定型理由)とは別物 —
+          // 作業内容の自由記述(attendance.memo、別テーブル)は作業報告の管轄なのでここには
+          // 出さない(以前はそちらを出していたため作業内容が混ざって見えていた)。
+          memo: daily?.memo || null
         });
       }
     }
