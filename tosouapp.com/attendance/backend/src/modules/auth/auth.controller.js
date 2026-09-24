@@ -578,7 +578,16 @@ exports.refresh = async (req, res) => {
     } catch (e) { /* silently ignored */ }
 
     // Preserve tid and role from the current session_token cookie
-    // so impersonation/tenant sessions keep their context after refresh
+    // so impersonation/tenant sessions keep their context after refresh.
+    // BUG FIX: jwt.verify() từ chối token đã hết hạn theo mặc định — mà /refresh
+    // CHỈ được gọi khi access token đã hết hạn, nên preservedTid trước đây LUÔN
+    // rỗng (bắt lỗi âm thầm ở catch bên dưới) => user mất tid vĩnh viễn sau lần
+    // refresh đầu tiên, mọi thao tác sau đó (chấm công...) ghi tenant_id=NULL.
+    // Dùng ignoreExpiration để vẫn đọc được claim của token cũ (chữ ký vẫn phải
+    // đúng), và luôn lấy user.tenant_id thật từ DB làm nguồn xác thực chính —
+    // chỉ ưu tiên preservedTid khi nó KHÁC tenant gốc (case sysadmin/owner đang
+    // impersonate 1 công ty khác), giúp tự phục hồi các phiên đang bị lỗi ngay
+    // lần refresh tiếp theo mà không cần đăng xuất lại.
     let preservedTid = null;
     let preservedRole = null;
     try {
@@ -587,7 +596,7 @@ exports.refresh = async (req, res) => {
         const secrets = [jwtSecretCurrent, process.env.JWT_SECRET_PREVIOUS].filter(Boolean);
         for (const s of secrets) {
           try {
-            const decoded = jwt.verify(sessionToken, s);
+            const decoded = jwt.verify(sessionToken, s, { ignoreExpiration: true });
             if (decoded?.tid) {
               preservedTid = decoded.tid;
               // Only preserve role if it came from a select-tenant flow (has tid)
@@ -602,9 +611,12 @@ exports.refresh = async (req, res) => {
       }
     } catch (e) { /* silently ignored */ }
 
-    const effectiveRole = preservedTid && preservedRole ? preservedRole : role2;
+    const ownTenantId = u?.tenant_id || null;
+    const isImpersonating = preservedTid && ownTenantId && String(preservedTid) !== String(ownTenantId);
+    const effectiveTid = isImpersonating ? preservedTid : (ownTenantId || preservedTid);
+    const effectiveRole = isImpersonating && preservedRole ? preservedRole : role2;
     const tokenPayload = { id: row.userId, role: effectiveRole, v: tokenVersion2 };
-    if (preservedTid) tokenPayload.tid = preservedTid;
+    if (effectiveTid) tokenPayload.tid = effectiveTid;
     const token = jwt.sign(tokenPayload, jwtSecretCurrent, { expiresIn: accessTokenExpires });
     // rotate refresh token
     const newRt = crypto.randomBytes(48).toString('base64url');
