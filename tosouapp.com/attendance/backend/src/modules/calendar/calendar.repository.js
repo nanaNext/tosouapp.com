@@ -316,7 +316,7 @@ module.exports = {
   async computeYear(year, tenantId = 0) {
     await this.ensureMaterializedJapan(year);
     const fixed = await this.listFixed(year, tenantId);
-    const jpAll = await this.listByTypes(year, ['jp_auto','jp_substitute','jp_bridge']);
+    const jpAll = await this.listByTypes(year, ['jp_auto','jp_substitute','jp_bridge'], tenantId);
     const enrich = (r) => ({ ...r, name_ja: nameJa(r.name), name_en: nameEnFromStored(r.name) });
     const jp = jpAll.filter(r => r.type === 'jp_auto').map(enrich);
     const jpSubstitute = jpAll.filter(r => r.type === 'jp_substitute').map(enrich);
