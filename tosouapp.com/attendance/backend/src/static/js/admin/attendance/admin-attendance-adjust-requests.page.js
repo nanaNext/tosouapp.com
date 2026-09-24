@@ -127,11 +127,15 @@ export async function mount({ content } = {}) {
       const processed = r.processedByName
         ? `${escapeHtml(r.processedByName)}<br><span style="font-size:11px;color:#94a3b8;">${escapeHtml(r.processedAt ? String(r.processedAt).slice(0, 16) : '')}</span>`
         : '—';
-      const statusCell = r.status === 'pending'
-        ? `<span style="display:inline-block;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:600;margin-bottom:6px;${meta.style}">${meta.label}</span><br>
-           <button type="button" class="req-approve-btn" data-type="${r.type}" data-id="${r.requestId}" style="height:28px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-right:6px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;">承認</button>
-           <button type="button" class="req-reject-btn" data-type="${r.type}" data-id="${r.requestId}" style="height:28px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;">却下</button>`
-        : `<span style="display:inline-block;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:600;${meta.style}">${meta.label}</span>`;
+      const statusCell = `
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;${meta.style}">${meta.label}</span>
+          ${r.status === 'pending' ? `
+            <button type="button" class="req-approve-btn" data-type="${r.type}" data-id="${r.requestId}" style="height:26px;padding:0 10px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #cbd5e1;background:#fff;color:#166534;white-space:nowrap;">承認</button>
+            <button type="button" class="req-reject-btn" data-type="${r.type}" data-id="${r.requestId}" style="height:26px;padding:0 10px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #cbd5e1;background:#fff;color:#991b1b;white-space:nowrap;">却下</button>
+          ` : ''}
+        </div>
+      `;
       return `
         <tr>
           <td style="${cellStyle}">${escapeHtml(r.typeLabel)}</td>
