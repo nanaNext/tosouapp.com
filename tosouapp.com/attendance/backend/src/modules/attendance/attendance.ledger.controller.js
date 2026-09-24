@@ -133,11 +133,11 @@ async function buildLedgerRows({ tenantId, month, departmentId }) {
           overtimeMinutes: computed?.overtimeMinutes || 0,
           nightMinutes: computed?.nightMinutes || 0,
           isHolidayWork,
-          // 備考は月次勤怠入力画面の「備考」欄(attendance_daily.memo)と同じソースを表示する。
-          // 同画面の「理由」欄(attendance_daily.reason、遅刻/早退の定型理由)とは別物 —
-          // 作業内容の自由記述(attendance.memo、別テーブル)は作業報告の管轄なのでここには
-          // 出さない(以前はそちらを出していたため作業内容が混ざって見えていた)。
-          memo: daily?.memo || null
+          // 月次勤怠入力画面は列ごとに別カラム: 作業内容→attendance_daily.memo、
+          // 理由(遅刻/早退)→.reason、備考→.notes。勤怠記録の備考は同画面の「備考」列
+          // (.notes)とだけ揃える — .memoは実は「作業内容」の中身なので出さない
+          // (これを備考に出していたせいで作業内容が混ざって見えていた)。
+          memo: daily?.notes || null
         });
       }
     }
