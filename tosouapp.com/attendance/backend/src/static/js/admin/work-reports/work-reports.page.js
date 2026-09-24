@@ -39,6 +39,13 @@ const STATUS_META = {
   rejected: { label: '差戻し', style: 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;' }
 };
 
+// 現場が未入力でも、出勤時に選んだ勤務形態（出社/在宅）が分かればそれを代わりに表示する。
+// 「現場」に対応するworkType('satellite')は本人が現場名を書く前提なのでここでは補わない。
+const WORK_TYPE_LABEL = {
+  onsite: '出社',
+  remote: '在宅'
+};
+
 export async function mount({ content } = {}) {
   const admin = await requireAdmin();
   const root = content || document.getElementById('attendanceHubContent') || document.getElementById('adminContent');
@@ -150,7 +157,7 @@ export async function mount({ content } = {}) {
         <tr>
           <td style="${cellStyle}">${escapeHtml(String(r.date || '').slice(0, 10))}</td>
           <td style="${cellStyle}font-weight:600;">${escapeHtml(r.username || '')}${r.employeeCode ? `<br><span style="font-size:11px;font-weight:400;color:#94a3b8;">${escapeHtml(r.employeeCode)}</span>` : ''}</td>
-          <td style="${cellStyle}max-width:180px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.site || '—')}</td>
+          <td style="${cellStyle}max-width:180px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.site || WORK_TYPE_LABEL[r.workType] || '—')}</td>
           <td style="padding:14px 12px;border-bottom:1px solid #f1f5f9;max-width:260px;white-space:pre-wrap;word-break:break-word;color:#334155;">${escapeHtml(r.work || '')}</td>
           <td style="${cellStyle}">${escapeHtml(fmtTime(r.startTime))}</td>
           <td style="${cellStyle}">${escapeHtml(fmtTime(r.endTime))}</td>

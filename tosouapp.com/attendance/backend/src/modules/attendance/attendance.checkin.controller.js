@@ -63,7 +63,7 @@ exports.checkIn = async (req, res) => {
       const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const startTime = String(result?.checkIn || '').slice(11, 19) || null;
       await workReportsRepo.create({
-        userId, date: dtStr, startTime, endTime: null,
+        userId, date: dtStr, startTime, endTime: null, workType,
         site: '', work: '', status: 'pending', attendanceId: result?.id || null
       });
     } catch (err) {
