@@ -504,7 +504,7 @@ import{escapeHtml as r,delegate as Et}from"../admin/_shared/dom.js";import{api a
           <div style="font-size:28px;">\u23F3</div>
           <div>\u8AAD\u307F\u8FBC\u307F\u4E2D\u2026</div>
         </div>
-      `),pt(null);try{const o=await Mt.get(`/api/admin/work-reports?date=${encodeURIComponent(t)}`,{signal:L});if(!D)return;let a=o&&Array.isArray(o.items)?o.items:[];a=a.filter(m=>{const I=String(m.role||"").toLowerCase();return I!=="admin"&&I!=="manager"});const n=a.filter(m=>m.status==="checked_out"),c=n.length,s=n.filter(m=>!!m.report).length,b=n.filter(m=>!m.report).length;if(pt({required:c,submitted:s,missing:b}),!e)return;if(!a.length){e.innerHTML=`
+      `),pt(null);try{const o=await Mt.get(`/api/admin/work-reports?date=${encodeURIComponent(t)}`,{signal:L});if(!D)return;let a=o&&Array.isArray(o.items)?o.items:[];a=a.filter(m=>{const I=String(m.role||"").toLowerCase();return I!=="admin"&&I!=="manager"});{const _seen=new Set();a=a.filter(_it=>{const _sig=[_it.userId,_it.status,_it.attendance&&_it.attendance.checkIn,_it.attendance&&_it.attendance.checkOut,_it.report&&_it.report.site,_it.report&&_it.report.work,_it.dailyKubun,_it.workType].join("|");if(_seen.has(_sig))return false;_seen.add(_sig);return true;});}const n=a.filter(m=>m.status==="checked_out"),c=n.length,s=n.filter(m=>!!m.report).length,b=n.filter(m=>!m.report).length;if(pt({required:c,submitted:s,missing:b}),!e)return;if(!a.length){e.innerHTML=`
           <div class="empty-state">
             <div style="font-size:28px;">\u{1F5C2}\uFE0F</div>
             <div>\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>
