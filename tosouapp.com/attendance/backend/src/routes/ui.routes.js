@@ -69,8 +69,8 @@ const authorizePage = (...roles) => (req, res, next) => {
 router.get('/ui/login', sendPageNoCache('login.html'));
 router.get('/login', sendPageNoCache('login.html'));
 router.get('/login.html', sendPageNoCache('login.html'));
-// Admin / Manager login (dark slate theme)
-router.get('/admin/login', sendPageNoCache('admin-login.html'));
+// Admin / Manager login — same screen as employee login, only permissions differ after login
+router.get('/admin/login', sendPageNoCache('login.html'));
 // Sysadmin platform login (dark purple theme) — pass client IP for warning display
 router.get('/platform/login', (req, res) => {
   setNoStore(res);
