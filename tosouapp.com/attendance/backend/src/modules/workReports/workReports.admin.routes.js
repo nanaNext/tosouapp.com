@@ -121,7 +121,10 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
           userId,
           MIN(id) AS id,
           MIN(checkIn) AS checkIn,
-          CASE WHEN SUM(checkOut IS NULL) > 0 THEN NULL ELSE MAX(checkOut) END AS checkOut
+          CASE WHEN SUM(checkOut IS NULL) > 0 THEN NULL ELSE MAX(checkOut) END AS checkOut,
+          MAX(CASE WHEN (location IS NOT NULL AND location <> '') OR (memo IS NOT NULL AND memo <> '') THEN location END) AS location,
+          MAX(CASE WHEN (location IS NOT NULL AND location <> '') OR (memo IS NOT NULL AND memo <> '') THEN memo END) AS memo,
+          MAX(work_type) AS work_type
         FROM attendance
         WHERE DATE(COALESCE(checkIn, checkOut)) = ?
         GROUP BY userId
