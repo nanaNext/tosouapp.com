@@ -84,11 +84,14 @@ async function main() {
       const distinctContents = new Set(withContent.map(contentKey));
       if (distinctContents.size === 1) {
         if (withContent.length > 1) {
-          // 内容は完全一致でも、承認状態(承認/却下/理由/承認者)が食い違う場合は
-          // 別々にレビューされた可能性がある → 自動削除せず人の確認に回す。
+          // 内容は完全一致でも、レビュー済み(承認/却下)の行が2件以上あって
+          // それぞれ状態が食い違う場合(例: 別の承認者が別々に承認/却下)だけは
+          // 自動削除せず人の確認に回す。レビュー済みが1件だけなら、残りの
+          // pending重複は情報を持たないので安全に削除できる。
           const reviewKey = (r) => `${r.status}\u0001${r.approved_by || ''}\u0001${r.rejected_reason || ''}`;
-          const distinctReviewStates = new Set(withContent.map(reviewKey));
-          if (distinctReviewStates.size > 1) {
+          const nonPending = withContent.filter(r => r.status !== 'pending');
+          const distinctNonPendingReviewStates = new Set(nonPending.map(reviewKey));
+          if (distinctNonPendingReviewStates.size > 1) {
             for (const r of blank) {
               toDelete.push({ id: r.id, userId: g.userId, date: g.date, reason: 'blank-scaffold-with-conflicting-review-states', snapshot: r, keptId: null });
             }
