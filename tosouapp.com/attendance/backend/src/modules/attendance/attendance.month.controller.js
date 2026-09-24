@@ -8,8 +8,6 @@ const {
   resolveTargetUserId,
   isEditableMonth,
   getMonthStatusValue,
-  isKoujiUser,
-  buildOffSetFromCalendarDetail,
   getUserOffDaySet,
 } = require('./attendance.utils');
 
@@ -24,7 +22,7 @@ async function computeMonthMissing(userId, y, m, tenantId = null) {
   const user = await userRepo.getUserById(userId).catch(() => null);
   const isPartTime = user?.employment_type === 'part_time';
 
-  const off = await getUserOffDaySet(y, userId);
+  const off = await getUserOffDaySet(y, userId, tenantId || 0);
   const dailyRows = await repo.listDailyBetween(userId, from, to, { tenantId }).catch(() => []);
   const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
   const segRows = await repo.listByUserBetween(userId, from, to, { tenantId }).catch(() => []);
@@ -74,7 +72,7 @@ async function computeMonthMissingDetailed(userId, y, m, tenantId = null) {
   const user = await userRepo.getUserById(userId).catch(() => null);
   const isPartTime = user?.employment_type === 'part_time';
 
-  const off = await getUserOffDaySet(y, userId);
+  const off = await getUserOffDaySet(y, userId, tenantId || 0);
   const dailyRows = await repo.listDailyBetween(userId, from, to, { tenantId }).catch(() => []);
   const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
   const segRows = await repo.listByUserBetween(userId, from, to, { tenantId }).catch(() => []);
@@ -179,7 +177,7 @@ exports.getMonthStatusBulk = async (req, res) => {
     const workKubunSet = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
     const enrich = async (uid) => {
       try {
-        const off = await getUserOffDaySet(y, uid);
+        const off = await getUserOffDaySet(y, uid, req.tenantId || 0);
         const dailyRows = await repo.listDailyBetween(uid, from, to, { tenantId: req.tenantId || null }).catch(() => []);
         const dailyKubun = new Map((dailyRows || []).map(r => [String(r?.date || '').slice(0, 10), String(r?.kubun || '').trim()]));
         const segRows = await repo.listByUserBetween(uid, from, to, { tenantId: req.tenantId || null }).catch(() => []);
@@ -349,15 +347,23 @@ exports.approveReadyMonth = async (req, res) => {
     // 対象月の後に他部署へ異動した人も、この月の承認対象からは外れない。
     const monthEndDate = `${y}-${String(m).padStart(2, '0')}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
     const rows = await repo.getActiveUserIds(effectiveDeptId, { tenantId: req.tenantId || null, asOfDate: monthEndDate });
+    // userId だけだと管理者がどの社員か分からないので、氏名/社員番号も返す。
+    // 1人ずつ getUserById を呼ぶと N+1 になる上に何かの理由で個別取得が失敗しやすいので、
+    // 対象者をまとめて1回で取得してから id で引く。
+    const { rows: allUsersForNames } = await userRepo.listUsersPaged({ tenantId: req.tenantId || null, limit: 5000 }).catch(() => ({ rows: [] }));
+    const userNameById = new Map((allUsersForNames || []).map(u => [Number(u.id), u]));
     let approved = 0, submitted = 0, skipped = 0;
     const results = [];
     for (const r of (rows || [])) {
       const uid = Number(r.userId);
+      const u = userNameById.get(uid) || null;
+      const employeeCode = u?.employee_code || null;
+      const username = u?.username || u?.email || null;
       const st = await repo.getMonthStatus(uid, y, m, { tenantId: req.tenantId || null }).catch(() => null);
       const status = String(st?.status || '').trim() || 'draft';
       const missing = await computeMonthMissing(uid, y, m, req.tenantId || null).catch(() => ['error']);
       if (missing && missing.length) {
-        results.push({ userId: uid, status, ok: false, reason: 'missing_days', missing });
+        results.push({ userId: uid, employeeCode, username, status, ok: false, reason: 'missing_days', missing });
         skipped++;
         continue;
       }
@@ -367,7 +373,7 @@ exports.approveReadyMonth = async (req, res) => {
       }
       await repo.setMonthStatus(uid, y, m, 'approved', req.user?.id, { tenantId: req.tenantId || null }).catch(() => {});
       approved++;
-      results.push({ userId: uid, status: 'approved', ok: true });
+      results.push({ userId: uid, employeeCode, username, status: 'approved', ok: true });
     }
     res.status(200).json({ month: ym, approved, submitted, skipped, results });
   } catch (err) {
@@ -397,6 +403,35 @@ exports.approveMonth = async (req, res) => {
     res.status(200).json({ ok: true, userId, year: y, month: m, status: 'approved' });
   } catch (err) {
     res.status(Number(err?.status || 500)).json({ message: err.message });
+  }
+};
+
+// API: Toàn công ty đã đóng tháng X chưa? (đếm active users vs users đã 'approved').
+// Dùng cho banner "未締め/締め済み" — không tạo cờ khóa mới, chỉ tổng hợp attendance_month_status có sẵn.
+exports.getMonthClosureSummary = async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+    const ym = String(req.query.month || '').slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ message: 'Missing month (YYYY-MM)' });
+    const y = parseInt(ym.slice(0, 4), 10);
+    const m = parseInt(ym.slice(5, 7), 10);
+    const tenantId = req.tenantId || null;
+    const activeRows = await repo.getActiveUserIds(null, { tenantId });
+    const ids = activeRows.map(r => Number(r.userId));
+    if (!ids.length) return res.status(200).json({ month: ym, closed: true, approved: 0, total: 0, pending: [] });
+    const statusRows = await repo.getMonthStatusBulk(ids, y, m, { tenantId });
+    const statusMap = new Map((statusRows || []).map(r => [Number(r.userId), r.status]));
+    const pending = [];
+    let approved = 0;
+    for (const uid of ids) {
+      const status = statusMap.get(uid) || 'draft';
+      if (status === 'approved') approved++;
+      else pending.push({ userId: uid, status });
+    }
+    res.status(200).json({ month: ym, closed: pending.length === 0, approved, total: ids.length, pending });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 

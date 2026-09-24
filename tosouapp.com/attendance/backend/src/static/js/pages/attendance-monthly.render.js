@@ -1160,8 +1160,10 @@
           reasonSel.style.visibility = 'visible';
           reasonSel.disabled = !state.editableMonth;
         } else {
+          // 現場(任意)と同じ理由で value は消さない — 保存時にこの select の value を
+          // そのまま読むため (attendance-monthly.controller.js)、一時的に非表示になった
+          // だけで選択済みの理由が消えてしまうと、後で条件が戻った時に選び直しが必要になる。
           reasonSel.style.visibility = 'hidden';
-          reasonSel.value = '';
           reasonSel.disabled = true;
         }
       }

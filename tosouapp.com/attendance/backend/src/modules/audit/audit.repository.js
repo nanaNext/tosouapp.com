@@ -57,13 +57,18 @@ module.exports = {
       data.afterData
     ]);
   },
-  async listLogs({ userId, action, actionPrefix, from, to, page = 1, pageSize = 50, tenantId = null }) {
+  async listLogs({ userId, action, actionPrefix, actionPrefixes, from, to, page = 1, pageSize = 50, tenantId = null }) {
     const tid = _tid(tenantId);
     const where = [];
     const params = [];
     if (userId) { where.push('a.userId = ?'); params.push(userId); }
     if (action) { where.push('a.action = ?'); params.push(action); }
     if (actionPrefix) { where.push('a.action LIKE ?'); params.push(`${actionPrefix}%`); }
+    const prefixList = Array.isArray(actionPrefixes) ? actionPrefixes.filter(Boolean) : [];
+    if (prefixList.length) {
+      where.push(`(${prefixList.map(() => 'a.action LIKE ?').join(' OR ')})`);
+      for (const p of prefixList) params.push(`${p}%`);
+    }
     if (from) { where.push('a.created_at >= ?'); params.push(from + ' 00:00:00'); }
     if (to) { where.push('a.created_at <= ?'); params.push(to + ' 23:59:59'); }
     if (tid != null) { where.push('u.tenant_id = ?'); params.push(tid); }
@@ -93,6 +98,8 @@ module.exports = {
 };
 
 
+// 未使用 (どこからも呼ばれていない)。DB側の trg_audit_logs_no_delete トリガーにより
+// 呼び出してもエラーになる — 保持期間削除が本当に必要になったら、先にトリガーを見直すこと。
 async function pruneOldLogs(retentionDays = 90) {
   const [result] = await db.query(
     `DELETE FROM audit_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,

@@ -14,6 +14,7 @@ const {
   isEditableMonth,
   assertMonthWritable,
 } = require('./attendance.utils');
+const summaryRepo = require('./attendance.summary.repository');
 
 // ─── Work details CRUD ────────────────────────────────────────────────────────
 
@@ -223,6 +224,9 @@ exports.putMonthBulk = async (req, res) => {
         await syncPaidLeaveByKubun(userId, ds, kubun, 'from_attendance', req.tenantId || null);
       }
     } catch (e) { /* bỏ qua lỗi */ }
+
+    // 勤怠データが変わったので、この月の36協定サマリーは再計算が必要 (次のバッチが拾う)
+    try { await summaryRepo.markDirty(userId, y, m, req.tenantId || null); } catch (e) { /* bỏ qua lỗi */ }
 
     res.status(200).json(result);
   } catch (err) {

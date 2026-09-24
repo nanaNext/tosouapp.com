@@ -1,3 +1,4 @@
+import { mount as mountCorporations } from './corporations.page.js';
 import { mount as mountDepartmentsList } from './departments-list.page.js';
 import { mount as mountAssignments } from './assignments.page.js';
 import { mount as mountMonthLocks } from './month-locks.page.js';
@@ -5,6 +6,7 @@ import { mount as mountDepartmentReport } from './department-report.page.js';
 import { mount as mountChangeHistory } from './change-history.page.js';
 
 const TABS = [
+  { key: 'corporations', label: '法人', mount: mountCorporations },
   { key: 'departments', label: '部署', mount: mountDepartmentsList },
   { key: 'assignments', label: '異動', mount: mountAssignments },
   { key: 'month-locks', label: '月次締め', mount: mountMonthLocks },

@@ -80,16 +80,27 @@ module.exports = {
     await db.query(`
       CREATE TABLE IF NOT EXISTS company_holidays (
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        date DATE NOT NULL UNIQUE,
+        tenant_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        date DATE NOT NULL,
         name VARCHAR(128) NULL,
         type VARCHAR(32) NOT NULL DEFAULT 'fixed',
         is_off TINYINT(1) NOT NULL DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_tenant_date_type (tenant_id, date, type)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     try {
+      const [cols] = await db.query(`
+        SELECT COLUMN_NAME AS name
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'company_holidays'
+      `);
+      const colSet = new Set((cols || []).map(c => String(c.name)));
+      if (!colSet.has('tenant_id')) {
+        try { await db.query(`ALTER TABLE company_holidays ADD COLUMN tenant_id BIGINT UNSIGNED NOT NULL DEFAULT 0`); } catch (e) { /* silently ignored */ }
+      }
       const [idx] = await db.query(`
-        SELECT index_name 
+        SELECT index_name
         FROM information_schema.statistics
         WHERE table_schema = DATABASE() AND table_name = 'company_holidays'
       `);
@@ -97,31 +108,45 @@ module.exports = {
       if (!set.has('idx_date')) {
         try { await db.query(`ALTER TABLE company_holidays ADD INDEX idx_date (date)`); } catch (e) { /* silently ignored */ }
       }
+      if (!set.has('uniq_tenant_date_type')) {
+        // 旧UNIQUE(date) が残っている場合は先に外す（tenant_id導入前の単一テナント時代の制約）
+        if (set.has('date')) {
+          try { await db.query(`ALTER TABLE company_holidays DROP INDEX date`); } catch (e) { /* silently ignored */ }
+        }
+        try { await db.query(`ALTER TABLE company_holidays ADD UNIQUE KEY uniq_tenant_date_type (tenant_id, date, type)`); } catch (e) { /* silently ignored */ }
+      }
     } catch (e) { /* silently ignored */ }
   },
-  async listFixed(year) {
-    const [rows] = await db.query(`SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND type = 'fixed' ORDER BY date ASC`, [year]);
+  async listFixed(year, tenantId = 0) {
+    const tid = parseInt(String(tenantId || 0), 10) || 0;
+    const [rows] = await db.query(
+      `SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND type = 'fixed' AND tenant_id IN (0, ?) ORDER BY date ASC`,
+      [year, tid]
+    );
     return rows;
   },
-  async listByTypes(year, types) {
+  async listByTypes(year, types, tenantId = 0) {
+    const tid = parseInt(String(tenantId || 0), 10) || 0;
     const placeholders = (types || []).map(() => '?').join(',');
     const [rows] = await db.query(
-      `SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND type IN (${placeholders}) ORDER BY date ASC`,
-      [year, ...types]
+      `SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND type IN (${placeholders}) AND tenant_id IN (0, ?) ORDER BY date ASC`,
+      [year, ...types, tid]
     );
     return rows;
   },
-  async listAllByYear(year) {
+  async listAllByYear(year, tenantId = 0) {
+    const tid = parseInt(String(tenantId || 0), 10) || 0;
     const [rows] = await db.query(
-      `SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? ORDER BY date ASC`,
-      [year]
+      `SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND tenant_id IN (0, ?) ORDER BY date ASC`,
+      [year, tid]
     );
     return rows;
   },
-  async listOverrides(year) {
+  async listOverrides(year, tenantId = 0) {
+    const tid = parseInt(String(tenantId || 0), 10) || 0;
     const [rows] = await db.query(
-      `SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND type = 'jp_override' ORDER BY date ASC`,
-      [year]
+      `SELECT date, name, type, is_off FROM company_holidays WHERE YEAR(date) = ? AND type = 'jp_override' AND tenant_id IN (0, ?) ORDER BY date ASC`,
+      [year, tid]
     );
     return rows;
   },
@@ -167,17 +192,18 @@ module.exports = {
     const overrides = await this.listOverrides(year);
     return this.applyOverrides(list, overrides);
   },
-  async upsertFixed(dates) {
+  async upsertFixed(dates, tenantId = 0) {
+    const tid = parseInt(String(tenantId || 0), 10) || 0;
     for (const it of dates || []) {
       const date = String(it.date || it).slice(0, 10);
       const name = it.name || null;
       const type = it.type || 'fixed';
       const isOff = typeof it.is_off === 'number' ? it.is_off : (it.is_off === false ? 0 : 1);
       await db.query(`
-        INSERT INTO company_holidays (date, name, type, is_off)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO company_holidays (tenant_id, date, name, type, is_off)
+        VALUES (?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE name = VALUES(name), type = VALUES(type), is_off = VALUES(is_off)
-      `, [date, name, type, isOff]);
+      `, [tid, date, name, type, isOff]);
     }
     return { ok: true };
   },
@@ -277,9 +303,9 @@ module.exports = {
       await this.materializeJapanYear(year);
     }
   },
-  async explainDate(dateStr) {
+  async explainDate(dateStr, tenantId = 0) {
     const y = parseInt(String(dateStr).slice(0, 4), 10);
-    const r = await this.computeYear(y);
+    const r = await this.computeYear(y, tenantId);
     const list = Array.isArray(r.detail) ? r.detail : [];
     const matched = list.filter(it => String(it.date) === String(dateStr));
     const reasons = matched.map(it => ({ type: it.type, name: it.name, is_off: it.is_off }));
@@ -287,9 +313,9 @@ module.exports = {
     const isOff = offDays.includes(String(dateStr)) || reasons.some(x => x.is_off);
     return { date: dateStr, is_off: isOff ? 1 : 0, reasons };
   },
-  async computeYear(year) {
+  async computeYear(year, tenantId = 0) {
     await this.ensureMaterializedJapan(year);
-    const fixed = await this.listFixed(year);
+    const fixed = await this.listFixed(year, tenantId);
     const jpAll = await this.listByTypes(year, ['jp_auto','jp_substitute','jp_bridge']);
     const enrich = (r) => ({ ...r, name_ja: nameJa(r.name), name_en: nameEnFromStored(r.name) });
     const jp = jpAll.filter(r => r.type === 'jp_auto').map(enrich);
@@ -364,9 +390,9 @@ module.exports = {
       detail
     };
   },
-  async isOff(dateStr) {
+  async isOff(dateStr, tenantId = 0) {
     const y = parseInt(String(dateStr).slice(0, 4), 10);
-    const cal = await this.computeYear(y);
+    const cal = await this.computeYear(y, tenantId);
     return cal.off_days.includes(String(dateStr).slice(0, 10));
   }
 };

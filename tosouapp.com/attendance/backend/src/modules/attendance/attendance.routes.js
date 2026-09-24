@@ -191,6 +191,28 @@ router.post('/month/approve-ready',
   authenticate, authorize('manager', 'admin'),
   controller.approveReadyMonth);
 
+router.get('/month/closure-summary',
+  authenticate, authorize('manager', 'admin'),
+  controller.getMonthClosureSummary);
+
+router.get('/ledger/month',
+  authenticate, authorize('manager', 'admin'),
+  require('./attendance.ledger.controller').getMonthLedger);
+
+router.get('/ledger/export.xlsx',
+  authenticate, authorize('manager', 'admin'),
+  require('./attendance.ledger.controller').exportXlsx);
+
+// 36協定 月次サマリー (monthly_summaries) — 手動実行は重いので admin のみ
+const summaryCtrl = require('./attendance.summary.controller');
+router.post('/summary/recompute', authenticate, authorize('admin'), summaryCtrl.recompute);
+router.get('/summary', authenticate, authorize('manager', 'admin'), summaryCtrl.list);
+router.get('/summary/config', authenticate, authorize('manager', 'admin'), summaryCtrl.getConfig);
+router.patch('/summary/config', authenticate, authorize('admin'), summaryCtrl.setConfig);
+router.get('/summary/admin-list', authenticate, authorize('manager', 'admin'), summaryCtrl.adminList);
+router.get('/summary/export.csv', authenticate, authorize('manager', 'admin'), summaryCtrl.exportCsv);
+router.get('/summary/export.xlsx', authenticate, authorize('manager', 'admin'), summaryCtrl.exportXlsx);
+
 router.get('/month/summary',
   authenticate, authorize('employee', 'manager', 'admin'),
   controller.getMonthSummary);

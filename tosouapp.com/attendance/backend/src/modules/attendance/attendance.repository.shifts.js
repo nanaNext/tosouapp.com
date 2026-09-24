@@ -65,7 +65,10 @@ async function getAttendanceColumnSet() {
 
 module.exports = {
   async upsertShiftDefinition({ name, start_time, end_time, break_minutes, working_days, tenantId }) {
-    const tid = _tid(tenantId);
+    // UNIQUE KEY thật sự là (tenant_id, name) — luôn dùng tenant_id=0 làm sentinel
+    // (không dùng null) để ON DUPLICATE KEY UPDATE hoạt động đúng, tránh ghi đè
+    // nhầm ca của tenant khác khi trùng tên (xem ensureShiftTables()).
+    const tid = tenantId != null ? parseInt(String(tenantId), 10) : 0;
     const s = String(start_time || '').split(':').map(Number);
     const e = String(end_time || '').split(':').map(Number);
     const startMin = s[0] * 60 + s[1];
@@ -79,10 +82,7 @@ module.exports = {
       VALUES (?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), end_time = VALUES(end_time), break_minutes = VALUES(break_minutes), standard_minutes = VALUES(standard_minutes), working_days = VALUES(working_days)
     `, [name, start_time, end_time, break_minutes || 0, std, working_days || null, tid]);
-    const where = ['name = ?'];
-    const params = [name];
-    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
-    const [rows] = await db.query(`SELECT * FROM shift_definitions WHERE ${where.join(' AND ')} LIMIT 1`, params);
+    const [rows] = await db.query(`SELECT * FROM shift_definitions WHERE name = ? AND tenant_id = ? LIMIT 1`, [name, tid]);
     return rows[0];
   },
   async listShiftDefinitions({ tenantId = null } = {}) {

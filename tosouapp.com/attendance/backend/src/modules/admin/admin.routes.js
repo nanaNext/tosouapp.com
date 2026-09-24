@@ -11,6 +11,7 @@ const { permit } = require('../../core/middleware/rbac');
 const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const userCtrl = require('../users/user.controller');
 const deptRoutes = require('../departments/department.routes');
+const corpRoutes = require('../corporations/corporation.routes');
 const settingsRoutes = require('../settings/settings.routes');
 const auditRepo = require('../audit/audit.repository');
 const attendanceService = require('../attendance/attendance.service');
@@ -18,6 +19,7 @@ const attendanceRepo = require('../attendance/attendance.repository');
 const userRepo = require('../users/user.repository');
 const authRepo = require('../auth/auth.repository');
 const calendarRepo = require('../calendar/calendar.repository');
+const { getDepartmentOffDaySet } = require('../attendance/attendance.utils');
 const { companyName, payslipEncKey, payslipKeyVersion } = require('../../config/env');
 const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit');
 const salaryService = require('../salary/salary.service');
@@ -213,37 +215,9 @@ router.get('/employees/:id/export.xlsx', permit('employees','view'), async (req,
         AND date >= ? AND date <= ?
     `, [id, tenantId, start, end]);
 
-    const cal = await calendarRepo.computeYear(year).catch(() => null);
-    const isKouji = String(target.departmentName || '').includes('工事部');
-    
-    const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
-    const buildOffSet = (cal, isKouji) => {
-      const detail = cal?.detail || [];
-      const byDate = new Map();
-      for (const it of detail) {
-        const ds = String(it?.date || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-        if (!byDate.has(ds)) byDate.set(ds, []);
-        byDate.get(ds).push({ type: String(it?.type || ''), is_off: Number(it?.is_off || 0) === 1 });
-      }
-      const off = new Set();
-      for (const [ds, list] of byDate.entries()) {
-        if (!isKouji) {
-          if (list.some(x => x.is_off)) off.add(ds);
-          continue;
-        }
-        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-        const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
-        const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
-        if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
-      }
-      if (!off.size && Array.isArray(cal?.off_days) && !isKouji) {
-        for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
-      }
-      return off;
-    };
-    
-    const offSet = buildOffSet(cal, isKouji);
+    // Per-department off-day logic — tra department_holidays thật của từng công ty,
+    // không hardcode tên bộ phận "工事部" nữa (đã thay bằng cấu hình 休日設定 theo tenant).
+    const offSet = await getDepartmentOffDaySet(year, { departmentName: target.departmentName || null, tenantId: tenantId || 0 });
     const isOff = (dateStr) => offSet.has(String(dateStr).slice(0, 10));
 
     const fmt = (v) => (v == null ? '' : String(v));
@@ -777,6 +751,8 @@ router.post('/users/:id/revoke-sessions', authorize('admin'), async (req, res) =
 });
 // Departments
 router.use('/departments', deptRoutes);
+// Corporations (法人)
+router.use('/corporations', corpRoutes);
 // Settings
 router.use('/settings', authorize('admin'), settingsRoutes);
 // Audit: liệt kê có filter
@@ -786,6 +762,7 @@ router.get('/audit', authorize('admin'), async (req, res) => {
       userId: req.query.userId,
       action: req.query.action,
       actionPrefix: req.query.actionPrefix,
+      actionPrefixes: req.query.actionPrefixes ? String(req.query.actionPrefixes).split(',') : undefined,
       from: req.query.from,
       to: req.query.to,
       page: req.query.page,
@@ -973,8 +950,8 @@ router.get('/export/attendance-month.csv', authorize('admin','manager'), async (
         DATE(COALESCE(a.checkIn, a.checkOut)) AS date,
         MIN(a.checkIn) AS checkIn,
         MAX(a.checkOut) AS checkOut,
-        MAX(wr.site) AS site,
-        MAX(wr.work) AS work
+        GROUP_CONCAT(DISTINCT wr.site SEPARATOR ' / ') AS site,
+        GROUP_CONCAT(DISTINCT wr.work SEPARATOR ' / ') AS work
       FROM users u
       LEFT JOIN departments d ON d.id = u.departmentId
       INNER JOIN attendance a
@@ -1293,7 +1270,7 @@ router.get('/calendar/raw',
   async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
-    const rows = await calendarRepo.listAllByYear(year);
+    const rows = await calendarRepo.listAllByYear(year, req.tenantId || 0);
     const types = String(req.query.type || '').split(',').map(s => s.trim()).filter(Boolean);
     const from = String(req.query.from || '').slice(0, 10);
     const to = String(req.query.to || '').slice(0, 10);
@@ -1324,7 +1301,7 @@ router.get('/calendar/export',
   async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
-    let rows = await calendarRepo.listAllByYear(year);
+    let rows = await calendarRepo.listAllByYear(year, req.tenantId || 0);
     const lang = (req.query.lang || req.headers['accept-language'] || '').toLowerCase();
     const isJa = lang.startsWith('ja');
     const from = String(req.query.from || '').slice(0, 10);
@@ -1360,7 +1337,7 @@ router.get('/calendar/export.csv',
   async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
-    let rows = await calendarRepo.listAllByYear(year);
+    let rows = await calendarRepo.listAllByYear(year, req.tenantId || 0);
     const from = String(req.query.from || '').slice(0, 10);
     const to = String(req.query.to || '').slice(0, 10);
     const types = String(req.query.type || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1464,7 +1441,7 @@ router.get('/calendar/export.xls',
   async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
-    let rows = await calendarRepo.listAllByYear(year);
+    let rows = await calendarRepo.listAllByYear(year, req.tenantId || 0);
     const from = String(req.query.from || '').slice(0, 10);
     const to = String(req.query.to || '').slice(0, 10);
     const types = String(req.query.type || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1604,7 +1581,7 @@ router.get('/calendar/export.xlsx',
   async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
-    let rows = await calendarRepo.listAllByYear(year);
+    let rows = await calendarRepo.listAllByYear(year, req.tenantId || 0);
     const from = String(req.query.from || '').slice(0, 10);
     const to = String(req.query.to || '').slice(0, 10);
     const types = String(req.query.type || '').split(',').map(s => s.trim()).filter(Boolean);

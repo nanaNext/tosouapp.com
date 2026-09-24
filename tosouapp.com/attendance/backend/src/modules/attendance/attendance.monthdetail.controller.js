@@ -84,7 +84,7 @@ exports.getMonthDetail = async (req, res) => {
         [userId, from, to]
       ).then(r => r[0]).catch(() => []),
       workReportRepo.listByUserMonth(userId, `${y}-${pad(m)}`).catch(() => []),
-      getUserOffDaySet(y, userId),
+      getUserOffDaySet(y, userId, tid || 0),
       repo.listShiftDefinitions().catch(() => []),
       repo.listShiftAssignmentsBetween(userId, from, to).catch(() => []),
       repo.listWorkDetailsBetween(userId, from, to).catch(() => []),
@@ -138,10 +138,19 @@ exports.getMonthDetail = async (req, res) => {
 
     // Dựng map daily (date → daily record)
     // work_report cung cấp workType/location/memo dự phòng nếu attendance_daily không có
-    const reportMap = new Map();
+    // (chỉ dùng khi đúng 1 báo cáo/ngày — nhiều báo cáo thì không đoán, để trống)
+    const reportsByDate = new Map();
     for (const r of workReportRows || []) {
       const d = String(r?.date || '').slice(0, 10);
-      if (d) reportMap.set(d, { workType: r?.work_type || null, location: r?.site || null, memo: r?.work || null });
+      if (!d) continue;
+      if (!reportsByDate.has(d)) reportsByDate.set(d, []);
+      reportsByDate.get(d).push(r);
+    }
+    const reportMap = new Map();
+    for (const [d, list] of reportsByDate.entries()) {
+      if (list.length !== 1) continue;
+      const r = list[0];
+      reportMap.set(d, { workType: r?.work_type || null, location: r?.site || null, memo: r?.work || null });
     }
     const dailyMap = new Map();
     for (const r of dailyRows || []) {

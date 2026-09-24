@@ -170,6 +170,8 @@ exports.update = async (req, res) => {
       dependentsCount: body.dependentsCount,
       taxCategory: body.taxCategory,
       qualificationAllowance: body.qualificationAllowance,
+      commuteMethod: body.commuteMethod,
+      commuteDistanceKm: body.commuteDistanceKm,
       tenantId: req.tenantId || null
     });
     res.status(200).json({ id });
@@ -194,7 +196,7 @@ exports.setRole = async (req, res) => {
     const id = req.params.id;
     const { role } = req.body || {};
     if (!id || !role) return res.status(400).json({ message: 'Missing id/role' });
-    await repo.setRole(id, role);
+    await repo.setRole(id, role, req.tenantId || null);
     await refreshRepo.deleteUserTokens(id);
     res.status(200).json({ id, role });
   } catch (err) {
@@ -207,7 +209,7 @@ exports.setDepartment = async (req, res) => {
     const id = req.params.id;
     const { departmentId } = req.body || {};
     if (!id || !departmentId) return res.status(400).json({ message: 'Missing id/departmentId' });
-    await repo.setDepartment(id, departmentId);
+    await repo.setDepartment(id, departmentId, req.tenantId || null);
     res.status(200).json({ id, departmentId });
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -18,6 +18,7 @@ const { authenticate, authorize } = require('../core/middleware/authMiddleware')
 const employeeRoutes = require('../modules/employee/employee.routes');
 const workReportsRoutes = require('../modules/workReports/workReports.routes');
 const workReportsAdminRoutes = require('../modules/workReports/workReports.admin.routes');
+const requestsHubAdminRoutes = require('../modules/requestsHub/requestsHub.admin.routes');
 const noticesRoutes = require('../modules/notices/notices.routes');
 const expensesRoutes = require('../modules/expenses/expenses.routes');
 const webauthnRoutes = require('../modules/webauthn/webauthn.routes');
@@ -98,6 +99,7 @@ module.exports = function(app) {
   app.use('/api/employee', employeeRoutes); // Dành cho nhân viên
   app.use('/api/work-reports', workReportsRoutes); // Báo cáo công việc
   app.use('/api/admin/work-reports', workReportsAdminRoutes); // Quản lý báo cáo công việc
+  app.use('/api/admin/requests', requestsHubAdminRoutes); // 申請・承認 統合ビュー (有給+打刻修正)
   app.use('/api/notices', noticesRoutes); // Thông báo
   app.use('/api/expenses', expensesRoutes); // Chi phí
   const stationsRoutes = require('../modules/stations/stations.routes');

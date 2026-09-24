@@ -22,6 +22,8 @@ async function ensureDepartmentsTable() {
   try { await db.query(`ALTER TABLE departments ADD COLUMN code VARCHAR(32) NULL`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE departments ADD UNIQUE KEY uniq_departments_code (code)`); } catch (e) { /* silently ignored */ }
   try { await db.query(`ALTER TABLE departments ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1`); } catch (e) { /* silently ignored */ }
+  // 1部署は必ず1法人に属する。既存の部署は法人未設定のまま残るので NULL 許容 (管理画面で後から設定させる)。
+  try { await db.query(`ALTER TABLE departments ADD COLUMN corporation_id BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
 }
 
 // 部署名/コードの変更履歴。改名しても過去の月次レポートは当時の名前で表示するために必要
@@ -104,7 +106,7 @@ const repo = {
     if (!includeInactive) where.push('is_active = 1');
     if (tid) { where.push('tenant_id = ?'); params.push(tid); }
     const wsql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const [rows] = await db.query(`SELECT id, name, code, is_active FROM departments ${wsql} ORDER BY name ASC`, params);
+    const [rows] = await db.query(`SELECT id, name, code, is_active, corporation_id FROM departments ${wsql} ORDER BY name ASC`, params);
     return rows;
   },
 
@@ -112,21 +114,21 @@ const repo = {
     await ensureDepartmentsTable();
     const tid = _tid(tenantId);
     if (tid) {
-      const sql = `SELECT id, name, code, is_active FROM departments WHERE id = ? AND tenant_id = ? LIMIT 1`;
+      const sql = `SELECT id, name, code, is_active, corporation_id FROM departments WHERE id = ? AND tenant_id = ? LIMIT 1`;
       const [rows] = await db.query(sql, [id, tid]);
       return rows[0];
     }
-    const sql = `SELECT id, name, code, is_active FROM departments WHERE id = ? LIMIT 1`;
+    const sql = `SELECT id, name, code, is_active, corporation_id FROM departments WHERE id = ? LIMIT 1`;
     const [rows] = await db.query(sql, [id]);
     return rows[0];
   },
 
-  async createDepartment(name, code = null, tenantId = null, actorId = null) {
+  async createDepartment(name, code = null, tenantId = null, actorId = null, corporationId = null) {
     await ensureDepartmentsTable();
     await ensureNameHistoryTable();
     const tid = _tid(tenantId);
-    const sql = `INSERT INTO departments (name, code, tenant_id) VALUES (?, ?, ?)`;
-    const [result] = await db.query(sql, [name, code, tid]);
+    const sql = `INSERT INTO departments (name, code, tenant_id, corporation_id) VALUES (?, ?, ?, ?)`;
+    const [result] = await db.query(sql, [name, code, tid, corporationId || null]);
     const id = result.insertId;
     await db.query(
       `INSERT INTO department_name_history (department_id, name, code, valid_from, tenant_id, created_by) VALUES (?, ?, ?, CURDATE(), ?, ?)`,
@@ -137,7 +139,7 @@ const repo = {
 
   // 改名/コード変更があれば旧バージョンを閉じて新バージョンを追加する (department_name_history)。
   // departments.name/code はこれまで通り最新版を指すので、既存の読み取りコードは変更不要。
-  async updateDepartment(id, name, code = null, tenantId = null, actorId = null) {
+  async updateDepartment(id, name, code = null, tenantId = null, actorId = null, corporationId = null) {
     await ensureDepartmentsTable();
     await ensureNameHistoryTable();
     const tid = _tid(tenantId);
@@ -156,10 +158,16 @@ const repo = {
       );
     }
     if (tid) {
-      await db.query(`UPDATE departments SET name = COALESCE(?, name), code = COALESCE(?, code) WHERE id = ? AND tenant_id = ?`, [name || null, code || null, id, tid]);
+      await db.query(
+        `UPDATE departments SET name = COALESCE(?, name), code = COALESCE(?, code), corporation_id = COALESCE(?, corporation_id) WHERE id = ? AND tenant_id = ?`,
+        [name || null, code || null, corporationId || null, id, tid]
+      );
       return;
     }
-    await db.query(`UPDATE departments SET name = COALESCE(?, name), code = COALESCE(?, code) WHERE id = ?`, [name || null, code || null, id]);
+    await db.query(
+      `UPDATE departments SET name = COALESCE(?, name), code = COALESCE(?, code), corporation_id = COALESCE(?, corporation_id) WHERE id = ?`,
+      [name || null, code || null, corporationId || null, id]
+    );
   },
 
   // 削除ではなく無効化。異動履歴・監査ログが指す部署IDを消さないため

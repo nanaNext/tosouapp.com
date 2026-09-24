@@ -21,7 +21,7 @@ const calendarRepo = require('../calendar/calendar.repository');
 const log = require('../../core/logger');
 const {
   resolveTargetUserId, parseMonth, isEditableMonth, getMonthStatusValue,
-  assertMonthWritable, HOLIDAY_TYPES, isKoujiUser, buildOffSetFromCalendarDetail,
+  assertMonthWritable,
   getUserOffDaySet
 } = require('./attendance.utils');
 const { timesheetMaxDays } = require('../../config/env');
@@ -68,7 +68,7 @@ exports.exportMonthXlsx = async (req, res) => {
     const planRows = await repo.listPlanBetween(userId, from, to).catch(() => []);
     const shiftDefs = await repo.listShiftDefinitions().catch(() => []);
     const shiftById = new Map((shiftDefs || []).map(s => [String(s.id), s]));
-    const off = await getUserOffDaySet(y, userId);
+    const off = await getUserOffDaySet(y, userId, req.tenantId || 0);
 
     const dailyMap = new Map();
     for (const r of dailyRows || []) {

@@ -280,6 +280,110 @@ async function runMigrations() {
         up: async () => {
           try { await conn.query(`ALTER TABLE expense_monthly_closures ADD COLUMN taxable_amount DECIMAL(12,2) NOT NULL DEFAULT 0`); } catch (e) { /* silently ignored */ }
         }
+      },
+      {
+        // 通勤手当 (allowance_transport) は本番DBに既に存在していたがコード側で作成した記録が無かったため
+        // ここで正式に管理下に置く。commute_method/commute_distance_km は、給与計算で
+        // 電車・バス（月額上限）とマイカー等（距離別テーブル）のどちらの非課税枠を使うか判定するための新規列。
+        id: '20260920_01_users_commute_columns',
+        up: async () => {
+          try { await conn.query(`ALTER TABLE users ADD COLUMN allowance_transport DECIMAL(12,2) NOT NULL DEFAULT 0`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN commute_method ENUM('transit','vehicle') NOT NULL DEFAULT 'transit'`); } catch (e) { /* silently ignored */ }
+          try { await conn.query(`ALTER TABLE users ADD COLUMN commute_distance_km DECIMAL(6,1) NULL`); } catch (e) { /* silently ignored */ }
+        }
+      },
+      {
+        // audit_logs を「実質 append-only」から「DB制約で append-only」に格上げする。
+        // アプリ層のコードは元々 INSERT/SELECT しかしていない (pruneOldLogs という保持期間削除用の
+        // 関数は存在するが、どこからも呼ばれていない未使用コード — このトリガーにより、万一将来
+        // 誤って呼び出しても即座に失敗するようになる。本当にログを削除したい場合はこのトリガーを
+        // 先に DROP する必要があり、それ自体が痕跡を残す設計)。
+        id: '20260921_01_audit_logs_append_only_trigger',
+        up: async () => {
+          try {
+            const auditRepo = require('../modules/audit/audit.repository');
+            await auditRepo.ensureTable();
+          } catch (e) { /* silently ignored */ }
+          try {
+            await conn.query(`
+              CREATE TRIGGER trg_audit_logs_no_update
+              BEFORE UPDATE ON audit_logs
+              FOR EACH ROW
+              BEGIN
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_logs is append-only: UPDATE is not allowed';
+              END
+            `);
+          } catch (e) { /* trigger đã tồn tại hoặc DB user không đủ quyền TRIGGER — bỏ qua */ }
+          try {
+            await conn.query(`
+              CREATE TRIGGER trg_audit_logs_no_delete
+              BEFORE DELETE ON audit_logs
+              FOR EACH ROW
+              BEGIN
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_logs is append-only: DELETE is not allowed';
+              END
+            `);
+          } catch (e) { /* silently ignored */ }
+        }
+      },
+      {
+        // 36協定判定用の会社ごとの閾値設定。特別条項の有無で年間上限などが変わるため、
+        // ハードコードせずテナントごとに持つ。行が無いテナントはコード側の既定値(基本条項相当)にフォールバック。
+        id: '20260921_02_labor_agreement_configs_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS labor_agreement_configs (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              tenant_id BIGINT UNSIGNED NULL,
+              monthly_ot_limit_minutes INT UNSIGNED NOT NULL DEFAULT 2700,
+              annual_ot_limit_minutes INT UNSIGNED NOT NULL DEFAULT 21600,
+              single_month_limit_minutes INT UNSIGNED NOT NULL DEFAULT 6000,
+              rolling_avg_limit_minutes INT UNSIGNED NOT NULL DEFAULT 4800,
+              max_months_over_limit TINYINT UNSIGNED NOT NULL DEFAULT 6,
+              caution_threshold_ratio DECIMAL(3,2) NOT NULL DEFAULT 0.80,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uniq_lac_tenant (tenant_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
+      },
+      {
+        // 月次サマリー (monthly_summaries): 都度生データから再計算する重い処理を避けるための
+        // 事前計算テーブル。dirty=1 は「再計算が必要」の印 — バッチが処理したら0に戻す。
+        // department_id は「その月時点」の所属を保持し、後から組織改編があっても過去月の値は変えない
+        // (今の部門管理機能の department_name_history と同じ思想)。
+        id: '20260921_03_monthly_summaries_table',
+        up: async () => {
+          await conn.query(`
+            CREATE TABLE IF NOT EXISTS monthly_summaries (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              tenant_id BIGINT UNSIGNED NULL,
+              user_id BIGINT UNSIGNED NOT NULL,
+              year INT NOT NULL,
+              month INT NOT NULL,
+              department_id BIGINT UNSIGNED NULL,
+              attend_days INT NOT NULL DEFAULT 0,
+              regular_minutes INT NOT NULL DEFAULT 0,
+              overtime_minutes INT NOT NULL DEFAULT 0,
+              night_minutes INT NOT NULL DEFAULT 0,
+              holiday_work_minutes INT NOT NULL DEFAULT 0,
+              single_month_basis_minutes INT NOT NULL DEFAULT 0,
+              annual_overtime_minutes INT NOT NULL DEFAULT 0,
+              rolling_avg_max_minutes INT NOT NULL DEFAULT 0,
+              months_over_45h_this_year INT NOT NULL DEFAULT 0,
+              judgement ENUM('normal','caution','exceeded') NOT NULL DEFAULT 'normal',
+              rule_version VARCHAR(32) NOT NULL DEFAULT 'v1',
+              computed_at DATETIME NULL,
+              dirty TINYINT(1) NOT NULL DEFAULT 1,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uniq_ms_tenant_user_month (tenant_id, user_id, year, month),
+              INDEX idx_ms_dirty (dirty),
+              INDEX idx_ms_tenant_year_month (tenant_id, year, month)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+          `);
+        }
       }
     ];
     for (const m of migrations) {
@@ -405,14 +509,12 @@ async function ensureModuleTables() {
   await webauthnRepo.ensureTable();
   await requestsRepo.ensureTable();
   await faqRepo.ensureTable();
-  // TEMP: Skip branchRepo for debugging
-  // console.log('DEBUG branchRepo type:', typeof branchRepo, 'keys:', Object.keys(branchRepo));
-  // try {
-  //   await branchRepo.ensureTable();
-  // } catch (branchErr) {
-  //   console.error('branchRepo.ensureTable error:', branchErr.message, branchErr.stack);
-  //   throw branchErr;
-  // }
+  try {
+    await branchRepo.ensureTable();
+  } catch (branchErr) {
+    console.error('branchRepo.ensureTable error:', branchErr.message, branchErr.stack);
+    throw branchErr;
+  }
   try {
     await faqRepo.seedIfEmpty();
   } catch (e) { /* silently ignored */ }

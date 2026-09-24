@@ -14,6 +14,11 @@ const PERMS = {
     manager: new Set(['view']),
     employee: new Set([])
   },
+  corporations: {
+    admin: new Set(['full', 'view']),
+    manager: new Set(['view']),
+    employee: new Set([])
+  },
   employees: {
     admin: new Set(['full', 'view']),
     manager: new Set(['manage', 'view']),

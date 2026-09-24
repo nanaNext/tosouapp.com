@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const uploadPdf = require('../../core/middleware/uploadPdf');
 const repo = require('./payslip.repository');
 const userRepo = require('../users/user.repository');
@@ -12,6 +13,11 @@ const { payslipEncKey, payslipKeyVersion } = require('../../config/env');
 const settingsService = require('../settings/settings.service');
 const crypto = require('crypto');
 const s3Service = require('../../core/services/s3.service');
+
+// tenant資料分離: 各ルートは個別に authenticate を呼んでいるため(冪等)、ここでも
+// authenticate → resolveTenant の順で全体にかけておく（他のルートファイルと同じパターン）。
+router.use(authenticate);
+router.use(resolveTenant);
 
 function rfc5987Encode(str) {
   return encodeURIComponent(String(str || ''))
@@ -29,10 +35,15 @@ function shouldRestrictManagerPayrollScope() {
 }
 
 async function ensureManagerPayrollScope(req, targetUserId) {
+  // Cách ly tenant: đối tượng payslip phải thuộc đúng tenant của người gọi —
+  // áp dụng cho MỌI role (kể cả admin), không chỉ manager. Trước đây chỉ manager
+  // bị giới hạn theo phòng ban, admin không hề bị chặn xem payslip của tenant khác
+  // nếu biết đúng userId (do payslip.routes.js chưa từng gắn resolveTenant).
+  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
+  if (!target) return false;
   if (req.user.role !== 'manager') return true;
   if (!shouldRestrictManagerPayrollScope()) return true;
   const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
-  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
   if (!me?.departmentId || !target?.departmentId) return false;
   return String(me.departmentId) === String(target.departmentId);
 }

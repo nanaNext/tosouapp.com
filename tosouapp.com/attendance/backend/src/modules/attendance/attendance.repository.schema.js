@@ -341,6 +341,22 @@ async function ensureShiftTables() {
   try {
     await db.query(`ALTER TABLE shift_definitions ADD INDEX idx_sd_tid (tenant_id)`);
   } catch (e) { /* index có thể đã tồn tại */ }
+  // FIX: `name` từng là UNIQUE toàn cục (không theo tenant) — 2 công ty khác nhau đặt
+  // trùng tên ca (VD "day_8_17" là tên mặc định được seed sẵn) sẽ khiến INSERT...ON
+  // DUPLICATE KEY của công ty sau GHI ĐÈ giờ giấc ca của công ty trước đó một cách âm
+  // thầm. Chuyển sang UNIQUE theo (tenant_id, name) để mỗi công ty có ca riêng biệt.
+  try {
+    await db.query(`UPDATE shift_definitions SET tenant_id = 0 WHERE tenant_id IS NULL`);
+  } catch (e) { /* bỏ qua nếu lỗi */ }
+  try {
+    await db.query(`ALTER TABLE shift_definitions MODIFY tenant_id BIGINT UNSIGNED NOT NULL DEFAULT 0`);
+  } catch (e) { /* bỏ qua nếu lỗi */ }
+  try {
+    await db.query(`ALTER TABLE shift_definitions DROP INDEX name`);
+  } catch (e) { /* đã xóa hoặc không tồn tại */ }
+  try {
+    await db.query(`ALTER TABLE shift_definitions ADD UNIQUE KEY uniq_sd_tenant_name (tenant_id, name)`);
+  } catch (e) { /* đã tồn tại */ }
   await db.query(`
     CREATE TABLE IF NOT EXISTS user_shift_assignments (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -27,6 +27,8 @@ router.post('/auto-grant/run', authenticate, permit('leaveAdmin','full'), contro
 router.get('/my', authenticate, authorize('employee','manager','admin'), controller.listMine);
 router.get('/my-balance', authenticate, authorize('employee','manager','admin'), controller.myBalance);
 router.get('/user-balance', authenticate, authorize('manager','admin'), controller.userBalance);
+router.get('/admin-balances', authenticate, authorize('manager','admin'), controller.adminBalances);
+router.get('/admin-balances/export.xlsx', authenticate, authorize('manager','admin'), controller.exportBalancesXlsx);
 router.get('/my-used-days', authenticate, authorize('employee','manager','admin'), controller.myUsedPaidLeaveDays);
 router.get('/used-days', authenticate, authorize('manager','admin'), controller.usedPaidLeaveDays);
 router.get('/', authenticate, authorize('manager','admin'), controller.listUser);

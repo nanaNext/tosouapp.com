@@ -284,6 +284,17 @@ function openEmployeeEditModal(emp, ctx, rerender) {
         <div class="pl-field"><label>基礎給（月額・円）*</label><input class="pl-input" id="fBase" type="number" min="0" value="${Number(emp.base_salary || 0)}"></div>
         <div class="pl-field"><label>就業手当（月額・円）</label><input class="pl-input" id="fQual" type="number" min="0" value="${Number(emp.qualification_allowance || 0)}"></div>
         <div class="pl-field"><label>通勤手当（月額・円）</label><input class="pl-input" id="fCommute" type="number" min="0" value="${Number(emp.allowance_transport || 0)}"></div>
+        <div class="pl-field">
+          <label>通勤手段（非課税枠の判定用）</label>
+          <select class="pl-select" id="fCommuteMethod">
+            <option value="transit" ${String(emp.commute_method || 'transit') === 'transit' ? 'selected' : ''}>電車・バス（上限あり）</option>
+            <option value="vehicle" ${emp.commute_method === 'vehicle' ? 'selected' : ''}>マイカー・バイク等（距離別）</option>
+          </select>
+        </div>
+        <div class="pl-field" id="fCommuteDistanceField" style="${emp.commute_method === 'vehicle' ? '' : 'display:none;'}">
+          <label>片道距離（km）</label>
+          <input class="pl-input" id="fCommuteDistance" type="number" min="0" step="0.1" value="${emp.commute_distance_km != null ? Number(emp.commute_distance_km) : ''}">
+        </div>
         <div class="pl-field"><label>扶養人数</label><input class="pl-input" id="fDep" type="number" min="0" value="${Number(emp.dependents_count || 0)}"></div>
         <div class="pl-field full"><label>生年月日（介護保険40～64歳判定用）</label><input class="pl-input" id="fBirth" type="date" value="${emp.birth_date ? String(emp.birth_date).slice(0, 10) : ''}"></div>
       </div>
@@ -297,6 +308,10 @@ function openEmployeeEditModal(emp, ctx, rerender) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
   overlay.querySelector('#btnCancel').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#fCommuteMethod').addEventListener('change', (ev) => {
+    const distanceField = overlay.querySelector('#fCommuteDistanceField');
+    distanceField.style.display = ev.target.value === 'vehicle' ? '' : 'none';
+  });
   overlay.querySelector('#btnSave').addEventListener('click', async () => {
     const msg = overlay.querySelector('#modalMsg');
     const username = overlay.querySelector('#fUsername').value.trim();
@@ -316,6 +331,10 @@ function openEmployeeEditModal(emp, ctx, rerender) {
         baseSalary: Number(baseSalary) || 0,
         qualificationAllowance: Number(overlay.querySelector('#fQual').value) || 0,
         allowanceTransport: Number(overlay.querySelector('#fCommute').value) || 0,
+        commuteMethod: overlay.querySelector('#fCommuteMethod').value,
+        commuteDistanceKm: overlay.querySelector('#fCommuteMethod').value === 'vehicle'
+          ? (Number(overlay.querySelector('#fCommuteDistance').value) || 0)
+          : null,
         dependentsCount: Number(overlay.querySelector('#fDep').value) || 0,
         birthDate: overlay.querySelector('#fBirth').value || null
       });

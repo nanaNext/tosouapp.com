@@ -6,41 +6,18 @@ const $ = (sel) => document.querySelector(sel);
 
 let simpleUserId = '';
 
-// ─── Helper: xác định ngày nghỉ theo policy phòng ban ───────────────────────
-// 工事部 (Koujibu, full-time): chỉ nghỉ Chủ nhật + thứ 7 tuần thứ 4.
-//   → thứ 7 tuần 1/2/3/5 vẫn là ngày làm việc bình thường.
-// Các phòng ban khác: nghỉ cả thứ 7 và Chủ nhật.
-// Dùng làm failsafe khi API calendar chưa/không trả kết quả, để không ép nhầm
-// thứ 7 thường của 工事部 thành 休日.
-const isKoujiProfile = () => {
-  const p = window.appConfig?.profile || {};
-  const isPartTime = String(p.employment_type || '').toLowerCase() === 'part_time';
-  if (isPartTime) return false;
-  return String(p.departmentName || '').includes('工事部');
-};
-
-// Thứ 7 "tuần thứ 4" theo đúng công thức backend (calendar.repository.js):
-// thứ 7 đầu tiên của tháng + 21 ngày.
-const is4thSaturday = (y, m /* 1-12 */, d) => {
-  const first = new Date(Date.UTC(y, m - 1, 1));
-  const tmp = new Date(first);
-  while (tmp.getUTCDay() !== 6) tmp.setUTCDate(tmp.getUTCDate() + 1);
-  tmp.setUTCDate(tmp.getUTCDate() + 21);
-  return tmp.getUTCFullYear() === y && (tmp.getUTCMonth() + 1) === m && tmp.getUTCDate() === d;
-};
-
-// Trả về true nếu ngày này là ngày nghỉ cuối tuần theo policy phòng ban.
-// Chỉ dùng cho weekend (không xét ngày lễ — ngày lễ do API calendar xử lý).
+// ─── Helper: xác định ngày nghỉ cuối tuần (failsafe khi API calendar lỗi) ───
+// Quy tắc nghỉ theo bộ phận (vd 工事部 chỉ nghỉ CN + thứ 7 tuần 4) giờ do từng công ty
+// tự cấu hình qua 休日設定 (department_holidays), không hardcode tên bộ phận ở client nữa.
+// Client không có cách nào biết cấu hình riêng của công ty khi API đang lỗi, nên fallback
+// này chỉ dùng quy tắc AN TOÀN/chung nhất (nghỉ cả thứ 7 và Chủ nhật) — trường hợp bình
+// thường (API calendar hoạt động) đã trả đúng theo cấu hình thật của từng công ty rồi.
 const isWeekendOffForProfile = (date) => {
   try {
     const [y, m, d] = String(date).split('-').map(x => parseInt(x, 10));
     if (!y || isNaN(m) || !d) return false;
     const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-    if (dow === 0) return true;            // Chủ nhật: luôn nghỉ
-    if (dow !== 6) return false;           // Ngày thường
-    // Thứ 7:
-    if (isKoujiProfile()) return is4thSaturday(y, m, d); // 工事部: chỉ thứ 7 tuần 4
-    return true;                           // Phòng ban khác: nghỉ mọi thứ 7
+    return dow === 0 || dow === 6;         // Chủ nhật + thứ 7: nghỉ theo mặc định an toàn
   } catch (e) {
     return false;
   }

@@ -446,6 +446,23 @@ module.exports = {
     const [rows] = await db.query(sql, params);
     return rows;
   },
+  // listDailyBetween の複数ユーザー版 (N+1 回避用)。
+  async listDailyBetweenForUsers(userIds, fromDate, toDate, { tenantId = null } = {}) {
+    if (!Array.isArray(userIds) || !userIds.length) return [];
+    await ensureAttendanceDailySchema();
+    const tid = _tid(tenantId);
+    const where = ['userId IN (?)', 'date >= ?', 'date <= ?'];
+    const params = [userIds, String(fromDate).slice(0, 10), String(toDate).slice(0, 10)];
+    if (tid != null) { where.push('tenant_id = ?'); params.push(tid); }
+    const sql = `
+      SELECT *
+      FROM attendance_daily
+      WHERE ${where.join(' AND ')}
+      ORDER BY userId ASC, date ASC
+    `;
+    const [rows] = await db.query(sql, params);
+    return rows;
+  },
   async setWorkTypeForUserDate(userId, dateStr, workType, { tenantId = null } = {}) {
     const set = await getAttendanceColumnSet();
     if (!set.has('work_type')) return { updated: 0 };

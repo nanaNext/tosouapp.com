@@ -167,39 +167,37 @@ async function assertMonthWritable(req, targetUserId, year, month) {
 
 const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
 
-async function isKoujiUser(userId) {
-  try {
-    const u = await userRepo.getUserById(userId);
-    if (!u) return false;
-    if (String(u?.employment_type || '').toLowerCase() === 'part_time') return false;
-    const dept = u?.departmentId ? (await userRepo.getDepartmentById(u.departmentId)) : null;
-    const deptName = String(dept?.name || '').trim();
-    return deptName.includes('工事部');
-  } catch {
-    return false;
-  }
-}
-
-function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
-  const byDate = new Map();
-  for (const it of (Array.isArray(detail) ? detail : [])) {
-    const ds = String(it?.date || '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-    if (!byDate.has(ds)) byDate.set(ds, []);
-    byDate.get(ds).push({ type: String(it?.type || ''), is_off: Number(it?.is_off || 0) === 1 });
-  }
+// 部署ID または 部署名 から、その部署の休日Setを組み立てる共通ヘルパー。
+// 以前は「部署名に"工事部"を含むか」をあちこちでハードコードして特別扱いしていたが、
+// 会社ごとに勤務パターンが異なりうるため、department_holidays (休日設定画面で会社ごとに
+// 設定する) を唯一の情報源にする。ベース(祝日・全曜日の土日)に対して is_off=1 の行は追加、
+// is_off=0 の行は除外（例:「工事部は第4土曜だけ休み」→他の土曜すべてに is_off=0 の行を作る）。
+async function getDepartmentOffDaySet(year, { departmentId = null, departmentName = null, tenantId = 0 } = {}) {
+  const cal = await calendarRepo.computeYear(year, tenantId || 0).catch(() => null);
   const off = new Set();
-  for (const [ds, list] of byDate.entries()) {
-    if (!useKoujiPolicy) {
-      if (list.some(x => x.is_off)) off.add(ds);
-      continue;
-    }
-    const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-    const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
-    const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
-    if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
+  if (Array.isArray(cal?.off_days)) {
+    for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
   }
-  return { byDate, off };
+  try {
+    let deptId = departmentId;
+    if (!deptId && departmentName) {
+      const db = require('../../core/database/mysql');
+      const params = [departmentName];
+      let tenantClause = '';
+      if (tenantId) { tenantClause = 'AND tenant_id = ?'; params.push(tenantId); }
+      const [[row]] = await db.query(`SELECT id FROM departments WHERE name = ? ${tenantClause} LIMIT 1`, params);
+      deptId = row?.id || null;
+    }
+    if (deptId) {
+      const deptHolidayRepo = require('../holidays/holidays.repository');
+      const deptHolidays = await deptHolidayRepo.listByDepartmentAndYear(deptId, year, tenantId || null);
+      for (const h of (deptHolidays || [])) {
+        const ds = String(h.date).slice(0, 10);
+        if (h.is_off) off.add(ds); else off.delete(ds);
+      }
+    }
+  } catch (e) { /* không có ngày nghỉ theo bộ phận, bỏ qua */ }
+  return off;
 }
 
 /**
@@ -210,25 +208,13 @@ function buildOffSetFromCalendarDetail(detail, useKoujiPolicy) {
  * @param {number} userId
  * @returns {Promise<Set<string>>}
  */
-async function getUserOffDaySet(year, userId) {
-  const cal = await calendarRepo.computeYear(year).catch(() => null);
-  const useKoujiPolicy = await isKoujiUser(userId);
-  const { off } = buildOffSetFromCalendarDetail(cal?.detail || [], useKoujiPolicy);
-  if (!off.size && Array.isArray(cal?.off_days) && !useKoujiPolicy) {
-    for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
-  }
+async function getUserOffDaySet(year, userId, tenantId = 0) {
+  let departmentId = null;
   try {
     const user = await userRepo.getUserById(userId).catch(() => null);
-    const deptId = user?.departmentId || user?.department_id;
-    if (deptId) {
-      const deptHolidayRepo = require('../holidays/holidays.repository');
-      const deptHolidays = await deptHolidayRepo.listByDepartmentAndYear(deptId, year);
-      for (const h of (deptHolidays || [])) {
-        if (h.is_off) off.add(String(h.date).slice(0, 10));
-      }
-    }
-  } catch (e) { /* không có ngày nghỉ theo bộ phận, bỏ qua */ }
-  return off;
+    departmentId = user?.departmentId || user?.department_id || null;
+  } catch (e) { /* không lấy được user, dùng lịch chung */ }
+  return getDepartmentOffDaySet(year, { departmentId, tenantId });
 }
 
 module.exports = {
@@ -241,7 +227,6 @@ module.exports = {
   getMonthStatusValue,
   assertMonthWritable,
   HOLIDAY_TYPES,
-  isKoujiUser,
-  buildOffSetFromCalendarDetail,
+  getDepartmentOffDaySet,
   getUserOffDaySet,
 };

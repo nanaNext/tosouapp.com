@@ -7,12 +7,12 @@ export function listDepartments({ includeInactive = false } = {}) {
   return fetchJSONAuth(`${BASE}${qs}`);
 }
 
-export function createDepartment({ name, code }) {
-  return fetchJSONAuth(BASE, { method: 'POST', body: JSON.stringify({ name, code }) });
+export function createDepartment({ name, code, corporationId }) {
+  return fetchJSONAuth(BASE, { method: 'POST', body: JSON.stringify({ name, code, corporationId }) });
 }
 
-export function updateDepartment(id, { name, code }) {
-  return fetchJSONAuth(`${BASE}/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ name, code }) });
+export function updateDepartment(id, { name, code, corporationId }) {
+  return fetchJSONAuth(`${BASE}/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ name, code, corporationId }) });
 }
 
 export function deactivateDepartment(id) {

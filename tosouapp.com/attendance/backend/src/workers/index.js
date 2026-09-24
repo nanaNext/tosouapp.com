@@ -15,6 +15,7 @@ function startWorkers() {
   }
 
   require('./email.worker');
+  require('./attendance-summary.worker');
   console.log('✅ Hệ thống Worker đã sẵn sàng nhận việc từ Redis!');
   return true;
 }

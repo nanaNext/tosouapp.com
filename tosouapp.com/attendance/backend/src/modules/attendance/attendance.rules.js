@@ -117,8 +117,6 @@ async function computeRecord(rec, ctx = null) {
   const baseBreak = cfg?.breakMinutes || 60;
   
   const dateStr = getJSTDateStr(rec.checkIn || rec.checkOut);
-  
-  const inDate = rec.checkIn ? parseMySQLJSTToDate(rec.checkIn) : null;
   const [yStr, mStr, dStr] = dateStr.split('-');
   const y = parseInt(yStr, 10);
   const m = parseInt(mStr, 10) - 1;
@@ -143,10 +141,13 @@ async function computeRecord(rec, ctx = null) {
       try {
         const wt = String(rec.work_type || rec.workType || '').trim();
         const labels = String(rec.labels || '').trim();
-        const fmtHm = d => d ? String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0') : '';
-        const inHm = fmtHm(inDate);
-        const outDateObj = parseMySQLJSTToDate(rec.checkOut);
-        const outHm = fmtHm(outDateObj);
+        // Lấy trực tiếp HH:MM từ chuỗi JST gốc trong DB (KHÔNG dựng Date rồi đọc
+        // getUTCHours/getUTCMinutes) — vì Date từ parseMySQLJSTToDate() lùi sang
+        // ngày UTC hôm trước khi giờ JST < 9:00 (ca 8:00 rất phổ biến), khiến
+        // getUTCHours() trả về ~23 thay vì 8 và không bao giờ khớp def.start_time.
+        const fmtHm = v => v ? String(v).replace('T', ' ').slice(11, 16) : '';
+        const inHm = fmtHm(rec.checkIn);
+        const outHm = fmtHm(rec.checkOut);
         if (!wt && !labels && inHm === String(def.start_time || '').trim() && outHm === String(def.end_time || '').trim()) {
           template = true;
         }
@@ -272,11 +273,18 @@ async function computeRecord(rec, ctx = null) {
     return Math.floor(n / step) * step;
   };
 
-  // Tính phút trong ngày (JST) cho in/out và shift
-  const inMin = inJ ? (inJ.getUTCHours() * 60 + inJ.getUTCMinutes()) : null;
-  const outMin = outJ ? (outJ.getUTCHours() * 60 + outJ.getUTCMinutes()) : null;
-  const shiftStartMin = shift.start ? (shift.start.getUTCHours() * 60 + shift.start.getUTCMinutes()) : null;
-  const shiftEndMin = shift.end ? (shift.end.getUTCHours() * 60 + shift.end.getUTCMinutes()) : null;
+  // Tính số phút thực tế trôi qua kể từ giờ bắt đầu ca (neo theo shift.start bằng
+  // hiệu thời gian thực - KHÔNG dùng getUTCHours()*60+getUTCMinutes()). Lý do: các
+  // Date ở đây được dựng bằng Date.UTC(y,m,d,hh-9,...) để quy đổi JST->UTC, nên với
+  // giờ JST < 9:00 (VD ca 8:00-17:00 rất phổ biến), hh-9 âm khiến Date lùi sang ngày
+  // UTC hôm trước với getUTCHours() nhảy vọt lên ~23 — làm "phút trong ngày" không
+  // còn tuyến tính quanh mốc 9h JST, khiến so sánh rOutMin < shiftStartMin sai lệch
+  // nghiêm trọng (từng tính ra vài trăm phút tăng ca ảo cho ca làm chưa tới 1 giờ).
+  const diffMinutes = (a, b) => (a && b) ? Math.round((b.getTime() - a.getTime()) / 60000) : null;
+  const inMin = diffMinutes(shift.start, inJ);
+  const outMin = diffMinutes(shift.start, outJ);
+  const shiftStartMin = 0;
+  const shiftEndMin = diffMinutes(shift.start, shift.end);
 
   // Tính giá trị làm tròn
   let rInMin = null;
@@ -296,7 +304,7 @@ async function computeRecord(rec, ctx = null) {
     }
   }
 
-  let isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr).catch(() => false);
+  let isOff = ctx?.offDayCache ? (ctx.offDayCache[dateStr] || false) : await calendarRepo.isOff(dateStr, ctx?.tenantId || 0).catch(() => false);
   if (dailyRec && dailyRec.kubun) {
     isOff = ['休日', '法定休日', '欠勤'].includes(dailyRec.kubun);
   }
@@ -338,7 +346,7 @@ async function computeRecord(rec, ctx = null) {
   };
 }
 
-async function computeRange(rows) {
+async function computeRange(rows, tenantId = 0) {
   // Tổng hợp theo ngày và tổng cộng trong khoảng từ danh sách bản ghi đã chốt
   const items = [];
   if (!rows || rows.length === 0) return { days: [], total: { regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0 } };
@@ -366,7 +374,7 @@ async function computeRange(rows) {
     Array.from(years)
       .filter((y) => y && !isNaN(y))
       .map(async (y) => {
-        const cal = await calendarRepo.computeYear(y).catch(() => null);
+        const cal = await calendarRepo.computeYear(y, tenantId).catch(() => null);
         if (cal && cal.off_days) {
           for (const d of cal.off_days) {
             offDayCache[d] = true;
@@ -426,7 +434,7 @@ async function computeRange(rows) {
       }
     }));
   }
-  const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache, dailyCache };
+  const ctx = { cfg, userCache, deptCache, shiftCache, offDayCache, goOutCache, dailyCache, tenantId };
   const computedItems = await Promise.all(
     rows
       .filter((r) => r.checkOut)

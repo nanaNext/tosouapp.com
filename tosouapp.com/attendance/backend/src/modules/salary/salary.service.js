@@ -4,6 +4,7 @@ const attendanceRepo = require('../attendance/attendance.repository');
 const leaveRepo = require('../leave/leave.repository');
 const env = require('../../config/env');
 const salaryRepo = require('./salary.repository');
+const expensesTax = require('../expenses/expenses.tax');
 const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
 const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 
@@ -168,7 +169,7 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
     if (date) workDaysSet.add(date);
   }
 
-  const ts = await attendanceRules.computeRange(attendanceRows);
+  const ts = await attendanceRules.computeRange(attendanceRows, tenantId || 0);
   const workDays = workDaysSet.size;
 
   // Calculate holiday work premium minutes (休日出勤 days get ×1.25)
@@ -273,7 +274,7 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
       }
       // Check company calendar (holidays, obon, etc.)
       if (!isOff) {
-        try { isOff = await calendarRepo.isOff(dateStr); } catch { isOff = false; }
+        try { isOff = await calendarRepo.isOff(dateStr, tenantId || 0); } catch { isOff = false; }
       }
       if (!isOff) flexWorkingDays++;
     }
@@ -308,6 +309,13 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
   const empAllowance = Object.prototype.hasOwnProperty.call(opts, 'transportAllowance')
     ? yen(opts.transportAllowance)
     : (userComp?.allowance_transport ?? env.salaryEmploymentAllowance ?? 0);
+  // 通勤手当（就業手当として支給はするが、電車・バスの月額上限／マイカー等の距離別テーブルを
+  // 超えた分だけを課税対象額に含める。expense_claims 側の交通費と同じ非課税基準を再利用する。
+  const commuteMethod = userComp?.commute_method || 'transit';
+  const commuteDistanceKm = userComp?.commute_distance_km ?? null;
+  const commuteTax = empAllowance > 0
+    ? await expensesTax.computeTransportAllowanceTaxable(empAllowance, commuteMethod, commuteDistanceKm, month, tenantId)
+    : { taxableAmount: 0, nonTaxableAmount: 0, limit: 0 };
   let holidayWorkMin = 0; // 所定休出勤 (Holiday Work)
   let legalHolidayWorkMin = 0; // 法定休出勤 (Legal Holiday Work)
 
@@ -529,8 +537,10 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
     + yen(控除['雇用保険料'] || 0)
     + yen(控除['子育支援金'] || 0)
   );
-  // 年末調整還付 (Tax refund) is non-taxable, so we exclude it from the taxable income base
-  const 課税対象額 = Math.max(0, yen(支給合計 - (支給['年末調整還付'] || 0) - 社保合計額));
+  // 年末調整還付 (Tax refund) is non-taxable, so we exclude it from the taxable income base.
+  // 通勤手当の非課税相当額 (commuteTax.nonTaxableAmount) も同様に除外する — 就業手当としては
+  // 全額支給するが、電車・バスの月額上限／マイカー等の距離別テーブルの範囲内は課税しない。
+  const 課税対象額 = Math.max(0, yen(支給合計 - (支給['年末調整還付'] || 0) - commuteTax.nonTaxableAmount - 社保合計額));
   if (autoCalc && !hasIncomeTaxOverride) {
     const calcIncomeTax = yen(課税対象額 * (conf?.tax_rate ?? env.salaryTaxRate ?? 0));
     控除['所得税'] = calcIncomeTax;

@@ -9,32 +9,31 @@
  *
  * Kết nối:
  *   calendar.repository.js  → Tính toán lịch năm từ DB (ngày lễ cố định, lễ Nhật, thứ 7 tuần 4...)
- *   attendance.utils.js     → isKoujiUser, buildOffSetFromCalendarDetail, HOLIDAY_TYPES
+ *   attendance.utils.js     → getUserOffDaySet (calendar chung + department_holidays theo từng công ty/bộ phận)
  */
 'use strict';
 
 // ─── Dependencies ─────────────────────────────────────────────────────────────
 const calendarRepo = require('../calendar/calendar.repository'); // Lịch công ty theo năm
 const {
-  HOLIDAY_TYPES,               // Tập hợp các loại ngày lễ cần check
-  isKoujiUser,                 // Kiểm tra user có thuộc bộ phận 工事部 không
-  buildOffSetFromCalendarDetail, // Xây dựng Set ngày nghỉ từ calendar detail
+  getUserOffDaySet,            // Set ngày nghỉ thật của user (calendar + department_holidays override)
 } = require('./attendance.utils');
 
 // ─── API: Lấy toàn bộ lịch nghỉ của năm ─────────────────────────────────────
 // GET /api/attendance/calendar?year=2026
-// Lưu ý: 工事部 (bộ phận thi công) có quy tắc ngày nghỉ khác (chỉ nghỉ CN + thứ 7 tuần 4, ví dụ vẫn còn tuần thứ 5 thì đi làm)
+// Lưu ý: quy tắc ngày nghỉ riêng theo bộ phận (vd 工事部 chỉ nghỉ CN + thứ 7 tuần 4) không còn
+// hardcode theo tên bộ phận nữa — mỗi công ty tự cấu hình qua 休日設定 (department_holidays).
 exports.getCalendar = async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
-    const r = await calendarRepo.computeYear(year);
-    const useKoujiPolicy = await isKoujiUser(req.user?.id);
+    const r = await calendarRepo.computeYear(year, req.tenantId || 0);
+    const off = await getUserOffDaySet(year, req.user?.id, req.tenantId || 0);
     const detailBase = Array.isArray(r?.detail) ? r.detail : [];
-    const { off } = buildOffSetFromCalendarDetail(detailBase, useKoujiPolicy);
-    // Áp dụng policy 工事部: thứ 7 thường không phải ngày nghỉ
-    const detailPolicy = useKoujiPolicy
-      ? detailBase.map(it => String(it?.type || '') === 'saturday' ? { ...it, is_off: 0 } : it)
-      : detailBase;
+    // 各エントリの is_off を、この社員個人の実際の休日設定(部署の上書き込み)に合わせて反映する
+    const detailPolicy = detailBase.map(it => ({
+      ...it,
+      is_off: off.has(String(it?.date || '').slice(0, 10)) ? 1 : 0
+    }));
     // Hỗ trợ đa ngôn ngữ nhãn ngày lễ (ja/en/bilingual)
     const lang      = (req.query.lang || req.headers['accept-language'] || '').toLowerCase();
     const isJa      = lang.startsWith('ja');
@@ -69,19 +68,15 @@ exports.getCalendarDay = async (req, res) => {
     const date = String(req.params.date || '').slice(0, 10);
     if (!date) return res.status(400).json({ message: 'Missing date' });
     const year = parseInt(String(date).slice(0, 4), 10);
-    const cal  = await calendarRepo.computeYear(year);
-    const useKoujiPolicy = await isKoujiUser(req.user?.id);
+    const cal  = await calendarRepo.computeYear(year, req.tenantId || 0);
+    const off = await getUserOffDaySet(year, req.user?.id, req.tenantId || 0);
     const detail = Array.isArray(cal?.detail) ? cal.detail : [];
-    const { off } = buildOffSetFromCalendarDetail(detail, useKoujiPolicy);
     // Lấy lý do ngày nghỉ (có thể có nhiều lý do cùng 1 ngày: vừa Chủ nhật vừa ngày lễ)
     const reasons = detail
       .filter(it => String(it?.date || '').slice(0, 10) === date)
       .map(it => {
         const t = String(it?.type || '');
-        const isOff = useKoujiPolicy
-          ? (t === 'sunday' || t === 'saturday_4th' || HOLIDAY_TYPES.has(t))
-          : Number(it?.is_off || 0) === 1;
-        return { type: t, name: it?.name || null, is_off: isOff ? 1 : 0 };
+        return { type: t, name: it?.name || null, is_off: off.has(date) ? 1 : 0 };
       });
     res.status(200).json({ date, is_off: off.has(date) ? 1 : 0, reasons });
   } catch (err) {
@@ -104,7 +99,7 @@ exports.getCalendarWorkingDays = async (req, res) => {
     const includeHolidayTypes = String(req.query.include_holiday_types || '').split(',').map(s => s.trim()).filter(Boolean);
     const onlyWeekdays       = String(req.query.only_weekdays       || '').toLowerCase() === 'true';
     const pad = n => String(n).padStart(2, '0');
-    const r   = await calendarRepo.computeYear(year);
+    const r   = await calendarRepo.computeYear(year, req.tenantId || 0);
     const off = new Set((r.off_days || []).map(d => String(d)));
     // Bỏ Chủ nhật khỏi danh sách ngày nghỉ nếu được yêu cầu
     if (includeSunday) for (const ds of (r.sundays || [])) off.delete(String(ds));

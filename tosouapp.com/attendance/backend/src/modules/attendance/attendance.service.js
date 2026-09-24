@@ -130,7 +130,7 @@ async function checkIn(userId, time, loc, workType, tenantId = null) {
  * @returns {Promise<CheckOutResult>}
  */
 async function checkOut(userId, time, loc, tenantId = null) {
-  const open = await repo.getOpenAttendanceForUser(userId, { tenantId });
+  const open = await repo.getOpenAttendanceForUser(userId, null, { tenantId });
   const ts = time ? formatInputToMySQLJST(time) : nowJSTMySQL();
   if (!open) {
     const labels = [];
@@ -152,7 +152,7 @@ async function checkOut(userId, time, loc, tenantId = null) {
  */
 async function timesheet(userId, fromDate, toDate, tenantId = null) {
   const rows = await repo.listByUserBetween(userId, fromDate, toDate, { tenantId });
-  const res = await rules.computeRange(rows);
+  const res = await rules.computeRange(rows, tenantId || 0);
   return res;
 }
 

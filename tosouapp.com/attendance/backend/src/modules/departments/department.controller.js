@@ -29,10 +29,10 @@ exports.list = async (req, res) => {
 };
 exports.create = async (req, res) => {
   try {
-    const { name, code } = req.body || {};
+    const { name, code, corporationId } = req.body || {};
     if (!name) return res.status(400).json({ message: 'Missing name' });
-    const id = await repo.createDepartment(name, code || null, req.tenantId || null, req.user?.id || null);
-    _logAudit(req, 'department_create', null, { id, name, code: code || null });
+    const id = await repo.createDepartment(name, code || null, req.tenantId || null, req.user?.id || null, corporationId || null);
+    _logAudit(req, 'department_create', null, { id, name, code: code || null, corporationId: corporationId || null });
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -41,11 +41,11 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const id = req.params.id;
-    const { name, code } = req.body || {};
-    if (!id || (!name && !code)) return res.status(400).json({ message: 'Missing id or fields' });
+    const { name, code, corporationId } = req.body || {};
+    if (!id || (!name && !code && !corporationId)) return res.status(400).json({ message: 'Missing id or fields' });
     const before = await repo.getDepartmentById(id, req.tenantId || null);
-    await repo.updateDepartment(id, name || null, code || null, req.tenantId || null, req.user?.id || null);
-    _logAudit(req, 'department_update', before, { id, name: name || before?.name, code: code || before?.code });
+    await repo.updateDepartment(id, name || null, code || null, req.tenantId || null, req.user?.id || null, corporationId || null);
+    _logAudit(req, 'department_update', before, { id, name: name || before?.name, code: code || before?.code, corporationId: corporationId || before?.corporation_id });
     res.status(200).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });

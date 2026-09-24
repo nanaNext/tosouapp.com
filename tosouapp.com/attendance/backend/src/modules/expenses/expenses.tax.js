@@ -28,9 +28,29 @@ function findTier(tiers, km) {
 // 電車・バスは月額上限（salary_config.commute_allowance_tax_free_limit）と比較し、
 // マイカー等は片道距離ごとの非課税額テーブルと比較して、超過分を課税対象として合算する。
 // 対象は「その月にアクティブな（却下されていない）申請」の合計 — 1件ずつではなく月単位で判定する。
+
+// users.allowance_transport（給与の固定月額通勤手当）向け。expense_claims の申請単位ではなく
+// 1つの月額だけを判定する点が computeTaxableForUserMonth と異なるが、同じ非課税基準
+// （電車・バスの月額上限／マイカー等の距離別テーブル）を再利用して二重基準にならないようにする。
+async function computeTransportAllowanceTaxable(amount, method, distanceKm, month, tenantId = null) {
+  const amt = Number(amount) || 0;
+  if (amt <= 0) return { taxableAmount: 0, nonTaxableAmount: 0, limit: 0 };
+  if (String(method) === 'vehicle') {
+    const tiers = await settingsRepo.getMileageTiers(tenantId);
+    const tier = findTier(tiers, distanceKm);
+    const limit = tier ? Number(tier.taxFreeAmount) : 0;
+    const taxableAmount = Math.max(0, amt - limit);
+    return { taxableAmount, nonTaxableAmount: amt - taxableAmount, limit };
+  }
+  const limit = await getCommuteAllowanceLimit(month, tenantId);
+  const taxableAmount = Math.max(0, amt - limit);
+  return { taxableAmount, nonTaxableAmount: amt - taxableAmount, limit };
+}
+
 module.exports = {
   getCommuteAllowanceLimit,
   findTier,
+  computeTransportAllowanceTaxable,
 
   async computeTaxableForUserMonth(userId, month, tenantId = null) {
     const tid = _tid(tenantId);

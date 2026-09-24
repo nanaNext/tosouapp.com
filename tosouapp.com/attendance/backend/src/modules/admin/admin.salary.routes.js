@@ -23,6 +23,7 @@ const path = require('path');
 const fs = require('fs');
 const s3Service = require('../../core/services/s3.service');
 const metrics = require('../../core/metrics');
+const calendarRepo = require('../calendar/calendar.repository');
 
 function recordEndpointPerf(endpoint, startedAt, meta = {}) {
   const durationMs = Date.now() - startedAt;
@@ -85,13 +86,18 @@ router.get('/salary', async (req, res) => {
 });
 
 async function ensureSameDepartmentIfManager(req, targetUserId) {
+  // Cách ly tenant: đối tượng thao tác lương/PDF phải thuộc đúng tenant của
+  // người gọi — áp dụng cho MỌI role (kể cả admin). Trước đây chỉ manager bị
+  // kiểm tra (và chỉ khi bật MANAGER_STRICT_DEPT_PAYROLL), admin từ tenant khác
+  // có thể sinh/ghi đè payslip của nhân viên tenant khác nếu biết đúng userId.
+  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
+  if (!target) return false;
   const role = String(req.user?.role || '').toLowerCase();
   if (role !== 'manager') return true;
   // Payroll/PDF flows are intentionally company-wide for managers unless
   // an explicit payroll-specific scope lock is enabled.
   if (String(process.env.MANAGER_STRICT_DEPT_PAYROLL || '').toLowerCase() !== 'true') return true;
   const me = await userRepo.getUserById(req.user.id, req.tenantId || null);
-  const target = await userRepo.getUserById(targetUserId, req.tenantId || null);
   if (!me?.departmentId || !target?.departmentId) return false;
   return String(me.departmentId) === String(target.departmentId);
 }
@@ -447,7 +453,7 @@ function validatePaymentConsistency(emp) {
 
 const payslipDeliveryRepo = require('../salary/payslipDelivery.repository');
 
-async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }) {
+async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName, tenantId = null }) {
   const baseName = `payslip_${userId}_${month}_${Date.now()}.pdf`;
   let filename = baseName;
   let iv = null;
@@ -486,7 +492,7 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }
     fs.writeFileSync(filePath, outBuf);
   }
 
-  const existing = await payslipRepo.findLatestByUserMonth(userId, month);
+  const existing = await payslipRepo.findLatestByUserMonth(userId, month, tenantId);
   const originalName2 = String(originalName || `payslip_${month}.pdf`);
   let id = null;
   let version = 1;
@@ -501,10 +507,10 @@ async function writePayslipFile({ userId, month, pdfBuf, actorId, originalName }
       }
     } catch (e) { /* silently ignored */ }
     version = (existing.version || 1) + 1;
-    const updated = await payslipRepo.updateFile(existing.id, filename, originalName2, actorId, iv, tag, keyVersion, hash, version);
+    const updated = await payslipRepo.updateFile(existing.id, filename, originalName2, actorId, iv, tag, keyVersion, hash, version, tenantId);
     id = updated?.id || existing.id;
   } else {
-    id = await payslipRepo.create({ userId, month, filename, originalName: originalName2, uploadedBy: actorId, iv, authTag: tag, keyVersion, hash, version: 1 });
+    id = await payslipRepo.create({ userId, month, filename, originalName: originalName2, uploadedBy: actorId, iv, authTag: tag, keyVersion, hash, version: 1, tenantId });
   }
   return { id, filename, version };
 }
@@ -542,7 +548,7 @@ router.post('/salary/payslip/generate', async (req, res) => {
     const empName = String(emp?.氏名 || '').trim();
     const namePart = empName ? `_${empName}` : '';
     const originalName = `${y}年${mm}月${dd}日_給与明細${namePart}_${empCode}.pdf`;
-    const saved = await writePayslipFile({ userId, month, pdfBuf, actorId: req.user.id, originalName });
+    const saved = await writePayslipFile({ userId, month, pdfBuf, actorId: req.user.id, originalName, tenantId: req.tenantId || null });
     try {
       await auditRepo.writeLog({ userId: req.user.id, action: 'payslip_generate', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ userId, month, payslipId: saved.id }) });
     } catch (e) { /* silently ignored */ }
@@ -700,8 +706,8 @@ router.post('/system/flags',
   rateLimit({ windowMs: 60_000, max: 10 }),
   async (req, res) => {
   try {
-    const before = await settingsService.getFlags();
-    const after = await settingsService.setFlags(req.body || {});
+    const before = await settingsService.getFlags(req.tenantId || null);
+    const after = await settingsService.setFlags(req.body || {}, req.tenantId || null);
     try {
       await auditRepo.writeLog({ userId: req.user?.id, action: 'admin_toggle_feature_flags', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify(before), afterData: JSON.stringify(after) });
     } catch (e) { /* silently ignored */ }
@@ -714,7 +720,7 @@ router.get('/system/flags',
   authorize('admin'),
   async (req, res) => {
   try {
-    const r = await settingsService.getFlags();
+    const r = await settingsService.getFlags(req.tenantId || null);
     res.status(200).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -755,7 +761,7 @@ router.get('/calendar/holidays',
   async (req, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getUTCFullYear()), 10);
-    const r = await calendarRepo.computeYear(year);
+    const r = await calendarRepo.computeYear(year, req.tenantId || 0);
     res.status(200).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -766,9 +772,9 @@ router.post('/calendar/holidays',
   async (req, res) => {
   try {
     const dates = Array.isArray(req.body?.dates) ? req.body.dates : [];
-    await calendarRepo.upsertFixed(dates);
+    await calendarRepo.upsertFixed(dates, req.tenantId || 0);
     const year = parseInt(String(req.body?.year || new Date().getUTCFullYear()), 10);
-    const r = await calendarRepo.computeYear(year);
+    const r = await calendarRepo.computeYear(year, req.tenantId || 0);
     res.status(201).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -780,7 +786,7 @@ router.post('/calendar/materialize-jp',
   try {
     const year = parseInt(String(req.body?.year || new Date().getUTCFullYear()), 10);
     const r0 = await calendarRepo.materializeJapanYear(year);
-    const r = await calendarRepo.computeYear(year);
+    const r = await calendarRepo.computeYear(year, req.tenantId || 0);
     res.status(201).json({ materialized: r0, calendar: r });
   } catch (err) {
     res.status(500).json({ message: err.message });

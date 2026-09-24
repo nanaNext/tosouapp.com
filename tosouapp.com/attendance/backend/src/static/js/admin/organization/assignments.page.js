@@ -38,11 +38,19 @@ export async function mount({ content } = {}) {
     `).join('');
 
     root.innerHTML = `
+      <style>
+        .assign-submit-btn {
+          transition: background-color .15s ease, transform .05s ease, box-shadow .15s ease;
+          box-shadow: 0 1px 2px rgba(11,44,102,.25);
+        }
+        .assign-submit-btn:hover { background: #0a285c; }
+        .assign-submit-btn:active { transform: translateY(1px); box-shadow: none; }
+      </style>
       <div style="padding:0 20px 24px;max-width:1150px;">
         <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:20px;background:#f8fafc;">
           <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;">異動を登録</h4>
           <form id="assignForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 12px;align-items:end;">
-            <div style="display:flex;flex-direction:column;gap:4px;min-width:0;grid-column:span 2;">
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
               <label style="font-size:12px;color:#475569;">社員</label>
               <select id="assignUser" required style="height:36px;width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:4px;padding:0 8px;font-size:14px;">${userOptions}</select>
             </div>
@@ -69,8 +77,8 @@ export async function mount({ content } = {}) {
               <label style="font-size:12px;color:#475569;">理由（任意）</label>
               <input type="text" id="assignReason" placeholder="例: 組織再編、応援要請" style="height:36px;width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:4px;padding:0 8px;font-size:14px;">
             </div>
-            <div style="display:flex;min-width:0;">
-              <button type="submit" style="height:36px;padding:0 16px;width:100%;background:#0b2c66;color:#fff;border:none;border-radius:4px;font-weight:600;cursor:pointer;white-space:nowrap;font-size:14px;">登録</button>
+            <div style="display:flex;align-items:flex-end;min-width:0;">
+              <button type="submit" class="assign-submit-btn" style="height:36px;padding:0 20px;background:#0b2c66;color:#fff;border:none;border-radius:4px;font-weight:600;cursor:pointer;white-space:nowrap;font-size:14px;">登録</button>
             </div>
           </form>
           <p style="font-size:11px;color:#64748b;margin:8px 0 0;">応援（一時的）は元の部署の上に一時的に重なるだけなので、終了日を過ぎれば自動的に元の部署へ戻ります。締め済みの月には遡って登録できません。</p>
@@ -93,6 +101,7 @@ export async function mount({ content } = {}) {
       </div>
     `;
 
+    // フォームは render() のたびに DOM ごと作り直されるので、ここで毎回 bind し直しても問題ない。
     root.querySelector('#assignForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const userId = root.querySelector('#assignUser').value;
@@ -112,34 +121,36 @@ export async function mount({ content } = {}) {
         alert(`登録に失敗しました: ${err.message}`);
       }
     });
-
-    delegate(root, 'button[data-action]', 'click', async (e, btn) => {
-      const id = btn.dataset.id;
-      const row = root.querySelector(`tr[data-row-id="${id}"]`);
-      if (btn.dataset.action === 'save') {
-        const startDate = row.querySelector('[data-field="start_date"]').value;
-        const endDate = row.querySelector('[data-field="end_date"]').value || null;
-        const reason = row.querySelector('[data-field="reason"]').value || null;
-        try {
-          await updateAssignment(id, { startDate, endDate, reason });
-          await render();
-        } catch (err) {
-          alert(`保存に失敗しました: ${err.message}`);
-        }
-        return;
-      }
-      if (btn.dataset.action === 'delete') {
-        if (!confirm('この異動を削除しますか？')) return;
-        try {
-          await deleteAssignment(id);
-          await render();
-        } catch (err) {
-          alert(`削除に失敗しました: ${err.message}`);
-        }
-      }
-    });
   }
 
+  // root は tab 切替中ずっと同じ要素なので delegate() は mount 内で1回だけ呼ぶ
+  // (render() の中で毎回呼ぶと、他タブに切り替えた後も古いリスナーが残ってクリックが誤爆する)
+  const disposeDelegate = delegate(root, 'button[data-action]', 'click', async (e, btn) => {
+    const id = btn.dataset.id;
+    const row = root.querySelector(`tr[data-row-id="${id}"]`);
+    if (btn.dataset.action === 'save') {
+      const startDate = row.querySelector('[data-field="start_date"]').value;
+      const endDate = row.querySelector('[data-field="end_date"]').value || null;
+      const reason = row.querySelector('[data-field="reason"]').value || null;
+      try {
+        await updateAssignment(id, { startDate, endDate, reason });
+        await render();
+      } catch (err) {
+        alert(`保存に失敗しました: ${err.message}`);
+      }
+      return;
+    }
+    if (btn.dataset.action === 'delete') {
+      if (!confirm('この異動を削除しますか？')) return;
+      try {
+        await deleteAssignment(id);
+        await render();
+      } catch (err) {
+        alert(`削除に失敗しました: ${err.message}`);
+      }
+    }
+  });
+
   await render();
-  return () => {};
+  return () => { if (typeof disposeDelegate === 'function') disposeDelegate(); };
 }

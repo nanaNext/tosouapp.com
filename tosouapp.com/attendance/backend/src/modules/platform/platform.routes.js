@@ -22,6 +22,19 @@ const auditRepo = require('../audit/audit.repository');
 // All platform routes require sysadmin
 router.use(authenticate, authorize('sysadmin'));
 
+// ── POST /api/platform/attendance-summary/run-all ──────────────────────────────
+// 全テナント分の月次サマリー(36協定判定)再計算をキューに積む。夜間バッチが未接続の間は
+// これで手動代用できる。sysadmin 専用 — 1社の admin が他社のデータに触れないようにするため。
+router.post('/attendance-summary/run-all', async (req, res) => {
+  try {
+    const summaryService = require('../attendance/attendance.summary.service');
+    const result = await summaryService.runNightlyBatchAllTenants();
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ── GET /api/platform/tenants ─────────────────────────────────────────────────
 // List all tenants with user counts and owner info
 router.get('/tenants', async (req, res) => {

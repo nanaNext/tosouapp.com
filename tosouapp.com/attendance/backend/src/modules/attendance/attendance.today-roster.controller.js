@@ -11,19 +11,19 @@
  *   1. Dữ liệu punch thực tế (check-in/out)
  *   2. Kubun nghỉ đã set (有給休暇, 休日...)
  *   3. Lịch shift đăng ký (WORKING / OFF / LEAVE)
- *   4. Lịch nghỉ công ty theo bộ phận (工事部 có rule riêng)
+ *   4. Lịch nghỉ công ty theo từng bộ phận (department_holidays, cấu hình qua 休日設定 — không hardcode tên bộ phận)
  *
  * Kết nối:
  *   attendance.repository.js    → getTodayRosterItems, getTodayPlannedItems, batchGetActive...
  *   calendar.repository.js      → isOff (kiểm tra ngày nghỉ công ty)
- *   attendance.utils.js         → recordEndpointPerf (đo tốc độ)
+ *   attendance.utils.js         → recordEndpointPerf, getDepartmentOffDaySet
  */
 'use strict';
 
 // ─── Dependencies ─────────────────────────────────────────────────────────────
 const repo         = require('./attendance.repository');            // Truy vấn DB chấm công
 const calendarRepo = require('../calendar/calendar.repository');    // Kiểm tra ngày nghỉ
-const { recordEndpointPerf } = require('./attendance.utils');       // Đo performance
+const { recordEndpointPerf, getDepartmentOffDaySet } = require('./attendance.utils');       // Đo performance / ngày nghỉ theo bộ phận
 
 // ─── API: Danh sách điểm danh toàn bộ nhân viên hôm nay ──────────────────────
 // GET /api/attendance/today-roster?date=YYYY-MM-DD  (admin/manager)
@@ -45,26 +45,15 @@ exports.todayRoster = async (req, res) => {
     // Lấy danh sách nhân viên + trạng thái chấm công từ DB
     const rows = await repo.getTodayRosterItems(date, req.tenantId || null);
 
-    // Tính thứ trong tuần để xác định ngày nghỉ (thứ 7 tuần 4 = nghỉ đối với 工事部)
-    const [dY, dM, dD] = date.split('-').map(n => parseInt(n, 10));
-    const dow          = new Date(Date.UTC(dY, dM - 1, dD)).getUTCDay();
-    const is4thSaturday = dow === 6 && Math.ceil(dD / 7) === 4;
-    let isCompanyHoliday = false;
-    try { isCompanyHoliday = await calendarRepo.isOff(date); } catch { /* bỏ qua nếu lỗi */ }
-    // QUAN TRỌNG: isOff() gộp cả thứ 7/CN vào off_days. Với 工事部, thứ 7 (trừ tuần 4)
-    // KHÔNG phải ngày nghỉ, nên không được dùng isCompanyHoliday trực tiếp cho họ —
-    // nếu không mọi thứ 7 sẽ bị đánh nghỉ oan. Ta tính riêng "ngày lễ thật"
-    // (祝日/振替/国民の休日/固定休 …), loại bỏ type saturday & sunday.
-    let isRealHoliday = false;
-    try {
-      const HOLIDAY_TYPES = new Set(['jp_auto', 'jp_substitute', 'jp_bridge', 'fixed', 'custom']);
-      const cal = await calendarRepo.computeYear(dY);
-      isRealHoliday = (cal?.detail || []).some(it =>
-        String(it?.date || '').slice(0, 10) === date &&
-        Number(it?.is_off || 0) === 1 &&
-        HOLIDAY_TYPES.has(String(it?.type || ''))
-      );
-    } catch { /* bỏ qua nếu lỗi */ }
+    // Per-department off-day logic — tra department_holidays thật của từng công ty,
+    // không hardcode tên bộ phận "工事部" nữa (đã thay bằng cấu hình 休日設定 theo tenant).
+    const [dY] = date.split('-').map(n => parseInt(n, 10));
+    const distinctDeptNames = Array.from(new Set((rows || []).map(r => r.departmentName || '')));
+    const isOffTodayByDept = new Map();
+    await Promise.all(distinctDeptNames.map(async (deptName) => {
+      const off = await getDepartmentOffDaySet(dY, { departmentName: deptName || null, tenantId: req.tenantId || 0 });
+      isOffTodayByDept.set(deptName, off.has(date));
+    }));
 
     const todayJST = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     const isPastDay = date < todayJST; // Ngày đã qua → hiển thị trạng thái "quên" thay vì "chưa đến"
@@ -101,12 +90,7 @@ exports.todayRoster = async (req, res) => {
         status = isPastDay ? 'not_punched' : 'not_checked_in';
       // Ưu tiên 4: không có dữ liệu → xét lịch nghỉ theo loại nhân viên + bộ phận
       } else {
-        const isKoujibu = String(r.departmentName || '').includes('工事');
-        // 工事部: chỉ nghỉ CN + thứ 7 tuần 4 + ngày lễ THẬT (không tính thứ 7 thường)
-        // Các bộ phận khác: nghỉ T7, CN + ngày lễ công ty
-        const isOff = isPartTime ? true
-          : isKoujibu ? (dow === 0 || is4thSaturday || isRealHoliday)
-          : (dow === 0 || dow === 6 || isCompanyHoliday);
+        const isOff = isPartTime ? true : (isOffTodayByDept.get(r.departmentName || '') || false);
         if (isPartTime || isOff) {
           status = 'off';
           displayKubun = displayKubun || (isPastDay ? '休日' : '休日予定');
@@ -154,7 +138,7 @@ exports.todayRoster = async (req, res) => {
     // ─── Lấy kế hoạch shift (planned) ────────────────────────────────────────
     const plannedBase = await repo.getTodayPlannedItems(date, req.tenantId || null);
     let dayIsOff = false;
-    try { dayIsOff = await calendarRepo.isOff(date); } catch { /* bỏ qua */ }
+    try { dayIsOff = await calendarRepo.isOff(date, req.tenantId || 0); } catch { /* bỏ qua */ }
 
     // Batch-load shift assignments + definitions để tránh N+1 query
     const plannedUserIds = (plannedBase || []).map(r => r.userId).filter(Boolean);

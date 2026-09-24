@@ -13,6 +13,8 @@ const noticesRepo = require('../notices/notices.repository');
 const shiftReminderService = require('../../services/shiftReminder.service');
 const log = require('../../core/logger');
 const { getMonthStatusValue } = require('./attendance.utils');
+const summaryRepo = require('./attendance.summary.repository');
+const workReportsRepo = require('../workReports/workReports.repository');
 
 // API: Nhân viên ấn nút Check-in (Đi làm)
 exports.checkIn = async (req, res) => {
@@ -55,6 +57,19 @@ exports.checkIn = async (req, res) => {
       log.warn('auto_set_kubun_failed', { userId, error_message: err.message });
     }
 
+    // 出勤打刻と同時に、内容は空の作業報告を1件自動生成しておく（開始時刻だけ反映）。
+    // 現場・作業内容は本人が後から入力するもので、システム側で埋められないため空のまま。
+    try {
+      const dtStr = String(result?.checkIn || b?.time || '').slice(0, 10) || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      const startTime = String(result?.checkIn || '').slice(11, 19) || null;
+      await workReportsRepo.create({
+        userId, date: dtStr, startTime, endTime: null,
+        site: '', work: '', status: 'pending', attendanceId: result?.id || null
+      });
+    } catch (err) {
+      log.warn('auto_create_work_report_failed', { userId, error_message: err.message });
+    }
+
     try {
       await auditRepo.writeLog({
         userId,
@@ -73,6 +88,7 @@ exports.checkIn = async (req, res) => {
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null });
+      await summaryRepo.markDirty(userId, y, m, req.tenantId || null);
     } catch (e) { log.warn('month_status_update_failed', { userId, error_message: e.message }); }
     try {
       const u = await userRepo.getUserById(userId);
@@ -120,6 +136,15 @@ exports.checkOut = async (req, res) => {
     if (!result) {
       return res.status(404).json({ message: 'No open attendance' });
     }
+
+    // check-in時に自動生成した作業報告(内容は空のまま)の終了時刻を反映する。
+    try {
+      const endTime = String(result?.checkOut || '').slice(11, 19) || null;
+      if (result?.id) await workReportsRepo.setEndTimeByAttendanceId(result.id, endTime);
+    } catch (err) {
+      log.warn('auto_close_work_report_failed', { userId, error_message: err.message });
+    }
+
     try {
       await auditRepo.writeLog({
         userId,
@@ -138,6 +163,7 @@ exports.checkOut = async (req, res) => {
       const m = parseInt(dtStr.slice(5, 7), 10);
       const st = await getMonthStatusValue(userId, y, m);
       if (st !== 'approved') await repo.setMonthStatus(userId, y, m, 'submitted', req.user?.id, { tenantId: req.tenantId || null });
+      await summaryRepo.markDirty(userId, y, m, req.tenantId || null);
     } catch (e) { log.warn('month_status_update_failed', { userId, error_message: e.message }); }
     try {
       const u = await userRepo.getUserById(userId);

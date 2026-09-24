@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const { permit } = require('../../core/middleware/rbac');
 const { rateLimit } = require('../../core/middleware/rateLimit');
 const controller = require('./holidays.controller');
+
+router.use(authenticate);
+router.use(resolveTenant);
 
 // GET /api/holidays/jp — 日本の祝日一覧 (Japan national holidays)
 router.get('/jp',
@@ -47,6 +51,14 @@ router.post('/bulk',
   authenticate,
   permit('departments', 'full'),
   controller.createBulk
+);
+
+// POST /api/holidays/department/:departmentId/generate-recurring — 定期休日ルール生成
+router.post('/department/:departmentId/generate-recurring',
+  rateLimit({ windowMs: 60_000, max: 10 }),
+  authenticate,
+  permit('departments', 'full'),
+  controller.generateRecurringRule
 );
 
 // POST /api/holidays/copy — コピー (別部署からコピー)

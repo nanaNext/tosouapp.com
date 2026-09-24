@@ -224,24 +224,29 @@ function allocateUsageByDays(grants, usedDays) {
 // API: Nhân viên tạo yêu cầu nghỉ phép (có lương/không lương)
 exports.create = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    const { startDate, endDate, type, reason } = req.body || {};
+    const role = String(req.user?.role || '').toLowerCase();
+    const canActOnBehalf = role === 'admin' || role === 'manager';
+    const { startDate, endDate, type, reason, userId: targetUserId } = req.body || {};
+    const userId = (canActOnBehalf && targetUserId) ? parseInt(String(targetUserId), 10) : req.user?.id;
     if (!userId || !startDate || !endDate || !type) {
       return res.status(400).json({ message: 'Missing userId/startDate/endDate/type' });
     }
     const id = await repo.create({ userId, startDate, endDate, type, reason, tenantId: req.tenantId || null });
-    try {
-      const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
-      await noticesRepo.createAdminNotification({
-        kind: 'leave_request',
-        title: '有休/休暇申請',
-        message: `${userName} さんが休暇申請しました（${startDate} ~ ${endDate}）`,
-        linkUrl: '/admin/leave/requests',
-        payload: { source: 'leave', requestId: id, userId, startDate, endDate, type: type || 'paid' },
-        createdBy: userId,
-        audience: 'admin_manager'
-      });
-    } catch (e) { /* silently ignored */ }
+    const actingOnBehalf = canActOnBehalf && targetUserId && Number(targetUserId) !== Number(req.user?.id);
+    if (!actingOnBehalf) {
+      try {
+        const userName = String(req.user?.username || req.user?.email || `user#${userId}`);
+        await noticesRepo.createAdminNotification({
+          kind: 'leave_request',
+          title: '有休/休暇申請',
+          message: `${userName} さんが休暇申請しました（${startDate} ~ ${endDate}）`,
+          linkUrl: '/admin/leave/requests',
+          payload: { source: 'leave', requestId: id, userId, startDate, endDate, type: type || 'paid' },
+          createdBy: userId,
+          audience: 'admin_manager'
+        });
+      } catch (e) { /* silently ignored */ }
+    }
     res.status(201).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -439,7 +444,7 @@ exports.updateStatus = async (req, res) => {
     if (!beforeRow) return res.status(404).json({ message: 'Not found' });
     const allowed = await assertLeaveRequestInManagerBranch(req, beforeRow);
     if (!allowed) return res.status(403).json({ message: 'Forbidden: different branch' });
-    await repo.updateStatus(id, status, req.tenantId);
+    await repo.updateStatus(id, status, req.tenantId, req.user?.id || null);
     try {
       await auditRepo.writeLog({
         userId: req.user?.id,
@@ -512,6 +517,141 @@ async function computeUserBalance(userId, tenantId = null) {
     obligation: { required, taken, remaining: Math.max(0, required - taken) }
   };
 }
+// 有給管理 admin一覧用: 部署名JOIN済みの active 社員一覧を取得し、1人ずつ computeUserBalance を実行する。
+// ~200人規模の管理画面向け操作 (月次集計のrunRecomputeForTenantと同様、都度全件再計算する軽い処理として許容する)。
+async function listAllUserBalancesWithMeta({ tenantId = null, dept = '', userId = null } = {}) {
+  const db = require('../../core/database/mysql');
+  const where = [`u.role = 'employee'`, `u.employment_status = 'active'`];
+  const params = [];
+  if (tenantId) { where.push('u.tenant_id = ?'); params.push(tenantId); }
+  if (dept) { where.push('d.name = ?'); params.push(dept); }
+  if (userId) { where.push('u.id = ?'); params.push(userId); }
+  const [users] = await db.query(`
+    SELECT u.id, u.employee_code AS employeeCode, u.username AS username, d.name AS departmentName
+    FROM users u
+    LEFT JOIN departments d ON d.id = u.departmentId
+    WHERE ${where.join(' AND ')}
+    ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
+  `, params);
+
+  const items = [];
+  for (const u of users) {
+    let balance;
+    try {
+      balance = await computeUserBalance(u.id, tenantId);
+    } catch (e) {
+      balance = { totalAvailable: 0, usedDays: 0, grants: [], obligation: { required: 0, taken: 0, remaining: 0 } };
+    }
+    const grants = balance.grants || [];
+    const latest = grants[grants.length - 1] || null;
+    const granted = latest ? Number(latest.daysGranted) || 0 : 0;
+    const carriedOver = Math.max(0, Number(balance.totalAvailable || 0) - (latest ? Number(latest.daysRemaining) || 0 : 0));
+    items.push({
+      userId: u.id,
+      employeeCode: u.employeeCode,
+      username: u.username,
+      departmentName: u.departmentName,
+      granted,
+      carriedOver,
+      usedDays: balance.usedDays,
+      remaining: balance.totalAvailable,
+      obligationTaken: balance.obligation?.taken || 0,
+      obligationMet: (balance.obligation?.remaining || 0) <= 0
+    });
+  }
+  return items;
+}
+
+// GET /api/leave/admin-balances?dept=&userId=
+exports.adminBalances = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || null;
+    const dept = req.query.dept ? String(req.query.dept) : '';
+    const userId = req.query.userId ? parseInt(String(req.query.userId), 10) : null;
+    const items = await listAllUserBalancesWithMeta({ tenantId, dept, userId });
+    res.status(200).json({ items });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/leave/admin-balances/export.xlsx?dept=&userId=
+exports.exportBalancesXlsx = async (req, res) => {
+  try {
+    const ExcelJS = require('exceljs');
+    const tenantId = req.tenantId || null;
+    const dept = req.query.dept ? String(req.query.dept) : '';
+    const userId = req.query.userId ? parseInt(String(req.query.userId), 10) : null;
+    const items = await listAllUserBalancesWithMeta({ tenantId, dept, userId });
+
+    const columns = [
+      { header: '社員', width: 15 },
+      { header: '部署', width: 13 },
+      { header: '付与', width: 9 },
+      { header: '繰越', width: 9 },
+      { header: '取得', width: 9 },
+      { header: '残', width: 9 },
+      { header: '年5日義務', width: 12 }
+    ];
+    const xlsxRows = items.map(it => [
+      it.username || '',
+      it.departmentName || '',
+      it.granted,
+      it.carriedOver,
+      it.usedDays,
+      it.remaining,
+      it.obligationMet ? '達成' : '要取得'
+    ]);
+
+    const HEADER_FILL = 'FFE74C3C';
+    const ROW_FILL = 'FFFBE1E1';
+    const BORDER_COLOR = 'FFE8B4B4';
+    const thinBorder = {
+      top: { style: 'thin', color: { argb: BORDER_COLOR } },
+      left: { style: 'thin', color: { argb: BORDER_COLOR } },
+      bottom: { style: 'thin', color: { argb: BORDER_COLOR } },
+      right: { style: 'thin', color: { argb: BORDER_COLOR } }
+    };
+
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('有給管理'.slice(0, 31));
+    ws.columns = columns.map(c => ({ header: c.header, width: c.width }));
+    ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+    const headerRow = ws.getRow(1);
+    columns.forEach((c, ci) => {
+      const cell = headerRow.getCell(ci + 1);
+      cell.font = { name: 'MS Pゴシック', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = thinBorder;
+    });
+    headerRow.height = 20;
+
+    xlsxRows.forEach((cells, ri) => {
+      const wsRow = ws.getRow(ri + 2);
+      cells.forEach((v, ci) => {
+        const cell = wsRow.getCell(ci + 1);
+        cell.value = v;
+        cell.font = { name: 'MS Pゴシック', size: 11, color: { argb: 'FF000000' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ROW_FILL } };
+        cell.border = thinBorder;
+        cell.alignment = { vertical: 'middle', horizontal: ci === 0 ? 'left' : 'center' };
+      });
+    });
+
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
+
+    const buf = await workbook.xlsx.writeBuffer();
+    const filename = `leave_balances_${new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(Buffer.from(buf));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // API: Kiểm tra số ngày phép còn lại của nhân viên
 exports.myBalance = async (req, res) => {
   try {
@@ -718,7 +858,7 @@ exports.approve = async (req, res) => {
     if (!beforeRow) return res.status(404).json({ message: 'Not found' });
     const allowed = await assertLeaveRequestInManagerBranch(req, beforeRow);
     if (!allowed) return res.status(403).json({ message: 'Forbidden: different branch' });
-    await repo.updateStatus(id, s, req.tenantId || null);
+    await repo.updateStatus(id, s, req.tenantId || null, req.user?.id || null);
     try {
       await auditRepo.writeLog({
         userId: req.user?.id,
@@ -790,17 +930,24 @@ exports.summary = async (req, res) => {
       const upcoming = grants
         .filter(g => new Date(g.expiryDate) >= today && (g.daysRemaining || 0) > 0)
         .sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate))[0] || null;
+      // 有給管理タブ用: 直近の付与(今期分)と、それ以前からの繰越分を分けて表示できるように。
+      const latestGrant = grants[grants.length - 1] || null;
+      const daysGrantedLatest = latestGrant ? latestGrant.daysGranted : 0;
+      const carriedOver = Math.max(0, b.totalAvailable - (latestGrant ? latestGrant.daysRemaining : 0));
       out.push({
         userId: u.id,
         employeeCode: u.employee_code || ('EMP' + String(u.id).padStart(3, '0')),
         name: u.username || u.email || '',
         departmentId: u.departmentId || null,
         totalGranted,
+        daysGrantedLatest,
+        carriedOver,
         usedDays: b.usedDays,
         remainingDays: b.totalAvailable,
         nearestExpiry: upcoming ? upcoming.expiryDate : null,
         nearestExpiryRemaining: upcoming ? upcoming.daysRemaining : 0,
-        obligationRemaining: Math.max(0, b?.obligation?.remaining || 0)
+        obligationRemaining: Math.max(0, b?.obligation?.remaining || 0),
+        obligationRequired: Math.max(0, b?.obligation?.required || 0)
       });
     }
     resultCount = out.length;

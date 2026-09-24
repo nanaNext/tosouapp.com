@@ -11,6 +11,7 @@ const { rateLimitNamed } = require('../../core/middleware/rateLimit');
 const repo = require('./workReports.repository');
 const attendanceRepo = require('../attendance/attendance.repository');
 const calendarRepo = require('../calendar/calendar.repository');
+const { getDepartmentOffDaySet } = require('../attendance/attendance.utils');
 const db = require('../../core/database/mysql');
 const s3Service = require('../../core/services/s3.service');
 
@@ -85,51 +86,6 @@ router.get('/export.xlsx',
       return out;
     })();
     const yearsInRange = Array.from(new Set(dates.map(d => parseInt(String(d).slice(0, 4), 10)).filter(Boolean)));
-    const calByYear = new Map();
-    for (const y of yearsInRange) {
-      const cal = await calendarRepo.computeYear(y).catch(() => null);
-      calByYear.set(y, cal);
-    }
-
-    const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
-    const buildOffSet = (cal, isKouji) => {
-      const detail = cal?.detail || [];
-      const byDate = new Map();
-      for (const it of detail) {
-        const ds = String(it?.date || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-        if (!byDate.has(ds)) byDate.set(ds, []);
-        byDate.get(ds).push({ type: String(it?.type || ''), is_off: Number(it?.is_off || 0) === 1 });
-      }
-      const off = new Set();
-      for (const [ds, list] of byDate.entries()) {
-        if (!isKouji) {
-          if (list.some(x => x.is_off)) off.add(ds);
-          continue;
-        }
-        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-        const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
-        const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
-        if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
-      }
-      if (!off.size && Array.isArray(cal?.off_days) && !isKouji) {
-        for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
-      }
-      return off;
-    };
-
-    const isOffDate = (dateStr, deptName) => {
-      const isKouji = String(deptName || '').includes('工事部');
-      const y = parseInt(String(dateStr).slice(0, 4), 10);
-      const cal = calByYear.get(y);
-      if (!cal) return false;
-      // Note: we can cache the sets by (y, isKouji)
-      const cacheKey = `${y}_${isKouji}`;
-      if (!calByYear.has(cacheKey)) {
-        calByYear.set(cacheKey, buildOffSet(cal, isKouji));
-      }
-      return calByYear.get(cacheKey).has(String(dateStr).slice(0, 10));
-    };
 
     // ── Tenant isolation: không xuất dữ liệu của công ty khác ──
     const _tid = req.tenantId ? parseInt(String(req.tenantId), 10) : null;
@@ -156,6 +112,22 @@ router.get('/export.xlsx',
         ${selUserIdsClause}
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
     `, [...tenantP, ...selUserIds]);
+
+    // Per-department off-day logic — tra department_holidays thật của từng công ty,
+    // không hardcode tên bộ phận "工事部" nữa (đã thay bằng cấu hình 休日設定 theo tenant).
+    const distinctDeptNames = Array.from(new Set((users || []).map(u => u.departmentName || '')));
+    const offSetByYearDept = new Map();
+    await Promise.all(
+      yearsInRange.flatMap(y => distinctDeptNames.map(async (deptName) => {
+        const off = await getDepartmentOffDaySet(y, { departmentName: deptName || null, tenantId: req.tenantId || 0 });
+        offSetByYearDept.set(`${y}|${deptName}`, off);
+      }))
+    );
+    const isOffDate = (dateStr, deptName) => {
+      const y = parseInt(String(dateStr).slice(0, 4), 10);
+      const off = offSetByYearDept.get(`${y}|${deptName || ''}`);
+      return off ? off.has(String(dateStr).slice(0, 10)) : false;
+    };
 
     const [attRows] = await db.query(`
       SELECT a.userId, DATE(COALESCE(a.checkIn, a.checkOut)) AS date, a.checkIn, a.checkOut, a.work_type AS work_type
@@ -882,7 +854,7 @@ router.get('/export-daily',
 
       // カレンダー祝日チェック（簡易）
       const y = parseInt(qDate.slice(0, 4), 10);
-      const cal = await calendarRepo.computeYear(y).catch(() => null);
+      const cal = await calendarRepo.computeYear(y, req.tenantId || 0).catch(() => null);
       const offSet = new Set();
       if (cal?.detail) {
         for (const it of cal.detail) {

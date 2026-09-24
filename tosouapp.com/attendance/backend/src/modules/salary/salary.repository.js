@@ -72,7 +72,7 @@ async function upsertConfig(tenantId, year, data) {
 async function getUserCompensation(userId, tenantId = null) {
   const tid = _tid(tenantId);
   try {
-    let sql = `SELECT base_salary, allowance_transport FROM users WHERE id = ?`;
+    let sql = `SELECT base_salary, allowance_transport, commute_method, commute_distance_km FROM users WHERE id = ?`;
     const params = [userId];
     if (tid !== null) {
       sql += ` AND tenant_id = ?`;

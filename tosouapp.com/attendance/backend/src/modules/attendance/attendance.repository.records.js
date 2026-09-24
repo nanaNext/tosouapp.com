@@ -303,6 +303,29 @@ module.exports = {
     const [rows] = await db.query(sql, params);
     return rows;
   },
+  // listByUserBetween の複数ユーザー版。N人分を1クエリで取る (N+1 を避けるため —
+  // 200人規模の月次台帳/サマリーで、ユーザーごとに毎回クエリを投げると遅すぎるので追加した)。
+  async listByUserIdsBetween(userIds, fromDate, toDate, { tenantId = null } = {}) {
+    if (!Array.isArray(userIds) || !userIds.length) return [];
+    const tid = _tid(tenantId);
+    const start = fromDate + ' 00:00:00';
+    const end = toDate + ' 23:59:59';
+    let tidClause = '';
+    const params = [userIds, start, end, start, end];
+    if (tid != null) { tidClause = ' AND tenant_id = ?'; params.push(tid); }
+    const sql = `
+      SELECT * FROM attendance
+      WHERE userId IN (?)
+        AND (
+          (checkIn >= ? AND checkIn <= ?)
+          OR (checkIn IS NULL AND checkOut >= ? AND checkOut <= ?)
+        )
+        ${tidClause}
+      ORDER BY userId ASC, COALESCE(checkIn, checkOut) ASC
+    `;
+    const [rows] = await db.query(sql, params);
+    return rows;
+  },
   async findCheckInByTime(userId, time, { tenantId = null } = {}) {
     const tid = _tid(tenantId);
     const where = ['userId = ?', 'checkIn = ?'];

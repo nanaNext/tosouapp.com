@@ -46,20 +46,18 @@ module.exports = {
     const [rows] = await db.query(sql, params);
     return rows;
   },
-  async updateStatus(id, status, adminNote = null, tenantId = null) {
+  async updateStatus(id, status, adminNote = null, tenantId = null, processedBy = null) {
     const tid = _tid(tenantId);
     const where = ['id = ?'];
-    const params = [status, status, adminNote || null, id];
-    if (tid != null) {
-      where.unshift('tenant_id = ?');
-      params.splice(3, 0, tid);
-    }
+    const whereParams = [id];
+    if (tid != null) { where.unshift('tenant_id = ?'); whereParams.unshift(tid); }
+    const setParams = [status, status, adminNote || null, processedBy || null, processedBy ? new Date() : null];
     const sql = `
       UPDATE time_adjust_requests
-      SET status = ?, admin_note = CASE WHEN ? = 'rejected' THEN ? ELSE NULL END
+      SET status = ?, admin_note = CASE WHEN ? = 'rejected' THEN ? ELSE NULL END, processed_by = ?, processed_at = ?
       WHERE ${where.join(' AND ')}
     `;
-    await db.query(sql, params);
+    await db.query(sql, [...setParams, ...whereParams]);
   },
   async getById(id, tenantId = null) {
     const tid = _tid(tenantId);
@@ -183,6 +181,8 @@ module.exports.ensureSchema = async function() {
       reason TEXT NULL,
       admin_note TEXT NULL,
       status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      processed_by BIGINT UNSIGNED NULL,
+      processed_at DATETIME NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_userId (userId),
@@ -202,6 +202,12 @@ module.exports.ensureSchema = async function() {
   try {
     await db.query(`ALTER TABLE time_adjust_requests ADD INDEX idx_tar_tid (tenant_id)`);
   } catch (e) { /* index may exist */ }
+  try {
+    await db.query(`ALTER TABLE time_adjust_requests ADD COLUMN processed_by BIGINT UNSIGNED NULL`);
+  } catch (e) { /* column may exist */ }
+  try {
+    await db.query(`ALTER TABLE time_adjust_requests ADD COLUMN processed_at DATETIME NULL`);
+  } catch (e) { /* column may exist */ }
   await db.query(`
     CREATE TABLE IF NOT EXISTS time_adjust_messages (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

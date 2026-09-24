@@ -1,6 +1,7 @@
 const repo = require('./adjust.repository');
 const attendanceRepo = require('../attendance/attendance.repository');
 const noticesRepo = require('../notices/notices.repository');
+const summaryRepo = require('../attendance/attendance.summary.repository');
 // Controller yêu cầu sửa giờ
 exports.create = async (req, res) => {
   try {
@@ -70,7 +71,7 @@ exports.updateStatus = async (req, res) => {
       return res.status(400).json({ message: '差戻し理由を入力してください' });
     }
     const tid = req.tenantId || null;
-    await repo.updateStatus(id, status, adminNote, tid);
+    await repo.updateStatus(id, status, adminNote, tid, req.user?.id || null);
     if (status === 'approved') {
       const reqRow = await repo.getById(id, tid);
       if (reqRow) {
@@ -113,6 +114,12 @@ exports.updateStatus = async (req, res) => {
           // Không chặn việc duyệt nếu ghi giờ lỗi; log để theo dõi.
           console.error('[adjust.approve] write attendance failed:', e && e.message);
         }
+        try {
+          const ds = String(reqRow.requestedCheckIn || reqRow.requestedCheckOut || '').slice(0, 10);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) {
+            await summaryRepo.markDirty(reqRow.userId, parseInt(ds.slice(0, 4), 10), parseInt(ds.slice(5, 7), 10), tid);
+          }
+        } catch (e) { /* silently ignored */ }
       }
     }
     try {

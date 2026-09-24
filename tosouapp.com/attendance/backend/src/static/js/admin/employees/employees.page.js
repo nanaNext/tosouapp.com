@@ -530,7 +530,7 @@ import{requireAdmin as lt}from"../_shared/require-admin.js";import{listEmployees
             <div class="m-code-value">${g.employee_code||me(g.id)}</div>
           </td>
           <td class="m-main-cell" colspan="8">
-            <div class="m-line"><span class="m-k">\u6C0F\u540D:</span> <span class="m-v"><a class="emp-name-link" href="/admin/employees?detail=${g.id}">${g.username||""}</a></span></div>
+            <div class="m-line"><span class="m-k">\u6C0F\u540D:</span> <span class="m-v"><a class="emp-name-link" href="/admin/employees?detail=${g.id}">${g.username||""}</a>${g.base_salary==null||Number(g.base_salary)===0?' <span style="display:inline-block;font-size:10px;font-weight:700;color:#8a5a12;background:#fff4e5;border-radius:999px;padding:1px 6px;white-space:nowrap;">\u7D66\u4E0E\u672A\u8A2D\u5B9A</span>':""}</span></div>
             <div class="m-line"${v?` title="${fe(v)}"`:""}><span class="m-k">\u30E1\u30FC\u30EB:</span> <span class="m-v">${ue(v)}</span></div>
             <div class="m-line"${S?` title="${fe(S)}"`:""}><span class="m-k">\u90E8\u7F72:</span> <span class="m-v">${ue(S)}</span></div>
             <div class="m-line"><span class="m-k">\u5F79\u5272:</span> <span class="m-v">${Be(g.role)}</span></div>
@@ -541,7 +541,7 @@ import{requireAdmin as lt}from"../_shared/require-admin.js";import{listEmployees
         `):c.innerHTML=`
         ${C==="delete"?`<td class="sel-col" data-label="\u9078\u629E"><input type="checkbox" class="empSel" value="${g.id}"></td>`:""}
         <td class="col-code" data-label="\u793E\u54E1\u756A\u53F7" style="font-weight:600;">${g.employee_code||me(g.id)}</td>
-        <td class="col-name" data-label="\u6C0F\u540D"><a class="emp-name-link" href="/admin/employees?detail=${g.id}">${g.username||""}</a></td>
+        <td class="col-name" data-label="\u6C0F\u540D"><a class="emp-name-link" href="/admin/employees?detail=${g.id}">${g.username||""}</a>${g.base_salary==null||Number(g.base_salary)===0?' <span style="display:inline-block;font-size:10px;font-weight:700;color:#8a5a12;background:#fff4e5;border-radius:999px;padding:1px 6px;white-space:nowrap;" title="\u7D66\u4E0E\u30EC\u30B8\u30E3\u30FC\u3067\u57FA\u672C\u7D66\u3092\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044">\u7D66\u4E0E\u672A\u8A2D\u5B9A</span>':""}</td>
         <td class="col-email" data-label="\u30E1\u30FC\u30EB"${v?` title="${fe(v)}"`:""}>${ue(v)}</td>
         <td class="col-branch" data-label="\u652F\u5E97">${(Y.find(q=>String(q.id)===String(g.branch_id))||{}).name||"\u2014"}</td>
         <td class="col-dept" data-label="\u90E8\u7F72"${S?` title="${fe(S)}"`:""}>${ue(S)}</td>

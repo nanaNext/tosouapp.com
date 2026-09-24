@@ -5,9 +5,11 @@ const { rateLimit, rateLimitNamed } = require('../../core/middleware/rateLimit')
 const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 const repo = require('./workReports.repository');
 const attendanceRepo = require('../attendance/attendance.repository');
+const auditRepo = require('../audit/audit.repository');
 const calendarRepo = require('../calendar/calendar.repository');
 const db = require('../../core/database/mysql');
 const { classifyMonthlyDay } = require('../attendance/attendance.classifier');
+const { getDepartmentOffDaySet } = require('../attendance/attendance.utils');
 
 const s3Service = require('../../core/services/s3.service');
 const { buildXlsx, buildXlsxBook } = require('../attendance/attendance.controller');
@@ -51,6 +53,20 @@ const canManagerAccessUser = async (req, userId) => {
   return String(u?.role || '').toLowerCase() === 'employee';
 };
 
+const _logAudit = (req, action, beforeData, afterData) => {
+  auditRepo.writeLog({
+    userId: req.user?.id,
+    tenantId: req.tenantId || null,
+    action,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+    beforeData: beforeData != null ? JSON.stringify(beforeData) : null,
+    afterData: afterData != null ? JSON.stringify(afterData) : null
+  }).catch(() => { /* audit ログ失敗で本処理は止めない */ });
+};
+
 router.use(authenticate);
 router.use(resolveTenant);
 
@@ -58,36 +74,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
   try {
     const date = isISODate(req.query?.date) ? String(req.query.date) : todayJST();
 
-    // Per-user off-day logic (工事部 vs 総務)
-    const [dY, dM, dD] = date.split('-').map(n => parseInt(n, 10));
-    const dateObj = new Date(Date.UTC(dY, dM - 1, dD));
-    const dow = dateObj.getUTCDay(); // 0=Sun, 6=Sat
-    const is4thSat = dow === 6 && Math.ceil(dD / 7) === 4;
+    const [dY] = date.split('-').map(n => parseInt(n, 10));
 
-    // QUAN TRỌNG: calendarRepo.isOff() gộp CẢ thứ 7 thường vào off_days, nên không
-    // được dùng nó làm "ngày nghỉ áp dụng cho mọi người" — nếu không 工事部 sẽ bị
-    // đánh nghỉ oan vào mọi thứ 7. Ta chỉ coi là nghỉ toàn cục khi là NGÀY LỄ THẬT
-    // (祝日/振替/国民の休日/固定休 …), loại bỏ type saturday & sunday.
-    let isRealHoliday = false;
-    try {
-      const HOLIDAY_TYPES = new Set(['jp_auto', 'jp_substitute', 'jp_bridge', 'fixed', 'custom']);
-      const cal = await calendarRepo.computeYear(dY);
-      isRealHoliday = (cal?.detail || []).some(it =>
-        String(it?.date || '').slice(0, 10) === date &&
-        Number(it?.is_off || 0) === 1 &&
-        HOLIDAY_TYPES.has(String(it?.type || ''))
-      );
-    } catch { /* bỏ qua nếu lỗi */ }
-
-    const isOffForUser = (deptName) => {
-      if (isRealHoliday) return true; // Ngày lễ thật (祝日) áp dụng cho tất cả
-      const isKouji = String(deptName || '').includes('工事');
-      if (isKouji) {
-        return dow === 0 || is4thSat; // 工事部: chỉ nghỉ CN + thứ 7 tuần 4
-      }
-      return dow === 0 || dow === 6; // 総務: nghỉ thứ 7 + CN
-    };
-    
     const [rows] = await db.query(`
       SELECT
         u.id AS userId,
@@ -141,6 +129,16 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         u.id ASC,
         a.checkIn ASC
     `, [date, date, date, date]);
+
+    // Per-department off-day logic — tra department_holidays thật của từng công ty,
+    // không hardcode tên bộ phận "工事部" nữa (đã thay bằng cấu hình 休日設定 theo tenant).
+    const distinctDeptNames = Array.from(new Set((rows || []).map(r => r.departmentName || '')));
+    const isOffTodayByDept = new Map();
+    await Promise.all(distinctDeptNames.map(async (deptName) => {
+      const off = await getDepartmentOffDaySet(dY, { departmentName: deptName || null, tenantId: req.tenantId || 0 });
+      isOffTodayByDept.set(deptName, off.has(date));
+    }));
+    const isOffForUser = (deptName) => isOffTodayByDept.get(deptName || '') || false;
 
     const items = (rows || []).map(r => {
       const hasIn = !!r.checkIn;
@@ -268,7 +266,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
   try {
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const { start, end } = monthRange(month);
-    const closed = await repo.isMonthClosed(month).catch(() => false);
+    const closed = await repo.isMonthClosed(month, req.tenantId).catch(() => false);
     const reqSort = req.query.sort || 'dateDesc';
     const reqDept = req.query.dept || '';
     const reqQ = req.query.q || '';
@@ -354,7 +352,7 @@ router.get('/month', authorize('admin', 'manager'), async (req, res) => {
     let isOffDate = (ds) => false;
     try {
       const y = parseInt(String(month).slice(0, 4), 10);
-      const cal = await calendarRepo.computeYear(y).catch(() => null);
+      const cal = await calendarRepo.computeYear(y, req.tenantId || 0).catch(() => null);
       const off = new Set((cal?.off_days || []).map((d) => String(d).slice(0, 10)));
       isOffDate = (ds) => off.has(String(ds).slice(0, 10));
     } catch (e) { /* silently ignored */ }
@@ -970,6 +968,7 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
   try {
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const { start, end } = monthRange(month);
+    const closed = await repo.isMonthClosed(month, req.tenantId).catch(() => false);
     const today = todayJST();
     const ymDateList = (() => {
       const out = [];
@@ -980,53 +979,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       }
       return out;
     })();
-    const calByYear = new Map();
-    try {
-      const years = Array.from(new Set(ymDateList.map(d => parseInt(String(d).slice(0, 4), 10)).filter(Boolean)));
-      for (const y of years) {
-        const cal = await calendarRepo.computeYear(y).catch(() => null);
-        calByYear.set(y, cal);
-      }
-    } catch (e) { /* silently ignored */ }
+    const years = Array.from(new Set(ymDateList.map(d => parseInt(String(d).slice(0, 4), 10)).filter(Boolean)));
 
-    const HOLIDAY_TYPES = new Set(['jp_auto','jp_substitute','jp_bridge','fixed','custom']);
-    const buildOffSet = (cal, isKouji) => {
-      const detail = cal?.detail || [];
-      const byDate = new Map();
-      for (const it of detail) {
-        const ds = String(it?.date || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
-        if (!byDate.has(ds)) byDate.set(ds, []);
-        byDate.get(ds).push({ type: String(it?.type || ''), is_off: Number(it?.is_off || 0) === 1 });
-      }
-      const off = new Set();
-      for (const [ds, list] of byDate.entries()) {
-        if (!isKouji) {
-          if (list.some(x => x.is_off)) off.add(ds);
-          continue;
-        }
-        const hasSunday = list.some(x => x.is_off && x.type === 'sunday');
-        const has4thSaturday = list.some(x => x.is_off && x.type === 'saturday_4th');
-        const hasHoliday = list.some(x => x.is_off && HOLIDAY_TYPES.has(x.type));
-        if (hasSunday || has4thSaturday || hasHoliday) off.add(ds);
-      }
-      if (!off.size && Array.isArray(cal?.off_days) && !isKouji) {
-        for (const ds of cal.off_days) off.add(String(ds).slice(0, 10));
-      }
-      return off;
-    };
-
-    const isOffDate = (dateStr, deptName) => {
-      const isKouji = String(deptName || '').includes('工事部');
-      const y = parseInt(String(dateStr).slice(0, 4), 10);
-      const cal = calByYear.get(y);
-      if (!cal) return false;
-      const cacheKey = `${y}_${isKouji}`;
-      if (!calByYear.has(cacheKey)) {
-        calByYear.set(cacheKey, buildOffSet(cal, isKouji));
-      }
-      return calByYear.get(cacheKey).has(String(dateStr).slice(0, 10));
-    };
     const leaveTypeToKubun = (type) => {
       const v = String(type || '').toLowerCase();
       if (v === 'paid') return '有給休暇';
@@ -1056,6 +1010,22 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       ORDER BY COALESCE(u.employee_code, '') ASC, u.id ASC
     `);
     const userMap = new Map((users || []).map(u => [Number(u.userId), u]));
+
+    // Per-department off-day logic — tra department_holidays thật của từng công ty,
+    // không hardcode tên bộ phận "工事部" nữa (đã thay bằng cấu hình 休日設定 theo tenant).
+    const distinctDeptNames = Array.from(new Set((users || []).map(u => u.departmentName || '')));
+    const offSetByYearDept = new Map();
+    await Promise.all(
+      years.flatMap(y => distinctDeptNames.map(async (deptName) => {
+        const off = await getDepartmentOffDaySet(y, { departmentName: deptName || null, tenantId: req.tenantId || 0 });
+        offSetByYearDept.set(`${y}|${deptName}`, off);
+      }))
+    );
+    const isOffDate = (dateStr, deptName) => {
+      const y = parseInt(String(dateStr).slice(0, 4), 10);
+      const off = offSetByYearDept.get(`${y}|${deptName || ''}`);
+      return off ? off.has(String(dateStr).slice(0, 10)) : false;
+    };
 
     // Fallback checkout time from assigned shift end-time (for monthly-input synchronization view).
     let shiftDefs = [];
@@ -1360,11 +1330,9 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       return Number(a.userId || 0) - Number(b.userId || 0);
     });
 
-    console.log("Returning items with branches!");
-    const itemsWith111 = items.filter(i => i.userId === 111);
-    console.log("User 111 items:", JSON.stringify(itemsWith111, null, 2));
     res.status(200).json({
       month,
+      closed,
       range: { start, end },
       summary: {
         employees: workingUsers.size,
@@ -1386,7 +1354,7 @@ router.get('/month/:userId', authorize('admin', 'manager'), async (req, res) => 
     if (!(await canManagerAccessUser(req, userId))) return res.status(403).json({ message: 'Forbidden' });
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const { start, end } = monthRange(month);
-    const closed = await repo.isMonthClosed(month).catch(() => false);
+    const closed = await repo.isMonthClosed(month, req.tenantId).catch(() => false);
 
     const [[u]] = await db.query(`
       SELECT u.id AS userId, u.employee_code AS employeeCode, u.username AS username,
@@ -1469,8 +1437,316 @@ router.post('/close-month',
   try {
     const month = isYM(req.body?.month) ? String(req.body.month) : null;
     if (!month) return res.status(400).json({ message: 'Missing month' });
-    const r = await repo.closeMonth(month, req.user?.id || null);
+    const r = await repo.closeMonth(month, req.user?.id || null, req.tenantId);
     res.status(200).json(r);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── 過去データ取込 (attendance_daily → work_reports、1回限りの移行用) ──────
+router.post('/backfill-from-daily',
+  rateLimitNamed('workreports_backfill', { windowMs: 60_000, max: 3 }),
+  authorize('admin', 'manager'),
+  async (req, res) => {
+  try {
+    const tenantClause = req.tenantId ? 'AND u.tenant_id = ?' : '';
+    const tenantParams = req.tenantId ? [req.tenantId] : [];
+
+    const [existingRows] = await db.query(`SELECT userId, date FROM work_reports`);
+    const existingKeys = new Set((existingRows || []).map(r => `${r.userId}|${String(r.date).slice(0, 10)}`));
+
+    const [dailyRows] = await db.query(`
+      SELECT ad.userId, ad.date, ad.location, ad.memo, ad.work_type
+      FROM attendance_daily ad
+      JOIN users u ON u.id = ad.userId
+      WHERE ((ad.location IS NOT NULL AND ad.location <> '') OR (ad.memo IS NOT NULL AND ad.memo <> ''))
+        ${tenantClause}
+    `, tenantParams);
+
+    let created = 0;
+    let skippedExisting = 0;
+    let skippedEmpty = 0;
+
+    for (const row of (dailyRows || [])) {
+      const work = String(row.memo || '').trim();
+      if (!work) { skippedEmpty++; continue; }
+      const dateStr = String(row.date).slice(0, 10);
+      const key = `${row.userId}|${dateStr}`;
+      if (existingKeys.has(key)) { skippedExisting++; continue; }
+
+      const [[times]] = await db.query(`
+        SELECT MIN(checkIn) AS minIn, MAX(checkOut) AS maxOut
+        FROM attendance
+        WHERE userId = ? AND DATE(COALESCE(checkIn, checkOut)) = ?
+      `, [row.userId, dateStr]);
+      const startTime = times?.minIn ? String(times.minIn).slice(11, 19) : null;
+      const endTime = times?.maxOut ? String(times.maxOut).slice(11, 19) : null;
+      const site = String(row.location || '').trim();
+      const workType = ['onsite', 'remote', 'satellite'].includes(row.work_type) ? row.work_type : null;
+
+      await repo.create({ userId: row.userId, date: dateStr, startTime, endTime, workType, site, work, status: 'approved' });
+      existingKeys.add(key);
+      created++;
+    }
+
+    _logAudit(req, 'work_report_backfill_from_daily', null, { created, skippedExisting, skippedEmpty });
+    res.status(200).json({ created, skippedExisting, skippedEmpty });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── 作業報告一覧・承認/差戻し (新レイアウト、mockup 対応) ──────────────
+
+router.get('/list', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
+    const dept = req.query?.dept ? String(req.query.dept) : '';
+    const status = ['pending', 'approved', 'rejected'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
+    const q = req.query?.q ? String(req.query.q) : '';
+    const page = parseInt(req.query?.page, 10) || 1;
+    const pageSize = parseInt(req.query?.pageSize, 10) || 50;
+    const userId = req.query?.userId ? parseInt(String(req.query.userId), 10) : null;
+    if (userId && !(await canManagerAccessUser(req, userId))) return res.status(403).json({ message: 'Forbidden' });
+    const closed = await repo.isMonthClosed(month, req.tenantId).catch(() => false);
+    const result = await repo.listForAdmin({ tenantId: req.tenantId, month, dept, userId, status, q, page, pageSize });
+    res.status(200).json({ month, closed, ...result });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const userId = parseInt(String(body.userId || ''), 10);
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    if (!(await canManagerAccessUser(req, userId))) return res.status(403).json({ message: 'Forbidden' });
+    const date = isISODate(body.date) ? String(body.date) : null;
+    if (!date) return res.status(400).json({ message: 'Invalid date' });
+    const work = String(body.work || '').trim();
+    if (!work) return res.status(400).json({ message: 'Missing work' });
+    const site = String(body.site || '').trim();
+    const isHM = (v) => /^\d{2}:\d{2}(:\d{2})?$/.test(String(v || ''));
+    const startTime = isHM(body.startTime) ? String(body.startTime) : null;
+    const endTime = isHM(body.endTime) ? String(body.endTime) : null;
+    const wt = String(body.workType || '').trim();
+    const workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
+    const insertId = await repo.create({ userId, date, startTime, endTime, workType, site, work, status: 'approved' });
+    const saved = await repo.getById(insertId);
+    _logAudit(req, 'work_report_create', null, saved);
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch('/:id', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id || ''), 10);
+    if (!id) return res.status(400).json({ message: 'Invalid id' });
+    const before = await repo.getById(id);
+    if (!before) return res.status(404).json({ message: 'Not found' });
+    if (!(await canManagerAccessUser(req, before.userId))) return res.status(403).json({ message: 'Forbidden' });
+    const body = req.body || {};
+    const isHM = (v) => /^\d{2}:\d{2}(:\d{2})?$/.test(String(v || ''));
+    const patch = {};
+    if (body.site !== undefined) patch.site = String(body.site || '').trim();
+    if (body.work !== undefined) patch.work = String(body.work || '').trim();
+    if (body.startTime !== undefined) patch.startTime = isHM(body.startTime) ? String(body.startTime) : null;
+    if (body.endTime !== undefined) patch.endTime = isHM(body.endTime) ? String(body.endTime) : null;
+    if (body.workType !== undefined) {
+      const wt = String(body.workType || '').trim();
+      patch.workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
+    }
+    await repo.update(id, patch);
+    const saved = await repo.getById(id);
+    _logAudit(req, 'work_report_update', before, saved);
+    res.status(200).json(saved);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete('/:id', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id || ''), 10);
+    if (!id) return res.status(400).json({ message: 'Invalid id' });
+    const before = await repo.getById(id);
+    if (!before) return res.status(404).json({ message: 'Not found' });
+    if (!(await canManagerAccessUser(req, before.userId))) return res.status(403).json({ message: 'Forbidden' });
+    await repo.remove(id);
+    _logAudit(req, 'work_report_delete', before, null);
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/:id/approve', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id || ''), 10);
+    if (!id) return res.status(400).json({ message: 'Invalid id' });
+    const before = await repo.getById(id);
+    if (!before) return res.status(404).json({ message: 'Not found' });
+    if (!(await canManagerAccessUser(req, before.userId))) return res.status(403).json({ message: 'Forbidden' });
+    await repo.setStatus(id, 'approved', { approvedBy: req.user?.id || null });
+    const saved = await repo.getById(id);
+    _logAudit(req, 'work_report_approve', before, saved);
+    res.status(200).json(saved);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/:id/reject', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id || ''), 10);
+    if (!id) return res.status(400).json({ message: 'Invalid id' });
+    const before = await repo.getById(id);
+    if (!before) return res.status(404).json({ message: 'Not found' });
+    if (!(await canManagerAccessUser(req, before.userId))) return res.status(403).json({ message: 'Forbidden' });
+    const reason = String(req.body?.reason || '').trim() || null;
+    await repo.setStatus(id, 'rejected', { approvedBy: req.user?.id || null, rejectedReason: reason });
+    const saved = await repo.getById(id);
+    _logAudit(req, 'work_report_reject', before, saved);
+    res.status(200).json(saved);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/export.csv', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
+    const dept = req.query?.dept ? String(req.query.dept) : '';
+    const status = ['pending', 'approved', 'rejected'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
+    const q = req.query?.q ? String(req.query.q) : '';
+    const { items } = await repo.listForAdmin({ tenantId: req.tenantId, month, dept, status, q, page: 1, pageSize: 5000 });
+    const csvEsc = (v) => {
+      const s = String(v ?? '');
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const statusLabel = (s) => s === 'approved' ? '承認済み' : s === 'rejected' ? '差戻し' : '承認待ち';
+    const fmtHm = (t) => t ? String(t).slice(0, 5) : '';
+    const header = '日付,社員番号,氏名,部署,現場・案件,作業内容,開始,終了,ステータス\n';
+    let csv = header;
+    for (const r of items) {
+      csv += [
+        csvEsc(String(r.date || '').slice(0, 10)),
+        csvEsc(r.employeeCode || ''),
+        csvEsc(r.username || ''),
+        csvEsc(r.departmentName || ''),
+        csvEsc(r.site || ''),
+        csvEsc(r.work || ''),
+        csvEsc(fmtHm(r.startTime)),
+        csvEsc(fmtHm(r.endTime)),
+        csvEsc(statusLabel(r.status))
+      ].join(',') + '\n';
+    }
+    const filename = `work_reports_${month}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send('﻿' + csv);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/export-report.xlsx', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const ExcelJS = require('exceljs');
+    const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
+    const dept = req.query?.dept ? String(req.query.dept) : '';
+    const status = ['pending', 'approved', 'rejected'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
+    const q = req.query?.q ? String(req.query.q) : '';
+    const { items } = await repo.listForAdmin({ tenantId: req.tenantId, month, dept, status, q, page: 1, pageSize: 5000 });
+
+    const statusLabel = (s) => s === 'approved' ? '承認済み' : s === 'rejected' ? '差戻し' : '承認待ち';
+    const fmtHm = (t) => t ? String(t).slice(0, 5) : '';
+    const durationHm = (st, et) => {
+      if (!st || !et) return '';
+      const [sh, sm] = String(st).slice(0, 5).split(':').map(Number);
+      const [eh, em] = String(et).slice(0, 5).split(':').map(Number);
+      if ([sh, sm, eh, em].some(n => Number.isNaN(n))) return '';
+      const diff = (eh * 60 + em) - (sh * 60 + sm);
+      if (diff < 0) return '';
+      // 小数（例: 9.0, 5.5）で表示する — 時:分 形式ではなく指定された形式に合わせる
+      return Math.round((diff / 60) * 100) / 100;
+    };
+
+    const columns = [
+      { header: '日付', width: 13 },
+      { header: '曜日', width: 7 },
+      { header: '社員', width: 15 },
+      { header: '部署', width: 13 },
+      { header: '現場・案件', width: 22 },
+      { header: '作業内容', width: 30 },
+      { header: '開始', width: 9 },
+      { header: '終了', width: 9 },
+      { header: '時間', width: 9 },
+      { header: 'ステータス', width: 12 }
+    ];
+    const xlsxRows = items.map(r => [
+      String(r.date || '').slice(0, 10),
+      weekdayJa(r.date),
+      r.username || '',
+      r.departmentName || '',
+      r.site || '',
+      r.work || '',
+      fmtHm(r.startTime),
+      fmtHm(r.endTime),
+      durationHm(r.startTime, r.endTime),
+      statusLabel(r.status)
+    ]);
+
+    // 勤怠記録のExcel出力と同じ配色 (えんじヘッダー + 薄いピンク行) で統一する
+    const HEADER_FILL = 'FFE74C3C';
+    const ROW_FILL = 'FFFBE1E1';
+    const BORDER_COLOR = 'FFE8B4B4';
+    const thinBorder = {
+      top: { style: 'thin', color: { argb: BORDER_COLOR } },
+      left: { style: 'thin', color: { argb: BORDER_COLOR } },
+      bottom: { style: 'thin', color: { argb: BORDER_COLOR } },
+      right: { style: 'thin', color: { argb: BORDER_COLOR } }
+    };
+
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet(`作業報告_${month}`.slice(0, 31));
+    ws.columns = columns.map(c => ({ header: c.header, width: c.width }));
+    ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+    const headerRow = ws.getRow(1);
+    columns.forEach((c, ci) => {
+      const cell = headerRow.getCell(ci + 1);
+      cell.font = { name: 'MS Pゴシック', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = thinBorder;
+    });
+    headerRow.height = 20;
+
+    xlsxRows.forEach((cells, ri) => {
+      const wsRow = ws.getRow(ri + 2);
+      cells.forEach((v, ci) => {
+        const cell = wsRow.getCell(ci + 1);
+        cell.value = v;
+        cell.font = { name: 'MS Pゴシック', size: 11, color: { argb: 'FF000000' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ROW_FILL } };
+        cell.border = thinBorder;
+        cell.alignment = { vertical: 'middle', horizontal: (ci === 4 || ci === 5) ? 'left' : 'center' };
+        if (ci === 8 && typeof v === 'number') cell.numFmt = '0.0';
+      });
+    });
+
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
+
+    const buf = await workbook.xlsx.writeBuffer();
+    const filename = `work_reports_${month}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(Buffer.from(buf));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

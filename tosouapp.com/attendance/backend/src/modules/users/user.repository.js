@@ -236,7 +236,7 @@ module.exports = {
     }
     return id;
   },
-  async updateUser(id, { employeeCode, username, email, role, branchId, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin, allowanceTransport, dependentsCount, taxCategory, qualificationAllowance, tenantId = null }) {
+  async updateUser(id, { employeeCode, username, email, role, branchId, departmentId, level, managerId, employmentType, hireDate, birthDate, gender, phone, avatarUrl, probationDate, officialDate, lang, region, timezone, address, contractType, visaNumber, visaExpiry, insuranceNumber, employmentStatus, contractEnd, baseSalary, shiftId, joinDate, lastLogin, allowanceTransport, dependentsCount, taxCategory, qualificationAllowance, commuteMethod, commuteDistanceKm, tenantId = null }) {
     const tid = _tid(tenantId);
     const whereClause = tid != null ? `WHERE id = ? AND tenant_id = ?` : `WHERE id = ?`;
     const whereParams = tid != null ? [id, tid] : [id];
@@ -278,6 +278,8 @@ module.exports = {
           , dependents_count = COALESCE(?, dependents_count)
           , tax_category = COALESCE(?, tax_category)
           , qualification_allowance = COALESCE(?, qualification_allowance)
+          , commute_method = COALESCE(?, commute_method)
+          , commute_distance_km = COALESCE(?, commute_distance_km)
       ${whereClause}
     `;
     await db.query(sql, [
@@ -316,6 +318,8 @@ module.exports = {
       dependentsCount !== undefined && dependentsCount !== null && dependentsCount !== '' ? dependentsCount : null,
       taxCategory || null,
       qualificationAllowance !== undefined && qualificationAllowance !== null && qualificationAllowance !== '' ? qualificationAllowance : null,
+      commuteMethod || null,
+      commuteDistanceKm !== undefined && commuteDistanceKm !== null && commuteDistanceKm !== '' ? commuteDistanceKm : null,
       ...whereParams
     ]);
   },

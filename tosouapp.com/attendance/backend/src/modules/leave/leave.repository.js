@@ -14,6 +14,8 @@ async function ensureSchema() {
       type VARCHAR(32) NOT NULL,
       reason VARCHAR(255) NULL,
       status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      processed_by BIGINT UNSIGNED NULL,
+      processed_at DATETIME NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_user (userId),
       INDEX idx_status (status),
@@ -29,6 +31,12 @@ async function ensureSchema() {
       WHERE table_schema = DATABASE() AND table_name = 'leave_requests'
     `);
     const colMap = new Map((cols || []).map(c => [String(c.name), c]));
+    if (!colMap.has('processed_by')) {
+      try { await db.query(`ALTER TABLE leave_requests ADD COLUMN processed_by BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
+    }
+    if (!colMap.has('processed_at')) {
+      try { await db.query(`ALTER TABLE leave_requests ADD COLUMN processed_at DATETIME NULL`); } catch (e) { /* silently ignored */ }
+    }
     const typeCol = colMap.get('type');
     if (typeCol && String(typeCol.dtype || '').toLowerCase() !== 'varchar') {
       try {
@@ -424,7 +432,7 @@ module.exports = {
     const [rows] = await db.query(sql, params);
     return rows;
   },
-  async updateStatus(id, status, tenantId = null) {
+  async updateStatus(id, status, tenantId = null, processedBy = null) {
     if (tenantId != null && Number.isFinite(Number(tenantId))) {
       const tid = parseInt(String(tenantId), 10);
       // 注意: JOIN を含む UPDATE では LIMIT を使用できない（MySQL: Incorrect usage of UPDATE and LIMIT）。
@@ -432,18 +440,18 @@ module.exports = {
       const sql = `
         UPDATE leave_requests lr
         INNER JOIN users u ON u.id = lr.userId
-        SET lr.status = ?
+        SET lr.status = ?, lr.processed_by = ?, lr.processed_at = ?
         WHERE lr.id = ? AND u.tenant_id = ?
       `;
-      await db.query(sql, [status, id, tid]);
+      await db.query(sql, [status, processedBy || null, processedBy ? new Date() : null, id, tid]);
       return;
     }
     const sql = `
       UPDATE leave_requests
-      SET status = ?
+      SET status = ?, processed_by = ?, processed_at = ?
       WHERE id = ?
     `;
-    await db.query(sql, [status, id]);
+    await db.query(sql, [status, processedBy || null, processedBy ? new Date() : null, id]);
   },
   async cancelOwnPaidByDate(userId, date, tenantId = null) {
     const tid = _tid(tenantId);

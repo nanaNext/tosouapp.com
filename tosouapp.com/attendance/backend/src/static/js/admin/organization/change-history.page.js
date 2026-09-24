@@ -8,7 +8,10 @@ const ACTION_LABEL = {
   department_assignment_update: '異動編集',
   department_assignment_delete: '異動削除',
   department_month_close: '月次締め',
-  department_month_reopen: '月次再オープン'
+  department_month_reopen: '月次再オープン',
+  corporation_create: '法人作成',
+  corporation_update: '法人編集',
+  corporation_deactivate: '法人無効化'
 };
 
 function escapeHtml(s) {
@@ -69,7 +72,7 @@ export async function mount({ content } = {}) {
     const body = root.querySelector('#historyBody');
     const pager = root.querySelector('#historyPager');
     try {
-      const res = await fetchJSONAuth(`/api/admin/audit?actionPrefix=department_&page=${page}&pageSize=${pageSize}`);
+      const res = await fetchJSONAuth(`/api/admin/audit?actionPrefixes=department_,corporation_&page=${page}&pageSize=${pageSize}`);
       const { data = [], total = 0, pages = 1 } = res || {};
       status.textContent = total ? `全 ${total} 件中 ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} 件` : '';
       body.innerHTML = data.length ? data.map(row => `

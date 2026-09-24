@@ -116,7 +116,7 @@ import{fetchJSONAuth as G}from"../../api/http.api.js";let g="",O=[],l=null,q="",
             <tr>
               <th class="col-fixed-1">\u65E5\u4ED8</th>
               <th class="col-fixed-2">\u66DC\u65E5</th>
-  `;if(A.length===0)b+='</tr></thead><tbody><tr><td colspan="2" style="padding: 20px; color: #94a3b8;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</td></tr></tbody></table></div>',b+='<div class="shift-mobile-list"><div style="padding: 20px; text-align: center; color: #94a3b8;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div></div>';else{A.forEach(e=>{const a=e.employment_type==="full_time";let f=Q(e.submission_status||"UNSUBMITTED"),u=`<button class="btn-xs btn-proxy" data-id="${e.id}" data-name="${h(e.username)}" style="background:#2563eb;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">\u4EE3\u7406\u5165\u529B</button>`;e.submission_status==="PENDING"&&(u+=` <button class="btn-xs btn-ok btn-approve" data-id="${e.id}">\u627F\u8A8D</button>`),b+=`
+  `;if(A.length===0)b+='</tr></thead><tbody><tr><td colspan="2" style="padding: 20px; color: #94a3b8;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</td></tr></tbody></table></div>',b+='<div class="shift-mobile-list"><div style="padding: 20px; text-align: center; color: #94a3b8;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div></div>';else{A.forEach(e=>{const a=e.employment_type==="full_time";let f=Q(e.submission_status||"UNSUBMITTED"),u=`<button class="btn-xs btn-proxy" data-id="${e.id}" data-name="${h(e.username)}" style="background:#2563eb;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">\u4EE3\u7406\u5165\u529B</button>`;e.submission_status==="PENDING"&&(u+=` <button class="btn-xs btn-ok btn-approve" data-id="${e.id}">\u627F\u8A8D</button> <button class="btn-xs btn-ng btn-reject" data-id="${e.id}">\u5DEE\u623B\u3057</button>`),b+=`
         <th class="emp-col">
           <div class="emp-col-inner">
             <div class="emp-name-row" title="${h(e.username)} ${e.employee_code?`(${h(e.employee_code)})`:""}">
@@ -145,7 +145,7 @@ import{fetchJSONAuth as G}from"../../api/http.api.js";let g="",O=[],l=null,q="",
             <div class="sac-day-header" style="${K}">${c}</div>
             <div class="sac-day-val">${v}</div>
           </div>
-        `}let w="";e.submission_status==="PENDING"?w=`<button class="btn-xs btn-ok btn-approve" data-id="${e.id}" style="width:100%; padding:8px 0; font-size:13px; border-radius: 6px;">\u627F\u8A8D\u3059\u308B</button>`:w=Q(e.submission_status||"UNSUBMITTED"),t+=`
+        `}let w="";e.submission_status==="PENDING"?w=`<div style="display:flex; gap:6px;"><button class="btn-xs btn-ok btn-approve" data-id="${e.id}" style="flex:1; padding:8px 0; font-size:13px; border-radius: 6px;">\u627F\u8A8D\u3059\u308B</button><button class="btn-xs btn-ng btn-reject" data-id="${e.id}" style="flex:1; padding:8px 0; font-size:13px; border-radius: 6px;">\u5DEE\u623B\u3057</button></div>`:w=Q(e.submission_status||"UNSUBMITTED"),t+=`
         <div class="sac-card">
           <div class="sac-header">
             <div class="sac-name-wrap">

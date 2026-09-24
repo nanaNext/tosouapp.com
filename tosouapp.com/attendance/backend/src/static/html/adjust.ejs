@@ -9,6 +9,26 @@
   <link rel="stylesheet" href="/static/css/adjust.css?v=navy-20260626-3">
   <link rel="stylesheet" href="/static/css/adjust.page.css?v=navy-20260626-3">
   <link rel="stylesheet" href="/static/vendor/flatpickr/flatpickr.min.css?v=4.6.13">
+  <style>
+    /* Desktop: canh giữa và mở rộng khối nội dung của 勤怠修正 thay vì dính sát trái */
+    @media (min-width: 769px) {
+      #adjustFormHost, #adjustListHost {
+        max-width: 880px;
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+      #adjustFormHost .adj-card,
+      #adjustFormHost .sap-compact-card,
+      #adjustFormHost .action-required-card,
+      #adjustFormHost .adj-action-bar,
+      #adjustListHost .adj-hist-nav,
+      #adjustListHost .adj-hist-list {
+        max-width: 880px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+    }
+  </style>
   <link rel="icon" href="data:,">
   <script src="/static/vendor/flatpickr/flatpickr.min.js?v=4.6.13"></script>
   <script src="/static/vendor/flatpickr/ja.js?v=4.6.13"></script>

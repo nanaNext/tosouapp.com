@@ -4,7 +4,7 @@ const service = require('./attendance.service');
 const db = require('../../core/database/mysql');
 const userRepo = require('../users/user.repository');
 const log = require('../../core/logger');
-const { getUserOffDaySet } = require('./attendance.utils');
+const { getUserOffDaySet, getDepartmentOffDaySet } = require('./attendance.utils');
 
 // Xuất Excel chấm công tháng
 
@@ -57,6 +57,15 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
     userQuery += ` ORDER BY CASE WHEN d.name = '工事部' THEN 1 ELSE 2 END, u.employee_code ASC, u.id ASC`;
     const [users] = await db.query(userQuery, userParams);
     if (!users || users.length === 0) return res.status(404).json({ message: 'No data found' });
+
+    // Per-department off-day logic — tra department_holidays thật của từng công ty,
+    // không hardcode tên bộ phận "工事部" nữa (đã thay bằng cấu hình 休日設定 theo tenant).
+    const distinctDeptNames = Array.from(new Set(users.map(u => u.departmentName || '')));
+    const offSetByDept = new Map();
+    await Promise.all(distinctDeptNames.map(async (deptName) => {
+      const off = await getDepartmentOffDaySet(parseInt(year, 10), { departmentName: deptName || null, tenantId: tid || 0 });
+      offSetByDept.set(deptName, off);
+    }));
 
     const userIds = users.map(u => u.id);
     const [shifts] = await db.query(`SELECT userId, date, status, leaveType FROM shift_requests WHERE userId IN (?) AND date LIKE ?`, [userIds, `${targetMonth}-%`]);
@@ -148,19 +157,14 @@ exports.exportAllEmployeeShiftsExcel = async (req, res) => {
       for (let i = 1; i <= daysInMonth; i++) {
         const dateStr = `${targetMonth}-${String(i).padStart(2, '0')}`;
         const shift = userShifts.find(s => s.date === dateStr);
-        const dateObj = new Date(y, m - 1, i);
-        const dow = dateObj.getDay();
-        const isKoujibu = String(u.departmentName || '').includes('工事部');
         const isSeishainLocal = u.employment_type === 'full_time' || u.employment_type === '正社員' || u.employment_type === '正';
-        const is4thSaturday = dow === 6 && Math.ceil(dateObj.getDate() / 7) === 4;
+        const deptOffSet = offSetByDept.get(u.departmentName || '');
 
         let cellText = '';
         let statusClass = '';
         let isWeekendOrHoliday = false;
-        if (isKoujibu && isSeishainLocal) {
-          isWeekendOrHoliday = dow === 0 || is4thSaturday;
-        } else if (isSeishainLocal) {
-          isWeekendOrHoliday = dow === 0 || dow === 6;
+        if (isSeishainLocal) {
+          isWeekendOrHoliday = deptOffSet ? deptOffSet.has(dateStr) : false;
         }
 
         if (shift && shift.status === 'LEAVE') {
