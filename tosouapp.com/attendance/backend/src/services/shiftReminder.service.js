@@ -1,5 +1,6 @@
 const db = require('../core/database/mysql');
 const emailService = require('../core/notifications/email.service');
+const branding = require('./reminderBranding');
 
 let cronInstance = null;
 let cronLoadError = null;
@@ -23,140 +24,102 @@ function getCron() {
 
 const sentReminders = new Set();
 
-// Má»¥c Ä‘Ã­ch sá»­ dá»¥ng cá»§a cÃ¡i nÃ y lÃ  check monthly missing attendance
-
+// Cuối tháng: email cho nhân viên còn ngày làm việc chưa chấm công trong tháng.
+// Chạy chung cho mọi công ty — ngày nghỉ lấy theo lịch của đúng công ty + bộ phận
+// (getDepartmentOffDaySet, cùng nguồn với màn hình chấm công tháng), email ký tên
+// theo công ty của người nhận.
 async function checkMonthlyMissingAttendance() {
-  return;
   try {
+    if (!emailService.canSendMail()) {
+      console.log('[ShiftReminder] Email service not configured. Skipping monthly missing check.');
+      return;
+    }
     const nowJST = new Date(Date.now() + 9 * 3600 * 1000);
     const y = nowJST.getUTCFullYear();
     const m = nowJST.getUTCMonth();
     const monthStr = nowJST.toISOString().slice(0, 7);
     const todayStr = nowJST.toISOString().slice(0, 10);
-    
+
     const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-    const monthStartStr = `${y}-${String(m+1).padStart(2, '0')}-01`;
-    const monthEndStr = `${y}-${String(m+1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const monthStartStr = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    const monthEndStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    const monthStartJST = `${monthStartStr} 00:00:00`;
-    const monthEndJST = `${monthEndStr} 23:59:59`;
-
-    // 1. Fetch all active users (only employees)
+    // Chỉ nhân viên (không gồm admin/manager) của công ty đang hoạt động
     const [users] = await db.query(`
-      SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
-      FROM users u 
-      LEFT JOIN departments d ON u.departmentId = d.id 
-      WHERE u.employment_status = 'active' AND u.role = 'employee'
+      SELECT u.id, u.email, u.username, u.employment_type, u.tenant_id, u.departmentId, u.hire_date
+      FROM users u
+      ${branding.ACTIVE_TENANT_JOIN}
+      WHERE u.employment_status = 'active' AND u.role = 'employee' AND ${branding.ACTIVE_TENANT_WHERE}
     `);
     if (!users || users.length === 0) return;
 
-    // 2. Check assignments
-    const [assignments] = await db.query(`
-      SELECT a.userId, s.name, s.start_time, s.end_time
-      FROM user_shift_assignments a
-      JOIN shift_definitions s ON a.shiftId = s.id
-      WHERE a.start_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)
-    `, [monthEndStr, monthStartStr]);
-    const assignMap = new Map();
-    for (const a of assignments) {
-      assignMap.set(a.userId, a);
+    const tenantNames = await branding.loadTenantNames(db);
+    const { getDepartmentOffDaySet } = require('../modules/attendance/attendance.utils');
+    const offCache = new Map();
+    async function offDaysFor(user) {
+      const key = `${user.tenant_id || 0}_${user.departmentId || 0}`;
+      if (!offCache.has(key)) {
+        offCache.set(key, await getDepartmentOffDaySet(y, { departmentId: user.departmentId || null, tenantId: user.tenant_id || 0 }).catch(() => new Set()));
+      }
+      return offCache.get(key);
     }
 
-    // Láº¥y thÃ´ng tin calendar Ä‘á»ƒ check ngÃ y nghá»‰ cá»§a cáº£ thÃ¡ng
-    const calendarRepo = require('../modules/calendar/calendar.repository');
-    const cal = await calendarRepo.computeYear(y).catch(() => null);
-    
-    // TÃ¡ch riÃªng cÃ¡c loáº¡i ngÃ y nghá»‰ Ä‘á»ƒ phÃ¢n tÃ­ch logic cho å·¥äº‹éƒ¨
-    const allDetail = cal?.detail || [];
-    const redDays = new Set(allDetail.filter(it => it.is_off).map(it => String(it.date).slice(0, 10)));
-    const offDays = new Set((cal?.off_days || []).map(d => String(d).slice(0, 10)));
-    
-    // Láº¥y trÆ°á»›c dá»¯ liá»‡u giáº£i thÃ­ch tá»«ng ngÃ y Ä‘á»ƒ tÃ¡i sá»­ dá»¥ng
-    const explanations = new Map();
     const daysInMonth = [];
     for (let day = 1; day <= lastDay; day++) {
-      const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      daysInMonth.push(ds);
-      explanations.set(ds, allDetail.filter(it => String(it.date).slice(0, 10) === ds));
+      daysInMonth.push(`${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
     }
 
-    // Láº¥y dá»¯ liá»‡u attendance_daily cá»§a toÃ n bá»™ thÃ¡ng
+    // 区分 (kubun) của từng ngày
     const [dailies] = await db.query(`SELECT userId, date, kubun FROM attendance_daily WHERE date >= ? AND date <= ?`, [monthStartStr, monthEndStr]);
     const dailyMap = new Map(); // key: userId_date
     for (const d of dailies) {
       dailyMap.set(`${d.userId}_${String(d.date).slice(0, 10)}`, String(d.kubun || '').trim());
     }
 
-    // Láº¥y dá»¯ liá»‡u attendance cá»§a toÃ n bá»™ thÃ¡ng
-    const [attRows] = await db.query(`SELECT userId, DATE(checkIn) as inDate, DATE(checkOut) as outDate FROM attendance WHERE checkIn >= ? AND checkIn <= ?`, [monthStartJST, monthEndJST]);
-    const attMap = new Map(); // key: userId_date
+    // Ngày có chấm công (vào hoặc ra)
+    const [attRows] = await db.query(
+      `SELECT userId, DATE(COALESCE(checkIn, checkOut)) AS d FROM attendance
+       WHERE COALESCE(checkIn, checkOut) >= ? AND COALESCE(checkIn, checkOut) <= ?`,
+      [`${monthStartStr} 00:00:00`, `${monthEndStr} 23:59:59`]
+    );
+    const attMap = new Set();
     for (const r of attRows) {
-      if (r.inDate) attMap.set(`${r.userId}_${String(r.inDate).slice(0, 10)}`, true);
+      if (r.d) attMap.add(`${r.userId}_${String(r.d instanceof Date ? r.d.toISOString() : r.d).slice(0, 10)}`);
     }
 
     for (const user of users) {
       if (!user.email) continue;
-      const userId = user.id;
-      
-      // Bá» qua nhÃ¢n viÃªn part-time (baito) vÃ¬ há» cÃ³ lá»‹ch lÃ m viá»‡c khÃ´ng cá»‘ Ä‘á»‹nh
+      // Part-time không có lịch cố định → không nhắc
       if (user.employment_type === 'part_time') continue;
-      
-      // Kiá»ƒm tra xem cÃ³ pháº£i lÃ  nhÃ¢n viÃªn bá»™ pháº­n CÃ´ng trÃ¬nh (Koujibu) hay khÃ´ng
-      const isPartTime = user.employment_type === 'part_time';
-      const isKoujiUser = !isPartTime && String(user.departmentName || '').includes('å·¥äº‹éƒ¨');
 
-      const cacheKey = `monthly_missing_${userId}_${monthStr}`;
+      const cacheKey = `monthly_missing_${user.id}_${monthStr}`;
       if (sentReminders.has(cacheKey)) continue;
 
+      const offDays = await offDaysFor(user);
+      const hireStr = user.hire_date ? String(user.hire_date instanceof Date ? user.hire_date.toISOString() : user.hire_date).slice(0, 10) : '';
+
       let isMissingAnyDay = false;
-
-      // Kiá»ƒm tra tá»«ng ngÃ y trong thÃ¡ng cho user nÃ y
       for (const ds of daysInMonth) {
-        // Bá» qua ngÃ y trong tÆ°Æ¡ng lai
-        if (ds > todayStr) continue;
+        if (ds > todayStr) continue;              // ngày chưa tới
+        if (hireStr && ds < hireStr) continue;    // trước ngày vào làm
 
-        const isSunday = new Date(ds).getUTCDay() === 0;
-        let isUserOffDay = false;
-
-        if (!isKoujiUser) {
-          // NhÃ¢n viÃªn thÆ°á»ng: Nghá»‰ chá»§ nháº­t, ngÃ y lá»… (redDays) hoáº·c ngÃ y nghá»‰ cÃ´ng ty (offDays)
-          isUserOffDay = isSunday || redDays.has(ds) || offDays.has(ds);
-        } else {
-          // NhÃ¢n viÃªn bá»™ pháº­n CÃ´ng trÃ¬nh (Koujibu): CÃ³ quy táº¯c ngÃ y nghá»‰ riÃªng (Nghá»‰ thá»© 7 tuáº§n 4)
-          const detail = explanations.get(ds) || [];
-          const hasSundayReason = detail.some(x => x.is_off && x.type === 'sunday');
-          const hasLastSaturdayReason = detail.some(x => x.is_off && x.type === 'saturday_4th');
-          const hasHolidayReason = detail.some(x => x.is_off && ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge'].includes(x.type));
-          isUserOffDay = hasSundayReason || hasLastSaturdayReason || hasHolidayReason;
-        }
-
-        const userKubun = dailyMap.get(`${userId}_${ds}`) || '';
-        const isExplicitOff = ['ä¼‘æ—¥', 'æœ‰çµ¦ä¼‘æš‡', 'æ¬ å‹¤', 'ç„¡çµ¦ä¼‘æš‡', 'ä»£æ›¿ä¼‘æ—¥'].includes(userKubun);
-        const isExplicitWork = ['å‡ºå‹¤', 'ä¼‘æ—¥å‡ºå‹¤', 'ä»£æ›¿å‡ºå‹¤', 'åŠä¼‘'].includes(userKubun);
-
+        const userKubun = dailyMap.get(`${user.id}_${ds}`) || '';
+        const isExplicitOff = ['休日', '有給休暇', '欠勤', '無給休暇', '代替休日'].includes(userKubun);
+        const isExplicitWork = ['出勤', '休日出勤', '代替出勤', '半休'].includes(userKubun);
         if (isExplicitOff) continue;
-        if (isUserOffDay && !isExplicitWork) continue;
+        if (offDays.has(ds) && !isExplicitWork) continue;
 
-        // Náº¿u ngÃ y nÃ y lÃ  ngÃ y pháº£i lÃ m viá»‡c, kiá»ƒm tra xem Ä‘Ã£ cháº¥m cÃ´ng chÆ°a
-        if (!attMap.has(`${userId}_${ds}`)) {
+        if (!attMap.has(`${user.id}_${ds}`)) {
           isMissingAnyDay = true;
-          break; // Chá»‰ cáº§n thiáº¿u 1 ngÃ y lÃ  Ä‘á»§ Ä‘iá»u kiá»‡n Ä‘á»ƒ gá»­i thÃ´ng bÃ¡o thÃ¡ng
+          break; // thiếu 1 ngày là đủ để nhắc
         }
       }
 
-      // Náº¿u cÃ³ Ã­t nháº¥t 1 ngÃ y lÃ m viá»‡c bá»‹ thiáº¿u cháº¥m cÃ´ng, thÃ¬ gá»­i thÃ´ng bÃ¡o
       if (isMissingAnyDay) {
-        await sendMissingEmail(user, 'monthly', monthStr);
-        sentReminders.add(cacheKey);
-      } else {
-        // Äáº¿m tá»•ng sá»‘ ngÃ y Ä‘Ã£ Ä‘i lÃ m trong thÃ¡ng
-        let totalWorkedDays = 0;
-        for (const ds of daysInMonth) {
-          if (attMap.has(`${userId}_${ds}`)) {
-            totalWorkedDays++;
-          }
-        }
-        await sendMonthlyCompleteEmail(user, monthStr, totalWorkedDays);
+        await sendMissingEmail(user, 'monthly', monthStr, {
+          company: branding.companyName(tenantNames, user.tenant_id, '飯塚グループ・エンジニアリング'),
+          contact: branding.contactBlock(user.tenant_id),
+        });
         sentReminders.add(cacheKey);
       }
     }
@@ -165,44 +128,43 @@ async function checkMonthlyMissingAttendance() {
   }
 }
 
-async function sendMissingEmail(user, type, dateStr) {
-  return;
+async function sendMissingEmail(user, type, dateStr, { company, contact } = {}) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
+  company = company || process.env.COMPANY_NAME || '飯塚グループ・エンジニアリング';
+  contact = contact || branding.contactBlock(user.tenant_id);
+  const senderFrom = emailService.senderWithName(company) || `"${company}" <iizuka_token@tosouapp.com>`;
   
   let subject, text, html;
 
   if (type === 'monthly') {
-    subject = `[é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°] ä»Šæœˆã®å‹¤æ€ æœªå…¥åŠ›ã«é–¢ã™ã‚‹é‡è¦ãªãŠçŸ¥ã‚‰ã›`;
+    subject = `[${company}] 今月の勤怠未入力に関する重要なお知らせ`;
     text = `
-${user.username} ã•ã‚“
+${user.username} さん
 
-ä»Šæœˆï¼ˆ${dateStr}ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã«æœªå…¥åŠ›ã®å‹¤å‹™æ—¥ãŒå«ã¾ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚
-å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ãŒæœªå…¥åŠ›ã®ã¾ã¾ã§ã™ã¨ã€çµ¦ä¸Žè¨ˆç®—ç­‰ã«å½±éŸ¿ãŒå‡ºã‚‹å¯èƒ½æ€§ãŒã‚ã‚Šã¾ã™ã€‚
-è‡³æ€¥ã€ã‚·ã‚¹ãƒ†ãƒ ã‚ˆã‚Šæ‰“åˆ»ã®çŠ¶æ³ã‚„ç”³è«‹æ¼ã‚ŒãŒãªã„ã‹ç¢ºèªã—ã¦ãã ã•ã„ã€‚
+今月（${dateStr}）の勤怠データに未入力の勤務日が含まれていることが確認されました。
+勤怠データが未入力のままですと、給与計算等に影響が出る可能性があります。
+至急、システムより打刻の状況や申請漏れがないか確認してください。
 
-â–¼ æ‰“åˆ»ãƒ»ç”³è«‹ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰
+▼ 打刻・申請はこちらから（アプリURL）
 ${appUrl}
 
-ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚
-ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
-å…¬å¼LINEï¼š https://lin.ee/zBKnhkd
+このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
+${contact.text}
     `.trim();
 
     html = `
-      <p>${user.username} ã•ã‚“</p>
+      <p>${user.username} さん</p>
       <br/>
-      <p>ä»Šæœˆï¼ˆ<strong>${dateStr}</strong>ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã«æœªå…¥åŠ›ã®å‹¤å‹™æ—¥ãŒå«ã¾ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚</p>
-      <p>å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ãŒæœªå…¥åŠ›ã®ã¾ã¾ã§ã™ã¨ã€çµ¦ä¸Žè¨ˆç®—ç­‰ã«å½±éŸ¿ãŒå‡ºã‚‹å¯èƒ½æ€§ãŒã‚ã‚Šã¾ã™ã€‚<br/>
-      è‡³æ€¥ã€ã‚·ã‚¹ãƒ†ãƒ ã‚ˆã‚Šæ‰“åˆ»ã®çŠ¶æ³ã‚„ç”³è«‹æ¼ã‚ŒãŒãªã„ã‹ç¢ºèªã—ã¦ãã ã•ã„ã€‚</p>
+      <p>今月（<strong>${dateStr}</strong>）の勤怠データに未入力の勤務日が含まれていることが確認されました。</p>
+      <p>勤怠データが未入力のままですと、給与計算等に影響が出る可能性があります。<br/>
+      至急、システムより打刻の状況や申請漏れがないか確認してください。</p>
       <br/>
-      <p>â–¼ æ‰“åˆ»ãƒ»ç”³è«‹ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰<br/>
+      <p>▼ 打刻・申請はこちらから（アプリURL）<br/>
       <a href="${appUrl}">${appUrl}</a></p>
       <br/>
       <hr/>
-      <p style="font-size: 12px; color: #666;">ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚<br/>
-      ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
-å…¬å¼LINEï¼š https://lin.ee/zBKnhkd</p>
+      <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
+      ${contact.html}</p>
     `;
   }
 
@@ -225,38 +187,38 @@ ${appUrl}
 async function sendMonthlyCompleteEmail(user, monthStr, totalWorkedDays) {
   return;
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
   
-  const subject = `[é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°] ä»Šæœˆã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ç¢ºèªå®Œäº†ã®ãŠçŸ¥ã‚‰ã›`;
+  const subject = `[飯塚グループ・エンジニアリング] 今月の勤怠データ確認完了のお知らせ`;
   const text = `
-${user.username} ã•ã‚“
+${user.username} さん
 
-ä»Šæœˆï¼ˆ${monthStr}ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã¯ã™ã¹ã¦æ­£å¸¸ã«å…¥åŠ›ã•ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚
-ä»Šæœˆã®åˆè¨ˆå‡ºå‹¤æ—¥æ•°ã¯ ${totalWorkedDays} æ—¥ã§ã™ã€‚
+今月（${monthStr}）の勤怠データはすべて正常に入力されていることが確認されました。
+今月の合計出勤日数は ${totalWorkedDays} 日です。
 
-è©³ç´°ã‚„æœ‰çµ¦ç­‰ã®çŠ¶æ³ã«ã¤ã„ã¦ç¢ºèªãƒ»ä¿®æ­£ãŒå¿…è¦ãªå ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®æœˆæ¬¡å‹¤æ€ è¡¨ã‚’ã”ç¢ºèªã„ãŸã ãã‹ã€ç®¡ç†è€…ã¾ã§ã”é€£çµ¡ãã ã•ã„ã€‚
+詳細や有給等の状況について確認・修正が必要な場合は、システムの月次勤怠表をご確認いただくか、管理者までご連絡ください。
 
-â–¼ æœˆæ¬¡å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰
+▼ 月次勤怠表はこちらから（アプリURL）
 ${appUrl}
 
-ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚
-ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
-å…¬å¼LINEï¼š https://lin.ee/zBKnhkd
+このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
   `.trim();
 
   const html = `
-    <p>${user.username} ã•ã‚“</p>
+    <p>${user.username} さん</p>
     <br/>
-    <p>ä»Šæœˆï¼ˆ<strong>${monthStr}</strong>ï¼‰ã®å‹¤æ€ ãƒ‡ãƒ¼ã‚¿ã¯ã™ã¹ã¦æ­£å¸¸ã«å…¥åŠ›ã•ã‚Œã¦ã„ã‚‹ã“ã¨ãŒç¢ºèªã•ã‚Œã¾ã—ãŸã€‚</p>
-    <p>ä»Šæœˆã®åˆè¨ˆå‡ºå‹¤æ—¥æ•°ã¯ <strong>${totalWorkedDays} æ—¥</strong>ã§ã™ã€‚</p>
-    <p>è©³ç´°ã‚„æœ‰çµ¦ç­‰ã®çŠ¶æ³ã«ã¤ã„ã¦ç¢ºèªãƒ»ä¿®æ­£ãŒå¿…è¦ãªå ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®æœˆæ¬¡å‹¤æ€ è¡¨ã‚’ã”ç¢ºèªã„ãŸã ãã‹ã€ç®¡ç†è€…ã¾ã§ã”é€£çµ¡ãã ã•ã„ã€‚</p>
+    <p>今月（<strong>${monthStr}</strong>）の勤怠データはすべて正常に入力されていることが確認されました。</p>
+    <p>今月の合計出勤日数は <strong>${totalWorkedDays} 日</strong>です。</p>
+    <p>詳細や有給等の状況について確認・修正が必要な場合は、システムの月次勤怠表をご確認いただくか、管理者までご連絡ください。</p>
     <br/>
-    <p>â–¼ æœˆæ¬¡å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰<br/>
+    <p>▼ 月次勤怠表はこちらから（アプリURL）<br/>
     <a href="${appUrl}">${appUrl}</a></p>
     <br/>
     <hr/>
-    <p style="font-size: 12px; color: #666;">ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚<br/>
-    ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚<br/><strong>å…¬å¼LINEï¼š</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+    <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
+    お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
   `;
 
   try {
@@ -277,50 +239,50 @@ ${appUrl}
 
 async function sendDailySummaryEmail(user, dateStr, checkIn, checkOut, totalHours) {
   const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-  const senderFrom = process.env.MAIL_FROM || '"é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°" <iizuka_token@tosouapp.com>';
+  const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
   
   const inStr = String(checkIn || '').slice(11, 16);
   const outStr = String(checkOut || '').slice(11, 16);
   
-  const subject = `[é£¯å¡šã‚°ãƒ«ãƒ¼ãƒ—ãƒ»ã‚¨ãƒ³ã‚¸ãƒ‹ã‚¢ãƒªãƒ³ã‚°] æœ¬æ—¥ã®å‹¤å‹™ãŠç–²ã‚Œæ§˜ã§ã—ãŸ`;
+  const subject = `[飯塚グループ・エンジニアリング] 本日の勤務お疲れ様でした`;
   const text = `
-${user.username} ã•ã‚“
+${user.username} さん
 
-æœ¬æ—¥ã®å‹¤å‹™ãŠç–²ã‚Œæ§˜ã§ã—ãŸã€‚ä»¥ä¸‹ã®é€šã‚Šé€€å‹¤ã®æ‰“åˆ»ã‚’å—ã‘ä»˜ã‘ã¾ã—ãŸã€‚
+本日の勤務お疲れ様でした。以下の通り退勤の打刻を受け付けました。
 
-ãƒ»æ—¥ä»˜: ${dateStr}
-ãƒ»å‡ºå‹¤æ™‚é–“: ${inStr}
-ãƒ»é€€å‹¤æ™‚é–“: ${outStr}
-ãƒ»ç·å‹¤å‹™æ™‚é–“: ${totalHours}
+・日付: ${dateStr}
+・出勤時間: ${inStr}
+・退勤時間: ${outStr}
+・総勤務時間: ${totalHours}
 
-æ‰“åˆ»æ™‚é–“ã«èª¤ã‚ŠãŒã‚ã‚‹å ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®å‹¤æ€ è¡¨ã‹ã‚‰ä¿®æ­£ç”³è«‹ã‚’è¡Œã£ã¦ãã ã•ã„ã€‚
+打刻時間に誤りがある場合は、システムの勤怠表から修正申請を行ってください。
 
-â–¼ å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰
+▼ 勤怠表はこちらから（アプリURL）
 ${appUrl}
 
-ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚
-ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚
-å…¬å¼LINEï¼š https://lin.ee/zBKnhkd
+このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。
+お問い合わせに関してはシステム公式LINEまでお願いいたします。
+公式LINE： https://lin.ee/zBKnhkd
   `.trim();
 
   const html = `
-    <p>${user.username} ã•ã‚“</p>
+    <p>${user.username} さん</p>
     <br/>
-    <p>æœ¬æ—¥ã®å‹¤å‹™ãŠç–²ã‚Œæ§˜ã§ã—ãŸã€‚ä»¥ä¸‹ã®é€šã‚Šé€€å‹¤ã®æ‰“åˆ»ã‚’å—ã‘ä»˜ã‘ã¾ã—ãŸã€‚</p>
+    <p>本日の勤務お疲れ様でした。以下の通り退勤の打刻を受け付けました。</p>
     <ul>
-      <li><strong>æ—¥ä»˜:</strong> ${dateStr}</li>
-      <li><strong>å‡ºå‹¤æ™‚é–“:</strong> ${inStr}</li>
-      <li><strong>é€€å‹¤æ™‚é–“:</strong> ${outStr}</li>
-      <li><strong>ç·å‹¤å‹™æ™‚é–“:</strong> ${totalHours}</li>
+      <li><strong>日付:</strong> ${dateStr}</li>
+      <li><strong>出勤時間:</strong> ${inStr}</li>
+      <li><strong>退勤時間:</strong> ${outStr}</li>
+      <li><strong>総勤務時間:</strong> ${totalHours}</li>
     </ul>
-    <p>æ‰“åˆ»æ™‚é–“ã«èª¤ã‚ŠãŒã‚ã‚‹å ´åˆã¯ã€ã‚·ã‚¹ãƒ†ãƒ ã®å‹¤æ€ è¡¨ã‹ã‚‰ä¿®æ­£ç”³è«‹ã‚’è¡Œã£ã¦ãã ã•ã„ã€‚</p>
+    <p>打刻時間に誤りがある場合は、システムの勤怠表から修正申請を行ってください。</p>
     <br/>
-    <p>â–¼ å‹¤æ€ è¡¨ã¯ã“ã¡ã‚‰ã‹ã‚‰ï¼ˆã‚¢ãƒ—ãƒªURLï¼‰<br/>
+    <p>▼ 勤怠表はこちらから（アプリURL）<br/>
     <a href="${appUrl}">${appUrl}</a></p>
     <br/>
     <hr/>
-    <p style="font-size: 12px; color: #666;">ã“ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¯ã‚·ã‚¹ãƒ†ãƒ ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«é€ã‚‰ã‚Œã¦ã„ã¾ã™ã€‚ã“ã®ã¾ã¾è¿”ä¿¡ã•ã‚Œã¦ã‚‚å±Šãã¾ã›ã‚“ã€‚<br/>
-    ãŠå•ã„åˆã‚ã›ã«é–¢ã—ã¦ã¯ã‚·ã‚¹ãƒ†ãƒ å…¬å¼LINEã¾ã§ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚<br/><strong>å…¬å¼LINEï¼š</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+    <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送られています。このまま返信されても届きません。<br/>
+    お問い合わせに関してはシステム公式LINEまでお願いいたします。<br/><strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
   `;
 
   try {
@@ -340,8 +302,6 @@ ${appUrl}
 }
 
 function init() {
-  console.log('[ShiftReminder] Disabled by admin — skipping scheduler init.');
-  return true;
   const cron = getCron();
   if (!cron || typeof cron.schedule !== 'function') {
     const detail = cronLoadError && cronLoadError.message ? `: ${cronLoadError.message}` : '';
@@ -359,7 +319,7 @@ function init() {
     }
   }, { timezone: 'Asia/Tokyo' });
 
-  console.log('[ShiftReminder] Cron job initialized. Monthly total-days check on last day 23:30 JST.');
+  console.log('[ShiftReminder] Cron job initialized. Monthly missing-attendance check on last day 23:30 JST.');
   return true;
 }
 

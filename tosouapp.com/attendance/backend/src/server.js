@@ -69,6 +69,7 @@ async function start() {
     });
     if (!disableSchedulers) {
       initAutoGrantScheduler();
+      initShiftReminders(); // Nhắc nộp lịch ca + nhắc quên chấm công (email, theo từng công ty)
     }
 
     // Initialize backup cron job - Tự động sao lưu Database (chỉ chạy trên Production)

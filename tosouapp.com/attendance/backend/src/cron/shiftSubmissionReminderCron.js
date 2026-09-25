@@ -2,9 +2,9 @@ const cron = require('node-cron');
 const db = require('../core/database/mysql');
 const emailService = require('../core/notifications/email.service');
 const noticesRepo = require('../modules/notices/notices.repository');
+const branding = require('../services/reminderBranding');
 
 async function processMonthlyShiftReminders() {
-    return;
     console.log('[ShiftReminderCron] Bắt đầu kiểm tra nhắc nhở nộp lịch ca tháng sau...');
     try {
         if (!emailService.canSendMail()) {
@@ -39,7 +39,8 @@ async function processMonthlyShiftReminders() {
             SELECT u.id, u.email, u.username, u.employment_type, u.tenant_id, d.name as departmentName 
             FROM users u 
             LEFT JOIN departments d ON u.departmentId = d.id 
-            WHERE u.employment_status = 'active' AND u.role = 'employee'
+            ${branding.ACTIVE_TENANT_JOIN}
+            WHERE u.employment_status = 'active' AND u.role = 'employee' AND ${branding.ACTIVE_TENANT_WHERE}
         `);
 
         if (!users || users.length === 0) return;
@@ -51,11 +52,7 @@ async function processMonthlyShiftReminders() {
         `, [targetMonthStr]);
 
         // Email ký tên theo công ty của từng nhân viên (cron chạy chung cho mọi công ty).
-        const tenantNames = new Map();
-        try {
-            const [tenantRows] = await db.query('SELECT id, name FROM tenants');
-            tenantRows.forEach(t => tenantNames.set(t.id, t.name));
-        } catch (e) { /* bảng tenants chưa có → dùng tên mặc định */ }
+        const tenantNames = await branding.loadTenantNames(db);
 
         const statusMap = new Map();
         monthStatuses.forEach(row => {
@@ -69,7 +66,8 @@ async function processMonthlyShiftReminders() {
 
             const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
             const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-            const company = tenantNames.get(user.tenant_id) || process.env.COMPANY_NAME || '飯塚塗研株式会社';
+            const company = branding.companyName(tenantNames, user.tenant_id);
+            const contact = branding.contactBlock(user.tenant_id);
             const senderFrom = emailService.senderWithName(company) || `"${company}" <iizuka_token@tosouapp.com>`;
             
             let subject = `[${company}] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
@@ -102,8 +100,7 @@ ${appUrl}ui/shifts
 ${appUrl}ui/manual
 
 このメッセージはシステムにより自動的に送信されております。
-ご不明な点がございましたら、公式LINEまでお問い合わせください。
-公式LINE： https://lin.ee/zBKnhkd
+${contact.text}
                 `.trim();
 
                 html = `
@@ -129,8 +126,7 @@ ${appUrl}ui/manual
 <br/>
 <hr/>
 <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送信されております。<br/>
-ご不明な点がございましたら、公式LINEまでお問い合わせください。<br/>
-<strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+${contact.html}</p>
                 `;
             } else {
                 // Baito
@@ -156,8 +152,7 @@ ${appUrl}ui/shifts
 ${appUrl}ui/manual
 
 このメッセージはシステムにより自動的に送信されております。
-ご不明な点がございましたら、公式LINEまでお問い合わせください。
-公式LINE： https://lin.ee/zBKnhkd
+${contact.text}
                 `.trim();
 
                 html = `
@@ -181,8 +176,7 @@ ${appUrl}ui/manual
 <br/>
 <hr/>
 <p style="font-size: 12px; color: #666;">このメッセージはシステムにより自動的に送信されております。<br/>
-ご不明な点がございましたら、公式LINEまでお問い合わせください。<br/>
-<strong>公式LINE：</strong> <a href="https://lin.ee/zBKnhkd">https://lin.ee/zBKnhkd</a></p>
+${contact.html}</p>
                 `;
             }
 
@@ -233,8 +227,6 @@ ${appUrl}ui/manual
 }
 
 function initShiftSubmissionReminderCron() {
-    console.log('[ShiftSubmissionReminderCron] Disabled by admin — skipping scheduler init.');
-    return;
     cron.schedule('0 15 * * *', () => {
         processMonthlyShiftReminders();
     }, {

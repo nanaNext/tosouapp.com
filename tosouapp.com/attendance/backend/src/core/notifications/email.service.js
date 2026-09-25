@@ -71,8 +71,9 @@ async function sendViaResend({ to, subject, html, text, from }) {
 // của người nhận — MAIL_FROM là một giá trị chung cho mọi công ty.
 function senderWithName(name) {
   const raw = String(mailFrom || '').trim();
-  const m = raw.match(/<([^>]+)>/);
-  const addr = m ? m[1].trim() : raw;
+  // MAIL_FROM có thể là "Tên <addr>", "Tên addr" hoặc chỉ "addr"
+  const m = raw.match(/[^\s<>"]+@[^\s<>"]+/);
+  const addr = m ? m[0] : '';
   const safeName = String(name || '').replace(/["\r\n<>]/g, '').trim();
   if (!addr || !safeName) return raw || undefined;
   return `"${safeName}" <${addr}>`;
