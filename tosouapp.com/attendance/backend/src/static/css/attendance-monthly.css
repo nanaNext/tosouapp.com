@@ -701,7 +701,6 @@ body.view-plan #monthTableReal .se-time[data-actual]:not([data-actual=""]) {
 }
 body:not(.embed) .se-month-scroll {
   overflow-x: auto !important;
-  overflow-y: visible !important;
   height: auto;
   padding-top: 0;
 }
@@ -756,7 +755,6 @@ body:not(.embed) .kintai-main {
 }
 body:not(.embed) #monthTable .se-month-scroll {
   overflow-x: auto !important;
-  overflow-y: visible !important;
   height: auto;
   padding-top: 0;
 }

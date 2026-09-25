@@ -328,11 +328,126 @@
     } catch (e) { /* silently ignored */ }
   };
 
-  const syncMonthHScroll = () => {};
+  // 横スクロール対応の「浮遊ヘッダー」— テーブル幅がビューポートより広い場合、
+  // .se-month-scroll に overflow-x:auto を付けると（CSS仕様上の制約で）
+  // overflow-y も auto 扱いになり、position:sticky の基準祖先が .kintai-main
+  // ではなく .se-month-scroll 自身になってしまい、ヘッダーが全く効かなくなる。
+  // そのため CSS の sticky には頼らず、実ヘッダーの複製を position:fixed で
+  // 独自に追従させることで、縦1本・横1本のスクロールバーのままヘッダー固定を実現する。
+  const updateFloatingHead = () => {
+    try {
+      const floatWrap = window.__seFloatingHeadEl;
+      if (!floatWrap) return;
+      const wrapEl = document.querySelector('.se-month-scroll');
+      const table = wrapEl?.querySelector('#monthTableReal') || wrapEl?.querySelector('table');
+      const thead = table?.querySelector('thead');
+      if (!wrapEl || !table || !thead) { floatWrap.style.display = 'none'; return; }
+
+      const stickTop = (() => {
+        try {
+          const v = getComputedStyle(document.documentElement).getPropertyValue('--kintai-top-h').trim();
+          const n = parseFloat(v);
+          return Number.isFinite(n) ? n : 48;
+        } catch (e) { return 48; }
+      })();
+
+      // テーブルは再描画のたびに .se-month-scroll ごと作り直されるため、要素インスタンス
+      // ごとにスクロール監視を付け直す（一度だけ付けると再描画後は無反応になる）。
+      if (wrapEl.dataset.hscrollBound !== '1') {
+        wrapEl.dataset.hscrollBound = '1';
+        wrapEl.addEventListener('scroll', () => {
+          try {
+            const ft = floatWrap.querySelector('table');
+            if (ft) ft.style.transform = `translateX(${-wrapEl.scrollLeft}px)`;
+          } catch (e) { /* silently ignored */ }
+        }, { passive: true });
+      }
+
+      const theadRect = thead.getBoundingClientRect();
+      const wrapRect = wrapEl.getBoundingClientRect();
+      const shouldShow = theadRect.top < (stickTop - 1) && wrapRect.bottom > (stickTop + 20);
+
+      if (!shouldShow) {
+        floatWrap.style.display = 'none';
+        return;
+      }
+
+      const realRows = thead.querySelectorAll('tr');
+      let clone = floatWrap.querySelector('table');
+      if (!clone || floatWrap.dataset.sourceRows !== String(realRows.length)) {
+        floatWrap.innerHTML = '';
+        clone = document.createElement('table');
+        clone.style.cssText = 'border-collapse:collapse; table-layout:fixed; margin:0;';
+        clone.appendChild(thead.cloneNode(true));
+        floatWrap.appendChild(clone);
+        floatWrap.dataset.sourceRows = String(realRows.length);
+      }
+
+      try {
+        const cloneRows = clone.querySelectorAll('thead tr');
+        for (let r = 0; r < realRows.length; r++) {
+          const realCells = realRows[r].children;
+          const cloneCells = cloneRows[r] ? cloneRows[r].children : [];
+          for (let c = 0; c < realCells.length; c++) {
+            const w = realCells[c].getBoundingClientRect().width;
+            if (cloneCells[c]) {
+              cloneCells[c].style.width = w + 'px';
+              cloneCells[c].style.minWidth = w + 'px';
+              cloneCells[c].style.maxWidth = w + 'px';
+              cloneCells[c].style.boxSizing = 'border-box';
+              // クローンは元のテーブルから切り離されるため、IDに紐づくCSSが効かず
+              // 背景色などが消える。computed styleをそのままコピーして見た目を一致させる。
+              try {
+                const cs = getComputedStyle(realCells[c]);
+                cloneCells[c].style.background = cs.backgroundColor;
+                cloneCells[c].style.color = cs.color;
+                cloneCells[c].style.fontSize = cs.fontSize;
+                cloneCells[c].style.fontWeight = cs.fontWeight;
+                cloneCells[c].style.padding = cs.padding;
+                cloneCells[c].style.border = cs.border;
+                cloneCells[c].style.textAlign = cs.textAlign;
+                cloneCells[c].style.verticalAlign = cs.verticalAlign;
+                cloneCells[c].style.lineHeight = cs.lineHeight;
+                cloneCells[c].style.height = cs.height;
+                cloneCells[c].style.position = 'static';
+                cloneCells[c].style.boxShadow = 'none';
+              } catch (e) { /* silently ignored */ }
+            }
+          }
+        }
+      } catch (e) { /* silently ignored */ }
+
+      floatWrap.style.display = '';
+      floatWrap.style.top = stickTop + 'px';
+      floatWrap.style.left = wrapRect.left + 'px';
+      floatWrap.style.width = wrapRect.width + 'px';
+      clone.style.transform = `translateX(${-wrapEl.scrollLeft}px)`;
+    } catch (e) { /* silently ignored */ }
+  };
+
+  const syncMonthHScroll = () => { updateFloatingHead(); };
 
   const syncMonthVScroll = () => {};
 
-  const wireMonthHScrollVisibility = () => {};
+  const wireMonthHScrollVisibility = () => {
+    try {
+      if (window.__seFloatingHeadWired) { updateFloatingHead(); return; }
+      window.__seFloatingHeadWired = true;
+      const floatWrap = document.createElement('div');
+      floatWrap.id = 'seFloatingHead';
+      floatWrap.style.cssText = 'position:fixed; overflow:hidden; z-index:900; display:none; pointer-events:none; box-shadow:0 2px 6px rgba(15,23,42,0.15);';
+      document.body.appendChild(floatWrap);
+      window.__seFloatingHeadEl = floatWrap;
+
+      const onScroll = () => { try { updateFloatingHead(); } catch (e) { /* silently ignored */ } };
+      const main = document.querySelector('.kintai-main');
+      if (main) main.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll, { passive: true });
+      // 横スクロールの監視は updateFloatingHead 側で、その時点の実際の
+      // .se-month-scroll 要素に対して都度付け直す（再描画で要素が入れ替わるため）。
+      updateFloatingHead();
+    } catch (e) { /* silently ignored */ }
+  };
 
   const wireFooterResize = () => {
     try {
@@ -1101,6 +1216,7 @@
         throw new Error(msg);
       }
       markRowSaved(tr);
+      try { draft?.clear?.(ctx, ym); } catch (e) { /* silently ignored */ }
       try {
         const days = Array.isArray(state.currentMonthDetail?.days) ? state.currentMonthDetail.days : [];
         const day = days.find(d => String(d?.date || '').slice(0,10) === dateStr);
@@ -1260,7 +1376,13 @@
         }
       } catch (e) { /* silently ignored */ }
       
-      const hasDailyMeaningful = !!(effectiveKubun || wt || location || reason || memo || breakMinutes !== 60 || nightBreakMinutes !== 0);
+      // 現場・作業内容・備考を「全部消して空にする」操作も保存対象にする —
+      // 元の値と比較して、空になっただけでも変更として扱う（元が空ならこれまで通り無視）。
+      const locationChanged = location !== (tr.dataset.locationBase || '');
+      const memoChanged = memo !== (tr.dataset.memoBase || '');
+      const notesChanged = notes !== (tr.dataset.notesBase || '');
+      const hasDailyMeaningful = !!(effectiveKubun || wt || location || reason || memo || breakMinutes !== 60 || nightBreakMinutes !== 0
+        || locationChanged || memoChanged || notesChanged);
       // Important: allow saving daily-only edits (kubun/work/location/memo) even when no time updates.
       if (!updates.length && !hasDailyMeaningful) return;
       const payload = {
@@ -1363,6 +1485,7 @@
       }
 
       markRowSaved(tr);
+      try { draft?.clear?.(ctx, ym); } catch (e) { /* silently ignored */ }
       try {
         tr.dataset.kubunConfirmed = effectiveKubun ? '1' : '';
         tr.dataset.kubunBase = effectiveKubun || '';

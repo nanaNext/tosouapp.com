@@ -422,9 +422,9 @@
       const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       const isFuture = dateStr > todayStr;
       
-      tr.dataset.locationBase = dLoc;
-      tr.dataset.memoBase = dMemo;
-      tr.dataset.notesBase = dNotes;
+      tr.dataset.locationBase = finalLoc;
+      tr.dataset.memoBase = finalMemo;
+      tr.dataset.notesBase = finalNotes;
       tr.dataset.actualIn = hasActualIn ? inHm : '';
       tr.dataset.actualOut = hasActualOut ? outHm : '';
 
