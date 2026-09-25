@@ -93,6 +93,13 @@ async function ensureEmployeeProfilePhotosSchema() {
 }
 // Admin tổng hợp
 router.use(authenticate, resolveTenant);
+
+// Đối tượng userId lấy từ body/query/params phải thuộc đúng công ty (tenant) của
+// người gọi — nếu không, admin công ty A thao tác được lên nhân viên công ty B.
+async function userInTenant(req, userId) {
+  if (!userId) return false;
+  return !!(await userRepo.getUserById(userId, req.tenantId || null));
+}
 // Users
 router.get('/users', authorize('admin','manager'), userCtrl.list);
 router.get('/users/:id', authorize('admin','manager'), async (req, res) => {
@@ -738,10 +745,11 @@ router.patch('/users/:id/unlock', authorize('admin'), async (req, res) => {
 router.post('/users/:id/revoke-sessions', authorize('admin'), async (req, res) => {
   try {
     const id = req.params.id;
+    if (!(await userInTenant(req, id))) return res.status(404).json({ message: 'User not found' });
     const refreshRepo = require('../auth/refresh.repository');
-    await refreshRepo.deleteUserTokens(id);
+    await refreshRepo.deleteUserTokens(id, req.tenantId || null);
     // Increment token_version to invalidate existing JWTs
-    await userRepo.incrementTokenVersion(id);
+    await userRepo.incrementTokenVersion(id, req.tenantId || null);
     // Immediately purge cached user data so the next request is blocked at once
     await invalidateUserCache(id);
     try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_revoke_sessions', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: null, afterData: JSON.stringify({ targetUserId: id }) }); } catch (e) { /* silently ignored */ }
@@ -803,7 +811,7 @@ router.get('/export/attendance', authorize('admin', 'manager'), async (req, res)
       records = [];
     }
 
-    const companyName = process.env.COMPANY_NAME || '飯塚塗研株式会社';
+    const companyName = req.tenant?.name || process.env.COMPANY_NAME || '飯塚塗研株式会社';
 
     if (format === 'pdf') {
       const buffer = await generateAttendancePDF({ month, users, records, companyName });
@@ -1244,8 +1252,10 @@ router.get('/attendance/day', authorize('admin','manager'), async (req, res) => 
     if (!userId || !date) {
       return res.status(400).json({ message: 'Missing userId/date' });
     }
-    const rows = await attendanceRepo.listByUserBetween(userId, date, date);
-    const daily = await attendanceRepo.getDaily(userId, date).catch(() => null);
+    if (!(await userInTenant(req, userId))) return res.status(404).json({ message: 'User not found' });
+    const tenantId = req.tenantId || null;
+    const rows = await attendanceRepo.listByUserBetween(userId, date, date, { tenantId });
+    const daily = await attendanceRepo.getDaily(userId, date, { tenantId }).catch(() => null);
     res.status(200).json({ date, daily: daily ? {
       workType: daily.work_type || null,
       location: daily.location || null,
@@ -1263,7 +1273,9 @@ router.patch('/attendance/:id', authorize('admin','manager'), async (req, res) =
     const id = req.params.id;
     const { checkIn, checkOut } = req.body || {};
     if (!id) return res.status(400).json({ message: 'Missing id' });
-    await attendanceRepo.updateTimes(id, checkIn || null, checkOut || null);
+    const current = await attendanceRepo.getById(id, { tenantId: req.tenantId || null });
+    if (!current) return res.status(404).json({ message: 'Not found' });
+    await attendanceRepo.updateTimes(id, checkIn || null, checkOut || null, { tenantId: req.tenantId || null });
     try { await auditRepo.writeLog({ userId: req.user.id, action: 'admin_attendance_update', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ id }), afterData: JSON.stringify({ checkIn, checkOut }) }); } catch (e) { /* silently ignored */ }
     res.status(200).json({ id });
   } catch (err) {
@@ -1766,7 +1778,7 @@ router.post('/calendar/import', authorize('admin'), excelUpload.single('file'), 
 const shiftsRouter = express.Router();
 shiftsRouter.get('/definitions', async (req, res) => {
   try {
-    const rows = await attendanceRepo.listShiftDefinitions();
+    const rows = await attendanceRepo.listShiftDefinitions({ tenantId: req.tenantId || null });
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1778,7 +1790,7 @@ shiftsRouter.post('/definitions', async (req, res) => {
     if (!name || !start_time || !end_time) {
       return res.status(400).json({ message: 'Missing name/start_time/end_time' });
     }
-    const row = await attendanceRepo.upsertShiftDefinition({ name, start_time, end_time, break_minutes: break_minutes || 0 });
+    const row = await attendanceRepo.upsertShiftDefinition({ name, start_time, end_time, break_minutes: break_minutes || 0, tenantId: req.tenantId || null });
     res.status(201).json(row);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1790,7 +1802,8 @@ shiftsRouter.post('/assign', async (req, res) => {
     if (!userId || !shiftId || !startDate) {
       return res.status(400).json({ message: 'Missing userId/shiftId/startDate' });
     }
-    await attendanceRepo.assignShiftToUser(userId, shiftId, startDate, endDate);
+    if (!(await userInTenant(req, userId))) return res.status(404).json({ message: 'User not found' });
+    await attendanceRepo.assignShiftToUser(userId, shiftId, startDate, endDate, { tenantId: req.tenantId || null });
     res.status(201).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1802,7 +1815,8 @@ shiftsRouter.post('/backfill', async (req, res) => {
     if (!userId || !fromDate || !toDate) {
       return res.status(400).json({ message: 'Missing userId/fromDate/toDate' });
     }
-    const r = await attendanceRepo.backfillShiftIdForUserRange(userId, fromDate, toDate);
+    if (!(await userInTenant(req, userId))) return res.status(404).json({ message: 'User not found' });
+    const r = await attendanceRepo.backfillShiftIdForUserRange(userId, fromDate, toDate, { tenantId: req.tenantId || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1812,7 +1826,7 @@ router.use('/shifts', authorize('admin'), shiftsRouter);
 // Direct routes for shifts (for clients relying on top-level route listing)
 router.get('/shifts/definitions', authorize('admin'), async (req, res) => {
   try {
-    const rows = await attendanceRepo.listShiftDefinitions();
+    const rows = await attendanceRepo.listShiftDefinitions({ tenantId: req.tenantId || null });
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1824,7 +1838,7 @@ router.post('/shifts/definitions', authorize('admin'), async (req, res) => {
     if (!name || !start_time || !end_time) {
       return res.status(400).json({ message: 'Missing name/start_time/end_time' });
     }
-    const row = await attendanceRepo.upsertShiftDefinition({ name, start_time, end_time, break_minutes: break_minutes || 0 });
+    const row = await attendanceRepo.upsertShiftDefinition({ name, start_time, end_time, break_minutes: break_minutes || 0, tenantId: req.tenantId || null });
     res.status(201).json(row);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1836,7 +1850,8 @@ router.post('/shifts/assign', authorize('admin'), async (req, res) => {
     if (!userId || !shiftId || !startDate) {
       return res.status(400).json({ message: 'Missing userId/shiftId/startDate' });
     }
-    await attendanceRepo.assignShiftToUser(userId, shiftId, startDate, endDate);
+    if (!(await userInTenant(req, userId))) return res.status(404).json({ message: 'User not found' });
+    await attendanceRepo.assignShiftToUser(userId, shiftId, startDate, endDate, { tenantId: req.tenantId || null });
     res.status(201).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1848,7 +1863,8 @@ router.post('/shifts/backfill', authorize('admin'), async (req, res) => {
     if (!userId || !fromDate || !toDate) {
       return res.status(400).json({ message: 'Missing userId/fromDate/toDate' });
     }
-    const r = await attendanceRepo.backfillShiftIdForUserRange(userId, fromDate, toDate);
+    if (!(await userInTenant(req, userId))) return res.status(404).json({ message: 'User not found' });
+    const r = await attendanceRepo.backfillShiftIdForUserRange(userId, fromDate, toDate, { tenantId: req.tenantId || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1893,7 +1909,7 @@ router.post('/salary/close-month', authorize('admin'), async (req, res) => {
     const ids = String(userIds).split(',').map(s => s.trim()).filter(Boolean);
     const { employees } = await salaryService.computePayslips(ids, month, req.tenantId || null);
     for (const e of employees) {
-      await salaryRepo.saveHistory(e.userId, month, e);
+      await salaryRepo.saveHistory(e.userId, month, e, req.tenantId || null);
     }
     res.status(201).json({ closed: employees.length, month });
   } catch (err) {
@@ -1903,7 +1919,7 @@ router.post('/salary/close-month', authorize('admin'), async (req, res) => {
 router.get('/salary/history', authorize('admin'), async (req, res) => {
   try {
     const { userId, month, page, pageSize } = req.query;
-    const r = await salaryRepo.listHistory({ userId, month, page, pageSize });
+    const r = await salaryRepo.listHistory({ userId, month, page, pageSize, tenantId: req.tenantId || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1912,7 +1928,7 @@ router.get('/salary/history', authorize('admin'), async (req, res) => {
 // Shift definitions & assignments
 router.get('/shifts/definitions', authorize('admin'), async (req, res) => {
   try {
-    const rows = await attendanceRepo.listShiftDefinitions();
+    const rows = await attendanceRepo.listShiftDefinitions({ tenantId: req.tenantId || null });
     res.status(200).json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1924,7 +1940,7 @@ router.post('/shifts/definitions', authorize('admin'), async (req, res) => {
     if (!name || !start_time || !end_time) {
       return res.status(400).json({ message: 'Missing name/start_time/end_time' });
     }
-    const row = await attendanceRepo.upsertShiftDefinition({ name, start_time, end_time, break_minutes: break_minutes || 0 });
+    const row = await attendanceRepo.upsertShiftDefinition({ name, start_time, end_time, break_minutes: break_minutes || 0, tenantId: req.tenantId || null });
     res.status(201).json(row);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1936,7 +1952,8 @@ router.post('/shifts/assign', authorize('admin'), async (req, res) => {
     if (!userId || !shiftId || !startDate) {
       return res.status(400).json({ message: 'Missing userId/shiftId/startDate' });
     }
-    await attendanceRepo.assignShiftToUser(userId, shiftId, startDate, endDate);
+    if (!(await userInTenant(req, userId))) return res.status(404).json({ message: 'User not found' });
+    await attendanceRepo.assignShiftToUser(userId, shiftId, startDate, endDate, { tenantId: req.tenantId || null });
     res.status(201).json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1948,7 +1965,8 @@ router.post('/shifts/backfill', authorize('admin'), async (req, res) => {
     if (!userId || !fromDate || !toDate) {
       return res.status(400).json({ message: 'Missing userId/fromDate/toDate' });
     }
-    const r = await attendanceRepo.backfillShiftIdForUserRange(userId, fromDate, toDate);
+    if (!(await userInTenant(req, userId))) return res.status(404).json({ message: 'User not found' });
+    const r = await attendanceRepo.backfillShiftIdForUserRange(userId, fromDate, toDate, { tenantId: req.tenantId || null });
     res.status(200).json(r);
   } catch (err) {
     res.status(500).json({ message: err.message });

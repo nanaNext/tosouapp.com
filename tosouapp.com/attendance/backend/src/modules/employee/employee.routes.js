@@ -11,7 +11,10 @@ const fs = require('fs');
 const db = require('../../core/database/mysql');
 const uploadDocumentMemory = require('../../core/middleware/uploadDocumentMemory');
 const s3Service = require('../../core/services/s3.service');
-router.use(authenticate);
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
+// resolveTenant là bắt buộc: thiếu nó thì req.tenantId = undefined và mọi truy vấn
+// bên dưới KHÔNG lọc theo công ty (lộ hồ sơ/phiếu lương của công ty khác).
+router.use(authenticate, resolveTenant);
 
 async function ensureManagerSameDepartment(req, targetUserId) {
   // Luôn xác minh targetUserId thực sự tồn tại và thuộc đúng tenant trước —
@@ -162,6 +165,8 @@ router.get('/documents/:id/download',
     if (s3Service.isR2Configured()) {
       const downloadTenantId = req.tenantId || 0;
       fileBuffer = await s3Service.downloadFromR2(`documents/${downloadTenantId}/${row.filename}`).catch(() => null);
+      // File upload trước khi router này có resolveTenant nằm ở documents/0/
+      if (!fileBuffer) fileBuffer = await s3Service.downloadFromR2(`documents/0/${row.filename}`).catch(() => null);
       if (!fileBuffer) fileBuffer = await s3Service.downloadFromR2(`documents/${row.filename}`).catch(() => null);
     }
     if (!fileBuffer) {
@@ -193,8 +198,11 @@ router.delete('/documents/:id', authorize('admin','manager'), async (req, res) =
     }
     const deleteTenantId = req.tenantId || 0;
     if (s3Service.isR2Configured()) {
-      const removed = await s3Service.deleteFromR2(`documents/${deleteTenantId}/${row.filename}`).catch(() => null);
-      if (!removed) await s3Service.deleteFromR2(`documents/${row.filename}`).catch(() => null);
+      // S3 DeleteObject thành công kể cả khi key không tồn tại, nên xóa ở mọi vị trí
+      // file có thể nằm (documents/0/ = file upload trước khi có resolveTenant).
+      for (const key of [`documents/${deleteTenantId}/${row.filename}`, `documents/0/${row.filename}`, `documents/${row.filename}`]) {
+        await s3Service.deleteFromR2(key).catch(() => null);
+      }
     }
     try {
       const filePath = path.join(__dirname, '../../', 'uploads', 'documents', row.filename);

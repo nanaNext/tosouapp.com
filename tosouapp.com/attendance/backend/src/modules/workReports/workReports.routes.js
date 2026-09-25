@@ -3,11 +3,13 @@ const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const repo = require('./workReports.repository');
 const attendanceRepo = require('../attendance/attendance.repository');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 
 const isISODate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const todayJST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
-router.use(authenticate);
+// resolveTenant: isMonthClosed() cần đúng tenantId, thiếu nó thì chốt tháng không có tác dụng.
+router.use(authenticate, resolveTenant);
 
 router.get('/my', authorize('employee', 'manager', 'admin'), async (req, res) => {
   try {

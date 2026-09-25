@@ -3,8 +3,9 @@ const router = express.Router();
 const { authenticate, authorize } = require('../../core/middleware/authMiddleware');
 const salaryService = require('../salary/salary.service');
 const { companyName } = require('../../config/env');
+const { resolveTenant } = require('../../core/middleware/tenantMiddleware');
 
-router.get('/salary', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+router.get('/salary', authenticate, resolveTenant, authorize('employee','manager','admin'), async (req, res) => {
   try {
     const month = req.query.month;
     if (!month) {
@@ -13,9 +14,9 @@ router.get('/salary', authenticate, authorize('employee','manager','admin'), asy
     const today = new Date();
     const pad = n => String(n).padStart(2, '0');
     const issueDate = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-${pad(today.getUTCDate())}`;
-    const { employees } = await salaryService.computePayslips([req.user.id], month);
+    const { employees } = await salaryService.computePayslips([req.user.id], month, req.tenantId || null);
     res.status(200).json({
-      companyName,
+      companyName: req.tenant?.name || companyName,
       issueDate,
       month,
       employees

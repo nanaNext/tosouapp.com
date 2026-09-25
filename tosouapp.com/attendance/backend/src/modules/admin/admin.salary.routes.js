@@ -75,7 +75,7 @@ router.get('/salary', async (req, res) => {
     }
     const { employees } = await salaryService.computePayslips(ids, month, req.tenantId || null);
     res.status(200).json({
-      companyName,
+      companyName: await payslipCompanyName(req, month),
       issueDate,
       month,
       employees
@@ -396,6 +396,18 @@ router.post('/salary/preview-live', async (req, res) => {
   }
 });
 
+// Tên công ty in trên phiếu lương phải là của đúng tenant — COMPANY_NAME (env) là
+// một giá trị chung cho cả hệ thống nên chỉ dùng làm fallback cuối cùng.
+async function payslipCompanyName(req, month) {
+  try {
+    const year = parseInt(String(month || '').slice(0, 4), 10);
+    const cfg = year ? await salaryRepo.getConfigByYear(year, req.tenantId || null) : null;
+    const fromConfig = String(cfg?.company_name || '').trim();
+    if (fromConfig) return fromConfig;
+  } catch (e) { /* fall through */ }
+  return req.tenant?.name || companyName;
+}
+
 function pdfFromPayslip(emp, meta) {
   return buildPayslipPdf({ employee: emp, companyName: meta.companyName, issueDate: meta.issueDate });
 }
@@ -541,7 +553,7 @@ router.post('/salary/payslip/generate', async (req, res) => {
     const today = new Date();
     const pad = n => String(n).padStart(2, '0');
     const issueDate = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-${pad(today.getUTCDate())}`;
-    const pdfBuf = await pdfFromPayslip(emp, { companyName, issueDate });
+    const pdfBuf = await pdfFromPayslip(emp, { companyName: await payslipCompanyName(req, month), issueDate });
     const m = String(month || '');
     const y = m.slice(0, 4);
     const mm = m.slice(5, 7);
