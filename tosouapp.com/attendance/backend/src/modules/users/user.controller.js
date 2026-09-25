@@ -36,6 +36,12 @@ exports.list = async (req, res) => {
     if (userRole === 'manager') {
       roleFilter = 'employee';
     }
+    // 社員一覧(/api/admin/employees)は名前の通り「社員」だけを見せる画面。
+    // role が明示指定されていない限り、admin/manager/owner/sysadmin アカウントを
+    // 混ぜて表示しない（/api/admin/users は他の用途で全ロールを使うため対象外）。
+    if (!roleFilter && req.route?.path === '/employees') {
+      roleFilter = 'employee';
+    }
     const usePaged = q || limit != null || offset != null || roleFilter || departmentId || employmentStatus || tenantId;
     const superEmail = (process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
     const meRole = String(req.user?.role || '').toLowerCase();
