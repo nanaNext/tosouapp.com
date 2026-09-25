@@ -19,8 +19,10 @@ const _multiTenantEnabled = () => String(process.env.ENABLE_MULTI_TENANT || '').
  * @param {number|string|null} tenantId
  * @returns {number|null}
  */
+const { scopedTid } = require('../../core/database/tenantContext');
+// Không truyền tenantId trong request có công ty → xem core/database/tenantContext.js
 function _tid(tenantId) {
-  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+  return scopedTid(tenantId);
 }
 
 // これらの関数は SELECT * FROM users の結果をそのまま API レスポンスとして返す

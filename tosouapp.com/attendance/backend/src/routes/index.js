@@ -15,6 +15,16 @@ const salaryRoutes = require('../modules/salary/salary.routes');
 const db = require('../core/database/mysql');
 const payslipRoutes = require('../modules/payslip/payslip.routes');
 const { authenticate, authorize } = require('../core/middleware/authMiddleware');
+const { resolveTenant } = require('../core/middleware/tenantMiddleware');
+
+// Nhắc nộp ca chỉ gửi cho nhân viên cùng công ty với admin, và ký tên theo công ty đó.
+function reminderTenantScope(req) {
+  const tid = req.tenantId != null ? parseInt(String(req.tenantId), 10) : null;
+  return { where: tid != null ? ' AND u.tenant_id = ?' : '', params: tid != null ? [tid] : [] };
+}
+function reminderCompanyName(req) {
+  return req.tenant?.name || process.env.COMPANY_NAME || '飯塚グループ・エンジニアリング';
+}
 const employeeRoutes = require('../modules/employee/employee.routes');
 const workReportsRoutes = require('../modules/workReports/workReports.routes');
 const workReportsAdminRoutes = require('../modules/workReports/workReports.admin.routes');
@@ -164,7 +174,7 @@ module.exports = function(app) {
   });
 
   // Trigger shift submission reminder manually (bypass day-of-month check)
-  app.post('/api/admin/test/shift-reminder', authenticate, authorize('admin'), async (req, res) => {
+  app.post('/api/admin/test/shift-reminder', authenticate, resolveTenant, authorize('admin'), async (req, res) => {
     try {
       const emailService = require('../core/notifications/email.service');
       if (!emailService.canSendMail()) {
@@ -185,12 +195,13 @@ module.exports = function(app) {
         targetMonthStr = `${y}-${String(m).padStart(2, '0')}`;
       }
 
+      const scope = reminderTenantScope(req);
       const [users] = await db.query(`
         SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName
         FROM users u
         LEFT JOIN departments d ON u.departmentId = d.id
-        WHERE u.employment_status = 'active' AND u.role = 'employee'
-      `);
+        WHERE u.employment_status = 'active' AND u.role = 'employee'${scope.where}
+      `, scope.params);
 
       if (!users || users.length === 0) {
         return res.json({ ok: true, sent: 0, skipped: 0, targetMonth: targetMonthStr, note: 'No active employees found' });
@@ -200,7 +211,8 @@ module.exports = function(app) {
       const isDryRun = String(req.query.dry_run || '').toLowerCase() === 'true';
 
       const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-      const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
+      const company = reminderCompanyName(req);
+      const senderFrom = emailService.senderWithName(company) || `"${company}" <iizuka_token@tosouapp.com>`;
       const results = [];
 
       for (const user of users) {
@@ -210,7 +222,7 @@ module.exports = function(app) {
         }
 
         const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
-        const subject = `[TEST] [飯塚グループ・エンジニアリング] 来月（${targetMonthStr}）のシフト提出のお願い`;
+        const subject = `[TEST] [${company}] 来月（${targetMonthStr}）のシフト提出のお願い`;
         const text = `[TEST EMAIL]\n\n${user.username} 様\n\nこれはシフト提出リマインダーのテスト送信です。\n対象月: ${targetMonthStr}\n\n▼ シフト提出はこちらから\n${appUrl}ui/shifts`;
         const html = `<p><strong>[TEST EMAIL]</strong></p><p>${user.username} 様</p><p>これはシフト提出リマインダーのテスト送信です。</p><p>対象月: <strong>${targetMonthStr}</strong></p><p><a href="${appUrl}ui/shifts">${appUrl}ui/shifts</a></p>`;
 
@@ -236,7 +248,7 @@ module.exports = function(app) {
 
   // Send shift reminder to specific users by userIds
   // POST /api/admin/shift-reminder/send  body: { month, userIds: [1,2,3] }
-  app.post('/api/admin/shift-reminder/send', authenticate, authorize('admin'), async (req, res) => {
+  app.post('/api/admin/shift-reminder/send', authenticate, resolveTenant, authorize('admin'), async (req, res) => {
     try {
       const emailService = require('../core/notifications/email.service');
       if (!emailService.canSendMail()) {
@@ -254,14 +266,16 @@ module.exports = function(app) {
       if (idList.length === 0) return res.status(400).json({ ok: false, error: 'No valid userIds' });
 
       const placeholders = idList.map(() => '?').join(',');
+      const scope = reminderTenantScope(req);
       const [users] = await db.query(
         `SELECT u.id, u.email, u.username, u.employment_type FROM users u
-         WHERE u.id IN (${placeholders}) AND u.employment_status = 'active' AND u.role = 'employee'`,
-        idList
+         WHERE u.id IN (${placeholders}) AND u.employment_status = 'active' AND u.role = 'employee'${scope.where}`,
+        [...idList, ...scope.params]
       );
 
       const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-      const senderFrom = process.env.MAIL_FROM || '"飯塚グループ・エンジニアリング" <iizuka_token@tosouapp.com>';
+      const company = reminderCompanyName(req);
+      const senderFrom = emailService.senderWithName(company) || `"${company}" <iizuka_token@tosouapp.com>`;
       const results = [];
 
       for (const user of users) {
@@ -270,7 +284,7 @@ module.exports = function(app) {
           continue;
         }
         const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
-        const subject = `[飯塚グループ・エンジニアリング] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
+        const subject = `[${company}] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
         const text = `${user.username} 様\n\nお疲れ様です。\n来月（${targetMonthStr}）のシフト提出のお願いです。\n\n▼ シフト提出はこちらから\n${appUrl}ui/shifts`;
         const html = `<p>${user.username} 様</p><p>お疲れ様です。<br>来月（<strong>${targetMonthStr}</strong>）のシフト提出のお願いです。</p><p><a href="${appUrl}ui/shifts">${appUrl}ui/shifts</a></p><hr><p style="font-size:12px;color:#666;">このメッセージはシステムにより自動送信されております。</p>`;
         try {

@@ -576,6 +576,9 @@ async function init() {
       await ensureUsersTable();
       await runMigrations();
       await ensureModuleTables();
+      try {
+        await require('./database/tenantTriggers').ensureTenantInsertTriggers(db, require('./logger'));
+      } catch (e) { /* non-fatal: xem log tenant_trigger_create_failed */ }
       await ensureSuperAdmin();
       await autoAssignEmployeeCodes();
     })();

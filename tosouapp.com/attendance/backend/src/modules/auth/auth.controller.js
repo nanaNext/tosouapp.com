@@ -199,10 +199,11 @@ exports.login = async (req, res) => {
       try {
         const tenantId = tenants[0].id;
         const tenantRole = tenants[0].role || role;
-        const tokenPayload = { id: user.id, email: user.email, role: tenantRole, tid: tenantId };
-        const jwt = require('jsonwebtoken');
-        const secret = process.env.JWT_SECRET_CURRENT || process.env.JWT_SECRET || 'fallback';
-        finalToken = jwt.sign(tokenPayload, secret, { expiresIn: '24h' });
+        // Phải mang `v` (token_version) giống token thường — thiếu nó thì authenticate()
+        // coi v=1, user có token_version > 1 (từng bị revoke phiên) bị từ chối ngay.
+        // Dùng cùng secret/thời hạn với token thường, không có secret dự phòng cứng.
+        const tokenPayload = { id: user.id, email: user.email, role: tenantRole, v: tokenVersion, tid: tenantId };
+        finalToken = jwt.sign(tokenPayload, jwtSecretCurrent, { expiresIn: accessTokenExpires });
         autoSelectedTenant = tenants[0];
         finalNextPath = (tenantRole === 'admin' || tenantRole === 'manager') ? '/admin/dashboard' : '/ui/portal';
       } catch (e) {
@@ -323,10 +324,13 @@ exports.forgotPassword = async (req, res) => {
     });
     const resetUrl = buildResetUrl(req, token);
     try {
+      // Email ký tên theo công ty của user, không phải COMPANY_NAME chung của hệ thống.
+      const userTenant = user.tenant_id ? await tenantRepo.getTenantById(user.tenant_id).catch(() => null) : null;
       const sent = await sendPasswordResetEmail({
         to: user.email,
         resetUrl,
-        expiresMinutes: resetTokenExpiresMinutes || 30
+        expiresMinutes: resetTokenExpiresMinutes || 30,
+        companyName: userTenant?.name || null
       });
       if (!sent) {
         // SECURITY: do NOT log the reset URL or token — it contains a sensitive credential.

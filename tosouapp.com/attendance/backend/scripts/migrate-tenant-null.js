@@ -1,108 +1,89 @@
 'use strict';
 /**
- * Script migrate: gán tenant_id = 1 cho tất cả records NULL.
- * Chỉ chạy sau khi đã chạy check-tenant-null.js và thấy có records cần fix.
+ * Gán tenant_id cho các dòng tenant_id = NULL theo CÔNG TY THẬT của user sở hữu
+ * dòng đó (users.tenant_id) — KHÔNG gán hàng loạt vào tenant 1 nữa, vì đã có
+ * nhiều công ty: gán nhầm sẽ chuyển dữ liệu của công ty khác sang Iizuka.
  *
- * Chạy: node attendance/backend/scripts/migrate-tenant-null.js
- * Dry run (chỉ xem, không thay đổi): node attendance/backend/scripts/migrate-tenant-null.js --dry-run
+ * Dòng không suy ra được công ty (bảng không có cột user, hoặc user không có
+ * tenant_id) được giữ nguyên và liệt kê ra để xử lý tay.
+ *
+ * Mặc định CHỈ DRY-RUN (không thay đổi gì):
+ *   node attendance/backend/scripts/migrate-tenant-null.js
+ * Chạy thật — chỉ sau khi đã backup DB:
+ *   node attendance/backend/scripts/migrate-tenant-null.js --apply
  */
 
 require('../src/config/loadEnv');
 const db = require('../src/core/database/mysql');
+const { TENANT_TABLES, inspectTable } = require('./lib/tenant-null');
 
-const DRY_RUN = process.argv.includes('--dry-run');
-const TARGET_TENANT_ID = 1; // Công ty đang dùng thật
-
-const TABLES = [
-  'attendance',
-  'attendance_daily',
-  'attendance_month_status',
-  'attendance_plan',
-  'attendance_month_summary',
-  'work_details',
-  'user_shift_assignments',
-  'shift_definitions',
-];
+const APPLY = process.argv.includes('--apply');
 
 async function main() {
-  const mode = DRY_RUN ? '[DRY RUN — không thay đổi gì]' : '[LIVE — sẽ cập nhật DB]';
-  console.log(`\n=== Migration tenant_id NULL → ${TARGET_TENANT_ID} ${mode} ===\n`);
+  const mode = APPLY ? '[APPLY — sẽ cập nhật DB]' : '[DRY RUN — không thay đổi gì]';
+  console.log(`\n=== Gán tenant_id cho records NULL theo user sở hữu ${mode} ===\n`);
 
-  if (!DRY_RUN) {
-    console.log('  ⚠️  Đang chạy LIVE. Nhấn Ctrl+C trong 3 giây để hủy...');
-    await new Promise(r => setTimeout(r, 3000));
+  if (APPLY) {
+    console.log('  ⚠️  Đang chạy APPLY. Hãy chắc chắn đã backup DB. Nhấn Ctrl+C trong 5 giây để hủy...');
+    await new Promise(r => setTimeout(r, 5000));
     console.log('  Bắt đầu...\n');
   }
 
   const conn = await db.getConnection();
   let totalUpdated = 0;
+  let totalLeft = 0;
 
   try {
-    if (!DRY_RUN) await conn.beginTransaction();
+    if (APPLY) await conn.beginTransaction();
 
-    for (const table of TABLES) {
-      try {
-        // Kiểm tra bảng và cột tồn tại
-        const [exists] = await conn.query(
-          `SELECT COUNT(*) AS c FROM information_schema.tables
-           WHERE table_schema = DATABASE() AND table_name = ?`, [table]
+    for (const table of TENANT_TABLES) {
+      const info = await inspectTable(conn, table);
+      if (info.skip) continue;
+      if (info.nullCount === 0) continue;
+
+      const plan = Object.entries(info.byTenant).map(([t, c]) => `tenant ${t}: ${c}`).join(', ');
+      totalLeft += info.unresolvable;
+
+      if (!info.userCol) {
+        console.log(`  ⏭  ${table.padEnd(30)} ${info.nullCount} NULL — không có cột user, cần xử lý tay`);
+        continue;
+      }
+
+      if (APPLY) {
+        const [result] = await conn.query(
+          `UPDATE \`${table}\` t JOIN users u ON u.id = t.\`${info.userCol}\`
+           SET t.tenant_id = u.tenant_id
+           WHERE t.tenant_id IS NULL AND u.tenant_id IS NOT NULL`
         );
-        if (!exists[0].c) { console.log(`  [SKIP] ${table} — bảng chưa tồn tại`); continue; }
-
-        const [hasTid] = await conn.query(
-          `SELECT COUNT(*) AS c FROM information_schema.columns
-           WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'tenant_id'`, [table]
-        );
-        if (!hasTid[0].c) { console.log(`  [SKIP] ${table} — không có cột tenant_id`); continue; }
-
-        // Đếm trước
-        const [[{ nullCount }]] = await conn.query(
-          `SELECT SUM(tenant_id IS NULL) AS nullCount FROM \`${table}\``
-        );
-        const n = Number(nullCount || 0);
-
-        if (n === 0) {
-          console.log(`  ✅  ${table.padEnd(30)} — không có gì cần update`);
-          continue;
-        }
-
-        if (!DRY_RUN) {
-          const [result] = await conn.query(
-            `UPDATE \`${table}\` SET tenant_id = ? WHERE tenant_id IS NULL`,
-            [TARGET_TENANT_ID]
-          );
-          totalUpdated += result.affectedRows;
-          console.log(`  ✅  ${table.padEnd(30)} — updated ${result.affectedRows} records`);
-        } else {
-          console.log(`  📋  ${table.padEnd(30)} — sẽ update ${n} records (dry run)`);
-          totalUpdated += n;
-        }
-      } catch (err) {
-        console.log(`  [ERR] ${table} — ${err.message}`);
-        if (!DRY_RUN) {
-          await conn.rollback();
-          console.error('\n❌ Rollback do lỗi. Không có gì bị thay đổi.');
-          process.exit(1);
-        }
+        totalUpdated += result.affectedRows;
+        console.log(`  ✅  ${table.padEnd(30)} updated ${result.affectedRows} (${plan || '-'})${info.unresolvable ? `, giữ nguyên ${info.unresolvable}` : ''}`);
+      } else {
+        const n = info.nullCount - info.unresolvable;
+        totalUpdated += n;
+        console.log(`  📋  ${table.padEnd(30)} sẽ gán ${n} (${plan || '-'})${info.unresolvable ? `, không xác định: ${info.unresolvable}` : ''}`);
       }
     }
 
-    if (!DRY_RUN) {
+    if (APPLY) {
       await conn.commit();
-      console.log(`\n✅ Migration hoàn tất. Tổng ${totalUpdated} records đã được cập nhật.`);
-      console.log('   Có thể deploy code fix an toàn.\n');
+      console.log(`\n✅ Xong. Đã gán ${totalUpdated} records. Còn ${totalLeft} records cần xử lý tay.\n`);
     } else {
-      console.log(`\n📋 Dry run xong. Sẽ có ${totalUpdated} records được update khi chạy thật.`);
-      console.log('   Chạy không có --dry-run để thực hiện.\n');
+      console.log(`\n📋 Dry run: sẽ gán ${totalUpdated} records. ${totalLeft} records không xác định được công ty.`);
+      console.log('   Backup DB rồi chạy lại với --apply để thực hiện.\n');
     }
+  } catch (err) {
+    if (APPLY) {
+      await conn.rollback();
+      console.error('\n❌ Lỗi — đã rollback, không có gì bị thay đổi:', err.message);
+    }
+    throw err;
   } finally {
     conn.release();
     await db.end?.();
-    process.exit(0);
   }
 }
 
-main().catch(err => {
+main().then(() => process.exit(0)).catch(err => {
   console.error('Lỗi:', err.message);
   process.exit(1);
 });

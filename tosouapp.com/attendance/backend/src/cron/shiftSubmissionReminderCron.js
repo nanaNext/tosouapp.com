@@ -36,7 +36,7 @@ async function processMonthlyShiftReminders() {
 
         // Lấy danh sách nhân viên đang active
         const [users] = await db.query(`
-            SELECT u.id, u.email, u.username, u.employment_type, d.name as departmentName 
+            SELECT u.id, u.email, u.username, u.employment_type, u.tenant_id, d.name as departmentName 
             FROM users u 
             LEFT JOIN departments d ON u.departmentId = d.id 
             WHERE u.employment_status = 'active' AND u.role = 'employee'
@@ -50,6 +50,13 @@ async function processMonthlyShiftReminders() {
             WHERE month = ?
         `, [targetMonthStr]);
 
+        // Email ký tên theo công ty của từng nhân viên (cron chạy chung cho mọi công ty).
+        const tenantNames = new Map();
+        try {
+            const [tenantRows] = await db.query('SELECT id, name FROM tenants');
+            tenantRows.forEach(t => tenantNames.set(t.id, t.name));
+        } catch (e) { /* bảng tenants chưa có → dùng tên mặc định */ }
+
         const statusMap = new Map();
         monthStatuses.forEach(row => {
             statusMap.set(row.userId, row.status);
@@ -62,9 +69,10 @@ async function processMonthlyShiftReminders() {
 
             const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
             const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
-            const senderFrom = process.env.MAIL_FROM || '"飯塚塗研株式会社" <iizuka_token@tosouapp.com>';
+            const company = tenantNames.get(user.tenant_id) || process.env.COMPANY_NAME || '飯塚塗研株式会社';
+            const senderFrom = emailService.senderWithName(company) || `"${company}" <iizuka_token@tosouapp.com>`;
             
-            let subject = `[飯塚塗研株式会社] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
+            let subject = `[${company}] 【重要】来月（${targetMonthStr}）のシフト提出のお願い`;
             let text = '';
             let html = '';
 
@@ -201,7 +209,8 @@ ${appUrl}ui/manual
                     message: `来月（${targetMonthStr}）のシフト提出をお願いします。`,
                     createdBy: null,
                     kind: 'system',
-                    title: 'シフト提出リマインド'
+                    title: 'シフト提出リマインド',
+                    tenantId: user.tenant_id || null
                 });
 
                 if (typeof emailService.sendViaResend === 'function') {

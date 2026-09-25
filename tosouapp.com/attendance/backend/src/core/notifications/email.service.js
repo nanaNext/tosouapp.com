@@ -67,9 +67,20 @@ async function sendViaResend({ to, subject, html, text, from }) {
   throw new Error('No valid mail provider configured');
 }
 
-function renderResetPasswordTemplate({ resetUrl, expiresMinutes }) {
+// Địa chỉ gửi (đã xác minh domain) giữ nguyên, chỉ đổi tên hiển thị theo công ty
+// của người nhận — MAIL_FROM là một giá trị chung cho mọi công ty.
+function senderWithName(name) {
+  const raw = String(mailFrom || '').trim();
+  const m = raw.match(/<([^>]+)>/);
+  const addr = m ? m[1].trim() : raw;
+  const safeName = String(name || '').replace(/["\r\n<>]/g, '').trim();
+  if (!addr || !safeName) return raw || undefined;
+  return `"${safeName}" <${addr}>`;
+}
+
+function renderResetPasswordTemplate({ resetUrl, expiresMinutes, companyName: tenantCompanyName }) {
   const safeUrl = String(resetUrl || '').trim();
-  const safeCompany = String(companyName || 'Company').trim();
+  const safeCompany = String(tenantCompanyName || companyName || 'Company').trim();
   const text = [
     `[${safeCompany}] パスワード再設定`,
     '',
@@ -96,11 +107,11 @@ function renderResetPasswordTemplate({ resetUrl, expiresMinutes }) {
   return { text, html };
 }
 
-async function sendPasswordResetEmail({ to, resetUrl, expiresMinutes }) {
+async function sendPasswordResetEmail({ to, resetUrl, expiresMinutes, companyName: tenantCompanyName }) {
   if (!canSendMail()) return false;
-  const { text, html } = renderResetPasswordTemplate({ resetUrl, expiresMinutes });
-  const subject = `[${companyName || 'Company'}] Password Reset`;
-  await sendViaResend({ to, subject, html, text });
+  const { text, html } = renderResetPasswordTemplate({ resetUrl, expiresMinutes, companyName: tenantCompanyName });
+  const subject = `[${tenantCompanyName || companyName || 'Company'}] Password Reset`;
+  await sendViaResend({ to, subject, html, text, from: tenantCompanyName ? senderWithName(tenantCompanyName) : undefined });
   return true;
 }
 
@@ -146,6 +157,7 @@ async function sendMail({ to, subject, html, text, attachments, from }) {
 
 module.exports = {
   canSendMail,
+  senderWithName,
   sendPasswordResetEmail,
   sendViaResend,
   sendMail,

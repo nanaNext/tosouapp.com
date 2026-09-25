@@ -2,8 +2,10 @@
 const db = require('../../core/database/mysql');
 
 // Ép kiểu tenantId về số cho an toàn
+const { scopedTid } = require('../../core/database/tenantContext');
+// Không truyền tenantId trong request có công ty → xem core/database/tenantContext.js
 function _tid(tenantId) {
-  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+  return scopedTid(tenantId);
 }
 
 const mergeLabels = (...values) => {

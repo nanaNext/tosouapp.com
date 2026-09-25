@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const userRepo = require('../../modules/users/user.repository');
 const redisClient = require('../database/redis');
 const { normalizeRole } = require('../../utils/normalizeRole');
+const { outsideTenantContext } = require('../database/tenantContext');
 // Middleware xác thực và phân quyền dựa trên JWT
 
 const tokenVersionCache = new Map();
@@ -60,7 +61,9 @@ async function getCachedUser(id, tenantId = null) {
     }
   }
 
-  const user = await userRepo.getUserById(id);
+  // Tra theo id, không theo công ty của request (user có thể đang làm việc ở công ty
+  // khác công ty gốc, vd. owner/sysadmin) — nên chạy ngoài tenant context.
+  const user = await outsideTenantContext(() => userRepo.getUserById(id));
 
   if (user) {
     const userDataToCache = {
@@ -70,7 +73,8 @@ async function getCachedUser(id, tenantId = null) {
       email: user.email,
       username: user.username,
       departmentId: user.departmentId || null,
-      branchId: user.branch_id || null
+      branchId: user.branch_id || null,
+      tenant_id: user.tenant_id ?? null
     };
 
     if (redisClient && redisClient.status === 'ready') {
@@ -158,6 +162,8 @@ async function authenticateToken(token) {
     departmentId: user.departmentId || null,
     branchId: user.branchId || user.branch_id || null,
     tid: (decoded?.tid || decoded?.tenant_id) ? parseInt(String(decoded.tid || decoded.tenant_id), 10) : null,
+    // Công ty gốc của user (users.tenant_id). undefined = chưa biết (cache cũ).
+    homeTenantId: user.tenant_id === undefined ? undefined : (user.tenant_id != null ? parseInt(String(user.tenant_id), 10) : null),
     _impersonate: !!decoded?._impersonate,
   };
 }

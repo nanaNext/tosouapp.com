@@ -2,8 +2,10 @@
 const db = require('../../core/database/mysql');
 
 // Chuẩn hóa tenant id về số nguyên (hoặc null).
+const { scopedTid } = require('../../core/database/tenantContext');
+// Không truyền tenantId trong request có công ty → xem core/database/tenantContext.js
 function _tid(tenantId) {
-  return tenantId != null ? parseInt(String(tenantId), 10) : null;
+  return scopedTid(tenantId);
 }
 
 // Cache danh sách cột bảng attendance để tránh truy vấn information_schema mỗi request

@@ -19,6 +19,10 @@
 
 const tenantRepo = require('../../modules/tenants/tenant.repository');
 const log = require('../logger');
+const { runWithTenant, isStrict } = require('../database/tenantContext');
+
+// Vai trò làm việc trong đúng một công ty. sysadmin/owner là vai trò liên công ty.
+const isCrossTenantRole = (role) => role === 'sysadmin' || role === 'owner';
 
 // In-memory cache to avoid DB hit on every request (TTL: 5 min)
 const _tenantCache = new Map();
@@ -74,11 +78,22 @@ async function resolveTenant(req, res, next) {
     // Nếu user không phải sysadmin và header khác JWT → bỏ qua header, dùng JWT
   }
 
+  // Token không có tid (vd. đăng nhập WebAuthn, token cũ): với user thường, dùng
+  // công ty gốc của chính họ thay vì để tenantId = null — null khiến các truy vấn
+  // không lọc theo công ty (thấy dữ liệu của mọi công ty).
+  if (!effectiveTid && !isCrossTenantRole(userRole) && req.user?.homeTenantId) {
+    effectiveTid = req.user.homeTenantId;
+  }
+
   if (!effectiveTid) {
-    // User authenticated but has not selected a tenant yet
-    // (e.g. they're on the select-company page flow)
-    // Allow through with tenantId = null; individual routes that need a tenant
-    // can enforce it themselves.
+    if (isStrict() && !isCrossTenantRole(userRole)) {
+      return res.status(403).json({
+        message: 'No tenant selected. Please select a company first.',
+        code: 'NO_TENANT',
+      });
+    }
+    // sysadmin/owner chưa chọn công ty (hoặc chưa bật TENANT_STRICT):
+    // cho qua với tenantId = null như trước.
     req.tenantId = null;
     req.tenant = null;
     return next();
@@ -100,11 +115,21 @@ async function resolveTenant(req, res, next) {
       logoName: tenant.logo_name || 'IIZUKA',
       primaryColor: tenant.primary_color || '#0b5ed7',
     };
-    next();
   } catch (err) {
     log.warn('tenant_resolve_error', { tenantId: effectiveTid, error_message: err.message });
     return res.status(500).json({ message: 'Failed to resolve tenant' });
   }
+
+  // Ghi công ty vào tenant context để repository tự lọc khi caller quên truyền
+  // tenantId (xem core/database/tenantContext.js). Chỉ áp cho user đang làm việc
+  // ở chính công ty gốc của mình — owner/sysadmin/impersonate hoặc admin đang
+  // chọn công ty khác công ty gốc thì không, vì các tra cứu "chính mình" của họ
+  // sẽ không nằm trong công ty đang chọn.
+  const homeTid = req.user?.homeTenantId;
+  if (!isCrossTenantRole(userRole) && !req.user?._impersonate && homeTid != null && homeTid === req.tenantId) {
+    return runWithTenant(req.tenantId, next);
+  }
+  next();
 }
 
 /**
