@@ -316,18 +316,30 @@
                 if (!sumRow.dataset.origSummary) {
                   sumRow.dataset.origSummary = JSON.stringify([...cells].map(c => c.textContent));
                 }
-                if (cells[4]) cells[4].textContent = fmtMin(totalWorkMin);
-                if (cells[6]) cells[6].textContent = fmtMin(totalOtMin);
-                if (cells[7]) cells[7].textContent = fmtMin(totalOtMin);
+                // Tìm ô theo tên cột (không theo vị trí) vì 全体 và 社内勤務 có số cột khác nhau
+                const setByHeader = (tr, label, text) => {
+                  const table = tr.closest('table');
+                  const ths = table ? [...table.querySelectorAll('thead th')] : [];
+                  const idx = ths.findIndex(th => String(th.textContent || '').trim() === label);
+                  const tds = tr.querySelectorAll('td');
+                  if (idx >= 0 && tds[idx]) tds[idx].textContent = text;
+                };
+                setByHeader(sumRow, '総労働時間', fmtMin(totalWorkMin));
+                setByHeader(sumRow, '総残業時間', fmtMin(totalOtMin));
+                setByHeader(sumRow, '法定外時間', fmtMin(totalOtMin));
               }
               // Also sync the top-of-page month summary host (if present)
               try {
                 const top = controller?.ctx?.summaryHost;
                 if (top) {
-                  const topCells = top.querySelectorAll('td');
-                  if (topCells[4]) topCells[4].textContent = fmtMin(totalWorkMin);
-                  if (topCells[6]) topCells[6].textContent = fmtMin(totalOtMin);
-                  if (topCells[7]) topCells[7].textContent = fmtMin(totalOtMin);
+                  const topRow = top.querySelector('tbody tr');
+                  const topTable = topRow ? topRow.closest('table') : null;
+                  const topThs = topTable ? [...topTable.querySelectorAll('thead th')] : [];
+                  const topTds = topRow ? topRow.querySelectorAll('td') : [];
+                  for (const [label, text] of [['総労働時間', fmtMin(totalWorkMin)], ['総残業時間', fmtMin(totalOtMin)], ['法定外時間', fmtMin(totalOtMin)]]) {
+                    const idx = topThs.findIndex(th => String(th.textContent || '').trim() === label);
+                    if (idx >= 0 && topTds[idx]) topTds[idx].textContent = text;
+                  }
                 }
               } catch (er) { /* silently ignored */ }
             } catch (e) { /* silently ignored */ }
