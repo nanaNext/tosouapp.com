@@ -579,8 +579,9 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
     出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '出勤日数') ? yen(kOverride['出勤日数']) : workDays,
     休日出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '休日出勤日数') ? yen(kOverride['休日出勤日数']) : holidayWorkDaysFromDaily,
     半日出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '半日出勤日数') ? yen(kOverride['半日出勤日数']) : halfDayWorkDaysFromDaily,
-    '半休(有給)日数': paidHalfDaysFromDaily,
-    '半休日数': unpaidHalfDaysFromDaily,
+    // 半休は1回0.5日（例: 半休(有給) 2回 = 1.0日）
+    '半休(有給)日数': paidHalfDaysFromDaily * 0.5,
+    '半休日数': unpaidHalfDaysFromDaily * 0.5,
     欠勤日数: kAbsentDays,
     無給休暇: kUnpaidLeaveDays,
     有給休暇: kPaidLeaveDays,

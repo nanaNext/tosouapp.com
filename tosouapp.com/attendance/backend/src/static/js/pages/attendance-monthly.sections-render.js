@@ -115,8 +115,8 @@
           <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${e(H(a.overtime))}</td>
           <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${e(H(pt))}</td>
           <td>${e(At)}\u65E5</td>
-          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u534A\u4F11(\u6709\u7D66)"&&c++});return c+"\u56DE"})())}</td>
-          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u534A\u4F11"&&c++});return c+"\u56DE"})())}</td>
+          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u534A\u4F11(\u6709\u7D66)"&&c++});return (c*.5).toFixed(1)+"\u65E5"})())}</td>
+          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u534A\u4F11"&&c++});return (c*.5).toFixed(1)+"\u65E5"})())}</td>
           <td>${e(Gt)}\u65E5</td>
           <td>${e(P)}\u65E5</td>
           <td>${e(F)}\u65E5</td>

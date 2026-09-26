@@ -560,8 +560,8 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
           ${fieldNum('半日出勤日数', 'kHalf', k.半日出勤日数, false)}
           ${fieldNum('欠勤日数', 'kAbsent', k.欠勤日数, false)}
           ${fieldNum('有給休暇', 'kPaidLeave', k.有給休暇, false)}
-          <div class="pl-preview-row static"><label>半休(有給)</label><span class="val">${escapeHtml(String(k['半休(有給)日数'] ?? 0))}回</span></div>
-          <div class="pl-preview-row static"><label>半休</label><span class="val">${escapeHtml(String(k['半休日数'] ?? 0))}回</span></div>
+          <div class="pl-preview-row static"><label>半休(有給)</label><span class="val">${escapeHtml(Number(k['半休(有給)日数'] ?? 0).toFixed(1))}日</span></div>
+          <div class="pl-preview-row static"><label>半休</label><span class="val">${escapeHtml(Number(k['半休日数'] ?? 0).toFixed(1))}日</span></div>
           <div class="pl-preview-row static"><label>就業時間（概算）</label><span class="val">${escapeHtml(k.就業時間 || '0:00')}</span></div>
           ${fieldText('時間外（法定外）', 'kOt', k.法外時間外, false)}
           ${fieldText('週40時間超', 'kW40', k.週40超時間, false)}
