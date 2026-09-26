@@ -200,7 +200,7 @@ function allocateUsage(grants, requests) {
 // usedDays: [{ date: 'YYYY-MM-DD', days: 0.5|1.0 }]
 // 戻り値: { grants: 按分後の付与枠, days: 各取得日に counted（残数から差し引いた日数）を付けたもの }
 function allocateUsageByDays(grants, usedDays) {
-  const out = grants.map(g => ({ ...g, daysRemaining: g.daysGranted, daysUsedAlloc: 0 }));
+  const out = grants.map(g => ({ ...g, daysRemaining: Number(g.daysGranted), daysUsedAlloc: 0, usedDates: [] }));
   const sorted = [...(usedDays || [])].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const days = [];
   for (const u of sorted) {
@@ -215,6 +215,7 @@ function allocateUsageByDays(grants, usedDays) {
       if (take > 0) {
         g.daysRemaining -= take;
         g.daysUsedAlloc += take;
+        g.usedDates.push({ date: d, days: take });
         need -= take;
       }
     }
@@ -688,6 +689,59 @@ exports.usedPaidLeaveDays = async (req, res) => {
     const total = days.reduce((s, d) => s + Number(d.days || 0), 0);
     const countedTotal = days.reduce((s, d) => s + Number(d.counted || 0), 0);
     return res.status(200).json({ userId, days, total, countedTotal });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+// API: 入社日からの付与履歴（Admin/Manager用）。
+// 法定付与スケジュール（入社日基準）と登録済み付与を突き合わせ、各付与枠の使用日・残日数を返す。
+// 未登録の法定付与は registered=false で返すだけで、ここでは書き込まない（登録は /grant で管理者が行う）。
+exports.grantHistory = async (req, res) => {
+  try {
+    const userId = parseInt(String(req.query.userId || ''), 10);
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    const tenantId = req.tenantId || null;
+    const u = await userRepo.getUserById(userId, tenantId);
+    if (!u) return res.status(404).json({ message: 'Not found' });
+    const hireDate = resolveEmploymentStartDate(u);
+    const today = fmt(new Date());
+    const grants = (await repo.listGrants(userId, 'paid', tenantId))
+      .map(g => ({ grantDate: String(g.grantDate).slice(0, 10), expiryDate: String(g.expiryDate).slice(0, 10), daysGranted: Number(g.daysGranted) }))
+      .sort((a, b) => a.grantDate.localeCompare(b.grantDate));
+    const usedDayList = await repo.listPaidLeaveUsedDays(userId, tenantId);
+    const { grants: alloc, days } = allocateUsageByDays(grants, usedDayList);
+
+    const byDate = new Map();
+    for (const p of scheduleGrants(hireDate, today)) {
+      const e = addYears(new Date(p.grantDate + 'T00:00:00Z'), 2);
+      e.setUTCDate(e.getUTCDate() - 1);
+      byDate.set(p.grantDate, { grantDate: p.grantDate, legalDays: p.days, registered: false, daysGranted: null, expiryDate: fmt(e), used: 0, remaining: null, usedDates: [] });
+    }
+    for (const g of alloc) {
+      const legal = byDate.get(g.grantDate);
+      byDate.set(g.grantDate, {
+        grantDate: g.grantDate,
+        legalDays: legal ? legal.legalDays : null,
+        registered: true,
+        daysGranted: g.daysGranted,
+        expiryDate: g.expiryDate,
+        used: g.daysUsedAlloc,
+        remaining: g.daysRemaining,
+        usedDates: g.usedDates
+      });
+    }
+    const rows = [...byDate.values()]
+      .sort((a, b) => a.grantDate.localeCompare(b.grantDate))
+      .map(r => ({ ...r, expired: r.expiryDate < today }));
+    // どの付与枠にも按分されなかった取得日（最初の登録付与より前、または期限切れ等）
+    const unallocated = days.filter(d => d.counted < d.days).map(d => ({ date: d.date, days: d.days - d.counted }));
+    return res.status(200).json({
+      userId,
+      hireDate,
+      employmentType: u.employment_type || null,
+      rows,
+      unallocated
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

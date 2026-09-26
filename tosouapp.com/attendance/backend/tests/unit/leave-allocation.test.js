@@ -34,3 +34,31 @@ describe('allocateUsageByDays', () => {
     expect(days[0].counted).toBe(0);
   });
 });
+
+describe('grantHistory', () => {
+  const repo = require('../../src/modules/leave/leave.repository');
+  const userRepo = require('../../src/modules/users/user.repository');
+  const { grantHistory } = require('../../src/modules/leave/leave.controller');
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('入社日から法定付与を並べ、登録済み付与の使用日・残日数と未按分の取得日を返す', async () => {
+    jest.spyOn(userRepo, 'getUserById').mockResolvedValue({ id: 3, hire_date: '2017-01-01', employment_type: 'full_time' });
+    jest.spyOn(repo, 'listGrants').mockResolvedValue([{ grantDate: '2026-07-01', expiryDate: '2028-06-30', daysGranted: 40 }]);
+    jest.spyOn(repo, 'listPaidLeaveUsedDays').mockResolvedValue([
+      { date: '2026-06-10', kubun: '有給休暇', days: 1 },
+      { date: '2026-07-07', kubun: '有給休暇', days: 1 }
+    ]);
+    let body;
+    const res = { status() { return this; }, json(o) { body = o; } };
+    await grantHistory({ query: { userId: '3' }, tenantId: 1 }, res);
+
+    expect(body.hireDate).toBe('2017-01-01');
+    expect(body.rows[0]).toMatchObject({ grantDate: '2017-07-01', legalDays: 10, registered: false, expired: true });
+    const y2025 = body.rows.find(r => r.grantDate === '2025-07-01');
+    expect(y2025).toMatchObject({ legalDays: 20, registered: false, expiryDate: '2027-06-30', expired: false });
+    const y2026 = body.rows.find(r => r.grantDate === '2026-07-01');
+    expect(y2026).toMatchObject({ legalDays: 20, registered: true, daysGranted: 40, used: 1, remaining: 39 });
+    expect(body.unallocated).toEqual([{ date: '2026-06-10', days: 1 }]);
+  });
+});

@@ -31,6 +31,7 @@ router.get('/admin-balances', authenticate, authorize('manager','admin'), contro
 router.get('/admin-balances/export.xlsx', authenticate, authorize('manager','admin'), controller.exportBalancesXlsx);
 router.get('/my-used-days', authenticate, authorize('employee','manager','admin'), controller.myUsedPaidLeaveDays);
 router.get('/used-days', authenticate, authorize('manager','admin'), controller.usedPaidLeaveDays);
+router.get('/grant-history', authenticate, authorize('manager','admin'), controller.grantHistory);
 router.get('/', authenticate, authorize('manager','admin'), controller.listUser);
 router.get('/admin-requests', authenticate, authorize('manager','admin'), controller.listAdminRequests);
 router.get('/monthly-usage-summary', authenticate, authorize('manager','admin'), controller.monthlyUsageSummary);
