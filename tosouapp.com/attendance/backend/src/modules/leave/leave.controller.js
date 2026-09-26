@@ -198,18 +198,19 @@ function allocateUsage(grants, requests) {
 
 // 半休(有給)=0.5 / 有給休暇=1.0 を考慮し、取得日(attendance_daily由来)を付与枠へ按分する。
 // usedDays: [{ date: 'YYYY-MM-DD', days: 0.5|1.0 }]
+// 戻り値: { grants: 按分後の付与枠, days: 各取得日に counted（残数から差し引いた日数）を付けたもの }
 function allocateUsageByDays(grants, usedDays) {
   const out = grants.map(g => ({ ...g, daysRemaining: g.daysGranted, daysUsedAlloc: 0 }));
   const sorted = [...(usedDays || [])].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const days = [];
   for (const u of sorted) {
     let need = Number(u.days || 0);
     const d = String(u.date || '').slice(0, 10);
     for (const g of out) {
       if (need <= 0) break;
-      // 有効期限内であれば按分対象とする。grantDate（付与記録日）より前の取得日でも除外しない —
-      // 勤怠実績への区分入力が、正式な付与レコード登録より先に行われるケースがあるため、
-      // grantDate を下限にすると実際に取得した日数が按分先を失い、残数が過大表示される。
-      if (d > String(g.expiryDate).slice(0, 10)) continue;
+      // その日が付与枠の有効期間内（付与日〜有効期限）のときだけ按分する。
+      // 付与日より前の取得は前期間の分であり、手入力の付与日数（繰越込み）に既に反映済みのため二重に引かない。
+      if (d < String(g.grantDate).slice(0, 10) || d > String(g.expiryDate).slice(0, 10)) continue;
       const take = Math.min(need, g.daysRemaining);
       if (take > 0) {
         g.daysRemaining -= take;
@@ -217,9 +218,11 @@ function allocateUsageByDays(grants, usedDays) {
         need -= take;
       }
     }
+    days.push({ ...u, counted: Number(u.days || 0) - need });
   }
-  return out;
+  return { grants: out, days };
 }
+exports.allocateUsageByDays = allocateUsageByDays;
 
 // API: Nhân viên tạo yêu cầu nghỉ phép (có lương/không lương)
 exports.create = async (req, res) => {
@@ -485,7 +488,7 @@ async function computeUserBalance(userId, tenantId = null) {
   // 取得日は勤怠実績(attendance_daily)を正とする。半休(有給)=0.5 / 有給休暇=1.0。
   // これにより「取得済み一覧」ポップアップと残数カードの数値が常に一致する。
   const usedDayList = await repo.listPaidLeaveUsedDays(userId, tenantId);
-  const alloc = allocateUsageByDays(grants, usedDayList);
+  const alloc = allocateUsageByDays(grants, usedDayList).grants;
   const totalAvailable = alloc.reduce((s, g) => s + Math.max(0, (new Date(g.expiryDate) >= new Date() ? g.daysRemaining : 0)), 0);
   const usedDays = usedDayList.reduce((s, u) => s + Number(u.days || 0), 0);
   const today = fmt(new Date());
@@ -678,9 +681,13 @@ exports.usedPaidLeaveDays = async (req, res) => {
   try {
     const userId = parseInt(String(req.query.userId || ''), 10);
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
-    const days = await repo.listPaidLeaveUsedDays(userId, req.tenantId || null);
+    const usedDayList = await repo.listPaidLeaveUsedDays(userId, req.tenantId || null);
+    // counted: 残数から差し引いた日数（付与日前など按分先の無い取得は 0）
+    const grants = await ensureUserGrants(userId, req.tenantId || null);
+    const { days } = allocateUsageByDays(grants, usedDayList);
     const total = days.reduce((s, d) => s + Number(d.days || 0), 0);
-    return res.status(200).json({ userId, days, total });
+    const countedTotal = days.reduce((s, d) => s + Number(d.counted || 0), 0);
+    return res.status(200).json({ userId, days, total, countedTotal });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
