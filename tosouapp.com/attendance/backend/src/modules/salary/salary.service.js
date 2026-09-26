@@ -264,28 +264,22 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
   if (isFlexDept && empType === 'full_time') {
     const workHoursPerDay = Number(flexConfig.work_hours_per_day || 7.5);
     const breakMin = Number(flexConfig.break_minutes || 90);
-    // Calculate 稼働日 for this month (working days based on saturday_rule)
+    // 稼働日: 勤怠画面と同じ部署の休日カレンダー（休日設定の土曜ルール・祝日・会社休日・個別設定）を使う。
+    // 以前は会社カレンダーの isOff を後から見ていたため全土曜が休み扱いになり、saturday_rule が効いていなかった。
+    // 部署に土曜ルールが未設定で flex_config.saturday_rule があれば、それを土曜ルールとして適用する。
     const calendarRepo = require('../calendar/calendar.repository');
+    const { getDepartmentOffDaySet, applySaturdayRule } = require('../attendance/attendance.utils');
+    const deptRepo = require('../departments/department.repository');
+    const offSet = await getDepartmentOffDaySet(y, { departmentId: user.departmentId, tenantId: tenantId || 0 });
+    const deptSatRule = await deptRepo.getSaturdayOffWeeks(user.departmentId).catch(() => null);
+    if (!deptSatRule && (flexConfig.saturday_rule === '4th_off' || flexConfig.saturday_rule === 'all_work')) {
+      const cal = await calendarRepo.computeYear(y, tenantId || 0).catch(() => null);
+      applySaturdayRule(offSet, y, new Set(flexConfig.saturday_rule === '4th_off' ? [4] : []), cal);
+    }
     let flexWorkingDays = 0;
     for (let d = 1; d <= lastDay; d++) {
       const dateStr = `${y}-${pad(m)}-${pad(d)}`;
-      const dateObj = new Date(Date.UTC(y, m - 1, d));
-      const dow = dateObj.getUTCDay(); // 0=Sun, 6=Sat
-      const is4thSat = dow === 6 && Math.ceil(d / 7) === 4;
-      let isOff = false;
-      // Sunday always off
-      if (dow === 0) isOff = true;
-      // Saturday rule
-      else if (dow === 6) {
-        if (flexConfig.saturday_rule === '4th_off') isOff = is4thSat;
-        else if (flexConfig.saturday_rule === 'all_off') isOff = true;
-        // 'all_work' → not off
-      }
-      // Check company calendar (holidays, obon, etc.)
-      if (!isOff) {
-        try { isOff = await calendarRepo.isOff(dateStr, tenantId || 0); } catch { isOff = false; }
-      }
-      if (!isOff) flexWorkingDays++;
+      if (!offSet.has(dateStr)) flexWorkingDays++;
     }
     flexMonthlyRequiredMin = Math.round(flexWorkingDays * workHoursPerDay * 60);
     // Calculate actual total worked minutes for the month
