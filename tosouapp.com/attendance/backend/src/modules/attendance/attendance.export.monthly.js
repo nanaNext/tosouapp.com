@@ -12,8 +12,6 @@ const { formatInputToMySQLJST } = require('../../utils/dateTime');
 const userRepo = require('../users/user.repository');
 const workReportRepo = require('../workReports/workReports.repository');
 const salaryInputRepo = require('../salary/salaryInput.repository');
-const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
-const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 const leaveRepo = require('../leave/leave.repository');
 const noticesRepo = require('../notices/notices.repository');
 const db = require('../../core/database/mysql');
@@ -753,6 +751,10 @@ exports.exportMonthXlsx = async (req, res) => {
     let sumRemoteDays = 0;
     let sumSatelliteDays = 0;
     let sumStandbyDays = 0;
+    let sumHalfUnpaidDays = 0;
+    let sumDaigaeWorkDays = 0;
+    let sumFurikaeWorkDays = 0;
+    let sumOffDays = 0;
 
     for (let day = 1; day <= lastDay; day++) {
       const ds = `${y}-${pad(m)}-${pad(day)}`;
@@ -762,17 +764,25 @@ exports.exportMonthXlsx = async (req, res) => {
       const hasActual = segs0.some(s => !!s?.checkIn || !!s?.checkOut);
       const kubun = String(daily?.kubun || '').trim();
 
+      // Đếm ngày giống 当月サマリ trên màn hình: theo 勤務区分; 半休 = 0.5; 代替出勤/振替出勤 tính vào 出勤日数.
+      // Không có 区分 nhưng có chấm công: ngày nghỉ → 休日出勤, ngày thường → 出勤.
+      const isHalf = kubun === '半休' || kubun === '半休(有給)';
+      const isFullWork = kubun === '出勤' || kubun === '代替出勤' || kubun === '振替出勤';
+      if (kubun === '休日出勤' || (!kubun && hasActual && isOffDay)) sumHolidayWorkDays++;
+      else if (isHalf) sumAttendDays += 0.5;
+      else if (isFullWork || (!kubun && hasActual)) sumAttendDays++;
+      if (kubun === '半休') sumHalfUnpaidDays += 0.5;
+      if (kubun === '代替出勤') sumDaigaeWorkDays++;
+      if (kubun === '振替出勤') sumFurikaeWorkDays++;
+      if (kubun === '休日' || (!kubun && isOffDay && !hasActual)) sumOffDays++;
+
       if (hasActual) {
-        if (isOffDay) sumHolidayWorkDays++;
-        else sumAttendDays++;
         // Đếm theo hình thức làm việc
         const wt = String(segs0[0]?.workType || daily?.workType || '').trim();
         if (wt === 'onsite') sumOnsiteDays++;
         else if (wt === 'remote') sumRemoteDays++;
         else if (wt === 'satellite') sumSatelliteDays++;
         else if (hasActual && !isOffDay) sumOnsiteDays++; // mặc định là onsite nếu có chấm công
-      } else if (kubun === '半休' || kubun === '半休(有給)') {
-        sumAttendDays += 0.5;
       }
 
       if (kubun === '有給休暇') sumPaidDays++;
@@ -823,13 +833,15 @@ exports.exportMonthXlsx = async (req, res) => {
 
     const totalPaidLeave = sumPaidDays + sumHalfPaidDays;
     // Số ngày phép được cấp
+    // 有給付与: 画面の当月サマリ・有給管理と同じ（労基法の法定付与＋登録付与のうち有効なものの合計）。
+    // 以前は resolveEmploymentStartDate に userId を渡していたため常に「—」になっていた。
     let entitlementDays = '—';
     try {
-      const empStart = await resolveEmploymentStartDate(userId);
-      if (empStart) {
-        const ent = calculatePaidLeaveEntitlement(empStart, `${y}-${pad(m)}-01`);
-        entitlementDays = String(ent?.remaining ?? ent?.total ?? '—');
-      }
+      const { computeUserBalance } = require('../leave/leave.controller');
+      const bal = await computeUserBalance(userId, req.tenantId || null);
+      const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      const total = (bal?.grants || []).reduce((s, g) => s + (String(g?.expiryDate || '').slice(0, 10) >= todayStr ? Number(g?.daysGranted || 0) : 0), 0);
+      entitlementDays = String(total);
     } catch (e) { /* bỏ qua lỗi tính phép */ }
 
     // Ghi các dòng tổng hợp
@@ -862,6 +874,20 @@ exports.exportMonthXlsx = async (req, res) => {
       cell('N' + sRow2, '0:00'),
       cell('O' + sRow2, `${sumOnsiteDays}日`),
       cell('P' + sRow2, `${sumRemoteDays}日`)
+    ]);
+    // 画面の当月サマリと同じ追加項目（列Sは非表示列のため、下の行に並べる）
+    const sRow3 = summaryStartRow + 3;
+    push1(sRow3, [
+      cell('A' + sRow3, '半休(有給)', 3), cell('B' + sRow3, '半休', 3), cell('C' + sRow3, '代替出勤', 3),
+      cell('D' + sRow3, '振替出勤', 3), cell('E' + sRow3, '休日日数', 3)
+    ], 20);
+    const sRow4 = summaryStartRow + 4;
+    push1(sRow4, [
+      cell('A' + sRow4, `${sumHalfPaidDays.toFixed(1)}日`),
+      cell('B' + sRow4, `${sumHalfUnpaidDays.toFixed(1)}日`),
+      cell('C' + sRow4, `${sumDaigaeWorkDays}日`),
+      cell('D' + sRow4, `${sumFurikaeWorkDays}日`),
+      cell('E' + sRow4, `${sumOffDays}日`)
     ]);
 
     // Thứ tự khớp màn hình: 日付|勤務区分|出社|在宅|現場|現場(任意)|作業内容|開始|終了|休憩|深夜|勤務|超過|遅刻早退|理由|備考|承認ステータス|承認者
