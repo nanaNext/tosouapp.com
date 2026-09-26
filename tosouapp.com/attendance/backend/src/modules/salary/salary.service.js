@@ -143,6 +143,7 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
   let holidayWorkDaysFromDaily = 0;
   let halfDayWorkDaysFromDaily = 0;
   let paidHalfDaysFromDaily = 0; // 半休(有給) の回数
+  let unpaidHalfDaysFromDaily = 0; // 半休（無給）の回数
 
   for (const r of dailyRows) {
     const date = String(r.date || '').slice(0, 10);
@@ -153,6 +154,7 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
     if (kubun === '休日出勤' || kubun === '法定休日出勤') holidayWorkDaysFromDaily++;
     if (kubun === '半休' || kubun === '半休(有給)') halfDayWorkDaysFromDaily++;
     if (kubun === '半休(有給)') paidHalfDaysFromDaily++;
+    if (kubun === '半休') unpaidHalfDaysFromDaily++;
     if (kubun === '有給休暇') {
       paidLeaveDaysFromDaily++;
     }
@@ -578,6 +580,7 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
     休日出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '休日出勤日数') ? yen(kOverride['休日出勤日数']) : holidayWorkDaysFromDaily,
     半日出勤日数: Object.prototype.hasOwnProperty.call(kOverride, '半日出勤日数') ? yen(kOverride['半日出勤日数']) : halfDayWorkDaysFromDaily,
     '半休(有給)日数': paidHalfDaysFromDaily,
+    '半休日数': unpaidHalfDaysFromDaily,
     欠勤日数: kAbsentDays,
     無給休暇: kUnpaidLeaveDays,
     有給休暇: kPaidLeaveDays,

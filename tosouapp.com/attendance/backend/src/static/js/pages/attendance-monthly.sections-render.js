@@ -91,6 +91,7 @@
           <th style="background:#dc2626;color:#fff;">${e(b.legal)}</th>
           <th>${e(b.paid)}</th>
           <th>\u534A\u4F11(\u6709\u7D66)</th>
+          <th>\u534A\u4F11</th>
           <th>${e(b.entitlement)}</th>
           <th>${e(b.substitute)}</th>
           <th>${e(b.unpaid)}</th>
@@ -114,7 +115,8 @@
           <td style="background:#fff7ed;font-weight:900;color:#ea580c;">${e(H(a.overtime))}</td>
           <td style="background:#fef2f2;font-weight:900;color:#dc2626;">${e(H(pt))}</td>
           <td>${e(At)}\u65E5</td>
-          <td>${e((()=>{let c=0,u=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{const v=String(x.value||"").trim();v==="\u534A\u4F11(\u6709\u7D66)"&&c++,v==="\u534A\u4F11"&&u++});return c+"\u56DE"+(u?" / \u534A\u4F11 "+u+"\u56DE":"")})())}</td>
+          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u534A\u4F11(\u6709\u7D66)"&&c++});return c+"\u56DE"})())}</td>
+          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u534A\u4F11"&&c++});return c+"\u56DE"})())}</td>
           <td>${e(Gt)}\u65E5</td>
           <td>${e(P)}\u65E5</td>
           <td>${e(F)}\u65E5</td>
