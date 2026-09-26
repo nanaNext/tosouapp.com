@@ -516,7 +516,7 @@ function buildEffectiveGrants({ hireDate, employmentType, registered, attendance
   let cutoff = null;
   for (const g of reg) {
     const s = slotOf(g.grantDate);
-    if (s) s.status = 'registered';
+    if (s) { s.status = 'registered'; s.coveredBy = g.grantDate; }
     if (!s || g.daysGranted > s.legalDays) cutoff = (!cutoff || g.grantDate > cutoff) ? g.grantDate : cutoff;
   }
   const isPartTime = String(employmentType || '').toLowerCase() === 'part_time';
@@ -791,7 +791,7 @@ exports.grantHistory = async (req, res) => {
 
     const byDate = new Map();
     for (const s of slots) {
-      byDate.set(s.grantDate, { grantDate: s.grantDate, legalDays: s.legalDays, status: s.status, source: null, daysGranted: null, expiryDate: s.expiryDate, used: 0, remaining: null, usedDates: [], attendanceRate: s.attendanceRate ?? null });
+      byDate.set(s.grantDate, { grantDate: s.grantDate, legalDays: s.legalDays, status: s.status, source: null, daysGranted: null, expiryDate: s.expiryDate, used: 0, remaining: null, usedDates: [], attendanceRate: s.attendanceRate ?? null, coveredBy: s.coveredBy || null });
     }
     for (const g of alloc) {
       const prev = byDate.get(g.grantDate);
