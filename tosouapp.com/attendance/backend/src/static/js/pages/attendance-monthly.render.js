@@ -103,10 +103,12 @@
       const hasActualOut = !!outHm;
       const hasActual = hasActualIn || hasActualOut;
 
+      // 代替出勤 do nhân viên chọn thật: giữ nguyên dù ngày đó giờ là ngày làm việc (không xoá, không đổi).
+      if (!isPartTime && !offDay && kubunInitRaw === '代替出勤' && !kubunOptions.includes('代替出勤')) kubunOptions.push('代替出勤');
       let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : ''; 
-      // Ngày đã lưu là 休日出勤/代替出勤 nhưng theo 休日設定 hiện tại là ngày làm việc (vd 工事部 Thứ 7 tuần 1/2/3/5)
+      // Chỉ Thứ 7: đã lưu là 休日出勤 nhưng theo 休日設定 hiện tại là ngày làm việc (vd 工事部 Thứ 7 tuần 1/2/3/5)
       // → hiển thị 出勤 và đánh dấu dòng chưa lưu để bấm 保存 là cập nhật DB.
-      const kubunRemapped = !offDay && !isPartTime && !kubunInit && (kubunInitRaw === '休日出勤' || kubunInitRaw === '代替出勤');
+      const kubunRemapped = !offDay && !isPartTime && !kubunInit && kubunInitRaw === '休日出勤' && dow === '土';
       if (kubunRemapped) kubunInit = '出勤';
       let plannedLabel = offDay ? '【休日予定】' : '【出勤予定】';
       let plannedKubun = offDay ? '休日' : '出勤';
