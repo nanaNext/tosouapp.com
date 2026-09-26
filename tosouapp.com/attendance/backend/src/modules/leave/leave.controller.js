@@ -2,7 +2,12 @@ const repo = require('./leave.repository');
 const userRepo = require('../users/user.repository');
 const auditRepo = require('../audit/audit.repository');
 const noticesRepo = require('../notices/notices.repository');
-const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
+const { resolveEmploymentStartDate, normalizeDateInput } = require('../../utils/employmentDate');
+// 有給の起算日は労基法39条の「雇入れの日」= 入社日(hire_date)。未登録のときだけ参加日(join_date)等にフォールバックする。
+// （resolveEmploymentStartDate は遅い方を採るため、入社日を過去日に修正しても反映されなかった）
+function leaveHireDate(u) {
+  return normalizeDateInput(u?.hire_date || u?.hireDate || null) || resolveEmploymentStartDate(u);
+}
 const env = require('../../config/env');
 const metrics = require('../../core/metrics');
 
@@ -161,7 +166,7 @@ async function ensureUserGrants(userId, tenantId = null) {
   }
 
   const u = await userRepo.getUserById(userId);
-  const hire = resolveEmploymentStartDate(u);
+  const hire = leaveHireDate(u);
   if (!hire) return [];
   const today = new Date(); const todayStr = fmt(today);
   const plan = scheduleGrants(hire, todayStr);
@@ -540,7 +545,7 @@ exports.buildEffectiveGrants = buildEffectiveGrants;
 async function loadEffectiveGrants(userId, tenantId = null) {
   const registered = await ensureUserGrants(userId, tenantId);
   const u = await userRepo.getUserById(userId, tenantId);
-  const hireDate = resolveEmploymentStartDate(u);
+  const hireDate = leaveHireDate(u);
   const autoLegal = getLeaveGrantMode() !== 'MANUAL';
   const attendanceRows = (hireDate && autoLegal) ? await repo.listAttendanceKubun(userId, tenantId) : [];
   const built = buildEffectiveGrants({ hireDate, employmentType: u?.employment_type, registered, attendanceRows, today: fmt(new Date()), autoLegal });
@@ -874,7 +879,7 @@ exports.eligibleList = async (req, res) => {
       const empStatus = String(u?.employment_status || u?.employmentStatus || 'active').toLowerCase();
       if (role === 'admin' || role === 'manager') continue;
       if (empStatus === 'inactive' || empStatus === 'retired') continue;
-      const hireDate = resolveEmploymentStartDate(u);
+      const hireDate = leaveHireDate(u);
       if (!hireDate) continue;
       const existing = await repo.listGrants(u.id, 'paid', tenantId);
       const existSet = new Set((existing || []).map(g => String(g?.grantDate || '').slice(0, 10)));

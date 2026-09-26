@@ -15,7 +15,7 @@ require('../src/config/loadEnv');
 const db = require('../src/core/database/mysql');
 const repo = require('../src/modules/leave/leave.repository');
 const { allocateUsageByDays, buildEffectiveGrants } = require('../src/modules/leave/leave.controller');
-const { resolveEmploymentStartDate } = require('../src/utils/employmentDate');
+const { resolveEmploymentStartDate, normalizeDateInput } = require('../src/utils/employmentDate');
 
 const available = (grants, used, today) => allocateUsageByDays(grants, used).grants
   .reduce((s, g) => s + (String(g.expiryDate).slice(0, 10) >= today ? Math.max(0, g.daysRemaining) : 0), 0);
@@ -39,7 +39,7 @@ async function main() {
       grantDate: String(g.grantDate).slice(0, 10), expiryDate: String(g.expiryDate).slice(0, 10), daysGranted: Number(g.daysGranted)
     }));
     const used = await repo.listPaidLeaveUsedDays(u.id, tenantId);
-    const hireDate = resolveEmploymentStartDate(u);
+    const hireDate = normalizeDateInput(u.hire_date) || resolveEmploymentStartDate(u); // 入社日優先（controller の leaveHireDate と同じ）
     const attendanceRows = hireDate && autoLegal ? await repo.listAttendanceKubun(u.id, tenantId) : [];
     const built = buildEffectiveGrants({ hireDate, employmentType: u.employment_type, registered, attendanceRows, today, autoLegal });
 

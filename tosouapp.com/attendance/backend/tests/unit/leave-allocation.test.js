@@ -102,6 +102,18 @@ describe('grantHistory', () => {
 
   afterEach(() => jest.restoreAllMocks());
 
+  it('入社日(hire_date)を参加日(join_date)より優先して起算する', async () => {
+    jest.spyOn(userRepo, 'getUserById').mockResolvedValue({ id: 30, hire_date: '2017-01-01', join_date: '2026-06-23', employment_type: 'full_time' });
+    jest.spyOn(repo, 'listGrants').mockResolvedValue([]);
+    jest.spyOn(repo, 'listAttendanceKubun').mockResolvedValue([]);
+    jest.spyOn(repo, 'listPaidLeaveUsedDays').mockResolvedValue([]);
+    let body;
+    const res = { status() { return this; }, json(o) { body = o; } };
+    await grantHistory({ query: { userId: '30' }, tenantId: 1 }, res);
+    expect(body.hireDate).toBe('2017-01-01');
+    expect(body.rows[0].grantDate).toBe('2017-07-01');
+  });
+
   it('法定付与と登録済み付与を突き合わせ、状態・使用日・残日数を返す（吉田さんケース）', async () => {
     jest.spyOn(userRepo, 'getUserById').mockResolvedValue({ id: 3, hire_date: '2017-01-01', employment_type: 'full_time' });
     jest.spyOn(repo, 'listGrants').mockResolvedValue([{ grantDate: '2026-07-01', expiryDate: '2028-06-30', daysGranted: 40 }]);
