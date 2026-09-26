@@ -267,6 +267,9 @@ exports.exportMonthXlsx = async (req, res) => {
     ];
 
     const sheetRows = [];
+    // 当月サマリの総労働時間/総残業時間/法定外時間 = 各行の「勤務」「超過」の合計（画面と同じ）
+    let rowsWorkedMin = 0;
+    let rowsOtMin = 0;
     const planSheetRows = [];
     const planColumns = [
       { header: '日付', width: 12 },
@@ -370,11 +373,18 @@ exports.exportMonthXlsx = async (req, res) => {
         const isHankyuu = kubunInfo.effective === '半休' || kubunInfo.effective === '半休(有給)';
         exportBrMin = (holidayLock || isHankyuu) ? 0 : (daily?.breakMinutes == null ? defaultBr : Number(daily.breakMinutes));
         exportNbMin = (holidayLock || isHankyuu) ? 0 : (daily?.nightBreakMinutes == null ? 0 : Number(daily.nightBreakMinutes));
-        exportWorkedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - hmToMinutes(inHm) - exportBrMin - exportNbMin);
+        // 画面と同じ: 始業前の出勤は始業時刻から計算する
+        const inMinRaw = hmToMinutes(inHm);
+        const inMinEff = (shiftDef && inMinRaw < shiftDef.startMin) ? shiftDef.startMin : inMinRaw;
+        exportWorkedMin = holidayLock ? 0 : Math.max(0, hmToMinutes(outHm) - inMinEff - exportBrMin - exportNbMin);
         // 超過時間 = checkout - shift_end (giờ sau khi kết thúc ca)
         const shiftEndMin = shiftDef ? shiftDef.endMin : (17 * 60);
         const outMin = hmToMinutes(outHm);
         exportOtMin = holidayLock ? 0 : Math.max(0, outMin - shiftEndMin);
+        if (inHm && outHm) {
+          rowsWorkedMin += exportWorkedMin;
+          if (exportWorkedMin > 0) rowsOtMin += exportOtMin;
+        }
       }
 
       // 丸め (giá trị đã làm tròn)
@@ -517,6 +527,10 @@ exports.exportMonthXlsx = async (req, res) => {
         const extraWorked = holidayLock ? 0 : Math.max(0, hmToMinutes(extraOut) - hmToMinutes(extraIn) - extraBr);
         const extraShiftEndMin = shiftDef ? shiftDef.endMin : (17 * 60);
         const extraOt = holidayLock ? 0 : Math.max(0, hmToMinutes(extraOut) - extraShiftEndMin);
+        if (extraIn && extraOut) {
+          rowsWorkedMin += extraWorked;
+          if (extraWorked > 0) rowsOtMin += extraOt;
+        }
         sheetRows.push({
           isOff,
           cells: [
@@ -856,16 +870,15 @@ exports.exportMonthXlsx = async (req, res) => {
       cell('O' + sRow1, '出社日数', 3), cell('P' + sRow1, '在宅日数', 3)
     ], 20);
     const sRow2 = summaryStartRow + 2;
-    const legalOt = Math.max(0, sumNetWorkedMin - (totalWorkingDays * 8 * 60));
     push1(sRow2, [
       cell('A' + sRow2, `${totalWorkingDays}日`),
       cell('B' + sRow2, `${sumAttendDays}日`),
       cell('C' + sRow2, `${sumHolidayWorkDays}日`),
       cell('D' + sRow2, `${sumStandbyDays}日`),
-      cell('E' + sRow2, fmtHm(sumNetWorkedMin)),
+      cell('E' + sRow2, fmtHm(rowsWorkedMin)),
       cell('F' + sRow2, '0:00'),
-      cell('G' + sRow2, fmtHm(sumOvertimeMin)),
-      cell('H' + sRow2, fmtHm(legalOt)),
+      cell('G' + sRow2, fmtHm(rowsOtMin)),
+      cell('H' + sRow2, fmtHm(rowsOtMin)),
       cell('I' + sRow2, `${totalPaidLeave}日`),
       cell('J' + sRow2, `${entitlementDays}日`),
       cell('K' + sRow2, `${sumSubstituteDays}日`),
