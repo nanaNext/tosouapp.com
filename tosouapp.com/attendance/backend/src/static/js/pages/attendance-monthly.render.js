@@ -103,13 +103,11 @@
       const hasActualOut = !!outHm;
       const hasActual = hasActualIn || hasActualOut;
 
-      // 代替出勤 do nhân viên chọn thật: giữ nguyên dù ngày đó giờ là ngày làm việc (không xoá, không đổi).
-      if (!isPartTime && !offDay && kubunInitRaw === '代替出勤' && !kubunOptions.includes('代替出勤')) kubunOptions.push('代替出勤');
+      // Dữ liệu đã lưu của nhân viên phải hiển thị đúng như đã lưu, không tự đổi/xoá: nếu kubun đã lưu
+      // không có trong danh sách lựa chọn của ngày (vd 休日出勤 trên Thứ 7 nay là ngày làm việc theo 休日設定)
+      // thì thêm nó vào danh sách để giữ nguyên giá trị.
+      if (kubunInitRaw && !kubunOptions.includes(kubunInitRaw)) kubunOptions.push(kubunInitRaw);
       let kubunInit = kubunOptions.includes(kubunInitRaw) ? kubunInitRaw : ''; 
-      // Chỉ Thứ 7: đã lưu là 休日出勤 nhưng theo 休日設定 hiện tại là ngày làm việc (vd 工事部 Thứ 7 tuần 1/2/3/5)
-      // → hiển thị 出勤 và đánh dấu dòng chưa lưu để bấm 保存 là cập nhật DB.
-      const kubunRemapped = !offDay && !isPartTime && !kubunInit && kubunInitRaw === '休日出勤' && dow === '土';
-      if (kubunRemapped) kubunInit = '出勤';
       let plannedLabel = offDay ? '【休日予定】' : '【出勤予定】';
       let plannedKubun = offDay ? '休日' : '出勤';
       
@@ -215,7 +213,7 @@
       // Logic cũ ẩn kubun làm việc (ví dụ 出勤) trừ khi có chấm công thực tế,
       // khiến sau khi reload trông như "chưa lưu".
       // Không reset kubunInit của ngày auto-休日 (nó là 休日 do hệ thống tự đặt, không phải chưa lưu)
-      const allowDailyAsActual = hasActual || kubunConfirmed || isAutoHolidayDay || kubunRemapped;
+      const allowDailyAsActual = hasActual || kubunConfirmed || isAutoHolidayDay;
       if (!allowDailyAsActual) kubunInit = '';
 
       // Ngày auto-休日 coi như đã xác định: không phải "予定/未申請" và không làm mờ dòng.
@@ -364,7 +362,6 @@
       tr.dataset.clientId = tr.dataset.id ? '' : (seg?.clientId || makeClientId());
       tr.dataset.primary = primary ? '1' : '0';
       tr.dataset.kubunConfirmed = kubunConfirmed ? '1' : '';
-      if (kubunRemapped) { tr.dataset.dirty = '1'; tr.dataset.kubunBase = kubunInitRaw; }
       tr.dataset.shiftStart = shiftStartOk ? shiftStart : '08:00';
       tr.dataset.lateMinutes = String(daily?.lateMinutes || daily?.late_minutes || '');
       tr.dataset.earlyMinutes = String(daily?.earlyMinutes || daily?.early_minutes || '');
