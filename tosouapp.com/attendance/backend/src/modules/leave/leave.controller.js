@@ -488,8 +488,10 @@ exports.updateStatus = async (req, res) => {
 // 労基法39条に基づく「実効付与」の算出（DBには書き込まない）。
 // - 入社日から法定付与（6か月:10日 → 1年ごとに 11,12,14,16,18,20日）を並べる（有効期限2年）。
 // - 登録済み付与は、その日付以前で直近の法定付与枠を「登録で置き換え」たものとみなす。
-// - 登録日数が法定日数を超える（または法定付与枠が無い）登録は「繰越込みの残高登録」とみなし、
-//   それより前の法定付与枠は自動計上しない（繰越分が既に含まれているため二重計上を防ぐ）。
+// - 登録日数が法定日数を超える登録（繰越込みで入力された 40日 等）は法定日数で計算し、
+//   繰越分は前年以前の法定付与から自動計算する（registeredDays に登録値を保持）。
+// - 法定付与枠が無い登録（入社6か月未満）や、自動計算しない社員の法定超登録は「繰越込みの残高登録」とみなし、
+//   それより前の法定付与枠は計上しない（二重計上を防ぐ）。
 // - 出勤率8割未満の付与期間は付与しない。勤怠データが無い期間（システム導入前）は付与済みとみなす。
 // - パート・アルバイト（比例付与）と LEAVE_GRANT_MODE=MANUAL は自動計上しない（登録分のみ）。
 // attendanceRows: [{ date, kubun }]（attendance_daily 全件）
@@ -513,13 +515,21 @@ function buildEffectiveGrants({ hireDate, employmentType, registered, attendance
     }
     return hit;
   };
+  const isPartTime = String(employmentType || '').toLowerCase() === 'part_time';
+  const autoOn = autoLegal && !isPartTime;
   let cutoff = null;
   for (const g of reg) {
     const s = slotOf(g.grantDate);
     if (s) { s.status = 'registered'; s.coveredBy = g.grantDate; }
-    if (!s || g.daysGranted > s.legalDays) cutoff = (!cutoff || g.grantDate > cutoff) ? g.grantDate : cutoff;
+    if (s && autoOn && g.daysGranted > s.legalDays) {
+      // 法定日数を超える登録（例: 繰越込みで40日）は法定日数で計算し、繰越分は前年以前の法定付与から自動計算する。
+      g.registeredDays = g.daysGranted;
+      g.daysGranted = s.legalDays;
+    } else if (!s || g.daysGranted > s.legalDays) {
+      // 法定付与枠が無い登録、または自動計算しない社員（パート等）の法定超登録は繰越込みの残高登録とみなす
+      cutoff = (!cutoff || g.grantDate > cutoff) ? g.grantDate : cutoff;
+    }
   }
-  const isPartTime = String(employmentType || '').toLowerCase() === 'part_time';
   const firstSlot = slots[0] ? slots[0].grantDate : null;
   for (const s of slots) {
     if (s.status) continue;
@@ -593,6 +603,7 @@ async function computeUserBalance(userId, tenantId = null) {
       expiryDate: g.expiryDate,
       daysGranted: g.daysGranted,
       daysRemaining: g.daysRemaining,
+      registeredDays: g.registeredDays ?? null,
       source: g.source
     })),
     upcomingGrantDate,
@@ -805,6 +816,7 @@ exports.grantHistory = async (req, res) => {
         used: g.daysUsedAlloc,
         remaining: g.daysRemaining,
         usedDates: g.usedDates,
+        registeredDays: g.registeredDays ?? null,
         attendanceRate: prev ? prev.attendanceRate : null
       });
     }

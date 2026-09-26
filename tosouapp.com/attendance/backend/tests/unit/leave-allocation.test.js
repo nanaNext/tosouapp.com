@@ -57,13 +57,20 @@ describe('buildEffectiveGrants（労基法39条）', () => {
     expect(available(grants)).toBe(39);
   });
 
-  it('繰越込みで登録された付与（法定超）より前の法定付与は二重計上しない', () => {
+  it('繰越込みで法定超の登録（40日）は法定日数で計算し、繰越は前年の法定付与から自動計算する', () => {
     const registered = [{ grantDate: '2026-07-01', expiryDate: '2028-06-30', daysGranted: 40 }];
     const { grants, slots, cutoff } = buildEffectiveGrants({ hireDate: '2017-01-01', employmentType: 'full_time', registered, attendanceRows: [], today });
+    expect(cutoff).toBeNull();
+    expect(grants.find(g => g.grantDate === '2026-07-01')).toEqual({ grantDate: '2026-07-01', expiryDate: '2028-06-30', daysGranted: 20, registeredDays: 40, source: 'registered' });
+    expect(slots.find(s => s.grantDate === '2025-07-01').status).toBe('legal');
+    expect(available(grants)).toBe(39);
+  });
+
+  it('パート等（自動計算しない社員）の法定超登録は繰越込みの残高登録として扱う', () => {
+    const registered = [{ grantDate: '2026-07-01', expiryDate: '2028-06-30', daysGranted: 40 }];
+    const { grants, cutoff } = buildEffectiveGrants({ hireDate: '2017-01-01', employmentType: 'part_time', registered, attendanceRows: [], today });
     expect(cutoff).toBe('2026-07-01');
     expect(grants).toEqual([{ grantDate: '2026-07-01', expiryDate: '2028-06-30', daysGranted: 40, source: 'registered' }]);
-    expect(slots.find(s => s.grantDate === '2025-07-01').status).toBe('carried');
-    expect(available(grants)).toBe(39);
   });
 
   it('法定どおりの登録は登録値を使い、前年の法定付与（繰越）は自動計上する', () => {
@@ -134,9 +141,10 @@ describe('grantHistory', () => {
     await grantHistory({ query: { userId: '3' }, tenantId: 1 }, res);
 
     expect(body.hireDate).toBe('2017-01-01');
-    expect(body.rows[0]).toMatchObject({ grantDate: '2017-07-01', legalDays: 10, status: 'carried', expired: true });
-    expect(body.rows.find(r => r.grantDate === '2025-07-01')).toMatchObject({ legalDays: 20, status: 'carried', expiryDate: '2027-06-30' });
-    expect(body.rows.find(r => r.grantDate === '2026-07-01')).toMatchObject({ legalDays: 20, status: 'registered', daysGranted: 40, used: 1, remaining: 39 });
-    expect(body.unallocated).toEqual([{ date: '2026-06-10', days: 1, note: 'carried' }]);
+    expect(body.rows[0]).toMatchObject({ grantDate: '2017-07-01', legalDays: 10, status: 'legal', expired: true });
+    expect(body.rows.find(r => r.grantDate === '2024-07-01')).toMatchObject({ status: 'legal', used: 1, usedDates: [{ date: '2026-06-10', days: 1 }], expired: true });
+    expect(body.rows.find(r => r.grantDate === '2025-07-01')).toMatchObject({ legalDays: 20, status: 'legal', daysGranted: 20, used: 1, remaining: 19, usedDates: [{ date: '2026-07-07', days: 1 }] });
+    expect(body.rows.find(r => r.grantDate === '2026-07-01')).toMatchObject({ legalDays: 20, status: 'registered', daysGranted: 20, registeredDays: 40, used: 0, remaining: 20 });
+    expect(body.unallocated).toEqual([]);
   });
 });
