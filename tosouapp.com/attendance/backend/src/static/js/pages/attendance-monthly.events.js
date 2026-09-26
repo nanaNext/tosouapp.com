@@ -1028,10 +1028,10 @@
                 if (!k || k.includes('予定') || k === '出勤' || k === '休日出勤') {
                   // Only update kubun if it's currently a placeholder/planned value
                   // Use logic similar to what backend would assign
-                  const isSat = !!row.querySelector('.col-date')?.classList.contains('sat');
-                  const isSun = !!row.querySelector('.col-date')?.classList.contains('sun');
-                  const isHol = !!row.querySelector('.col-date')?.classList.contains('hol');
-                  if (isSat || isSun || isHol) {
+                  // Theo lịch nghỉ của bộ phận (data-base-off do backend tính từ 休日設定), không dựa vào
+                  // màu Thứ 7/CN: vd 工事部 đi làm Thứ 7 (trừ tuần 4) là 出勤, không phải 休日出勤.
+                  const isBaseOff = String(row.dataset.baseOff || '') === '1';
+                  if (isBaseOff) {
                     k = '休日出勤';
                   } else {
                     k = '出勤';
