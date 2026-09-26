@@ -328,7 +328,10 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
     }
   }
 
-  const kOverride = opts.kintai && typeof opts.kintai === 'object' ? opts.kintai : {};
+  // 勤怠は勤怠データ(実績)を正とする。手入力の上書きは、管理者が意図して変更した項目だけを保存する
+  // 新形式(kintaiVersion=2)のみ採用。旧形式は詳細プレビュー保存時に表示中の値を全項目そのまま保存して
+  // いたため（例: 月途中の出勤日数14のまま固定）、採用せず実績から集計する（保存データ自体は変更しない）。
+  const kOverride = opts.kintai && typeof opts.kintai === 'object' && Number(opts.kintaiVersion) === 2 ? opts.kintai : {};
   
   // Parse overridden hours to minutes for allowance calculation
   const parseHmToMin = (str) => {

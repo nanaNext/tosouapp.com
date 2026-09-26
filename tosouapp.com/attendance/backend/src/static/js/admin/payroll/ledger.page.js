@@ -414,7 +414,7 @@ async function renderCalcSection(mainEl, ctx) {
           const input = await service.loadInput({ userId: u.id, month }).catch(() => null);
           const payload = input && input.payload ? input.payload : {};
           const emp = await service.computeEmp({ userId: u.id, month, payload });
-          const kintaiManual = !!(payload.kintai && Object.prototype.hasOwnProperty.call(payload.kintai, '出勤日数'));
+          const kintaiManual = Number(payload.kintaiVersion) === 2 && !!(payload.kintai && Object.prototype.hasOwnProperty.call(payload.kintai, '出勤日数'));
           return { u, emp, ok: true, autoCalc: payload.autoCalcDeductions !== false, kintaiManual };
         } catch {
           return { u, emp: null, ok: false, autoCalc: true };
@@ -495,7 +495,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
   // 変更していない項目は勤怠と連動したままにする。
   let autoK = null;
   try { autoK = (await service.computeEmp({ userId: user.id, month, payload: { ...payload, kintai: {}, autoCalcDeductions: autoCalc } }))?.勤怠 || null; } catch { /* ignore */ }
-  const hasKintaiOverride = () => !!(payload.kintai && Object.keys(payload.kintai).length);
+  const hasKintaiOverride = () => Number(payload.kintaiVersion) === 2 && !!(payload.kintai && Object.keys(payload.kintai).length);
 
   const toItemList = (v) => Array.isArray(v)
     ? v.map((it) => ({ label: String(it?.label || ''), amount: Number(it?.amount) || 0 }))
@@ -677,6 +677,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
       try {
         const np = { ...payload };
         delete np.kintai;
+        delete np.kintaiVersion;
         await service.persistPayload({ userId: user.id, month, payload: np });
         if (onSaved) onSaved();
         overlay.remove();
@@ -716,6 +717,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         ...payload,
         autoCalcDeductions: autoCalc,
         kintai,
+        kintaiVersion: 2,
         rentDeduction: Number(modal.querySelector('#dRent').value) || 0,
         payment: {
           振込支給額: Number(modal.querySelector('#pBank').value) || 0,
