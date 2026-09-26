@@ -414,7 +414,8 @@ async function renderCalcSection(mainEl, ctx) {
           const input = await service.loadInput({ userId: u.id, month }).catch(() => null);
           const payload = input && input.payload ? input.payload : {};
           const emp = await service.computeEmp({ userId: u.id, month, payload });
-          return { u, emp, ok: true, autoCalc: payload.autoCalcDeductions !== false };
+          const kintaiManual = !!(payload.kintai && Object.prototype.hasOwnProperty.call(payload.kintai, '出勤日数'));
+          return { u, emp, ok: true, autoCalc: payload.autoCalcDeductions !== false, kintaiManual };
         } catch {
           return { u, emp: null, ok: false, autoCalc: true };
         }
@@ -426,7 +427,7 @@ async function renderCalcSection(mainEl, ctx) {
   };
 
   function renderCalcRow(r, deptName) {
-    const { u, emp, ok, autoCalc } = r;
+    const { u, emp, ok, autoCalc, kintaiManual } = r;
     const gross = ok ? emp?.合計?.総支給額 : null;
     const deduct = ok ? emp?.合計?.総控除額 : null;
     const net = ok ? emp?.合計?.差引支給額 : null;
@@ -437,7 +438,7 @@ async function renderCalcSection(mainEl, ctx) {
         <td>${escapeHtml(u.username || u.email || '')}</td>
         <td>${escapeHtml(deptName(u.departmentId) || '—')}</td>
         <td class="center">${autoCalc ? '<span class="pl-badge green">自動計算ON</span>' : '<span class="pl-badge tan">自動計算OFF</span>'}</td>
-        <td class="num">${ok ? Number(emp?.勤怠?.出勤日数 || 0) : '—'}</td>
+        <td class="num">${ok ? Number(emp?.勤怠?.出勤日数 || 0) : '—'}${ok && kintaiManual ? ' <span class="pl-badge tan" title="詳細プレビューで保存された手入力値です（勤怠と連動していません）">手入力</span>' : ''}</td>
         <td class="num">${ok ? Number(emp?.勤怠?.欠勤日数 || 0) : '—'}</td>
         <td class="num">${ok ? '¥' + yen(gross) : '—'}</td>
         <td class="num">${ok ? '¥' + yen(deduct) : '—'}</td>
@@ -490,6 +491,11 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
   let autoCalc = payload.autoCalcDeductions !== false;
   let emp = null;
   try { emp = await service.computeEmp({ userId: user.id, month, payload: { ...payload, autoCalcDeductions: autoCalc } }); } catch { /* ignore */ }
+  // 勤怠の自動集計値（手入力の上書きなし）。保存時はこれと異なる項目だけを手入力として保存し、
+  // 変更していない項目は勤怠と連動したままにする。
+  let autoK = null;
+  try { autoK = (await service.computeEmp({ userId: user.id, month, payload: { ...payload, kintai: {}, autoCalcDeductions: autoCalc } }))?.勤怠 || null; } catch { /* ignore */ }
+  const hasKintaiOverride = () => !!(payload.kintai && Object.keys(payload.kintai).length);
 
   const toItemList = (v) => Array.isArray(v)
     ? v.map((it) => ({ label: String(it?.label || ''), amount: Number(it?.amount) || 0 }))
@@ -548,6 +554,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
       <div class="pl-preview-grid" style="${isPublished ? 'opacity:.55;pointer-events:none;' : ''}">
         <div class="pl-preview-section">
           <h3>勤怠</h3>
+          ${hasKintaiOverride() ? `<div style="font-size:12px;color:#8a5a14;background:#fdf3e1;border:1px solid #ecd3a4;border-radius:6px;padding:6px 8px;margin-bottom:8px;">手入力値が保存されています（勤怠と連動していません）: ${escapeHtml(Object.keys(payload.kintai).join('、'))}<br><button type="button" class="pl-btn" id="btnResetKintai" style="margin-top:6px;">勤怠の自動集計に戻す</button></div>` : ''}
           ${fieldNum('出勤日数', 'kAttend', k.出勤日数, false)}
           ${fieldNum('休日出勤日数', 'kHolidayAttend', k.休日出勤日数, false)}
           ${fieldNum('半日出勤日数', 'kHalf', k.半日出勤日数, false)}
@@ -663,6 +670,21 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         }
       });
     }
+    const resetKBtn = modal.querySelector('#btnResetKintai');
+    if (resetKBtn) resetKBtn.addEventListener('click', async () => {
+      if (!window.confirm('保存されている勤怠の手入力値を削除し、勤怠の自動集計に戻しますか？（他の入力値はそのままです）')) return;
+      resetKBtn.disabled = true;
+      try {
+        const np = { ...payload };
+        delete np.kintai;
+        await service.persistPayload({ userId: user.id, month, payload: np });
+        if (onSaved) onSaved();
+        overlay.remove();
+      } catch (err) {
+        window.alert(String(err?.message || '保存に失敗しました'));
+        resetKBtn.disabled = false;
+      }
+    });
     const saveBtn = modal.querySelector('#btnSavePrev');
     if (saveBtn) saveBtn.addEventListener('click', async () => {
       const msg = modal.querySelector('#modalMsg');
@@ -673,7 +695,14 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         return v === '' ? undefined : v;
       };
       const kintai = {};
-      const setK = (key, v) => { if (v !== undefined && v !== '') kintai[key] = v; };
+      const autoOf = { '有給休暇付与': autoK?.有給休暇 };
+      const setK = (key, v) => {
+        if (v === undefined || v === '') return;
+        const a = Object.prototype.hasOwnProperty.call(autoOf, key) ? autoOf[key] : autoK?.[key];
+        // 自動集計と同じ値は保存しない（勤怠と連動させる）。自動集計値が取れない場合は従来どおり保存。
+        if (autoK && String(a ?? (typeof v === 'number' ? 0 : '')) === String(v)) return;
+        kintai[key] = v;
+      };
       setK('出勤日数', Number(modal.querySelector('#kAttend').value) || 0);
       setK('休日出勤日数', Number(modal.querySelector('#kHolidayAttend').value) || 0);
       setK('半日出勤日数', Number(modal.querySelector('#kHalf').value) || 0);
