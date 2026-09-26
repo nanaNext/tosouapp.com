@@ -685,6 +685,26 @@ module.exports = {
       return { date: String(r.date).slice(0, 10), kubun, days };
     });
   },
+  // 法定付与の出勤率(8割)判定用: 勤怠区分のある日を全件取得（件数は1人あたり年数百件程度）。
+  async listAttendanceKubun(userId, tenantId = null) {
+    const tid = _tid(tenantId);
+    const params = [userId];
+    let tenantFilter = '';
+    if (tid != null) {
+      const [check] = await db.query(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`, [userId, tid]);
+      if (!check || !check.length) return [];
+      tenantFilter = 'AND (ad.tenant_id = ? OR ad.tenant_id IS NULL)';
+      params.push(tid);
+    }
+    const [rows] = await db.query(`
+      SELECT ad.date AS date, ad.kubun AS kubun
+      FROM attendance_daily ad
+      WHERE ad.userId = ?
+        AND COALESCE(ad.kubun, '') <> ''
+        ${tenantFilter}
+    `, params);
+    return (rows || []).map(r => ({ date: String(r.date).slice(0, 10), kubun: r.kubun }));
+  },
   // 指定月の 有給休暇/半休(有給) 取得実績を全社員分集計する（attendance_daily を正とし、残数計算と同じ基準）。
   // ad.tenant_id は欠損データがあり得るため、users.tenant_id で絞り込む（listPaidLeaveUsedDaysより堅牢）。
   async getMonthlyPaidLeaveUsageSummary(month, tenantId = null, branchId = null) {

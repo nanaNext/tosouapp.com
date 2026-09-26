@@ -17,7 +17,6 @@
 
 // ─── Dependencies ─────────────────────────────────────────────────────────────
 const db       = require('../../core/database/mysql');  // Query DB trực tiếp
-const userRepo = require('../users/user.repository');   // Lấy thông tin nhân viên
 
 // Hằng số 36協定 (Luật lao động Nhật Bản)
 const STANDARD_DAY_MIN   = 480; // Giờ làm chuẩn: 8h = 480 phút/ngày
@@ -114,52 +113,17 @@ exports.getAnnualSummary = async (req, res) => {
     // 4. Số dư phép năm (有給休暇)
     let paidLeaveInfo = { grantDate: null, usedSinceGrant: 0, remaining: 0, totalGranted: 0 };
     try {
-      const leaveController = require('../leave/leave.controller');
-      const balance = await leaveController.ensureUserGrants(userId);
-      if (balance?.length > 0) {
-        const latest     = balance[balance.length - 1];
-        const grantDate  = latest.grantDate ? String(latest.grantDate).slice(0, 10) : null;
-        const totalGranted = Number(latest.daysGranted || 0);
-        let usedDays = 0;
-        if (grantDate) {
-          const [kubunRows] = await db.query(
-            `SELECT COUNT(*) as cnt FROM attendance_daily WHERE userId = ? AND kubun = '有給休暇' AND date >= ?`,
-            [userId, grantDate]
-          );
-          usedDays = Number(kubunRows?.[0]?.cnt || 0);
-          const [approvedRows] = await db.query(
-            `SELECT startDate, endDate FROM leave_requests WHERE userId = ? AND type = 'paid' AND status = 'approved' AND startDate >= ?`,
-            [userId, grantDate]
-          );
-          let approvedDays = 0;
-          for (const r of (approvedRows || [])) {
-            const s = new Date(String(r.startDate).slice(0, 10));
-            const e = new Date(String(r.endDate).slice(0, 10));
-            if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-              approvedDays += Math.max(1, Math.round((e - s) / 86400000) + 1);
-            }
-          }
-          usedDays = Math.max(usedDays, approvedDays);
-        }
-        paidLeaveInfo = { grantDate, totalGranted, usedSinceGrant: usedDays, remaining: Math.max(0, totalGranted - usedDays) };
-      } else {
-        // Chưa có grant → kiểm tra đủ 6 tháng thâm niên chưa
-        const u = await userRepo.getUserById(userId);
-        const hireDate = u?.hire_date ? String(u.hire_date).slice(0, 10) : null;
-        if (hireDate) {
-          const monthsSince = (Date.now() - new Date(hireDate + 'T00:00:00Z').getTime()) / (30.44 * 24 * 60 * 60 * 1000);
-          if (monthsSince >= 6) {
-            const [kubunRows] = await db.query(
-              `SELECT COUNT(*) as cnt FROM attendance_daily WHERE userId = ? AND kubun = '有給休暇' AND date >= ?`,
-              [userId, hireDate]
-            );
-            const usedDays = Number(kubunRows?.[0]?.cnt || 0);
-            const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
-            let entitled = 10;
-            try { entitled = calculatePaidLeaveEntitlement(hireDate) || 10; } catch (e) { /* dùng giá trị mặc định */ }
-            paidLeaveInfo = { grantDate: hireDate, totalGranted: entitled, usedSinceGrant: usedDays, remaining: Math.max(0, entitled - usedDays) };
-          }
-        }
+      // 有給管理画面と同じ算出（労基法の法定付与・繰越・2年時効・古い付与から消化）を使う。
+      const { computeUserBalance } = require('../leave/leave.controller');
+      const bal = await computeUserBalance(userId, req.tenantId || null);
+      const latest = (bal.grants || [])[bal.grants.length - 1];
+      if (latest) {
+        paidLeaveInfo = {
+          grantDate: String(latest.grantDate).slice(0, 10),
+          totalGranted: Number(latest.daysGranted || 0),
+          usedSinceGrant: Number(bal.obligation?.taken || 0),
+          remaining: Number(bal.totalAvailable || 0)
+        };
       }
     } catch (e) {
       console.error('[annual-summary] leave error:', e.message);

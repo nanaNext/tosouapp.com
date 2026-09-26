@@ -100,11 +100,10 @@ function scheduleGrants(hireDate, untilDate) {
       grants.push({ grantDate: fmt(g), days: m.days });
     }
   }
-  // After 6年半: 20 days every year
-  const last = addMonths(h, 78);
-  let y = new Date(last);
+  // After 6年半: 20 days every year（6年半の付与は上の milestones で追加済みのため、その1年後から）
+  let y = addYears(addMonths(h, 78), 1);
   while (y <= now) {
-    if (y >= last) grants.push({ grantDate: fmt(y), days: 20 });
+    grants.push({ grantDate: fmt(y), days: 20 });
     y = addYears(y, 1);
   }
   return grants;
@@ -481,8 +480,75 @@ exports.updateStatus = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// 労基法39条に基づく「実効付与」の算出（DBには書き込まない）。
+// - 入社日から法定付与（6か月:10日 → 1年ごとに 11,12,14,16,18,20日）を並べる（有効期限2年）。
+// - 登録済み付与は、その日付以前で直近の法定付与枠を「登録で置き換え」たものとみなす。
+// - 登録日数が法定日数を超える（または法定付与枠が無い）登録は「繰越込みの残高登録」とみなし、
+//   それより前の法定付与枠は自動計上しない（繰越分が既に含まれているため二重計上を防ぐ）。
+// - 出勤率8割未満の付与期間は付与しない。勤怠データが無い期間（システム導入前）は付与済みとみなす。
+// - パート・アルバイト（比例付与）と LEAVE_GRANT_MODE=MANUAL は自動計上しない（登録分のみ）。
+// attendanceRows: [{ date, kubun }]（attendance_daily 全件）
+function buildEffectiveGrants({ hireDate, employmentType, registered, attendanceRows, today, autoLegal = true }) {
+  const reg = (registered || [])
+    .map(g => ({ grantDate: String(g.grantDate).slice(0, 10), expiryDate: String(g.expiryDate).slice(0, 10), daysGranted: Number(g.daysGranted) }))
+    .sort((a, b) => a.grantDate.localeCompare(b.grantDate));
+  const slots = (hireDate ? scheduleGrants(hireDate, today) : []).map(p => {
+    const e = addYears(new Date(p.grantDate + 'T00:00:00Z'), 2);
+    e.setUTCDate(e.getUTCDate() - 1);
+    return { grantDate: p.grantDate, legalDays: p.days, expiryDate: fmt(e), status: null };
+  });
+  const slotOf = (date) => {
+    let hit = null;
+    for (const s of slots) if (s.grantDate <= date) hit = s;
+    return hit;
+  };
+  let cutoff = null;
+  for (const g of reg) {
+    const s = slotOf(g.grantDate);
+    if (s) s.status = 'registered';
+    if (!s || g.daysGranted > s.legalDays) cutoff = (!cutoff || g.grantDate > cutoff) ? g.grantDate : cutoff;
+  }
+  const isPartTime = String(employmentType || '').toLowerCase() === 'part_time';
+  const firstSlot = slots[0] ? slots[0].grantDate : null;
+  for (const s of slots) {
+    if (s.status) continue;
+    if (cutoff && s.grantDate < cutoff) { s.status = 'carried'; continue; }
+    if (!autoLegal || isPartTime) { s.status = 'manual'; continue; }
+    // 出勤率判定期間: 初回は入社日〜付与日前日、以降は前回付与日〜付与日前日（1年）
+    const pe = fmt(addDays(new Date(s.grantDate + 'T00:00:00Z'), -1));
+    const ps = s.grantDate === firstSlot ? hireDate : fmt(addYears(new Date(s.grantDate + 'T00:00:00Z'), -1));
+    let work = 0; let present = 0;
+    for (const r of (attendanceRows || [])) {
+      const d = String(r.date || '').slice(0, 10);
+      if (d < ps || d > pe) continue;
+      const k = String(r.kubun || '').replace(/[\s　]/g, '');
+      if (!k || k === '休日' || k === '代替休日') continue;
+      work++;
+      if (k !== '欠勤' && k !== '無給休暇') present++;
+    }
+    s.attendanceRate = work > 0 ? present / work : null;
+    s.status = (work === 0 || present / work >= 0.8) ? 'legal' : 'ineligible';
+  }
+  const grants = [
+    ...reg.map(g => ({ ...g, source: 'registered' })),
+    ...slots.filter(s => s.status === 'legal').map(s => ({ grantDate: s.grantDate, expiryDate: s.expiryDate, daysGranted: s.legalDays, source: 'legal' }))
+  ].sort((a, b) => a.grantDate.localeCompare(b.grantDate));
+  return { grants, slots, cutoff };
+}
+exports.buildEffectiveGrants = buildEffectiveGrants;
+
+async function loadEffectiveGrants(userId, tenantId = null) {
+  const registered = await ensureUserGrants(userId, tenantId);
+  const u = await userRepo.getUserById(userId, tenantId);
+  const hireDate = resolveEmploymentStartDate(u);
+  const autoLegal = getLeaveGrantMode() !== 'MANUAL';
+  const attendanceRows = (hireDate && autoLegal) ? await repo.listAttendanceKubun(userId, tenantId) : [];
+  const built = buildEffectiveGrants({ hireDate, employmentType: u?.employment_type, registered, attendanceRows, today: fmt(new Date()), autoLegal });
+  return { ...built, hireDate, employmentType: u?.employment_type || null };
+}
+
 async function computeUserBalance(userId, tenantId = null) {
-  const grants = await ensureUserGrants(userId, tenantId);
+  const { grants } = await loadEffectiveGrants(userId, tenantId);
   if (!grants.length) {
     return { totalAvailable: 0, usedDays: 0, grants: [], upcomingGrantDate: null, obligation: { required: 0, taken: 0, remaining: 0 } };
   }
@@ -515,12 +581,14 @@ async function computeUserBalance(userId, tenantId = null) {
       grantDate: g.grantDate,
       expiryDate: g.expiryDate,
       daysGranted: g.daysGranted,
-      daysRemaining: g.daysRemaining
+      daysRemaining: g.daysRemaining,
+      source: g.source
     })),
     upcomingGrantDate,
     obligation: { required, taken, remaining: Math.max(0, required - taken) }
   };
 }
+exports.computeUserBalance = computeUserBalance;
 // 有給管理 admin一覧用: 部署名JOIN済みの active 社員一覧を取得し、1人ずつ computeUserBalance を実行する。
 // ~200人規模の管理画面向け操作 (月次集計のrunRecomputeForTenantと同様、都度全件再計算する軽い処理として許容する)。
 async function listAllUserBalancesWithMeta({ tenantId = null, dept = '', userId = null } = {}) {
@@ -682,20 +750,22 @@ exports.usedPaidLeaveDays = async (req, res) => {
   try {
     const userId = parseInt(String(req.query.userId || ''), 10);
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
-    const usedDayList = await repo.listPaidLeaveUsedDays(userId, req.tenantId || null);
-    // counted: 残数から差し引いた日数（付与日前など按分先の無い取得は 0）
-    const grants = await ensureUserGrants(userId, req.tenantId || null);
+    const tenantId = req.tenantId || null;
+    const usedDayList = await repo.listPaidLeaveUsedDays(userId, tenantId);
+    // counted: 残数から差し引いた日数。note: 'carried'=繰越込み登録に反映済みの前期間取得 / 'uncovered'=対応する付与なし
+    const { grants, cutoff } = await loadEffectiveGrants(userId, tenantId);
     const { days } = allocateUsageByDays(grants, usedDayList);
-    const total = days.reduce((s, d) => s + Number(d.days || 0), 0);
-    const countedTotal = days.reduce((s, d) => s + Number(d.counted || 0), 0);
-    return res.status(200).json({ userId, days, total, countedTotal });
+    const annotated = days.map(d => ({ ...d, note: d.counted < d.days ? ((cutoff && d.date < cutoff) ? 'carried' : 'uncovered') : null }));
+    const total = annotated.reduce((s, d) => s + Number(d.days || 0), 0);
+    const countedTotal = annotated.reduce((s, d) => s + Number(d.counted || 0), 0);
+    return res.status(200).json({ userId, days: annotated, total, countedTotal });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-// API: 入社日からの付与履歴（Admin/Manager用）。
-// 法定付与スケジュール（入社日基準）と登録済み付与を突き合わせ、各付与枠の使用日・残日数を返す。
-// 未登録の法定付与は registered=false で返すだけで、ここでは書き込まない（登録は /grant で管理者が行う）。
+// API: 入社日からの付与履歴（Admin/Manager用）。労基法に基づく法定付与と登録済み付与を突き合わせ、
+// 各付与枠の状態・使用日・残日数を返す。読み取りのみ（登録は /grant で管理者が行う）。
+// status: registered=登録済 / legal=法定（自動計上） / carried=繰越込み登録に含む / ineligible=出勤率8割未満 / manual=自動計上なし（パート等）
 exports.grantHistory = async (req, res) => {
   try {
     const userId = parseInt(String(req.query.userId || ''), 10);
@@ -703,45 +773,37 @@ exports.grantHistory = async (req, res) => {
     const tenantId = req.tenantId || null;
     const u = await userRepo.getUserById(userId, tenantId);
     if (!u) return res.status(404).json({ message: 'Not found' });
-    const hireDate = resolveEmploymentStartDate(u);
     const today = fmt(new Date());
-    const grants = (await repo.listGrants(userId, 'paid', tenantId))
-      .map(g => ({ grantDate: String(g.grantDate).slice(0, 10), expiryDate: String(g.expiryDate).slice(0, 10), daysGranted: Number(g.daysGranted) }))
-      .sort((a, b) => a.grantDate.localeCompare(b.grantDate));
+    const { grants, slots, cutoff, hireDate, employmentType } = await loadEffectiveGrants(userId, tenantId);
     const usedDayList = await repo.listPaidLeaveUsedDays(userId, tenantId);
     const { grants: alloc, days } = allocateUsageByDays(grants, usedDayList);
 
     const byDate = new Map();
-    for (const p of scheduleGrants(hireDate, today)) {
-      const e = addYears(new Date(p.grantDate + 'T00:00:00Z'), 2);
-      e.setUTCDate(e.getUTCDate() - 1);
-      byDate.set(p.grantDate, { grantDate: p.grantDate, legalDays: p.days, registered: false, daysGranted: null, expiryDate: fmt(e), used: 0, remaining: null, usedDates: [] });
+    for (const s of slots) {
+      byDate.set(s.grantDate, { grantDate: s.grantDate, legalDays: s.legalDays, status: s.status, source: null, daysGranted: null, expiryDate: s.expiryDate, used: 0, remaining: null, usedDates: [], attendanceRate: s.attendanceRate ?? null });
     }
     for (const g of alloc) {
-      const legal = byDate.get(g.grantDate);
+      const prev = byDate.get(g.grantDate);
       byDate.set(g.grantDate, {
         grantDate: g.grantDate,
-        legalDays: legal ? legal.legalDays : null,
-        registered: true,
+        legalDays: prev ? prev.legalDays : null,
+        status: g.source === 'registered' ? 'registered' : 'legal',
+        source: g.source,
         daysGranted: g.daysGranted,
         expiryDate: g.expiryDate,
         used: g.daysUsedAlloc,
         remaining: g.daysRemaining,
-        usedDates: g.usedDates
+        usedDates: g.usedDates,
+        attendanceRate: prev ? prev.attendanceRate : null
       });
     }
     const rows = [...byDate.values()]
       .sort((a, b) => a.grantDate.localeCompare(b.grantDate))
       .map(r => ({ ...r, expired: r.expiryDate < today }));
-    // どの付与枠にも按分されなかった取得日（最初の登録付与より前、または期限切れ等）
-    const unallocated = days.filter(d => d.counted < d.days).map(d => ({ date: d.date, days: d.days - d.counted }));
-    return res.status(200).json({
-      userId,
-      hireDate,
-      employmentType: u.employment_type || null,
-      rows,
-      unallocated
-    });
+    const unallocated = days
+      .filter(d => d.counted < d.days)
+      .map(d => ({ date: d.date, days: d.days - d.counted, note: (cutoff && d.date < cutoff) ? 'carried' : 'uncovered' }));
+    return res.status(200).json({ userId, hireDate, employmentType, cutoff, rows, unallocated });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

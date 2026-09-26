@@ -1,84 +1,65 @@
 'use strict';
 /**
- * Kiểm tra (CHỈ ĐỌC) ảnh hưởng của việc khôi phục mốc ngày cấp (grantDate) trong allocateUsageByDays.
+ * Kiểm tra (CHỈ ĐỌC) ảnh hưởng của cách tính 有給 theo luật (労基法39条) lên số dư của từng nhân viên.
  *
- * Liệt kê nhân viên có ngày 有給休暇/半休(有給) (attendance_daily) KHÔNG được trừ vào đợt cấp nào
- * theo logic mới (vd: dùng trước ngày cấp đầu tiên), và so sánh 残日数 cũ (chỉ xét hết hạn) với mới.
- * Người có chênh lệch: hoặc là đúng (ngày dùng thuộc kỳ trước, đã tính trong số ngày cấp/繰越),
- * hoặc ngày cấp đang nhập sai → cần sửa 付与日 trên màn hình 有給休暇の編集.
+ * So sánh:
+ *   - cũ : chỉ dùng các đợt cấp đã đăng ký (付与 nhập tay), trừ trong khoảng 付与日〜有効期限
+ *   - mới: đăng ký + đợt cấp theo luật tính từ 入社日 (buildEffectiveGrants)
+ * Liệt kê nhân viên có 残日数 thay đổi, kèm đợt cấp được tự tính và ngày dùng không trừ được.
  *
  * Chạy: node attendance/backend/scripts/check-leave-pre-grant-usage.js
- * Không thay đổi dữ liệu.
+ * Không thay đổi dữ liệu (không gọi ensureUserGrants — ở chế độ AUTO hàm đó sẽ ghi 付与).
  */
 
 require('../src/config/loadEnv');
 const db = require('../src/core/database/mysql');
 const repo = require('../src/modules/leave/leave.repository');
-const { allocateUsageByDays } = require('../src/modules/leave/leave.controller');
+const { allocateUsageByDays, buildEffectiveGrants } = require('../src/modules/leave/leave.controller');
+const { resolveEmploymentStartDate } = require('../src/utils/employmentDate');
 
-// Logic cũ (commit d210441): chỉ xét ngày hết hạn, không xét ngày cấp.
-function allocateOld(grants, usedDays) {
-  const out = grants.map(g => ({ ...g, daysRemaining: g.daysGranted }));
-  const sorted = [...usedDays].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  for (const u of sorted) {
-    let need = Number(u.days || 0);
-    for (const g of out) {
-      if (need <= 0) break;
-      if (u.date > String(g.expiryDate).slice(0, 10)) continue;
-      const take = Math.min(need, g.daysRemaining);
-      if (take > 0) { g.daysRemaining -= take; need -= take; }
-    }
-  }
-  return out;
-}
-
-const available = (grants, today) =>
-  grants.reduce((s, g) => s + (String(g.expiryDate).slice(0, 10) >= today ? Math.max(0, g.daysRemaining) : 0), 0);
+const available = (grants, used, today) => allocateUsageByDays(grants, used).grants
+  .reduce((s, g) => s + (String(g.expiryDate).slice(0, 10) >= today ? Math.max(0, g.daysRemaining) : 0), 0);
 
 async function main() {
   const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  const autoLegal = String(process.env.LEAVE_GRANT_MODE || 'HYBRID').toUpperCase() !== 'MANUAL';
   const [users] = await db.query(`
-    SELECT u.id, u.tenant_id AS tenantId, u.username, u.employee_code AS employeeCode
+    SELECT u.id, u.tenant_id AS tenantId, u.username, u.employee_code AS employeeCode,
+           u.hire_date, u.join_date, u.employment_type
     FROM users u
-    WHERE u.employment_status = 'active'
-    ORDER BY u.tenant_id, u.id
-  `);
-  const [usedRows] = await db.query(`
-    SELECT userId, date, REPLACE(TRIM(COALESCE(kubun, '')), '　', '') AS kubun
-    FROM attendance_daily
-    WHERE REPLACE(TRIM(COALESCE(kubun, '')), '　', '') IN ('有給休暇', '半休(有給)')
-    ORDER BY date ASC
+    WHERE u.employment_status = 'active' AND u.role = 'employee'
+    ORDER BY u.tenant_id, u.employee_code, u.id
   `);
 
-  const usedBy = new Map();
-  for (const r of usedRows) {
-    const k = Number(r.userId);
-    if (!usedBy.has(k)) usedBy.set(k, []);
-    usedBy.get(k).push({ date: String(r.date).slice(0, 10), kubun: r.kubun, days: r.kubun === '半休(有給)' ? 0.5 : 1 });
-  }
-
-  console.log(`\n=== Ảnh hưởng khi khôi phục mốc ngày cấp (chỉ đọc) — hôm nay ${today} ===\n`);
-  let affected = 0;
+  console.log(`\n=== 有給: số dư hiện tại → theo luật (chỉ đọc) — hôm nay ${today}, tự tính theo luật: ${autoLegal ? 'BẬT' : 'TẮT (MANUAL)'} ===\n`);
+  let changed = 0;
   for (const u of users) {
-    const used = usedBy.get(Number(u.id)) || [];
-    if (!used.length) continue;
-    // repo.listGrants chỉ đọc (khác ensureUserGrants ở chế độ AUTO sẽ ghi 付与).
-    const grants = (await repo.listGrants(u.id, 'paid')).map(g => ({
+    const tenantId = u.tenantId;
+    const registered = (await repo.listGrants(u.id, 'paid', tenantId)).map(g => ({
       grantDate: String(g.grantDate).slice(0, 10), expiryDate: String(g.expiryDate).slice(0, 10), daysGranted: Number(g.daysGranted)
     }));
-    if (!grants.length) continue;
-    const { grants: newAlloc, days } = allocateUsageByDays(grants, used);
-    const oldAvail = available(allocateOld(grants, used), today);
-    const newAvail = available(newAlloc, today);
+    const used = await repo.listPaidLeaveUsedDays(u.id, tenantId);
+    const hireDate = resolveEmploymentStartDate(u);
+    const attendanceRows = hireDate && autoLegal ? await repo.listAttendanceKubun(u.id, tenantId) : [];
+    const built = buildEffectiveGrants({ hireDate, employmentType: u.employment_type, registered, attendanceRows, today, autoLegal });
+
+    const before = available(registered, used, today);
+    const after = available(built.grants, used, today);
+    if (before === after) continue;
+    changed++;
+    const { days } = allocateUsageByDays(built.grants, used);
     const notCounted = days.filter(d => d.counted < d.days);
-    if (oldAvail === newAvail && !notCounted.length) continue;
-    affected++;
-    console.log(`tenant ${u.tenantId} | user ${u.id} ${u.employeeCode || ''} ${u.username}`);
-    console.log(`  付与: ${grants.map(g => `${g.grantDate}(${g.daysGranted}日, ~${g.expiryDate})`).join(', ')}`);
-    console.log(`  残日数: cũ ${oldAvail} → mới ${newAvail}${oldAvail !== newAvail ? '  ⚠️ thay đổi' : ''}`);
-    console.log(`  không trừ: ${notCounted.map(d => `${d.date}(${d.days - d.counted})`).join(', ')}`);
+    const autoAdded = built.grants.filter(g => g.source === 'legal' && g.expiryDate >= today);
+    const ineligible = built.slots.filter(s => s.status === 'ineligible');
+    console.log(`tenant ${tenantId} | ${u.employeeCode || '-'} ${u.username} (入社 ${hireDate || '未登録'}, ${u.employment_type || '-'})`);
+    console.log(`  残日数: ${before} → ${after}`);
+    console.log(`  đã đăng ký: ${registered.map(g => `${g.grantDate}(${g.daysGranted}日)`).join(', ') || 'không có'}`);
+    if (autoAdded.length) console.log(`  tự tính theo luật (còn hạn): ${autoAdded.map(g => `${g.grantDate}(${g.daysGranted}日)`).join(', ')}`);
+    if (built.cutoff) console.log(`  đăng ký gồm cả 繰越 → bỏ các đợt luật trước ${built.cutoff}`);
+    if (ineligible.length) console.log(`  không đủ 80%: ${ineligible.map(s => s.grantDate).join(', ')}`);
+    if (notCounted.length) console.log(`  ngày dùng không trừ: ${notCounted.map(d => `${d.date}(${d.days - d.counted})`).join(', ')}`);
   }
-  console.log(`\nTổng: ${affected} nhân viên bị ảnh hưởng.\n`);
+  console.log(`\nTổng: ${changed}/${users.length} nhân viên có số dư thay đổi.\n`);
 }
 
 main()
