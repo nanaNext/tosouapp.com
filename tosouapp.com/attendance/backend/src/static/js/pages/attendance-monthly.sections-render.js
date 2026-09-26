@@ -84,6 +84,9 @@
           <th>${e(b.planned)}</th>
           <th style="background:#1d4ed8;color:#fff;">${e(b.attend)}</th>
           <th>${e(b.holiday)}</th>
+          <th>\u4EE3\u66FF\u51FA\u52E4</th>
+          <th>\u632F\u66FF\u51FA\u52E4</th>
+          <th>\u4F11\u65E5\u65E5\u6570</th>
           <th>${e(b.standby)}</th>
           <th style="background:#1e40af;color:#fff;">${e(b.total)}</th>
           <th>${e(b.night)}</th>
@@ -109,6 +112,9 @@
           <td>${e(String(Q??0))}\u65E5</td>
           <td style="background:#dbeafe;font-weight:900;color:#1d4ed8;">${e(String(X??0))}\u65E5</td>
           <td>${e(String(Z??0))}\u65E5</td>
+          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u4EE3\u66FF\u51FA\u52E4"&&c++});return c+"\u65E5"})())}</td>
+          <td>${e((()=>{let c=0;document.querySelectorAll('#monthTable [data-row="1"][data-date] select[data-field="classification"]').forEach(x=>{String(x.value||"").trim()==="\u632F\u66FF\u51FA\u52E4"&&c++});return c+"\u65E5"})())}</td>
+          <td>${e((()=>{const d=new Set;document.querySelectorAll('#monthTable [data-row="1"][data-date]').forEach(r=>{const x=r.querySelector('select[data-field="classification"]'),v=x?String(x.value||"").trim():"";(v==="\u4F11\u65E5"||!v&&String(r.dataset.baseOff||"")==="1")&&d.add(r.dataset.date)});return d.size+"\u65E5"})())}</td>
           <td>${e(String(z??0))}\u65E5</td>
           <td style="background:#dbeafe;font-weight:900;color:#1e40af;">${e(H(yt))}</td>
           <td>${e(H(a.night))}</td>

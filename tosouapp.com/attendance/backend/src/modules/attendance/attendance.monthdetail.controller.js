@@ -286,6 +286,24 @@ exports.getMonthDetail = async (req, res) => {
           const kubunPaid = Number(kR?.[0]?.cnt || 0) + Number(kH?.[0]?.cnt || 0) * 0.5;
           if (kubunPaid > paidDays) paidDays = kubunPaid;
         } catch (e) { /* bỏ qua */ }
+        // 有給付与: 有給管理と同じ算出（労基法の法定付与＋登録付与、2年時効）を使う。
+        // 失敗時のみ登録付与(leave_grants)にフォールバックする。
+        let effGrants = null;
+        try {
+          const { computeUserBalance } = require('../leave/leave.controller');
+          effGrants = (await computeUserBalance(userId, tid || null))?.grants || null;
+        } catch (e) { effGrants = null; }
+        if (effGrants) {
+          const todayStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+          for (const g of effGrants) {
+            const gd = String(g?.grantDate || '').slice(0, 10);
+            const ge = String(g?.expiryDate || '').slice(0, 10);
+            if (ge >= todayStr) grantedDaysTotal += Number(g?.daysGranted || 0); // 有効な付与の合計（有給カードの分母と同じ）
+            if (ge < from || gd > to) continue;
+            grantedDays += Number(g?.daysGranted || 0);
+          }
+          return { paidDays, substituteDays, unpaidDays, standbyDays, grantedDays, grantedDaysTotal };
+        }
         for (const g of (grants || [])) {
           grantedDaysTotal += Number(g?.daysGranted || 0);
           const gd = String(g?.grantDate  || '').slice(0, 10);
