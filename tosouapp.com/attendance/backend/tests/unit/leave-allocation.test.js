@@ -89,6 +89,13 @@ describe('buildEffectiveGrants（労基法39条）', () => {
     expect(manual.grants).toEqual([]);
   });
 
+  it('前倒しで登録した付与は直近の法定付与枠を置き換える（二重計上しない）', () => {
+    const registered = [{ grantDate: '2026-07-14', expiryDate: '2028-07-13', daysGranted: 10 }];
+    const { grants, slots } = buildEffectiveGrants({ hireDate: '2026-02-13', employmentType: 'full_time', registered, attendanceRows: [], today });
+    expect(slots.find(s => s.grantDate === '2026-08-13').status).toBe('registered');
+    expect(grants).toEqual([{ grantDate: '2026-07-14', expiryDate: '2028-07-13', daysGranted: 10, source: 'registered' }]);
+  });
+
   it('入社6か月未満は付与なし', () => {
     const { grants } = buildEffectiveGrants({ hireDate: '2026-04-01', employmentType: 'full_time', registered: [], attendanceRows: [], today });
     expect(grants).toEqual([]);

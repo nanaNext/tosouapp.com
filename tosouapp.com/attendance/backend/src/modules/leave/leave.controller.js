@@ -502,9 +502,15 @@ function buildEffectiveGrants({ hireDate, employmentType, registered, attendance
     e.setUTCDate(e.getUTCDate() - 1);
     return { grantDate: p.grantDate, legalDays: p.days, expiryDate: fmt(e), status: null };
   });
+  // 登録付与が置き換える法定付与枠 = 日付が最も近い枠（前倒し付与・遅れて登録した付与の両方に対応。同距離なら前の枠）
+  const dayMs = 24 * 60 * 60 * 1000;
   const slotOf = (date) => {
-    let hit = null;
-    for (const s of slots) if (s.grantDate <= date) hit = s;
+    const t = new Date(date + 'T00:00:00Z').getTime();
+    let hit = null; let best = Infinity;
+    for (const s of slots) {
+      const dist = Math.abs(new Date(s.grantDate + 'T00:00:00Z').getTime() - t) / dayMs;
+      if (dist < best) { best = dist; hit = s; }
+    }
     return hit;
   };
   let cutoff = null;
