@@ -607,7 +607,7 @@ async function computeUserBalance(userId, tenantId = null) {
       source: g.source
     })),
     upcomingGrantDate,
-    obligation: { required, taken, remaining: Math.max(0, required - taken) }
+    obligation: { required, taken, remaining: Math.max(0, required - taken), deadline: fmt(addDays(new Date(oneYearEnd + 'T00:00:00Z'), -1)) }
   };
 }
 exports.computeUserBalance = computeUserBalance;
@@ -1068,6 +1068,8 @@ exports.summary = async (req, res) => {
     for (const u of list) {
       const role = String(u?.role || '').toLowerCase();
       if (role === 'admin' || role === 'manager') continue;
+      const empStatus = String(u?.employment_status || 'active').toLowerCase();
+      if (empStatus === 'inactive' || empStatus === 'retired') continue;
       processedUsers += 1;
       const b = await computeUserBalance(u.id, tenantId);
       const grants = b.grants || [];
@@ -1088,12 +1090,13 @@ exports.summary = async (req, res) => {
         totalGranted,
         daysGrantedLatest,
         carriedOver,
-        usedDays: b.usedDays,
+        usedDays: grants.reduce((s, g) => s + (new Date(g.expiryDate) >= today ? Math.max(0, g.daysGranted - g.daysRemaining) : 0), 0),
         remainingDays: b.totalAvailable,
         nearestExpiry: upcoming ? upcoming.expiryDate : null,
         nearestExpiryRemaining: upcoming ? upcoming.daysRemaining : 0,
         obligationRemaining: Math.max(0, b?.obligation?.remaining || 0),
-        obligationRequired: Math.max(0, b?.obligation?.required || 0)
+        obligationRequired: Math.max(0, b?.obligation?.required || 0),
+        obligationDeadline: b?.obligation?.deadline || null
       });
     }
     resultCount = out.length;

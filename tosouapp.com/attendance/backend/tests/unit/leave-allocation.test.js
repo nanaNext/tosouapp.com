@@ -148,3 +148,25 @@ describe('grantHistory', () => {
     expect(body.unallocated).toEqual([]);
   });
 });
+
+describe('computeUserBalance（吉田さんケース）', () => {
+  const repo = require('../../src/modules/leave/leave.repository');
+  const userRepo = require('../../src/modules/users/user.repository');
+  const { computeUserBalance } = require('../../src/modules/leave/leave.controller');
+
+  afterEach(() => { jest.restoreAllMocks(); jest.useRealTimers(); });
+
+  it('残39日・年5日義務は付与日から1年（期限 2027/06/30）で、取得済み1日', async () => {
+    jest.useFakeTimers({ now: new Date('2026-09-26T03:00:00Z'), doNotFake: ['nextTick', 'setImmediate'] });
+    jest.spyOn(userRepo, 'getUserById').mockResolvedValue({ id: 3, hire_date: '2017-01-01', employment_type: 'full_time' });
+    jest.spyOn(repo, 'listGrants').mockResolvedValue([{ grantDate: '2026-07-01', expiryDate: '2028-06-30', daysGranted: 40 }]);
+    jest.spyOn(repo, 'listAttendanceKubun').mockResolvedValue([]);
+    jest.spyOn(repo, 'listPaidLeaveUsedDays').mockResolvedValue([
+      { date: '2026-06-10', kubun: '有給休暇', days: 1 },
+      { date: '2026-07-07', kubun: '有給休暇', days: 1 }
+    ]);
+    const b = await computeUserBalance(3, 1);
+    expect(b.totalAvailable).toBe(39);
+    expect(b.obligation).toEqual({ required: 5, taken: 1, remaining: 4, deadline: '2027-06-30' });
+  });
+});

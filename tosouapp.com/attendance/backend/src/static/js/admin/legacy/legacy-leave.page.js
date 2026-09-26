@@ -1324,7 +1324,7 @@ async function re(e,N,s){const z=document.createElement("div");z.className="pto-
           </div>
           <div style="display:flex; flex-direction:column; gap:2px; text-align:right;">
             <span>\u5E745\u65E5\u306E\u53D6\u5F97\u7FA9\u52D9</span>
-            ${(o.obligationRemaining||0)>0?`<span style="color:#BB0000;font-weight:bold;">\u8981\u53D6\u5F97\uFF08\u3042\u3068${o.obligationRemaining}\u65E5\uFF09</span>`:'<span style="color:#107C41;font-weight:bold;">\u9054\u6210</span>'}
+            ${(o.obligationRemaining||0)>0?`<span style="color:${o.obligationDeadline&&(new Date(o.obligationDeadline)-Date.now())<92*864e5?"#BB0000":"#B45309"};font-weight:bold;">\u8981\u53D6\u5F97\uFF08\u3042\u3068${o.obligationRemaining}\u65E5\uFF09</span>${o.obligationDeadline?`<span style="font-size:11px;color:#6B7280;">\u671F\u9650 ${String(o.obligationDeadline).replace(/-/g,"/")}</span>`:""}`:'<span style="color:#107C41;font-weight:bold;">\u9054\u6210</span>'}
           </div>
         </div>
       `,m.appendChild(a)}F.length||(m.innerHTML='<div style="text-align:center; color:#6B7280; padding:40px; grid-column:1/-1;">\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093</div>'),y.innerHTML=`
