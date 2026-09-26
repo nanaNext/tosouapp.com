@@ -167,6 +167,25 @@ async function assertMonthWritable(req, targetUserId, year, month) {
 
 const HOLIDAY_TYPES = new Set(['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']);
 
+// 土曜ルールを休日Setに反映する。offWeeks: 休みにする週番号（第N土曜, 1〜5）。
+// 祝日(jp_*)・会社休日(fixed, is_off)の土曜は休みのまま残す。
+function applySaturdayRule(off, year, offWeeks, cal) {
+  const holidays = new Set();
+  for (const key of ['fixed', 'jp_auto', 'jp_substitute', 'jp_bridge']) {
+    for (const h of (Array.isArray(cal?.[key]) ? cal[key] : [])) {
+      if (key === 'jp_auto' || Number(h?.is_off) === 1 || h?.is_off === true) holidays.add(String(h.date).slice(0, 10));
+    }
+  }
+  const d = new Date(Date.UTC(year, 0, 1));
+  while (d.getUTCDay() !== 6) d.setUTCDate(d.getUTCDate() + 1);
+  for (; d.getUTCFullYear() === year; d.setUTCDate(d.getUTCDate() + 7)) {
+    const ds = d.toISOString().slice(0, 10);
+    const week = Math.ceil(d.getUTCDate() / 7);
+    if (offWeeks.has(week) || holidays.has(ds)) off.add(ds);
+    else off.delete(ds);
+  }
+}
+
 // 部署ID または 部署名 から、その部署の休日Setを組み立てる共通ヘルパー。
 // 以前は「部署名に"工事部"を含むか」をあちこちでハードコードして特別扱いしていたが、
 // 会社ごとに勤務パターンが異なりうるため、department_holidays (休日設定画面で会社ごとに
@@ -189,6 +208,11 @@ async function getDepartmentOffDaySet(year, { departmentId = null, departmentNam
       deptId = row?.id || null;
     }
     if (deptId) {
+      // 毎年自動の土曜ルール（例: 工事部は第4土曜のみ休み、他の土曜は出勤）。
+      // 祝日・会社休日（お盆等）に当たる土曜は休みのまま。個別の休日設定(department_holidays)は下で上書きする。
+      const deptRepo = require('../departments/department.repository');
+      const offWeeks = await deptRepo.getSaturdayOffWeeks(deptId).catch(() => null);
+      if (offWeeks) applySaturdayRule(off, year, offWeeks, cal);
       const deptHolidayRepo = require('../holidays/holidays.repository');
       const deptHolidays = await deptHolidayRepo.listByDepartmentAndYear(deptId, year, tenantId || null);
       for (const h of (deptHolidays || [])) {
@@ -227,6 +251,7 @@ module.exports = {
   getMonthStatusValue,
   assertMonthWritable,
   HOLIDAY_TYPES,
+  applySaturdayRule,
   getDepartmentOffDaySet,
   getUserOffDaySet,
 };

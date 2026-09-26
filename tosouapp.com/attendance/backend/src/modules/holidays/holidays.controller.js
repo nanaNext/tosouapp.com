@@ -203,6 +203,19 @@ exports.generateRecurringRule = async (req, res) => {
     const dept = await deptRepo.getDepartmentById(departmentId, req.tenantId || null);
     if (!dept) return res.status(404).json({ message: '部署が見つかりません' });
 
+    // persist: 土曜ルールを部署に保存し、毎年自動で適用する（年ごとの行は作らない）
+    if (req.body?.persist && weekday === 6) {
+      const saved = await deptRepo.setSaturdayOffWeeks(departmentId, Array.from(offWeeks), req.tenantId || null);
+      return res.status(200).json({
+        department_id: departmentId,
+        weekday,
+        off_weeks: Array.from(offWeeks),
+        persisted: true,
+        saturday_off_weeks: saved,
+        message: `${dept.name}: 第${Array.from(offWeeks).sort().join('・')}土曜のみ休み（他の土曜は出勤）を毎年自動で適用します`
+      });
+    }
+
     const items = _nthWeekdayDatesOfYear(year, weekday)
       .filter(d => !offWeeks.has(d.week))
       .map(d => ({ date: d.date, name: req.body?.name || '出勤日（規則）', type: 'recurring_work', is_off: 0 }));

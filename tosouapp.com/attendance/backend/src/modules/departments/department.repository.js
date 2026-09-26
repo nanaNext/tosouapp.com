@@ -26,6 +26,9 @@ async function ensureDepartmentsTable() {
   try { await db.query(`ALTER TABLE departments ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1`); } catch (e) { /* silently ignored */ }
   // 1部署は必ず1法人に属する。既存の部署は法人未設定のまま残るので NULL 許容 (管理画面で後から設定させる)。
   try { await db.query(`ALTER TABLE departments ADD COLUMN corporation_id BIGINT UNSIGNED NULL`); } catch (e) { /* silently ignored */ }
+  // 毎年自動で適用する土曜ルール: 休みにする週番号のカンマ区切り（例 "4" = 第4土曜のみ休み、"" = 土曜は全て出勤）。
+  // NULL = ルールなし（会社カレンダーどおり土曜は休み）。休日設定の「定期ルール生成」で保存する。
+  try { await db.query(`ALTER TABLE departments ADD COLUMN saturday_off_weeks VARCHAR(32) NULL`); } catch (e) { /* silently ignored */ }
 }
 
 // 部署名/コードの変更履歴。改名しても過去の月次レポートは当時の名前で表示するために必要
@@ -110,6 +113,25 @@ const repo = {
     const wsql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const [rows] = await db.query(`SELECT id, name, code, is_active, corporation_id FROM departments ${wsql} ORDER BY name ASC`, params);
     return rows;
+  },
+
+  // 土曜ルール（毎年自動）: null = ルールなし / Set<number> = 休みにする週番号（空 = 全土曜出勤）
+  async getSaturdayOffWeeks(id) {
+    await ensureDepartmentsTable();
+    const [[row]] = await db.query(`SELECT saturday_off_weeks FROM departments WHERE id = ? LIMIT 1`, [id]);
+    if (!row || row.saturday_off_weeks == null) return null;
+    return new Set(String(row.saturday_off_weeks).split(',').map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 5));
+  },
+  async setSaturdayOffWeeks(id, weeks, tenantId = null) {
+    await ensureDepartmentsTable();
+    const value = weeks == null ? null : Array.from(new Set(weeks)).map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 5).sort().join(',');
+    const tid = _tid(tenantId);
+    if (tid) {
+      await db.query(`UPDATE departments SET saturday_off_weeks = ? WHERE id = ? AND tenant_id = ?`, [value, id, tid]);
+    } else {
+      await db.query(`UPDATE departments SET saturday_off_weeks = ? WHERE id = ?`, [value, id]);
+    }
+    return value;
   },
 
   async getDepartmentById(id, tenantId = null) {
