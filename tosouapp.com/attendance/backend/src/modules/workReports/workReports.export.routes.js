@@ -11,7 +11,7 @@ const { rateLimitNamed } = require('../../core/middleware/rateLimit');
 const repo = require('./workReports.repository');
 const attendanceRepo = require('../attendance/attendance.repository');
 const calendarRepo = require('../calendar/calendar.repository');
-const { getDepartmentOffDaySet } = require('../attendance/attendance.utils');
+const { getDepartmentOffDaySet, isHolidayWorkDay, suppressHolidayWorkLateEarly } = require('../attendance/attendance.utils');
 const db = require('../../core/database/mysql');
 const s3Service = require('../../core/services/s3.service');
 
@@ -158,6 +158,8 @@ router.get('/export.xlsx',
       FROM attendance_daily
       WHERE date >= ? AND date <= ?${tenantUserClause}${selAttClause}
     `, [start, end, ...tenantP, ...selUserIds]);
+    // 休日出勤日の遅刻・早退は出さない (月次勤怠入力画面と同じ。DBは変更しない)
+    await suppressHolidayWorkLateEarly(dailyRows, req.tenantId || 0);
 
     const [leaveRows] = await db.query(`
       SELECT userId, startDate, endDate, type
@@ -338,7 +340,9 @@ router.get('/export.xlsx',
         lateMinutes: daily?.late_minutes || 0,
         earlyMinutes: daily?.early_minutes || 0,
         reason: daily?.reason || '',
-        isOff: isOff
+        isOff: isOff,
+        // 正社員の休日出勤日 (定時が無いので遅刻を付けない)
+        isHolidayWork: isHolidayWorkDay({ kubun: daily?.kubun, isOffDay: isOffDate(d, dept), employmentType: u.employmentType || u.employment_type })
       };
     };
 
@@ -568,7 +572,8 @@ router.get('/export.xlsx',
                 const [h1, m1] = cin.split(':').map(Number);
                 const [h2, m2] = cout.split(':').map(Number);
                 h = (h2 + m2/60) - (h1 + m1/60);
-                if (h >= 6) h -= 1;
+                // 月次勤怠入力と同じ: 休日出勤は 6時間以下なら休憩なし (6時間ちょうどは引かない)
+                if (h > 6) h -= 1;
                 if (h > 0) totalHours += h;
               }
               workedDays++;
@@ -586,11 +591,12 @@ router.get('/export.xlsx',
                 const [h1, m1] = cin.split(':').map(Number);
                 const [h2, m2] = cout.split(':').map(Number);
                 h = (h2 + m2/60) - (h1 + m1/60);
-                if (h >= 6) h -= 1; // Auto subtract 1h break if >= 6 hours
+                // Auto subtract 1h break. 休日の 振替出勤/代替出勤 は休日出勤と同じく 6時間以下なら休憩なし
+                if (r.isHolidayWork ? h > 6 : h >= 6) h -= 1;
                 if (h > 0) totalHours += h;
               }
 
-              if (!isPartTime) {
+              if (!isPartTime && !r.isHolidayWork) {
                 const lateThreshold = dept.includes('工事') ? '08:00' : '09:00';
                 if (cin && cin > lateThreshold) {
                   isLate = 1;
@@ -826,10 +832,12 @@ router.get('/export-daily',
       `, [qDate, ...tenantP]);
 
       const [dailyRows] = await db.query(`
-        SELECT userId, kubun, location, memo, late_minutes, early_minutes
+        SELECT userId, date, kubun, location, memo, late_minutes, early_minutes
         FROM   attendance_daily
         WHERE  date = ?${tenantUserClause}
       `, [qDate, ...tenantP]);
+      // 休日出勤日の遅刻・早退は出さない (月次勤怠入力画面と同じ。DBは変更しない)
+      await suppressHolidayWorkLateEarly(dailyRows, req.tenantId || 0);
 
       const [repRows] = await db.query(`
         SELECT userId, site, work, work_type
@@ -1250,6 +1258,8 @@ router.get('/export.pdf',
         SELECT userId, date, kubun, late_minutes, early_minutes, reason, memo, location
         FROM attendance_daily WHERE date >= ? AND date <= ?${tenantUserClause}${userIdsClauseAtt}
       `, [start, end, ...tenantP, ...userIdsP]);
+      // 休日出勤日の遅刻・早退は出さない (月次勤怠入力画面と同じ。DBは変更しない)
+      await suppressHolidayWorkLateEarly(dailyRows, req.tenantId || 0);
 
       const attMap   = new Map(attRows.map(a   => [`${a.userId}|${String(a.date).slice(0,10)}`, a]));
       const repMap   = new Map(repRows.map(r   => [`${r.userId}|${String(r.date).slice(0,10)}`, r]));

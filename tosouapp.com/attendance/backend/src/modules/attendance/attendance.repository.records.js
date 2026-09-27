@@ -462,6 +462,8 @@ module.exports = {
       const k = String(kubun || '').trim();
 
       if (k && nonWorkKubunSet.has(k)) return '未承認';
+      // 休日の出勤 (休日出勤/代替出勤/振替出勤 は休日にしか選べない): 定時が無いので遅刻にしない
+      const holidayWorkKubunSet = new Set(['休日出勤', '代替出勤', '振替出勤']);
 
       if (!checkInTime) {
         // Chưa check-in: chỉ báo 未入力 cho ngày làm việc thực sự
@@ -472,7 +474,7 @@ module.exports = {
       // Đã có check-in: so với giờ bắt đầu ca
       const ciMin = hmToMin(checkInTime);
       const ssMin = hmToMin(shiftStart || '08:00') ?? (8 * 60);
-      const isLate = ciMin != null && ciMin > ssMin;
+      const isLate = !holidayWorkKubunSet.has(k) && ciMin != null && ciMin > ssMin;
       return isLate ? '遅刻' : '未承認';
     };
 

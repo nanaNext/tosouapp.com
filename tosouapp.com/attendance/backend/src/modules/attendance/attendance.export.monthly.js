@@ -359,7 +359,10 @@ exports.exportMonthXlsx = async (req, res) => {
       const wtSa = (wt === 'satellite' && hasTime) ? { v: '✓', s: 'checkOn' } : '';
       
       const holidayLock = !isWorkKubun;
-      
+      // 休日に出勤した日 (部署の休日設定で休みの日 or 休日出勤): 定時が無いので遅刻・早退は付けず、
+      // 6時間以下の勤務なら休憩の既定値は 0 (労基法: 6時間以下は休憩不要)。画面と同じルール。
+      const isHolidayWork = !isPartTime && isWorkKubun && (isOff || kubunInfo.effective === '休日出勤');
+
       let exportInHm = '';
       let exportOutHm = '';
       let exportBrMin = '';
@@ -371,7 +374,9 @@ exports.exportMonthXlsx = async (req, res) => {
         exportInHm = inHm;
         exportOutHm = outHm;
         const isHankyuu = kubunInfo.effective === '半休' || kubunInfo.effective === '半休(有給)';
-        exportBrMin = (holidayLock || isHankyuu) ? 0 : (daily?.breakMinutes == null ? defaultBr : Number(daily.breakMinutes));
+        const spanMin = (inHm && outHm) ? hmToMinutes(outHm) - hmToMinutes(inHm) : null;
+        const autoBr = (isHolidayWork && spanMin != null && spanMin > 0 && spanMin <= 6 * 60) ? 0 : defaultBr;
+        exportBrMin = (holidayLock || isHankyuu) ? 0 : (daily?.breakMinutes == null ? autoBr : Number(daily.breakMinutes));
         exportNbMin = (holidayLock || isHankyuu) ? 0 : (daily?.nightBreakMinutes == null ? 0 : Number(daily.nightBreakMinutes));
         // 画面と同じ: 始業前の出勤は始業時刻から計算する
         const inMinRaw = hmToMinutes(inHm);
@@ -434,8 +439,8 @@ exports.exportMonthXlsx = async (req, res) => {
         const startBase = se?.startMin ?? (8 * 60);
         const endBase = se?.endMin ?? (17 * 60);
         // Khớp đúng rule bảng tháng: muộn nếu vào > giờ ca bắt đầu, sớm nếu ra < giờ ca kết thúc.
-        const late = a > startBase;
-        const early = b < endBase;
+        const late = !isHolidayWork && a > startBase;
+        const early = !isHolidayWork && b < endBase;
         if (late && early) return '遅刻/早退';
         if (late) return '遅刻';
         if (early) return '早退';

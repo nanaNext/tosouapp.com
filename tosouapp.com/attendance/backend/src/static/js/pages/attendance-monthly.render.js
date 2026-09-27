@@ -200,6 +200,9 @@
       const isWorkDay = workKubunSet.has(effectiveKubun);
       const isHankyuu = effectiveKubun === '半休' || effectiveKubun === '半休(有給)';
       const isHolidayKubun = effectiveKubun === '休日' || effectiveKubun === '代替休日' || effectiveKubun === '休み';
+      // 正社員が休日 (部署の休日設定で休みの日) に出勤、または 休日出勤: 定時が無いので遅刻・早退は付けない。
+      // 6時間以下の勤務なら休憩の既定値は 0 (労基法: 6時間以下は休憩不要)。
+      const isHolidayWork = !isPartTime && isWorkDay && (!!offDay || effectiveKubun === '休日出勤');
 
       // Nếu là ngày nghỉ nhưng đã có check-in/out thực tế mà kubun chưa đặt thì suy ra 休日出勤 để hiển thị
       // Part-time: đi làm ngày nghỉ vẫn tính cùng mức lương nên coi là 出勤 (không phải 休日出勤)
@@ -269,6 +272,10 @@
         if (sM && eM && (eM.total - sM.total <= 5 * 60)) {
           defaultBr = 0;
         }
+      }
+      if (isHolidayWork && finalIn && finalOut) {
+        const spanMin = diffMinutesAllowOvernight(finalIn, finalOut);
+        if (spanMin != null && spanMin > 0 && spanMin <= 6 * 60) defaultBr = 0;
       }
 
       // Nếu dòng này là giờ tự động (chưa có check-in thực tế), ưu tiên dùng giờ nghỉ mặc định của ca (defaultBr)
@@ -523,8 +530,9 @@
         const stM = parseHm(shiftStart);
         const outM = parseHm(finalOut);
         const etM = parseHm(shiftEnd);
-        const late = (inM!=null && stM!=null && inM>stM);
+        const late = !isHolidayWork && (inM!=null && stM!=null && inM>stM);
         const early = (() => {
+          if (isHolidayWork) return false;
           if (outM==null || stM==null || etM==null) return false;
           const overnight = etM < stM;
           const endAbs = overnight ? (etM + 24*60) : etM;
@@ -532,9 +540,10 @@
           return outAbs < endAbs;
         })();
         let txt = late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—';
-        const lateMin = Number(daily?.lateMinutes || daily?.late_minutes || 0);
-        const earlyMin = Number(daily?.earlyMinutes || daily?.early_minutes || 0);
-        
+        // 休日出勤日は以前 日次画面が自動保存した遅刻・早退分も表示しない (データ自体は変更しない)
+        const lateMin = isHolidayWork ? 0 : Number(daily?.lateMinutes || daily?.late_minutes || 0);
+        const earlyMin = isHolidayWork ? 0 : Number(daily?.earlyMinutes || daily?.early_minutes || 0);
+
         if (txt === '—' && (lateMin > 0 || earlyMin > 0)) {
            txt = lateMin > 0 && earlyMin > 0 ? '遅刻/早退' : lateMin > 0 ? '遅刻' : '早退';
         }
@@ -753,6 +762,9 @@
       const isHankyuu = effectiveKubun === '半休' || effectiveKubun === '半休(有給)';
       const isLeaveKubun = effectiveKubun === '有給休暇' || effectiveKubun === '無給休暇' || effectiveKubun === '欠勤';
       const isWorkDay = workKubunSet.has(effectiveKubun);
+      // 正社員の休日出勤: 遅刻・早退なし・6時間以下なら休憩既定 0 (初回描画と同じルール)
+      const isPartTimeUser = String(state.currentMonthDetail?.user?.employment_type || '').toLowerCase() === 'part_time';
+      const isHolidayWork = !isPartTimeUser && isWorkDay && (!!offDay || effectiveKubun === '休日出勤');
       const isPlanned = !cls && !idVal && !confirmed;
       
       let currentRole = '';
@@ -1004,6 +1016,10 @@
               rawBr = 0;
             }
           }
+          if (isHolidayWork && inEl?.value && outEl?.value) {
+            const spanMin = diffMinutesAllowOvernight(String(inEl.value), String(outEl.value));
+            if (spanMin != null && spanMin > 0 && spanMin <= 6 * 60) rawBr = 0;
+          }
           const brVal = rawBr === 45 ? '0:45' : rawBr === 30 ? '0:30' : rawBr === 0 ? '0:00' : '1:00';
           if (brSel.value !== brVal) {
             brSel.value = brVal;
@@ -1140,8 +1156,8 @@
           if (isWorkDay && a != null && b2 != null) {
             const baseStart = dayShiftInfo?.stM || (8 * 60);
             const baseEnd = dayShiftInfo?.etM || (17 * 60);
-            const late = a > baseStart;
-            const early = b2 < baseEnd;
+            const late = !isHolidayWork && a > baseStart;
+            const early = !isHolidayWork && b2 < baseEnd;
             text = late && early ? '遅刻/早退' : late ? '遅刻' : early ? '早退' : '—';
             
             // Thêm cảnh báo nếu giờ quá bất thường

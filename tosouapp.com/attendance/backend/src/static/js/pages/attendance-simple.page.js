@@ -125,6 +125,7 @@ const setupSimpleCombo = (sel) => {
     const b = e.target.closest('.simple-combo-item');
     if (!b || b.disabled) return;
     sel.value = b.dataset.value || '';
+    sel.dataset.userSet = String(window.state?.date || ''); // ユーザーが手で選んだ日 (自動切替の対象外にする)
     text.textContent = b.textContent || '';
     wrap.classList.toggle('is-planned', sel.classList.contains('is-planned'));
     sel.dispatchEvent(new Event('change', { bubbles: true }));
@@ -603,6 +604,37 @@ const renderWorkMinutes = () => {
   }
 };
 
+// 正社員が休日 (部署の休日設定で休みの日) に出勤している / 休日出勤 を選んでいる
+const isHolidayWorkNow = () => {
+  const isPartTime = String(window.appConfig?.profile?.employment_type || '').toLowerCase() === 'part_time';
+  if (isPartTime) return false;
+  const kubun = String($('#kubun')?.value || '').trim();
+  if (kubun === '休日出勤') return true;
+  return !!window.state?.isOff && ['休日出勤', '代替出勤', '振替出勤'].includes(kubun);
+};
+
+// 休日出勤で 6時間以下の勤務なら休憩の既定値は 0 (労基法: 6時間以下は休憩不要)。
+// ユーザーが休憩を手で選んだ場合は触らない。自動で入れた値 (既定値 or 0) だけ切り替える。
+const applyHolidayShortShiftBreak = () => {
+  const brEl = $('#breakMin');
+  if (!brEl) return;
+  if (brEl.dataset.userSet && brEl.dataset.userSet === String(window.state?.date || '')) return;
+  if (!isHolidayWorkNow()) return;
+  const s = parseHm(effectiveHm($('#startTime')));
+  const e = parseHm(effectiveHm($('#endTime')));
+  if (!s || !e) return;
+  let span = e.total - s.total;
+  if (span < 0) span += 24 * 60;
+  const defaultBr = String(window.state?.defaultBreak ?? 60);
+  const cur = String(brEl.value || '');
+  if (cur !== '0' && cur !== defaultBr) return;
+  const next = span <= 6 * 60 ? '0' : defaultBr;
+  if (cur !== next) {
+    brEl.value = next;
+    try { brEl.dispatchEvent(new Event('change')); } catch (err) { /* silently ignored */ }
+  }
+};
+
 const calculateLateEarly = () => {
   const sStr = effectiveHm($('#startTime'));
   const eStr = effectiveHm($('#endTime'));
@@ -617,7 +649,7 @@ const calculateLateEarly = () => {
   
   // Không tự động tính đi trễ nếu không có giờ check-in thực tế
   if (lateEl && String(lateEl.dataset?.manual || '') !== '1') {
-    if (s && st.hasStartedToday && shiftStart && s.total > shiftStart.total) {
+    if (s && st.hasStartedToday && shiftStart && !isHolidayWorkNow() && s.total > shiftStart.total) {
       lateEl.value = s.total - shiftStart.total;
     } else {
       lateEl.value = '';
@@ -627,8 +659,9 @@ const calculateLateEarly = () => {
   }
   
   // Không tự động tính về sớm nếu không có giờ check-in thực tế (đang khuyết check-in)
+  // 休日出勤 (正社員が休日に出勤): 定時が無いので早退は自動計上しない (遅刻も同様、上の分岐)
   if (earlyEl && String(earlyEl.dataset?.manual || '') !== '1') {
-    if (e && st.hasStartedToday && shiftEnd && e.total < shiftEnd.total) {
+    if (e && st.hasStartedToday && shiftEnd && !isHolidayWorkNow() && e.total < shiftEnd.total) {
       earlyEl.value = shiftEnd.total - e.total;
     } else {
       earlyEl.value = '';
@@ -998,9 +1031,8 @@ const renderGoOutBanner = (currentGoOut) => {
 const getCalendarOff = async (date) => {
   // Ưu tiên trạng thái nghỉ từ API vì đã áp dụng policy theo phòng ban (ví dụ: 工事部).
   const cal = await fetchJSONAuth(`/api/attendance/calendar/day/${encodeURIComponent(date)}`).catch(() => null);
-  if (cal && Object.prototype.hasOwnProperty.call(cal, 'is_off')) {
-    if (Number(cal?.is_off || 0) === 1) return true;
-  }
+  const calOk = !!cal && Object.prototype.hasOwnProperty.call(cal, 'is_off');
+  if (calOk && Number(cal?.is_off || 0) === 1) return true;
 
   // Kiểm tra shift request: nếu quản lý đã set OFF cho ngày này → coi là nghỉ
   try {
@@ -1013,8 +1045,10 @@ const getCalendarOff = async (date) => {
     }
   } catch (e) { /* bỏ qua lỗi shift */ }
 
-  // Fallback an toàn khi API calendar tạm thời lỗi.
-  // Tôn trọng policy phòng ban: 工事部 chỉ nghỉ thứ 7 tuần 4, không nghỉ thứ 7 thường.
+  // API calendar đã trả lời "không nghỉ" (đã áp dụng 休日設定 theo bộ phận, vd 工事部 đi làm thứ 7
+  // tuần 1/2/3/5) → tin API, KHÔNG rơi xuống fallback thứ 7/CN bên dưới.
+  if (calOk) return false;
+  // Fallback an toàn chỉ khi API calendar tạm thời lỗi.
   return isWeekendOffForProfile(date);
 };
 
@@ -1399,6 +1433,7 @@ const load = async (date, opts = {}) => {
         defaultBreak = 0;
       }
     }
+    state.defaultBreak = defaultBreak;
 
     if (daily) {
       if (daily.break_minutes !== undefined && daily.break_minutes !== null) {
@@ -1847,6 +1882,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Đánh dấu là có thay đổi chưa lưu
     markAsUnsaved();
     
+    applyHolidayShortShiftBreak();
     renderWorkMinutes();
     calculateLateEarly();
     showToast('確定ボタンを押して保存してください', 'success');
@@ -1886,6 +1922,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Đánh dấu là có thay đổi chưa lưu
     markAsUnsaved();
     
+    applyHolidayShortShiftBreak();
     renderWorkMinutes();
     calculateLateEarly();
     showToast('確定ボタンを押して保存してください', 'success');
@@ -1926,9 +1963,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     await load(state.date);
   });
 
-  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
-  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
+  $('#startTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); applyHolidayShortShiftBreak(); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
+  $('#endTime')?.addEventListener('change', (e) => { try { e.currentTarget.dataset.touched = '1'; } catch (e) { /* silently ignored */ } clearAutoTime(e.currentTarget); applyHolidayShortShiftBreak(); renderWorkMinutes(); calculateLateEarly(); renderSimpleStatus(); });
   $('#breakMin')?.addEventListener('change', renderWorkMinutes);
+  $('#breakMin')?.addEventListener('input', (e) => { try { e.currentTarget.dataset.userSet = String(state.date || ''); } catch (err) { /* silently ignored */ } });
   $('#nightBreakMin')?.addEventListener('change', renderWorkMinutes);
   
   $('#lateMin')?.addEventListener('input', (e) => { 

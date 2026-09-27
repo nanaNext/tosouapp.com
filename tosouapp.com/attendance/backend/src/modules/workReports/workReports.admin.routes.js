@@ -9,7 +9,7 @@ const auditRepo = require('../audit/audit.repository');
 const calendarRepo = require('../calendar/calendar.repository');
 const db = require('../../core/database/mysql');
 const { classifyMonthlyDay } = require('../attendance/attendance.classifier');
-const { getDepartmentOffDaySet } = require('../attendance/attendance.utils');
+const { getDepartmentOffDaySet, isHolidayWorkDay, suppressHolidayWorkLateEarly } = require('../attendance/attendance.utils');
 
 const s3Service = require('../../core/services/s3.service');
 const { buildXlsx, buildXlsxBook } = require('../attendance/attendance.controller');
@@ -174,6 +174,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
       const leaveKubun = new Set(['有給休暇', '無給休暇', '欠勤']);
       const workKubun = new Set(['出勤', '休日出勤', '代替出勤', '半休']);
       const isOff = isOffForUser(r.departmentName);
+      // 休日出勤日の遅刻・早退は出さない (月次勤怠入力画面と同じ。DBは変更しない)
+      const isHolidayWork = isHolidayWorkDay({ kubun, isOffDay: isOff, employmentType: r.employment_type });
       const dayIsOff = offKubun.has(kubun) || (!workKubun.has(kubun) && isOff);
       const forceLeave = leaveKubun.has(kubun) || Number(r.has_approved_leave || 0) === 1;
       const isAbsence = kubun === '欠勤';
@@ -237,8 +239,8 @@ router.get('/', authorize('admin', 'manager', 'employee'), async (req, res) => {
         },
         status,
         dailyKubun: kubunOut || null,
-        lateMinutes: r.late_minutes || 0,
-        earlyMinutes: r.early_minutes || 0,
+        lateMinutes: isHolidayWork ? 0 : (r.late_minutes || 0),
+        earlyMinutes: isHolidayWork ? 0 : (r.early_minutes || 0),
         reason: r.reason || null,
         notes: r.notes || null,
         workType: wt,
@@ -1140,6 +1142,8 @@ router.get('/month/list', authorize('admin', 'manager'), async (req, res) => {
       FROM attendance_daily
       WHERE date >= ? AND date <= ?${tenantUserClause2}
     `, [start, end, ...(_tid2 ? [_tid2] : [])]);
+    // 休日出勤日の遅刻・早退は出さない (月次勤怠入力画面と同じ。DBは変更しない)
+    await suppressHolidayWorkLateEarly(dailyRows, _tid2 || 0);
     const dailyMap = new Map();
     for (const r of (dailyRows || [])) {
       dailyMap.set(`${r.userId}|${String(r.date).slice(0, 10)}`, {

@@ -241,7 +241,56 @@ async function getUserOffDaySet(year, userId, tenantId = 0) {
   return getDepartmentOffDaySet(year, { departmentId, tenantId });
 }
 
+// 正社員が休日に出勤した日か (月次勤怠入力画面・入力用Excelと同じ判定):
+// 勤務区分が 休日出勤、または 部署の休日設定で休みの日に出勤系の区分 (未設定含む)。
+// この日は定時が無いので 遅刻・早退 は付けない。
+const WORK_KUBUN_SET = new Set(['出勤', '半休', '半休(有給)', '振替出勤', '休日出勤', '代替出勤']);
+function isHolidayWorkDay({ kubun, isOffDay, employmentType }) {
+  if (String(employmentType || '').toLowerCase() === 'part_time') return false;
+  const k = String(kubun || '').replace(/　/g, '').trim();
+  if (k === '休日出勤') return true;
+  return !!isOffDay && (k === '' || WORK_KUBUN_SET.has(k));
+}
+
+/**
+ * attendance_daily の取得結果 (メモリ上) から、休日出勤日の late_minutes / early_minutes を 0 にする。
+ * 以前 日次画面が休日出勤日にも自動保存していた遅刻・早退分を、集計・帳票で数えないため。
+ * DB は一切更新しない (履歴データはそのまま)。rows は userId, date, kubun を含むこと。
+ */
+async function suppressHolidayWorkLateEarly(rows, tenantId = 0) {
+  const list = (rows || []).filter(r => Number(r?.late_minutes || 0) > 0 || Number(r?.early_minutes || 0) > 0);
+  if (!list.length) return rows;
+  const db = require('../../core/database/mysql');
+  const userIds = Array.from(new Set(list.map(r => Number(r.userId)).filter(Boolean)));
+  if (!userIds.length) return rows;
+  const [users] = await db.query(
+    `SELECT id, departmentId, employment_type FROM users WHERE id IN (${userIds.map(() => '?').join(',')})`,
+    userIds
+  ).catch(() => [[]]);
+  const userById = new Map((users || []).map(u => [Number(u.id), u]));
+  const offCache = new Map();
+  const offSetFor = async (deptId, year) => {
+    const key = `${deptId || ''}|${year}`;
+    if (!offCache.has(key)) offCache.set(key, getDepartmentOffDaySet(year, { departmentId: deptId || null, tenantId }).catch(() => new Set()));
+    return offCache.get(key);
+  };
+  const toDateStr = (d) => (d instanceof Date ? d.toISOString() : String(d || '')).slice(0, 10);
+  for (const r of list) {
+    const u = userById.get(Number(r.userId));
+    const ds = toDateStr(r.date);
+    if (!u || !/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+    const off = await offSetFor(u.departmentId, parseInt(ds.slice(0, 4), 10));
+    if (isHolidayWorkDay({ kubun: r.kubun, isOffDay: off.has(ds), employmentType: u.employment_type })) {
+      r.late_minutes = 0;
+      r.early_minutes = 0;
+    }
+  }
+  return rows;
+}
+
 module.exports = {
+  isHolidayWorkDay,
+  suppressHolidayWorkLateEarly,
   recordEndpointPerf,
   ensurePaidLeaveRequestForDate,
   syncPaidLeaveByKubun,

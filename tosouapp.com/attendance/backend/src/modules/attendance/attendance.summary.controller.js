@@ -2,6 +2,7 @@
 
 const summaryService = require('./attendance.summary.service');
 const summaryRepo = require('./attendance.summary.repository');
+const { suppressHolidayWorkLateEarly } = require('./attendance.utils');
 
 // POST /api/attendance/summary/recompute { year, month, sendAlerts? }
 // 手動実行用。深夜バッチが無効/未配線の間はこれで代用できる (admin のみ、重い処理のため)。
@@ -208,15 +209,21 @@ exports.exportXlsx = async (req, res) => {
     const absenceByUser = new Map((absenceRows || []).map(r => [Number(r.userId), Number(r.absenceCount) || 0]));
 
     const [lateEarlyRows] = await db.query(`
-      SELECT ad.userId, COUNT(*) AS lateEarlyCount
+      SELECT ad.userId, ad.date, ad.kubun, ad.late_minutes, ad.early_minutes
       FROM attendance_daily ad
       JOIN users u ON u.id = ad.userId
       WHERE DATE_FORMAT(ad.date, '%Y-%m') = ?
         AND (COALESCE(ad.late_minutes, 0) > 0 OR COALESCE(ad.early_minutes, 0) > 0)
         ${tenantClause}
-      GROUP BY ad.userId
     `, [month, ...tenantParams]);
-    const lateEarlyByUser = new Map((lateEarlyRows || []).map(r => [Number(r.userId), Number(r.lateEarlyCount) || 0]));
+    // 休日出勤日の遅刻・早退は数えない (月次勤怠入力画面と同じ。DBは変更しない)
+    await suppressHolidayWorkLateEarly(lateEarlyRows, tenantId || 0);
+    const lateEarlyByUser = new Map();
+    for (const r of (lateEarlyRows || [])) {
+      if (!(Number(r.late_minutes || 0) > 0 || Number(r.early_minutes || 0) > 0)) continue;
+      const uid = Number(r.userId);
+      lateEarlyByUser.set(uid, (lateEarlyByUser.get(uid) || 0) + 1);
+    }
 
     const hm = (min) => {
       const n = Math.round(Number(min) || 0);
