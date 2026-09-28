@@ -1467,6 +1467,8 @@ const load = async (date, opts = {}) => {
 
     // Non-critical data: keep loading in background so UI becomes interactive sooner.
     const applyReport = (rep) => {
+      // この日の既存の作業報告 — 保存時は新規作成せずこれを更新する (二重登録防止)
+      state.workReportId = rep?.id || null;
       const siteEl = $('#workSite');
       const workEl = $('#workContent');
       
@@ -1536,7 +1538,13 @@ const saveWorkReportIfPossible = async (date) => {
   const site = site0 || '';
   try {
     const workType = String($('#workType')?.value || '').trim() || null;
-    const r = await fetchJSONAuth('/api/work-reports', { method: 'POST', body: JSON.stringify({ date, site, work, workType }) });
+    // この画面は1日1件の作業報告を編集する: 既存があれば更新、無ければ新規作成。
+    // (以前は保存のたびに POST して同じ内容の報告が何件も増えていた)
+    const rid = state.workReportId && String(state.date || '') === String(date) ? state.workReportId : null;
+    const r = rid
+      ? await fetchJSONAuth(`/api/work-reports/${encodeURIComponent(rid)}`, { method: 'PATCH', body: JSON.stringify({ site, work, workType }) })
+      : await fetchJSONAuth('/api/work-reports', { method: 'POST', body: JSON.stringify({ date, site, work, workType }) });
+    if (r?.report?.id) state.workReportId = r.report.id;
     clearDraft(date);
     return { attempted: true, saved: true, report: r?.report || null };
   } catch (e) {

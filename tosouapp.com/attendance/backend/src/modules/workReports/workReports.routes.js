@@ -42,6 +42,16 @@ router.post('/', authorize('employee', 'manager', 'admin'), async (req, res) => 
     const month = date.slice(0, 7);
     const closed = await repo.isMonthClosed(month, req.tenantId).catch(() => false);
     if (closed) return res.status(409).json({ message: 'Month is closed' });
+    // 同じ日・同じ現場・同じ作業内容の報告が既にあれば新規作成しない (保存ボタンの
+    // 二度押し・再保存で同じ報告が重複登録されていたため)。既存の行をそのまま返す。
+    const sameDay = await repo.listByUserDate(userId, date).catch(() => []);
+    const dup = sameDay.find(r => String(r.site || '').trim() === site && String(r.work || '').trim() === work);
+    if (dup) {
+      if (workType && dup.work_type !== workType) await repo.update(dup.id, { workType }, { ownerUserId: userId });
+      const saved = await repo.getById(dup.id);
+      const daily = await attendanceRepo.getDaily(userId, date).catch(() => null);
+      return res.status(200).json({ date, report: saved, daily, duplicate: true });
+    }
     const insertId = await repo.create({ userId, date, workType, site, work, status: 'pending' });
     const saved = await repo.getById(insertId);
     const daily = await attendanceRepo.getDaily(userId, date).catch(() => null);
@@ -77,7 +87,15 @@ router.patch('/:id', authorize('employee', 'manager', 'admin'), async (req, res)
     if (work !== undefined && !work) {
       return res.status(400).json({ message: 'Missing work' });
     }
+    const contentChanged =
+      (site !== undefined && site !== String(existing.site || '').trim()) ||
+      (work !== undefined && work !== String(existing.work || '').trim());
     await repo.update(id, { workType, site, work }, { ownerUserId: userId });
+    // 承認済みの報告の内容 (現場・作業内容) を書き換えた場合は、承認済みのまま残さず承認待ちに戻す
+    // (承認後に内容だけ変わるのを防ぐ)。内容が同じ再保存では状態を変えない。
+    if (existing.status === 'approved' && contentChanged) {
+      await repo.setStatus(id, 'pending', { approvedBy: null, rejectedReason: null });
+    }
     // 差戻し(rejected)だった報告を編集した場合は、修正して出し直した扱いにする —
     // 承認待ちに戻して再度レビュー対象にする（内容を直しても差戻しのままだと
     // 管理者の一覧に二度と出てこない = 見落としの原因になるため）。
