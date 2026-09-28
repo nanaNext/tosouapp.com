@@ -10,6 +10,54 @@
   <link rel="stylesheet" href="/static/css/attendance.css?v=navy-20260424-2">
   <link rel="icon" href="data:,">
   <script src="/static/js/pages/session-idle.js?v=navy-20260403-1" defer></script>
+  <style>
+    .mn-wrap{max-width:980px;margin:0 auto;padding:24px 24px 60px;color:#1f2937;font-size:14px;}
+    .mn-cover{border:1px solid #cbd5e1;background:#fff;padding:36px 40px 28px;margin-bottom:18px;}
+    .mn-cover .mn-org{font-size:12px;color:#64748b;letter-spacing:.08em;}
+    .mn-cover h1{margin:10px 0 6px;font-size:26px;font-weight:700;color:#0b2c66;letter-spacing:.04em;}
+    .mn-cover .mn-sub{font-size:14px;color:#334155;margin-bottom:22px;}
+    .mn-doc{border-collapse:collapse;font-size:13px;min-width:360px;}
+    .mn-doc th,.mn-doc td{border:1px solid #cbd5e1;padding:6px 12px;text-align:left;}
+    .mn-doc th{background:#f1f5f9;font-weight:600;width:110px;color:#334155;}
+    .mn-note{font-size:12px;color:#64748b;margin-top:14px;line-height:1.7;}
+    .mn-sec{background:#fff;border:1px solid #e2e8f0;padding:26px 32px;margin-bottom:18px;scroll-margin-top:80px;}
+    .mn-sec h2{margin:0 0 4px;font-size:19px;font-weight:700;color:#0b2c66;padding-bottom:8px;border-bottom:2px solid #0b2c66;}
+    .mn-sec h2 .mn-chap{display:inline-block;min-width:58px;margin-right:8px;color:#1e40af;}
+    .mn-lead{margin:10px 0 16px;color:#475569;line-height:1.8;}
+    .mn-sec h3{margin:26px 0 10px;font-size:15.5px;font-weight:700;color:#1e3a8a;border-bottom:1px solid #cbd5e1;padding-bottom:4px;}
+    .mn-sec h3 .mn-h3no{color:#1e40af;margin-right:8px;}
+    .mn-sec p,.mn-sec li{line-height:1.85;}
+    .mn-sec ul{margin:0 0 12px;padding-left:22px;}
+    .mn-fig{margin:10px 0 14px;border:1px solid #cbd5e1;background:#f8fafc;}
+    .mn-fig a{display:block;}
+    .mn-fig img{display:block;width:100%;height:auto;}
+    .mn-fig figcaption{font-size:12px;color:#475569;padding:5px 10px;border-top:1px solid #e2e8f0;background:#fff;}
+    .mn-steps{list-style:none;margin:0 0 14px;padding:0;}
+    .mn-steps li{position:relative;padding:5px 0 5px 36px;}
+    .mn-steps .mk{position:absolute;left:0;top:7px;width:22px;height:22px;border-radius:50%;background:#e11d48;color:#fff;font:700 12px/22px sans-serif;text-align:center;}
+    .mn-tip,.mn-warn,.mn-info{padding:10px 14px;margin:10px 0 14px;font-size:13.5px;line-height:1.8;border:1px solid;}
+    .mn-tip{background:#f8fafc;border-color:#cbd5e1;color:#334155;}
+    .mn-warn{background:#fffbeb;border-color:#f59e0b;color:#78350f;}
+    .mn-info{background:#f8fafc;border-color:#94a3b8;color:#1e293b;}
+    .mn-lbl{font-weight:700;margin-right:4px;}
+    .mn-warn .mn-lbl{color:#b45309;}
+    .mn-toc ol{list-style:none;margin:0;padding:0;}
+    .mn-toc li{display:flex;align-items:baseline;gap:6px;padding:5px 0;border-bottom:1px dotted #cbd5e1;}
+    .mn-toc li a{color:#0b2c66;text-decoration:none;}
+    .mn-toc li a:hover{text-decoration:underline;}
+    .mn-toc .c{min-width:58px;color:#1e40af;}
+    .mn-toc .fill{flex:1;}
+    .mn-toc .pg{min-width:28px;text-align:right;color:#475569;}
+    .mn-table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 14px;}
+    .mn-table th,.mn-table td{border:1px solid #cbd5e1;padding:7px 10px;text-align:left;vertical-align:top;}
+    .mn-table th{background:#f1f5f9;color:#334155;font-weight:600;white-space:nowrap;}
+    .mn-table td a{color:#1d4ed8;}
+    .mn-kbd{display:inline-block;padding:0 7px;border:1px solid #94a3b8;border-radius:3px;background:#f8fafc;font-size:12.5px;color:#0f172a;white-space:nowrap;}
+    .mn-path{font-size:13px;color:#334155;margin-bottom:10px;}
+    .mn-path::before{content:"■ ";color:#0b2c66;}
+    .mn-foot{text-align:right;color:#64748b;font-size:12px;padding:8px 4px;}
+    @media (max-width:700px){.mn-sec{padding:18px 16px;}.mn-cover{padding:24px 18px;}}
+  </style>
 </head>
 <body class="admin has-sidebar">
   <div id="adminChrome">
@@ -43,239 +91,423 @@
   </div>
   </div>
   <main class="content">
-    <section class="kintai-grid" style="max-width:1000px;margin:0 auto;padding:20px;">
-      <!-- Title Section -->
-      <div class="kintai-card" style="margin-bottom:20px;">
-        <div class="kintai-card-title">スマートE勤怠 操作マニュアル（管理者用）</div>
-        <div style="padding:20px;color:#334155;">
-          <p style="margin:0 0 15px 0;font-size:14px;line-height:1.6;">
-            本ページは、スマートE勤怠システムの管理者・マネージャー向け操作マニュアルです。<br>
-            従業員の管理、勤怠・休暇の承認、給与明細の発行など、管理者固有の機能について説明します。<br>
-            ※従業員としての自分自身の打刻や申請方法は「従業員用マニュアル」をご覧ください。
-          </p>
-          <div style="background:#e0f2fe;padding:15px;border-radius:6px;border-left:4px solid #3b82f6;">
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:8px;">💡 管理者画面へのアクセス</div>
-            <ul style="margin:0;padding-left:20px;color:#1e40af;font-size:14px;line-height:1.6;">
-              <li>ログイン後、左側のメニューから各管理機能にアクセスできます。</li>
-              <li>上部のナビゲーションバーにある <strong>+ New</strong> ボタンから、従業員や部署の新規作成が素早く行えます。</li>
-            </ul>
-          </div>
+    <div class="mn-wrap">
+      <section class="mn-cover" id="section-cover">
+        <div class="mn-org">スマートE勤怠</div>
+        <h1>操作マニュアル（管理者用）</h1>
+        <div class="mn-sub">勤怠・作業報告・休暇・給与・交通費の管理業務</div>
+        <table class="mn-doc">
+          <tr><th>版数</th><td>第1.0版</td></tr>
+          <tr><th>発行日</th><td>2026年9月28日</td></tr>
+          <tr><th>対象</th><td>管理者・マネージャー</td></tr>
+          <tr><th>ログイン画面</th><td>https://tosouapp.com/login</td></tr>
+          <tr><th>作成</th><td>飯塚グループエンジニア</td></tr>
+        </table>
+        <div class="mn-note">
+          ※ 本書の画面に表示されている氏名・社員番号・メールアドレス・金額はすべてサンプルです。<br>
+          ※ 画面内の赤い番号（<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#e11d48;color:#fff;font:700 10px/16px sans-serif;text-align:center;">1</span>）は、各手順の番号に対応しています。<br>
+          ※ 従業員としての打刻・申請の方法は「従業員用マニュアル」を参照してください。
         </div>
-      </div>
+      </section>
 
-      <!-- Navigation Cards -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;margin-bottom:30px;">
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('employees')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">👥</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">社員管理</div>
-            <div style="font-size:12px;color:#666;">社員一覧・追加</div>
-          </div>
-        </div>
+      <section class="mn-sec" id="section-history">
+        <h2>改訂履歴</h2>
+        <table class="mn-table" style="margin-top:12px;">
+          <tr><th style="width:80px;">版数</th><th style="width:130px;">改訂日</th><th>改訂内容</th></tr>
+          <tr><td>第1.0版</td><td>2026年9月28日</td><td>初版作成</td></tr>
+        </table>
+      </section>
 
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('attendance')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">⏱️</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">勤怠管理</div>
-            <div style="font-size:12px;color:#666;">打刻・シフトの確認と承認</div>
-          </div>
-        </div>
+      <section class="mn-sec mn-toc" id="section-toc">
+        <h2>目次</h2>
+        <ol style="margin-top:10px;">
+          <li><span class="c"></span><a href="#section-howto" class="manual-nav" data-section="howto">早見表（こんなときは）</a><span class="fill"></span><span class="pg" data-toc-page="howto"></span></li>
+          <li><span class="c">第1章</span><a href="#section-login" class="manual-nav" data-section="login">はじめに（ログイン）</a><span class="fill"></span><span class="pg" data-toc-page="login"></span></li>
+          <li><span class="c">第2章</span><a href="#section-basics" class="manual-nav" data-section="basics">画面の基本</a><span class="fill"></span><span class="pg" data-toc-page="basics"></span></li>
+          <li><span class="c">第3章</span><a href="#section-ledger" class="manual-nav" data-section="ledger">勤怠記録・月次締め</a><span class="fill"></span><span class="pg" data-toc-page="ledger"></span></li>
+          <li><span class="c">第4章</span><a href="#section-monthly" class="manual-nav" data-section="monthly">勤怠の修正（月次勤怠入力）</a><span class="fill"></span><span class="pg" data-toc-page="monthly"></span></li>
+          <li><span class="c">第5章</span><a href="#section-workreports" class="manual-nav" data-section="workreports">作業報告の承認</a><span class="fill"></span><span class="pg" data-toc-page="workreports"></span></li>
+          <li><span class="c">第6章</span><a href="#section-holidays" class="manual-nav" data-section="holidays">休日設定（管理者のみ）</a><span class="fill"></span><span class="pg" data-toc-page="holidays"></span></li>
+          <li><span class="c">第7章</span><a href="#section-legal" class="manual-nav" data-section="legal">月次集計（36協定）</a><span class="fill"></span><span class="pg" data-toc-page="legal"></span></li>
+          <li><span class="c">第8章</span><a href="#section-rules" class="manual-nav" data-section="rules">勤怠の計算ルール</a><span class="fill"></span><span class="pg" data-toc-page="rules"></span></li>
+          <li><span class="c">第9章</span><a href="#section-employees" class="manual-nav" data-section="employees">社員管理</a><span class="fill"></span><span class="pg" data-toc-page="employees"></span></li>
+          <li><span class="c">第10章</span><a href="#section-leave" class="manual-nav" data-section="leave">休暇管理</a><span class="fill"></span><span class="pg" data-toc-page="leave"></span></li>
+          <li><span class="c">第11章</span><a href="#section-payroll" class="manual-nav" data-section="payroll">給与管理（管理者のみ）</a><span class="fill"></span><span class="pg" data-toc-page="payroll"></span></li>
+          <li><span class="c">第12章</span><a href="#section-expenses" class="manual-nav" data-section="expenses">交通費</a><span class="fill"></span><span class="pg" data-toc-page="expenses"></span></li>
+          <li><span class="c">第13章</span><a href="#section-others" class="manual-nav" data-section="others">その他の機能</a><span class="fill"></span><span class="pg" data-toc-page="others"></span></li>
+        </ol>
+      </section>
 
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('leave')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">🌴</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">休暇管理</div>
-            <div style="font-size:12px;color:#666;">有休付与・各種申請の承認</div>
-          </div>
-        </div>
+      <section class="mn-sec" id="section-howto">
+        <h2>早見表（こんなときは）</h2>
+        <p class="mn-lead">やりたいことから、操作する画面と手順を探せます。</p>
+          <table class="mn-table">
+            <tr><th style="width:36%;">やりたいこと</th><th>操作する画面</th><th style="width:16%;">説明</th></tr>
+            <tr><td>社員の打刻忘れ・打刻ミスを直したい</td><td>勤怠管理 ＞ 月次勤怠入力(管理者) で該当日の時刻を修正して「保存」</td><td><a href="#section-monthly" class="manual-nav" data-section="monthly">手順を見る</a></td></tr>
+            <tr><td>勤務区分（出勤・休日出勤・有給など）を変えたい</td><td>勤怠管理 ＞ 月次勤怠入力(管理者) の「勤務区分」を変更して「保存」</td><td><a href="#section-monthly" class="manual-nav" data-section="monthly">手順を見る</a></td></tr>
+            <tr><td>全社員の1ヶ月分の勤怠を確認したい</td><td>勤怠管理 ＞ 勤怠記録</td><td><a href="#section-ledger" class="manual-nav" data-section="ledger">手順を見る</a></td></tr>
+            <tr><td>打刻どおりの時刻と、丸め後の時刻を見比べたい</td><td>勤怠管理 ＞ 勤怠記録 の「実績」「丸め」ボタン</td><td><a href="#section-ledger" class="manual-nav" data-section="ledger">手順を見る</a></td></tr>
+            <tr><td>月末に勤怠をまとめて承認（締め）したい</td><td>勤怠管理 ＞ 勤怠記録 の「月次締めを実行」</td><td><a href="#section-ledger" class="manual-nav" data-section="ledger">手順を見る</a></td></tr>
+            <tr><td>作業報告を承認・差戻ししたい</td><td>勤怠管理 ＞ 作業報告</td><td><a href="#section-workreports" class="manual-nav" data-section="workreports">手順を見る</a></td></tr>
+            <tr><td>部署の休日（例：工事部は第4土曜のみ休み）を設定したい</td><td>勤怠管理 ＞ 休日設定 ＞ 定期ルール生成</td><td><a href="#section-holidays" class="manual-nav" data-section="holidays">手順を見る</a></td></tr>
+            <tr><td>残業が36協定の上限を超えていないか確認したい</td><td>勤怠管理 ＞ 月次集計（36協定）</td><td><a href="#section-legal" class="manual-nav" data-section="legal">手順を見る</a></td></tr>
+            <tr><td>社員の部署・雇用形態などを変更したい</td><td>社員管理 ＞ 社員一覧 ＞ 社員を選んで「編集」</td><td><a href="#section-employees" class="manual-nav" data-section="employees">手順を見る</a></td></tr>
+            <tr><td>有給休暇の申請を承認したい</td><td>休暇管理 ＞ 休暇申請承認</td><td><a href="#section-leave" class="manual-nav" data-section="leave">手順を見る</a></td></tr>
+            <tr><td>今月の給与を計算して、給与明細を送りたい</td><td>給与管理 ＞ 給与計算 で確認 → 明細書 で「給与明細を送信」</td><td><a href="#section-payroll" class="manual-nav" data-section="payroll">手順を見る</a></td></tr>
+            <tr><td>社員の基本給・手当・扶養人数を変えたい</td><td>給与管理 ＞ 従業員 で「編集」</td><td><a href="#section-payroll" class="manual-nav" data-section="payroll">手順を見る</a></td></tr>
+            <tr><td>交通費の申請を承認・支給したい</td><td>交通費 ＞ 申請管理 で状態を絞り込み、社員を選んで一括処理</td><td><a href="#section-expenses" class="manual-nav" data-section="expenses">手順を見る</a></td></tr>
+            <tr><td>交通費の申請を差し戻したい</td><td>交通費 ＞ 申請詳細 でコメントを入力して「差し戻す」</td><td><a href="#section-expenses" class="manual-nav" data-section="expenses">手順を見る</a></td></tr>
+            <tr><td>社員がパスワードを忘れた</td><td>本人がログイン画面の「パスワードをお忘れの方はこちら」から再設定。メールが届かない場合は、管理者が 社員管理 ＞ 社員を選んで「編集」 でパスワードを再設定</td><td><a href="#section-login" class="manual-nav" data-section="login">手順を見る</a></td></tr>
+          </table>
+      </section>
 
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('payroll')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">💴</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">給与管理</div>
-            <div style="font-size:12px;color:#666;">給与計算・明細の発行</div>
-          </div>
-        </div>
-
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('expenses')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">🚃</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">交通費</div>
-            <div style="font-size:12px;color:#666;">交通費・経費のチェック</div>
-          </div>
-        </div>
-
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('departments')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">🏢</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">組織</div>
-            <div style="font-size:12px;color:#666;">部署・チームの設定</div>
-          </div>
-        </div>
-
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('system')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">⚙️</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">システム</div>
-            <div style="font-size:12px;color:#666;">お知らせ・設定・ログ</div>
-          </div>
-        </div>
-
-        <div class="kintai-card" style="cursor:pointer;transition:all 0.3s;" onclick="scrollToSection('faq')">
-          <div style="padding:20px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:10px;">❓</div>
-            <div style="font-weight:bold;color:#1e40af;margin-bottom:5px;">FAQ管理</div>
-            <div style="font-size:12px;color:#666;">質問と回答の登録</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Content Sections -->
-
-      <!-- 社員管理 -->
-      <div class="kintai-card" id="section-employees" style="margin-bottom:30px;">
-        <div class="kintai-card-title">👥 社員管理</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 社員一覧</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>登録されている全社員の一覧を確認できます。</li>
-            <li>社員の名前をクリックすると、情報の編集や<strong>パスワードリセット</strong>（初期パスワード：生年月日8桁）が行えます。</li>
+      <section class="mn-sec" id="section-login">
+        <h2><span class="mn-chap">第1章</span>はじめに（ログイン）</h2>
+        <p class="mn-lead">スマートE勤怠を使い始めるための、ログイン方法とパスワードについて説明します。</p>
+          <table class="mn-table" style="max-width:640px;">
+            <tr><th style="width:150px;">ログイン画面</th><td><strong>https://tosouapp.com/login</strong></td></tr>
+            <tr><th>ユーザ名（ID）</th><td>社員登録のときに登録したメールアドレス</td></tr>
+            <tr><th>パスワード</th><td>管理者が社員登録のときに設定したパスワード（ログイン後に本人が変更できます）</td></tr>
+            <tr><th>推奨ブラウザ</th><td>Google Chrome・Microsoft Edge の最新版（スマートフォンからも利用できます）</td></tr>
+          </table>
+          <h3><span class="mn-h3no">1-1</span>ログインする</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/login.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/login.png?v=20260928" alt="ログイン画面" loading="lazy"></a><figcaption>図1-1　ログイン画面（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>「ユーザ名」にメールアドレスを入力します。</li>
+            <li><span class="mk">2</span>「パスワード」を入力します。右端の目のアイコンで、入力した文字を確認できます。</li>
+            <li><span class="mk">3</span><span class="mn-kbd">ログイン</span> を押します。管理者・マネージャーは管理者画面のホームが開きます。複数の会社に所属している場合は会社を選ぶ画面が表示されるので、操作する会社を選びます。</li>
+            <li><span class="mk">4</span>パスワードを忘れた場合は「パスワードをお忘れの方はこちら」から再設定します（下記）。</li>
+          </ol>
+          <div class="mn-tip"><span class="mn-lbl">【ポイント】</span>ブラウザのブックマーク（お気に入り）にログイン画面を登録しておくと便利です。一定時間操作しないと自動的にログアウトされます。</div>
+          <h3><span class="mn-h3no">1-2</span>社員のアカウントを発行する（初回ログインの準備）</h3>
+          <p>社員のユーザ名（メールアドレス）と最初のパスワードは、管理者が「社員管理 ＞ 社員追加」で登録します。</p>
+          <figure class="mn-fig"><a href="/static/images/manual/employee-add.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/employee-add.png?v=20260928" alt="社員追加（基本情報）" loading="lazy"></a><figcaption>図1-2　社員追加（基本情報）（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>パスワードは8文字以上で、英大文字・英小文字・数字をそれぞれ1文字以上含めます（例：Kintai2026）。条件を満たさないと登録できません。</li>
+          </ol>
+          <ul>
+            <li>登録したメールアドレスと最初のパスワードを、本人に伝えます（口頭・紙など、他の人に見られない方法で）。</li>
+            <li>本人は最初のログイン後、「パスワード変更画面」で自分だけが知っているパスワードに変更します。</li>
           </ul>
-
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 社員追加</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>新入社員の情報をシステムに登録します。社員番号、氏名、メールアドレスが必須です。</li>
+          <h3><span class="mn-h3no">1-3</span>パスワードを忘れたとき</h3>
+          <ul>
+            <li>ログイン画面の「パスワードをお忘れの方はこちら」からメールアドレスを入力すると、再設定用のメールが届きます。</li>
+            <li>メールが届かない場合は管理者に連絡します。管理者は「社員管理 ＞ 社員一覧」でその社員を開き、<span class="mn-kbd">編集</span> のパスワード欄に新しいパスワードを入力して保存します（<a href="#section-employees" class="manual-nav" data-section="employees">第9章</a>）。</li>
           </ul>
+      </section>
 
-        </div>
-      </div>
-
-      <!-- 勤怠管理 -->
-      <div class="kintai-card" id="section-attendance" style="margin-bottom:30px;">
-        <div class="kintai-card-title">⏱️ 勤怠管理</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 日々の打刻とシフトの管理</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>従業員の日々の打刻実績や、翌月のシフト予定をカレンダー形式で確認できます。</li>
-            <li>打刻忘れがあった場合は、管理者が直接時間を修正することができます。</li>
-            <li>月末には、従業員から提出された勤怠データをチェックし、<strong>「承認」</strong>を行うことでデータを確定（ロック）させます。</li>
+      <section class="mn-sec" id="section-basics">
+        <h2><span class="mn-chap">第2章</span>画面の基本</h2>
+        <p class="mn-lead">管理者画面の構成と、権限による表示の違いです。</p>
+          <ul>
+            <li>ログイン後、左側のメニューから各機能を開きます。「社員管理」「勤怠管理」「休暇管理」はクリックすると下にメニューが開きます。</li>
+            <li>「月次勤怠入力(管理者)」「給与管理」「交通費」は別タブで開きます。</li>
+            <li>上部の <span class="mn-kbd">＋ 新規作成</span> から社員の新規登録画面を、<span class="mn-kbd">マニュアル</span> からこのページを開けます。</li>
+            <li>マネージャー権限では「支店管理」「組織」「給与管理」「休日設定」は表示されません。</li>
           </ul>
-        </div>
-      </div>
+      </section>
 
-      <!-- 休暇管理 -->
-      <div class="kintai-card" id="section-leave" style="margin-bottom:30px;">
-        <div class="kintai-card-title">🌴 休暇管理</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 有休付与と申請の承認</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>従業員から提出された有給休暇や欠勤の申請内容を確認し、「承認」または「却下」を行います。</li>
-            <li>各従業員に対して、有給休暇の日数を手動または自動で付与・管理することができます。</li>
+      <section class="mn-sec" id="section-ledger">
+        <h2><span class="mn-chap">第3章</span>勤怠記録・月次締め</h2>
+        <p class="mn-lead">全社員の1ヶ月分の勤怠を一覧で確認し、月末に締め（まとめて承認）を行います。</p>
+          <div class="mn-path">メニュー：勤怠管理 ＞ 勤怠記録</div>
+          <figure class="mn-fig"><a href="/static/images/manual/ledger.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/ledger.png?v=20260928" alt="勤怠記録" loading="lazy"></a><figcaption>図3-1　勤怠記録（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>左メニューの「勤怠管理」を開き、<span class="mn-kbd">勤怠記録</span> をクリックします。</li>
+            <li><span class="mk">2</span>対象月と部署を選び、<span class="mn-kbd">表示</span> を押します。本日の出勤中／退勤済／休日・休暇の人数と、月の合計（出勤日数・実働時間・法定外残業・深夜・休日労働）が表示されます。</li>
+            <li><span class="mk">3</span><span class="mn-kbd">実績</span>／<span class="mn-kbd">丸め</span> で表示を切り替えます。<br>・実績：打刻どおりの時刻と、分単位の実働時間<br>・丸め：出勤30分切り上げ・退勤30分切り捨て後の時刻と実働時間（給与計算に使う値）</li>
+            <li><span class="mk">4</span><span class="mn-kbd">Excel出力</span> で一覧をExcelに出力します。選択中の表示（実績／丸め）で出力されます。</li>
+            <li><span class="mk">5</span>月末に <span class="mn-kbd">月次締めを実行</span> を押すと、入力が完了している社員の勤怠をまとめて承認します。</li>
+          </ol>
+          <div class="mn-info"><span class="mn-lbl">【補足】</span>月次締めの結果：入力が未完了の社員はスキップされ、氏名と不足日数が表示されます。該当する社員の勤怠を「月次勤怠入力」で確認・修正してから、もう一度「月次締めを実行」を押してください。全員が承認されると「締め済み」になり、その月の勤怠は確定（ロック）されます。</div>
+          <div class="mn-tip"><span class="mn-lbl">【ポイント】</span>休日出勤の行は薄い黄色で表示されます。</div>
+      </section>
+
+      <section class="mn-sec" id="section-monthly">
+        <h2><span class="mn-chap">第4章</span>勤怠の修正（月次勤怠入力）</h2>
+        <p class="mn-lead">打刻忘れ・打刻ミスの修正や、勤務区分の変更は「月次勤怠入力(管理者)」で行います。</p>
+          <div class="mn-path">メニュー：勤怠管理 ＞ 月次勤怠入力(管理者)（別タブで開きます）</div>
+          <figure class="mn-fig"><a href="/static/images/manual/monthly.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/monthly.png?v=20260928" alt="月次勤怠入力（管理者）" loading="lazy"></a><figcaption>図4-1　月次勤怠入力（管理者）（クリックで拡大）</figcaption></figure>
+          <h3><span class="mn-h3no">4-1</span>基本の手順（打刻忘れを直す場合）</h3>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>右上の「対象社員」で、修正する社員を選びます（社員番号・氏名で検索もできます）。</li>
+            <li><span class="mk">2</span>「対象年月」で月を選びます。</li>
+            <li><span class="mk">3</span><span class="mn-kbd">実績</span>／<span class="mn-kbd">丸め</span>／<span class="mn-kbd">予定</span> で表示を切り替えられます。修正は「実績」表示で行います。</li>
+            <li><span class="mk">4</span>修正する日の「勤務区分」を選びます（出勤・半休・有給休暇・休日出勤 など）。</li>
+            <li><span class="mk">5</span>「開始時間」「終了時間」「休憩時間」を入力します。勤務時間は自動で計算されます。</li>
+            <li><span class="mk">6</span>最後に右下の <span class="mn-kbd">保存</span> を押します。保存を押さないと反映されません。</li>
+          </ol>
+          <h3><span class="mn-h3no">4-2</span>その他の操作</h3>
+          <ol class="mn-steps">
+            <li><span class="mk">7</span><span class="mn-kbd">入力用Excel出力</span> で入力用のExcelを出力し、編集したファイルを選んで <span class="mn-kbd">入力用Excel取込</span> で一括入力できます。</li>
+            <li><span class="mk">8</span><span class="mn-kbd">承認</span> でその社員の月の勤怠を承認、<span class="mn-kbd">解除</span> で承認を取り消します（修正が必要になった場合）。</li>
+          </ol>
+          <div class="mn-warn"><span class="mn-lbl">【注意】</span>承認済み（締め済み）の月は修正できません。修正が必要な場合は、先に <span class="mn-kbd">解除</span> で承認を取り消してから修正・保存し、改めて承認してください。</div>
+          <div class="mn-tip"><span class="mn-lbl">【ポイント】</span>遅刻・早退の欄は、所定の始業・終業時刻と比べた結果です。休日出勤・半休の日は遅刻・早退を表示しません（<a href="#section-rules" class="manual-nav" data-section="rules">計算ルール</a>参照）。</div>
+      </section>
+
+      <section class="mn-sec" id="section-workreports">
+        <h2><span class="mn-chap">第5章</span>作業報告の承認</h2>
+        <p class="mn-lead">社員が提出した日々の作業報告（現場・作業内容）を確認し、承認または差戻しします。</p>
+          <div class="mn-path">メニュー：勤怠管理 ＞ 作業報告</div>
+          <figure class="mn-fig"><a href="/static/images/manual/workreports.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/workreports.png?v=20260928" alt="作業報告（ステータス「承認待ち」で絞り込み）" loading="lazy"></a><figcaption>図5-1　作業報告（ステータス「承認待ち」で絞り込み）（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>左メニューの「勤怠管理」から <span class="mn-kbd">作業報告</span> を開きます。</li>
+            <li><span class="mk">2</span>対象月・部署・社員・ステータスを選び、<span class="mn-kbd">表示</span> を押します。ステータスを「承認待ち」にすると、未処理の報告だけを表示できます。</li>
+            <li><span class="mk">3</span>内容に問題がなければ <span class="mn-kbd">承認</span> を押します。</li>
+            <li><span class="mk">4</span>修正が必要な場合は <span class="mn-kbd">差戻し</span> を押し、理由を入力します。社員が修正すると再び「承認待ち」に戻ります。</li>
+            <li><span class="mk">5</span><span class="mn-kbd">編集</span> で管理者が内容を直接修正できます（<span class="mn-kbd">削除</span> で報告を削除）。</li>
+            <li><span class="mk">6</span><span class="mn-kbd">＋追加</span> で管理者が作業報告を登録できます。</li>
+            <li><span class="mk">7</span><span class="mn-kbd">CSV出力</span>／<span class="mn-kbd">Excel出力</span> で一覧を出力します。</li>
+            <li><span class="mk">8</span>月末に <span class="mn-kbd">月次締めを実行</span> を押すと、その月の作業報告を締めます。締め後は入力・修正ができなくなります。</li>
+          </ol>
+          <div class="mn-info"><span class="mn-lbl">【補足】</span>打刻画面から保存された作業報告は<strong>1日1件</strong>で、社員が同じ日に保存し直すと同じ報告が更新されます。承認済みの報告でも、社員が内容を変更すると「承認待ち」に戻ります。</div>
+          <div class="mn-tip"><span class="mn-lbl">【ポイント】</span><span class="mn-kbd">過去データを取込</span> は、月次勤怠入力にある過去の現場・作業内容を作業報告として取り込む機能です（通常は使用不要です）。</div>
+      </section>
+
+      <section class="mn-sec" id="section-holidays">
+        <h2><span class="mn-chap">第6章</span>休日設定（管理者のみ）</h2>
+        <p class="mn-lead">部署ごとの休日を設定します。ここでの設定が、勤怠の「休日」「休日出勤」の判定に使われます。</p>
+          <div class="mn-path">メニュー：勤怠管理 ＞ 休日設定</div>
+          <figure class="mn-fig"><a href="/static/images/manual/holidays.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/holidays.png?v=20260928" alt="休日設定" loading="lazy"></a><figcaption>図6-1　休日設定（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>左メニューの「勤怠管理」から <span class="mn-kbd">休日設定</span> を開きます。</li>
+            <li><span class="mk">2</span>部署と年を選ぶと、その部署の休日・出勤日の一覧が表示されます（祝日は自動で登録されています）。</li>
+            <li><span class="mk">3</span><span class="mn-kbd">定期ルール生成</span> で、毎年決まった曜日・週の休みを設定します（下の手順）。</li>
+            <li><span class="mk">4</span><span class="mn-kbd">＋ 休日追加</span> で、会社独自の休日（お盆・年末年始など）を1日ずつ追加します。一覧の鉛筆アイコンで編集、ゴミ箱アイコンで削除できます。</li>
+          </ol>
+          <h3><span class="mn-h3no">6-1</span>例：工事部を「第4土曜日のみ休み、それ以外の土曜日は出勤」にする</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/holidays-rule.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/holidays-rule.png?v=20260928" alt="定期ルール生成" loading="lazy"></a><figcaption>図6-2　定期ルール生成（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>「部署」で 工事部 を選びます。「曜日」は 土曜日 にします。</li>
+            <li><span class="mk">2</span>「休みにする週」で 第4週 だけにチェックを入れます。</li>
+            <li><span class="mk">3</span>「毎年自動で適用する」にチェックを入れると、翌年以降も自動で適用されます（年ごとの生成は不要）。</li>
+            <li><span class="mk">4</span><span class="mn-kbd">生成</span> を押します。</li>
+          </ol>
+          <div class="mn-info"><span class="mn-lbl">【補足】</span>祝日・会社休日に当たる土曜日は休みのままです。ルールを解除するには、全ての週にチェックを入れて保存してください。</div>
+      </section>
+
+      <section class="mn-sec" id="section-legal">
+        <h2><span class="mn-chap">第7章</span>月次集計（36協定）</h2>
+        <p class="mn-lead">社員ごとの残業時間を集計し、36協定の上限を超えていないかを確認します。</p>
+          <div class="mn-path">メニュー：勤怠管理 ＞ 月次集計（36協定）</div>
+          <figure class="mn-fig"><a href="/static/images/manual/legal.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/legal.png?v=20260928" alt="月次集計（36協定）" loading="lazy"></a><figcaption>図7-1　月次集計（36協定）（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>左メニューの「勤怠管理」から <span class="mn-kbd">月次集計（36協定）</span> を開きます。</li>
+            <li><span class="mk">2</span>対象月・部署・社員を選び、<span class="mn-kbd">表示</span> を押します。</li>
+            <li><span class="mk">3</span>「判定」欄で 正常／注意／超過 を確認します。「注意」「超過」の社員は、残業時間の調整を検討してください。</li>
+            <li><span class="mk">4</span><span class="mn-kbd">CSV出力</span>／<span class="mn-kbd">Excel出力</span> で出力します。Excelには有給・欠勤・遅刻早退の回数や、作業報告の時間との差も含まれます。</li>
+          </ol>
+          <div class="mn-info"><span class="mn-lbl">【補足】</span>初期設定の判定基準：時間外労働は<strong>月45時間・年360時間</strong>まで、月の時間外＋休日労働は<strong>100時間未満</strong>。月の時間外が基準の<strong>80%</strong>に達すると「注意」になります（実際の基準は画面下部に表示されます）。</div>
+      </section>
+
+      <section class="mn-sec" id="section-rules">
+        <h2><span class="mn-chap">第8章</span>勤怠の計算ルール</h2>
+        <p class="mn-lead">勤怠記録・給与計算で使われる時間の計算方法です。</p>
+          <h3><span class="mn-h3no">8-1</span>時刻の丸め（30分単位）</h3>
+          <p><strong>出勤は30分単位で切り上げ、退勤は30分単位で切り捨て</strong>ます。所定の始業時刻より前に出勤した場合も、その時刻から計算します。</p>
+          <table class="mn-table" style="max-width:520px;">
+            <tr><th>打刻</th><th>計算に使う時刻</th></tr>
+            <tr><td>07:00 − 17:00</td><td>07:00 − 17:00</td></tr>
+            <tr><td>07:23 − 17:00</td><td>07:30 − 17:00</td></tr>
+            <tr><td>07:31 − 17:00</td><td>08:00 − 17:00</td></tr>
+            <tr><td>08:12 − 17:00</td><td>08:30 − 17:00</td></tr>
+            <tr><td>08:00 − 17:12</td><td>08:00 − 17:00</td></tr>
+            <tr><td>08:00 − 17:31</td><td>08:00 − 17:30</td></tr>
+          </table>
+          <h3><span class="mn-h3no">8-2</span>実働と法定外残業</h3>
+          <ul>
+            <li>実働 ＝ 丸め後の退勤 − 丸め後の出勤 − 休憩</li>
+            <li>実働のうち所定労働時間（例：8時間）までが所定内、それを超えた分が法定外残業です。<br>例：07:44出勤・17:32退勤・休憩1時間 → 08:00〜17:30 で 実働8:30、法定外残業0:30</li>
+            <li>給与計算・36協定の集計には、この丸め後の値を使います。勤怠記録の「実績」表示は確認用です。</li>
+            <li>深夜（22:00〜翌5:00）は打刻どおりの時刻で計算します。</li>
           </ul>
-        </div>
-      </div>
-
-      <!-- 給与管理 -->
-      <div class="kintai-card" id="section-payroll" style="margin-bottom:30px;">
-        <div class="kintai-card-title">💴 給与管理</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 給与</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>承認済みの勤怠データを元に、基本給や残業代を自動計算し、給与明細のデータを作成します。</li>
+          <h3><span class="mn-h3no">8-3</span>休日出勤（正社員）</h3>
+          <ul>
+            <li>部署の休日設定で休みの日に出勤した日、または勤務区分が「休日出勤」の日は、所定の始業・終業時刻が無いため遅刻・早退を付けません（勤怠記録・月次集計・作業報告の出力でも数えません）。</li>
+            <li>休憩の初期値は、勤務が6時間以下なら0分、6時間を超える場合は通常の休憩時間になります。例：08:00〜13:00 → 実働5:00</li>
+            <li>社員や管理者が休憩時間を手で入力・保存した場合は、その値が優先されます。</li>
           </ul>
-
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 送信・履歴</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>作成した給与明細を従業員の画面に公開（送信）します。また、過去の明細発行履歴を確認できます。</li>
+          <div class="mn-warn"><span class="mn-lbl">【注意】</span>労働基準法では、労働時間が<strong>6時間を超える場合は45分以上、8時間を超える場合は1時間以上</strong>の休憩が必要です。休憩時間を手で変更するときは、この基準を下回らないようにします。</div>
+          <h3><span class="mn-h3no">8-4</span>半休</h3>
+          <ul>
+            <li>半休・半休(有給)の日は、半日の休みが正規のため遅刻・早退を付けません。</li>
           </ul>
-        </div>
-      </div>
+      </section>
 
-      <!-- 交通費 -->
-      <div class="kintai-card" id="section-expenses" style="margin-bottom:30px;">
-        <div class="kintai-card-title">🚃 交通費</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 交通費・経費のチェック</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>従業員から上がってきた交通費や経費の申請内容（領収書画像など）を確認し、承認します。</li>
-            <li>実際の振込が完了した後は、ステータスを<strong>「支給済み (Paid)」</strong>に変更して管理します。</li>
+      <section class="mn-sec" id="section-employees">
+        <h2><span class="mn-chap">第9章</span>社員管理</h2>
+        <p class="mn-lead">社員情報の確認・編集と、新しい社員の登録を行います。</p>
+          <div class="mn-path">メニュー：社員管理 ＞ 社員一覧</div>
+          <figure class="mn-fig"><a href="/static/images/manual/employees.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/employees.png?v=20260928" alt="社員一覧" loading="lazy"></a><figcaption>図9-1　社員一覧（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>左メニューの「社員管理」から <span class="mn-kbd">社員一覧</span> を開きます。</li>
+            <li><span class="mk">2</span>社員番号・キーワード（氏名・メール）・支店で絞り込み、<span class="mn-kbd">検索</span> を押します。</li>
+            <li><span class="mk">3</span>社員の行をクリックすると、詳細画面が開きます。</li>
+          </ol>
+          <h3><span class="mn-h3no">9-1</span>社員情報を変更する</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/employees-edit.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/employees-edit.png?v=20260928" alt="社員の詳細" loading="lazy"></a><figcaption>図9-2　社員の詳細（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">編集</span> を押し、部署・雇用形態・入社日などを変更して保存します。</li>
+          </ol>
+          <div class="mn-warn"><span class="mn-lbl">【注意】</span><strong>部署</strong>と<strong>雇用形態（正社員／パート）</strong>は、休日・休日出勤の判定や勤怠の計算に使われます。設定を間違えると、勤怠の集計がずれます。</div>
+          <h3><span class="mn-h3no">9-2</span>新しい社員を登録する</h3>
+          <ul>
+            <li>「社員管理 ＞ 社員追加」（または上部の <span class="mn-kbd">＋ 新規作成</span>）から登録します。社員番号・氏名・メールアドレスが必須です。</li>
+            <li>社員のパスワードを再設定する場合は、社員の詳細画面で <span class="mn-kbd">編集</span> を押し、パスワード欄に新しいパスワード（8文字以上・英大文字・英小文字・数字を含む）を入力して保存します。パスワード欄は変更するときだけ入力します。</li>
           </ul>
-        </div>
-      </div>
+      </section>
 
-      <!-- 組織 -->
-      <div class="kintai-card" id="section-departments" style="margin-bottom:30px;">
-        <div class="kintai-card-title">🏢 組織</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 部署・チームの設定</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>会社内の部署やチームを新規作成・編集します。ここで作成した部署は、従業員情報に紐付けることができます。</li>
+      <section class="mn-sec" id="section-leave">
+        <h2><span class="mn-chap">第10章</span>休暇管理</h2>
+        <p class="mn-lead">有給休暇などの申請を承認し、有給休暇の付与・残日数を管理します。</p>
+          <div class="mn-path">メニュー：休暇管理 ＞ 休暇申請承認</div>
+          <figure class="mn-fig"><a href="/static/images/manual/leave.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/leave.png?v=20260928" alt="休暇申請承認" loading="lazy"></a><figcaption>図10-1　休暇申請承認（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>左メニューの「休暇管理」から <span class="mn-kbd">休暇申請承認</span> を開きます。</li>
+            <li><span class="mk">2</span>内容を確認し、<span class="mn-kbd">承認</span> を押します。</li>
+            <li><span class="mk">3</span>認めない場合は <span class="mn-kbd">却下</span> を押します。</li>
+            <li><span class="mk">4</span>左端のチェックボックスで複数選び、<span class="mn-kbd">選択した申請を一括承認</span> でまとめて承認できます。</li>
+          </ol>
+          <ul>
+            <li>「有給付与」で各社員に有給休暇の日数を付与し、「有給残日数一覧」で残日数を確認できます。</li>
           </ul>
-        </div>
-      </div>
+      </section>
 
-      <!-- システム -->
-      <div class="kintai-card" id="section-system" style="margin-bottom:30px;">
-        <div class="kintai-card-title">⚙️ システム</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ お知らせ</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>従業員がログインした際にトップ画面に表示される社内通知（お知らせ）を作成・配信します。</li>
+      <section class="mn-sec" id="section-payroll">
+        <h2><span class="mn-chap">第11章</span>給与管理（管理者のみ）</h2>
+        <p class="mn-lead">勤怠データをもとに毎月の給与を計算し、給与明細を作成して社員に送信します。</p>
+          <div class="mn-path">メニュー：給与管理（別タブで「給与元帳」が開きます・管理者のみ）</div>
+          <div class="mn-info"><span class="mn-lbl">【補足】</span>毎月の流れ：① 勤怠を締める（<a href="#section-ledger" class="manual-nav" data-section="ledger">勤怠記録 ＞ 月次締め</a>）→ ② 「給与計算」で金額を確認・修正 → ③ 「明細書」でPDFを作成し、給与明細を送信。<br>給与計算には、勤怠の<strong>丸め後</strong>の時間（出勤日数・時間外・深夜など）が自動で反映されます。</div>
+          <h3><span class="mn-h3no">11-1</span>最初に1回：設定</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/pay-settings.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/pay-settings.png?v=20260928" alt="給与元帳 ＞ 設定" loading="lazy"></a><figcaption>図11-1　給与元帳 ＞ 設定（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>給与元帳の左メニューから <span class="mn-kbd">設定</span> を開きます。</li>
+            <li><span class="mk">2</span>会社情報、社会保険料率（従業員負担分）、所定労働時間・日数、割増賃金率（時間外 1.25・休日出勤 1.35・深夜 1.25 など）、通勤手当の非課税上限を入力します。</li>
+            <li><span class="mk">3</span><span class="mn-kbd">設定を保存</span> を押します。</li>
+          </ol>
+          <div class="mn-warn"><span class="mn-lbl">【注意】</span>社会保険料率は事業所の所在地・業種によって異なり、年度ごとに改定されます。年度が変わったら料率を見直してください。</div>
+          <h3><span class="mn-h3no">11-2</span>社員ごとの給与情報を登録する</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/pay-employees.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/pay-employees.png?v=20260928" alt="給与元帳 ＞ 従業員" loading="lazy"></a><figcaption>図11-2　給与元帳 ＞ 従業員（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">従業員</span> を開きます。給与計算の対象となる社員の一覧が表示されます。</li>
+            <li><span class="mk">2</span>氏名・社員番号・部署で検索できます。</li>
+            <li><span class="mk">3</span>変更する社員の <span class="mn-kbd">編集</span> を押します。</li>
+          </ol>
+          <figure class="mn-fig"><a href="/static/images/manual/pay-employee-edit.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/pay-employee-edit.png?v=20260928" alt="従業員を編集" loading="lazy"></a><figcaption>図11-3　従業員を編集（クリックで拡大）</figcaption></figure>
+          <ul>
+            <li>基礎給（月額）、就業手当、通勤手当と通勤手段（非課税枠の判定に使用）を入力します。</li>
+            <li>源泉区分（甲欄など）と扶養人数は所得税の計算に、生年月日は介護保険（40〜64歳）の判定に使われます。</li>
+            <li>入力後、<span class="mn-kbd">保存</span> を押します。</li>
           </ul>
-
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 設定</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>会社全体の勤務ルール（休日カレンダーの設定、各種手当のデフォルト値など）を管理します。</li>
+          <h3><span class="mn-h3no">11-3</span>毎月の給与計算</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/pay-calc.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/pay-calc.png?v=20260928" alt="給与元帳 ＞ 給与計算" loading="lazy"></a><figcaption>図11-4　給与元帳 ＞ 給与計算（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">給与計算</span> を開きます。</li>
+            <li><span class="mk">2</span>右上で対象月を選びます。社員ごとの出勤日数・総支給額・総控除額・差引支給額が表示されます。</li>
+            <li><span class="mk">3</span>内容を確認・修正する社員の <span class="mn-kbd">詳細プレビュー</span> を押します。</li>
+          </ol>
+          <figure class="mn-fig"><a href="/static/images/manual/pay-preview.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/pay-preview.png?v=20260928" alt="給与明細書（プレビュー）" loading="lazy"></a><figcaption>図11-5　給与明細書（プレビュー）（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>自動計算の切替：<br>・ON：勤怠から時間外手当・深夜勤手当などの割増手当と、社会保険料・所得税（概算）を自動で計算します。<br>・OFF：割増手当・控除の金額を手入力します。</li>
+            <li><span class="mk">2</span>勤怠・支給・控除・支払方法を確認・修正し、<span class="mn-kbd">保存</span> を押します。</li>
+          </ol>
+          <ul>
+            <li>勤怠欄には勤怠データの自動集計値が表示されます。手入力で上書きした場合は、その値が保存されます。</li>
+            <li>「支払方法」（振込・現金・現物）の合計は、差引支給額と一致させてください。<span class="mn-kbd">差引支給額を振込に一括反映</span> で振込額に反映できます。一覧の「支払方法照合」が「一致」になっていることを確認してください。</li>
+            <li>賞与・臨時の支給や独自の手当・控除は <span class="mn-kbd">＋ 支給項目を追加</span>／<span class="mn-kbd">＋ 控除項目を追加</span> で追加できます。</li>
           </ul>
+          <div class="mn-warn"><span class="mn-lbl">【注意】</span>自動計算の社会保険料は概算料率、所得税は簡易概算です。正式な金額は、国税庁の源泉徴収税額表・社会保険料額表で確認します。</div>
+          <h3><span class="mn-h3no">11-4</span>給与明細を作成・送信する</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/pay-payslip.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/pay-payslip.png?v=20260928" alt="給与元帳 ＞ 明細書" loading="lazy"></a><figcaption>図11-6　給与元帳 ＞ 明細書（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">明細書</span> を開きます。</li>
+            <li><span class="mk">2</span>社員と対象月を選ぶと、給与明細が表示されます。</li>
+            <li><span class="mk">3</span><span class="mn-kbd">PDF作成・プレビュー</span> でPDFを作成し、内容を確認します。</li>
+            <li><span class="mk">4</span><span class="mn-kbd">給与明細を送信</span> を押すと、社員のマイページに給与明細が公開されます（確認メッセージが表示されます）。</li>
+            <li><span class="mk">5</span><span class="mn-kbd">送信履歴を見る</span> で、社員ごとの送信・PDF作成の履歴を確認できます。</li>
+          </ol>
+          <div class="mn-info"><span class="mn-lbl">【補足】</span>送信（公開）済みの月の明細は、詳細プレビューで編集できなくなります。</div>
+      </section>
 
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 監査ログ</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>いつ、誰が、システム上でどのような操作をしたかの履歴（ログ）を確認し、不正操作がないかチェックします。</li>
+      <section class="mn-sec" id="section-expenses">
+        <h2><span class="mn-chap">第12章</span>交通費</h2>
+        <p class="mn-lead">社員が申請した交通費・経費を確認し、承認・支給します。</p>
+          <div class="mn-path">メニュー：交通費（別タブで開きます）</div>
+          <div class="mn-info"><span class="mn-lbl">【補足】</span>申請の流れ：① 社員が申請 → ② <strong>総務確認</strong>（管理者・マネージャー）→ ③ <strong>社長承認</strong>（管理者）→ ④ <strong>支給</strong>（管理者）。<br>途中で内容に問題があれば「差し戻す」で社員に戻し、社員が修正して再申請します。</div>
+          <h3><span class="mn-h3no">12-1</span>今月の状況を確認する（Home）</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/exp-home.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/exp-home.png?v=20260928" alt="交通費 ＞ Home" loading="lazy"></a><figcaption>図12-1　交通費 ＞ Home（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">Home</span> を開きます。</li>
+            <li><span class="mk">2</span>対象月を選ぶと、今月の交通費総額・承認待ち件数・差戻し件数・申請人数・1人あたりの平均が表示されます。</li>
+          </ol>
+          <h3><span class="mn-h3no">12-2</span>まとめて確認・承認・支給する（申請管理）</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/exp-apps.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/exp-apps.png?v=20260928" alt="交通費 ＞ 申請管理（未承認で絞り込み、社員を選択）" loading="lazy"></a><figcaption>図12-2　交通費 ＞ 申請管理（未承認で絞り込み、社員を選択）（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">申請管理</span> を開きます。</li>
+            <li><span class="mk">2</span>上のボタンで状態を絞り込みます。<br>・未承認（申請中）：総務確認がまだの申請<br>・総務確認済（承認待ち）：社長承認がまだの申請<br>・未支給（承認済）：承認済みで、まだ支給していない申請<br>・支給済み／差戻し</li>
+            <li><span class="mk">3</span>処理する社員にチェックを入れます（行をクリックしても選択できます）。</li>
+            <li><span class="mk">4</span>一括ボタンを押します。ボタンは状態によって <span class="mn-kbd">一括総務確認</span>／<span class="mn-kbd">一括社長承認</span>／<span class="mn-kbd">一括支給</span> に変わります。</li>
+            <li><span class="mk">5</span><span class="mn-kbd">明細</span> で、その社員の申請一覧（日付・経路・交通機関・金額）を確認し、PDF出力できます。</li>
+          </ol>
+          <div class="mn-tip"><span class="mn-lbl">【ポイント】</span><span class="mn-kbd">一括取消</span> は<strong>選択の解除</strong>です（申請の取り消しではありません）。<span class="mn-kbd">一括削除</span> は申請そのものを削除し、元に戻せないのでご注意ください。</div>
+          <h3><span class="mn-h3no">12-3</span>1件ずつ確認する・差し戻す（申請詳細）</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/exp-drawer.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/exp-drawer.png?v=20260928" alt="申請詳細" loading="lazy"></a><figcaption>図12-3　申請詳細（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span>右上の通知ベルから新しい申請を選ぶと、右側に「申請詳細」が開きます（申請者・通勤区間・金額・添付ファイルなど）。</li>
+            <li><span class="mk">2</span>「承認フロー履歴」で、申請 → 総務確認 → 社長承認 → 支給 のどこまで進んでいるかを確認します。</li>
+            <li><span class="mk">3</span>支払方法（経理）を選んで <span class="mn-kbd">保存</span> します。</li>
+            <li><span class="mk">4</span>必要に応じてコメントを入力します。</li>
+            <li><span class="mk">5</span>承認ボタンを押します。ボタンは段階によって <span class="mn-kbd">総務確認する</span>／<span class="mn-kbd">社長承認する</span>／<span class="mn-kbd">支給する</span> に変わります。</li>
+            <li><span class="mk">6</span>内容に問題がある場合は、コメントに理由を入力して <span class="mn-kbd">差し戻す</span> を押します（差し戻す場合はコメントが必須です）。</li>
+          </ol>
+          <h3><span class="mn-h3no">12-4</span>申請していない社員を確認する（未申請チェック）</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/exp-unsub.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/exp-unsub.png?v=20260928" alt="交通費 ＞ 未申請チェック" loading="lazy"></a><figcaption>図12-4　交通費 ＞ 未申請チェック（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">未申請チェック</span> を開きます。在籍している全社員の、その月の申請件数・合計金額が表示されます。</li>
+            <li><span class="mk">2</span>「ステータス」が 未申請 の社員には、申請するよう声をかけてください。</li>
+          </ol>
+          <h3><span class="mn-h3no">12-5</span>非課税限度額の設定（設定）</h3>
+          <figure class="mn-fig"><a href="/static/images/manual/exp-settings.png?v=20260928" target="_blank" rel="noopener"><img src="/static/images/manual/exp-settings.png?v=20260928" alt="交通費 ＞ 設定" loading="lazy"></a><figcaption>図12-5　交通費 ＞ 設定（クリックで拡大）</figcaption></figure>
+          <ol class="mn-steps">
+            <li><span class="mk">1</span><span class="mn-kbd">設定</span> を開きます。</li>
+            <li><span class="mk">2</span>電車・バス通勤の非課税限度額（月額）と、期限アラートを何日前から表示するかを入力します。</li>
+            <li><span class="mk">3</span>マイカー等で通勤する場合の、片道距離別の非課税額を入力します（<span class="mn-kbd">＋ 行を追加</span> で行を追加）。</li>
+            <li><span class="mk">4</span><span class="mn-kbd">保存する</span> を押します。</li>
+          </ol>
+          <div class="mn-warn"><span class="mn-lbl">【注意】</span>通勤手当の非課税限度額は税制改正で変わることがあります。改正があった場合は、この画面の金額を更新してください。</div>
+          <ul>
+            <li>「月次締め履歴」では、締め済みの月の申請を確認できます。</li>
           </ul>
-        </div>
-      </div>
+      </section>
 
-      <!-- FAQ管理 -->
-      <div class="kintai-card" id="section-faq" style="margin-bottom:30px;">
-        <div class="kintai-card-title">❓ FAQ管理</div>
-        <div style="padding:20px;">
-          <div style="font-weight:bold;margin-bottom:8px;color:#1e40af;">■ 質問と回答の登録</div>
-          <ul style="margin:0 0 15px 0;padding-left:20px;color:#334155;line-height:1.8;">
-            <li>従業員向けの「よくある質問」の項目を追加・編集します。ここで登録した内容は、従業員画面のチャットボットやFAQページに反映されます。</li>
-          </ul>
-        </div>
-      </div>
+      <section class="mn-sec" id="section-others">
+        <h2><span class="mn-chap">第13章</span>その他の機能</h2>
+        <p class="mn-lead">その他の管理機能の概要です。</p>
+          <table class="mn-table">
+            <tr><th style="width:26%;">メニュー</th><th>できること</th></tr>
+            <tr><td>勤怠管理 ＞ 外出管理</td><td>社員の外出（業務・私用）の記録を確認し、PDF出力できます。私用外出の時間は実働時間から差し引かれます。</td></tr>
+            <tr><td>勤怠管理 ＞ シフト管理</td><td>社員へのシフト（勤務時間帯）の割り当てを行います。</td></tr>
+            <tr><td>勤怠管理 ＞ シフト承認</td><td>社員が登録したシフトを確認して承認します。</td></tr>
+            <tr><td>勤怠管理 ＞ 調整申請一覧</td><td>社員から提出された打刻時刻の修正申請を確認し、承認します。</td></tr>
+            <tr><td>組織・支店管理（管理者のみ）</td><td>部署・支店を登録・編集します。部署ごとの休日は「休日設定」で設定します。</td></tr>
+            <tr><td>システム ＞ お知らせ</td><td>社員のトップ画面に表示される社内通知を作成・配信します。</td></tr>
+            <tr><td>FAQ管理</td><td>社員向けの「よくある質問」を追加・編集します。社員画面のチャットボットやFAQページに反映されます。</td></tr>
+          </table>
+      </section>
 
-      <!-- Footer -->
-      <div class="kintai-card" style="background:#f0f4f8;">
-        <div style="padding:20px;text-align:center;color:#666;">
-          <div style="margin-bottom:10px;">
-            ご不明な点がございましたら、システム担当へお気軽にお問い合わせください。
-          </div>
-          <div style="font-size:12px;color:#999;">
-            最終更新: 2026年6月
-          </div>
-        </div>
-      </div>
-    </section>
+      <div class="mn-foot">スマートE勤怠 操作マニュアル（管理者用）　第1.0版　飯塚グループエンジニア　以上</div>
+    </div>
   </main>
   <script src="/static/js/admin/admin.page.js?v=7" type="module"></script>
   <script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
-    function scrollToSection(sectionId) {
-      const element = document.getElementById('section-' + sectionId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    // Add smooth scroll behavior for navigation links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
+    // 目次・リンクからの移動 (CSP のため onclick 属性は使わず、ここでイベントを登録する)
+    document.querySelectorAll('.manual-nav[data-section]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        var target = document.getElementById('section-' + el.getAttribute('data-section'));
+        if (!target) return;
         e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
   </script>

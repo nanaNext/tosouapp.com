@@ -1435,11 +1435,15 @@ router.get('/salary/files', async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+    // 自社の社員の明細だけ (以前は tenant で絞っておらず、他社の配信履歴まで見えてしまう作りだった)
+    const tid = req.tenantId != null ? parseInt(String(req.tenantId), 10) : null;
+    if (tid != null) { sql += ` AND u.tenant_id = ?`; params.push(tid); }
     if (userId) { sql += ` AND f.userId = ?`; params.push(userId); }
     if (month) { sql += ` AND f.month = ?`; params.push(month); }
     sql += ` ORDER BY f.created_at DESC LIMIT ?`;
     params.push(limit);
-    const [rows] = await db2.query(sql, params);
+    // db2 はこのファイルでは未定義 (admin.salary.routes.js 側の変数) — ReferenceError で送信履歴が常に失敗していた
+    const [rows] = await db.query(sql, params);
     const items = (rows || []).map(r => ({
       id: r.id,
       userId: r.userId,

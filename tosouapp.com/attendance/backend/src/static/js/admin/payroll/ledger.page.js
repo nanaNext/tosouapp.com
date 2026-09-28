@@ -394,7 +394,7 @@ async function renderCalcSection(mainEl, ctx) {
         <tbody id="calcBody"></tbody>
       </table>
     </div>
-    <div class="pl-note">※ 社会保険料は概算料率、所得税は商易概算です。正式運用前に国税庁の源泉徴収税額表・社会保険料額表で必ず確認してください。「詳細プレビュー」内の金額は自動計算OFFで手入力に切り替えられます。</div>
+    <div class="pl-note">※ 社会保険料は概算料率、所得税は簡易概算です。正式運用前に国税庁の源泉徴収税額表・社会保険料額表で必ず確認してください。「詳細プレビュー」内の金額は自動計算OFFで手入力に切り替えられます。</div>
   `;
 
   const tbody = mainEl.querySelector('#calcBody');
@@ -909,7 +909,7 @@ async function renderPayslipSection(mainEl, ctx) {
         <div class="pl-payslip-bank">
           振込銀行　${escapeHtml(emp.振込口座 || emp.振込銀行 || '—')}
         </div>
-        <div style="margin-top:10px;font-size:10.5px;color:#8a8168;">※ 所得税は商易概算です。実際の源泉徴収額は国税庁の税額表でご確認ください。</div>
+        <div style="margin-top:10px;font-size:10.5px;color:#8a8168;">※ 所得税は簡易概算です。実際の源泉徴収額は国税庁の税額表でご確認ください。</div>
       </div>
     `;
   };
