@@ -94,7 +94,8 @@ async function buildLedgerRows({ tenantId, month, departmentId }) {
     }
 
     const rows = [];
-    const totals = { attendDays: 0, regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0, holidayWorkMinutes: 0 };
+    const totals = { attendDays: 0, regularMinutes: 0, overtimeMinutes: 0, nightMinutes: 0, holidayWorkMinutes: 0,
+      actualWorkedMinutes: 0, actualOvertimeMinutes: 0, actualHolidayWorkMinutes: 0 };
 
     for (const u of users) {
       const dailyMap = dailyByUser.get(u.id) || new Map();
@@ -113,6 +114,9 @@ async function buildLedgerRows({ tenantId, month, departmentId }) {
           totals.overtimeMinutes += computed.overtimeMinutes || 0;
           totals.nightMinutes += computed.nightMinutes || 0;
           if (isHolidayWork) totals.holidayWorkMinutes += (computed.regularMinutes || 0) + (computed.overtimeMinutes || 0);
+          totals.actualWorkedMinutes += computed.actualWorkedMinutes || 0;
+          totals.actualOvertimeMinutes += computed.actualOvertimeMinutes || 0;
+          if (isHolidayWork) totals.actualHolidayWorkMinutes += computed.actualWorkedMinutes || 0;
         }
         rows.push({
           date: dateStr,
@@ -123,6 +127,11 @@ async function buildLedgerRows({ tenantId, month, departmentId }) {
           kubun: isOff ? (kubun || '休日') : (kubun || '通常'),
           checkIn: computed ? fmtHm(computed.checkIn) : (openCheckIn ? fmtHm(openCheckIn) : ''),
           checkOut: computed ? fmtHm(computed.checkOut) : '',
+          // 丸め後の出勤・退勤 (出勤は30分切り上げ、退勤は30分切り捨て) と 実績(丸め前)の実働・残業
+          roundedIn: computed?.roundedIn || '',
+          roundedOut: computed?.roundedOut || '',
+          actualWorkedMinutes: computed?.actualWorkedMinutes || 0,
+          actualOvertimeMinutes: computed?.actualOvertimeMinutes || 0,
           // daily.break_minutes chỉ có giá trị khi ai đó từng NHẬP TAY (admin sửa,
           // hoặc nhân viên tự lưu qua 簡易登録画面) — nếu chưa ai đụng tới thì vẫn
           // NULL dù giờ công (実働) đã trừ đúng giờ nghỉ mặc định của ca. Hiện fallback
@@ -182,7 +191,10 @@ exports.getMonthLedger = async (req, res) => {
         regularMinutes: totals.regularMinutes,
         overtimeMinutes: totals.overtimeMinutes,
         nightMinutes: totals.nightMinutes,
-        holidayWorkMinutes: totals.holidayWorkMinutes
+        holidayWorkMinutes: totals.holidayWorkMinutes,
+        actualWorkedMinutes: totals.actualWorkedMinutes,
+        actualOvertimeMinutes: totals.actualOvertimeMinutes,
+        actualHolidayWorkMinutes: totals.actualHolidayWorkMinutes
       },
       todayStatus: { date: today, working: workingCount, checkedOut: checkedOutCount, offOrLeave: offOrLeaveCount },
       page, pageSize, total, pages: pageCount,
@@ -212,6 +224,8 @@ exports.exportXlsx = async (req, res) => {
     if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ message: 'Missing/invalid month (YYYY-MM)' });
     const tenantId = req.tenantId || null;
     const departmentId = req.query.departmentId || null;
+    // 画面の 実績/丸め 切替に合わせる (既定は 丸め = 従来の出力)
+    const isActual = String(req.query.mode || '') === 'actual';
 
     const [{ rows }, departments] = await Promise.all([
       buildLedgerRows({ tenantId, month, departmentId }),
@@ -235,7 +249,8 @@ exports.exportXlsx = async (req, res) => {
       { header: '備考', width: 26 }
     ];
     const xlsxRows = rows.map(r => {
-      const workedMinutes = (r.regularMinutes || 0) + (r.overtimeMinutes || 0);
+      const workedMinutes = isActual ? (r.actualWorkedMinutes || 0) : (r.regularMinutes || 0) + (r.overtimeMinutes || 0);
+      const overtimeMinutes = isActual ? (r.actualOvertimeMinutes || 0) : (r.overtimeMinutes || 0);
       const holidayMinutes = r.isHolidayWork ? workedMinutes : 0;
       return [
         r.date,
@@ -243,11 +258,11 @@ exports.exportXlsx = async (req, res) => {
         r.username || '',
         deptNameById.get(Number(r.departmentId)) || '',
         r.kubun || '',
-        r.checkIn || '',
-        r.checkOut || '',
+        (isActual ? r.checkIn : (r.roundedIn || r.checkIn)) || '',
+        (isActual ? r.checkOut : (r.roundedOut || r.checkOut)) || '',
         r.breakMinutes ?? '',
         hm(workedMinutes),
-        hm(r.overtimeMinutes),
+        hm(overtimeMinutes),
         hm(r.nightMinutes),
         hm(holidayMinutes),
         r.memo || ''
@@ -267,7 +282,7 @@ exports.exportXlsx = async (req, res) => {
     };
 
     const workbook = new ExcelJS.Workbook();
-    const ws = workbook.addWorksheet(`勤怠記録_${month}`.slice(0, 31));
+    const ws = workbook.addWorksheet(`勤怠記録_${month}_${isActual ? '実績' : '丸め'}`.slice(0, 31));
     ws.columns = columns.map(c => ({ header: c.header, width: c.width }));
     ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
 
@@ -296,7 +311,7 @@ exports.exportXlsx = async (req, res) => {
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
 
     const buf = await workbook.xlsx.writeBuffer();
-    const filename = `attendance_ledger_${month}.xlsx`;
+    const filename = `attendance_ledger_${month}_${isActual ? 'actual' : 'rounded'}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.status(200).send(Buffer.from(buf));

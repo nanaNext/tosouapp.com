@@ -323,6 +323,15 @@ async function computeRecord(rec, ctx = null) {
   //  二重に数えられ (08:16-23:00 が 14:00)、早出の日は早出分が消えていた (07:00-17:00 が 8:00)。)
   const regular = Math.min(workedRounded, scheduled);
   const overtime = Math.max(0, workedRounded - regular);
+  // 実績 (丸め前): 実際の打刻どおりの 実働 (退勤−出勤−私用外出−休憩) と、同じ分け方の残業。
+  // 勤怠記録画面の 実績/丸め 切替で使う。給与計算などは従来どおり丸め後の値を使う。
+  const actualWorkedMinutes = worked;
+  const actualOvertimeMinutes = Math.max(0, worked - Math.min(worked, scheduled));
+  // 丸め後の出勤・退勤 (HH:MM, JST)
+  const toJstHm = (min) => (min == null || !shift.start) ? null
+    : new Date(shift.start.getTime() + min * 60000 + 9 * 3600 * 1000).toISOString().slice(11, 16);
+  const roundedIn = toJstHm(rInMin);
+  const roundedOut = toJstHm(rOutMin);
 
   // Dùng CoreRules để lấy thêm thông tin bất thường
   const metrics = CoreRules.calculateWorkMetrics(rec.checkIn, rec.checkOut, shift, isOff);
@@ -337,6 +346,10 @@ async function computeRecord(rec, ctx = null) {
     template,
     regularMinutes: regular,
     overtimeMinutes: overtime,
+    actualWorkedMinutes,
+    actualOvertimeMinutes,
+    roundedIn,
+    roundedOut,
     breakMinutes: breakMin,
     nightMinutes: metrics.nightMinutes,
     isAnomaly: metrics.isAnomaly,

@@ -32,6 +32,10 @@ export async function mount({ content } = {}) {
   let departmentId = '';
   let departments = [];
   let page = 1;
+  // 実績 = 打刻どおり (丸め前) / 丸め = 出勤30分切り上げ・退勤30分切り捨て後 (給与計算に使う値)
+  let viewMode = 'round';
+  try { if (localStorage.getItem('ledgerViewMode') === 'actual') viewMode = 'actual'; } catch (e) { /* ignore */ }
+  let lastData = null;
   const pageSize = 100; // 200人規模で1ヶ月分だと最大6000行程度になるため、一覧はページングする
 
   async function loadClosureBanner() {
@@ -114,13 +118,35 @@ export async function mount({ content } = {}) {
 
   async function loadLedger() {
     const body = root.querySelector('#ledgerTableBody');
-    const cards = root.querySelector('#ledgerCards');
-    const pager = root.querySelector('#ledgerPager');
     if (body) body.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:24px;color:#94a3b8;">読み込み中...</td></tr>';
     try {
       const qs = new URLSearchParams({ month, page: String(page), pageSize: String(pageSize) });
       if (departmentId) qs.set('departmentId', departmentId);
       const data = await fetchJSONAuth(`/api/attendance/ledger/month?${qs.toString()}`);
+      lastData = data;
+      renderLedger(data);
+    } catch (err) {
+      if (body) body.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:24px;color:#ef4444;">エラー: ${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+
+  // 実績/丸め 切替はサーバーに取り直さず、手元のデータで描き直す
+  function renderLedger(data) {
+    const body = root.querySelector('#ledgerTableBody');
+    const cards = root.querySelector('#ledgerCards');
+    const pager = root.querySelector('#ledgerPager');
+    const isActual = viewMode === 'actual';
+    const workedOf = r => isActual ? (r.actualWorkedMinutes || 0) : (r.regularMinutes || 0) + (r.overtimeMinutes || 0);
+    const overtimeOf = r => isActual ? (r.actualOvertimeMinutes || 0) : (r.overtimeMinutes || 0);
+    const inOf = r => isActual ? r.checkIn : (r.roundedIn || r.checkIn);
+    const outOf = r => isActual ? r.checkOut : (r.roundedOut || r.checkOut);
+    root.querySelectorAll('[data-ledger-mode]').forEach(b => {
+      const on = b.getAttribute('data-ledger-mode') === viewMode;
+      b.style.background = on ? '#0b2c66' : '#fff';
+      b.style.color = on ? '#fff' : '#334155';
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    {
       const chipsBox = root.querySelector('#ledgerTodayChips');
       if (chipsBox && data.todayStatus) {
         const ts = data.todayStatus;
@@ -138,10 +164,10 @@ export async function mount({ content } = {}) {
         cards.innerHTML = [
           { label: '出勤日数', value: `${data.totals.attendDays}日` },
           // 実働 = 所定内 + 残業 (Excel出力と同じ)。regularMinutes は所定内だけ
-          { label: '実働時間', value: hm((data.totals.regularMinutes || 0) + (data.totals.overtimeMinutes || 0)) },
-          { label: '法定外残業', value: hm(data.totals.overtimeMinutes) },
+          { label: '実働時間', value: hm(isActual ? data.totals.actualWorkedMinutes : (data.totals.regularMinutes || 0) + (data.totals.overtimeMinutes || 0)) },
+          { label: '法定外残業', value: hm(isActual ? data.totals.actualOvertimeMinutes : data.totals.overtimeMinutes) },
           { label: '深夜', value: hm(data.totals.nightMinutes) },
-          { label: '休日労働', value: hm(data.totals.holidayWorkMinutes) }
+          { label: '休日労働', value: hm(isActual ? data.totals.actualHolidayWorkMinutes : data.totals.holidayWorkMinutes) }
         ].map(c => `
           <div style="flex:1;min-width:120px;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;background:#fff;">
             <div style="font-size:20px;font-weight:700;color:#0f172a;">${escapeHtml(c.value)}</div>
@@ -159,13 +185,13 @@ export async function mount({ content } = {}) {
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(r.employeeCode || r.userId)}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(r.username || '')}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}"><span style="display:inline-block;white-space:nowrap;background:#f1f5f9;border-radius:4px;padding:2px 8px;font-size:12px;">${escapeHtml(KUBUN_LABEL[r.kubun] || r.kubun)}</span></td>
-            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(r.checkIn || '—')}</td>
-            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(r.checkOut || '—')}</td>
+            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(inOf(r) || '—')}</td>
+            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(outOf(r) || '—')}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.breakMinutes != null ? `${r.breakMinutes}分` : '—'}</td>
-            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${(r.regularMinutes || r.overtimeMinutes) ? hm((r.regularMinutes || 0) + (r.overtimeMinutes || 0)) : '—'}</td>
-            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}${r.overtimeMinutes ? 'color:#b45309;font-weight:600;' : ''}">${r.overtimeMinutes ? hm(r.overtimeMinutes) : '—'}</td>
+            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${workedOf(r) ? hm(workedOf(r)) : '—'}</td>
+            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}${overtimeOf(r) ? 'color:#b45309;font-weight:600;' : ''}">${overtimeOf(r) ? hm(overtimeOf(r)) : '—'}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.nightMinutes ? hm(r.nightMinutes) : '—'}</td>
-            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.isHolidayWork ? hm(r.regularMinutes + r.overtimeMinutes) : '—'}</td>
+            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.isHolidayWork ? hm(workedOf(r)) : '—'}</td>
             <td style="padding:6px 8px;color:#64748b;font-size:12px;max-width:260px;white-space:pre-wrap;word-break:break-word;${cellBorder}">${escapeHtml(r.memo || '')}</td>
           </tr>
         `).join('') : '<tr><td colspan="12" style="text-align:center;padding:24px;color:#94a3b8;">該当データがありません</td></tr>';
@@ -183,8 +209,6 @@ export async function mount({ content } = {}) {
         root.querySelector('#ledgerPrev')?.addEventListener('click', () => { if (page > 1) { page -= 1; loadLedger(); } });
         root.querySelector('#ledgerNext')?.addEventListener('click', () => { if (page < data.pages) { page += 1; loadLedger(); } });
       }
-    } catch (err) {
-      if (body) body.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:24px;color:#ef4444;">エラー: ${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
@@ -212,6 +236,10 @@ export async function mount({ content } = {}) {
         <button type="button" id="ledgerGoBtn" style="height:32px;padding:0 16px;background:#0b2c66;color:#fff;border:none;border-radius:4px;cursor:pointer;">表示</button>
         <div id="ledgerTodayChips" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"></div>
         <div style="flex:1;"></div>
+        <div role="group" aria-label="表示切替" title="実績: 打刻どおりの時間 / 丸め: 出勤30分切り上げ・退勤30分切り捨て後の時間" style="display:inline-flex;border:1px solid #cbd5e1;border-radius:4px;overflow:hidden;">
+          <button type="button" data-ledger-mode="actual" style="height:32px;padding:0 14px;border:none;background:#fff;color:#334155;cursor:pointer;font-weight:600;">実績</button>
+          <button type="button" data-ledger-mode="round" style="height:32px;padding:0 14px;border:none;border-left:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;font-weight:600;">丸め</button>
+        </div>
         <button type="button" id="ledgerXlsxBtn" style="height:32px;padding:0 16px;border:none;border-radius:4px;background:#0b2c66;color:#fff;cursor:pointer;font-weight:600;">Excel出力</button>
       </div>
 
@@ -250,11 +278,19 @@ export async function mount({ content } = {}) {
     await loadLedger();
   });
 
+  root.querySelectorAll('[data-ledger-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewMode = btn.getAttribute('data-ledger-mode') === 'actual' ? 'actual' : 'round';
+      try { localStorage.setItem('ledgerViewMode', viewMode); } catch (e) { /* ignore */ }
+      if (lastData) renderLedger(lastData);
+    });
+  });
+
   root.querySelector('#ledgerXlsxBtn')?.addEventListener('click', async () => {
     try {
-      const qs = new URLSearchParams({ month });
+      const qs = new URLSearchParams({ month, mode: viewMode });
       if (departmentId) qs.set('departmentId', departmentId);
-      await downloadWithAuth(`/api/attendance/ledger/export.xlsx?${qs.toString()}`, `attendance_ledger_${month}.xlsx`);
+      await downloadWithAuth(`/api/attendance/ledger/export.xlsx?${qs.toString()}`, `attendance_ledger_${month}_${viewMode === 'actual' ? '実績' : '丸め'}.xlsx`);
     } catch (err) {
       alert(String(err?.message || 'Excel出力に失敗しました'));
     }
