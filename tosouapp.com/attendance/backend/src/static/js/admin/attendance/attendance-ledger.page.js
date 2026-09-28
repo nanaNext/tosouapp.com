@@ -137,7 +137,8 @@ export async function mount({ content } = {}) {
       if (cards) {
         cards.innerHTML = [
           { label: '出勤日数', value: `${data.totals.attendDays}日` },
-          { label: '実働時間', value: hm(data.totals.regularMinutes) },
+          // 実働 = 所定内 + 残業 (Excel出力と同じ)。regularMinutes は所定内だけ
+          { label: '実働時間', value: hm((data.totals.regularMinutes || 0) + (data.totals.overtimeMinutes || 0)) },
           { label: '法定外残業', value: hm(data.totals.overtimeMinutes) },
           { label: '深夜', value: hm(data.totals.nightMinutes) },
           { label: '休日労働', value: hm(data.totals.holidayWorkMinutes) }
@@ -161,7 +162,7 @@ export async function mount({ content } = {}) {
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(r.checkIn || '—')}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${escapeHtml(r.checkOut || '—')}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.breakMinutes != null ? `${r.breakMinutes}分` : '—'}</td>
-            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.regularMinutes ? hm(r.regularMinutes) : '—'}</td>
+            <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${(r.regularMinutes || r.overtimeMinutes) ? hm((r.regularMinutes || 0) + (r.overtimeMinutes || 0)) : '—'}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}${r.overtimeMinutes ? 'color:#b45309;font-weight:600;' : ''}">${r.overtimeMinutes ? hm(r.overtimeMinutes) : '—'}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.nightMinutes ? hm(r.nightMinutes) : '—'}</td>
             <td style="padding:6px 8px;white-space:nowrap;${cellBorder}">${r.isHolidayWork ? hm(r.regularMinutes + r.overtimeMinutes) : '—'}</td>

@@ -317,9 +317,12 @@ async function computeRecord(rec, ctx = null) {
     workedRounded = Math.max(0, rOutMin - rInMin - breakMin);
   }
 
+  // 実働 = 丸め後の退勤 − 丸め後の出勤 − 休憩 (出勤は30分切り上げ、退勤は30分切り捨て)。
+  // 所定内 = 実働のうち所定時間まで、残業 = それを超えた分 → 所定内+残業 は常に実働と一致する。
+  // (以前は 残業=定時後の分だけ・所定内=min(実働,所定) だったため、遅刻+残業の日は遅刻分が
+  //  二重に数えられ (08:16-23:00 が 14:00)、早出の日は早出分が消えていた (07:00-17:00 が 8:00)。)
   const regular = Math.min(workedRounded, scheduled);
-  const rawOvertime = Math.max(0, (rOutMin != null && shiftEndMin != null) ? (rOutMin - shiftEndMin) : 0);
-  const overtime = Math.floor(rawOvertime / ROUND_STEP) * ROUND_STEP;
+  const overtime = Math.max(0, workedRounded - regular);
 
   // Dùng CoreRules để lấy thêm thông tin bất thường
   const metrics = CoreRules.calculateWorkMetrics(rec.checkIn, rec.checkOut, shift, isOff);
