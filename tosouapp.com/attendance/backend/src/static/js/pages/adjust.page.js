@@ -364,8 +364,8 @@ const renderForm = async () => {
       }
       .sap-tab:hover { color: #0f172a; }
       .sap-tab.active {
-        color: #b45309;
-        border-bottom-color: #f59e0b;
+        color: #0b2c66;
+        border-bottom-color: #0b2c66;
       }
       .sap-tab svg { width: 18px; height: 18px; color: currentColor; }
       .tab-badge {
@@ -440,64 +440,62 @@ const renderForm = async () => {
         }
       }
 
-      /* ===== Giao diện thẻ (card) tông cam cho form 修正申請 ===== */
+      /* ===== Form 修正申請: phẳng, góc vuông, tông navy đồng bộ với header ===== */
       .adj-card {
-        background: #fffdf9;
-        border: 1px solid #fde68a;
-        border-radius: 14px;
-        padding: 16px;
-        margin: 0 0 14px 0;
+        margin: 0 0 22px 0;
         max-width: 560px;
-        box-shadow: 0 1px 3px rgba(180, 83, 9, 0.06);
       }
+      /* Khung sửa đơn trong tab 履歴 vẫn cần viền để tách khỏi danh sách */
+      .inline-edit-row.adj-card { background: #fff; border: 1px solid #cbd5e1; padding: 14px; }
       .adj-card-title {
         display: flex;
         align-items: center;
         gap: 8px;
         font-size: 15px;
         font-weight: 800;
-        color: #b45309;
-        margin: 0 0 12px 0;
+        color: #0b2c66;
+        margin: 0 0 10px 0;
       }
-      .adj-card-title svg { width: 18px; height: 18px; color: #f59e0b; }
+      .adj-card-title svg { width: 18px; height: 18px; color: #0b2c66; }
       .adj-target-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
         background: #fff;
-        border: 1px solid #fde68a;
-        border-radius: 10px;
+        border: 1px solid #cbd5e1;
         padding: 12px 14px;
       }
+      .adj-target-row:focus-within { border-color: #0b2c66; }
       .adj-target-date { font-size: 17px; font-weight: 800; color: #1f2937; }
       .adj-date-native {
         border: none; background: transparent; font-size: 17px; font-weight: 800;
-        color: #1f2937; outline: none; width: 100%;
+        color: #1f2937; outline: none; width: 100%; cursor: pointer;
       }
       .adj-edit-icon {
         flex: 0 0 auto; background: transparent; border: none; cursor: pointer;
-        color: #f59e0b; padding: 4px; display: inline-flex; align-items: center;
+        color: #0b2c66; padding: 4px; display: inline-flex; align-items: center;
       }
       .adj-times {
-        display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px;
+        display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 18px;
       }
       .adj-time-block { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
       .adj-time-label {
-        display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
+        display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #0b2c66;
       }
-      .adj-time-label.in { color: #15803d; }
-      .adj-time-label.out { color: #ea580c; }
       .adj-time-label svg { width: 16px; height: 16px; }
-      .adj-time-hint { font-size: 11px; color: #94a3b8; font-weight: 600; }
+      .adj-time-hint { font-size: 11px; color: #64748b; font-weight: 600; }
       .adj-time-input {
         width: 100%; max-width: 100%; box-sizing: border-box; font-size: 16px; font-weight: 700;
         letter-spacing: 0; text-align: left; color: #1f2937;
-        border: 1px solid #fcd34d; border-radius: 10px; padding: 13px 8px;
-        background: #fff; outline: none; min-height: 52px; min-width: 0;
+        border: 1px solid #cbd5e1; border-radius: 0; padding: 13px 40px 13px 10px;
+        outline: none; min-height: 52px; min-width: 0; cursor: pointer;
+        /* Icon đồng hồ bên phải để nhân viên nhận ra ô này bấm vào được */
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%230b2c66' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E") no-repeat right 12px center / 20px 20px;
       }
+      .adj-time-input::placeholder { color: #64748b; font-weight: 600; font-size: 14px; }
       .adj-time-input::-webkit-calendar-picker-indicator { margin-left: 0; }
-      .adj-time-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+      .adj-time-input:focus { border-color: #0b2c66; box-shadow: 0 0 0 2px rgba(11,44,102,.15); }
       /* flatpickr が altInput 用に元の input を type="hidden" に変えるはずだが、
          端末によって反映タイミングがずれて一瞬(または稀に継続的に)二重表示に
          見えることがあるための保険。flatpickr が付与する .flatpickr-input クラスを
@@ -505,17 +503,16 @@ const renderForm = async () => {
       input.flatpickr-input[type="hidden"] { display: none !important; }
       .adj-reason-label {
         display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
-        color: #b45309; margin-bottom: 6px;
+        color: #0b2c66; margin-bottom: 6px;
       }
       .adj-reason-label svg { width: 16px; height: 16px; }
       .adj-reason-input {
         width: 100%; box-sizing: border-box; font-size: 15px; color: #1f2937;
-        border: 1px solid #fcd34d; border-radius: 10px; padding: 12px; background: #fff;
+        border: 1px solid #cbd5e1; border-radius: 0; padding: 12px; background: #fff;
         outline: none; resize: vertical; min-height: 96px; font-family: inherit; line-height: 1.5;
       }
-      .adj-reason-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+      .adj-reason-input:focus { border-color: #0b2c66; box-shadow: 0 0 0 2px rgba(11,44,102,.15); }
       .adj-status-msg { font-size: 12px; font-weight: 700; color: #059669; margin-top: 8px; min-height: 16px; }
-
       /* Toast thông báo ở trên đầu màn hình khi thao tác thành công */
       .adj-toast {
         position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-140%);
@@ -541,64 +538,47 @@ const renderForm = async () => {
       /* Thanh nút dính đáy màn hình */
       .adj-action-bar {
         position: sticky; bottom: 0; left: 0; right: 0; z-index: 60;
-        display: flex; gap: 12px; padding: 12px;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px;
         background: rgba(255,255,255,0.96);
-        border-top: 1px solid #f1e4c9;
+        border-top: 1px solid #e2e8f0;
         box-shadow: 0 -4px 14px rgba(0,0,0,0.06);
         max-width: 560px;
         margin: 0 auto;
       }
       .adj-btn {
-        flex: 1 1 0; min-height: 52px; border-radius: 12px; font-size: 16px; font-weight: 800;
+        flex: 1 1 0; min-height: 52px; border-radius: 0; font-size: 16px; font-weight: 800;
         cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
         border: 1px solid transparent; transition: filter .15s ease, background .15s ease;
       }
       .adj-btn svg { width: 18px; height: 18px; }
-      .adj-btn-primary { background: #e8853b; color: #fff; }
-      .adj-btn-primary:hover { filter: brightness(1.05); }
-      .adj-btn-primary:active { filter: brightness(0.94); }
+      .adj-btn-primary { background: #0b2c66; color: #fff; flex: 0 0 160px; }
       .adj-btn-danger { background: #e5e7eb; color: #6b7280; }
       .adj-btn-danger:not(:disabled):hover { background: #d1d5db; color: #b91c1c; }
+      .adj-btn-primary:hover { filter: brightness(1.2); }
+      .adj-btn-primary:active { filter: brightness(0.94); }
       .adj-btn:disabled { opacity: .6; cursor: not-allowed; }
 
       @media (max-width: 768px) {
-        .adj-card { border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+        .adj-card { margin-bottom: 18px; }
         .adj-times { gap: 10px; }
-        .adj-time-input { font-size: 15px; padding: 13px 6px; }
+        .adj-time-input { font-size: 15px; padding: 13px 40px 13px 8px; }
         .adj-action-bar { max-width: 100%; }
       }
       /* Màn hình hẹp: xếp 出勤/退勤 thành 1 cột để ô giờ không bị tràn */
       @media (max-width: 480px) {
         .adj-times { grid-template-columns: 1fr; gap: 12px; }
-        .adj-time-input { font-size: 16px; padding: 13px 10px; }
+        .adj-time-input { font-size: 16px; padding: 13px 40px 13px 10px; }
       }
 
-      /* Header riêng của màn hình 勤怠修正: nút trở về + tiêu đề */
-      .adj-page-header {
-        display: flex; align-items: center; gap: 8px;
-        padding: 12px 6px; margin: 0 0 4px 0;
-        position: relative;
-      }
+      /* Nút trở về (bên trái thanh nút dưới cùng) */
       .adj-back-btn {
-        flex: 0 0 auto; width: 40px; height: 40px; border-radius: 999px;
+        flex: 0 0 auto; width: 52px; min-height: 52px;
         border: none; background: transparent; cursor: pointer;
-        color: #b45309; display: inline-flex; align-items: center; justify-content: center;
+        color: #0b2c66; display: inline-flex; align-items: center; justify-content: center;
       }
-      .adj-back-btn:hover { background: rgba(245, 158, 11, 0.12); }
-      .adj-back-btn svg { width: 24px; height: 24px; }
-      .adj-page-title {
-        flex: 1 1 auto; text-align: center; font-size: 18px; font-weight: 800;
-        color: #1f2937; padding-right: 40px; /* cân bằng với nút back bên trái */
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      }
+      .adj-back-btn:hover { background: #eef2f8; }
+      .adj-back-btn svg { width: 28px; height: 28px; }
     </style>
-
-    <div class="adj-page-header">
-      <button id="adjBack" class="adj-back-btn" type="button" aria-label="戻る" title="ホームへ戻る">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7"></path></svg>
-      </button>
-      <div id="adjPageTitle" class="adj-page-title">勤怠修正</div>
-    </div>
 
     <div class="sap-tabs-container" style="display: flex !important; align-items: center; justify-content: flex-start; position: relative; z-index: 50; margin-top: 0 !important; visibility: visible !important; opacity: 1 !important; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; gap: 8px;">
         <div class="sap-tabs-wrapper" style="display: flex !important; gap: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; width: 100%; opacity: 1 !important; visibility: visible !important;">
@@ -654,7 +634,7 @@ const renderForm = async () => {
               出勤時刻
             </span>
             <span id="adjInHint" class="adj-time-hint">現在の打刻 →</span>
-            <input id="adjIn" class="adj-time-input" type="datetime-local">
+            <input id="adjIn" class="adj-time-input" type="datetime-local" placeholder="タップして出勤時刻を選択">
           </div>
           <div class="adj-time-block">
             <span class="adj-time-label out">
@@ -662,7 +642,7 @@ const renderForm = async () => {
               退勤時刻
             </span>
             <span id="adjOutHint" class="adj-time-hint">現在の打刻 →</span>
-            <input id="adjOut" class="adj-time-input" type="datetime-local">
+            <input id="adjOut" class="adj-time-input" type="datetime-local" placeholder="タップして退勤時刻を選択">
           </div>
         </div>
 
@@ -678,13 +658,12 @@ const renderForm = async () => {
 
       <!-- Thanh nút dính đáy -->
       <div class="adj-action-bar">
-        <button id="adjSubmit" class="adj-btn adj-btn-primary" title="勤怠を修正">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-          勤怠を修正
+        <button id="adjBack" class="adj-back-btn" type="button" aria-label="戻る" title="ホームへ戻る">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7"></path></svg>
         </button>
-        <button id="adjDelete" class="adj-btn adj-btn-danger" title="勤怠を削除" disabled>
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-          勤怠を削除
+        <button id="adjSubmit" class="adj-btn adj-btn-primary" title="申請">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          申請
         </button>
       </div>
     </div>
@@ -697,7 +676,6 @@ const renderForm = async () => {
     out: $('#adjOut'),
     reason: $('#adjReason'),
     submit: $('#adjSubmit'),
-    del: $('#adjDelete'),
     status: $('#adjStatus')
   };
 
@@ -746,26 +724,6 @@ const renderForm = async () => {
     }
   } catch (e) { /* flatpickr 未読み込み時はネイティブ input のまま */ }
 
-  // Tìm đơn 調整申請 đang chờ duyệt (pending) của ngày đang chọn để cho phép hủy
-  let pendingRequestId = null;
-  const refreshPendingForDate = (dateStr) => {
-    pendingRequestId = null;
-    try {
-      const list = Array.isArray(window.requestsCache) ? window.requestsCache : [];
-      const found = list.find(r => {
-        const st = String(r.status || 'pending').toLowerCase();
-        // Cùng thứ tự ưu tiên với card lịch sử: 出勤 → 退勤 → chấm công gốc
-        const target = String(r.requestedCheckIn || r.requestedCheckOut || r.originalCheckIn || '').slice(0, 10);
-        return st === 'pending' && target === dateStr;
-      });
-      pendingRequestId = found ? found.id : null;
-    } catch (e) { pendingRequestId = null; }
-    if (els.del) {
-      els.del.disabled = !pendingRequestId;
-      els.del.title = pendingRequestId ? '調整申請を取り消す' : '取り消せる申請はありません';
-    }
-  };
-
   const setCurrent = (seg) => {
     // Hiển thị trạng thái chấm công hiện tại ngay dưới nhãn 出勤/退勤時刻
     const inHint = $('#adjInHint');
@@ -804,14 +762,6 @@ const renderForm = async () => {
       setCurrent(seg);
       try { setDateTimeValue(els.in, seg?.checkIn ? String(seg.checkIn).slice(0, 16) : ''); } catch (e) { /* silently ignored */ }
       try { setDateTimeValue(els.out, seg?.checkOut ? String(seg.checkOut).slice(0, 16) : ''); } catch (e) { /* silently ignored */ }
-
-      // Cập nhật nút "勤怠を削除" theo đơn pending của ngày này
-      try {
-        if (!Array.isArray(window.requestsCache)) {
-          window.requestsCache = await fetchJSONAuth('/api/adjust/my').catch(() => []);
-        }
-      } catch (e) { /* silently ignored */ }
-      refreshPendingForDate(d);
     } catch (e) {
       attendanceId = null;
       setCurrent(null);
@@ -855,16 +805,7 @@ const renderForm = async () => {
   $('#tabRejected')?.addEventListener('click', () => switchTab('tabRejected'));
   $('#tabHistory')?.addEventListener('click', () => switchTab('tabHistory'));
 
-  // Header: tiêu đề "{tên user} - 勤怠修正" và nút trở về màn hình home
-  try {
-    const titleEl = $('#adjPageTitle');
-    if (titleEl) {
-      const raw = sessionStorage.getItem('user') || localStorage.getItem('user') || '';
-      const u = raw ? JSON.parse(raw) : null;
-      const name = (u && (u.username || u.email)) ? String(u.username || u.email) : '';
-      titleEl.textContent = name ? `${name} - 勤怠修正` : '勤怠修正';
-    }
-  } catch (e) { /* silently ignored */ }
+  // Nút trở về màn hình home (bên trái thanh nút dưới cùng)
   $('#adjBack')?.addEventListener('click', () => { window.location.href = '/ui/portal'; });
 
   // Xóa các event listener cũ của 3 nút Quick Actions do đã chuyển sang dùng Tab
@@ -942,9 +883,6 @@ const renderForm = async () => {
       setDateTimeValue(els.in, '');
       setDateTimeValue(els.out, '');
       if (els.reason) els.reason.value = '';
-      // Cập nhật lại cache + trạng thái nút "勤怠を削除" cho ngày đang chọn
-      window.requestsCache = await fetchJSONAuth('/api/adjust/my').catch(() => []);
-      refreshPendingForDate(els.date?.value);
       await renderList();
     } catch (e) {
       if (els.status) els.status.textContent = '';
@@ -961,31 +899,6 @@ const renderForm = async () => {
   };
 
   els.submit?.addEventListener('click', handleApply);
-
-  // "勤怠を削除" = hủy (取り消し) đơn 調整申請 đang chờ duyệt của ngày đang chọn
-  const handleCancelRequest = async () => {
-    if (!els.del || els.del.disabled || !pendingRequestId) return;
-    if (!confirm('この日の調整申請を取り消しますか？')) return;
-    showErr('');
-    els.del.disabled = true;
-    if (els.status) els.status.textContent = '取り消し中…';
-    showSpinner();
-    try {
-      await fetchJSONAuth(`/api/adjust/${encodeURIComponent(pendingRequestId)}`, { method: 'DELETE' });
-      if (els.status) els.status.textContent = '申請を取り消しました';
-      showToast('調整申請を取り消しました');
-      window.requestsCache = await fetchJSONAuth('/api/adjust/my').catch(() => []);
-      refreshPendingForDate(els.date?.value);
-      await renderList();
-    } catch (e) {
-      if (els.status) els.status.textContent = '';
-      showErr(e?.message || '取り消しに失敗しました');
-      if (els.del) els.del.disabled = false;
-    } finally {
-      hideSpinner();
-    }
-  };
-  els.del?.addEventListener('click', handleCancelRequest);
 };
 
 let currentPage = 1;
@@ -1286,26 +1199,26 @@ const renderList = async () => {
         <style>
           .adj-hist-nav {
             display: flex; align-items: center; justify-content: space-between;
-            background: #fffdf9; border: 1px solid #fde68a; border-radius: 14px;
+            background: #fff; border: 1px solid #cbd5e1;
             padding: 10px 12px; margin: 0 0 14px 0; max-width: 560px;
           }
           .adj-hist-nav-btn {
             width: 40px; height: 40px; border-radius: 999px; border: none; cursor: pointer;
-            background: transparent; color: #b45309; display: inline-flex; align-items: center; justify-content: center;
+            background: transparent; color: #0b2c66; display: inline-flex; align-items: center; justify-content: center;
           }
-          .adj-hist-nav-btn:hover { background: rgba(245,158,11,0.12); }
+          .adj-hist-nav-btn:hover { background: rgba(11,44,102,0.08); }
           .adj-hist-nav-btn svg { width: 22px; height: 22px; }
           .adj-hist-nav-label { font-size: 17px; font-weight: 800; color: #1f2937; }
 
           .adj-hist-list { display: flex; flex-direction: column; gap: 14px; max-width: 560px; }
           .adj-hist-card {
-            background: #fffdf9; border: 1px solid #fde68a; border-radius: 14px;
-            padding: 14px; box-shadow: 0 1px 3px rgba(180,83,9,0.06);
+            background: #fff; border: 1px solid #cbd5e1;
+            padding: 14px;
           }
           .adj-hist-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
           .adj-hist-icon {
-            flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px;
-            background: #fef3e2; color: #f59e0b; display: inline-flex; align-items: center; justify-content: center;
+            flex: 0 0 auto; width: 36px; height: 36px;
+            background: #eef2f8; color: #0b2c66; display: inline-flex; align-items: center; justify-content: center;
           }
           .adj-hist-icon svg { width: 18px; height: 18px; }
           .adj-hist-head-text { flex: 1 1 auto; min-width: 0; }
@@ -1320,22 +1233,22 @@ const renderList = async () => {
 
           .adj-hist-diff {
             display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
-            background: #fdf6ec; border-radius: 10px; padding: 12px;
+            background: #f8fafc; padding: 12px;
           }
           .adj-hist-col { min-width: 0; }
           .adj-hist-col-title { font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px; }
           .adj-hist-col.after { text-align: right; }
-          .adj-hist-col.after .adj-hist-col-title { color: #ea580c; }
-          .adj-hist-col.after .adj-hist-line { color: #ea580c; font-weight: 700; }
+          .adj-hist-col.after .adj-hist-col-title { color: #0b2c66; }
+          .adj-hist-col.after .adj-hist-line { color: #0b2c66; font-weight: 700; }
           .adj-hist-line { font-size: 14px; color: #334155; line-height: 1.7; white-space: nowrap; }
-          .adj-hist-arrow { color: #f59e0b; display: flex; align-items: center; justify-content: center; }
+          .adj-hist-arrow { color: #0b2c66; display: flex; align-items: center; justify-content: center; }
           .adj-hist-arrow svg { width: 20px; height: 20px; }
 
           .adj-hist-reason {
-            margin-top: 12px; background: #fffdf9; border: 1px solid #fde68a; border-radius: 10px; padding: 12px;
+            margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px;
           }
           .adj-hist-reason-title {
-            display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #b45309; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #0b2c66; margin-bottom: 6px;
           }
           .adj-hist-reason-title svg { width: 16px; height: 16px; }
           .adj-hist-reason-text { font-size: 14px; color: #1f2937; white-space: pre-wrap; word-break: break-word; }
@@ -1346,16 +1259,16 @@ const renderList = async () => {
           }
           .adj-hist-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
           .adj-hist-actbtn {
-            width: 38px; height: 38px; border-radius: 10px; border: 1px solid #fde68a;
-            background: #fff; color: #b45309; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; border: 1px solid #cbd5e1;
+            background: #fff; color: #0b2c66; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
           }
-          .adj-hist-actbtn:hover { background: #fef3e2; }
+          .adj-hist-actbtn:hover { background: #eef2f8; }
           .adj-hist-actbtn.danger { color: #dc2626; border-color: #fecaca; }
           .adj-hist-actbtn.danger:hover { background: #fef2f2; }
 
           .adj-hist-pager { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 16px 0; max-width: 560px; }
           .adj-hist-pager button {
-            padding: 8px 16px; border-radius: 10px; border: 1px solid #fde68a; background: #fff; color: #b45309;
+            padding: 8px 16px; border: 1px solid #cbd5e1; background: #fff; color: #0b2c66;
             font-weight: 700; cursor: pointer;
           }
           .adj-hist-pager button:disabled { opacity: .5; cursor: not-allowed; }
@@ -1420,13 +1333,13 @@ const renderList = async () => {
       card.style.display = 'none';
       card.dataset.hidden = '1';
 
-      // Tạo block chỉnh sửa ngay dưới card được click (kiểu card cam)
+      // Tạo block chỉnh sửa ngay dưới card được click
       const editTr = document.createElement('div');
       editTr.className = 'inline-edit-row adj-card';
       editTr.innerHTML = `
         <div class="inline-edit-container" style="position:relative;">
           <button type="button" class="btn-close-inline-edit" style="position:absolute; top:0; right:0; background:none; border:none; font-size:18px; color:#94a3b8; cursor:pointer; padding:4px; line-height:1;" title="閉じる">&times;</button>
-          <div style="font-weight: 800; color: #b45309; margin-bottom: 12px; font-size: 14px;">${String(btn.title || '') === '再申請' ? '差戻しされた申請を修正して再申請' : '申請の編集'}</div>
+          <div style="font-weight: 800; color: #0b2c66; margin-bottom: 12px; font-size: 14px;">${String(btn.title || '') === '再申請' ? '差戻しされた申請を修正して再申請' : '申請の編集'}</div>
           ${adminNote ? `<div style="margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px;"><strong>差戻し理由:</strong> ${esc(adminNote)}</div>` : ''}
           <div style="display:grid; gap:10px;">
             <div>
