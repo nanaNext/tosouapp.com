@@ -37,13 +37,127 @@ function goToEditorFor(userId) {
   window.location.href = '/admin/payroll?standalone=1&tab=payroll_editor';
 }
 
-function renderEmployeeList(container, users) {
+const TH = 'padding:8px 16px;font-size:12px;color:#6a6d70;border-bottom:1px solid #edeff0;';
+const BTN = 'border:1px solid #d0d7de;background:#fff;color:#0b2c66;font-weight:600;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;';
+const pill = (text, color, bg) => `<span style="color:${color};background:${bg};padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;">${text}</span>`;
+
+// 同じ月に複数回送信した場合は1行にまとめる（最新の送信を表示し、回数を添える）。
+// items は送信日時の新しい順で届く前提。
+function groupDeliveriesByUserMonth(items) {
+  const map = new Map();
+  for (const it of items) {
+    const key = `${it.userId}|${it.month}`;
+    const g = map.get(key);
+    if (g) { g.count += 1; if (it.isRead) g.anyRead = true; }
+    else map.set(key, { ...it, count: 1, anyRead: !!it.isRead });
+  }
+  return [...map.values()];
+}
+
+// 全従業員について、選択した月に給与明細を送信したかどうかを一覧する
+async function renderMonthlyStatus(card, users, service) {
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div class="pe-title" style="margin:0;border:none;padding:0;">月別 送信状況</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input type="month" id="stMonth" style="height:34px;padding:0 10px;border:1px solid #d0d7de;border-radius:6px;font-size:13px;">
+        <select id="stFilter" style="height:34px;padding:0 10px;border:1px solid #d0d7de;border-radius:6px;font-size:13px;">
+          <option value="all">すべて</option>
+          <option value="sent">送信済み</option>
+          <option value="unsent">未送信</option>
+        </select>
+      </div>
+    </div>
+    <div id="stSummary" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;"></div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;min-width:640px;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th style="text-align:left;${TH}">社員コード</th>
+            <th style="text-align:left;${TH}">氏名</th>
+            <th style="text-align:center;${TH}">状態</th>
+            <th style="text-align:left;${TH}">送信日時／送信者</th>
+            <th style="text-align:center;${TH}">従業員の確認</th>
+            <th style="${TH}"></th>
+          </tr>
+        </thead>
+        <tbody id="stBody"><tr><td colspan="6" style="text-align:center;padding:24px 16px;color:#6a6d70;">読み込み中...</td></tr></tbody>
+      </table>
+    </div>
+  `;
+  const monthEl = card.querySelector('#stMonth');
+  const filterEl = card.querySelector('#stFilter');
+  const body = card.querySelector('#stBody');
+  const summary = card.querySelector('#stSummary');
+  let rows = [];
+
+  const draw = () => {
+    const sent = rows.filter((r) => r.d);
+    const read = sent.filter((r) => r.d.anyRead);
+    const chip = (label, n, color, bg) => `<div style="background:${bg};color:${color};border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;">${label} ${n}名</div>`;
+    summary.innerHTML = chip('対象', rows.length, '#0f172a', '#f1f5f9')
+      + chip('送信済み', sent.length, '#065f46', '#d1fae5')
+      + chip('未送信', rows.length - sent.length, '#92400e', '#fef3c7')
+      + chip('確認済み', read.length, '#1e3a8a', '#dbeafe');
+    const f = filterEl.value;
+    const list = rows.filter((r) => (f === 'sent' ? r.d : f === 'unsent' ? !r.d : true));
+    if (!list.length) {
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px 16px;color:#6a6d70;">該当する従業員がいません</td></tr>';
+      return;
+    }
+    body.innerHTML = list.map(({ u, d }) => `
+      <tr style="border-bottom:1px solid #f1f5f9;">
+        <td style="padding:10px 16px;font-size:13px;color:#6a6d70;font-weight:600;">${escapeHtml(employeeCode(u))}</td>
+        <td style="padding:10px 16px;"><a href="${withStandalone(`/admin/payroll/employees?empId=${encodeURIComponent(u.id)}`)}" style="color:#0f172a;font-weight:600;text-decoration:none;">${escapeHtml(u.username || u.email || '')}</a></td>
+        <td style="padding:10px 16px;text-align:center;">${d ? pill('送信済み', '#065f46', '#d1fae5') : pill('未送信', '#92400e', '#fef3c7')}</td>
+        <td style="padding:10px 16px;color:#6a6d70;font-size:13px;">${d ? `${escapeHtml(formatDateTime(d.sentAt))}${d.senderName ? ` ／ ${escapeHtml(d.senderName)}` : ''}${d.count > 1 ? ` <span style="color:#94a3b8;">（${d.count}回送信）</span>` : ''}` : '—'}</td>
+        <td style="padding:10px 16px;text-align:center;">${d ? (d.anyRead ? pill('確認済み', '#1e3a8a', '#dbeafe') : '<span style="color:#94a3b8;font-size:12px;">未確認</span>') : ''}</td>
+        <td style="padding:10px 16px;text-align:right;">${d ? `<button type="button" class="st-open" data-file-id="${escapeHtml(d.fileId)}" style="${BTN}">PDFを開く</button>` : ''}</td>
+      </tr>
+    `).join('');
+    body.querySelectorAll('.st-open').forEach((btn) => btn.addEventListener('click', () => {
+      const fileId = btn.getAttribute('data-file-id');
+      if (fileId) openPdf(`/api/payslips/admin/file/${encodeURIComponent(fileId)}`);
+    }));
+  };
+
+  const load = async () => {
+    const month = monthEl.value;
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px 16px;color:#6a6d70;">読み込み中...</td></tr>';
+    summary.innerHTML = '';
+    try {
+      const res = await service.listDeliveries({ month });
+      const byUser = new Map(groupDeliveriesByUserMonth(Array.isArray(res?.items) ? res.items : []).map((d) => [String(d.userId), d]));
+      rows = users.map((u) => ({ u, d: byUser.get(String(u.id)) || null }));
+      draw();
+    } catch {
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px 16px;color:#b91c1c;">送信履歴の取得に失敗しました</td></tr>';
+    }
+  };
+
+  // 初期表示は最後に送信があった月（なければ今月）
+  const now = new Date();
+  let initial = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  try {
+    const res = await service.listDeliveries({});
+    const months = (Array.isArray(res?.items) ? res.items : []).map((it) => String(it.month || '')).filter(Boolean).sort();
+    if (months.length) initial = months[months.length - 1];
+  } catch { /* ignore */ }
+  monthEl.value = initial;
+  monthEl.addEventListener('change', load);
+  filterEl.addEventListener('change', draw);
+  await load();
+}
+
+function renderEmployeeList(container, users, service) {
   container.innerHTML = `
     <div style="padding:24px 28px;max-width:1100px;margin:0 auto;font-family:'Noto Sans JP','Noto Sans','Yu Gothic UI','Meiryo UI','Segoe UI',system-ui,sans-serif;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
         <h1 style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">従業員別 給与管理</h1>
         <a href="/admin/payroll?standalone=1&tab=payroll_editor" style="color:#0b2c66;font-weight:600;text-decoration:none;font-size:13px;">&larr; 給与明細作成・編集へ戻る</a>
       </div>
+      <div class="pe-card" id="monthlyStatusCard" style="margin-bottom:16px;"></div>
+      <div class="pe-title" style="margin:8px 0;border:none;padding:0;">従業員一覧</div>
       <div class="pe-card" style="padding:14px 20px;margin-bottom:16px;">
         <input type="text" id="empSearch" placeholder="社員コード・氏名で検索" autocomplete="off"
           style="width:100%;height:38px;padding:0 12px;border:1px solid #d0d7de;border-radius:6px;font-size:14px;box-sizing:border-box;">
@@ -92,6 +206,7 @@ function renderEmployeeList(container, users) {
   };
 
   renderRows(users);
+  renderMonthlyStatus(container.querySelector('#monthlyStatusCard'), users, service);
 
   const searchInput = container.querySelector('#empSearch');
   searchInput.addEventListener('input', () => {
@@ -130,14 +245,16 @@ function renderCalcHistory(tbody, items) {
 
 function renderDeliveryHistory(tbody, items) {
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px 16px;color:#6a6d70;">送信履歴がありません</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px 16px;color:#6a6d70;">送信履歴がありません</td></tr>';
     return;
   }
-  tbody.innerHTML = items.map((it) => `
+  const grouped = groupDeliveriesByUserMonth(items).sort((a, b) => String(b.month).localeCompare(String(a.month)));
+  tbody.innerHTML = grouped.map((it) => `
     <tr style="border-bottom:1px solid #f1f5f9;">
       <td style="padding:10px 16px;font-weight:600;color:#0f172a;">${escapeHtml(formatMonth(it.month))}</td>
       <td style="padding:10px 16px;color:#0f172a;">${escapeHtml(it.fileName || '—')}</td>
-      <td style="padding:10px 16px;color:#6a6d70;">${escapeHtml(formatDateTime(it.sentAt))} ${it.senderName ? `／ ${escapeHtml(it.senderName)}` : ''}</td>
+      <td style="padding:10px 16px;color:#6a6d70;">${escapeHtml(formatDateTime(it.sentAt))} ${it.senderName ? `／ ${escapeHtml(it.senderName)}` : ''}${it.count > 1 ? ` <span style="color:#94a3b8;">（${it.count}回送信・最新を表示）</span>` : ''}</td>
+      <td style="padding:10px 16px;text-align:center;">${it.anyRead ? pill('確認済み', '#1e3a8a', '#dbeafe') : '<span style="color:#94a3b8;font-size:12px;">未確認</span>'}</td>
       <td style="padding:10px 16px;text-align:right;">
         <button type="button" class="btn-delivery-open" data-file-id="${escapeHtml(it.fileId)}" style="border:1px solid #d0d7de;background:#fff;color:#0b2c66;font-weight:600;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;">PDFを開く</button>
       </td>
@@ -191,11 +308,12 @@ async function renderEmployeeDetail(container, user, service) {
                 <th style="text-align:left;padding:8px 16px;font-size:12px;color:#6a6d70;border-bottom:1px solid #edeff0;">対象月</th>
                 <th style="text-align:left;padding:8px 16px;font-size:12px;color:#6a6d70;border-bottom:1px solid #edeff0;">ファイル名</th>
                 <th style="text-align:left;padding:8px 16px;font-size:12px;color:#6a6d70;border-bottom:1px solid #edeff0;">送信日時／送信者</th>
+                <th style="text-align:center;padding:8px 16px;font-size:12px;color:#6a6d70;border-bottom:1px solid #edeff0;">従業員の確認</th>
                 <th style="border-bottom:1px solid #edeff0;"></th>
               </tr>
             </thead>
             <tbody id="deliveryHistoryBody">
-              <tr><td colspan="4" style="text-align:center;padding:24px 16px;color:#6a6d70;">読み込み中...</td></tr>
+              <tr><td colspan="5" style="text-align:center;padding:24px 16px;color:#6a6d70;">読み込み中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -238,7 +356,7 @@ async function renderEmployeeDetail(container, user, service) {
       });
     });
   } else {
-    deliveryBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px 16px;color:#b91c1c;">送信履歴の取得に失敗しました（サーバー再起動が必要な可能性があります）</td></tr>';
+    deliveryBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px 16px;color:#b91c1c;">送信履歴の取得に失敗しました（サーバー再起動が必要な可能性があります）</td></tr>';
   }
 }
 
@@ -287,7 +405,7 @@ async function mount({ content } = {}) {
   const empId = params.get('empId');
 
   if (!empId) {
-    renderEmployeeList(host, users);
+    renderEmployeeList(host, users, service);
     return;
   }
 

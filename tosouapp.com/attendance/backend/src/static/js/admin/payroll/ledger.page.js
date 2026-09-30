@@ -579,8 +579,8 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         </div>
         <div class="pl-preview-section">
           <h3>支給</h3>
-          ${fieldNum('基礎給', 'sBase', s.基礎給, true)}
-          ${fieldNum('就業手当', 'sQual', s.就業手当, true)}
+          ${fieldNum('基礎給', 'sBase', s.基礎給, autoCalc)}
+          ${fieldNum('就業手当', 'sQual', s.就業手当, autoCalc)}
           ${fieldNum('時間外手当', 'sOt', s.時間外手当, autoCalc)}
           ${fieldNum('週40超手当', 'sW40', s.週40超手当, autoCalc)}
           ${fieldNum('月60超手当', 'sM60', s.月60超手当, autoCalc)}
@@ -738,6 +738,8 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         },
         overrideEarnings: {
           ...(autoCalc ? {} : {
+            基礎給: Number(modal.querySelector('#sBase').value) || 0,
+            就業手当: Number(modal.querySelector('#sQual').value) || 0,
             時間外手当: Number(modal.querySelector('#sOt').value) || 0,
             週40超手当: Number(modal.querySelector('#sW40').value) || 0,
             月60超手当: Number(modal.querySelector('#sM60').value) || 0,

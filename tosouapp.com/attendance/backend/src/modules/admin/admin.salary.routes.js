@@ -647,6 +647,7 @@ router.get('/salary/deliveries', async (req, res) => {
       fileId: r.payslip_file_id,
       fileName: r.original_name,
       sentAt: r.sent_at,
+      isRead: Boolean(r.is_read),
       sentBy: r.sent_by,
       senderName: r.sender_name || r.sender_email || ''
     }));

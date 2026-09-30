@@ -1097,6 +1097,30 @@ router.get('/home/stats', authorize('admin'), async (req, res) => {
   }
 });
 // Topbar notification summary for manager/admin
+// サイドメニューのバッジ用: 承認待ちの件数だけを返す（notifications/summary と同じテナント・役割の絞り込み）
+router.get('/notifications/pending-counts', authorize('admin','manager'), async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    const { clause: tcu, params: tpu } = tenantClause(req, 'u');
+    const whereAll = `${role === 'manager' ? ` AND u.role = 'employee'` : ``} ${tcu}`;
+    // テーブル未作成などで1件失敗しても他の件数は返す
+    const count = async (sql) => {
+      try { const [[row]] = await db.query(sql, tpu); return Number(row?.c || 0); } catch (e) { return 0; }
+    };
+    const [leave, adjust, expense, shift] = await Promise.all([
+      count(`SELECT COUNT(*) AS c FROM leave_requests lr INNER JOIN users u ON u.id = lr.userId WHERE lr.status = 'pending' ${whereAll}`),
+      count(`SELECT COUNT(*) AS c FROM time_adjust_requests ar INNER JOIN users u ON u.id = ar.userId WHERE ar.status = 'pending' ${whereAll}`),
+      count(`SELECT COUNT(*) AS c FROM expense_claims ec INNER JOIN users u ON u.id = ec.userId WHERE ec.status = 'applied' ${whereAll}`),
+      // シフト承認画面と同じく、在職中の従業員の「提出済み(PENDING)」の月を数える
+      count(`SELECT COUNT(*) AS c FROM shift_month_status s INNER JOIN users u ON u.id = s.userId WHERE s.status = 'PENDING' AND u.role NOT IN ('admin','manager') AND u.employment_status = 'active' ${whereAll}`)
+    ]);
+    res.set('Cache-Control', 'no-store');
+    res.status(200).json({ leave, adjust, expense, shift });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get('/notifications/summary', authorize('admin','manager'), async (req, res) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();

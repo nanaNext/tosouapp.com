@@ -176,6 +176,36 @@ const c=e=>document.querySelector(e);function s(){try{if(!document.querySelector
           color: #1e293b;
         }
         
+        /* 状態の色分け: 共通CSSの color:inherit!important に負けないよう詳細度を上げて !important で指定 */
+        body.admin table .status-pill.active,
+        body.admin table .status-pill.inactive,
+        body.admin table .status-pill.retired {
+          display: inline-flex !important;
+          align-items: center !important;
+          padding: 2px 10px !important;
+          border-radius: 999px !important;
+          font-size: 12px !important;
+          font-weight: 700 !important;
+          border: 1px solid transparent !important;
+          white-space: nowrap !important;
+        }
+        body.admin table .status-pill.active { background: #dcfce7 !important; color: #166534 !important; border-color: #86efac !important; }
+        body.admin table .status-pill.inactive { background: #ffedd5 !important; color: #c2410c !important; border-color: #fdba74 !important; }
+        body.admin table .status-pill.retired { background: #e5e7eb !important; color: #4b5563 !important; border-color: #9ca3af !important; }
+        body.admin table tbody tr.emp-row.inactive > td,
+        body.admin table tbody tr.emp-row.retired > td { background: #f3f4f6 !important; color: #6b7280 !important; }
+        body.admin table tbody tr.emp-row.inactive > td a,
+        body.admin table tbody tr.emp-row.retired > td a { color: #6b7280 !important; }
+
+        /* 検索ボタン: admin.css の .filter-bar button{background:#2563eb!important} を打ち消し、
+           部門管理 > 異動 の 保存/削除 と同じブラウザ標準ボタンにする（他画面の検索ボタンには影響させない） */
+        body.admin .filter-bar #btnEmpSearch,
+        body.admin .emp-filters #btnEmpSearch { all: revert !important; cursor: pointer !important; transition: filter .12s, box-shadow .12s !important; }
+        body.admin .filter-bar #btnEmpSearch:hover,
+        body.admin .emp-filters #btnEmpSearch:hover { filter: brightness(.92) !important; box-shadow: 0 1px 3px rgba(0,0,0,.18) !important; }
+        body.admin .filter-bar #btnEmpSearch:active,
+        body.admin .emp-filters #btnEmpSearch:active { filter: brightness(.82) !important; box-shadow: inset 0 1px 2px rgba(0,0,0,.25) !important; }
+
         /* Inactive/Retired row styling */
         .admin .card table#list tbody tr.emp-row.inactive td {
           background: #fffbeb;
