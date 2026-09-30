@@ -254,7 +254,7 @@
   '.igb-panel.igb-open{display:flex}' +
   '.igb-h{background:' + C + ';color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:700}' +
   '.igb-x{background:none;border:0;color:#fff;font-size:22px;line-height:1;cursor:pointer;padding:2px 6px}' +
-  '.igb-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f4f6f8}' +
+  '.igb-log{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f4f6f8}' +
   '.igb-m{max-width:86%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word}' +
   '.igb-bot{background:#fff;border:1px solid #dde3e8;align-self:flex-start;border-bottom-left-radius:4px}' +
   '.igb-user{background:' + C + ';color:#fff;align-self:flex-end;border-bottom-right-radius:4px}' +
@@ -269,6 +269,8 @@
   '.igb-f{display:flex;gap:8px;padding:10px;border-top:1px solid #dde3e8;background:#fff}' +
   '.igb-in{flex:1;min-width:0;border:1px solid #b6c0c9;border-radius:8px;padding:9px 10px;font-size:16px;font-family:inherit}' +
   '.igb-send{border:0;background:' + C + ';color:#fff;border-radius:8px;padding:0 14px;font-size:14px;cursor:pointer;font-family:inherit}' +
+  /* スマホ: 画面を覆わないよう小さめのパネルにし、猫の上に重ねて出す */
+  '@media (max-width:600px){.igb-panel{right:10px;bottom:calc(var(--igb-off) + 10px + env(safe-area-inset-bottom,0px));width:min(310px,calc(100vw - 20px));height:auto;max-height:min(58dvh,440px);min-height:0;border-radius:12px}.igb-h{padding:9px 12px;font-size:14px}.igb-log{padding:10px;gap:8px}.igb-m{font-size:13px;line-height:1.55;padding:7px 10px}.igb-ch{flex-direction:row;flex-wrap:wrap;gap:6px}.igb-chip{font-size:13px;padding:6px 11px}.igb-f{padding:8px;gap:6px}.igb-in{padding:7px 9px}.igb-wrap.igb-behind{visibility:hidden}}' +
   '@media print{.igb-wrap,.igb-tip,.igb-panel{display:none!important}}' +
   '@media (prefers-reduced-motion:reduce){.igb-typing i,.igb-eye,.igb-drop,.igb-shadow.igb-s2,.igb-paw{animation:none}.igb-typing i{opacity:.6}.igb-tip{transition:none}.igb-tip.igb-show{animation:none}.igb-sp{display:none}}';
 
@@ -321,7 +323,14 @@
 
   /* ========== 5. 本体 ========== */
   var HIDDEN_KEY = 'igb-hidden';
+  // キャラクターを出さない画面（入力作業の邪魔になるため）
+  var EXCLUDE_PATHS = ['/ui/attendance/simple', '/ui/adjust', '/ui/expenses', '/ui/salary'];
+  function isExcluded() {
+    var p = String(location.pathname || '').replace(/\/+$/, '');
+    return EXCLUDE_PATHS.some(function (x) { return p === x || p.indexOf(x + '/') === 0; });
+  }
   function boot() {
+    if (isExcluded()) return;
     try { if (localStorage.getItem(HIDDEN_KEY) === '1') return; } catch (e) {}   // ×で消した人には出さない
     var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
@@ -484,13 +493,14 @@
     }
 
     function open() {
-      panel.classList.add('igb-open'); fab.setAttribute('aria-expanded', 'true'); fab.classList.add('igb-on'); hideTip();
+      panel.classList.add('igb-open'); fab.setAttribute('aria-expanded', 'true'); fab.classList.add('igb-on'); hideTip(); wrap.classList.add('igb-behind');
       loadCompanyFaq();
       if (!started) { started = true; menu(greeting() + '\n勤怠アプリの使い方について、知りたい項目を選んでください。'); }
-      setTimeout(function () { input.focus(); }, 50);
+      // スマホでは自動でキーボードを出さない（画面が埋まるため）。PCのみ入力欄にフォーカス
+      if (!(window.matchMedia && matchMedia('(pointer: coarse)').matches)) setTimeout(function () { input.focus(); }, 50);
     }
     function close() {
-      panel.classList.remove('igb-open'); fab.classList.remove('igb-on'); fab.setAttribute('aria-expanded', 'false'); fab.focus();
+      panel.classList.remove('igb-open'); fab.classList.remove('igb-on'); fab.setAttribute('aria-expanded', 'false'); wrap.classList.remove('igb-behind'); fab.focus();
       if (mascot3d) mascot3d.wake();
     }
 
