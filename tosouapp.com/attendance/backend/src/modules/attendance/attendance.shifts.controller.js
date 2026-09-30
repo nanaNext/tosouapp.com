@@ -363,7 +363,7 @@ exports.getShiftMatrix = async (req, res) => {
     const branchFilter = (role === 'manager' && userBranchId) ? userBranchId : null;
 
     let userQuery = `
-      SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName, s.status as submission_status
+      SELECT u.id, u.username, u.email, u.employee_code, u.employment_type, d.name as departmentName, s.status as submission_status, s.updated_at as submission_updated_at
       FROM users u
       LEFT JOIN departments d ON u.departmentId = d.id
       LEFT JOIN shift_month_status s ON u.id = s.userId AND s.month = ?
@@ -403,7 +403,7 @@ exports.getShiftMatrix = async (req, res) => {
     const matrix = users.map(u => {
       const schedule = {};
       shifts.filter(s => s.userId === u.id).forEach(s => { schedule[s.date] = s; });
-      return { id: u.id, username: u.username || u.email, employee_code: u.employee_code, employment_type: u.employment_type, departmentName: u.departmentName, submission_status: u.submission_status, schedule };
+      return { id: u.id, username: u.username || u.email, employee_code: u.employee_code, employment_type: u.employment_type, departmentName: u.departmentName, submission_status: u.submission_status, submission_updated_at: u.submission_updated_at || null, schedule };
     });
     res.status(200).json(matrix);
   } catch (err) {
